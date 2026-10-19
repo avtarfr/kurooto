@@ -107,9 +107,10 @@ class Board:
                 u = psutil.disk_usage(part.mountpoint)
             except (OSError, PermissionError):
                 continue
-            if u.total < 1024**3:
+            if u.total < 1024**3 or (u.total, u.free) in seen:  # one container's volumes (APFS, btrfs) show once
                 continue
             seen.add(part.device)
+            seen.add((u.total, u.free))
             disks.append({"mount": part.mountpoint, "used": u.used, "total": u.total, "pct": u.percent / 100})
         return {
             "cpu": sum(cores) / max(1, len(cores)) / 100,
@@ -286,6 +287,7 @@ class Style:
         self.colour, self.unicode = colour, unicode
         self.full, self.empty = ("█", "░") if unicode else ("#", "-")
         self.sep = "·" if unicode else "|"
+        self.ell = "…" if unicode else "..."
 
     def c(self, code: str, s: str) -> str:
         return f"\x1b[{code}m{s}\x1b[0m" if self.colour else s
@@ -367,7 +369,7 @@ def machine_lines(m: dict, w: int, st: Style) -> list[str]:
         out.append(f"power {st.bar(b['pct'] / 100, bw)} {b['pct']:3.0f}%  {state}")
     out.append(st.head("DISKS"))
     for d in m.get("disks") or []:
-        mount = d["mount"] if len(d["mount"]) <= 14 else "…" + d["mount"][-13:]
+        mount = d["mount"] if len(d["mount"]) <= 14 else st.ell + d["mount"][-(14 - len(st.ell)) :]
         out.append(
             f"{mount:<14} {st.bar(d['pct'], max(6, bw - 8))} {d['pct'] * 100:3.0f}%  "
             + st.dim(f"{_gb(d['total'] - d['used'])} free")
@@ -444,7 +446,10 @@ def render(data: dict, width: int, height: int, colour: bool = True, unicode: bo
     else:
         for ln in machine_lines(data["machine"], width, st) + kurooto_lines(k, data["now"], width, st):
             lines.append(fit(ln, width))
-    return [fit(ln, width) for ln in lines[:height]]
+    out = [fit(ln, width) for ln in lines[:height]]
+    if not unicode:  # a terminal that can't show them: names and titles from your data too
+        out = [ln.encode("ascii", "replace").decode("ascii") for ln in out]
+    return out
 
 
 # ------------------------------------------------------------------------------------------------ the loop

@@ -17,18 +17,23 @@ from pathlib import Path
 
 import pytest
 
-from kurooto.modules import catalog
-from kurooto.modules.backups import Backups
-from kurooto.modules.terminals import Terminals
-
 needs_git = pytest.mark.skipif(not shutil.which("git"), reason="needs git")
 
 
 @pytest.fixture(autouse=True)
-def registered(monkeypatch):
-    """Backups and Terminals as if the catalog listed them (the coordinator registers them)."""
-    extra = [c for c in (Backups, Terminals) if c not in catalog.CATALOG]
-    monkeypatch.setattr(catalog, "CATALOG", [*catalog.CATALOG, *extra])
+def nowhere_real(tmp_path_factory):
+    """Even if a test loses KUROOTO_HOME, nothing reaches this computer's real folders or keychain: home, the XDG
+    folders and LOCALAPPDATA point into a temporary folder, and secrets go to a file. (Its own MonkeyPatch, so a
+    test's monkeypatch can't undo it.)"""
+    mp = pytest.MonkeyPatch()
+    home = tmp_path_factory.mktemp("home")
+    mp.setenv("HOME", str(home))
+    mp.setenv("USERPROFILE", str(home))
+    for var in ("LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"):
+        mp.setenv(var, str(home / var.lower()))
+    mp.setenv("KUROOTO_SECRETS", "file")
+    yield
+    mp.undo()
 
 
 def git(cwd, *args, env=None):
@@ -37,6 +42,7 @@ def git(cwd, *args, env=None):
         check=True,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         env={**os.environ, **(env or {})},
     ).stdout
 
@@ -51,28 +57,31 @@ def wait_for(cond, seconds=10):
 
 
 # ================================================================================================== backups
+FAKE_KEY = "-".join(["not", "a", "real", "key"])
+
+
 def _fill(app):
     """Some of everything a backup might hold."""
     from kurooto.modules import backups as b
 
     app.settings.set("you.name", "Sam")
-    app.secrets.set("gemini.api_key", "test-key-0123456789")
+    app.secrets.set("gemini.api_key", FAKE_KEY)
     (app.paths.config / "cloudflare").mkdir(exist_ok=True)
-    (app.paths.config / "cloudflare" / "login.json").write_text('{"token": "x"}')
+    (app.paths.config / "cloudflare" / "login.json").write_text('{"token": "x"}', encoding="utf-8")
     (app.paths.data / "about-you").mkdir(exist_ok=True)
-    (app.paths.data / "about-you" / "report.md").write_text("about me")
-    (app.paths.data / "kurooto-diagnostics-1.zip").write_text("old bundle")
+    (app.paths.data / "about-you" / "report.md").write_text("about me", encoding="utf-8")
+    (app.paths.data / "kurooto-diagnostics-1.zip").write_text("old bundle", encoding="utf-8")
     (app.paths.data / "gbrain").mkdir(exist_ok=True)
     (app.paths.data / "gbrain" / "index.bin").write_bytes(b"\0" * 100)
-    (app.paths.state / "web.json").write_text("{}")
-    (app.paths.state / "profile.json").write_text('{"machine": "x"}')
-    (app.paths.state / "notes.json").write_text("{}")
+    (app.paths.state / "web.json").write_text("{}", encoding="utf-8")
+    (app.paths.state / "profile.json").write_text('{"machine": "x"}', encoding="utf-8")
+    (app.paths.state / "notes.json").write_text("{}", encoding="utf-8")
     app.scheduler.at(time.time() + 3600, "x.y", key="test:one")
     ws = app.workspace
     (ws / "linear-algebra").mkdir(exist_ok=True)
-    (ws / "linear-algebra" / "class-log.md").write_text("# Class log\n\nmine\n")
+    (ws / "linear-algebra" / "class-log.md").write_text("# Class log\n\nmine\n", encoding="utf-8")
     (ws / ".git").mkdir(exist_ok=True)
-    (ws / ".git" / "HEAD").write_text("ref")
+    (ws / ".git" / "HEAD").write_text("ref", encoding="utf-8")
     return b
 
 
@@ -108,7 +117,7 @@ def test_notes_and_secrets_only_when_asked(env, tmp_path):
     names = set(z.namelist())
     assert "notes/linear-algebra/class-log.md" in names and not any(n.startswith("notes/.git") for n in names)
     assert "config/cloudflare/login.json" in names and not any(n.startswith("data/gbrain") for n in names)
-    assert json.loads(z.read("secrets.json"))["gemini.api_key"] == "test-key-0123456789"
+    assert json.loads(z.read("secrets.json"))["gemini.api_key"] == FAKE_KEY
     assert man["secrets"] is True and "PASSWORDS AND KEYS" in z.read("README.txt").decode()
 
 
@@ -116,10 +125,10 @@ def test_keeps_the_newest_n_and_nothing_else(tmp_path):
     from kurooto.modules.backups import listing, prune
 
     for i in range(5):
-        (tmp_path / f"kurooto-backup-2026010{i + 1}-120000.zip").write_text("z")
-    (tmp_path / "my-photos.zip").write_text("mine")
+        (tmp_path / f"kurooto-backup-2026010{i + 1}-120000.zip").write_text("z", encoding="utf-8")
+    (tmp_path / "my-photos.zip").write_text("mine", encoding="utf-8")
     old_part = tmp_path / ".kurooto-backup-20250101-000000.zip.part"
-    old_part.write_text("half")
+    old_part.write_text("half", encoding="utf-8")
     os.utime(old_part, (time.time() - 3 * 86400, time.time() - 3 * 86400))
     gone = prune(tmp_path, 2)
     assert gone == [
@@ -161,9 +170,9 @@ def test_the_feature(env, tmp_path):
     # the drive is unplugged: a note for a while, a problem after three days
     shutil.rmtree(drive)
     assert bk.health()[0] is None and "isn't there now" in bk.health()[1]
-    st = json.loads(bk.state_file.read_text())
+    st = json.loads(bk.state_file.read_text(encoding="utf-8"))
     st["at"] -= 4 * 86400
-    bk.state_file.write_text(json.dumps(st))
+    bk.state_file.write_text(json.dumps(st), encoding="utf-8")
     assert bk.health()[0] is False
     n = len(env.fake.texts())
     assert bk.backup("scheduled")[0] is False
@@ -180,27 +189,69 @@ def test_restore_puts_it_back_and_never_overwrites_a_note(env, tmp_path):
     _fill(app)
     ws = app.workspace
     (ws / "inbox").mkdir(exist_ok=True)
-    (ws / "inbox" / "idea.md").write_text("an idea\n")
+    (ws / "inbox" / "idea.md").write_text("an idea\n", encoding="utf-8")
     out = tmp_path / "drive"
     out.mkdir()
     dest, _ = b.make_zip(app.paths, out, ws, notes=True, secrets=app.secrets)
-    # afterwards: a setting changed, a note deleted, a note rewritten, the token gone, a stale journal beside a db
+    # afterwards: a setting changed, a note deleted, a note rewritten, the token gone, a stale journal beside a db;
+    # and Kurooto stopped (on Windows, an open database can't be replaced)
+    app.close()
     app.settings.set("you.name", "Someone else")
     (ws / "inbox" / "idea.md").unlink()
-    (ws / "linear-algebra" / "class-log.md").write_text("# Class log\n\nnewer text\n")
+    (ws / "linear-algebra" / "class-log.md").write_text("# Class log\n\nnewer text\n", encoding="utf-8")
     app.secrets.delete("gemini.api_key")
-    (app.paths.state / "jobs.db-wal").write_text("stale")
+    (app.paths.state / "jobs.db-wal").write_text("stale", encoding="utf-8")
     man = b.read_manifest(dest)
     assert man["has_notes"] and man["has_secrets"]
     got = b.restore(dest, app.paths, secrets=Secrets(app.paths.config), progress=lambda s: None)
     assert app.settings.get("you.name") == "Sam"
-    assert (ws / "inbox" / "idea.md").read_text() == "an idea\n"
-    assert (ws / "linear-algebra" / "class-log.md").read_text() == "# Class log\n\nnewer text\n"
+    assert (ws / "inbox" / "idea.md").read_text(encoding="utf-8") == "an idea\n"
+    assert (ws / "linear-algebra" / "class-log.md").read_text(encoding="utf-8") == "# Class log\n\nnewer text\n"
     kept = list(ws.glob("restored-*/linear-algebra/class-log.md"))
-    assert len(kept) == 1 and "mine" in kept[0].read_text()
-    assert app.secrets.get("gemini.api_key") == "test-key-0123456789"
+    assert len(kept) == 1 and "mine" in kept[0].read_text(encoding="utf-8")
+    assert app.secrets.get("gemini.api_key") == FAKE_KEY
     assert not (app.paths.state / "jobs.db-wal").exists()
     assert got["notes_added"] >= 1 and got["notes_kept"] == 1
+
+
+def test_restore_changes_nothing_while_kurooto_still_has_its_files(env, tmp_path, monkeypatch):
+    from kurooto.modules import backups as b
+
+    app = env.app
+    out = tmp_path / "d"
+    out.mkdir()
+    dest, _ = b.make_zip(app.paths, out, None)
+    names = zipfile.ZipFile(dest).namelist()
+    assert "state/jobs.db" in names and not any(n.endswith(b.JOURNALS) for n in names)
+    db = tmp_path / "check.db"
+    db.write_bytes(zipfile.ZipFile(dest).read("state/jobs.db"))
+    assert sqlite3.connect(db).execute("pragma journal_mode").fetchone()[0] == "delete"  # self-contained
+    app.settings.set("you.name", "Now")
+    (app.paths.state / "daemon.json").write_text(json.dumps({"pid": os.getpid()}), encoding="utf-8")
+    with monkeypatch.context() as mp:  # (never monkeypatch.undo(): it would also undo env's KUROOTO_HOME)
+        mp.setattr("kurooto.core.proc.pid_alive", lambda pid, must="": True)
+        with pytest.raises(b.InUse, match="running"):
+            b.restore(dest, app.paths, progress=lambda s: None)
+    (app.paths.state / "daemon.json").unlink()
+    busy = app.paths.state / "jobs.db"
+    monkeypatch.setattr(b, "_in_use", lambda files: [busy] if busy in files else [])  # Windows: held open
+    with pytest.raises(b.InUse, match="jobs.db is still open"):
+        b.restore(dest, app.paths, progress=lambda s: None)
+    assert app.settings.get("you.name") == "Now"  # nothing was changed
+    from kurooto import cli
+
+    assert os.environ["KUROOTO_HOME"] == str(app.paths.config.parent)  # still inside the test's own folder
+    assert cli.main(["restore", str(dest), "--yes", "--no-start"]) == 1  # "Nothing was restored"
+    assert app.settings.get("you.name") == "Now"
+
+
+def test_files_held_open_are_found(tmp_path):
+    from kurooto.modules import backups as b
+
+    f = tmp_path / "a.db"
+    f.write_bytes(b"x")
+    assert b._in_use([f, tmp_path / "missing.db"]) == []  # free (and a missing one is fine)
+    assert f.read_bytes() == b"x" and not list(tmp_path.glob("*.restore-check"))
 
 
 def test_restore_from_another_kind_of_computer_uses_the_default_notes_folder(env, tmp_path):
@@ -211,6 +262,7 @@ def test_restore_from_another_kind_of_computer_uses_the_default_notes_folder(env
     out = tmp_path / "d"
     out.mkdir()
     dest, _ = b.make_zip(app.paths, out, None)
+    app.close()
     got = b.restore(dest, app.paths, progress=lambda s: None)
     assert app.settings.get("you.workspace") == "" and got["workspace"]
 
@@ -241,7 +293,7 @@ def test_backup_and_restore_commands(env, tmp_path, monkeypatch, capsys):
     drive.mkdir()
     assert cli.main(["backup", "--to", str(drive)]) == 0
     zips = list(drive.glob("kurooto-backup-*.zip"))
-    assert len(zips) == 1 and json.loads((app.paths.state / "backups.json").read_text())["ok"]
+    assert len(zips) == 1 and json.loads((app.paths.state / "backups.json").read_text(encoding="utf-8"))["ok"]
     calls = []
     monkeypatch.setattr(cli, "stop_gracefully", lambda timeout=90: calls.append("graceful") or True)
     monkeypatch.setattr(cli, "stop", lambda quiet=False: calls.append("stop"))
@@ -249,6 +301,7 @@ def test_backup_and_restore_commands(env, tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(cli, "wait_for_web", lambda s=0: None)
     monkeypatch.setattr("builtins.input", lambda prompt="": "n")
     assert cli.main(["restore", str(zips[0])]) == 1 and calls == []  # said no: nothing happens
+    app.close()  # as if stopped (on Windows, an open database can't be replaced)
     app.settings.set("you.name", "Changed")
     assert cli.main(["restore", str(zips[0]), "--yes"]) == 0
     assert calls == ["graceful", "stop", "start"] and app.settings.get("you.name") == "Sam"
@@ -272,7 +325,7 @@ def _fake_daemon(app, tmp_path, polite):
     out = tmp_path / f"{polite}.txt"
     p = subprocess.Popen([sys.executable, "-c", FAKE_DAEMON, str(out), polite, "kurooto"])
     assert wait_for(lambda: Path(f"{out}.up").exists())
-    (app.paths.state / "daemon.json").write_text(json.dumps({"pid": p.pid}))
+    (app.paths.state / "daemon.json").write_text(json.dumps({"pid": p.pid}), encoding="utf-8")
     return p, out
 
 
@@ -283,7 +336,7 @@ def test_stop_asks_first_and_forces_only_after_the_timeout(env, tmp_path, monkey
     app = env.app
     monkeypatch.setattr(cli, "ask_running", lambda path, body=None: None)  # its page doesn't answer
     p, out = _fake_daemon(app, tmp_path, "polite")
-    assert cli.stop_gracefully(10) is True and out.read_text() == "graceful"
+    assert cli.stop_gracefully(10) is True and out.read_text(encoding="utf-8") == "graceful"
     p.wait(5)
     p, out = _fake_daemon(app, tmp_path, "stubborn")  # ignores the request
     t0 = time.monotonic()
@@ -318,15 +371,15 @@ def test_a_real_daemon_sends_up_its_notes_when_stopped_for_a_restore(env, tmp_pa
     subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(remote)], check=True)
     app.settings.set("notes_sync.remote", str(remote))
     app.settings.set("web.port", 18960)
-    (app.workspace / "a.md").write_text("# A\n")
+    (app.workspace / "a.md").write_text("# A\n", encoding="utf-8")
     assert app.modules["notes_sync"].first_sync()[0]
     env.on("notes_sync")
     app.settings.set("modules.enabled", ["notes_sync"])  # only it: no Telegram in the real daemon
-    (app.workspace / "late.md").write_text("# Written just before the restore\n")
-    log = open(tmp_path / "daemon.log", "w")
+    (app.workspace / "late.md").write_text("# Written just before the restore\n", encoding="utf-8")
+    log = open(tmp_path / "daemon.log", "w", encoding="utf-8")
     d = subprocess.Popen([sys.executable, "-m", "kurooto", "run"], stdout=log, stderr=log, env={**os.environ})
     try:
-        assert cli.wait_for_web(60), (tmp_path / "daemon.log").read_text()[-2000:]
+        assert cli.wait_for_web(60), (tmp_path / "daemon.log").read_text(encoding="utf-8")[-2000:]
         assert cli.stop_gracefully(90) is True
         assert d.wait(10) == 0
     finally:
@@ -387,7 +440,7 @@ def test_notes_go_up_after_ai_requests_and_at_shutdown(env, tmp_path, monkeypatc
     subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(remote)], check=True)
     app.settings.set("notes_sync.remote", str(remote))
     ns = app.modules["notes_sync"]
-    (app.workspace / "a.md").write_text("# A\n")
+    (app.workspace / "a.md").write_text("# A\n", encoding="utf-8")
     assert ns.first_sync()[0]
     env.on("notes_sync")
     app.events.emit("job_done", job="j1", ok=True)
@@ -398,14 +451,14 @@ def test_notes_go_up_after_ai_requests_and_at_shutdown(env, tmp_path, monkeypatc
     # /sync all goes to everything, /sync to the notes
     monkeypatch.setattr("kurooto.core.syncall.start", lambda a, notify=True: (True, "started everything"))
     assert env.say("/sync all") == "started everything"
-    (app.workspace / "b.md").write_text("# B\n")
+    (app.workspace / "b.md").write_text("# B\n", encoding="utf-8")
     assert env.say("/sync") == "Notes synced."
     ns.stop()  # turning it off removes the listener
     app.events.emit("job_done", job="j3", ok=True)
     assert app.scheduler.get("notes_sync:soon") is None
     ns.start()
     # at shutdown (the assistant stopping, not a command): what's left goes up, and the listener goes
-    (app.workspace / "c.md").write_text("# C\n")
+    (app.workspace / "c.md").write_text("# C\n", encoding="utf-8")
     calls = []
     real = ns.sync
     monkeypatch.setattr(ns, "sync", lambda quick=False: calls.append(quick) or real(quick=quick))
@@ -422,7 +475,7 @@ def _repo(tmp_path, name="my-model", days_ago=0):
     subprocess.run(["git", "init", "-q", str(repo)], check=True)
     when = time.strftime("%Y-%m-%dT12:00:00", time.localtime(time.time() - days_ago * 86400))
     for msg in ("add the model", "fit the closure"):
-        (repo / "f.txt").write_text(msg)
+        (repo / "f.txt").write_text(msg, encoding="utf-8")
         git(repo, "add", "-A")
         git(repo, "commit", "-qm", msg, env={"GIT_COMMITTER_DATE": when, "GIT_AUTHOR_DATE": when})
     return repo
@@ -442,16 +495,17 @@ def test_projects_mapping_and_the_hub_note(env, tmp_path):
     assert r.project_of(repo) == "Climate model" and r.projects() == {"Climate model": [str(repo)]}
     assert r.project_logs() == 1
     note = app.workspace / "research" / "climate-model" / "index.md"
-    text = note.read_text()
+    text = note.read_text(encoding="utf-8")
     assert "git:model_v2 — 2 commits: add the model; fit the closure" in text
-    hub = (app.workspace / "research" / "index.md").read_text()
+    hub = (app.workspace / "research" / "index.md").read_text(encoding="utf-8")
     assert "[[research/climate-model/index|Climate model]]" in hub
     # your own words stay as they are; lines are only added
     note.write_text(
-        text.replace("Notes on this project go here.", "My plan: test the closure.") + "\n## Ideas\n\nmine\n"
+        text.replace("Notes on this project go here.", "My plan: test the closure.") + "\n## Ideas\n\nmine\n",
+        encoding="utf-8",
     )
     log_lines(app.workspace, "Climate model", ["- **2026-10-20** | you — a line"])
-    after = note.read_text()
+    after = note.read_text(encoding="utf-8")
     assert "My plan: test the closure." in after and after.index("a line") < after.index("## Ideas")
     assert after.endswith("## Ideas\n\nmine\n")
     assert r.health()[0] is True
@@ -474,7 +528,7 @@ def test_a_quiet_project_gets_one_question(env, tmp_path):
     assert q[0]["choices"] == ["Busy", "Working off-git", "Remind me tomorrow", "Pausing it"]
     app.ask.answer(q[0]["id"], "Remind me tomorrow", "test")
     assert app.scheduler.get("research:remind:solver") is not None
-    log = (app.workspace / "research" / "solver" / "index.md").read_text()
+    log = (app.workspace / "research" / "solver" / "index.md").read_text(encoding="utf-8")
     assert "| you — Remind me tomorrow" in log
     r._remind({"project": "solver"})
     assert "remind you about solver" in env.fake.texts()[-1]
@@ -489,14 +543,14 @@ def test_runlog_keeps_config_git_state_metrics_and_a_log_line(env, tmp_path, mon
 
     app = env.app
     repo = _repo(tmp_path, "fitter")
-    (repo / "f.txt").write_text("uncommitted change")
+    (repo / "f.txt").write_text("uncommitted change", encoding="utf-8")
     rl = Runlog(app.paths, app.workspace)
     rid = rl.start("Fitter", "stress test", {"F": 24}, repo)
     d = app.workspace / "research" / "fitter" / "runs" / rid
-    meta = json.loads((d / "meta.json").read_text())
+    meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
     assert meta["dirty"] is True and len(meta["commit"]) == 40 and meta["status"] == "running"
-    assert "uncommitted change" in (d / "diff.patch").read_text()
-    assert json.loads((d / "config.json").read_text()) == {"F": 24}
+    assert "uncommitted change" in (d / "diff.patch").read_text(encoding="utf-8")
+    assert json.loads((d / "config.json").read_text(encoding="utf-8")) == {"F": 24}
     rl.metric(parse_values(["loss=0.5", "acc=0.75"]), step=1)
     rl.metric(parse_values(["loss=0.25", "note=diverged"]), step=2)
     rl.note("blew up at t=812")
@@ -506,11 +560,13 @@ def test_runlog_keeps_config_git_state_metrics_and_a_log_line(env, tmp_path, mon
     monkeypatch.setenv("KUROOTO_RUN", rid[-6:])  # a unique end of the id is enough
     r = rl.end("failed")
     assert r["status"] == "failed" and r["last"]["loss"] == 0.25
-    rows = (d.parent / "index.csv").read_text().splitlines()
+    rows = (d.parent / "index.csv").read_text(encoding="utf-8").splitlines()
     assert rows[0].startswith("run,start") and rid in rows[1]
-    log = (app.workspace / "research" / "fitter" / "index.md").read_text()
+    log = (app.workspace / "research" / "fitter" / "index.md").read_text(encoding="utf-8")
     assert "run:stress test — failed after" in log and f"runs/{rid}/run|details" in log
-    assert "## Result" in (d / "run.md").read_text() and "blew up" in (d / "notes.md").read_text()
+    assert "## Result" in (d / "run.md").read_text(encoding="utf-8") and "blew up" in (d / "notes.md").read_text(
+        encoding="utf-8"
+    )
     with pytest.raises(RunError, match="already ended"):
         rl.end("ok", rid)
     monkeypatch.delenv("KUROOTO_RUN")
@@ -549,7 +605,7 @@ def test_watch_passes_output_through_and_reports(env, tmp_path):
     assert watch.label(["python3", "-u", "train.py", "--epochs", "3"]) == "python3 train.py"
     assert watch.label(["/usr/bin/make", "all"]) == "make"
     assert watch.last_lines(b"10%\r50%\r100%\ndone\n", 5) == ["100%", "done"]
-    log = (env.app.paths.state / "watch.log").read_text().splitlines()
+    log = (env.app.paths.state / "watch.log").read_text(encoding="utf-8").splitlines()
     assert len(log) == 2 and log[0].split("\t")[1] == "3"
 
 
@@ -574,7 +630,7 @@ def test_watch_can_log_a_run(env, monkeypatch):
     monkeypatch.setattr(cli, "ask_running", lambda path, body=None: {"ok": True})
     code, text = watch.run([sys.executable, "-c", "print('x')"], 1, project="demo", out=io.BytesIO())
     assert code == 0 and "Logged as run" in text
-    log = (env.app.workspace / "research" / "demo" / "index.md").read_text()
+    log = (env.app.workspace / "research" / "demo" / "index.md").read_text(encoding="utf-8")
     assert "— ok after" in log
 
 
@@ -584,7 +640,7 @@ def test_logs_follow(tmp_path):
     from kurooto.watch import follow_log
 
     log = tmp_path / "kurooto.log"
-    log.write_text("".join(f"line {i}\n" for i in range(100)))
+    log.write_text("".join(f"line {i}\n" for i in range(100)), encoding="utf-8")
     out = io.StringIO()
     follow_log(log, 3, follow=False, out=out)
     assert out.getvalue() == "line 97\nline 98\nline 99\n"
@@ -592,9 +648,9 @@ def test_logs_follow(tmp_path):
 
     def later():
         time.sleep(0.7)
-        log.write_text("rotated\n")  # smaller: a new file
+        log.write_text("rotated\n", encoding="utf-8")  # smaller: a new file
         time.sleep(0.7)
-        with open(log, "a") as f:
+        with open(log, "a", encoding="utf-8") as f:
             f.write("more\n")
         time.sleep(0.8)
         done.set()
@@ -629,6 +685,38 @@ def test_top_reads_and_draws(env):
     ascii_only = "\n".join(top.render(data, 150, 80, colour=False, unicode=False))
     assert ascii_only.isascii() and "\x1b[" not in ascii_only
     assert top.fit("\x1b[31mabcdef\x1b[0m", 3) == "\x1b[31mabc\x1b[0m"
+
+
+def test_top_on_a_mac_and_without_unicode(env, monkeypatch):
+    from collections import namedtuple
+
+    from kurooto import top
+
+    Part = namedtuple("Part", "device mountpoint fstype opts")
+    Usage = namedtuple("Usage", "total used free percent")
+    gb = 1024**3
+    parts = [
+        Part("/dev/disk3s1s1", "/", "apfs", "ro,local"),
+        Part("/dev/disk3s6", "/System/Volumes/VM", "apfs", "rw"),
+        Part("/dev/disk3s5", "/System/Volumes/Data", "apfs", "rw"),
+        Part("/dev/disk5s1", "/Volumes/Backup Drive For Photos", "exfat", "rw"),
+    ]
+    usage = {
+        "/": Usage(460 * gb, 11 * gb, 200 * gb, 5.2),
+        "/System/Volumes/VM": Usage(460 * gb, 2 * gb, 200 * gb, 1.0),
+        "/System/Volumes/Data": Usage(460 * gb, 240 * gb, 200 * gb, 54.5),
+        "/Volumes/Backup Drive For Photos": Usage(1000 * gb, 100 * gb, 900 * gb, 10.0),
+    }
+    monkeypatch.setattr(top.psutil, "disk_partitions", lambda all=False: parts)
+    monkeypatch.setattr(top.psutil, "disk_usage", lambda mp: usage[mp])
+    monkeypatch.delattr(top.psutil, "sensors_temperatures", raising=False)  # macOS has none
+    monkeypatch.setattr(top.psutil, "sensors_battery", lambda: None)
+    data = top.Board(env.app.paths).collect(force=True)
+    assert [d["mount"] for d in data["machine"]["disks"]] == ["/", "/Volumes/Backup Drive For Photos"]
+    data["kurooto"]["on"] = ["Café notes"]
+    lines = top.render(data, 80, 80, colour=False, unicode=False)
+    assert all(ln.isascii() and top.vlen(ln) == 80 for ln in lines)
+    assert any("... For Photos" in ln for ln in lines) and any("Caf? notes" in ln for ln in lines)
 
 
 def test_top_once(env, capsys):

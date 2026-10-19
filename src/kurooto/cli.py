@@ -662,6 +662,9 @@ def restore(zip_path: Path, yes: bool, notes: bool, start: bool) -> int:
         return 1
     try:
         out = backups.restore(zip_path, p, secrets=sec if m["has_secrets"] else None, notes=notes)
+    except backups.InUse as e:
+        print(f"Nothing was restored: {e}.")
+        return 1
     except Exception as e:
         print(f"The restore stopped: {type(e).__name__}: {e}. To go back: kurooto restore {dest}")
         return 1
@@ -978,7 +981,20 @@ def skills_command(a) -> int | None:
     return None
 
 
+def utf8_output() -> None:
+    """(home) Windows: write UTF-8 even when the output goes to a pipe or a file (the code page would turn notes'
+    text and symbols such as "—" into "?" or mojibake). Consoles are UTF-8 already."""
+    if sys.platform != "win32":
+        return
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):  # replaced by a test harness, or already closed
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    utf8_output()
     ap = argparse.ArgumentParser(prog="kurooto", description="Your assistant, on your own computer.")
     ap.add_argument("--version", action="version", version=f"kurooto {__version__}")
     sub = ap.add_subparsers(dest="cmd")

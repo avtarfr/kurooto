@@ -13,15 +13,23 @@ import urllib.request
 
 import pytest
 
-from kurooto.modules import catalog
-from kurooto.modules.backups import Backups
-from kurooto.modules.terminals import Term, Terminals, _cli_has, peer_uid, same_user
+from kurooto.modules.terminals import Term, _cli_has, peer_uid, same_user
 
 
 @pytest.fixture(autouse=True)
-def registered(monkeypatch):
-    extra = [c for c in (Backups, Terminals) if c not in catalog.CATALOG]
-    monkeypatch.setattr(catalog, "CATALOG", [*catalog.CATALOG, *extra])
+def nowhere_real(tmp_path_factory):
+    """Even if a test loses KUROOTO_HOME, nothing reaches this computer's real folders or keychain: home, the XDG
+    folders and LOCALAPPDATA point into a temporary folder, and secrets go to a file. (Its own MonkeyPatch, so a
+    test's monkeypatch can't undo it.)"""
+    mp = pytest.MonkeyPatch()
+    home = tmp_path_factory.mktemp("home")
+    mp.setenv("HOME", str(home))
+    mp.setenv("USERPROFILE", str(home))
+    for var in ("LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"):
+        mp.setenv(var, str(home / var.lower()))
+    mp.setenv("KUROOTO_SECRETS", "file")
+    yield
+    mp.undo()
 
 
 HEAD = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode\n"
@@ -33,14 +41,14 @@ def row(n, local, remote, uid):
 
 def test_who_is_connecting(tmp_path):
     (tmp_path / "tcp").write_text(
-        HEAD + row(0, 8770, 51000, 1000) + row(1, 51000, 8770, 1000) + row(2, 52000, 8770, 1001)
+        HEAD + row(0, 8770, 51000, 1000) + row(1, 51000, 8770, 1000) + row(2, 52000, 8770, 1001), encoding="utf-8"
     )
     assert peer_uid(51000, 8770, str(tmp_path)) == 1000
     assert peer_uid(52000, 8770, str(tmp_path)) == 1001
     assert peer_uid(53000, 8770, str(tmp_path)) is None
     if sys.platform == "linux":
         me = os.getuid()
-        (tmp_path / "tcp").write_text(HEAD + row(0, 51000, 8770, me) + row(1, 52000, 8770, me + 1))
+        (tmp_path / "tcp").write_text(HEAD + row(0, 51000, 8770, me) + row(1, 52000, 8770, me + 1), encoding="utf-8")
         assert same_user(("127.0.0.1", 51000), 8770, "linux", str(tmp_path)) is True
         assert same_user(("127.0.0.1", 52000), 8770, "linux", str(tmp_path)) is False  # another account
         assert same_user(("127.0.0.1", 53000), 8770, "linux", str(tmp_path)) is False  # can't tell: refused
@@ -241,9 +249,9 @@ def test_the_web_side(env, monkeypatch):
         code, body = call(srv, "/api/term")
         names = [t["name"] for t in json.loads(body)["terms"]]
         assert code == 200 and "shell" in names  # this test runs as you: allowed
-        monkeypatch.setattr("kurooto.web.peer.same_user", lambda *a, **k: False)
-        assert call(srv, "/api/term")[0] == 403 and call(srv, "/api/term/shell/attach", {"cid": 1})[0] == 403
-        monkeypatch.undo()
+        with monkeypatch.context() as mp:  # (never monkeypatch.undo(): it would also undo env's KUROOTO_HOME)
+            mp.setattr("kurooto.web.peer.same_user", lambda *a, **k: False)
+            assert call(srv, "/api/term")[0] == 403 and call(srv, "/api/term/shell/attach", {"cid": 1})[0] == 403
         code, js = call(srv, "/static/vendor/xterm/xterm.js")
         assert code == 200 and js.startswith(b"!function") and len(js) > 200_000
         assert call(srv, "/static/vendor/xterm/addon-fit.js")[0] == 200
@@ -266,21 +274,22 @@ def test_on_linux_every_page_and_api_call_must_be_this_account(env, monkeypatch)
         # this test runs as you: everything works (on Linux the kernel's socket table says so)
         assert call(srv, "/")[0] == 200 and call(srv, "/api/settings")[0] == 200
         assert call(srv, "/api/notify", {"text": "hi"})[0] == 200
-        monkeypatch.setattr(peer, "same_user", lambda *a, **k: False)  # another account (or can't tell)
-        for path in ("/", "/setup", "/api/settings", "/api/state", f"/api/stream?t={srv.token}", "/api/term"):
-            assert call(srv, path)[0] == 403, path
-        for path in ("/api/notify", "/api/settings", "/api/power/pause", "/api/term/shell/attach"):
-            assert call(srv, path, {"text": "x"})[0] == 403, path
-        assert call(srv, "/health")[0] == 200 and call(srv, "/static/home.js")[0] == 200  # nothing private
-        monkeypatch.undo()
+        with monkeypatch.context() as mp:  # another account (or can't tell)
+            mp.setattr(peer, "same_user", lambda *a, **k: False)
+            for path in ("/", "/setup", "/api/settings", "/api/state", f"/api/stream?t={srv.token}", "/api/term"):
+                assert call(srv, path)[0] == 403, path
+            for path in ("/api/notify", "/api/settings", "/api/power/pause", "/api/term/shell/attach"):
+                assert call(srv, path, {"text": "x"})[0] == 403, path
+            assert call(srv, "/health")[0] == 200 and call(srv, "/static/home.js")[0] == 200  # nothing private
         if sys.platform == "linux":
-            monkeypatch.setattr(peer, "peer_uid", lambda *a, **k: None)  # the owner can't be told: refused
-            assert call(srv, "/api/settings")[0] == 403
-            monkeypatch.setattr(peer, "peer_uid", lambda *a, **k: os.getuid() + 1)  # someone else
-            assert call(srv, "/api/settings")[0] == 403 and call(srv, "/")[0] == 403
-            monkeypatch.setattr(peer, "peer_uid", lambda *a, **k: os.getuid())
-            assert call(srv, "/api/settings")[0] == 200
-            monkeypatch.setattr(peer, "peer_uid", lambda *a, **k: 0)  # root can read it all anyway
-            assert call(srv, "/api/settings")[0] == 200
+            with monkeypatch.context() as mp:
+                mp.setattr(peer, "peer_uid", lambda *a, **k: None)  # the owner can't be told: refused
+                assert call(srv, "/api/settings")[0] == 403
+                mp.setattr(peer, "peer_uid", lambda *a, **k: os.getuid() + 1)  # someone else
+                assert call(srv, "/api/settings")[0] == 403 and call(srv, "/")[0] == 403
+                mp.setattr(peer, "peer_uid", lambda *a, **k: os.getuid())
+                assert call(srv, "/api/settings")[0] == 200
+                mp.setattr(peer, "peer_uid", lambda *a, **k: 0)  # root can read it all anyway
+                assert call(srv, "/api/settings")[0] == 200
     finally:
         srv.stop()

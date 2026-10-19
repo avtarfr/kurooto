@@ -148,15 +148,50 @@ def sources(
 
 
 def _sqlite_copy(src: Path, dst: Path) -> None:
-    """A consistent copy of a database another program may be writing to (the sqlite backup API, not a file copy)."""
+    """A consistent copy of a database another program may be writing to (the sqlite backup API, not a file copy),
+    as one self-contained file: everything in its write-ahead log is in it, and it uses a plain rollback journal, so
+    a restore never needs (or replays) a -wal file."""
     a = sqlite3.connect(f"file:{src.as_posix()}?mode=ro", uri=True)
     try:
         b = sqlite3.connect(dst)
         with b:
             a.backup(b)
+        b.execute("pragma journal_mode=delete")
         b.close()
     finally:
         a.close()
+
+
+JOURNALS = ("-wal", "-shm", "-journal")
+
+
+def _retry(fn, *args, attempts: int = 12):
+    """Windows: a file someone has open (an antivirus scan, a cloud app, a program just stopping) can't be replaced
+    or removed for a moment; try again briefly before giving up."""
+    for i in range(attempts):
+        try:
+            return fn(*args)
+        except PermissionError:
+            if i == attempts - 1:
+                raise
+            time.sleep(0.1 * (i + 1))
+
+
+def _in_use(files: list[Path]) -> list[Path]:
+    """The files another program holds open so they can't be replaced (Windows locks open files; elsewhere nothing
+    is reported). Checked by renaming each one away and back."""
+    busy = []
+    for f in files:
+        if not f.exists():
+            continue
+        probe = f.with_name(f"{f.name}.restore-check")
+        try:
+            _retry(os.replace, f, probe, attempts=6)
+        except OSError:
+            busy.append(f)
+            continue
+        _retry(os.replace, probe, f)
+    return busy
 
 
 def make_zip(
@@ -246,7 +281,7 @@ def make_zip(
             )
             z.writestr("README.txt", README.format(when=manifest["created"], version=__version__, secrets=warn))
         dest = folder / name
-        os.replace(part, dest)
+        _retry(os.replace, part, dest)
     except BaseException:
         part.unlink(missing_ok=True)
         raise
@@ -406,7 +441,15 @@ def _write(target: Path, data: bytes) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_name(f"{target.name}.tmp{os.getpid()}")
     tmp.write_bytes(data)
-    os.replace(tmp, target)
+    try:
+        _retry(os.replace, tmp, target)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+class InUse(RuntimeError):
+    """Kurooto (or another program) still has some of its files open: nothing was restored."""
 
 
 def restore(zip_path: Path, p, *, secrets=None, notes: bool = True, progress=print) -> dict:
@@ -414,23 +457,34 @@ def restore(zip_path: Path, p, *, secrets=None, notes: bool = True, progress=pri
     Kurooto must not be running. Returns counts."""
     from kurooto.app import default_workspace
     from kurooto.core.config import Settings
+    from kurooto.core.proc import pid_alive
 
     read_manifest(zip_path)
+    pid = (jload(p.state / "daemon.json", {}) or {}).get("pid")
+    if pid and pid_alive(pid, "kurooto"):
+        raise InUse("Kurooto is running; stop it first (kurooto restore does that for you)")
     out = {"files": 0, "secrets": 0, "notes_added": 0, "notes_kept": 0, "notes_same": 0, "workspace": ""}
     stamp = now().strftime("%Y-%m-%d")
     with zipfile.ZipFile(zip_path) as z:
         roots = {"config": p.config, "data": p.data, "state": p.state}
+        todo = []
         for info in z.infolist():
-            if info.is_dir():
-                continue
             top, _, rest = info.filename.partition("/")
-            if top in roots and rest:
-                target = roots[top].joinpath(*rest.split("/"))
-                if target.suffix == ".db":  # an old journal must not be replayed into the restored database
-                    for extra in ("-wal", "-shm", "-journal"):
-                        Path(f"{target}{extra}").unlink(missing_ok=True)
-                _write(target, z.read(info))
-                out["files"] += 1
+            if info.is_dir() or top not in roots or not rest or rest.endswith(JOURNALS):
+                continue  # (a database's journal is never restored: the backup's copy is self-contained)
+            todo.append((info, roots[top].joinpath(*rest.split("/"))))
+        dbs = [t for _, t in todo if t.suffix == ".db"]
+        busy = _in_use([*dbs, *(Path(f"{t}{j}") for t in dbs for j in JOURNALS)])
+        if busy:  # before anything changes: a half-restored Kurooto would be worse than none
+            raise InUse(
+                f"{busy[0].name} is still open in another program (is Kurooto still running?); nothing was changed"
+            )
+        for info, target in todo:
+            if target.suffix == ".db":  # the old database's journal must not be replayed into the restored one
+                for j in JOURNALS:
+                    _retry(Path(f"{target}{j}").unlink, True)
+            _write(target, z.read(info))
+            out["files"] += 1
         progress(f"Restored {out['files']} files of Kurooto's settings and data.")
         if secrets is not None and "secrets.json" in z.namelist():
             for k, v in json.loads(z.read("secrets.json")).items():
