@@ -286,6 +286,8 @@ class Telegram(Module):
         if jobs:
             rows = [f"  {j.when.astimezone():%a %H:%M}  {j.payload.get('what') or j.key}" for j in jobs]
             lines.append("Coming up:\n" + "\n".join(rows))
+        if self.app.ask.status_line():  # questions waiting for you (core/ask.py)
+            lines.append(self.app.ask.status_line())
         lines.append("On: " + ", ".join(m.title for m in self.app.enabled()))
         return "\n".join(lines)
 
