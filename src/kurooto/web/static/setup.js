@@ -248,7 +248,8 @@ async function addReport(label, text) {
 // ------------------------------------------------------------------------------------------ features
 const NEEDS_GEMINI = ["calls", "voice_notes", "alarm"];
 function renderFeatures() {
-  if (!chosen.size) state.modules.filter((m) => m.on || (restored ? restored.includes(m.id) : m.starter)).forEach((m) => chosen.add(m.id));
+  if (!chosen.size && !renderFeatures.seeded) state.modules.filter((m) => m.on || (restored ? restored.includes(m.id) : m.starter)).forEach((m) => chosen.add(m.id));
+  renderFeatures.seeded = true;  // only the first time: unticking everything must stay unticked
   $("#features").replaceChildren(...state.modules.map((m) => {
     const box = el("input", { type: "checkbox", checked: chosen.has(m.id), onchange: (e) => {
       e.target.checked ? chosen.add(m.id) : chosen.delete(m.id);
