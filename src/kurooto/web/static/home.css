@@ -75,3 +75,10 @@ body.home { --bg: #22181a; --fg: #efd1d0; --dim: #a9908f; --line: #4a3a3d; --pan
 .rs .rs-row #rs-repo { flex: 1; }
 .rs button { padding: 4px 12px; font: 12px var(--mono); }
 .rs textarea, .rs #rs-filter, .rs #rs-kw, .rs #rs-query, .rs #rs-url { margin-top: 0; }
+.term-bar { display: flex; gap: 4px; margin-bottom: 6px; }
+.term-bar button { padding: 3px 10px; font: 12px var(--mono); }
+.term-bar button.on { border-color: var(--accent); color: var(--fg); }
+.term-bar button .d { color: var(--dim); }
+.term-bar [data-term-restart] { margin-left: auto; }
+.term-host { height: calc(100% - 34px); min-height: 220px; }
+.term-one { height: 100%; }

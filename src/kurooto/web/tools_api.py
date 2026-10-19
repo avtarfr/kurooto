@@ -113,13 +113,21 @@ def job(app: App, jid: str) -> tuple[int, dict]:
 
 
 def live_call(app: App) -> bool:
-    """Is a call going on right now? (A no-call rule that says so; the phone feature sets it.)"""
+    """Is a call going on right now? The phone feature keeps that state (availability.on_call_until); a no-call
+    rule that says "you're on a call" counts too."""
+    on_call = getattr(app.availability, "on_call_until", None)
+    if on_call is not None:
+        try:
+            if on_call() is not None:
+                return True
+        except Exception:  # a broken check never stops a call on its own
+            pass
     t = now()
     for b in list(app.availability.blockers.values()):
         try:
             if (b(t) or ("",))[0] == ON_A_CALL:
                 return True
-        except Exception:  # a broken rule never stops a call on its own
+        except Exception:
             pass
     return False
 
@@ -139,14 +147,16 @@ def place_call(app: App, reason: str, at: str = "", alarm: bool = False, force: 
         except ValueError:
             return False, f"I couldn't read the time {at!r} (try 17:30, 'in 20 min' or 'tomorrow 7:00')."
         return True, calls.schedule(when, reason, alarm=alarm) + "."
-    if live_call(app):
-        return False, "You're on a call right now, so I didn't ring. Try again when it's over."
     if not (force or alarm):
         why, until = app.availability.call_block()
+        if not why and live_call(app):
+            why, until = ON_A_CALL, now() + dt.timedelta(minutes=3)
         if why:
             t = until + dt.timedelta(minutes=2)
             calls.schedule(t, reason)
             app.events.emit("call_held", why=why)
             return True, f"Held until {t:%H:%M} ({why}): {reason}"
+    elif live_call(app):
+        return False, "You're on a call right now, so I didn't ring. Try again when it's over."
     calls.ring(reason, alarm=alarm)
     return True, f"Calling your phone: {reason}"

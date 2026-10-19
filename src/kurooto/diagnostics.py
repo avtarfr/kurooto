@@ -121,6 +121,10 @@ def checks(app) -> list[tuple[str, bool, str]]:
         except Exception as e:
             ok, why = False, f"{type(e).__name__}: {e}"
         out.append((m.title, ok, why or "ok"))
+    if "backups" in app.modules and not app.is_on("backups"):  # say when nothing is backed up (a note)
+        from kurooto.modules.backups import age_line
+
+        out.append(("Backups", *age_line(p)))
     pre = Prereqs(p.app, p.cache)
     for st in pre.status().values():
         if st["installed"]:

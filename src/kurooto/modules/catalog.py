@@ -2,6 +2,7 @@
 
 from kurooto.modules.alarm import Alarm
 from kurooto.modules.awake import Awake
+from kurooto.modules.backups import Backups
 from kurooto.modules.calendar import Calendar
 from kurooto.modules.calls import Calls
 from kurooto.modules.capture import Capture
@@ -11,6 +12,9 @@ from kurooto.modules.deadlines import Deadlines
 from kurooto.modules.files import Files
 from kurooto.modules.gbrain import GBrain
 from kurooto.modules.google import Google
+from kurooto.modules.google_classroom import ClassroomNotes
+from kurooto.modules.google_mail import MailDigest, ReplyDrafts
+from kurooto.modules.google_plan import AgentPlan
 from kurooto.modules.handwritten import Handwritten
 from kurooto.modules.library import Library
 from kurooto.modules.local_models import LocalModels
@@ -24,6 +28,7 @@ from kurooto.modules.skills import Skills
 from kurooto.modules.study import Study
 from kurooto.modules.subjects import Subjects
 from kurooto.modules.telegram import Telegram
+from kurooto.modules.terminals import Terminals
 from kurooto.modules.voice_notes import VoiceNotes
 from kurooto.modules.weekly import Weekly
 
@@ -50,8 +55,14 @@ CATALOG = [
     Awake,
     Calendar,
     NotesSync,
+    Backups,
     Google,
+    ClassroomNotes,
+    MailDigest,
+    ReplyDrafts,
+    AgentPlan,
     Handwritten,
     Study,
     Research,
+    Terminals,
 ]

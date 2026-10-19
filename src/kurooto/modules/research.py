@@ -12,8 +12,13 @@ Each source can be narrowed with keywords (any of them, in the title or abstract
 relevant papers using what you wrote under "What I work on" (and your notes), and says why each matters; otherwise you
 get the newest, as they are.
 
-Project logs: for your code repositories on this computer, each day's new commits are written into a log note
-(research/<repository>-log.md in your notes), so your notes keep up with your code.
+Projects: each project has a note, research/<project>/index.md, and research/index.md lists them all. For your code
+repositories on this computer, each day's new commits are written under "## Log" in their project's note, so your notes
+keep up with your code (a repository's project is its folder's name unless you map it: /repos add <folder> as
+<project>). Runs logged with `kurooto runlog` (or `kurooto watch --log <project>`) go to research/<project>/runs/ with
+the code's exact git state, and a line in the log. When a project has had no commits for a few days (4 by default),
+Kurooto asks what's up: Busy, Working off-git, Remind me tomorrow or Pausing. Your own text in these notes is never
+changed; Kurooto only adds lines.
 """
 
 from __future__ import annotations
@@ -21,6 +26,7 @@ from __future__ import annotations
 import datetime as dt
 import email.utils
 import json
+import os
 import re
 import urllib.parse
 import urllib.request
@@ -44,7 +50,10 @@ register_defaults(
         "rank": True,  # with Chat on, the AI picks and says why; off: the newest, as they are
         "window_days": 7,  # how far back each digest looks
         "repos": [],  # folders of git repositories on this computer
+        "projects": {},  # repository folder -> project name (its notes: research/<project>/); unset: the folder's name
         "log_when": "daily 23:30",
+        "idle_days": 4,  # ask about a project after this many days without commits (0: never)
+        "idle_when": "daily 18:00",  # when that's checked
         "topics": [],  # older setting: plain keywords searched across all of arXiv (still works)
         "endpoints": {
             "arxiv": "https://export.arxiv.org/api/query",
@@ -132,6 +141,62 @@ def validate(feed: dict) -> dict:
     raise ValueError(f"unknown kind of source {t!r}")
 
 
+# ---------------------------------------------------------------------------------------- project notes
+HUB = """# Research
+
+Your projects, one note each. {name} adds a line here for each new project and a dated line to a project's Log when
+there are new commits or runs; write your own text anywhere, it's never changed.
+
+## Projects
+"""
+IDLE_CHOICES = ["Busy", "Working off-git", "Remind me tomorrow", "Pausing it"]
+
+
+def slug(name: str) -> str:
+    """A project's folder name: lowercase letters, digits and dashes."""
+    return re.sub(r"[^a-z0-9]+", "-", str(name).lower()).strip("-")[:60] or "project"
+
+
+def project_note(workspace: Path, project: str) -> Path:
+    return Path(workspace) / "research" / slug(project) / "index.md"
+
+
+def ensure_project(workspace: Path, project: str, assistant: str = "Kurooto", repos: list[str] | None = None) -> Path:
+    """The project's note (made if missing), listed in the hub note research/index.md (made if missing)."""
+    from kurooto.core.tools import add_to_section
+
+    note = project_note(workspace, project)
+    if not note.exists():
+        note.parent.mkdir(parents=True, exist_ok=True)
+        where = f"Code: {', '.join(repos)}.\n\n" if repos else ""
+        note.write_text(
+            f"# {project}\n\n{where}Notes on this project go here. {assistant} adds dated lines to the Log below.\n\n"
+            "## Log\n",
+            encoding="utf-8",
+        )
+    hub = Path(workspace) / "research" / "index.md"
+    if not hub.exists():
+        hub.parent.mkdir(parents=True, exist_ok=True)
+        hub.write_text(HUB.format(name=assistant), encoding="utf-8")
+    link = f"[[research/{slug(project)}/index|{project}]]"
+    text = hub.read_text(encoding="utf-8")
+    if link not in text:
+        hub.write_text(add_to_section(text, "Projects", f"- {link} (since {now():%Y-%m-%d})"), encoding="utf-8")
+    return note
+
+
+def log_lines(workspace: Path, project: str, lines: list[str], assistant: str = "Kurooto") -> int:
+    """Add lines to the end of the project note's "## Log" (each only once). Returns how many were added."""
+    from kurooto.core.tools import add_to_section
+
+    note = ensure_project(workspace, project, assistant)
+    text = note.read_text(encoding="utf-8")
+    new = [ln for ln in lines if ln not in text]
+    if new:
+        note.write_text(add_to_section(text, "Log", "\n".join(new)), encoding="utf-8")
+    return len(new)
+
+
 class Research(Module):
     id = "research"
     title = "Research"
@@ -150,9 +215,29 @@ class Research(Module):
             return False, "choose your fields (the dashboard's Research tab), or add a repository"
         return True, ""
 
+    def health(self):
+        ok, why = self.ready()
+        if not ok:
+            return ok, why
+        repos = self.setting("repos") or []
+        gone = [r for r in repos if not (Path(r).expanduser() / ".git").exists()]
+        if gone:
+            return False, f"repository folder missing: {gone[0]} (/repos remove it, or put it back)"
+        if repos and not self.git_exe():
+            return False, "project logs need Git"
+        bits = [f"{len(self.feeds())} sources"] if self.feeds() else []
+        if repos:
+            bits.append(f"{len(self.projects())} projects from {len(repos)} repositories")
+        return True, ", ".join(bits)
+
     def start(self):
         self.every("papers", self.setting("papers") or "weekly mon 08:00", lambda p: self.papers())
         self.every("logs", self.setting("log_when") or "daily 23:30", lambda p: self.project_logs())
+        self.every("idle", self.setting("idle_when") or "daily 18:00", lambda p: self.idle_check(), respect="quiet")
+        self.action("remind", self._remind)
+        ask = getattr(self.app, "ask", None)
+        if ask is not None:
+            ask.hooks["research.idle"] = self._idle_answer
 
     def ep(self, name: str) -> str:
         return (self.setting("endpoints") or {})[name].rstrip("/")
@@ -375,41 +460,136 @@ class Research(Module):
         return new
 
     # -------------------------------------------------------------------------------------- project logs
+    def git_exe(self) -> str | None:
+        ns = self.app.modules.get("notes_sync")
+        return (ns.git_exe() if ns else None) or proc.which("git")
+
+    def project_of(self, repo: Path | str) -> str:
+        """The project a repository belongs to: its mapping in research.projects, else its folder's name."""
+        mapping = self.setting("projects") or {}
+        path = Path(repo).expanduser()
+        for k, v in mapping.items():
+            if v and Path(k).expanduser() == path:
+                return str(v)
+        return path.name
+
+    def projects(self) -> dict[str, list[str]]:
+        """Project -> its repository folders."""
+        out: dict[str, list[str]] = {}
+        for repo in self.setting("repos") or []:
+            out.setdefault(self.project_of(repo), []).append(str(Path(repo).expanduser()))
+        return out
+
     def project_logs(self) -> int:
-        git = self.app.modules["notes_sync"].git_exe() if "notes_sync" in self.app.modules else None
+        """New commits in each repository since last time, as one dated line per day in its project's Log.
+        Returns how many repositories had new commits. Read-only on the repositories."""
+        git = self.git_exe()
         if not git:
             return 0
+        env = {**os.environ, "GIT_OPTIONAL_LOCKS": "0", "LC_ALL": "C"}
         state_file = self.app.paths.state / "research-logs.json"
-        last = jload(state_file, {}) or {}
+        st = jload(state_file, {}) or {}
         written = 0
         for repo in self.setting("repos") or []:
             path = Path(repo).expanduser()
             if not (path / ".git").exists():
                 continue
-            head = proc.run([git, "-C", str(path), "rev-parse", "HEAD"], timeout=30).out.strip()
-            if not head or last.get(str(path)) == head:
+            rec = st.get(str(path))
+            rec = {"head": rec} if isinstance(rec, str) else dict(rec or {})  # 0.1.0 kept only the head
+            head = proc.run([git, "-C", str(path), "rev-parse", "HEAD"], timeout=30, env=env).out.strip()
+            if not head:
                 continue
-            rng = f"{last[str(path)]}..HEAD" if last.get(str(path)) else "--since=1.day"
+            if not rec.get("last_day"):
+                rec["last_day"] = proc.run(
+                    [git, "-C", str(path), "log", "-1", "--format=%cd", "--date=short"], timeout=30, env=env
+                ).out.strip()
+            if rec.get("head") == head:
+                st[str(path)] = rec
+                continue
+            rng = [f"{rec['head']}..HEAD"] if rec.get("head") else ["--since=1.day"]
             r = proc.run(
-                [git, "-C", str(path), "log", "--no-merges", "--date=short", "--format=%ad %h %s", rng], timeout=60
+                [git, "-C", str(path), "log", *rng, "--no-merges", "--reverse", "--date=short", "--format=%cd%x09%s"],
+                timeout=60,
+                env=env,
             )
-            commits = [ln for ln in r.out.splitlines() if ln.strip()][:200]
-            last[str(path)] = head
-            if not commits:
-                continue
-            note = self.app.workspace / "research" / f"{path.name}-log.md"
-            note.parent.mkdir(parents=True, exist_ok=True)
-            new = not note.exists()
-            with open(note, "a", encoding="utf-8") as f:
-                if new:
-                    f.write(
-                        f"# {path.name}: project log\n\nWritten from the repository's commits by {self.app.name}.\n"
-                    )
-                f.write(f"\n## {now():%Y-%m-%d}\n\n" + "\n".join(f"- {c}" for c in reversed(commits)) + "\n")
-            written += 1
-        jsave(state_file, last)
+            by_day: dict[str, list[str]] = {}
+            for ln in r.out.splitlines()[:500]:
+                day, _, subject = ln.partition("\t")
+                if subject.strip():
+                    by_day.setdefault(day, []).append(subject.strip())
+            rec["head"] = head
+            if by_day:
+                rec["last_day"] = max(by_day)
+                lines = []
+                for day, subs in sorted(by_day.items()):
+                    shown = "; ".join(subs[:3]) + (f"; +{len(subs) - 3} more" if len(subs) > 3 else "")
+                    n = f"{len(subs)} commit{'s' if len(subs) > 1 else ''}"
+                    lines.append(f"- **{day}** | git:{path.name} — {n}: {shown}")
+                log_lines(self.app.workspace, self.project_of(path), lines, self.app.name)
+                written += 1
+            st[str(path)] = rec
+        jsave(state_file, st)
         self.app.events.emit("research_logs", repos=written)
         return written
+
+    def sync_now(self) -> tuple[bool, str]:
+        n = self.project_logs()
+        return True, f"{n} project{'s' if n != 1 else ''} with new commits" if n else "no new commits"
+
+    # ------------------------------------------------------------------------------------- quiet projects
+    def idle_check(self) -> list[str]:
+        """Ask about each project with no commits for research.idle_days days (once per quiet stretch)."""
+        days = int(self.setting("idle_days") or 0)
+        ask = getattr(self.app, "ask", None)
+        if days <= 0 or ask is None:
+            return []
+        state_file = self.app.paths.state / "research-logs.json"
+        self.project_logs()  # fresh last-commit days
+        st = jload(state_file, {}) or {}
+        asked = st.setdefault("_asked", {})
+        out = []
+        for project, repos in self.projects().items():
+            last = max((st.get(r, {}) or {}).get("last_day") or "" for r in repos)
+            if not last:
+                continue
+            try:
+                idle = (now().date() - dt.date.fromisoformat(last)).days
+            except ValueError:
+                continue
+            if idle < days or asked.get(project) == last:
+                continue
+            asked[project] = last
+            ask.ask(
+                f"No commits to {project} for {idle} days. What's the plan?",
+                choices=IDLE_CHOICES,
+                hook="research.idle",
+                hook_payload={"project": project},
+                expires="3d",
+                source=self.id,
+                title="Research",
+            )
+            out.append(project)
+        jsave(state_file, st)
+        return out
+
+    def _idle_answer(self, q: dict, answer: str) -> str:
+        project = (q.get("hook_payload") or {}).get("project") or "the project"
+        log_lines(
+            self.app.workspace, project, [f"- **{now():%Y-%m-%d}** | you — {answer.strip()[:300]}"], self.app.name
+        )
+        self.app.events.emit("research_idle_answer", choice=answer.strip()[:40])
+        if "remind" in answer.lower():
+            when = dt.datetime.combine(now().date() + dt.timedelta(days=1), dt.time(18, 0))
+            self.app.scheduler.at(
+                when, "research.remind", {"project": project}, key=f"research:remind:{slug(project)}", module=self.id
+            )
+            return f"I'll remind you about {project} tomorrow at 18:00."
+        if "paus" in answer.lower():
+            return f"Noted: {project} is paused. I won't ask again until there are new commits."
+        return f"Noted in {project}'s log."
+
+    def _remind(self, p: dict) -> None:
+        self.app.notify(f"You asked me to remind you about {p.get('project', 'your project')} today.", kind="reminder")
 
     def weekly_lines(self) -> list[str]:
         return []
@@ -437,6 +617,10 @@ class Research(Module):
             if bad:
                 raise ValueError(f"not a git repository: {bad[0]}")
             s.set("research.repos", repos)
+        if "projects" in b:
+            if not isinstance(b["projects"], dict):
+                raise ValueError("projects: a repository folder -> project name for each")
+            s.set("research.projects", {str(k).strip(): str(v).strip()[:80] for k, v in b["projects"].items() if v})
         if "topics" in b:
             s.set("research.topics", [str(t).strip() for t in b["topics"] if str(t).strip()])
         if self.app.is_on(self.id):
@@ -452,6 +636,7 @@ class Research(Module):
             "max_papers": self.setting("max_papers"),
             "rank": bool(self.setting("rank")),
             "repos": self.setting("repos") or [],
+            "projects": {r: self.project_of(r) for r in self.setting("repos") or []},
             "chat": self.app.is_on("chat"),
             "on": self.app.is_on(self.id),
         }
@@ -496,7 +681,11 @@ class Research(Module):
             Command("papers", "the new-papers digest now", lambda m, a: f"{len(self.papers())} new papers found."),
             Command("feeds", "your research sources (change them on the dashboard's Research tab)", self._feeds),
             Command("topics", "quick keywords searched across arXiv: /topics add …, /topics remove …", self._topics),
-            Command("repos", "repositories for project logs: /repos add <folder>, /repos remove …", self._repos),
+            Command(
+                "repos",
+                "repositories for project logs: /repos add <folder> [as <project>], /repos remove …",
+                self._repos,
+            ),
         ]
 
     def _feeds(self, msg: Incoming, arg: str) -> str:
@@ -530,8 +719,20 @@ class Research(Module):
         return self._edit_list("topics", arg)
 
     def _repos(self, msg: Incoming, arg: str) -> str:
-        return self._edit_list(
+        m = re.fullmatch(r"(add|map)\s+(.+?)\s+(?:as|to|->)\s+(.+)", arg.strip(), re.I)
+        if m:  # /repos add <folder> as <project>: the repository's commits go to that project's note
+            folder, project = m.group(2).strip().strip('"'), m.group(3).strip().strip('"')
+            if not (Path(folder).expanduser() / ".git").exists():
+                return "That folder isn't a git repository."
+            mapping = dict(self.setting("projects") or {})
+            mapping[folder] = project
+            self.app.settings.set("research.projects", mapping)
+            arg = f"add {folder}"
+        out = self._edit_list(
             "repos",
             arg,
             lambda p: None if (Path(p).expanduser() / ".git").exists() else "That folder isn't a git repository.",
         )
+        if out.startswith("•"):
+            out = "\n".join(f"{ln} → {self.project_of(ln[2:])}" for ln in out.splitlines())
+        return out

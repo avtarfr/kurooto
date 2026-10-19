@@ -3,3 +3,9 @@ Copyright 2026 Sumangalam Avtar Sharma (https://github.com/avtarfr)
 
 This product includes software developed by Sumangalam Avtar Sharma as part of Kurooto.
 If you redistribute it, modified or not, keep this NOTICE file and the LICENSE, and mark the files you changed.
+
+Third-party software included:
+
+xterm.js (@xterm/xterm 5.5.0) and its fit add-on (@xterm/addon-fit 0.10.0), MIT licence, copyright the xterm.js
+authors and others; the dashboard's terminals use them. Unmodified copies from the npm registry, with their licence
+texts, are in src/kurooto/web/static/vendor/xterm/.
