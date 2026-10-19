@@ -1,4 +1,4 @@
-"""Stands in for agy in tests. FAKE_AGY_MODE: ok | denied | limit | auth | silent | slow | crash."""
+"""Stands in for agy in tests. FAKE_AGY_MODE: ok | prompt | denied | limit | auth | silent | slow | crash."""
 
 import os
 import sys
@@ -9,6 +9,8 @@ prompt = sys.argv[sys.argv.index("-p") + 1] if "-p" in sys.argv else ""
 model = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else ""
 if mode == "ok":
     print(f"answer from {model}: {prompt.splitlines()[-1][:60]}")
+elif mode == "prompt":  # what it was asked, in full
+    print(prompt)
 elif mode == "denied":
     print("no output produced")
 elif mode == "limit":

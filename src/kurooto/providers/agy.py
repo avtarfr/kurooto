@@ -11,6 +11,7 @@ To undo: `agy mcp remove kurooto`, and take that line out of ~/.gemini/antigravi
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -22,7 +23,7 @@ from typing import TYPE_CHECKING
 
 from kurooto.core import proc
 from kurooto.core.state import jload, jsave
-from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
+from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, TEXT_ONLY, Brain, Result, Task, Verdict
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -68,7 +69,9 @@ class Agy(Brain):
             return Result(Verdict.ERROR, detail="agy isn't installed")
         minutes = max(1, task.timeout_s // 60)
         prompt = (task.context + "\n\n" + task.prompt).strip() if task.context else task.prompt
-        long = handover(prompt, task.cwd)
+        if task.text_only:  # unattended runs may not use tools; text-only work says so plainly
+            prompt = f"{TEXT_ONLY}\n\n{prompt}"
+        long = handover(prompt, task.cwd, task.text_only)
         args = self._args(long[1] if long else prompt, task.effort, minutes)
         env = {**os.environ, **task.mcp_env} if task.mcp_env else None  # agy hands it on to `kurooto mcp`
         t0 = time.monotonic()
@@ -84,10 +87,10 @@ class Agy(Brain):
         return verdict(code, out, err, time.monotonic() - t0, minutes)
 
     def complete(self, prompt: str, system: str = "", effort: str = "low", timeout: int = 120) -> Result:
-        return self.run(Task(prompt=prompt, context=system, effort=effort, timeout_s=timeout))
+        return self.run(Task(prompt=prompt, context=system, effort=effort, timeout_s=timeout, text_only=True))
 
 
-def handover(prompt: str, cwd: Path | None) -> tuple[Path, str] | None:
+def handover(prompt: str, cwd: Path | None, text_only: bool = False) -> tuple[Path, str] | None:
     """agy takes its request on the command line, which has a size limit (about 32,000 characters in all on
     Windows, 128 KB per argument on Linux). A longer request goes in a file in a hidden folder of the notes, which
     git (Notes sync) ignores, and agy is told to read it. Returns (the file, the short prompt), or None."""
@@ -100,7 +103,28 @@ def handover(prompt: str, cwd: Path | None) -> tuple[Path, str] | None:
     f = d / f"{uuid.uuid4().hex[:12]}.md"
     f.write_text(prompt, encoding="utf-8")
     rel = f.relative_to(cwd).as_posix()
+    if text_only:
+        return f, (
+            f"Your full request is in the file {rel} (in this folder). Read that one file, then answer with text "
+            "only: don't read anything else, and don't write or run anything."
+        )
     return f, f"Your full request is in the file {rel} (in this folder). Read all of it, then do what it says."
+
+
+def worked_file(state: Path) -> Path:
+    return Path(state) / "agy-worked.json"
+
+
+def has_worked(state: Path) -> bool:
+    """Has agy answered on this computer before (a request, or the setup page's test)? Then it may stand in for
+    the Gemini key."""
+    return worked_file(state).exists()
+
+
+def mark_worked(state: Path) -> None:
+    f = worked_file(state)
+    if not f.exists():
+        f.write_text(json.dumps({"at": time.time()}), encoding="utf-8")
 
 
 def verdict(code: int | None, out: str, err: str, secs: float, minutes: int) -> Result:

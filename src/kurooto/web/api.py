@@ -544,9 +544,10 @@ class Api:
         secs = time.monotonic() - t0
         if nonce in r.text:
             msg = f"Working: it answered in {secs:.0f} s."
-            if which == "agy":  # setting agy up: give it Kurooto's tools (`kurooto mcp`) now
-                from kurooto.providers.agy import connect_tools
+            if which == "agy":  # setting agy up: give it Kurooto's tools (`kurooto mcp`) now; and it may stand in
+                from kurooto.providers.agy import connect_tools, mark_worked  # for the Gemini key later
 
+                mark_worked(self.app.paths.state)
                 ok_t, why = connect_tools(self.app, brain.exe)
                 msg += " It can use Kurooto's tools too." if ok_t else f" (It can't use Kurooto's tools yet: {why}.)"
             return {"ok": True, "message": msg}

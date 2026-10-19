@@ -457,6 +457,7 @@ class Google(Module):
             quiet=True,
             then="google.draft",
             then_payload={"to": to},
+            text_only=True,
         )
         return "Writing the draft…"
 

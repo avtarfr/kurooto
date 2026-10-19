@@ -134,7 +134,12 @@ class AboutYou:
             f"===== REPORT {i + 1} =====\n{f.read_text(encoding='utf-8')[:400_000]}" for i, f in enumerate(reps)
         )
         return self.app.jobs.submit(
-            MERGE_PROMPT + "\n" + body, title="Building your profile", effort="high", quiet=True, then="aboutyou.save"
+            MERGE_PROMPT + "\n" + body,
+            title="Building your profile",
+            effort="high",
+            quiet=True,
+            then="aboutyou.save",
+            text_only=True,  # only text comes back; Kurooto writes the note itself
         )
 
     def save_profile(self, job, result, payload) -> None:
@@ -159,7 +164,7 @@ class AboutYou:
         self.app.events.emit("aboutyou_profile", chars=len(text))
         self.app.notify(
             f"Your profile is ready: {f.relative_to(self.app.workspace).as_posix()} in your notes. "
-            "Have a look and fix anything that's off.",
+            "Have a look and fix anything that's off." + (f"\n\n{note}" if (note := result.usage.get("note")) else ""),
             kind="result",
         )
 
