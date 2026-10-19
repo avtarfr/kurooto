@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6 (2026-10-20)
+- Setting up local AI models on Linux could get Kurooto killed for running out of memory: Ollama's download was
+  unpacked in memory. It's now unpacked straight from disk, and the space check counts Ollama's real size.
+- Setup: click anywhere on a feature card to tick it, and the boxes are bigger.
+- A request to the AI could now and then vanish or fail when the setup page or the dashboard checked on it at the
+  same moment (mostly on Windows).
+- `kurooto start` works on computers where systemd's user session doesn't (WSL, containers).
+
 ## 0.1.5 (2026-10-20)
 Everything since 0.1.1, in one update.
 - **`kurooto stop` didn't stay stopped** on Linux and macOS (the background service restarted it 10 seconds later),
