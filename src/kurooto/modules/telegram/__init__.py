@@ -367,7 +367,7 @@ class Telegram(Module):
             lines.append(f"Focus until {f.strftime('%H:%M')}")
         jobs = [j for j in self.app.scheduler.jobs() if j.kind == "once"][:5]
         if jobs:
-            rows = [f"  {j.when.astimezone():%a %H:%M}  {j.payload.get('what') or j.key}" for j in jobs]
+            rows = [f"  {j.when.astimezone():%a %H:%M}  {j.label[:80]}" for j in jobs]
             lines.append("Coming up:\n" + "\n".join(rows))
         if self.app.ask.status_line():  # questions waiting for you (core/ask.py)
             lines.append(self.app.ask.status_line())

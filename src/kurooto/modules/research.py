@@ -537,6 +537,12 @@ class Research(Module):
         return True, f"{n} project{'s' if n != 1 else ''} with new commits" if n else "no new commits"
 
     # ------------------------------------------------------------------------------------- quiet projects
+    def quiet_idle_once(self) -> None:
+        """Updating from 0.1 (core/upgrade.py): the first check only notes which projects are quiet already, so it
+        doesn't ask about all of them at once; it asks when one goes quiet after that."""
+        f = self.app.paths.state / "research-logs.json"
+        jsave(f, {**(jload(f, {}) or {}), "_quiet_once": True})
+
     def idle_check(self) -> list[str]:
         """Ask about each project with no commits for research.idle_days days (once per quiet stretch)."""
         days = int(self.setting("idle_days") or 0)
@@ -547,6 +553,7 @@ class Research(Module):
         self.project_logs()  # fresh last-commit days
         st = jload(state_file, {}) or {}
         asked = st.setdefault("_asked", {})
+        quiet_once = bool(st.pop("_quiet_once", False))  # updated from 0.1: these were quiet already
         out = []
         for project, repos in self.projects().items():
             last = max((st.get(r, {}) or {}).get("last_day") or "" for r in repos)
@@ -559,6 +566,8 @@ class Research(Module):
             if idle < days or asked.get(project) == last:
                 continue
             asked[project] = last
+            if quiet_once:
+                continue
             ask.ask(
                 f"No commits to {project} for {idle} days. What's the plan?",
                 choices=IDLE_CHOICES,

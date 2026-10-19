@@ -99,6 +99,61 @@ class Job:
     def when(self) -> dt.datetime:
         return dt.datetime.fromtimestamp(self.next_run, dt.UTC)
 
+    @property
+    def label(self) -> str:
+        return describe(self.action, self.key, self.payload)
+
+
+LABELS = {  # what scheduled work is, in a few words (/status, `kurooto top`)
+    "alarm.prep": "morning plan",
+    "alarm.ring": "wake-up call",
+    "ask.sweep": "open questions",
+    "calendar.focus_end": "focus ends",
+    "calendar.refresh": "calendar refresh",
+    "calls.missed": "missed-call check",
+    "calls.realert": "unanswered call rings again",
+    "calls.task_check": "call follow-up",
+    "checkins.deferred": "morning check-in",
+    "checkins.plan": "today's check-ins",
+    "checkins.unstick": "check-in follow-up",
+    "deadlines.tick": "deadline check",
+    "notes_sync.soon": "notes sync",
+    "profile.soon": "profile save",
+    "quiz.exam_daily": "exam practice",
+    "quiz.offers": "quiz offers",
+    "research.idle": "quiet projects",
+    "research.logs": "project logs",
+    "research.papers": "papers digest",
+    "retro.nightly": "nightly look back",
+    "study.session_end": "study session ends",
+    "study.write": "study hours into the daily note",
+    "telegram.focus_end": "focus ends",
+    "updates.apply": "update",
+    "updates.check": "update check",
+    "updates.probation": "update settles",
+    "updates.rolled_back": "rollback notice",
+    "upgrade.whats_new": "what's new",
+}
+
+
+def describe(action: str, key: str = "", payload: dict | None = None) -> str:
+    """A scheduled job in a few words: what it says it's about, else what kind of work it is."""
+    p = payload if isinstance(payload, dict) else {}
+    for k in ("what", "title", "reason"):
+        if isinstance(p.get(k), str) and p[k].strip():
+            return p[k].strip()
+    name = p.get("name") or p.get("subject") or p.get("project")
+    if action == "checkins.fire" and name:
+        return f"{name} check-in"
+    if action in ("capture.ask", "quiz.checkin", "research.remind") and name:
+        return {"capture.ask": "after {}", "quiz.checkin": "quiz: {}", "research.remind": "about {}"}[action].format(
+            name
+        )
+    if action in LABELS:
+        return LABELS[action]
+    mod, _, what = action.partition(".")
+    return f"{mod}: {what}".replace("_", " ") if what else (key or action)
+
 
 class Scheduler:
     def __init__(self, db: Path, tz: dt.tzinfo | str | None = None, clock: Callable[[], float] = time.time):

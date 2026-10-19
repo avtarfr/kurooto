@@ -64,10 +64,8 @@ def too_complex(text: str) -> bool:
     return not text or len(text) > 300 or text.startswith("/") or bool(MULTI.search(text))
 
 
-def a_time(text: str, base: dt.datetime | None = None) -> str | None:
-    """'at 9:30', 'till 6', '9 pm', 'at 21:00' -> 'HH:MM'. Without am/pm: 1-5 and evening words mean pm; morning,
-    midday and 'tomorrow' keep the hour as said; otherwise it's the next time the clock shows it."""
-    base = base or now()
+def _time_match(text: str) -> re.Match | None:
+    """The first time in the text (not a duration, not a bare number)."""
     for m in TIME.finditer(text):
         h, mi, ap = int(m[1]), int(m[2] or 0), (m[3] or "").lower()
         if h > 23 or mi > 59:
@@ -76,11 +74,34 @@ def a_time(text: str, base: dt.datetime | None = None) -> str | None:
             continue  # "2 hours" is a duration
         if not m[2] and not ap and not re.match(r"(?:at|till|until|by)\s", m[0], re.I):
             continue  # a bare number isn't a time
+        return m
+    return None
+
+
+def _written_24h(m: re.Match) -> bool:
+    """'04:30', '09', '10:15', '21:00': a leading zero, or a two-digit hour with minutes, and no am/pm."""
+    return not m[3] and len(m[1]) == 2 and (m[1].startswith("0") or bool(m[2]))
+
+
+def as_written(text: str) -> bool:
+    """The time in the text is a 24-hour time ('04:30', '10:15'), taken as written (never moved to pm)."""
+    m = _time_match(text)
+    return bool(m) and _written_24h(m)
+
+
+def a_time(text: str, base: dt.datetime | None = None) -> str | None:
+    """'at 9:30', 'till 6', '9 pm', 'at 21:00' -> 'HH:MM'. A 24-hour time ('04:30', '10:15') is as written.
+    Otherwise, without am/pm: 1-5 and evening words mean pm; morning, midday and 'tomorrow' keep the hour as said;
+    otherwise it's the next time the clock shows it."""
+    base = base or now()
+    m = _time_match(text)
+    if m:
+        h, mi, ap = int(m[1]), int(m[2] or 0), (m[3] or "").lower()
         if ap == "pm" and h < 12:
             h += 12
         elif ap == "am" and h == 12:
             h = 0
-        elif not ap and 1 <= h < 12:
+        elif not ap and 1 <= h < 12 and not _written_24h(m):
             if h <= 5 or re.search(r"\b(tonight|evening|night|afternoon|pm)\b", text, re.I):
                 h += 12
             elif not re.search(r"\b(morning|tomorrow|midday|noon|lunch)\b", text, re.I):

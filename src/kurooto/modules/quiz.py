@@ -35,7 +35,7 @@ register_defaults(
         "per_session": 3,
         "exam_per_session": 6,  # in exam mode
         "offer_at": "19:00",  # the evening before a quiz or exam: offer practice from this time (empty: never)
-        "exam_daily": "18:00",  # in exam mode: a practice check-in every day at this time (empty: never)
+        "exam_daily": "",  # in exam mode: a practice check-in every day at this time, e.g. "18:00" (empty: never)
         "by_call": False,  # quiz check-ins ring you (with Phone calls on) instead of sending the first question
         "call_min": 10,  # how long a quiz call is meant to take
     },

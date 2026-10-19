@@ -29,6 +29,9 @@ BASE = dt.datetime(2026, 10, 19, 12, 0)
         ("at 8", "20:00"),
         ("at 8 tomorrow", "08:00"),
         ("9 pm", "21:00"),
+        ("at 04:29", "04:29"),  # a 24-hour time is as written: a leading zero or a two-digit hour with minutes
+        ("at 10:15", "10:15"),
+        ("tonight at 09:30", "09:30"),
         ("in 2 hours", None),
         ("for 50 min", None),
     ],

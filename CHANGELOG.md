@@ -3,6 +3,16 @@
 ## 0.2.0 (unreleased)
 Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) has the detail.
 
+**Updating from 0.1**
+- Nothing new starts by itself: if you set Kurooto up with 0.1, the morning page doesn't open at the alarm, the AI
+  doesn't draft a plan before it, deadlines don't ring you six hours before or come from your calendar, an unanswered
+  call rings again once (not twice), after-class answers aren't turned into AI study logs, and the nightly look back
+  doesn't read your journal or call transcripts, unless you turn them on (or had set them yourself).
+- No flood on the first day: deadlines already overdue and research projects already quiet aren't asked about.
+- One short "What's new" message after the update, with a link to the manual.
+- agy and Kurooto's tools: if you set agy up before, Kurooto asks once (Approve / Deny) before adding itself to agy's
+  settings; Deny holds for 30 days. On the setup page, testing agy says it connects the tools.
+
 **Your AI**
 - The setup page recommends a **Gemini API key ★** (the simplest, and Google's recommended route for tools like
   Kurooto), then agy, Codex, Claude Code, local models and any OpenAI-compatible service. Existing setups keep the AI
@@ -103,6 +113,21 @@ Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) h
 - On Linux, the dashboard only answers your own user account.
 
 **Fixes**
+- The setup page's "When this laptop is on battery" choice was refused; it's saved again, and Settings can change it.
+- The dashboard keeps its address after a quick restart or an update (macOS and Linux).
+- `kurooto stop` stops Kurooto the normal way first (Notes sync sends up what's left), then forces what's left;
+  `kurooto start` says where the page is; `kurooto on` doesn't wait for a service manager that isn't there.
+- After `kurooto update --now`, or an update that was rolled back, the dashboard no longer says "update ready"; a
+  rollback sends one message saying so.
+- The 05:10 call-line update after an update never opens a Cloudflare sign-in page by itself; if the sign-in expired,
+  you get a message (calls keep working on the old version).
+- A 24-hour time is taken as written: "/checkin midday 04:30" is 04:30, not 16:30.
+- /status and `kurooto top` say what's coming in words, not internal names. "Overdue?" isn't said twice.
+- The ★ Starter set no longer includes the notes brain (a 0.5 GB download; its card says so). Exam mode's daily
+  practice check-in is off unless you give it a time (`quiz.exam_daily`).
+- `kurooto doctor` warns when your time zone (Settings → You) isn't this computer's.
+- Kurooto's job and schedule databases are readable by your account only, like its other state files; the installer
+  starts Kurooto without its own temporary Python environment on the PATH.
 - "skip Friday's check-in" (and "no calls on Friday", "skipping LA on Friday") changed today's instead.
 - The phone app only ever got rings; the phone channel is now wired up.
 - The notes brain's sync no longer holds up the rest of Kurooto, and GBrain no longer checks for its own updates.

@@ -119,8 +119,8 @@ as you go, so you can close it and come back.
    installed and follow the sign-in. Then press **Test**: it asks the AI to reply, and tells you if it worked.
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below.
-5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins, deadlines, and the notes
-   brain if there's room). **Everything** or **Pick myself** for more. Some features ask for a detail right in their
+5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the
+   notes brain is a 0.5 GB download, so it's yours to tick). **Everything** or **Pick myself** for more. Some features ask for a detail right in their
    card (a calendar link, a repository); phone calls, voice notes and the alarm use your Gemini key (they ask for one
    if you picked another AI).
 6. **Telegram:** make your own bot in two minutes:
@@ -209,8 +209,9 @@ or one of its sections, and tick tasks. Nothing is sent to anyone but you.
   use tools (some small Ollama models) just answers without them.
 - **Agent programs** (agy, Codex, Claude Code) get them through `kurooto mcp`, a small MCP server that passes each call
   to the running Kurooto. Codex and Claude Code get it for each request only; nothing is saved in their own settings.
-  agy gets it once, when you test agy on the setup page (or before its first request after this update): Kurooto runs
-  `agy mcp add kurooto ...` and adds `mcp(kurooto/*)` to agy's allow-list
+  agy gets it once, when you test agy on the setup page (the page says so), or, if you set agy up before tools
+  existed, when you tap Approve on the question Kurooto asks once (Deny: it asks again in 30 days at the earliest):
+  Kurooto runs `agy mcp add kurooto ...` and adds `mcp(kurooto/*)` to agy's allow-list
   (`~/.gemini/antigravity-cli/settings.json`, backed up first to Kurooto's state folder → `backups/`).
 - **Your own agent sessions** can use them too: add `kurooto mcp` as an MCP server in any MCP client. It works while
   Kurooto is running.
@@ -370,7 +371,7 @@ once when it starts. While it's on:
 - `/exam` (or "when's my next exam?") shows it, with how many questions are due;
 - calls start knowing it;
 - quizzes come more often: longer sessions (`quiz.exam_per_session`, 6), items you know still come back before the
-  exam, and a short practice check-in every day (`quiz.exam_daily`, 18:00).
+  exam, and, if you like, a short practice check-in every day (set `quiz.exam_daily` to a time, e.g. 18:00).
 
 *Turn off:* `deadlines.exam_mode_days` = 0.
 
@@ -406,7 +407,7 @@ questions", "Definitions", "Theorems", "Formulas", "Key results"). Classroom →
 - `/quizstatus`: items and what's due per subject, and exam mode.
 
 *Settings* (`quiz.*`): `per_session` (3), `exam_per_session` (6), `offer_at` (19:00; empty turns the evening offer
-off), `exam_daily` (18:00; empty turns the daily exam-mode practice off), `by_call` (off), `call_min` (10).
+off), `exam_daily` (off; a time like 18:00 turns on a daily exam-mode practice), `by_call` (off), `call_min` (10).
 *Leaves:* with Chat on, the question and your answer go to the AI to grade it.
 
 ### Weekly summary
