@@ -23,7 +23,8 @@ smaller, but it has to be rebuilt) and its state (check-ins, deadlines, AI reque
 
 The zip isn't encrypted.
 
-**Putting one back:** `kurooto restore <zip>`. It shows what's in the zip and asks first; then it stops Kurooto, keeps a
+**Putting one back:** `kurooto restore <zip>`. It shows what's in the zip and asks first; then it stops Kurooto (the
+normal way, so Notes sync sends up what's left first; forced only if it hasn't stopped after 90 seconds), keeps a
 copy of how things were (in Kurooto's data folder, `restore-safety/`), puts the backup's settings and data back, and
 starts Kurooto again. Your notes are never overwritten: a note that's missing comes back; a note that's different now
 is kept as it is, and the backup's copy goes into `restored-<date>/` in your notes folder. `--no-notes` leaves the
@@ -84,8 +85,7 @@ where they were when you open it again; one that ended starts again when you pre
 
 **Only turn this on if you're the only person who uses this computer:** anyone who can open your dashboard can type
 into these terminals. The dashboard only answers this computer, needs a key only its own page gets, and refuses other
-websites; on Linux, Kurooto also checks that each terminal request comes from your own user account and refuses it if
-it can't tell.
+websites; on Linux it also checks that every request comes from your own user account (see The dashboard).
 
 **Turn it off:** Features → Terminals → Turn off (the terminals end).
 
@@ -96,8 +96,12 @@ sync and backup age, the features on, AI requests, what's scheduled next, recent
 `kurooto top --once` prints one screen. It only reads, so it's safe while Kurooto works. `kurooto logs -f` follows
 Kurooto's log.
 
-### The dashboard (changed: add to the tab list)
+### The dashboard (changed: add to the tab list, and replace the last sentence)
 **Terminals** (when the Terminals feature is on).
+
+Only your computer can open the dashboard; it needs a key that only this computer has. On Linux, where several people
+can be signed in to one computer at once, it also checks that the page and every request come from your own user
+account, and refuses them when it can't tell.
 
 ### Where things are (add rows)
 | What | Where |
@@ -130,6 +134,8 @@ Kurooto's log.
 - `kurooto runlog`: experiment runs logged into your notes with their config, metrics and the code's exact git state.
 - `kurooto watch -- <command>`: a message when a long job ends, with its exit code, duration and last lines.
 - `kurooto top`: a status board in any terminal. `kurooto logs [-f]`: Kurooto's log.
+- On Linux, the dashboard and its API only answer your own user account (another account on a shared computer is
+  refused).
 - Terminals (new, off by default): your AI program, a shell, `kurooto ask` and the logs as real terminals in the
   dashboard (xterm.js 5.5.0, MIT, included).
 
