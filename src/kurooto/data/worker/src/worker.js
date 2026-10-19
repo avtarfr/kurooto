@@ -183,7 +183,9 @@ export class Line {
     if (p === '/tick') return json(await this.tick());
     if (p === '/pair/claim' && req.method === 'POST') return this.claim(req);
     const who = await this.auth(req.headers.get('x-call-secret'));
-    if (!who) return json({ error: 'wrong or missing key' }, 401);
+    // a refused request's body is read first: answering before it has all arrived trips up the local dev server
+    const refuse = async (error, status) => { try { await req.arrayBuffer(); } catch { /* none */ } return json({ error }, status); };
+    if (!who) return refuse('wrong or missing key', 401);
     try {
       if (p === '/status') {
         const brief = await this.store.get('brief');
@@ -194,7 +196,7 @@ export class Line {
       if (p === '/tasks') return this.tasks(req);
       if (p === '/transcript' && req.method === 'POST') return this.transcript(req);
       if (p === '/upload' && req.method === 'POST') return this.upload(req, url);
-      if (who.kind !== 'device') return json({ error: 'that needs a paired device' }, 403);
+      if (who.kind !== 'device') return refuse('that needs a paired device', 403);
       if (p === '/pending') return json({ rings: await this.ringing(who.id), items: await this.openItems() });
       if (p === '/answer' && req.method === 'POST') return this.answer(req, who);
       if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
