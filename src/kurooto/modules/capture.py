@@ -127,7 +127,10 @@ class Capture(Module):
         kept = [self._file_away(x, folder / "files", day) for x in files if x.is_file()]
         links = []
         for p in kept:
-            where = os.path.relpath(p, folder).replace(os.sep, "/").replace(" ", "%20")
+            try:
+                where = os.path.relpath(p, folder).replace(os.sep, "/").replace(" ", "%20")
+            except ValueError:  # another drive (Windows)
+                where = p.as_uri()
             links.append(f"![{p.name}]({where})" if p.suffix.lower() in IMAGES else f"[{p.name}]({where})")
         f = folder / "class-log.md"
         new = not f.exists()

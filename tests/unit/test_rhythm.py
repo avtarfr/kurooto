@@ -590,3 +590,14 @@ def test_call_me_now(calls):
     assert len(rings(app)) == 2
     assert "Calling you now" not in (calls.say("call me for a quiz") or "")  # the quiz's (or the AI's), not this
     assert calls.say("call me in 20 minutes about tea").startswith("I'll call you")
+
+
+def test_evening_times_said_in_the_morning_mean_evening(env, monkeypatch):
+    from kurooto.modules import text as text_mod
+
+    env.on("checkins")
+    monkeypatch.setattr(text_mod, "now", lambda: dt.datetime.combine(now().date(), dt.time(8, 0)))
+    later = now().date() + dt.timedelta(days=2)
+    assert (
+        env.say(f"move {DAYS[later.weekday()]}'s check-in to 9:30") == f"Evening check-in on {later:%a %d %b} at 21:30."
+    )

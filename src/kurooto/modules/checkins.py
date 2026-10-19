@@ -274,6 +274,8 @@ class Checkins(Module):
             if SKIP.search(text):
                 return {"name": name, "act": "skip", "day": day}
             mins, tm = a_minutes(text), a_time(text)
+            if tm and name == "evening" and int(tm[:2]) < 12 and not re.search(r"\bam\b|morning", low):
+                tm = f"{int(tm[:2]) + 12:02d}{tm[2:]}"  # "move Friday's check-in to 9:30", said in the morning
             if mins and re.search(r"\b(?:push|postpone|later|delay|by|after)\b", low):
                 return {"name": name, "act": "postpone", "mins": mins, "day": day}
             if tm and (MOVE.search(text) or re.search(r"\bat\b", low)):
