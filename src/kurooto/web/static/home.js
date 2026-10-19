@@ -371,7 +371,7 @@ function showTab(name) {
   $("#tabs").replaceChildren(...Object.entries(TABS).map(([k, v]) => { const b = document.createElement("button"); b.textContent = v; b.className = k === tab ? "on" : ""; b.onclick = () => showTab(k); return b; }));
   try { localStorage.setItem("kurooto.dash.tab", name); } catch { /* fine */ }
   // the settings-like tabs get room (the canvases above shrink and redraw by themselves)
-  $(".grid").classList.toggle("tall", ["features", "phone", "research", "settings"].includes(name));
+  $(".grid").classList.toggle("tall", ["features", "phone", "research", "settings", "terminals"].includes(name));
   renderTab();
 }
 function renderTab() {
@@ -383,6 +383,7 @@ function renderTab() {
   else if (tab === "phone") renderPhone(body);
   else if (tab === "research") renderResearch(body);
   else if (tab === "settings") renderSettings(body);
+  else if (tab === "terminals") renderTerminals(body);
 }
 async function renderFeatures(body) {
   const st = await api("state");
@@ -548,6 +549,8 @@ function connect() {
     if (m.t === "graph") mind.update(m);
     else if (m.t === "body") { last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches; body.update(m); renderStatus(m); if (tab === "jobs" || tab === "schedule") renderTab(); }
     else if (m.t === "event") { feed.unshift(m); feed.length = Math.min(feed.length, 200); body.event(m); if (tab === "activity") renderTab(); }
+    else if (m.t === "hello") { TERM.cid = m.cid; if (TERM.shown) termAttach(TERM.shown); }
+    else if (m.t === "pty") termData(m);
   };
   es.onerror = () => { $("#meta").textContent = "reconnecting…"; };
 }
@@ -561,11 +564,81 @@ document.addEventListener("click", async (e) => {
   if (what === "off") document.body.innerHTML = `<p style="padding:40px;font:16px var(--sans)">${esc(r.message || "Kurooto is off.")}</p>`;
 });
 
+// ------------------------------------------------------------------------------------------------ terminals
+// Real terminals (modules/terminals.py): xterm.js (vendored, loaded the first time the tab opens) draws them; what you
+// type goes to /api/term/<name>/input, their output comes back on the stream, only to this page.
+const TERM = { cid: null, shown: null, list: [], xs: {}, loading: null };
+function loadXterm() {
+  if (window.Terminal) return Promise.resolve();
+  if (TERM.loading) return TERM.loading;
+  const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "/static/vendor/xterm/xterm.css"; document.head.appendChild(css);
+  const add = (src) => new Promise((ok, bad) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+  TERM.loading = add("/static/vendor/xterm/xterm.js").then(() => add("/static/vendor/xterm/addon-fit.js"));
+  return TERM.loading;
+}
+function termMake(name) {
+  if (TERM.xs[name]) return TERM.xs[name];
+  const el = document.createElement("div"); el.className = "term-one";
+  const term = new window.Terminal({ fontFamily: FONT, fontSize: 13, cursorBlink: true, scrollback: 5000, allowProposedApi: false,
+    theme: { background: PAL.bg, foreground: PAL.fg, cursor: PAL.accent, selectionBackground: rgba(PAL.lav, 0.35) } });
+  const fit = new window.FitAddon.FitAddon(); term.loadAddon(fit);
+  let pending = "", timer = null;
+  term.onData((d) => { pending += d; if (!timer) timer = setTimeout(() => { const data = pending; pending = ""; timer = null; api(`term/${name}/input`, { data }).catch(() => {}); }, 12); });
+  term.onResize(({ cols, rows }) => { if (TERM.cid != null) api(`term/${name}/resize`, { cid: TERM.cid, cols, rows }).catch(() => {}); });
+  TERM.xs[name] = { term, fit, el, opened: false };
+  return TERM.xs[name];
+}
+function termAttach(name) {
+  const x = TERM.xs[name]; if (!x || TERM.cid == null) return;
+  try { x.fit.fit(); } catch { /* not visible yet */ }
+  api(`term/${name}/attach`, { cid: TERM.cid, cols: x.term.cols, rows: x.term.rows }).catch(() => {});
+}
+function termData(m) {
+  const x = TERM.xs[m.n]; if (!x) return;
+  const bin = atob(m.d), bytes8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes8[i] = bin.charCodeAt(i);
+  if (m.replay) x.term.reset();
+  x.term.write(bytes8);
+}
+function termShow(name) {
+  const host = $("#term-host"); if (!host) return;
+  if (TERM.shown && TERM.shown !== name && TERM.cid != null) api(`term/${TERM.shown}/leave`, { cid: TERM.cid }).catch(() => {});
+  TERM.shown = name;
+  for (const b of document.querySelectorAll("[data-term]")) b.classList.toggle("on", b.dataset.term === name);
+  const x = termMake(name);
+  host.replaceChildren(x.el);
+  if (!x.opened) { x.term.open(x.el); x.opened = true; }
+  termAttach(name);
+  x.term.focus();
+}
+async function renderTerminals(body) {
+  const r = await api("term");
+  if (!r.on) { body.innerHTML = "Terminals is off: turn it on in Features (only on a computer that's yours alone)."; return; }
+  TERM.list = r.terms;
+  body.innerHTML = `<div class="term-bar">${r.terms.map((t, i) => `<button data-term="${esc(t.name)}">${esc(t.title)} <span class="d">Alt+${i + 1}</span></button>`).join("")}
+    <button data-term-restart="1" title="end the program in this terminal and start it again">restart</button></div><div class="term-host" id="term-host"></div>`;
+  body.onclick = (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.term) termShow(b.dataset.term);
+    if (b.dataset.termRestart && TERM.shown) api(`term/${TERM.shown}/restart`, {}).then(() => termAttach(TERM.shown));
+  };
+  try { await loadXterm(); } catch { body.innerHTML = "The terminal display couldn't load."; return; }
+  const want = TERM.shown && r.terms.some((t) => t.name === TERM.shown) ? TERM.shown : (r.terms[0] || {}).name;
+  TERM.shown = null;
+  if (want) termShow(want);
+}
+document.addEventListener("keydown", (e) => {
+  if (tab !== "terminals" || !e.altKey || !/^[1-9]$/.test(e.key)) return;
+  const t = TERM.list[Number(e.key) - 1]; if (t) { e.preventDefault(); termShow(t.name); }
+});
+window.addEventListener("resize", () => { if (tab === "terminals" && TERM.shown && TERM.xs[TERM.shown]) try { TERM.xs[TERM.shown].fit.fit(); } catch { /* hidden */ } });
+
 (function main() {
   body = new Body($("#body")); mind = new Mind($("#mind"));
   let saved = "activity"; try { saved = localStorage.getItem("kurooto.dash.tab") || "activity"; } catch { /* fine */ }
   api("events").then((r) => { for (const e of (r.events || []).reverse()) feed.push(e); if (tab === "activity") renderTab(); }).catch(() => {});
   showTab(TABS[saved] ? saved : "activity");
+  api("term").then((r) => { if (r.on) { TABS.terminals = "Terminals"; showTab(saved === "terminals" ? "terminals" : tab); } }).catch(() => {});
   connect();
   let lastT = 0;
   const frame = (ts) => { requestAnimationFrame(frame); if (document.hidden || ts - lastT < (LIGHT ? 33 : 16)) return; lastT = ts;

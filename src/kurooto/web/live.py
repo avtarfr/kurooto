@@ -281,17 +281,20 @@ class Live:
     def _event(self, rec: dict) -> None:
         self.push({"t": "event", "cell": cell_of(rec.get("kind", "")), **rec})
 
-    def push(self, msg: dict) -> None:
+    def push(self, msg: dict, only: set | None = None) -> None:
+        """To every open page, or `only` to these pages (a terminal's output goes to the pages showing it)."""
         data = json.dumps(msg, default=str, separators=(",", ":"))
         with self.lock:
-            for q in self.clients.values():
+            for cid, q in self.clients.items():
+                if only is not None and cid not in only:
+                    continue
                 try:
                     q.put_nowait(data)
                 except queue.Full:
                     pass
 
     def add(self) -> tuple[int, queue.Queue]:
-        q: queue.Queue = queue.Queue(maxsize=500)
+        q: queue.Queue = queue.Queue(maxsize=2000)
         with self.lock:
             cid = id(q)
             self.clients[cid] = q
@@ -300,11 +303,15 @@ class Live:
             q.put_nowait(json.dumps(self.vitals.snapshot(), default=str, separators=(",", ":")))
         except Exception:
             pass
+        q.put_nowait(json.dumps({"t": "hello", "cid": cid}, separators=(",", ":")))  # the page's id (terminals)
         return cid, q
 
     def drop(self, cid: int) -> None:
         with self.lock:
             self.clients.pop(cid, None)
+        terms = self.app.modules.get("terminals")
+        if terms is not None:
+            terms.page_gone(cid)
 
     def _loop(self) -> None:
         last_graph = 0.0

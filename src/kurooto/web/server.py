@@ -55,9 +55,9 @@ def free_port(start: int) -> int:
 
 
 def static(name: str) -> bytes | None:
-    if not re.fullmatch(r"[a-z0-9_-]+\.(html|js|css|svg|png|ico)", name):
+    if not re.fullmatch(r"(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)", name):  # vendor: terminals
         return None
-    f = resources.files("kurooto.web").joinpath("static", name)
+    f = resources.files("kurooto.web").joinpath("static", *name.split("/"))
     return f.read_bytes() if f.is_file() else None
 
 
@@ -76,6 +76,7 @@ class Server:
 
         self.api = Api(app)
         self.live = Live(app)
+        app.live = self.live  # features push to open pages through it (the terminals' output)
         server = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -147,6 +148,11 @@ class Server:
                 if path.startswith("/api/"):
                     if not self._authed():
                         return self._send(401, {"error": "no"})
+                    if path.startswith("/api/term"):  # terminals: only this user account (on Linux, checked)
+                        from kurooto.modules.terminals import same_user
+
+                        if not same_user(self.client_address, server.port):
+                            return self._send(403, {"error": "no"})
                     from urllib.parse import parse_qs
 
                     q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
@@ -181,6 +187,11 @@ class Server:
                 if not self._host_ok() or not self._authed():
                     return self._send(403, {"error": "no"})
                 path = urlparse(self.path).path
+                if path.startswith("/api/term"):  # terminals: only this user account (on Linux, checked)
+                    from kurooto.modules.terminals import same_user
+
+                    if not server.app.is_on("terminals") or not same_user(self.client_address, server.port):
+                        return self._send(403, {"error": "no"})
                 n = int(self.headers.get("Content-Length") or 0)
                 if n > 4_000_000:  # long reports from AI accounts (About you)
                     return self._send(413, {"error": "too big"})

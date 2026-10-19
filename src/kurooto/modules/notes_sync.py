@@ -1,7 +1,8 @@
 """Notes sync: your notes folder is kept in a private GitHub repository of yours. Every 10 minutes Kurooto saves
 what changed, takes in what changed elsewhere (another computer, or GitHub's own editor), and sends it up. Every
-version stays in the repository's history, so nothing written is ever lost. With Phone calls on, your call line
-can read whole notes from there while this computer is off.
+version stays in the repository's history, so nothing written is ever lost. What an AI request writes is sent up a
+couple of minutes after it finishes, and whatever is left when Kurooto stops (a shutdown, an update) goes up then. With
+Phone calls on, your call line can read whole notes from there while this computer is off.
 
 Setup: make an empty PRIVATE repository on GitHub, then a fine-grained token for just that repository with
 "Contents: Read and write" (github.com → Settings → Developer settings → Fine-grained tokens). Paste both. Kurooto
@@ -38,6 +39,7 @@ register_defaults(
         "share_with_calls": True,  # your call line may read notes from the repository while this computer is off
         "api": "https://api.github.com",
         "remote": "",  # tests: a local repository instead of GitHub
+        "after_jobs": 2,  # minutes after an AI request finishes, its notes are sent up (0: wait for the timer)
     },
 )
 TOKEN = "notes_sync.token"  # noqa: S105 (the secret's name)
@@ -65,6 +67,7 @@ class NotesSync(Module):
         super().__init__(app)
         self.prereqs = Prereqs(app.paths.app, app.paths.cache)
         self.state_file = app.paths.state / "notes-sync.json"
+        self._unsub = None  # the listener for finished AI requests, while it's on
 
     # ------------------------------------------------------------------------------------- git
     def git_exe(self) -> str | None:
@@ -190,18 +193,49 @@ class NotesSync(Module):
     # ------------------------------------------------------------------------------------ syncing
     def start(self):
         self.every("sync", self.setting("every") or "every 10m", lambda p: self.sync())
+        self.action("soon", lambda p: self.sync())
+        if self._unsub is None:
+            from kurooto.core.events import subscribe
 
-    def sync(self) -> tuple[bool, str]:
-        """Save what changed, take in what changed elsewhere, send it up. Safe to run any time."""
+            self._unsub = subscribe(self._on_event)
+
+    def stop(self):
+        unsub, self._unsub = self._unsub, None
+        if unsub:
+            unsub()
+        super().stop()
+
+    def _on_event(self, rec: dict) -> None:
+        """An AI request finished: send its notes up in a couple of minutes (one push for a burst of requests)."""
+        minutes = self.setting("after_jobs")
+        if rec.get("kind") != "job_done" or not minutes or not self.app.is_on(self.id):
+            return
+        self.app.scheduler.at(
+            time.time() + float(minutes) * 60, "notes_sync.soon", key="notes_sync:soon", module=self.id, replace=False
+        )
+
+    def shutdown(self) -> None:
+        """Kurooto is stopping: send up what's left (quickly; a shutdown doesn't wait long)."""
+        if self.app.power.current == "paused" or not self.ready()[0]:
+            return
+        try:
+            self.sync(quick=True)
+        except Exception as e:
+            self.app.events.emit("notes_sync_failed", error=f"at shutdown: {e}"[:200])
+
+    def sync(self, quick: bool = False) -> tuple[bool, str]:
+        """Save what changed, take in what changed elsewhere, send it up. Safe to run any time. quick: short
+        timeouts (at shutdown)."""
         branch = self.setting("branch") or "main"
-        with Lock(self.app.paths.state, "notes-sync", timeout=60):
+        net = 45 if quick else 300
+        with Lock(self.app.paths.state, "notes-sync", timeout=20 if quick else 60):
             try:
                 self.git("add", "-A")
                 committed = False
                 if self.git("diff", "--cached", "--quiet").code == 1:
                     r = self.git("commit", "-q", "-m", f"notes: {now():%Y-%m-%d %H:%M}")
                     committed = r.ok
-                f = self.git("fetch", "-q", "origin", timeout=300)
+                f = self.git("fetch", "-q", "origin", timeout=net)
                 if not f.ok:
                     return self._fail(f"couldn't reach your repository: {(f.err or f.out).strip()[-200:]}")
                 remote_has = self.git("rev-parse", "--verify", "-q", f"origin/{branch}").ok
@@ -229,7 +263,7 @@ class NotesSync(Module):
                                     "nothing was lost (both are kept), but sync is paused until it's sorted"
                                 )
                 if self.git("rev-parse", "--verify", "-q", "HEAD").ok:
-                    p = self.git("push", "-q", "origin", f"HEAD:refs/heads/{branch}", timeout=300)
+                    p = self.git("push", "-q", "origin", f"HEAD:refs/heads/{branch}", timeout=net)
                     if not p.ok:
                         return self._fail(f"couldn't send to your repository: {(p.err or p.out).strip()[-200:]}")
             except RuntimeError as e:
@@ -255,9 +289,13 @@ class NotesSync(Module):
         return (True, "") if st.get("ok", True) else (False, st.get("error", ""))
 
     def commands(self):
-        return [Command("sync", "sync your notes with your repository now", self._cmd)]
+        return [Command("sync", "sync your notes now (/sync all: everything that syncs)", self._cmd)]
 
     def _cmd(self, msg: Incoming, arg: str) -> str:
+        if arg.strip().lower() in ("all", "everything"):
+            from kurooto.core import syncall
+
+            return syncall.start(self.app)[1]
         ok, why = self.sync()
         return "Notes synced." if ok else f"Couldn't sync: {why}"
 

@@ -253,6 +253,11 @@ class App:
                         self.events.emit("intent", name=it.name)
                         msg.reply(it.run(msg, slots) or "Done.")
                         return
+        from kurooto.core import syncall  # "sync everything", and /sync while Notes sync is off (core/syncall.py)
+
+        if syncall.wanted(text) or text.lower().split("@")[0] == "/sync":
+            msg.reply(syncall.start(self)[1])
+            return
         chat = self.modules.get("chat")
         if chat and self.is_on("chat") and text:
             out = chat.ask(msg)
@@ -285,6 +290,8 @@ class App:
         for m in self.enabled():
             lines += m.help()
         lines.append("/q  open questions I asked you (reply to one to answer it)")
+        if not self.is_on("notes_sync"):
+            lines.append("/sync  sync everything that's on (Classroom, calendar, research, notes brain)")
         if not self.is_on("chat"):
             lines.append("(Chat is off, so free text isn't sent to an AI.)")
         return "\n".join(lines)
@@ -294,5 +301,13 @@ class App:
             self.events.emit("job_failed", key=job.key, outcome=outcome, error=str(err or job.last_result)[:300])
 
     def close(self) -> None:
+        if self._stop is not None:  # the assistant itself is stopping (not a `kurooto` command): last words
+            for m in self.enabled():
+                down = getattr(m, "shutdown", None)  # e.g. Notes sync sends up what's left
+                if down:
+                    try:
+                        down()
+                    except Exception as e:
+                        self.events.emit("module_failed", module=m.id, error=f"at shutdown: {e}"[:300])
         self.scheduler.close()
         self.jobs.close()
