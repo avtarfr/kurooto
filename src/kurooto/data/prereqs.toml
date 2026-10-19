@@ -1,0 +1,133 @@
+# Everything Kurooto can install for you, where it comes from, and how much disk it needs.
+# Official sources only. Updated with Kurooto, so a moved download is fixed by an update, not by you.
+# kinds: script (the vendor's own installer script), download-run (an installer program), download-zip,
+#        download-tar (unpacked into Kurooto's own folder), winget, flatpak, url (we open the page for you)
+
+[agy]
+title = "Antigravity (agy)"
+why = "The AI brain 'agy': free with a Google account."
+size_gb = 0.2
+programs = ["agy"]
+dirs.windows = ["%LOCALAPPDATA%/agy/bin"]
+dirs.macos = ["~/.local/bin"]
+dirs.linux = ["~/.local/bin"]
+install.windows = { kind = "script", shell = "powershell", script = "irm https://antigravity.google/cli/install.ps1 | iex" }
+install.macos = { kind = "script", shell = "bash", script = "curl -fsSL https://antigravity.google/cli/install.sh | bash" }
+install.linux = { kind = "script", shell = "bash", script = "curl -fsSL https://antigravity.google/cli/install.sh | bash" }
+signin = ["agy"]
+signin_hint = "A window opens: sign in with your Google account, then close it."
+
+[ollama]
+title = "Ollama"
+why = "Runs small AI models on this computer (picked for your hardware)."
+size_gb = 1.2
+programs = ["ollama"]
+dirs.windows = ["%LOCALAPPDATA%/Programs/Ollama"]
+dirs.macos = ["~/Applications/Ollama.app/Contents/Resources", "/Applications/Ollama.app/Contents/Resources"]
+dirs.linux = ["{app}/ollama/bin"]
+install.windows = { kind = "download-run", url = "https://ollama.com/download/OllamaSetup.exe", args = ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"] }
+install.macos = { kind = "download-zip", url = "https://ollama.com/download/Ollama-darwin.zip", into = "~/Applications" }
+install.linux = { kind = "download-tar", url = "https://ollama.com/download/ollama-linux-{arch}.tar.zst", into = "{app}/ollama" }
+serve = ["ollama", "serve"]
+
+[node]
+title = "Node.js"
+why = "Needed for phone calls, deploying your call line, and FreeLLMAPI."
+size_gb = 0.12
+programs = ["node"]
+dirs.windows = ["{app}/node"]
+dirs.macos = ["{app}/node/bin"]
+dirs.linux = ["{app}/node/bin"]
+install.windows = { kind = "node-lts" }
+install.macos = { kind = "node-lts" }
+install.linux = { kind = "node-lts" }
+
+[telegram-desktop]
+title = "Telegram Desktop"
+why = "Optional: chat with your bot from this computer too (your phone's Telegram works on its own)."
+size_gb = 0.25
+programs = ["telegram-desktop", "Telegram"]
+dirs.windows = ["%APPDATA%/Telegram Desktop"]
+dirs.macos = ["/Applications/Telegram.app/Contents/MacOS", "~/Applications/Telegram.app/Contents/MacOS"]
+dirs.linux = []
+install.windows = { kind = "winget", id = "Telegram.TelegramDesktop" }
+install.macos = { kind = "url", url = "https://desktop.telegram.org/" }
+install.linux = { kind = "flatpak", id = "org.telegram.desktop", fallback = "https://desktop.telegram.org/" }
+
+[bun]
+title = "Bun"
+why = "Runs GBrain, the notes brain."
+size_gb = 0.1
+programs = ["bun"]
+dirs.windows = ["~/.bun/bin"]
+dirs.macos = ["~/.bun/bin"]
+dirs.linux = ["~/.bun/bin"]
+install.windows = { kind = "script", shell = "powershell", script = "irm https://bun.sh/install.ps1 | iex" }
+install.macos = { kind = "script", shell = "bash", script = "curl -fsSL https://bun.sh/install | bash" }
+install.linux = { kind = "script", shell = "bash", script = "curl -fsSL https://bun.sh/install | bash" }
+
+[gbrain]
+title = "GBrain"
+why = "Your notes brain: search your notes by meaning, and memory for your AI."
+size_gb = 0.35
+programs = ["gbrain"]
+dirs.windows = ["~/.bun/bin"]
+dirs.macos = ["~/.bun/bin"]
+dirs.linux = ["~/.bun/bin"]
+install.windows = { kind = "bun-global", spec = "github:garrytan/gbrain#v0.60.299.0" }
+install.macos = { kind = "bun-global", spec = "github:garrytan/gbrain#v0.60.299.0" }
+install.linux = { kind = "bun-global", spec = "github:garrytan/gbrain#v0.60.299.0" }
+
+[codex]
+title = "Codex CLI"
+why = "The AI brain 'ChatGPT / Codex', for people with a ChatGPT plan."
+size_gb = 0.2
+programs = ["codex"]
+dirs.windows = ["{app}/npm"]
+dirs.macos = ["{app}/npm/bin"]
+dirs.linux = ["{app}/npm/bin"]
+install.windows = { kind = "npm-global", spec = "@openai/codex" }
+install.macos = { kind = "npm-global", spec = "@openai/codex" }
+install.linux = { kind = "npm-global", spec = "@openai/codex" }
+signin = ["codex", "login"]
+signin_hint = "A window opens: sign in with your ChatGPT account, then close it."
+
+[claude]
+title = "Claude Code"
+why = "The AI brain 'Claude Code', for people with a Claude plan (Advanced)."
+size_gb = 0.25
+programs = ["claude"]
+dirs.windows = ["~/.local/bin"]
+dirs.macos = ["~/.local/bin"]
+dirs.linux = ["~/.local/bin"]
+install.windows = { kind = "script", shell = "powershell", script = "irm https://claude.ai/install.ps1 | iex" }
+install.macos = { kind = "script", shell = "bash", script = "curl -fsSL https://claude.ai/install.sh | bash" }
+install.linux = { kind = "script", shell = "bash", script = "curl -fsSL https://claude.ai/install.sh | bash" }
+signin = ["claude"]
+signin_hint = "A window opens: sign in with your Claude account, then close it."
+
+[freellmapi]
+title = "FreeLLMAPI"
+why = "A free pool of AI providers' free tiers (Advanced; personal experimenting only)."
+size_gb = 0.3
+programs = []
+dirs.windows = []
+dirs.macos = []
+dirs.linux = []
+install.windows = { kind = "url", url = "https://github.com/tashfeenahmed/freellmapi/releases" }
+install.macos = { kind = "url", url = "https://github.com/tashfeenahmed/freellmapi/releases" }
+install.linux = { kind = "url", url = "https://github.com/tashfeenahmed/freellmapi#install" }
+
+[git]
+title = "Git"
+why = "Notes sync: keeps your notes in your own private GitHub repository."
+size_gb = 0.15
+programs = ["git"]
+dirs.windows = ["{app}/mingit/cmd"]
+dirs.macos = []
+dirs.linux = []
+check.macos = ["xcode-select", "-p"]  # /usr/bin/git exists on every Mac, but only works with Apple's tools
+install.windows = { kind = "download-zip", into = "{app}/mingit", urls = { amd64 = "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.2/MinGit-2.56.0.2-64-bit.zip", arm64 = "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.2/MinGit-2.56.0.2-arm64.zip" }, sha256s = { amd64 = "da35e72aa21c005a5a0d298cfbae110bc1609a815730ea0dde84b01a1b3cd3be", arm64 = "38b33dc6024026e3315cf88ab2cfea65205bbd7bb3a8e824bd21c8ad4fe609a7" } }
+install.macos = { kind = "script", shell = "bash", script = "xcode-select --install || true", then = "Apple's installer opened: click Install, wait until it finishes (a few minutes), then press Set up again." }
+install.linux = { kind = "url", url = "https://git-scm.com/download/linux" }
+

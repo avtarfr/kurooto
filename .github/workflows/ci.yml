@@ -1,0 +1,105 @@
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, py${{ matrix.python }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - run: uv sync --locked --python ${{ matrix.python }}
+      - run: uv run --frozen ruff check .
+      - run: uv run --frozen ruff format --check .
+      - run: uv run --frozen pytest -m "not live"
+      - name: smoke
+        run: |
+          uv run --frozen kurooto --version
+          uv run --frozen kurooto doctor
+
+  call-line:
+    name: call line (real Worker under wrangler dev, fakes for Google, ntfy and Web Push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - run: uv sync --locked
+      - name: the Worker's pinned packages
+        working-directory: src/kurooto/data/worker
+        run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: the call page bundles
+        working-directory: src/kurooto/data/worker
+        run: npx esbuild web/app.js --bundle --minify --format=esm --target=es2019 --outfile=public/app.js
+      - run: uv run --frozen pytest -q tests/integration tests/unit/test_calls.py
+
+  android:
+    name: Android app (build for Android 6+, API-level lint, crypto vectors)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: crypto test against the shared vectors (plain JVM)
+        run: android/build.sh --test
+      - name: build (debug-signed; release signing happens on the maintainer's machine)
+        run: android/build.sh
+      - name: lint (any API used without a version check fails the build)
+        run: |
+          LINT=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/lint | sort -V | tail -1)
+          "$LINT" --sdk-home "$ANDROID_HOME" --check NewApi,InlinedApi --classpath android/build/classes \
+            --text stdout --exitcode android
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kurooto-debug-apk
+          path: android/build/kurooto-debug.apk
+          retention-days: 14
+
+  privacy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: scan every file and every commit
+        env:
+          KUROOTO_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
+        run: |
+          python3 tools/privacy_scan.py --tree
+          python3 tools/privacy_scan.py --history
+      - name: gitleaks
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tgz="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "$base/$tgz"
+          curl -fsSL "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt" | grep " $tgz\$" | sha256sum -c -
+          tar -xzf "$tgz" gitleaks
+          ./gitleaks git --no-banner --redact -v .
+
+  update-rehearsal:
+    name: install, update, rollback, uninstall (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - run: uv sync --locked
+      - name: requirements.lock matches uv.lock
+        shell: bash
+        run: diff <(uv export --frozen --no-dev --no-emit-project --format requirements-txt | grep -v '^#') <(grep -v '^#' requirements.lock)
+      - name: the rehearsal (real installer, signed local releases)
+        run: uv run --frozen tools/update_rehearsal.py

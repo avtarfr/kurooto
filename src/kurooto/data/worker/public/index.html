@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#14111a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kurooto">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>Kurooto</title>
+<link rel="stylesheet" href="/call.css">
+</head>
+<body>
+<main>
+  <div>
+    <h1 id="who">Kurooto</h1>
+    <div id="reason"></div>
+  </div>
+  <div id="status">Ready</div>
+  <div id="log" aria-live="polite"></div>
+  <div class="gate">
+    <div class="bar"><div id="level"></div></div>
+    <label>Mic gate <span id="gateval">normal</span>
+      <input id="gate" type="range" min="0.6" max="3" step="0.2" value="1"></label>
+  </div>
+  <button id="int" class="int" hidden>Interrupt</button>
+  <div class="row">
+    <button id="call">Call</button>
+    <button id="mute" hidden>Mute</button>
+    <button id="out" hidden>Earpiece</button>
+  </div>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,729 @@
+"""Phone calls: talk to Kurooto like a phone call, and let it call you (reminders, check-ins, the wake-up alarm).
+
+How it works: Kurooto deploys your own call line (a small Cloudflare Worker, free plan) and keeps one connection
+to it. Your phone (the Android app, or the call page added to an iPhone's Home Screen) pairs with that line. On a
+call the audio goes between your phone and Google's Gemini Live, using your free Gemini key; only tool requests
+("what's due?", "add a reminder", "search my notes") come back here. If this computer is off, calls still work from
+what it last sent, and anything that needs it waits until it's back.
+
+Telegram: /call gives you a call link, /phone pairs a phone, /phones lists them, /unpair removes one.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import json
+import re
+import threading
+import time
+import urllib.parse
+import uuid
+
+from kurooto.core.clock import now, parse_when
+from kurooto.core.config import register_defaults
+from kurooto.core.lock import Lock
+from kurooto.core.state import jload, jsave
+from kurooto.modules.base import Command, Incoming, Intent, Module
+from kurooto.modules.calls import line
+from kurooto.modules.calls.connector import Connector
+from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
+
+register_defaults(
+    "calls",
+    {
+        "worker": {"url": "", "name": "", "version": ""},
+        "live_model": "gemini-3.8-live",
+        "voice": "",  # a Gemini Live voice name (e.g. "Kore"); empty = Google's default
+        "persona": "",  # extra words on how to talk on calls, e.g. "be brief and a bit cheeky"
+        "ntfy_server": "https://ntfy.sh",
+        "ring_s": 60,  # how long a call rings before it counts as missed
+        "later_min": 30,  # "Later" on a ringing call calls back after this long
+        "notes_repo": "",  # owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off
+    },
+)
+
+SECRETS = ("calls.call_secret", "calls.connector_secret", "calls.ntfy_topic", "calls.ntfy_key")
+GEMINI_KEY = "gemini.api_key"
+
+
+class Calls(Module):
+    id = "calls"
+    title = "Phone calls"
+    description = (
+        "Call Kurooto like a phone call and let it call you (reminders, check-ins, wake-up), on your own free call "
+        "line. Needs a free Gemini key and a free Cloudflare account."
+    )
+    privacy = (
+        "Call audio goes between your phone and Google (Gemini Live, your own key). Your call line runs on your own "
+        "Cloudflare account and keeps a short brief for when this computer is off. Transcripts stay here."
+    )
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.dir = app.paths.state / "calls"
+        self.connector = Connector(self)
+        self.finished: dict[str, dict] = {}  # call tasks done but not yet told on the call
+
+    # ------------------------------------------------------------------------------------------ setup
+    def worker_url(self) -> str:
+        return ((self.setting("worker") or {}).get("url") or "").rstrip("/")
+
+    def ready(self):
+        if not self.app.secrets.get(GEMINI_KEY):
+            return False, "needs your free Gemini key (from Google AI Studio)"
+        if not self.worker_url() or not all(self.app.secrets.get(k) for k in SECRETS):
+            return False, "needs setting up: Kurooto makes your call line on your free Cloudflare account"
+        return True, ""
+
+    def setup(self, progress=print) -> tuple[bool, str]:
+        from kurooto.modules.calls import deploy
+
+        return deploy.deploy(self.app, progress)
+
+    def health(self):
+        ok, why = self.ready()
+        if not ok:
+            return ok, why
+        return (True, "") if self.connector.connected else (False, "not connected to your call line right now")
+
+    # ------------------------------------------------------------------------------------- lifecycle
+    def start(self):
+        self.action("ring", self._scheduled_ring)
+        self.action("missed", self._missed)
+        self.action("task_check", self._task_check)
+        self.every("line_update", "daily 05:10", self._line_update)
+        self.app.jobs.then_actions["calls.task_done"] = self._task_done
+        self.app.notifier.register("app", lambda m: None)  # calls ring the phone; Telegram stays silent for them
+
+    def stop(self):
+        super().stop()
+        self.app.notifier.unregister("app")
+
+    def _line_update(self, p: dict | None = None) -> bool:
+        """After Kurooto updated itself, the call line's code may be newer than what's deployed: redeploy it (in the
+        background; it takes a minute or two). Skipped when updates are off."""
+        from kurooto.modules.calls import deploy
+
+        if (self.app.settings.get("updates.mode") or "night") == "off" or not deploy.needs_redeploy(self.app):
+            return False
+
+        def go():
+            ok, msg = deploy.deploy(self.app, progress=lambda line: None)
+            self.app.events.emit("calls_line_updated", ok=ok)
+            if not ok:
+                self.app.notify(
+                    f"Your call line couldn't be updated: {msg} (calls keep working on the old version; "
+                    "Settings → Features → Phone calls → Set up tries again).",
+                    kind="info",
+                )
+
+        threading.Thread(target=go, name="call-line-update", daemon=True).start()
+        return True
+
+    def _scheduled_ring(self, p: dict) -> None:
+        if (p.get("late_s") or p.get("missed")) and self.worker_url():
+            return  # this computer was asleep when it was due, so the call line has placed it already
+        self.ring(p.get("reason", ""), alarm=bool(p.get("alarm")), key=p.get("key", ""))
+
+    async def background(self, stop):
+        await self.connector.run(stop)
+
+    # ----------------------------------------------------------------------------------------- tools
+    def tools(self) -> list[Tool]:
+        out = self._own_tools()
+        for m in self.app.enabled():
+            if m.id != self.id and hasattr(m, "call_tools"):
+                try:
+                    out += m.call_tools()
+                except Exception as e:
+                    self.app.events.emit("calls_tools_failed", module=m.id, error=str(e)[:200])
+        return out
+
+    def _own_tools(self) -> list[Tool]:
+        on = self.app.is_on
+        t = [
+            Tool(
+                "pending_items",
+                "What needs their attention now: deadlines soon, today's classes and check-ins, scheduled calls. "
+                "Call it at the start of every call.",
+                lambda a: self.pending(),
+                offline="brief",
+                hint="At the start of every call, call pending_items and bring up what matters, briefly.",
+            ),
+            Tool(
+                "search_notes",
+                "Search their notes (courses, plans, journal, anything they wrote).",
+                self._search,
+                {"query": arg("what to look for, in plain words")},
+                ("query",),
+                hint="Use search_notes for anything about their notes, plans or work, and read_note to open one. "
+                "Never invent what their notes say; if nothing is found, say so.",
+            ),
+            Tool(
+                "read_note",
+                "Read one note by its slug (from search_notes), e.g. courses/linear-algebra.",
+                self._read,
+                {"slug": arg()},
+                ("slug",),
+            ),
+            Tool(
+                "schedule_call",
+                "Call them back later (a reminder call).",
+                self._schedule_tool,
+                {"when": arg('e.g. "17:30", "tomorrow 7:00", "in 20 minutes"'), "reason": arg("what the call is for")},
+                ("when", "reason"),
+                offline="queue",
+                hint="schedule_call calls them back later; hold_calls stops calls until a time.",
+            ),
+            Tool(
+                "hold_calls",
+                'No calls until a time ("18:00", "2h"); "off" lifts the hold.',
+                self._hold,
+                {"until": arg()},
+                ("until",),
+                offline="queue",
+            ),
+        ]
+        if on("chat"):
+            t.append(
+                Tool(
+                    "run_task",
+                    "Hand a job to the AI on their computer (writing, planning, filing notes, long answers). It runs "
+                    "in the background, 20 s to a few minutes; the result arrives later as a [Task finished] message.",
+                    self._run_task,
+                    {"request": arg("the full request, in their words plus any detail from the call")},
+                    ("request",),
+                    offline="queue",
+                    hint="Use run_task for anything that needs real work: say it's started and keep talking; when a "
+                    "[Task finished] message arrives, tell them the result in a sentence or two.",
+                )
+            )
+        return t
+
+    def run_tool(self, name: str, args: dict):
+        tool = next((t for t in self.tools() if t.name == name), None)
+        if not tool:
+            return f"There's no {name} tool (that feature may be off)."
+        self.app.events.emit("calls_tool", name=name)
+        try:
+            return tool.run(args or {})
+        except Exception as e:
+            return f"That failed: {type(e).__name__}: {e}"[:300]
+
+    def pending(self) -> dict:
+        out: dict = {}
+        for m in self.app.enabled():
+            if hasattr(m, "call_brief"):
+                try:
+                    out.update(m.call_brief() or {})
+                except Exception as e:
+                    self.app.events.emit("calls_brief_failed", module=m.id, error=str(e)[:200])
+        upcoming = [f"{dt.datetime.fromtimestamp(c['at']):%H:%M} {c['reason']}" for c in self.schedule_list()[:5]]
+        if upcoming:
+            out["calls_planned"] = upcoming
+        return out or {"note": "nothing needs attention right now"}
+
+    def _search(self, a: dict):
+        q = str(a.get("query", ""))
+        gb = self.app.modules.get("gbrain")
+        if gb and self.app.is_on("gbrain"):
+            found = gb.search(q, n=6)
+            if found:
+                return clip(found, 3500)
+        hits = keyword_search(self.app.workspace, q)
+        return {"hits": hits} if hits else "Nothing found in the notes."
+
+    def _read(self, a: dict):
+        text = read_note(self.app.workspace, a.get("slug", ""))
+        return clip(text, 6000) if text is not None else f'No note "{a.get("slug", "")}".'
+
+    def _schedule_tool(self, a: dict) -> str:
+        try:
+            at = parse_when(str(a.get("when", "")))
+        except ValueError:
+            return f"I couldn't read the time {a.get('when')!r}."
+        return self.schedule(at, str(a.get("reason") or "a reminder"))
+
+    def _hold(self, a: dict) -> str:
+        until = str(a.get("until", "")).strip()
+        if re.fullmatch(r"(?i)off|none|lift|stop", until):
+            self.app.availability.set_quiet(None)
+            return "Calls are allowed again."
+        try:
+            when = parse_when(until)
+        except ValueError:
+            return f"I couldn't read {until!r}."
+        self.app.availability.set_quiet(when, reason="you asked on a call")
+        return f"No calls until {when:%H:%M}."
+
+    # ----------------------------------------------------------------------------------- call tasks
+    def _run_task(self, a: dict) -> dict:
+        req = str(a.get("request", "")).strip()
+        jid = self.app.jobs.submit(req, title=f"From a call: {req[:60]}", quiet=True, then="calls.task_done")
+        return {"task_id": jid, "status": "started", "note": "Say it's running; the result comes as [Task finished]."}
+
+    def _task_done(self, job, result, payload) -> None:
+        text = result.text if result.ok else (result.detail or "it failed")
+        self.finished[job.id] = {
+            "id": job.id,
+            "request": job.prompt[:300],
+            "status": "done" if result.ok else "failed",
+            "result": clip(text, 1500),
+            "full": text,
+            "fetched": False,
+        }
+        self.app.scheduler.at(
+            time.time() + 60, "calls.task_check", {"job": job.id}, key=f"calls:task:{job.id}", module=self.id
+        )
+
+    def _task_check(self, p: dict) -> None:
+        """No call picked the result up within a minute (the call ended): send it to Telegram instead."""
+        t = self.finished.pop(p.get("job", ""), None)
+        if t and not t["fetched"]:
+            self.app.notify(f"From your call: {t['request'][:80]}\n\n{t['full'][:3500]}", kind="result")
+
+    # ---------------------------------------------------------------------------------------- ringing
+    def schedule(self, at: dt.datetime, reason: str, key: str | None = None, alarm: bool = False) -> str:
+        key = key or uuid.uuid4().hex[:8]
+        self.app.scheduler.at(
+            at,
+            "calls.ring",
+            {"reason": reason, "alarm": alarm, "key": key},
+            key=f"calls:ring:{key}",
+            module=self.id,
+            grace_s=900,
+            respect="none" if alarm else "call_block",
+        )
+        self.connector.poke()
+        self.app.events.emit("call_scheduled", at=at.isoformat())
+        return f"I'll call you {at:%a %d %b at %H:%M}: {reason}"
+
+    def schedule_list(self) -> list[dict]:
+        """Calls due in the next day, for the call line to place itself if this computer is off then."""
+        horizon = time.time() + 86400
+        out = [
+            {
+                "at": int(j.next_run),
+                "reason": j.payload.get("reason", ""),
+                "alarm": bool(j.payload.get("alarm")),
+                "key": j.payload.get("key", ""),
+            }
+            for j in self.app.scheduler.jobs("calls:ring:")
+            if j.next_run <= horizon
+        ]
+        for m in self.app.enabled():
+            if hasattr(m, "call_schedule"):
+                try:
+                    out += [c for c in m.call_schedule() if c["at"] <= horizon]
+                except Exception as e:
+                    self.app.events.emit("calls_schedule_failed", module=m.id, error=str(e)[:200])
+        return sorted(out, key=lambda c: c["at"])[:30]
+
+    def link(self, reason: str = "", hours: float = 2, since: str = "") -> str:
+        q = urllib.parse.urlencode({k: v for k, v in (("p", reason), ("s", since)) if v})
+        t = line.ticket(self.app.secrets.get("calls.call_secret") or "", hours)
+        return f"{self.worker_url()}/{'?' + q if q else ''}#{t}"
+
+    def ring(self, reason: str, alarm: bool = False, key: str = "") -> str:
+        """Ring your paired phones now (and say so on Telegram, with a link to answer from anywhere)."""
+        since = str(int(time.time()))
+        rings = jload(self.dir / "rings.json", {}) or {}
+        rings[since] = {"reason": reason, "alarm": alarm, "key": key, "at": time.time(), "state": "ringing"}
+        jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
+        sent = self.connector.admin_later("ring", reason=reason, alarm=alarm, since=since, key=key)
+        answer = [[("Answer", {"url": self.link(reason, since=since)})]]
+        if sent:  # the phone rings; Telegram just keeps a quiet record with a link
+            self.app.notify(f"{'Wake-up call' if alarm else 'Calling you'}: {reason}", kind="call", buttons=answer)
+        else:
+            self.app.notify(
+                f"I tried to call you, but your call line isn't connected. {reason}",
+                kind="reminder",
+                buttons=answer,
+                urgent=True,
+            )
+        self.app.scheduler.at(
+            time.time() + (self.setting("ring_s") or 60) + 30,
+            "calls.missed",
+            {"since": since},
+            key=f"calls:missed:{since}",
+            module=self.id,
+        )
+        self.app.events.emit("call_rang", alarm=alarm, key=key, line=sent)
+        self.connector.poke()  # the call line's copy of the schedule no longer has this one
+        return since
+
+    def _ring_state(self, since: str, state: str) -> dict | None:
+        with Lock(self.app.paths.state, "calls-rings"):
+            rings = jload(self.dir / "rings.json", {}) or {}
+            r = rings.get(since)
+            if r:
+                r["state"] = state
+                jsave(self.dir / "rings.json", rings)
+            return r
+
+    def _missed(self, p: dict) -> None:
+        r = (jload(self.dir / "rings.json", {}) or {}).get(p.get("since", ""))
+        if not r or r["state"] != "ringing":
+            return
+        self._ring_state(p["since"], "missed")
+        self.connector.admin_later("stop-ring", since=p["since"])
+        self.app.notify(
+            f"Missed call: {r['reason']}",
+            kind="info",
+            buttons=[[("Call back", {"url": self.link(r["reason"])}), ("In 30 min", f"call:{p['since']}:later")]],
+        )
+        self.app.events.emit("call_missed", key=r.get("key", ""))
+        self._tell_owner_module(r, "missed")
+
+    def _tell_owner_module(self, ring: dict, outcome: str) -> bool:
+        """A check-in or alarm call was answered, missed or put off: its feature hears about it. True if that
+        feature took care of what happens next (e.g. the alarm snoozes itself)."""
+        mid = (ring.get("key") or "").split(":")[0]
+        m = self.app.modules.get(mid)
+        if m and self.app.is_on(mid) and hasattr(m, "call_outcome"):
+            return bool(m.call_outcome(ring["key"], outcome))
+        return False
+
+    def callbacks(self):
+        return {"call": self._button}
+
+    def _button(self, since: str, act: str) -> str:
+        r = (jload(self.dir / "rings.json", {}) or {}).get(since)
+        if not r:
+            return "That call is gone."
+        if act == "later":
+            at = now() + dt.timedelta(minutes=self.setting("later_min") or 30)
+            self.schedule(at, r["reason"], key=r.get("key") or None, alarm=r.get("alarm", False))
+            return f"I'll call again at {at:%H:%M}."
+        return "OK."
+
+    # ---------------------------------------------------------------------------- from the call line
+    def on_event(self, m: dict) -> None:
+        name = m.get("name")
+        if name == "call_started":
+            self.app.events.emit("call_answered", via=m.get("via"), offline=bool(m.get("offline")))
+            r = self._ring_state(m.get("since", ""), "answered") if m.get("since") else None
+            if r:
+                self.app.scheduler.cancel(f"calls:missed:{m['since']}")
+                self._tell_owner_module(r, "answered")
+        elif name == "ring_reply":
+            since, act = m.get("since", ""), m.get("action", "")
+            r = self._ring_state(since, act)
+            self.app.scheduler.cancel(f"calls:missed:{since}")
+            if r and not self._tell_owner_module(r, act) and act == "later":
+                self._button(since, "later")
+            self.app.events.emit("call_" + (act or "reply"))
+        elif name == "device_paired":
+            self.app.notify(
+                f"A device was paired with your call line: {m.get('device_name')} ({m.get('kind')}). If that wasn't "
+                "you, remove it with /phones.",
+                kind="info",
+            )
+            self.app.events.emit("calls_device_paired", kind=m.get("kind"))
+        elif name == "rang_offline":
+            self.app.events.emit("call_rang_offline", key=m.get("key", ""))
+            self.app.notify(
+                f"While this computer was off, your call line called you: {m.get('reason') or 'a call'}", kind="info"
+            )
+
+    def on_queue(self, items: list[dict]) -> None:
+        """What you asked for on calls while this computer was off: do it now."""
+        done = 0
+        for it in items:
+            try:
+                if it.get("kind") == "tool":
+                    self.run_tool(it.get("name", ""), it.get("args") or {})
+                    done += 1
+                elif it.get("kind") == "transcript":
+                    self._transcript(json.loads(it.get("body") or "{}"))
+                elif it.get("kind") == "event":
+                    self.on_event(it)
+            except Exception as e:
+                self.app.events.emit("calls_queue_failed", error=str(e)[:200])
+        if done:
+            self.app.notify(
+                f"Done what you asked for on a call while the computer was off ({done} item(s)).", kind="info"
+            )
+
+    def handle_request(self, method: str, path: str, body: bytes) -> tuple[int, dict]:
+        url = urllib.parse.urlsplit(path)
+        if url.path == "/tool":
+            b = json.loads(body or b"{}")
+            return 200, {"result": self.run_tool(str(b.get("name", "")), b.get("args") or {})}
+        if url.path == "/tasks":
+            out = [t for t in self.finished.values() if not t["fetched"]]
+            for t in out:
+                t["fetched"] = True
+            running = sum(
+                1
+                for j in self.app.jobs.recent(20)
+                if j.status in ("queued", "running") and j.title.startswith("From a call")
+            )
+            return 200, {
+                "finished": [{k: t[k] for k in ("id", "request", "status", "result")} for t in out],
+                "running": running,
+                "approvals": [],
+                "computer": "online",
+            }
+        if url.path == "/transcript":
+            return 200, self._transcript(json.loads(body or b"{}"))
+        if url.path == "/upload":
+            return self._upload(urllib.parse.parse_qs(url.query), body)
+        return 404, {"error": "not found"}
+
+    def _transcript(self, b: dict) -> dict:
+        lines = [x for x in (b.get("lines") or []) if isinstance(x, dict)][:5000]
+        if not lines:
+            return {"ok": True}
+        d = self.dir / "transcripts"
+        d.mkdir(parents=True, exist_ok=True)
+        f = d / f"{now():%Y-%m-%d-%H%M%S}.txt"
+        purpose = str(b.get("purpose") or "")
+        text = "".join(f"{x.get('who', '?')}: {x.get('text', '')}\n" for x in lines)
+        f.write_text((f"# {purpose}\n" if purpose else "") + text, encoding="utf-8")
+        f.chmod(0o600)
+        r = (jload(self.dir / "rings.json", {}) or {}).get(str(b.get("since") or ""))
+        if r:
+            mid = (r.get("key") or "").split(":")[0]
+            m = self.app.modules.get(mid)
+            if m and self.app.is_on(mid) and hasattr(m, "call_transcript"):
+                m.call_transcript(r["key"], lines)
+        self.app.events.emit("call_transcript", lines=len(lines))
+        return {"ok": True}
+
+    def _upload(self, q: dict, body: bytes) -> tuple[int, dict]:
+        name = re.sub(r"[^\w.-]+", "-", (q.get("name") or ["shared"])[0])[:80] or "shared"
+        note = (q.get("note") or [""])[0][:500]
+        uid = re.sub(r"[^\w-]", "", (q.get("id") or [""])[0])[:40]
+        part, parts = int((q.get("part") or ["0"])[0]), int((q.get("parts") or ["1"])[0])
+        inbox = self.app.workspace / "inbox"
+        inbox.mkdir(parents=True, exist_ok=True)
+        tmp = inbox / f".part-{uid}" if uid else None
+        target = tmp or inbox / f"{now():%Y-%m-%d-%H%M%S}-{name}"
+        so_far = tmp.stat().st_size if tmp and part > 0 and tmp.exists() else 0
+        if len(body) > 1 << 20 or so_far + len(body) > 50 * 1024 * 1024:
+            return 413, {"error": "files can be at most 50 MB, sent in parts of at most 1 MB"}
+        with open(target, "ab" if tmp and part > 0 else "wb") as f:
+            f.write(body)
+        if tmp and part < parts - 1:
+            return 200, {"ok": True, "part": part}
+        dest = inbox / f"{now():%Y-%m-%d-%H%M%S}-{name}"
+        if tmp:
+            tmp.replace(dest)
+        rel = dest.relative_to(self.app.workspace).as_posix()
+        self.app.events.emit("files_shared", via="phone", bytes=dest.stat().st_size)
+        if self.app.is_on("chat"):
+            self.app.jobs.submit(
+                f"A file was shared from my phone: {rel}"
+                + (f" (my note: {note})" if note else "")
+                + ". File it into my notes where it belongs, and tell me where it went.",
+                title=f"Shared: {name}",
+            )
+        else:
+            self.app.notify(f"Got {name} from your phone: saved to {rel}.", kind="info")
+        return 200, {"ok": True, "saved": rel}
+
+    # ------------------------------------------------------------------------ what the line is told
+    def config_template(self) -> dict:
+        tools = self.tools()
+        you = self.app.settings.get("you.name") or ""
+        whose = f"{you}'s" if you else "the user's"
+        lines = [
+            f"You are {self.app.name}, {whose} personal assistant, on a live voice call.",
+            "It is %%NOW%%.",
+            "Talk like a friend on a call: short and natural; never read out lists or markdown. Answer in the "
+            "language they speak.",
+            *[t.hint for t in tools if t.hint],
+            "If something needs a screen or their computer, say so. Don't read out email contents or other people's "
+            "details.",
+        ]
+        if self.setting("persona"):
+            lines.append(str(self.setting("persona"))[:500])
+        cfg = {
+            "_model": self.setting("live_model") or "gemini-3.8-live",
+            "responseModalities": ["AUDIO"],
+            "systemInstruction": "\n".join(lines),
+            "tools": [{"functionDeclarations": [t.declaration() for t in tools]}],
+            "inputAudioTranscription": {},
+            "outputAudioTranscription": {},
+            "contextWindowCompression": {"slidingWindow": {}},
+            # less trigger-happy than the default: fan noise and the speaker's echo kept counting as speech
+            "realtimeInputConfig": {
+                "automaticActivityDetection": {
+                    "startOfSpeechSensitivity": "START_SENSITIVITY_LOW",
+                    "prefixPaddingMs": 300,
+                    "silenceDurationMs": 800,
+                }
+            },
+        }
+        if self.setting("voice"):
+            cfg["speechConfig"] = {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": self.setting("voice")}}}
+        return cfg
+
+    def texts(self) -> dict:
+        notes = (
+            "notes search is keyword-only, and read_note reads from their notes repo"
+            if self.setting("notes_repo")
+            else "notes search is keyword-only over titles and headings, and whole notes can't be opened"
+        )
+        return {
+            "offline": f"Their computer is OFF right now (last update %%BRIEF_AT%%): pending_items answers from that "
+            f"update; {notes}; anything that needs the computer is saved and done when it's back on. Say so when it "
+            "matters.",
+            "purpose": "You placed this call yourself. Reason: %%REASON%%. When the call connects, speak first: greet "
+            "them and get straight to the reason.",
+            "queued": "Saved. Their computer is off; it will do this as soon as it's back on.",
+            "needs_computer": "That needs their computer, which is off right now.",
+            "no_notes": "Their computer is off, so whole notes can't be read right now.",
+        }
+
+    def offline_notes(self) -> bool:
+        return True
+
+    def index_items(self) -> list[dict]:
+        return notes_index(self.app.workspace)
+
+    def state_message(self) -> dict:
+        if getattr(self, "silenced", False):
+            return {"schedule": []}
+        tools = self.tools()
+        briefs = {t.name: t.name for t in tools if t.offline == "brief"}
+        return {
+            "schedule": self.schedule_list(),
+            "names": {"assistant": self.app.name, "owner": self.app.settings.get("you.name") or ""},
+            "config": self.config_template(),
+            "texts": self.texts(),
+            "offline": {
+                "brief": briefs,
+                "queue": [t.name for t in tools if t.offline == "queue"],
+                "notes": self.offline_notes(),
+            },
+            "brief": {t.name: self._brief_value(t) for t in tools if t.name in briefs},
+        }
+
+    def _brief_value(self, t: Tool):
+        try:
+            v = t.run({})
+            return v if isinstance(v, dict) else {"answer": v}
+        except Exception as e:
+            return {"note": f"couldn't prepare this: {e}"[:200]}
+
+    def silence_line(self) -> bool:
+        """Kurooto is being turned off: the call line forgets the scheduled calls, so it doesn't ring meanwhile."""
+        import asyncio
+
+        self.silenced = True
+        c = self.connector
+        if c.loop is None or c.ws is None:
+            return False
+        try:
+            msg = json.dumps({"type": "state", "schedule": []})
+            asyncio.run_coroutine_threadsafe(c.ws.send(msg), c.loop).result(10)
+            return True
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------------------------ phones
+    def pair_start(self) -> dict:
+        """A one-time code (15 minutes) for pairing a phone, as a link and a QR code."""
+        import segno
+
+        code = line.pair_code()
+        res = self.connector.admin_wait("pair-code", code=code, minutes=15)
+        if res.get("error"):
+            raise RuntimeError(res["error"])
+        link = f"{self.worker_url()}/pair#c={code}"
+        qr = segno.make(link, error="m")
+        return {
+            "code": code,
+            "link": link,
+            "svg": qr.svg_inline(scale=5, dark="#14111a", light="#ffffff"),
+            "expires_min": 15,
+        }
+
+    def devices(self) -> list[dict]:
+        return self.connector.admin_wait("devices").get("devices", [])
+
+    def revoke(self, device_id: str) -> bool:
+        return bool(self.connector.admin_wait("revoke", id=device_id).get("ok"))
+
+    def status(self) -> dict:
+        link = jload(self.dir / "link.json", {}) or {}
+        return {
+            "url": self.worker_url(),
+            "connected": self.connector.connected,
+            "since": link.get("since"),
+            "error": link.get("error", ""),
+            "line_version": self.connector.version,
+        }
+
+    # -------------------------------------------------------------------------------------- telegram
+    def commands(self):
+        return [
+            Command("call", "a link to call me now (from any phone or browser, for 2 hours)", self._cmd_call),
+            Command("phone", "pair a phone so calls ring it", self._cmd_phone),
+            Command("phones", "paired phones (and /unpair <id> to remove one)", self._cmd_phones),
+            Command("unpair", "remove a paired phone: /unpair <id>", self._cmd_unpair),
+        ]
+
+    def _cmd_call(self, msg: Incoming, arg: str) -> str:
+        if not self.worker_url():
+            return "Phone calls aren't set up yet (Settings → Features → Phone calls)."
+        msg.reply("Tap to call (this link works for 2 hours):", buttons=[[("Call now", {"url": self.link()})]])
+        return None
+
+    def _cmd_phone(self, msg: Incoming, arg: str) -> str:
+        try:
+            p = self.pair_start()
+        except Exception as e:
+            return f"Couldn't make a pairing link: {e}. Is the computer connected to your call line?"
+        msg.reply(
+            "Open this on the phone you want to pair (within 15 minutes). Android: it offers the Kurooto app. iPhone: "
+            "it shows how to add Kurooto to your Home Screen.",
+            buttons=[[("Pair this phone", {"url": p["link"]})]],
+        )
+        return None
+
+    def _cmd_phones(self, msg: Incoming, arg: str) -> str:
+        try:
+            ds = self.devices()
+        except Exception as e:
+            return f"Couldn't ask your call line: {e}"
+        if not ds:
+            return "No phones are paired. /phone pairs one."
+        return (
+            "Paired:\n"
+            + "\n".join(
+                f"{d['id']}  {d['name']} ({d['kind']}{', notifications on' if d.get('push') else ''}), "
+                f"since {d['created'][:10]}"
+                for d in ds
+            )
+            + "\n\n/unpair <id> removes one."
+        )
+
+    def _cmd_unpair(self, msg: Incoming, arg: str) -> str:
+        if not re.fullmatch(r"[0-9a-f]{8}", arg.strip()):
+            return "Usage: /unpair <id> (ids are in /phones)."
+        try:
+            return "Removed." if self.revoke(arg.strip()) else "No device with that id."
+        except Exception as e:
+            return f"Couldn't ask your call line: {e}"
+
+    def intents(self):
+        pat = re.compile(
+            r"^(?:please )?call me (?:back )?((?:at|in|on|tomorrow|tonight)\b.+?)(?: (?:to|about|and|for|so) (.+))?$",
+            re.I,
+        )
+
+        def match(text: str):
+            m = pat.match(text.strip().rstrip(".!"))
+            if not m:
+                return None
+            try:
+                return {"at": parse_when(m.group(1)), "reason": (m.group(2) or "a reminder call").strip()}
+            except ValueError:
+                return None
+
+        return [
+            Intent("call_me", "call me at/in … (about …)", match, lambda msg, sl: self.schedule(sl["at"], sl["reason"]))
+        ]

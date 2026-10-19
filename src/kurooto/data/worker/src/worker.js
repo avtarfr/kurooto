@@ -1,0 +1,517 @@
+// Kurooto Worker: your own call line on Cloudflare's free plan, deployed for you by Kurooto (Phone calls setup).
+//   - Serves the call page, the phone pairing page and the installable web app (public/).
+//   - Your computer keeps one outbound WebSocket to the Durable Object "Line" (no open ports; works behind any
+//     router or campus network). While it's connected, tool calls, finished tasks, transcripts and shared files
+//     are passed to it.
+//   - Calls: Gemini Live tokens are minted here with your Gemini key, so the audio goes between your phone and
+//     Google directly. What the call knows and can do (its instructions and tools) is pushed by your computer.
+//   - Ringing: your computer (or the cron below, when it's off) rings your paired devices: the Android app through
+//     ntfy (end-to-end encrypted with a key only your devices have), the web app through Web Push (no payload; it
+//     asks this Worker what's ringing).
+//   - While your computer is off: answers come from the brief it last pushed, notes from the index it pushed (and,
+//     with Notes sync, whole notes from your private GitHub repo); anything that needs the computer is queued.
+// Vars: OWNER_ID, TZ, PUBLIC_URL, VERSION, LIVE_MODEL, NTFY_SERVER, NOTES_REPO (optional), GEMINI_BASE_URL (tests).
+// Secrets: CALL_SECRET, CONNECTOR_SECRET, GEMINI_API_KEY, NTFY_TOPIC, NTFY_KEY, VAPID_JWK, VAPID_PUBLIC, and
+// GITHUB_TOKEN (optional: read-only access to the notes repo).
+import { GoogleGenAI } from '@google/genai';
+
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers': 'content-type, x-call-secret',
+  'access-control-allow-methods': 'GET, POST',
+};
+const json = (obj, status = 200) => new Response(JSON.stringify(obj), {
+  status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...CORS },
+});
+const passOn = async (r) => new Response(await r.text(), { status: r.status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...CORS } });
+
+function same(a, b) {
+  const x = new TextEncoder().encode(String(a || '')), y = new TextEncoder().encode(String(b || ''));
+  if (!x.length || x.length !== y.length) return false;
+  let d = 0;
+  for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
+  return d === 0;
+}
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+const randomHex = (n) => hex(crypto.getRandomValues(new Uint8Array(n)));
+const sha256 = async (s) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
+function b64url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+const unb64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4)), (c) => c.charCodeAt(0));
+
+// "k1." tokens: AES-256-GCM, nonce || ciphertext+tag, base64url. Same format on the computer and in the Android app.
+export async function sealK1(keyB64, text) {
+  const key = await crypto.subtle.importKey('raw', unb64(keyB64), 'AES-GCM', false, ['encrypt']);
+  const nonce = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, key, new TextEncoder().encode(text)));
+  const all = new Uint8Array(12 + ct.length);
+  all.set(nonce);
+  all.set(ct, 12);
+  return 'k1.' + b64url(all);
+}
+export async function openK1(keyB64, token) {
+  if (!keyB64 || !String(token).startsWith('k1.')) return null;
+  try {
+    const raw = unb64(token.slice(3));
+    const key = await crypto.subtle.importKey('raw', unb64(keyB64), 'AES-GCM', false, ['decrypt']);
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: raw.slice(0, 12) }, key, raw.slice(12)));
+  } catch { return null; }
+}
+
+// A call link made on your computer (Telegram /call): "t1.<expires ms>.<HMAC-SHA256(CALL_SECRET, 't1.<expires ms>')>".
+export async function signedTicketOk(secret, t) {
+  const m = /^t1\.(\d{13})\.([0-9a-f]{64})$/.exec(String(t || ''));
+  if (!m || Number(m[1]) < Date.now() || !secret) return false;
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return same(hex(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(`t1.${m[1]}`))), m[2]);
+}
+
+// Web Push without a payload (RFC 8292 VAPID): the service worker then asks /pending what's ringing.
+async function webPush(env, sub) {
+  const ep = new URL(sub.endpoint);
+  const key = await crypto.subtle.importKey('jwk', JSON.parse(env.VAPID_JWK), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  const enc = (o) => b64url(new TextEncoder().encode(JSON.stringify(o)));
+  const unsigned = `${enc({ typ: 'JWT', alg: 'ES256' })}.${enc({ aud: ep.origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: env.PUBLIC_URL })}`;
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(unsigned)));
+  const r = await fetch(sub.endpoint, {
+    method: 'POST',
+    headers: { authorization: `vapid t=${unsigned}.${b64url(sig)}, k=${env.VAPID_PUBLIC}`, ttl: '120', urgency: 'high', 'content-length': '0' },
+  });
+  return r.status;
+}
+
+async function publish(env, fields) {
+  if (!env.NTFY_TOPIC || !env.NTFY_KEY) return false;
+  const message = await sealK1(env.NTFY_KEY, JSON.stringify(fields));
+  const r = await fetch((env.NTFY_SERVER || 'https://ntfy.sh').replace(/\/+$/, '') + '/', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ topic: env.NTFY_TOPIC, message, priority: fields.priority || 3, tags: ['k1'] }),
+  });
+  return r.ok;
+}
+
+async function githubNote(env, slug) {
+  if (!env.GITHUB_TOKEN || !env.NOTES_REPO) return null;
+  const p = String(slug).replace(/^\/+|\.md$/g, '') + '.md';
+  if (p.split('/').some((s) => s === '..' || s === '')) return null;
+  const r = await fetch(`https://api.github.com/repos/${env.NOTES_REPO}/contents/${p.split('/').map(encodeURIComponent).join('/')}`, {
+    headers: { authorization: `Bearer ${env.GITHUB_TOKEN}`, accept: 'application/vnd.github.raw', 'user-agent': 'kurooto-worker' },
+  });
+  return r.ok ? await r.text() : null;
+}
+
+const MAX_DEVICES = 10;
+const RING_S = 60, ALARM_RING_S = 300;
+
+export class Line {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+    this.store = state.storage;
+    this.pending = new Map();
+    // The computer's heartbeat: "ping" is answered "pong" by the runtime without waking this object.
+    this.state.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+  }
+
+  // Online = a socket heard from (heartbeat or any message) in the last 90 s. A socket can look open here long
+  // after the computer's network went away; that one doesn't count.
+  online() {
+    const now = Date.now();
+    return this.state.getWebSockets().some((ws) => {
+      const beat = this.state.getWebSocketAutoResponseTimestamp(ws)?.getTime() || 0;
+      const seen = ws.deserializeAttachment()?.at || 0;
+      return now - Math.max(beat, seen) < 90e3;
+    });
+  }
+
+  tell(msg) {
+    if (!this.online()) return false;
+    try { this.state.getWebSockets()[0].send(JSON.stringify(msg)); return true; } catch { return false; }
+  }
+
+  async queue(item) {
+    const q = (await this.store.get('queue')) || [];
+    q.push({ ...item, at: new Date().toISOString() });
+    await this.store.put('queue', q.slice(-200));
+    return q.length;
+  }
+
+  // Something the computer should hear about: now if it's connected, else when it's back.
+  async event(msg) {
+    if (!this.tell({ type: 'event', ...msg })) await this.queue({ kind: 'event', ...msg });
+  }
+
+  async fetch(req) {
+    const url = new URL(req.url);
+    const p = url.pathname;
+    if (p === '/connect') return this.connect(req);
+    if (p === '/tick') return json(await this.tick());
+    if (p === '/pair/claim' && req.method === 'POST') return this.claim(req);
+    const who = await this.auth(req.headers.get('x-call-secret'));
+    if (!who) return json({ error: 'wrong or missing key' }, 401);
+    try {
+      if (p === '/status') {
+        const brief = await this.store.get('brief');
+        return json({ computer: this.online() ? 'online' : 'offline', brief_at: brief?.at || null, ...((await this.store.get('names')) || {}), device: who.kind === 'device' ? who.id : null });
+      }
+      if (p === '/token' && req.method === 'POST') return this.token(req, who);
+      if (p === '/tool' && req.method === 'POST') return this.tool(req);
+      if (p === '/tasks') return this.tasks(req);
+      if (p === '/transcript' && req.method === 'POST') return this.transcript(req);
+      if (p === '/upload' && req.method === 'POST') return this.upload(req, url);
+      if (who.kind !== 'device') return json({ error: 'that needs a paired device' }, 403);
+      if (p === '/pending') return json({ rings: await this.ringing(who.id) });
+      if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
+      if (p === '/ring-reply' && req.method === 'POST') {
+        const { since = '', action = '' } = await req.json();
+        if (!['later', 'skip', 'decline', 'answer'].includes(action)) return json({ error: 'unknown action' }, 400);
+        await this.endRing(String(since));
+        await this.event({ name: 'ring_reply', since: String(since), action, device: who.id });
+        return json({ ok: true });
+      }
+      if (p === '/push/subscribe' && req.method === 'POST') {
+        const { subscription } = await req.json();
+        const local = /^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(this.env.PUBLIC_URL || ''); // wrangler dev in tests
+        if (!subscription?.endpoint || !(/^https:\/\//.test(subscription.endpoint) || (local && /^http:\/\/127\.0\.0\.1[:/]/.test(subscription.endpoint)))) return json({ error: 'no subscription' }, 400);
+        const devices = (await this.store.get('devices')) || {};
+        if (!devices[who.id]) return json({ error: 'unknown device' }, 403);
+        devices[who.id].push = { endpoint: subscription.endpoint };
+        await this.store.put('devices', devices);
+        return json({ ok: true });
+      }
+      return json({ error: 'not found' }, 404);
+    } catch (e) {
+      return json({ error: String(e?.message || e).slice(0, 300) }, 500);
+    }
+  }
+
+  // ------------------------------------------------------------------------------------------------ auth
+  // A paired device ("d1.<id>.<secret>"), a call link from this Worker (random, 2 h) or from your computer (t1).
+  async auth(key) {
+    key = String(key || '');
+    const d = /^d1\.([0-9a-f]{8})\.([0-9a-f]{64})$/.exec(key);
+    if (d) {
+      const dev = ((await this.store.get('devices')) || {})[d[1]];
+      return dev && same(dev.hash, await sha256(d[2])) ? { kind: 'device', id: d[1] } : null;
+    }
+    if (await signedTicketOk(this.env.CALL_SECRET, key)) return { kind: 'ticket' };
+    const t = (await this.store.get('tickets')) || {};
+    return Object.entries(t).some(([k, exp]) => same(k, key) && exp > Date.now()) ? { kind: 'ticket' } : null;
+  }
+
+  async mintTicket(hours) {
+    const ticket = randomHex(16);
+    const t = (await this.store.get('tickets')) || {};
+    for (const [k, exp] of Object.entries(t)) if (exp < Date.now()) delete t[k];
+    t[ticket] = Date.now() + hours * 3600e3;
+    await this.store.put('tickets', t);
+    return ticket;
+  }
+
+  // --------------------------------------------------------------------------------------------- pairing
+  // Your computer makes a one-time code (QR or the link Telegram sends you); the phone trades it for its own key.
+  async claim(req) {
+    const now = Date.now();
+    const fail = (await this.store.get('pairfail')) || { n: 0, since: now };
+    if (now - fail.since > 3600e3) Object.assign(fail, { n: 0, since: now });
+    if (fail.n >= 30) return json({ error: 'too many wrong codes; make a new one on your computer' }, 429);
+    const { code = '', name = '', kind = 'web' } = await req.json().catch(() => ({}));
+    const codes = (await this.store.get('paircodes')) || {};
+    const h = await sha256(String(code).trim().toUpperCase());
+    const hit = codes[h];
+    for (const [k, c] of Object.entries(codes)) if (c.exp < now) delete codes[k];
+    if (!hit || hit.exp < now) {
+      fail.n += 1;
+      await this.store.put('pairfail', fail);
+      await this.store.put('paircodes', codes);
+      return json({ error: 'that code is wrong or has expired; make a new one on your computer' }, 401);
+    }
+    delete codes[h];
+    await this.store.put('paircodes', codes);
+    const devices = (await this.store.get('devices')) || {};
+    if (Object.keys(devices).length >= MAX_DEVICES) return json({ error: `at most ${MAX_DEVICES} devices; remove one on your computer first` }, 409);
+    const id = randomHex(4), secret = randomHex(32);
+    const k = kind === 'android' ? 'android' : 'web';
+    devices[id] = { name: String(name).slice(0, 60) || (k === 'android' ? 'Android phone' : 'Phone'), kind: k, hash: await sha256(secret), created: new Date().toISOString(), push: null };
+    await this.store.put('devices', devices);
+    await this.event({ name: 'device_paired', id, device_name: devices[id].name, kind: k });
+    const names = (await this.store.get('names')) || {};
+    return json({
+      device: `d1.${id}.${secret}`, id, url: this.env.PUBLIC_URL, ...names,
+      ntfy: k === 'android' ? { server: this.env.NTFY_SERVER || 'https://ntfy.sh', topic: this.env.NTFY_TOPIC, key: this.env.NTFY_KEY } : null,
+      vapid: this.env.VAPID_PUBLIC || null,
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------- the computer
+  connect(req) {
+    if (req.headers.get('upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426 });
+    if (!same(req.headers.get('x-connector-secret'), this.env.CONNECTOR_SECRET)) return new Response('no', { status: 401 });
+    for (const old of this.state.getWebSockets()) { try { old.close(1000, 'replaced'); } catch { /* gone */ } }
+    const pair = new WebSocketPair();
+    this.state.acceptWebSocket(pair[1]);
+    pair[1].serializeAttachment({ at: Date.now() });
+    return new Response(null, { status: 101, webSocket: pair[0] });
+  }
+
+  async webSocketMessage(ws, data) {
+    ws.serializeAttachment({ at: Date.now() });
+    let m;
+    try { m = JSON.parse(data); } catch { return; }
+    if (m.type === 'reply') {
+      const r = this.pending.get(m.id);
+      if (r) { this.pending.delete(m.id); r(m); }
+    } else if (m.type === 'state') {
+      for (const k of ['brief', 'config', 'texts', 'offline', 'schedule', 'names']) {
+        if (m[k] !== undefined) await this.store.put(k, k === 'brief' ? { ...m.brief, at: new Date().toISOString() } : m[k]);
+      }
+    } else if (m.type === 'index') {
+      await this.store.put(`index:${m.part || 0}`, m.items || []);
+      if ((m.part || 0) === 0) await this.store.put('index:parts', m.parts || 1);
+    } else if (m.type === 'hello') {
+      const q = (await this.store.get('queue')) || [];
+      ws.send(JSON.stringify({ type: 'welcome', version: this.env.VERSION || '', queue: q }));
+      if (q.length) await this.store.put('queue', []);
+    } else if (m.type === 'admin') {
+      let result;
+      try { result = await this.admin(m); } catch (e) { result = { error: String(e?.message || e) }; }
+      try { ws.send(JSON.stringify({ type: 'admin-reply', id: m.id, result })); } catch { /* gone */ }
+    }
+  }
+
+  async webSocketClose() { /* the computer reconnects by itself */ }
+
+  async admin(m) {
+    if (m.op === 'ring') return this.ring(m);
+    if (m.op === 'stop-ring') { await this.endRing(String(m.since || '')); return { ok: true }; }
+    if (m.op === 'pair-code') {
+      const codes = (await this.store.get('paircodes')) || {};
+      for (const [k, c] of Object.entries(codes)) if (c.exp < Date.now()) delete codes[k];
+      codes[await sha256(String(m.code).trim().toUpperCase())] = { exp: Date.now() + Math.min(Number(m.minutes) || 15, 60) * 60e3 };
+      await this.store.put('paircodes', codes);
+      await this.store.put('pairfail', { n: 0, since: Date.now() });
+      return { ok: true };
+    }
+    if (m.op === 'devices') {
+      const d = (await this.store.get('devices')) || {};
+      return { devices: Object.entries(d).map(([id, v]) => ({ id, name: v.name, kind: v.kind, created: v.created, push: !!v.push })) };
+    }
+    if (m.op === 'revoke') {
+      const d = (await this.store.get('devices')) || {};
+      const had = !!d[m.id];
+      delete d[m.id];
+      await this.store.put('devices', d);
+      return { ok: had };
+    }
+    if (m.op === 'ticket') return { ticket: await this.mintTicket(Math.min(Number(m.hours) || 2, 24)) };
+    return { error: 'unknown op' };
+  }
+
+  // Ask the computer (relay). 503 when it's not connected; the caller then answers from what it has.
+  async relay(method, path, body, body_b64) {
+    const sockets = this.state.getWebSockets();
+    if (!sockets.length || !this.online()) return { status: 503, body: JSON.stringify({ offline: true }) };
+    const id = crypto.randomUUID();
+    const reply = new Promise((resolve) => {
+      this.pending.set(id, resolve);
+      setTimeout(() => { if (this.pending.delete(id)) resolve({ status: 504, body: JSON.stringify({ error: 'your computer did not answer in time' }) }); }, 55000);
+    });
+    sockets[0].send(JSON.stringify({ type: 'request', id, method, path, body, body_b64 }));
+    const r = await reply;
+    return { status: r.status || 200, body: r.body };
+  }
+
+  // ---------------------------------------------------------------------------------------------- calls
+  async token(req, who) {
+    const { purpose = '', since = '' } = await req.json().catch(() => ({}));
+    const tpl = await this.store.get('config');
+    if (!tpl) return json({ error: 'your computer has never connected to this call line, so calls are not set up yet' }, 503);
+    const online = this.online();
+    const texts = (await this.store.get('texts')) || {};
+    const brief = await this.store.get('brief');
+    const when = new Date().toLocaleString('en-GB', { timeZone: this.env.TZ || 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const config = JSON.parse(JSON.stringify(tpl));
+    const model = config._model || this.env.LIVE_MODEL || 'gemini-3.8-live';
+    delete config._model;
+    let si = String(config.systemInstruction || '').replace('%%NOW%%', when);
+    if (!online && texts.offline) si += '\n' + texts.offline.replace('%%BRIEF_AT%%', brief?.at ? brief.at.slice(0, 16).replace('T', ' ') + ' UTC' : 'unknown');
+    if (purpose && texts.purpose) si += '\n' + texts.purpose.replace('%%REASON%%', String(purpose).slice(0, 300));
+    config.systemInstruction = si;
+    const ai = new GoogleGenAI({ apiKey: this.env.GEMINI_API_KEY, httpOptions: { apiVersion: 'v1alpha', ...(this.env.GEMINI_BASE_URL ? { baseUrl: this.env.GEMINI_BASE_URL } : {}) } });
+    const token = await ai.authTokens.create({ config: {
+      uses: 1,
+      expireTime: new Date(Date.now() + 30 * 60e3).toISOString(),
+      newSessionExpireTime: new Date(Date.now() + 2 * 60e3).toISOString(),
+      liveConnectConstraints: { model, config },
+      httpOptions: { apiVersion: 'v1alpha' },
+    } });
+    if (since) await this.endRing(String(since));
+    await this.event({ name: 'call_started', purpose: String(purpose).slice(0, 120), since: String(since), via: who.kind, offline: !online });
+    return json({ token: token.name, model, config, offline: !online });
+  }
+
+  async tool(req) {
+    const body = await req.text();
+    if (this.online()) {
+      const r = await this.relay('POST', '/tool', body);
+      if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+    }
+    const { name = '', args = {} } = JSON.parse(body || '{}');
+    return json({ result: await this.offlineTool(String(name), args || {}) });
+  }
+
+  async offlineTool(name, args) {
+    const brief = (await this.store.get('brief')) || {};
+    const off = (await this.store.get('offline')) || {};
+    const texts = (await this.store.get('texts')) || {};
+    if ((off.brief || {})[name]) return { ...(brief[off.brief[name]] ?? { note: 'nothing saved for this' }), note: 'from what your computer last sent; it is offline now' };
+    if (name === 'search_notes' && off.notes) {
+      const hits = await this.search(String(args.query || ''));
+      return hits.length ? { note: 'computer offline: keyword search over note titles, headings and summaries; read_note for the full text', hits } : 'Nothing in the notes index matches (keyword search only while the computer is off). Try other words.';
+    }
+    if (name === 'read_note' && off.notes) {
+      const text = await githubNote(this.env, args.slug || '');
+      if (text) return text.length > 6000 ? text.slice(0, 6000) + '\n[…]' : text;
+      return this.env.GITHUB_TOKEN ? `No note "${args.slug}" in the notes repo.` : (texts.no_notes || 'Your computer is off, so whole notes can\'t be read right now.');
+    }
+    if ((off.queue || []).includes(name)) {
+      await this.queue({ kind: 'tool', name, args });
+      return texts.queued || 'Saved. Your computer is off; it will do this as soon as it is back online.';
+    }
+    return texts.needs_computer || 'That needs your computer, which is off right now.';
+  }
+
+  async search(query) {
+    const words = query.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+    const parts = (await this.store.get('index:parts')) || 0;
+    const scored = [];
+    for (let i = 0; i < parts; i++) {
+      for (const n of (await this.store.get(`index:${i}`)) || []) {
+        const hay = { t: (n.t || '').toLowerCase(), a: (n.a || '').toLowerCase(), h: (n.h || '').toLowerCase(), m: (n.m || '').toLowerCase(), s: (n.s || '').toLowerCase() };
+        let sc = 0;
+        for (const w of words) sc += (hay.t.includes(w) ? 5 : 0) + (hay.a.includes(w) ? 4 : 0) + (hay.s.includes(w) ? 3 : 0) + (hay.h.includes(w) ? 2 : 0) + (hay.m.includes(w) ? 1 : 0);
+        if (sc > 0) scored.push([sc, n]);
+      }
+    }
+    return scored.sort((a, b) => b[0] - a[0]).slice(0, 6).map(([sc, n]) => ({ slug: n.s, title: n.t, headings: n.h, summary: n.m, score: sc }));
+  }
+
+  async tasks(req) {
+    if (this.online()) {
+      const r = await this.relay('GET', '/tasks', '');
+      if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+    }
+    return json({ finished: [], running: 0, approvals: [], computer: 'offline' });
+  }
+
+  async transcript(req) {
+    const body = (await req.text()).slice(0, 3_000_000);
+    if (this.online()) {
+      const r = await this.relay('POST', '/transcript', body);
+      if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+    }
+    await this.queue({ kind: 'transcript', body: body.slice(0, 200_000) });
+    return json({ ok: true, queued: true });
+  }
+
+  async upload(req, url) {
+    if (!this.online()) return json({ error: 'your computer is offline: share it again later, or send it to your Telegram bot' }, 503);
+    const buf = new Uint8Array(await req.arrayBuffer());
+    if (buf.length > 600 * 1024) return json({ error: 'send files in parts of at most 512 KB' }, 413);
+    let s = '';
+    for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    const r = await this.relay('POST', '/upload' + url.search, '', btoa(s));
+    return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+  }
+
+  // ------------------------------------------------------------------------------------------- ringing
+  async ring({ reason = '', alarm = false, since = '', key = '' }) {
+    since = String(since || Math.floor(Date.now() / 1000));
+    const ticket = await this.mintTicket(alarm ? 3 : 2);
+    const link = `${this.env.PUBLIC_URL}/?p=${encodeURIComponent(String(reason).slice(0, 300))}&s=${encodeURIComponent(since)}#${ticket}`;
+    const rings = ((await this.store.get('rings')) || []).filter((r) => r.until > Date.now() && r.since !== since);
+    rings.push({ since, reason: String(reason).slice(0, 300), link, alarm: !!alarm, key, until: Date.now() + (alarm ? ALARM_RING_S : RING_S) * 1000 });
+    await this.store.put('rings', rings.slice(-10));
+    const devices = (await this.store.get('devices')) || {};
+    const list = Object.entries(devices);
+    let android = false, web = 0;
+    if (list.some(([, d]) => d.kind === 'android')) {
+      android = await publish(this.env, { title: alarm ? 'Wake-up call' : 'Incoming call', message: String(reason).slice(0, 300), priority: 5,
+        tags: ['call', `since-${since}`].concat(alarm ? ['alarm'] : []), click: link, time: Math.floor(Date.now() / 1000) }).catch(() => false);
+    }
+    let changed = false;
+    const errors = [];
+    for (const [, d] of list) {
+      if (!d.push) continue;
+      const status = await webPush(this.env, d.push).catch((e) => { errors.push(String(e?.message || e).slice(0, 120)); return 0; });
+      if (status === 404 || status === 410) { d.push = null; changed = true; } else if (status >= 200 && status < 300) web++;
+      else if (status) errors.push(`push answered ${status}`);
+    }
+    if (changed) await this.store.put('devices', devices);
+    return { since, link, android, web, devices: list.length, errors };
+  }
+
+  async endRing(since) {
+    if (!since) return;
+    const rings = (await this.store.get('rings')) || [];
+    const left = rings.filter((r) => r.since !== since && r.until > Date.now());
+    if (left.length !== rings.length) {
+      await this.store.put('rings', left);
+      await publish(this.env, { title: 'stop', message: '', tags: ['stop', `since-${since}`], time: Math.floor(Date.now() / 1000) }).catch(() => false);
+    }
+  }
+
+  async ringing() {
+    const now = Date.now();
+    return ((await this.store.get('rings')) || []).filter((r) => r.until > now).map(({ since, reason, link, alarm }) => ({ since, reason, link, alarm }));
+  }
+
+  // Every minute (cron): place the calls that fall due while the computer is off, from the schedule it pushed.
+  async tick() {
+    if (this.online()) return { skipped: 'computer online' };
+    const now = Math.floor(Date.now() / 1000);
+    const sched = (await this.store.get('schedule')) || [];
+    const fired = (await this.store.get('fired')) || {};
+    const placed = [];
+    for (const it of sched) {
+      const key = `${it.at}:${it.key || ''}`;
+      if (fired[key] || it.at > now || it.at < now - 180) continue;
+      fired[key] = now;
+      await this.ring({ reason: it.reason, alarm: !!it.alarm, since: String(it.at), key: it.key || '' });
+      await this.queue({ kind: 'event', name: 'rang_offline', key: it.key || '', at: it.at, reason: String(it.reason || '').slice(0, 200) });
+      placed.push(key);
+    }
+    for (const [k, t] of Object.entries(fired)) if (t < now - 86400) delete fired[k];
+    await this.store.put('fired', fired);
+    return { placed };
+  }
+}
+
+function manifest(url, env) {
+  const code = (url.searchParams.get('c') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 16);
+  return new Response(JSON.stringify({
+    name: 'Kurooto', short_name: 'Kurooto', display: 'standalone', background_color: '#14111a', theme_color: '#14111a',
+    start_url: code ? `/pair?c=${code}` : '/', scope: '/',
+    icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png' }],
+  }), { headers: { 'content-type': 'application/manifest+json', 'cache-control': 'no-store' } });
+}
+
+const line = (env) => env.LINE.get(env.LINE.idFromName(env.OWNER_ID || 'owner'));
+
+export default {
+  async scheduled(_event, env) {
+    await line(env).fetch('https://line/tick');
+  },
+
+  async fetch(req, env) {
+    const url = new URL(req.url);
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+    if (url.pathname === '/health') return json({ ok: true, version: env.VERSION || '' });
+    if (url.pathname === '/manifest.webmanifest') return manifest(url, env);
+    if (url.pathname === '/tick') return json({ error: 'not found' }, 404); // the cron's door, not a public one
+    return line(env).fetch(req);
+  },
+};

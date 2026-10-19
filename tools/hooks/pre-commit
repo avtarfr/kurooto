@@ -1,0 +1,13 @@
+#!/bin/sh
+# Refuse a commit that would record a secret or something personal, or that isn't under a noreply identity.
+# Installed by: git config core.hooksPath tools/hooks
+email=$(git config user.email)
+case "$email" in
+  *@users.noreply.github.com) ;;
+  *) echo "pre-commit: commit as your GitHub noreply address (git config user.email <id>+<user>@users.noreply.github.com)" >&2; exit 1 ;;
+esac
+py=$(command -v python3 || command -v python)
+"$py" tools/privacy_scan.py --staged || exit 1
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --staged --no-banner --redact -v >/dev/null || { echo "pre-commit: gitleaks found something" >&2; exit 1; }
+fi

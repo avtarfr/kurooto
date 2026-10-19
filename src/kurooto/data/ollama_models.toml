@@ -1,0 +1,30 @@
+# Local models offered per hardware profile. Sizes are download sizes in GB (Ollama library, 2026-10-19).
+# Edit here (and ship an update) when better small models come out; no code change needed.
+
+[models.embed]
+tag = "nomic-embed-text"
+size_gb = 0.27
+use = "embeddings for the notes brain (GBrain)"
+
+[models.helper-small]
+tag = "qwen3:4b-instruct-2507-q4_K_M"
+size_gb = 2.5
+use = "quick decisions and short summaries; fits a 4 GB graphics card"
+
+[models.helper-large]
+tag = "gemma4:e4b"
+size_gb = 6.6
+use = "quick decisions, summaries and longer local answers; needs 8 GB of graphics memory"
+
+[models.vision]
+tag = "gemma4:12b"
+size_gb = 8.0
+use = "reading handwriting and images locally; needs 12 GB of graphics memory"
+
+[profiles]
+light = []
+apple-8 = ["embed"]
+apple = ["embed", "helper-small"]
+small-gpu = ["embed", "helper-small"]
+big-gpu = ["embed", "helper-large"]
+big-gpu-12 = ["embed", "helper-large", "vision"]

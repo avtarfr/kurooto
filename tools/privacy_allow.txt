@@ -1,0 +1,3 @@
+# Paths whose contents may look secret without being secret (example data). They skip the pattern layer only:
+# the personal denylist and the real-value check still apply to them.
+tests/fixtures/call-vectors.json

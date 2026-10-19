@@ -1,0 +1,51 @@
+"""Every feature Kurooto has, in the order the wizard and Settings show them."""
+
+from kurooto.modules.alarm import Alarm
+from kurooto.modules.awake import Awake
+from kurooto.modules.calendar import Calendar
+from kurooto.modules.calls import Calls
+from kurooto.modules.capture import Capture
+from kurooto.modules.chat import Chat
+from kurooto.modules.checkins import Checkins
+from kurooto.modules.deadlines import Deadlines
+from kurooto.modules.files import Files
+from kurooto.modules.gbrain import GBrain
+from kurooto.modules.google import Google
+from kurooto.modules.handwritten import Handwritten
+from kurooto.modules.local_models import LocalModels
+from kurooto.modules.notes_sync import NotesSync
+from kurooto.modules.quiz import Quiz
+from kurooto.modules.reminders import Reminders
+from kurooto.modules.research import Research
+from kurooto.modules.retro import Retro
+from kurooto.modules.study import Study
+from kurooto.modules.subjects import Subjects
+from kurooto.modules.telegram import Telegram
+from kurooto.modules.voice_notes import VoiceNotes
+from kurooto.modules.weekly import Weekly
+
+CATALOG = [
+    Telegram,
+    Chat,
+    Reminders,
+    Checkins,
+    Deadlines,
+    Subjects,
+    Quiz,
+    Weekly,
+    Files,
+    GBrain,
+    LocalModels,
+    Capture,
+    Retro,
+    Calls,
+    Alarm,
+    VoiceNotes,
+    Awake,
+    Calendar,
+    NotesSync,
+    Google,
+    Handwritten,
+    Study,
+    Research,
+]

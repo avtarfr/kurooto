@@ -1,0 +1,9 @@
+#!/bin/sh
+# Scan every commit about to be pushed (contents, author, committer, message) before it leaves the machine.
+py=$(command -v python3 || command -v python)
+zero=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue   # deleting a branch
+  "$py" tools/privacy_scan.py --commits "$remote_sha..$local_sha" || exit 1
+done
+exit 0

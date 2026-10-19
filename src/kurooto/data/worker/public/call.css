@@ -1,0 +1,32 @@
+:root { --bg: #14111a; --fg: #ece8f2; --dim: #9a93a8; --accent: #e85d8a; --ok: #4fbf8a; --card: #1f1a28; --line: #2c2538; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, -apple-system, sans-serif; }
+main { max-width: 560px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; padding: max(20px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom)); gap: 16px; }
+h1 { font-size: 18px; font-weight: 600; margin: 0; }
+h2 { font-size: 16px; margin: 8px 0 0; }
+p { margin: 0; color: var(--dim); }
+a { color: var(--fg); }
+#reason { color: var(--dim); font-size: 15px; min-height: 1.4em; }
+#status { font-size: 14px; color: var(--dim); }
+#status.live, .ok { color: var(--ok); }
+#status.err, .err { color: var(--accent); }
+#log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+.m { padding: 8px 12px; border-radius: 12px; max-width: 88%; background: var(--card); white-space: pre-wrap; }
+.me { align-self: flex-end; background: #2a2236; }
+.sys { align-self: center; background: none; color: var(--dim); font-size: 13px; }
+.row { display: flex; gap: 12px; }
+button, .button { flex: 1; border: 0; border-radius: 999px; padding: 16px; font-size: 17px; font-weight: 600; color: #fff; background: var(--ok); text-align: center; text-decoration: none; display: block; }
+button.end { background: var(--accent); }
+button.quiet, .button.quiet { background: var(--line); color: var(--fg); }
+button:disabled { opacity: .5; }
+.gate { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--dim); }
+.gate label { display: flex; align-items: center; gap: 10px; }
+.gate input { flex: 1; }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+#level { height: 100%; width: 0; background: var(--dim); transition: width .1s; }
+.int { background: var(--line); color: var(--fg); }
+#mute, #out { flex: 0 0 auto; background: var(--line); padding: 16px 18px; font-size: 16px; }
+.card { background: var(--card); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+ol { margin: 0; padding-left: 20px; color: var(--dim); }
+li { margin: 4px 0; }
+[hidden] { display: none !important; }

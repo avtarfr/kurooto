@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#14111a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kurooto">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>Pair your phone</title>
+<link rel="stylesheet" href="/call.css">
+</head>
+<body>
+<main>
+  <div>
+    <h1>Pair this phone with Kurooto</h1>
+    <p id="intro">Your computer showed you this page so your phone can take Kurooto's calls.</p>
+  </div>
+  <div id="msg" class="card" hidden></div>
+
+  <section id="android" class="card" hidden>
+    <h2>Android: the Kurooto app (recommended)</h2>
+    <p>It rings like a real phone call, even with the screen locked, and works on old phones too (Android 6 and newer).</p>
+    <ol>
+      <li><a id="apk" class="button" href="/kurooto.apk">1. Download the app</a></li>
+      <li>Open the downloaded file and tap Install. If your phone warns about unknown apps, allow it for your browser (Kurooto isn't on the Play Store).</li>
+      <li><a id="openapp" class="button" href="#">2. Pair the app</a></li>
+    </ol>
+    <p>No app? <a href="#" id="useweb">Use this page as an app instead</a> (rings less reliably).</p>
+  </section>
+
+  <section id="ios" class="card" hidden>
+    <h2>iPhone: add Kurooto to your Home Screen</h2>
+    <ol>
+      <li>Open this page in <b>Safari</b> (needs iOS 16.4 or newer).</li>
+      <li>Tap the Share button, then <b>Add to Home Screen</b>, then Add.</li>
+      <li>Open <b>Kurooto</b> from your Home Screen (not from Safari); it finishes pairing there.</li>
+    </ol>
+    <p>On iPhone, calls arrive as notifications you tap to answer: they can't ring like a phone call, ring on silent, or show on the lock screen as a call.</p>
+  </section>
+
+  <section id="web" class="card" hidden>
+    <h2>Pair this browser</h2>
+    <p>This browser will be able to start calls and show Kurooto's call notifications.</p>
+    <button id="claim">Pair</button>
+  </section>
+
+  <section id="done" class="card" hidden>
+    <h2 class="ok">Paired</h2>
+    <p id="donetext">This phone can now call Kurooto and be called.</p>
+    <button id="notify">Turn on call notifications</button>
+    <a class="button quiet" href="/">Open the call page</a>
+  </section>
+</main>
+<script src="/pair.js"></script>
+</body>
+</html>

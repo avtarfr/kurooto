@@ -1,0 +1,32 @@
+# Your call line. Kurooto writes the real wrangler.toml from this template when it deploys (Phone calls setup);
+# the values in {braces} come from your settings. Secrets are set separately and never written here.
+name = "{name}"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+preview_urls = false
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "LINE"
+class_name = "Line"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Line"]
+
+[vars]
+OWNER_ID = "{owner_id}"
+TZ = "{tz}"
+PUBLIC_URL = "{public_url}"
+VERSION = "{version}"
+LIVE_MODEL = "{live_model}"
+NTFY_SERVER = "{ntfy_server}"
+NOTES_REPO = "{notes_repo}"
+
+[triggers]
+crons = ["* * * * *"]

@@ -1,0 +1,61 @@
+[project]
+name = "kurooto"
+version = "0.1.0"
+description = "A personal assistant that runs on your own computer and talks to you on Telegram, by phone and in a local dashboard."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Sumangalam Avtar Sharma" }]
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=43",
+    "filelock>=3.16",
+    "keyring>=25",
+    "psutil>=6",
+    "ptyprocess>=0.7; sys_platform != 'win32'",
+    "python-dateutil>=2.9",
+    "pywinpty>=2.0; sys_platform == 'win32'",
+    "segno>=1.6",
+    "tzdata>=2024.1",
+    "websockets>=15",
+    "zstandard>=0.23; sys_platform == 'linux'",
+]
+
+[project.scripts]
+kurooto = "kurooto.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+artifacts = ["src/kurooto/data/kurooto.apk"]  # git-ignored, but put in releases by tools/release.py build --apk
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kurooto"]
+exclude = ["**/node_modules", "**/.wrangler", "src/kurooto/data/worker/public/app.js"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["live: needs real accounts or network; not run in CI"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = ["S101", "S110", "S603", "S607"]  # S110: best-effort fallbacks are deliberate
+
+[tool.ruff.lint.per-file-ignores]
+"src/kurooto/core/scheduler.py" = ["S608"]
+"src/kurooto/core/jobs.py" = ["S608"]  # SQL text only ever takes constant column lists; values are bound
+"tests/**" = ["S105", "S106", "S108", "S310"]

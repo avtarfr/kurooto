@@ -1,0 +1,43 @@
+name: spike-gbrain
+# One-off check: does GBrain (Bun + PGLite, no Docker) install and work on each OS?
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  gbrain:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      GBRAIN_TAG: v0.60.299.0
+      GBRAIN_NO_AUTOPILOT_INSTALL: "1"
+    steps:
+      - name: install Bun (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://bun.sh/install.ps1 | iex
+          "$env:USERPROFILE\.bun\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: install Bun (macOS / Linux)
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+      - name: install GBrain, make a brain, import notes, search
+        shell: bash
+        run: |
+          bun --version
+          bun install -g "github:garrytan/gbrain#${GBRAIN_TAG}" 2>&1 | tail -5
+          export PATH="$HOME/.bun/bin:$PATH"
+          gbrain --version || gbrain --help | head -3
+          export GBRAIN_HOME="$RUNNER_TEMP/gbrain-home"
+          mkdir -p "$RUNNER_TEMP/notes/topology"
+          printf '# Compactness\n\nA compact metric space is sequentially compact. See [[connectedness]].\n' > "$RUNNER_TEMP/notes/topology/compactness.md"
+          printf '# Connectedness\n\nContinuous images of connected sets are connected.\n' > "$RUNNER_TEMP/notes/topology/connectedness.md"
+          time gbrain init --pglite --no-embedding 2>&1 | tail -5
+          time gbrain import "$RUNNER_TEMP/notes" --no-embed 2>&1 | tail -5
+          gbrain search "compact metric" 2>&1 | tail -8
+          gbrain list --limit 5 2>&1 | tail -5
+          gbrain doctor --fast --json 2>&1 | tail -20

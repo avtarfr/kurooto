@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="kurooto-token" content="{{TOKEN}}">
+<title>Set up Kurooto</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="wizard">
+  <header>
+    <div class="brand">KUROOTO <span class="ver">{{VERSION}}</span></div>
+    <ol class="steps" id="steps"></ol>
+  </header>
+
+  <section data-step="you">
+    <h1>Hi! Let's set up your assistant.</h1>
+    <p class="lead">Everything is optional, and everything stays on this computer unless a feature tells you otherwise. Nothing is ever sent to whoever gave you Kurooto.</p>
+    <label>What should it call you?<input id="name" autocomplete="given-name" placeholder="Your first name"></label>
+    <label>Your time zone<input id="tz" placeholder="e.g. Europe/Berlin"></label>
+    <label>Your assistant's name<input id="aname" value="Kurooto"></label>
+    <div class="nav"><span></span><button class="primary" data-next>Next</button></div>
+  </section>
+
+  <section data-step="computer">
+    <h1>Your computer</h1>
+    <p class="lead" id="hw-summary">Looking at your computer…</p>
+    <div class="chips" id="hw-chips"></div>
+    <h2>Recommended for it</h2>
+    <ul class="list" id="hw-reco"></ul>
+    <p class="note" id="hw-notes"></p>
+    <div id="power-choice"></div>
+    <div class="nav"><button data-back>Back</button><button class="primary" data-next>Next</button></div>
+  </section>
+
+  <section data-step="brain">
+    <h1>Pick the AI that answers you</h1>
+    <p class="lead">You can change this any time, and add a second one as a fallback for when the first hits its limit.</p>
+    <div class="cards" id="brains"></div>
+    <div class="panel" id="brain-panel"></div>
+    <div class="nav"><button data-back>Back</button><button class="primary" data-next>Next</button></div>
+  </section>
+
+  <section data-step="about">
+    <h1>Teach it about you</h1>
+    <p class="lead">★ Recommended, and optional (Next skips it). Your other AI accounts already know a lot about you: your projects, how you work, what you keep asking for help with. Bring that here once, and Kurooto starts out knowing you instead of from nothing.</p>
+    <ol class="howto">
+      <li>Type which AI and account you're starting with (e.g. "ChatGPT personal"), then copy a prompt: <b>Your main AI</b> for the one you use most, <b>Every other account</b> for all the rest.</li>
+      <li>Paste it into a <b>new chat</b> in that account. If it has memory or "search past chats" settings, turn them on first: it can only report what it can see.</li>
+      <li><b>Do this in as many AI accounts as you can:</b> ChatGPT, Claude, Gemini, Copilot, Perplexity, Grok, DeepSeek, Meta AI, school and work accounts, old accounts too. Each one knows different things; the more reports, the better your profile.</li>
+      <li>When it has answered (it ends with a few questions), you can answer them in that chat and ask it to update the report. Then copy its whole answer, or download it as a file, and add it below.</li>
+      <li>When you've added them all, press <b>Build my profile</b>.</li>
+    </ol>
+    <label>Which AI and account is this for?<input id="ay-source" placeholder="e.g. ChatGPT personal, Claude work, Gemini school"></label>
+    <div class="cards wide" id="ay-prompts"></div>
+    <h2>Add what it wrote</h2>
+    <textarea id="ay-text" rows="6" placeholder="Paste the AI's whole answer here"></textarea>
+    <div class="row"><button class="primary" id="ay-add">Add this report</button><label class="file">or upload files (.md, .txt)<input type="file" id="ay-files" multiple accept=".md,.markdown,.txt,text/plain,text/markdown"></label></div>
+    <p id="ay-msg"></p>
+    <ul class="list" id="ay-list"></ul>
+    <div class="panel" id="ay-panel"></div>
+    <p class="note">Reports stay on this computer, in Kurooto's private folder (not in your notes, never synced). Building the profile sends them to the AI you picked in the last step. Before adding a report you can delete anything in it you'd rather not keep.</p>
+    <div class="nav"><button data-back>Back</button><button class="primary" data-next>Next</button></div>
+  </section>
+
+  <section data-step="features">
+    <h1>What should it do?</h1>
+    <p class="lead">Turn on as little or as much as you like. You can change this later in Settings.</p>
+    <div class="presets">
+      <button data-preset="starter" class="preset on">★ Starter (recommended)</button>
+      <button data-preset="all" class="preset">Everything</button>
+      <button data-preset="custom" class="preset">Pick myself</button>
+    </div>
+    <div class="cards features" id="features"></div>
+    <div class="panel" id="key-panel"></div>
+    <div class="nav"><button data-back>Back</button><button class="primary" data-next>Next</button></div>
+  </section>
+
+  <section data-step="telegram">
+    <h1>Connect Telegram</h1>
+    <p class="lead">You'll talk to your assistant through your own private Telegram bot. It takes about two minutes.</p>
+    <ol class="howto">
+      <li>Have Telegram on your phone or computer. <a href="https://telegram.org/apps" target="_blank" rel="noopener">Get Telegram</a></li>
+      <li>Open <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>, send <code>/newbot</code>, and answer its two questions (a display name, then a username ending in <code>bot</code>).</li>
+      <li>BotFather replies with a token like <code>123456789:AAH…</code>. Copy it and paste it here:</li>
+    </ol>
+    <div class="row"><input id="tg-token" placeholder="Paste the token from BotFather" autocomplete="off" spellcheck="false"><button id="tg-check" class="primary">Check</button></div>
+    <div class="panel" id="tg-panel"></div>
+    <div class="nav"><button data-back>Back</button><button class="primary" data-next>Next</button></div>
+  </section>
+
+  <section data-step="finish">
+    <h1>Almost done</h1>
+    <ul class="list" id="summary"></ul>
+    <label class="check"><input type="checkbox" id="autostart" checked> Start Kurooto when I sign in to this computer (★ recommended)</label>
+    <div class="panel" id="finish-panel"></div>
+    <div class="nav"><button data-back>Back</button><button class="primary" id="finish">Finish setup</button></div>
+  </section>
+</main>
+<script src="/static/setup.js"></script>
+</body>
+</html>

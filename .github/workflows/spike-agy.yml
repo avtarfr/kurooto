@@ -1,0 +1,41 @@
+name: spike-agy
+# One-off check of how agy behaves on each OS without signing in: does the official installer work unattended,
+# where does it put agy, and what does `agy -p` print when piped vs in a pseudo-terminal?
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  agy:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - name: install agy (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        continue-on-error: true
+        run: irm https://antigravity.google/cli/install.ps1 | iex
+      - name: install agy (macOS / Linux)
+        if: runner.os != 'Windows'
+        continue-on-error: true
+        run: curl -fsSL https://antigravity.google/cli/install.sh | bash
+      - name: probe
+        continue-on-error: true
+        run: |
+          uv sync --locked
+          uv run --frozen python - <<'PY'
+          from kurooto.providers.agy import Agy, install_dirs
+          from kurooto.providers.base import Task
+          a = Agy()
+          print("exe:", a.exe, "| dirs:", install_dirs())
+          for mode in ("pipe", "pty"):
+              a.io_mode = mode
+              a.grace_s = 30
+              r = a.run(Task(prompt="Reply with exactly: KUROOTO-OK", effort="low", timeout_s=60))
+              print(mode, "->", r.verdict, "| text:", r.text[:200].replace("\n", " "), "| detail:", r.detail[:300].replace("\n", " "))
+          PY
+        shell: bash

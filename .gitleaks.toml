@@ -1,0 +1,8 @@
+# gitleaks (CI) with its default rules, plus one exception: the call line's test vectors are made-up keys
+# (the bytes 0..31), there so Python, the Worker and the Android app can be checked against the same answers.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "made-up test vectors, not real keys"
+paths = ['''^tests/fixtures/call-vectors\.json$''']

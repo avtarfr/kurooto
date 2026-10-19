@@ -1,0 +1,15 @@
+{
+  "note": "Test vectors shared by tests/unit/test_calls_line.py, the Worker test and the Android CryptoTest. Not real keys.",
+  "k1": {
+    "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+    "nonce_hex": "6465666768696a6b6c6d6e6f",
+    "plain": "{\"title\":\"Incoming call\",\"message\":\"Ünïcode ✓ check-in\",\"tags\":[\"call\",\"since-1760000000\"]}",
+    "sealed": "k1.ZGVmZ2hpamtsbW5vMzmqDw2FM7wEQBaGuQoHlCylJmnqAJ9Qi_PBLYjQxC_xy3rij471x1KQF1uYYihTiHv7j0UpKgWTn476zfXE7Xuu4VX0KFpp503BYWLjX4UBVS4DkfW99u_BBvRZTjMFdUONPdINd-vJQy9ER4o3"
+  },
+  "t1": {
+    "secret": "vector-call-secret-not-real",
+    "now_ms": 1760000000000,
+    "hours": 2,
+    "ticket": "t1.1760007200000.55eafd0ce800900bb761e8623a073f44194fc2ee50fe6656b40f600c8b102c71"
+  }
+}
