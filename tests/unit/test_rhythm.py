@@ -138,6 +138,7 @@ def test_other_days_for_classes_and_holds(env):
 
 
 def test_checkins_list_has_buttons(env):
+    env.app.settings.set("checkins.times.night", "23:15")  # the night check-in is off by default
     env.on("checkins")
     assert env.say("/checkins") == "evening: 22:00 (planned)\nnight: 23:15 (planned)"
     buttons = [p for m, p in env.fake.sent if m == "sendMessage"][-1]["reply_markup"]["inline_keyboard"]
@@ -362,6 +363,7 @@ def test_held_call_notice_and_place(calls):
 
 # ------------------------------------------------------------------------------------ the debrief
 def test_evening_debrief_script(calls, monkeypatch):
+    calls.app.settings.set("checkins.times.night", "23:15")  # the night check-in is off by default
     app = calls.app
     app.settings.set("subjects.list", SUBJECTS)
     calls.on("subjects", "checkins", "alarm", "study", "capture")
@@ -626,6 +628,7 @@ def bycall(calls):
 
 
 def test_night_check_in_is_its_own_goodnight(env, monkeypatch):
+    env.app.settings.set("checkins.times.night", "23:15")  # the night check-in is off by default
     env.app.settings.set("subjects.list", SUBJECTS)
     env.on("subjects", "capture", "checkins")
     ck, day = env.app.modules["checkins"], now().date()
