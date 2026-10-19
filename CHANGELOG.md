@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 (2026-10-20)
+- "Build my profile" and other text-only work no longer fail with agy: it's told to answer with text only.
+- If agy can't do something unattended (or fails), a saved Gemini key answers instead, and the other way round when
+  you've set up both. A line at the end says which AI answered.
+- Without a Gemini key, the message says exactly what to do instead of a vague refusal.
+- Long requests reach agy through a file, so profile builds work on Windows too.
+- The setup page recommends the Gemini key first (★); agy is second, with a plain note about it.
+
 ## 0.1.1 (2026-10-20)
 Fixes, delivered as the first automatic update.
 - A check-in call that comes due during a class, a hold, focus or the night now waits until the block ends, or comes
