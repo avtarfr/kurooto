@@ -21,6 +21,14 @@ def last_buttons(env):
     return [b for row in sent[-1]["reply_markup"]["inline_keyboard"] for b in row]
 
 
+def calls_for(app, key):
+    """The reasons of calls placed or waiting for this key (calls.place rings at once; calls.schedule waits)."""
+    out = [j.payload["reason"] for j in app.scheduler.jobs(f"calls:ring:{key}")]
+    f = app.paths.state / "calls" / "rings.json"
+    rings = json.loads(f.read_text()) if f.exists() else {}
+    return out + [r["reason"] for r in rings.values() if r.get("key") == key]
+
+
 def items_by_title(env):
     return {it["title"]: (i, it) for i, it in env.app.modules["deadlines"].items().items()}
 
@@ -157,13 +165,12 @@ def test_six_hour_call_respects_no_call_rules(calls, monkeypatch):
     app, dl = calls.app, calls.app.modules["deadlines"]
     dl.add("Lab report", now() + dt.timedelta(hours=5))
     i, _ = items_by_title(calls)["Lab report"]
-    n = len(calls.fake.texts())
     dl._tick()
-    job = app.scheduler.get(f"calls:ring:deadlines:{i}")
-    assert job and job.respect == "call_block" and "Lab report is due" in job.payload["reason"]
-    assert len(calls.fake.texts()) == n  # a call, not a message
+    placed = calls_for(app, f"deadlines:{i}")
+    assert len(placed) == 1 and placed[0].startswith("Lab report is due")
+    assert not [t for t in calls.fake.texts() if t.startswith("Due in")]  # a call, not a message
     dl._tick()
-    assert len(app.scheduler.jobs("calls:ring:")) == 1  # once
+    assert len(calls_for(app, f"deadlines:{i}")) == 1  # once
     # a missed call: a message with the buttons instead
     dl.call_outcome(f"deadlines:{i}", "missed")
     assert calls.fake.texts()[-1].startswith("Missed call. Due in")
@@ -176,7 +183,21 @@ def test_six_hour_call_respects_no_call_rules(calls, monkeypatch):
     monkeypatch.setattr(app.availability, "next_callable", lambda t=None, limit=24: (late, None))
     dl._tick()
     assert calls.fake.texts()[-1].startswith("Due in") and "Problem sheet" in calls.fake.texts()[-1]
-    assert len(app.scheduler.jobs("calls:ring:")) == 0
+    j, _ = items_by_title(calls)["Problem sheet"]
+    assert calls_for(app, f"deadlines:{j}") == []
+
+
+def test_six_hour_call_goes_through_calls_place_when_there_is_one(calls):
+    app, dl = calls.app, calls.app.modules["deadlines"]
+    placed = []
+    app.modules["calls"].place = lambda reason, key="", **kw: placed.append((reason, key)) or "Calling you now."
+    dl.add("Lab report", now() + dt.timedelta(hours=5))
+    dl._tick()
+    i, _ = items_by_title(calls)["Lab report"]
+    assert placed == [(placed[0][0], f"deadlines:{i}")] and not app.scheduler.jobs("calls:ring:")
+    app.modules["quiz"] if calls.app.is_on("quiz") else calls.on("quiz")
+    app.modules["quiz"].call_quiz("topology")
+    assert placed[-1] == ("Quiz call, about 10 minutes on Topology.", "quiz:topology")
 
 
 def test_without_calls_the_urgent_nudge_is_a_message(study):
@@ -344,8 +365,7 @@ def test_quiz_offered_the_evening_before(calls):
     assert calls.press(labels["Quiz me now"]) == "4 due in linear-algebra."
     assert calls.fake.texts()[-1].startswith("Quiz (linear-algebra")
     calls.press(labels["Call me for a quiz"])
-    job = app.scheduler.get("calls:ring:quiz:linear-algebra")
-    assert job and job.respect == "call_block" and job.payload["reason"].startswith("Quiz call")
+    assert calls_for(app, "quiz:linear-algebra") == ["Quiz call, about 10 minutes on Linear Algebra."]
     app.modules["quiz"].call_outcome("quiz:linear-algebra", "missed")
     assert calls.fake.texts()[-1] == "Missed the quiz call. /quiz linear-algebra practises here instead."
 
@@ -365,7 +385,7 @@ def test_quiz_by_call_and_quiz_check_ins(calls):
     assert [b["text"] for b in last_buttons(calls)] == ["Here", "By call"]
     assert calls.press("qo:s-topology:here") == "2 due in topology."
     calls.say("/quiz topology call")
-    assert app.scheduler.get("calls:ring:quiz:topology")
+    assert calls_for(app, "quiz:topology")
     out = calls.say("/quiz at 21:00 topology")
     assert out.startswith("Quiz on Topology at") and "first question" in out
     job = app.scheduler.jobs("quiz:checkin:")[0]
@@ -374,7 +394,7 @@ def test_quiz_by_call_and_quiz_check_ins(calls):
     assert calls.fake.texts()[-1].startswith("Quiz (topology")
     app.settings.set("quiz.by_call", True)
     out = calls.say("quiz me on topology at 9pm")
-    assert out.startswith("I'll call you") and len(app.scheduler.jobs("calls:ring:quiz:topology")) == 1
+    assert out.startswith("I'll call you") and len(app.scheduler.jobs("calls:ring:quiz:topology:")) == 1
 
 
 def test_quiz_me_in_plain_english(study):
@@ -395,9 +415,30 @@ def test_exam_mode_daily_practice(calls):
     assert calls.press(last_buttons(calls)[2]["callback_data"]) == "Skipped for today."
     app.settings.set("quiz.by_call", True)
     app.modules["quiz"]._exam_daily()
-    assert app.scheduler.get("calls:ring:quiz:linear-algebra")
+    assert calls_for(app, "quiz:linear-algebra")
     assert "quiz:exam_daily" in [j.key for j in app.scheduler.jobs("quiz:")]
 
 
 def test_ids_stay_stable():
     assert did("Lab report", "2026-11-02T23:59") == did("lab  report", "2026-11-02T17:00:00")
+
+
+def test_plain_english_variants_and_older_lists(study):
+    app, dl = study.app, study.app.modules["deadlines"]
+    out = study.say("/recurring add la quiz thu 10:00")
+    assert out.startswith("Linear Algebra: Quiz every week, Thu 10:00")
+    study.say("/subject add Statistics (stats)")
+    out = study.say("there's a statistics test every other friday at 2pm")
+    assert out.startswith("OK. One question first: The Statistics test is every 2 weeks")
+    # a list kept by 0.1.0: a ticked task is still noticed
+    soon = now() + dt.timedelta(days=1)
+    old = {"d0000001": {"title": "Old task", "due": f"{soon:%Y-%m-%dT%H:%M}", "source": "notes:x.md",
+                        "status": "open", "kind": "task", "told": []}}  # fmt: skip
+    (app.paths.state / "deadlines.json").write_text(json.dumps(old), encoding="utf-8")
+    dl.refresh()
+    assert dl.items()["d0000001"]["status"] == "done"
+    assert "Added: essay" in study.say(f"/due {(now() + dt.timedelta(days=2)):%Y-%m-%d} essay")
+    i = next(i for i, it in dl.items().items() if it["title"] == "essay")
+    study.press(f"dl:{i}:ignore")
+    assert study.say(f"/due {(now() + dt.timedelta(days=2)):%Y-%m-%d} essay").startswith("Already on the list")
+    assert dl.items()[i]["status"] == "open"  # you added it yourself after all

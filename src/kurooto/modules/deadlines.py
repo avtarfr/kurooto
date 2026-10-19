@@ -352,7 +352,9 @@ class Deadlines(Module):
             old = iso(now() - dt.timedelta(days=90))
             for j in [j for j, it in items.items() if it["status"] != "open" and it["due"] < old]:
                 del items[j]  # long settled: forgotten
-            for it in items.values():
+            for j, it in items.items():
+                if str(it.get("source", "")).startswith("notes:") and "note_id" not in it and "line" not in it:
+                    it["note_id"] = j  # kept by an older version: its id is the task's
                 nid = it.get("note_id")
                 if not nid or nid in found:
                     continue

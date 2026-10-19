@@ -78,8 +78,11 @@ class Quiz(Module):
     def start(self):
         self.every("offers", "hourly", self._offers)
         self.action("checkin", self._checkin)
+        self.action("exam_daily", self._exam_daily)
         daily = self.setting("exam_daily")
-        if daily:
+        if not daily:
+            self.app.scheduler.cancel("quiz:exam_daily")
+        else:
             try:
                 self.every("exam_daily", f"daily {daily}", self._exam_daily)
             except ValueError:
@@ -301,7 +304,7 @@ class Quiz(Module):
         calls = self.app.modules["calls"]
         self.app.events.emit("quiz_call", later=at is not None)
         if at is not None:
-            return calls.schedule(at, reason, key=key)
+            return calls.schedule(at, reason, key=f"{key}:{at:%Y%m%d%H%M}")
         place = getattr(calls, "place", None)
         if place is not None:
             return place(reason, key=key) or "Calling you."
@@ -312,7 +315,7 @@ class Quiz(Module):
 
     def call_outcome(self, key: str, outcome: str) -> bool:
         if outcome in ("missed", "decline", "skip"):
-            subject = key.partition(":")[2]
+            subject = (key.split(":") + [""])[1]
             cmd = "/quiz" if subject in ("", "any") else f"/quiz {subject}"
             self.app.notify(f"Missed the quiz call. {cmd} practises here instead.", kind="info")
         return False
