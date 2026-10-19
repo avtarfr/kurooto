@@ -380,6 +380,28 @@ class Google(Module):
         self.app.events.emit("classroom_synced", **out)
         return out
 
+    def sync_now(self) -> tuple[bool | None, str]:
+        """Everything Google, now (/sync all): Classroom deadlines and posts, then the add-ons you have on.
+        (ok, one short line); None: skipped."""
+        if not self.ready()[0]:
+            return None, f"not ready: {self.ready()[1]}"
+        ok, said = True, []
+        r = self.classroom_sync()
+        if r.get("error"):
+            ok = False
+            said.append(f"Classroom: {r['error']}")
+        elif not r.get("skipped"):
+            said.append(f"Classroom: {r['deadlines']} due, {r['posts']} new posts")
+        for mid, run, what in (("classroom_notes", "sync", "items"), ("mail_digest", "digest", "read")):
+            m = self.app.modules.get(mid)
+            if m is None or not self.app.is_on(mid):
+                continue
+            r = getattr(m, run)()
+            if r.get("error"):
+                ok = False
+            said.append(f"{m.title}: {r.get('error') or r.get('skipped') or f'{r.get(what, 0)} new for the AI'}")
+        return ok, "; ".join(said) or "nothing to do"
+
     # ------------------------------------------------------------------------------ Gmail drafts
     def make_draft(self, to: str, subject: str, body: str) -> str:
         if not self.setting("gmail_drafts"):

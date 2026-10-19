@@ -71,8 +71,9 @@ DRIVE_FILE = re.compile(
 DRIVE_FOLDER = re.compile(r"drive\.google\.com/drive/(?:u/\d+/)?folders/([\w-]{20,})")
 URL = re.compile(r"https?://[^\s<>\"'()\[\]]+")
 TEXT_EXT = {".txt", ".md", ".csv", ".tex", ".py", ".r", ".m", ".json"}
-PER_BATCH = 12  # items per AI request
-BUDGET = 120_000  # characters of file text per request (more can be read with read_course_file)
+PER_BATCH = 8  # items per AI request
+BUDGET = 60_000  # characters of file text per request (more can be read with read_course_file)
+MAX_PROMPT = 90_000  # a whole batch, so it fits on any computer's command line for agent programs
 START = "<!-- kurooto:exam-prep"  # Kurooto's part of exam-prep.md starts with this line...
 END = "<!-- /kurooto:exam-prep -->"  # ...and ends with this one
 START_LINE = f"{START} (kept current by Kurooto from your courses; write your own notes outside these markers) -->"
@@ -414,7 +415,7 @@ class ClassroomNotes(GooglePart):
                 head = f"- File: {f.get('title')} ({f.get('link')})"
                 text = self.file_text(f["file"]) if f.get("chars") else None
                 if text:
-                    take = max(2000, min(len(text), budget // 2, 30000))
+                    take = max(2000, min(len(text), budget // 2, 20000))
                     budget = max(0, budget - min(len(text), take))
                     more = (
                         f"\n  [characters 0-{take} of {len(text)}; read the rest with read_course_file(file="
@@ -429,7 +430,7 @@ class ClassroomNotes(GooglePart):
                     lines.append(f"{head}: {f.get('note', 'not read')}")
             if it.get("links"):
                 lines.append("Links: " + " ".join(it["links"]))
-        return "\n".join(x for x in lines if x is not None)
+        return clip("\n".join(x for x in lines if x is not None), MAX_PROMPT)
 
     def queue(self) -> int:
         """Hand every batch that isn't already with the AI to it (failed ones are tried again)."""

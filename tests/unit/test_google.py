@@ -507,3 +507,17 @@ def test_shipped_skills_and_the_fallback_without_the_skills_feature(gx):
     jid = run_skill(env.app, "mail-digest", "Mail to digest: 1 message", "Mail digest", "x.y", {})
     job = env.app.jobs.get(jid)
     assert job.effort_req == "medium" and "Mail to digest: 1 message" in job.prompt and job.quiet
+
+
+def test_sync_now_runs_every_google_part(mail):
+    env, g, ai, md = mail
+    assert env.app.modules["google"].sync_now() == (
+        True,
+        "Classroom: 2 due, 0 new posts; Mail digest: 2 new for the AI",
+    )
+    assert env.app.modules["google"].sync_now() == (
+        True,
+        "Classroom: 2 due, 0 new posts; Mail digest: 0 new for the AI",
+    )
+    env.app.secrets.set("google.tokens", "{}")
+    assert env.app.modules["google"].sync_now() == (None, "not ready: sign in with Google")

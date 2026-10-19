@@ -57,8 +57,8 @@ GMAIL = "https://gmail.googleapis.com"  # noqa: S105 (an address)
 CONSUMER = {"gmail.com", "googlemail.com"}  # a personal account: no "own domain"
 NOREPLY = re.compile(r"no-?reply|do-?not-?reply|mailer-daemon|postmaster|bounce", re.I)
 RULE = re.compile(r"^(label:\S.*|[^@\s]+@[^@\s]+\.[^@\s]+|@[^@\s]+\.[^@\s]+)$", re.I)
-PER_BATCH = 40
-MAX_TEXT = 4000
+PER_BATCH = 20  # messages per AI request
+MAX_TEXT = 3000  # characters of each message
 
 
 # ------------------------------------------------------------------------------------------------ mail text
