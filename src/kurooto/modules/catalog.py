@@ -12,12 +12,15 @@ from kurooto.modules.files import Files
 from kurooto.modules.gbrain import GBrain
 from kurooto.modules.google import Google
 from kurooto.modules.handwritten import Handwritten
+from kurooto.modules.library import Library
 from kurooto.modules.local_models import LocalModels
 from kurooto.modules.notes_sync import NotesSync
 from kurooto.modules.quiz import Quiz
+from kurooto.modules.remember import Remember
 from kurooto.modules.reminders import Reminders
 from kurooto.modules.research import Research
 from kurooto.modules.retro import Retro
+from kurooto.modules.skills import Skills
 from kurooto.modules.study import Study
 from kurooto.modules.subjects import Subjects
 from kurooto.modules.telegram import Telegram
@@ -34,9 +37,12 @@ CATALOG = [
     Quiz,
     Weekly,
     Files,
+    Skills,
+    Library,
     GBrain,
     LocalModels,
     Capture,
+    Remember,
     Retro,
     Calls,
     Alarm,

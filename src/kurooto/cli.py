@@ -544,6 +544,8 @@ def call(reason: str, at: str, alarm: bool, force: bool) -> int:
         return 1
     print(r.get("message", ""))
     return 0 if r.get("ok") else 1
+
+
 # ------------------------------------------------------------------- files and quick notes (`send`, `note`)
 def skills_parsers(sub) -> None:
     se = sub.add_parser("send", help="send yourself a file on Telegram (up to 50 MB)")
