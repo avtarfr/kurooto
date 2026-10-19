@@ -149,18 +149,25 @@ def test_profiles(env, monkeypatch):
     assert prof["shell"]["env"]["TERM"] == "xterm-256color"
 
 
+PROGRAM = """import os, sys
+s = os.get_terminal_size(0)
+print('ready', s.columns, s.lines, 'ctty', os.tcgetpgrp(0) == os.getpgrp(), flush=True)
+print('got', input(), flush=True)
+input()
+s = os.get_terminal_size(0)
+print('size', s.columns, s.lines, flush=True)
+"""
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="the Unix pty; Windows uses pywinpty")
+@pytest.mark.filterwarnings("error::DeprecationWarning")  # no os.forkpty in a many-threaded process
 def test_a_real_program_in_a_real_pty(env):
     app = env.app
     env.on("terminals")
     tm = app.modules["terminals"]
     tm.refresh()
-    tm.profiles()["shell"] = {
-        "title": "Shell",
-        "argv": [sys.executable, "-c", "import sys; print('ready'); print('got', input())"],
-        "cwd": str(app.workspace),
-        "env": {**os.environ},
-    }
+    prof = {"title": "Shell", "argv": [sys.executable, "-c", PROGRAM], "cwd": str(app.workspace), "env": {**os.environ}}
+    tm.profiles()["shell"] = prof
     got = []
 
     class Live:
@@ -168,19 +175,44 @@ def test_a_real_program_in_a_real_pty(env):
             got.append((msg, only))
 
     app.live = Live()
+    buf = lambda: bytes(tm.terms["shell"].buf)  # noqa: E731
     assert tm.handle("shell", "attach", {"cid": 1, "cols": 90, "rows": 20}) == (200, {"ok": True, "alive": True})
-    assert wait(lambda: b"ready" in bytes(tm.terms["shell"].buf))
+    assert wait(lambda: b"ready 90 20 ctty True" in buf()), buf()  # the pty is its controlling terminal
     tm.handle("shell", "input", {"data": "hi there\r"})
-    assert wait(lambda: b"got hi there" in bytes(tm.terms["shell"].buf))
-    assert wait(lambda: b"[shell ended" in bytes(tm.terms["shell"].buf))
+    assert wait(lambda: b"got hi there" in buf())
+    tm.handle("shell", "resize", {"cid": 1, "cols": 100, "rows": 30})
+    tm.handle("shell", "input", {"data": "\r"})
+    assert wait(lambda: b"size 100 30" in buf()), buf()
+    assert wait(lambda: b"[shell ended" in buf())
     assert all(only == {1} for _, only in got) and got[0][0]["replay"] is True
     assert tm.handle("nope", "attach", {"cid": 1})[0] == 404
     assert tm.handle("shell", "dance", {"cid": 1})[0] == 404
     assert tm.handle("shell", "input", {"data": "x" * 200_000})[0] == 413
+    # Ctrl+C reaches the program through the terminal, as in any terminal window
+    prof["argv"] = [sys.executable, "-c", "import time; print('sleeping', flush=True); time.sleep(60)"]
+    tm.handle("shell", "restart", {})
+    assert wait(lambda: b"sleeping" in buf())
+    t0 = time.monotonic()
+    tm.handle("shell", "input", {"data": "\x03"})
+    assert wait(lambda: b"[shell ended" in buf()) and time.monotonic() - t0 < 5
+    # restarting a running program hangs up on the old one
+    tm.handle("shell", "restart", {})
+    assert wait(lambda: b"sleeping" in buf())
+    old = tm.terms["shell"].pty
+    tm.handle("shell", "restart", {})
+    assert old.alive() is False and wait(lambda: b"sleeping" in buf())
     tm.page_gone(1)
     assert tm.terms["shell"].viewers == set()
     app.disable("terminals")
     assert tm.terms == {}
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the Unix pty")
+def test_a_missing_program_in_a_real_pty(tmp_path):
+    from kurooto.modules.terminals import UnixPty
+
+    with pytest.raises(FileNotFoundError):
+        UnixPty(["definitely-not-a-program-here"], str(tmp_path), dict(os.environ), 80, 24)
 
 
 def call(srv, path, body=None):
@@ -209,7 +241,7 @@ def test_the_web_side(env, monkeypatch):
         code, body = call(srv, "/api/term")
         names = [t["name"] for t in json.loads(body)["terms"]]
         assert code == 200 and "shell" in names  # this test runs as you: allowed
-        monkeypatch.setattr("kurooto.modules.terminals.same_user", lambda *a, **k: False)
+        monkeypatch.setattr("kurooto.web.peer.same_user", lambda *a, **k: False)
         assert call(srv, "/api/term")[0] == 403 and call(srv, "/api/term/shell/attach", {"cid": 1})[0] == 403
         monkeypatch.undo()
         code, js = call(srv, "/static/vendor/xterm/xterm.js")
@@ -222,3 +254,33 @@ def test_the_web_side(env, monkeypatch):
     finally:
         srv.stop()
         app.modules["terminals"].shutdown()
+
+
+def test_on_linux_every_page_and_api_call_must_be_this_account(env, monkeypatch):
+    from kurooto.web import peer
+    from kurooto.web.server import start
+
+    app = env.app
+    srv = start(app, port=18940)
+    try:
+        # this test runs as you: everything works (on Linux the kernel's socket table says so)
+        assert call(srv, "/")[0] == 200 and call(srv, "/api/settings")[0] == 200
+        assert call(srv, "/api/notify", {"text": "hi"})[0] == 200
+        monkeypatch.setattr(peer, "same_user", lambda *a, **k: False)  # another account (or can't tell)
+        for path in ("/", "/setup", "/api/settings", "/api/state", f"/api/stream?t={srv.token}", "/api/term"):
+            assert call(srv, path)[0] == 403, path
+        for path in ("/api/notify", "/api/settings", "/api/power/pause", "/api/term/shell/attach"):
+            assert call(srv, path, {"text": "x"})[0] == 403, path
+        assert call(srv, "/health")[0] == 200 and call(srv, "/static/home.js")[0] == 200  # nothing private
+        monkeypatch.undo()
+        if sys.platform == "linux":
+            monkeypatch.setattr(peer, "peer_uid", lambda *a, **k: None)  # the owner can't be told: refused
+            assert call(srv, "/api/settings")[0] == 403
+            monkeypatch.setattr(peer, "peer_uid", lambda *a, **k: os.getuid() + 1)  # someone else
+            assert call(srv, "/api/settings")[0] == 403 and call(srv, "/")[0] == 403
+            monkeypatch.setattr(peer, "peer_uid", lambda *a, **k: os.getuid())
+            assert call(srv, "/api/settings")[0] == 200
+            monkeypatch.setattr(peer, "peer_uid", lambda *a, **k: 0)  # root can read it all anyway
+            assert call(srv, "/api/settings")[0] == 200
+    finally:
+        srv.stop()
