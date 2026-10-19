@@ -137,8 +137,10 @@ def test_other_days_for_classes_and_holds(env):
     assert env.say("no calls till 6").startswith("No calls until")
 
 
-def test_checkins_list_has_buttons(env):
+def test_checkins_list_has_buttons(env, monkeypatch):
     env.app.settings.set("checkins.times.night", "23:15")  # the night check-in is off by default
+    noon = dt.datetime.combine(dt.date.today(), dt.time(12, 0))
+    monkeypatch.setattr(ck_mod, "now", lambda: noon)  # late at night "+30 min" would rightly be refused
     env.on("checkins")
     assert env.say("/checkins") == "evening: 22:00 (planned)\nnight: 23:15 (planned)"
     buttons = [p for m, p in env.fake.sent if m == "sendMessage"][-1]["reply_markup"]["inline_keyboard"]
