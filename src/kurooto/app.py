@@ -216,7 +216,7 @@ class App:
                     return
         text = msg.text.strip()
         if text.startswith("/"):
-            name, _, arg = text[1:].partition(" ")
+            name, arg = (text[1:].split(None, 1) + ["", ""])[:2]  # "/journal\nmy day" works too
             name = name.split("@")[0].lower()
             if name in ("start", "help"):
                 msg.reply(self.help())
@@ -233,6 +233,12 @@ class App:
                         if out:
                             msg.reply(out)
                         return
+            skills = self.modules.get("skills")  # not a command: a skill (/journal, /study-log, yours), if it's one
+            if skills is not None and self.is_on("skills"):
+                out = skills.typed(msg, name, arg.strip())
+                if out is not None:
+                    msg.reply(out)
+                    return
         if msg.files:
             for m in mods:
                 h = getattr(m, "take_files", None)

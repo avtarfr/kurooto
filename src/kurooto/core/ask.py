@@ -124,8 +124,7 @@ class Ask:
         }
         self._save(q)
         if deliver:
-            q["msg"] = self._deliver(q)
-            self._save(q)
+            self._set_msg(q["id"], self._deliver(q))
         self.app.events.emit(
             "question_asked", id=q["id"], kind=kind, source=q["source"], choices=len(q["choices"]), hook=q["hook"]
         )
@@ -172,12 +171,19 @@ class Ask:
             return False
         mid = self._deliver(q)
         if mid is not None:
-            self._edit(q, "(asked again below)")
-            with Lock(self.app.paths.state, "ask"):
-                cur = self.get(qid) or q
+            self._edit(q, "(asked again below)", retract=False)
+            self._set_msg(qid, mid)
+        return True
+
+    def _set_msg(self, qid: str, mid) -> None:
+        """Remember the Telegram message (to edit it later), without undoing an answer that came in meanwhile."""
+        if mid is None:
+            return
+        with Lock(self.app.paths.state, "ask"):
+            cur = self.get(qid)
+            if cur:
                 cur["msg"] = mid
                 self._save(cur)
-        return True
 
     # ------------------------------------------------------------------------------------------ reading
     def _file(self, qid: str):
@@ -349,6 +355,14 @@ class Ask:
                 self._file(q["id"]).unlink(missing_ok=True)
         return n
 
+    def expire(self, qid: str) -> bool:
+        """Close an open question now (its asker stopped waiting): no answer will be taken for it."""
+        q = self.get(qid)
+        if not q or q.get("status") not in OPEN:
+            return False
+        self._expire(q)
+        return (self.get(qid) or {}).get("status") == "expired"
+
     def _expire(self, q: dict, locked: bool = False) -> None:
         if not locked:
             with Lock(self.app.paths.state, "ask"):
@@ -376,9 +390,9 @@ class Ask:
         self.app.scheduler.every("ask:sweep", "every 10m", "ask.sweep", module="ask", misfire="coalesce")
 
     # ------------------------------------------------------------------------------------------ Telegram
-    def _edit(self, q: dict, line: str) -> None:
+    def _edit(self, q: dict, line: str, retract: bool = True) -> None:
         """Show the outcome under the question on Telegram (its buttons go), and clear it on other channels."""
-        retract = getattr(self.app.notifier, "retract", None)
+        retract = getattr(self.app.notifier, "retract", None) if retract else None
         if retract:
             try:
                 retract("ask", q["id"])
@@ -485,6 +499,46 @@ class Ask:
         if q and q["kind"] != "approval":
             return "That's a question, not an approval: use answer_question."
         return self.answer(str(a.get("id", "")), str(a.get("decision", "")), "call")["note"]
+
+    def agent_tools(self) -> list:
+        """For unattended AI requests: ask you something; your answer starts a follow-up request."""
+        from kurooto.modules.calls.tools import Tool, arg
+
+        return [
+            Tool(
+                "ask_user",
+                "Ask the user a short question you can't answer yourself (it reaches them on Telegram, the phone "
+                "and their next call). Don't wait for it: their answer starts a new request with the `then` "
+                "instructions, where {answer} is replaced by what they said. At most 3 open at a time.",
+                self._ai_ask,
+                {
+                    "question": arg("the question, short and self-contained"),
+                    "choices": arg('optional answers to offer as buttons, separated by "|", e.g. "yes|no"'),
+                    "then": arg("what to do once they answer, as a full request; use {answer} for their answer"),
+                },
+                ("question", "then"),
+            )
+        ]
+
+    def _ai_ask(self, a: dict) -> str:
+        if len(self.pending(source="ai")) >= 3:
+            return "There are already 3 questions from AI requests waiting for an answer; don't ask more now."
+        then = str(a.get("then") or "").strip()
+        if not then:
+            return "Say what to do with the answer (then)."
+        if "{answer}" not in then:
+            then += "\n\nTheir answer: {answer}"
+        try:
+            qid = self.ask(
+                str(a.get("question") or "")[:600],
+                choices=[c for c in str(a.get("choices") or "").split("|") if c.strip()],
+                hook="ask.ai",
+                hook_payload={"prompt": then[:4000], "title": "Your answer"},
+                source="ai",
+            )
+        except ValueError as e:
+            return str(e)
+        return f"Asked (question {qid}). Their answer will start a new request; you can finish now."
 
     def call_approvals(self, every_s: float = 3600) -> list[dict]:
         """Open approvals a call in progress hasn't been told about yet (the call page asks them, once an hour)."""

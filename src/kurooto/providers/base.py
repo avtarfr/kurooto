@@ -33,6 +33,7 @@ class Task:
     tools: list = field(default_factory=list)  # Kurooto's tools (core/tools.py), for brains that call them directly
     run_tool: Callable | None = None  # (name, args) -> result
     mcp: list[str] | None = None  # the command that serves the same tools over MCP, for agent programs
+    mcp_env: dict = field(default_factory=dict)  # what that command needs to reach the running Kurooto
 
 
 @dataclass

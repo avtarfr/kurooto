@@ -33,6 +33,7 @@ CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; "
     "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
 )
+TOOLS_ONLY = ("/api/tools", "/api/tools/call")  # what the tools-only key may reach
 TYPES = {
     ".html": "text/html; charset=utf-8",
     ".js": "text/javascript; charset=utf-8",
@@ -104,6 +105,14 @@ class Server:
                 origin = self.headers.get("Origin")
                 return origin is None or urlparse(origin).netloc in server.hosts
 
+            def _tools_authed(self, path: str) -> bool:
+                """`kurooto mcp` has its own key, good for listing and running the AI's tools only."""
+                return (
+                    path in TOOLS_ONLY
+                    and self.headers.get("Origin") is None
+                    and pysecrets.compare_digest(self.headers.get("X-Kurooto-Tools", ""), server.tools_token)
+                )
+
             def do_GET(self):
                 if not self._host_ok():
                     return self._send(403, {"error": "wrong host"})
@@ -149,7 +158,7 @@ class Server:
                         return self._send(401, {"error": "no"})
                     return self._stream()
                 if path.startswith("/api/"):
-                    if not self._authed():
+                    if not self._authed() and not self._tools_authed(path):
                         return self._send(401, {"error": "no"})
                     from urllib.parse import parse_qs
 
@@ -182,9 +191,9 @@ class Server:
                     server.live.drop(cid)
 
             def do_POST(self):
-                if not self._host_ok() or not self._authed():
-                    return self._send(403, {"error": "no"})
                 path = urlparse(self.path).path
+                if not self._host_ok() or not (self._authed() or self._tools_authed(path)):
+                    return self._send(403, {"error": "no"})
                 n = int(self.headers.get("Content-Length") or 0)
                 if n > 4_000_000:  # long reports from AI accounts (About you)
                     return self._send(413, {"error": "too big"})
@@ -202,6 +211,11 @@ class Server:
         self.httpd.daemon_threads = True
         self.url = f"http://127.0.0.1:{self.port}/"
         jsave(app.paths.state / "web.json", {"port": self.port, "url": self.url, "started": time.time()})
+        # the tools-only key for `kurooto mcp` (agent programs), new at every start; the file is owner-only
+        from kurooto.core.mcp import access_file
+
+        self.tools_token = pysecrets.token_urlsafe(24)
+        jsave(access_file(app.paths), {"url": self.url, "token": self.tools_token, "started": time.time()})
 
     def start(self) -> Server:
         threading.Thread(target=self.httpd.serve_forever, name="web", daemon=True).start()
@@ -212,6 +226,12 @@ class Server:
         self.live.stop()
         self.httpd.shutdown()
         self.httpd.server_close()
+        from kurooto.core.mcp import access_file
+        from kurooto.core.state import jload
+
+        f = access_file(self.app.paths)
+        if (jload(f, {}) or {}).get("token") == self.tools_token:  # not one a newer start wrote
+            f.unlink(missing_ok=True)
 
 
 def start(app: App, port: int | None = None) -> Server:
