@@ -373,14 +373,14 @@ function renderStatus(m) {
 }
 
 const feed = [];
-const TABS = { activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", settings: "Settings" };
+const TABS = { activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
 let tab = "activity";
 function showTab(name) {
   tab = name;
   $("#tabs").replaceChildren(...Object.entries(TABS).map(([k, v]) => { const b = document.createElement("button"); b.textContent = v; b.className = k === tab ? "on" : ""; b.onclick = () => showTab(k); return b; }));
   try { localStorage.setItem("kurooto.dash.tab", name); } catch { /* fine */ }
   // the settings-like tabs get room (the canvases above shrink and redraw by themselves)
-  $(".grid").classList.toggle("tall", ["features", "phone", "research", "settings", "terminals"].includes(name));
+  $(".grid").classList.toggle("tall", ["features", "phone", "research", "about", "settings", "terminals"].includes(name));
   renderTab();
 }
 function renderTab() {
@@ -391,6 +391,7 @@ function renderTab() {
   else if (tab === "features") renderFeatures(body);
   else if (tab === "phone") renderPhone(body);
   else if (tab === "research") renderResearch(body);
+  else if (tab === "about") renderAboutTab(body);
   else if (tab === "settings") renderSettings(body);
   else if (tab === "terminals") renderTerminals(body);
 }
@@ -535,6 +536,15 @@ async function renderResearch(body) {
   };
 }
 
+// About you: your profile (about-me/profile.md), edited right here (aboutme.js); /aboutme on Telegram links here
+async function renderAboutTab(body) {
+  body.onclick = body.onchange = body.onsubmit = null; // another tab's handlers mustn't see the editor's clicks
+  const a = await api("aboutyou/profile");
+  if (!a.exists) { body.innerHTML = `<p class="d">No profile yet. Build one on the <a href="/setup">setup page</a> (its About you step): what your other AI accounts know about you, merged by your AI.</p>`; return; }
+  body.innerHTML = `<p class="d">Your profile, ${esc(a.path)}. Edit it here or in your notes; building it again (on the <a href="/setup">setup page</a>) asks first if you've changed it.</p><div class="about-editor" id="about-host"></div>`;
+  aboutEditor($("#about-host"), api);
+}
+
 async function renderSettings(body) {
   const { sections } = await api("settings");
   const field = (key, v) => {
@@ -649,7 +659,8 @@ window.addEventListener("resize", () => { if (tab === "terminals" && TERM.shown 
   body = new Body($("#body")); mind = new Mind($("#mind"));
   let saved = "activity"; try { saved = localStorage.getItem("kurooto.dash.tab") || "activity"; } catch { /* fine */ }
   api("events").then((r) => { for (const e of (r.events || []).reverse()) feed.push(e); if (tab === "activity") renderTab(); }).catch(() => {});
-  showTab(TABS[saved] ? saved : "activity");
+  const asked = location.hash.slice(1); // e.g. /#about, the link /aboutme sends
+  showTab(TABS[asked] ? asked : TABS[saved] ? saved : "activity");
   api("term").then((r) => { if (r.on) { TABS.terminals = "Terminals"; showTab(saved === "terminals" ? "terminals" : tab); } }).catch(() => {});
   connect();
   let lastT = 0;

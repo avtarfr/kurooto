@@ -152,9 +152,18 @@ so it starts out knowing you.
 4. Each AI writes a long report and ends with a few questions. Answer them in that chat if you like and ask it to
    update the report; then copy its whole answer (or download it as a file) and add it on the page (paste, or upload
    several files at once).
-5. Press **Build my profile.** Your AI merges the reports into one profile, `about-me/profile.md` in your notes. Read
-   it and fix anything that's off; Kurooto reads its short "In brief" part before every AI request. Building again
-   keeps the previous version next to it.
+5. Press **Build my profile.** Your AI merges the reports into one profile, `about-me/profile.md` in your notes.
+6. **Read it and fix anything that's off,** right there: the profile opens in an editor under the button. **Save**
+   keeps the previous version next to it (`profile-<date>.md`); **Revert** goes back to what's saved. **Preview In
+   brief** shows exactly the part that goes along with every AI request: the section under `## In brief`. Without that
+   heading nothing goes along (Kurooto warns you, but saves). The dashboard's **About you** tab has the same editor,
+   and you can also edit the file in your notes.
+
+**Building again never replaces your edits silently.** If you changed the profile since it was built, **Build my
+profile again** asks first; say yes and the new one replaces yours, with yours kept next to it as `profile-<date>.md`
+to copy things back from. If you edit it while a new one is being built, yours stays as it is and the new one goes next
+to it as `profile-new-<date>.md`. `/aboutme` on Telegram shows the In-brief part and the link to the editor (it opens on
+this computer).
 
 The reports themselves stay in Kurooto's private data folder (not your notes, never synced). Remove anything you'd
 rather not keep before adding a report. Come back any time with more accounts: open the setup page (`kurooto open`, then
@@ -1047,8 +1056,8 @@ ring on silent, or show on the lock screen as a call. If you need those, use Tel
 `http://127.0.0.1:8770` (or `kurooto open`). STATUS shows your computer; SYSTEMS shows each feature as a living cell
 that pulses when something happens; NOTES is a map of your notes and their links (click a note to read it). The tabs:
 **Activity** (what happened), **AI jobs**, **Schedule** (what's coming), **Features** (turn on/off, set up), **Phone**
-(your call line, pairing, a test ring), **Settings** (every setting, with what it means), and **Terminals** (when the
-[Terminals](#terminals) feature is on).
+(your call line, pairing, a test ring), **About you** (your profile, to edit; `/#about` opens it), **Settings**
+(every setting, with what it means), and **Terminals** (when the [Terminals](#terminals) feature is on).
 
 The **morning page** (`http://127.0.0.1:8770/morning`) shows today's plan from your daily note, with your classes,
 calendar, what's due, check-ins and open questions. The alarm opens it.
