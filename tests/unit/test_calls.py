@@ -352,7 +352,9 @@ def test_gemini_key_check_and_phone_endpoints(env):
 def test_line_is_redeployed_only_when_its_code_changed(calls, monkeypatch):
     c = calls.app.modules["calls"]
     ran = []
-    monkeypatch.setattr(deploy, "deploy", lambda app, progress=None: ran.append(1) or (True, "ok"))
+    monkeypatch.setattr(
+        deploy, "deploy", lambda app, progress=None, unattended=False: ran.append(unattended) or (1, "")
+    )
     w = calls.app.settings.get("calls.worker")
     calls.app.settings.set("calls.worker", {**w, "hash": deploy.fingerprint(calls.app)})
     assert c._line_update() is False
@@ -367,4 +369,4 @@ def test_line_is_redeployed_only_when_its_code_changed(calls, monkeypatch):
         if ran:
             break
         _t.sleep(0.05)
-    assert ran == [1]
+    assert ran == [True]  # nobody is watching: it never opens a sign-in page

@@ -12,6 +12,7 @@ Protection:
 from __future__ import annotations
 
 import json
+import os
 import re
 import secrets as pysecrets
 import socket
@@ -53,6 +54,8 @@ def free_port(start: int) -> int:
     for port in range(start, start + 30):
         with socket.socket() as s:
             try:
+                if os.name != "nt":  # like the server itself: the last run's closing connections don't make it busy
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 s.bind(("127.0.0.1", port))
                 return port
             except OSError:

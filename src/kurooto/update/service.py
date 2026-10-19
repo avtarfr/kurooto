@@ -12,13 +12,14 @@ import datetime as dt
 import os
 import random
 import threading
+import time
 from typing import TYPE_CHECKING
 
 from kurooto import __version__
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
-from kurooto.update.updater import PAGES, UpdateError, Updater
+from kurooto.update.updater import PAGES, UpdateError, Updater, vtuple
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -42,10 +43,16 @@ class Updates:
         s.action("updates.check", lambda p: self.check())
         s.action("updates.apply", lambda p: self.apply_if_quiet())
         s.action("updates.probation", lambda p: self.end_probation())
+        s.action("updates.rolled_back", lambda p: self.tell_rolled_back())
         s.every("updates:check", "every 6h", "updates.check")
+        ready = str((jload(self.ready_file, None) or {}).get("version") or "")
+        if ready and (vtuple(ready) <= vtuple(__version__) or ready in self.u.bad()):
+            self.ready_file.unlink(missing_ok=True)  # installed (`kurooto update --now` leaves it), or rolled back
         u = jload(self.app.paths.app / "update.json", {}) or {}
         if u.get("phase") == "trial" and u.get("to") == __version__:
             s.at(now() + dt.timedelta(minutes=5, seconds=10), "updates.probation", key="updates:probation")
+        if u.get("phase") == "rolled_back" and u.get("to") == __version__ and not u.get("told"):
+            s.at(now() + dt.timedelta(seconds=30), "updates.rolled_back", key="updates:rolled_back")
 
     def status(self) -> dict:
         return {
@@ -142,6 +149,19 @@ class Updates:
         if self.u.probation_passed(__version__):
             self.u.prune()
             self.app.notify(f"Kurooto updated to {__version__}.", kind="update")
+
+    def tell_rolled_back(self) -> None:
+        """The launcher went back to this version because the new one kept crashing: say so, once."""
+        f = self.app.paths.app / "update.json"
+        u = jload(f, {}) or {}
+        if u.get("phase") != "rolled_back" or u.get("to") != __version__ or u.get("told"):
+            return
+        jsave(f, {**u, "told": time.time()})
+        self.app.notify(
+            f"Kurooto {u.get('from')} didn't start properly, so I went back to {__version__}. "
+            "It won't be installed again; a later version will be.",
+            kind="update",
+        )
 
     def button(self, version: str, act: str) -> str:
         if act == "skip":

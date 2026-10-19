@@ -24,6 +24,7 @@ import psutil
 
 from kurooto import providers
 from kurooto.core.mcp import command, run_env
+from kurooto.core.state import owner_only
 from kurooto.core.tools import agent_tools, run_tool
 from kurooto.providers import effort as effort_mod
 from kurooto.providers.base import Result, Task, Verdict
@@ -102,6 +103,7 @@ class Jobs:
         self.dir = app.paths.state / "jobs"
         self.dir.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(app.paths.state / "jobs.db", check_same_thread=False, isolation_level=None)
+        owner_only(app.paths.state / "jobs.db")
         self._db.execute("pragma journal_mode=wal")
         had_attempts = self._db.execute("select 1 from sqlite_master where name='attempts'").fetchone()
         self._db.executescript(SCHEMA)

@@ -38,3 +38,15 @@ def jsave(path, obj, mode: int = 0o600) -> None:
                 tmp.unlink(missing_ok=True)
                 raise
             time.sleep(0.05 * (attempt + 1))
+
+
+def owner_only(db) -> None:
+    """A database, and SQLite's -wal and -shm files beside it, readable by this account only (like the JSON files):
+    it holds what you asked the AI and your reminders. File modes only mean something on POSIX."""
+    if os.name == "nt":
+        return
+    for p in (Path(db), Path(f"{db}-wal"), Path(f"{db}-shm")):
+        try:
+            os.chmod(p, 0o600)
+        except OSError:
+            pass

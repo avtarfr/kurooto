@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import secrets
 import threading
 import time
@@ -463,6 +464,8 @@ class Api:
             self.app.modules["calls"].ring("This is a test call from your computer. Answer to check it works.")
             return 200, {"ok": True}
         if path == "autostart":
+            if os.environ.get("KUROOTO_NO_AUTOSTART") == "1":  # tests and rehearsals leave this computer alone
+                return 200, {"ok": True, "message": "Start at sign-in is left alone here (KUROOTO_NO_AUTOSTART)."}
             msg = autostart.enable() if b.get("on", True) else autostart.disable()
             return 200, {"ok": True, "message": msg}
         if path == "setup/done":
@@ -684,7 +687,7 @@ class Api:
             subprocess.Popen(["open" if _sys.platform == "darwin" else "xdg-open", str(p)], start_new_session=True)
         return 200, {"ok": True}
 
-    EDITABLE = ("you", "notify", "availability", "updates", "brain", "ask", "look")
+    EDITABLE = ("you", "notify", "availability", "updates", "brain", "ask", "look", "power")
 
     def _settings(self) -> dict:
         """Every setting you can change: the core sections plus each enabled feature's own."""

@@ -29,6 +29,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from kurooto.core.state import owner_only
+
 DAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
 
 SCHEMA = """
@@ -111,6 +113,7 @@ class Scheduler:
         self._lock = threading.Lock()
         self._wake = None  # an asyncio.Event once the loop runs
         self._db = sqlite3.connect(self.db_path, check_same_thread=False, isolation_level=None)
+        owner_only(self.db_path)
         self._db.execute("pragma journal_mode=wal")
         self._db.executescript(SCHEMA)
 
