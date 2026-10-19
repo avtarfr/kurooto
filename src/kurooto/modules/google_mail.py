@@ -8,10 +8,13 @@ computer (Kurooto looks only at its sender, subject and Gmail labels, here, to s
   /mail read sam@example.org   (/mail unread ... takes one off; /mail rules lists them)
 - on a school or work Google account, mail from your own organisation's domain (setting mail_digest.own_domain)
 Even then, personal mail (not about study or work) is only counted unless it comes from a sender or label you chose.
+Opt-in (mail_digest.confidential = "local"): mail marked confidential is summarised by a local model instead, on this
+computer only (google_confidential.py).
 Promotions, Social and topics on your not-interested list are only counted.
-Mail marked confidential is never read, whoever sent it: "confidential", "do not forward", "restricted" or "private and
-confidential" in its subject, its first lines or a Gmail label of the same name (mail_digest.confidential_words). Nor
-is mail from a sender, domain or label on your never-read list (/mail never ...). Work or school mail may be covered by
+Mail marked confidential is never read, whoever sent it: "confidential", "do not forward", "restricted" or a standard
+confidentiality footer ("if you are not the intended recipient", ...) anywhere in its subject, its text or a Gmail
+label's name (mail_digest.confidential_words). Nor is mail from a sender, domain or label on your never-read list
+(/mail never ...). Work or school mail may be covered by
 your institution's email policy; these are only counted, never summarised, and get no AI reply drafts.
 
 Email reply drafts (a feature of its own): when the digest finds mail that needs your reply, the AI drafts one into
@@ -23,6 +26,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import functools
 import html
 import re
 from collections import Counter
@@ -34,6 +38,7 @@ from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock, Timeout
 from kurooto.core.state import jload, jsave
+from kurooto.modules import google_confidential as local
 from kurooto.modules.base import Command, Incoming
 from kurooto.modules.calls.tools import Tool, arg, clip
 from kurooto.modules.google import (
@@ -56,8 +61,23 @@ register_defaults(
         "save_note": True,  # a copy of each digest in your notes (mail/<date>-<time>.md)
         # mail marked confidential is only counted: never read by the AI, summarised or answered with a draft
         "skip_confidential": True,
-        "confidential_words": ["confidential", "do not forward", "restricted", "private and confidential"],
+        "confidential_words": [  # regular expressions, any case; a space matches any run of spaces or line breaks
+            "confidential",
+            "do not forward",
+            "restricted",
+            "private and confidential",
+            "privileged and confidential",
+            "proprietary and confidential",
+            "intended (solely|only) for the (use of the )?(addressee|individual|recipient|person)",
+            "if you are not the intended recipient",
+            "this (e-?mail|message|communication) (and any attachments? )?(is|are|may be|contains?) (strictly )?"
+            "(confidential|privileged)",
+        ],
         "never_read": [],  # senders, @domains or label:Name the digest never reads, even if chosen above
+        # mail marked confidential: "count" (only counted) or "local" (summarised by a local model on this computer,
+        # kept only in Kurooto's data folder; needs Local AI models)
+        "confidential": "count",
+        "local_model": "",  # which Ollama model reads it; empty: Local AI models' helper model
     },
 )
 register_defaults("reply_drafts", {"per_day": 5, "ask_days": 3})
@@ -80,8 +100,8 @@ def html_to_text(s: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", s))
 
 
-def body_text(payload: dict) -> str:
-    """The message's own words: plain text if there is some (else the HTML's text), without quoted replies."""
+def _texts(payload: dict) -> tuple[list[str], list[str]]:
+    """Every text/plain part, and every HTML part as text."""
     plain, rich = [], []
 
     def walk(p: dict) -> None:
@@ -95,6 +115,33 @@ def body_text(payload: dict) -> str:
             walk(c)
 
     walk(payload)
+    return plain, rich
+
+
+def whole_text(payload: dict) -> str:
+    """All of a message's text, quoted replies and footers included (what the confidentiality check reads)."""
+    plain, rich = _texts(payload)
+    return "\n".join(plain + rich)
+
+
+@functools.lru_cache(maxsize=16)
+def marking(words: tuple[str, ...]) -> re.Pattern | None:
+    """One pattern for the confidentiality markings: each a regular expression (or plain words, if it isn't a valid
+    one), any case, a space matching any whitespace, whole words only."""
+    parts = []
+    for w in (x.strip() for x in words if x and x.strip()):
+        src = re.sub(r" +", r"\\s+", w)
+        try:
+            re.compile(src)
+        except re.error:
+            src = re.escape(w).replace(r"\ ", r"\s+")
+        parts.append(f"(?:{src})")
+    return re.compile(r"\b(?:" + "|".join(parts) + r")\b", re.I) if parts else None
+
+
+def body_text(payload: dict) -> str:
+    """The message's own words: plain text if there is some (else the HTML's text), without quoted replies."""
+    plain, rich = _texts(payload)
     text = "\n".join(plain) if plain else "\n".join(rich)
     text = re.split(r"\n\s*On .{5,200}wrote:\s*\n", text)[0]
     text = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith(">"))
@@ -171,26 +218,26 @@ class MailDigest(GooglePart):
             return dom == low[1:] or dom.endswith("." + low[1:])
         return addr == low
 
-    def confidential(self, *texts: str) -> str | None:
-        """The confidentiality marking found in a subject, opening lines or label names (word-bounded), or None."""
-        if not self.setting("skip_confidential"):
-            return None
-        words = [w.strip() for w in self.setting("confidential_words") or [] if str(w).strip()]
-        if not words:
-            return None
-        pat = r"\b(?:" + "|".join(re.escape(w).replace(r"\ ", r"\s+") for w in words) + r")\b"
-        for t in texts:
-            m = re.search(pat, t or "", re.I)
+    def marked(self, *texts: str) -> str | None:
+        """The confidentiality marking in these texts (subject, whole body, label names), or None."""
+        pat = marking(tuple(str(w) for w in self.setting("confidential_words") or []))
+        for t in texts if pat else ():
+            m = pat.search(t or "")
             if m:
-                return m.group(0).lower()
+                return re.sub(r"\s+", " ", m.group(0)).lower()
         return None
 
-    def blocked(self, frm: str, subject: str, labels: set[str], opening: str = "") -> str | None:
-        """Why this mail must never reach the AI (confidential, or on your never-read list), or None."""
+    def confidential(self, *texts: str) -> str | None:
+        """marked(), when the check is on (it is unless you turned mail_digest.skip_confidential off)."""
+        return self.marked(*texts) if self.setting("skip_confidential") else None
+
+    def blocked(self, frm: str, subject: str, labels: set[str]) -> str | None:
+        """Why this mail must never reach the AI (on your never-read list, or marked confidential in its subject or
+        labels), or None. The body is checked once it's downloaded, before anything else happens to it."""
         addr = parseaddr(frm)[1].lower()
         if any(self.matches(r, addr, labels) for r in self.rules("never_read")):
             return "never read"
-        if self.confidential(subject, opening, *labels):
+        if self.confidential(subject, *labels):
             return "confidential"
         return None
 
@@ -243,6 +290,8 @@ class MailDigest(GooglePart):
             names = {x["id"]: x.get("name", "") for x in g.api("gmail", "/users/me/labels").get("labels", [])}
         counted, read, newest = Counter(st.get("counted") or {}), [], since_ms
         known = jload(self.dir / "known.json", {}) or {}
+        model = self.local_reader()
+        secret: list[dict] = []  # local mode: marked mail for the local model, in memory only
         for mid in list(reversed(ids))[:cap]:  # oldest first
             if mid in seen:
                 continue
@@ -259,15 +308,22 @@ class MailDigest(GooglePart):
             what, why, chosen = self.triage(
                 h.get("from", ""), h.get("subject", ""), meta.get("labelIds", []), names, me
             )
+            when = dt.datetime.fromtimestamp(int(meta.get("internalDate") or 0) / 1000)
             if what == "count":
                 counted[why] += 1
+                if why == "confidential" and model and len(secret) < local.PER_RUN:
+                    full = g.api("gmail", f"/users/me/messages/{mid}?format=full")
+                    secret.append(self._secret(h, when, whole_text(full.get("payload") or {})))
                 continue
             full = g.api("gmail", f"/users/me/messages/{mid}?format=full")
-            text = body_text(full.get("payload") or {})
-            if self.confidential("\n".join(text.splitlines()[:8])[:800]):  # marked in its opening lines
-                counted["confidential"] += 1  # dropped here: never stored, never sent to the AI
+            whole = whole_text(full.get("payload") or {})
+            if self.confidential(whole):  # anywhere in it, footers too
+                counted["confidential"] += 1
+                if model and len(secret) < local.PER_RUN:
+                    secret.append(self._secret(h, when, whole))
+                del full, whole  # dropped here: never stored, never sent to the cloud AI
                 continue
-            when = dt.datetime.fromtimestamp(int(meta.get("internalDate") or 0) / 1000)
+            text = body_text(full.get("payload") or {})
             rec = {
                 "id": mid,
                 "thread": meta.get("threadId", ""),
@@ -289,6 +345,7 @@ class MailDigest(GooglePart):
                 "msgid": h.get("message-id", ""),
                 "thread": rec["thread"],
                 "labels": rec["labels"],
+                "marked": bool(self.marked(rec["subject"], whole, *rec["labels"])),  # read with the check off
                 "text": clip(rec["text"], 1500),
                 "at": now().isoformat(),
             }
@@ -313,7 +370,52 @@ class MailDigest(GooglePart):
         jsave(self.dir / "known.json", known)
         st.update(last_ms=newest, seen=list(seen)[-5000:])
         jsave(self.dir / "state.json", st)
-        return {"read": len(read), "counted": sum(counted.values()), "piles": dict(counted)}
+        out = {"read": len(read), "counted": sum(counted.values()), "piles": dict(counted)}
+        if secret:
+            n, dates = local.summarise(self.app, model, secret)
+            del secret
+            out["summarised_here"] = n
+            if n:
+                more = f" It found {dates} date(s): /mail confidential to add them." if dates else ""
+                self.app.notify(
+                    f"Confidential ({n}): summarised on this computer; open the dashboard to read it.{more}",
+                    kind="info",
+                )
+                self.app.events.emit("mail_confidential_local", mails=n, dates=dates)
+        elif counted.get("confidential") and self.setting("confidential") == "local" and not model:
+            self._no_local_model()
+        return out
+
+    def local_reader(self) -> str | None:
+        """Local mode: the local model that may read confidential mail, or None (then it's only counted)."""
+        if self.setting("confidential") != "local" or not self.setting("skip_confidential"):
+            return None
+        model = local.local_model(self.app)
+        if model:
+            (self.dir / "no-local-model").unlink(missing_ok=True)
+        return model
+
+    def _no_local_model(self) -> None:
+        """Say once (until a local model is back) that confidential mail is only counted for now."""
+        flag = self.dir / "no-local-model"
+        if flag.exists():
+            return
+        flag.parent.mkdir(parents=True, exist_ok=True)
+        flag.touch()
+        self.app.notify(
+            "Mail digest: confidential mail is only counted for now, because no local model is ready to summarise it "
+            "on this computer (turn on Local AI models; they run on the charger). I'll summarise it again once one is.",
+            kind="info",
+        )
+
+    @staticmethod
+    def _secret(h: dict, when: dt.datetime, whole: str) -> dict:
+        return {
+            "from": h.get("from", ""),
+            "subject": h.get("subject", ""),
+            "date": f"{when:%Y-%m-%d %H:%M}",
+            "text": whole,
+        }
 
     def known(self, mid: str) -> dict | None:
         return (jload(self.dir / "known.json", {}) or {}).get(str(mid))
@@ -452,9 +554,26 @@ class MailDigest(GooglePart):
                 "mail",
                 "your mail digest now; /mail read <@domain | sender | label:Name> chooses what it may read",
                 self._cmd,
-                usage="/mail [read <rule> | unread <rule> | never <rule> | unnever <rule> | rules]",
+                usage="/mail [read <rule> | unread <rule> | never <rule> | unnever <rule> | rules | confidential]",
             )
         ]
+
+    def callbacks(self):
+        return {"mc": lambda ref, act: local.settle(self.app, ref, act == "add")}
+
+    def _confidential(self, msg: Incoming) -> str | None:
+        """Dates the local model found in confidential mail: titles and dates only, each with Add / Not needed."""
+        found = sorted(local.offers(self.app).items(), key=lambda kv: kv[1]["due"])
+        if not found:
+            where = " Summaries are on this computer: dashboard → Features → Mail digest → Confidential mail."
+            return "No dates found in confidential mail." + (where if self.setting("confidential") == "local" else "")
+        for oid, it in found[:10]:
+            due = dt.datetime.fromisoformat(it["due"])
+            msg.reply(
+                f"{it['title']}: {due:%a %d %b %H:%M}",
+                buttons=[[("Add to Deadlines", f"mc:{oid}:add"), ("Not needed", f"mc:{oid}:no")]],
+            )
+        return None
 
     def _cmd(self, msg: Incoming, arg_text: str) -> str:
         word, _, rest = arg_text.strip().partition(" ")
@@ -476,6 +595,8 @@ class MailDigest(GooglePart):
                 "never": f"The digest never reads mail matching {rule}; it's only counted.",
                 "unnever": f"{rule} is off the never-read list.",
             }[word]
+        if word == "confidential":
+            return self._confidential(msg)
         if word == "rules":
             own = ""
             try:
@@ -567,8 +688,8 @@ class ReplyDrafts(GooglePart):
         k = md.known(mid) if md else None
         if not k:
             return "I only draft replies to mail from the digest (use its message id)."
-        why_not = md.blocked(k.get("from", ""), k.get("subject", ""), {x.lower() for x in k.get("labels", [])}, "")
-        if why_not or md.confidential("\n".join(k.get("text", "").splitlines()[:8])[:800]):
+        why_not = md.blocked(k.get("from", ""), k.get("subject", ""), {x.lower() for x in k.get("labels", [])})
+        if why_not or (md.setting("skip_confidential") and (k.get("marked") or md.marked(k.get("text", "")))):
             return "That mail is marked confidential or on the never-read list: no AI draft. Reply to it yourself."
         to = k.get("reply_to") or k.get("from") or ""
         addr = parseaddr(to)[1]

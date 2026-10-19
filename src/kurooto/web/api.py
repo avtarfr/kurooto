@@ -209,6 +209,10 @@ class Api:
             from kurooto.modules.daily import morning_view
 
             return 200, morning_view(self.app)
+        if path == "mail/confidential":  # confidential mail summarised on this computer (google): read-only, local
+            from kurooto.modules.google_confidential import view
+
+            return 200, view(self.app, q.get("day"))
         return 404, {"error": "not found"}
 
     # --------------------------------------------------------------------------------------------- POST
@@ -429,6 +433,10 @@ class Api:
             return 200, {"ok": True}
         if path == "ask" or path.startswith("ask/"):
             return self._ask(path, b, post=True)
+        if path == "mail/confidential/settle":  # a date found in confidential mail: add it to Deadlines, or not
+            from kurooto.modules.google_confidential import settle
+
+            return 200, {"message": settle(self.app, str(b.get("id", "")), bool(b.get("add")))}
         return 404, {"error": "not found"}
 
     # ---------------------------------------------------------------------- questions and approvals

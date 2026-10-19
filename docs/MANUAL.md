@@ -709,6 +709,8 @@ smaller, but it has to be rebuilt) and its state (check-ins, deadlines, AI reque
   synced anywhere else.
 - `backups.secrets`: your passwords and keys (bot token, API keys, sign-ins). Then **anyone with the zip can use
   them**: only for a folder that's yours alone. Without them, after a restore you sign in again where Kurooto asks.
+- `backups.confidential_mail`: confidential mail summarised on this computer (Mail digest's local mode,
+  `mail/confidential/` in Kurooto's data folder). Off, it stays out of the zip.
 
 The zip isn't encrypted.
 
@@ -836,17 +838,34 @@ course news goes onto the course page.
 
 **Confidential mail is never read.** Work or school mail may be covered by your institution's email policy (many
 forbid forwarding confidential messages, and institutional mail belongs to the institution). Kurooto never summarises
-mail marked confidential: if its subject or opening lines say "confidential", "do not forward", "restricted" or
-"private and confidential", or it has a Gmail label with one of those names, it's only counted, even from a sender or
-label you chose, and it never gets an AI reply draft (to spot a marking in the opening lines, Kurooto looks at them
-on your computer, then drops the mail). Add your own words in `mail_digest.confidential_words`. To
-keep a sender, domain or label out of the digest altogether: `/mail never @office.example` (`/mail unnever ...` takes
-it off; `/mail rules` lists both lists). This is on by default (`mail_digest.skip_confidential`).
+mail marked confidential: if its subject, its text (all of it, footers and quoted replies too) or a Gmail label's name
+says "confidential", "do not forward", "restricted", "private and confidential", "privileged and confidential",
+"proprietary and confidential", or carries a standard confidentiality footer ("intended solely for the addressee", "if
+you are not the intended recipient", "this e-mail and any attachments are confidential / may be privileged"), it's
+only counted, even from a sender or label you chose, and it never gets an AI reply draft. Kurooto checks the text on
+your computer and drops the mail right there, without keeping it. Many institutional mails carry such a footer, so
+expect more of your mail to be only counted. Tune the list in `mail_digest.confidential_words` (regular expressions,
+any case; a space matches any run of spaces or line breaks). To keep a sender, domain or label out of the digest
+altogether: `/mail never @office.example` (`/mail unnever ...` takes it off; `/mail rules` lists both lists). This is
+on by default (`mail_digest.skip_confidential`).
+
+**Optional: confidential mail summarised on this computer.** Set `mail_digest.confidential` to `local` (the default is
+`count`) and, with **Local AI models** on, a model on this computer (Ollama) reads mail marked confidential instead of
+leaving it only counted. The AI you picked still never sees it. The summary is kept only in Kurooto's data folder
+(`mail/confidential/<date>.md`, readable only by your user account): not in your notes, not on Telegram (which only
+says "Confidential (2): summarised on this computer; open the dashboard to read it"), not in Profile sync, and not in
+Backups unless you turn on `backups.confidential_mail`. Read it in the dashboard: Features → Mail digest →
+**Confidential mail**. Dates it finds are only offered, on that page or with `/mail confidential` on Telegram (titles
+and dates only), each with **Add to Deadlines** / **Not needed**. Marked mail still never gets an AI reply draft.
+Without a ready local model (Local AI models off, not set up, or resting on battery) it's only counted, and Kurooto
+says so once. Up to 15 such mails a check, three per request to the local model, each cut to its first 3,500
+characters; `mail_digest.local_model` picks another Ollama model (default: Local AI models' helper model).
 
 `/mail` checks now (so does `/sync all`).
 *Settings:* `mail_digest.at`, `mail_digest.read`, `mail_digest.never_read`, `mail_digest.own_domain`,
-`mail_digest.skip_confidential`, `mail_digest.confidential_words`, `mail_digest.save_note` (the copy in your notes),
-`mail_digest.first_days` (how far back the first check looks: 3).
+`mail_digest.skip_confidential`, `mail_digest.confidential_words`, `mail_digest.confidential` (`count` or `local`),
+`mail_digest.local_model`, `mail_digest.save_note` (the copy in your notes), `mail_digest.first_days` (how far back
+the first check looks: 3).
 *Leaves:* the text of the mail you chose goes to the AI you picked; for the rest, only counts. Nothing is ever sent,
 deleted, archived or marked read. *Turn it off:* Features → Mail digest → Turn off.
 
@@ -856,7 +875,8 @@ your voice into your Gmail Drafts and sends it to you with **Send / Edit / Disca
 tap Send.** Edit: say what to change ("say I can do 10am"); the AI rewrites the draft and asks again. Discard deletes
 just that draft. Unanswered, it stays in your Gmail Drafts (the question expires after 3 days). Replies go only to
 the sender of a mail in your digest (or its reply-to address), never to no-reply addresses or mail marked confidential
-(or on your never-read list), at most 5 a day (`reply_drafts.per_day`). Needs the Mail digest.
+anywhere in it (footers included; even if it was read while the check was off, and even in local mode) or on your
+never-read list, at most 5 a day (`reply_drafts.per_day`). Needs the Mail digest.
 *Turn it off:* Features → Email reply drafts → Turn off.
 
 ### Agent plan calendar
@@ -1239,7 +1259,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | "Mail digest is paused: needs Google's OK" (or another Google feature) | Features → that feature → Save, then sign in with Google and leave its permission ticked. |
 | A Google feature didn't turn on after signing in | Did you untick its permission on Google's screen? Save on its card again. Is its API on in your Google Cloud project (the link on its card)? |
 | Google says "Access blocked" for a school account | Your school doesn't allow unverified apps for that permission. Use a personal Google account, or ask your school's admin. |
-| The mail digest says it only counted my mail | It reads only what you chose: `/mail read @your-school.example` or `/mail read label:Name`. Mail marked confidential is always only counted. |
+| The mail digest says it only counted my mail | It reads only what you chose: `/mail read @your-school.example` or `/mail read label:Name`. Mail marked confidential (a confidentiality footer counts) is always only counted, unless you choose local summaries (`mail_digest.confidential` = `local`). |
+| "Confidential mail is only counted for now" | Local summaries need Local AI models on and ready (Features → Local AI models; on a laptop they run on the charger). |
 | Classroom notes say a PDF wasn't read | Install Poppler (`pdftotext`), or use agy as your AI (it opens PDFs itself). |
 | Classroom notes went to the wrong folder | Settings → `classroom_notes.folders`: `{"Exact course name": "folder-name"}`. |
 | Research: "repository folder missing" | You moved or deleted it: `/repos remove <folder>`, then `/repos add <new folder>`. |

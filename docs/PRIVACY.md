@@ -36,7 +36,8 @@ Everything below goes to services you chose, under your own accounts.
 | Profile sync | your settings, passwords and keys, and saved state (deadlines, quiz progress, routines, observations, scheduled reminders and calls), all encrypted with your passphrase before they leave; in plain text only when it was saved, Kurooto's version, the kind of computer and a random id for it | your own private GitHub repository (the one Notes sync uses, or another you pick) |
 | Google | Kurooto reads Classroom and, with Gmail drafts on, writes drafts in your Gmail; nothing is sent from your Gmail without your tap | Google, with your own client and sign-in |
 | Classroom → notes | Classroom posts and the text of their attached files, to write the notes | the AI service you picked; read from Google with your own client |
-| Mail digest | the text of the mail you chose for the digest (senders, domains and labels you named; on a school or work account, your own domain). Other mail, mail marked confidential and your never-read list: nothing, they're only counted on your computer | the AI service you picked; read from Gmail with your own client |
+| Mail digest | the text of the mail you chose for the digest (senders, domains and labels you named; on a school or work account, your own domain). Other mail, mail marked confidential (in its subject, anywhere in its text including standard confidentiality footers, or its labels) and your never-read list: nothing, they're only counted on your computer. Work or school mail may be covered by your institution's email policy; Kurooto never summarises mail marked confidential with the AI you picked | the AI service you picked; read from Gmail with your own client |
+| Mail digest, confidential mail in local mode (opt-in, `mail_digest.confidential` = `local`) | nothing: a model on this computer (Ollama, 127.0.0.1) summarises it; the summary stays in Kurooto's data folder (`mail/confidential/`, readable only by your user account), out of your notes, Telegram (a count only), Profile sync and Backups (unless `backups.confidential_mail`) | stays on this computer |
 | Email reply drafts | the draft reply, written into your Gmail Drafts; sent only when you tap Send | Google (your Gmail) |
 | Agent plan calendar | the time blocks (title and time), in Kurooto's own calendar | Google (your Google Calendar) |
 | Handwritten notes | the scans and photos | Google (Gemini, your key), unless a local vision model handles them |
@@ -80,13 +81,22 @@ ever holds your Google access. Each Google feature asks for only the permission 
 | Agent plan calendar | make secondary calendars and manage their events | makes one calendar of its own, "Agent plan", and writes only there; it can't see or change your other calendars |
 
 **Mail marked confidential is never read.** Work or school mail may be covered by your institution's email policy
-(many forbid forwarding confidential messages, and institutional mail belongs to the institution). If a mail's subject
-or opening lines say "confidential", "do not forward", "restricted" or "private and confidential", or it has a Gmail
-label with one of those names, Kurooto only counts it, even from a sender or label you chose: it isn't sent to the
-AI, summarised, or answered with an AI draft. (To spot a marking in the opening lines of mail you chose, Kurooto
-looks at them on your computer, then drops the mail without keeping it.) The same goes for everything on your
-never-read list (`/mail never`). This is on by default (`mail_digest.skip_confidential`); add your own words in
-`mail_digest.confidential_words`.
+(many forbid forwarding confidential messages, and institutional mail belongs to the institution). If a mail's
+subject, its text (all of it, footers and quoted replies included) or a Gmail label's name says "confidential", "do
+not forward", "restricted", "private and confidential", "privileged and confidential" or "proprietary and
+confidential", or carries a standard confidentiality footer ("intended solely for the addressee", "if you are not the
+intended recipient", "this e-mail ... is confidential / may be privileged"), Kurooto only counts it, even from a
+sender or label you chose: it isn't sent to the AI, summarised, or answered with an AI draft. (To spot a marking in
+the text, Kurooto reads it on your computer, then drops the mail in memory without keeping it.) The same goes for
+everything on your never-read list (`/mail never`). This is on by default (`mail_digest.skip_confidential`); tune the
+list in `mail_digest.confidential_words`.
+
+**Optional local summaries.** With `mail_digest.confidential` set to `local` and Local AI models on, a model on this
+computer (Ollama, 127.0.0.1) summarises that mail instead. Only the summary is kept, in Kurooto's data folder
+(`mail/confidential/<date>.md`, readable only by your user account); the dashboard shows it on this computer. It
+isn't in your notes, on Telegram (which gets a count only), in Profile sync, or in Backups unless you turn on
+`backups.confidential_mail`. Dates found there are offered to you (titles and dates only) and never added by
+themselves. No AI reply drafts for it, ever.
 
 **Copies kept on your computer:** downloaded Classroom files (Kurooto's data folder, `classroom/`); the text of the
 mail you chose, only until the digest is written (state folder, `mail-digest/`); and the sender, subject and a short

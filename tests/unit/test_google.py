@@ -9,6 +9,7 @@ import base64
 import datetime as dt
 import io
 import json
+import re
 import zipfile
 from email import message_from_bytes
 
@@ -594,3 +595,201 @@ def test_no_ai_drafts_for_confidential_or_never_read_mail(drafts):
     assert run_tool(app, "draft_reply", {"message_id": "q1", "text": "Yes."}).startswith("That mail is marked")
     assert g.draft_store == {} and g.sent == []
     assert run_tool(app, "draft_reply", {"message_id": "p1", "text": "Yes."}).startswith("Draft saved in Gmail")
+
+
+def test_confidentiality_footers_anywhere_in_the_body(mail):
+    env, g, ai, md = mail
+    long_body = "Notes for the week. " * 600  # about 12,000 characters before the footer
+    g.add_mail(
+        "f1",
+        "Dean <dean@school.example>",
+        "Agenda",
+        "See below.\n\nThis message is intended solely for the use of the addressee.",
+    )
+    g.add_mail(
+        "f2",
+        "Dean <dean@school.example>",
+        "Long notes",
+        long_body + "\nIf you are not the intended recipient,\nplease delete it.",
+    )
+    g.add_mail(
+        "f3",
+        "Office <office@school.example>",
+        "Forms",
+        "Forms attached.\nThis e-mail and any attachments\nmay be privileged.",
+    )
+    g.add_mail(
+        "f4",
+        "Office <office@school.example>",
+        "Rooms",
+        "<p>Rooms.</p><p>This communication contains privileged information.</p>",
+        html=True,
+    )
+    g.add_mail(
+        "f5",
+        "Sam <sam@school.example>",
+        "Re: plan",
+        "Thanks!\n\nOn Mon, Oct 19, 2026 Dean wrote:\n> Plan.\n> If you are not the intended recipient, delete this.",
+    )  # marked in the quoted part
+    g.add_mail("f6", "Library <lib@school.example>", "Unrestricted wifi", "Unrestricted access, all day.")
+    r = md.digest()
+    assert r["piles"]["confidential"] == 5 and r["read"] == 3  # f6, and the mail fixture's p1 and n1
+    run_jobs(env.app)
+    prompt = json.dumps(ai.requests[-1])
+    assert "Unrestricted access" in prompt
+    for secret in ("See below", "Notes for the week", "Forms attached", "Rooms.", "Thanks!"):
+        assert secret not in prompt
+    assert not any(md.known(m) for m in ("f1", "f2", "f3", "f4", "f5"))  # dropped in memory, never stored
+
+
+def test_no_ai_draft_for_a_footer_found_while_the_check_was_off(drafts):
+    env, g, ai, rd = drafts
+    app, md = env.app, env.app.modules["mail_digest"]
+    app.settings.set("mail_digest.skip_confidential", False)
+    g.add_mail(
+        "f9",
+        "Dr Lee <lee@school.example>",
+        "Panel",
+        "Can you join? " * 400 + "\nIf you are not the intended recipient, delete this.",
+    )  # the footer is past the excerpt Kurooto keeps
+    assert md.digest()["read"] == 1
+    assert md.known("f9")["marked"] is True
+    app.settings.set("mail_digest.skip_confidential", True)
+    assert run_tool(app, "draft_reply", {"message_id": "f9", "text": "Yes."}).startswith("That mail is marked")
+    assert g.draft_store == {}
+
+
+# ------------------------------------------------------------------- confidential mail, summarised locally (opt-in)
+@pytest.fixture
+def local_llm(mail, monkeypatch):
+    from kurooto.modules import local_models
+    from tests.fakes.ollama import FakeOllama
+
+    env, g, ai, md = mail
+    o = FakeOllama()
+    monkeypatch.setattr(local_models, "OLLAMA", o.base)
+    rec = {"key": "helper-small", "tag": o.models[0], "size_gb": 2.5, "use": "helper"}
+    (env.app.paths.state / "hardware.json").write_text(json.dumps({"recommendation": {"local_models": [rec]}}))
+    env.app.settings.set("mail_digest.confidential", "local")
+    yield env, g, ai, md, o
+    o.close()
+
+
+def turn_on_local_models(app):
+    app.settings.set("modules.enabled", [*app.settings.get("modules.enabled"), "local_models"])
+
+
+def test_confidential_mail_summarised_on_this_computer_only(local_llm):
+    from kurooto.core.profile import _allowed
+    from kurooto.modules import backups
+    from kurooto.modules import google_confidential as gconf
+    from kurooto.web.api import Api
+
+    env, g, ai, md, o = local_llm
+    app = env.app
+    turn_on_local_models(app)
+    g.add_mail(
+        "k1",
+        "Registrar <reg@school.example>",
+        "CONFIDENTIAL: grant report",
+        "Send the grant report, due 2099-01-05 17:00.",
+    )
+    g.add_mail(
+        "k2",
+        "Dean <dean@school.example>",
+        "Budget",
+        "Budget figures attached.\n" + "x " * 9000 + "\nIf you are not the intended recipient, delete this.",
+    )
+    r = md.digest()
+    assert r["summarised_here"] == 2 and r["piles"]["confidential"] == 2
+    assert len(o.chats) == 1  # both in one request to the local model
+    chat = o.chats[0]
+    assert chat["model"] == o.models[0] and chat["options"]["num_ctx"] == gconf.NUM_CTX and chat["stream"] is False
+    assert "grant report" in chat["messages"][-1]["content"]
+    assert len(chat["messages"][-1]["content"]) < 2 * gconf.PER_MAIL + 500  # each mail's text is capped
+    # never to the cloud AI, never kept for drafts
+    run_jobs(app)
+    prompt = json.dumps(ai.requests[-1])
+    assert "grant report" not in prompt and "Budget figures" not in prompt and "Local summary" not in prompt
+    assert md.known("k1") is None and md.known("k2") is None
+    # the summary lives only in Kurooto's data folder, readable by this account only
+    f = app.paths.data / "mail" / "confidential" / f"{dt.date.today()}.md"
+    text = f.read_text()
+    assert "Local summary 2: about CONFIDENTIAL: grant report." in text and "## " in text and "Budget" in text
+    assert "(offered, not added)" in text
+    if __import__("os").name != "nt":
+        assert f.stat().st_mode & 0o777 == 0o600 and f.parent.stat().st_mode & 0o777 == 0o700
+    assert not [p for p in app.workspace.rglob("*") if p.is_file() and "grant report" in p.read_text(errors="ignore")]
+    told = env.fake.texts()
+    assert told[-2] == (
+        "Confidential (2): summarised on this computer; open the dashboard to read it. It found 1 date(s): "
+        "/mail confidential to add them."
+    )
+    assert not any("Local summary" in t or "grant report" in t for t in told)
+    # dates are offered (titles and dates only), never added on their own
+    assert not any("grant" in it["title"] for it in app.modules["deadlines"].items().values())
+    assert env.say("/mail confidential") == "Reply on CONFIDENTIAL: grant report: Mon 05 Jan 17:00"
+    oid = next(iter(gconf.offers(app)))
+    assert env.press(f"mc:{oid}:add").startswith("Added: Reply on CONFIDENTIAL: grant report")
+    assert env.press(f"mc:{oid}:add") == "That one is settled already."
+    assert env.say("/mail confidential").startswith("No dates found in confidential mail. Summaries are on this")
+    # the dashboard shows it, locally
+    v = Api(app).get("mail/confidential")[1]
+    assert v["day"] == f"{dt.date.today()}" and "Local summary 2" in v["text"] and v["offers"] == []
+    # not in Profile sync, not in Backups unless asked for
+    assert not _allowed("data", f"mail/confidential/{dt.date.today()}.md")
+    names = [n for n, _ in backups.sources(app.paths, None, notes=False, secrets=False, index=True)]
+    assert names and not any(n.startswith("data/mail/confidential") for n in names)
+    names = [n for n, _ in backups.sources(app.paths, None, notes=False, secrets=False, index=True, confidential=True)]
+    assert any(n.startswith("data/mail/confidential/") for n in names)
+
+
+def test_local_mode_without_a_local_model_only_counts_and_says_so_once(local_llm):
+    env, g, ai, md, o = local_llm
+    g.add_mail("k1", "Registrar <reg@school.example>", "Confidential: list", "Names")
+    r = md.digest()
+    assert r["piles"]["confidential"] == 1 and "summarised_here" not in r and o.chats == []
+    assert "k1" not in g.full_fetched  # counted from the subject: its text isn't even downloaded
+    assert "no local model is ready" in env.fake.texts()[-1]
+    n = len(env.fake.texts())
+    g.add_mail("k2", "Registrar <reg@school.example>", "Confidential: more", "More names")
+    md.digest()
+    assert len(env.fake.texts()) == n  # one notice, not one per check
+    turn_on_local_models(env.app)  # back: summarised again, and a later outage is told again
+    g.add_mail("k3", "Registrar <reg@school.example>", "Confidential: last", "Last names")
+    assert md.digest()["summarised_here"] == 1
+    assert not (md.dir / "no-local-model").exists()
+
+
+def test_local_summaries_in_small_batches_and_odd_answers(local_llm):
+    from kurooto.modules import google_confidential as gconf
+
+    env, g, ai, md, o = local_llm
+    turn_on_local_models(env.app)
+    for i in range(5):
+        g.add_mail(f"k{i}", "Office <office@school.example>", f"Confidential {i}", f"Item {i}")
+    assert md.digest()["summarised_here"] == 5
+    assert [len(re.findall(r"(?m)^Mail \d+$", c["messages"][-1]["content"])) for c in o.chats] == [3, 2]
+    assert gconf.PER_CALL == 3
+    o.broken = True
+    g.add_mail("k9", "Office <office@school.example>", "Confidential 9", "Item 9")
+    assert md.digest()["summarised_here"] == 1
+    assert (
+        "(the local model gave no summary)"
+        in (env.app.paths.data / "mail" / "confidential" / f"{dt.date.today()}.md").read_text()
+    )
+
+
+def test_confidential_page_is_served_locally(local_llm):
+    import urllib.request
+
+    from kurooto.web.server import start as start_web
+
+    env, g, ai, md, o = local_llm
+    server = start_web(env.app)
+    try:
+        with urllib.request.urlopen(f"{server.url}/confidential", timeout=10) as r:
+            page = r.read().decode()
+        assert r.status == 200 and "Confidential mail" in page and "confidential.js" in page
+    finally:
+        server.stop()

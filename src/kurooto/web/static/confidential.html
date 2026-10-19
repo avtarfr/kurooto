@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="kurooto-token" content="{{TOKEN}}">
+<meta name="referrer" content="no-referrer">
+<title>Confidential mail · Kurooto</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  .conf { max-width: 900px; margin: 0 auto; padding: 24px 18px 60px; }
+  .conf h1 { font-size: 24px; margin: 4px 0 4px; }
+  .conf .note { color: var(--dim); margin: 0 0 16px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; margin-bottom: 16px; }
+  .box h2 { margin: 0 0 10px; }
+  .days { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .days button.on { border-color: var(--lav); }
+  pre { white-space: pre-wrap; word-wrap: break-word; font-family: var(--mono); font-size: 14px; margin: 0; }
+  .offer { display: flex; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  .offer:last-child { border-bottom: 0; }
+  .offer span { flex: 1; }
+  .empty { color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="conf">
+  <header>
+    <div class="brand">KUROOTO <span class="ver">{{VERSION}}</span></div>
+    <a href="/">dashboard</a>
+  </header>
+  <h1>Confidential mail</h1>
+  <p class="note">Summarised by a local model on this computer and kept only here, in Kurooto's data folder. Not in
+    your notes, not on Telegram, not sent to any AI service.</p>
+  <div class="box">
+    <h2>Dates it found</h2>
+    <div id="offers"><p class="empty">Loading…</p></div>
+    <p class="note" id="said"></p>
+  </div>
+  <div class="box">
+    <div class="days" id="days"></div>
+    <pre id="text" class="empty">Loading…</pre>
+  </div>
+</div>
+<script src="/static/confidential.js"></script>
+</body>
+</html>

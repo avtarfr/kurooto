@@ -70,7 +70,11 @@ Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) h
 - Classroom → notes: new materials, coursework, announcements and attached Drive files filed into your notes by the AI
   (a note per lecture, a course page, an exam-prep note that Quiz uses); dates go into Deadlines.
 - Mail digest: twice a day, sorted into Needs action, People, Courses, Opportunities and Admin. It reads only the
-  senders, domains and labels you choose; mail marked confidential and your never-read list are only counted.
+  senders, domains and labels you choose; mail marked confidential (anywhere in it, standard confidentiality footers
+  included) and your never-read list are only counted, never summarised or answered with an AI draft. Optional local
+  mode (`mail_digest.confidential = local`): a local model summarises confidential mail on this computer, kept only
+  in Kurooto's data folder (dashboard → Features → Mail digest → Confidential mail); dates found there are offered
+  (`/mail confidential`), never added by themselves.
 - Email reply drafts with Send / Edit / Discard: nothing is sent without your tap.
 - Agent plan calendar: time blocks Kurooto plans with you go into a calendar of its own (`/blocks`).
 - Each Google feature asks for its own permission and turns on by itself after the sign-in.
