@@ -89,7 +89,7 @@ Three more things, each with its own switch in Settings (`gbrain.*`):
 - Notes brain: timelines from dated log lines (`/timeline`, and a tool for the AI); optional nightly upkeep (light
   steps only, on the charger) and a weekly checkup that only speaks up when something needs a look.
 - Fix: the notes brain's 15-minute sync no longer holds up the rest of Kurooto while it runs, and skips a turn when the
-  brain is busy instead of waiting.
+  brain is busy instead of waiting. GBrain no longer checks for its own updates (Kurooto pins its version).
 
 ## PRIVACY notes
 
@@ -102,7 +102,8 @@ Add a row:
 | Remember | your how-to-help-me note (`about-me/how-to-help-me.md`) goes along with every AI request, like the profile's "In brief" part; health, money and password details are refused, never stored | the AI service you picked |
 
 GBrain row: add "The nightly upkeep and timelines don't add anything: the upkeep's index step sends note text to
-Google only if your index already uses Gemini." Add to the "nothing leaves" list: timelines, the weekly checkup.
+Google only if your index already uses Gemini. Kurooto turns off GBrain's own update check, so GBrain makes no calls
+to its release page." Add to the "nothing leaves" list: timelines, the weekly checkup.
 
 ## For the coordinator
 

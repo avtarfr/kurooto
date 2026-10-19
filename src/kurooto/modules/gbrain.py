@@ -94,6 +94,7 @@ class GBrain(Module):
 
     def env(self) -> dict:
         env = {**os.environ, "GBRAIN_HOME": str(self.home), "GBRAIN_NO_AUTOPILOT_INSTALL": "1"}
+        env["GBRAIN_SELF_UPGRADE_MODE"] = "off"  # Kurooto pins GBrain's version: no update checks, no upgrade notes
         bun_bin = str(Path.home() / ".bun" / "bin")
         env["PATH"] = bun_bin + os.pathsep + env.get("PATH", "")
         key = self.app.secrets.get("gemini.api_key")
@@ -327,7 +328,7 @@ class GBrain(Module):
                 f'No dated entries for {slug} yet. Lines like "- **{now():%Y-%m-%d}** | source — what '
                 'happened" in a note become its timeline overnight.'
             )
-        return out
+        return re.sub(r"(?m)^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.000)?Z", r"\1", out)  # dates only
 
     def commands(self):
         return [

@@ -61,6 +61,7 @@ def test_upkeep_runs_the_light_steps_only(env, g, monkeypatch):
     for heavy in ("lint", "sync", "consolidate", "propose_takes", "synthesize", "edge_contradictions", "purge"):
         assert heavy not in steps  # never rewrites note files, never calls an AI model
     assert envv["GBRAIN_HOME"] == str(g.home)  # Kurooto's own brain, never ~/.gbrain
+    assert envv["GBRAIN_SELF_UPGRADE_MODE"] == "off"  # the version is pinned: no update checks
     assert len(fake.calls) == 1  # the upkeep's extract step makes the timelines; no separate run
     ev = env.app.events.tail(1, {"gbrain_upkeep"})[-1]
     assert ev["ok"] is True and ev["failed"] == []
@@ -137,10 +138,11 @@ def test_checkup_reads_an_older_text_report(env, g, monkeypatch):
 
 
 def test_timeline_command_and_tool(env, g, monkeypatch):
-    out = "2026-10-01  Started the reading group [log]\n2026-10-08  Second session [log]\n"
+    out = "2026-10-08T00:00:00.000Z  Second session [log]\n2026-10-01T00:00:00.000Z  Started the group [log]\n"
     fake = use(monkeypatch, FakeGBrain({"timeline": (0, out)}))
     env.on("gbrain")
-    assert env.say("/timeline Research/Reading Group.md") == out.strip()
+    shown = "2026-10-08  Second session [log]\n2026-10-01  Started the group [log]"
+    assert env.say("/timeline Research/Reading Group.md") == shown
     assert fake.cmds()[-1] == ["timeline", "research/reading-group"]
     assert "note_timeline" in [t.name for t in agent_tools(env.app)]
     run_tool(env.app, "note_timeline", {"slug": "research/reading-group", "since": "2026-10-05"})
