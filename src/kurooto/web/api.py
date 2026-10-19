@@ -296,13 +296,34 @@ class Api:
             except Exception as e:
                 return 200, {"ok": False, "error": f"Couldn't reach Telegram: {e}"[:200]}
         if path == "telegram/poll":
+            from kurooto.modules.telegram import PairingProblem
+
             try:
                 got = self.app.modules["telegram"].pair_poll(wait=int(b.get("wait", 20)))
+            except PairingProblem as e:
+                return 200, {"paired": False, "error": e.message, "problem": e.kind, "retry": e.retry}
             except Exception as e:
-                return 200, {"paired": False, "error": str(e)[:200]}
+                return 200, {"paired": False, "error": str(e)[:200], "problem": "other", "retry": True}
             if got:
                 self.app.enable("telegram")
             return 200, {"paired": bool(got), **(got or {})}
+        if path == "telegram/relink":  # the pairing link expired: a new one for the same bot
+            from kurooto.modules.telegram import PairingProblem
+
+            try:
+                return 200, {"ok": True, **self.app.modules["telegram"].pair_relink()}
+            except PairingProblem as e:
+                return 200, {"ok": False, "error": e.message}
+            except TelegramError as e:
+                return 200, {"ok": False, "error": "That token was revoked." if e.code == 401 else e.description}
+            except Exception as e:
+                return 200, {"ok": False, "error": f"Couldn't reach Telegram: {e}"[:200]}
+        if path == "telegram/webhook-off":  # the bot was connected to a web address; Kurooto needs it back
+            try:
+                self.app.modules["telegram"].drop_webhook()
+                return 200, {"ok": True}
+            except Exception as e:
+                return 200, {"ok": False, "error": f"Couldn't disconnect it: {e}"[:200]}
         if path == "modules/enable":
             res = {}
             for mid in sorted(b.get("ids", []), key=lambda m: MODULE_ORDER.index(m) if m in MODULE_ORDER else 99):

@@ -328,17 +328,70 @@ function renderTelegram() {
 async function checkToken() {
   const p = $("#tg-panel");
   p.replaceChildren(el("p", {}, "Checking…"));
-  const r = await api("telegram/token", { token: $("#tg-token").value });
+  let r;
+  try { r = await api("telegram/token", { token: $("#tg-token").value }); }
+  catch { p.replaceChildren(el("p", { class: "bad" }, "Lost touch with Kurooto: is it still running? Try again in a moment.")); return; }
   if (!r.ok) { p.replaceChildren(el("p", { class: "bad" }, r.error)); return; }
+  showPairing(r);
+}
+
+// The one-time link, the message to send by hand if the link does nothing, and what Telegram says meanwhile.
+let pairRun = 0;
+function showPairing(r) {
+  const p = $("#tg-panel"), run = ++pairRun;
+  const msg = `/start ${r.code}`, copied = el("span", { class: "note" }), manual = el("code", {}, msg);
+  const wait = el("p", { id: "tg-wait" }, "Waiting for you to press Start…"), fix = el("div", {});
   p.replaceChildren(el("div", { class: "box" },
     el("p", {}, `Found your bot @${r.bot}. Now tap this, then press Start in Telegram:`),
     el("a", { class: "big", href: r.link, target: "_blank", rel: "noopener" }, `Open @${r.bot}`),
-    el("p", { id: "tg-wait" }, "Waiting for you to press Start…")));
-  for (let i = 0; i < 30; i++) {
-    const got = await api("telegram/poll", { wait: 20 });
+    el("p", { class: "note" }, `If nothing happens, send this message to @${r.bot}: `, manual, " ",
+      el("button", { onclick: async () => {
+        try { await navigator.clipboard.writeText(msg); copied.textContent = " Copied."; }
+        catch { getSelection().selectAllChildren(manual); copied.textContent = " Select it and copy it."; }
+      } }, "Copy"), copied),
+    wait, fix));
+  pollPairing(run, wait, fix);
+}
+
+function newLinkButton(wait, fix) {
+  fix.replaceChildren(el("button", { class: "primary", onclick: async () => {
+    const n = await api("telegram/relink", {});
+    if (n.ok) showPairing(n); else { wait.textContent = n.error; wait.className = "bad"; }
+  } }, "Get a new link"));
+}
+
+async function pollPairing(run, wait, fix) {
+  const deadline = Date.now() + 60 * 60 * 1000; // the link works for an hour
+  let hinted = false; // a /start without the code came: keep saying what to send until something else happens
+  while (run === pairRun && Date.now() < deadline) {
+    let got;
+    try { got = await api("telegram/poll", { wait: 20 }); }
+    catch {
+      wait.textContent = "Lost touch with Kurooto (is it still running?). Still trying…"; wait.className = "bad";
+      await new Promise((ok) => setTimeout(ok, 5000));
+      continue;
+    }
+    if (run !== pairRun) return;
     if (got.paired) { await refresh(); renderTelegram(); return; }
+    if (!got.error) {
+      if (!hinted) { wait.textContent = "Waiting for you to press Start…"; wait.className = ""; fix.replaceChildren(); }
+      continue;
+    }
+    fix.replaceChildren();
+    hinted = got.problem === "no_code";
+    wait.textContent = got.error; wait.className = hinted ? "" : "bad";
+    if (got.problem === "webhook") {
+      fix.append(el("button", { class: "primary", onclick: async () => {
+        const d = await api("telegram/webhook-off", {});
+        wait.textContent = d.ok ? "Disconnected. Waiting for you to press Start…" : d.error;
+        wait.className = d.ok ? "" : "bad"; fix.replaceChildren();
+      } }, "Disconnect it"));
+    }
+    if (got.problem === "expired") newLinkButton(wait, fix);
+    if (got.retry === false) return;
+    if (!hinted) await new Promise((ok) => setTimeout(ok, 5000)); // Telegram or the network had a problem: a pause
   }
-  $("#tg-wait").textContent = "Didn't see it. Tap the button again, press Start, then wait here.";
+  if (run === pairRun) { wait.textContent = "This link expired: get a new one."; wait.className = "bad"; newLinkButton(wait, fix); }
 }
 
 // -------------------------------------------------------------------------------------------- finish
