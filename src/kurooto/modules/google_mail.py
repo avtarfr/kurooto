@@ -32,7 +32,14 @@ from kurooto.core.lock import Lock, Timeout
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming
 from kurooto.modules.calls.tools import Tool, arg, clip
-from kurooto.modules.google import GoogleError, GooglePart, NeedsSignIn, not_interested, run_skill
+from kurooto.modules.google import (
+    GoogleError,
+    GooglePart,
+    NeedsSignIn,
+    not_interested,
+    not_interested_list,
+    run_skill,
+)
 
 register_defaults(
     "mail_digest",
@@ -189,7 +196,7 @@ class MailDigest(GooglePart):
             m["id"]
             for m in g.pages("gmail", "/users/me/messages", "messages", {"q": q, "maxResults": 100}, cap // 100 + 1)
         ]
-        seen = set(st.get("seen", []))
+        seen = dict.fromkeys(st.get("seen", []))  # in order, so the oldest are dropped first
         names = {}
         if any(r.lower().startswith("label:") for r in self.rules()):
             names = {x["id"]: x.get("name", "") for x in g.api("gmail", "/users/me/labels").get("labels", [])}
@@ -203,7 +210,7 @@ class MailDigest(GooglePart):
                 f"/users/me/messages/{mid}?format=metadata&metadataHeaders=From&metadataHeaders=Subject"
                 "&metadataHeaders=Reply-To&metadataHeaders=Message-ID&metadataHeaders=Date",
             )
-            seen.add(mid)
+            seen[mid] = None
             newest = max(newest, int(meta.get("internalDate") or 0))
             h = headers(meta)
             if parseaddr(h.get("from", ""))[1].lower() == me:
@@ -224,7 +231,7 @@ class MailDigest(GooglePart):
                 "subject": h.get("subject", "") or "(no subject)",
                 "why": why,
                 "chosen": chosen,
-                "labels": sorted(names.get(i, "") for i in meta.get("labelIds", []) if names.get(i) and "_" not in i),
+                "labels": sorted(names[i] for i in meta.get("labelIds", []) if i.startswith("Label_") and names.get(i)),
                 "text": body_text(full.get("payload") or {}),
                 "attachments": attachment_names(full.get("payload") or {}),
                 "link": f"https://mail.google.com/mail/u/0/#all/{meta.get('threadId', '')}",
@@ -311,7 +318,8 @@ class MailDigest(GooglePart):
 
     def render(self, b: dict) -> str:
         at = dt.datetime.fromisoformat(b["at"])
-        piles = ", ".join(f"{n} {k}" for k, n in (b.get("counted") or {}).items() if n) or "none"
+        counted = sorted((b.get("counted") or {}).items(), key=lambda kv: (-kv[1], kv[0]))
+        piles = ", ".join(f"{n} {k}" for k, n in counted if n) or "none"
         drafts = self.app.is_on("reply_drafts")
         lines = [
             f"Mail to digest: {len(b['messages'])} message(s), checked {at:%a %d %b %H:%M}.",
@@ -322,6 +330,9 @@ class MailDigest(GooglePart):
             else "Save the digest note: no (answer only)",
             "Reply drafts: on (use the draft_reply tool)" if drafts else "Reply drafts: off (don't draft replies)",
         ]
+        topics = not_interested_list(self.app)
+        if topics:
+            lines.append("Not interested (only count mail about these): " + ", ".join(topics))
         for n, m in enumerate(b["messages"], 1):
             whose = (
                 "you chose this sender or label: summarise it"
@@ -472,10 +483,8 @@ class ReplyDrafts(GooglePart):
         return self.app.paths.state / "reply-drafts"
 
     def start(self):
-        ask = getattr(self.app, "ask", None)
-        if ask is not None:
-            ask.hooks["reply_drafts.answer"] = lambda q, a: self.answer((q.get("hook_payload") or {}).get("draft"), a)
-            ask.hooks["reply_drafts.change"] = lambda q, a: self._change_hook(q, a)
+        self.app.ask.hooks["reply_drafts.answer"] = lambda q, a: self.answer(q["hook_payload"].get("draft", ""), a)
+        self.app.ask.hooks["reply_drafts.change"] = self._change_hook
         self.app.jobs.then_actions["reply_drafts.rewritten"] = self._rewritten
 
     def rec(self, did: str) -> dict | None:
@@ -540,26 +549,15 @@ class ReplyDrafts(GooglePart):
         text = f"Reply to {self.who(rec)}?\nSubject: {rec['subject']}\n\n{clip(rec['body'], 1800)}"
         if rec.get("why"):
             text += f"\n\n(Why: {rec['why']})"
-        ask = getattr(self.app, "ask", None)
-        if ask is not None:
-            ask.ask(
-                text,
-                choices=["Send", "Edit", "Discard"],
-                kind="approval",
-                hook="reply_drafts.answer",
-                hook_payload={"draft": did},
-                expires=dt.timedelta(days=int(self.setting("ask_days") or 3)),
-                source=self.id,
-                title="Email reply",
-            )
-            return
-        self.app.notify(  # without app.ask: buttons, and a reply to this message says what to change
+        self.app.ask.ask(
             text,
-            title="Email reply",
+            choices=["Send", "Edit", "Discard"],
             kind="approval",
-            buttons=[[("Send", f"rd:{did}:send"), ("Edit", f"rd:{did}:edit"), ("Discard", f"rd:{did}:discard")]],
-            map_kind="reply_draft",
-            map_ref=did,
+            hook="reply_drafts.answer",
+            hook_payload={"draft": did},
+            expires=dt.timedelta(days=int(self.setting("ask_days") or 3)),
+            source=self.id,
+            title="Email reply",
         )
 
     def answer(self, did: str, choice: str) -> str:
@@ -597,12 +595,13 @@ class ReplyDrafts(GooglePart):
         return note
 
     def _ask_change(self, did: str, rec: dict) -> None:
-        q = f"What should I change in the reply to {self.who(rec)}?"
-        ask = getattr(self.app, "ask", None)
-        if ask is not None:
-            ask.ask(q, kind="question", hook="reply_drafts.change", hook_payload={"draft": did}, source=self.id)
-        else:
-            self.app.notify(q + " (Reply to this message.)", kind="question", map_kind="reply_draft", map_ref=did)
+        self.app.ask.ask(
+            f"What should I change in the reply to {self.who(rec)}?",
+            hook="reply_drafts.change",
+            hook_payload={"draft": did},
+            source=self.id,
+            title="Email reply",
+        )
 
     def _change_hook(self, q: dict, answer: str) -> str:
         did = (q.get("hook_payload") or {}).get("draft")
@@ -659,13 +658,7 @@ class ReplyDrafts(GooglePart):
         self._save(did, rec)
         self._ask(did, rec)
 
-    # -------------------------------------------------------------------------------------- hooks, tools
-    def callbacks(self):
-        return {"rd": lambda ref, act: self.answer(ref, act)}
-
-    def replies(self):
-        return {"reply_draft": lambda msg, ref: self.change(ref, msg.text)}
-
+    # -------------------------------------------------------------------------------------------- tools
     def agent_tools(self):
         return [
             Tool(

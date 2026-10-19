@@ -362,8 +362,9 @@ def test_setup_forms_through_the_api(env, tmp_path):
 
     api = Api(env.app)
     forms = {m["id"]: m["form"] for m in api.get("state")[1]["modules"] if m["form"]}
-    assert set(forms) == {"calendar", "notes_sync", "google", "research"}
-    assert all(f["fields"] and f["intro"] for f in forms.values())
+    first = {"calendar", "notes_sync", "google", "research"}
+    assert first <= set(forms)  # the Google add-ons have forms too: Save asks Google for their permission
+    assert all(f["intro"] for f in forms.values()) and all(forms[k]["fields"] for k in first)
     r = api.post("modules/configure", {"id": "calendar", "values": {"link": "ftp://nope"}})[1]
     assert r["ok"] is False and "https" in r["message"]
     r = api.post("modules/configure", {"id": "google", "values": {"client": CLIENT}})[1]

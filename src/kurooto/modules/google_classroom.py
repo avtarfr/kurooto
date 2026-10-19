@@ -32,7 +32,15 @@ from kurooto.core.lock import Lock, Timeout
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming
 from kurooto.modules.calls.tools import Tool, arg, clip
-from kurooto.modules.google import GoogleError, GooglePart, NeedsSignIn, due_of, not_interested, run_skill
+from kurooto.modules.google import (
+    GoogleError,
+    GooglePart,
+    NeedsSignIn,
+    due_of,
+    not_interested,
+    not_interested_list,
+    run_skill,
+)
 
 register_defaults(
     "classroom_notes",
@@ -258,7 +266,8 @@ class ClassroomNotes(GooglePart):
                 out["courses"] += 1
             out["items"] += len(items)
             out["not_interested"] += ignored
-        jsave(seen_file, seen)  # only after the batches are written: a crash in between files twice, never not at all
+            jsave(seen_file, seen)  # after each course's batches are written: a crash files twice, never not at all
+        jsave(seen_file, seen)
         return out
 
     def item(self, kind: str, it: dict, text: str, folder: str, date: str) -> dict:
@@ -315,6 +324,8 @@ class ClassroomNotes(GooglePart):
     def drive_file(self, fid: str, title: str | None, link: str | None, folder: str) -> dict:
         """Download one Drive file into Kurooto's data folder and read its text, when that's possible."""
         rec = {"title": title or "a Drive file", "link": link or f"https://drive.google.com/file/d/{fid}/view"}
+        if not re.fullmatch(r"[\w-]{10,}", fid or ""):
+            return {**rec, "note": "not a Drive file Kurooto can open"}
         if not self.setting("files"):
             return {**rec, "note": "files are off (classroom_notes.files)"}
         cap = int(self.setting("max_file_mb") or 30) * 2**20
@@ -387,6 +398,9 @@ class ClassroomNotes(GooglePart):
         ]
         if b.get("not_interested"):
             lines.append(f"Skipped (not interested): {b['not_interested']}")
+        topics = not_interested_list(self.app)
+        if topics:
+            lines.append("Not interested (no notes, tasks or deadlines for these): " + ", ".join(topics))
         for n, it in enumerate(b["items"], 1):
             lines += [
                 "",
