@@ -19,6 +19,8 @@ from kurooto.modules.handwritten import Handwritten
 from kurooto.modules.library import Library
 from kurooto.modules.local_models import LocalModels
 from kurooto.modules.notes_sync import NotesSync
+from kurooto.modules.overlay import AddOns
+from kurooto.modules.profile import Profile
 from kurooto.modules.quiz import Quiz
 from kurooto.modules.remember import Remember
 from kurooto.modules.reminders import Reminders
@@ -56,6 +58,7 @@ CATALOG = [
     Calendar,
     NotesSync,
     Backups,
+    Profile,
     Google,
     ClassroomNotes,
     MailDigest,
@@ -65,4 +68,5 @@ CATALOG = [
     Study,
     Research,
     Terminals,
+    AddOns,
 ]
