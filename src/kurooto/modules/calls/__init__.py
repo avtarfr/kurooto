@@ -200,6 +200,10 @@ class Calls(Module):
             )
         return t
 
+    def agent_tools(self) -> list[Tool]:
+        """What unattended AI requests may do with calls: call back later, hold calls (core/tools.py)."""
+        return [t for t in self._own_tools() if t.name in ("schedule_call", "hold_calls")]
+
     def run_tool(self, name: str, args: dict):
         tool = next((t for t in self.tools() if t.name == name), None)
         if not tool:
