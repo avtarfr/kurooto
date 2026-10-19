@@ -129,6 +129,17 @@ function testButton(which) {
   return [btn, out];
 }
 
+// What a Gemini key's free tier means, said plainly wherever the wizard asks for one.
+const GEMINI_TERMS = "On the free tier, Google may use what you send and what it answers to improve its products, and human " +
+  "reviewers may read it. You must be 18 or older. In the EEA, the UK and Switzerland you need a paid key (billing on). " +
+  "Phone calls and voice notes always go through Gemini, whichever AI answers your messages. If you don't want that, " +
+  "use a paid key.";
+function geminiTerms() { return el("p", { class: "note" }, GEMINI_TERMS); }
+
+const AGY_NOTE = "Kurooto runs Google's official agy program on this computer, signed in as you, and never touches its " +
+  "sign-in token. Google's answers differ on whether other tools may start agy unattended, so there is some risk to " +
+  "your Google account. For tools like Kurooto, Google recommends a Gemini API key.";
+
 function renderBrainPanel(which) {
   const panel = $("#brain-panel");
   const box = el("div", { class: "box" });
@@ -142,6 +153,7 @@ function renderBrainPanel(which) {
       el("p", {}, "Sign in once with your Google account: a window opens, follow it, then close it."),
       el("button", { onclick: async () => { const r = await api("prereqs/signin", { key: "agy" }); alert(r.message); } }, "Open the sign-in window"),
       el("p", {}, "Then check it works:"), ...testButton("agy"));
+    box.append(el("p", { class: "note" }, AGY_NOTE));
   } else if (which === "codex" || which === "claude") {
     const key = which, label = which === "codex" ? "Codex" : "Claude Code";
     const installed = state.prereqs[key].installed;
@@ -156,8 +168,8 @@ function renderBrainPanel(which) {
   } else if (which === "gemini") {
     const key = el("input", { placeholder: "Paste your Gemini API key", autocomplete: "off", spellcheck: "false" });
     box.append(
-      el("p", {}, "Get a free key: ", el("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noopener" }, "Google AI Studio → Create API key"),
-        ". Google may use what you send on the free tier to improve its models."),
+      el("p", {}, "Get a free key: ", el("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noopener" }, "Google AI Studio → Create API key"), "."),
+      geminiTerms(),
       key, el("p", {}), el("button", { onclick: async () => { await api("brain", { main: "gemini", key: key.value }); } }, "Save"), " ",
       ...testButton("gemini"));
   } else if (which === "freellmapi") {
@@ -290,6 +302,7 @@ function renderKeyBox() {
     el("p", {}, "Phone calls, voice notes and the alarm need a free Gemini API key (it takes a minute): open ",
       el("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noopener" }, "Google AI Studio"),
       ", sign in with your Google account, tap Create API key, and paste it here."),
+    geminiTerms(),
     el("div", { class: "row" }, key, el("button", { class: "primary", onclick: async () => {
       out.textContent = "Checking…"; out.className = "";
       const r = await api("keys/gemini", { key: key.value });

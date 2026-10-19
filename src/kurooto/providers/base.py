@@ -19,6 +19,7 @@ class Verdict(StrEnum):
 
 
 EFFORTS = ("low", "medium", "high")
+TEXT_ONLY = "Answer with text only. Don't use any tools: don't read, write or run anything."
 
 
 @dataclass
@@ -29,6 +30,7 @@ class Task:
     cwd: Path | None = None  # the user's workspace (notes folder)
     timeout_s: int = 900
     context: str = ""  # who the user is, the time, the rules for unattended work
+    text_only: bool = False  # the answer is just text: agent programs are told to use no tools
 
 
 @dataclass

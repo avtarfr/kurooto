@@ -7,20 +7,23 @@ Two ways to read its answer, picked at setup by a quick test: through pipes ("pi
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
 import time
+import uuid
 from pathlib import Path
 
 from kurooto.core import proc
-from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
+from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, TEXT_ONLY, Brain, Result, Task, Verdict
 
 LEVELS = {
     "low": ("gemini-3.8-flash-low", "low"),
     "medium": ("gemini-3.8-flash-medium", "medium"),
     "high": ("gemini-3.8-flash-high", "high"),
 }
+ARG_LIMIT = 20_000 if sys.platform == "win32" else 100_000  # longer prompts go through a file (handover)
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[()][A-Z0-9]|\r")
 
 
@@ -55,17 +58,61 @@ class Agy(Brain):
             return Result(Verdict.ERROR, detail="agy isn't installed")
         minutes = max(1, task.timeout_s // 60)
         prompt = (task.context + "\n\n" + task.prompt).strip() if task.context else task.prompt
-        args = self._args(prompt, task.effort, minutes)
+        if task.text_only:  # unattended runs may not use tools; text-only work says so plainly
+            prompt = f"{TEXT_ONLY}\n\n{prompt}"
+        long = handover(prompt, task.cwd, task.text_only)
+        args = self._args(long[1] if long else prompt, task.effort, minutes)
         t0 = time.monotonic()
-        if self.io_mode == "pty":
-            code, out, err = run_pty(args, task.cwd, task.timeout_s + self.grace_s)
-        else:
-            r = proc.run(args, cwd=task.cwd, timeout=task.timeout_s + self.grace_s)
-            code, out, err = r.code, r.out, r.err
+        try:
+            if self.io_mode == "pty":
+                code, out, err = run_pty(args, task.cwd, task.timeout_s + self.grace_s)
+            else:
+                r = proc.run(args, cwd=task.cwd, timeout=task.timeout_s + self.grace_s)
+                code, out, err = r.code, r.out, r.err
+        finally:
+            if long:
+                long[0].unlink(missing_ok=True)
         return verdict(code, out, err, time.monotonic() - t0, minutes)
 
     def complete(self, prompt: str, system: str = "", effort: str = "low", timeout: int = 120) -> Result:
-        return self.run(Task(prompt=prompt, context=system, effort=effort, timeout_s=timeout))
+        return self.run(Task(prompt=prompt, context=system, effort=effort, timeout_s=timeout, text_only=True))
+
+
+def handover(prompt: str, cwd: Path | None, text_only: bool = False) -> tuple[Path, str] | None:
+    """agy takes its request on the command line, which has a size limit (about 32,000 characters in all on
+    Windows, 128 KB per argument on Linux). A longer request goes in a file in a hidden folder of the notes, which
+    git (Notes sync) ignores, and agy is told to read it. Returns (the file, the short prompt), or None."""
+    if len(prompt) <= ARG_LIMIT or cwd is None:
+        return None
+    d = Path(cwd) / ".kurooto" / "requests"
+    d.mkdir(parents=True, exist_ok=True)
+    if not (d / ".gitignore").exists():
+        (d / ".gitignore").write_text("*\n", encoding="utf-8")
+    f = d / f"{uuid.uuid4().hex[:12]}.md"
+    f.write_text(prompt, encoding="utf-8")
+    rel = f.relative_to(cwd).as_posix()
+    if text_only:
+        return f, (
+            f"Your full request is in the file {rel} (in this folder). Read that one file, then answer with text "
+            "only: don't read anything else, and don't write or run anything."
+        )
+    return f, f"Your full request is in the file {rel} (in this folder). Read all of it, then do what it says."
+
+
+def worked_file(state: Path) -> Path:
+    return Path(state) / "agy-worked.json"
+
+
+def has_worked(state: Path) -> bool:
+    """Has agy answered on this computer before (a request, or the setup page's test)? Then it may stand in for
+    the Gemini key."""
+    return worked_file(state).exists()
+
+
+def mark_worked(state: Path) -> None:
+    f = worked_file(state)
+    if not f.exists():
+        f.write_text(json.dumps({"at": time.time()}), encoding="utf-8")
 
 
 def verdict(code: int | None, out: str, err: str, secs: float, minutes: int) -> Result:
