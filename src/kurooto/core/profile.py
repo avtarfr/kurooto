@@ -72,6 +72,7 @@ KEEP = (  # (folder, pattern inside it): Kurooto's own state worth keeping on a 
     ("data", "skills/routines.json"),
 )
 SKIP = {"state/quiz/session.json", "state/quiz/offered.json"}  # a practice session in progress: not worth moving
+LOCAL_ONLY = ("data/mail/confidential/",)  # confidential mail summarised on this computer stays on this computer
 SECRET_FILES = (("config", "cloudflare/.wrangler/config/default.toml"),)  # the call line's Cloudflare sign-in
 SCHEDULED = ("reminders:", "calls:ring:", "alarm:ring")  # one-off jobs that are yours: reminders, calls, the alarm
 FOLDERS = ("you.workspace", "backups.folder", "overlay.path")  # kept only where that folder exists on this computer
@@ -214,7 +215,7 @@ def _allowed(top: str, rel: str) -> bool:
     pp = PurePosixPath(rel)
     if not rel or pp.is_absolute() or "\\" in rel or any(x in ("", ".", "..") for x in pp.parts):
         return False
-    if f"{top}/{rel}" in SKIP:
+    if f"{top}/{rel}" in SKIP or f"{top}/{rel}".startswith(LOCAL_ONLY):
         return False
     return any(t == top and rel.count("/") == pat.count("/") and fnmatch(rel, pat) for t, pat in KEEP)
 

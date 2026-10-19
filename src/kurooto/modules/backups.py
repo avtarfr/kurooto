@@ -42,8 +42,10 @@ register_defaults(
         "notes": False,  # also your notes folder
         "secrets": False,  # also passwords and keys (bot token, API keys, sign-ins): anyone with the zip can use them
         "index": True,  # also the notes brain's index (big, but slow to rebuild)
+        "confidential_mail": False,  # also confidential mail summarised on this computer (Mail digest's local mode)
     },
 )
+CONFIDENTIAL = ("mail", "confidential")  # in the data folder: only with backups.confidential_mail
 PREFIX = "kurooto-backup-"
 NAME = re.compile(r"kurooto-backup-(\d{8}-\d{6})\.zip")
 # state that only means something to the program that wrote it (and must not come back from an older copy)
@@ -80,7 +82,16 @@ def known_secret_names(secrets) -> list[str]:
     return sorted(set(secrets.names()) | set(KNOWN_SECRETS))
 
 
-def sources(p, workspace: Path | None, *, notes: bool, secrets: bool, index: bool, skip: Path | None = None):
+def sources(
+    p,
+    workspace: Path | None,
+    *,
+    notes: bool,
+    secrets: bool,
+    index: bool,
+    skip: Path | None = None,
+    confidential: bool = False,
+):
     """(name in the zip, file) for everything a backup holds. `skip`: a folder never to read (the backups' own)."""
     skip = skip.resolve() if skip else None
 
@@ -112,7 +123,11 @@ def sources(p, workspace: Path | None, *, notes: bool, secrets: bool, index: boo
     yield from walk(
         p.data,
         "data",
-        keep_dir=lambda parts: parts[0] != SAFETY and (index or parts[0] != "gbrain"),
+        keep_dir=lambda parts: (
+            parts[0] != SAFETY
+            and (index or parts[0] != "gbrain")
+            and (confidential or tuple(parts[:2]) != CONFIDENTIAL)
+        ),
         keep_file=lambda parts: not (len(parts) == 1 and parts[0].startswith(("kurooto-diagnostics-", "restore-"))),
     )
     yield from walk(
@@ -154,13 +169,16 @@ def make_zip(
     index: bool = True,
     name: str | None = None,
     lock_dir: Path | None = None,
+    confidential: bool = False,
 ) -> tuple[Path, dict]:
     """Write one backup zip into `folder`. `secrets`: a Secrets object to include them, else None. Returns (the
     zip, its manifest)."""
     folder = Path(folder)
     stamp = now().strftime("%Y%m%d-%H%M%S")
     name = name or f"{PREFIX}{stamp}.zip"
-    files = list(sources(p, workspace, notes=notes, secrets=bool(secrets), index=index, skip=folder))
+    files = list(
+        sources(p, workspace, notes=notes, secrets=bool(secrets), index=index, skip=folder, confidential=confidential)
+    )
     total = 0
     for _, f in files:
         try:
@@ -333,6 +351,7 @@ def backup_now(p, settings, secrets, workspace: Path, folder: Path | None = None
                 notes=bool(get("notes", False)),
                 secrets=secrets if get("secrets", False) else None,
                 index=bool(get("index", True)),
+                confidential=bool(get("confidential_mail", False)),
             )
             gone = prune(target, int(get("keep", 7) or 7)) if folder is None else []
     except Timeout:

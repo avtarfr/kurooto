@@ -14,6 +14,12 @@ match): `"classroom_notes", "mail_digest", "reply_drafts", "agent_plan"`. Checke
 full suite passes.
 
 Shipped skills: `src/kurooto/data/skills/classroom-digest/SKILL.md`, `src/kurooto/data/skills/mail-digest/SKILL.md`.
+
+Small additions outside my modules (each one contiguous block), for the confidential local mode: `web/api.py` (GET
+`mail/confidential`, POST `mail/confidential/settle`), `web/server.py` (the `/confidential` page), `web/static/`
+(`confidential.html`, `confidential.js`), `web/static/home.js` (a link on the Mail digest card), `modules/backups.py`
+(`backups.confidential_mail`, off: `data/mail/confidential/` left out), `core/profile.py` (`LOCAL_ONLY`: that folder is
+never in a profile).
 `/sync all` (home's syncall) calls `Google.sync_now()`, which runs Classroom, Classroom → notes and the mail digest.
 
 ---
@@ -94,8 +100,21 @@ spaces). To
 keep a sender, domain or label out of the digest altogether: `/mail never @office.example` (`/mail unnever ...` takes
 it off; `/mail rules` lists both lists). This is on by default (`mail_digest.skip_confidential`).
 
+**Optional: confidential mail summarised on this computer.** Set `mail_digest.confidential` to `local` (the default is
+`count`) and, with **Local AI models** on, a model on this computer (Ollama) reads mail marked confidential instead of
+leaving it only counted. The cloud AI still never sees it. The summary is kept only in Kurooto's data folder
+(`mail/confidential/<date>.md`, readable only by your user account): not in your notes, not on Telegram (which only
+says "Confidential (2): summarised on this computer; open the dashboard to read it"), not in Profile sync, and not in
+Backups unless you turn on `backups.confidential_mail`. Read it in the dashboard: Features → Mail digest →
+**Confidential mail**. Dates it finds are only offered: on that page, or `/mail confidential` on Telegram (titles and
+dates only), each with **Add to Deadlines** / **Not needed**. Marked mail still never gets an AI reply draft. Without a
+ready local model (Local AI models off, not set up, or resting on battery), it's only counted, and Kurooto says so
+once. Up to 15 such mails a check, three per request to the local model, each cut to its first 3,500 characters.
+`mail_digest.local_model` picks another Ollama model (default: Local AI models' helper model).
+
 `/mail` checks now (so does `/sync all`). Settings: `mail_digest.at`, `mail_digest.read`, `mail_digest.never_read`,
-`mail_digest.own_domain`, `mail_digest.skip_confidential`, `mail_digest.confidential_words`, `mail_digest.save_note`
+`mail_digest.own_domain`, `mail_digest.skip_confidential`, `mail_digest.confidential_words`,
+`mail_digest.confidential` (`count` or `local`), `mail_digest.local_model`, `mail_digest.save_note`
 (the copy in your notes), `mail_digest.first_days` (how far back the first check looks: 3).
 *Leaves:* the text of the mail you chose goes to the AI you picked; for the rest, only counts. Nothing is ever sent,
 deleted, archived or marked read. *Turn off:* Features → Mail digest → Turn off.
@@ -118,6 +137,11 @@ reminder (`agent_plan.remind_min`; 0 for none).
 - To see the blocks in Kurooto's own Calendar feature too, add the Agent plan calendar's private iCal link there.
 *Turn off:* Features → Agent plan calendar → Turn off (the calendar stays in Google Calendar until you delete it).
 
+## Backups (home's section): one more setting
+
+`backups.confidential_mail` (off): also back up confidential mail summarised on this computer (Mail digest's local
+mode). Off, the zip leaves out `data/mail/confidential/`.
+
 ## Troubleshooting rows
 
 | What you see | What to do |
@@ -127,6 +151,7 @@ reminder (`agent_plan.remind_min`; 0 for none).
 | Google says "Access blocked" for a school account | Your school doesn't allow unverified apps for that permission. Use a personal Google account, or ask your school's admin. |
 | The mail digest says it only counted my mail | It reads only what you chose: `/mail read @your-school.example` or `/mail read label:Name`. Mail marked confidential is always only counted. |
 | Classroom notes say a PDF wasn't read | Install Poppler (`pdftotext`), or use agy as your AI (it opens PDFs itself). |
+| "Confidential mail is only counted for now" | Local mode needs Local AI models on and ready (Features → Local AI models; on a laptop they run on the charger). |
 | Classroom notes went to the wrong folder | Settings → `classroom_notes.folders`: `{"Exact course name": "folder-name"}`. |
 
 ## CHANGELOG lines (0.2.0)
@@ -138,6 +163,9 @@ reminder (`agent_plan.remind_min`; 0 for none).
   your notes and deadlines into Deadlines. It reads only the senders, domains and labels you choose (`/mail read`);
   everything else is only counted. Mail marked confidential (including standard confidentiality footers), and anything
   on your never-read list (`/mail never`), is never read, summarised or answered with an AI draft.
+- Mail digest, optional local mode (`mail_digest.confidential = "local"`): confidential mail is summarised by a local
+  model on this computer and kept only in Kurooto's data folder (dashboard → Features → Mail digest → Confidential
+  mail); dates found there are offered, never added on their own (`/mail confidential`).
 - Email reply drafts: the AI drafts replies to mail that needs one into Gmail and asks Send / Edit / Discard; nothing
   is sent without your tap.
 - Agent plan calendar: time blocks Kurooto plans with you go into its own calendar in Google Calendar (`/blocks`, and a
@@ -151,6 +179,7 @@ reminder (`agent_plan.remind_min`; 0 for none).
 |---|---|---|
 | Classroom → notes | Classroom posts and the text of their attached files, to write the notes | the AI service you picked; read from Google with your own client |
 | Mail digest | the text of the mail you chose for the digest (senders, domains, labels you named; on a school or work account, your own domain). Other mail, mail marked confidential ("confidential", "do not forward", "restricted" or a standard confidentiality footer anywhere in its subject, text or labels) and your never-read list: nothing, they're only counted on your computer. Work or school mail may be covered by your institution's email policy; Kurooto never summarises mail marked confidential | the AI service you picked; read from Gmail with your own client |
+| Mail digest, confidential mail in local mode (opt-in) | nothing: a model on this computer (Ollama, 127.0.0.1) summarises it; the summary stays in Kurooto's data folder (`mail/confidential/`, owner-only), out of your notes, Telegram (a count only), Profile sync and Backups (unless `backups.confidential_mail`) | stays on this computer |
 | Email reply drafts | the draft reply, written into your Gmail Drafts; sent only when you tap Send | Google (your Gmail) |
 | Agent plan calendar | the time blocks (title and time), in Kurooto's own calendar | Google (your Google Calendar) |
 

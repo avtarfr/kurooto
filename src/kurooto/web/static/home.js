@@ -392,7 +392,7 @@ async function renderFeatures(body) {
     ${m.form.fields.map((f) => `<label>${esc(f.label)}${f.type === "textarea" ? `<textarea name="${esc(f.name)}" rows="3" placeholder="${esc(f.placeholder || "")}"></textarea>`
       : `<input name="${esc(f.name)}" type="${f.type === "password" ? "password" : "text"}" placeholder="${esc(f.placeholder || "")}" autocomplete="off">`}</label>`).join("")}
     <button class="primary" type="submit">Save</button></form>`;
-  const card = (m) => `<div class="card2 ${m.on ? "on" : ""}"><b>${esc(m.title)}</b><p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>
+  const card = (m) => `<div class="card2 ${m.on ? "on" : ""}"><b>${esc(m.title)}</b><p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>${m.id === "mail_digest" && m.on ? `<p><a href="/confidential" target="_blank" rel="noopener">Confidential mail (summarised on this computer)</a></p>` : ""}
     ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${form(m)}</div>`;
   const addons = st.modules.filter((m) => m.addon); // features from your own add-ons folder (core/overlay.py)
   body.innerHTML = `<div class="feat">${st.modules.filter((m) => !m.addon).map(card).join("")}</div>${addons.length
