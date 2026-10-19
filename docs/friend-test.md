@@ -38,6 +38,18 @@ If anything blocks for more than 3 minutes: `kurooto doctor --bundle`, save the 
 | 7 | Hang up; "call me in 3 minutes about stretching" on Telegram | a call 3 minutes later |
 | 8 | Optional: Morning alarm (/alarm in 5 minutes), Stay awake on charger | the alarm rings on the alarm volume |
 | 9 | Optional: Google (Calendar link first; Classroom only if they want it) | /today shows their events |
+| 10 | A question on the phone: in a terminal, `kurooto ask-me "Did this reach your phone?" --choices "yes\|no"` | Android: a notification with Reply and the two choices; iPhone: tap it → Waiting for you. Answer there; `/q` on Telegram no longer lists it |
+
+## Session 3 (optional): what 0.2.0 adds, about 20 minutes
+Only the parts they want; each feature is off until they turn it on.
+
+| # | Step | Expect |
+|---|---|---|
+| 1 | Features → Skills, then `/journal` and a line about their day | the line in today's note (`journal/`), in their words |
+| 2 | Features → Backups → pick a folder (an external drive or a synced cloud folder) → `/backup` | "Backing up now", then a message when it's done, and a zip in that folder |
+| 3 | With Notes sync on: Features → Profile sync → a passphrase of a few words (10 characters or more) → `/profile save`, then `/profile` | what it holds and when it was saved; a `kurooto-profile` branch on GitHub |
+| 4 | Check-ins: give the night check-in a time (Settings → Check-ins → `times`) if they want one | it shows in `/checkins` |
+| 5 | `kurooto top` in a terminal | the status board; `q` quits |
 
 ## Afterwards
 - Write down every place they hesitated, with the time it cost, and what would have helped.

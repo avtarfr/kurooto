@@ -13,10 +13,28 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [About you](#about-you)
 - [Your AI brain](#your-ai-brain)
 - [Features](#features)
+  - [Telegram](#telegram) · [Questions and approvals](#questions-and-approvals) ·
+    [Chat with your AI](#chat-with-your-ai) · [Reminders](#reminders) · [Check-ins](#check-ins) ·
+    [Deadlines](#deadlines) · [Recurring quizzes](#recurring-quizzes) · [Not interested](#not-interested) ·
+    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Quiz](#quiz) ·
+    [Weekly summary](#weekly-summary)
+  - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
+    [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
+    [Remember](#remember) · [Nightly look back](#nightly-look-back)
+  - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) · [Voice notes](#voice-notes) ·
+    [Stay awake on charger](#stay-awake-on-charger) · [Calendar](#calendar)
+  - [Notes sync](#notes-sync) · [Sync everything](#sync-everything) · [Backups](#backups) ·
+    [Profile sync](#profile-sync)
+  - [Google](#google-classroom-gmail-drafts) · [Classroom → notes](#classroom--notes) · [Mail digest](#mail-digest) ·
+    [Email reply drafts](#email-reply-drafts) · [Agent plan calendar](#agent-plan-calendar)
+  - [Handwritten notes](#handwritten-notes) · [Study tracker](#study-tracker) · [Research](#research) ·
+    [Terminals](#terminals) · [Your add-ons](#your-add-ons) ·
+    [From a terminal or a script](#from-a-terminal-or-a-script)
 - [Your phone](#your-phone)
 - [The dashboard](#the-dashboard)
 - [Taking your laptop with you (battery, pause, off)](#taking-your-laptop-with-you-battery-pause-off)
 - [Updates and going back](#updates-and-going-back)
+- [Moving to a new computer](#moving-to-a-new-computer)
 - [Your computer and Kurooto (hardware profiles)](#your-computer-and-kurooto-hardware-profiles)
 - [Where things are](#where-things-are)
 - [Troubleshooting](#troubleshooting)
@@ -36,19 +54,21 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - **Free disk space:** about 1 GB for Kurooto itself, plus what the features you pick need (the wizard shows the total
   before installing anything). Kurooto always leaves 5 GB free.
 - **Telegram** on your phone (free): this is how you talk to Kurooto.
-- **A Google account** (free): for the recommended AI (Antigravity) or a free Gemini key.
+- **A Google account** (free): for the recommended AI, a Gemini API key from Google AI Studio.
 
 **Optional, depending on the features you pick:**
 
 | Feature | Needs |
 |---|---|
-| Phone calls, Morning alarm | a free [Cloudflare](https://dash.cloudflare.com/sign-up) account and a free Gemini key |
-| Notes sync | a free [GitHub](https://github.com/signup) account |
-| Google Classroom, Gmail drafts | your Google account, plus about 10 minutes in Google Cloud (free) |
+| Phone calls, Morning alarm | a free [Cloudflare](https://dash.cloudflare.com/sign-up) account and a Gemini key |
+| Notes sync, Profile sync | a free [GitHub](https://github.com/signup) account |
+| Backups | a folder on an external drive, or one your computer syncs to a cloud (Google Drive, OneDrive, iCloud Drive, Dropbox) |
+| Google Classroom, Gmail (drafts, the mail digest, reply drafts), the Agent plan calendar | your Google account, plus about 10 minutes in Google Cloud (free) |
+| Revision packs as PDF | Tectonic, a small LaTeX engine (Kurooto installs it for you when you ask) |
 | ChatGPT as the AI | a paid ChatGPT plan |
 | Claude as the AI | a paid Claude plan |
 
-Nothing costs money unless you choose a paid AI plan you already have.
+Nothing costs money unless you choose a paid plan: a paid AI plan you already have, or a paid Gemini key.
 
 ## Install
 
@@ -94,14 +114,15 @@ as you go, so you can close it and come back.
 1. **You:** what Kurooto calls you, your time zone (filled in from your browser) and the assistant's name.
 2. **Your computer:** what Kurooto found (processor, memory, graphics card, free space) and what it recommends for
    it, marked ★. You can change any of it later.
-3. **AI:** pick the AI that answers you (see [Your AI brain](#your-ai-brain)). ★ marks the recommendation. Press
-   **Install** if it isn't installed, follow the sign-in, then press **Test**: it asks the AI to reply, and tells you
-   if it worked.
+3. **AI:** pick the AI that answers you (see [Your AI brain](#your-ai-brain)). ★ marks the recommendation: a Gemini
+   API key. Make one at Google AI Studio, paste it and press **Save**. For the others, press **Install** if it isn't
+   installed and follow the sign-in. Then press **Test**: it asks the AI to reply, and tells you if it worked.
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below.
 5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins, deadlines, and the notes
    brain if there's room). **Everything** or **Pick myself** for more. Some features ask for a detail right in their
-   card (a calendar link, a repository); phone calls, voice notes and the alarm ask for a free Gemini key.
+   card (a calendar link, a repository); phone calls, voice notes and the alarm use your Gemini key (they ask for one
+   if you picked another AI).
 6. **Telegram:** make your own bot in two minutes:
    1. Open [@BotFather](https://t.me/BotFather) in Telegram, send `/newbot`, answer its two questions (a display name,
       then a username ending in `bot`).
@@ -110,6 +131,11 @@ as you go, so you can close it and come back.
       everyone else.
 7. **Done:** Kurooto installs what your features need (with progress), turns them on, and, if you chose Phone calls,
    shows a QR code to pair your phone. Send `/help` to your bot.
+
+**Used Kurooto before?** The first page has **I've used Kurooto before**: give your private repository, a token for it
+and your profile's passphrase, and your setup comes back (see [Moving to a new computer](#moving-to-a-new-computer)).
+The steps after it are then filled in from your profile; they help with what can't move by itself (signing your AI in
+again, installing what a feature needs).
 
 ## About you
 
@@ -132,7 +158,7 @@ so it starts out knowing you.
 
 The reports themselves stay in Kurooto's private data folder (not your notes, never synced). Remove anything you'd
 rather not keep before adding a report. Come back any time with more accounts: open the setup page (`kurooto open`, then
-"setup") and go to About you.
+"setup") and go to About you. To teach it smaller things as you go, see [Remember](#remember).
 
 ## Your AI brain
 
@@ -141,17 +167,50 @@ the setup page), and set a **fallback** that takes over when the first one hits 
 
 | Brain | Cost | Good for | Setup |
 |---|---|---|---|
-| **Antigravity (agy)** ★ | free with a Google account | the strongest free option; can read your notes | Install → a window opens → sign in with Google |
-| **Gemini API key** | free | simplest; also needed for calls and voice notes | [Google AI Studio](https://aistudio.google.com/apikey) → Create API key → paste |
+| **Gemini API key** ★ | free tier, or paid | the simplest, and the way Google recommends for tools like this; also used for calls and voice notes. Free tier: Google may use what you send to improve its products and human reviewers may read it; 18+; a paid key is required in the EEA, UK and Switzerland | [Google AI Studio](https://aistudio.google.com/apikey) → Create API key → paste |
+| **Antigravity (agy)** | free with a Google account | Google's agent program on your computer; can read your notes. Some risk to the Google account (see the note below) | Install → a window opens → sign in with Google |
 | **ChatGPT / Codex** | needs a paid ChatGPT plan | if you already pay for ChatGPT | Install → sign in with your ChatGPT account |
-| **FreeLLMAPI** | free | a pool of many providers' free tiers; more setup | install its app, copy its key into the wizard (personal experimenting only) |
-| **Local (Ollama)** | free | private and offline, but much weaker | only offered on computers with a graphics card or Apple Silicon |
-| **Custom** | depends | any OpenAI-compatible service | its address, key and model names |
 | **Claude Code** (Advanced) | needs a paid Claude plan | if you already pay for Claude | Install → sign in with your Claude account |
+| **Ollama on this computer** | free | private and offline, but much weaker, and needs a good graphics card; best as a helper next to another AI | Install Ollama → Test |
+| **Another OpenAI-compatible service** | depends | any service that speaks OpenAI's API | its address, key and model names |
+
+**agy:** Kurooto runs Google's official agy program on your computer, signed in as you, and never touches its sign-in
+token. Google's answers differ on whether other tools may start agy unattended, so there is some risk to your Google
+account; for tools like Kurooto, Google recommends a Gemini API key.
+
+If you set Kurooto up before 0.2.0, it keeps the AI you chose. An AI set up as FreeLLMAPI with an earlier version keeps
+working; it now shows as "Another OpenAI-compatible service". What each service's terms mean for your data is in
+[PRIVACY.md](PRIVACY.md).
 
 **Limits:** free tiers have daily limits. When the brain hits one, Kurooto tells you once and uses your fallback if
-you set one. **How hard it thinks:** Kurooto picks low, medium or high effort per request; start a message with
-`high:` or `low:` to choose.
+you set one. `/usage` (with Chat on) lists AI requests per day over the last 7 days (`/usage 14` for two weeks), per
+brain, and how often a limit was hit, from Kurooto's own request log; quick checks (how hard a request is, grading a
+quiz answer) and phone calls aren't counted. **How hard it thinks:** Kurooto picks low, medium or high effort per
+request; start a message with `high:` or `low:` to choose.
+
+### What the AI can do (its tools)
+
+Your AI doesn't only answer: it can act, the same way on a phone call, in Chat, and in background requests. It adds a
+reminder, calls you back later, holds calls, adds a deadline, logs study time, creates a note or adds to one, ticks a
+`- [ ]` task, and asks you a question when it needs your answer. Each feature you turn on adds its own tools; a feature
+that's off has none. The notes tools never change what you wrote: they create new notes, add text at the end of a note
+or one of its sections, and tick tasks. Nothing is sent to anyone but you.
+
+- **API brains** (a Gemini key, Ollama, another OpenAI-compatible service) call the tools directly. A model that can't
+  use tools (some small Ollama models) just answers without them.
+- **Agent programs** (agy, Codex, Claude Code) get them through `kurooto mcp`, a small MCP server that passes each call
+  to the running Kurooto. Codex and Claude Code get it for each request only; nothing is saved in their own settings.
+  agy gets it once, when you test agy on the setup page (or before its first request after this update): Kurooto runs
+  `agy mcp add kurooto ...` and adds `mcp(kurooto/*)` to agy's allow-list
+  (`~/.gemini/antigravity-cli/settings.json`, backed up first to Kurooto's state folder → `backups/`).
+- **Your own agent sessions** can use them too: add `kurooto mcp` as an MCP server in any MCP client. It works while
+  Kurooto is running.
+- The AI is told to say plainly when it couldn't do something, never to claim it did.
+
+*Turn it off:* the tools come from the features you have on; turn a feature off and its tools go. To take them away
+from agy: `agy mcp remove kurooto`, and delete the `mcp(kurooto/*)` line from agy's settings.
+*Leaves your computer:* nothing new. What a tool returns (a note's text, your deadlines) goes to the AI you picked,
+like the notes it reads.
 
 ## Features
 
@@ -159,17 +218,42 @@ Every feature is off until you turn it on (wizard, or dashboard → **Features**
 its data stays unless you delete it. Each section says what leaves your computer; [PRIVACY.md](PRIVACY.md) has the
 full list.
 
-Plain English works for many things ("remind me at 9 to call mum", "move tonight's check-in to 21:30", "what's due?",
-"wake me at 6:45"). `/help` lists the commands of the features you have on.
+Plain English works for many things ("remind me at 9 to call mum", "move tonight's check-in to 21:30", "skip Friday's
+check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` lists the commands of the
+features you have on.
 
 ### Telegram
 Your own bot, which only answers you. Commands: `/status` (what's going on), `/hold 2h` or `/hold 18:00` (no calls
 until then), `/calls` (allow calls again), `/focus 2h` (do-not-disturb: messages wait until it ends).
 *Leaves your computer:* your messages travel through Telegram to your bot.
 
+### Questions and approvals
+This one is always there; it isn't a feature you turn on. Sometimes Kurooto needs something only you know ("which
+chapter is Friday's quiz on?") or your OK before it does something ("send this reply to Sam?"). Those come as a
+**question** (its answers as buttons, plus **Later**) or an **approval** (**Approve** / **Deny**, or the asker's own
+choices such as Send / Edit / Discard). They can come from any feature, from an AI request (your answer starts its
+follow-up) and from your own scripts (see [From a terminal or a script](#from-a-terminal-or-a-script)).
+
+- **Answer anywhere:** tap a button, or reply to the message with your own words (photos and files in the reply are
+  kept with the answer); in the phone app (see [Phone calls](#phone-calls)); or on a call (open questions come up at
+  the start of every call). The first answer wins; answering again somewhere else just tells you what was already
+  answered.
+- **Later** keeps it open for your next call. **Nothing new** (or "nothing", "skip") is a real answer: there's
+  nothing to add.
+- For an approval with Approve / Deny, a reply of "yes", "ok", "no" or "cancel" counts too. Anything unclear is asked
+  again; nothing is ever approved for you.
+- Questions you don't answer expire after two days (or when their asker stops waiting); then nothing happens.
+- `/q` lists the open ones with their buttons; `/status` says how many are waiting.
+
+*Settings:* `ask.expire_hours` (default 48: how long an unanswered question stays open), `ask.keep_days` (default
+30: how long answered ones are kept).
+*Leaves your computer:* the question goes wherever Kurooto reaches you (Telegram, the phone app, the desktop); open
+questions are part of the brief your call line keeps for calls while the computer is off.
+
 ### Chat with your AI
 Anything that isn't a command or an instant request goes to your AI; the answer comes back as a reply. Long answers
-arrive as a file. `/brain` shows which AI answers and whether it works; `/jobs` the last few requests.
+arrive as a file. `/brain` shows which AI answers and whether it works; `/jobs` the last few requests; `/usage` how
+many AI requests ran each day and the limits hit.
 *Leaves:* what you ask, and notes it reads, go to the AI you picked.
 
 ### Reminders
@@ -177,32 +261,220 @@ arrive as a file. `/brain` shows which AI answers and whether it works; `/jobs` 
 `/reminders`. A reminder due while the computer slept arrives when it wakes, marked late. Buttons: +10 min, +1 h.
 
 ### Check-ins
-At times you choose (default 22:00; a midday one is optional), Kurooto asks how the day is going. Reply to the message
-and it goes into your journal (`journal/YYYY-MM-DD.md` in your notes folder). "move tonight's check-in to 21:30",
-"skip the midday check-in", `/checkins`. With **Phone calls** on, a check-in can be a call instead (Settings →
-`checkins.by_call`): what you say goes into your journal, and a missed call falls back to Telegram.
+At times you choose, Kurooto asks how the day is going: the **evening** check-in (default 22:00, the day in review),
+an optional **night** one (goodnight, near bedtime) and an optional **midday** one. Reply to the message and it goes
+into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
+
+- **Turn on the night or midday one:** Settings → Check-ins → `times`, and give it a time, e.g. `"night": "23:15"`.
+  Both are off until you do.
+- **Change one in plain English:** "move tonight's check-in to 21:30", "push the check-in by 30 min", "skip the night
+  check-in". Other days work too: "skip Friday's check-in", "move tomorrow's check-in to 9". A day Kurooto can't pin
+  down ("yesterday", "next week", a date) goes to the AI instead of guessing.
+- `/checkins` lists today's, with **+30 min** and **Skip** buttons (and **Tomorrow morning** for the night one);
+  `/checkin evening 21:30` (today only), `/checkin night skip`, `/checkin night morning` (to your wake-up call).
+
+**By call** (with Phone calls on; Settings → `checkins.by_call`):
+- **Evening debrief** (5 to 8 minutes): how the day went; what each of today's classes covered (and the after-class
+  questions you kept for this call); what slipped from today's plan; open questions; the study time it counted, and
+  study away from the computer; a short quiz if an exam or quiz is in the next two weeks.
+- **Night check-in** (3 to 5 minutes, if you turned it on): anything more for the journal, study logs still due,
+  tomorrow's top priority and when to wake you (it sets the alarm), goodnight. With the night check-in off, the
+  evening one asks tomorrow's priority and the wake-up time.
+- **Too tired?** Say so on the call, or tap **Tomorrow morning** (on the missed-call message; for the night check-in
+  also on the ringing call's message and in `/checkins`): the rest moves to your wake-up call, which starts with it
+  before planning the day. With no alarm set, it's asked by message in the morning.
+- **Afterwards**, with Chat on, the AI writes your journal entry from what you said (your words, not its own) and a
+  study log for each class you talked about. Without Chat, what you said goes into the journal as it is.
+- **"Call me back in an hour"** on a check-in call moves that check-in (the same call, with the same steps), never a
+  plain reminder call. "Later" on the ringing phone does the same, half an hour on (`calls.later_min`).
+- **A call you don't answer** (after its repeats) **or decline** becomes a message with **Call me now / Tomorrow
+  morning / Skip**; reply to it to answer by text. A check-in never stays "calling".
+- A check-in call never interrupts a class, a calendar event, `/hold`, focus, the night or another call: it waits until
+  that ends, or comes as a message if that would be too late. The night doesn't hold the night check-in.
+
+*Settings:* `checkins.times` (`evening`, `night`, `midday`; empty = off), `checkins.questions` (what each one asks),
+`checkins.by_call`, `checkins.journal`, `checkins.ai_notes` (default on: with Chat on, the AI writes the journal and
+study logs after a check-in call).
+*Leaves:* nothing; with check-ins by call and Chat on, what you said on the call goes to the AI to write your journal
+and study logs.
 
 ### Deadlines
-From what you add (`/due fri 17:00 essay draft`, "the essay is due friday 5pm"), from dated tasks in your notes, and
-from Google Classroom if you use it. A nudge a day before, an urgent one six hours before; buttons for Done, Not mine,
-Snooze. `/deadlines` shows two weeks.
+One list of what's due, from:
+- what you add: `/due fri 17:00 essay draft`, `/due 2026-11-02 lab report`, or "add a deadline: essay draft due
+  friday 5pm";
+- dated tasks in your notes, written like `- [ ] Essay draft (2026-11-02 17:00)` (a time like `5:00 PM` works too);
+- Google Classroom coursework (with Google on);
+- calendar events that look like deadlines or exams: "due", "deadline", "submit", "assignment", "homework",
+  "report", "quiz", "exam", "midterm", "test", "viva"... (with Calendar on);
+- recurring quizzes and tests (below).
+
+The same thing from two places (say Classroom, your calendar and a task in your notes) is kept once; a known time
+beats "end of the day". Topics on your not-interested list are left out.
+
+**The chase**, for things you hand in:
+- a day before: a message with **Done / Not mine / Snooze 3 h**;
+- six hours before: with Phone calls on, **a call** ("is it done, or how will you finish it?"). It waits out
+  classes, `/hold`, focus and the night; when that would leave less than half an hour, or Phone calls is off, you
+  get an urgent message instead. A missed call also becomes that message;
+- after the due time: **Overdue?** with **Done / New date / Drop**. New date asks you for the date (reply, or answer
+  on the phone or on your next call) and starts the chase over.
+
+**Done** ticks the `- [ ]` box in your notes when the deadline came from one (only that box changes). Quizzes and
+exams aren't "done": you get a reminder a day before or, with Quiz on, a practice offer the evening before.
+
+`/deadlines` shows two weeks; "what's due this week?" works too. On calls, the brief has what's due in the next
+72 hours, and you can say "the lab report is done", "it got moved to Friday", "add a deadline".
+
+*Settings* (`deadlines.*`): `ping_h` (24), `urgent_h` (6), `call` (on: the six-hour nudge is a call when Phone calls
+is on), `overdue_check` (on), `tick_notes` (on), `from_calendar` (on), `recurring` (on), `horizon_days` (30: how far
+ahead recurring quizzes become dated items), `exam_mode_days` (14; 0 turns exam mode off), `scan_notes` (on).
+*Turn off:* the whole thing in Features; the call alone with `deadlines.call` off; the overdue question with
+`deadlines.overdue_check` off.
+
+### Recurring quizzes
+Part of Deadlines, for quizzes and tests that repeat ("Linear Algebra quiz every Thursday 10:00", "Statistics test
+every other Friday"). Say it ("linear algebra has a quiz every thursday"), or `/recurring add la quiz every 2 weeks
+thu 10:00`. They live in your notes as a table at `kurooto/recurring.md`, which you can edit like any note:
+
+| Subject | What | Every (weeks) | Day | Time | Next | Until |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| linear-algebra | Quiz | 1 | Thu | 10:00 | | |
+
+"Every" is in weeks (or "weekly", "every other week"); "Next" is any date it happens on, needed for every two weeks;
+"Until" is optional. Each row becomes dated items on the deadline list, so the reminders, exam mode and quiz offers
+follow. When the day or time is missing, Kurooto uses the subject's class from your timetable, and asks you when it
+can't tell (which day, or which week for every two weeks); for a row you wrote yourself, your answer is kept by
+Kurooto and your note is left as it is. Holidays from your subjects settings are skipped.
+
+`/recurring` lists them; `/recurring remove la quiz` removes one (just that row). *Turn off:* `deadlines.recurring`.
+
+### Not interested
+Topics you don't care about (a club, a kind of event, a course you dropped): `/ignore drama club`, or say "I don't
+care about the drama club". `/ignored` lists them, `/unignore drama club` takes one off. The list is a note,
+`about-me/not-interested.md`, one per line (`- drama club`, or `- drama club — not this term`); edit it freely.
+Matching deadlines are left out of the list and the chase, and the mail and Classroom digests only count matching
+items instead of making tasks from them. Matching is on whole words, ignoring case.
+
+### Exam mode
+On by itself two weeks before a quiz or exam (from the deadline list), for that subject; off after it. You're told
+once when it starts. While it's on:
+- `/exam` (or "when's my next exam?") shows it, with how many questions are due;
+- calls start knowing it;
+- quizzes come more often: longer sessions (`quiz.exam_per_session`, 6), items you know still come back before the
+  exam, and a short practice check-in every day (`quiz.exam_daily`, 18:00).
+
+*Turn off:* `deadlines.exam_mode_days` = 0.
 
 ### Subjects and timetable
 Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable
-(`/class mon 09:00-09:55 la`). Kurooto never calls you during a class. `/classes today`, `/skip la` (not going
-today), `/attend la` (undo). Other features use the subjects: after-class notes, the quiz, the study tracker.
+(`/class mon 09:00-09:55 la`). Kurooto never calls you during a class (or in the 5 minutes before it,
+`subjects.margin_min`). `/classes today`, `/skip la` or "skipping LA today" (not going), `/attend la` (undo). "not
+going to LA on Friday" and "skipping stats tomorrow" mark that day. Other features use the subjects: after-class
+notes, the quiz, the study tracker.
+
+**Term dates:** `/term ends 2026-12-04` (the last day of classes) and `/term exams 2026-12-07 to 2026-12-18` (an exam
+period; add as many as you need). On those days, after the term ends and on holidays there are no classes: no
+after-class questions, and the timetable doesn't hold calls. `/term` shows them, `/term clear` removes them.
+Holidays are a list of dates in Settings (`subjects.holidays`, e.g. `["2026-12-25"]`).
+
+*Settings:* `subjects.holidays`, `subjects.exam_periods`, `subjects.term_ends`, `subjects.no_calls_in_class`,
+`subjects.margin_min`.
 
 ### Quiz
 Practice questions from your notes, spaced out so you see each again just before you'd forget it. Put a note named
-like `exam-prep.md` with a `## Must know` list in a subject's folder. `/quiz`, `/quiz la`, `/quizstatus`. Reply with
-your answer; grade yourself with the buttons. Works on calls too.
+like `exam-prep.md` (or with "quiz" in its name) with a `## Must know` list in a subject's folder (also: "Typical
+questions", "Definitions", "Theorems", "Formulas", "Key results"). Classroom → notes keeps such a note for each course.
+- `/quiz` or `/quiz la`: a session of a few questions (`quiz.per_session`, 3). Reply with your answer: with Chat on,
+  the AI gives the key idea and a grade; otherwise grade yourself with the buttons. The next question follows.
+  With Phone calls on, `/quiz` asks **Here or by call?**; `/quiz la call` calls you straight away (it waits out
+  classes and other no-call times). "quiz me on topology", "quiz me by call" and "call me for a quiz" work too.
+- **The evening before a quiz or exam** (from 19:00, `quiz.offer_at`): "Linear Algebra quiz is tomorrow at 10:00.
+  Practise?" with **Quiz me now / Call me for a quiz / Not tonight**. If you haven't any material for it yet, it
+  says where to put some.
+- **Quiz check-ins**: `/quiz at 21:00 la`, or "quiz me at 9 tonight": the first question arrives then (a call
+  instead with `quiz.by_call` on, or "quiz me by call at 9"). In exam mode there's one every day (above).
+- On a call: "quiz me" runs a spoken quiz (it picks the exam subject unless you name one).
+- `/quizstatus`: items and what's due per subject, and exam mode.
+
+*Settings* (`quiz.*`): `per_session` (3), `exam_per_session` (6), `offer_at` (19:00; empty turns the evening offer
+off), `exam_daily` (18:00; empty turns the daily exam-mode practice off), `by_call` (off), `call_min` (10).
+*Leaves:* with Chat on, the question and your answer go to the AI to grade it.
 
 ### Weekly summary
-Every Sunday evening: the week in numbers (requests, reminders, check-ins, deadlines, quiz, study hours). `/week`.
+Every Sunday evening (`weekly.when`, Sunday 19:00): the week in numbers (requests, reminders, check-ins, deadlines,
+quiz, study hours, journal days). `/week` any time.
+
+**Sunday review call** (optional, with Phone calls on; Settings → `weekly.call`): after the summary, a call of about
+15 minutes: the week in numbers and study hours per subject, what went well and what didn't, anything Kurooto should
+do differently, and next week's deadlines and your priorities. Afterwards it becomes a weekly review in your journal
+(written by the AI with Chat on, your own words without). If the computer was off all Sunday evening, you get only the
+summary.
 
 ### Files into notes
 Send a photo or PDF to your bot: it's saved in your notes folder's `inbox/`. With Chat on, the AI files it properly
-(a note that describes and links it, in the right place). The caption tells it what it's for.
+(a note that describes and links it, in the right place). The caption tells it what it's for. With Skills on, a link
+sent on its own is filed the same way (the `/add-to-notes` skill).
+
+### Skills
+Ready-made instructions for your AI, one command each. Type `/<skill>` and what it's about; the answer comes back as a
+reply, and you can **reply to that answer** to carry on (answer its questions, ask for a change). Files you send with
+the command (as the caption) go along. `/skills` lists them all; `/skills journal` shows one.
+
+| Skill | What it does |
+|---|---|
+| `/journal <your day>` | Saves your words, as you wrote them, in today's daily note (`journal/YYYY-MM-DD.md`), and links the notes you mention, ticks tasks you finished, files new ideas in `inbox/`. |
+| `/study-log <classes and notes>` | One lecture note per class (`<subject>/YYYY-MM-DD-<topic>.md`) from your slides and notes, linked from the subject's course page and today's daily note. |
+| `/add-to-notes <link or files>` | Files anything (PDF, slides, photo of notes, a link) where it belongs, as a source note with links. A link sent on its own is filed this way too. |
+| `/assignment <which one>` | Worked solutions in your course's notation, a confidence for each question, saved as a note. Check them and follow your course's rules on AI help. |
+| `/connect-notes [topic]` | Finds real connections between notes and adds them as links, each with its reason. |
+| `/term-setup <subjects, plans>` | Sets up a term from what you say and your academic calendar: key dates, course pages, a week-by-week plan; it asks what it can't find (reply to answer). |
+| `/goodnight <wake-up time>` | Sets the alarm (with Morning alarm on) and notes anything for tomorrow. |
+| `/morning [answers]` | Today's plan, time-blocked, with your top 3. |
+| `/morning-prep` | Drafts today's plan before you wake (other features run it for you). |
+| `/pack <subject> [what for]` | A revision pack as a PDF (see below). |
+
+`/skills` also lists the skills other features run for you (`/classroom-digest`, `/mail-digest`, and
+`/revision-pack`, the same as `/pack`).
+
+**Your own skills.** `/newskill <what it should do>`: the AI writes a skill and sends it to you in full; **Save** puts
+it in your notes (`kurooto/skills/<name>/SKILL.md`), **Discard** throws it away. Nothing is saved without your tap.
+To change a skill that comes with Kurooto, `/skills copy journal` makes your own copy in that folder; edit it there
+(your copy replaces Kurooto's for you; delete your copy to go back). A prompt in your prompt library with
+`skill: true` in its header is a skill too.
+
+**On a schedule.** `/every monday 9:00 /journal plan my week`, `/every weekdays 7:30 /morning-prep`,
+`/every daily 21:00 how did today go?` (a request for the AI), or any command (`/every friday 18:00 /week`). Days:
+`daily`, `weekdays`, `weekends`, a day, or several (`mon,thu`). Plain English works for requests: "every friday at
+6pm send me a summary of my week". `/routines` lists them, each with a **Cancel** button. One that came due while the
+computer was off runs once when it's back (if that's still one of its days).
+
+**Revision packs.** `/pack linear algebra midterm friday` reads that subject's notes (course page, exam prep, lecture
+notes, solutions) and builds a 2–6 page pack: what's on it, definitions, theorems with their hypotheses, formulas,
+worked problems, pitfalls and a self-test with answers. It's saved in your notes (`<subject>/revision-pack-<date>.tex`
+and `.pdf`; `revision-packs/` when the subject has no folder) and sent to Telegram. PDFs need **Tectonic**, a small
+LaTeX engine: the first pack without it comes as a `.tex` file, and a message asks **Install Tectonic** / **Not now**
+(about 25 MB, from Tectonic's official releases; the first PDF then takes a few minutes while it fetches about 50 MB
+of LaTeX packages into Kurooto's cache). After **Not now** it doesn't ask again for 30 days. If a pack doesn't
+compile, the AI gets one try to fix it; otherwise you get the `.tex`.
+
+The rules every skill follows: it only creates notes or adds to them (never rewords or deletes your text), puts your
+own words in verbatim, gives every link a reason, keeps health, money and other people's private details out of your
+notes, and sends nothing to anyone but you.
+
+*Needs:* Chat. *Leaves your computer:* what you send with a skill, and the notes it reads, go to the AI you picked.
+*Turn it off:* Features → Skills; your own skills, routines and packs stay (routines start again when you turn it back
+on).
+
+### Quick notes and prompts
+`/note <text>` saves it straight into your notes' inbox (`inbox/YYYY-MM-DD-<first words>.md`), as written; a photo or
+file with `/note` as its caption is linked from the note. From a terminal: `kurooto note "an idea"` (or pipe text in:
+`some-command | kurooto note --title "output"`); this works even when Kurooto isn't running.
+
+Your prompt library is the `prompts/` folder in your notes (Markdown files, subfolders allowed): `/prompts` lists it,
+`/prompt <name>` sends one back to copy, `/prompt save <name>` with the prompt on the next lines adds one.
+
+*Needs:* Telegram. *Leaves your computer:* nothing (no AI involved). *Turn it off:* Features → Quick notes and
+prompts.
 
 ### Notes brain (GBrain)
 Search your notes by meaning (`/notes what is a compact space`), and your AI gets a memory of them. Kurooto installs
@@ -210,31 +482,96 @@ Search your notes by meaning (`/notes what is a compact space`), and your AI get
 every 15 minutes. On computers without a graphics card the index is made with Gemini (note text goes to Google) or
 keyword-only; with a graphics card or Apple Silicon it stays on your computer.
 
+Three more things, each with its own switch in Settings (`gbrain.*`):
+- **Timelines** (on, `gbrain.timelines`): every night, dated log lines in your notes, written like
+  `- **2026-10-19** | source — what happened`, become each note's timeline. `/timeline research/reading-group` shows
+  one; your AI uses them for "when did I last ...?". Kurooto's own skills write their log lines this way. No AI is
+  involved and nothing leaves your computer.
+- **Nightly upkeep** (off, `gbrain.upkeep`): GBrain's maintenance cycle at 03:00 (`gbrain.nightly`), light steps
+  only: links, facts, timelines, the index, orphaned pages. Steps that would rewrite your note files or call an AI
+  model are left out. It's heavy, so on a laptop it waits for the charger. If it fails you're told once (with where
+  its log is), not every night.
+- **Weekly checkup** (off, `gbrain.checkup`): GBrain's own advisor, Sundays at 19:30 (`gbrain.checkup_when`). You get a
+  message only when something is a warning or worse, with **Ignore these** (adds them to `gbrain.checkup_ignore`) and,
+  when the brain needs a schema update, **Update the brain**.
+
+Kurooto pins GBrain's version and turns off its own update check.
+
 ### Local AI models
 Small AI models on your computer (through [Ollama](https://ollama.com)), picked for its graphics card, for quick
 decisions and the notes index: private and offline. Not offered on computers without a graphics card or Apple
 Silicon. `/models`.
 
 ### After-class notes
-A couple of minutes after each class in your timetable ends, Kurooto asks what was worth keeping. Your reply goes into
-that subject's `class-log.md`. Needs Subjects with a timetable.
+A couple of minutes after each class in your timetable ends, Kurooto asks what was worth keeping. Answer with a line
+or two, photos of the board or slides, files or a voice note (reply to the question, or answer in the phone app or on
+a call). It goes into that subject's `class-log.md`; photos and files are moved next to it (`<subject>/files/`) and
+linked. With Chat on, the AI also writes a study log for the class (a lecture note in the subject's folder, linked from
+the day's note). **Nothing new** ends it; **Later** keeps the question for your evening check-in call. No questions
+for classes you skip, on holidays, in exam periods or after the term ends (see `/term`). Needs Subjects with a
+timetable.
+
+*Settings:* `capture.delay_min`, `capture.study_log` (default on: with Chat on, the AI writes a study log).
+*Leaves:* nothing; with Chat on, your answer and the photos and files you sent with it go to the AI for the study log.
+
+### Remember
+Tell Kurooto how you like to be helped and it keeps it: `/remember I hate calls before 8`, or just say "remember that
+I like a plan before 9" (on Telegram or on a call). It goes into your notes, in `about-me/how-to-help-me.md`, under
+"You told me". That note is yours: read it, edit it, add your own lines. Kurooto never rewords or removes a line, and
+what you write there wins. A short version of it goes along with every AI request Kurooto makes, next to the "In
+brief" part of your profile. `/remember` on its own shows what it keeps.
+
+It won't keep health, money or password details (they'd travel with every AI request); it says so and keeps nothing.
+"Remember to buy milk" is a reminder, not this: use Reminders for that.
+
+*Turn it off:* Features → Remember. The note stays in your notes; delete or edit it as you like. While the note
+exists, AI requests still read it; delete the note to stop that.
 
 ### Nightly look back
-Once a day, the AI looks at how the day went (counts only: what you answered, ignored, moved) and suggests at most
-three small changes to your settings, such as a better check-in time. Nothing changes unless you tap **Approve**.
+Once a day (23:50) the AI looks at how the day went and suggests at most three small improvements, each with the
+evidence behind it. It reads:
+- what happened: the questions Kurooto asked you and your answers (and how fast, on which channel), check-ins you
+  moved or skipped, calls you answered or missed, after-class prompts, deadlines, AI requests, study sessions;
+- today's call transcripts and journal (both can be left out: `retro.transcripts`, `retro.journal`);
+- your how-to-help-me note and the settings it may change.
+
+A suggestion can be:
+- **a setting**: a better check-in time, quiet hours, deadline nudges, quiz length, the after-class delay;
+- **a line for your how-to-help-me note** (under "Learned in the nightly look back");
+- **something to watch** for a while before deciding anything;
+- **a change to one of your skills**: after you tap Apply, the AI writes the change and you see exactly what changes
+  (lines removed and added) with **Save** / **Discard**. Saving writes your own copy of the skill in
+  `kurooto/skills/<name>/SKILL.md` and keeps the old version in Kurooto's data folder (`backups/skills`). If you edited
+  the skill in the meantime, nothing is saved;
+- **an idea**: something new Kurooto could do for you, added to `kurooto/ideas.md` in your notes.
+
+Answer each with **Apply**, **Observe longer** or **No** (buttons, a reply, or on your next call; **Later** keeps it
+for the call). Apply does it at once; nothing changes without your tap. **No** drops that idea (however it's worded
+next time) for 30 days. **Observe longer** watches it for a week first (reply "observe 14" for 14 days); when the
+watching ends, the next look back tells you what it found.
+
+**Steer it:** `/observe whether I study better before noon for 2 weeks` (or say "observe whether ..." / "keep an eye
+on ...", or ask on a call). `/observing` lists what's being watched, each with a **Stop** button. When a watch ends you
+get a message with what it found. `/lookback` shows the last look back (and what it noticed); `/lookback now` runs one
+now.
+
+*Settings* (`retro.*`): `when` (`daily 23:50`; `weekly sun 21:00` looks back over the whole week), `max_proposals`
+(3), `observe_days` (7), `no_days` (30), `transcripts` (on), `journal` (on). The look back's instructions are the
+`retro` skill: put your own copy in `kurooto/skills/retro/SKILL.md` to change how it thinks (it's not a command).
+*Needs:* Chat. *Turn it off:* Features → Nightly look back. Waiting suggestions stay answerable for three days.
 
 ### Phone calls
-Talk to Kurooto like a phone call, and let it call you: reminders ("call me at 5 about the laundry"), check-ins, the
-morning alarm. During a call it can search your notes, add reminders and deadlines, start tasks on your computer, and
-more, depending on which features you have on.
+Talk to Kurooto like a phone call, and let it call you: reminders ("call me at 5 about the laundry"), check-ins,
+deadline nudges, quizzes, the morning alarm. During a call it can search your notes, add reminders and deadlines,
+start tasks on your computer, answer Kurooto's questions, and more, depending on which features you have on.
 
 **How it works:** setup makes your own *call line*, a small program on your own free Cloudflare account (it's yours;
 nobody else's server is involved). Your computer keeps a connection to it, and your phone pairs with it. Calls use
-Google's Gemini Live with your own free key, so the audio goes between your phone and Google. If your computer is off,
+Google's Gemini Live with your own key, so the audio goes between your phone and Google. If your computer is off,
 calls still work from what it last sent, and anything that needs the computer waits until it's back.
 
 **Set up:**
-1. A free Gemini key (the wizard asks for it).
+1. A Gemini key (the wizard asks for it if your AI is another).
 2. **Set up** Phone calls. Kurooto installs what it needs (about 350 MB, once), then opens Cloudflare's sign-in in
    your browser: sign in or make a free account, and approve. Kurooto makes the call line (named `kurooto-` plus
    random letters) at a `workers.dev` address. The address is public but useless without a key from your computer.
@@ -244,21 +581,66 @@ calls still work from what it last sent, and anything that needs the computer wa
 about the essay". `/phones` lists paired phones, `/unpair <id>` removes one. Kurooto tells you whenever a new device
 pairs; if it wasn't you, remove it.
 
-**On the call:** speak naturally. If the loudspeaker's echo cuts Kurooto off, use **Interrupt** to talk over it, or
-the earpiece / earphones. The mic gate slider makes it need a louder voice in a noisy room.
+**When Kurooto calls you:** a call you don't answer rings again 3 and 6 minutes later (`calls.realert_min`; `[]` rings
+once), then becomes a "Missed call" message. The alarm has its own repeats. No calls during a class you attend, a
+calendar event (or only `#nocall` ones, see [Calendar](#calendar)), focus, `/hold`, the night or another call: one
+that comes due then is held, you're told ("Held a call until 18:02 (class: Linear Algebra): the essay"), and it's
+placed by itself when that ends. "call me now" (or "ring me about the essay") calls right away.
 
-*Leaves:* call audio goes to Google (your key); the call line keeps a short brief (what's due, today's classes, your
-notes' titles) on your Cloudflare account for calls while the computer is off. Transcripts stay on your computer.
+**On the call:** speak naturally. If the loudspeaker's echo cuts Kurooto off, use **Interrupt** to talk over it, or
+the earpiece / earphones. The mic gate slider makes it need a louder voice in a noisy room. Open questions and
+approvals come up at the start of the call, and you can answer them there; an approval that comes in during a call is
+asked right away.
+
+**Questions on your phone:** with Phone calls on, your paired phones also get Kurooto's questions and approvals (from
+any feature: a check-in, after-class notes, a quiz, a suggestion to approve), as well as Telegram. Answer wherever is
+handy; the first answer counts and the others go away.
+- *Android:* a notification with **Reply** (type the answer in the notification; on Android 6 it opens a small answer
+  window), the question's choices, **Approve / Deny** for approvals, **Later** (ask me on the next call), or the
+  message's own buttons. Tap the notification for every option. The app's main screen lists what's **waiting for
+  you**.
+- *iPhone:* a notification; tap it to open **Waiting for you** in the Kurooto Home Screen app, with the same buttons
+  and a box to type in.
+- If the computer is off, your answer waits on your call line and is used as soon as the computer is back.
+
+**More on the phone:** Settings → `notify.app_kinds` says what goes to the phone app. The default is
+`["call", "question", "approval"]`; add `"reminder"`, `"deadline"`, `"result"` or `"info"` to get those there too
+(they still go to Telegram as well). Remove `"question"` and `"approval"` to keep them on Telegram only.
+
+**While you're on a call** nothing else rings: reminder calls and check-ins wait until the call ends (also when the
+computer is off), and updates wait too. Wake-up calls still ring.
+
+*Leaves:* call audio goes to Google (your key); the call line keeps a short brief (what's due, today's classes and
+check-ins, open questions, the steps for check-in, wake-up and Sunday review calls, your notes' titles) on your
+Cloudflare account for calls while the computer is off, and the questions and messages waiting for your phones.
+Transcripts stay on your computer.
 
 ### Morning alarm
 Kurooto wakes you with a call. On the Android app it rings with your alarm sound on the alarm volume, so it rings even
-on silent; answer and it says good morning and goes through your day. The call line places it, so it rings even if
-your computer is asleep. "wake me at 6:45", `/alarm 7:30`, `/alarm off`, or a daily default (Settings →
-`alarm.daily`). Not answered: it rings twice more, 5 minutes apart. **Snooze** gives 10 minutes. Needs Phone calls.
+on silent. The call line places it, so it rings even if your computer is asleep. "wake me at 6:45", `/alarm 7:30`,
+`/alarm off`, the evening check-in call ("wake me at 7"), or a daily default (Settings → `alarm.daily`). Not
+answered: it rings twice more, 5 minutes apart (`alarm.retries`). **Snooze** gives 10 minutes (`alarm.snooze_min`).
+Needs Phone calls.
+
+- **The night follows your alarm:** while it's set, no other calls from your bedtime (`alarm.bedtime`, default: the
+  start of the night hours) until it rings; once you're up, calls can come even if the usual night hours aren't over.
+  Without an alarm, the night is the fixed hours (`availability.night`, 23:30 to 07:00).
+- **Your day, drafted:** with Chat on, 20 minutes before the alarm the AI drafts today's plan into today's daily note
+  ("## Plan for today (draft …)": classes, what's due, a top 3, suggested blocks, and questions for you).
+- **The wake-up call** goes through that plan, asks which classes you're skipping and when to call you today (the
+  evening check-in, and a midday one if you want), and afterwards, with Chat on, settles "## Plan for today" in the
+  daily note from what you said.
+- **The morning page:** at the alarm, if this computer is awake, it opens the morning page in your browser (today's
+  plan, classes, calendar, what's due, check-ins). It's also at `http://127.0.0.1:8770/morning`.
+
+*Settings:* `alarm.daily`, `alarm.days`, `alarm.bedtime`, `alarm.prep_min` (default 20; 0 = no draft),
+`alarm.open_page` (default on), `alarm.notes` (default on: the wake-up call goes into the daily note).
+*Leaves:* the alarm time goes to your call line; with Chat on, the AI reads your notes to draft the plan, and the
+wake-up call's transcript to settle it.
 
 ### Voice notes
 Send your bot a voice message: it's written out (you see what it heard) and handled like a typed message. Uses your
-free Gemini key. *Leaves:* the recording goes to Google; on the free tier Google may use what you send to improve its
+Gemini key. *Leaves:* the recording goes to Google; on the free tier Google may use what you send to improve its
 products, so don't say anything you wouldn't type.
 
 ### Stay awake on charger
@@ -270,13 +652,27 @@ nothing" when plugged in. macOS: only with an external display. Linux: your desk
 ### Calendar
 Your calendar's events, read-only, from its private iCal link. Google Calendar on a computer: Settings → your calendar
 → Integrate calendar → **Secret address in iCal format**. Outlook and Apple Calendar have one too. Paste it in the
-feature's card. `/today`, `/cal` (7 days), "what's on tomorrow?". Kurooto doesn't call you during an event (Settings →
-`calendar.no_calls_in_events`) and can remind you before each one (`calendar.remind_min`). Refreshed every 15 minutes.
-The link lets anyone read that calendar, so it's kept in your computer's keychain.
+feature's card. `/today`, `/cal` (7 days), "what's on tomorrow?". It can remind you before each event
+(`calendar.remind_min`, in minutes; 0, the default, is off). Refreshed every 15 minutes. The link lets anyone read
+that calendar, so it's kept in your computer's keychain.
+
+- **No calls during events:** every timed event holds calls (`calendar.no_calls_in_events`). If that's too much, set
+  `calendar.nocall_events` to `tagged`: then only events with `#nocall` in the title or description hold calls, and
+  every event in a calendar whose name contains "no call" (all-day ones too, e.g. "Exam day #nocall").
+- **Focus events:** an event with `#focus` in its title or description is focus time while it runs: calls are held
+  and messages that can wait are kept until it ends, then delivered together.
+- Events that look like deadlines or exams go into [Deadlines](#deadlines) (`deadlines.from_calendar`).
+
+*Settings:* `availability.nocall_keyword` (`#nocall`), `availability.nocall_calendar` (`no call`),
+`availability.focus_keyword` (`#focus`).
+*Leaves:* nothing; event descriptions are read only for `#nocall` and `#focus` and aren't kept.
 
 ### Notes sync
 Your notes folder, kept in your own **private** GitHub repository: every change is in its history, and edits made
-elsewhere (another computer, GitHub's website) come in too. Every 10 minutes, and with `/sync`.
+elsewhere (another computer, GitHub's website) come in too. Every 10 minutes, and with `/sync`. What an AI request
+writes in your notes is also sent up about two minutes after it finishes (one push for a burst of requests;
+`notes_sync.after_jobs`, 0 turns it off), and whatever is left goes up when Kurooto stops (a shutdown, an update),
+unless it's paused.
 
 **Set up:** 1. [Make a repository](https://github.com/new): any name, **Private**, nothing ticked. 2. [Make a
 fine-grained token](https://github.com/settings/personal-access-tokens/new): Repository access → Only select
@@ -287,10 +683,79 @@ Install, then press Set up again).
 If the same lines of a note changed in two places at once, your computer's version wins; the other is still in the
 history. With Phone calls on, your call line can read whole notes from the repository while your computer is off.
 
+### Sync everything
+`/sync all` or "sync everything" on Telegram, or `kurooto sync` in a terminal (with Kurooto running), runs every sync
+that's on, one after another: your notes with your repository, Google (Classroom, Classroom → notes and the mail
+digest), your calendars, research project logs, the notes brain's index, then your notes again (to send up what the
+others just wrote). A feature that's off is left out. It runs in the background and you get one line each when it's
+done, e.g. `Calendar: ok, 23 events`. With Notes sync off, plain `/sync` does the same.
+
+### Backups
+Once a day, a zip of Kurooto's settings, data and state in a folder you pick: a folder on an external drive, or one
+your computer already syncs to a cloud (Google Drive, OneDrive, iCloud Drive, Dropbox), so the zip goes there too. The
+last 7 are kept (`backups.keep`); Kurooto removes only its own older zips (`kurooto-backup-<date>-<time>.zip`), never
+anything else in that folder.
+
+**Set up:** Features → Backups → paste the folder's full path (the card lists cloud folders and drives it found on this
+computer; it can't be inside your notes folder). It runs at 03:30 (`backups.when`); on a laptop it waits for the
+charger, and if a day went by without one (the drive was unplugged, the laptop was off) it makes one within the hour
+once it can. `/backup` makes one now, `/backups` lists them. From a terminal: `kurooto backup`, or `kurooto backup
+--to <folder>` for a one-off copy somewhere else (handy before reinstalling).
+
+**What's in it:** your settings, Kurooto's data (including the notes brain's index; `backups.index` off leaves it out:
+smaller, but it has to be rebuilt) and its state (check-ins, deadlines, AI requests and answers, the schedule).
+**Not in it, unless you turn them on in Settings:**
+- `backups.notes`: your notes folder too (without `.git` and similar app folders). Turn it on if your notes aren't
+  synced anywhere else.
+- `backups.secrets`: your passwords and keys (bot token, API keys, sign-ins). Then **anyone with the zip can use
+  them**: only for a folder that's yours alone. Without them, after a restore you sign in again where Kurooto asks.
+
+The zip isn't encrypted.
+
+**Putting one back:** `kurooto restore <zip>`. It shows what's in the zip and asks first; then it stops Kurooto (the
+normal way, so Notes sync sends up what's left first; forced only if it hasn't stopped after 90 seconds), keeps a
+copy of how things were (in Kurooto's data folder, `restore-safety/`, the last two), puts the backup's settings and
+data back, and starts Kurooto again. Your notes are never overwritten: a note that's missing comes back; a note that's
+different now is kept as it is, and the backup's copy goes into `restored-<date>/` in your notes folder. `--no-notes`
+leaves the notes folder alone; `--no-start` doesn't start Kurooto afterwards; `--yes` doesn't ask. Restoring onto
+another kind of computer (Windows ↔ Mac) works; the notes folder becomes this computer's default.
+
+*Turn it off:* Features → Backups → Turn off. The zips already made stay where they are.
+
+### Profile sync
+Your Kurooto setup, kept **encrypted** in your own private GitHub repository, so a new computer (or a reinstall) is set
+up again in a minute instead of an evening.
+
+**What's saved:** everything you changed in Settings and which features you have on; your passwords and keys (bot
+token, API keys, the Google sign-in, your call line's keys and its Cloudflare sign-in, so the same call line and the
+same paired phones keep working); and the state worth keeping: deadlines, quiz progress, routines, what the nightly
+look back has observed, the Agent plan calendar, Classroom's "already seen" lists, and reminders, calls and the alarm
+you've scheduled. **Not saved:** your notes (Notes sync keeps those; your how-to-help-me note and recurring quizzes
+live in your notes anyway), AI request history, call transcripts, the reports you added in About you, caches and logs.
+
+**Set up:** Features → Profile sync. Leave the repository and token empty to use the repository Notes sync uses (the
+profile goes on a branch of its own, `kurooto-profile`, so your notes folder never sees it), or give another private
+repository and a token for it, made the same way as for Notes sync. Then pick a **passphrase** of a few words (at least
+10 characters). You need it on a new computer; it's never stored anywhere, and if you forget it the profile can't be
+opened. Your notes are still fine: delete the `kurooto-profile` branch on GitHub (or use another repository) and set up
+Profile sync again with a new passphrase.
+
+**When:** once a day (04:40, `profile.when`), and ten minutes after you change a setting in the dashboard or turn a
+feature on or off (`profile.after_changes`; several changes in a row make one save). A profile is small, so it also
+runs on battery. Nothing changed: nothing is sent. `/profile` shows what's saved; `/profile save` saves now.
+
+**Two computers:** if another computer saved the profile since this one last did, this one doesn't overwrite it; it
+tells you (at most once a week), and `kurooto doctor` says so. Restore it here (`kurooto profile restore`), or save over
+it (`/profile save`; the old one stays in the branch's history).
+
+*Turn it off:* Features → Profile sync → Turn off. What's in the repository stays there; delete the `kurooto-profile`
+branch on GitHub to remove it.
+
 ### Google (Classroom, Gmail drafts)
 Classroom assignments go into Deadlines (marked done when you hand them in); new posts in your courses come to
 Telegram. Gmail drafts: `/draft someone@example.com ask for an extension on problem set 3` (the AI writes it) or
-`/draft someone@example.com | subject | the email`. **Kurooto never sends email**: drafts wait in Gmail for you.
+`/draft someone@example.com | subject | the email`. **Kurooto never sends email by itself**: drafts wait in Gmail for
+you.
 
 **Set up (about 10 minutes, once):** Kurooto uses your own Google "OAuth client", so no one else's app ever holds your
 Google access. The feature's card links each page:
@@ -305,19 +770,126 @@ Google access. The feature's card links each page:
 Gmail drafts are off by default (Settings → `google.gmail_drafts`; then sign in again). School accounts sometimes
 block unverified apps; then use the Calendar feature's iCal link for your timetable instead.
 
+**More Google features** build on this sign-in: Classroom → notes, Mail digest, Email reply drafts and the Agent plan
+calendar. Each is off until you set it up, and each needs one more permission from Google. To set one up, turn on its
+API in your Google Cloud project (its card links the page), press **Save** on its card, and sign in with Google again.
+Google lists what it's asking for; it also shows the "Google hasn't verified this app" screen again (Advanced → Go to
+(your project)). When you're back, the feature turns on by itself. If you untick a permission on Google's screen,
+that feature stays off and everything else keeps working. Google may say a permission is "restricted" or "sensitive":
+that's Google's label for mail and Drive access, and it's fine for your own client (the warning is about apps other
+people publish).
+
+What each one asks Google for, in plain words:
+
+| Feature | Google's permission | What Kurooto does with it |
+|---|---|---|
+| Classroom → notes | See your Classroom course materials; see and download your Google Drive files (read-only) | Reads materials, coursework and announcements, and opens only the Drive files attached to or linked from a post. Changes nothing. |
+| Mail digest | Read your email (read-only) | Reads only the mail you choose for the digest; the rest it counts by its sender, subject and labels, on your computer. Can't send, delete or mark anything. |
+| Email reply drafts | Manage drafts and send email | Writes reply drafts to mail in your digest; sends one only when you tap Send. |
+| Agent plan calendar | Make secondary calendars and manage their events | Makes one calendar of its own, "Agent plan", and writes only there. It can't see or change your other calendars. |
+
+To withdraw a permission: your Google account → Security → Third-party access → your project.
+
+### Classroom → notes
+Three times a day (07:00, 13:00, 19:00) Kurooto reads what's new in your Google Classroom courses: materials,
+coursework, announcements, and the files your teachers attach or link from Drive. The AI files each course into your
+notes, in the course's folder (`linear-algebra/`; Kurooto uses the matching subject from Subjects when you have one):
+- a note per lecture or problem set (`linear-algebra/2026-10-20-eigenvalues.md`): what it covers, the teacher's post,
+  the files and links to your related notes;
+- the course page `linear-algebra/course.md`: lecture notes in order, coursework under Tasks, exams and announcements;
+- an always-current `linear-algebra/exam-prep.md`: next assessment, what's covered so far, must-know facts (which Quiz
+  asks you), typical questions and gaps. Kurooto rewrites only the part between its two markers; anything you write
+  above or below them stays as you wrote it.
+
+Assignment due dates already reach Deadlines through the Google feature; dates in posts (a midterm, a moved quiz) are
+added too. Files are kept in Kurooto's own data folder, not your notes: Word and PowerPoint files and Google Docs,
+Slides and Sheets are read as text; PDFs are read when `pdftotext` (Poppler) is installed, or by an AI that can open
+files (agy). Videos and images are linked, not downloaded. The first check goes back 60 days.
+
+- `/classnotes` checks now (so does `/sync all`); `/classnotes courses` lists your courses and the folder each one
+  goes to.
+- `/classnotes skip chess` leaves out courses with "chess" in their name; `/classnotes unskip chess` undoes it.
+- Posts about a topic on your not-interested list (`/ignore`) are only counted.
+- If the AI fails, the posts wait and are tried again at the next check; after three failures you get a message.
+
+*Settings:* `classroom_notes.at` (when), `classroom_notes.folders` (a course's exact name → the folder you want),
+`classroom_notes.files` (download attached files), `classroom_notes.max_file_mb` (30),
+`classroom_notes.backfill_days` (60).
+*Leaves:* posts and file text go to the AI you picked. *Turn it off:* Features → Classroom → notes → Turn off; the
+notes stay.
+
+### Mail digest
+Twice a day (08:00 and 18:00) your new mail, sorted into **Needs action**, **People**, **Courses**,
+**Opportunities** and **Admin**, comes to you as a message (a busy check comes in parts, 20 mails each), with a copy
+in your notes (`mail/2026-10-20-0800.md`, linked from that day's journal). Deadlines it finds go into Deadlines;
+course news goes onto the course page.
+
+**You choose what it may read.** Everything else is only counted, by its sender, subject and labels:
+- `/mail read @school.example` (a domain), `/mail read sam@example.org` (a sender), `/mail read label:Courses` (a
+  Gmail label); `/mail unread ...` takes one off; `/mail rules` lists them.
+- On a school or work Google account, mail from your own organisation's domain is read too (setting
+  `mail_digest.own_domain`). Personal mail among it (not about study or work) is only counted.
+- Promotions, Social and topics on your not-interested list are only counted (Promotions and Social are read when a
+  `/mail read` rule names them).
+- A personal Gmail account reads nothing until you choose something; the scheduled digest tells you how (once a day,
+  until you do).
+
+**Confidential mail is never read.** Work or school mail may be covered by your institution's email policy (many
+forbid forwarding confidential messages, and institutional mail belongs to the institution). Kurooto never summarises
+mail marked confidential: if its subject or opening lines say "confidential", "do not forward", "restricted" or
+"private and confidential", or it has a Gmail label with one of those names, it's only counted, even from a sender or
+label you chose, and it never gets an AI reply draft (to spot a marking in the opening lines, Kurooto looks at them
+on your computer, then drops the mail). Add your own words in `mail_digest.confidential_words`. To
+keep a sender, domain or label out of the digest altogether: `/mail never @office.example` (`/mail unnever ...` takes
+it off; `/mail rules` lists both lists). This is on by default (`mail_digest.skip_confidential`).
+
+`/mail` checks now (so does `/sync all`).
+*Settings:* `mail_digest.at`, `mail_digest.read`, `mail_digest.never_read`, `mail_digest.own_domain`,
+`mail_digest.skip_confidential`, `mail_digest.confidential_words`, `mail_digest.save_note` (the copy in your notes),
+`mail_digest.first_days` (how far back the first check looks: 3).
+*Leaves:* the text of the mail you chose goes to the AI you picked; for the rest, only counts. Nothing is ever sent,
+deleted, archived or marked read. *Turn it off:* Features → Mail digest → Turn off.
+
+### Email reply drafts
+When the mail digest finds mail that needs your reply (a question or request to you), the AI drafts a short reply in
+your voice into your Gmail Drafts and sends it to you with **Send / Edit / Discard**. **Nothing is sent unless you
+tap Send.** Edit: say what to change ("say I can do 10am"); the AI rewrites the draft and asks again. Discard deletes
+just that draft. Unanswered, it stays in your Gmail Drafts (the question expires after 3 days). Replies go only to
+the sender of a mail in your digest (or its reply-to address), never to no-reply addresses or mail marked confidential
+(or on your never-read list), at most 5 a day (`reply_drafts.per_day`). Needs the Mail digest.
+*Turn it off:* Features → Email reply drafts → Turn off.
+
+### Agent plan calendar
+Kurooto makes a calendar of its own, **Agent plan**, in your Google Calendar, for the time blocks it plans with you:
+the morning plan, or "block 2 to 4 for the problem set" on a call. It writes only to that calendar: Google's permission
+for it covers only calendars Kurooto makes, so it can't see or change your others. Each block has a 5-minute
+reminder (`agent_plan.remind_min`; 0 for none).
+- `/blocks` shows today's blocks; `/blocks add 14:00-15:30 problem set 4` adds one; `/blocks clear` removes today's.
+- Hide or delete the calendar in Google Calendar any time; Kurooto makes a new one the next time it plans something.
+- To see the blocks in Kurooto's own Calendar feature too, add the Agent plan calendar's private iCal link there.
+
+*Turn it off:* Features → Agent plan calendar → Turn off (the calendar stays in Google Calendar until you delete it).
+
 ### Handwritten notes
 Drop a PDF or photo of handwritten pages into a folder (by default `handwritten-inbox` in your notes folder; set
 `handwritten.folder` to one your tablet syncs to through Google Drive, OneDrive or Dropbox). Kurooto writes it out as
 a Markdown note with the maths in LaTeX, saved in `handwritten/` next to a copy of the original. Every 15 minutes, or
-`/handwritten`. Uses Gemini (your free key), or, on computers with 12 GB of graphics memory and Local models on, a
-model on your computer for photos.
+`/handwritten`. Uses Gemini (your key), or, on computers with 12 GB of graphics memory and Local models on, a model on
+your computer for photos.
 
 ### Study tracker
 How long you spend on each subject, counted from the window you're working in: a window whose title names a subject
 (its name or a short name, a PDF called `linear-algebra-week3.pdf`, a note in that subject's folder) counts while
-you're active. Only minutes per subject are kept, never window titles. `/study`, `/study week`, `/studied 2h linear
-algebra` (time away from the computer). Works on Windows, macOS (it asks once to see window titles) and Linux on X11,
-Hyprland or Sway. Needs Subjects.
+you're active. Only minutes per subject are kept, never window titles. Works on Windows, macOS (it asks once to see
+window titles) and Linux on X11, Hyprland or Sway. Needs Subjects.
+
+- **Away from the computer:** `/study la 50` (or "starting linear algebra for 50 min") starts a session; `/study
+  stop` (or "done studying") ends it, and a timed one ends by itself with a nudge to take a break. While a session
+  runs, the window doesn't count. Afterwards: `/studied 2h linear algebra` or "studied stats for an hour", or tell
+  the evening call.
+- **How much:** `/study` (today), `/study week`, "how much did I study today?".
+- **In your notes:** at 23:45 the day's hours go into your daily note as "## Study hours" (`study.daily_note`; empty
+  to turn it off).
 
 ### Research
 A digest of new papers in your fields, on Telegram, weekly by default. Set it up on the dashboard's **Research** tab:
@@ -340,20 +912,110 @@ A digest of new papers in your fields, on Telegram, weekly by default. Set it up
 On Telegram: `/papers` (the digest now), `/feeds` (your sources), `/topics add …` (quick keywords searched across all of
 arXiv).
 
-**Project logs:** for your code repositories on this computer (on the Research tab, or `/repos add ~/code/my-model`),
-each day's new commits are written into `research/<repository>-log.md` in your notes.
+**Projects:** each project has a note in your notes, `research/<project>/index.md`, and `research/index.md` lists
+them all. Add your code repositories on the Research tab or with `/repos add ~/code/my-model`; a repository's project
+is its folder's name, or name it: `/repos add ~/code/model_v2 as Climate model` (several repositories can share a
+project; `research.projects` in Settings holds the mapping). `/repos remove <folder>` takes one off. Every night each
+day's new commits become one line under `## Log` in the project's note, e.g. `- **2026-10-20** | git:my-model — 3
+commits: …`. Kurooto only adds lines: your own text in these notes is never changed. (Logs from 0.1.0 in
+`research/<repository>-log.md` are left as they are.)
 
-### Other programs can message you
-Scripts and other tools on your computer can send you a message through Kurooto (Telegram, the desktop, however you
-set it up): `kurooto notify --title "Backup" "The backup finished."`. It needs Kurooto running; otherwise the message
-only shows on this computer, and the command exits with 2.
+**Quiet projects:** when a project has had no commits for 4 days (`research.idle_days`; 0 never asks), Kurooto asks
+once, at 18:00, what's up: **Busy**, **Working off-git**, **Remind me tomorrow** (a reminder comes the next day at
+18:00) or **Pausing it**. The answer goes into the project's log. It asks again only after the next quiet stretch.
+
+**Experiment runs (`kurooto runlog`):** log a training or simulation run into the project's notes, with the code's
+exact state:
+```
+kurooto runlog start my-model --name lr-sweep --config '{"lr": 0.001}'
+kurooto runlog metric loss=0.31 acc=0.88 --step 100
+kurooto runlog note "diverged after step 800"
+kurooto runlog end            # or --status failed
+kurooto runlog ls
+```
+Each run is a folder `research/<project>/runs/<date>-<time>-<name>/` with `run.md` (what it was and how it went),
+`config.json`, `meta.json` (git commit, branch, whether there were uncommitted changes), `diff.patch` (those changes,
+so the exact code can be recovered), `metrics.jsonl` and `notes.md`; a row in `runs/index.csv`; and a line in the
+project's log when it ends. The commands find the run from `--run <id>`, else `$KUROOTO_RUN`, else the one you started
+last. It works without Kurooto running.
+
+**Long jobs (`kurooto watch`):** `kurooto watch -- python train.py --epochs 50` runs the command (its output still shows
+in your terminal) and messages you when it ends: done, failed or stopped, the exit code, how long it took and its last
+10 lines (`--lines 0` sends none). `--log my-model` also logs it as a run of that project (the job gets `$KUROOTO_RUN`,
+so it can add metrics). If Kurooto isn't running, it shows on this computer only.
+
+*Leaves:* your fields, keywords and searches go to the sources you pick (never your notes); `kurooto watch` sends its
+message through Telegram, like any message.
+
+### Terminals
+Real terminals in the dashboard's **Terminals** tab: the AI program you use (when your AI is agy, Codex or Claude
+Code), started in your notes folder as you'd run it yourself; your usual shell (PowerShell on Windows); `kurooto ask`
+(plain English, like Telegram); and Kurooto's log. Alt+1, Alt+2 and so on switch between them. They keep running when
+you close the page and show where they were when you open it again; one that ended starts again when you press a key
+in it (or **restart**).
+
+**Only turn this on if you're the only person who uses this computer:** anyone who can open your dashboard can type
+into these terminals. The dashboard only answers this computer, needs a key only its own page gets, and refuses other
+websites; on Linux it also checks that every request comes from your own user account (see
+[The dashboard](#the-dashboard)).
+
+*Turn it off:* Features → Terminals → Turn off (the terminals end).
+
+### Your add-ons
+Your own extra features, skills and prompts, from a folder of yours: for example a private repository you cloned, so
+you can keep things for yourself while running the normal Kurooto. Turn on **Your add-ons** and paste the folder's full
+path. The folder may have:
+
+| | What it does |
+|---|---|
+| `modules/*.py` | extra features: classes based on Kurooto's `Module` (see `src/kurooto/modules/base.py`). They're listed in the dashboard's Features tab under **Your add-ons**, each off until you turn it on. Files starting with `_` are helpers they can import (`from kurooto_addons import _helpers`). |
+| `skills/<name>/SKILL.md` | extra skills, written like Kurooto's own; a skill of the same name in your notes (`kurooto/skills/`) still wins |
+| `prompts/*.md` | extra prompts; `/prompts` lists them as `add-ons/<name>` |
+| `settings.json` | default settings laid under yours, e.g. `{"checkins": {"evening": "21:30"}}`; what you set yourself still wins (it can't turn features on) |
+
+**This runs your own code:** the Python files run inside Kurooto with its access to this computer. Only use add-ons you
+wrote or trust. `overlay.code` off keeps the skills, prompts and settings and skips the Python. A broken add-on never
+stops Kurooto: a file that fails to load is skipped, and an add-on that fails while running is cut off from that one
+request; both are logged and shown by `/addons` and `kurooto doctor`. The folder can't be inside Kurooto's own folders,
+and updates never change it. Restart Kurooto after editing their code.
+
+*Turn it off:* Features → Your add-ons → Turn off; the add-ons are unloaded and their folder stays as it is.
+
+### From a terminal or a script
+Scripts and other tools on your computer can reach you through Kurooto (Telegram, the phone app, the desktop, however
+you set it up):
+
+- `kurooto notify --title "Backup" "The backup finished."` sends you a message. If Kurooto isn't running, the message
+  only shows on this computer, and the command exits with 2.
+- `kurooto send report.pdf --caption "This week's numbers"` sends a file from this computer to your Telegram (up to
+  50 MB; exit code 2 when Kurooto isn't running). With Skills on, the AI can send you files from your notes folder too
+  ("send me my linear algebra pack"), on calls as well; it can't send files from anywhere else.
+- `kurooto note "an idea"` saves a quick note (see [Quick notes and prompts](#quick-notes-and-prompts)).
+- `kurooto ask-me "Which folder should the photos go in?" --choices "camera|screenshots"` asks you something (see
+  [Questions and approvals](#questions-and-approvals)); it prints the question's id and returns. Add `--wait` (and
+  `--timeout 30`, in minutes) to wait and print your answer. `--expires 6h` changes how long it stays open; `--title
+  "Backup"` replaces the "Question" label.
+- `kurooto ask-approval "Delete last month's build folders?" --timeout 30` waits for Approve / Deny: it prints `yes`,
+  `no` or `timeout` and exits with 0, 1 or 2. Use it in scripts before anything that needs your OK. If Kurooto isn't
+  running, `ask-me` and `ask-approval` exit with 2 and nobody is asked.
+- `kurooto ask "what's due this week?"`: plain English, as on Telegram. Quick things (reminders, holds, what's due,
+  /commands) answer at once; anything bigger goes to your AI and its answer prints here, not on Telegram. `kurooto ask`
+  alone opens a prompt where you type one request after another. `--no-wait` prints the request's id; `kurooto ask
+  --job <id>` waits for its answer later.
+- `kurooto call "the backup finished"`: rings your phone (needs Phone calls). It waits out your no-call rules
+  (classes, /hold, focus, night) and calls when they end; `--force` rings now anyway, `--alarm` rings as a wake-up
+  alarm, `--at 17:30` (or "in 20 min", "tomorrow 7:00") calls later. Nothing ever rings while you're on a call.
+- `kurooto mcp`: Kurooto's tools for agent programs (see
+  [What the AI can do](#what-the-ai-can-do-its-tools)). Without Kurooto running, it tells the agent so.
+
+`kurooto ask` and `kurooto call` need Kurooto running (`kurooto on`).
 
 ## Your phone
 
 ### Android (recommended)
 The Kurooto app rings like a real phone call (full screen, even on the lock screen), uses the earpiece with the screen
-off at your ear, rings wake-up calls on the alarm volume, and lets you share files to your notes. It works from
-Android 6.
+off at your ear, rings wake-up calls on the alarm volume, shows Kurooto's questions and approvals with a Reply box, and
+lets you share files to your notes. It works from Android 6.
 
 1. On your computer: dashboard → **Phone** → **Pair a phone** (or send `/phone` to your bot and open the link on your
    phone).
@@ -375,7 +1037,7 @@ iPhones use Kurooto as a web app on the Home Screen (iOS 16.4 or newer).
 1. Pair as above, but open the page in **Safari**.
 2. Tap Share → **Add to Home Screen** → Add.
 3. Open **Kurooto from the Home Screen** (not from Safari): it finishes pairing.
-4. Tap **Turn on call notifications** and allow them.
+4. Tap **Turn on notifications** and allow them (calls, questions and approvals arrive this way).
 
 **What doesn't work on iPhone:** calls arrive as notifications you tap to answer; they can't ring like a phone call,
 ring on silent, or show on the lock screen as a call. If you need those, use Telegram reminders or an Android phone.
@@ -385,9 +1047,21 @@ ring on silent, or show on the lock screen as a call. If you need those, use Tel
 `http://127.0.0.1:8770` (or `kurooto open`). STATUS shows your computer; SYSTEMS shows each feature as a living cell
 that pulses when something happens; NOTES is a map of your notes and their links (click a note to read it). The tabs:
 **Activity** (what happened), **AI jobs**, **Schedule** (what's coming), **Features** (turn on/off, set up), **Phone**
-(your call line, pairing, a test ring), **Settings** (every setting, with what it means).
+(your call line, pairing, a test ring), **Settings** (every setting, with what it means), and **Terminals** (when the
+[Terminals](#terminals) feature is on).
 
-Only your computer can open the dashboard; it needs a key that only this computer has.
+The **morning page** (`http://127.0.0.1:8770/morning`) shows today's plan from your daily note, with your classes,
+calendar, what's due, check-ins and open questions. The alarm opens it.
+
+Only your computer can open the dashboard; it needs a key that only this computer has. On Linux, where several people
+can be signed in to one computer at once, it also checks that the page and every request come from your own user
+account, and refuses them when it can't tell.
+
+**In a terminal:** `kurooto top` is a status board in any terminal (Windows 10 and later, macOS, Linux): this computer
+(processor and each core, memory, graphics card, disks, battery) and Kurooto (running or not, the battery mode, open
+questions, notes sync and backup age, the features on, AI requests, what's scheduled next, recent events). `q` quits,
+`r` refreshes. `kurooto top --once` prints one screen. It only reads, so it's safe while Kurooto works. `kurooto logs
+-f` follows Kurooto's log.
 
 ## Taking your laptop with you (battery, pause, off)
 
@@ -397,9 +1071,9 @@ and **Telegram keeps working**.
 | Keeps working on battery | Waits until it's plugged in |
 |---|---|
 | Telegram: messages, commands, plain-English requests | Local AI models (unloaded, freeing the graphics card) |
-| Reminders, check-ins, deadlines, the calendar | The notes brain's indexing, Notes sync |
-| Answers to what you ask the AI | Handwritten notes, Research, the nightly look back |
-| Phone calls and the morning alarm | AI work nobody asked for (e.g. the weekly paper picks) |
+| Reminders, check-ins, deadlines, the calendar | The notes brain's indexing and upkeep, Notes sync, Backups |
+| Answers to what you ask the AI | Handwritten notes, Research, Classroom → notes, the nightly look back |
+| Phone calls and the morning alarm; Profile sync (it's small) | AI work nobody asked for (e.g. the weekly paper picks, the mail digest) |
 
 Nothing is skipped: the waiting work runs the moment you plug in (Kurooto checks every 30 seconds). Choose what
 happens on battery in the wizard ("Your computer") or Settings → `power.on_battery`:
@@ -433,6 +1107,31 @@ and won't offer the broken one again; you're told on Telegram. `kurooto update -
 Your call line is updated after Kurooto updates, if its code changed. The Android app shows an Update button; the
 iPhone web app updates itself.
 
+## Moving to a new computer
+
+With [Profile sync](#profile-sync) on (on the old computer):
+
+1. On the old computer, if it still works: `/profile save` (or just wait for the daily save), then **turn Kurooto off
+   there** (`kurooto off`): two computers can't share one Telegram bot or one call line.
+2. Install Kurooto on the new computer. On the setup page's first step, press **I've used Kurooto before**, and give:
+   the repository (`owner/name`), a token for it (lost it? make a new fine-grained token for that repository with
+   Contents: Read and write), and your passphrase.
+3. Kurooto restores your settings, keys and saved items, turns on every feature that's ready, and, with Notes sync,
+   brings your notes back. It lists what's left to do here, then **Continue** walks you through it: sign your AI in
+   again (agy, Codex and Claude Code keep their sign-ins on the computer they ran on), install what features need
+   (Git, the notes brain, local AI models: Done installs them), and pick folders that were on the old computer
+   (backup folder, add-ons folder).
+
+From a terminal instead: `kurooto profile restore --repo owner/name` (it asks for the token and passphrase without
+showing them, stops Kurooto, restores, offers to set up what's left, and starts it again). Before restoring, Kurooto
+keeps a copy of the settings it replaces in its data folder (`profile/before-restore-<date>/`, the last three). A
+restore never changes your notes; with Notes sync on and no notes on this computer yet, it brings them down from your
+repository.
+
+`kurooto profile status` says what's saved and when; `kurooto profile save` saves now (the first time, it asks for the
+repository and a passphrase). Without Profile sync, a backup zip works too (`kurooto restore <zip>`, see
+[Backups](#backups)).
+
 ## Your computer and Kurooto (hardware profiles)
 
 | Profile | Example | Local models | Notes brain index |
@@ -459,12 +1158,23 @@ index. Settings → **Your computer** shows what was found and lets you change i
 | The program | `%LOCALAPPDATA%\Programs\Kurooto` | `~/Library/Application Support/Kurooto/app` | `~/.local/share/kurooto/app` |
 | Your notes | `Documents\Kurooto` | `~/Documents/Kurooto` | `~/Documents/Kurooto` (or `~/Kurooto`) |
 
+| What | Where |
+|---|---|
+| Backups | the folder you picked (`backups.folder`); before a restore, a copy of how things were: `restore-safety/` in the data folder |
+| Experiment runs | `research/<project>/runs/` in your notes |
+| Watched jobs | `watch.log` in the state folder (time, exit code, duration, folder, command) |
+| Your own skills, ideas, recurring quizzes | `kurooto/` in your notes (`skills/`, `ideas.md`, `recurring.md`) |
+| How you like to be helped, not-interested list | `about-me/how-to-help-me.md`, `about-me/not-interested.md` in your notes |
+
 Secrets (bot token, keys) are in your system's keychain (Windows Credential Manager, macOS Keychain, or the Secret
 Service on Linux), or, where there is none, in a file only your user can read in the settings folder.
 
 Commands: `kurooto on` / `kurooto off` (completely, until turned on again), `kurooto pause [2h]` / `kurooto
-resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto doctor`, `kurooto update`,
-`kurooto autostart on|off|status`, `kurooto paths`, `kurooto uninstall`.
+resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto doctor`, `kurooto top`, `kurooto
+logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
+`kurooto update`, `kurooto autostart on|off|status`, `kurooto paths`, `kurooto uninstall`. For scripts: `kurooto
+notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog`, `watch` (see
+[From a terminal or a script](#from-a-terminal-or-a-script) and [Research](#research)).
 
 ## Troubleshooting
 
@@ -476,21 +1186,72 @@ resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kuroo
 | Something only happens when I plug in | That's the battery saver (Taking your laptop with you); set `power.on_battery` to `normal` to keep it all running. |
 | "I can't answer free text yet" | Turn on **Chat** (Features). |
 | The AI says it isn't signed in | Setup page → AI → Install / sign in again → Test. |
-| "It's at its usage limit" | Free tiers have daily limits: wait, or set a fallback brain (Settings → `brain.fallback`). |
+| "It's at its usage limit" | Free tiers have daily limits: wait, or set a fallback brain (Settings → `brain.fallback`). `/usage` shows how often it happens. |
+| The setup page says agy "can't use Kurooto's tools yet" | agy's settings file isn't plain JSON, or `agy mcp add` failed. Add `mcp(kurooto/*)` to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself, then Test again. |
+| The AI said it did something but nothing happened | Tell it so; check `/jobs`. With a small local model, tools may not be supported: it answers without them. |
+| An agent program says Kurooto's tools aren't running | Kurooto is off or restarting; `kurooto on`, then ask again. |
 | The setup page won't open | `kurooto open`, or go to `http://127.0.0.1:8770`. If another program uses that port, Kurooto picks the next one (`kurooto paths` → `web.json` in the state folder says which). |
 | Not enough space | The wizard says what needs it. Free some space, or choose fewer features. |
+| "That question expired" | It waited longer than `ask.expire_hours` (or its asker stopped waiting); nothing was done. The asker asks again if it still matters. |
+| I tapped a button and nothing happened | It may have been answered elsewhere already (on a call, in the app): `/q` shows what's still open. |
+| `kurooto ask`, `call`, `send`, `ask-me` or `ask-approval` say Kurooto isn't running | `kurooto on`, then try again. Note that `--timeout` is in minutes. |
+| No night check-in | It's off until you give it a time: Settings → Check-ins → `times`, e.g. `"night": "23:15"`. |
+| A night check-in I didn't want | Empty its time in Settings → Check-ins → `times`, or `/checkin night skip` for today. |
+| "skip Friday's check-in" went to the AI | Kurooto acts by itself only for today, tomorrow, the day after or a weekday name; anything else (dates, "next week") goes to the AI. |
+| "Held a call until …" | A class, `/hold`, focus, a calendar event or the night was on. The call comes by itself when it ends; `/calls` lifts a `/hold`. Too many events hold calls? Set `calendar.nocall_events` to `tagged`. |
+| A call rang three times | It wasn't answered: repeats at +3 and +6 minutes. Answer, tap **Later**, or set `calls.realert_min` to `[]`. |
+| No plan before my alarm | It needs Chat on and the alarm set at least a few minutes ahead (`alarm.prep_min`). The AI's answer is in the AI jobs tab. |
+| The morning page didn't open | It opens only if the computer is awake with a screen at alarm time (`alarm.open_page`). Open `http://127.0.0.1:8770/morning` yourself. |
+| No after-class question | The class was skipped, it's a holiday or exam period, or the term is over (`/term`). |
+| A deadline shows up twice | They didn't look like the same thing (different dates or numbers in the title). Tap **Not mine** on one. |
+| A calendar event became a deadline by mistake | **Not mine** on it, or `/ignore` a word in its title; to stop calendar deadlines altogether, `deadlines.from_calendar` off. |
+| No call six hours before a deadline | Phone calls on and set up? A class, `/hold`, focus or the night until shortly before the deadline means a message instead. |
+| Done didn't tick the box in my notes | The line was changed since Kurooto read it (it's re-read every hour); tick it yourself, nothing else depends on it. |
+| A recurring quiz is on the wrong week | Put any date it really happens on in the "Next" column of `kurooto/recurring.md`. |
+| `/journal` (or another skill) goes to Chat as plain text | Turn on **Skills** (Features). `/skills` lists the names. |
+| A revision pack comes as a `.tex` file | Tectonic isn't installed: tap **Install Tectonic** in the message that came with the pack. If you tapped **Not now**, it asks again after 30 days. |
+| The first PDF takes minutes | Tectonic fetches the LaTeX packages it needs once (about 50 MB); later packs take seconds. |
+| "it didn't compile" | The AI's LaTeX had an error it couldn't fix; the `.tex` is in your notes. `/pack` again, or reply with what to change. |
+| A routine didn't run | It runs when the computer is on; one missed while it was off runs once when it's back (if that's still one of its days). `/routines` shows what's set. |
+| "I'd rather not keep that" after /remember | It looked like a health, money or password detail. Put it in your own notes instead; reword it if it isn't one. |
+| The look back never suggests anything | Most days that's right. `/lookback` shows when it last ran and what it noticed; on a laptop it waits for the charger. `/lookback now` runs one. |
+| A skill change says "nothing changed" | The AI's version was the same, or it broke the skill's header; it's never saved then. It may suggest it again another night. |
+| The nightly upkeep didn't finish | Search still works. Its log is in the state folder (`gbrain/upkeep-<date>.log`); it tries again the next night. Turn it off with `gbrain.upkeep`. |
+| /notes or /timeline says the brain is busy | The nightly upkeep (or a sync) is using it; try again in a while. |
 | Phone calls: "not connected to your call line" | Is this computer online? It reconnects by itself within a minute. Still not: Features → Phone calls → Set up (redeploys). |
 | Cloudflare sign-in didn't finish | Press Set up again; the sign-in link is also shown in the progress log. |
 | The phone doesn't ring | App checklist all ✓? Battery unrestricted, and not on a "sleeping apps" list? Dashboard → Phone → Ring my phone. |
 | A call keeps cutting itself off on loudspeaker | Use the earpiece or earphones, or move the mic gate slider to the right. |
 | iPhone gets no notifications | Opened from the Home Screen (not Safari)? Turned on in the app? iOS 16.4+? Settings → Notifications → Kurooto. |
+| Questions don't show on the phone | Is `question` in `notify.app_kinds`? Android: is the app's "Questions and approvals" notification category on? iPhone: notifications on for Kurooto? Is the computer connected to your call line (Features → Phone calls)? |
+| "Not sent: tap to try again" on Android | The phone was offline or the call line didn't answer. Tap it to try again, or answer on Telegram. |
+| "That answer is too old (or this phone's clock is off)" | Set the phone's clock to automatic, then answer again. |
+| "That's no longer open" | It was answered somewhere else (Telegram, a call, another phone) or expired. Nothing to do. |
 | Notes sync: "a change elsewhere clashes" | Nothing was lost. Open the repository on GitHub, keep the version you want in the note, then `/sync`. |
+| `kurooto doctor`: Backups FAIL "the backup folder isn't there" | Plug the drive in (or sign in to the cloud app); the next backup comes within the hour. A drive that's unplugged for a day or two is only a note. |
+| Backups: "not enough room in the backup folder" | Free space there, lower `backups.keep`, or turn `backups.index` off. |
+| A restore went wrong | `kurooto restore <the zip in restore-safety/>` puts things back as they were before it. |
+| Restore: "That passphrase doesn't open this profile" | It's the passphrase you picked when you turned on Profile sync (not your GitHub password). Try again; nothing was changed. |
+| Restore: "…was changed or damaged, so it can't be trusted" | A file on the `kurooto-profile` branch was edited outside Kurooto. Nothing was changed here. On GitHub, open the branch's history and revert the last edit, then restore again. |
+| Profile sync: "another computer saved your profile since this one did" | You restored or used Kurooto elsewhere. Restore it here (`kurooto profile restore`), or `/profile save` to make this computer's the one. |
+| Two computers both answer, or the bot misses messages after moving | Turn Kurooto off on the old computer: `kurooto off`. |
 | Google: "sign-in expired" | Features → Google → Save (signs in again). If it happens every 7 days, publish the consent screen (step 3). |
+| "Mail digest is paused: needs Google's OK" (or another Google feature) | Features → that feature → Save, then sign in with Google and leave its permission ticked. |
+| A Google feature didn't turn on after signing in | Did you untick its permission on Google's screen? Save on its card again. Is its API on in your Google Cloud project (the link on its card)? |
+| Google says "Access blocked" for a school account | Your school doesn't allow unverified apps for that permission. Use a personal Google account, or ask your school's admin. |
+| The mail digest says it only counted my mail | It reads only what you chose: `/mail read @your-school.example` or `/mail read label:Name`. Mail marked confidential is always only counted. |
+| Classroom notes say a PDF wasn't read | Install Poppler (`pdftotext`), or use agy as your AI (it opens PDFs itself). |
+| Classroom notes went to the wrong folder | Settings → `classroom_notes.folders`: `{"Exact course name": "folder-name"}`. |
+| Research: "repository folder missing" | You moved or deleted it: `/repos remove <folder>`, then `/repos add <new folder>`. |
+| `kurooto watch` says "only shown on this computer" | Kurooto wasn't running: `kurooto start`. |
+| The Terminals tab says it's off, or a terminal won't type | Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose. |
+| Your add-ons: a problem in `kurooto doctor` | `/addons` shows which file and the error. Fix it, then restart Kurooto (`kurooto stop`, `kurooto start`). |
 | Something else | `kurooto doctor --bundle` and send the zip to whoever is helping you (see below). |
 
 ## Getting help (diagnostics)
 
 `kurooto doctor` checks Kurooto, your AI, every feature you have on, and free space; each line says what's wrong.
+`kurooto top` and `kurooto logs -f` show what it's doing right now.
 
 `kurooto doctor --bundle` saves a zip you can send to someone helping you. It contains Kurooto's checks, its log,
 your settings and what happened recently, with **secrets, names, email and web addresses and your folders blanked
@@ -500,28 +1261,37 @@ anywhere: look inside the zip first, then send it yourself.
 ## Uninstall
 
 `kurooto uninstall` removes Kurooto: the program, its settings, data and start-at-sign-in. `kurooto uninstall
---keep-data` keeps your settings and data. On Windows you can also use Settings → Apps → Kurooto.
+--keep-data` keeps your settings and data. On Windows you can also use Settings → Apps → Kurooto. Want to keep a copy
+first? `kurooto backup --to <folder>`.
 
 **Your notes folder is never deleted.** Things Kurooto installed for you that live in its own folder (Node.js, MinGit,
-Ollama on Linux) go with it; programs installed system-wide (agy, Ollama on Windows/macOS, Telegram Desktop) stay,
-since you may use them. Your call line stays on your Cloudflare account until you delete it there (Workers & Pages →
-the `kurooto-…` worker → Settings → Delete); paired phones stop working once it's gone. A Google client can be deleted
-in Google Cloud; a notes repository stays yours.
+Ollama on Linux, Tectonic) go with it; programs installed system-wide (agy, Ollama on Windows/macOS, Telegram Desktop)
+stay, since you may use them. Your call line stays on your Cloudflare account until you delete it there (Workers &
+Pages → the `kurooto-…` worker → Settings → Delete); paired phones stop working once it's gone. A Google client can be
+deleted in Google Cloud, and the Agent plan calendar in Google Calendar; a notes repository stays yours (delete its
+`kurooto-profile` branch if you used Profile sync). Backup zips stay in the folder you picked, and your add-ons folder
+is never touched.
 
 ## FAQ
 
-**Does it cost anything?** No, unless you pick a paid AI plan you already have. Cloudflare, Gemini (free tier),
-Telegram, GitHub and Google Cloud are used within their free plans.
+**Does it cost anything?** No, unless you pick a paid plan (a paid AI plan you already have, or a paid Gemini key).
+Cloudflare, Gemini (free tier), Telegram, GitHub and Google Cloud are used within their free plans.
 
 **Does my data go to whoever made Kurooto?** No. Nothing is ever sent to Kurooto's author. What leaves your computer
 goes to the services you chose, under your own accounts; [PRIVACY.md](PRIVACY.md) lists it per feature.
 
+**Will it send email or messages for me?** Never by itself. It sends nothing to anyone but you; anything outward (a
+reply to an email, a draft) waits for your tap, and approvals are never given for you.
+
 **Does it work when my computer is off?** Telegram messages wait until it's back. Phone calls and the alarm still
-work from your call line; anything that needs the computer is done when it's back.
+work from your call line, and you can answer questions on the phone app; anything that needs the computer is done when
+it's back.
 
 **Can someone else talk to my bot?** It answers only the Telegram account that tapped the pairing link; everyone else
 is ignored.
 
-**Can I use it on two computers?** One at a time per Telegram bot. Notes sync keeps notes in step across computers.
+**Can I use it on two computers?** One at a time per Telegram bot. Notes sync keeps notes in step across computers;
+Profile sync moves your setup to a new one (see [Moving to a new computer](#moving-to-a-new-computer)).
 
-**Where is the code?** [github.com/avtarfr/kurooto](https://github.com/avtarfr/kurooto), Apache-2.0.
+**Where is the code?** [github.com/avtarfr/kurooto](https://github.com/avtarfr/kurooto), Apache-2.0. What might come
+next is in [ROADMAP.md](ROADMAP.md).
