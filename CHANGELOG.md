@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 (2026-10-20)
+Fixes, delivered as the first automatic update.
+- A check-in call that comes due during a class, a hold, focus or the night now waits until the block ends, or comes
+  as a message if that's too late for today.
+- What you say on a check-in call reaches your journal again.
+- Checking Kurooto (`kurooto doctor`) while the AI is working no longer makes that request run a second time.
+- A landing page at avtarfr.github.io/kurooto.
+
 ## 0.1.0 (2026-10-19)
 The first release, for friends.
 - One-line install on Windows, macOS and Linux (per user, no admin), signed releases, a setup wizard that reads the

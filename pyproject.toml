@@ -1,6 +1,6 @@
 [project]
 name = "kurooto"
-version = "0.1.0"
+version = "0.1.1"
 description = "A personal assistant that runs on your own computer and talks to you on Telegram, by phone and in a local dashboard."
 readme = "README.md"
 license = "Apache-2.0"
