@@ -6,6 +6,13 @@ kurooto doctor [--json]  check that everything Kurooto needs is in place (exit c
 kurooto off / on         turn Kurooto off completely (no start at sign-in) / back on
 kurooto pause [2h|18:00] / resume   pause it (Telegram says "paused" and keeps what you send) / wake it
 kurooto notify [--title T] TEXT     send yourself a message through Kurooto (for scripts and other tools)
+kurooto ask ["plain English"]       talk to Kurooto from a terminal; quick things at once, bigger ones print later
+kurooto call "reason" [--at TIME] [--alarm] [--force]   ring your phone now or later
+kurooto mcp              Kurooto's tools for agent programs (an MCP server on stdin/stdout)
+kurooto ask-me "question" [--choices "a|b|c"] [--expires 2d] [--wait [--timeout MIN]]   ask yourself something
+kurooto ask-approval "question" [--timeout MIN]   ask for a yes/no and wait (exit 0 yes, 1 no, 2 timeout)
+kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB)
+kurooto note [--title T] TEXT       save a quick note to your notes' inbox (or pipe text in)
 """
 
 from __future__ import annotations
@@ -149,6 +156,57 @@ def ask_running(path: str, body: dict | None = None) -> dict | None:
             return json.loads(r.read())
     except OSError:
         return None
+
+
+def ask_me(text: str, choices: str, expires: str, title: str, wait: bool, timeout: float, approval: bool) -> int:
+    """Ask the person something through the running assistant (Telegram, desktop, phone app, the next call).
+    Without --wait it prints the question's id; with --wait, the answer (exit 2 if none came in time)."""
+    if not text.strip():
+        print("What's the question?", file=sys.stderr)
+        return 2
+    body = {
+        "text": text,
+        "choices": [c for c in (choices or "").split("|") if c.strip()],
+        "kind": "approval" if approval else "question",
+        "expires": expires or (f"{max(1, round(timeout))}m" if wait else ""),
+        "title": title,
+        "source": "cli",
+    }
+    r = ask_running("ask", body)
+    if not r or not r.get("ok"):
+        print("Kurooto isn't running (`kurooto start` starts it), so nobody was asked.", file=sys.stderr)
+        return 2
+    if not wait:
+        print(r["id"])
+        return 0
+    return wait_answer(r["id"], timeout, approval)
+
+
+def wait_answer(qid: str, timeout_min: float, approval: bool) -> int:
+    """Wait for the first answer. Approvals print yes / no (exit 0 / 1); questions print the answer (exit 0).
+    No answer in time prints "timeout" (exit 2), and the question is closed so a late answer isn't taken."""
+    import time
+
+    end = time.monotonic() + timeout_min * 60
+    try:
+        while time.monotonic() < end:
+            q = (ask_running("ask/get", {"id": qid}) or {}).get("question") or {}
+            if q.get("status") == "answered":
+                if not approval:
+                    print(q.get("answer") or "")
+                    return 0
+                yes = q.get("answer") == "Approve"
+                print("yes" if yes else "no")
+                return 0 if yes else 1
+            if q.get("status") == "expired":
+                break
+            time.sleep(max(0.0, min(3.0, end - time.monotonic())))
+    except KeyboardInterrupt:
+        ask_running("ask/expire", {"id": qid})
+        return 130
+    ask_running("ask/expire", {"id": qid})
+    print("timeout")
+    return 2
 
 
 def turn_off(keep_calls: bool) -> int:
@@ -381,6 +439,152 @@ def update(now: bool) -> int:
     return start_background()
 
 
+# ------------------------------------------------------------------- `kurooto ask`, `kurooto call` (owner: tools)
+def wait_job(jid: str, minutes: float) -> tuple[bool | None, str]:
+    """Wait for a request's answer: (True, answer) / (False, why it failed) / (None, "") if it took too long."""
+    import time
+
+    deadline, misses = time.monotonic() + minutes * 60, 0
+    while time.monotonic() < deadline:
+        j = ask_running("job", {"id": jid})
+        if j is None:
+            misses += 1
+            if misses > 30:
+                return False, "Kurooto stopped before the answer came."
+        elif j.get("status") in ("ok", "failed"):
+            return j["status"] == "ok", str(j.get("answer") or "")
+        elif j.get("ok") is False:
+            return False, str(j.get("error") or "no such request")
+        time.sleep(2)
+    return None, ""
+
+
+def say(text: str) -> dict | None:
+    r = ask_running("say", {"text": text})
+    if r is None:
+        print("Kurooto isn't running (`kurooto on` starts it).", file=sys.stderr)
+    elif not r.get("ok"):
+        print(r.get("error") or "That didn't work.", file=sys.stderr)
+        return None
+    return r
+
+
+def plain(text: str, wait: bool, minutes: int, job: str = "") -> int:
+    """`kurooto ask`: like typing to Kurooto on Telegram. Quick things answer at once; a bigger request goes to
+    the AI and its answer prints here (not on Telegram)."""
+    if job:
+        ok, answer = wait_job(job, minutes)
+    elif not text:
+        return plain_loop(minutes)
+    else:
+        r = say(text)
+        if r is None:
+            return 1
+        if not r.get("job"):
+            print("\n".join(r.get("replies") or []) or "Done.")
+            return 0
+        if not wait:
+            print(r["job"])
+            return 0
+        print("Working on it…", file=sys.stderr)
+        ok, answer = wait_job(r["job"], minutes)
+        job = r["job"]
+    if ok is None:
+        print(f"No answer within {minutes} min; it's still going (wait again: kurooto ask --job {job}).")
+        return 2
+    print(answer)
+    return 0 if ok else 1
+
+
+def plain_loop(minutes: int) -> int:
+    """Type requests one after another; answers to bigger ones print when they're ready."""
+    import threading
+
+    try:
+        import readline  # noqa: F401 (line editing and history, where Python has it)
+    except ImportError:
+        pass
+    lock = threading.Lock()
+
+    def later(jid: str, text: str) -> None:
+        ok, answer = wait_job(jid, minutes)
+        with lock:
+            head = f"── {text[:60]}" + ("" if ok else " (failed)" if ok is False else " (no answer yet)")
+            print(f"\n{head}\n{answer or f'still going: kurooto ask --job {jid}'}\n──", flush=True)
+
+    print("Plain English, as on Telegram: quick things happen at once; answers to bigger requests print here when")
+    print("they're ready. Ctrl-D (Ctrl-Z, Enter on Windows) leaves.")
+    while True:
+        try:
+            line = input("kurooto> ").strip()
+        except EOFError:
+            print()
+            return 0
+        except KeyboardInterrupt:
+            print()
+            continue
+        if not line:
+            continue
+        r = say(line)
+        if r is None:
+            continue
+        if r.get("job"):
+            print("Working on it; the answer prints here.")
+            threading.Thread(target=later, args=(r["job"], line), daemon=True).start()
+        else:
+            with lock:
+                print("\n".join(r.get("replies") or []) or "Done.")
+
+
+def call(reason: str, at: str, alarm: bool, force: bool) -> int:
+    """`kurooto call`: what the private call-me did, for scripts and agent programs."""
+    r = ask_running("call", {"reason": reason, "at": at, "alarm": alarm, "force": force})
+    if r is None:
+        print("Kurooto isn't running, so it can't call you (`kurooto on` starts it).", file=sys.stderr)
+        return 1
+    print(r.get("message", ""))
+    return 0 if r.get("ok") else 1
+# ------------------------------------------------------------------- files and quick notes (`send`, `note`)
+def skills_parsers(sub) -> None:
+    se = sub.add_parser("send", help="send yourself a file on Telegram (up to 50 MB)")
+    se.add_argument("file")
+    se.add_argument("--caption", default="")
+    nt = sub.add_parser("note", help="save a quick note to your notes' inbox (the text, or what's piped in)")
+    nt.add_argument("text", nargs="*")
+    nt.add_argument("--title", default="")
+
+
+def skills_command(a) -> int | None:
+    """`kurooto send` and `kurooto note`; None for any other command."""
+    if a.cmd == "send":
+        f = Path(a.file).expanduser()
+        if not f.is_file():
+            print(f"There's no file {a.file}.", file=sys.stderr)
+            return 1
+        r = ask_running("send-file", {"path": str(f.resolve()), "caption": a.caption})
+        if r is None:
+            print("Kurooto isn't running (`kurooto on` starts it), so nothing was sent.", file=sys.stderr)
+            return 2
+        print(r.get("message", ""))
+        return 0 if r.get("ok") else 1
+    if a.cmd == "note":
+        from kurooto.app import default_workspace
+        from kurooto.core.config import Settings
+        from kurooto.modules.library import capture
+
+        text = " ".join(a.text)
+        if not text and not sys.stdin.isatty():
+            text = sys.stdin.read()
+        if not text.strip():
+            print('Nothing to save: kurooto note "your text" (or pipe text in).', file=sys.stderr)
+            return 1
+        ws = Settings(paths().config / "settings.json").get("you.workspace")
+        f = capture(Path(ws) if ws else default_workspace(), text, title=a.title, source="terminal")
+        print(f)
+        return 0
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kurooto", description="Your assistant, on your own computer.")
     ap.add_argument("--version", action="version", version=f"kurooto {__version__}")
@@ -409,9 +613,31 @@ def main(argv: list[str] | None = None) -> int:
     no.add_argument("--title", default="")
     no.add_argument("--kind", default="info", choices=["info", "result", "reminder", "deadline"])
     no.add_argument("--urgent", action="store_true")
+    am = sub.add_parser("ask-me", help="ask yourself something, answered anywhere (prints its id, or the answer)")
+    am.add_argument("text", nargs="+")
+    am.add_argument("--choices", default="", help='answers to offer as buttons, e.g. "yes|no|later today"')
+    am.add_argument("--expires", default="", help="how long it stays open: 2d, 6h, 30m (default 2 days)")
+    am.add_argument("--title", default="", help='a label instead of "Question"')
+    am.add_argument("--wait", action="store_true", help="wait for the answer and print it")
+    am.add_argument("--timeout", type=float, default=30, help="minutes to wait (default 30)")
+    aa = sub.add_parser("ask-approval", help="ask for a yes/no and wait: exit 0 approved, 1 denied, 2 timeout")
+    aa.add_argument("text", nargs="+")
+    aa.add_argument("--timeout", type=float, default=30, help="minutes to wait (default 30)")
     upd = sub.add_parser("update", help="check for an update")
     upd.add_argument("--now", action="store_true", help="install it now instead of at night")
     sub.add_parser("selftest", help="check that this version starts")
+    ak = sub.add_parser("ask", help="talk to Kurooto in plain English; the answer prints here")
+    ak.add_argument("text", nargs="*", help="what to ask (nothing: type one request after another)")
+    ak.add_argument("--no-wait", action="store_true", help="for a bigger request: print its id instead of waiting")
+    ak.add_argument("--job", default="", help="wait for the answer to a request started with --no-wait")
+    ak.add_argument("--timeout", type=int, default=60, help="minutes to wait for an answer (default 60)")
+    ca = sub.add_parser("call", help="ring your phone now or later (for scripts and agent programs)")
+    ca.add_argument("reason", nargs="+")
+    ca.add_argument("--at", default="", help='when: 17:30, "in 20 min", "tomorrow 7:00" (default: now)')
+    ca.add_argument("--alarm", action="store_true", help="ring as a wake-up alarm (no-call rules don't apply)")
+    ca.add_argument("--force", action="store_true", help="ring now despite no-call rules (never during a call)")
+    sub.add_parser("mcp", help="Kurooto's tools for agent programs: an MCP server on stdin/stdout")
+    skills_parsers(sub)
     fin = sub.add_parser("install-finish", help=argparse.SUPPRESS)
     fin.add_argument("--uv", required=True)
     fin.add_argument("--python", required=True)
@@ -463,10 +689,24 @@ def main(argv: list[str] | None = None) -> int:
         desktop.notify(a.title or "Kurooto", text, urgent=a.urgent)
         print("Kurooto isn't running, so this was only shown on this computer.", file=sys.stderr)
         return 2
+    if a.cmd == "ask-me":
+        return ask_me(" ".join(a.text), a.choices, a.expires, a.title, a.wait, a.timeout, approval=False)
+    if a.cmd == "ask-approval":
+        return ask_me(" ".join(a.text), "", "", "", True, a.timeout, approval=True)
     if a.cmd in ("pause", "resume"):
         r = ask_running(f"power/{a.cmd}", {"when": " ".join(getattr(a, "when", []) or [])})
         print(r.get("message", "") if r else "Kurooto isn't running (`kurooto on` starts it).")
         return 0 if r else 1
+    if a.cmd == "ask":
+        return plain(" ".join(a.text).strip(), not a.no_wait, a.timeout, a.job)
+    if a.cmd == "call":
+        return call(" ".join(a.reason), a.at, a.alarm, a.force)
+    if a.cmd == "mcp":
+        from kurooto.core.mcp import serve
+
+        return serve()
+    if a.cmd in ("send", "note"):
+        return skills_command(a)
     if a.cmd == "selftest":
         return selftest()
     if a.cmd == "install-finish":

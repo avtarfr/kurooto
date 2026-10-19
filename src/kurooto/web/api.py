@@ -118,6 +118,10 @@ class Api:
     # ---------------------------------------------------------------------------------------------- GET
     def get(self, path: str, q: dict | None = None) -> tuple[int, dict]:
         q = q or {}
+        from kurooto.web import tools_api  # the AI's tools, `kurooto ask`, `kurooto call`, AI usage
+
+        if path in tools_api.GETS:
+            return tools_api.get(self.app, path, q)
         if path == "note":
             return self._note(q.get("id", ""))
         if path == "settings":
@@ -164,11 +168,17 @@ class Api:
         if path == "progress":
             with self._lock:
                 return 200, {"installing": self._installing, "lines": self.progress[-30:]}
+        if path == "ask" or path.startswith("ask/"):
+            return self._ask(path, dict(q))
         return 404, {"error": "not found"}
 
     # --------------------------------------------------------------------------------------------- POST
     def post(self, path: str, b: dict) -> tuple[int, dict]:
         s = self.app.settings
+        from kurooto.web import tools_api  # the AI's tools, `kurooto ask`, `kurooto call`
+
+        if path in tools_api.POSTS:
+            return tools_api.post(self.app, path, b)
         if path == "settings":
             return self._set(b.get("key", ""), b.get("value"))
         if path == "open-note":
@@ -288,6 +298,11 @@ class Api:
             self.app.notify(text, title=title, kind=kind, urgent=bool(b.get("urgent")))
             self.app.events.emit("notify_external", source=(title or "")[:40])
             return 200, {"ok": True}
+        if path == "send-file":  # `kurooto send FILE`: a file from this computer to your Telegram
+            from kurooto.modules.skills import send_file
+
+            ok, message = send_file(self.app, str(b.get("path") or ""), str(b.get("caption") or "")[:900])
+            return 200, {"ok": ok, "message": message}
         if path == "aboutyou/add":
             try:
                 return 200, {
@@ -355,6 +370,49 @@ class Api:
             on = [m.title for m in self.app.enabled()]
             self.app.notify(f"{self.app.name} is set up. On: {', '.join(on)}. Send /help any time.")
             return 200, {"ok": True}
+        if path == "ask" or path.startswith("ask/"):
+            return self._ask(path, b, post=True)
+        return 404, {"error": "not found"}
+
+    # ---------------------------------------------------------------------- questions and approvals
+    def _ask(self, path: str, b: dict, post: bool = False) -> tuple[int, dict]:
+        """Questions for you (core/ask.py), for `kurooto ask-me` / `ask-approval`, other programs and the dashboard.
+
+        GET ask: the open ones. GET ask/<id> (or POST ask/get {id}): one. POST ask {text, choices, kind, expires,
+        title}: ask now. POST ask/answer {id, text, via}: answer one. POST ask/expire {id}: stop waiting for one.
+        Programs can't name hooks here: whoever asked reads the answer back.
+        """
+        ask = self.app.ask
+        sub = path.partition("/")[2]
+        if not post or sub == "get":
+            if not sub:
+                return 200, {"questions": [ask.public(q) for q in ask.pending()]}
+            q = ask.get(str(b.get("id") or "") if sub == "get" else sub)
+            return (200, {"question": ask.public(q)}) if q else (404, {"error": "no such question"})
+        if not sub:
+            text = str(b.get("text") or "").strip()
+            if not text:
+                return 400, {"error": "a question needs some text"}
+            choices = b.get("choices") or []
+            if isinstance(choices, str):
+                choices = choices.split("|")
+            try:
+                qid = ask.ask(
+                    text[:2000],
+                    choices=[str(c) for c in choices if str(c).strip()][:8] if isinstance(choices, list) else None,
+                    kind="approval" if b.get("kind") == "approval" else "question",
+                    expires=str(b.get("expires") or "") or None,
+                    source=str(b.get("source") or "cli")[:40],
+                    title=str(b.get("title") or "")[:60] or None,
+                )
+            except ValueError as e:
+                return 400, {"error": str(e)}
+            return 200, {"ok": True, "id": qid}
+        if sub == "answer":
+            r = ask.answer(str(b.get("id") or ""), str(b.get("text") or ""), str(b.get("via") or "dashboard")[:20])
+            return 200, r
+        if sub == "expire":
+            return 200, {"ok": ask.expire(str(b.get("id") or ""))}
         return 404, {"error": "not found"}
 
     def _power(self) -> dict:
@@ -428,7 +486,13 @@ class Api:
                 r = r2
         secs = time.monotonic() - t0
         if nonce in r.text:
-            return {"ok": True, "message": f"Working: it answered in {secs:.0f} s."}
+            msg = f"Working: it answered in {secs:.0f} s."
+            if which == "agy":  # setting agy up: give it Kurooto's tools (`kurooto mcp`) now
+                from kurooto.providers.agy import connect_tools
+
+                ok_t, why = connect_tools(self.app, brain.exe)
+                msg += " It can use Kurooto's tools too." if ok_t else f" (It can't use Kurooto's tools yet: {why}.)"
+            return {"ok": True, "message": msg}
         msgs = {
             Verdict.AUTH: "It isn't signed in (or the key is wrong).",
             Verdict.RATE_LIMITED: "It's at its usage limit right now.",

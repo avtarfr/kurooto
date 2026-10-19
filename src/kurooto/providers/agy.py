@@ -3,24 +3,35 @@ and write notes there.
 
 Two ways to read its answer, picked at setup by a quick test: through pipes ("pipe"), or through a pseudo-terminal
 ("pty") for builds that print nothing when their output isn't a terminal.
+
+Kurooto's tools reach agy as an MCP server, added once when agy is set up (`agy mcp add kurooto ...`, plus
+"mcp(kurooto/*)" in agy's own allow-list so unattended runs may use them; its settings file is backed up first).
+To undo: `agy mcp remove kurooto`, and take that line out of ~/.gemini/antigravity-cli/settings.json.
 """
 
 from __future__ import annotations
 
 import os
 import re
+import shutil
 import sys
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from kurooto.core import proc
+from kurooto.core.state import jload, jsave
 from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
+
+if TYPE_CHECKING:
+    from kurooto.app import App
 
 LEVELS = {
     "low": ("gemini-3.8-flash-low", "low"),
     "medium": ("gemini-3.8-flash-medium", "medium"),
     "high": ("gemini-3.8-flash-high", "high"),
 }
+ALLOW = "mcp(kurooto/*)"  # agy's allow-list entry for every Kurooto tool
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[()][A-Z0-9]|\r")
 
 
@@ -56,11 +67,12 @@ class Agy(Brain):
         minutes = max(1, task.timeout_s // 60)
         prompt = (task.context + "\n\n" + task.prompt).strip() if task.context else task.prompt
         args = self._args(prompt, task.effort, minutes)
+        env = {**os.environ, **task.mcp_env} if task.mcp_env else None  # agy hands it on to `kurooto mcp`
         t0 = time.monotonic()
         if self.io_mode == "pty":
-            code, out, err = run_pty(args, task.cwd, task.timeout_s + self.grace_s)
+            code, out, err = run_pty(args, task.cwd, task.timeout_s + self.grace_s, env)
         else:
-            r = proc.run(args, cwd=task.cwd, timeout=task.timeout_s + self.grace_s)
+            r = proc.run(args, cwd=task.cwd, timeout=task.timeout_s + self.grace_s, env=env)
             code, out, err = r.code, r.out, r.err
         return verdict(code, out, err, time.monotonic() - t0, minutes)
 
@@ -85,18 +97,18 @@ def verdict(code: int | None, out: str, err: str, secs: float, minutes: int) -> 
     return Result(Verdict.OK if out else Verdict.EMPTY, out, secs, "" if out else (err[-500:] or "no output"))
 
 
-def run_pty(args: list[str], cwd: Path | None, timeout: float) -> tuple[int | None, str, str]:
+def run_pty(args: list[str], cwd: Path | None, timeout: float, env: dict | None = None) -> tuple[int | None, str, str]:
     """Run under a pseudo-terminal (ConPTY on Windows) and return (exit code, cleaned output, "")."""
     deadline = time.monotonic() + timeout
     chunks: list[str] = []
     if sys.platform == "win32":
         from winpty import PtyProcess  # pywinpty
 
-        p = PtyProcess.spawn(args, cwd=str(cwd) if cwd else None, dimensions=(50, 400))
+        p = PtyProcess.spawn(args, cwd=str(cwd) if cwd else None, env=env, dimensions=(50, 400))
     else:
         from ptyprocess import PtyProcessUnicode as PtyProcess
 
-        p = PtyProcess.spawn(args, cwd=str(cwd) if cwd else None, dimensions=(50, 400))
+        p = PtyProcess.spawn(args, cwd=str(cwd) if cwd else None, env=env, dimensions=(50, 400))
     code: int | None = None
     try:
         while time.monotonic() < deadline:
@@ -122,3 +134,63 @@ def run_pty(args: list[str], cwd: Path | None, timeout: float) -> tuple[int | No
 
 def clean(text: str) -> str:
     return ANSI.sub("", text).replace("\r\n", "\n").strip()
+
+
+# ------------------------------------------------------------------------------------------ Kurooto's tools
+def settings_file() -> Path:
+    return Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
+
+
+def allow_tools(backups: Path) -> tuple[bool, str]:
+    """Add "mcp(kurooto/*)" to agy's permissions.allow, backing its settings file up first. Changes nothing else."""
+    f = settings_file()
+    data = jload(f, None) if f.exists() else {}
+    perms = data.setdefault("permissions", {}) if isinstance(data, dict) else None
+    allow = perms.setdefault("allow", []) if isinstance(perms, dict) else None
+    if not isinstance(allow, list):
+        return False, f"agy's settings ({f}) aren't in the shape Kurooto expects; add {ALLOW} to permissions.allow"
+    if ALLOW in allow:
+        return True, "agy may already use Kurooto's tools"
+    if f.exists():
+        backups.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, backups / f"agy-settings-{time.strftime('%Y%m%d-%H%M%S')}.json")
+    allow.append(ALLOW)
+    jsave(f, data)
+    return True, "agy may use Kurooto's tools"
+
+
+def connect_tools(app: App, exe: str | list[str] | None = None) -> tuple[bool, str]:
+    """Give agy Kurooto's tools for every run: register `kurooto mcp` as its MCP server "kurooto" and allow its
+    tools. Done when agy is set up (and once after an update to a version that has tools)."""
+    from kurooto import __version__
+    from kurooto.core.mcp import command, path_env
+
+    exe = exe or proc.which("agy", install_dirs())
+    if not exe:
+        return False, "agy isn't installed"
+    cmd = command(persistent=True)
+    flags = [x for k, v in sorted(path_env().items()) for x in ("--env", f"{k}={v}")]
+    base = list(exe) if isinstance(exe, list) else [exe]
+    r = proc.run([*base, "mcp", "add", *flags, "kurooto", "--", *cmd], timeout=60)
+    if r.code != 0:
+        ok, msg = False, f"agy didn't take Kurooto's tools: {(r.err or r.out).strip()[-200:] or f'exit {r.code}'}"
+    else:
+        ok, msg = allow_tools(app.paths.state / "backups")
+    jsave(app.paths.state / "agy-tools.json", {"command": cmd, "ok": ok, "message": msg, "version": __version__})
+    app.events.emit("agy_tools", ok=ok)
+    return ok, msg
+
+
+def tools_once(app: App, brain: Agy) -> None:
+    """Before agy's first run with this install: connect the tools if that was never tried (a failure isn't
+    retried here; the setup page's test tries again)."""
+    from kurooto.core.mcp import command
+
+    if not isinstance(brain.exe, str):  # a test's fake agy
+        return
+    if (jload(app.paths.state / "agy-tools.json", {}) or {}).get("command") == command(persistent=True):
+        return
+    try:
+        connect_tools(app, brain.exe)
+    except Exception as e:
+        app.events.emit("agy_tools", ok=False, error=f"{type(e).__name__}: {e}"[:200])

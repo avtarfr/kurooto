@@ -248,3 +248,197 @@ def test_calls_brief_is_in_the_offline_state(calls):
     st = calls.state_message()
     assert st["brief"]["pending_items"]["open_questions"][0]["question"] == "What did you cover today?"
     assert "answer_question" in st["offline"]["queue"]
+
+
+# ----------------------------------------------------------------------------------------- Telegram
+def test_buttons_answer_and_edit_the_message(app, env):
+    qid = app.ask.ask("Which chapter?", choices=["3", "4"])
+    assert env.press(f"ask:{qid}:1") == "Got it: 4"
+    q = app.ask.get(qid)
+    assert q["answer"] == "4" and q["via"] == "telegram"
+    edit = [p for m, p in env.fake.sent if m == "editMessageText"][-1]
+    assert edit["message_id"] == q["msg"] and "Answered: 4 (via telegram)" in edit["text"]
+    assert env.press(f"ask:{qid}:0").startswith("Already answered: 4")
+    later = app.ask.ask("Anything else?")
+    assert env.press(f"ask:{later}:L") == "Kept for later."
+    assert app.ask.get(later)["status"] == "later"
+    assert env.press("ask:qmissing0:0") == "There's no such question (it may be old)."
+
+
+def test_out_of_date_button(app, env):
+    qid = app.ask.ask("Which?", choices=["a"])
+    assert env.press(f"ask:{qid}:5") == "That button is out of date."
+    assert app.ask.get(qid)["status"] == "open"
+
+
+def test_reply_to_a_question_answers_it(app, env):
+    got = []
+    app.ask.hooks["t.h"] = lambda q, a: got.append(a) or "Saved to your study log."
+    qid = app.ask.ask("What did you cover in class?", hook="t.h")
+    mid = app.ask.get(qid)["msg"]
+    out = env.say("eigenvalues and the spectral theorem", reply_to_message={"message_id": mid})
+    assert out == "Saved to your study log." and got == ["eigenvalues and the spectral theorem"]
+    assert app.ask.get(qid)["via"] == "telegram"
+
+
+def test_reply_with_a_photo_keeps_the_file(app, env):
+    qid = app.ask.ask("Board photo from class?")
+    env.fake.files["docs/ph1.pdf"] = b"img"
+    out = env.say("", reply_to_message={"message_id": app.ask.get(qid)["msg"]}, photo=[{"file_id": "ph1"}])
+    q = app.ask.get(qid)
+    assert q["answer"] == "(files)" and q["files"] and q["files"][0].startswith("inbox/")
+    assert "1 file(s)" in out
+
+
+def test_approval_reply_needs_a_clear_yes_or_no(app, env):
+    qid = app.ask.ask("Run the backup now?", kind="approval")
+    mid = app.ask.get(qid)["msg"]
+    assert env.say("hmm", reply_to_message={"message_id": mid}) == "Approve or Deny?"
+    assert env.say("yes", reply_to_message={"message_id": mid}) == "Approve."
+    assert app.ask.get(qid)["answer"] == APPROVE
+
+
+def test_q_lists_open_questions_with_buttons_and_replies_work(app, env):
+    assert env.say("/q") == "No open questions."
+    a = app.ask.ask("First?", choices=["yes", "no"])
+    b = app.ask.ask("Second?")
+    app.ask.answer(b, "later", "telegram")
+    n = len(env.fake.sent)
+    env.say("/q")
+    shown = [p for m, p in env.fake.sent[n:] if m == "sendMessage"]
+    assert len(shown) == 2 and "First?" in shown[0]["text"] and "Kept for later." in shown[1]["text"]
+    assert shown[0]["reply_markup"]["inline_keyboard"][0][0]["callback_data"] == f"ask:{a}:0"
+    assert env.reply_to_last("done it") == "Got it: done it"  # the reply goes to the /q copy of the second
+    assert app.ask.get(b)["answer"] == "done it"
+    assert "/q" in env.say("/help")
+
+
+def test_status_counts_open_questions(app, env):
+    assert "Open questions" not in env.say("/status")
+    app.ask.ask("x?")
+    assert "Open questions: 1 (/q)" in env.say("/status")
+
+
+def test_sweep_job_is_scheduled(app):
+    app.start()
+    assert "ask:sweep" in {j.key for j in app.scheduler.jobs()}
+
+
+# ---------------------------------------------------------------------------------------- API + CLI
+def test_api(app):
+    from kurooto.web.api import Api
+
+    api = Api(app)
+    assert api.post("ask", {"text": " "})[0] == 400
+    assert api.post("ask", {"text": "x", "expires": "whenever"})[0] == 400
+    code, r = api.post("ask", {"text": "Ship it?", "kind": "approval", "expires": "30m", "hook": "google.draft"})
+    assert code == 200 and r["ok"]
+    qid = r["id"]
+    q = app.ask.get(qid)
+    assert q["hook"] == "" and q["source"] == "cli" and q["choices"] == [APPROVE, DENY]  # programs can't name hooks
+    assert api.get("ask")[1]["questions"][0]["id"] == qid
+    assert api.get(f"ask/{qid}")[1]["question"]["status"] == "open"
+    assert api.post("ask/get", {"id": qid})[1]["question"]["text"] == "Ship it?"
+    assert api.get("ask/qnope")[0] == 404
+    r = api.post("ask/answer", {"id": qid, "text": "no", "via": "dashboard"})[1]
+    assert r["ok"] and r["answer"] == DENY and r["via"] == "dashboard"
+    c = api.post("ask", {"text": "Pick", "choices": "a|b"})[1]["id"]
+    assert app.ask.get(c)["choices"] == ["a", "b"]
+    assert api.post("ask/expire", {"id": c})[1] == {"ok": True}
+    assert app.ask.get(c)["status"] == "expired" and api.post("ask/expire", {"id": c})[1] == {"ok": False}
+
+
+@pytest.fixture
+def cli(app, monkeypatch):
+    """The CLI talking to this test's assistant directly (no web server), with sleeps that let 'you' answer."""
+    from kurooto import cli as cli_mod
+    from kurooto.web.api import Api
+
+    api = Api(app)
+    monkeypatch.setattr(cli_mod, "ask_running", lambda path, body=None: api.post(path, body or {})[1])
+    answers: list = []
+
+    def sleep(s):
+        if answers:
+            qid = app.ask.pending()[-1]["id"]
+            app.ask.answer(qid, answers.pop(0), "telegram")
+
+    monkeypatch.setattr("time.sleep", sleep)
+    return answers
+
+
+def test_cli_ask_me(app, cli, capsys):
+    from kurooto.cli import main
+
+    assert main(["ask-me", "Which", "topic?", "--choices", "proofs|examples", "--expires", "6h"]) == 0
+    qid = capsys.readouterr().out.strip()
+    q = app.ask.get(qid)
+    assert q["text"] == "Which topic?" and q["choices"] == ["proofs", "examples"] and q["source"] == "cli"
+    cli.append("2")
+    assert main(["ask-me", "Which?", "--choices", "a|b", "--wait", "--timeout", "1"]) == 0
+    assert capsys.readouterr().out.strip() == "b"
+
+
+def test_cli_ask_approval_exit_codes(app, cli, capsys):
+    from kurooto.cli import main
+
+    cli.append("Approve")
+    assert main(["ask-approval", "Delete the build folder?", "--timeout", "1"]) == 0
+    assert capsys.readouterr().out.strip() == "yes"
+    cli.append("deny")
+    assert main(["ask-approval", "Again?", "--timeout", "1"]) == 1
+    assert capsys.readouterr().out.strip() == "no"
+    cli.append("later")  # Later keeps it waiting, then time runs out
+    assert main(["ask-approval", "Once more?", "--timeout", "0.0001"]) == 2
+    out = capsys.readouterr().out.strip()
+    assert out == "timeout" and app.ask.recent()[-1]["status"] == "expired"
+
+
+def test_cli_when_kurooto_isnt_running(monkeypatch, capsys, tmp_path):
+    from kurooto import cli as cli_mod
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    monkeypatch.setattr(cli_mod, "ask_running", lambda path, body=None: None)
+    assert cli_mod.main(["ask-approval", "Go?"]) == 2
+    assert "isn't running" in capsys.readouterr().err
+
+
+def test_ai_can_ask_and_the_answer_starts_a_request(app, monkeypatch):
+    seen = []
+    monkeypatch.setattr(app.jobs, "submit", lambda prompt, **kw: seen.append(prompt) or "j1")
+    (tool,) = app.ask.agent_tools()
+    assert tool.name == "ask_user"
+    out = tool.run(
+        {"question": "Which subject folder should this go in?", "choices": "algebra|analysis", "then": "File it."}
+    )
+    qid = out.split("question ")[1].split(")")[0]
+    q = app.ask.get(qid)
+    assert q["source"] == "ai" and q["choices"] == ["algebra", "analysis"] and q["hook"] == "ask.ai"
+    app.ask.answer(qid, "analysis", "telegram")
+    assert seen == ["File it.\n\nTheir answer: analysis"]
+    for _ in range(3):
+        tool.run({"question": "x?", "then": "y {answer}"})
+    assert "already 3" in tool.run({"question": "x?", "then": "y"})
+
+
+def test_resend_gives_new_buttons_and_both_messages_answer(app, env):
+    qid = app.ask.ask("Still there?", choices=["yes"])
+    first = app.ask.get(qid)["msg"]
+    assert app.ask.resend(qid) is True
+    second = app.ask.get(qid)["msg"]
+    assert (
+        second != first and "asked again below" in [p for m, p in env.fake.sent if m == "editMessageText"][-1]["text"]
+    )
+    assert env.say("yes", reply_to_message={"message_id": first}) == "Got it: yes"
+    assert app.ask.resend(qid) is False
+
+
+def test_questions_also_show_on_the_desktop(env, monkeypatch):
+    from kurooto.core import desktop
+
+    shown = []
+    monkeypatch.setattr(desktop, "notify", lambda title, text, urgent=False: shown.append((title, urgent)) or True)
+    env.app.settings.set("notify.desktop", True)
+    env.app.ask.ask("Which chapter?")
+    env.app.ask.ask("Go?", kind="approval")
+    assert shown == [("Question", False), ("Approval needed", True)]

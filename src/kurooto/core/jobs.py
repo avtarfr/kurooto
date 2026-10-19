@@ -7,9 +7,9 @@ signed out and a fallback brain is set, the job is retried once on the fallback.
 from __future__ import annotations
 
 import asyncio
+import datetime
 import json
 import sqlite3
-import sys
 import threading
 import time
 import uuid
@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto import providers
+from kurooto.core.mcp import command, run_env
 from kurooto.core.tools import agent_tools, run_tool
 from kurooto.providers import effort as effort_mod
 from kurooto.providers.base import Result, Task, Verdict
@@ -33,6 +34,8 @@ create table if not exists jobs (
     result text, detail text, then_action text, then_payload text
 );
 create index if not exists jobs_status on jobs(status, created);
+create table if not exists attempts (job text, brain text, verdict text, at real, seconds real, tool_calls integer);
+create index if not exists attempts_at on attempts(at);
 """
 LONG = 7000  # longer answers are also sent as a document
 
@@ -72,7 +75,13 @@ class Jobs:
         self.dir.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(app.paths.state / "jobs.db", check_same_thread=False, isolation_level=None)
         self._db.execute("pragma journal_mode=wal")
+        had_attempts = self._db.execute("select 1 from sqlite_master where name='attempts'").fetchone()
         self._db.executescript(SCHEMA)
+        if not had_attempts:  # /usage counts every try at a brain; older databases start from their jobs
+            self._db.execute(
+                "insert into attempts(job, brain, verdict, at, seconds, tool_calls) select id, brain, verdict, "
+                "coalesce(finished, created), seconds, 0 from jobs where brain is not null and verdict is not null"
+            )
         self._lock = threading.Lock()
         self._cli_lock = threading.Lock()  # CLI brains: one job at a time
         self._wake: asyncio.Event | None = None
@@ -205,6 +214,7 @@ class Jobs:
             tools=tools,
             run_tool=lambda name, args: run_tool(self.app, name, args, tools),
             mcp=mcp_command(),
+            mcp_env=run_env(self.app.paths),
         )
         used, result = None, Result(Verdict.ERROR, detail="no AI brain is set up")
         for brain in [b for b in (main, fallback) if b is not None]:
@@ -213,11 +223,16 @@ class Jobs:
                 result, used = Result(Verdict.ERROR, detail=why), brain
                 continue
             used = brain
+            if brain.id == "agy":
+                from kurooto.providers.agy import tools_once
+
+                tools_once(self.app, brain)
             if brain.kind == "cli":
                 with self._cli_lock:
                     result = brain.run(task)
             else:
                 result = brain.run(task)
+            self._attempt(jid, brain.id, result)
             if result.verdict not in (Verdict.RATE_LIMITED, Verdict.AUTH, Verdict.ERROR):
                 break
             self._problem(brain, result)
@@ -256,6 +271,29 @@ class Jobs:
                 self.then_actions[then[0]](job, result, json.loads(then[1] or "{}"))
             except Exception as e:
                 self.app.events.emit("job_then_failed", job=jid, error=str(e)[:300])
+
+    def _attempt(self, jid: str, brain: str, result: Result) -> None:
+        tools = result.usage.get("tool_calls") if isinstance(result.usage, dict) else 0
+        with self._lock:
+            self._db.execute(
+                "insert into attempts(job, brain, verdict, at, seconds, tool_calls) values(?,?,?,?,?,?)",
+                (jid, brain, result.verdict.value, time.time(), round(result.seconds, 1), int(tools or 0)),
+            )
+
+    def usage(self, days: int = 7) -> list[dict]:
+        """AI requests per day (local time) per brain over the last `days` days, with usage-limit hits."""
+        start = datetime.datetime.combine(
+            datetime.date.today() - datetime.timedelta(days=days - 1), datetime.time()
+        ).timestamp()
+        rows = self._db.execute(
+            "select date(at, 'unixepoch', 'localtime'), brain, count(*), sum(verdict = 'rate_limited'), "
+            "sum(coalesce(tool_calls, 0)) from attempts where at >= ? group by 1, 2 order by 1, 2",
+            (start,),
+        ).fetchall()
+        return [
+            {"day": d, "brain": b, "requests": n, "limited": lim or 0, "tool_calls": tc or 0}
+            for d, b, n, lim, tc in rows
+        ]
 
     def _problem(self, brain, result: Result) -> None:
         """Tell the user about a usage limit or a sign-out, at most once an hour per brain."""
@@ -304,7 +342,7 @@ class Jobs:
 
 def mcp_command() -> list[str]:
     """How an agent program starts Kurooto's tool server (`kurooto mcp`), with this version's own Python."""
-    return [sys.executable, "-m", "kurooto", "mcp"]
+    return command()
 
 
 def result_path(app: App, jid: str) -> Path:

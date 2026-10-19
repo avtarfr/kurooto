@@ -4,13 +4,17 @@ anything else with a base URL and a key."""
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.error
 import urllib.request
 
 from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
 
-MAX_ROUNDS = 16  # tool calls in one request, at most
+MAX_ROUNDS = 16  # rounds of tool calls in one request, at most; then it must answer
+ENOUGH = "Stop using tools now. Answer with what you have, and say plainly what you did and what you couldn't do."
+# a 4xx that says the model or service can't take tools (Ollama: "... does not support tools")
+NO_TOOLS = re.compile(r"^HTTP 4\d\d:.*\b(tools?|functions?|function.?call(ing)?)\b", re.I | re.S)
 
 PRESETS = {
     "gemini": {
@@ -78,12 +82,14 @@ class OpenAICompat(Brain):
         text = (msg.get("content") or "").strip()
         return Result(Verdict.OK if text else Verdict.EMPTY, text, msg["_secs"], usage=usage)
 
-    def _turn(self, messages: list[dict], effort: str, timeout: float, tools: list | None = None):
+    def _turn(self, messages: list[dict], effort: str, timeout: float, tools: list | None = None, choice: str = ""):
         """One request. Returns (Result on failure, else None; the reply message; usage)."""
         model = self.models.get(effort) or self.models.get("medium")
         body: dict = {"model": model, "messages": messages}
         if tools:
             body["tools"] = tools
+            if choice:
+                body["tool_choice"] = choice
         if self.reasoning and effort in ("low", "medium", "high"):
             body["reasoning_effort"] = effort
         t0 = time.monotonic()
@@ -121,40 +127,67 @@ class OpenAICompat(Brain):
         ]
         if not task.tools or not task.run_tool:
             return self.chat(msgs, task.effort, task.timeout_s)
-        from kurooto.core.tools import schema
-
-        decl = [
-            {"type": "function", "function": {"name": t.name, "description": t.description, "parameters": schema(t)}}
-            for t in task.tools
-        ]
+        decl = [declaration(t) for t in task.tools]
         t0 = time.monotonic()
         usage: dict = {}
-        for _ in range(MAX_ROUNDS):
-            left = task.timeout_s - (time.monotonic() - t0)
-            if left < 5:
+        used: list[str] = []
+
+        def left() -> float:
+            return task.timeout_s - (time.monotonic() - t0)
+
+        for rnd in range(MAX_ROUNDS + 1):
+            if left() < 5:
                 return Result(Verdict.TIMEOUT, "", time.monotonic() - t0, "ran out of time while using tools")
-            res, msg, u = self._turn(msgs, task.effort, left, decl)
-            if res is not None and res.verdict == Verdict.RATE_LIMITED and (res.retry_after_s or 30) <= 60 < left:
+            final = rnd == MAX_ROUNDS
+            if final:  # enough: an answer from what it has, with tools still declared but not allowed
+                msgs.append({"role": "user", "content": ENOUGH})
+            res, msg, u = self._turn(msgs, task.effort, left(), decl, "none" if final else "")
+            if res is not None and res.verdict == Verdict.RATE_LIMITED and (res.retry_after_s or 30) <= 60 < left():
                 time.sleep(res.retry_after_s or 30)  # free tiers allow a few requests a minute; one wait, then retry
-                res, msg, u = self._turn(msgs, task.effort, task.timeout_s - (time.monotonic() - t0), decl)
+                res, msg, u = self._turn(msgs, task.effort, left(), decl, "none" if final else "")
+            if res is not None and rnd == 0 and res.verdict == Verdict.ERROR and NO_TOOLS.search(res.detail):
+                r = self.chat(msgs, task.effort, left())  # this model or service can't use tools: answer without
+                r.seconds, r.usage = time.monotonic() - t0, {**r.usage, "tools": "unsupported"}
+                return r
             if res is not None:
                 res.seconds = time.monotonic() - t0
+                res.usage = {**usage, "tool_calls": len(used)}
                 return res
             for k, v in u.items():
                 if isinstance(v, int):
                     usage[k] = usage.get(k, 0) + v
-            calls = msg.get("tool_calls") or []
-            if not calls:
+            calls = [dict(c) for c in (msg.get("tool_calls") or []) if isinstance(c, dict)]
+            if not calls or final:
                 text = (msg.get("content") or "").strip()
+                usage.update(tool_calls=len(used), tools_used=sorted(set(used)))
+                if not text and calls:
+                    return Result(Verdict.ERROR, "", time.monotonic() - t0, f"still calling tools after {rnd} rounds")
                 return Result(Verdict.OK if text else Verdict.EMPTY, text, time.monotonic() - t0, usage=usage)
-            msgs.append({"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls})
+            for i, c in enumerate(calls):
+                c["id"] = c.get("id") or f"call_{rnd}_{i}"  # some local servers leave it out
+            msgs.append({"role": "assistant", "content": msg.get("content") or None, "tool_calls": calls})
             for c in calls:
                 fn = c.get("function") or {}
+                name, raw = str(fn.get("name") or ""), fn.get("arguments")
                 try:
-                    args = json.loads(fn.get("arguments") or "{}")
+                    args = raw if isinstance(raw, dict) else json.loads(raw or "{}")
                 except ValueError:
-                    args = {}
-                out = task.run_tool(fn.get("name") or "", args if isinstance(args, dict) else {})
+                    args = None
+                if not isinstance(args, dict):
+                    out = f"Error: the arguments for {name} weren't a JSON object. Call it again with valid JSON."
+                else:
+                    used.append(name)
+                    out = task.run_tool(name, args)
                 content = out if isinstance(out, str) else json.dumps(out, ensure_ascii=False, default=str)
-                msgs.append({"role": "tool", "tool_call_id": c.get("id") or "", "content": content[:20000]})
+                msgs.append({"role": "tool", "tool_call_id": c["id"], "content": content[:20000]})
         return Result(Verdict.ERROR, "", time.monotonic() - t0, f"stopped after {MAX_ROUNDS} rounds of tool calls")
+
+
+def declaration(t) -> dict:
+    """A tool as an OpenAI-style function. No "parameters" when it takes none: Gemini refuses an empty object."""
+    from kurooto.core.tools import schema
+
+    fn = {"name": t.name, "description": t.description}
+    if t.params:
+        fn["parameters"] = schema(t)
+    return {"type": "function", "function": fn}
