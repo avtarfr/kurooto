@@ -283,6 +283,9 @@ def settings(home):
 
 
 def test_agy_setup_registers_and_allows_the_tools(home, monkeypatch, tmp_path):
+    # the system's own folders are whatever this computer (or CI) has; only a portable copy's folder is saved in agy
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg-config"))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "local"))
     app = App()
     try:
         monkeypatch.setenv("FAKE_AGENT_LOG", str(tmp_path / "agy.log"))
@@ -373,15 +376,25 @@ def test_agy_setup_test_connects_the_tools(home, monkeypatch, tmp_path):
         app.close()
 
 
-def test_persistent_command_goes_through_the_launcher(home):
+def test_persistent_command_goes_through_the_launcher(home, monkeypatch):
     from kurooto.core.paths import paths
     from kurooto.core.state import jsave
 
     p = paths().ensure()
-    assert mcp.command(persistent=True) == mcp.command()  # not installed by the installer: this Python
+    assert mcp.command(persistent=True) == mcp.command() == [sys.executable, "-m", "kurooto", "mcp"]
     (p.app / "launcher.py").write_text("# launcher", encoding="utf-8")
-    jsave(p.app / "install.json", {"python": "/opt/py/bin/python3"})
-    assert mcp.command(persistent=True) == ["/opt/py/bin/python3", str(p.app / "launcher.py"), "cli", "mcp"]
+    py = home / "py" / "bin" / "python3"
+    jsave(p.app / "install.json", {"python": str(py)})
+    assert mcp.command(persistent=True) == [str(py), str(p.app / "launcher.py"), "cli", "mcp"]
+    # Windows: a windowless pythonw.exe has no stdin/stdout, so the python.exe next to it is used
+    scripts = home / "venv" / "Scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "python.exe").write_bytes(b"")
+    (scripts / "pythonw.exe").write_bytes(b"")
+    jsave(p.app / "install.json", {"python": str(scripts / "pythonw.exe")})
+    assert mcp.command(persistent=True)[0] == str(scripts / "python.exe")
+    monkeypatch.setattr(sys, "executable", str(scripts / "pythonw.exe"))
+    assert mcp.command() == [str(scripts / "python.exe"), "-m", "kurooto", "mcp"]
 
 
 # ------------------------------------------------------------------------------ kurooto call
