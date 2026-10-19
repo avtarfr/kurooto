@@ -65,6 +65,9 @@ class App:
         from kurooto.core.ask import Ask  # questions and approvals for you, from any feature (app.ask)
 
         self.ask = Ask(self)
+        from kurooto.providers.agy import consent_answer  # may agy use Kurooto's tools? (asked once, providers/agy.py)
+
+        self.ask.hooks["agy.tools"] = lambda q, answer: consent_answer(self, q, answer)
         self.restart_requested = False
         self._stop = None  # the daemon's stop event, so an update can ask for a restart
         self._loop = None
@@ -183,6 +186,12 @@ class App:
 
     def start(self) -> None:
         """Start the update checks and every enabled module (register its jobs and actions)."""
+        try:
+            from kurooto.core import upgrade  # coming from an older version: what changes once (core/upgrade.py)
+
+            upgrade.run(self)
+        except Exception as e:
+            self.events.emit("module_failed", module="upgrade", error=f"{type(e).__name__}: {e}"[:300])
         try:
             self.updates.start()
         except Exception as e:

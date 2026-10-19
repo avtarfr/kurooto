@@ -6,6 +6,8 @@ Two ways to read its answer, picked at setup by a quick test: through pipes ("pi
 
 Kurooto's tools reach agy as an MCP server, added once when agy is set up (`agy mcp add kurooto ...`, plus
 "mcp(kurooto/*)" in agy's own allow-list so unattended runs may use them; its settings file is backed up first).
+The setup page's agy test says so and does it; someone who set agy up before tools existed is asked once (Approve /
+Deny; Deny holds for 30 days) instead of having agy's settings changed by itself.
 To undo: `agy mcp remove kurooto`, and take that line out of ~/.gemini/antigravity-cli/settings.json.
 """
 
@@ -232,17 +234,68 @@ def connect_tools(app: App, exe: str | list[str] | None = None) -> tuple[bool, s
 
 
 def tools_once(app: App, brain: Agy) -> None:
-    """Before agy's first run with this install: connect the tools if that was never tried (a failure isn't
-    retried here; the setup page's test tries again)."""
+    """Before an agy run: if agy was set up before it could have Kurooto's tools, ask once whether it may (agy's
+    settings are yours); if they were connected before and Kurooto's command changed since (an update), connect them
+    again. A failure isn't retried here; the setup page's test tries again."""
     from kurooto.core.mcp import command
 
     if not isinstance(brain.exe, str):  # a test's fake agy
         return
     if os.environ.get("KUROOTO_HOME") and os.environ.get("KUROOTO_AGY_TOOLS") != "1":
         return  # a portable or test copy leaves agy's own settings alone unless set up through the setup page
-    if (jload(app.paths.state / "agy-tools.json", {}) or {}).get("command") == command(persistent=True):
+    before = jload(app.paths.state / "agy-tools.json", {}) or {}
+    if before.get("command") == command(persistent=True):
+        return
+    if not before:
+        ask_consent(app, brain.exe)
         return
     try:
         connect_tools(app, brain.exe)
     except Exception as e:
         app.events.emit("agy_tools", ok=False, error=f"{type(e).__name__}: {e}"[:200])
+
+
+CONSENT = (
+    "Let agy use Kurooto's tools (reminders, notes, calls…)? This adds Kurooto to agy's settings; a backup is kept."
+)
+DENY_DAYS = 30
+
+
+def consent_file(state: Path) -> Path:
+    return state / "agy-tools-consent.json"
+
+
+def ask_consent(app: App, exe: str | None = None) -> str | None:
+    """Ask (an approval) whether agy may use Kurooto's tools, unless that's waiting for an answer already or was
+    denied in the last 30 days. The question's id, or None."""
+    from kurooto.core.ask import OPEN
+
+    f = consent_file(app.paths.state)
+    c = jload(f, {}) or {}
+    q = app.ask.get(c["qid"]) if c.get("qid") else None
+    if q and q.get("status") in OPEN:
+        return None
+    if c.get("denied") and time.time() - float(c["denied"]) < DENY_DAYS * 86400:
+        return None
+    qid = app.ask.ask(
+        CONSENT, kind="approval", hook="agy.tools", hook_payload={"exe": exe or ""}, source="agy", title="agy"
+    )
+    jsave(f, {"qid": qid, "asked": time.time()})
+    return qid
+
+
+def consent_answer(app: App, q: dict, answer: str) -> str:
+    """The answer to ask_consent's question (app.ask.hooks["agy.tools"])."""
+    from kurooto.core.ask import APPROVE
+
+    f = consent_file(app.paths.state)
+    if str(answer).strip().lower() == APPROVE.lower():
+        ok, msg = connect_tools(app, (q.get("hook_payload") or {}).get("exe") or None)
+        jsave(f, {"approved": time.time(), "ok": ok})
+        return f"{msg[:1].upper()}{msg[1:]}." if ok else f"That didn't work: {msg}."
+    jsave(f, {"denied": time.time()})
+    app.events.emit("agy_tools", ok=False, error="denied")
+    return (
+        f"OK, agy works without Kurooto's tools; I won't ask again for {DENY_DAYS} days. "
+        "(The agy test on the setup page connects them any time.)"
+    )

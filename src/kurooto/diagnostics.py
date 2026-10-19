@@ -110,6 +110,9 @@ def checks(app) -> list[tuple[str, bool, str]]:
 
     running = bool(daemon.get("pid")) and pid_alive(daemon["pid"])
     out.append(("running", True if running else None, "yes" if running else "no: start it with `kurooto start`"))
+    tz = timezone_check(app)
+    if tz:
+        out.append(tz)
     main = app.settings.get("brain.main")
     if main:
         b = providers.build(app, main)
@@ -132,6 +135,31 @@ def checks(app) -> list[tuple[str, bool, str]]:
         if st["installed"]:
             out.append((f"installed: {st['title']}", True, "yes"))
     return out
+
+
+def timezone_check(app) -> tuple[str, bool, str] | None:
+    """Your time zone (Settings → You) and this computer's should be the same: until 0.2.1, some times (repeating
+    ones: check-in planning, the look back, digests) follow the setting and others (reminders, check-ins) the
+    computer's clock."""
+    import datetime as dt
+    from zoneinfo import ZoneInfo
+
+    name = str(app.settings.get("you.timezone") or "").strip()
+    if not name:
+        return None
+    try:
+        tz = ZoneInfo(name)
+    except Exception:
+        return ("time zone", False, f"{name!r} isn't a time zone name Kurooto knows (Settings → You → timezone)")
+    t = dt.datetime.now().astimezone()
+    if any(d.astimezone(tz).utcoffset() != d.astimezone().utcoffset() for d in (t, t + dt.timedelta(days=182))):
+        return (
+            "time zone",
+            False,
+            f"{name} (Settings → You) isn't this computer's time zone ({t.tzname()}): some times follow one and some "
+            "the other. Set them the same.",
+        )
+    return ("time zone", True, f"{name}, the same as this computer")
 
 
 def _writable(folder: Path) -> bool:

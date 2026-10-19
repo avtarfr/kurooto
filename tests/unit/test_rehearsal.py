@@ -147,3 +147,143 @@ def test_the_unattended_redeploy_never_opens_a_sign_in_page(env, monkeypatch):
     monkeypatch.setattr(deploy.Deployer, "sign_in", lambda self, wait_s=600: pytest.fail("opened a sign-in page"))
     ok, msg = deploy.deploy(env.app, progress=lambda line: None, unattended=True)
     assert ok is False and "sign in" in msg
+
+
+# ---------------------------------------------------------------------------- updating from 0.1 (core/upgrade.py)
+def test_a_new_install_keeps_the_new_defaults(tmp_path, monkeypatch):
+    from kurooto.app import App
+    from kurooto.core import upgrade
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    app = App()  # its first start comes before the setup page is ever used
+    try:
+        assert upgrade.run(app) == "fresh"
+        assert app.settings.get("deadlines.call") is True and app.settings.get("calls.realert_min") == [3, 6]
+        app.settings.set("setup.done", True)
+        assert upgrade.run(app) == ""  # once: setting it up later changes nothing
+        assert app.settings.get("alarm.open_page") is True and app.scheduler.get("upgrade:whats_new") is None
+    finally:
+        app.close()
+
+
+def test_an_install_from_0_1_keeps_its_behaviour(env):
+    import datetime as dt
+
+    from kurooto.core import upgrade
+    from kurooto.core.clock import now
+
+    app = env.app
+    app.settings.set("setup.done", True)
+    app.settings.set("modules.enabled", ["telegram", "deadlines"])
+    app.settings.set("retro.journal", True)  # set by you: kept
+    dl = app.modules["deadlines"]
+    dl.add("Old lab sheet", now() - dt.timedelta(hours=5))
+    dl.add("Essay", now() + dt.timedelta(days=3))
+    assert upgrade.run(app) == "upgraded"
+    s = app.settings
+    assert s.get("alarm.open_page") is False and s.get("alarm.prep_min") is None
+    assert s.get("capture.study_log") is False and s.get("retro.transcripts") is False
+    assert s.get("retro.journal") is True
+    assert s.get("deadlines.call") is False and s.get("deadlines.from_calendar") is False
+    assert s.get("calls.realert_min") == [3]
+    assert s.get("quiz.exam_daily") == "" and s.get("quiz.offer_at") == "19:00"  # for everyone
+    env.on("deadlines")
+    dl._tick()
+    assert not [t for t in env.fake.texts() if "Old lab sheet was due" in (t or "")]  # no flood on the first tick
+    assert [it for it in dl.items().values() if it["title"] == "Essay"][0]["told"] == []
+    assert upgrade.run(app) == ""
+    job = app.scheduler.get("upgrade:whats_new")
+    assert job is not None and job.label == "what's new"
+    upgrade.whats_new(app)
+    text = env.fake.texts()[-1]
+    assert text.startswith("Kurooto 0.2.0: what's new") and upgrade.MANUAL in text
+    assert 5 <= len(text.splitlines()) <= 9 and "off until you turn them on in Settings" in text
+
+
+@pytest.mark.skipif(not __import__("shutil").which("git"), reason="needs git")
+def test_projects_quiet_at_the_update_are_not_asked_about(env, tmp_path):
+    import subprocess
+    import time
+
+    app = env.app
+    app.settings.set("research.topics", ["x"])
+    env.on("research")
+    repo = tmp_path / "solver"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "f.txt").write_text("x", encoding="utf-8")
+    when = time.strftime("%Y-%m-%dT12:00:00", time.localtime(time.time() - 6 * 86400))
+    for args in (["add", "-A"], ["commit", "-qm", "first"]):
+        subprocess.run(
+            ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+            check=True,
+            env={**os.environ, "GIT_COMMITTER_DATE": when, "GIT_AUTHOR_DATE": when},
+        )
+    env.say(f"/repos add {repo}")
+    r = app.modules["research"]
+    r.quiet_idle_once()
+    assert r.idle_check() == [] and not [q for q in app.ask.pending() if q["source"] == "research"]
+    assert r.idle_check() == []  # and it stays noted for this quiet stretch
+
+
+def test_24_hour_times_are_taken_as_written(env):
+    env.on("checkins")
+    assert env.say("/checkin midday 04:29") == "Midday check-in at 04:29."
+    assert env.say("/checkin midday 4:29am") == "Midday check-in at 04:29."
+
+
+def test_starter_leaves_the_notes_brain_to_you(env, monkeypatch):
+    from kurooto.modules.gbrain import GBrain
+    from kurooto.web.api import Api
+
+    monkeypatch.setattr(GBrain, "exe", lambda self: None)  # not installed here
+
+    mods = {m["id"]: m for m in Api(env.app)._modules()}
+    assert not mods["gbrain"]["starter"] and mods["deadlines"]["starter"]
+    assert "0.5 GB" in mods["gbrain"]["why"]  # shown on its card
+
+
+def test_status_says_what_is_coming_in_words(env):
+    import time
+
+    env.on("reminders")
+    env.app.scheduler.at(time.time() + 3600, "checkins.fire", {"name": "evening", "day": "x"}, key="checkins:evening")
+    env.app.scheduler.at(time.time() + 7200, "calendar.focus_end", key="calendar:focus:2026-10-22T17:00:00+01:00")
+    text = env.say("/status")
+    assert "evening check-in" in text and "focus ends" in text and "calendar:focus" not in text
+
+
+def test_kurooto_start_says_where(tmp_path, monkeypatch, capsys):
+    from kurooto import cli
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    urls = iter([None, "http://127.0.0.1:8770/"])
+    monkeypatch.setattr(cli, "wait_for_web", lambda seconds=40: next(urls))
+    monkeypatch.setattr(cli, "start_background", lambda: 0)
+    assert cli.main(["start"]) == 0
+    assert "Kurooto is running: http://127.0.0.1:8770/" in capsys.readouterr().out
+
+
+def test_kurooto_on_does_not_wait_for_a_service_that_is_not_there(tmp_path, monkeypatch):
+    from kurooto import cli
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    monkeypatch.setenv("KUROOTO_NO_AUTOSTART", "1")
+    monkeypatch.setenv("KUROOTO_NO_BROWSER", "1")
+    waits = []
+    monkeypatch.setattr(cli, "wait_for_web", lambda seconds=40: waits.append(seconds) or "http://127.0.0.1:1/")
+    assert cli.main(["on"]) == 0 and waits == [1]
+
+
+def test_doctor_warns_when_the_time_zones_differ(env, monkeypatch):
+    import datetime as dt
+
+    from kurooto.diagnostics import timezone_check
+
+    assert timezone_check(env.app) is None
+    here = dt.datetime.now().astimezone().utcoffset()
+    other = "Pacific/Kiritimati" if here != dt.timedelta(hours=14) else "Pacific/Niue"
+    env.app.settings.set("you.timezone", other)
+    name, ok, why = timezone_check(env.app)
+    assert ok is False and other in why and "Set them the same" in why
+    env.app.settings.set("you.timezone", "Not/AZone")
+    assert timezone_check(env.app)[1] is False

@@ -24,6 +24,7 @@ import psutil
 
 from kurooto import __version__
 from kurooto.core import proc
+from kurooto.core.scheduler import describe
 from kurooto.core.state import jload
 
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
@@ -230,15 +231,14 @@ class Board:
         db = _ro(p.state / "schedule.db")
         if db is not None:
             try:
-                for key, payload, nxt in db.execute(
-                    "select key, payload, next_run from schedule order by next_run limit 8"
+                for key, action, payload, nxt in db.execute(
+                    "select key, action, payload, next_run from schedule order by next_run limit 8"
                 ):
                     try:
                         pl = json.loads(payload or "{}")
                     except ValueError:
                         pl = {}
-                    what = pl.get("what") or pl.get("name") or ""
-                    sched.append({"key": key, "what": str(what)[:60], "when": nxt})
+                    sched.append({"key": key, "what": describe(action, key, pl)[:60], "when": nxt})
             except sqlite3.Error:
                 pass
             finally:

@@ -406,6 +406,7 @@ def test_quiz_me_in_plain_english(study):
 
 def test_exam_mode_daily_practice(calls):
     app = calls.app
+    app.settings.set("quiz.exam_daily", "18:00")  # off unless you set a time
     calls.on("quiz")
     write_prep(app)
     app.modules["deadlines"].add("Linear Algebra quiz", now() + dt.timedelta(days=6))

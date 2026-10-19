@@ -157,6 +157,21 @@ class Deadlines(Module):
     def items(self) -> dict:
         return jload(self.file, {}) or {}
 
+    def quiet_overdue(self) -> int:
+        """Updating from 0.1 (core/upgrade.py): what's overdue already isn't asked about ("Overdue?") all at once on
+        the first tick; it stays on /deadlines. The number of deadlines marked."""
+        t, n = now(), 0
+        with Lock(self.app.paths.state, "deadlines"):
+            items = self.items()
+            for it in items.values():
+                told = it.setdefault("told", [])
+                if it.get("status") == "open" and hours_left(it["due"], t) < 0 and "overdue" not in told:
+                    told.append("overdue")
+                    n += 1
+            if n:
+                jsave(self.file, items)
+        return n
+
     def start(self):
         self.every("tick", "hourly", self._tick)
         self.app.ask.hooks["deadlines.recurring"] = lambda q, a: self._recurring_answer(q.get("hook_payload") or {}, a)

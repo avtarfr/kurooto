@@ -152,7 +152,8 @@ function renderBrainPanel(which) {
     else box.append(
       el("p", {}, "Sign in once with your Google account: a window opens, follow it, then close it."),
       el("button", { onclick: async () => { const r = await api("prereqs/signin", { key: "agy" }); alert(r.message); } }, "Open the sign-in window"),
-      el("p", {}, "Then check it works:"), ...testButton("agy"));
+      el("p", {}, "Then check it works. The test also lets agy use Kurooto's tools (reminders, notes, calls…): " +
+        "this adds Kurooto to agy's settings; a backup is kept."), ...testButton("agy"));
     box.append(el("p", { class: "note" }, AGY_NOTE));
   } else if (which === "codex" || which === "claude") {
     const key = which, label = which === "codex" ? "Codex" : "Claude Code";
@@ -257,6 +258,7 @@ function renderFeatures() {
     return el("div", { class: "card" + (chosen.has(m.id) ? " on" : "") },
       el("label", {}, box, el("h3", {}, m.title)), el("p", {}, m.description),
       m.starter ? el("div", { class: "star" }, "★ in Starter") : null, el("div", { class: "privacy" }, m.privacy),
+      m.setup && !m.ready && m.why ? el("p", { class: "note" }, m.why[0].toUpperCase() + m.why.slice(1) + ".") : null,
       m.form && chosen.has(m.id) && !m.ready ? setupForm(m) : null);
   }));
   renderKeyBox();

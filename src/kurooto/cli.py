@@ -149,6 +149,21 @@ def start_background() -> int:
     return 0
 
 
+def start_and_say() -> int:
+    """`kurooto start`: start it, wait until its page answers, and print the page's address."""
+    url = wait_for_web(1)
+    if url:
+        print(f"Kurooto is already running: {url}")
+        return 0
+    start_background()
+    url = wait_for_web(60)
+    if not url:
+        print("It didn't come up within a minute. Logs:", paths().logs)
+        return 1
+    print(f"Kurooto is running: {url}")
+    return 0
+
+
 def ask_running(path: str, body: dict | None = None) -> dict | None:
     """Ask the running assistant to do something through its local page. None if it isn't running."""
     import urllib.request
@@ -252,9 +267,11 @@ def turn_on() -> int:
     from kurooto.core import autostart
 
     (paths().state / "off.json").unlink(missing_ok=True)
+    managed = False
     if os.environ.get("KUROOTO_NO_AUTOSTART") != "1":
         print(autostart.enable())
-    url = wait_for_web(8)  # under systemd or launchd, turning autostart on also started it
+        managed = bool(autostart.managed())
+    url = wait_for_web(8 if managed else 1)  # under systemd or launchd, turning autostart on also started it
     if not url:
         start_background()
         url = wait_for_web(60)
@@ -1080,7 +1097,7 @@ def main(argv: list[str] | None = None) -> int:
 
         return supervise()
     if a.cmd == "start":
-        return start_background()
+        return start_and_say()
     if a.cmd == "open":
         import webbrowser
 

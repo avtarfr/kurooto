@@ -19,7 +19,7 @@ from kurooto.providers.base import Verdict
 if TYPE_CHECKING:
     from kurooto.app import App
 
-STARTER = ["telegram", "chat", "reminders", "checkins", "deadlines", "gbrain"]
+STARTER = ["telegram", "chat", "reminders", "checkins", "deadlines"]  # GBrain: a 0.5 GB download, so it's opt-in
 BRAIN_ORDER = [  # the first one is the ★ recommendation
     (
         "gemini",

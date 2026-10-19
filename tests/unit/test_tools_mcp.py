@@ -19,7 +19,7 @@ from kurooto.core import mcp
 from kurooto.modules.base import Module
 from kurooto.modules.calls.tools import Tool
 from kurooto.modules.chat import usage_text
-from kurooto.providers.agy import ALLOW, Agy, connect_tools, tools_once
+from kurooto.providers.agy import ALLOW, CONSENT, Agy, connect_tools, consent_file, tools_once
 from kurooto.providers.base import Task, Verdict
 from kurooto.providers.cli_agents import ClaudeCode, Codex
 from kurooto.web import tools_api
@@ -345,11 +345,43 @@ def test_agy_tools_once_after_an_update(home, monkeypatch, tmp_path):
         exe.chmod(0o755)
         tools_once(app, Agy(exe=AGENT))  # a test's fake (a list): never
         tools_once(app, Agy(exe=str(exe)))  # a portable or test copy (KUROOTO_HOME): not by itself
-        assert not (tmp_path / "agy.log").exists()
+        assert not (tmp_path / "agy.log").exists() and not app.ask.pending()
         monkeypatch.setenv("KUROOTO_AGY_TOOLS", "1")
-        tools_once(app, Agy(exe=str(exe)))
-        tools_once(app, Agy(exe=str(exe)))
+        tools_once(app, Agy(exe=str(exe)))  # set up before tools existed: agy's settings are yours, so it asks
+        tools_once(app, Agy(exe=str(exe)))  # once
+        (q,) = app.ask.pending()
+        assert q["text"] == CONSENT and q["kind"] == "approval"
+        assert not (tmp_path / "agy.log").exists() and not settings(home).exists()
+        app.ask.answer(q["id"], "Approve")
         assert len(log_of(tmp_path / "agy.log")) == 1 and settings(home).exists()
+        tools_once(app, Agy(exe=str(exe)))
+        assert len(log_of(tmp_path / "agy.log")) == 1
+        f = app.paths.state / "agy-tools.json"  # an update changed Kurooto's command: connected again, no question
+        f.write_text(json.dumps({**json.loads(f.read_text(encoding="utf-8")), "command": ["old"]}), encoding="utf-8")
+        tools_once(app, Agy(exe=str(exe)))
+        assert len(log_of(tmp_path / "agy.log")) == 2 and not app.ask.pending()
+    finally:
+        app.close()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="a POSIX script stands in for an installed agy")
+def test_agy_tools_denied_holds_for_30_days(home, monkeypatch, tmp_path):
+    app = App()
+    try:
+        monkeypatch.setenv("FAKE_AGENT_LOG", str(tmp_path / "agy.log"))
+        monkeypatch.setenv("KUROOTO_AGY_TOOLS", "1")
+        exe = tmp_path / "agy"
+        exe.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{AGENT[1]}" "$@"\n', encoding="utf-8")
+        exe.chmod(0o755)
+        tools_once(app, Agy(exe=str(exe)))
+        (q,) = app.ask.pending()
+        app.ask.answer(q["id"], "Deny")
+        tools_once(app, Agy(exe=str(exe)))
+        assert not app.ask.pending() and not (tmp_path / "agy.log").exists() and not settings(home).exists()
+        f = consent_file(app.paths.state)
+        f.write_text(json.dumps({"denied": json.loads(f.read_text(encoding="utf-8"))["denied"] - 31 * 86400}))
+        tools_once(app, Agy(exe=str(exe)))
+        assert len(app.ask.pending()) == 1  # a month later it asks again
     finally:
         app.close()
 
