@@ -100,6 +100,7 @@ def ics_for(today: dt.date) -> str:
 @pytest.fixture
 def calendar(env):
     env.app.settings.set("you.timezone", "Europe/Berlin")
+    env.app.settings.set("calendar.days", 15)  # the day-14 lecture stays inside the window at any time of day
     today = dt.datetime.now(BERLIN).date()
     srv, base = serve({"/cal.ics": (200, ics_for(today).encode()), "/bad.ics": (200, b"<html>nope</html>")})
     yield env, base, today
