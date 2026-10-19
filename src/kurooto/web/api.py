@@ -19,13 +19,21 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 STARTER = ["telegram", "chat", "reminders", "checkins", "deadlines", "gbrain"]
-BRAIN_ORDER = [
-    ("agy", "Free with a Google account; the strongest free option. Runs on this computer and can read your notes."),
-    ("gemini", "Free key from Google AI Studio; simplest to set up. Also needed later for phone calls."),
+BRAIN_ORDER = [  # the first one is the ★ recommendation
+    (
+        "gemini",
+        "A key from Google AI Studio: the simplest, and the way Google recommends for tools like this. Free "
+        "tier, or paid. Phone calls and voice notes use it too.",
+    ),
+    (
+        "agy",
+        "Free with a Google account: Google's agent program, run on this computer as you; it can read your notes. "
+        "Some risk to the account (see its note).",
+    ),
     ("codex", "If you pay for ChatGPT: OpenAI's Codex, signed in with your ChatGPT account."),
+    ("claude", "Advanced: if you pay for Claude, Anthropic's Claude Code, signed in with your Claude account."),
     ("ollama", "Small models on this computer: private and offline, but much weaker than the others."),
     ("custom", "Any other OpenAI-compatible service, with its address and key."),
-    ("claude", "Advanced: if you pay for Claude, Anthropic's Claude Code, signed in with your Claude account."),
 ]
 MODULE_ORDER = [
     "telegram",
@@ -167,7 +175,7 @@ class Api:
                 "brain": {"main": s.get("brain.main"), "fallback": s.get("brain.fallback")},
                 "modules": self._modules(),
                 "prereqs": self.prereqs.status(),
-                "room": self.prereqs.room(["agy", "ollama"], extra_gb=models_gb),
+                "room": self.prereqs.room(["ollama"] if models_gb else [], extra_gb=models_gb),  # ★ AI: a key
                 "telegram": {"token_set": bool(self.app.secrets.get("telegram.token")), "paired": tg.ready()[0]},
                 "keys": {"gemini": bool(self.app.secrets.get("gemini.api_key"))},
                 "power": self._power(),

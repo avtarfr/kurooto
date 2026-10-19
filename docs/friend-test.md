@@ -16,7 +16,7 @@ and 45 minutes.
 | 1 | Paste the install line (Windows: PowerShell) | "Free space: … Fine", then the setup page opens | time from paste to page |
 | 2 | Wizard: You | name, time zone pre-filled | |
 | 3 | Wizard: Your computer | the hardware read correctly (e.g. a 4 GB graphics card → small-gpu) | did they understand the ★ |
-| 4 | Wizard: AI → agy ★ → Install → sign in → Test | "Working: it answered in N s" | sign-in friction; how long Test took |
+| 4 | Wizard: AI → Gemini API key ★ → Google AI Studio → Create API key → paste → Save → Test | "Working: it answered in N s" | did they read the free-tier note; key friction; how long Test took |
 | 5 | Wizard: Features → Starter | storage total shown | |
 | 6 | Wizard: Telegram (@BotFather → token → link → Start) | "Telegram is connected" | the most likely place to get stuck |
 | 7 | Done → `/help` in Telegram | the command list | **stop the clock** |
@@ -29,7 +29,7 @@ If anything blocks for more than 3 minutes: `kurooto doctor --bundle`, save the 
 ## Session 2: calls and phone
 | # | Step | Expect |
 |---|---|---|
-| 1 | Gemini key (aistudio.google.com/apikey) into the Features step | "Gemini key saved" |
+| 1 | Gemini key: already saved in session 1 (the AI step). Only if they picked another AI: aistudio.google.com/apikey into the Features step | "Gemini key saved" |
 | 2 | Features → Phone calls → Set up | packages, then Cloudflare sign-in in the browser, then "Your call line is live" |
 | 3 | Pair the phone: dashboard → Phone → Pair → scan the QR | Android: download, install (unknown apps, Play Protect), Pair the app |
 | 4 | The app's checklist → fix every ✗ (battery!) | all ✓ |

@@ -107,3 +107,30 @@ Done directly on w/tools: the Chat row no longer names FreeLLMAPI, and "Free tie
   and shows as "Another OpenAI-compatible service".
 - The setup page says plainly what a free Gemini key means (Google may use and review what you send; 18+; a paid key
   in the EEA, UK and Switzerland) and what using agy through Kurooto means for your Google account.
+
+## The ★ moves to the Gemini key (maintainer's decision)
+
+### MANUAL, "Your AI brain" table: new order and ★
+| Brain | Cost | Good for | Setup |
+|---|---|---|---|
+| **Gemini API key** ★ | free tier, or paid | the simplest, and the way Google recommends for tools like this; also used for calls and voice notes. Free tier: Google may use what you send to improve its products and human reviewers may read it; 18+; a paid key is required in the EEA, UK and Switzerland | [Google AI Studio](https://aistudio.google.com/apikey) → Create API key → paste |
+| **Antigravity (agy)** | free with a Google account | Google's agent program on your computer; can read your notes. Some risk to the Google account (see the note below the table) | Install → a window opens → sign in with Google |
+| **ChatGPT / Codex** | needs a paid ChatGPT plan | if you already pay for ChatGPT | Install → sign in with your ChatGPT account |
+| **Claude Code** (Advanced) | needs a paid Claude plan | if you already pay for Claude | Install → sign in with your Claude account |
+| **Local (Ollama)** | free | private and offline, but much weaker | only offered on computers with a graphics card or Apple Silicon |
+| **Custom** | depends | any OpenAI-compatible service | its address, key and model names |
+
+Keep the agy note from the terms-review section under the table. Add: "If you set Kurooto up before 0.2.0, it keeps
+the AI you chose."
+
+### README
+"**AI, your choice:** a Gemini API key (recommended), Antigravity (agy), ChatGPT/Codex, Claude Code, local models, or
+any OpenAI-compatible service".
+
+### CHANGELOG (0.2.0)
+- The setup page now recommends a Gemini API key as the AI (the simplest, and Google's recommended route for tools),
+  then agy, Codex, Claude Code, local models and custom. Existing setups keep the AI they chose.
+
+### Done directly on w/tools
+docs/friend-test.md: session 1 step 4 is now the Gemini key ★ (AI Studio → Create API key → paste → Test); session 2
+step 1 notes the key is already saved from session 1.
