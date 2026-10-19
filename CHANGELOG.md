@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 (2026-10-20)
+- Telegram setup: if pressing Start doesn't connect, the page now says why (another program using the bot, a
+  webhook, a revoked token, an expired link, no internet) and offers the fix, and it always shows the message to send
+  by hand. Running setup again while Telegram is on no longer swallows the Start message.
+
 ## 0.1.2 (2026-10-20)
 - "Build my profile" and other text-only work no longer fail with agy: it's told to answer with text only.
 - If agy can't do something unattended (or fails), a saved Gemini key answers instead, and the other way round when
