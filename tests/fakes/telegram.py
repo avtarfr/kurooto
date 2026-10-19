@@ -15,6 +15,8 @@ class FakeTelegram:
         self.files: dict[str, bytes] = {}
         self._next_update = 1
         self._next_msg = 100
+        self.fail: dict[str, tuple[int, str]] = {}  # method -> (error_code, description) to answer with
+        self.webhook = ""  # a webhook URL set on the bot (getUpdates then fails with 409)
         fake = self
 
         class H(BaseHTTPRequestHandler):
@@ -42,6 +44,9 @@ class FakeTelegram:
                 if token != fake.token:
                     return self._send(401, {"ok": False, "error_code": 401, "description": "Unauthorized"})
                 fake.sent.append((method, params))
+                if method in fake.fail:
+                    code, desc = fake.fail[method]
+                    return self._send(code, {"ok": False, "error_code": code, "description": desc})
                 res = fake.answer(method, params)
                 self._send(200, {"ok": True, "result": res})
 
@@ -60,6 +65,12 @@ class FakeTelegram:
     def answer(self, method, p):
         if method == "getMe":
             return {"id": 42, "is_bot": True, "username": self.username}
+        if method == "getWebhookInfo":
+            return {"url": self.webhook, "pending_update_count": 0}
+        if method == "deleteWebhook":
+            self.webhook = ""
+            self.fail.pop("getUpdates", None)
+            return True
         if method == "getUpdates":
             off = p.get("offset", 0)
             return [u for u in self.updates if u["update_id"] >= off]

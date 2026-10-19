@@ -28,6 +28,16 @@ register_defaults(
 )
 
 TOKEN = "telegram.token"  # noqa: S105 (the secret's name, not its value)
+PAIR_S = 3600  # a pairing link works for an hour
+_START = re.compile(r"^/start(?:@\w+)?(?:\s+(\S+))?\s*$", re.I)  # "/start CODE", "/start@bot CODE", "/start"
+
+
+class PairingProblem(Exception):
+    """Why pressing Start hasn't connected yet, in words for the setup page. `retry`: keep waiting meanwhile."""
+
+    def __init__(self, kind: str, message: str, retry: bool = True):
+        super().__init__(message)
+        self.kind, self.message, self.retry = kind, message, retry
 
 
 class Telegram(Module):
@@ -64,24 +74,97 @@ class Telegram(Module):
         jsave(self.dir / "pairing.json", {"code": code, "created": time.time()})
         return {"bot": me.get("username"), "code": code, "link": f"https://t.me/{me.get('username')}?start={code}"}
 
-    def pair_poll(self, wait: int = 25) -> dict | None:
-        """Look for "/start <code>" from the person who tapped the link. On success, save their chat and say hi."""
+    def pairing(self) -> dict:
+        """The pairing in progress ({} if none, or if its hour is up)."""
         p = jload(self.dir / "pairing.json", {}) or {}
+        return p if p.get("code") and time.time() - p.get("created", 0) <= PAIR_S else {}
+
+    def pair_relink(self) -> dict:
+        """A new pairing link for the bot whose token is already saved (the old link expired)."""
+        tok = self.app.secrets.get(TOKEN)
+        if not tok:
+            raise PairingProblem("token", "Paste your bot's token first.", retry=False)
+        return self.pair_start(tok)
+
+    def drop_webhook(self) -> None:
+        """The bot was connected to a web address (a webhook), which stops Kurooto reading its messages."""
         api = self.api()
-        if not p or not api or time.time() - p.get("created", 0) > 3600:
-            return None
+        if api:
+            api.call("deleteWebhook", {"drop_pending_updates": False})
+            self.app.events.emit("telegram_webhook_removed")
+
+    def _updates(self, api: TelegramAPI, offset: int, wait: int) -> list:
+        """getUpdates, with its failures turned into what the person can do about them."""
+        try:
+            return api.call(
+                "getUpdates", {"offset": offset, "timeout": wait, "allowed_updates": ["message"]}, timeout=wait + 15
+            )
+        except TelegramError as e:
+            if e.code == 401:
+                raise PairingProblem(
+                    "revoked", "That token was revoked. Get the new one from @BotFather and paste it above.", False
+                ) from None
+            if e.code == 409:
+                hook = ""
+                try:
+                    hook = (api.call("getWebhookInfo") or {}).get("url") or ""
+                except (TelegramError, OSError):
+                    pass
+                if hook or "webhook" in (e.description or "").lower():
+                    raise PairingProblem(
+                        "webhook",
+                        "This bot is connected to a web address (a webhook), so Kurooto can't read its messages. "
+                        "Disconnect it to use the bot with Kurooto.",
+                    ) from None
+                raise PairingProblem(
+                    "conflict",
+                    "Another program is reading this bot's messages (maybe another Kurooto using the same bot). "
+                    "Make a new bot with @BotFather, or stop the other program.",
+                ) from None
+            raise PairingProblem("telegram", f"Telegram said: {e.description}"[:200]) from None
+        except OSError:
+            raise PairingProblem(
+                "network", "Can't reach Telegram right now (is the internet on?). Still trying."
+            ) from None
+
+    def pair_poll(self, wait: int = 25) -> dict | None:
+        """Look for "/start <code>" from the person who tapped the link. On success, save their chat and say hi.
+        None while nothing has come yet; PairingProblem says why it can't work (or what came instead)."""
+        p = self.pairing()
+        if not p:
+            raise PairingProblem("expired", "This link expired: get a new one.", retry=False)
+        api = self.api()
+        if not api:
+            raise PairingProblem("token", "Paste your bot's token first.", retry=False)
         offset = (jload(self.dir / "offset.json", {}) or {}).get("offset", 0)
-        updates = api.call(
-            "getUpdates", {"offset": offset, "timeout": wait, "allowed_updates": ["message"]}, timeout=wait + 15
-        )
-        found = None
+        updates = self._updates(api, offset, wait)
+        found, bare = None, False
         for u in updates:
             offset = u["update_id"] + 1
             m = u.get("message") or {}
-            if m.get("chat", {}).get("type") == "private" and (m.get("text") or "").strip() == f"/start {p['code']}":
+            hit = _START.match((m.get("text") or "").strip())
+            if m.get("chat", {}).get("type") != "private" or not hit:
+                continue
+            if (hit.group(1) or "").lower() == p["code"].lower():
                 found = m
+            elif not found:  # Start pressed without the code (or with an old one): say where the right one is
+                bare = True
+                hinted = set(p.get("hinted") or [])
+                if m["chat"]["id"] not in hinted:
+                    hinted.add(m["chat"]["id"])
+                    p["hinted"] = sorted(hinted)
+                    jsave(self.dir / "pairing.json", p)
+                    try:
+                        api.send(
+                            m["chat"]["id"],
+                            "Almost: send the message shown on Kurooto's setup page here (it starts with /start).",
+                        )
+                    except (TelegramError, OSError):
+                        pass
         jsave(self.dir / "offset.json", {"offset": offset})
         if not found:
+            if bare:
+                raise PairingProblem("no_code", "Got a /start without the code: send the full message shown here.")
             return None
         self.app.settings.set("telegram.chat_id", found["chat"]["id"])
         self.app.settings.set("telegram.allowed_users", [found["from"]["id"]])
@@ -140,7 +223,7 @@ class Telegram(Module):
         while not stop.is_set():
             api = self.api()
             allowed = set(self.setting("allowed_users") or [])
-            if not api or not allowed:
+            if not api or not allowed or self.pairing():  # while the setup page pairs, it reads the messages
                 await asyncio.sleep(10)
                 continue
             offset = (jload(self.dir / "offset.json", {}) or {}).get("offset", 0)
