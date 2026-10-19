@@ -110,8 +110,8 @@ class Profile(Module):
 
     # -------------------------------------------------------------------------------------------- running
     def start(self):
-        self.every("daily", self.setting("when") or "daily 04:40", lambda p: self.save("daily"))
-        self.action("soon", lambda p: self.save("changed"))
+        self.every("daily", self.setting("when") or "daily 04:40", lambda p: self._in_background("daily"))
+        self.action("soon", lambda p: self._in_background("changed"))
         if self._unsub is None:
             from kurooto.core.events import subscribe
 
@@ -130,6 +130,11 @@ class Profile(Module):
             return
         minutes = float(self.setting("after_changes") or 10)
         self.app.scheduler.at(time.time() + minutes * 60, "profile.soon", key="profile:soon", module=self.id)
+
+    def _in_background(self, reason: str) -> str:
+        """Saving talks to GitHub (seconds, sometimes more): off the scheduler's thread, so nothing else waits."""
+        threading.Thread(target=self.save, args=(reason,), name="profile-save", daemon=True).start()
+        return "started"
 
     def save(self, reason: str = "now", force: bool = False) -> tuple[bool, str]:
         if not self._busy.acquire(blocking=False):

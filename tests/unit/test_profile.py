@@ -343,3 +343,21 @@ def test_cli_restore_and_status(tmp_path, monkeypatch, bare, capsys):
     monkeypatch.setenv(cli.PASSPHRASE, "wrong wrong wrong")
     assert cli.main(["profile", "restore", "--remote", str(bare), "--yes", "--no-start"]) == 1
     assert "doesn't open" in capsys.readouterr().out
+
+
+def test_cli_save_the_first_time_connects(tmp_path, monkeypatch, bare, capsys):
+    from kurooto import cli
+
+    c = computer(monkeypatch, tmp_path / "c")
+    c.settings.set("profile.remote", str(bare))
+    c.close()
+    monkeypatch.setattr(cli, "ask_running", lambda path, body=None: None)  # Kurooto isn't running
+    monkeypatch.setenv(cli.PASSPHRASE, PHRASE)
+    assert cli.main(["profile", "save"]) == 0
+    assert "saved, encrypted" in capsys.readouterr().out
+    assert cli.main(["profile", "save"]) == 0  # Profile sync itself was turned on since: that's a change
+    assert cli.main(["profile", "save"]) == 0
+    assert capsys.readouterr().out.splitlines()[-1] == "Nothing changed since the last save."
+    c = App()
+    assert c.is_on("profile") and c.modules["profile"].ready() == (True, "")
+    c.close()

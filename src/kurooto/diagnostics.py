@@ -47,6 +47,8 @@ KNOWN_SECRETS = [
     "google.client",
     "google.tokens",
     "calendar.ics",
+    "profile.token",
+    "profile.key",
 ]
 SENSITIVE_KEYS = re.compile(
     r"name|chat|user|url|repo|topic|link|email|workspace|folder|keywords|list|timetable|persona|"
