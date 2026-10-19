@@ -63,7 +63,7 @@ def append(app: App, heading: str, body: str, day: dt.date | None = None) -> Pat
 def sections(text: str, prefix: str) -> list[str]:
     """Every "## <prefix>…" section of a note (heading line included), in order."""
     out = []
-    for m in re.finditer(rf"^##\s+{re.escape(prefix)}.*$", text, re.M | re.I):
+    for m in re.finditer(rf"^##\s+{re.escape(prefix)}\b.*$", text, re.M | re.I):
         nxt = re.compile(r"^#{1,2}\s", re.M).search(text, m.end())
         out.append(text[m.start() : nxt.start() if nxt else len(text)].strip())
     return out

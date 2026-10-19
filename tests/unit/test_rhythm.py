@@ -480,6 +480,11 @@ def test_sunday_review_call(calls, monkeypatch):
     calls.on("weekly")
     app.settings.set("weekly.call", True)
     w = app.modules["weekly"]
+    sunday = now().date() + dt.timedelta(days=(6 - now().weekday()) % 7)
+    monkeypatch.setattr("kurooto.modules.weekly.now", lambda: dt.datetime.combine(sunday + dt.timedelta(1), dt.time(8)))
+    w._sunday({})  # the computer was off all Sunday: Monday morning gets the text only
+    assert not rings(app)
+    monkeypatch.setattr("kurooto.modules.weekly.now", lambda: dt.datetime.combine(sunday, dt.time(19, 5)))
     w._sunday({})
     assert any(t.startswith("Your week") for t in calls.fake.texts())
     r = list(rings(app).values())

@@ -10,6 +10,7 @@ After it, with Chat on, the AI writes it up as a weekly review in your journal; 
 from __future__ import annotations
 
 import datetime as dt
+import re
 from collections import Counter
 
 from kurooto.core.clock import now
@@ -34,9 +35,17 @@ class Weekly(Module):
     def _sunday(self, p: dict) -> None:
         self.app.notify(self.summary())
         calls = self.app.modules.get("calls")
-        if self.setting("call") and calls and self.app.is_on("calls") and calls.ready()[0]:
+        if self.setting("call") and calls and self.app.is_on("calls") and calls.ready()[0] and self._on_time():
             calls.place(REASON, key=f"weekly:review:{now().date().isoformat()}")
             self.app.events.emit("weekly_review_called")
+
+    def _on_time(self) -> bool:
+        """Is it still the review's evening? (After a computer that was off all Sunday, Monday gets the text only.)"""
+        m = re.fullmatch(r"weekly (mon|tue|wed|thu|fri|sat|sun) (\d{1,2}:\d{2})", (self.setting("when") or "").strip())
+        if not m:
+            return True
+        due = dt.datetime.combine(now().date(), dt.time.fromisoformat(m[2].zfill(5)))
+        return m[1] == now().strftime("%a").lower() and dt.timedelta(0) <= now() - due < dt.timedelta(hours=3)
 
     def summary(self, days: int = 7) -> str:
         since = now() - dt.timedelta(days=days)

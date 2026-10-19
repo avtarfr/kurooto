@@ -302,7 +302,7 @@ class Study(Module):
         low = a.lower()
         if not a or low in ("today", "day"):
             return self.report(1) + self._running()
-        if low.startswith("w"):
+        if low in ("week", "w", "7", "7d", "this week"):
             return self.report(7)
         if low in ("stop", "done", "end", "off", "finish", "finished"):
             return self.stop_session()
