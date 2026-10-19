@@ -744,8 +744,8 @@ def profile_restore(a) -> int:
     try:
         try:
             report = core.restore(app, phrase, repo=repo, token=token, remote=a.remote, progress=print)
-        except core.ProfileError as e:
-            print(f"Couldn't restore: {e}")
+        except Exception as e:  # a ProfileError reads well as it is; anything else says what it was
+            print(f"Couldn't restore: {e if isinstance(e, core.ProfileError) else f'{type(e).__name__}: {e}'}")
             if was and not a.no_start:
                 start_background()
             return 1
