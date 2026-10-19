@@ -110,6 +110,10 @@ class Server:
                 path = urlparse(self.path).path
                 if path == "/health":
                     return self._send(200, {"ok": True, "version": __version__})
+                if path == "/morning":  # the morning page (rhythm): today's plan, opened by the alarm
+                    html = (static("morning.html") or b"").decode()
+                    html = html.replace("{{TOKEN}}", server.token).replace("{{VERSION}}", __version__)
+                    return self._send(200, html.encode(), TYPES[".html"])
                 if path in ("/", "/setup"):
                     done = server.app.settings.get("setup.done")
                     page = "setup.html" if path == "/setup" or not done else "home.html"

@@ -164,6 +164,10 @@ class Api:
         if path == "progress":
             with self._lock:
                 return 200, {"installing": self._installing, "lines": self.progress[-30:]}
+        if path == "morning":  # the morning page (rhythm)
+            from kurooto.modules.daily import morning_view
+
+            return 200, morning_view(self.app)
         return 404, {"error": "not found"}
 
     # --------------------------------------------------------------------------------------------- POST

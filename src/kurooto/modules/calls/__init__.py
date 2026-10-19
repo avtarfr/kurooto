@@ -358,6 +358,8 @@ class Calls(Module):
         """Ring your paired phones now (and say so on Telegram, with a link to answer from anywhere)."""
         since = str(int(time.time()))
         rings = jload(self.dir / "rings.json", {}) or {}
+        while since in rings:  # two calls in the same second (a repeat ring right after another call)
+            since = str(int(since) + 1)
         rings[since] = {"reason": reason, "alarm": alarm, "key": key, "at": time.time(), "state": "ringing"}
         jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
         sent = self.connector.admin_later("ring", reason=reason, alarm=alarm, since=since, key=key)
@@ -800,6 +802,22 @@ class Calls(Module):
             except ValueError:
                 return None
 
+        now_pat = re.compile(
+            r"^(?:please |can you |could you )?(?:call|ring|phone) me(?: (?:right )?now| back)?"
+            r"(?: (?:to|about|so|and) (.+))?$|^give me a (?:call|ring)(?: now)?(?: (?:to|about) (.+))?$",
+            re.I,
+        )
+
+        def match_now(text: str):
+            t = text.strip().rstrip(".!")
+            m = now_pat.match(t)
+            if not m or re.search(r"\bquiz|\btest me\b", t, re.I):  # "call me for a quiz" is the quiz's
+                return None
+            return {"reason": (m.group(1) or m.group(2) or "you asked me to call").strip()}
+
         return [
-            Intent("call_me", "call me at/in … (about …)", match, lambda msg, sl: self.schedule(sl["at"], sl["reason"]))
+            Intent(
+                "call_me", "call me at/in … (about …)", match, lambda msg, sl: self.schedule(sl["at"], sl["reason"])
+            ),
+            Intent("call_now", "call me now", match_now, lambda msg, sl: self.place(sl["reason"], force=True)),
         ]

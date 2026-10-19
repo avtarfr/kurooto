@@ -187,7 +187,12 @@ class Checkins(Module):
         before = (plan.get(name) or {}).get("time") or (self.setting("times") or {}).get(name)
         plan[name] = {"time": hhmm, "status": "planned"}
         self._save(plan, day)
-        self.app.events.emit("checkin_moved", name=name, from_time=before, to_time=hhmm, day=day.isoformat(), via=via)
+        if before:
+            self.app.events.emit(
+                "checkin_moved", name=name, from_time=before, to_time=hhmm, day=day.isoformat(), via=via
+            )
+        else:  # one that wasn't on (e.g. a midday check-in asked for on the morning call)
+            self.app.events.emit("checkin_planned", name=name, time=hhmm, day=day.isoformat(), via=via)
         if day != now().date():
             return f"{name.title()} check-in {_label(day)} at {hhmm}."
         at = self._schedule(name, hhmm, day)

@@ -165,3 +165,60 @@ def transcript(app: App, lines: list[dict], limit: int = 30000) -> str:
         f"{ai if x.get('who') == ai else you}: {x.get('text', '').strip()}" for x in lines if x.get("text", "").strip()
     )
     return out[-limit:]
+
+
+def morning_view(app: App) -> dict:
+    """What the morning page shows: today's plan, classes, calendar, check-ins, the alarm, what's due, study so far."""
+    today = now().date()
+    out: dict = {
+        "date": today.isoformat(),
+        "day": f"{today:%A %d %B}",
+        "name": app.settings.get("you.name") or "",
+        "plan": plan(app, today, 8000),
+        "note": f"journal/{today.isoformat()}",
+        "note_exists": note_path(app, today).is_file(),
+    }
+
+    def part(key: str, fn) -> None:
+        try:
+            value = fn()
+        except Exception as e:  # one feature's trouble never blanks the page
+            app.events.emit("morning_view_failed", part=key, error=str(e)[:200])
+            return
+        if value:
+            out[key] = value
+
+    if app.is_on("subjects"):
+        subj = app.modules["subjects"]
+        part(
+            "classes",
+            lambda: [
+                {"time": f"{c['start']}–{c['end']}", "name": c["name"], "skipping": c["subject"] in subj.skipped()}
+                for c in subj.classes_on(include_skipped=True)
+            ],
+        )
+    if app.is_on("calendar"):
+        part("calendar", lambda: app.modules["calendar"].call_brief().get("calendar_today"))
+    if app.is_on("checkins"):
+        part(
+            "checkins",
+            lambda: [
+                {"name": n, "time": c.get("time") or "", "status": c.get("status", "")}
+                for n, c in app.modules["checkins"].today().items()
+            ],
+        )
+    if app.is_on("alarm"):
+        part("alarm", lambda: (lambda at: f"{at:%a %H:%M}" if at else "")(app.modules["alarm"].next()))
+    dl = app.modules.get("deadlines")
+    if dl is not None and app.is_on("deadlines") and hasattr(dl, "deadlines_soon"):
+        part(
+            "due",
+            lambda: [
+                {"title": d.get("title", ""), "when": d.get("when") or d.get("due", "")}
+                for d in dl.deadlines_soon(hours=72)
+            ],
+        )
+    if app.is_on("study"):
+        part("study_h", lambda: round(sum(app.modules["study"].totals(1).values()) / 3600, 1))
+    part("questions", lambda: [q["text"][:200] for q in app.ask.pending()[:5]])
+    return out
