@@ -11,6 +11,7 @@ on the site, with android.json for the app's update check. See docs/RELEASING.md
 
 SITE is a folder laid out like the GitHub Pages site:
     SITE/install.ps1, install.sh, bootstrap.py, index.html (the landing page)
+    SITE/privacy.html                           docs/PRIVACY.md as a page (Google's sign-in setup links to it)
     SITE/media/                                 its screenshots and animation (from docs/media)
     SITE/stable.json, beta.json                 signed channel pointers
     SITE/releases/<v>/manifest.json             signed list of files with sha256
@@ -25,6 +26,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import hashlib
+import html
 import json
 import os
 import re
@@ -144,10 +146,7 @@ def build(site: Path, base: str, version: str | None, notes: str, break_run: boo
         },
     }
     (rel / "manifest.unsigned.json").write_text(json.dumps(doc, indent=1), encoding="utf-8")
-    for f in ("install.ps1", "install.sh", "bootstrap.py", "index.html"):
-        shutil.copy(ROOT / "installer" / f, site / f)
-    if (ROOT / "docs" / "media").is_dir():  # the landing page's screenshots and animation
-        shutil.copytree(ROOT / "docs" / "media", site / "media", dirs_exist_ok=True)
+    site_pages(site)
     if apk:
         shutil.copy(apk, rel / "kurooto.apk")
         (site / "android.json").write_text(
@@ -165,6 +164,93 @@ def build(site: Path, base: str, version: str | None, notes: str, break_run: boo
     (site / ".nojekyll").write_text("", encoding="utf-8")
     print(f"built {version}: {rel / name} ({len(data) // 1024} KB)")
     return version
+
+
+def site_pages(site: Path) -> None:
+    """The site's own pages: the installers, the landing page, its media, and the privacy page from PRIVACY.md."""
+    site.mkdir(parents=True, exist_ok=True)
+    for f in ("install.ps1", "install.sh", "bootstrap.py", "index.html"):
+        shutil.copy(ROOT / "installer" / f, site / f)
+    (site / "privacy.html").write_text(privacy_page(), encoding="utf-8")
+    if (ROOT / "docs" / "media").is_dir():  # the landing page's screenshots and animation
+        shutil.copytree(ROOT / "docs" / "media", site / "media", dirs_exist_ok=True)
+
+
+def privacy_page() -> str:
+    """installer/privacy.html with docs/PRIVACY.md in it, so the page never drifts from the document."""
+    page = (ROOT / "installer" / "privacy.html").read_text(encoding="utf-8")
+    body = md_html((ROOT / "docs" / "PRIVACY.md").read_text(encoding="utf-8"))
+    a, b = page.index("<!-- PRIVACY:START"), page.index("<!-- PRIVACY:END -->") + len("<!-- PRIVACY:END -->")
+    return page[:a] + body + page[b:]
+
+
+def _inline(text: str) -> str:
+    """Markdown inside a line: `code`, **bold**, [links](url); everything else escaped."""
+    out, last = [], 0
+    for m in re.finditer(r"`([^`]+)`|\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)", text):
+        out.append(html.escape(text[last : m.start()], quote=False))
+        if m[1] is not None:
+            out.append(f"<code>{html.escape(m[1], quote=False)}</code>")
+        elif m[2] is not None:
+            out.append(f"<strong>{_inline(m[2])}</strong>")
+        else:
+            href = (
+                m[4]
+                if re.match(r"(https?://|#|mailto:)", m[4])
+                else "https://github.com/avtarfr/kurooto/blob/main/docs/" + m[4]
+            )
+            out.append(f'<a href="{html.escape(href)}">{_inline(m[3])}</a>')
+        last = m.end()
+    out.append(html.escape(text[last:], quote=False))
+    return "".join(out)
+
+
+def md_html(text: str) -> str:
+    """Just enough Markdown for docs/PRIVACY.md: headings, paragraphs, lists (with wrapped lines), tables."""
+    out: list[str] = []
+    para: list[str] = []
+    items: list[str] = []
+    rows: list[list[str]] = []
+
+    def flush() -> None:
+        if para:
+            out.append(f"<p>{_inline(' '.join(para))}</p>")
+            para.clear()
+        if items:
+            out.append("<ul>" + "".join(f"<li>{_inline(i)}</li>" for i in items) + "</ul>")
+            items.clear()
+        if rows:
+            head, *body = [r for r in rows if not all(re.fullmatch(r":?-{3,}:?", c) for c in r)]
+            th = "".join(f"<th>{_inline(c)}</th>" for c in head)
+            trs = "".join("<tr>" + "".join(f"<td>{_inline(c)}</td>" for c in r) + "</tr>" for r in body)
+            out.append(f'<div class="table-wrap"><table><thead><tr>{th}</tr></thead><tbody>{trs}</tbody></table></div>')
+            rows.clear()
+
+    for line in text.splitlines():
+        s = line.rstrip()
+        if not s.strip():
+            flush()
+        elif m := re.match(r"(#{1,4})\s+(.*)", s):
+            flush()
+            n, title = len(m[1]), m[2].strip()
+            slug = re.sub(r"[^a-z0-9 -]", "", title.lower()).replace(" ", "-")
+            out.append(f'<h{n} id="{slug}">{_inline(title)}</h{n}>')
+        elif s.startswith("|"):
+            if para or items:
+                flush()
+            rows.append([c.strip() for c in s.strip().strip("|").split("|")])
+        elif m := re.match(r"\s*[-*]\s+(.*)", s):
+            if para or rows:
+                flush()
+            items.append(m[1])
+        elif items and line.startswith("  "):
+            items[-1] += " " + s.strip()
+        else:
+            if items or rows:
+                flush()
+            para.append(s.strip())
+    flush()
+    return "\n".join(out) + "\n"
 
 
 def sign(site: Path, base: str, version: str, key_path: Path, channel: str) -> None:

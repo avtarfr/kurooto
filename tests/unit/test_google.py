@@ -12,6 +12,7 @@ import json
 import re
 import zipfile
 from email import message_from_bytes
+from pathlib import Path
 
 import pytest
 
@@ -793,3 +794,68 @@ def test_confidential_page_is_served_locally(local_llm):
         assert r.status == 200 and "Confidential mail" in page and "confidential.js" in page
     finally:
         server.stop()
+
+
+# ------------------------------------------------------------------------------- setting up Google (the card)
+def manual_anchors() -> set[str]:
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[2] / "docs" / "MANUAL.md").read_text(encoding="utf-8")
+    return {re.sub(r"[^a-z0-9 -]", "", h.lower()).replace(" ", "-") for h in re.findall(r"(?m)^#{2,4} (.+)$", text)}
+
+
+def test_google_card_walks_a_beginner_through_the_setup(env):
+    from kurooto.modules import google as gmod
+
+    form = env.app.modules["google"].setup_form()
+    assert len(form["steps"]) == 6 and "Publish app" in form["steps"][3] and "Desktop app" in form["steps"][4]
+    label, url = form["guide"]
+    assert label == "Full step-by-step guide"
+    assert url.startswith("https://github.com/avtarfr/kurooto/blob/main/docs/MANUAL.md#")
+    assert url.split("#")[1] == "google-setting-up-your-own-sign-in-step-by-step" in manual_anchors()
+    assert dict(form["copy"]) == {
+        "App name": "Kurooto",
+        "Application home page": "https://avtarfr.github.io/kurooto/",
+        "Application privacy policy link": "https://avtarfr.github.io/kurooto/privacy.html",
+        "Authorized domain": "avtarfr.github.io",
+    }
+    links = dict(form["links"])
+    for api in ("classroom", "gmail", "drive", "calendar-json"):
+        assert f"https://console.cloud.google.com/apis/library/{api}.googleapis.com" in links.values()
+    assert {"3. Branding", "4. Audience", "5. Clients", "1. New project"} <= set(links)
+    assert form["fields"][0]["accept"].startswith(".json")
+    for cls in PARTS:  # each add-on's card links the same guide
+        assert cls(env.app).setup_form()["guide"] == [label, url]
+    assert gmod.SITE + "privacy.html" == "https://avtarfr.github.io/kurooto/privacy.html"
+    # the manual has every value the card copies, and the links in its troubleshooting point at real sections
+    manual = (Path(__file__).resolve().parents[2] / "docs" / "MANUAL.md").read_text(encoding="utf-8")
+    for _, value in form["copy"]:
+        assert value in manual
+    for anchor in re.findall(r"\]\(#([a-z0-9-]+)\)", manual):
+        assert anchor in manual_anchors(), anchor
+
+
+def test_the_site_has_a_privacy_page_made_from_privacy_md(tmp_path):
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[2]
+    spec = importlib.util.spec_from_file_location("kurooto_release", root / "tools" / "release.py")
+    release = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(release)
+    release.site_pages(tmp_path)
+    page = (tmp_path / "privacy.html").read_text(encoding="utf-8")
+    assert "<title>Privacy · Kurooto</title>" in page and "Plus+Jakarta+Sans" in page and "toggleTheme" in page
+    assert "PRIVACY:START" not in page and '<h1 id="what-leaves-your-computer">' in page
+    md = (root / "docs" / "PRIVACY.md").read_text(encoding="utf-8")
+    for heading in re.findall(r"(?m)^## (.+)$", md):
+        assert f">{release._inline(heading)}</h2>" in page
+    assert page.count("<tr>") == sum(1 for ln in md.splitlines() if ln.startswith("|") and "---" not in ln)
+    assert "Mail marked confidential is never read" in page
+    landing = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert '<a href="privacy.html">Privacy</a>' in landing
+    for f in ("install.ps1", "install.sh", "bootstrap.py"):
+        assert (tmp_path / f).is_file()
+    # the converter escapes what isn't Markdown, and keeps links and code
+    out = release.md_html("Hi <b> & **you** `a|b` [x](https://example.org)\n\n- one\n  two\n- three\n")
+    assert '<p>Hi &lt;b&gt; &amp; <strong>you</strong> <code>a|b</code> <a href="https://example.org">x</a></p>' in out
+    assert "<ul><li>one two</li><li>three</li></ul>" in out

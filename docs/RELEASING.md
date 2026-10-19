@@ -36,6 +36,10 @@ uv run tools/release.py publish --site ~/kurooto-site --message "release 0.1.0"
 ```
 Try a release on the `beta` channel first (`--channel beta`; testers set `updates.channel` to `beta`).
 
+`build` also writes the site's own pages: the installers and landing page from `installer/`, and `privacy.html`,
+made from `docs/PRIVACY.md` inside `installer/privacy.html` (between its `PRIVACY:START` and `PRIVACY:END` markers).
+Google's sign-in setup links to that page, so publish the site whenever PRIVACY.md changes.
+
 ## Checks before publishing
 - `uv run pytest`, CI green on all three systems (including the update rehearsal and the call line).
 - `python3 tools/privacy_scan.py --tree` and `--history` clean.

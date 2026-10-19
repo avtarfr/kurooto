@@ -398,9 +398,12 @@ function renderTab() {
 async function renderFeatures(body) {
   const st = await api("state");
   const form = (m) => !m.form || m.ready ? "" : `<form class="sf" data-form="${m.id}"><p class="d">${esc(m.form.intro)}</p>
+    ${m.form.steps ? `<ol class="d form-steps">${m.form.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
+    ${m.form.guide ? `<p><a href="${esc(m.form.guide[1])}" target="_blank" rel="noopener">${esc(m.form.guide[0])}</a></p>` : ""}
+    ${(m.form.copy || []).map(([l, v]) => `<div class="copy-row"><span class="d">${esc(l)}:</span> <code>${esc(v)}</code> <button type="button" data-copy="${esc(v)}">Copy</button></div>`).join("")}
     <p class="d">${m.form.links.map(([l, h]) => `<a href="${esc(h)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(" · ")}</p>
     ${m.form.fields.map((f) => `<label>${esc(f.label)}${f.type === "textarea" ? `<textarea name="${esc(f.name)}" rows="3" placeholder="${esc(f.placeholder || "")}"></textarea>`
-      : `<input name="${esc(f.name)}" type="${f.type === "password" ? "password" : "text"}" placeholder="${esc(f.placeholder || "")}" autocomplete="off">`}</label>`).join("")}
+      : `<input name="${esc(f.name)}" type="${f.type === "password" ? "password" : "text"}" placeholder="${esc(f.placeholder || "")}" autocomplete="off">`}${f.accept ? `<input type="file" accept="${esc(f.accept)}" data-fill="${esc(f.name)}">` : ""}</label>`).join("")}
     <button class="primary" type="submit">Save</button></form>`;
   const card = (m) => `<div class="card2 ${m.on ? "on" : ""}"><b>${esc(m.title)}</b><p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>${m.id === "mail_digest" && m.on ? `<p><a href="/confidential" target="_blank" rel="noopener">Confidential mail (summarised on this computer)</a></p>` : ""}
     ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${form(m)}</div>`;
@@ -410,14 +413,23 @@ async function renderFeatures(body) {
   body.onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target, flog = $("#flog");
-    const values = Object.fromEntries([...f.querySelectorAll("input, textarea")].map((i) => [i.name, i.value]));
+    const values = Object.fromEntries([...f.querySelectorAll("input:not([type=file]), textarea")].map((i) => [i.name, i.value]));
     const r = await api("modules/configure", { id: f.dataset.form, values });
     flog.textContent = r.message || "";
     if (r.open) window.open(r.open, "_blank", "noopener");
     if (r.ok && !r.open) renderFeatures(body);
   };
+  body.onchange = async (e) => { // a file chosen for a box (Google's client JSON): its text goes into the box
+    const t = e.target;
+    if (t.dataset.fill && t.files[0]) t.closest("form").querySelector(`[name="${t.dataset.fill}"]`).value = await t.files[0].text();
+  };
   body.onclick = async (e) => {
     const t = e.target, flog = $("#flog");
+    if (t.dataset.copy !== undefined) { // a value for Google's Branding page
+      const done = () => { t.textContent = "Copied"; setTimeout(() => { t.textContent = "Copy"; }, 1600); };
+      (navigator.clipboard ? navigator.clipboard.writeText(t.dataset.copy) : Promise.reject()).then(done).catch(() => { t.textContent = "Press Ctrl+C"; });
+      return;
+    }
     if (t.dataset.on) { const r = await api("modules/enable", { ids: [t.dataset.on] }); flog.textContent = Object.values(r.results).map((x) => x.message).join("\n"); renderFeatures(body); }
     if (t.dataset.off) { const r = await api("modules/disable", { id: t.dataset.off }); flog.textContent = r.message; renderFeatures(body); }
     if (t.dataset.setup) { t.disabled = true; await api("modules/setup", { id: t.dataset.setup });

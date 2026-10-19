@@ -103,3 +103,6 @@ textarea.about-ed { width: 100%; box-sizing: border-box; font: 13px/1.5 var(--mo
 .about-row { display: flex; gap: 8px; margin: 8px 0; }
 .about-label { color: var(--dim); font-size: 13px; margin: 12px 0 4px; }
 pre.about-brief { white-space: pre-wrap; max-height: 220px; overflow: auto; font: 12px/1.45 var(--mono); background: var(--bg); border: 1px solid var(--line); padding: 10px; margin: 0; }
+.copy-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
+.form-steps { margin: 6px 0 8px 20px; }
+.form-steps li { margin: 2px 0; }

@@ -25,7 +25,9 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Stay awake on charger](#stay-awake-on-charger) · [Calendar](#calendar)
   - [Notes sync](#notes-sync) · [Sync everything](#sync-everything) · [Backups](#backups) ·
     [Profile sync](#profile-sync)
-  - [Google](#google-classroom-gmail-drafts) · [Classroom → notes](#classroom--notes) · [Mail digest](#mail-digest) ·
+  - [Google](#google-classroom-gmail-drafts) ·
+    [Google: setting up your own sign-in](#google-setting-up-your-own-sign-in-step-by-step) ·
+    [Classroom → notes](#classroom--notes) · [Mail digest](#mail-digest) ·
     [Email reply drafts](#email-reply-drafts) · [Agent plan calendar](#agent-plan-calendar)
   - [Handwritten notes](#handwritten-notes) · [Study tracker](#study-tracker) · [Research](#research) ·
     [Terminals](#terminals) · [Your add-ons](#your-add-ons) ·
@@ -769,15 +771,16 @@ Telegram. Gmail drafts: `/draft someone@example.com ask for an extension on prob
 `/draft someone@example.com | subject | the email`. **Kurooto never sends email by itself**: drafts wait in Gmail for
 you.
 
-**Set up (about 10 minutes, once):** Kurooto uses your own Google "OAuth client", so no one else's app ever holds your
-Google access. The feature's card links each page:
-1. Make a Google Cloud project (any name).
-2. Turn on the **Google Classroom API** (and the **Gmail API** for drafts).
-3. **OAuth consent screen:** External, your email as the contact, then **Publish app** ("In production"; otherwise
-   Google signs you out every 7 days).
-4. **Credentials → Create credentials → OAuth client ID → Desktop app → Download JSON.**
-5. Paste the file's contents in the card and press Save; Google's sign-in opens. It says "Google hasn't verified this
-   app": that's expected for your own client. Advanced → Go to (your project) → Continue.
+**Set up (10 to 15 minutes, once):** Kurooto uses your own Google "OAuth client", so no one else's app ever holds your
+Google access. Every click is in [Google: setting up your own sign-in (step by step)](#google-setting-up-your-own-sign-in-step-by-step);
+in short:
+1. Make a Google Cloud project, and turn on the APIs for the features you want (Classroom, Gmail, Drive, Calendar).
+2. Google Auth Platform: app name Kurooto, your email, External; on **Branding**, Kurooto's home page, privacy page
+   and the authorized domain (the card has copy buttons for them).
+3. **Audience → Publish app** (In production; in Testing, Google signs you out every 7 days).
+4. **Clients → Create client → Desktop app → Create → Download JSON** (Google shows the secret only once).
+5. Paste the file in the card (or choose it) and press Save; Google's sign-in opens. It says "Google hasn't verified
+   this app": that's your own project, which Google hasn't reviewed. Advanced → Go to Kurooto → Continue.
 
 Gmail drafts are off by default (Settings → `google.gmail_drafts`; then sign in again). School accounts sometimes
 block unverified apps; then use the Calendar feature's iCal link for your timetable instead.
@@ -801,6 +804,118 @@ What each one asks Google for, in plain words:
 | Agent plan calendar | Make secondary calendars and manage their events | Makes one calendar of its own, "Agent plan", and writes only there. It can't see or change your other calendars. |
 
 To withdraw a permission: your Google account → Security → Third-party access → your project.
+
+### Google: setting up your own sign-in (step by step)
+Kurooto signs in to Google with **your own app registration**: a free Google Cloud project that only you own, with an
+"OAuth client" in it. Nobody else's server sits in between: Google sees your project asking for your data, and you
+say yes or no. It costs nothing (no billing account), and it takes 10 to 15 minutes, once. You do it in the browser,
+on any computer; the last step (signing in) happens on the computer Kurooto runs on.
+
+Google renames these screens now and then. If a button has a slightly different name, pick the nearest match: the
+order of the steps stays the same. You can make the project with any Google account; you sign in later with the
+account whose Classroom, mail or calendar you want (a personal account is easiest; see Troubleshooting below for
+school accounts).
+
+**1. Create the project.** Open [console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate).
+1. Project name: `Kurooto` (any name works; only you see it). Leave Organization or Location as it is.
+2. Press **Create** and wait a few seconds for the notification.
+3. Check that the project picker at the top of the page shows your new project: every step below happens inside it.
+
+**2. Turn on the APIs your features use.** Each API is a switch that lets your project talk to one Google product.
+Open the link for each feature you want, check the project name at the top, and press **Enable**. You can come back
+for more later.
+
+| For | API | Turn it on |
+|---|---|---|
+| Google (Classroom deadlines and posts), Classroom → notes | Google Classroom API | [classroom.googleapis.com](https://console.cloud.google.com/apis/library/classroom.googleapis.com) |
+| Gmail drafts, Mail digest, Email reply drafts | Gmail API | [gmail.googleapis.com](https://console.cloud.google.com/apis/library/gmail.googleapis.com) |
+| Classroom → notes (the files attached to posts) | Google Drive API | [drive.googleapis.com](https://console.cloud.google.com/apis/library/drive.googleapis.com) |
+| Agent plan calendar | Google Calendar API | [calendar-json.googleapis.com](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) |
+
+**3. Branding: what Google's sign-in screen says about your app.** Open
+[Google Auth Platform → Branding](https://console.cloud.google.com/auth/branding). The first time it says "Google Auth
+platform not configured yet": press **Get started**, and a short form asks four things:
+1. **App Information:** App name `Kurooto`; User support email: pick your own address from the list. **Next**.
+2. **Audience:** **External** (anyone with a Google account can sign in, which here means you). **Next**.
+3. **Contact Information:** your own email address (Google writes to it about the project). **Next**.
+4. **Finish:** tick "I agree to the Google API Services: User Data Policy", press **Continue**, then **Create**.
+
+Then, back on the **Branding** page, fill in the rest and press **Save** at the bottom:
+
+| Field | What to put |
+|---|---|
+| App name | `Kurooto` (already there) |
+| User support email | your own email (already there) |
+| App logo | leave it empty (a logo needs Google's review) |
+| Application home page | `https://avtarfr.github.io/kurooto/` |
+| Application privacy policy link | `https://avtarfr.github.io/kurooto/privacy.html` |
+| Application terms of service link | the home page again, or leave it empty |
+| Authorized domains | press **Add domain**, then `avtarfr.github.io` |
+| Developer contact information | your own email |
+
+Why Kurooto's pages: Google asks every app that's "in production" for a home page and a privacy policy, and those
+links must be on an authorized domain. They describe what Kurooto does with your data; nothing is sent to that site.
+The card in Kurooto has copy buttons for these values.
+
+**4. Audience: publish the app.** Open [Google Auth Platform → Audience](https://console.cloud.google.com/auth/audience).
+1. User type: **External** (from step 3).
+2. Publishing status: **Testing**. Press **Publish app**, then **Confirm**. The status becomes **In production**.
+
+Why: in Testing, Google ends every sign-in after **7 days** (Kurooto would ask you to sign in again every week), and
+only accounts listed under Test users can sign in. In production, your app stays **unverified** (Google hasn't
+reviewed it), which is fine for personal use: up to 100 people can ever sign in to an unverified app, and each sees a
+warning first (step 7). You don't need to submit it for verification; if Google suggests it, you can ignore that.
+(Made the project with a school or work account, and you'll only ever sign in with that organisation's accounts? Then
+**Internal** works too, if Google offers it: no Publish step and no warning.)
+
+**5. Data access: nothing to do.** [Google Auth Platform → Data access](https://console.cloud.google.com/auth/scopes)
+lists the permissions ("scopes") an app declares. You can leave it empty: Kurooto asks for each permission when you set
+a feature up, and Google shows it on the sign-in screen. If you add scopes here, Google may suggest verification;
+ignore that too.
+
+**6. Clients: make your desktop client.** Open [Google Auth Platform → Clients](https://console.cloud.google.com/auth/clients).
+1. Press **Create client**.
+2. Application type: **Desktop app**. Name: `Kurooto` (only you see it).
+3. Press **Create**. A window shows your client ID and client secret: press **Download JSON** right away. Google shows
+   the secret only this once. (Closed the window? Open the client, press **Add secret**, and download the file again.)
+4. In Kurooto: Features → Google → paste the file's contents into the box (or press the file button and choose the
+   file) → **Save**. In the setup wizard, the Google card has the same box.
+
+Keep the file to yourself, like a password. On its own it can't read your data (that takes your sign-in too), but it
+lets an app present itself as yours.
+
+**7. Sign in.** After Save, Kurooto opens Google's sign-in (on the computer Kurooto runs on).
+1. Pick the account whose Classroom, mail or calendar you want.
+2. Google says **"Google hasn't verified this app"**. That's your own project: you made it a few minutes ago, and Google
+   hasn't reviewed it (Google reviews apps that strangers use). Press **Advanced**, then **Go to Kurooto (unsafe)**.
+   Google says "unsafe" because it can't vouch for an app it hasn't reviewed; this one is yours and runs on your
+   computer.
+3. Google lists what Kurooto asks for. Leave the boxes ticked and press **Continue**.
+4. The tab says "Signed in with Google". Close it; the Google card in Kurooto turns on.
+
+Later, a new Google feature (the mail digest, say) needs one more permission: turn on its API (step 2), press **Save**
+on its card, and sign in again (step 7).
+
+**Undo it, or delete it all:**
+- Take back Kurooto's access to your account: [myaccount.google.com/connections](https://myaccount.google.com/connections)
+  → Kurooto → **Delete all connections** (Kurooto then asks you to sign in again).
+- Delete the client: Clients page → tick it → **Delete** (you can restore it for 30 days).
+- Delete the whole project: [console.cloud.google.com/iam-admin/settings](https://console.cloud.google.com/iam-admin/settings)
+  → **Shut down** → type the project ID. Google deletes it after 30 days; until then you can restore it.
+- Google deletes a client that hasn't been used for six months (it emails you a month before). If that happens,
+  make a new one (step 6) and paste it in.
+
+| What you see | What to do |
+|---|---|
+| "Access blocked: Kurooto has not completed the Google verification process" | The app is still in Testing and this account isn't a test user: Publish app (step 4). Or add the account under Audience → Test users (but Testing signs you out after 7 days). |
+| "Access blocked: (your school) has blocked access" or "Error 400: admin_policy_enforced" | Your school's or employer's account doesn't allow unverified apps. Sign in with a personal account where you can. For your timetable, use the Calendar feature's private iCal link instead (no Google project needed). Classroom has no way around it: ask your administrator, or leave it off. |
+| "Error 400: redirect_uri_mismatch" | The client isn't a Desktop app (a "Web application" can't come back to Kurooto). Make a Desktop app client (step 6) and paste that file. |
+| "Error 401: invalid_client" or "deleted_client" | The file is from a client that was deleted, or whose secret was replaced. Download a new file (Add secret, or a new client) and paste it. |
+| Kurooto asks you to sign in again every week | The app is still in Testing: Publish app (step 4), then sign in once more. |
+| A feature stays off after signing in ("access_denied") | You pressed Cancel, or unticked its permission. Press Save on its card and sign in again, leaving the box ticked. |
+| Kurooto says an API "has not been used in project … or it is disabled" | Turn that API on (step 2), wait a minute, and try again. |
+| The page after signing in "can't be reached" (127.0.0.1) | Sign in on the computer Kurooto runs on: Google sends you back to Kurooto there. |
+| Google's screen says "Something went wrong" | Try again in a private window, signed in to one Google account only. |
 
 ### Classroom → notes
 Three times a day (07:00, 13:00, 19:00) Kurooto reads what's new in your Google Classroom courses: materials,
@@ -1265,7 +1380,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Restore: "…was changed or damaged, so it can't be trusted" | A file on the `kurooto-profile` branch was edited outside Kurooto. Nothing was changed here. On GitHub, open the branch's history and revert the last edit, then restore again. |
 | Profile sync: "another computer saved your profile since this one did" | You restored or used Kurooto elsewhere. Restore it here (`kurooto profile restore`), or `/profile save` to make this computer's the one. |
 | Two computers both answer, or the bot misses messages after moving | Turn Kurooto off on the old computer: `kurooto off`. |
-| Google: "sign-in expired" | Features → Google → Save (signs in again). If it happens every 7 days, publish the consent screen (step 3). |
+| Google: "sign-in expired" | Features → Google → Save (signs in again). If it happens every 7 days, publish the app ([step 4 of the Google setup](#google-setting-up-your-own-sign-in-step-by-step)). |
+| Google's sign-in says "Access blocked", or another Google error | See the table at the end of [Google: setting up your own sign-in](#google-setting-up-your-own-sign-in-step-by-step). |
 | "Mail digest is paused: needs Google's OK" (or another Google feature) | Features → that feature → Save, then sign in with Google and leave its permission ticked. |
 | A Google feature didn't turn on after signing in | Did you untick its permission on Google's screen? Save on its card again. Is its API on in your Google Cloud project (the link on its card)? |
 | Google says "Access blocked" for a school account | Your school doesn't allow unverified apps for that permission. Use a personal Google account, or ask your school's admin. |

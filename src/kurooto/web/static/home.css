@@ -82,3 +82,5 @@ body.home { color-scheme: dark;
 .term-bar [data-term-restart] { margin-left: auto; }
 .term-host { height: calc(100% - 34px); min-height: 220px; }
 .term-one { height: 100%; }
+.sf .copy-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.sf .form-steps { margin: 2px 0 4px 18px; font-size: 12px; }
