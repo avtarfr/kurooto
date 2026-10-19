@@ -675,11 +675,3 @@ class ReplyDrafts(GooglePart):
                 ("message_id", "text"),
             )
         ]
-
-    def call_brief(self) -> dict:
-        waiting = []
-        for p in sorted(self.dir.glob("*.json")):
-            r = jload(p, {}) or {}
-            if r.get("status") == "open":
-                waiting.append(f"reply to {self.who(r)}: {r.get('subject', '')}"[:120])
-        return {"reply_drafts_waiting": waiting[:5]} if waiting else {}

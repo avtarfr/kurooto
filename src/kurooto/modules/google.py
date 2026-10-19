@@ -102,7 +102,7 @@ class Google(Module):
     )
     privacy = (
         "Kurooto reads Classroom and writes Gmail drafts with your own Google client and sign-in; nothing is sent from "
-        "your Gmail. Tokens stay in this computer's keychain."
+        "your Gmail (Email reply drafts sends one only when you tap Send). Tokens stay in this computer's keychain."
     )
 
     def ep(self, name: str) -> str:
@@ -600,6 +600,9 @@ class GooglePart(Module):
         ok, why = self.ready()
         if ok:
             return True
+        g = self.app.modules.get("google")
+        if g is None or not g.ready()[0]:
+            return False  # Google's own sign-in is the problem, and it says so itself
         flag = self.app.paths.state / f"google-needs-{self.part}"
         if not flag.exists() or time.time() - flag.stat().st_mtime > 86400:
             flag.touch()

@@ -565,7 +565,3 @@ class ClassroomNotes(GooglePart):
                 f" ({r['queued']} earlier batch(es) sent to the AI again.)" if r.get("queued") else ""
             )
         return f"Found {r['items']} new item(s) in {r['courses']} course(s); the AI is filing them into your notes now."
-
-    def call_brief(self) -> dict:
-        waiting = len(list((self.dir / "batches").glob("*.json")))
-        return {"classroom_waiting_to_file": waiting} if waiting else {}
