@@ -139,11 +139,13 @@ def test_other_days_for_classes_and_holds(env):
 
 def test_checkins_list_has_buttons(env):
     env.on("checkins")
-    assert env.say("/checkins") == "evening: 22:00 (planned)"
+    assert env.say("/checkins") == "evening: 22:00 (planned)\nnight: 23:15 (planned)"
     buttons = [p for m, p in env.fake.sent if m == "sendMessage"][-1]["reply_markup"]["inline_keyboard"]
     assert [b["text"] for b in buttons[0]] == ["Evening +30 min", "Skip evening"]
+    assert [b["text"] for b in buttons[1]] == ["Night +30 min", "Tomorrow morning", "Skip night"]
     assert env.press(buttons[0][0]["callback_data"]).startswith("Evening check-in at")
     assert env.press(buttons[0][1]["callback_data"]) == "No evening check-in today."
+    env.press(buttons[1][2]["callback_data"])
     assert env.say("/checkins").endswith("(skipped)")  # nothing left to move: no buttons
 
 
@@ -377,10 +379,16 @@ def test_evening_debrief_script(calls, monkeypatch):
     s = ck.script("evening")
     assert s.startswith("Evening debrief")
     assert "Linear Algebra (" in s and "kept the after-class question for this call: Linear Algebra" in s
-    assert "Problem set 4" in s and "Probability 1.5 h" in s and "Quiz 3, in 4 days" in s and "set_alarm" in s
+    assert "Problem set 4" in s and "Probability 1.5 h" in s and "Quiz 3, in 4 days" in s
+    assert "set_alarm" not in s and "night check-in at 23:15" in s  # goodnight is the night call's
     assert "Midday check-in" in ck.script("midday")
+    night = ck.script("night")
+    assert night.startswith("Night check-in") and "set_alarm" in night and "defer_checkin" in night
+    assert "never schedule_call" in night
     both = ck._tool_script({})
-    assert set(both) == {"evening", "midday"}
+    assert set(both) == {"evening", "midday", "night"}
+    ck.skip("night")  # no night call today: the evening one does tomorrow and the alarm
+    assert "set_alarm" in ck.script("evening")
     st = app.modules["calls"].state_message()
     assert "checkin_script" in st["offline"]["brief"] and "evening" in st["brief"]["checkin_script"]
     assert "checkin_script" in st["config"]["systemInstruction"]
@@ -601,3 +609,155 @@ def test_evening_times_said_in_the_morning_mean_evening(env, monkeypatch):
     assert (
         env.say(f"move {DAYS[later.weekday()]}'s check-in to 9:30") == f"Evening check-in on {later:%a %d %b} at 21:30."
     )
+
+
+# ------------------------------------------------------------------------- night check-in, deferral
+def buttons_of_last(env):
+    sent = [p for m, p in env.fake.sent if m == "sendMessage"][-1]
+    return [b["text"] for row in sent.get("reply_markup", {}).get("inline_keyboard", []) for b in row], sent
+
+
+@pytest.fixture
+def bycall(calls):
+    calls.app.settings.set("subjects.list", SUBJECTS)
+    calls.on("subjects", "capture", "checkins")
+    calls.app.settings.set("checkins.by_call", True)
+    return calls, calls.app.modules["checkins"], now().date()
+
+
+def test_night_check_in_is_its_own_goodnight(env, monkeypatch):
+    env.app.settings.set("subjects.list", SUBJECTS)
+    env.on("subjects", "capture", "checkins")
+    ck, day = env.app.modules["checkins"], now().date()
+    assert ck.today()["night"] == {"time": "23:15", "status": "planned"}
+    ck._fire({"name": "night", "day": day.isoformat()})
+    texts, _ = buttons_of_last(env)
+    assert "Night check-in:" in env.fake.texts()[-1] and texts == ["In 30 min", "Tomorrow morning", "Skip today"]
+    has_class = add_class_now(env)
+    jobs = Jobs(env.app, monkeypatch)
+    lines = [{"who": "Kurooto", "text": "What did LA cover?"}, {"who": "Sam", "text": "Eigenvalues. Tired now."}]
+    ck.call_transcript(f"checkins:night:{day}", lines)
+    assert jobs.titles()[0] == "Journal from your night call"
+    if has_class:  # the class's study log was still due: the night call logs it, and it's done after that
+        assert jobs.titles()[1] == "Study logs from your night call" and "Linear Algebra" in jobs.prompts[1]["prompt"]
+        assert ck.logs_due(day) == []
+
+
+def test_tomorrow_morning_goes_to_the_wake_up_call(bycall, monkeypatch):
+    env, ck, day = bycall
+    env.on("alarm")
+    alarm = env.app.modules["alarm"]
+    alarm.set(now() + dt.timedelta(hours=8))
+    ck._call("night", day)
+    texts, _ = buttons_of_last(env)
+    assert texts == ["Answer", "Tomorrow morning", "Skip"]  # on the ring's Telegram message
+    data = f"chk:night|{day.isoformat()}:defer"
+    assert env.press(data).startswith("OK, sleep well. The rest of it comes on your wake-up call")
+    assert ck.today()["night"]["status"] == "deferred" and not env.app.scheduler.get("checkins:unstick:night")
+    s = alarm.script()
+    assert "Last night's night check-in was moved to this call" in s.split("\n")[1]
+    # the night call's own transcript (said before deferring) waits for the morning
+    jobs = Jobs(env.app, monkeypatch)
+    ck.call_transcript(f"checkins:night:{day}", [{"who": "Sam", "text": "too tired"}])
+    assert jobs.prompts == []
+    lines = [{"who": "Kurooto", "text": "Anything for yesterday?"}, {"who": "Sam", "text": "Finished the essay."}]
+    alarm.call_transcript("alarm:next", lines)
+    assert (
+        jobs.titles()[0] == "Journal from your night call" and f"About {day.isoformat()}" in jobs.prompts[0]["prompt"]
+    )
+    assert jobs.titles()[-1] == "Today's plan, from your wake-up call"
+    assert ck.deferred() is None and ck.today(day)["night"]["status"] == "answered"
+    assert "Last night's" not in alarm.script()
+
+
+def test_too_tired_on_the_call_and_no_alarm(bycall):
+    env, ck, day = bycall
+    out = env.app.modules["calls"].run_tool("defer_checkin", {})
+    assert out.startswith("OK, sleep well. I'll ask you the rest tomorrow morning")
+    job = env.app.scheduler.get("checkins:deferred")
+    assert job and dt.datetime.fromtimestamp(job.next_run).date() == day + dt.timedelta(days=1)
+    ck._deferred_message(job.payload)
+    assert "Last night's check-in, as promised" in env.fake.texts()[-1]
+    assert env.reply_to_last("Read two papers.").startswith("Saved to your journal")
+    assert "Read two papers." in daily.note_path(env.app, day).read_text()
+    assert ck.deferred() is None
+
+
+def test_schedule_call_during_a_check_in_keeps_it_a_check_in(bycall):
+    env, ck, day = bycall
+    app, c = env.app, env.app.modules["calls"]
+    ck._call("evening", day)
+    since = next(k for k, r in rings(app).items() if r["key"] == f"checkins:evening:{day}")
+    c.on_event({"name": "call_started", "since": since})
+    later = now() + dt.timedelta(minutes=45)
+    if later.date() != day:
+        return  # too close to midnight for this one
+    out = c.run_tool("schedule_call", {"when": "in 45 minutes", "reason": "call back to finish this"})
+    assert out == f"Evening check-in at {later:%H:%M}."
+    assert not app.scheduler.jobs("calls:ring:")  # no bare call without the check-in's steps
+    assert ck.today()["evening"] == {"time": f"{later:%H:%M}", "status": "planned"}
+    assert len(app.scheduler.jobs("checkins:evening")) == 1
+    # a new topic is a new call
+    assert c.run_tool("schedule_call", {"when": "tomorrow 9:00", "reason": "dentist appointment"}).startswith(
+        "I'll call you"
+    )
+    assert len(app.scheduler.jobs("calls:ring:")) == 1
+    # unattended AI requests never count as "this call"
+    tool = next(t for t in c.agent_tools() if t.name == "schedule_call")
+    tool.run({"when": "in 2 hours", "reason": "check-in"})
+    assert len(app.scheduler.jobs("calls:ring:")) == 2
+    # when the call ends, there's no "this call" any more
+    c.handle_request("POST", "/transcript", json.dumps({"since": since, "lines": []}).encode())
+    assert c.live_call() is None
+    # a check-in held twice is one booking
+    app.availability.set_quiet(now() + dt.timedelta(minutes=20))
+    ck._held("evening", day.isoformat())
+    ck._held("evening", day.isoformat())
+    assert len(app.scheduler.jobs("checkins:evening")) == 1
+    c.place("Water the plants")
+    c.place("Water the plants")
+    assert len([j for j in app.scheduler.jobs("calls:ring:held-")]) == 1
+
+
+def test_other_live_calls_keep_their_purpose(calls):
+    app, c = calls.app, calls.app.modules["calls"]
+    since = c.ring("Deadline in 6 hours: essay", key="deadlines:7")
+    c.on_event({"name": "call_started", "since": since})
+    c.run_tool("schedule_call", {"when": "in 30 minutes", "reason": "call back later"})
+    job = app.scheduler.jobs("calls:ring:")[0]
+    assert job.payload["key"] == "deadlines:7" and job.payload["reason"] == "Deadline in 6 hours: essay"
+
+
+def test_unanswered_or_declined_check_in_calls_fall_back(bycall):
+    env, ck, day = bycall
+    key = f"checkins:evening:{day}"
+    ck._call("evening", day)
+    assert ck.today()["evening"]["status"] == "calling" and env.app.scheduler.get("checkins:unstick:evening")
+    assert ck.call_outcome(key, "decline") is True
+    texts, sent = buttons_of_last(env)
+    assert texts == ["Call me now", "Tomorrow morning", "Skip"] and "(declined)" in sent["text"]
+    assert ck.today()["evening"]["status"] == "asked" and not env.app.scheduler.get("checkins:unstick:evening")
+    assert env.press(f"chk:evening|{day}:now") == "Calling you now."
+    assert ck.today()["evening"]["status"] == "calling"
+    # nothing came back at all: it doesn't stay "calling"
+    ck._unstick({"name": "evening", "day": day.isoformat()})
+    assert ck.today()["evening"]["status"] == "asked" and "(no answer)" in env.fake.texts()[-1]
+    # "Later" on the ringing phone: the same check-in, half an hour on, not a bare call
+    ck._call("evening", day)
+    if (now() + dt.timedelta(minutes=31)).date() == day:
+        assert ck.call_outcome(key, "later") is True
+        assert ck.today()["evening"]["status"] == "planned" and not env.app.scheduler.jobs("calls:ring:")
+    # missed after the repeats: the same message
+    ck._call("evening", day)
+    ck.call_outcome(key, "missed")
+    assert "(missed call)" in env.fake.texts()[-1] and ck.today()["evening"]["status"] == "asked"
+
+
+def test_call_me_back_on_the_wake_up_call_is_the_alarm_again(calls):
+    calls.on("alarm")
+    app, c = calls.app, calls.app.modules["calls"]
+    since = c.ring("Wake-up call", alarm=True, key="alarm:next")
+    c.on_event({"name": "call_started", "since": since})
+    out = c.run_tool("schedule_call", {"when": "in 10 minutes", "reason": "wake me again"})
+    assert out.startswith("Alarm set for") and not app.scheduler.jobs("calls:ring:")
+    assert app.scheduler.get("alarm:ring").payload["first"] is False

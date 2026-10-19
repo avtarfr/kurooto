@@ -5,26 +5,37 @@ No new feature cards: everything below extends features that already exist. No n
 ## MANUAL: replace "### Check-ins"
 
 ### Check-ins
-At times you choose (default 22:00; a midday one is optional), Kurooto asks how the day is going. Reply to the message
-and it goes into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
+At times you choose, Kurooto asks how the day is going: the **evening** check-in (default 22:00, the day in review),
+the **night** one (default 23:15, goodnight) and an optional **midday** one. Reply to the message and it goes into
+your journal (`journal/YYYY-MM-DD.md` in your notes folder).
 
-- **Change one in plain English:** "move tonight's check-in to 21:30", "push the check-in by 30 min", "skip the midday
+- **Change one in plain English:** "move tonight's check-in to 21:30", "push the check-in by 30 min", "skip the night
   check-in". Other days work too: "skip Friday's check-in", "move tomorrow's check-in to 9". A day Kurooto can't pin
   down ("yesterday", "next week", a date) goes to the AI instead of guessing.
-- `/checkins` lists today's, with **+30 min** and **Skip** buttons for each one still to come; `/checkin evening 21:30`.
+- `/checkins` lists today's, with **+30 min** and **Skip** buttons (and **Tomorrow morning** for the night one);
+  `/checkin evening 21:30`, `/checkin night morning`.
 
-**By call** (with Phone calls on; Settings → `checkins.by_call`): the evening check-in is a debrief, about 5 to 8
-minutes. Kurooto asks how the day went; what each of today's classes covered (and the after-class questions you kept
-for this call); what slipped from today's plan; any open questions; it reads out the study time it counted and asks
-about study away from the computer; with an exam or quiz in the next two weeks it offers a short quiz; then it asks
-tomorrow's top priority and when to wake you, and sets the alarm. You never have to write anything: afterwards, with
-Chat on, the AI writes your journal entry from what you said (your words, not its own) and a study log for each class
-you talked about. Without Chat, what you said goes into the journal as it is. The midday call re-plans the
-afternoon. A check-in call never interrupts a class, `/hold`, focus or the night: it waits until that ends, or comes
-as a message if that would be too late. A missed call falls back to a message.
+**By call** (with Phone calls on; Settings → `checkins.by_call`):
+- **Evening debrief** (5 to 8 minutes): how the day went; what each of today's classes covered (and the after-class
+  questions you kept for this call); what slipped from today's plan; open questions; the study time it counted, and
+  study away from the computer; a short quiz if an exam or quiz is in the next two weeks.
+- **Night check-in** (3 to 5 minutes): anything more for the journal, study logs still due, tomorrow's top priority
+  and when to wake you (it sets the alarm), goodnight. With the night check-in off, the evening one asks tomorrow's
+  priority and the wake-up time.
+- **Too tired?** Tap **Tomorrow morning** (on the ringing call's Telegram message, the missed-call message or
+  `/checkins`), or say so on the call: the rest moves to your wake-up call, which starts with it before planning the
+  day. With no alarm set, it's asked by message in the morning.
+- **Afterwards**, with Chat on, the AI writes your journal entry from what you said (your words, not its own) and a
+  study log for each class you talked about. Without Chat, what you said goes into the journal as it is.
+- **"Call me back in an hour"** on a check-in call moves that check-in (the same call, with the same steps), never a
+  plain reminder call. "Later" on the ringing phone does the same, half an hour on.
+- **A call you don't answer** (after its repeats) **or decline** becomes a message with **Call me now / Tomorrow
+  morning / Skip**; reply to it to answer by text. A check-in never stays "calling".
+- A check-in call never interrupts a class, `/hold`, focus or another call: it waits until that ends, or comes as a
+  message if that would be too late. The night itself doesn't hold the night check-in.
 
-*Settings:* `checkins.times`, `checkins.by_call`, `checkins.journal`, `checkins.ai_notes` (default on: with Chat on,
-the AI writes the journal and study logs after a check-in call).
+*Settings:* `checkins.times` (`evening`, `night`, `midday`; empty = off), `checkins.by_call`, `checkins.journal`,
+`checkins.ai_notes` (default on: with Chat on, the AI writes the journal and study logs after a check-in call).
 
 ## MANUAL: replace "### Subjects and timetable"
 
@@ -143,13 +154,17 @@ calendar, what's due, check-ins and open questions. The alarm opens it.
 | No plan before my alarm | It needs Chat on and the alarm set at least a few minutes ahead (`alarm.prep_min`). The AI's answer is in the AI jobs tab. |
 | The morning page didn't open | It opens only if the computer is awake with a screen at alarm time (`alarm.open_page`). Open `http://127.0.0.1:8770/morning` yourself. |
 | No after-class question | The class was skipped, it's a holiday or exam period, or the term is over (`/term`). |
+| A night check-in I didn't want | Set `checkins.times.night` to empty (Settings), or `/checkin night skip` for today. |
 | "skip Friday's check-in" went to the AI | Kurooto acts by itself only for today, tomorrow, the day after or a weekday name; anything else (dates, "next week") goes to the AI. |
 
 ## CHANGELOG lines (0.2.0)
 
-- Check-ins: the evening call is a debrief (classes, what slipped, open questions, a quiz offer before exams,
-  tomorrow's priority and alarm); afterwards the AI writes your journal and study logs from what you said. Change
-  another day's check-in ("skip Friday's check-in"); `/checkins` has +30 min and Skip buttons.
+- Check-ins: the evening call is a debrief (classes, what slipped, open questions, study time, a quiz offer before
+  exams); a new night check-in says goodnight (journal, study logs still due, tomorrow's priority, the alarm), or
+  moves to your wake-up call with "Tomorrow morning"; afterwards the AI writes your journal and study logs from what
+  you said. "Call me back later" on a check-in call keeps it a check-in. Unanswered or declined check-in calls become
+  a message with Call me now / Tomorrow morning / Skip. Change another day's check-in ("skip Friday's check-in");
+  `/checkins` has +30 min and Skip buttons.
 - Mornings: the AI drafts your day 20 minutes before the alarm; the wake-up call goes through it, asks which classes
   you're skipping and when to call; the morning page opens on your computer.
 - The night follows your alarm (bedtime to alarm); unanswered calls ring again at +3 and +6 minutes; held calls tell
@@ -183,6 +198,11 @@ Study tracker and its daily note section: nothing leaves (unchanged).
   `/` and `/setup`). `web/api.py`: one block, `GET /api/morning`. New static files `web/static/morning.html`,
   `morning.js`.
 - Shared API for others: `app.modules["calls"].place(reason, key="", alarm=False, force=False)` (study uses it);
-  `app.availability.sleep` (a callable the alarm sets: the nights it covers).
+  `app.availability.sleep` (a callable the alarm sets: the nights it covers); `calls.ring(..., buttons=[...])` adds
+  buttons to the ring's Telegram message; `calls.live_call()` is the call going on now ({key, reason}); a module that
+  places calls may define `call_reschedule(key, at) -> str` so "call me back later" during its call stays its call
+  (check-ins and the alarm do; others get the same key and reason back).
+- New call tool `defer_checkin`; `change_checkin` gained the action `defer` and the name `night`.
+- Default change: `checkins.times.night` = "23:15" (on for everyone with Check-ins); set it to None to ship it off.
 - Existing tests changed: `tests/unit/test_calls.py` (one ring test sets `calls.realert_min` to `[]`; scheduled
   calls now have `respect == "none"` because the hold is checked when they're due, to tell you).
