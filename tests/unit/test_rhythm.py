@@ -348,7 +348,8 @@ def test_held_call_notice_and_place(calls):
     until = now() + dt.timedelta(hours=1)
     app.availability.set_quiet(until)
     out = c.place("Deadline in 6 hours: essay", key="deadlines:7")
-    assert out.startswith(f"Held a call until {until + dt.timedelta(minutes=1):%H:%M} (you asked for no calls)")
+    held = until + dt.timedelta(minutes=1)  # past midnight it says the day too: "until Tue 00:17"
+    assert out.startswith("Held a call until ") and f"{held:%H:%M} (you asked for no calls)" in out
     assert "Held a call until" in calls.fake.texts()[-1] and not rings(app)
     job = app.scheduler.get("calls:ring:deadlines:7")
     assert job and job.payload["key"] == "deadlines:7" and job.respect == "none"
