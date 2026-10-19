@@ -98,7 +98,16 @@ Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) h
 - Your add-ons: your own features, skills, prompts and default settings from a folder of yours.
 - On Linux, the dashboard only answers your own user account.
 
+**Look**
+- Kurooto's pages are deep green now, like the website: the setup page, the dashboard (its drawings too), the morning
+  page, and your call line's pages and icon. The old colours stay available: Settings → Look → `look.palette` = `rose`.
+- Warnings and errors have their own colours (amber and red), never the accent colour.
+- The dashboard's ring gives every feature a short label and its own colour.
+- The README and the website show the dashboard, the setup page, the morning page and your phone, from a demo with
+  made-up data.
+
 **Fixes**
+- The phone's call page: the "Waiting for you" link no longer grows to fill the screen.
 - "skip Friday's check-in" (and "no calls on Friday", "skipping LA on Friday") changed today's instead.
 - The phone app only ever got rings; the phone channel is now wired up.
 - The notes brain's sync no longer holds up the rest of Kurooto, and GBrain no longer checks for its own updates.

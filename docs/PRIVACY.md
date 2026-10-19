@@ -6,6 +6,10 @@ only things Kurooto fetches from its own release page are updates, checked again
 
 Everything below goes to services you chose, under your own accounts.
 
+The screenshots in the README and on the website are of a demo with made-up data ("Sam") and stand-in services; none
+of them shows anyone's real notes, chats or accounts. The pages' colours (`look.palette`) are a setting on this
+computer only.
+
 ## Always (when the feature is on)
 
 | Feature | What leaves | Where to |

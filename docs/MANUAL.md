@@ -1073,6 +1073,11 @@ that pulses when something happens; NOTES is a map of your notes and their links
 The **morning page** (`http://127.0.0.1:8770/morning`) shows today's plan from your daily note, with your classes,
 calendar, what's due, check-ins and open questions. The alarm opens it.
 
+**Colours:** Kurooto's pages (the setup page, the dashboard, the morning page, and your call line's pages on the phone)
+use deep greens, like the website. If you liked the earlier pink and rose colours better, set Settings → Look →
+`look.palette` to `rose` and reload the page; `kuro` (the default) brings the greens back. The setup and morning pages
+follow your system's light or dark mode; the dashboard is always dark. Your call line's pages on the phone stay green.
+
 Only your computer can open the dashboard; it needs a key that only this computer has. On Linux, where several people
 can be signed in to one computer at once, it also checks that the page and every request come from your own user
 account, and refuses them when it can't tell.
