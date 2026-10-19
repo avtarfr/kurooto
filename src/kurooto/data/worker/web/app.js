@@ -23,6 +23,7 @@ if (!secret) {
 
 let session = null, model = '', config = null, handle = null, ending = false, retries = 0;
 let startedOffline = false; // the call began while the computer was off
+let live = false; // a call got through (its end is reported, even with nothing said)
 let micStream, inCtx, outCtx, worklet, muted = false, wakeLock = null, pollTimer = null;
 let playAt = 0; const playing = new Set();
 let lineMe = null, lineAi = null;
@@ -226,6 +227,7 @@ async function start() {
     await connect();
     try { wakeLock = navigator.wakeLock ? await navigator.wakeLock.request('screen') : null; } catch { /* optional */ }
     pollTimer = setInterval(poll, 4000);
+    live = true;
     $('call').textContent = 'Hang up'; $('call').className = 'end'; $('call').disabled = false; $('mute').hidden = false; $('out').hidden = false;
     if (App) { App.callStarted(); $('out').textContent = 'Speaker'; }
   } catch (e) {
@@ -235,8 +237,10 @@ async function start() {
 }
 
 function hangup(user = true) {
-  if (transcript.length) api('/transcript', { lines: transcript.splice(0), purpose, since }).catch(() => {});
+  // always sent, even with nothing said: it also tells your computer the call is over ("on a call" ends)
+  if (live || transcript.length) api('/transcript', { lines: transcript.splice(0), purpose, since, ended: true }).catch(() => {});
   ending = true;
+  live = false;
   clearInterval(pollTimer);
   try { if (session) session.close(); } catch { /* closed */ }
   session = null; handle = null;
@@ -270,6 +274,11 @@ if (secret) {
   }).catch((e) => { status(`This link doesn't work: ${e.message}. Ask your bot for /call again.`, 'err'); $('call').disabled = true; });
 }
 if ('serviceWorker' in navigator && !App && store.get('kurootoDevice')) navigator.serviceWorker.register('/sw.js').catch(() => {});
+// A paired phone (not a one-off call link): what's waiting for you (questions, approvals, messages).
+if (!App && store.get('kurootoDevice') && secret === store.get('kurootoDevice')) {
+  $('inbox').hidden = false;
+  api('/pending').then((j) => { const n = (j.items || []).length; if (n) $('inbox').textContent = `Waiting for you (${n})`; }).catch(() => {});
+}
 
 // Opened from the Android app after you tapped Answer (or Call): start right away.
 if (App && params.get('auto') === '1' && secret) start();

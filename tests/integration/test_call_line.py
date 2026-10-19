@@ -308,6 +308,8 @@ def test_offline_brief_queue_and_cron(world):
     assert ln.call("GET", "/tasks", key=key)[1]["computer"] == "offline"
     code, t = ln.call("POST", "/token", {}, key=key)
     assert code == 200 and t["offline"] is True and "OFF right now" in json.dumps(world["cloud"].tokens[-1]["body"])
+    # that call ends (the call page always says so); while it was on, the line held calls back
+    assert ln.call("POST", "/transcript", {"lines": [], "ended": True}, key=key)[1] == {"ok": True, "queued": True}
     n0 = len(cloud.ntfy)
     with urllib.request.urlopen(ln.base + "/__scheduled?cron=*+*+*+*+*", timeout=30) as resp:
         assert resp.status == 200

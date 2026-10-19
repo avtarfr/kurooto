@@ -8,6 +8,7 @@ import org.json.JSONObject;
 
 import java.io.InputStream;
 import java.net.URLEncoder;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -72,6 +73,44 @@ final class Line {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** What happened to an answer: sent (or kept by the line until the computer is back), or why not. */
+    static final class Answered {
+        final int code;
+        final boolean ok;
+        final String note;
+        Answered(int code, boolean ok, String note) { this.code = code; this.ok = ok; this.note = note; }
+        boolean delivered() { return code >= 200 && code < 300; }
+        boolean gone() { return code == 410; }
+    }
+
+    /** Answer a question, approval or message (fields: "answer", "button" or "dismiss"). The answer is sealed with
+     *  this phone's ntfy key, so the call line only passes it on; a random nonce and the time make it single use. */
+    static Answered answer(Context c, String item, JSONObject fields) {
+        try {
+            byte[] n = new byte[16];
+            new SecureRandom().nextBytes(n);
+            StringBuilder hex = new StringBuilder();
+            for (byte x : n) hex.append(String.format(java.util.Locale.ROOT, "%02x", x & 0xff));
+            fields.put("item", item).put("ts", System.currentTimeMillis()).put("n", hex.toString());
+            String sealed = Crypto.seal(Prefs.key(c), fields.toString());
+            if (sealed == null || Prefs.key(c).length == 0) return new Answered(0, false, "This phone has no key: pair it again.");
+            String body = new JSONObject().put("item", item).put("k1", sealed).toString();
+            Net.Reply r = Net.postJson(Prefs.url(c) + "/answer", body, Prefs.device(c));
+            if (r.code == -1) return new Answered(-1, false, "Couldn't reach your call line. Is this phone online?");
+            JSONObject j = new JSONObject(r.body.isEmpty() ? "{}" : r.body);
+            String note = j.optString("note", j.optString("error", r.ok() ? "Sent." : "That didn't go through (" + r.code + ")."));
+            return new Answered(r.code, r.ok() && j.optBoolean("ok", true), note);
+        } catch (Exception e) {
+            return new Answered(0, false, "That didn't go through: " + e.getMessage());
+        }
+    }
+
+    /** What's waiting for you (open questions, approvals, messages), from the call line; null if unreachable. */
+    static org.json.JSONArray waiting(Context c) {
+        Net.Reply r = Net.request("GET", Prefs.url(c) + "/pending", null, null, Prefs.device(c), 20000);
+        try { return r.ok() ? new JSONObject(r.body).optJSONArray("items") : null; } catch (Exception e) { return null; }
     }
 
     /** Upload one file to your computer's notes inbox, in 512 KB parts, with a call link's ticket. */
