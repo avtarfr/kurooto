@@ -76,3 +76,8 @@ label.file input { width: auto; margin: 0; padding: 4px; border: 0; }
 textarea { font: 13px var(--mono); }
 .cards.wide { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
 .cards.wide .row button { padding: 7px 14px; }
+.about-editor { margin-top: 14px; }
+textarea.about-ed { width: 100%; box-sizing: border-box; font: 13px/1.5 var(--mono); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 2px; padding: 10px 12px; resize: vertical; }
+.about-row { display: flex; gap: 8px; margin: 8px 0; }
+.about-label { color: var(--dim); font-size: 13px; margin: 12px 0 4px; }
+pre.about-brief { white-space: pre-wrap; max-height: 220px; overflow: auto; font: 12px/1.45 var(--mono); background: var(--bg); border: 1px solid var(--line); padding: 10px; margin: 0; }

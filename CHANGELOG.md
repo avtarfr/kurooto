@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+- About you: the profile is editable right after **Build my profile**, on the setup page, with a preview of the
+  In-brief part that goes along with every AI request; saving keeps the previous version. Building again asks first if
+  you've edited it, and never replaces an edit made while it was building. `/aboutme` shows the In-brief part.
+
 ## 0.1.3 (2026-10-20)
 - Telegram setup: if pressing Start doesn't connect, the page now says why (another program using the bot, a
   webhook, a revoked token, an expired link, no internet) and offers the fix, and it always shows the message to send
