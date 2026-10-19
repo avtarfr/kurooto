@@ -259,6 +259,9 @@ def test_routine_days_commands_and_plain_requests(env, ai):
     assert "Every day at 08:00: /routines" in env.fake.texts()[-1]
     out = env.say("every friday at 6pm send me a summary of my week")  # plain English
     assert "Fri at 18:00" in out
+    before = len(sm.routines())
+    env.say("every monday at 9 I have a lab")  # a fact, not a request: no routine
+    assert len(sm.routines()) == before
     jid = sm._routine({"id": sm.routines()[-1]["id"]})
     assert env.app.jobs.get(jid).prompt == "send me a summary of my week"
 
@@ -513,3 +516,11 @@ def test_download_tar_checks_its_checksum(tmp_path):
 def test_day_names_are_mondays_first():
     assert sk.DAYS[dt.date(2026, 10, 19).weekday()] == "mon"
     assert json.loads(json.dumps(parse_every("sun 7:00 x")))["spec"] == "weekly sun 07:00"
+
+
+def test_a_link_on_its_own_is_filed(env, ai):
+    assert env.say("https://example.com/notes/fourier.pdf for signals") == "Filing it into your notes…"
+    p = env.app.jobs.recent(1)[0].prompt
+    assert "Skill: add-to-notes" in p and "https://example.com/notes/fourier.pdf for signals" in p
+    env.say("can you summarise https://example.com/a")  # a request about a link goes to Chat
+    assert env.app.jobs.recent(1)[0].prompt.startswith("can you summarise")

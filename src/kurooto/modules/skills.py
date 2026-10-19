@@ -285,6 +285,21 @@ WHEN = re.compile(
 )
 
 
+ASKS = re.compile(
+    r"(?:please\s+)?(?:send|remind|tell|give|make|run|do|write|plan|summari[sz]e|check|ask|quiz|show|list|review|"
+    r"prepare|draft|build|update|connect|journal|log|read|look|find|pick|suggest|create)\b",
+    re.I,
+)
+
+
+LINK = re.compile(r"https?://\S+")
+NOT_FILING = re.compile(  # words around a link that ask for something else than filing it
+    r"(?:can|could|would|will|please|pls|summari[sz]e|explain|read|translate|open|tell|is|are|what|why|how|do|does|"
+    r"compare|reply|answer|send|share|watch|listen)\b",
+    re.I,
+)
+
+
 def parse_every(text: str) -> dict:
     """ "monday 9:00 /journal plan my week" -> a routine. Raises ValueError with a usage hint."""
     m = WHEN.match(text or "")
@@ -380,8 +395,8 @@ class Skills(Module):
     id = "skills"
     title = "Skills"
     description = (
-        "Ready-made AI routines (/journal, /study-log, /pack a revision PDF, ...); /newskill writes your own, "
-        "/every runs one on a schedule."
+        "Ready-made instructions for the AI, one command each (/journal, /study-log, /pack for a revision PDF, ...); "
+        "/newskill writes your own, /every runs one on a schedule."
     )
     requires = ("chat",)
     privacy = (
@@ -633,6 +648,7 @@ class Skills(Module):
         name = self._free(s.name)
         if name != s.name:
             text = re.sub(r"(?m)^name:.*$", f"name: {name}", text, count=1)
+        text = re.sub(r"(?mi)^internal:.*\n", "", text, count=1)  # a skill you make is one you can type
         did = uuid.uuid4().hex[:8]
         jsave(self.dir / "drafts" / f"{did}.json", {"name": name, "text": text, "created": time.time()})
         self.app.notify(
@@ -759,12 +775,27 @@ class Skills(Module):
             if not re.match(r"\s*every\s+(?:day|weekday|weekend|mon|tue|wed|thu|fri|sat|sun)", text, re.I):
                 return None
             try:
-                parse_every(text)
+                what = parse_every(text)["what"]
             except ValueError:
                 return None
-            return {"text": text}
+            # a request ("send me ...", "/journal ..."), not a fact ("every monday at 9 I have a lab")
+            return {"text": text} if what.startswith("/") or ASKS.match(what) else None
 
-        return [Intent("routine", "do something on a schedule", match, lambda m, s: self.add_routine(s["text"]))]
+        def link(text: str):
+            found = LINK.findall(text)
+            rest = LINK.sub("", text).strip(" \t\n-:,.")
+            if len(found) != 1 or len(rest.split()) > 12 or NOT_FILING.match(rest):
+                return None
+            return {"args": f"{found[0]} {rest}".strip()}
+
+        def file_link(msg: Incoming, slots: dict) -> str:
+            self.run("add-to-notes", slots["args"], reply_to=msg.message_id)
+            return "Filing it into your notes…"
+
+        return [
+            Intent("routine", "do something on a schedule", match, lambda m, s: self.add_routine(s["text"])),
+            Intent("file_link", "a link on its own: filed into the notes", link, file_link),
+        ]
 
     # ---------------------------------------------------------------------------------- revision packs
     def _subject(self, text: str) -> tuple[str | None, str, str]:
