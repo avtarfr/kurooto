@@ -978,7 +978,9 @@ class Deadlines(Module):
             Intent(
                 "exam_mode",
                 "exam mode, when's my next quiz",
-                lambda t: {} if NEXT_EXAM.search(t) else None,
+                lambda t: (
+                    {} if NEXT_EXAM.search(t) and not re.search(r"\b(off|stop|disable|turn|set)\b", t, re.I) else None
+                ),
                 lambda m, s: self._exam(),
                 questions=True,
             ),

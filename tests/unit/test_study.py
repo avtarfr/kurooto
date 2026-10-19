@@ -280,6 +280,7 @@ def test_exam_mode_and_briefs(study):
     assert 4.5 < modes[0]["days"] <= 5
     assert "Linear Algebra midterm" in study.say("/exam") and "Topology" not in study.say("/exam")
     assert "Linear Algebra midterm" in study.say("when's my next exam?")
+    assert "Linear Algebra midterm" not in study.say("turn off exam mode")  # not this rule: the AI's
     brief = dl.call_brief()
     assert brief["exam_mode"][0].startswith("Linear Algebra: Linear Algebra midterm")
     assert [d["what"] for d in brief["due_soon"]] == ["Essay draft"]  # the 72-hour line
