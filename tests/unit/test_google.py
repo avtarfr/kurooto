@@ -340,6 +340,7 @@ def test_mail_rules_command(mail):
     assert env.say("/mail read SAM@example.org") == "The digest reads mail matching sam@example.org."
     assert (
         env.say("/mail rules") == "The digest reads:\n- sam@example.org\n- mail from @school.example (your own domain)"
+        "\nNever read either: mail marked confidential."
     )
     assert env.say("/mail unread sam@example.org") == "The digest no longer reads mail matching sam@example.org."
     assert env.app.settings.get("mail_digest.read") == []
@@ -538,3 +539,58 @@ def test_digests_go_through_the_skills_feature_when_it_is_on(gx):
     job = env.app.jobs.get(jid)
     assert job.effort_req == "high" and job.quiet and "Notes folder: x/" in job.prompt
     assert job.title == "Classroom → notes: X"
+
+
+# ------------------------------------------------------------------------------- confidential mail (policy)
+def test_confidential_and_never_read_mail_is_only_counted(mail):
+    env, g, ai, md = mail
+    g.labels.append({"id": "Label_9", "name": "Restricted"})
+    g.add_mail("k1", "Registrar <reg@school.example>", "CONFIDENTIAL: exam paper draft", "The paper is attached.")
+    g.add_mail("k2", "Dr Lee <lee@school.example>", "Marks", "Private and Confidential\nPlease review the marks.")
+    g.add_mail("k3", "Office <office@school.example>", "Room list", "Rooms for the week", labels=["INBOX", "Label_9"])
+    g.add_mail("k4", "Library <lib@school.example>", "Unrestricted access to journals", "Now open to everyone.")
+    g.add_mail("k5", "Payroll <pay@hr.school.example>", "Stipend", "Payroll details")
+    g.add_mail("k6", "Dean <dean@school.example>", "Please do NOT   forward", "Committee notes")
+    assert env.say("/mail never @hr.school.example") == (
+        "The digest never reads mail matching @hr.school.example; it's only counted."
+    )
+    env.say("/mail read label:Restricted")  # choosing a label doesn't override a confidential marking
+    r = md.digest()
+    assert r["piles"]["confidential"] == 4 and r["piles"]["never read"] == 1
+    # subject, label and the never-read list are checked before the body is even downloaded
+    assert not {"k1", "k3", "k5", "k6"} & set(g.full_fetched)
+    assert "k2" in g.full_fetched and "k4" in g.full_fetched  # opening lines need the body; k2 is dropped right there
+    run_jobs(env.app)
+    prompt = json.dumps(ai.requests[-1])
+    for secret in ("exam paper", "review the marks", "Rooms for the week", "Payroll", "Committee notes", "Stipend"):
+        assert secret not in prompt
+    assert "Now open to everyone" in prompt  # "unrestricted" isn't the word "restricted"
+    assert "4 confidential" in prompt and "1 never read" in prompt
+    assert md.known("k2") is None and md.known("k1") is None  # nothing kept to draft a reply to
+    assert "Never read:\n- @hr.school.example" in env.say("/mail rules")
+    assert env.say("/mail unnever @hr.school.example") == "@hr.school.example is off the never-read list."
+    # the words can be tuned, and the check turned off (it's on by default)
+    env.app.settings.set("mail_digest.confidential_words", ["embargoed"])
+    g.add_mail("k7", "Press <press@school.example>", "Embargoed until Monday", "News")
+    g.add_mail("k8", "Dean <dean@school.example>", "Confidential memo", "Memo text")
+    r = md.digest()
+    assert r["piles"]["confidential"] == 1 and "k8" in g.full_fetched and "k7" not in g.full_fetched
+    env.app.settings.set("mail_digest.skip_confidential", False)
+    g.add_mail("k9", "Press <press@school.example>", "Embargoed again", "More news")
+    assert md.digest()["read"] == 1 and "k9" in g.full_fetched
+
+
+def test_no_ai_drafts_for_confidential_or_never_read_mail(drafts):
+    env, g, ai, rd = drafts
+    app, md = env.app, env.app.modules["mail_digest"]
+    env.say("/mail never lee@school.example")  # p1 was digested before this
+    out = run_tool(app, "draft_reply", {"message_id": "p1", "text": "Yes."})
+    assert out.startswith("That mail is marked confidential or on the never-read list")
+    env.say("/mail unnever lee@school.example")
+    app.settings.set("mail_digest.skip_confidential", False)  # read while the check was off...
+    g.add_mail("q1", "Dr Lee <lee@school.example>", "Question", "Do not forward.\nCan you join the panel?")
+    md.digest()
+    app.settings.set("mail_digest.skip_confidential", True)  # ...and it's back on: still no draft
+    assert run_tool(app, "draft_reply", {"message_id": "q1", "text": "Yes."}).startswith("That mail is marked")
+    assert g.draft_store == {} and g.sent == []
+    assert run_tool(app, "draft_reply", {"message_id": "p1", "text": "Yes."}).startswith("Draft saved in Gmail")

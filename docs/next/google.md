@@ -81,8 +81,17 @@ linked from that day's journal). Deadlines it finds go into Deadlines; course ne
 - Promotions, Social and topics on your not-interested list are only counted.
 - A personal Gmail account reads nothing until you choose something; the first digest tells you how.
 
-`/mail` checks now (so does `/sync all`). Settings: `mail_digest.at`, `mail_digest.read`, `mail_digest.own_domain`,
-`mail_digest.save_note` (the copy in your notes), `mail_digest.first_days` (how far back the first check looks: 3).
+**Confidential mail is never read.** Work or school mail may be covered by your institution's email policy (many
+forbid forwarding confidential messages, and institutional mail belongs to the institution). Kurooto never summarises
+mail marked confidential: if its subject or opening lines say "confidential", "do not forward", "restricted" or
+"private and confidential", or it has a Gmail label with one of those names, it's only counted, even from a sender or
+label you chose, and it never gets an AI reply draft. Add your own words in `mail_digest.confidential_words`. To
+keep a sender, domain or label out of the digest altogether: `/mail never @office.example` (`/mail unnever ...` takes
+it off; `/mail rules` lists both lists). This is on by default (`mail_digest.skip_confidential`).
+
+`/mail` checks now (so does `/sync all`). Settings: `mail_digest.at`, `mail_digest.read`, `mail_digest.never_read`,
+`mail_digest.own_domain`, `mail_digest.skip_confidential`, `mail_digest.confidential_words`, `mail_digest.save_note`
+(the copy in your notes), `mail_digest.first_days` (how far back the first check looks: 3).
 *Leaves:* the text of the mail you chose goes to the AI you picked; for the rest, only counts. Nothing is ever sent,
 deleted, archived or marked read. *Turn off:* Features → Mail digest → Turn off.
 
@@ -91,8 +100,8 @@ When the mail digest finds mail that needs your reply (a question or request to 
 your voice into your Gmail Drafts and sends it to you with **Send / Edit / Discard**. **Nothing is sent unless you
 tap Send.** Edit: say what to change ("say I can do 10am"); the AI rewrites the draft and asks again. Discard deletes
 just that draft. Unanswered, it stays in your Gmail Drafts (the question expires after 3 days). Replies go only to
-the sender of a mail in your digest, never to no-reply addresses, at most 5 a day (`reply_drafts.per_day`). Needs the
-Mail digest. *Turn off:* Features → Email reply drafts → Turn off.
+the sender of a mail in your digest, never to no-reply addresses or mail marked confidential (or on your never-read
+list), at most 5 a day (`reply_drafts.per_day`). Needs the Mail digest. *Turn off:* Features → Email reply drafts → Turn off.
 
 ### Agent plan calendar
 Kurooto makes a calendar of its own, **Agent plan**, in your Google Calendar, for the time blocks it plans with you:
@@ -111,7 +120,7 @@ reminder (`agent_plan.remind_min`; 0 for none).
 | "Mail digest is paused: needs Google's OK" (or another Google feature) | Features → that feature → Save, then sign in with Google and leave its permission ticked. |
 | A Google feature didn't turn on after signing in | Did you untick its permission on Google's screen? Save on its card again. Is its API on in your Google Cloud project (the link on its card)? |
 | Google says "Access blocked" for a school account | Your school doesn't allow unverified apps for that permission. Use a personal Google account, or ask your school's admin. |
-| The mail digest says it only counted my mail | It reads only what you chose: `/mail read @your-school.example` or `/mail read label:Name`. |
+| The mail digest says it only counted my mail | It reads only what you chose: `/mail read @your-school.example` or `/mail read label:Name`. Mail marked confidential is always only counted. |
 | Classroom notes say a PDF wasn't read | Install Poppler (`pdftotext`), or use agy as your AI (it opens PDFs itself). |
 | Classroom notes went to the wrong folder | Settings → `classroom_notes.folders`: `{"Exact course name": "folder-name"}`. |
 
@@ -122,7 +131,8 @@ reminder (`agent_plan.remind_min`; 0 for none).
   uses); dates in posts go into Deadlines; a skip list of courses (`/classnotes`).
 - Mail digest: twice a day, new mail sorted into Needs action, People, Courses, Opportunities and Admin, with a copy in
   your notes and deadlines into Deadlines. It reads only the senders, domains and labels you choose (`/mail read`);
-  everything else is only counted.
+  everything else is only counted. Mail marked confidential, and anything on your never-read list (`/mail never`), is
+  never read, summarised or answered with an AI draft.
 - Email reply drafts: the AI drafts replies to mail that needs one into Gmail and asks Send / Edit / Discard; nothing
   is sent without your tap.
 - Agent plan calendar: time blocks Kurooto plans with you go into its own calendar in Google Calendar (`/blocks`, and a
@@ -135,7 +145,7 @@ reminder (`agent_plan.remind_min`; 0 for none).
 | Feature | What leaves your computer | Where to |
 |---|---|---|
 | Classroom → notes | Classroom posts and the text of their attached files, to write the notes | the AI service you picked; read from Google with your own client |
-| Mail digest | the text of the mail you chose for the digest (senders, domains, labels you named; on a school or work account, your own domain). Other mail: nothing, it's only counted on your computer | the AI service you picked; read from Gmail with your own client |
+| Mail digest | the text of the mail you chose for the digest (senders, domains, labels you named; on a school or work account, your own domain). Other mail, mail marked confidential ("confidential", "do not forward", "restricted" in its subject, opening lines or labels) and your never-read list: nothing, they're only counted on your computer. Work or school mail may be covered by your institution's email policy; Kurooto never summarises mail marked confidential | the AI service you picked; read from Gmail with your own client |
 | Email reply drafts | the draft reply, written into your Gmail Drafts; sent only when you tap Send | Google (your Gmail) |
 | Agent plan calendar | the time blocks (title and time), in Kurooto's own calendar | Google (your Google Calendar) |
 
