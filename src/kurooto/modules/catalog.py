@@ -11,6 +11,9 @@ from kurooto.modules.deadlines import Deadlines
 from kurooto.modules.files import Files
 from kurooto.modules.gbrain import GBrain
 from kurooto.modules.google import Google
+from kurooto.modules.google_classroom import ClassroomNotes
+from kurooto.modules.google_mail import MailDigest, ReplyDrafts
+from kurooto.modules.google_plan import AgentPlan
 from kurooto.modules.handwritten import Handwritten
 from kurooto.modules.library import Library
 from kurooto.modules.local_models import LocalModels
@@ -51,6 +54,10 @@ CATALOG = [
     Calendar,
     NotesSync,
     Google,
+    ClassroomNotes,
+    MailDigest,
+    ReplyDrafts,
+    AgentPlan,
     Handwritten,
     Study,
     Research,
