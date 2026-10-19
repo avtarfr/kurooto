@@ -51,3 +51,20 @@ def env(tmp_path, monkeypatch):
     yield Env(app, tg, fake)
     fake.close()
     app.close()
+
+
+@pytest.fixture(autouse=True)
+def no_desktop_popups(tmp_path_factory, monkeypatch):
+    """Tests never show real desktop notifications: do-nothing notify-send/osascript/powershell come first on PATH
+    (a developer's machine would otherwise get a popup for every test that notifies)."""
+    import os
+    import sys
+
+    d = tmp_path_factory.mktemp("quiet-bin")
+    for name in ("notify-send", "osascript"):
+        f = d / name
+        f.write_text("#!/bin/sh\nexit 0\n")
+        f.chmod(0o755)
+    if sys.platform == "win32":
+        (d / "powershell.cmd").write_text("@exit /b 0\r\n")
+    monkeypatch.setenv("PATH", str(d) + os.pathsep + os.environ.get("PATH", ""))

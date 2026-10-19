@@ -118,6 +118,10 @@ class Api:
     # ---------------------------------------------------------------------------------------------- GET
     def get(self, path: str, q: dict | None = None) -> tuple[int, dict]:
         q = q or {}
+        from kurooto.web import tools_api  # the AI's tools, `kurooto ask`, `kurooto call`, AI usage
+
+        if path in tools_api.GETS:
+            return tools_api.get(self.app, path, q)
         if path == "note":
             return self._note(q.get("id", ""))
         if path == "settings":
@@ -169,6 +173,10 @@ class Api:
     # --------------------------------------------------------------------------------------------- POST
     def post(self, path: str, b: dict) -> tuple[int, dict]:
         s = self.app.settings
+        from kurooto.web import tools_api  # the AI's tools, `kurooto ask`, `kurooto call`
+
+        if path in tools_api.POSTS:
+            return tools_api.post(self.app, path, b)
         if path == "settings":
             return self._set(b.get("key", ""), b.get("value"))
         if path == "open-note":
@@ -428,7 +436,13 @@ class Api:
                 r = r2
         secs = time.monotonic() - t0
         if nonce in r.text:
-            return {"ok": True, "message": f"Working: it answered in {secs:.0f} s."}
+            msg = f"Working: it answered in {secs:.0f} s."
+            if which == "agy":  # setting agy up: give it Kurooto's tools (`kurooto mcp`) now
+                from kurooto.providers.agy import connect_tools
+
+                ok_t, why = connect_tools(self.app, brain.exe)
+                msg += " It can use Kurooto's tools too." if ok_t else f" (It can't use Kurooto's tools yet: {why}.)"
+            return {"ok": True, "message": msg}
         msgs = {
             Verdict.AUTH: "It isn't signed in (or the key is wrong).",
             Verdict.RATE_LIMITED: "It's at its usage limit right now.",

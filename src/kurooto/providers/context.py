@@ -26,6 +26,11 @@ def headless_context(app: App, extra: str = "") -> str:
         else f"Answer in {you['language']}.",
         "Nobody can answer follow-up questions during this run. If you can't do something safely without asking, "
         "say what you need instead of guessing.",
+        f'You can act through {app.name}\'s tools (in agent programs, the MCP server "kurooto"): reminders, calls, '
+        "deadlines, adding to notes and more, depending on the features they turned on. Use them when the request "
+        "asks for an action. Notes they wrote are theirs: add to them or create new ones, never reword or remove "
+        "their text.",
+        "Never say you did something you didn't: if there was no tool for it or a tool failed, say so plainly.",
     ]
     brief = app.about.brief() if hasattr(app, "about") else ""
     if brief:  # from about-me/profile.md, which they can edit; what they ask now wins over it

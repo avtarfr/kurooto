@@ -1,9 +1,13 @@
 """Two more agent CLIs as AI brains: OpenAI's Codex (with a ChatGPT plan) and Anthropic's Claude Code (Advanced).
-Both read the prompt from stdin, run in your notes folder, and are only allowed to read files there."""
+Both read the prompt from stdin, run in your notes folder, and are only allowed to read files there. Kurooto's tools
+(reminders, calls, adding to notes, ...) reach them as the MCP server "kurooto" (`kurooto mcp`), given for each run
+only: nothing is saved in their own settings.
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -17,6 +21,21 @@ def _which(name: str, app_dir: Path | None) -> str | None:
     if app_dir:
         dirs += [app_dir / "npm", app_dir / "npm" / "bin"]
     return proc.which(name, dirs)
+
+
+def codex_mcp(task: Task) -> list[str]:
+    """`codex exec -c` overrides that give this run Kurooto's tools (the value after `=` is TOML; JSON strings and
+    arrays are valid TOML). Its tool calls are approved up front: nobody is there to approve them."""
+    if not task.mcp:
+        return []
+    out = [
+        f"mcp_servers.kurooto.command={json.dumps(task.mcp[0])}",
+        f"mcp_servers.kurooto.args={json.dumps(task.mcp[1:])}",
+        'mcp_servers.kurooto.default_tools_approval_mode="approve"',
+    ]
+    if task.mcp_env:  # Codex gives MCP servers a short environment: name what to pass on
+        out.append(f"mcp_servers.kurooto.env_vars={json.dumps(sorted(task.mcp_env))}")
+    return [x for o in out for x in ("-c", o)]
 
 
 def _fail(code: int | None, text: str, secs: float, minutes: int) -> Result | None:
@@ -66,9 +85,11 @@ class Codex(Brain):
                 args += ["-C", str(task.cwd)]
             if self.models.get(task.effort):
                 args += ["-m", self.models[task.effort]]
+            args += codex_mcp(task)
+            env = {**os.environ, **task.mcp_env} if task.mcp_env else None
             prompt = (task.context + "\n\n" + task.prompt).strip() if task.context else task.prompt
             t0 = time.monotonic()
-            r = proc.run([*args, "-"], input=prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd)
+            r = proc.run([*args, "-"], input=prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd, env=env)
             secs = time.monotonic() - t0
             text = last.read_text(encoding="utf-8", errors="replace").strip() if last.exists() else ""
         bad = _fail(r.code, f"{r.out}\n{r.err}", secs, minutes)
@@ -100,14 +121,21 @@ class ClaudeCode(Brain):
             return Result(Verdict.ERROR, detail="Claude Code isn't installed")
         base = list(self.exe) if isinstance(self.exe, list) else [self.exe]
         minutes = max(1, task.timeout_s // 60)
-        args = [*base, "-p", "--output-format", "json", "--allowedTools", "Read,Grep,Glob"]
-        if task.context:
-            args += ["--append-system-prompt", task.context]
-        if self.models.get(task.effort):
-            args += ["--model", self.models[task.effort]]
-        t0 = time.monotonic()
-        r = proc.run(args, input=task.prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd)
-        secs = time.monotonic() - t0
+        with tempfile.TemporaryDirectory() as tmp:
+            args = [*base, "-p", "--output-format", "json", "--allowedTools", "Read,Grep,Glob"]
+            if task.mcp:  # this run only: Kurooto's tools, and no other MCP servers
+                cfg = Path(tmp) / "mcp.json"
+                server = {"command": task.mcp[0], "args": task.mcp[1:], "env": task.mcp_env}
+                cfg.write_text(json.dumps({"mcpServers": {"kurooto": server}}), encoding="utf-8")
+                args[-1] += ",mcp__kurooto"
+                args += ["--mcp-config", str(cfg), "--strict-mcp-config"]
+            if task.context:
+                args += ["--append-system-prompt", task.context]
+            if self.models.get(task.effort):
+                args += ["--model", self.models[task.effort]]
+            t0 = time.monotonic()
+            r = proc.run(args, input=task.prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd)
+            secs = time.monotonic() - t0
         data = None
         for line in reversed((r.out or "").strip().splitlines()):
             try:
