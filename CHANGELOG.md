@@ -1,21 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.1.4 (2026-10-20)
+Everything since 0.1.1, in one update.
+- **`kurooto` was an "unknown command"** on computers that already had uv: Kurooto now puts its folder on the PATH
+  (your user PATH on Windows, fish, bash and zsh) when it installs and whenever it starts, and the installer says
+  how to use it in the terminal you installed from.
+- **Telegram setup could wait forever** after pressing Start: the page now says why (another program using the bot,
+  a webhook, a revoked token, an expired link, no internet), offers the fix, and always shows the message to send by
+  hand. Running setup again while Telegram is on no longer swallows the Start message.
+- **"Build my profile" failed with agy**: text-only work now tells agy to answer with text only.
+- **agy and a Gemini key back each other up**: if one can't do something (refused, limit reached, signed out,
+  failed), the other answers, and a line at the end says which. Without a Gemini key, the message says what to do.
+- Long requests reach agy through a file, so profile builds work on Windows too.
 - About you: the profile is editable right after **Build my profile**, on the setup page, with a preview of the
   In-brief part that goes along with every AI request; saving keeps the previous version. Building again asks first if
   you've edited it, and never replaces an edit made while it was building. `/aboutme` shows the In-brief part.
-
-## 0.1.3 (2026-10-20)
-- Telegram setup: if pressing Start doesn't connect, the page now says why (another program using the bot, a
-  webhook, a revoked token, an expired link, no internet) and offers the fix, and it always shows the message to send
-  by hand. Running setup again while Telegram is on no longer swallows the Start message.
-
-## 0.1.2 (2026-10-20)
-- "Build my profile" and other text-only work no longer fail with agy: it's told to answer with text only.
-- If agy can't do something unattended (or fails), a saved Gemini key answers instead, and the other way round when
-  you've set up both. A line at the end says which AI answered.
-- Without a Gemini key, the message says exactly what to do instead of a vague refusal.
-- Long requests reach agy through a file, so profile builds work on Windows too.
 - The setup page recommends the Gemini key first (★); agy is second, with a plain note about it.
 
 ## 0.1.1 (2026-10-20)
