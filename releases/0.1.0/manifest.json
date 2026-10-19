@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.1.0",
+  "notes": "The first release.",
+  "created": 1792433709.089795,
+  "files": {
+   "kurooto-0.1.0.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.1.0/kurooto-0.1.0.tar.gz",
+    "sha256": "5e3acd7335d2734afb2f1c068d0772c6a42dc3de770b5d457166305a4b354a07",
+    "size": 471598
+   }
+  }
+ },
+ "sig": "u0m34w5q12nkD1o9acS5WjNV9GIBFPxxpmFiYjEXqG935jyP6/0a2jH/zyatZKwRdq38+uBncsmI8dNnrLB8AA=="
+}
