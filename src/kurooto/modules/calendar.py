@@ -2,7 +2,9 @@
 "Secret address in iCal format"; Outlook and Apple Calendar have one too). Read-only; nothing is ever changed there.
 
 What you get: /today and /week, "what's on tomorrow?", today's events in calls and check-ins, no calls during an
-event (on by default), and optionally a reminder a few minutes before each event. Refreshed every 15 minutes.
+event (on by default; or only during events with #nocall in the title or description, or in a calendar whose name
+contains "no call"), focus time during events with #focus (calls held, messages wait until it ends), and optionally a
+reminder a few minutes before each event. Refreshed every 15 minutes.
 The link is kept in your keychain: anyone with it can read that calendar, so don't share it.
 """
 
@@ -21,7 +23,16 @@ from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 
-register_defaults("calendar", {"refresh": "every 15m", "no_calls_in_events": True, "remind_min": 0, "days": 14})
+register_defaults(
+    "calendar",
+    {
+        "refresh": "every 15m",
+        "no_calls_in_events": True,
+        "nocall_events": "all",  # "all": every timed event holds calls; "tagged": #nocall ones, "no call" calendars
+        "remind_min": 0,
+        "days": 14,
+    },
+)
 SECRET = "calendar.ics"  # noqa: S105 (the secret's name): a JSON list of iCal links
 
 
@@ -59,13 +70,16 @@ def parse_dt(value: str, params: dict, local: dt.tzinfo) -> tuple[dt.datetime, b
 
 
 def parse_ics(text: str, local: dt.tzinfo) -> list[dict]:
-    """VEVENTs as dicts: uid, title, location, start, end (aware), all_day, rrule, exdates, recurrence_id, cancelled."""
-    events, cur, depth = [], None, 0
+    """VEVENTs as dicts: uid, title, location, description, calendar (its name), start, end (aware), all_day, rrule,
+    exdates, recurrence_id, cancelled."""
+    events, cur, depth, calname = [], None, 0, ""
     for ln in unfold(text):
         if ln == "BEGIN:VEVENT":
-            cur, depth = {"exdates": []}, 0
+            cur, depth = {"exdates": [], "calendar": calname}, 0
             continue
         if cur is None:
+            if ln.upper().startswith("X-WR-CALNAME"):
+                calname = unescape(ln.partition(":")[2])[:200]
             continue
         if ln.startswith("BEGIN:"):  # VALARM inside an event
             depth += 1
@@ -94,6 +108,8 @@ def parse_ics(text: str, local: dt.tzinfo) -> list[dict]:
                 cur["title"] = unescape(value)[:200]
             elif name == "LOCATION":
                 cur["location"] = unescape(value)[:200]
+            elif name == "DESCRIPTION":
+                cur["description"] = unescape(value)[:2000]
             elif name == "STATUS":
                 cur["cancelled"] = value.upper() == "CANCELLED"
             elif name == "DTSTART":
@@ -232,12 +248,14 @@ class Calendar(Module):
                 "end": e["end"].isoformat(),
                 "all_day": bool(e.get("all_day")),
                 "location": e.get("location", ""),
+                **self._tags(e),
             }
             for e in found
         ]
         with Lock(self.app.paths.state, "calendar"):
             jsave(self.file, {"events": rows, "at": self.now().isoformat()})
         self._plan_reminders(rows)
+        self._plan_focus_ends(rows)
         self.app.events.emit("calendar_synced", events=len(rows))
         return len(rows)
 
@@ -258,22 +276,69 @@ class Calendar(Module):
     def start(self):
         self.every("refresh", self.setting("refresh") or "every 15m", self.refresh)
         self.action("remind", self._remind)
+        self.action("focus_end", self._focus_end)
         self.app.availability.blockers["calendar:event"] = self._block
+        self.app.availability.blockers["focus:calendar"] = self._focus
         if not self.file.exists():
             self.refresh()
 
     def stop(self):
         super().stop()
         self.app.availability.blockers.pop("calendar:event", None)
+        self.app.availability.blockers.pop("focus:calendar", None)
+
+    def _tags(self, e: dict) -> dict:
+        """What an event's title, description and calendar say about calls: {"nocall": True} and/or {"focus": True}.
+        Only these flags are kept, never the description."""
+        av = self.app.settings.get("availability") or {}
+        text = f"{e.get('title', '')} {e.get('description', '')}".lower()
+        kw, fk = (av.get("nocall_keyword") or "").lower(), (av.get("focus_keyword") or "").lower()
+        cal = (av.get("nocall_calendar") or "").lower()
+        out = {}
+        if (kw and kw in text) or (cal and cal in str(e.get("calendar", "")).lower()):
+            out["nocall"] = True
+        if fk and fk in text:
+            out["focus"] = True
+        return out
 
     def _block(self, t: dt.datetime):
         if not self.setting("no_calls_in_events"):
             return None
+        tagged_only = self.setting("nocall_events") == "tagged"
         t = t if t.tzinfo else t.astimezone()
         for e in self.events(t, t + dt.timedelta(seconds=1)):
-            if not e["all_day"]:  # naive local time, like the rest of availability
-                return f"in {e['title']}", e["end_dt"].astimezone().replace(tzinfo=None)
+            until = e["end_dt"].astimezone().replace(tzinfo=None)  # naive local time, like the rest of availability
+            if e.get("nocall"):  # all-day ones too: "Exam day #nocall"
+                return f"no-call event: {e['title']}", until
+            if not tagged_only and not e["all_day"]:
+                return f"in {e['title']}", until
         return None
+
+    def _focus(self, t: dt.datetime):
+        """A #focus event is focus time while it runs (the "focus:" blocker: calls held, messages wait)."""
+        t = t if t.tzinfo else t.astimezone()
+        ends = [e["end_dt"] for e in self.events(t, t + dt.timedelta(seconds=1)) if e.get("focus")]
+        return ("focus", max(ends).astimezone().replace(tzinfo=None)) if ends else None
+
+    def _plan_focus_ends(self, rows: list[dict]) -> None:
+        """When a #focus event ends, what waited for you is delivered (unless focus goes on)."""
+        self.app.scheduler.cancel_prefix("calendar:focus:")
+        for e in rows:
+            end = dt.datetime.fromisoformat(e["end"])
+            if e.get("focus") and end > self.now():
+                self.app.scheduler.at(
+                    end + dt.timedelta(seconds=30),
+                    "calendar.focus_end",
+                    key=f"calendar:focus:{e['end']}",
+                    module=self.id,
+                    grace_s=12 * 3600,
+                )
+
+    def _focus_end(self, p: dict) -> None:
+        if not self.app.availability.focus_until():
+            n = self.app.notifier.flush_queue()
+            if n:
+                self.app.events.emit("focus_ended", via="calendar", delivered=n)
 
     def _plan_reminders(self, rows: list[dict]) -> None:
         mins = self.setting("remind_min") or 0

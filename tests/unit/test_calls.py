@@ -109,6 +109,7 @@ def test_tools_follow_the_features_you_have_on(calls):
 
 def test_ringing_without_a_connected_line_falls_back_to_telegram(calls):
     c = calls.app.modules["calls"]
+    calls.app.settings.set("calls.realert_min", [])  # one ring only (repeats: test_rhythm.py)
     since = c.ring("Stand-up in 5")
     last = calls.fake.texts()[-1]
     assert "isn't connected" in last and "Stand-up in 5" in last
@@ -123,7 +124,7 @@ def test_call_me_intent_and_commands(calls):
     out = calls.say("call me in 20 minutes about the laundry")
     assert out.startswith("I'll call you") and "the laundry" in out
     job = calls.app.scheduler.jobs("calls:ring:")[0]
-    assert job.payload["reason"] == "the laundry" and job.respect == "call_block"
+    assert job.payload["reason"] == "the laundry" and job.respect == "none"  # blocks are checked when it's due
     assert "isn't set up" not in calls.say("/call")
     link = [b for m, p in calls.fake.sent if m == "sendMessage" for b in [p]][-1]
     assert "#t1." in json.dumps(link)

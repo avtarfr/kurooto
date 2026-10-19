@@ -28,8 +28,35 @@ NEG = re.compile(r"\b(?:don'?t|do not|never|no need to|stop)\b", re.I)
 THANKS = re.compile(r"[\s,.!]*\b(?:thanks|thank you|thx|ty|pls|please)\b[\s.!]*$", re.I)
 
 
+WEEKDAY = re.compile(r"\b(mon|tues|wednes|thurs|fri|satur|sun)day\b", re.I)
+WEEKDAYS = ["mon", "tues", "wednes", "thurs", "fri", "satur", "sun"]
+
+
 def tidy(text: str) -> str:
     return THANKS.sub("", text.strip())
+
+
+def a_day(text: str, base: dt.datetime | None = None) -> dt.date | None:
+    """The day a request is about: today unless it names another. "tomorrow", "day after tomorrow" or one weekday
+    ("skip Friday's check-in": the coming Friday, today if it's Friday) give that date; a day it can't pin down
+    ("yesterday", "next week", "on the 25th", "next Friday") gives None, so the request goes to the AI instead."""
+    base = base or now()
+    low = text.lower()
+    if re.search(r"\bday after tomorrow\b", low):
+        return base.date() + dt.timedelta(days=2)
+    if OTHER_DAY.search(text):
+        days = {m.lower() for m in WEEKDAY.findall(text)}
+        if len(days) != 1 or OTHER_DAY.search(WEEKDAY.sub("", text)) or re.search(r"\b(?:next|last|tomorrow)\b", low):
+            return None
+        return base.date() + dt.timedelta(days=(WEEKDAYS.index(days.pop()) - base.weekday()) % 7)
+    if re.search(r"\b(?:tomorrow|tmrw|tmr)\b", low):
+        return base.date() + dt.timedelta(days=1)
+    return base.date()
+
+
+def another_day(text: str, base: dt.datetime | None = None) -> bool:
+    """True when a request is about a day other than today (or a day that can't be pinned down)."""
+    return a_day(text, base) != (base or now()).date()
 
 
 def too_complex(text: str) -> bool:

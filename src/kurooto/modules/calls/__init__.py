@@ -38,6 +38,7 @@ register_defaults(
         "ntfy_server": "https://ntfy.sh",
         "ring_s": 60,  # how long a call rings before it counts as missed
         "later_min": 30,  # "Later" on a ringing call calls back after this long
+        "realert_min": [3, 6],  # a call you didn't answer rings again this many minutes after the first; [] = once
         "notes_repo": "",  # owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off
     },
 )
@@ -91,6 +92,7 @@ class Calls(Module):
         self.action("ring", self._scheduled_ring)
         self.action("missed", self._missed)
         self.action("task_check", self._task_check)
+        self.action("realert", self._realert)
         self.every("line_update", "daily 05:10", self._line_update)
         self.app.jobs.then_actions["calls.task_done"] = self._task_done
         self.app.notifier.register("app", lambda m: None)  # calls ring the phone; Telegram stays silent for them
@@ -123,7 +125,34 @@ class Calls(Module):
     def _scheduled_ring(self, p: dict) -> None:
         if (p.get("late_s") or p.get("missed")) and self.worker_url():
             return  # this computer was asleep when it was due, so the call line has placed it already
+        if not p.get("alarm") and self._held_call(p):
+            return
         self.ring(p.get("reason", ""), alarm=bool(p.get("alarm")), key=p.get("key", ""))
+
+    def place(self, reason: str, key: str = "", alarm: bool = False, force: bool = False) -> str:
+        """Call now; or, if a class, a hold, focus or the night blocks calls (and it isn't an alarm or forced), hold
+        the call, place it by itself when the block ends, and tell you so. key "<module>:..." makes that module hear
+        how the call went (call_outcome, call_transcript)."""
+        if not alarm and not force:
+            held = self._held_call({"reason": reason, "key": key})
+            if held:
+                return held
+        self.ring(reason, alarm=alarm, key=key)
+        return f"Calling you now: {reason}"
+
+    def _held_call(self, p: dict) -> str | None:
+        """If calls are blocked now: schedule this one for when they're allowed, say so, and return what was said."""
+        av = self.app.availability
+        why, _ = av.call_block()
+        if not why:
+            return None
+        when, _ = av.next_callable()
+        self.schedule(when, p.get("reason", ""), key=p.get("key") or None)
+        at = f"{when:%H:%M}" if when.date() == now().date() else f"{when:%a %H:%M}"
+        text = f"Held a call until {at} ({why}): {p.get('reason', '')}"
+        self.app.notify(text, kind="info")
+        self.app.events.emit("call_held", reason=why, until=when.isoformat())
+        return text
 
     async def background(self, stop):
         await self.connector.run(stop)
@@ -293,7 +322,7 @@ class Calls(Module):
             key=f"calls:ring:{key}",
             module=self.id,
             grace_s=900,
-            respect="none" if alarm else "call_block",
+            respect="none",  # a no-call time is checked when it's due, so you can be told the call is held
         )
         self.connector.poke()
         self.app.events.emit("call_scheduled", at=at.isoformat())
@@ -368,6 +397,11 @@ class Calls(Module):
             return
         self._ring_state(p["since"], "missed")
         self.connector.admin_later("stop-ring", since=p["since"])
+        if not self._realert_later(p["since"], r):
+            self._missed_for_good(p["since"], r)
+
+    def _missed_for_good(self, since: str, r: dict) -> None:
+        p = {"since": since}
         self.app.notify(
             f"Missed call: {r['reason']}",
             kind="info",
@@ -375,6 +409,45 @@ class Calls(Module):
         )
         self.app.events.emit("call_missed", key=r.get("key", ""))
         self._tell_owner_module(r, "missed")
+
+    def _chain(self, first: str) -> list[dict]:
+        rings = jload(self.dir / "rings.json", {}) or {}
+        return [r for s, r in rings.items() if s == first or r.get("first") == first]
+
+    def _realert_later(self, since: str, r: dict) -> bool:
+        """An unanswered call (not the alarm, which repeats by itself) rings again at +3 and +6 minutes (realert_min)
+        unless calls are blocked by then. False when there are no more repeats: it's a missed call."""
+        steps = [] if r.get("alarm") else list(self.setting("realert_min") or [])
+        n, first = int(r.get("again", 0)), r.get("first") or since
+        if n >= len(steps) or self.app.availability.call_block()[0]:
+            return False
+        try:
+            at = max(float(r.get("first_at") or r["at"]) + float(steps[n]) * 60, time.time() + 5)
+        except (TypeError, ValueError):
+            return False
+        self.app.scheduler.at(at, "calls.realert", {"since": since}, key=f"calls:realert:{first}", module=self.id)
+        return True
+
+    def _realert(self, p: dict) -> None:
+        since = p.get("since", "")
+        r = (jload(self.dir / "rings.json", {}) or {}).get(since)
+        if not r or r["state"] != "missed":
+            return
+        first = r.get("first") or since
+        if any(x.get("state") not in ("missed", "ringing", "realerted") for x in self._chain(first)):
+            return  # answered or put off from another of its rings
+        if self.app.availability.call_block()[0]:
+            self._missed_for_good(since, r)
+            return
+        new = self.ring(r["reason"], alarm=False, key=r.get("key", ""))
+        with Lock(self.app.paths.state, "calls-rings"):
+            rings = jload(self.dir / "rings.json", {}) or {}
+            if new in rings:
+                rings[new].update(again=int(r.get("again", 0)) + 1, first=first, first_at=r.get("first_at") or r["at"])
+            if since in rings and since != new:
+                rings[since]["state"] = "realerted"
+            jsave(self.dir / "rings.json", rings)
+        self.app.events.emit("call_realert", n=int(r.get("again", 0)) + 1, key=r.get("key", ""))
 
     def _tell_owner_module(self, ring: dict, outcome: str) -> bool:
         """A check-in or alarm call was answered, missed or put off: its feature hears about it. True if that
@@ -406,11 +479,13 @@ class Calls(Module):
             r = self._ring_state(m.get("since", ""), "answered") if m.get("since") else None
             if r:
                 self.app.scheduler.cancel(f"calls:missed:{m['since']}")
+                self.app.scheduler.cancel(f"calls:realert:{r.get('first') or m['since']}")
                 self._tell_owner_module(r, "answered")
         elif name == "ring_reply":
             since, act = m.get("since", ""), m.get("action", "")
             r = self._ring_state(since, act)
             self.app.scheduler.cancel(f"calls:missed:{since}")
+            self.app.scheduler.cancel(f"calls:realert:{(r or {}).get('first') or since}")
             if r and not self._tell_owner_module(r, act) and act == "later":
                 self._button(since, "later")
             self.app.events.emit("call_" + (act or "reply"))

@@ -1,8 +1,13 @@
 """Subjects: the courses or topics you work on, with short names ("LA", "stats"), and an optional weekly timetable.
-With a timetable, Kurooto won't call you during a class you attend; tell it when you skip one.
+With a timetable, Kurooto won't call you during a class you attend; tell it when you skip one ("skipping LA
+today", "not going to stats on Friday").
 
     /subject add Linear Algebra (la, linalg)
     /class mon 09:00-09:55 la        /classes        /skip la   /attend la
+    /term ends 2026-12-04            /term exams 2026-12-07 to 2026-12-18
+
+Holidays, exam periods and the days after the term's last day have no classes: no after-class questions, and the
+timetable doesn't hold calls then.
 """
 
 from __future__ import annotations
@@ -15,8 +20,20 @@ from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
+from kurooto.modules.text import a_day
 
-register_defaults("subjects", {"list": [], "timetable": [], "holidays": [], "no_calls_in_class": True, "margin_min": 5})
+register_defaults(
+    "subjects",
+    {
+        "list": [],
+        "timetable": [],
+        "holidays": [],  # ["2026-12-25", ...]: no classes those days
+        "exam_periods": [],  # [["2026-12-07", "2026-12-18"], ...]: no classes then (exams instead)
+        "term_ends": "",  # "2026-12-04": the last day of classes; none after it
+        "no_calls_in_class": True,
+        "margin_min": 5,
+    },
+)
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 
@@ -79,9 +96,23 @@ class Subjects(Module):
         jsave(self.app.paths.state / "subjects" / f"skip-{day.isoformat()}.json", sorted(cur))
         return cur
 
+    def no_classes(self, day: dt.date | None = None) -> str | None:
+        """Why there are no classes on a day at all: "holiday", "exams" (an exam period), "term over" (after the
+        term's last day), or None on a normal day."""
+        d = (day or now().date()).isoformat()
+        if d in (self.setting("holidays") or []):
+            return "holiday"
+        for period in self.setting("exam_periods") or []:
+            if isinstance(period, (list, tuple)) and len(period) == 2 and str(period[0]) <= d <= str(period[1]):
+                return "exams"
+        end = str(self.setting("term_ends") or "")
+        if end and d > end:
+            return "term over"
+        return None
+
     def classes_on(self, day: dt.date | None = None, include_skipped: bool = False) -> list[dict]:
         day = day or now().date()
-        if day.isoformat() in (self.setting("holidays") or []):
+        if self.no_classes(day):
             return []
         skip = set() if include_skipped else self.skipped(day)
         out = []
@@ -110,7 +141,33 @@ class Subjects(Module):
             Command("classes", "your timetable (today: /classes today)", self._classes),
             Command("skip", "you're not attending a class today: /skip la", lambda m, a: self._skip(a, True)),
             Command("attend", "undo /skip", lambda m, a: self._skip(a, False)),
+            Command("term", "the term's last day and exam periods: /term ends 2026-12-04", self._term),
         ]
+
+    def _term(self, msg: Incoming, arg: str) -> str:
+        a = arg.strip().lower()
+        dates = re.findall(r"\d{4}-\d{2}-\d{2}", a)
+        try:
+            for d in dates:
+                dt.date.fromisoformat(d)
+        except ValueError:
+            return "Dates look like 2026-12-04."
+        if a.startswith("ends") and len(dates) == 1:
+            self.app.settings.set("subjects.term_ends", dates[0])
+            return f"Classes end on {dates[0]}; no after-class questions after that."
+        if a.startswith("exams") and len(dates) == 2:
+            periods = [p for p in self.setting("exam_periods") or [] if list(p) != sorted(dates)]
+            self.app.settings.set("subjects.exam_periods", [*periods, sorted(dates)])
+            return f"Exams from {min(dates)} to {max(dates)}: no classes then."
+        if a in ("clear", "reset"):
+            self.app.settings.set("subjects.term_ends", "")
+            self.app.settings.set("subjects.exam_periods", [])
+            return "Term dates cleared."
+        if a:
+            return "Usage: /term ends 2026-12-04, /term exams 2026-12-07 to 2026-12-18, /term clear"
+        end = self.setting("term_ends") or "not set"
+        exams = ", ".join(f"{p[0]} to {p[1]}" for p in self.setting("exam_periods") or []) or "none"
+        return f"Last day of classes: {end}. Exam periods: {exams}."
 
     def _subject(self, msg: Incoming, arg: str) -> str:
         m = re.match(r"(?:add\s+)?(?P<name>[^()]+?)\s*(?:\((?P<aliases>[^)]*)\))?\s*$", arg)
@@ -162,25 +219,36 @@ class Subjects(Module):
             "No timetable yet. /class mon 09:00-09:55 la"
         )
 
-    def _skip(self, arg: str, add: bool) -> str:
+    def _skip(self, arg: str, add: bool, day: dt.date | None = None) -> str:
         slugs = [s for s in (self.resolve(x) for x in re.split(r"[,\s]+and\s+|,\s*", arg) if x.strip()) if s]
         if not slugs:
             slugs = self.find_in(arg)
         if not slugs:
             return "Which subject? e.g. /skip la"
-        cur = self.set_skip(slugs, add=add)
+        cur = self.set_skip(slugs, add=add, day=day)
         self.app.events.emit("class_skip" if add else "class_attend", subjects=slugs)
         names = ", ".join(self.name_of(s) for s in sorted(cur)) or "nothing"
+        if day and day != now().date():
+            return f"On {day:%a %d %b} you're skipping: {names}."
         return f"Today you're skipping: {names}. Calls are allowed during skipped classes."
 
     def intents(self):
         def match(text: str):
             if not re.search(r"\b(skip(?:ping)?|not (?:going|attending)|missing|bunking)\b", text, re.I):
                 return None
-            found = self.find_in(text)
-            return {"slugs": found} if len(found) == 1 else None
+            found, day = self.find_in(text), a_day(text)
+            if day is None:  # a day it can't pin down: the AI works it out
+                return None
+            return {"slugs": found, "day": day} if len(found) == 1 else None
 
-        return [Intent("skip_class", "skipping a class today", match, lambda m, s: self._skip(s["slugs"][0], True))]
+        return [
+            Intent(
+                "skip_class",
+                "skipping a class (today, tomorrow or on a weekday)",
+                match,
+                lambda m, s: self._skip(s["slugs"][0], True, s["day"]),
+            )
+        ]
 
     # -------------------------------------------------------------------------------------- on calls
     def call_brief(self) -> dict:
