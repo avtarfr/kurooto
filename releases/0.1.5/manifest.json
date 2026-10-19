@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.1.5",
+  "notes": "Fixes: the kurooto command works after install; Telegram setup says why Start didn't connect; agy no longer fails on Build my profile, and agy and a Gemini key back each other up; edit your profile after building it; kurooto stop stays stopped.",
+  "created": 1792447087.413779,
+  "files": {
+   "kurooto-0.1.5.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.1.5/kurooto-0.1.5.tar.gz",
+    "sha256": "76fd09ae496b7a28ced54c1dacf5fafc5d2c7d7756550ab2cd2f9d11019df336",
+    "size": 458987
+   }
+  }
+ },
+ "sig": "WoBuYHY+8Ym5tkP5y27LjGyySMkgjWfnzx2nmS9ucQjSPMNaVmLyOYvH9whYPzhX+ezUYhZIVr90vIN40xMbCQ=="
+}
