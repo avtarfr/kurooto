@@ -116,6 +116,9 @@ def test_nothing_new_is_an_answer(app):
     r = app.ask.answer(qid, "nothing new", "telegram")
     assert r["ok"] and r["answer"] == NOTHING and got == [(NOTHING, True)]
     assert events(app, "question_answered")[-1]["nothing"] is True
+    b = app.ask.ask("After class: anything?", choices=["Nothing new"], hook="t.h", title="After class")
+    app.ask.button(b, "0")
+    assert got[-1] == (NOTHING, True)
 
 
 def test_expiry_sweep_and_no_hook(app, env):
@@ -201,3 +204,47 @@ def test_retract_called_when_a_channel_offers_it(app):
     app.ask.answer(qid, "later", "app")
     app.ask.answer(qid, "done", "app")
     assert seen == [("ask", qid), ("ask", qid)]
+
+
+# -------------------------------------------------------------------------------------------- calls
+@pytest.fixture
+def calls(env):
+    from kurooto.modules.calls import deploy
+
+    env.app.settings.set("notify.desktop", False)
+    env.app.secrets.set("gemini.api_key", "k")
+    deploy.ensure_secrets(env.app)
+    env.app.settings.set("calls.worker", {"url": "https://kurooto-abc.your-subdomain.workers.dev"})
+    env.app.settings.set("availability.night.enabled", False)
+    env.on("calls")
+    return env.app.modules["calls"]
+
+
+def test_calls_brief_tools_and_approvals(calls):
+    app = calls.app
+    names = {t.name for t in calls.tools()}
+    assert {"answer_question", "answer_approval"} <= names
+    from kurooto.core.tools import agent_tools
+
+    assert not {"answer_question", "answer_approval"} & {t.name for t in agent_tools(app)}  # never for an AI
+    assert "answer_question" in calls.config_template()["systemInstruction"]
+    assert "open_questions" not in calls.pending()
+    q = app.ask.ask("Which chapter?", choices=["3", "4"])
+    a = app.ask.ask("Send the weekly summary to your notes repo?", kind="approval")
+    brief = calls.run_tool("pending_items", {})["open_questions"]
+    assert [x["id"] for x in brief] == [q, a] and brief[0]["choices"] == ["3", "4"]
+    code, out = calls.handle_request("GET", "/tasks", b"")
+    assert out["approvals"] == [{"id": a, "question": "Send the weekly summary to your notes repo?"}]
+    assert calls.handle_request("GET", "/tasks", b"")[1]["approvals"] == []  # told once
+    assert "use answer_question" in calls.run_tool("answer_approval", {"id": q, "decision": "approve"})
+    assert calls.run_tool("answer_question", {"id": q, "answer": "4"}) == "Got it: 4"
+    assert calls.run_tool("answer_approval", {"id": a, "decision": "deny"}) == "Deny."
+    assert app.ask.get(a)["via"] == "call" and app.ask.pending() == []
+    assert "open_questions" not in calls.pending()
+
+
+def test_calls_brief_is_in_the_offline_state(calls):
+    calls.app.ask.ask("What did you cover today?")
+    st = calls.state_message()
+    assert st["brief"]["pending_items"]["open_questions"][0]["question"] == "What did you cover today?"
+    assert "answer_question" in st["offline"]["queue"]

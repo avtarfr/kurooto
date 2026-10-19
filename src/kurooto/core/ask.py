@@ -113,6 +113,7 @@ class Ask:
             "hook": hook or "",
             "hook_payload": hook_payload or {},
             "created": now().isoformat(),
+            "ts": time.time(),  # orders questions asked within the same second
             "expires": self._expiry(expires).isoformat(),
             "status": "open",
             "answer": None,
@@ -195,7 +196,7 @@ class Ask:
             q = jload(f)
             if isinstance(q, dict) and q.get("id"):
                 out.append(q)
-        return sorted(out, key=lambda q: q.get("created") or "")
+        return sorted(out, key=lambda q: (q.get("created") or "", q.get("ts") or 0))
 
     def pending(self, kind: str | None = None, source: str | None = None) -> list[dict]:
         """Open questions (including ones kept for later), oldest first. Overdue ones are expired on the way."""
@@ -268,7 +269,7 @@ class Ask:
                     via=via,
                     answered=now().isoformat(),
                     files=[str(f) for f in (files or [])],
-                    nothing=ans == NOTHING and NOTHING not in q["choices"],
+                    nothing=ans == NOTHING,
                 )
                 self._save(q)
         if later:
