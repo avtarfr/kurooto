@@ -9,7 +9,12 @@ New module classes to register in `modules/catalog.py`, after `Google` (each `re
 | `ReplyDrafts` | `reply_drafts` (requires `google`, `mail_digest`) | `src/kurooto/modules/google_mail.py` |
 | `AgentPlan` | `agent_plan` | `src/kurooto/modules/google_plan.py` |
 
+Also add the four ids to `MODULE_ORDER` in `web/api.py`, right after `"google"` (test_dashboard checks both lists
+match): `"classroom_notes", "mail_digest", "reply_drafts", "agent_plan"`. Checked locally: with both registered, the
+full suite passes.
+
 Shipped skills: `src/kurooto/data/skills/classroom-digest/SKILL.md`, `src/kurooto/data/skills/mail-digest/SKILL.md`.
+`/sync all` (home's syncall) calls `Google.sync_now()`, which runs Classroom, Classroom → notes and the mail digest.
 
 ---
 
@@ -53,7 +58,8 @@ added too. Files are kept in Kurooto's own data folder, not your notes: Word and
 Slides and Sheets are read as text; PDFs are read when `pdftotext` (Poppler) is installed, or by an AI that can open
 files (agy). Videos and images are linked, not downloaded. The first check goes back 60 days.
 
-- `/classnotes` checks now; `/classnotes courses` lists your courses and the folder each one goes to.
+- `/classnotes` checks now (so does `/sync all`); `/classnotes courses` lists your courses and the folder each one
+  goes to.
 - `/classnotes skip chess` leaves out courses with "chess" in their name; `/classnotes unskip chess` undoes it.
 - Posts about a topic on your not-interested list (`/ignore`) are only counted.
 - Settings: `classroom_notes.at` (when), `classroom_notes.folders` (a course's exact name → the folder you want),
@@ -75,7 +81,7 @@ linked from that day's journal). Deadlines it finds go into Deadlines; course ne
 - Promotions, Social and topics on your not-interested list are only counted.
 - A personal Gmail account reads nothing until you choose something; the first digest tells you how.
 
-`/mail` checks now. Settings: `mail_digest.at`, `mail_digest.read`, `mail_digest.own_domain`,
+`/mail` checks now (so does `/sync all`). Settings: `mail_digest.at`, `mail_digest.read`, `mail_digest.own_domain`,
 `mail_digest.save_note` (the copy in your notes), `mail_digest.first_days` (how far back the first check looks: 3).
 *Leaves:* the text of the mail you chose goes to the AI you picked; for the rest, only counts. Nothing is ever sent,
 deleted, archived or marked read. *Turn off:* Features → Mail digest → Turn off.
