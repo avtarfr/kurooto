@@ -188,6 +188,8 @@ class Api:
             return 200, self._phone()
         if path == "power":
             return 200, self._power()
+        if path == "aboutyou/profile":  # the profile, for the editor (setup page and dashboard)
+            return 200, self.app.about.view()
         if path == "aboutyou":
             from kurooto.core.aboutyou import prompt
 
@@ -375,9 +377,25 @@ class Api:
                 return 200, {"ok": False, "error": str(e)}
         if path == "aboutyou/remove":
             return 200, {"ok": self.app.about.remove(str(b.get("id", ""))), **self.app.about.status()}
-        if path == "aboutyou/merge":
+        if path in ("aboutyou/profile", "aboutyou/preview"):  # save your edit / what its In brief would be
+            from kurooto.core.aboutyou import brief_of, brief_warning
+
+            text = b.get("text")
+            if not isinstance(text, str):
+                return 400, {"error": "text is missing"}
+            if path == "aboutyou/preview":
+                return 200, {"brief": brief_of(text), "warning": brief_warning(text)}
             try:
-                self.app.about.merge()
+                return 200, self.app.about.save_text(text)
+            except ValueError as e:
+                return 200, {"ok": False, "error": str(e)}
+        if path == "aboutyou/merge":
+            from kurooto.core.aboutyou import Edited
+
+            try:
+                self.app.about.merge(replace=bool(b.get("replace")))
+            except Edited as e:  # changed since it was built: the page asks, then sends replace
+                return 200, {"ok": False, "edited": True, "error": str(e)}
             except ValueError as e:
                 return 200, {"ok": False, "error": str(e)}
             return 200, {

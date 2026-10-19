@@ -225,6 +225,9 @@ class App:
             if name in ("start", "help"):
                 msg.reply(self.help())
                 return
+            if name == "aboutme":  # your profile's In-brief part, and where to edit it (core/aboutyou.py)
+                msg.reply(self.about.for_chat())
+                return
             if name in ("q", "questions"):  # open questions, with their buttons (core/ask.py)
                 out = self.ask.command(msg, arg.strip())
                 if out:
@@ -301,6 +304,7 @@ class App:
         for m in self.enabled():
             lines += m.help()
         lines.append("/q  open questions I asked you (reply to one to answer it)")
+        lines.append("/aboutme  what I know about you (your profile's In-brief part), and where to edit it")
         if not self.is_on("notes_sync"):
             lines.append("/sync  sync everything that's on (Classroom, calendar, research, notes brain)")
         if not self.is_on("chat"):

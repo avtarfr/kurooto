@@ -194,7 +194,7 @@ function renderBrainPanel(which) {
 
 // ----------------------------------------------------------------------------------------- about you
 // Prompts to run in their other AI accounts, the reports they bring back, and the profile built from them.
-let ayTimer = null;
+let ayTimer = null, ayEd = null;
 async function renderAbout() {
   const src = $("#ay-source").value.trim();
   const a = await api(`aboutyou?source=${encodeURIComponent(src)}`);
@@ -217,16 +217,22 @@ async function renderAbout() {
     el("button", { onclick: async () => { await api("aboutyou/remove", { id: r.id }); renderAbout(); } }, "remove"))));
   const p = a.profile, panel = $("#ay-panel");
   const build = el("button", { class: "primary", disabled: !a.reports.length || p.building, onclick: async () => {
-    const r = await api("aboutyou/merge", {});
-    $("#ay-msg").textContent = r.ok ? r.message : r.error; $("#ay-msg").className = r.ok ? "ok" : "bad";
+    if (ayEd && ayEd.dirty && !confirm("Your changes in the editor aren't saved. Build the profile anyway? (Save them first to keep them.)")) return;
+    let r = await api("aboutyou/merge", {});
+    if (r.edited && confirm(r.error)) r = await api("aboutyou/merge", { replace: true }); // changed since it was built
+    $("#ay-msg").textContent = r.ok ? r.message : r.edited ? "Not built again: your changes stay." : r.error;
+    $("#ay-msg").className = r.ok ? "ok" : "bad";
     renderAbout();
   } }, p.exists ? "Build my profile again" : "Build my profile");
   panel.replaceChildren(el("div", { class: "box" },
     el("p", {}, a.reports.length ? `${a.reports.length} report(s) so far.` : "No reports yet."),
     build,
     p.building ? el("p", {}, "Building your profile… (this page updates by itself)") : null,
-    p.exists ? el("p", { class: "ok" }, `✓ Your profile: ${p.path} (updated ${p.updated}). Kurooto reads its "In brief" part before every request:`) : null,
-    p.exists && p.brief ? el("pre", { class: "prompt" }, p.brief) : null));
+    p.exists ? el("p", { class: "ok" }, `✓ Your profile: ${p.path} (updated ${p.updated}${p.edited ? ", with your changes" : ""}). Read it and fix anything that's off, right here:`) : null));
+  // the editor (aboutme.js) lives outside the panel, so this page refreshing itself never loses what you're typing
+  if (!p.exists) { $("#ay-editor").replaceChildren(); ayEd = null; }
+  else if (!ayEd) ayEd = aboutEditor($("#ay-editor"), api);
+  else if (!ayEd.dirty) ayEd.load();
   clearTimeout(ayTimer);
   if (p.building && STEPS[step] === "about") ayTimer = setTimeout(renderAbout, 5000);
 }

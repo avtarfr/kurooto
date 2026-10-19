@@ -58,6 +58,10 @@ Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) h
 - Your own skills (`/newskill`, `/skills copy`), routines (`/every monday 9:00 /journal plan my week`) and revision
   packs as PDF (`/pack`, with Tectonic, which Kurooto can install for you).
 - Quick notes and prompts: `/note`, `kurooto note`, `/prompts`, `/prompt`.
+- About you: the profile is editable right after **Build my profile** (setup page, and a new **About you** tab in the
+  dashboard), with a preview of the In-brief part that goes along with every AI request; saving keeps the previous
+  version. Building again asks first if you've edited it, and never replaces an edit made while it was building.
+  `/aboutme` shows the In-brief part.
 - Remember: `/remember`, "remember that ...", and on calls; kept in `about-me/how-to-help-me.md`, which you edit and
   which wins. Health, money and passwords are refused.
 - Nightly look back: reads your answers, check-ins, call transcripts and journal; suggests settings, how-to-help-me
