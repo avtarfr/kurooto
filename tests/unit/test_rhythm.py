@@ -343,6 +343,7 @@ def test_answering_stops_the_repeats_and_alarms_dont_repeat_here(calls):
 
 def test_held_call_notice_and_place(calls):
     app = calls.app
+    app.settings.set("availability.night.enabled", False)  # an hour from now may be night (CI runs on UTC)
     c = app.modules["calls"]
     until = now() + dt.timedelta(hours=1)
     app.availability.set_quiet(until)

@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import sqlite3
+import stat
 import subprocess
 import sys
 import time
@@ -509,7 +510,7 @@ def test_projects_mapping_and_the_hub_note(env, tmp_path):
     assert "My plan: test the closure." in after and after.index("a line") < after.index("## Ideas")
     assert after.endswith("## Ideas\n\nmine\n")
     assert r.health()[0] is True
-    shutil.rmtree(repo)
+    shutil.rmtree(repo, onexc=lambda f, path, e: (os.chmod(path, stat.S_IWRITE), f(path)))  # git's read-only files
     assert r.health() == (False, f"repository folder missing: {repo} (/repos remove it, or put it back)")
 
 
