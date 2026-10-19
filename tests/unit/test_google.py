@@ -527,3 +527,14 @@ def test_sync_now_runs_every_google_part(mail):
     )
     env.app.secrets.set("google.tokens", "{}")
     assert env.app.modules["google"].sync_now() == (None, "not ready: sign in with Google")
+
+
+def test_digests_go_through_the_skills_feature_when_it_is_on(gx):
+    env, g, ai = gx
+    if "skills" not in env.app.modules:
+        pytest.skip("the Skills feature isn't on this branch")
+    env.on("chat", "skills")
+    jid = run_skill(env.app, "classroom-digest", "Course: X\nNotes folder: x/", "Classroom → notes: X", "x.y", {})
+    job = env.app.jobs.get(jid)
+    assert job.effort_req == "high" and job.quiet and "Notes folder: x/" in job.prompt
+    assert job.title == "Classroom → notes: X"
