@@ -82,6 +82,9 @@ Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) h
 - Email reply drafts with Send / Edit / Discard: nothing is sent without your tap.
 - Agent plan calendar: time blocks Kurooto plans with you go into a calendar of its own (`/blocks`).
 - Each Google feature asks for its own permission and turns on by itself after the sign-in.
+- Setting up Google is beginner-proof: a step-by-step guide in the manual (every screen of Google Auth Platform,
+  with links), and the setup card has a numbered summary, copy buttons for the values Google asks for, and a file
+  button for the client JSON. The site has a privacy page (made from docs/PRIVACY.md).
 
 **Your setup, kept safe**
 - Backups: a daily zip in a folder you pick (an external drive, a cloud-synced folder); `kurooto restore`, which

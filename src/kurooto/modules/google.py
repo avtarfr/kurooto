@@ -27,6 +27,7 @@ from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
+from kurooto.update.updater import PAGES
 
 register_defaults(
     "google",
@@ -76,9 +77,38 @@ PARTS = {  # an add-on's setting -> the feature (module id) that uses it
     "reply_drafts": "reply_drafts",
     "agent_calendar": "agent_plan",
 }
+# The beginner's setup, also in docs/MANUAL.md ("Google: setting up your own sign-in (step by step)")
+GUIDE = "https://github.com/avtarfr/kurooto/blob/main/docs/MANUAL.md#google-setting-up-your-own-sign-in-step-by-step"
+SITE = PAGES.rstrip("/") + "/"
+SETUP_VALUES = [  # what the Branding page asks for: the card has a copy button for each
+    ["App name", "Kurooto"],
+    ["Application home page", SITE],
+    ["Application privacy policy link", SITE + "privacy.html"],
+    ["Authorized domain", urllib.parse.urlsplit(SITE).hostname],
+]
+SETUP_STEPS = [
+    "Create a Google Cloud project (link 1).",
+    "Turn on the APIs for the Google features you want: Classroom, Gmail, Drive, Calendar (links 2).",
+    "Google Auth Platform → Get started: app name Kurooto, your email, External, your email again. Then Branding: the "
+    "home page, privacy link and authorized domain below (copy buttons), and Save.",
+    "Audience → Publish app, so it's In production (in Testing, Google signs you out every 7 days).",
+    "Clients → Create client → Desktop app → Create → Download JSON right away (Google shows the secret only once).",
+    "Paste the file below (or choose it) and press Save. Google says it hasn't verified this app: it's your own "
+    "project, which Google hasn't reviewed. Advanced → Go to Kurooto → Continue.",
+]
+SETUP_LINKS = [
+    ["1. New project", "https://console.cloud.google.com/projectcreate"],
+    ["2. Classroom API", "https://console.cloud.google.com/apis/library/classroom.googleapis.com"],
+    ["2. Gmail API", "https://console.cloud.google.com/apis/library/gmail.googleapis.com"],
+    ["2. Drive API", "https://console.cloud.google.com/apis/library/drive.googleapis.com"],
+    ["2. Calendar API", "https://console.cloud.google.com/apis/library/calendar-json.googleapis.com"],
+    ["3. Branding", "https://console.cloud.google.com/auth/branding"],
+    ["4. Audience", "https://console.cloud.google.com/auth/audience"],
+    ["5. Clients", "https://console.cloud.google.com/auth/clients"],
+]
 UNVERIFIED = (
-    'Google shows "Google hasn\'t verified this app" because the app is your own Google Cloud project: Advanced → '
-    "Go to (your project). Turn on the API it needs in that project first (link below)."
+    'Google shows "Google hasn\'t verified this app" because the app is your own Google Cloud project, which Google '
+    "hasn't reviewed: Advanced → Go to Kurooto. Turn on the API it needs in that project first (link below)."
 )
 
 
@@ -474,25 +504,19 @@ class Google(Module):
     def setup_form(self) -> dict:
         return {
             "intro": (
-                "About 10 minutes, once. 1. Make a Google Cloud project (any name). 2. Turn on the Google "
-                "Classroom API (and the Gmail API if you want drafts). 3. OAuth consent screen: External, your email "
-                'as the contact, then Publish app ("In production": otherwise Google signs you out every 7 days). '
-                "4. Credentials → Create credentials → OAuth client ID → Desktop app → Download JSON. 5. Paste the "
-                "file's contents here, then sign in. Google will say the app isn't verified: Advanced → Go to (your "
-                "project)."
+                "Kurooto signs in to Google with your own app registration: a free Google Cloud project only you own. "
+                "10 to 15 minutes, once:"
             ),
-            "links": [
-                ["1. New project", "https://console.cloud.google.com/projectcreate"],
-                ["2. Classroom API", "https://console.cloud.google.com/apis/library/classroom.googleapis.com"],
-                ["2. Gmail API", "https://console.cloud.google.com/apis/library/gmail.googleapis.com"],
-                ["3. Consent screen", "https://console.cloud.google.com/auth/overview"],
-                ["4. Credentials", "https://console.cloud.google.com/auth/clients"],
-            ],
+            "steps": SETUP_STEPS,
+            "guide": ["Full step-by-step guide", GUIDE],
+            "copy": SETUP_VALUES,
+            "links": SETUP_LINKS,
             "fields": [
                 {
                     "name": "client",
-                    "label": "OAuth client JSON",
+                    "label": "OAuth client JSON (paste it, or choose the file you downloaded)",
                     "type": "textarea",
+                    "accept": ".json,application/json",
                     "placeholder": '{"installed": {"client_id": …}}',
                 }
             ],
@@ -640,6 +664,7 @@ class GooglePart(Module):
     def setup_form(self) -> dict:
         return {
             "intro": f"{self.permission} Press Save and sign in with Google again to allow it. {UNVERIFIED}",
+            "guide": ["Full step-by-step guide", GUIDE],
             "links": [list(self.api_link)] if self.api_link else [],
             "fields": [],
         }

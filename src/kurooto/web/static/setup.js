@@ -270,11 +270,20 @@ function setupForm(m) {
     const input = f.type === "textarea" ? el("textarea", { rows: 4, placeholder: f.placeholder || "", spellcheck: "false" })
       : el("input", { type: f.type === "password" ? "password" : "text", placeholder: f.placeholder || "", autocomplete: "off", spellcheck: "false" });
     inputs[f.name] = input;
-    return el("label", {}, f.label, input);
+    // a file to read into the box (Google's client JSON): chosen here instead of pasted
+    const file = f.accept ? el("input", { type: "file", accept: f.accept, onchange: async (e) => {
+      if (e.target.files[0]) input.value = await e.target.files[0].text();
+    } }) : null;
+    return el("label", {}, f.label, input, file);
   });
+  const g = m.form;
   return el("div", { class: "box", onclick: (e) => e.stopPropagation() },
-    el("p", {}, m.form.intro),
-    el("p", { class: "note" }, ...m.form.links.flatMap(([label, href], i) => [i ? " · " : "", el("a", { href, target: "_blank", rel: "noopener" }, label)])),
+    el("p", {}, g.intro),
+    g.steps ? el("ol", { class: "form-steps" }, ...g.steps.map((s) => el("li", {}, s))) : null,
+    g.guide ? el("p", {}, el("a", { href: g.guide[1], target: "_blank", rel: "noopener" }, g.guide[0])) : null,
+    ...(g.copy || []).map(([label, value]) => el("div", { class: "copy-row" }, el("span", { class: "note" }, `${label}: `),
+      el("code", {}, value), el("button", { type: "button", onclick: (e) => copyValue(value, e.target) }, "Copy"))),
+    el("p", { class: "note" }, ...g.links.flatMap(([label, href], i) => [i ? " · " : "", el("a", { href, target: "_blank", rel: "noopener" }, label)])),
     ...fields,
     el("button", { class: "primary", onclick: async () => {
       out.textContent = "Checking…"; out.className = "";
@@ -284,6 +293,15 @@ function setupForm(m) {
       if (r.open) window.open(r.open, "_blank", "noopener");
       if (r.ok) { state.modules = r.modules; }
     } }, "Save"), out);
+}
+
+// A value for another site's form (Google's Branding page): onto the clipboard, or selected if that isn't allowed.
+function copyValue(value, button) {
+  const done = () => { button.textContent = "Copied"; setTimeout(() => { button.textContent = "Copy"; }, 1600); };
+  (navigator.clipboard ? navigator.clipboard.writeText(value) : Promise.reject()).then(done).catch(() => {
+    const r = document.createRange(); r.selectNodeContents(button.previousSibling);
+    getSelection().removeAllRanges(); getSelection().addRange(r); button.textContent = "Press Ctrl+C";
+  });
 }
 
 // Phone calls, voice notes and the alarm use a free Gemini key (whichever AI answers your messages).
