@@ -62,6 +62,9 @@ class App:
 
         self.updates = Updates(self)
         self.jobs.then_actions["aboutyou.save"] = self.about.save_profile
+        from kurooto.core.ask import Ask  # questions and approvals for you, from any feature (app.ask)
+
+        self.ask = Ask(self)
         self.restart_requested = False
         self._stop = None  # the daemon's stop event, so an update can ask for a restart
         self._loop = None
@@ -181,6 +184,10 @@ class App:
             self.updates.start()
         except Exception as e:
             self.events.emit("module_failed", module="updates", error=str(e)[:300])
+        try:
+            self.ask.start()
+        except Exception as e:
+            self.events.emit("module_failed", module="ask", error=str(e)[:300])
         for m in self.enabled():
             try:
                 m.start()
@@ -194,6 +201,11 @@ class App:
         request that runs instantly, or (if Chat is on) a request for the AI."""
         mods = self.enabled()
         self.events.emit("message_in", via=msg.via, chars=len(msg.text), files=len(msg.files))
+        if msg.reply_to and msg.reply_to.get("kind") == "ask":  # an answer to a question (core/ask.py)
+            out = self.ask.reply(msg, msg.reply_to.get("ref"))
+            if out:
+                msg.reply(out)
+            return
         if msg.reply_to:
             for m in mods:
                 h = m.replies().get(msg.reply_to.get("kind"))
@@ -209,6 +221,11 @@ class App:
             name = name.split("@")[0].lower()
             if name in ("start", "help"):
                 msg.reply(self.help())
+                return
+            if name in ("q", "questions"):  # open questions, with their buttons (core/ask.py)
+                out = self.ask.command(msg, arg.strip())
+                if out:
+                    msg.reply(out)
                 return
             for m in mods:
                 for c in m.commands():
@@ -254,6 +271,8 @@ class App:
         self.notifier.retract(button=data)  # the phone app's copy of that message goes (core/notify.py)
         if prefix == "upd":
             return self.updates.button(ref, act)
+        if prefix == "ask":
+            return self.ask.button(ref, act)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:
@@ -267,6 +286,7 @@ class App:
         lines = [f"{self.name}, your assistant. Plain English works; these commands do too:"]
         for m in self.enabled():
             lines += m.help()
+        lines.append("/q  open questions I asked you (reply to one to answer it)")
         if not self.is_on("chat"):
             lines.append("(Chat is off, so free text isn't sent to an AI.)")
         return "\n".join(lines)

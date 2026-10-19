@@ -136,7 +136,7 @@ class Calls(Module):
 
     # ----------------------------------------------------------------------------------------- tools
     def tools(self) -> list[Tool]:
-        out = self._own_tools()
+        out = self._own_tools() + self.app.ask.call_tools()  # answer_question, answer_approval (core/ask.py)
         for m in self.app.enabled():
             if m.id != self.id and hasattr(m, "call_tools"):
                 try:
@@ -150,8 +150,8 @@ class Calls(Module):
         t = [
             Tool(
                 "pending_items",
-                "What needs their attention now: deadlines soon, today's classes and check-ins, scheduled calls. "
-                "Call it at the start of every call.",
+                "What needs their attention now: deadlines soon, today's classes and check-ins, scheduled calls, "
+                "open questions. Call it at the start of every call.",
                 lambda a: self.pending(),
                 offline="brief",
                 hint="At the start of every call, call pending_items and bring up what matters, briefly.",
@@ -224,6 +224,7 @@ class Calls(Module):
                     out.update(m.call_brief() or {})
                 except Exception as e:
                     self.app.events.emit("calls_brief_failed", module=m.id, error=str(e)[:200])
+        out.update(self.app.ask.call_brief())  # open questions and approvals for you (core/ask.py)
         upcoming = [f"{dt.datetime.fromtimestamp(c['at']):%H:%M} {c['reason']}" for c in self.schedule_list()[:5]]
         if upcoming:
             out["calls_planned"] = upcoming
@@ -477,7 +478,7 @@ class Calls(Module):
             return 200, {
                 "finished": [{k: t[k] for k in ("id", "request", "status", "result")} for t in out],
                 "running": running,
-                "approvals": [],
+                "approvals": self.app.ask.call_approvals(),  # asked once on the call (core/ask.py)
                 "computer": "online",
             }
         if url.path == "/transcript":
