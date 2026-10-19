@@ -10,7 +10,7 @@ build --apk PATH puts the release-signed Android app in the package (your call l
 on the site, with android.json for the app's update check. See docs/RELEASING.md for the whole routine.
 
 SITE is a folder laid out like the GitHub Pages site:
-    SITE/install.ps1, install.sh, bootstrap.py
+    SITE/install.ps1, install.sh, bootstrap.py, index.html (the landing page)
     SITE/stable.json, beta.json                 signed channel pointers
     SITE/releases/<v>/manifest.json             signed list of files with sha256
     SITE/releases/<v>/kurooto-<v>.tar.gz        the source release (with requirements.lock, hash-pinned)
@@ -142,7 +142,7 @@ def build(site: Path, base: str, version: str | None, notes: str, break_run: boo
         },
     }
     (rel / "manifest.unsigned.json").write_text(json.dumps(doc, indent=1), encoding="utf-8")
-    for f in ("install.ps1", "install.sh", "bootstrap.py"):
+    for f in ("install.ps1", "install.sh", "bootstrap.py", "index.html"):
         shutil.copy(ROOT / "installer" / f, site / f)
     if apk:
         shutil.copy(apk, rel / "kurooto.apk")

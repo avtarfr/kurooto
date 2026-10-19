@@ -24,65 +24,148 @@ import time
 from pathlib import Path
 
 from kurooto.modules.base import Module
+from kurooto.web.peer import peer_uid, same_user  # noqa: F401 (who's asking; used by the dashboard)
 
 LIMIT = 400_000  # bytes of each terminal's screen kept, to show again when a page opens
 WINDOWS = sys.platform == "win32"
 
 
-# ------------------------------------------------------------------------------------------- who's asking
-def peer_uid(client_port: int, server_port: int, proc_net: str = "/proc/net") -> int | None:
-    """Linux: the user account that owns the connection coming from client_port to our server_port, read from the
-    kernel's socket table. None if it can't be found."""
-    for name in ("tcp", "tcp6"):
-        try:
-            rows = Path(proc_net, name).read_text(encoding="ascii", errors="replace").splitlines()[1:]
-        except OSError:
-            continue
-        for row in rows:
-            f = row.split()
-            if len(f) < 8:
-                continue
-            try:
-                lport = int(f[1].rsplit(":", 1)[1], 16)
-                rport = int(f[2].rsplit(":", 1)[1], 16)
-            except (IndexError, ValueError):
-                continue
-            if lport == client_port and rport == server_port:
-                try:
-                    return int(f[7])
-                except ValueError:
-                    return None
-    return None
-
-
-def same_user(client_address, server_port: int, platform: str | None = None, proc_net: str = "/proc/net") -> bool:
-    """May this connection use the terminals? On Linux only if it's from this user account (refused when unsure);
-    elsewhere the dashboard's own protections apply (see the module's description)."""
-    if (platform or sys.platform) != "linux":
-        return True
-    try:
-        uid = peer_uid(int(client_address[1]), int(server_port), proc_net)
-    except (TypeError, ValueError, IndexError):
-        return False
-    return uid is not None and uid == os.getuid()
-
-
 # --------------------------------------------------------------------------------------------- the ptys
-class Pty:
-    """A program in a pseudo-terminal: ptyprocess on macOS and Linux, pywinpty (ConPTY) on Windows."""
+# Runs in the new session, before the program: take the pty (stdin) as the controlling terminal, so Ctrl+C, job
+# control and window-size changes reach the program, then become it.
+TAKE_TTY = """import fcntl, os, sys, termios
+try:
+    fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+except (AttributeError, OSError):
+    os.close(os.open(os.ttyname(0), os.O_RDWR))
+try:
+    os.execvp(sys.argv[1], sys.argv[1:])
+except OSError as e:
+    sys.stderr.write(f"couldn't start {sys.argv[1]}: {e}\\r\\n")
+    os._exit(127)
+"""
+
+
+class UnixPty:
+    """A program in a pseudo-terminal on macOS and Linux. Started with subprocess (its fork and exec are safe in
+    Kurooto's many-threaded process, unlike os.forkpty), the pty's other end as its stdin, stdout and stderr, in a
+    session of its own."""
 
     def __init__(self, argv: list[str], cwd: str, env: dict, cols: int, rows: int):
-        if WINDOWS:
-            from winpty import PtyProcess  # pywinpty
+        import subprocess
 
-            self.p = PtyProcess.spawn(argv, cwd=cwd, env=env, dimensions=(rows, cols))
-        else:
-            from ptyprocess import PtyProcess
+        if not (shutil.which(argv[0]) or os.path.isfile(argv[0])):
+            raise FileNotFoundError(f"no program {argv[0]}")
+        self.master, slave = os.openpty()
+        self._closed = False
+        self._lock = threading.Lock()
+        try:
+            self._winsize(self.master, cols, rows)
+            self.p = subprocess.Popen(
+                [sys.executable, "-c", TAKE_TTY, *argv],
+                stdin=slave,
+                stdout=slave,
+                stderr=slave,
+                cwd=cwd,
+                env=env,
+                start_new_session=True,
+                close_fds=True,
+            )
+        except BaseException:
+            os.close(self.master)
+            raise
+        finally:
+            os.close(slave)
 
-            self.p = PtyProcess.spawn(argv, cwd=cwd, env=env, dimensions=(rows, cols))
+    @staticmethod
+    def _winsize(fd: int, cols: int, rows: int) -> None:
+        import fcntl
+        import struct
+        import termios
+
+        fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
 
     def read(self) -> bytes:
-        """Blocks; b"" when the program has ended."""
+        """Blocks until there's output; b"" once the program has ended (or the terminal was closed)."""
+        import select
+
+        while not self._closed:
+            try:
+                ready, _, _ = select.select([self.master], [], [], 0.5)
+            except (OSError, ValueError):
+                break
+            if not ready:
+                continue
+            try:
+                data = os.read(self.master, 65536)
+            except OSError:  # EIO on Linux: every program on the other end has gone
+                data = b""
+            if data:
+                return data
+            break
+        self.close()
+        return b""
+
+    def write(self, data: bytes) -> None:
+        while data and not self._closed:
+            try:
+                n = os.write(self.master, data)
+            except OSError:  # it closed meanwhile
+                return
+            data = data[n:]
+
+    def resize(self, cols: int, rows: int) -> None:
+        if not self._closed:
+            self._winsize(self.master, cols, rows)  # the kernel tells the program (SIGWINCH)
+
+    def alive(self) -> bool:
+        return self.p.poll() is None
+
+    def exit_code(self) -> int | None:
+        import subprocess
+
+        try:
+            return self.p.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            return None
+
+    def kill(self) -> None:
+        """Hang up on it (like closing a terminal window), then force it after a second."""
+        import signal
+        import subprocess
+
+        for sig in (signal.SIGHUP, signal.SIGKILL):
+            try:
+                os.killpg(self.p.pid, sig)
+            except OSError:
+                break
+            try:
+                self.p.wait(timeout=1)
+                break
+            except subprocess.TimeoutExpired:
+                continue
+        self._closed = True  # the reader notices within half a second and closes the pty
+
+    def close(self) -> None:
+        with self._lock:
+            if self.master >= 0:
+                try:
+                    os.close(self.master)
+                except OSError:
+                    pass
+                self.master = -1
+            self._closed = True
+
+
+class WinPty:
+    """A program in a pseudo-terminal on Windows: pywinpty (ConPTY)."""
+
+    def __init__(self, argv: list[str], cwd: str, env: dict, cols: int, rows: int):
+        from winpty import PtyProcess  # pywinpty
+
+        self.p = PtyProcess.spawn(argv, cwd=cwd, env=env, dimensions=(rows, cols))
+
+    def read(self) -> bytes:
         try:
             data = self.p.read(65536)
         except (EOFError, OSError):
@@ -90,7 +173,7 @@ class Pty:
         return data.encode("utf-8", "replace") if isinstance(data, str) else data
 
     def write(self, data: bytes) -> None:
-        self.p.write(data.decode("utf-8", "replace") if WINDOWS else data)
+        self.p.write(data.decode("utf-8", "replace"))
 
     def resize(self, cols: int, rows: int) -> None:
         self.p.setwinsize(rows, cols)
@@ -103,8 +186,6 @@ class Pty:
 
     def exit_code(self) -> int | None:
         try:
-            if not WINDOWS:
-                self.p.wait()
             return self.p.exitstatus
         except Exception:
             return None
@@ -116,12 +197,15 @@ class Pty:
             pass
 
 
+Pty = WinPty if WINDOWS else UnixPty
+
+
 class Term:
-    def __init__(self, name: str, profile: dict, push, spawn=Pty):
+    def __init__(self, name: str, profile: dict, push, spawn=None):
         self.name = name
         self.profile = profile
         self.push = push  # push(name, data bytes, viewers set, replay bool)
-        self.spawn_fn = spawn
+        self.spawn_fn = spawn or Pty
         self.lock = threading.Lock()
         self.buf = bytearray()
         self.pty = None
@@ -249,7 +333,8 @@ class Terminals(Module):
             if WINDOWS:
                 import winpty  # noqa: F401
             else:
-                import ptyprocess  # noqa: F401
+                import fcntl  # noqa: F401
+                import termios  # noqa: F401
         except ImportError:
             return False, "the terminal library is missing (reinstall Kurooto)"
         return True, ""

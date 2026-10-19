@@ -4,6 +4,8 @@ Protection:
   - a token that only the page gets (written into the HTML it serves); every API call must send it;
   - the Host header must be this machine's own address and port (stops DNS-rebinding sites);
   - a request from another web page (Origin) is refused;
+  - on Linux, the page and every API request must come from this user account (web/peer.py), so another account on a
+    shared computer can't use it; refused when that can't be told;
   - Content-Security-Policy: the page loads nothing from the internet.
 """
 
@@ -24,6 +26,7 @@ from urllib.parse import urlparse
 from kurooto import __version__
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jsave
+from kurooto.web import peer
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -114,12 +117,19 @@ class Server:
                     and pysecrets.compare_digest(self.headers.get("X-Kurooto-Tools", ""), server.tools_token)
                 )
 
+            def _same_user(self) -> bool:
+                """On Linux, only this user account may use the page and its API (web/peer.py); refused when the
+                connection's owner can't be told. Elsewhere: True (127.0.0.1 and the key protect it)."""
+                return peer.same_user(self.client_address, server.port)
+
             def do_GET(self):
                 if not self._host_ok():
                     return self._send(403, {"error": "wrong host"})
                 path = urlparse(self.path).path
                 if path == "/health":
                     return self._send(200, {"ok": True, "version": __version__})
+                if not path.startswith("/static/") and not self._same_user():  # the page (it holds the key), the API
+                    return self._send(403, {"error": "not your account"})
                 if path == "/morning":  # the morning page (rhythm): today's plan, opened by the alarm
                     html = (static("morning.html") or b"").decode()
                     html = html.replace("{{TOKEN}}", server.token).replace("{{VERSION}}", __version__)
@@ -161,11 +171,6 @@ class Server:
                 if path.startswith("/api/"):
                     if not self._authed() and not self._tools_authed(path):
                         return self._send(401, {"error": "no"})
-                    if path.startswith("/api/term"):  # terminals: only this user account (on Linux, checked)
-                        from kurooto.modules.terminals import same_user
-
-                        if not same_user(self.client_address, server.port):
-                            return self._send(403, {"error": "no"})
                     from urllib.parse import parse_qs
 
                     q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
@@ -198,13 +203,8 @@ class Server:
 
             def do_POST(self):
                 path = urlparse(self.path).path
-                if not self._host_ok() or not (self._authed() or self._tools_authed(path)):
+                if not self._host_ok() or not self._same_user() or not (self._authed() or self._tools_authed(path)):
                     return self._send(403, {"error": "no"})
-                if path.startswith("/api/term"):  # terminals: only this user account (on Linux, checked)
-                    from kurooto.modules.terminals import same_user
-
-                    if not server.app.is_on("terminals") or not same_user(self.client_address, server.port):
-                        return self._send(403, {"error": "no"})
                 n = int(self.headers.get("Content-Length") or 0)
                 if n > 4_000_000:  # long reports from AI accounts (About you)
                     return self._send(413, {"error": "too big"})

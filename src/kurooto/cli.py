@@ -261,6 +261,37 @@ def turn_on() -> int:
     return 0
 
 
+def stop_gracefully(timeout: float = 90) -> bool:
+    """Ask the running assistant to stop the normal way (what it's doing ends cleanly and its features' last steps
+    run: Notes sync sends up what's left) and wait for it. Through its page, or with SIGTERM on macOS and Linux if the
+    page doesn't answer. True once it has stopped (or wasn't running); False if it's still running after `timeout`
+    seconds, for stop() to force."""
+    import signal
+    import time
+
+    from kurooto.core import proc
+    from kurooto.core.state import jload
+
+    pid = (jload(paths().state / "daemon.json", {}) or {}).get("pid")
+    if not pid or not proc.pid_alive(pid, "kurooto"):
+        return True
+    asked = ask_running("power/stop") is not None
+    if not asked and sys.platform != "win32":
+        try:
+            os.kill(int(pid), signal.SIGTERM)  # the daemon treats it like a stop request
+            asked = True
+        except OSError:
+            pass
+    if not asked:
+        return False
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if not proc.pid_alive(pid, "kurooto"):
+            return True
+        time.sleep(0.25)
+    return False
+
+
 def stop(quiet: bool = False) -> int:
     """Stop the supervisor (so it doesn't restart the assistant) and the assistant."""
     from kurooto.core import proc
@@ -595,10 +626,11 @@ def restore(zip_path: Path, yes: bool, notes: bool, start: bool) -> int:
             print("Nothing changed (run it with --yes to restore without asking).")
             return 1
     p, s, sec, ws = _settings_secrets_workspace()
-    was = wait_for_web(1) is not None
-    if was:
-        print("Stopping Kurooto…")
-    stop(quiet=True)
+    if wait_for_web(1) is not None:
+        print("Stopping Kurooto (it sends up your notes first, if Notes sync is on)…")
+    if not stop_gracefully(90):
+        print("It didn't stop by itself in time, so it was stopped.")
+    stop(quiet=True)  # anything left over (the supervisor, a stuck copy)
     for _ in range(20):  # let it let go of its files
         if not wait_for_web(0.2):
             break
