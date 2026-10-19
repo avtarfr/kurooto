@@ -374,7 +374,8 @@ def names(app):
 
 def test_agent_tools_gathers_from_features_that_are_on(app):
     base = names(app)
-    assert base == ["search_notes", "read_note", "list_notes", "write_note", "add_to_note", "tick_task"]
+    notes = ["search_notes", "read_note", "list_notes", "write_note", "add_to_note", "tick_task"]
+    assert base == notes + ["ask_user"]  # ask_user: core (app.ask), always there
     app.modules["extra"], app.modules["broken"] = Extra(app), Broken(app)
     assert names(app) == base  # off: none of their tools
     app.settings.set("modules.enabled", ["extra", "broken"])

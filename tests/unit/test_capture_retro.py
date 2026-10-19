@@ -49,6 +49,6 @@ def test_retro_proposes_only_allowed_changes_and_waits_for_approval(env):
         data = msg["reply_markup"]["inline_keyboard"][0][0]["callback_data"]
         assert env.press(data).startswith("Done: checkins.times.evening")
         assert app.settings.get("checkins.times.evening") == "21:30"
-        assert env.press(data) == "That suggestion is gone."
+        assert env.press(data).startswith("Already answered")  # a question (core/ask.py): the first answer wins
     finally:
         ai.close()
