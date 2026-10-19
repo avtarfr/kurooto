@@ -109,7 +109,8 @@ def test_deadlines_from_notes_and_commands_nudge_once(env):
     env.app.modules["deadlines"]._tick()
     assert env.fake.texts() == texts  # not twice
     i = next(i for i, it in env.app.modules["deadlines"].items().items() if it["title"] == "Lab report")
-    assert env.press(f"dl:{i}:done") == "Marked done."
+    assert env.press(f"dl:{i}:done") == "Marked done (ticked in tasks.md)."
+    assert "- [x] Lab report" in (env.app.workspace / "tasks.md").read_text(encoding="utf-8")
     out = env.say("what's due this week?")
     assert "essay draft" in out and "Lab report" not in out
 
