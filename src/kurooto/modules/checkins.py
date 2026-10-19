@@ -97,7 +97,9 @@ class Checkins(Module):
                 map_kind="checkin",
                 map_ref=f"{name}:{day}",
             )
-        elif self._by_call():
+        elif self._by_call() and (held := self._held(name, day)) != "message":
+            if held == "later":
+                return
             q = (self.setting("questions") or {}).get(name) or "How's it going?"
             self.app.modules["calls"].ring(f"{name.title()} check-in: {q}", key=f"checkins:{name}:{day}")
             plan[name]["status"] = "calling"
@@ -116,6 +118,29 @@ class Checkins(Module):
         plan[name]["status"] = "asked"
         self._save(plan, dt.date.fromisoformat(day))
         self.app.events.emit("checkin_asked", name=name)
+
+    def _held(self, name: str, day: str) -> str | None:
+        """A check-in call during a no-call time (a class, /hold, focus, a calendar event, night) waits until the
+        block ends if that's still today ("later"), or comes as a message instead ("message"). None: call now."""
+        av = self.app.availability
+        reason, _ = av.call_block()
+        if not reason:
+            return None
+        when, _ = av.next_callable()
+        if when.date() != now().date() or av.night(when):
+            return "message"  # too late for a call today
+        self.app.scheduler.at(
+            when,
+            "checkins.fire",
+            {"name": name, "day": day},
+            key=f"checkins:{name}",
+            module=self.id,
+            grace_s=2 * 3600,
+            respect="quiet",
+        )
+        self.app.notify(f"Your {name} check-in call waits until {when:%H:%M} ({reason}).", kind="info")
+        self.app.events.emit("checkin_held", name=name)
+        return "later"
 
     def replies(self):
         return {"checkin": self._answer}
