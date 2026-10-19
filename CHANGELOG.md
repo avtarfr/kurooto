@@ -1,7 +1,9 @@
 # Changelog
 
-## 0.1.4 (2026-10-20)
+## 0.1.5 (2026-10-20)
 Everything since 0.1.1, in one update.
+- **`kurooto stop` didn't stay stopped** on Linux and macOS (the background service restarted it 10 seconds later),
+  and `kurooto start` / `on` could start a second copy beside it: both now go through the service manager.
 - **`kurooto` was an "unknown command"** on computers that already had uv: Kurooto now puts its folder on the PATH
   (your user PATH on Windows, fish, bash and zsh) when it installs and whenever it starts, and the installer says
   how to use it in the terminal you installed from.

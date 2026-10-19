@@ -108,6 +108,11 @@ def start_background() -> int:
     if wait_for_web(1):
         print("Kurooto is already running.")
         return 0
+    from kurooto.core import autostart, pathfix
+
+    if pathfix.allowed():
+        if autostart.managed() and autostart.service("start"):
+            return 0  # under systemd or launchd: started there, so stop and restarts stay consistent
     if sys.platform == "win32":
         flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
         subprocess.Popen(
@@ -204,6 +209,11 @@ def stop(quiet: bool = False) -> int:
 
     p = paths()
     stopped = False
+    from kurooto.core import autostart, pathfix
+
+    if pathfix.allowed():  # tests, rehearsals and portable copies never touch the real service
+        if autostart.managed() and autostart.service("stop"):
+            stopped = bool(jload(p.state / "daemon.json", {}))  # the manager stopped it; the loop tidies up
     for f, marker in (
         (p.app / "launcher.json", "launcher.py"),
         (p.state / "supervisor.json", "kurooto"),

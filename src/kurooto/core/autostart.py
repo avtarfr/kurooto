@@ -118,6 +118,35 @@ def disable(home: Path | None = None) -> str:
     return "Kurooto no longer starts at login."
 
 
+def managed(home: Path | None = None) -> str | None:
+    """Which service manager runs Kurooto here: "systemd", "launchd", or None (it runs on its own)."""
+    home = home or Path.home()
+    if sys.platform == "darwin" and (home / "Library" / "LaunchAgents" / f"{LABEL}.plist").exists():
+        return "launchd"
+    if (
+        sys.platform.startswith("linux")
+        and shutil.which("systemctl")
+        and (home / ".config" / "systemd" / "user" / "kurooto.service").exists()
+    ):
+        return "systemd"
+    return None
+
+
+def service(action: str, home: Path | None = None) -> bool:
+    """Stop or start Kurooto through its service manager, so `kurooto stop` isn't undone by a restart 10 s later
+    and `kurooto start` doesn't run a second copy beside the managed one. False: not managed here."""
+    home = home or Path.home()
+    how = managed(home)
+    if how == "systemd":
+        proc.run(["systemctl", "--user", action, "kurooto.service"], timeout=30)
+        return True
+    if how == "launchd":  # unload (without -w) holds it until the next login; load starts it again
+        plist = home / "Library" / "LaunchAgents" / f"{LABEL}.plist"
+        proc.run(["launchctl", "unload" if action == "stop" else "load", str(plist)], timeout=15)
+        return True
+    return False
+
+
 def status(home: Path | None = None) -> bool:
     home = home or Path.home()
     if sys.platform == "win32":

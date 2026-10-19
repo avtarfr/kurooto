@@ -70,3 +70,19 @@ def test_tests_and_portable_copies_leave_the_computer_alone(monkeypatch):
     assert REAL_ALLOWED() is False
     monkeypatch.delenv("KUROOTO_HOME")
     assert REAL_ALLOWED() is True
+
+
+def test_stop_and_start_go_through_the_service_manager(tmp_path, monkeypatch):
+    from kurooto.core import autostart
+
+    calls = []
+    monkeypatch.setattr(autostart.proc, "run", lambda args, **kw: calls.append(args))
+    monkeypatch.setattr(autostart.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(autostart.sys, "platform", "linux")
+    assert autostart.managed(tmp_path) is None and autostart.service("stop", tmp_path) is False
+    unit = tmp_path / ".config" / "systemd" / "user" / "kurooto.service"
+    unit.parent.mkdir(parents=True)
+    unit.write_text("[Service]\n")
+    assert autostart.managed(tmp_path) == "systemd"
+    assert autostart.service("stop", tmp_path) and calls[-1] == ["systemctl", "--user", "stop", "kurooto.service"]
+    assert autostart.service("start", tmp_path) and calls[-1][-2:] == ["start", "kurooto.service"]
