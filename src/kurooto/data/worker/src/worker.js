@@ -197,7 +197,7 @@ export class Line {
       if (p === '/transcript' && req.method === 'POST') return this.transcript(req);
       if (p === '/upload' && req.method === 'POST') return this.upload(req, url);
       if (who.kind !== 'device') return refuse('that needs a paired device', 403);
-      if (p === '/pending') return json({ rings: await this.ringing(who.id), items: await this.openItems() });
+      if (p === '/pending') return json({ rings: await this.ringing(who.id), items: await this.openItems(), assistant: ((await this.store.get('names')) || {}).assistant || '' });
       if (p === '/answer' && req.method === 'POST') return this.answer(req, who);
       if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
       if (p === '/ring-reply' && req.method === 'POST') {
@@ -343,7 +343,7 @@ export class Line {
       return { ok: had };
     }
     if (m.op === 'ticket') return { ticket: await this.mintTicket(Math.min(Number(m.hours) || 2, 24)) };
-    if (m.op === 'notify') return this.notify(m.item || {}, Number(m.rev) || 0);
+    if (m.op === 'notify') return this.notify(m.item || {}, Number(m.rev) || 0, m.assistant);
     if (m.op === 'notify-clear') {
       const inbox = (await this.store.get('inbox')) || { rev: 0, items: [] };
       const ids = (m.ids || []).map(String);
@@ -474,7 +474,7 @@ export class Line {
   }
 
   // ------------------------------------------------------------------------------------------- ringing
-  async ring({ reason = '', alarm = false, since = '', key = '' }) {
+  async ring({ reason = '', alarm = false, since = '', key = '', assistant = '' }) {
     since = String(since || Math.floor(Date.now() / 1000));
     const ticket = await this.mintTicket(alarm ? 3 : 2);
     const link = `${this.env.PUBLIC_URL}/?p=${encodeURIComponent(String(reason).slice(0, 300))}&s=${encodeURIComponent(since)}#${ticket}`;
@@ -485,8 +485,8 @@ export class Line {
     const list = Object.entries(devices);
     let android = false;
     if (list.some(([, d]) => d.kind === 'android')) {
-      android = await publish(this.env, { title: alarm ? 'Wake-up call' : 'Incoming call', message: String(reason).slice(0, 300), priority: 5,
-        tags: ['call', `since-${since}`].concat(alarm ? ['alarm'] : []), click: link, time: Math.floor(Date.now() / 1000) }).catch(() => false);
+      android = await this.toPhones({ title: alarm ? 'Wake-up call' : 'Incoming call', message: String(reason).slice(0, 300), priority: 5,
+        tags: ['call', `since-${since}`].concat(alarm ? ['alarm'] : []), click: link, time: Math.floor(Date.now() / 1000) }, assistant).catch(() => false);
     }
     const { web, changed, errors } = await pushAll(this.env, devices);
     if (changed) await this.store.put('devices', devices);
@@ -499,7 +499,7 @@ export class Line {
     const left = rings.filter((r) => r.since !== since && r.until > Date.now());
     if (left.length !== rings.length) {
       await this.store.put('rings', left);
-      await publish(this.env, { title: 'stop', message: '', tags: ['stop', `since-${since}`], time: Math.floor(Date.now() / 1000) }).catch(() => false);
+      await this.toPhones({ title: 'stop', message: '', tags: ['stop', `since-${since}`], time: Math.floor(Date.now() / 1000) }).catch(() => false);
     }
   }
 
@@ -509,6 +509,17 @@ export class Line {
   }
 
   // --------------------------------------------------------------------------------------------- messages
+  // Every sealed message to the Android app carries your assistant's current name, so renaming it on your computer
+  // reaches the app without pairing again. Your computer sends the name with each ring and message; the state push
+  // keeps it fresh for calls this Worker places itself.
+  async toPhones(fields, assistant = '') {
+    const names = (await this.store.get('names')) || {};
+    const name = String(assistant || '').slice(0, 60);
+    if (name && name !== names.assistant) await this.store.put('names', { ...names, assistant: name });
+    const current = name || names.assistant || '';
+    return publish(this.env, current ? { ...fields, assistant: current } : fields);
+  }
+
   // The inbox: what your computer sent your phones that's still open. Its revision only goes up, so an older
   // snapshot never overwrites a newer one. Items that go (answered, expired) are cleared from Android phones.
   async setInbox(items, rev, cleared = []) {
@@ -530,17 +541,17 @@ export class Line {
     const devices = (await this.store.get('devices')) || {};
     if (!Object.values(devices).some((d) => d.kind === 'android')) return false;
     // "stop" too, so an older app that doesn't know "clear" ignores it instead of showing it
-    return publish(this.env, { title: 'stop', message: '', tags: ['stop', 'clear'], ids: ids.slice(0, 40), time: Math.floor(Date.now() / 1000) }).catch(() => false);
+    return this.toPhones({ title: 'stop', message: '', tags: ['stop', 'clear'], ids: ids.slice(0, 40), time: Math.floor(Date.now() / 1000) }).catch(() => false);
   }
 
-  async notify(item, rev) {
+  async notify(item, rev, assistant = '') {
     if (!ITEM_ID.test(String(item.id))) return { error: 'bad item' };
     const cur = (await this.store.get('inbox')) || { rev: 0, items: [] };
     await this.store.put('inbox', { rev: Math.max(cur.rev, rev), items: cur.items.filter((i) => i.id !== item.id).concat([item]).slice(-40) });
     const devices = (await this.store.get('devices')) || {};
     const list = Object.values(devices);
     let android = false;
-    if (list.some((d) => d.kind === 'android')) android = await publish(this.env, phoneMessage(item)).catch(() => false);
+    if (list.some((d) => d.kind === 'android')) android = await this.toPhones(phoneMessage(item), assistant).catch(() => false);
     const { web, changed, errors } = await pushAll(this.env, devices);
     if (changed) await this.store.put('devices', devices);
     return { android, web, devices: list.length, errors };

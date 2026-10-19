@@ -153,7 +153,9 @@ class PhoneApp:
             if res and not res.get("error"):
                 self._mark_pushed(it["id"])
 
-        return self.calls.connector.admin_later("notify", then=done, item=self.public(it), rev=rev)
+        return self.calls.connector.admin_later(
+            "notify", then=done, item=self.public(it), rev=rev, assistant=self.app.name
+        )
 
     def _mark_pushed(self, item_id: str) -> None:
         with self._lock():

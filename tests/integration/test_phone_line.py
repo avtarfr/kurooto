@@ -132,6 +132,19 @@ def test_on_a_call(phones):
     wait(lambda: app.availability.call_block()[0] != ON_CALL, 15, "the call to end")
 
 
+def test_a_renamed_assistant_reaches_the_phones(phones):
+    w, app, calls, ln = phones, phones["app"], phones["calls"], phones["line"]
+    app.settings.set("you.assistant_name", "Juniper")
+    n0 = len(w["cloud"].ntfy)
+    calls.ring("Time to stretch")  # the ring carries the new name, before any state push
+    assert ntfy_after(w, n0, "call")["assistant"] == "Juniper"
+    assert ln.call("GET", "/pending", key=w["keys"]["web"])[1]["assistant"] == "Juniper"
+    assert ln.call("GET", "/status", key=w["keys"]["web"])[1]["assistant"] == "Juniper"
+    n1 = len(w["cloud"].ntfy)
+    app.notify("Still there?", kind="question", map_kind="fakeq", map_ref="r9")
+    assert ntfy_after(w, n1, "msg")["assistant"] == "Juniper"
+
+
 def test_an_answer_waits_while_the_computer_is_off(phones):
     w, app, ln = phones, phones["app"], phones["line"]
     n0 = len(w["cloud"].ntfy)

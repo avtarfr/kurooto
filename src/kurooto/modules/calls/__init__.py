@@ -407,7 +407,9 @@ class Calls(Module):
         if buttons:
             rings[since]["buttons"] = [list(b) for b in buttons]
         jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
-        sent = self.connector.admin_later("ring", reason=reason, alarm=alarm, since=since, key=key)
+        sent = self.connector.admin_later(
+            "ring", reason=reason, alarm=alarm, since=since, key=key, assistant=self.app.name
+        )
         answer = [[("Answer", {"url": self.link(reason, since=since)}), *[tuple(b) for b in buttons or []]]]
         if sent:  # the phone rings; Telegram just keeps a quiet record with a link
             self.app.notify(f"{'Wake-up call' if alarm else 'Calling you'}: {reason}", kind="call", buttons=answer)
