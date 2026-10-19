@@ -193,6 +193,10 @@ class Alarm(Module):
         """What the wake-up call goes through, with today's details."""
         app, today = self.app, now().date()
         steps = []
+        ck = app.modules.get("checkins")
+        deferred = ck.deferred_steps() if ck is not None and app.is_on("checkins") else ""
+        if deferred:
+            steps.append(deferred)
         plan = daily.plan(app, today, 2000)
         steps.append(
             f"Today's plan (drafted before the alarm):\n{plan}\nGo through it in a few sentences and ask its "
@@ -229,9 +233,16 @@ class Alarm(Module):
         head = "Wake-up call. Say good morning, briefly and warmly; they've just woken up, so keep it light."
         return "\n".join([head] + [f"{i}. {x}" for i, x in enumerate(steps, 1)])
 
+    def call_reschedule(self, key: str, at: dt.datetime) -> str:
+        """ "Call me back in ten minutes" on the wake-up call: the alarm again then (like a snooze)."""
+        return self.set(at.replace(tzinfo=None), first=False)
+
     def call_transcript(self, key: str, lines: list[dict]) -> None:
         """After the wake-up call: with Chat on, the AI settles today's plan in the daily note from what you said;
         without it, your words go there as they are."""
+        ck = self.app.modules.get("checkins")
+        if ck is not None and self.app.is_on("checkins"):
+            ck.take_deferred(lines)  # last night's check-in, if it was moved to this call
         if not self.setting("notes"):
             return
         said = daily.their_words(self.app, lines)
