@@ -305,6 +305,11 @@ def install_finish(uv: str, python: str) -> int:
         shim = BIN / "kurooto"
         shim.write_text(f'#!/bin/sh\nexec "{python}" "{app / "launcher.py"}" cli "$@"\n', encoding="utf-8")
         shim.chmod(0o755)
+    from kurooto.core import pathfix  # so `kurooto` works in new terminals even when uv was already installed
+
+    if pathfix.allowed():
+        for what in pathfix.ensure_on_path(BIN):
+            print(f"  The kurooto command's folder ({BIN}) is now on the PATH ({what}).")
     if os.environ.get("KUROOTO_NO_AUTOSTART") != "1":  # tests and rehearsals leave this computer alone
         print(" ", autostart.enable())
         try:

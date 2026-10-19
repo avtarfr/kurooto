@@ -75,6 +75,14 @@ def run(web: bool = True) -> int:
     try:
         jsave(p.state / "daemon.json", {"pid": os.getpid(), "started": time.time()})
         app = App(p)
+        try:  # installs from before 0.1.4 may have the kurooto command off the PATH (core/pathfix.py)
+            from kurooto.cli import BIN
+            from kurooto.core import pathfix
+
+            if pathfix.allowed():
+                pathfix.ensure_on_path(BIN)
+        except Exception:  # never stop Kurooto over this
+            pass
         app.power.off_file.unlink(missing_ok=True)  # started on purpose: it's on
 
         async def main():
