@@ -253,9 +253,13 @@ function renderFeatures() {
     const box = el("input", { type: "checkbox", checked: chosen.has(m.id), onchange: (e) => {
       e.target.checked ? chosen.add(m.id) : chosen.delete(m.id);
       $$(".preset").forEach((p) => p.classList.toggle("on", p.dataset.preset === "custom"));
-      renderKeyBox();
+      renderFeatures();  // the card's highlight and its setup form follow at once
     } });
-    return el("div", { class: "card" + (chosen.has(m.id) ? " on" : "") },
+    return el("div", { class: "card" + (chosen.has(m.id) ? " on" : ""), onclick: (e) => {  // the whole card ticks it
+      if (e.target.closest("a, button, input, textarea, select, label, .box")) return;
+      box.checked = !box.checked;
+      box.dispatchEvent(new Event("change"));
+    } },
       el("label", {}, box, el("h3", {}, m.title)), el("p", {}, m.description),
       m.starter ? el("div", { class: "star" }, "★ in Starter") : null, el("div", { class: "privacy" }, m.privacy),
       m.setup && !m.ready && m.why ? el("p", { class: "note" }, m.why[0].toUpperCase() + m.why.slice(1) + ".") : null,

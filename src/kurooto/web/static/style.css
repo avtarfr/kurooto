@@ -71,7 +71,8 @@ button:disabled { opacity: .5; cursor: default; }
 .card .star { color: var(--peach); font-size: 12px; font-family: var(--mono); }
 .card .state { font: 12px var(--mono); color: var(--ok); margin-top: 8px; }
 .card .privacy { margin-top: 8px; font-size: 12px; color: var(--lav); }
-.features .card { cursor: default; }
+.features .card { cursor: pointer; }
+.features .card input[type=checkbox] { width: 20px; height: 20px; flex: none; accent-color: var(--accent); cursor: pointer; }
 .features .card label { margin: 0; color: var(--fg); display: flex; gap: 8px; align-items: center; cursor: pointer; }
 .presets { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .preset.on { border-color: var(--accent); color: var(--accent-text); }
