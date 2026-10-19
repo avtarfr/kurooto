@@ -413,11 +413,10 @@ class Calls(Module):
             self._missed_for_good(p["since"], r)
 
     def _missed_for_good(self, since: str, r: dict) -> None:
-        p = {"since": since}
         self.app.notify(
             f"Missed call: {r['reason']}",
             kind="info",
-            buttons=[[("Call back", {"url": self.link(r["reason"])}), ("In 30 min", f"call:{p['since']}:later")]],
+            buttons=[[("Call back", {"url": self.link(r["reason"])}), ("In 30 min", f"call:{since}:later")]],
         )
         self.app.events.emit("call_missed", key=r.get("key", ""))
         self._tell_owner_module(r, "missed")

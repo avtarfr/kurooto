@@ -69,7 +69,7 @@ timetable.
 
 **When Kurooto calls you:** a call you don't answer rings again 3 and 6 minutes later (`calls.realert_min`; `[]`
 rings once), then becomes a "Missed call" message. The alarm has its own repeats. No calls during a class you attend,
-a calendar event (or only `#nocall` ones, see Calendar), focus, `/hold` or the night: a call that comes due then is
+a calendar event (or only `#nocall` ones, see Calendar), focus, `/hold`, the night or another call: one that comes due then is
 held, you're told ("Held a call until 18:02 (class: Linear Algebra)"), and it's placed by itself when that ends.
 "call me now" (or "ring me about the essay") calls right away.
 
