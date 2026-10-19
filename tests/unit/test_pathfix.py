@@ -76,7 +76,13 @@ def test_stop_and_start_go_through_the_service_manager(tmp_path, monkeypatch):
     from kurooto.core import autostart
 
     calls = []
-    monkeypatch.setattr(autostart.proc, "run", lambda args, **kw: calls.append(args))
+    ok = {"v": True}
+
+    def run(args, **kw):
+        calls.append(args)
+        return type("R", (), {"ok": ok["v"]})()
+
+    monkeypatch.setattr(autostart.proc, "run", run)
     monkeypatch.setattr(autostart.shutil, "which", lambda name: "/usr/bin/" + name)
     monkeypatch.setattr(autostart.sys, "platform", "linux")
     assert autostart.managed(tmp_path) is None and autostart.service("stop", tmp_path) is False
@@ -86,3 +92,5 @@ def test_stop_and_start_go_through_the_service_manager(tmp_path, monkeypatch):
     assert autostart.managed(tmp_path) == "systemd"
     assert autostart.service("stop", tmp_path) and calls[-1] == ["systemctl", "--user", "stop", "kurooto.service"]
     assert autostart.service("start", tmp_path) and calls[-1][-2:] == ["start", "kurooto.service"]
+    ok["v"] = False  # a broken user session: the caller falls back to starting it directly
+    assert autostart.service("start", tmp_path) is False
