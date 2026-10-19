@@ -594,3 +594,65 @@ def test_no_ai_drafts_for_confidential_or_never_read_mail(drafts):
     assert run_tool(app, "draft_reply", {"message_id": "q1", "text": "Yes."}).startswith("That mail is marked")
     assert g.draft_store == {} and g.sent == []
     assert run_tool(app, "draft_reply", {"message_id": "p1", "text": "Yes."}).startswith("Draft saved in Gmail")
+
+
+def test_confidentiality_footers_anywhere_in_the_body(mail):
+    env, g, ai, md = mail
+    long_body = "Notes for the week. " * 600  # about 12,000 characters before the footer
+    g.add_mail(
+        "f1",
+        "Dean <dean@school.example>",
+        "Agenda",
+        "See below.\n\nThis message is intended solely for the use of the addressee.",
+    )
+    g.add_mail(
+        "f2",
+        "Dean <dean@school.example>",
+        "Long notes",
+        long_body + "\nIf you are not the intended recipient,\nplease delete it.",
+    )
+    g.add_mail(
+        "f3",
+        "Office <office@school.example>",
+        "Forms",
+        "Forms attached.\nThis e-mail and any attachments\nmay be privileged.",
+    )
+    g.add_mail(
+        "f4",
+        "Office <office@school.example>",
+        "Rooms",
+        "<p>Rooms.</p><p>This communication contains privileged information.</p>",
+        html=True,
+    )
+    g.add_mail(
+        "f5",
+        "Sam <sam@school.example>",
+        "Re: plan",
+        "Thanks!\n\nOn Mon, Oct 19, 2026 Dean wrote:\n> Plan.\n> If you are not the intended recipient, delete this.",
+    )  # marked in the quoted part
+    g.add_mail("f6", "Library <lib@school.example>", "Unrestricted wifi", "Unrestricted access, all day.")
+    r = md.digest()
+    assert r["piles"]["confidential"] == 5 and r["read"] == 3  # f6, and the mail fixture's p1 and n1
+    run_jobs(env.app)
+    prompt = json.dumps(ai.requests[-1])
+    assert "Unrestricted access" in prompt
+    for secret in ("See below", "Notes for the week", "Forms attached", "Rooms.", "Thanks!"):
+        assert secret not in prompt
+    assert not any(md.known(m) for m in ("f1", "f2", "f3", "f4", "f5"))  # dropped in memory, never stored
+
+
+def test_no_ai_draft_for_a_footer_found_while_the_check_was_off(drafts):
+    env, g, ai, rd = drafts
+    app, md = env.app, env.app.modules["mail_digest"]
+    app.settings.set("mail_digest.skip_confidential", False)
+    g.add_mail(
+        "f9",
+        "Dr Lee <lee@school.example>",
+        "Panel",
+        "Can you join? " * 400 + "\nIf you are not the intended recipient, delete this.",
+    )  # the footer is past the excerpt Kurooto keeps
+    assert md.digest()["read"] == 1
+    assert md.known("f9")["marked"] is True
+    app.settings.set("mail_digest.skip_confidential", True)
+    assert run_tool(app, "draft_reply", {"message_id": "f9", "text": "Yes."}).startswith("That mail is marked")
+    assert g.draft_store == {}

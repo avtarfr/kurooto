@@ -83,9 +83,14 @@ linked from that day's journal). Deadlines it finds go into Deadlines; course ne
 
 **Confidential mail is never read.** Work or school mail may be covered by your institution's email policy (many
 forbid forwarding confidential messages, and institutional mail belongs to the institution). Kurooto never summarises
-mail marked confidential: if its subject or opening lines say "confidential", "do not forward", "restricted" or
-"private and confidential", or it has a Gmail label with one of those names, it's only counted, even from a sender or
-label you chose, and it never gets an AI reply draft. Add your own words in `mail_digest.confidential_words`. To
+mail marked confidential: if its subject, its text (all of it, footers and quoted replies too) or a Gmail label's name
+says "confidential", "do not forward", "restricted", "private and confidential", "privileged and confidential",
+"proprietary and confidential", or has a standard confidentiality footer ("intended solely for the addressee", "if you
+are not the intended recipient", "this e-mail and any attachments are confidential / may be privileged"), it's only
+counted, even from a sender or label you chose, and it never gets an AI reply draft. Its text is dropped as soon as
+it's checked; Kurooto doesn't keep it. Many institutional mails carry such a footer, so expect more mail to be only
+counted. Tune the list in `mail_digest.confidential_words` (regular expressions; any case; a space matches any run of
+spaces). To
 keep a sender, domain or label out of the digest altogether: `/mail never @office.example` (`/mail unnever ...` takes
 it off; `/mail rules` lists both lists). This is on by default (`mail_digest.skip_confidential`).
 
@@ -131,8 +136,8 @@ reminder (`agent_plan.remind_min`; 0 for none).
   uses); dates in posts go into Deadlines; a skip list of courses (`/classnotes`).
 - Mail digest: twice a day, new mail sorted into Needs action, People, Courses, Opportunities and Admin, with a copy in
   your notes and deadlines into Deadlines. It reads only the senders, domains and labels you choose (`/mail read`);
-  everything else is only counted. Mail marked confidential, and anything on your never-read list (`/mail never`), is
-  never read, summarised or answered with an AI draft.
+  everything else is only counted. Mail marked confidential (including standard confidentiality footers), and anything
+  on your never-read list (`/mail never`), is never read, summarised or answered with an AI draft.
 - Email reply drafts: the AI drafts replies to mail that needs one into Gmail and asks Send / Edit / Discard; nothing
   is sent without your tap.
 - Agent plan calendar: time blocks Kurooto plans with you go into its own calendar in Google Calendar (`/blocks`, and a
@@ -145,7 +150,7 @@ reminder (`agent_plan.remind_min`; 0 for none).
 | Feature | What leaves your computer | Where to |
 |---|---|---|
 | Classroom → notes | Classroom posts and the text of their attached files, to write the notes | the AI service you picked; read from Google with your own client |
-| Mail digest | the text of the mail you chose for the digest (senders, domains, labels you named; on a school or work account, your own domain). Other mail, mail marked confidential ("confidential", "do not forward", "restricted" in its subject, opening lines or labels) and your never-read list: nothing, they're only counted on your computer. Work or school mail may be covered by your institution's email policy; Kurooto never summarises mail marked confidential | the AI service you picked; read from Gmail with your own client |
+| Mail digest | the text of the mail you chose for the digest (senders, domains, labels you named; on a school or work account, your own domain). Other mail, mail marked confidential ("confidential", "do not forward", "restricted" or a standard confidentiality footer anywhere in its subject, text or labels) and your never-read list: nothing, they're only counted on your computer. Work or school mail may be covered by your institution's email policy; Kurooto never summarises mail marked confidential | the AI service you picked; read from Gmail with your own client |
 | Email reply drafts | the draft reply, written into your Gmail Drafts; sent only when you tap Send | Google (your Gmail) |
 | Agent plan calendar | the time blocks (title and time), in Kurooto's own calendar | Google (your Google Calendar) |
 

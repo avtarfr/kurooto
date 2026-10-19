@@ -9,9 +9,10 @@ computer (Kurooto looks only at its sender, subject and Gmail labels, here, to s
 - on a school or work Google account, mail from your own organisation's domain (setting mail_digest.own_domain)
 Even then, personal mail (not about study or work) is only counted unless it comes from a sender or label you chose.
 Promotions, Social and topics on your not-interested list are only counted.
-Mail marked confidential is never read, whoever sent it: "confidential", "do not forward", "restricted" or "private and
-confidential" in its subject, its first lines or a Gmail label of the same name (mail_digest.confidential_words). Nor
-is mail from a sender, domain or label on your never-read list (/mail never ...). Work or school mail may be covered by
+Mail marked confidential is never read, whoever sent it: "confidential", "do not forward", "restricted" or a standard
+confidentiality footer ("if you are not the intended recipient", ...) anywhere in its subject, its text or a Gmail
+label's name (mail_digest.confidential_words). Nor is mail from a sender, domain or label on your never-read list
+(/mail never ...). Work or school mail may be covered by
 your institution's email policy; these are only counted, never summarised, and get no AI reply drafts.
 
 Email reply drafts (a feature of its own): when the digest finds mail that needs your reply, the AI drafts one into
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import functools
 import html
 import re
 from collections import Counter
@@ -56,7 +58,18 @@ register_defaults(
         "save_note": True,  # a copy of each digest in your notes (mail/<date>-<time>.md)
         # mail marked confidential is only counted: never read by the AI, summarised or answered with a draft
         "skip_confidential": True,
-        "confidential_words": ["confidential", "do not forward", "restricted", "private and confidential"],
+        "confidential_words": [  # regular expressions, any case; a space matches any run of spaces or line breaks
+            "confidential",
+            "do not forward",
+            "restricted",
+            "private and confidential",
+            "privileged and confidential",
+            "proprietary and confidential",
+            "intended (solely|only) for the (use of the )?(addressee|individual|recipient|person)",
+            "if you are not the intended recipient",
+            "this (e-?mail|message|communication) (and any attachments? )?(is|are|may be|contains?) (strictly )?"
+            "(confidential|privileged)",
+        ],
         "never_read": [],  # senders, @domains or label:Name the digest never reads, even if chosen above
     },
 )
@@ -80,8 +93,8 @@ def html_to_text(s: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", s))
 
 
-def body_text(payload: dict) -> str:
-    """The message's own words: plain text if there is some (else the HTML's text), without quoted replies."""
+def _texts(payload: dict) -> tuple[list[str], list[str]]:
+    """Every text/plain part, and every HTML part as text."""
     plain, rich = [], []
 
     def walk(p: dict) -> None:
@@ -95,6 +108,33 @@ def body_text(payload: dict) -> str:
             walk(c)
 
     walk(payload)
+    return plain, rich
+
+
+def whole_text(payload: dict) -> str:
+    """All of a message's text, quoted replies and footers included (what the confidentiality check reads)."""
+    plain, rich = _texts(payload)
+    return "\n".join(plain + rich)
+
+
+@functools.lru_cache(maxsize=16)
+def marking(words: tuple[str, ...]) -> re.Pattern | None:
+    """One pattern for the confidentiality markings: each a regular expression (or plain words, if it isn't a valid
+    one), any case, a space matching any whitespace, whole words only."""
+    parts = []
+    for w in (x.strip() for x in words if x and x.strip()):
+        src = re.sub(r" +", r"\\s+", w)
+        try:
+            re.compile(src)
+        except re.error:
+            src = re.escape(w).replace(r"\ ", r"\s+")
+        parts.append(f"(?:{src})")
+    return re.compile(r"\b(?:" + "|".join(parts) + r")\b", re.I) if parts else None
+
+
+def body_text(payload: dict) -> str:
+    """The message's own words: plain text if there is some (else the HTML's text), without quoted replies."""
+    plain, rich = _texts(payload)
     text = "\n".join(plain) if plain else "\n".join(rich)
     text = re.split(r"\n\s*On .{5,200}wrote:\s*\n", text)[0]
     text = "\n".join(ln for ln in text.splitlines() if not ln.lstrip().startswith(">"))
@@ -171,26 +211,26 @@ class MailDigest(GooglePart):
             return dom == low[1:] or dom.endswith("." + low[1:])
         return addr == low
 
-    def confidential(self, *texts: str) -> str | None:
-        """The confidentiality marking found in a subject, opening lines or label names (word-bounded), or None."""
-        if not self.setting("skip_confidential"):
-            return None
-        words = [w.strip() for w in self.setting("confidential_words") or [] if str(w).strip()]
-        if not words:
-            return None
-        pat = r"\b(?:" + "|".join(re.escape(w).replace(r"\ ", r"\s+") for w in words) + r")\b"
-        for t in texts:
-            m = re.search(pat, t or "", re.I)
+    def marked(self, *texts: str) -> str | None:
+        """The confidentiality marking in these texts (subject, whole body, label names), or None."""
+        pat = marking(tuple(str(w) for w in self.setting("confidential_words") or []))
+        for t in texts if pat else ():
+            m = pat.search(t or "")
             if m:
-                return m.group(0).lower()
+                return re.sub(r"\s+", " ", m.group(0)).lower()
         return None
 
-    def blocked(self, frm: str, subject: str, labels: set[str], opening: str = "") -> str | None:
-        """Why this mail must never reach the AI (confidential, or on your never-read list), or None."""
+    def confidential(self, *texts: str) -> str | None:
+        """marked(), when the check is on (it is unless you turned mail_digest.skip_confidential off)."""
+        return self.marked(*texts) if self.setting("skip_confidential") else None
+
+    def blocked(self, frm: str, subject: str, labels: set[str]) -> str | None:
+        """Why this mail must never reach the AI (on your never-read list, or marked confidential in its subject or
+        labels), or None. The body is checked once it's downloaded, before anything else happens to it."""
         addr = parseaddr(frm)[1].lower()
         if any(self.matches(r, addr, labels) for r in self.rules("never_read")):
             return "never read"
-        if self.confidential(subject, opening, *labels):
+        if self.confidential(subject, *labels):
             return "confidential"
         return None
 
@@ -263,10 +303,12 @@ class MailDigest(GooglePart):
                 counted[why] += 1
                 continue
             full = g.api("gmail", f"/users/me/messages/{mid}?format=full")
-            text = body_text(full.get("payload") or {})
-            if self.confidential("\n".join(text.splitlines()[:8])[:800]):  # marked in its opening lines
-                counted["confidential"] += 1  # dropped here: never stored, never sent to the AI
+            whole = whole_text(full.get("payload") or {})
+            if self.confidential(whole):  # anywhere in it, footers too
+                counted["confidential"] += 1
+                del full, whole  # dropped here: never stored, never sent to the AI
                 continue
+            text = body_text(full.get("payload") or {})
             when = dt.datetime.fromtimestamp(int(meta.get("internalDate") or 0) / 1000)
             rec = {
                 "id": mid,
@@ -289,6 +331,7 @@ class MailDigest(GooglePart):
                 "msgid": h.get("message-id", ""),
                 "thread": rec["thread"],
                 "labels": rec["labels"],
+                "marked": bool(self.marked(rec["subject"], whole, *rec["labels"])),  # read with the check off
                 "text": clip(rec["text"], 1500),
                 "at": now().isoformat(),
             }
@@ -567,8 +610,8 @@ class ReplyDrafts(GooglePart):
         k = md.known(mid) if md else None
         if not k:
             return "I only draft replies to mail from the digest (use its message id)."
-        why_not = md.blocked(k.get("from", ""), k.get("subject", ""), {x.lower() for x in k.get("labels", [])}, "")
-        if why_not or md.confidential("\n".join(k.get("text", "").splitlines()[:8])[:800]):
+        why_not = md.blocked(k.get("from", ""), k.get("subject", ""), {x.lower() for x in k.get("labels", [])})
+        if why_not or (md.setting("skip_confidential") and (k.get("marked") or md.marked(k.get("text", "")))):
             return "That mail is marked confidential or on the never-read list: no AI draft. Reply to it yourself."
         to = k.get("reply_to") or k.get("from") or ""
         addr = parseaddr(to)[1]
