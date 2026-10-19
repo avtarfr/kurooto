@@ -124,8 +124,7 @@ class Ask:
         }
         self._save(q)
         if deliver:
-            q["msg"] = self._deliver(q)
-            self._save(q)
+            self._set_msg(q["id"], self._deliver(q))
         self.app.events.emit(
             "question_asked", id=q["id"], kind=kind, source=q["source"], choices=len(q["choices"]), hook=q["hook"]
         )
@@ -172,12 +171,19 @@ class Ask:
             return False
         mid = self._deliver(q)
         if mid is not None:
-            self._edit(q, "(asked again below)")
-            with Lock(self.app.paths.state, "ask"):
-                cur = self.get(qid) or q
+            self._edit(q, "(asked again below)", retract=False)
+            self._set_msg(qid, mid)
+        return True
+
+    def _set_msg(self, qid: str, mid) -> None:
+        """Remember the Telegram message (to edit it later), without undoing an answer that came in meanwhile."""
+        if mid is None:
+            return
+        with Lock(self.app.paths.state, "ask"):
+            cur = self.get(qid)
+            if cur:
                 cur["msg"] = mid
                 self._save(cur)
-        return True
 
     # ------------------------------------------------------------------------------------------ reading
     def _file(self, qid: str):
@@ -384,9 +390,9 @@ class Ask:
         self.app.scheduler.every("ask:sweep", "every 10m", "ask.sweep", module="ask", misfire="coalesce")
 
     # ------------------------------------------------------------------------------------------ Telegram
-    def _edit(self, q: dict, line: str) -> None:
+    def _edit(self, q: dict, line: str, retract: bool = True) -> None:
         """Show the outcome under the question on Telegram (its buttons go), and clear it on other channels."""
-        retract = getattr(self.app.notifier, "retract", None)
+        retract = getattr(self.app.notifier, "retract", None) if retract else None
         if retract:
             try:
                 retract("ask", q["id"])

@@ -419,3 +419,26 @@ def test_ai_can_ask_and_the_answer_starts_a_request(app, monkeypatch):
     for _ in range(3):
         tool.run({"question": "x?", "then": "y {answer}"})
     assert "already 3" in tool.run({"question": "x?", "then": "y"})
+
+
+def test_resend_gives_new_buttons_and_both_messages_answer(app, env):
+    qid = app.ask.ask("Still there?", choices=["yes"])
+    first = app.ask.get(qid)["msg"]
+    assert app.ask.resend(qid) is True
+    second = app.ask.get(qid)["msg"]
+    assert (
+        second != first and "asked again below" in [p for m, p in env.fake.sent if m == "editMessageText"][-1]["text"]
+    )
+    assert env.say("yes", reply_to_message={"message_id": first}) == "Got it: yes"
+    assert app.ask.resend(qid) is False
+
+
+def test_questions_also_show_on_the_desktop(env, monkeypatch):
+    from kurooto.core import desktop
+
+    shown = []
+    monkeypatch.setattr(desktop, "notify", lambda title, text, urgent=False: shown.append((title, urgent)) or True)
+    env.app.settings.set("notify.desktop", True)
+    env.app.ask.ask("Which chapter?")
+    env.app.ask.ask("Go?", kind="approval")
+    assert shown == [("Question", False), ("Approval needed", True)]
