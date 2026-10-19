@@ -117,7 +117,7 @@ class Calls(Module):
             return False
 
         def go():
-            ok, msg = deploy.deploy(self.app, progress=lambda line: None)
+            ok, msg = deploy.deploy(self.app, progress=lambda line: None, unattended=True)
             self.app.events.emit("calls_line_updated", ok=ok)
             if not ok:
                 self.app.notify(

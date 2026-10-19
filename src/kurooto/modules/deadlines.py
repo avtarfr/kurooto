@@ -620,7 +620,7 @@ class Deadlines(Module):
             return
         if what == "overdue":
             self.app.notify(
-                f"Overdue? {it['title']} was due {when_text(it['due'])}.",
+                f"{it['title']} was due {when_text(it['due'])}.",  # the title asks "Overdue?"
                 kind="deadline",
                 title="Overdue?",
                 buttons=[[("Done", f"dl:{i}:done"), ("New date", f"dl:{i}:date"), ("Drop", f"dl:{i}:drop")]],

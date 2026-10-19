@@ -298,13 +298,17 @@ def stop_gracefully(timeout: float = 90) -> bool:
     return False
 
 
-def stop(quiet: bool = False) -> int:
-    """Stop the supervisor (so it doesn't restart the assistant) and the assistant."""
+def stop(quiet: bool = False, graceful: bool = False) -> int:
+    """Stop the supervisor (so it doesn't restart the assistant) and the assistant. graceful: ask it to stop the normal
+    way first (its features' last steps run, e.g. Notes sync sends up what's left), then force what's left."""
     from kurooto.core import proc
     from kurooto.core.state import jload
 
     p = paths()
     stopped = False
+    pid = (jload(p.state / "daemon.json", {}) or {}).get("pid")
+    if graceful and pid and proc.pid_alive(pid, "kurooto") and stop_gracefully(30):
+        stopped = True
     from kurooto.core import autostart, pathfix
 
     if pathfix.allowed():  # tests, rehearsals and portable copies never touch the real service
@@ -1089,7 +1093,7 @@ def main(argv: list[str] | None = None) -> int:
         print(url)
         return 0
     if a.cmd == "stop":
-        return stop()
+        return stop(graceful=True)
     if a.cmd == "off":
         return turn_off(a.keep_calls)
     if a.cmd == "on":

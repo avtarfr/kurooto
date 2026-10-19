@@ -159,9 +159,10 @@ def health(url: str, timeout: float = 10) -> dict | None:
 
 
 class Deployer:
-    def __init__(self, app, progress: Progress = print):
+    def __init__(self, app, progress: Progress = print, unattended: bool = False):
         self.app = app
         self.say = progress
+        self.unattended = unattended  # nobody is watching (the redeploy after an update): never open a sign-in page
         self.dir = app.paths.app / "call-line"
         self.prereqs = Prereqs(app.paths.app, app.paths.cache)
         self.node: str | None = None
@@ -345,6 +346,8 @@ class Deployer:
             return False, "Set your timezone first (Settings → You)."
         self.say("Preparing your call line…")
         self.prepare()
+        if self.unattended and not self.signed_in():
+            return False, "Cloudflare wants you to sign in again"
         self.sign_in()
         sub = self.subdomain()
         w = dict(app.settings.get("calls.worker") or {})
@@ -378,9 +381,9 @@ class Deployer:
         )
 
 
-def deploy(app, progress: Progress = print) -> tuple[bool, str]:
+def deploy(app, progress: Progress = print, unattended: bool = False) -> tuple[bool, str]:
     try:
-        return Deployer(app, progress).run()
+        return Deployer(app, progress, unattended).run()
     except Exception as e:
         return False, f"{e}"[:600]
 

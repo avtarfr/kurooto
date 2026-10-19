@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import os
 import threading
 import time
 from typing import TYPE_CHECKING
@@ -202,6 +203,7 @@ class Power:
                 except Exception:
                     pass
         try:
-            autostart.disable()  # under systemd or launchd this also stops us, which is the point
+            if os.environ.get("KUROOTO_NO_AUTOSTART") != "1":  # tests and rehearsals leave this computer alone
+                autostart.disable()  # under systemd or launchd this also stops us, which is the point
         finally:
             app.request_stop()
