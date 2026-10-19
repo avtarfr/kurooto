@@ -243,6 +243,16 @@ def test_answers_kept_while_the_computer_was_off_are_done_on_return(phone):
     assert "Your answer from the phone: Noted." in phone.fake.texts()[-1]
 
 
+def test_the_assistant_name_goes_with_rings_and_messages(phone):
+    app = phone.app
+    app.settings.set("you.assistant_name", "Juniper")  # renamed after the phone was paired
+    ask_fakeq(app)
+    phone.calls.ring("Stand-up in 5")
+    by_op = {op: kw for op, kw in phone.ops}
+    assert by_op["notify"]["assistant"] == "Juniper" and by_op["ring"]["assistant"] == "Juniper"
+    assert phone.calls.state_message()["names"]["assistant"] == "Juniper"
+
+
 # ------------------------------------------------------------------------------------------ on a call
 def test_on_a_call_nothing_rings_and_updates_wait(phone):
     app, calls = phone.app, phone.calls

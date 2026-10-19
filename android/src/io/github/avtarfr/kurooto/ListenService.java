@@ -98,14 +98,19 @@ public class ListenService extends Service {
         channels(this);
     }
 
-    @Override public int onStartCommand(Intent intent, int flags, int startId) {
-        Notification n = builder(this, CH_SERVICE)
+    /** The quiet "listening" notification (it names your assistant). */
+    private Notification listening() {
+        return builder(this, CH_SERVICE)
                 .setSmallIcon(R.drawable.ic_stat)
                 .setContentTitle(Prefs.assistant(this) + " can call you")
                 .setContentText("Calls, questions and wake-up alarms come here")
                 .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE))
                 .setOngoing(true)
                 .build();
+    }
+
+    @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        Notification n = listening();
         if (SDK >= 34) startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
         else startForeground(ID_SERVICE, n);
         if (!Prefs.paired(this)) { stopSelf(); return START_NOT_STICKY; }
@@ -166,6 +171,8 @@ public class ListenService extends Service {
             String plain = Crypto.open(Prefs.key(this), outer.optString("message", ""));
             if (plain == null) return; // not from your call line
             JSONObject m = new JSONObject(plain);
+            // every message carries the assistant's current name: a rename on the computer shows up here
+            if (Prefs.setAssistant(this, m.optString("assistant", ""))) repostListening();
             long sent = m.optLong("time", outer.optLong("time"));
             long ageSec = System.currentTimeMillis() / 1000 - sent;
             JSONArray tags = m.optJSONArray("tags");
@@ -199,6 +206,10 @@ public class ListenService extends Service {
             if (t.startsWith(prefix)) return t.substring(prefix.length());
         }
         return "";
+    }
+
+    private void repostListening() {
+        try { ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(ID_SERVICE, listening()); } catch (Exception ignored) { }
     }
 
     private void cancel(int id) {

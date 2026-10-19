@@ -164,10 +164,13 @@ public class MainActivity extends Activity {
     /** Open questions, approvals and messages, newest first; tap one to answer it. */
     private void loadWaiting() {
         final LinearLayout into = waiting;
+        final String name = Prefs.assistant(this);
         new Thread(() -> {
             final JSONArray items = Line.waiting(this);
             h.post(() -> {
-                if (into != waiting || items == null || items.length() == 0) return;
+                if (into != waiting) return;
+                if (!name.equals(Prefs.assistant(this))) { build(); return; } // renamed on the computer
+                if (items == null || items.length() == 0) return;
                 into.addView(label("Waiting for you", 20, true));
                 for (int i = items.length() - 1; i >= 0; i--) {
                     final JSONObject it = items.optJSONObject(i);

@@ -50,10 +50,12 @@
 
   function button(label, cls, onclick) { var b = el('button', cls, label); b.onclick = onclick; return b; }
 
+  var name = 'Kurooto'; // your assistant's name, as your computer last said
+
   function card(it) {
     var c = el('section', 'card');
     c.id = it.id;
-    c.appendChild(el('h2', '', it.title || 'Kurooto'));
+    c.appendChild(el('h2', '', it.title || name));
     c.appendChild(el('p', 'text', it.text || ''));
     var choices = el('div', 'choices');
     (it.choices || []).forEach(function (ch) {
@@ -97,11 +99,12 @@
       if (res[0] === 401) { msg('This phone was unpaired. Pair it again from your computer.', true); return; }
       if (res[0] !== 200) { msg(res[1].error || 'Couldn\'t load what\'s waiting.', true); return; }
       msg('');
+      if (res[1].assistant) { name = res[1].assistant; $('who').textContent = name; }
       var list = $('list');
       list.textContent = '';
       (res[1].rings || []).forEach(function (r) {
         var c = el('section', 'card');
-        c.appendChild(el('h2', '', r.alarm ? 'Wake-up call' : 'Kurooto is calling'));
+        c.appendChild(el('h2', '', r.alarm ? 'Wake-up call' : name + ' is calling'));
         c.appendChild(el('p', 'text', r.reason || ''));
         var a = el('a', 'button', 'Answer');
         a.href = r.link;

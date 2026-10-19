@@ -110,7 +110,14 @@ final class Line {
     /** What's waiting for you (open questions, approvals, messages), from the call line; null if unreachable. */
     static org.json.JSONArray waiting(Context c) {
         Net.Reply r = Net.request("GET", Prefs.url(c) + "/pending", null, null, Prefs.device(c), 20000);
-        try { return r.ok() ? new JSONObject(r.body).optJSONArray("items") : null; } catch (Exception e) { return null; }
+        try {
+            if (!r.ok()) return null;
+            JSONObject j = new JSONObject(r.body);
+            Prefs.setAssistant(c, j.optString("assistant", "")); // renamed on the computer since pairing?
+            return j.optJSONArray("items");
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** Upload one file to your computer's notes inbox, in 512 KB parts, with a call link's ticket. */
