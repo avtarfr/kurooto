@@ -60,7 +60,7 @@
       choices.appendChild(button(ch, '', function () { send(it, c, { answer: ch }); }));
     });
     (it.buttons || []).forEach(function (b, i) {
-      if (b.url) {
+      if (b.url && String(b.url).indexOf('https://') === 0) {
         var a = el('a', 'button quiet', b.label);
         a.href = b.url;
         a.target = '_blank';
