@@ -20,7 +20,7 @@ signin_hint = "A window opens: sign in with your Google account, then close it."
 [ollama]
 title = "Ollama"
 why = "Runs small AI models on this computer (picked for your hardware)."
-size_gb = 1.2
+size_gb = 5  # Linux: a 1.4 GB download that unpacks to about 3.5 GB (GPU libraries)
 programs = ["ollama"]
 dirs.windows = ["%LOCALAPPDATA%/Programs/Ollama"]
 dirs.macos = ["~/Applications/Ollama.app/Contents/Resources", "/Applications/Ollama.app/Contents/Resources"]
