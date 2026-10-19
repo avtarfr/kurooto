@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="kurooto-token" content="{{TOKEN}}">
+<title>Good morning · Kurooto</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  .morning { max-width: 1040px; margin: 0 auto; padding: 24px 18px 60px; }
+  .morning header { margin-bottom: 18px; }
+  .morning h1 { font-size: 28px; margin: 4px 0 2px; }
+  .morning .date { color: var(--dim); margin: 0; }
+  .cols { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; }
+  .box h2 { margin: 0 0 10px; }
+  .plan h3, .plan h4 { margin: 16px 0 6px; font-size: 16px; }
+  .plan h3:first-child { margin-top: 0; }
+  .plan ul { margin: 4px 0 10px; padding-left: 20px; }
+  .plan p { margin: 6px 0; }
+  .plan .done { color: var(--dim); text-decoration: line-through; }
+  .side section { display: block; margin-bottom: 16px; }
+  .side h2 { margin: 0 0 6px; }
+  .side ul { list-style: none; margin: 0; padding: 0; font-size: 15px; }
+  .side li { padding: 3px 0; border-bottom: 1px solid var(--line); }
+  .side li:last-child { border-bottom: 0; }
+  .side .t { font-family: var(--mono); font-size: 13px; color: var(--dim); margin-right: 8px; }
+  .side .off { color: var(--dim); text-decoration: line-through; }
+  .empty { color: var(--dim); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="morning">
+  <header>
+    <div class="brand">KUROOTO <span class="ver">{{VERSION}}</span></div>
+    <a href="/">dashboard</a>
+  </header>
+  <h1 id="hello">Good morning</h1>
+  <p class="date" id="date"></p>
+  <div class="cols" style="margin-top:18px">
+    <div class="box">
+      <h2>Today's plan</h2>
+      <div class="plan" id="plan"><p class="empty">Loading…</p></div>
+      <div class="actions"><button id="open-note" class="hidden">Open today's note</button></div>
+    </div>
+    <div class="side" id="side"></div>
+  </div>
+</div>
+<script src="/static/morning.js"></script>
+</body>
+</html>

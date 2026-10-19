@@ -20,7 +20,7 @@ from kurooto.core.notify import Message
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.telegram.api import TelegramAPI, TelegramError
-from kurooto.modules.text import a_minutes, a_time
+from kurooto.modules.text import a_minutes, a_time, another_day
 
 register_defaults(
     "telegram",
@@ -339,6 +339,8 @@ class Telegram(Module):
         def hold(text: str):
             if not re.search(r"\b(no calls?|don'?t call(?: me)?|hold (?:the )?calls?|no ringing)\b", text, re.I):
                 return None
+            if another_day(text):  # "no calls on Friday": the AI works out the day
+                return None
             mins, tm = a_minutes(text), a_time(text)
             if mins:
                 return {"until": f"{mins}m"}
@@ -350,7 +352,7 @@ class Telegram(Module):
             )
 
         def focus(text: str):
-            if not re.search(r"\b(focus|do not disturb|dnd)\b", text, re.I):
+            if not re.search(r"\b(focus|do not disturb|dnd)\b", text, re.I) or another_day(text):
                 return None
             if re.search(r"\b(off|stop|end|done|over)\b", text, re.I):
                 return {"arg": "off"}

@@ -57,6 +57,7 @@ SKIP_STATE = {
     "update-ready.json",
     "backups.json",
     "focus-queue.jsonl",
+    "profile.json",  # this computer's own id for the encrypted profile: it mustn't move to another computer
 }
 SKIP_STATE_DIRS = {"locks", "logs"}
 SKIP_STATE_FILES = {("telegram", "offset.json"), ("telegram", "pairing.json"), ("calls", "link.json")}

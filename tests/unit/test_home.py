@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -64,6 +65,7 @@ def _fill(app):
     (app.paths.data / "gbrain").mkdir(exist_ok=True)
     (app.paths.data / "gbrain" / "index.bin").write_bytes(b"\0" * 100)
     (app.paths.state / "web.json").write_text("{}")
+    (app.paths.state / "profile.json").write_text('{"machine": "x"}')
     (app.paths.state / "notes.json").write_text("{}")
     app.scheduler.at(time.time() + 3600, "x.y", key="test:one")
     ws = app.workspace
@@ -86,6 +88,7 @@ def test_the_zip_holds_settings_data_and_state_but_not_secrets(env, tmp_path):
     assert not any(n.startswith(("notes/", "config/cloudflare")) for n in names)
     assert "config/secrets.json" not in names and "secrets.json" not in names
     assert "state/web.json" not in names and "data/kurooto-diagnostics-1.zip" not in names
+    assert "state/profile.json" not in names
     assert not any(n.endswith(("-wal", "-shm")) or "/locks/" in n for n in names)
     assert man["secrets"] is False and man["notes"] is False
     # the database copy is a real, consistent database
@@ -240,6 +243,7 @@ def test_backup_and_restore_commands(env, tmp_path, monkeypatch, capsys):
     zips = list(drive.glob("kurooto-backup-*.zip"))
     assert len(zips) == 1 and json.loads((app.paths.state / "backups.json").read_text())["ok"]
     calls = []
+    monkeypatch.setattr(cli, "stop_gracefully", lambda timeout=90: calls.append("graceful") or True)
     monkeypatch.setattr(cli, "stop", lambda quiet=False: calls.append("stop"))
     monkeypatch.setattr(cli, "start_background", lambda: calls.append("start") or 0)
     monkeypatch.setattr(cli, "wait_for_web", lambda s=0: None)
@@ -247,9 +251,89 @@ def test_backup_and_restore_commands(env, tmp_path, monkeypatch, capsys):
     assert cli.main(["restore", str(zips[0])]) == 1 and calls == []  # said no: nothing happens
     app.settings.set("you.name", "Changed")
     assert cli.main(["restore", str(zips[0]), "--yes"]) == 0
-    assert calls == ["stop", "start"] and app.settings.get("you.name") == "Sam"
+    assert calls == ["graceful", "stop", "start"] and app.settings.get("you.name") == "Sam"
     assert list((app.paths.data / "restore-safety").glob("kurooto-backup-*.zip"))
     assert cli.main(["restore", str(tmp_path / "nope.zip"), "--yes"]) == 1
+
+
+# =================================================================================== stopping before a restore
+FAKE_DAEMON = """import signal, sys, time
+out, polite = sys.argv[1], sys.argv[2] == 'polite'
+def term(*a):
+    open(out, 'w').write('graceful')
+    sys.exit(0)
+signal.signal(signal.SIGTERM, term if polite else signal.SIG_IGN)
+open(out + '.up', 'w').write('up')
+time.sleep(60)
+"""
+
+
+def _fake_daemon(app, tmp_path, polite):
+    out = tmp_path / f"{polite}.txt"
+    p = subprocess.Popen([sys.executable, "-c", FAKE_DAEMON, str(out), polite, "kurooto"])
+    assert wait_for(lambda: Path(f"{out}.up").exists())
+    (app.paths.state / "daemon.json").write_text(json.dumps({"pid": p.pid}))
+    return p, out
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SIGTERM; on Windows the page's power/stop is the only way")
+def test_stop_asks_first_and_forces_only_after_the_timeout(env, tmp_path, monkeypatch):
+    from kurooto import cli
+
+    app = env.app
+    monkeypatch.setattr(cli, "ask_running", lambda path, body=None: None)  # its page doesn't answer
+    p, out = _fake_daemon(app, tmp_path, "polite")
+    assert cli.stop_gracefully(10) is True and out.read_text() == "graceful"
+    p.wait(5)
+    p, out = _fake_daemon(app, tmp_path, "stubborn")  # ignores the request
+    t0 = time.monotonic()
+    assert cli.stop_gracefully(1) is False and 0.9 < time.monotonic() - t0 < 5 and p.poll() is None
+    cli.stop(quiet=True)  # then it's forced
+    assert p.wait(5) is not None and not out.exists()
+    # its page answers: that's how it's asked (and on Windows the only way)
+    p, out = _fake_daemon(app, tmp_path, "polite")
+    asked = []
+    monkeypatch.setattr(cli, "ask_running", lambda path, body=None: asked.append(path) or p.terminate() or {"ok": 1})
+    assert cli.stop_gracefully(10) is True and asked == ["power/stop"]
+    (app.paths.state / "daemon.json").unlink()
+    assert cli.stop_gracefully(1) is True  # not running
+
+
+def test_the_page_can_stop_it_the_normal_way(env, monkeypatch):
+    from kurooto.web.api import Api
+
+    stopped = []
+    monkeypatch.setattr(env.app, "request_stop", lambda: stopped.append(1))
+    assert Api(env.app).post("power/stop", {})[1]["ok"] is True
+    assert wait_for(lambda: stopped == [1])
+
+
+@needs_git
+@pytest.mark.skipif(sys.platform == "win32", reason="runs a real daemon process")
+def test_a_real_daemon_sends_up_its_notes_when_stopped_for_a_restore(env, tmp_path):
+    from kurooto import cli
+
+    app = env.app
+    remote = tmp_path / "remote.git"
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(remote)], check=True)
+    app.settings.set("notes_sync.remote", str(remote))
+    app.settings.set("web.port", 18960)
+    (app.workspace / "a.md").write_text("# A\n")
+    assert app.modules["notes_sync"].first_sync()[0]
+    env.on("notes_sync")
+    app.settings.set("modules.enabled", ["notes_sync"])  # only it: no Telegram in the real daemon
+    (app.workspace / "late.md").write_text("# Written just before the restore\n")
+    log = open(tmp_path / "daemon.log", "w")
+    d = subprocess.Popen([sys.executable, "-m", "kurooto", "run"], stdout=log, stderr=log, env={**os.environ})
+    try:
+        assert cli.wait_for_web(60), (tmp_path / "daemon.log").read_text()[-2000:]
+        assert cli.stop_gracefully(90) is True
+        assert d.wait(10) == 0
+    finally:
+        if d.poll() is None:
+            d.kill()
+    files = git(tmp_path, "--git-dir", str(remote), "ls-tree", "-r", "--name-only", "main")
+    assert "late.md" in files  # Notes sync's shutdown step ran before it stopped
 
 
 # ============================================================================================ sync everything

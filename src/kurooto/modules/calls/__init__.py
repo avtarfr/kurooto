@@ -15,6 +15,7 @@ while a call is live, nothing else rings: availability says "you're on a call" (
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import re
 import threading
@@ -42,6 +43,7 @@ register_defaults(
         "ntfy_server": "https://ntfy.sh",
         "ring_s": 60,  # how long a call rings before it counts as missed
         "later_min": 30,  # "Later" on a ringing call calls back after this long
+        "realert_min": [3, 6],  # a call you didn't answer rings again this many minutes after the first; [] = once
         "notes_repo": "",  # owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off
     },
 )
@@ -97,6 +99,7 @@ class Calls(Module):
         self.action("ring", self._scheduled_ring)
         self.action("missed", self._missed)
         self.action("task_check", self._task_check)
+        self.action("realert", self._realert)
         self.every("line_update", "daily 05:10", self._line_update)
         self.app.jobs.then_actions["calls.task_done"] = self._task_done
         self.app.notifier.register("app", self.phone.send, self.phone.retract)  # questions etc. (phone.py)
@@ -129,7 +132,35 @@ class Calls(Module):
     def _scheduled_ring(self, p: dict) -> None:
         if (p.get("late_s") or p.get("missed")) and self.worker_url():
             return  # this computer was asleep when it was due, so the call line has placed it already
+        if not p.get("alarm") and self._held_call(p):
+            return
         self.ring(p.get("reason", ""), alarm=bool(p.get("alarm")), key=p.get("key", ""))
+
+    def place(self, reason: str, key: str = "", alarm: bool = False, force: bool = False) -> str:
+        """Call now; or, if a class, a hold, focus or the night blocks calls (and it isn't an alarm or forced), hold
+        the call, place it by itself when the block ends, and tell you so. key "<module>:..." makes that module hear
+        how the call went (call_outcome, call_transcript)."""
+        if not alarm and not force:
+            held = self._held_call({"reason": reason, "key": key})
+            if held:
+                return held
+        self.ring(reason, alarm=alarm, key=key)
+        return f"Calling you now: {reason}"
+
+    def _held_call(self, p: dict) -> str | None:
+        """If calls are blocked now: schedule this one for when they're allowed, say so, and return what was said."""
+        av = self.app.availability
+        why, _ = av.call_block()
+        if not why:
+            return None
+        when, _ = av.next_callable()
+        key = p.get("key") or "held-" + hashlib.sha256(str(p.get("reason", "")).encode()).hexdigest()[:10]
+        self.schedule(when, p.get("reason", ""), key=key)  # the same call held twice is still one booking
+        at = f"{when:%H:%M}" if when.date() == now().date() else f"{when:%a %H:%M}"
+        text = f"Held a call until {at} ({why}): {p.get('reason', '')}"
+        self.app.notify(text, kind="info")
+        self.app.events.emit("call_held", reason=why, until=when.isoformat())
+        return text
 
     async def background(self, stop):
         await self.connector.run(stop)
@@ -145,7 +176,7 @@ class Calls(Module):
                     self.app.events.emit("calls_tools_failed", module=m.id, error=str(e)[:200])
         return out
 
-    def _own_tools(self) -> list[Tool]:
+    def _own_tools(self, live: bool = True) -> list[Tool]:
         on = self.app.is_on
         t = [
             Tool(
@@ -174,8 +205,9 @@ class Calls(Module):
             ),
             Tool(
                 "schedule_call",
-                "Call them back later (a reminder call).",
-                self._schedule_tool,
+                "Call them later about something new (a reminder call). To have THIS call later (a check-in), use "
+                "change_checkin instead; used during a check-in, this moves the check-in anyway.",
+                lambda a: self._schedule_tool(a, live),
                 {"when": arg('e.g. "17:30", "tomorrow 7:00", "in 20 minutes"'), "reason": arg("what the call is for")},
                 ("when", "reason"),
                 offline="queue",
@@ -208,7 +240,7 @@ class Calls(Module):
 
     def agent_tools(self) -> list[Tool]:
         """What unattended AI requests may do with calls: call back later, hold calls (core/tools.py)."""
-        return [t for t in self._own_tools() if t.name in ("schedule_call", "hold_calls")]
+        return [t for t in self._own_tools(live=False) if t.name in ("schedule_call", "hold_calls")]
 
     def run_tool(self, name: str, args: dict):
         tool = next((t for t in self.tools() if t.name == name), None)
@@ -248,12 +280,41 @@ class Calls(Module):
         text = read_note(self.app.workspace, a.get("slug", ""))
         return clip(text, 6000) if text is not None else f'No note "{a.get("slug", "")}".'
 
-    def _schedule_tool(self, a: dict) -> str:
+    def _schedule_tool(self, a: dict, live: bool = True) -> str:
         try:
             at = parse_when(str(a.get("when", "")))
         except ValueError:
             return f"I couldn't read the time {a.get('when')!r}."
-        return self.schedule(at, str(a.get("reason") or "a reminder"))
+        reason = str(a.get("reason") or "").strip()
+        cur = self.live_call() if live else None
+        if cur and cur.get("key") and self._same_call(reason, cur["reason"]):
+            # "call me back in an hour" during a check-in: the same check-in later, with its steps, not a new call
+            mid = cur["key"].split(":")[0]
+            m = self.app.modules.get(mid)
+            if m and self.app.is_on(mid) and hasattr(m, "call_reschedule"):
+                out = m.call_reschedule(cur["key"], at)
+                if out:
+                    return out
+            return self.schedule(at, cur["reason"], key=cur["key"])
+        return self.schedule(at, reason or "a reminder")
+
+    def live_call(self) -> dict | None:
+        """The call going on now, if Kurooto placed it: {"key", "reason"} (for at most two hours)."""
+        cur = jload(self.dir / "live.json", {}) or {}
+        return cur if cur.get("reason") and time.time() - float(cur.get("at") or 0) < 7200 else None
+
+    @staticmethod
+    def _same_call(reason: str, live_reason: str) -> bool:
+        """Is "call me later" about the call going on (no new topic), rather than a new reminder call?"""
+        if not reason or re.search(
+            r"check.?in|debrief|night call|evening call|wake.?up|review|call (?:me )?back|callback|continue|finish|"
+            r"the rest|this call|same call|again|later|postpone|reminder call",
+            reason,
+            re.I,
+        ):
+            return True
+        words = lambda t: {w for w in re.findall(r"[a-z]{4,}", t.lower())}  # noqa: E731
+        return bool(words(reason) & words(live_reason))
 
     def _hold(self, a: dict) -> str:
         until = str(a.get("until", "")).strip()
@@ -303,7 +364,7 @@ class Calls(Module):
             key=f"calls:ring:{key}",
             module=self.id,
             grace_s=900,
-            respect="none" if alarm else "call_block",
+            respect="none",  # a no-call time is checked when it's due, so you can be told the call is held
         )
         self.connector.poke()
         self.app.events.emit("call_scheduled", at=at.isoformat())
@@ -335,14 +396,19 @@ class Calls(Module):
         t = line.ticket(self.app.secrets.get("calls.call_secret") or "", hours)
         return f"{self.worker_url()}/{'?' + q if q else ''}#{t}"
 
-    def ring(self, reason: str, alarm: bool = False, key: str = "") -> str:
-        """Ring your paired phones now (and say so on Telegram, with a link to answer from anywhere)."""
+    def ring(self, reason: str, alarm: bool = False, key: str = "", buttons: list | None = None) -> str:
+        """Ring your paired phones now (and say so on Telegram, with a link to answer from anywhere). `buttons`: more
+        buttons for that Telegram message, e.g. [("Tomorrow morning", "chk:night:defer")]."""
         since = str(int(time.time()))
         rings = jload(self.dir / "rings.json", {}) or {}
+        while since in rings:  # two calls in the same second (a repeat ring right after another call)
+            since = str(int(since) + 1)
         rings[since] = {"reason": reason, "alarm": alarm, "key": key, "at": time.time(), "state": "ringing"}
+        if buttons:
+            rings[since]["buttons"] = [list(b) for b in buttons]
         jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
         sent = self.connector.admin_later("ring", reason=reason, alarm=alarm, since=since, key=key)
-        answer = [[("Answer", {"url": self.link(reason, since=since)})]]
+        answer = [[("Answer", {"url": self.link(reason, since=since)}), *[tuple(b) for b in buttons or []]]]
         if sent:  # the phone rings; Telegram just keeps a quiet record with a link
             self.app.notify(f"{'Wake-up call' if alarm else 'Calling you'}: {reason}", kind="call", buttons=answer)
         else:
@@ -378,13 +444,56 @@ class Calls(Module):
             return
         self._ring_state(p["since"], "missed")
         self.connector.admin_later("stop-ring", since=p["since"])
+        if not self._realert_later(p["since"], r):
+            self._missed_for_good(p["since"], r)
+
+    def _missed_for_good(self, since: str, r: dict) -> None:
         self.app.notify(
             f"Missed call: {r['reason']}",
             kind="info",
-            buttons=[[("Call back", {"url": self.link(r["reason"])}), ("In 30 min", f"call:{p['since']}:later")]],
+            buttons=[[("Call back", {"url": self.link(r["reason"])}), ("In 30 min", f"call:{since}:later")]],
         )
         self.app.events.emit("call_missed", key=r.get("key", ""))
         self._tell_owner_module(r, "missed")
+
+    def _chain(self, first: str) -> list[dict]:
+        rings = jload(self.dir / "rings.json", {}) or {}
+        return [r for s, r in rings.items() if s == first or r.get("first") == first]
+
+    def _realert_later(self, since: str, r: dict) -> bool:
+        """An unanswered call (not the alarm, which repeats by itself) rings again at +3 and +6 minutes (realert_min)
+        unless calls are blocked by then. False when there are no more repeats: it's a missed call."""
+        steps = [] if r.get("alarm") else list(self.setting("realert_min") or [])
+        n, first = int(r.get("again", 0)), r.get("first") or since
+        if n >= len(steps) or self.app.availability.call_block()[0]:
+            return False
+        try:
+            at = max(float(r.get("first_at") or r["at"]) + float(steps[n]) * 60, time.time() + 5)
+        except (TypeError, ValueError):
+            return False
+        self.app.scheduler.at(at, "calls.realert", {"since": since}, key=f"calls:realert:{first}", module=self.id)
+        return True
+
+    def _realert(self, p: dict) -> None:
+        since = p.get("since", "")
+        r = (jload(self.dir / "rings.json", {}) or {}).get(since)
+        if not r or r["state"] != "missed":
+            return
+        first = r.get("first") or since
+        if any(x.get("state") not in ("missed", "ringing", "realerted") for x in self._chain(first)):
+            return  # answered or put off from another of its rings
+        if self.app.availability.call_block()[0]:
+            self._missed_for_good(since, r)
+            return
+        new = self.ring(r["reason"], alarm=False, key=r.get("key", ""), buttons=r.get("buttons"))
+        with Lock(self.app.paths.state, "calls-rings"):
+            rings = jload(self.dir / "rings.json", {}) or {}
+            if new in rings:
+                rings[new].update(again=int(r.get("again", 0)) + 1, first=first, first_at=r.get("first_at") or r["at"])
+            if since in rings and since != new:
+                rings[since]["state"] = "realerted"
+            jsave(self.dir / "rings.json", rings)
+        self.app.events.emit("call_realert", n=int(r.get("again", 0)) + 1, key=r.get("key", ""))
 
     def _tell_owner_module(self, ring: dict, outcome: str) -> bool:
         """A check-in or alarm call was answered, missed or put off: its feature hears about it. True if that
@@ -415,13 +524,18 @@ class Calls(Module):
             self.on_call(m.get("at"))
             self.app.events.emit("call_answered", via=m.get("via"), offline=bool(m.get("offline")))
             r = self._ring_state(m.get("since", ""), "answered") if m.get("since") else None
+            jsave(
+                self.dir / "live.json", {"key": r.get("key", ""), "reason": r["reason"], "at": time.time()} if r else {}
+            )
             if r:
                 self.app.scheduler.cancel(f"calls:missed:{m['since']}")
+                self.app.scheduler.cancel(f"calls:realert:{r.get('first') or m['since']}")
                 self._tell_owner_module(r, "answered")
         elif name == "ring_reply":
             since, act = m.get("since", ""), m.get("action", "")
             r = self._ring_state(since, act)
             self.app.scheduler.cancel(f"calls:missed:{since}")
+            self.app.scheduler.cancel(f"calls:realert:{(r or {}).get('first') or since}")
             if r and not self._tell_owner_module(r, act) and act == "later":
                 self._button(since, "later")
             self.app.events.emit("call_" + (act or "reply"))
@@ -493,6 +607,7 @@ class Calls(Module):
 
     def _transcript(self, b: dict) -> dict:
         self.app.availability.set_on_call(None)  # the call page sends this when the call ends
+        (self.dir / "live.json").unlink(missing_ok=True)
         lines = [x for x in (b.get("lines") or []) if isinstance(x, dict)][:5000]
         if not lines:
             return {"ok": True}
@@ -760,6 +875,22 @@ class Calls(Module):
             except ValueError:
                 return None
 
+        now_pat = re.compile(
+            r"^(?:please |can you |could you )?(?:call|ring|phone) me(?: (?:right )?now| back)?"
+            r"(?: (?:to|about|so|and) (.+))?$|^give me a (?:call|ring)(?: now)?(?: (?:to|about) (.+))?$",
+            re.I,
+        )
+
+        def match_now(text: str):
+            t = text.strip().rstrip(".!")
+            m = now_pat.match(t)
+            if not m or re.search(r"\bquiz|\btest me\b", t, re.I):  # "call me for a quiz" is the quiz's
+                return None
+            return {"reason": (m.group(1) or m.group(2) or "you asked me to call").strip()}
+
         return [
-            Intent("call_me", "call me at/in … (about …)", match, lambda msg, sl: self.schedule(sl["at"], sl["reason"]))
+            Intent(
+                "call_me", "call me at/in … (about …)", match, lambda msg, sl: self.schedule(sl["at"], sl["reason"])
+            ),
+            Intent("call_now", "call me now", match_now, lambda msg, sl: self.place(sl["reason"], force=True)),
         ]

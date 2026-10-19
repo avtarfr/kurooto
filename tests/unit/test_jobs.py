@@ -1,3 +1,6 @@
+import asyncio
+import os
+
 import pytest
 
 from kurooto.app import App
@@ -95,9 +98,33 @@ def test_interrupted_jobs_run_again_after_restart(tmp_path, monkeypatch):
     app = App()
     jid = app.jobs.submit("x")
     assert app.jobs._claim() == jid  # it was running when the computer shut down
+    app.jobs._db.execute("update jobs set runner=? where id=?", (f"{os.getpid()}:1.00", jid))  # that process is gone
     app.close()
     app2 = App()
     try:
+        assert app2.jobs.get(jid).status == "running"  # opening the queue changes nothing
+        stop = asyncio.Event()
+        stop.set()
+        asyncio.run(app2.jobs.worker(stop))  # the daemon's worker starts: it runs again
         assert app2.jobs.get(jid).status == "queued"
     finally:
         app2.close()
+
+
+def test_doctor_leaves_a_running_job_alone(tmp_path, monkeypatch, capsys):
+    from kurooto import cli
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    app = App()  # the daemon, in the middle of a request
+    try:
+        jid = app.jobs.submit("a long request")
+        assert app.jobs._claim() == jid
+        cli.doctor(as_json=True)  # builds its own App while the job runs
+        other = App()
+        assert other.jobs.recover() == 0  # even a second worker leaves a live runner's job alone
+        other.close()
+        assert app.jobs.get(jid).status == "running"
+        app.jobs._db.execute("update jobs set runner=NULL where id=?", (jid,))  # from before runners were noted
+        assert app.jobs.recover() == 1 and app.jobs.get(jid).status == "queued"
+    finally:
+        app.close()

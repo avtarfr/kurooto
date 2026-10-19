@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import json
+import os
 import sqlite3
 import threading
 import time
@@ -16,6 +17,8 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+import psutil
 
 from kurooto import providers
 from kurooto.core.mcp import command, run_env
@@ -68,6 +71,22 @@ class Job:
     result: str | None
 
 
+def _process(pid: int) -> str:
+    """A process's pid and start time: a pid alone can belong to another program after a reboot."""
+    return f"{pid}:{psutil.Process(pid).create_time():.2f}"
+
+
+RUNNER = _process(os.getpid())
+
+
+def _alive(runner: str | None) -> bool:
+    try:
+        pid = int(str(runner).split(":")[0])
+        return _process(pid) == runner
+    except (psutil.Error, ValueError):
+        return False
+
+
 class Jobs:
     def __init__(self, app: App):
         self.app = app
@@ -89,8 +108,8 @@ class Jobs:
         self.then_actions: dict = {}  # name -> fn(job, result)
         if "background" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # older databases
             self._db.execute("alter table jobs add column background integer default 0")
-        with self._lock:  # jobs cut off by a restart run again
-            self._db.execute("update jobs set status='queued' where status='running'")
+        if "runner" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # which process runs it
+            self._db.execute("alter table jobs add column runner text")
 
     # ------------------------------------------------------------------------------------- the queue
     def submit(
@@ -130,6 +149,16 @@ class Jobs:
             self._loop.call_soon_threadsafe(self._wake.set)
         return jid
 
+    def recover(self) -> int:
+        """Jobs cut off by a crash or a restart run again. Only the daemon's worker does this, and only for jobs whose
+        process is gone: anything else that opens the queue (`kurooto doctor`, the CLI) leaves running jobs alone."""
+        with self._lock:
+            rows = self._db.execute("select id, runner from jobs where status='running'").fetchall()
+            gone = [jid for jid, runner in rows if not _alive(runner)]
+            for jid in gone:
+                self._db.execute("update jobs set status='queued' where id=? and status='running'", (jid,))
+        return len(gone)
+
     def poke(self) -> None:
         """Look at the queue now (e.g. a pause just ended)."""
         if self._wake is not None and self._loop is not None:
@@ -153,7 +182,9 @@ class Jobs:
             ).fetchone()
             if not row:
                 return None
-            self._db.execute("update jobs set status='running', started=? where id=?", (time.time(), row[0]))
+            self._db.execute(
+                "update jobs set status='running', started=?, runner=? where id=?", (time.time(), RUNNER, row[0])
+            )
             return row[0]
 
     def run_next(self) -> str | None:
@@ -166,6 +197,7 @@ class Jobs:
     async def worker(self, stop: asyncio.Event) -> None:
         self._loop = asyncio.get_running_loop()
         self._wake = asyncio.Event()
+        self.recover()
         while not stop.is_set():
             if (
                 self.app.power.current != "paused"

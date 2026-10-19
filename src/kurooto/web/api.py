@@ -194,6 +194,10 @@ class Api:
                 return 200, {"installing": self._installing, "lines": self.progress[-30:]}
         if path == "ask" or path.startswith("ask/"):
             return self._ask(path, dict(q))
+        if path == "morning":  # the morning page (rhythm)
+            from kurooto.modules.daily import morning_view
+
+            return 200, morning_view(self.app)
         return 404, {"error": "not found"}
 
     # --------------------------------------------------------------------------------------------- POST
@@ -209,6 +213,9 @@ class Api:
             if not t or not self.app.is_on("terminals"):
                 return 403, {"error": "Terminals is off"}
             return t.handle(name, action, b)
+        if path == "power/stop":  # stop the normal way (`kurooto restore`): shutdown hooks run; it starts at sign-in
+            threading.Timer(0.3, self.app.request_stop).start()  # answer first
+            return 200, {"ok": True, "message": "Stopping."}
         if path == "sync/all":  # sync everything that's on, in the background (`kurooto sync`)
             from kurooto.core import syncall
 

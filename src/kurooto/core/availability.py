@@ -1,5 +1,9 @@
-"""When may Kurooto interrupt you? Quiet hours you set ("no calls till 6"), focus time (do-not-disturb), the
-night, and blockers that modules add (a class you attend, a calendar event marked #nocall).
+"""When may Kurooto interrupt you? Quiet hours you set ("no calls till 6"), focus time (do-not-disturb, or a calendar
+event marked #focus), the night, and blockers that modules add (a class you attend, a calendar event, or only events
+marked #nocall if you prefer).
+
+The night: with the wake-up alarm set, it runs from your bedtime to the alarm (so once you're up, calls can come);
+otherwise it's the fixed night hours.
 
     call_block(t)   -> (reason, until) or (None, None)
     next_callable(t)-> the earliest time a call is allowed
@@ -19,7 +23,9 @@ register_defaults(
     "availability",
     {
         "night": {"enabled": True, "from": "23:30", "to": "07:00"},  # no calls overnight unless it's an alarm
-        "nocall_keyword": "#nocall",
+        "nocall_keyword": "#nocall",  # in a calendar event's title or description: no calls during it
+        "nocall_calendar": "no call",  # every event in a calendar whose name contains this holds calls
+        "focus_keyword": "#focus",  # in a calendar event: focus time (calls held, messages wait) while it runs
     },
 )
 
@@ -27,6 +33,8 @@ ON_CALL = "you're on a call"  # the reason call_block() gives while a call is li
 
 # a blocker returns (reason, until) for time t, or None
 Blocker = Callable[[dt.datetime], "tuple[str, dt.datetime] | None"]
+# the nights the wake-up alarm covers: [(bedtime, alarm), ...] as naive local times
+SleepWindows = Callable[[], "list[tuple[dt.datetime, dt.datetime]]"]
 
 
 class Availability:
@@ -34,6 +42,7 @@ class Availability:
         self.dir = Path(state_dir)
         self.settings = settings
         self.blockers: dict[str, Blocker] = {}
+        self.sleep: SleepWindows | None = None  # set by the alarm while it's on
 
     # quiet: "no calls until X" (messages still come)
     def quiet_until(self, t: dt.datetime | None = None) -> dt.datetime | None:
@@ -66,13 +75,29 @@ class Availability:
         n = self.settings.get("availability.night") or {}
         if not n.get("enabled"):
             return None
+        windows = self._sleep_windows()
+        for bed, alarm in windows:
+            if bed <= t < alarm:
+                return "you're asleep (alarm set)", alarm
         start, end = dt.time.fromisoformat(n["from"]), dt.time.fromisoformat(n["to"])
         tt = t.time()
         inside = (start <= tt or tt < end) if start > end else (start <= tt < end)
         if not inside:
             return None
         day = t.date() if tt < end else t.date() + dt.timedelta(days=1)
-        return "it's night", dt.datetime.combine(day, end)
+        until = dt.datetime.combine(day, end)
+        began = dt.datetime.combine(day - dt.timedelta(days=1) if start > end else day, start)
+        if any(bed < until and began < alarm for bed, alarm in windows):
+            return None  # the alarm sets this night's hours instead: from bedtime until it rings
+        return "it's night", until
+
+    def _sleep_windows(self) -> list[tuple[dt.datetime, dt.datetime]]:
+        if self.sleep is None:
+            return []
+        try:
+            return [(a, b) for a, b in self.sleep() or [] if a < b]
+        except Exception:
+            return []
 
     def call_block(self, t: dt.datetime | None = None) -> tuple[str | None, dt.datetime | None]:
         t = t or now()
