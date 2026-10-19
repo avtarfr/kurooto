@@ -6,6 +6,35 @@ wakes you up in the morning. You choose the AI behind it, and every feature is o
 
 > **Status: pre-release.** The install line below works once the first release (v0.1.0) is published.
 
+## Showcase
+
+<p align="center">
+  <img src="docs/media/systems-loop.webp" width="720" alt="The dashboard's Systems view: each feature that's on is a cell around a beating core labelled KUROOTO, with a heartbeat trace behind it; pulses run along the lines between the core and the cells as messages, reminders and AI answers come and go.">
+</p>
+
+![The dashboard: this computer's status on the left, the features as living cells in the middle, the notes and their links as a graph on the right, and a live activity feed below.](docs/media/dashboard.webp)
+
+<p align="center">
+  <img src="docs/media/chat-example-1.webp" width="32%" alt="Example chat: Sam asks for a reminder in two minutes and what's due this week, then logs an hour of study; the reminder arrives with +10 min and +1 h buttons.">
+  &nbsp;
+  <img src="docs/media/chat-example-2.webp" width="32%" alt="Example chat: an AI answer about the Gibbs phenomenon, then the evening check-in with In 30 min and Skip today buttons, Sam's reply, and the note that it went into the journal.">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/media/setup-computer-light.webp"><img src="docs/media/setup-computer.webp" alt="The setup wizard's Your computer step: the graphics card, memory and free space it found, the local models it recommends, and what to do on battery."></picture></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/media/morning-light.webp"><img src="docs/media/morning.webp" alt="The morning page: today's plan from the daily note, next to the day's classes, calendar, what's due soon, check-ins and an open question."></picture></td>
+  </tr>
+</table>
+
+More: [setup: welcome](docs/media/setup-welcome.webp) · [setup: AI](docs/media/setup-ai.webp) ·
+[setup: about you](docs/media/setup-about-you.webp) · [setup: features](docs/media/setup-features.webp) ·
+[terminals](docs/media/dashboard-terminal.webp) · [research sources](docs/media/dashboard-research.webp) ·
+[features tab](docs/media/dashboard-features.webp) · [phone: call](docs/media/phone-call.webp) ·
+[phone: inbox](docs/media/phone-inbox.webp) · [phone: pairing](docs/media/phone-pair.webp) ·
+[the Systems view as video](docs/media/systems-loop.mp4). All of it is a demo with made-up data: Sam, a student taking
+Linear Algebra, Organic Chemistry and Signals & Systems.
+
 ## Install
 
 **Windows** (PowerShell):

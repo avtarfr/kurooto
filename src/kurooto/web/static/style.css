@@ -1,23 +1,43 @@
-:root {
-  --bg: #22181a; --fg: #efd1d0; --dim: #a9908f; --line: #4a3a3d; --panel: #2b1f22;
-  --accent: #ff4e79; --lav: #b3a3d5; --pink: #ec8fa8; --peach: #ffba92; --ok: #9fd8a8;
+/* Palettes: "kuro" (deep greens, the default) and "rose" (the original); <html data-palette> picks one (Settings →
+   look.palette). accent fills buttons, accent-text is the accent as text; lav, pink, peach, sand and rose are the
+   secondary colours (the dashboard's cells and graph); ok, warn and bad are for status, never the accent. The dashboard
+   (body.home) is always dark; the other pages follow the system's light mode. */
+:root, body.home {
+  color-scheme: dark;
+  --bg: #0b0f0a; --fg: #dad3c8; --dim: #95a682; --line: #26311f; --panel: #151b12;
+  --accent: #6b8a42; --accent-text: #a6c07a; --accent-contrast: #0a0e08; --link: #a6c07a; --hover: #7e9a52;
+  --lav: #8dbdb3; --pink: #d6967a; --peach: #ddb866; --sand: #e4d8b4; --rose: #b9a6cc;
+  --ok: #8ccb98; --warn: #e2b550; --bad: #e8735a;
   --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+:root[data-palette="rose"], [data-palette="rose"] body.home {
+  --bg: #22181a; --fg: #efd1d0; --dim: #a9908f; --line: #4a3a3d; --panel: #2b1f22;
+  --accent: #ff4e79; --accent-text: #ff4e79; --accent-contrast: #1d1416; --link: #ec8fa8; --hover: #ec8fa8;
+  --lav: #b3a3d5; --pink: #ec8fa8; --peach: #ffba92; --sand: #f9d7ac; --rose: #ffbcb2;
+  --ok: #9fd8a8; --warn: #ffba92; --bad: #ff4e79;
+}
 @media (prefers-color-scheme: light) {
-  :root { --bg: #fbf3f2; --fg: #2a1c1f; --dim: #7b6466; --line: #e2cfcf; --panel: #fff; }
+  :root, :root[data-palette="kuro"] {
+    color-scheme: light;
+    --bg: #f4f2ec; --fg: #2f3a26; --dim: #52624a; --line: #d4ccbe; --panel: #fff;
+    --accent: #3f5626; --accent-text: #3a4f22; --accent-contrast: #f6f3ec; --link: #3a4f22; --hover: #4c672e;
+    --lav: #3e6e66; --pink: #9a4e33; --peach: #8a6414; --sand: #6e5a2e; --rose: #6a5384;
+    --ok: #2e6b3f; --warn: #8a5a00; --bad: #b23a26;
+  }
+  :root[data-palette="rose"] { color-scheme: light; --bg: #fbf3f2; --fg: #2a1c1f; --dim: #7b6466; --line: #e2cfcf; --panel: #fff; }
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--sans); }
-a { color: var(--pink); }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--sans); accent-color: var(--accent); }
+a { color: var(--link); }
 code { font-family: var(--mono); font-size: .92em; background: var(--panel); padding: 1px 5px; border-radius: 2px; }
 .wizard { max-width: 760px; margin: 0 auto; padding: 28px 18px 60px; }
 header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
-.brand { font: 700 15px var(--mono); letter-spacing: .14em; color: var(--accent); }
+.brand { font: 700 15px var(--mono); letter-spacing: .14em; color: var(--accent-text); }
 .ver { color: var(--dim); font-weight: 400; letter-spacing: 0; margin-left: 6px; }
 .steps { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
 .steps li { font: 12px var(--mono); color: var(--dim); border: 1px solid var(--line); padding: 2px 8px; border-radius: 2px; }
-.steps li.on { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.steps li.on { color: var(--accent-contrast); background: var(--accent); border-color: var(--accent); }
 .steps li.done { color: var(--fg); border-color: var(--lav); }
 section { display: none; }
 section.on { display: block; }
@@ -30,8 +50,8 @@ input:not([type=checkbox]), textarea { display: block; width: 100%; margin-top: 
 input:focus, textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
 button { font: 14px var(--sans); color: var(--fg); background: transparent; border: 1px solid var(--line); padding: 9px 16px;
   border-radius: 2px; cursor: pointer; }
-button:hover { border-color: var(--pink); }
-button.primary { background: var(--accent); color: #1d1416; border-color: var(--accent); font-weight: 600; }
+button:hover { border-color: var(--hover); }
+button.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); font-weight: 600; }
 button:disabled { opacity: .5; cursor: default; }
 .nav { display: flex; justify-content: space-between; margin-top: 30px; }
 .row { display: flex; gap: 8px; align-items: stretch; }
@@ -44,7 +64,7 @@ button:disabled { opacity: .5; cursor: default; }
 .note { color: var(--dim); font-size: 14px; }
 .cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .card { border: 1px solid var(--line); border-radius: 2px; padding: 14px; background: var(--panel); cursor: pointer; text-align: left; }
-.card:hover { border-color: var(--pink); }
+.card:hover { border-color: var(--hover); }
 .card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .card h3 { margin: 0 0 6px; font-size: 15px; }
 .card p { margin: 0; color: var(--dim); font-size: 13px; }
@@ -54,17 +74,17 @@ button:disabled { opacity: .5; cursor: default; }
 .features .card { cursor: default; }
 .features .card label { margin: 0; color: var(--fg); display: flex; gap: 8px; align-items: center; cursor: pointer; }
 .presets { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-.preset.on { border-color: var(--accent); color: var(--accent); }
+.preset.on { border-color: var(--accent); color: var(--accent-text); }
 .panel { margin-top: 18px; }
 .panel:empty { display: none; }
 .box { border: 1px solid var(--line); border-radius: 2px; padding: 14px; background: var(--panel); }
 .box p { margin: 6px 0; }
 .log { font: 12px/1.5 var(--mono); color: var(--dim); max-height: 180px; overflow: auto; white-space: pre-wrap; margin-top: 8px; }
 .ok { color: var(--ok); }
-.bad { color: var(--accent); }
+.bad { color: var(--bad); }
 .howto li { margin: 8px 0; }
 .check { display: flex; gap: 8px; align-items: center; color: var(--fg); }
-.big { display: inline-block; margin: 10px 0; padding: 12px 18px; background: var(--accent); color: #1d1416 !important;
+.big { display: inline-block; margin: 10px 0; padding: 12px 18px; background: var(--accent); color: var(--accent-contrast) !important;
   text-decoration: none; font-weight: 600; border-radius: 2px; }
 @media (max-width: 520px) { h1 { font-size: 22px; } .row { flex-direction: column; } }
 .qr { background: #fff; padding: 10px; width: fit-content; border-radius: 2px; margin: 8px 0; }

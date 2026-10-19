@@ -609,7 +609,7 @@ export class Line {
 function manifest(url, env) {
   const code = (url.searchParams.get('c') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 16);
   return new Response(JSON.stringify({
-    name: 'Kurooto', short_name: 'Kurooto', display: 'standalone', background_color: '#14111a', theme_color: '#14111a',
+    name: 'Kurooto', short_name: 'Kurooto', display: 'standalone', background_color: '#0b0f0a', theme_color: '#0b0f0a',
     start_url: code ? `/pair?c=${code}` : '/', scope: '/',
     icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png' }],
   }), { headers: { 'content-type': 'application/manifest+json', 'cache-control': 'no-store' } });

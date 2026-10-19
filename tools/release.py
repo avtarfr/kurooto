@@ -11,6 +11,7 @@ on the site, with android.json for the app's update check. See docs/RELEASING.md
 
 SITE is a folder laid out like the GitHub Pages site:
     SITE/install.ps1, install.sh, bootstrap.py, index.html (the landing page)
+    SITE/media/                                 its screenshots and animation (from docs/media)
     SITE/stable.json, beta.json                 signed channel pointers
     SITE/releases/<v>/manifest.json             signed list of files with sha256
     SITE/releases/<v>/kurooto-<v>.tar.gz        the source release (with requirements.lock, hash-pinned)
@@ -103,6 +104,7 @@ def build(site: Path, base: str, version: str | None, notes: str, break_run: boo
                 ".dev.vars",
             ),
         )
+        shutil.rmtree(src / "docs" / "media", ignore_errors=True)  # screenshots: the site has them, releases don't
         pp = src / "pyproject.toml"
         text = pp.read_text(encoding="utf-8")
         if version:
@@ -144,6 +146,8 @@ def build(site: Path, base: str, version: str | None, notes: str, break_run: boo
     (rel / "manifest.unsigned.json").write_text(json.dumps(doc, indent=1), encoding="utf-8")
     for f in ("install.ps1", "install.sh", "bootstrap.py", "index.html"):
         shutil.copy(ROOT / "installer" / f, site / f)
+    if (ROOT / "docs" / "media").is_dir():  # the landing page's screenshots and animation
+        shutil.copytree(ROOT / "docs" / "media", site / "media", dirs_exist_ok=True)
     if apk:
         shutil.copy(apk, rel / "kurooto.apk")
         (site / "android.json").write_text(

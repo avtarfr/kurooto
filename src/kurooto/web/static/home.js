@@ -7,7 +7,10 @@ const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const TAU = Math.PI * 2;
 const FONT = '"JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace';
-const PAL = { bg: "#22181a", fg: "#efd1d0", accent: "#ff4e79", lav: "#b3a3d5", pink: "#ec8fa8", peach: "#ffba92", sand: "#f9d7ac", rose: "#ffbcb2" };
+// the canvases' colours are the page's palette (style.css: "kuro" by default, "rose" with look.palette = rose)
+const css = (name, fallback) => { const v = getComputedStyle(document.body).getPropertyValue(name).trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : fallback; };
+const PAL = { bg: css("--bg", "#0b0f0a"), fg: css("--fg", "#dad3c8"), accent: css("--accent-text", "#a6c07a"), lav: css("--lav", "#8dbdb3"),
+  pink: css("--pink", "#d6967a"), peach: css("--peach", "#ddb866"), sand: css("--sand", "#e4d8b4"), rose: css("--rose", "#b9a6cc") };
 const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const mix = (a, b, t) => "#" + hexRgb(a).map((v, i) => Math.round(v + (hexRgb(b)[i] - v) * t).toString(16).padStart(2, "0")).join("");
 const rgba = (h, a) => { const [r, g, b] = hexRgb(h); return `rgba(${r},${g},${b},${a})`; };
@@ -34,9 +37,15 @@ function fitCanvas(cv) {
 
 // ------------------------------------------------------------------------------------------------ SYSTEMS
 const COLORS = { telegram: "lav", chat: "peach", reminders: "pink", checkins: "rose", deadlines: "accent", gbrain: "lav",
-  local_models: "sand", subjects: "sand", quiz: "pink", weekly: "rose", files: "peach" };
+  local_models: "sand", subjects: "sand", quiz: "pink", weekly: "rose", files: "peach", skills: "lav", library: "sand",
+  remember: "rose", retro: "pink", capture: "peach", calls: "accent", alarm: "peach", voice_notes: "lav", calendar: "rose",
+  notes_sync: "lav", backups: "sand", google: "peach", study: "accent", research: "lav", terminals: "sand" };
 const SHORT = { telegram: "telegram", chat: "chat", reminders: "reminders", checkins: "check-ins", deadlines: "deadlines",
-  gbrain: "notes brain", local_models: "local models", subjects: "subjects", quiz: "quiz", weekly: "weekly", files: "files" };
+  gbrain: "notes brain", local_models: "local models", subjects: "subjects", quiz: "quiz", weekly: "weekly", files: "files",
+  library: "quick notes", retro: "look back", capture: "after class", voice_notes: "voice notes", notes_sync: "notes sync",
+  classroom_notes: "classroom", mail_digest: "mail", reply_drafts: "drafts", agent_plan: "agent plan", awake: "awake",
+  handwritten: "handwritten", study: "study", research: "research", calendar: "calendar", alarm: "alarm", calls: "calls",
+  skills: "skills", remember: "remember", terminals: "terminals", backups: "backups", google: "google" };
 const OUTBOUND = /fired|asked|told|notified|done|reply/;
 
 class Body {
