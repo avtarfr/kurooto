@@ -85,6 +85,7 @@ def calls(env):
     env.app.secrets.set("gemini.api_key", "k")
     deploy.ensure_secrets(env.app)
     env.app.settings.set("calls.worker", {"url": "https://kurooto-abc.your-subdomain.workers.dev"})
+    env.app.settings.set("availability.night.enabled", False)  # the tests ring at the real time, maybe at night
     env.on("calls")
     return env
 
@@ -167,6 +168,34 @@ def test_missed_check_in_call_asks_on_telegram(calls):
     ck._fire({"name": "evening", "day": day})
     ck.call_outcome(f"checkins:evening:{day}", "missed")
     assert "missed call" in calls.fake.texts()[-1] and ck.today()["evening"]["status"] == "asked"
+
+
+def test_check_in_call_waits_out_a_block_or_asks_by_message(calls, monkeypatch):
+    from kurooto.modules import checkins as ck_mod
+
+    app = calls.app
+    calls.on("checkins")
+    app.settings.set("checkins.by_call", True)
+    ck = app.modules["checkins"]
+    today = dt.date.today()
+    monkeypatch.setattr(ck_mod, "now", lambda: dt.datetime.combine(today, dt.time(15, 0)))
+    monkeypatch.setattr(app.availability, "call_block", lambda t=None: ("a class", None))
+    later = dt.datetime.combine(today, dt.time(16, 0))
+    monkeypatch.setattr(app.availability, "next_callable", lambda t=None, limit=24: (later, None))
+    f = app.paths.state / "calls" / "rings.json"
+    rang = lambda: f.exists() and bool(json.loads(f.read_text()))  # noqa: E731
+    ck.move("evening", "23:59")
+    ck._fire({"name": "evening", "day": today.isoformat()})
+    assert not rang() and ck.today()["evening"]["status"] == "planned"
+    job = app.scheduler.jobs("checkins:evening")[0]
+    assert (
+        job.when.astimezone().replace(tzinfo=None) == later and "waits until 16:00 (a class)" in calls.fake.texts()[-1]
+    )
+    tomorrow = later + dt.timedelta(days=1)
+    monkeypatch.setattr(app.availability, "next_callable", lambda t=None, limit=24: (tomorrow, None))
+    ck._fire({"name": "evening", "day": today.isoformat()})  # blocked until tomorrow: a message instead
+    assert ck.today()["evening"]["status"] == "asked" and "Evening check-in:" in calls.fake.texts()[-1]
+    assert not rang()
 
 
 def test_alarm(calls):

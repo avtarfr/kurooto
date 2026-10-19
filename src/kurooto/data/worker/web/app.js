@@ -235,7 +235,7 @@ async function start() {
 }
 
 function hangup(user = true) {
-  if (transcript.length) api('/transcript', { lines: transcript.splice(0), purpose }).catch(() => {});
+  if (transcript.length) api('/transcript', { lines: transcript.splice(0), purpose, since }).catch(() => {});
   ending = true;
   clearInterval(pollTimer);
   try { if (session) session.close(); } catch { /* closed */ }
