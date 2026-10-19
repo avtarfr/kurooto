@@ -9,6 +9,10 @@ computer (Kurooto looks only at its sender, subject and Gmail labels, here, to s
 - on a school or work Google account, mail from your own organisation's domain (setting mail_digest.own_domain)
 Even then, personal mail (not about study or work) is only counted unless it comes from a sender or label you chose.
 Promotions, Social and topics on your not-interested list are only counted.
+Mail marked confidential is never read, whoever sent it: "confidential", "do not forward", "restricted" or "private and
+confidential" in its subject, its first lines or a Gmail label of the same name (mail_digest.confidential_words). Nor
+is mail from a sender, domain or label on your never-read list (/mail never ...). Work or school mail may be covered by
+your institution's email policy; these are only counted, never summarised, and get no AI reply drafts.
 
 Email reply drafts (a feature of its own): when the digest finds mail that needs your reply, the AI drafts one into
 your Gmail Drafts and sends it to you with Send / Edit / Discard. Nothing is sent unless you tap Send. Edit: say what
@@ -50,6 +54,10 @@ register_defaults(
         "first_days": 3,  # the first digest looks this far back
         "max_messages": 200,  # per check
         "save_note": True,  # a copy of each digest in your notes (mail/<date>-<time>.md)
+        # mail marked confidential is only counted: never read by the AI, summarised or answered with a draft
+        "skip_confidential": True,
+        "confidential_words": ["confidential", "do not forward", "restricted", "private and confidential"],
+        "never_read": [],  # senders, @domains or label:Name the digest never reads, even if chosen above
     },
 )
 register_defaults("reply_drafts", {"per_day": 5, "ask_days": 3})
@@ -126,7 +134,7 @@ class MailDigest(GooglePart):
     privacy = (
         "Reads Gmail (read-only: nothing is sent, deleted or marked read). Only mail from senders or labels you chose "
         "(and, on a school or work account, your own domain) is read and goes to the AI you picked; the rest is only "
-        "counted, on this computer."
+        "counted, on this computer. Mail marked confidential is never read."
     )
     permission = (
         "Google will ask you to allow Kurooto to read your email (read-only: it can't send, delete or change "
@@ -150,8 +158,41 @@ class MailDigest(GooglePart):
             jsave(self.dir / "state.json", st)
         return st["me"]
 
-    def rules(self) -> list[str]:
-        return [str(r).strip() for r in self.setting("read") or [] if str(r).strip()]
+    def rules(self, key: str = "read") -> list[str]:
+        return [str(r).strip() for r in self.setting(key) or [] if str(r).strip()]
+
+    @staticmethod
+    def matches(rule: str, addr: str, labels: set[str]) -> bool:
+        """Does a rule ("label:Name", "sam@example.org", "@example.org") cover this sender or one of these labels?"""
+        low, dom = rule.lower(), domain_of(addr)
+        if low.startswith("label:"):
+            return low[6:].strip() in labels
+        if low.startswith("@"):
+            return dom == low[1:] or dom.endswith("." + low[1:])
+        return addr == low
+
+    def confidential(self, *texts: str) -> str | None:
+        """The confidentiality marking found in a subject, opening lines or label names (word-bounded), or None."""
+        if not self.setting("skip_confidential"):
+            return None
+        words = [w.strip() for w in self.setting("confidential_words") or [] if str(w).strip()]
+        if not words:
+            return None
+        pat = r"\b(?:" + "|".join(re.escape(w).replace(r"\ ", r"\s+") for w in words) + r")\b"
+        for t in texts:
+            m = re.search(pat, t or "", re.I)
+            if m:
+                return m.group(0).lower()
+        return None
+
+    def blocked(self, frm: str, subject: str, labels: set[str], opening: str = "") -> str | None:
+        """Why this mail must never reach the AI (confidential, or on your never-read list), or None."""
+        addr = parseaddr(frm)[1].lower()
+        if any(self.matches(r, addr, labels) for r in self.rules("never_read")):
+            return "never read"
+        if self.confidential(subject, opening, *labels):
+            return "confidential"
+        return None
 
     def own_domain(self, me: str) -> str:
         d = domain_of(me)
@@ -166,13 +207,11 @@ class MailDigest(GooglePart):
         if not_interested(self.app, f"{subject} {name}"):
             return "count", "not interested", False
         labels = {names.get(i, i).lower() for i in label_ids}
+        stop = self.blocked(frm, subject, labels)
+        if stop:
+            return "count", stop, False
         for r in self.rules():
-            low = r.lower()
-            if low.startswith("label:") and low[6:].strip() in labels:
-                return "read", f"you chose {r}", True
-            if low.startswith("@") and (dom == low[1:] or dom.endswith("." + low[1:])):
-                return "read", f"you chose {r}", True
-            if "@" in low and not low.startswith("@") and addr == low:
+            if self.matches(r, addr, labels):
                 return "read", f"you chose {r}", True
         if "CATEGORY_PROMOTIONS" in label_ids:
             return "count", "promotions", False
@@ -197,8 +236,10 @@ class MailDigest(GooglePart):
             for m in g.pages("gmail", "/users/me/messages", "messages", {"q": q, "maxResults": 100}, cap // 100 + 1)
         ]
         seen = dict.fromkeys(st.get("seen", []))  # in order, so the oldest are dropped first
-        names = {}
-        if any(r.lower().startswith("label:") for r in self.rules()):
+        names = {}  # your labels' names: for label: rules, and labels that mark mail confidential
+        if self.setting("skip_confidential") or any(
+            r.lower().startswith("label:") for r in self.rules() + self.rules("never_read")
+        ):
             names = {x["id"]: x.get("name", "") for x in g.api("gmail", "/users/me/labels").get("labels", [])}
         counted, read, newest = Counter(st.get("counted") or {}), [], since_ms
         known = jload(self.dir / "known.json", {}) or {}
@@ -222,6 +263,10 @@ class MailDigest(GooglePart):
                 counted[why] += 1
                 continue
             full = g.api("gmail", f"/users/me/messages/{mid}?format=full")
+            text = body_text(full.get("payload") or {})
+            if self.confidential("\n".join(text.splitlines()[:8])[:800]):  # marked in its opening lines
+                counted["confidential"] += 1  # dropped here: never stored, never sent to the AI
+                continue
             when = dt.datetime.fromtimestamp(int(meta.get("internalDate") or 0) / 1000)
             rec = {
                 "id": mid,
@@ -232,7 +277,7 @@ class MailDigest(GooglePart):
                 "why": why,
                 "chosen": chosen,
                 "labels": sorted(names[i] for i in meta.get("labelIds", []) if i.startswith("Label_") and names.get(i)),
-                "text": body_text(full.get("payload") or {}),
+                "text": text,
                 "attachments": attachment_names(full.get("payload") or {}),
                 "link": f"https://mail.google.com/mail/u/0/#all/{meta.get('threadId', '')}",
             }
@@ -243,6 +288,7 @@ class MailDigest(GooglePart):
                 "subject": rec["subject"],
                 "msgid": h.get("message-id", ""),
                 "thread": rec["thread"],
+                "labels": rec["labels"],
                 "text": clip(rec["text"], 1500),
                 "at": now().isoformat(),
             }
@@ -406,7 +452,7 @@ class MailDigest(GooglePart):
                 "mail",
                 "your mail digest now; /mail read <@domain | sender | label:Name> chooses what it may read",
                 self._cmd,
-                usage="/mail [read <rule> | unread <rule> | rules]",
+                usage="/mail [read <rule> | unread <rule> | never <rule> | unnever <rule> | rules]",
             )
         ]
 
@@ -414,14 +460,22 @@ class MailDigest(GooglePart):
         word, _, rest = arg_text.strip().partition(" ")
         word, rest = word.lower(), rest.strip()
         rules = self.rules()
-        if word in ("read", "unread"):
+        if word in ("read", "unread", "never", "unnever"):
             if not RULE.match(rest):
-                return "Usage: /mail read @school.example  |  /mail read sam@example.org  |  /mail read label:Courses"
+                return f"Usage: /mail {word} @school.example  |  sam@example.org  |  label:Courses"
             rule = rest if rest.lower().startswith("label:") else rest.lower()
-            rest_rules = [r for r in rules if r.lower() != rule.lower()]
-            self.app.settings.set("mail_digest.read", [*rest_rules, rule] if word == "read" else rest_rules)
-            self.app.events.emit("mail_rule", added=word == "read")
-            return f"The digest {'reads' if word == 'read' else 'no longer reads'} mail matching {rule}."
+            key = "never_read" if word.endswith("never") else "read"
+            rest_rules = [r for r in self.rules(key) if r.lower() != rule.lower()]
+            self.app.settings.set(
+                f"mail_digest.{key}", [*rest_rules, rule] if not word.startswith("un") else rest_rules
+            )
+            self.app.events.emit("mail_rule", added=not word.startswith("un"), never=key == "never_read")
+            return {
+                "read": f"The digest reads mail matching {rule}.",
+                "unread": f"The digest no longer reads mail matching {rule}.",
+                "never": f"The digest never reads mail matching {rule}; it's only counted.",
+                "unnever": f"{rule} is off the never-read list.",
+            }[word]
         if word == "rules":
             own = ""
             try:
@@ -429,7 +483,13 @@ class MailDigest(GooglePart):
             except Exception:
                 pass
             lines = [f"- {r}" for r in rules] + ([f"- mail from @{own} (your own domain)"] if own else [])
-            return "The digest reads:\n" + "\n".join(lines) if lines else "The digest reads nothing yet: /mail read ..."
+            out = "The digest reads:\n" + "\n".join(lines) if lines else "The digest reads nothing yet: /mail read ..."
+            never = self.rules("never_read")
+            if never:
+                out += "\nNever read:\n" + "\n".join(f"- {r}" for r in never)
+            if self.setting("skip_confidential"):
+                out += "\nNever read either: mail marked confidential."
+            return out
         r = self.digest()
         if r.get("error"):
             return f"Couldn't check your mail: {r['error']}"
@@ -507,6 +567,9 @@ class ReplyDrafts(GooglePart):
         k = md.known(mid) if md else None
         if not k:
             return "I only draft replies to mail from the digest (use its message id)."
+        why_not = md.blocked(k.get("from", ""), k.get("subject", ""), {x.lower() for x in k.get("labels", [])}, "")
+        if why_not or md.confidential("\n".join(k.get("text", "").splitlines()[:8])[:800]):
+            return "That mail is marked confidential or on the never-read list: no AI draft. Reply to it yourself."
         to = k.get("reply_to") or k.get("from") or ""
         addr = parseaddr(to)[1]
         if not addr or NOREPLY.search(addr):
