@@ -298,6 +298,11 @@ class Api:
             self.app.notify(text, title=title, kind=kind, urgent=bool(b.get("urgent")))
             self.app.events.emit("notify_external", source=(title or "")[:40])
             return 200, {"ok": True}
+        if path == "send-file":  # `kurooto send FILE`: a file from this computer to your Telegram
+            from kurooto.modules.skills import send_file
+
+            ok, message = send_file(self.app, str(b.get("path") or ""), str(b.get("caption") or "")[:900])
+            return 200, {"ok": ok, "message": message}
         if path == "aboutyou/add":
             try:
                 return 200, {

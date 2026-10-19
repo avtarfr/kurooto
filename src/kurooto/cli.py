@@ -11,6 +11,8 @@ kurooto call "reason" [--at TIME] [--alarm] [--force]   ring your phone now or l
 kurooto mcp              Kurooto's tools for agent programs (an MCP server on stdin/stdout)
 kurooto ask-me "question" [--choices "a|b|c"] [--expires 2d] [--wait [--timeout MIN]]   ask yourself something
 kurooto ask-approval "question" [--timeout MIN]   ask for a yes/no and wait (exit 0 yes, 1 no, 2 timeout)
+kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB)
+kurooto note [--title T] TEXT       save a quick note to your notes' inbox (or pipe text in)
 """
 
 from __future__ import annotations
@@ -542,6 +544,45 @@ def call(reason: str, at: str, alarm: bool, force: bool) -> int:
         return 1
     print(r.get("message", ""))
     return 0 if r.get("ok") else 1
+# ------------------------------------------------------------------- files and quick notes (`send`, `note`)
+def skills_parsers(sub) -> None:
+    se = sub.add_parser("send", help="send yourself a file on Telegram (up to 50 MB)")
+    se.add_argument("file")
+    se.add_argument("--caption", default="")
+    nt = sub.add_parser("note", help="save a quick note to your notes' inbox (the text, or what's piped in)")
+    nt.add_argument("text", nargs="*")
+    nt.add_argument("--title", default="")
+
+
+def skills_command(a) -> int | None:
+    """`kurooto send` and `kurooto note`; None for any other command."""
+    if a.cmd == "send":
+        f = Path(a.file).expanduser()
+        if not f.is_file():
+            print(f"There's no file {a.file}.", file=sys.stderr)
+            return 1
+        r = ask_running("send-file", {"path": str(f.resolve()), "caption": a.caption})
+        if r is None:
+            print("Kurooto isn't running (`kurooto on` starts it), so nothing was sent.", file=sys.stderr)
+            return 2
+        print(r.get("message", ""))
+        return 0 if r.get("ok") else 1
+    if a.cmd == "note":
+        from kurooto.app import default_workspace
+        from kurooto.core.config import Settings
+        from kurooto.modules.library import capture
+
+        text = " ".join(a.text)
+        if not text and not sys.stdin.isatty():
+            text = sys.stdin.read()
+        if not text.strip():
+            print('Nothing to save: kurooto note "your text" (or pipe text in).', file=sys.stderr)
+            return 1
+        ws = Settings(paths().config / "settings.json").get("you.workspace")
+        f = capture(Path(ws) if ws else default_workspace(), text, title=a.title, source="terminal")
+        print(f)
+        return 0
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -596,6 +637,7 @@ def main(argv: list[str] | None = None) -> int:
     ca.add_argument("--alarm", action="store_true", help="ring as a wake-up alarm (no-call rules don't apply)")
     ca.add_argument("--force", action="store_true", help="ring now despite no-call rules (never during a call)")
     sub.add_parser("mcp", help="Kurooto's tools for agent programs: an MCP server on stdin/stdout")
+    skills_parsers(sub)
     fin = sub.add_parser("install-finish", help=argparse.SUPPRESS)
     fin.add_argument("--uv", required=True)
     fin.add_argument("--python", required=True)
@@ -663,6 +705,8 @@ def main(argv: list[str] | None = None) -> int:
         from kurooto.core.mcp import serve
 
         return serve()
+    if a.cmd in ("send", "note"):
+        return skills_command(a)
     if a.cmd == "selftest":
         return selftest()
     if a.cmd == "install-finish":
