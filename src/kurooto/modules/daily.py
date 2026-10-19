@@ -5,8 +5,8 @@ Your daily note is journal/<YYYY-MM-DD>.md in your notes folder. Kurooto only ev
 ("## Study hours", "## Evening check-in"), never changing what's there. The plan for the day is the newest "## Plan…"
 section (the draft written before your alarm, or the one you settled on the morning call).
 
-Work for the AI goes through a skill (journal, study-log, morning-prep, morning): the AI follows the skill's steps. With
-Chat off there's no AI, so callers keep your own words instead.
+Work for the AI goes through a skill (journal, study-log, morning-prep, morning): the AI follows the skill's steps, your
+own copy of the skill if you made one. With Chat off there's no AI, so callers keep your own words instead.
 """
 
 from __future__ import annotations
@@ -20,27 +20,6 @@ from kurooto.core.clock import now
 
 if TYPE_CHECKING:
     from kurooto.app import App
-
-# Used only when the skills feature isn't there to give the real instructions.
-FALLBACK = {
-    "journal": "Add my words to today's daily note (journal/<today>.md in my notes; create it with a '# <date>' title "
-    "if missing) as a new section '## Journal (HH:MM)': my words verbatim, fixing nothing but obvious typos. After it, "
-    "a short '### Links' list to notes of mine that I mention, one line each with a reason. Never change or delete "
-    "what's already in the note. Leave out health, money and private details about other people.\n\nMy words:\n{args}",
-    "study-log": "Log my classes into my notes. For each class: a lecture note <subject-slug>/<YYYY-MM-DD>-<topic>.md "
-    "with '## Covered' (what I said was covered, faithfully; nothing invented), '## My notes' (my words verbatim), "
-    "'## Unclear / to ask' and '## Files' (the files below, linked). Then add one line per class under '## Studied' in "
-    "today's daily note (journal/<today>.md), linking the lecture note. Never change what's already written.\n\n{args}",
-    "morning-prep": "Before my alarm: draft today's plan. Read my notes (today's and yesterday's daily notes in "
-    "journal/, my subjects' notes and deadlines) and add '## Plan for today (draft, HH:MM)' to today's daily note "
-    "(journal/<today>.md; create it if missing) with: Classes today, Due soon, Top 3 (with one-line reasons), "
-    "Suggested blocks (a rough time-blocked day around the classes), and Questions for the morning (always: which "
-    "classes I'm skipping, and when to call me today). Runs unattended: ask nothing, write the draft. Never change "
-    "what's already in the note.\n\n{args}",
-    "morning": "Finalise today's plan from the draft ('## Plan for today (draft…)' in journal/<today>.md) and what I "
-    "said: add '## Plan for today' with Top 3, a time-blocked schedule around my classes, and 'If there's time'. Keep "
-    "the draft as it is. Never write my energy, sleep or health into the note.\n\nWhat I said:\n{args}",
-}
 
 
 def note_path(app: App, day: dt.date | None = None) -> Path:
@@ -101,36 +80,31 @@ def run_skill(
     background: bool = False,
     reply_to=None,
 ) -> str | None:
-    """Hand work to the AI through a skill. Returns the job id, or None when there's no AI (Chat is off)."""
-    sk = app.modules.get("skills")
-    if sk is not None and app.is_on("skills"):
-        return sk.run(
-            name,
-            args=args,
-            reply_to=reply_to,
-            then=then,
-            then_payload=then_payload,
-            quiet=quiet,
-            background=background,
-            files=files,
-            title=title,
-        )
+    """Hand work to the AI through a skill (your copy of it, or the shipped one). Returns the job id, or None when
+    there's no AI (Chat is off) or no such skill."""
     if not ai_on(app):
         return None
-    prompt = None
-    try:
-        from kurooto.modules.skills import skill_prompt  # the skills feature's own instructions, even when it's off
-    except ImportError:
-        skill_prompt = None
-    if skill_prompt is not None:
+    from kurooto.modules.skills import skill_prompt
+
+    sk = app.modules.get("skills")
+    if sk is not None and app.is_on("skills"):
         try:
-            prompt = skill_prompt(app, name, args, files)
-        except Exception:
-            prompt = None
+            return sk.run(
+                name,
+                args=args,
+                reply_to=reply_to,
+                then=then,
+                then_payload=then_payload,
+                quiet=quiet,
+                background=background,
+                files=files,
+                title=title,
+            )
+        except KeyError:
+            return None
+    prompt = skill_prompt(app, name, args, files or ())  # works with the Skills feature off
     if not prompt:
-        prompt = FALLBACK.get(name, "{args}").replace("{args}", args)
-        if files:
-            prompt += "\n\nFiles (in my notes folder): " + ", ".join(rel(app, f) for f in files)
+        return None
     return app.jobs.submit(
         prompt,
         title=title or name,
@@ -140,15 +114,6 @@ def run_skill(
         then_payload=then_payload,
         background=background,
     )
-
-
-def rel(app: App, f: Path | str) -> str:
-    """A file's path inside the notes folder ("inbox/photo.jpg"), or as it is if it's elsewhere."""
-    p = Path(f)
-    try:
-        return p.resolve().relative_to(app.workspace.resolve()).as_posix()
-    except ValueError:
-        return str(p)
 
 
 def their_words(app: App, lines: list[dict]) -> str:
