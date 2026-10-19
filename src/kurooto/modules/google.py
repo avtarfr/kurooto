@@ -1,5 +1,7 @@
 """Google: sign in with your Google account so Kurooto can read Google Classroom (assignments go into Deadlines, new
 posts come to Telegram) and save email drafts in Gmail (it never sends anything: drafts wait in Gmail for you).
+More Google features build on this sign-in, each off until you set it up, and each asks Google for its own
+permission when you do: Classroom → notes, the mail digest, reply drafts and the Agent plan calendar.
 
 It uses your own Google "OAuth client" (a free Google Cloud project only you use), so no one else's app ever holds
 your Google access. The wizard walks you through making one (about 10 minutes). Google shows "Google hasn't
@@ -32,11 +34,18 @@ register_defaults(
         "classroom": True,  # read Classroom (courses, assignments, announcements)
         "gmail_drafts": False,  # save drafts in Gmail (asked for separately: Google calls it a restricted permission)
         "classroom_every": "every 3h",
+        # the features below ask for their own permission; each is set when you set that feature up
+        "classroom_notes": False,  # Classroom materials and attached Drive files (read-only)
+        "mail_digest": False,  # read Gmail (read-only)
+        "reply_drafts": False,  # reply drafts in Gmail, sent only when you tap Send
+        "agent_calendar": False,  # Kurooto's own "Agent plan" calendar
         "endpoints": {
             "auth": "https://accounts.google.com/o/oauth2/v2/auth",
             "token": "https://oauth2.googleapis.com/token",  # noqa: S105 (an address)
             "classroom": "https://classroom.googleapis.com/v1",
             "gmail": "https://gmail.googleapis.com/gmail/v1",
+            "drive": "https://www.googleapis.com/drive/v3",
+            "calendar": "https://www.googleapis.com/calendar/v3",
         },
     },
 )
@@ -49,11 +58,40 @@ SCOPES = {
         "https://www.googleapis.com/auth/classroom.announcements.readonly",
     ],
     "gmail_drafts": ["https://www.googleapis.com/auth/gmail.compose"],
+    "classroom_notes": [
+        "https://www.googleapis.com/auth/classroom.courses.readonly",
+        "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+        "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
+        "https://www.googleapis.com/auth/classroom.announcements.readonly",
+        "https://www.googleapis.com/auth/drive.readonly",
+    ],
+    "mail_digest": ["https://www.googleapis.com/auth/gmail.readonly"],
+    "reply_drafts": ["https://www.googleapis.com/auth/gmail.compose"],
+    "agent_calendar": ["https://www.googleapis.com/auth/calendar.app.created"],
 }
+BASE = ("classroom", "gmail_drafts")  # what the Google feature itself needs; the rest belongs to its add-on features
+PARTS = {  # an add-on's setting -> the feature (module id) that uses it
+    "classroom_notes": "classroom_notes",
+    "mail_digest": "mail_digest",
+    "reply_drafts": "reply_drafts",
+    "agent_calendar": "agent_plan",
+}
+UNVERIFIED = (
+    'Google shows "Google hasn\'t verified this app" because the app is your own Google Cloud project: Advanced → '
+    "Go to (your project). Turn on the API it needs in that project first (link below)."
+)
 
 
 class NeedsSignIn(Exception):
     pass
+
+
+class GoogleError(RuntimeError):
+    """Google answered with an error; .code is the HTTP status (404: it's gone, 403: no permission)."""
+
+    def __init__(self, code: int, message: str):
+        super().__init__(message)
+        self.code = code
 
 
 class Google(Module):
@@ -71,7 +109,12 @@ class Google(Module):
         return (self.setting("endpoints") or {})[name].rstrip("/")
 
     def scopes(self) -> list[str]:
-        return [s for key, ss in SCOPES.items() if self.setting(key) for s in ss]
+        """Every permission to ask Google for: this feature's, and those of the add-ons you've set up."""
+        return list(dict.fromkeys(s for key, ss in SCOPES.items() if self.setting(key) for s in ss))
+
+    def granted(self, part: str) -> bool:
+        """Has Google OK'd everything this part needs?"""
+        return set(SCOPES[part]) <= set((self.tokens().get("scope") or "").split())
 
     # ----------------------------------------------------------------------------------- client
     def client(self) -> dict | None:
@@ -106,8 +149,7 @@ class Google(Module):
         t = self.tokens()
         if not t.get("refresh_token"):
             return False, "sign in with Google"
-        missing = set(self.scopes()) - set((t.get("scope") or "").split())
-        if missing:
+        if not all(self.granted(p) for p in BASE if self.setting(p)):
             return False, "sign in again: a newly chosen part needs Google's OK"
         return True, ""
 
@@ -167,7 +209,14 @@ class Google(Module):
             )
         self._save_tokens(t)
         self.app.events.emit("google_signed_in")
-        return True, "Signed in with Google. You can close this tab."
+        turned_on = []
+        for part, mid in PARTS.items():  # a feature you just set up turns on once Google has OK'd it
+            m = self.app.modules.get(mid)
+            if m and self.setting(part) and not self.app.is_on(mid) and self.app.is_on(self.id) and self.granted(part):
+                if self.app.enable(mid)[0]:
+                    turned_on.append(m.title)
+        on = f" Turned on: {', '.join(turned_on)}." if turned_on else ""
+        return True, f"Signed in with Google.{on} You can close this tab."
 
     def _token_call(self, form: dict) -> dict:
         req = urllib.request.Request(self.ep("token"), data=urllib.parse.urlencode(form).encode())  # noqa: S310 (https)
@@ -221,14 +270,17 @@ class Google(Module):
         t.pop("refresh_token", None)
         self.app.secrets.set(TOKENS, json.dumps(t))
         self.app.notify(
-            "Google sign-in expired (or access was removed), so Classroom and Gmail drafts are paused. Open Kurooto's "
+            "Google sign-in expired (or access was removed), so the Google features are paused. Open Kurooto's "
             "dashboard → Features → Google → Set up to sign in again.",
             kind="info",
             urgent=True,
         )
         self.app.events.emit("google_signin_lost")
 
-    def api(self, service: str, path: str, body: dict | None = None, method: str | None = None) -> dict:
+    def api(
+        self, service: str, path: str, body: dict | None = None, method: str | None = None, raw: int = 0
+    ) -> dict | bytes:
+        """Call a Google API. raw=N: the response's bytes (a file), at most N of them (more raises GoogleError 413)."""
         req = urllib.request.Request(  # noqa: S310 (Google's APIs, https)
             f"{self.ep(service)}{path}",
             data=None if body is None else json.dumps(body).encode(),
@@ -236,7 +288,12 @@ class Google(Module):
             headers={"Authorization": f"Bearer {self.access_token()}", "Content-Type": "application/json"},
         )
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:  # noqa: S310
+            with urllib.request.urlopen(req, timeout=120 if raw else 60) as r:  # noqa: S310
+                if raw:
+                    data = r.read(raw + 1)
+                    if len(data) > raw:
+                        raise GoogleError(413, f"larger than {raw // 2**20} MB")
+                    return data
                 return json.loads(r.read() or b"{}")
         except urllib.error.HTTPError as e:
             if e.code == 401:
@@ -244,9 +301,25 @@ class Google(Module):
                 raise NeedsSignIn("Google refused the sign-in") from None
             try:
                 msg = json.loads(e.read()).get("error", {}).get("message", "")
-            except ValueError:
+            except (ValueError, AttributeError):
                 msg = ""
-            raise RuntimeError(f"Google said {e.code}: {msg}"[:300]) from None
+            raise GoogleError(e.code, f"Google said {e.code}: {msg}"[:300]) from None
+
+    def pages(self, service: str, path: str, key: str, params: dict, limit: int = 5):
+        """The items of a list call, page after page (at most `limit` pages)."""
+        token = None
+        for _ in range(limit):
+            q = {**params, **({"pageToken": token} if token else {})}
+            r = self.api(service, f"{path}?{urllib.parse.urlencode(q, doseq=True)}")
+            yield from r.get(key, [])
+            token = r.get("nextPageToken")
+            if not token:
+                return
+
+    def want(self, part: str) -> str:
+        """Mark an add-on as wanted and return the sign-in address that asks Google for its permission."""
+        self.app.settings.set(f"google.{part}", True)
+        return self.start_signin()
 
     # -------------------------------------------------------------------------------- Classroom
     def start(self):
@@ -429,3 +502,128 @@ def due_of(w: dict) -> dt.datetime | None:
     except (KeyError, ValueError):
         return None
     return utc.astimezone().replace(tzinfo=None)
+
+
+# ------------------------------------------------------------------------------------------- shared helpers
+def not_interested(app, text: str) -> str | None:
+    """The topic on your not-interested list that this text is about, or None."""
+    try:
+        from kurooto.core.notinterested import is_ignored
+    except ImportError:
+        return None
+    try:
+        return is_ignored(app, text or "")
+    except Exception:
+        return None
+
+
+def not_interested_list(app) -> list[str]:
+    try:
+        from kurooto.core.notinterested import ignored_topics
+    except ImportError:
+        return []
+    try:
+        return list(ignored_topics(app))
+    except Exception:
+        return []
+
+
+def shipped_skill(name: str, args: str) -> tuple[str, str]:
+    """A skill that ships with Kurooto: (its text with the arguments in, its effort)."""
+    from importlib import resources
+
+    text = (resources.files("kurooto.data") / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+    effort = "auto"
+    m = re.match(r"---\n(.*?)\n---\n", text, re.S)
+    if m:
+        e = re.search(r"^effort:\s*['\"]?(\w+)", m.group(1), re.M)
+        effort = e.group(1) if e else "auto"
+        text = text[m.end() :]
+    if "$ARGUMENTS" in text:
+        text = text.replace("$ARGUMENTS", args)
+    elif args:
+        text += f"\n\nWhat they gave you:\n{args}"
+    rules = (
+        "\n\nRules: use Kurooto's tools to read and write notes; never delete or reword what's already written; "
+        "send nothing to anyone but the user."
+    )
+    return text + rules, effort
+
+
+def run_skill(app, name: str, args: str, title: str, then: str, payload: dict, quiet: bool = True) -> str:
+    """Run one of Kurooto's skills as unattended background work (it waits for the charger on battery)."""
+    sk = app.modules.get("skills")
+    if sk is not None and app.is_on("skills") and hasattr(sk, "run"):
+        return sk.run(name, args=args, then=then, then_payload=payload, quiet=quiet, background=True, title=title)
+    prompt, effort = None, "auto"
+    try:
+        from kurooto.modules.skills import load_skill, skill_prompt
+
+        prompt = skill_prompt(app, name, args)
+        found = load_skill(app, name)
+        effort = getattr(found, "effort", "auto") or "auto"
+    except ImportError:
+        pass
+    if prompt is None:
+        prompt, effort = shipped_skill(name, args)
+    return app.jobs.submit(
+        prompt, title=title, effort=effort, quiet=quiet, then=then, then_payload=payload, background=True
+    )
+
+
+class GooglePart(Module):
+    """A Google feature that needs one more permission from Google: setting it up asks for it (one sign-in), and it
+    turns on by itself once Google has OK'd it."""
+
+    part = ""  # its google.<part> setting and SCOPES key
+    requires = ("google",)
+    permission = ""  # plain words: what Google will ask you to allow, and what Kurooto reads or writes
+    api_link: tuple[str, str] | None = None  # the API to turn on in your Google Cloud project
+
+    @property
+    def google(self) -> Google:
+        return self.app.modules["google"]
+
+    def ready(self):
+        g = self.app.modules.get("google")
+        if g is None:
+            return False, "needs the Google feature"
+        ok, why = g.ready()
+        if not ok:
+            return False, f"Google first: {why}"
+        if not g.granted(self.part):
+            return False, "needs Google's OK for this: Set up, then sign in"
+        return True, ""
+
+    def allowed(self) -> bool:
+        """Ready to run? If Google's OK is missing, say so (at most once a day) and how to fix it."""
+        ok, why = self.ready()
+        if ok:
+            return True
+        flag = self.app.paths.state / f"google-needs-{self.part}"
+        if not flag.exists() or time.time() - flag.stat().st_mtime > 86400:
+            flag.touch()
+            self.app.notify(
+                f"{self.title} is paused: {why}. On this computer: Kurooto's dashboard → Features → {self.title} → "
+                "Save, then sign in with Google.",
+                kind="info",
+            )
+            self.app.events.emit("google_needs_ok", part=self.part)
+        return False
+
+    def setup_form(self) -> dict:
+        return {
+            "intro": f"{self.permission} Press Save and sign in with Google again to allow it. {UNVERIFIED}",
+            "links": [list(self.api_link)] if self.api_link else [],
+            "fields": [],
+        }
+
+    def configure(self, values: dict) -> dict:
+        g = self.app.modules.get("google")
+        if g is None or not g.client() or not g.tokens().get("refresh_token"):
+            return {"ok": False, "message": "Set up the Google feature first (its own card), then this one."}
+        return {
+            "ok": True,
+            "message": f"Sign in with Google in the tab that opened; {self.title} turns on when you're back.",
+            "open": g.want(self.part),
+        }
