@@ -209,6 +209,9 @@ class App:
             if name in ("start", "help"):
                 msg.reply(self.help())
                 return
+            if name == "aboutme":  # your profile's In-brief part, and where to edit it (core/aboutyou.py)
+                msg.reply(self.about.for_chat())
+                return
             for m in mods:
                 for c in m.commands():
                     if c.name == name:
@@ -265,6 +268,7 @@ class App:
         lines = [f"{self.name}, your assistant. Plain English works; these commands do too:"]
         for m in self.enabled():
             lines += m.help()
+        lines.append("/aboutme  what I know about you (your profile's In-brief part), and where to edit it")
         if not self.is_on("chat"):
             lines.append("(Chat is off, so free text isn't sent to an AI.)")
         return "\n".join(lines)
