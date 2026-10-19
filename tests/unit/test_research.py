@@ -285,6 +285,8 @@ def test_project_logs(env, tmp_path):
     env.say(f"/repos add {repo}")
     r = env.app.modules["research"]
     assert r.project_logs() == 1
-    log = (env.app.workspace / "research" / "my-model-log.md").read_text()
-    assert log.index("add the model") < log.index("fit the closure")
+    log = (env.app.workspace / "research" / "my-model" / "index.md").read_text()
+    assert log.index("## Log") < log.index("add the model") < log.index("fit the closure")
+    assert "git:my-model — 2 commits" in log
+    assert "[[research/my-model/index|my-model]]" in (env.app.workspace / "research" / "index.md").read_text()
     assert r.project_logs() == 0

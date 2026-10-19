@@ -129,6 +129,14 @@ class Api:
 
         if path in tools_api.GETS:
             return tools_api.get(self.app, path, q)
+        if path == "term":  # the dashboard's terminals (modules/terminals.py)
+            t = self.app.modules.get("terminals")
+            on = bool(t) and self.app.is_on("terminals")
+            return 200, {"on": on, "terms": t.listing() if on else []}
+        if path == "sync/status":  # `kurooto sync` waits on this (core/syncall.py)
+            from kurooto.core import syncall
+
+            return 200, syncall.status(self.app)
         if path == "note":
             return self._note(q.get("id", ""))
         if path == "settings":
@@ -186,6 +194,17 @@ class Api:
 
         if path in tools_api.POSTS:
             return tools_api.post(self.app, path, b)
+        if path.startswith("term/"):  # terminals: term/<name>/<attach|input|resize|leave|restart>
+            t = self.app.modules.get("terminals")
+            _, name, action = (path.split("/") + ["", ""])[:3]
+            if not t or not self.app.is_on("terminals"):
+                return 403, {"error": "Terminals is off"}
+            return t.handle(name, action, b)
+        if path == "sync/all":  # sync everything that's on, in the background (`kurooto sync`)
+            from kurooto.core import syncall
+
+            ok, message = syncall.start(self.app, notify=bool(b.get("notify", True)))
+            return 200, {"ok": ok, "message": message}
         if path == "settings":
             return self._set(b.get("key", ""), b.get("value"))
         if path == "open-note":
