@@ -16,6 +16,7 @@ import re
 import shutil
 import sys
 import time
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -31,6 +32,7 @@ LEVELS = {
     "medium": ("gemini-3.8-flash-medium", "medium"),
     "high": ("gemini-3.8-flash-high", "high"),
 }
+ARG_LIMIT = 20_000 if sys.platform == "win32" else 100_000  # longer prompts go through a file (handover)
 ALLOW = "mcp(kurooto/*)"  # agy's allow-list entry for every Kurooto tool
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[()][A-Z0-9]|\r")
 
@@ -66,18 +68,39 @@ class Agy(Brain):
             return Result(Verdict.ERROR, detail="agy isn't installed")
         minutes = max(1, task.timeout_s // 60)
         prompt = (task.context + "\n\n" + task.prompt).strip() if task.context else task.prompt
-        args = self._args(prompt, task.effort, minutes)
+        long = handover(prompt, task.cwd)
+        args = self._args(long[1] if long else prompt, task.effort, minutes)
         env = {**os.environ, **task.mcp_env} if task.mcp_env else None  # agy hands it on to `kurooto mcp`
         t0 = time.monotonic()
-        if self.io_mode == "pty":
-            code, out, err = run_pty(args, task.cwd, task.timeout_s + self.grace_s, env)
-        else:
-            r = proc.run(args, cwd=task.cwd, timeout=task.timeout_s + self.grace_s, env=env)
-            code, out, err = r.code, r.out, r.err
+        try:
+            if self.io_mode == "pty":
+                code, out, err = run_pty(args, task.cwd, task.timeout_s + self.grace_s, env)
+            else:
+                r = proc.run(args, cwd=task.cwd, timeout=task.timeout_s + self.grace_s, env=env)
+                code, out, err = r.code, r.out, r.err
+        finally:
+            if long:
+                long[0].unlink(missing_ok=True)
         return verdict(code, out, err, time.monotonic() - t0, minutes)
 
     def complete(self, prompt: str, system: str = "", effort: str = "low", timeout: int = 120) -> Result:
         return self.run(Task(prompt=prompt, context=system, effort=effort, timeout_s=timeout))
+
+
+def handover(prompt: str, cwd: Path | None) -> tuple[Path, str] | None:
+    """agy takes its request on the command line, which has a size limit (about 32,000 characters in all on
+    Windows, 128 KB per argument on Linux). A longer request goes in a file in a hidden folder of the notes, which
+    git (Notes sync) ignores, and agy is told to read it. Returns (the file, the short prompt), or None."""
+    if len(prompt) <= ARG_LIMIT or cwd is None:
+        return None
+    d = Path(cwd) / ".kurooto" / "requests"
+    d.mkdir(parents=True, exist_ok=True)
+    if not (d / ".gitignore").exists():
+        (d / ".gitignore").write_text("*\n", encoding="utf-8")
+    f = d / f"{uuid.uuid4().hex[:12]}.md"
+    f.write_text(prompt, encoding="utf-8")
+    rel = f.relative_to(cwd).as_posix()
+    return f, f"Your full request is in the file {rel} (in this folder). Read all of it, then do what it says."
 
 
 def verdict(code: int | None, out: str, err: str, secs: float, minutes: int) -> Result:
@@ -188,6 +211,8 @@ def tools_once(app: App, brain: Agy) -> None:
 
     if not isinstance(brain.exe, str):  # a test's fake agy
         return
+    if os.environ.get("KUROOTO_HOME") and os.environ.get("KUROOTO_AGY_TOOLS") != "1":
+        return  # a portable or test copy leaves agy's own settings alone unless set up through the setup page
     if (jload(app.paths.state / "agy-tools.json", {}) or {}).get("command") == command(persistent=True):
         return
     try:

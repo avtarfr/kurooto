@@ -341,7 +341,9 @@ def test_agy_tools_once_after_an_update(home, monkeypatch, tmp_path):
         exe.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{AGENT[1]}" "$@"\n', encoding="utf-8")
         exe.chmod(0o755)
         tools_once(app, Agy(exe=AGENT))  # a test's fake (a list): never
+        tools_once(app, Agy(exe=str(exe)))  # a portable or test copy (KUROOTO_HOME): not by itself
         assert not (tmp_path / "agy.log").exists()
+        monkeypatch.setenv("KUROOTO_AGY_TOOLS", "1")
         tools_once(app, Agy(exe=str(exe)))
         tools_once(app, Agy(exe=str(exe)))
         assert len(log_of(tmp_path / "agy.log")) == 1 and settings(home).exists()
@@ -424,9 +426,15 @@ def test_call_now_waits_out_no_call_rules(calls):
     assert fake.scheduled[-1][1] == "lunch" and len(fake.rang) == 1
     assert tools_api.place_call(app, "now!", force=True)[1] == "Calling your phone: now!"
     assert tools_api.place_call(app, "wake up", alarm=True)[0] and fake.rang[-1] == ("wake up", True)
-    app.availability.blockers["phone:live"] = lambda t: ("you're on a call", t + dt.timedelta(minutes=5))
+    app.availability.on_call_until = lambda t=None: dt.datetime.now() + dt.timedelta(seconds=90)  # the phone's state
     ok, msg = tools_api.place_call(app, "urgent", force=True)
     assert not ok and "on a call" in msg and len(fake.rang) == 3
+    app.availability.on_call_until = lambda t=None: None
+    app.availability.blockers["phone:live"] = lambda t: ("you're on a call", t + dt.timedelta(minutes=5))
+    assert tools_api.place_call(app, "urgent", alarm=True)[0] is False and len(fake.rang) == 3
+    app.availability.set_quiet(None)
+    ok, msg = tools_api.place_call(app, "after the call")  # not forced: held until the call is over
+    assert ok and "(you're on a call)" in msg and fake.scheduled[-1][1] == "after the call" and len(fake.rang) == 3
 
 
 def test_call_later_and_mistakes(calls):
@@ -577,3 +585,25 @@ def test_usage_starts_from_older_jobs(home):
 def test_usage_on_telegram_with_nothing_yet(home):
     text = usage_text([], 3)
     assert text.count(" -") == 3 and "Total: 0 requests." in text and "limit hit" not in text
+
+
+def test_long_agy_requests_go_through_a_file(home, monkeypatch, tmp_path):
+    from kurooto.providers import agy as agy_mod
+
+    monkeypatch.setattr(agy_mod, "ARG_LIMIT", 50)
+    fake = tmp_path / "reads_file.py"
+    fake.write_text(
+        "import re, sys\np = sys.argv[sys.argv.index('-p') + 1]\n"
+        "f = re.search(r'file (\\S+) ', p).group(1)\nprint(len(p), open(f, encoding='utf-8').read()[-12:])\n",
+        encoding="utf-8",
+    )
+    ws = tmp_path / "notes"
+    ws.mkdir()
+    r = Agy(exe=[sys.executable, str(fake)]).run(Task(prompt="x" * 500 + " the end now", cwd=ws, timeout_s=60))
+    short, tail = r.text.split(" ", 1)
+    assert r.verdict == Verdict.OK and int(short) < 200 and tail == " the end now"
+    req = ws / ".kurooto" / "requests"
+    assert [p.name for p in req.iterdir()] == [".gitignore"]  # the request file is gone after the run
+    assert (req / ".gitignore").read_text(encoding="utf-8") == "*\n"
+    short_run = Agy(exe=AGENT).run(Task(prompt="short", cwd=ws, timeout_s=60))
+    assert short_run.text == "no tools given"
