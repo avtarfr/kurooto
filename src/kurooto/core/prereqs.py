@@ -5,7 +5,6 @@ where the vendor allows it, and checking there's room on the disk first. The lis
 from __future__ import annotations
 
 import hashlib
-import io
 import json
 import os
 import platform
@@ -273,22 +272,27 @@ class Prereqs:
 
     @staticmethod
     def _untar(f: Path, dest: Path, strip: int = 0) -> None:
+        """Unpack while reading from disk: never the whole archive in memory (Ollama's is gigabytes unpacked, and
+        holding it all once got Kurooto killed by the out-of-memory killer)."""
         dest.mkdir(parents=True, exist_ok=True)
-        data = f.read_bytes()
-        if f.name.endswith(".zst"):
-            import zstandard
 
-            data = zstandard.ZstdDecompressor().stream_reader(io.BytesIO(data)).read()
-            mode = "r:"
-        else:
-            mode = "r:*"
-        with tarfile.open(fileobj=io.BytesIO(data), mode=mode) as t:
-            for m in t.getmembers():
+        def unpack(t: tarfile.TarFile) -> None:
+            for m in t:  # in order: works for a stream too
                 parts = Path(m.name).parts[strip:]
                 if not parts or ".." in parts or Path(m.name).is_absolute():
                     continue
                 m.name = str(Path(*parts))
                 t.extract(m, dest, filter="data")  # noqa: S202 (the "data" filter refuses unsafe members)
+
+        if f.name.endswith(".zst"):
+            import zstandard
+
+            with open(f, "rb") as fh, zstandard.ZstdDecompressor().stream_reader(fh) as reader:
+                with tarfile.open(fileobj=reader, mode="r|") as t:
+                    unpack(t)
+        else:
+            with tarfile.open(f, mode="r:*") as t:
+                unpack(t)
 
     def _node(self, progress: Progress, dist: str = NODE_DIST) -> tuple[bool, str]:
         with urllib.request.urlopen(f"{dist}/index.json", timeout=30) as r:  # noqa: S310
