@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sqlite3
+import sys
 import threading
 import time
 import uuid
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto import providers
+from kurooto.core.tools import agent_tools, run_tool
 from kurooto.providers import effort as effort_mod
 from kurooto.providers.base import Result, Task, Verdict
 from kurooto.providers.context import headless_context
@@ -192,6 +194,7 @@ class Jobs:
             else effort_mod.pick(job.prompt, self._classifier(main))
         )
         minutes = (s.get("brain.timeout_min") or {}).get(level, 15)
+        tools = agent_tools(self.app)
         task = Task(
             prompt=job.prompt,
             effort=level,
@@ -199,6 +202,9 @@ class Jobs:
             cwd=self.app.workspace,
             timeout_s=minutes * 60,
             context=headless_context(self.app),
+            tools=tools,
+            run_tool=lambda name, args: run_tool(self.app, name, args, tools),
+            mcp=mcp_command(),
         )
         used, result = None, Result(Verdict.ERROR, detail="no AI brain is set up")
         for brain in [b for b in (main, fallback) if b is not None]:
@@ -294,6 +300,11 @@ class Jobs:
 
     def close(self) -> None:
         self._db.close()
+
+
+def mcp_command() -> list[str]:
+    """How an agent program starts Kurooto's tool server (`kurooto mcp`), with this version's own Python."""
+    return [sys.executable, "-m", "kurooto", "mcp"]
 
 
 def result_path(app: App, jid: str) -> Path:

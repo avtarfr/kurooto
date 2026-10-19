@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -29,6 +30,9 @@ class Task:
     cwd: Path | None = None  # the user's workspace (notes folder)
     timeout_s: int = 900
     context: str = ""  # who the user is, the time, the rules for unattended work
+    tools: list = field(default_factory=list)  # Kurooto's tools (core/tools.py), for brains that call them directly
+    run_tool: Callable | None = None  # (name, args) -> result
+    mcp: list[str] | None = None  # the command that serves the same tools over MCP, for agent programs
 
 
 @dataclass
