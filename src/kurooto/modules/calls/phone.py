@@ -17,6 +17,7 @@ anywhere) so the iPhone app can list it while this computer is off.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import re
 import time
@@ -99,8 +100,13 @@ class PhoneApp:
             if not q:
                 return None
             pub = ask.public(q)
+            try:
+                until = int(dt.datetime.fromisoformat(str(pub.get("expires"))).timestamp())
+            except (TypeError, ValueError):
+                until = t + 2 * KEEP_S
             it.update(
                 qid=pub["id"],
+                until=until,
                 text=_clip(pub.get("text") or msg.text, TEXT_MAX),
                 choices=[_clip(c, 60) for c in (pub.get("choices") or [])][:8],
                 reply=pub.get("kind") != "approval",

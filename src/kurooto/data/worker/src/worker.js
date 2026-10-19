@@ -521,7 +521,7 @@ export class Line {
 
   async openItems() {
     const now = Date.now() / 1000;
-    return (((await this.store.get('inbox')) || {}).items || []).filter((i) => i.qid || (i.until || 0) > now);
+    return (((await this.store.get('inbox')) || {}).items || []).filter((i) => (i.until || 0) > now);
   }
 
   async clearPhones(ids) {

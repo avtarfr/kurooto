@@ -23,17 +23,19 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** Pairing (first run), then: call Kurooto, ringtones, a checklist of what the phone must allow, and updates. */
+/** Pairing (first run), then: call Kurooto, what's waiting for you (questions, approvals, messages), ringtones, a
+ *  checklist of what the phone must allow, and updates. */
 public class MainActivity extends Activity {
     static final int SDK = Build.VERSION.SDK_INT;
     static final String UPDATES = "https://avtarfr.github.io/kurooto/android.json";
     private final Handler h = new Handler(Looper.getMainLooper());
-    private LinearLayout box;
+    private LinearLayout box, waiting;
     private TextView status;
 
     @Override protected void onCreate(Bundle b) {
@@ -110,6 +112,10 @@ public class MainActivity extends Activity {
         box.addView(call);
         status = label(getIntent().getBooleanExtra("justPaired", false) ? "Paired. You're all set." : "", 14, false);
         box.addView(status);
+        waiting = new LinearLayout(this);
+        waiting.setOrientation(LinearLayout.VERTICAL);
+        box.addView(waiting);
+        loadWaiting();
 
         String upd = Prefs.sp(this).getString("updateLink", "");
         if (!upd.isEmpty()) {
@@ -153,6 +159,30 @@ public class MainActivity extends Activity {
             status.setText("Unpaired here. Also remove it on your computer (Phone tab, or /phones on Telegram).");
         });
         box.addView(forget);
+    }
+
+    /** Open questions, approvals and messages, newest first; tap one to answer it. */
+    private void loadWaiting() {
+        final LinearLayout into = waiting;
+        new Thread(() -> {
+            final JSONArray items = Line.waiting(this);
+            h.post(() -> {
+                if (into != waiting || items == null || items.length() == 0) return;
+                into.addView(label("Waiting for you", 20, true));
+                for (int i = items.length() - 1; i >= 0; i--) {
+                    final JSONObject it = items.optJSONObject(i);
+                    if (it == null) continue;
+                    String text = Inbox.text(it);
+                    Button b = big(it.optString("title", "Kurooto") + ": " + (text.length() > 80 ? text.substring(0, 79) + "…" : text), "#3a3150");
+                    b.setTextSize(15);
+                    b.setAllCaps(false);
+                    b.getLayoutParams().height = LinearLayout.LayoutParams.WRAP_CONTENT;
+                    b.setPadding(32, 24, 32, 24);
+                    b.setOnClickListener(v -> startActivity(new Intent(this, AnswerActivity.class).putExtra("item", it.toString())));
+                    into.addView(b);
+                }
+            });
+        }).start();
     }
 
     private void check(String what, boolean ok, final Intent fix) {

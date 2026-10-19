@@ -54,7 +54,7 @@
 
   function notifications() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      msg(ios ? 'Notifications need the Home Screen app on iOS 16.4 or newer: add this page to your Home Screen and open it from there.' : 'This browser can\'t show call notifications.', true);
+      msg(ios ? 'Notifications need the Home Screen app on iOS 16.4 or newer: add this page to your Home Screen and open it from there.' : 'This browser can\'t show notifications.', true);
       return;
     }
     Notification.requestPermission().then(function (p) {
@@ -64,7 +64,7 @@
       }).then(function (sub) {
         return fetch('/push/subscribe', { method: 'POST', headers: { 'content-type': 'application/json', 'x-call-secret': get('kurootoDevice') }, body: JSON.stringify({ subscription: sub.toJSON() }) });
       }).then(function (r) {
-        if (r.ok) { $('notify').hidden = true; $('donetext').textContent = 'Paired, with call notifications on. Keep Kurooto on your Home Screen; calls arrive as notifications you tap to answer.'; }
+        if (r.ok) { $('notify').hidden = true; $('donetext').textContent = 'Paired, with notifications on. Keep Kurooto on your Home Screen: calls, questions and approvals arrive as notifications you tap to answer.'; }
         else msg('Couldn\'t turn notifications on (the call line said no). Pair again from your computer.', true);
       });
     }).catch(function (e) { msg('Couldn\'t turn notifications on: ' + e.message, true); });

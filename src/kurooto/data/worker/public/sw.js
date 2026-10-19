@@ -1,31 +1,69 @@
-// Kurooto's service worker: turns a call push (no payload) into a notification. It asks the call line what's
-// ringing with this device's key, and opens the call when you tap it.
-function idbGet(key) {
+// Kurooto's service worker: turns a push (it carries nothing) into a notification. It asks the call line what's
+// ringing or waiting, with this device's key: a call opens the call page, a question or message opens the inbox.
+function idb(mode, fn) {
   return new Promise(function (resolve) {
     try {
       var open = indexedDB.open('kurooto', 1);
       open.onupgradeneeded = function () { open.result.createObjectStore('kv'); };
-      open.onsuccess = function () { var r = open.result.transaction('kv').objectStore('kv').get(key); r.onsuccess = function () { resolve(r.result || ''); }; r.onerror = function () { resolve(''); }; };
+      open.onsuccess = function () { fn(open.result.transaction('kv', mode).objectStore('kv'), resolve); };
       open.onerror = function () { resolve(''); };
     } catch (e) { resolve(''); }
   });
 }
+function idbGet(key) {
+  return idb('readonly', function (s, done) { var r = s.get(key); r.onsuccess = function () { done(r.result || ''); }; r.onerror = function () { done(''); }; });
+}
+function idbPut(key, value) {
+  return idb('readwrite', function (s, done) { var r = s.put(value, key); r.onsuccess = function () { done(true); }; r.onerror = function () { done(false); }; });
+}
 
 self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
+
+// Notifications for things answered elsewhere (or expired) go away.
+function tidy(items) {
+  if (!self.registration.getNotifications) return Promise.resolve();
+  var open = items.map(function (i) { return 'kurooto-' + i.id; });
+  return self.registration.getNotifications().then(function (ns) {
+    ns.forEach(function (n) { if (n.tag && n.tag !== 'kurooto-call' && n.tag !== 'kurooto' && open.indexOf(n.tag) < 0) n.close(); });
+  }).catch(function () {});
+}
+
+// The newest thing this phone hasn't been shown yet.
+function showItem(items) {
+  return idbGet('seen').then(function (raw) {
+    var seen = [];
+    try { seen = JSON.parse(raw || '[]'); } catch (e) { seen = []; }
+    var fresh = items.filter(function (i) { return seen.indexOf(i.id) < 0; });
+    var it = fresh[fresh.length - 1];
+    if (!it) return self.registration.showNotification('Kurooto', { body: 'Something new is waiting for you. Tap to see it.', data: { link: '/inbox' }, tag: 'kurooto' });
+    var more = fresh.length > 1 ? ' (+' + (fresh.length - 1) + ' more)' : '';
+    return idbPut('seen', JSON.stringify(seen.concat([it.id]).slice(-100))).then(function () {
+      return self.registration.showNotification(it.title || 'Kurooto', {
+        body: String(it.text || '').slice(0, 300) + more, data: { link: '/inbox#' + it.id }, tag: 'kurooto-' + it.id,
+        requireInteraction: it.kind === 'question' || it.kind === 'approval',
+      });
+    });
+  });
+}
 
 self.addEventListener('push', function (event) {
   event.waitUntil(idbGet('device').then(function (key) {
     return fetch('/pending', { headers: { 'x-call-secret': key } }).then(function (r) { return r.json(); });
   }).then(function (j) {
     var ring = (j.rings || [])[0];
-    if (!ring) return self.registration.showNotification('Kurooto', { body: 'A call came in. Tap to call back.', data: { link: '/' }, tag: 'kurooto-call' });
-    return self.registration.showNotification(ring.alarm ? 'Wake-up call' : 'Kurooto is calling', {
-      body: ring.reason || 'Tap to answer', data: { link: ring.link }, tag: 'kurooto-call', renotify: true, requireInteraction: true,
+    var items = j.items || [];
+    return tidy(items).then(function () {
+      if (ring) {
+        return self.registration.showNotification(ring.alarm ? 'Wake-up call' : 'Kurooto is calling', {
+          body: ring.reason || 'Tap to answer', data: { link: ring.link }, tag: 'kurooto-call', renotify: true, requireInteraction: true,
+        });
+      }
+      return showItem(items);
     });
   }).catch(function () {
     // iOS drops the subscription if a push shows nothing, so always show something
-    return self.registration.showNotification('Kurooto', { body: 'A call came in. Tap to call back.', data: { link: '/' }, tag: 'kurooto-call' });
+    return self.registration.showNotification('Kurooto', { body: 'Something came in. Tap to see it.', data: { link: '/inbox' }, tag: 'kurooto' });
   }));
 });
 

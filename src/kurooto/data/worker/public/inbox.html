@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#14111a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kurooto">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>Waiting for you</title>
+<link rel="stylesheet" href="/call.css">
+</head>
+<body>
+<main>
+  <div>
+    <h1 id="who">Kurooto</h1>
+    <p>Questions, approvals and messages waiting for you. Your answer goes to your computer (or waits for it).</p>
+  </div>
+  <div id="msg" class="card" hidden></div>
+  <div id="list" class="list"></div>
+  <p id="empty" hidden>Nothing is waiting for you.</p>
+  <div class="row">
+    <a class="button quiet" href="/">Call</a>
+    <button id="reload" class="quiet">Refresh</button>
+  </div>
+</main>
+<script src="/inbox.js"></script>
+</body>
+</html>
