@@ -20,6 +20,7 @@ class Verdict(StrEnum):
 
 
 EFFORTS = ("low", "medium", "high")
+TEXT_ONLY = "Answer with text only. Don't use any tools: don't read, write or run anything."
 
 
 @dataclass
@@ -34,6 +35,7 @@ class Task:
     run_tool: Callable | None = None  # (name, args) -> result
     mcp: list[str] | None = None  # the command that serves the same tools over MCP, for agent programs
     mcp_env: dict = field(default_factory=dict)  # what that command needs to reach the running Kurooto
+    text_only: bool = False  # the answer is just text: agent programs are told to use no tools
 
 
 @dataclass

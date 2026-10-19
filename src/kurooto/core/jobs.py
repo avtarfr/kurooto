@@ -1,7 +1,9 @@
 """The AI job queue: requests that may take minutes run in the background and the answer comes back to you.
 
-CLI brains (agy) run one job at a time; API brains may run a few at once. If the main brain is rate-limited or
-signed out and a fallback brain is set, the job is retried once on the fallback.
+CLI brains (agy) run one job at a time; API brains may run a few at once. If the main brain can't do a request
+(rate-limited, signed out, refused, failed, or no answer) and a fallback brain is set, the job is retried on the
+fallback. As a last resort, an agent program (agy, Codex, Claude Code) hands over to your Gemini key when one is
+saved, and the Gemini key hands over to agy when agy has worked here before; the answer then says so in one line.
 """
 
 from __future__ import annotations
@@ -41,6 +43,13 @@ create table if not exists attempts (job text, brain text, verdict text, at real
 create index if not exists attempts_at on attempts(at);
 """
 LONG = 7000  # longer answers are also sent as a document
+RETRY = (Verdict.RATE_LIMITED, Verdict.AUTH, Verdict.ERROR, Verdict.DENIED, Verdict.EMPTY)  # the next brain tries
+GEMINI_KEY = "gemini.api_key"  # also what calls and voice notes use
+DENIED_HELP = (
+    "agy refused to run this without you watching. Add a free Gemini key in Settings → AI "
+    "(aistudio.google.com/apikey), then try again."
+)
+SHORT = {"agy": "agy", "gemini": "your Gemini key", "codex": "Codex", "claude": "Claude Code"}
 
 FRIENDLY = {
     Verdict.DENIED: "The AI stopped without an answer: it tried something unattended runs aren't allowed to do. "
@@ -110,6 +119,8 @@ class Jobs:
             self._db.execute("alter table jobs add column background integer default 0")
         if "runner" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # which process runs it
             self._db.execute("alter table jobs add column runner text")
+        if "text_only" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:
+            self._db.execute("alter table jobs add column text_only integer default 0")
 
     # ------------------------------------------------------------------------------------- the queue
     def submit(
@@ -122,15 +133,16 @@ class Jobs:
         then: str | None = None,
         then_payload: dict | None = None,
         background: bool = False,
+        text_only: bool = False,
     ) -> str:
         """Queue an AI request. background=True: work nobody is waiting for, which waits for the charger when the
-        laptop is on battery."""
+        laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools)."""
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"
-                "background) values(?,?,?,?, 'queued',?,?,?,?,?,?)",
+                "background,text_only) values(?,?,?,?, 'queued',?,?,?,?,?,?,?)",
                 (
                     jid,
                     (title or prompt_clean.split("\n")[0])[:80],
@@ -142,6 +154,7 @@ class Jobs:
                     then,
                     json.dumps(then_payload or {}),
                     int(background),
+                    int(text_only),
                 ),
             )
         self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean))
@@ -236,6 +249,7 @@ class Jobs:
         )
         minutes = (s.get("brain.timeout_min") or {}).get(level, 15)
         tools = agent_tools(self.app)
+        text_only = bool(self._db.execute("select text_only from jobs where id=?", (jid,)).fetchone()[0])
         task = Task(
             prompt=job.prompt,
             effort=level,
@@ -243,16 +257,22 @@ class Jobs:
             cwd=self.app.workspace,
             timeout_s=minutes * 60,
             context=headless_context(self.app),
-            tools=tools,
+            tools=[] if text_only else tools,  # text-only work gets no tools (and agent programs no MCP)
             run_tool=lambda name, args: run_tool(self.app, name, args, tools),
-            mcp=mcp_command(),
+            mcp=None if text_only else mcp_command(),
             mcp_env=run_env(self.app.paths),
+            text_only=text_only,
         )
-        used, result = None, Result(Verdict.ERROR, detail="no AI brain is set up")
-        for brain in [b for b in (main, fallback) if b is not None]:
+        chain = [b for b in (main, fallback) if b is not None]
+        last = self._last_resort(main)
+        if last is not None and last.id not in {b.id for b in chain}:
+            chain.append(last)
+        used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
+        for i, brain in enumerate(chain):
             ok, why = brain.available()
             if not ok:
                 result, used = Result(Verdict.ERROR, detail=why), brain
+                first = first or (brain, result)
                 continue
             used = brain
             if brain.id == "agy":
@@ -265,9 +285,19 @@ class Jobs:
             else:
                 result = brain.run(task)
             self._attempt(jid, brain.id, result)
-            if result.verdict not in (Verdict.RATE_LIMITED, Verdict.AUTH, Verdict.ERROR):
+            if brain.id == "agy" and result.ok:
+                from kurooto.providers.agy import mark_worked
+
+                mark_worked(self.app.paths.state)
+            if result.verdict not in RETRY:
                 break
-            self._problem(brain, result)
+            first = first or (brain, result)
+            self._problem(brain, result, chain[i + 1] if i + 1 < len(chain) else None)
+        if last is not None and used is last and result.ok and first:
+            note = f"(Answered with {SHORT.get(last.id, last.label)}: {_why(*first)}.)"
+            result.usage = {**result.usage, "note": note}
+        if result.verdict == Verdict.DENIED and used.id == "agy" and not self.app.secrets.get(GEMINI_KEY):
+            result.detail = DENIED_HELP
         ok = result.ok
         with self._lock:
             self._db.execute(
@@ -327,7 +357,22 @@ class Jobs:
             for d, b, n, lim, tc in rows
         ]
 
-    def _problem(self, brain, result: Result) -> None:
+    def _last_resort(self, main):
+        """When the main AI can't do a request: an agent program (agy, Codex, Claude Code) hands over to your Gemini
+        key if one is saved; the Gemini key hands over to agy if agy is installed and has worked here before."""
+        if main is None:
+            return None
+        if main.kind == "cli" and self.app.secrets.get(GEMINI_KEY):
+            return providers.build(self.app, "gemini")
+        if main.id == "gemini":
+            from kurooto.providers.agy import has_worked
+
+            agy = providers.build(self.app, "agy")
+            if agy is not None and agy.available()[0] and has_worked(self.app.paths.state):
+                return agy
+        return None
+
+    def _problem(self, brain, result: Result, nxt=None) -> None:
         """Tell the user about a usage limit or a sign-out, at most once an hour per brain."""
         if result.verdict not in (Verdict.RATE_LIMITED, Verdict.AUTH):
             return
@@ -337,10 +382,9 @@ class Jobs:
         flag.touch()
         text = FRIENDLY[result.verdict].format(brain=brain.label)
         if result.verdict == Verdict.RATE_LIMITED:
-            fb = self.app.settings.get("brain.fallback")
             text += (
-                f" Requests go to the fallback ({providers.CHOICES.get(fb, fb)}) meanwhile."
-                if fb
+                f" Requests go to the fallback ({nxt.label}) meanwhile."
+                if nxt is not None
                 else (" Requests will fail until it resets. You can set a fallback brain in Settings.")
             )
         self.app.notify(
@@ -354,7 +398,10 @@ class Jobs:
         label = used.label if used else "AI"
         head = f"[{label} · {job.effort or '?'}{'' if result.ok else ' · failed'}] {job.title}"
         if result.ok:
-            body = result.text
+            note = (result.usage or {}).get("note")
+            body = f"{result.text}\n\n{note}" if note else result.text
+        elif result.detail == DENIED_HELP:
+            body = DENIED_HELP
         else:
             body = FRIENDLY.get(result.verdict, "It failed.").format(brain=label)
         reply_to = int(job.reply_to) if job.reply_to and job.reply_to.isdigit() else job.reply_to
@@ -375,6 +422,17 @@ class Jobs:
 def mcp_command() -> list[str]:
     """How an agent program starts Kurooto's tool server (`kurooto mcp`), with this version's own Python."""
     return command()
+
+
+def _why(brain, result: Result) -> str:
+    """Why the main AI didn't answer, for the line under an answer from the last-resort one."""
+    who = SHORT.get(brain.id, brain.label)
+    return {
+        Verdict.DENIED: f"{who} couldn't do this unattended",
+        Verdict.RATE_LIMITED: f"{who} hit its limit",
+        Verdict.AUTH: f"{who} isn't signed in" if brain.kind == "cli" else f"{who} stopped working",
+        Verdict.EMPTY: f"{who} gave no answer",
+    }.get(result.verdict, f"{who} failed")
 
 
 def result_path(app: App, jid: str) -> Path:
