@@ -128,3 +128,49 @@ def test_doctor_leaves_a_running_job_alone(tmp_path, monkeypatch, capsys):
         assert app.jobs.recover() == 1 and app.jobs.get(jid).status == "queued"
     finally:
         app.close()
+
+
+def test_reads_from_other_threads_never_lose_a_job(tmp_path, monkeypatch):
+    """The web page polls jobs (About you, /jobs) while the worker runs them, on one shared connection."""
+    import threading
+
+    from kurooto import providers
+    from kurooto.providers.base import Result, Verdict
+
+    class Quick:
+        id, label, kind = "quick", "Quick", "api"
+
+        def available(self):
+            return True, ""
+
+        def run(self, task):
+            return Result(Verdict.OK, "done")
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    monkeypatch.setattr(providers, "build", lambda a, w: Quick() if w == "quick" else None)
+    app = App()
+    try:
+        app.settings.set("brain.main", "quick")
+        ids = [app.jobs.submit(f"job {i}", quiet=True, effort="low") for i in range(40)]
+        stop, missing = threading.Event(), []
+
+        def poll():
+            while not stop.is_set():
+                for jid in ids:
+                    if app.jobs.get(jid) is None:
+                        missing.append(jid)
+                app.jobs.recent(20)
+
+        threads = [threading.Thread(target=poll) for _ in range(4)]
+        for t in threads:
+            t.start()
+        try:
+            while app.jobs.run_next():
+                pass
+        finally:
+            stop.set()
+            for t in threads:
+                t.join()
+        assert missing == [] and all(app.jobs.get(j).status == "ok" for j in ids)
+    finally:
+        app.close()
