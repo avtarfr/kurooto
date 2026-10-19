@@ -32,6 +32,13 @@ def headless_context(app: App, extra: str = "") -> str:
         lines.append(
             f"Who they are (their profile, about-me/profile.md in their notes; their requests override it):\n{brief}"
         )
+    from kurooto.modules.remember import HELP_NOTE, help_brief
+
+    helps = help_brief(app)
+    if helps:  # what they told Kurooto (and approved from the nightly look back); they edit it, so it wins
+        lines.append(
+            f"How they like to be helped ({HELP_NOTE} in their notes; follow it, their requests win):\n{helps}"
+        )
     if extra:
         lines.append(extra)
     return "\n".join(lines)
