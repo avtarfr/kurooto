@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.1.1",
+  "notes": "Fixes: check-in calls wait out no-call times; what you say on a check-in call reaches your journal; checking Kurooto no longer re-runs a request.",
+  "created": 1792441994.6994736,
+  "files": {
+   "kurooto-0.1.1.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.1.1/kurooto-0.1.1.tar.gz",
+    "sha256": "3e69fb7b5f12dd74445a2f158c198f7fc22df7e77a862b463cdc325257f00797",
+    "size": 441572
+   }
+  }
+ },
+ "sig": "d/sHKgEe69llhU24StubWsFAB+qtOuthbzKSqQlpme//+Kr8DjQIa9GbAFXfIJIVzmD1TvHK3VkSSSzXECziBg=="
+}
