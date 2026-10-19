@@ -51,6 +51,7 @@ MODULE_ORDER = [
     "awake",
     "calendar",
     "notes_sync",
+    "backups",
     "google",
     "classroom_notes",
     "mail_digest",
@@ -59,6 +60,7 @@ MODULE_ORDER = [
     "handwritten",
     "study",
     "research",
+    "terminals",
 ]
 
 
