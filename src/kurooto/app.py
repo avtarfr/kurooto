@@ -198,6 +198,7 @@ class App:
             for m in mods:
                 h = m.replies().get(msg.reply_to.get("kind"))
                 if h:
+                    self.notifier.retract(msg.reply_to.get("kind"), msg.reply_to.get("ref"))  # off your phones
                     out = h(msg, msg.reply_to.get("ref"))
                     if out:
                         msg.reply(out)
@@ -250,6 +251,7 @@ class App:
     def callback(self, data: str) -> str:
         """A button you tapped: "<prefix>:<ref>:<action>"."""
         prefix, ref, act = (data.split(":", 2) + ["", ""])[:3]
+        self.notifier.retract(button=data)  # the phone app's copy of that message goes (core/notify.py)
         if prefix == "upd":
             return self.updates.button(ref, act)
         for m in self.enabled():
