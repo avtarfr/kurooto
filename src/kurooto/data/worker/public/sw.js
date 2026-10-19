@@ -30,16 +30,16 @@ function tidy(items) {
 }
 
 // The newest thing this phone hasn't been shown yet.
-function showItem(items) {
+function showItem(items, name) {
   return idbGet('seen').then(function (raw) {
     var seen = [];
     try { seen = JSON.parse(raw || '[]'); } catch (e) { seen = []; }
     var fresh = items.filter(function (i) { return seen.indexOf(i.id) < 0; });
     var it = fresh[fresh.length - 1];
-    if (!it) return self.registration.showNotification('Kurooto', { body: 'Something new is waiting for you. Tap to see it.', data: { link: '/inbox' }, tag: 'kurooto' });
+    if (!it) return self.registration.showNotification(name, { body: 'Something new is waiting for you. Tap to see it.', data: { link: '/inbox' }, tag: 'kurooto' });
     var more = fresh.length > 1 ? ' (+' + (fresh.length - 1) + ' more)' : '';
     return idbPut('seen', JSON.stringify(seen.concat([it.id]).slice(-100))).then(function () {
-      return self.registration.showNotification(it.title || 'Kurooto', {
+      return self.registration.showNotification(it.title || name, {
         body: String(it.text || '').slice(0, 300) + more, data: { link: '/inbox#' + it.id }, tag: 'kurooto-' + it.id,
         requireInteraction: it.kind === 'question' || it.kind === 'approval',
       });
@@ -53,17 +53,20 @@ self.addEventListener('push', function (event) {
   }).then(function (j) {
     var ring = (j.rings || [])[0];
     var items = j.items || [];
-    return tidy(items).then(function () {
+    var name = j.assistant || 'Kurooto'; // your assistant's current name (it can be renamed on your computer)
+    return Promise.all([tidy(items), j.assistant ? idbPut('assistant', j.assistant) : null]).then(function () {
       if (ring) {
-        return self.registration.showNotification(ring.alarm ? 'Wake-up call' : 'Kurooto is calling', {
+        return self.registration.showNotification(ring.alarm ? 'Wake-up call' : name + ' is calling', {
           body: ring.reason || 'Tap to answer', data: { link: ring.link }, tag: 'kurooto-call', renotify: true, requireInteraction: true,
         });
       }
-      return showItem(items);
+      return showItem(items, name);
     });
   }).catch(function () {
     // iOS drops the subscription if a push shows nothing, so always show something
-    return self.registration.showNotification('Kurooto', { body: 'Something came in. Tap to see it.', data: { link: '/inbox' }, tag: 'kurooto' });
+    return idbGet('assistant').then(function (name) {
+      return self.registration.showNotification(name || 'Kurooto', { body: 'Something came in. Tap to see it.', data: { link: '/inbox' }, tag: 'kurooto' });
+    });
   }));
 });
 

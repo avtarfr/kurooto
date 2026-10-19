@@ -18,6 +18,13 @@ final class Prefs {
     static String url(Context c) { return sp(c).getString("url", ""); }
     static String device(Context c) { return sp(c).getString("device", ""); }
     static String assistant(Context c) { return sp(c).getString("assistant", "Kurooto"); }
+
+    /** The assistant's name, as your computer last said (it can be renamed there). True if it changed. */
+    static boolean setAssistant(Context c, String name) {
+        if (name == null || name.trim().isEmpty() || name.equals(assistant(c))) return false;
+        sp(c).edit().putString("assistant", name.trim()).apply();
+        return true;
+    }
     static String ntfyServer(Context c) { return sp(c).getString("ntfyServer", "https://ntfy.sh"); }
     static String topic(Context c) { return sp(c).getString("topic", ""); }
 
