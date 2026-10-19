@@ -143,7 +143,14 @@ def main():
     else:
         run([uv, "pip", "install", "--python", vpy, str(vdir / "src")], "install it")
     run([vpy, "-m", "kurooto", "selftest"], "start it (self-test)")
-    r = subprocess.run([vpy, "-m", "kurooto", "install-finish", "--uv", uv, "--python", py])
+    # Kurooto starts from here and keeps this environment until it restarts: leave out what `uv run` added for this
+    # short-lived script (its throwaway environment and the uv cache on the PATH), so programs it runs don't see them
+    cache = subprocess.run([uv, "cache", "dir"], capture_output=True, text=True, env=clean).stdout.strip()
+    drop = [p for p in (sys.prefix, cache) if p]
+    keep = [p for p in os.environ.get("PATH", "").split(os.pathsep) if p and not any(p.startswith(d) for d in drop)]
+    env = {k: v for k, v in clean.items() if k != "UV_RUN_RECURSION_DEPTH"}
+    env["PATH"] = os.pathsep.join(keep)
+    r = subprocess.run([vpy, "-m", "kurooto", "install-finish", "--uv", uv, "--python", py], env=env)
     sys.exit(r.returncode)
 
 
