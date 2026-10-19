@@ -25,6 +25,7 @@ class FakeGoogle:
         self.drafts: list[dict] = []  # bodies of drafts.create calls (kept for the older tests)
         self.draft_store: dict[str, dict] = {}  # id -> message
         self.sent: list[str] = []  # draft ids sent
+        self.send_fails = False  # Gmail has a bad moment
         self.token_calls: list[dict] = []
         self.requests: list[tuple[str, str]] = []  # (method, path) of every API call
         self.courses = [{"id": "c1", "name": "Linear Algebra"}]
@@ -117,6 +118,8 @@ class FakeGoogle:
                     fake.draft_store[did] = body["message"]
                     return self._json(200, {"id": did, "message": {"id": f"m-{did}"}})
                 if path == "/gmail/users/me/drafts/send":
+                    if fake.send_fails:
+                        return self._json(500, {"error": {"message": "Backend Error"}})
                     if body.get("id") not in fake.draft_store:
                         return self._json(404, {"error": {"message": "Requested entity was not found."}})
                     fake.sent.append(body["id"])

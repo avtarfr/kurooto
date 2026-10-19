@@ -515,7 +515,14 @@ class ReplyDrafts(GooglePart):
         if not body:
             return "The reply is empty."
         today = now().date().isoformat()
-        recs = [jload(p, {}) or {} for p in self.dir.glob("*.json")]
+        old = (now() - dt.timedelta(days=30)).isoformat()
+        recs = []
+        for p in self.dir.glob("*.json"):
+            r = jload(p, {}) or {}
+            if r.get("status") != "open" and r.get("created", "") < old:
+                p.unlink(missing_ok=True)  # Kurooto's own record of a settled draft, a month on
+                continue
+            recs.append(r)
         if any(r.get("mid") == mid and r.get("status") == "open" for r in recs):
             return "There's already a draft waiting for that mail."
         if sum(1 for r in recs if r.get("created", "").startswith(today)) >= int(self.setting("per_day") or 5):
@@ -584,11 +591,13 @@ class ReplyDrafts(GooglePart):
                 return "Send, Edit or Discard?"
         except GoogleError as e:
             if e.code != 404:
-                return f"Gmail didn't take it: {e}"[:190]
+                self._ask(did, rec)  # the question is settled: ask again, so you can tap once Gmail is back
+                return f"Gmail didn't take it ({e}); I'll ask again."[:190]
             rec["status"] = "gone"
             note = "That draft isn't in Gmail any more (sent or deleted there?)."
         except NeedsSignIn:
-            return "Google sign-in expired; sign in again from the dashboard."
+            self._ask(did, rec)
+            return "Google sign-in expired; sign in again from the dashboard, then tap again."
         rec["settled"] = now().isoformat()
         self._save(did, rec)
         self.app.events.emit(f"reply_draft_{rec['status']}")

@@ -428,6 +428,12 @@ def test_reply_draft_discard_and_gone(drafts):
     env.app.modules["mail_digest"].digest()
     run_tool(app, "draft_reply", {"message_id": "p2", "text": "Will do."})
     did = next(iter(g.draft_store))
+    g.send_fails = True  # Gmail has a bad moment: you're asked again, nothing is lost
+    q = app.ask.pending(source="reply_drafts")[-1]
+    assert app.ask.answer(q["id"], "Send", "telegram")["ok"]
+    again = [x for x in app.ask.pending(source="reply_drafts") if "Will do." in x["text"]]
+    assert len(again) == 1 and again[0]["id"] != q["id"] and g.sent == []
+    g.send_fails = False
     g.draft_store.clear()  # you deleted it in Gmail yourself
     assert rd.answer(did, "Send").startswith("That draft isn't in Gmail any more")
     assert g.sent == []
