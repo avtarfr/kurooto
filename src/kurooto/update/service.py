@@ -131,7 +131,7 @@ class Updates:
         ready = jload(self.ready_file, None)
         if not ready or not ready.get("staged"):
             return "nothing staged"
-        busy = self.app.jobs._db.execute("select 1 from jobs where status in ('queued','running') limit 1").fetchone()
+        busy = self.app.jobs._read("select 1 from jobs where status in ('queued','running') limit 1")
         on_call = self.app.availability.call_block()[0] == "you're on a call"
         if busy or on_call:
             self.app.scheduler.at(now() + dt.timedelta(minutes=20), "updates.apply", key="updates:apply")

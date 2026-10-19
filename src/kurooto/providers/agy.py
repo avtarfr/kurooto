@@ -210,13 +210,16 @@ def connect_tools(app: App, exe: str | list[str] | None = None) -> tuple[bool, s
     """Give agy Kurooto's tools for every run: register `kurooto mcp` as its MCP server "kurooto" and allow its
     tools. Done when agy is set up (and once after an update to a version that has tools)."""
     from kurooto import __version__
-    from kurooto.core.mcp import command, path_env
+    from kurooto.core.mcp import command
 
     exe = exe or proc.which("agy", install_dirs())
     if not exe:
         return False, "agy isn't installed"
     cmd = command(persistent=True)
-    flags = [x for k, v in sorted(path_env().items()) for x in ("--env", f"{k}={v}")]
+    # saved for good, so only what a portable copy needs; the system's own folders (XDG_*, LOCALAPPDATA) come from
+    # agy's environment at each run, which stays right if they change
+    home = os.environ.get("KUROOTO_HOME")
+    flags = ["--env", f"KUROOTO_HOME={home}"] if home else []
     base = list(exe) if isinstance(exe, list) else [exe]
     r = proc.run([*base, "mcp", "add", *flags, "kurooto", "--", *cmd], timeout=60)
     if r.code != 0:
