@@ -501,5 +501,5 @@ $("#finish").addEventListener("click", finish);
   $("#aname").value = state.you.assistant_name || "Kurooto";
   let saved = 0;
   try { saved = Number(localStorage.getItem("kurooto.setup.step") || 0); } catch { /* fine */ }
-  show(state.setup_done ? 0 : saved);
+  show(location.hash === "#about" ? STEPS.indexOf("about") : state.setup_done ? 0 : saved); // /aboutme links to #about
 })();

@@ -19,6 +19,7 @@ fi
 say "Free space: $((free_kb / 1048576)) GB. Fine."
 
 # 2. uv (installs Python for us), pinned version, for this user only
+KUROOTO_ORIG_PATH="$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 if ! command -v uv >/dev/null 2>&1; then
   say "Installing uv $UV_VERSION..."
@@ -41,4 +42,9 @@ fi
 rm -f "$tmp"
 printf '\n'
 say "Done. If the setup page didn't open, run:  kurooto open"
-say "Kurooto keeps running in the background and starts when you log in. Open a new terminal to use the kurooto command."
+say "Kurooto keeps running in the background and starts when you log in."
+case ":${KUROOTO_ORIG_PATH:-}:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) say "New terminals know the kurooto command. In this one, first run:  export PATH=\"\$HOME/.local/bin:\$PATH\""
+     say "(in fish:  set -gx PATH ~/.local/bin \$PATH)" ;;
+esac

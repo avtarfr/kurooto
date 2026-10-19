@@ -68,3 +68,11 @@ def no_desktop_popups(tmp_path_factory, monkeypatch):
     if sys.platform == "win32":
         (d / "powershell.cmd").write_text("@exit /b 0\r\n")
     monkeypatch.setenv("PATH", str(d) + os.pathsep + os.environ.get("PATH", ""))
+
+
+@pytest.fixture(autouse=True)
+def no_path_changes(monkeypatch):
+    """Tests never edit a developer's real shell startup files or user PATH (core/pathfix.py)."""
+    from kurooto.core import pathfix
+
+    monkeypatch.setattr(pathfix, "allowed", lambda: False)

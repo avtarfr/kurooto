@@ -42,5 +42,8 @@ if ($env:KUROOTO_SOURCE) {
 if ($LASTEXITCODE -ne 0) { throw 'Kurooto did not install. Nothing else was changed; you can run this again.' }
 Remove-Item $tmp -ErrorAction SilentlyContinue
 Write-Host ''
+# the kurooto command works in this window too (Kurooto put its folder on your user PATH for new windows)
+$bin = Join-Path $HOME '.local\bin'
+if (($env:Path -split ';') -notcontains $bin) { $env:Path = "$bin;$env:Path" }
 Say 'Done. If the setup page did not open, run:  kurooto open'
-Say 'Kurooto keeps running in the background and starts when you sign in. Open a new terminal to use the kurooto command.'
+Say 'Kurooto keeps running in the background and starts when you sign in.'
