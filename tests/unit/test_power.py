@@ -79,7 +79,9 @@ def test_paused_telegram_keeps_what_you_send_and_does_it_on_resume(env, plug):
     out = env.say("remind me in 10 minutes to stretch")
     assert out.startswith("I'm paused until you resume me; I'll do this when I'm back")
     assert not env.app.scheduler.jobs("reminders:")
-    assert env.say("/resume") == "Back on."
+    before = len(env.fake.texts())
+    env.say("/resume")
+    assert "Back on." in env.fake.texts()[before:]  # the replay may answer first: it runs in its own thread
     for _ in range(100):  # the replay runs in its own thread
         if env.app.scheduler.jobs("reminders:") and any("remind you" in t for t in env.fake.texts()):
             break
