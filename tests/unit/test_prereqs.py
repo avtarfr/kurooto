@@ -144,3 +144,31 @@ def test_real_manifest_loads_for_every_os(tmp_path):
         assert all(p.step.get("kind") for p in m.items.values())
         if osn == here:  # other systems' paths can't be judged by this one's rules
             assert all(Path(str(d)).is_absolute() for p in m.items.values() for d in p.dirs)
+
+
+def test_untar_streams_from_disk_never_whole_in_memory(tmp_path, monkeypatch):
+    """Ollama's Linux archive is gigabytes unpacked; reading it whole once got Kurooto killed for memory."""
+    import io as _io
+
+    import zstandard
+
+    from kurooto.core import prereqs as pq
+
+    raw = _io.BytesIO()
+    with tarfile.open(fileobj=raw, mode="w") as t:
+        for name, data in (("ollama/bin/ollama", b"#!/bin/sh\n"), ("ollama/lib/a.so", b"x" * 4096), ("../evil", b"no")):
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            t.addfile(info, _io.BytesIO(data))
+    archive = tmp_path / "ollama-linux-amd64.tar.zst"
+    archive.write_bytes(zstandard.ZstdCompressor().compress(raw.getvalue()))
+    real = pq.Path.read_bytes
+    monkeypatch.setattr(
+        pq.Path,
+        "read_bytes",
+        lambda self: (_ for _ in ()).throw(AssertionError("read whole")) if self == archive else real(self),
+    )
+    pq.Prereqs._untar(archive, tmp_path / "out", strip=1)
+    assert (tmp_path / "out" / "bin" / "ollama").read_bytes() == b"#!/bin/sh\n"
+    assert (tmp_path / "out" / "lib" / "a.so").stat().st_size == 4096
+    assert not (tmp_path / "evil").exists()  # nothing lands outside the target folder

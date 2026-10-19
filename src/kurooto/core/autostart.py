@@ -137,13 +137,11 @@ def service(action: str, home: Path | None = None) -> bool:
     and `kurooto start` doesn't run a second copy beside the managed one. False: not managed here."""
     home = home or Path.home()
     how = managed(home)
-    if how == "systemd":
-        proc.run(["systemctl", "--user", action, "kurooto.service"], timeout=30)
-        return True
+    if how == "systemd":  # where the user session doesn't work (WSL, containers) this fails: callers fall back
+        return proc.run(["systemctl", "--user", action, "kurooto.service"], timeout=30).ok
     if how == "launchd":  # unload (without -w) holds it until the next login; load starts it again
         plist = home / "Library" / "LaunchAgents" / f"{LABEL}.plist"
-        proc.run(["launchctl", "unload" if action == "stop" else "load", str(plist)], timeout=15)
-        return True
+        return proc.run(["launchctl", "unload" if action == "stop" else "load", str(plist)], timeout=15).ok
     return False
 
 

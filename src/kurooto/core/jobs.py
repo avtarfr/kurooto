@@ -166,12 +166,19 @@ class Jobs:
         if self._wake is not None and self._loop is not None:
             self._loop.call_soon_threadsafe(self._wake.set)
 
+    def _read(self, sql: str, args: tuple = (), one: bool = True):
+        """A read under the queue's lock: the web page, the worker and tests share one connection, and two threads
+        stepping the same cached statement at once can lose a row (seen on Windows)."""
+        with self._lock:
+            cur = self._db.execute(sql, args)
+            return cur.fetchone() if one else cur.fetchall()
+
     def get(self, jid: str) -> Job | None:
-        row = self._db.execute(f"select {self._cols} from jobs where id=?", (jid,)).fetchone()
+        row = self._read(f"select {self._cols} from jobs where id=?", (jid,))
         return Job(*row[:9], bool(row[9]), *row[10:]) if row else None
 
     def recent(self, n: int = 10) -> list[Job]:
-        rows = self._db.execute(f"select {self._cols} from jobs order by created desc limit ?", (n,)).fetchall()
+        rows = self._read(f"select {self._cols} from jobs order by created desc limit ?", (n,), one=False)
         return [Job(*r[:9], bool(r[9]), *r[10:]) for r in rows]
 
     _cols = "id,title,prompt,effort_req,effort,status,verdict,brain,reply_to,quiet,created,seconds,result"
@@ -201,12 +208,9 @@ class Jobs:
         self._wake = asyncio.Event()
         self.recover()
         while not stop.is_set():
-            if (
-                self.app.power.current != "paused"
-                and self._db.execute(
-                    "select 1 from jobs where status='queued' and (background=0 or ?) limit 1",
-                    (int(self.app.power.current == "normal"),),
-                ).fetchone()
+            if self.app.power.current != "paused" and self._read(
+                "select 1 from jobs where status='queued' and (background=0 or ?) limit 1",
+                (int(self.app.power.current == "normal"),),
             ):
                 await asyncio.to_thread(self.run_next)
                 continue
@@ -244,7 +248,7 @@ class Jobs:
             cwd=self.app.workspace,
             timeout_s=minutes * 60,
             context=headless_context(self.app),
-            text_only=bool(self._db.execute("select text_only from jobs where id=?", (jid,)).fetchone()[0]),
+            text_only=bool(self._read("select text_only from jobs where id=?", (jid,))[0]),
         )
         chain = [b for b in (main, fallback) if b is not None]
         last = self._last_resort(main)
@@ -305,7 +309,7 @@ class Jobs:
         job = self.get(jid)
         if not job.quiet:
             self._deliver(job, result, used)
-        then = self._db.execute("select then_action, then_payload from jobs where id=?", (jid,)).fetchone()
+        then = self._read("select then_action, then_payload from jobs where id=?", (jid,))
         if then and then[0] and then[0] in self.then_actions:
             try:
                 self.then_actions[then[0]](job, result, json.loads(then[1] or "{}"))
