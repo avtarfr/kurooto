@@ -33,7 +33,7 @@ def app(tmp_path, monkeypatch):
 
 def test_freellmapi_is_not_offered(app):
     ids = [b["id"] for b in Api(app)._brains()]
-    assert "freellmapi" not in ids and "custom" in ids and ids[0] == "agy"
+    assert "freellmapi" not in ids and "custom" in ids and ids[:2] == ["gemini", "agy"]
     assert "freellmapi" not in Prereqs(app.paths.app, app.paths.cache).items
     assert "FreeLLMAPI" not in SETUP and "freellmapi.com" not in SETUP
 
@@ -70,9 +70,12 @@ def test_the_wizard_says_what_a_free_gemini_key_means():
     assert SETUP.count("geminiTerms()") == 3  # defined once, shown on the brain card and the key box
 
 
-def test_the_agy_card_is_honest_and_keeps_its_star(app):
+def test_gemini_is_recommended_and_agy_keeps_its_honest_note(app):
     note = js_const("AGY_NOTE")
     assert "never touches its sign-in token" in note and "some risk to your Google account" in note
     assert "Google recommends a Gemini API key" in note
     assert SETUP.count("AGY_NOTE") == 2
-    assert Api(app)._brains()[0] == {**Api(app)._brains()[0], "id": "agy", "recommended": True}
+    rows = Api(app)._brains()
+    assert [(r["id"], r["recommended"]) for r in rows[:2]] == [("gemini", True), ("agy", False)]
+    assert [r["id"] for r in rows] == ["gemini", "agy", "codex", "claude", "ollama", "custom"]
+    assert sum(r["recommended"] for r in rows) == 1
