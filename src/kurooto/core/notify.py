@@ -2,6 +2,8 @@
 
 During focus time, anything that isn't urgent waits in a queue and is delivered when focus ends.
 Channels are registered by the modules that provide them (Telegram, the phone app); the desktop is built in.
+A channel that keeps its own copy of a question (the phone app) also registers a retract handler: when that question
+is dealt with anywhere (answered on Telegram, a button tapped, expired), retract() takes its copy down.
 """
 
 from __future__ import annotations
@@ -22,7 +24,9 @@ register_defaults(
     {
         "desktop": True,
         "desktop_kinds": ["call", "question", "approval", "deadline", "update"],
-        "app_kinds": ["call"],  # the phone app rings only for calls; the rest goes to Telegram
+        # the phone app: calls ring it, and questions and approvals come with answer buttons. Add "reminder",
+        # "deadline", "result" or "info" to get those there too (they still go to Telegram as well).
+        "app_kinds": ["call", "question", "approval"],
     },
 )
 
@@ -43,19 +47,33 @@ class Message:
 
 
 Sender = Callable[[Message], Any]  # returns the channel's message id, or None
+Retractor = Callable[[str | None, str | None, str | None], Any]  # (map_kind, map_ref, button data)
 
 
 class Notifier:
     def __init__(self, app: App):
         self.app = app
         self.channels: dict[str, Sender] = {}
+        self.retractors: dict[str, Retractor] = {}
         self.queue_file = app.paths.state / "focus-queue.jsonl"
 
-    def register(self, name: str, send: Sender) -> None:
+    def register(self, name: str, send: Sender, retract: Retractor | None = None) -> None:
         self.channels[name] = send
+        if retract:
+            self.retractors[name] = retract
 
     def unregister(self, name: str) -> None:
         self.channels.pop(name, None)
+        self.retractors.pop(name, None)
+
+    def retract(self, map_kind: str | None = None, map_ref: str | None = None, button: str | None = None) -> None:
+        """Something Kurooto asked was dealt with: channels take their copy of it down. Name it by the map_kind and
+        map_ref it was sent with, or by the data of a button that was tapped."""
+        for name, fn in list(self.retractors.items()):
+            try:
+                fn(map_kind, map_ref, button)
+            except Exception as e:
+                self.app.events.emit("notify_failed", channel=name, error=f"retract: {e}"[:200])
 
     def send(self, text: str, **kw) -> Any:
         """Deliver now (or queue it during focus). Returns the Telegram message id when there is one."""

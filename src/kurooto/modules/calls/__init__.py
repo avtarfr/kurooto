@@ -7,6 +7,9 @@ call the audio goes between your phone and Google's Gemini Live, using your free
 what it last sent, and anything that needs it waits until it's back.
 
 Telegram: /call gives you a call link, /phone pairs a phone, /phones lists them, /unpair removes one.
+
+The paired phones are also a second channel for messages (questions and approvals by default; see phone.py), and
+while a call is live, nothing else rings: availability says "you're on a call" (updates wait for it too).
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls import line
 from kurooto.modules.calls.connector import Connector
+from kurooto.modules.calls.phone import PhoneApp
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
 
 register_defaults(
@@ -43,6 +47,7 @@ register_defaults(
 )
 
 SECRETS = ("calls.call_secret", "calls.connector_secret", "calls.ntfy_topic", "calls.ntfy_key")
+ON_CALL_S = 90  # a live call checks in every few seconds; this long after the last sign of it, it's over
 GEMINI_KEY = "gemini.api_key"
 
 
@@ -63,6 +68,7 @@ class Calls(Module):
         self.dir = app.paths.state / "calls"
         self.connector = Connector(self)
         self.finished: dict[str, dict] = {}  # call tasks done but not yet told on the call
+        self.phone = PhoneApp(self)  # messages to the phone app, and the answers that come back
 
     # ------------------------------------------------------------------------------------------ setup
     def worker_url(self) -> str:
@@ -93,7 +99,7 @@ class Calls(Module):
         self.action("task_check", self._task_check)
         self.every("line_update", "daily 05:10", self._line_update)
         self.app.jobs.then_actions["calls.task_done"] = self._task_done
-        self.app.notifier.register("app", lambda m: None)  # calls ring the phone; Telegram stays silent for them
+        self.app.notifier.register("app", self.phone.send, self.phone.retract)  # questions etc. (phone.py)
 
     def stop(self):
         super().stop()
@@ -406,6 +412,7 @@ class Calls(Module):
     def on_event(self, m: dict) -> None:
         name = m.get("name")
         if name == "call_started":
+            self.on_call(m.get("at"))
             self.app.events.emit("call_answered", via=m.get("via"), offline=bool(m.get("offline")))
             r = self._ring_state(m.get("since", ""), "answered") if m.get("since") else None
             if r:
@@ -443,6 +450,10 @@ class Calls(Module):
                     self._transcript(json.loads(it.get("body") or "{}"))
                 elif it.get("kind") == "event":
                     self.on_event(it)
+                elif it.get("kind") == "answer":  # answered on a phone while this computer was off
+                    status, out = self.phone.answer(it.get("body") or {})
+                    if status == 200 and out.get("note"):
+                        self.app.notify(f"Your answer from the phone: {out['note']}", kind="info")
             except Exception as e:
                 self.app.events.emit("calls_queue_failed", error=str(e)[:200])
         if done:
@@ -452,6 +463,10 @@ class Calls(Module):
 
     def handle_request(self, method: str, path: str, body: bytes) -> tuple[int, dict]:
         url = urllib.parse.urlsplit(path)
+        if url.path in ("/tool", "/tasks"):
+            self.on_call()  # a live call uses these every few seconds
+        if url.path == "/answer":
+            return self.phone.answer(json.loads(body or b"{}"))
         if url.path == "/tool":
             b = json.loads(body or b"{}")
             return 200, {"result": self.run_tool(str(b.get("name", "")), b.get("args") or {})}
@@ -477,6 +492,7 @@ class Calls(Module):
         return 404, {"error": "not found"}
 
     def _transcript(self, b: dict) -> dict:
+        self.app.availability.set_on_call(None)  # the call page sends this when the call ends
         lines = [x for x in (b.get("lines") or []) if isinstance(x, dict)][:5000]
         if not lines:
             return {"ok": True}
@@ -585,6 +601,19 @@ class Calls(Module):
     def offline_notes(self) -> bool:
         return True
 
+    # ------------------------------------------------------------------------------ on a call right now
+    def on_call(self, at: str | None = None) -> None:
+        """A call is live (it just started, or the call page checked in): nothing else rings for a while.
+        `at` is when the call line saw it (ISO time), for events it kept while this computer was off."""
+        t = time.time()
+        if at:
+            try:
+                t = dt.datetime.fromisoformat(str(at).replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                pass
+        if time.time() - t < ON_CALL_S:
+            self.app.availability.set_on_call(dt.datetime.fromtimestamp(t + ON_CALL_S))
+
     def index_items(self) -> list[dict]:
         return notes_index(self.app.workspace)
 
@@ -593,8 +622,10 @@ class Calls(Module):
             return {"schedule": []}
         tools = self.tools()
         briefs = {t.name: t.name for t in tools if t.offline == "brief"}
+        self.phone.flush()  # messages the line missed while it was down
         return {
             "schedule": self.schedule_list(),
+            "inbox": self.phone.inbox(),
             "names": {"assistant": self.app.name, "owner": self.app.settings.get("you.name") or ""},
             "config": self.config_template(),
             "texts": self.texts(),

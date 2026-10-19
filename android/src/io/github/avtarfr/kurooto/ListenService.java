@@ -36,10 +36,12 @@ import java.net.URL;
  *   tags "call"  -> ringing full-screen call (Answer / Later / Decline), your ringtone + vibration
  *   + "alarm"    -> the wake-up call: alarm sound on the alarm stream (rings on silent), rings longer
  *   tags "stop"  -> the call was answered elsewhere (or ended): stop ringing
+ *   + "clear"    -> questions or messages dealt with elsewhere: take their notifications down
+ *   tags "msg"   -> a question, approval or message, with ways to answer it (Inbox)
  *   anything else -> a normal notification
  */
 public class ListenService extends Service {
-    static final String CH_SERVICE = "service", CH_CALL = "calls", CH_MSG = "messages";
+    static final String CH_SERVICE = "service", CH_CALL = "calls", CH_MSG = "messages", CH_ASK = "questions";
     static final int ID_SERVICE = 1, ID_CALL = 2;
     static final int SDK = Build.VERSION.SDK_INT;
 
@@ -82,9 +84,12 @@ public class ListenService extends Service {
         call.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         call.setBypassDnd(true);
         NotificationChannel msg = new NotificationChannel(CH_MSG, "Messages", NotificationManager.IMPORTANCE_HIGH);
+        NotificationChannel ask = new NotificationChannel(CH_ASK, "Questions and approvals", NotificationManager.IMPORTANCE_HIGH);
+        ask.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
         nm.createNotificationChannel(svc);
         nm.createNotificationChannel(call);
         nm.createNotificationChannel(msg);
+        nm.createNotificationChannel(ask);
     }
 
     @Override public void onCreate() {
@@ -97,7 +102,7 @@ public class ListenService extends Service {
         Notification n = builder(this, CH_SERVICE)
                 .setSmallIcon(R.drawable.ic_stat)
                 .setContentTitle(Prefs.assistant(this) + " can call you")
-                .setContentText("Calls and wake-up alarms ring here")
+                .setContentText("Calls, questions and wake-up alarms come here")
                 .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE))
                 .setOngoing(true)
                 .build();
@@ -166,6 +171,10 @@ public class ListenService extends Service {
             JSONArray tags = m.optJSONArray("tags");
             String tagStr = tags == null ? "" : tags.toString();
             String since = tagValue(tags, "since-");
+            if (tagStr.contains("\"clear\"")) {
+                Inbox.cancel(this, m.optJSONArray("ids"));
+                return;
+            }
             if (tagStr.contains("\"stop\"")) {
                 if (since.equals(ringingSince)) main.post(() -> { stopRing(); cancel(ID_CALL); });
                 return;
@@ -175,6 +184,8 @@ public class ListenService extends Service {
                 boolean alarm = tagStr.contains("\"alarm\"");
                 if (ageSec < (alarm ? 300 : 120) && !click.isEmpty()) main.post(() -> ring(text, click, since, alarm));
                 else notifyPlain("Missed call", text, click);
+            } else if (tagStr.contains("\"msg\"")) {
+                Inbox.show(this, m);
             } else {
                 notifyPlain(m.optString("title", Prefs.assistant(this)), text, click);
             }

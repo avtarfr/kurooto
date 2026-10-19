@@ -23,6 +23,8 @@ register_defaults(
     },
 )
 
+ON_CALL = "you're on a call"  # the reason call_block() gives while a call is live (updates wait for it too)
+
 # a blocker returns (reason, until) for time t, or None
 Blocker = Callable[[dt.datetime], "tuple[str, dt.datetime] | None"]
 
@@ -53,6 +55,13 @@ class Availability:
     def set_focus(self, until: dt.datetime | None) -> None:
         self._set("focus.json", until)
 
+    # on a call: Phone calls keeps this a minute or two ahead while a call is live, so nothing else rings meanwhile
+    def on_call_until(self, t: dt.datetime | None = None) -> dt.datetime | None:
+        return self._until("oncall.json", t)
+
+    def set_on_call(self, until: dt.datetime | None) -> None:
+        self._set("oncall.json", until)
+
     def night(self, t: dt.datetime) -> tuple[str, dt.datetime] | None:
         n = self.settings.get("availability.night") or {}
         if not n.get("enabled"):
@@ -67,6 +76,9 @@ class Availability:
 
     def call_block(self, t: dt.datetime | None = None) -> tuple[str | None, dt.datetime | None]:
         t = t or now()
+        c = self.on_call_until(t)
+        if c:
+            return ON_CALL, c
         q = self.quiet_until(t)
         if q:
             return "you asked for no calls", q

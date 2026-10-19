@@ -7,7 +7,10 @@
 //     Google directly. What the call knows and can do (its instructions and tools) is pushed by your computer.
 //   - Ringing: your computer (or the cron below, when it's off) rings your paired devices: the Android app through
 //     ntfy (end-to-end encrypted with a key only your devices have), the web app through Web Push (no payload; it
-//     asks this Worker what's ringing).
+//     asks this Worker what's ringing). Not while you're on a call: those calls ring when it ends.
+//   - Messages: questions and approvals (and other kinds, if you choose) reach your phones the same way; this keeps
+//     what's still open (the inbox) for the web app to list. Answers come back through /answer to your computer
+//     (the Android app's are sealed with the ntfy key, so this Worker can't read them), or wait here till it's back.
 //   - While your computer is off: answers come from the brief it last pushed, notes from the index it pushed (and,
 //     with Notes sync, whole notes from your private GitHub repo); anything that needs the computer is queued.
 // Vars: OWNER_ID, TZ, PUBLIC_URL, VERSION, LIVE_MODEL, NTFY_SERVER, NOTES_REPO (optional), GEMINI_BASE_URL (tests).
@@ -93,6 +96,33 @@ async function publish(env, fields) {
   return r.ok;
 }
 
+// Web Push to every device that has it on; drops subscriptions the push service says are gone.
+async function pushAll(env, devices) {
+  let web = 0, changed = false;
+  const errors = [];
+  for (const d of Object.values(devices)) {
+    if (!d.push) continue;
+    const status = await webPush(env, d.push).catch((e) => { errors.push(String(e?.message || e).slice(0, 120)); return 0; });
+    if (status === 404 || status === 410) { d.push = null; changed = true; } else if (status >= 200 && status < 300) web++;
+    else if (status) errors.push(`push answered ${status}`);
+  }
+  return { web, changed, errors };
+}
+
+// An inbox item as the Android app gets it (ntfy messages must stay under 4 KB once sealed).
+function phoneMessage(it) {
+  const m = {
+    title: String(it.title || 'Kurooto').slice(0, 120), message: String(it.text || ''), priority: ['question', 'approval'].includes(it.kind) ? 4 : 3,
+    tags: ['msg', `kind-${String(it.kind || 'info').replace(/[^a-z]/g, '')}`], time: Math.floor(Date.now() / 1000),
+    id: it.id, kind: it.kind, reply: !!it.reply, later: !!it.later,
+    choices: (it.choices || []).slice(0, 8).map((c) => String(c).slice(0, 60)),
+    buttons: (it.buttons || []).slice(0, 4).map((b) => (b.url ? { label: String(b.label).slice(0, 40), url: String(b.url) } : { label: String(b.label).slice(0, 40) })),
+  };
+  const size = () => new TextEncoder().encode(JSON.stringify(m)).length;
+  while (size() > 2800 && m.message.length > 80) m.message = m.message.slice(0, Math.floor(m.message.length * 0.8)) + '…';
+  return m;
+}
+
 async function githubNote(env, slug) {
   if (!env.GITHUB_TOKEN || !env.NOTES_REPO) return null;
   const p = String(slug).replace(/^\/+|\.md$/g, '') + '.md';
@@ -105,6 +135,8 @@ async function githubNote(env, slug) {
 
 const MAX_DEVICES = 10;
 const RING_S = 60, ALARM_RING_S = 300;
+const ON_CALL_MS = 90e3; // a live call checks in every few seconds (/tasks); this long after the last one it's over
+const ITEM_ID = /^[0-9a-f]{16}$/;
 
 export class Line {
   constructor(state, env) {
@@ -151,7 +183,9 @@ export class Line {
     if (p === '/tick') return json(await this.tick());
     if (p === '/pair/claim' && req.method === 'POST') return this.claim(req);
     const who = await this.auth(req.headers.get('x-call-secret'));
-    if (!who) return json({ error: 'wrong or missing key' }, 401);
+    // a refused request's body is read first: answering before it has all arrived trips up the local dev server
+    const refuse = async (error, status) => { try { await req.arrayBuffer(); } catch { /* none */ } return json({ error }, status); };
+    if (!who) return refuse('wrong or missing key', 401);
     try {
       if (p === '/status') {
         const brief = await this.store.get('brief');
@@ -162,8 +196,9 @@ export class Line {
       if (p === '/tasks') return this.tasks(req);
       if (p === '/transcript' && req.method === 'POST') return this.transcript(req);
       if (p === '/upload' && req.method === 'POST') return this.upload(req, url);
-      if (who.kind !== 'device') return json({ error: 'that needs a paired device' }, 403);
-      if (p === '/pending') return json({ rings: await this.ringing(who.id) });
+      if (who.kind !== 'device') return refuse('that needs a paired device', 403);
+      if (p === '/pending') return json({ rings: await this.ringing(who.id), items: await this.openItems() });
+      if (p === '/answer' && req.method === 'POST') return this.answer(req, who);
       if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
       if (p === '/ring-reply' && req.method === 'POST') {
         const { since = '', action = '' } = await req.json();
@@ -268,6 +303,7 @@ export class Line {
       for (const k of ['brief', 'config', 'texts', 'offline', 'schedule', 'names']) {
         if (m[k] !== undefined) await this.store.put(k, k === 'brief' ? { ...m.brief, at: new Date().toISOString() } : m[k]);
       }
+      if (m.inbox && Array.isArray(m.inbox.items)) await this.setInbox(m.inbox.items, Number(m.inbox.rev) || 0);
     } else if (m.type === 'index') {
       await this.store.put(`index:${m.part || 0}`, m.items || []);
       if ((m.part || 0) === 0) await this.store.put('index:parts', m.parts || 1);
@@ -307,6 +343,13 @@ export class Line {
       return { ok: had };
     }
     if (m.op === 'ticket') return { ticket: await this.mintTicket(Math.min(Number(m.hours) || 2, 24)) };
+    if (m.op === 'notify') return this.notify(m.item || {}, Number(m.rev) || 0);
+    if (m.op === 'notify-clear') {
+      const inbox = (await this.store.get('inbox')) || { rev: 0, items: [] };
+      const ids = (m.ids || []).map(String);
+      await this.setInbox(inbox.items.filter((i) => !ids.includes(i.id)), Math.max(inbox.rev, Number(m.rev) || 0), ids);
+      return { ok: true };
+    }
     return { error: 'unknown op' };
   }
 
@@ -349,6 +392,7 @@ export class Line {
       httpOptions: { apiVersion: 'v1alpha' },
     } });
     if (since) await this.endRing(String(since));
+    await this.store.put('oncall', Date.now());
     await this.event({ name: 'call_started', purpose: String(purpose).slice(0, 120), since: String(since), via: who.kind, offline: !online });
     return json({ token: token.name, model, config, offline: !online });
   }
@@ -400,6 +444,7 @@ export class Line {
   }
 
   async tasks(req) {
+    await this.store.put('oncall', Date.now()); // the call page asks every few seconds while a call is live
     if (this.online()) {
       const r = await this.relay('GET', '/tasks', '');
       if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
@@ -408,6 +453,7 @@ export class Line {
   }
 
   async transcript(req) {
+    await this.store.delete('oncall'); // the call page sends this when the call ends
     const body = (await req.text()).slice(0, 3_000_000);
     if (this.online()) {
       const r = await this.relay('POST', '/transcript', body);
@@ -437,19 +483,12 @@ export class Line {
     await this.store.put('rings', rings.slice(-10));
     const devices = (await this.store.get('devices')) || {};
     const list = Object.entries(devices);
-    let android = false, web = 0;
+    let android = false;
     if (list.some(([, d]) => d.kind === 'android')) {
       android = await publish(this.env, { title: alarm ? 'Wake-up call' : 'Incoming call', message: String(reason).slice(0, 300), priority: 5,
         tags: ['call', `since-${since}`].concat(alarm ? ['alarm'] : []), click: link, time: Math.floor(Date.now() / 1000) }).catch(() => false);
     }
-    let changed = false;
-    const errors = [];
-    for (const [, d] of list) {
-      if (!d.push) continue;
-      const status = await webPush(this.env, d.push).catch((e) => { errors.push(String(e?.message || e).slice(0, 120)); return 0; });
-      if (status === 404 || status === 410) { d.push = null; changed = true; } else if (status >= 200 && status < 300) web++;
-      else if (status) errors.push(`push answered ${status}`);
-    }
+    const { web, changed, errors } = await pushAll(this.env, devices);
     if (changed) await this.store.put('devices', devices);
     return { since, link, android, web, devices: list.length, errors };
   }
@@ -469,23 +508,89 @@ export class Line {
     return ((await this.store.get('rings')) || []).filter((r) => r.until > now).map(({ since, reason, link, alarm }) => ({ since, reason, link, alarm }));
   }
 
+  // --------------------------------------------------------------------------------------------- messages
+  // The inbox: what your computer sent your phones that's still open. Its revision only goes up, so an older
+  // snapshot never overwrites a newer one. Items that go (answered, expired) are cleared from Android phones.
+  async setInbox(items, rev, cleared = []) {
+    const cur = (await this.store.get('inbox')) || { rev: 0, items: [] };
+    if (rev < cur.rev) return false;
+    const keep = items.filter((i) => i && ITEM_ID.test(String(i.id))).slice(-40);
+    const gone = cur.items.map((i) => i.id).filter((id) => !keep.some((i) => i.id === id)).concat(cleared);
+    await this.store.put('inbox', { rev, items: keep });
+    if (gone.length) await this.clearPhones([...new Set(gone)]);
+    return true;
+  }
+
+  async openItems() {
+    const now = Date.now() / 1000;
+    return (((await this.store.get('inbox')) || {}).items || []).filter((i) => (i.until || 0) > now);
+  }
+
+  async clearPhones(ids) {
+    const devices = (await this.store.get('devices')) || {};
+    if (!Object.values(devices).some((d) => d.kind === 'android')) return false;
+    // "stop" too, so an older app that doesn't know "clear" ignores it instead of showing it
+    return publish(this.env, { title: 'stop', message: '', tags: ['stop', 'clear'], ids: ids.slice(0, 40), time: Math.floor(Date.now() / 1000) }).catch(() => false);
+  }
+
+  async notify(item, rev) {
+    if (!ITEM_ID.test(String(item.id))) return { error: 'bad item' };
+    const cur = (await this.store.get('inbox')) || { rev: 0, items: [] };
+    await this.store.put('inbox', { rev: Math.max(cur.rev, rev), items: cur.items.filter((i) => i.id !== item.id).concat([item]).slice(-40) });
+    const devices = (await this.store.get('devices')) || {};
+    const list = Object.values(devices);
+    let android = false;
+    if (list.some((d) => d.kind === 'android')) android = await publish(this.env, phoneMessage(item)).catch(() => false);
+    const { web, changed, errors } = await pushAll(this.env, devices);
+    if (changed) await this.store.put('devices', devices);
+    return { android, web, devices: list.length, errors };
+  }
+
+  // An answer from a phone: to your computer now, or kept until it's back. The Android app's answer is sealed
+  // ("k1"); the web app's is plain JSON over HTTPS. Your computer checks it's fresh and used only once.
+  async answer(req, who) {
+    const raw = await req.text();
+    if (raw.length > 16000) return json({ error: 'too long' }, 413);
+    let b;
+    try { b = JSON.parse(raw || '{}'); } catch { return json({ error: 'not JSON' }, 400); }
+    const item = String(b.item || '');
+    if (!ITEM_ID.test(item)) return json({ error: 'no item' }, 400);
+    const body = { device: who.id, at: Date.now(), item };
+    if (b.k1) body.k1 = String(b.k1);
+    else for (const k of ['answer', 'button', 'dismiss', 'ts', 'n']) if (b[k] !== undefined) body[k] = b[k];
+    const inbox = (await this.store.get('inbox')) || { rev: 0, items: [] };
+    await this.store.put('inbox', { rev: inbox.rev, items: inbox.items.filter((i) => i.id !== item) });
+    if (this.online()) {
+      const r = await this.relay('POST', '/answer', JSON.stringify(body));
+      if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+    }
+    await this.queue({ kind: 'answer', body });
+    const texts = (await this.store.get('texts')) || {};
+    return json({ ok: true, queued: true, note: texts.answer_queued || 'Saved. Your computer gets it when it is back on.' });
+  }
+
   // Every minute (cron): place the calls that fall due while the computer is off, from the schedule it pushed.
   async tick() {
     if (this.online()) return { skipped: 'computer online' };
     const now = Math.floor(Date.now() / 1000);
     const sched = (await this.store.get('schedule')) || [];
     const fired = (await this.store.get('fired')) || {};
+    const held = (await this.store.get('held')) || {}; // calls that came due while you were on a call
+    const onCall = Date.now() - ((await this.store.get('oncall')) || 0) < ON_CALL_MS;
     const placed = [];
     for (const it of sched) {
       const key = `${it.at}:${it.key || ''}`;
-      if (fired[key] || it.at > now || it.at < now - 180) continue;
+      if (fired[key] || it.at > now || (it.at < now - 180 && !(held[key] && it.at > now - 7200))) continue;
+      if (onCall && !it.alarm) { held[key] = now; continue; } // it rings when the call ends
       fired[key] = now;
       await this.ring({ reason: it.reason, alarm: !!it.alarm, since: String(it.at), key: it.key || '' });
       await this.queue({ kind: 'event', name: 'rang_offline', key: it.key || '', at: it.at, reason: String(it.reason || '').slice(0, 200) });
       placed.push(key);
     }
     for (const [k, t] of Object.entries(fired)) if (t < now - 86400) delete fired[k];
+    for (const [k, t] of Object.entries(held)) if (fired[k] || t < now - 7200) delete held[k];
     await this.store.put('fired', fired);
+    await this.store.put('held', held);
     return { placed };
   }
 }
