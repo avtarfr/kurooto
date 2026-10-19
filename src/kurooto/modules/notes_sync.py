@@ -216,6 +216,9 @@ class NotesSync(Module):
 
     def shutdown(self) -> None:
         """Kurooto is stopping: send up what's left (quickly; a shutdown doesn't wait long)."""
+        unsub, self._unsub = self._unsub, None
+        if unsub:
+            unsub()
         if self.app.power.current == "paused" or not self.ready()[0]:
             return
         try:

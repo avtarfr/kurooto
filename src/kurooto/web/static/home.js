@@ -479,8 +479,8 @@ async function renderResearch(body) {
       at <input id="rs-time" type="time" value="${esc(time)}"> · up to <input id="rs-max" type="number" min="1" max="30" value="${r.max_papers}"> papers
       · <label><input id="rs-rank" type="checkbox"${r.rank ? " checked" : ""}> the AI picks and says why</label></div>
       <div class="rs-row"><button class="primary" data-rs-save>Save</button> <button data-rs-run>Send a digest now</button></div></section>
-    <section><div><b>Project logs</b> <span class="d">(each day's commits in these repositories go into research/&lt;name&gt;-log.md)</span></div>
-      <ul class="rs-feeds">${r.repos.map((p, i) => `<li>${esc(p)} <button data-rs-repo-del="${i}">remove</button></li>`).join("")}</ul>
+    <section><div><b>Projects</b> <span class="d">(each day's commits in these repositories go into the Log of research/&lt;project&gt;/index.md; on Telegram, /repos add &lt;folder&gt; as &lt;project&gt; names the project)</span></div>
+      <ul class="rs-feeds">${r.repos.map((p, i) => `<li>${esc(p)} <span class="d">→ ${esc((r.projects || {})[p] || "")}</span> <button data-rs-repo-del="${i}">remove</button></li>`).join("")}</ul>
       <div class="rs-row"><input id="rs-repo" placeholder="a folder with a git repository, e.g. ~/code/my-project"> <button data-rs-repo-add>Add</button></div></section>
     <p class="d" id="rs-msg"></p></div>`;
   const msg = (t, bad) => { const m = $("#rs-msg"); m.textContent = t; m.className = bad ? "bad2" : "d"; };
