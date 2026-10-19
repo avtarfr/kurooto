@@ -22,13 +22,16 @@ class Chat(Module):
         return (True, "") if ok else (False, f"{providers.CHOICES.get(main, main)}: {why}")
 
     def ask(self, msg: Incoming) -> str:
-        self.app.jobs.submit(msg.text, reply_to=msg.message_id)
+        terminal = msg.via == "terminal"  # `kurooto ask` waits for the answer itself; Telegram doesn't get it
+        jid = self.app.jobs.submit(msg.text, reply_to=None if terminal else msg.message_id, quiet=terminal)
+        msg.job = jid
         return "On it."
 
     def commands(self):
         return [
             Command("brain", "which AI answers, and whether it's working", self._brain),
             Command("jobs", "the last few requests and how they went", self._jobs),
+            Command("usage", "AI requests per day over the last week, and usage limits hit", self._usage),
         ]
 
     def _brain(self, msg: Incoming, arg: str) -> str:
@@ -49,3 +52,44 @@ class Chat(Module):
             for j in self.app.jobs.recent(8)
         ]
         return "\n".join(rows) or "No requests yet."
+
+    def _usage(self, msg: Incoming, arg: str) -> str:
+        days = int(arg) if arg.strip().isdigit() and 1 <= int(arg) <= 60 else 7
+        return usage_text(self.app.jobs.usage(days), days)
+
+
+def usage_text(rows: list[dict], days: int) -> str:
+    """/usage: one line per day, each brain's requests and usage-limit hits."""
+    import datetime as dt
+
+    from kurooto.core.clock import now
+
+    def label(brain: str) -> str:
+        return providers.CHOICES.get(brain, brain or "?")
+
+    by_day: dict[str, list[dict]] = {}
+    for r in rows:
+        by_day.setdefault(r["day"], []).append(r)
+    lines = [f"AI requests, last {days} days:"]
+    today = now().date()
+    for i in range(days - 1, -1, -1):
+        d = today - dt.timedelta(days=i)
+        parts = [
+            f"{label(r['brain'])} {r['requests']}" + (f" (limit hit {r['limited']})" if r["limited"] else "")
+            for r in by_day.get(d.isoformat(), [])
+        ]
+        lines.append(f"{d:%a %d %b}  {', '.join(parts) or '-'}")
+    total = sum(r["requests"] for r in rows)
+    limited = sum(r["limited"] for r in rows)
+    brains: dict[str, int] = {}
+    for r in rows:
+        brains[r["brain"]] = brains.get(r["brain"], 0) + r["requests"]
+    split = ", ".join(f"{label(b)} {n}" for b, n in sorted(brains.items(), key=lambda x: -x[1]))
+    lines.append(f"\nTotal: {total} request{'s' if total != 1 else ''}" + (f" ({split})" if split else "") + ".")
+    if limited:
+        lines.append(f"Usage limit hit {limited} time{'s' if limited != 1 else ''}; /brain shows the fallback.")
+    tools = sum(r.get("tool_calls", 0) for r in rows)
+    if tools:
+        lines.append(f"The AI used tools {tools} time{'s' if tools != 1 else ''}.")
+    lines.append("Not counted: quick checks (how hard a request is, grading a quiz answer) and phone calls.")
+    return "\n".join(lines)
