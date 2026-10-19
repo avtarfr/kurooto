@@ -17,10 +17,23 @@
   <section data-step="you">
     <h1>Hi! Let's set up your assistant.</h1>
     <p class="lead">Everything is optional, and everything stays on this computer unless a feature tells you otherwise. Nothing is ever sent to whoever gave you Kurooto.</p>
+    <div class="box again"><p>Used Kurooto before, on another computer or before a reinstall? Bring your setup back from your private repository (if Profile sync was on there).</p><button id="pr-open">I've used Kurooto before</button></div>
     <label>What should it call you?<input id="name" autocomplete="given-name" placeholder="Your first name"></label>
     <label>Your time zone<input id="tz" placeholder="e.g. Europe/Berlin"></label>
     <label>Your assistant's name<input id="aname" value="Kurooto"></label>
     <div class="nav"><span></span><button class="primary" data-next>Next</button></div>
+  </section>
+
+  <section data-step="restore">
+    <h1>Welcome back</h1>
+    <p class="lead">Your settings, passwords and keys and saved state come back from the private GitHub repository Profile sync kept them in, encrypted. If you kept them in the repository Notes sync uses, that's the one; your notes come back too.</p>
+    <label>Repository (owner/name)<input id="pr-repo" placeholder="you/notes" autocomplete="off" spellcheck="false"></label>
+    <label>A token for it<input id="pr-token" type="password" placeholder="github_pat_…" autocomplete="off"></label>
+    <p class="note">Don't have the token any more? Make a new one: <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">New fine-grained token</a>, Repository access → only that repository, Permissions → Contents → Read and write.</p>
+    <label>Your profile's passphrase<input id="pr-pass" type="password" autocomplete="off"></label>
+    <div class="row"><button class="primary" id="pr-go">Restore</button></div>
+    <div class="panel" id="pr-panel"></div>
+    <div class="nav"><button id="pr-back">Back</button><button class="primary" id="pr-next" hidden>Continue</button></div>
   </section>
 
   <section data-step="computer">

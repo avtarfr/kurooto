@@ -241,7 +241,7 @@ async function addReport(label, text) {
 // ------------------------------------------------------------------------------------------ features
 const NEEDS_GEMINI = ["calls", "voice_notes", "alarm"];
 function renderFeatures() {
-  if (!chosen.size) state.modules.filter((m) => m.on || m.starter).forEach((m) => chosen.add(m.id));
+  if (!chosen.size) state.modules.filter((m) => m.on || (restored ? restored.includes(m.id) : m.starter)).forEach((m) => chosen.add(m.id));
   $("#features").replaceChildren(...state.modules.map((m) => {
     const box = el("input", { type: "checkbox", checked: chosen.has(m.id), onchange: (e) => {
       e.target.checked ? chosen.add(m.id) : chosen.delete(m.id);
@@ -364,6 +364,49 @@ async function finish() {
   if (chosen.has("calls") && !(res.results.calls && !res.results.calls.ok)) out.append(await pairBox());
   btn.disabled = false;
 }
+
+// ------------------------------------------------------------------------------- restore (Profile sync)
+// "I've used Kurooto before": the profile comes back from their repository, then the rest of the steps check what
+// can't move with it (the AI's sign-in, programs to install), with what they had on already ticked.
+let restored = null;
+function showRestore() {
+  $$("section").forEach((s) => s.classList.toggle("on", s.dataset.step === "restore"));
+  window.scrollTo(0, 0);
+}
+async function restore() {
+  const btn = $("#pr-go"), panel = $("#pr-panel"), msg = el("p", {}, "Restoring…");
+  btn.disabled = true;
+  panel.replaceChildren(el("div", { class: "box" }, msg, logBox()));
+  const r = await api("profile/restore", { repo: $("#pr-repo").value, token: $("#pr-token").value, passphrase: $("#pr-pass").value });
+  if (r.started === false) { msg.textContent = r.message; msg.className = "bad"; btn.disabled = false; return; }
+  await watchInstall();
+  const st = await api("profile"), rep = st.report || {};
+  btn.disabled = false;
+  if (!rep.counts) { msg.textContent = rep.error || "It didn't work; the log below says why."; msg.className = "bad"; return; }
+  $("#pr-pass").value = ""; $("#pr-token").value = "";
+  restored = st.wanted || [];
+  chosen = new Set();
+  const c = rep.counts, b = rep.brain || {};
+  const todo = [
+    ...rep.left.map((x) => el("li", {}, `${x.title}: ${x.why}`)),
+    b.main && !b.ready ? el("li", {}, `Your AI (${b.label}): ${b.why || "not ready here"}. The AI step installs it and signs it in.`) : null,
+    ...rep.notes.map((n) => el("li", {}, n)),
+  ].filter(Boolean);
+  panel.replaceChildren(el("div", { class: "box" },
+    el("p", { class: "ok" }, `✓ Restored ${c.settings} settings, ${c.secrets} passwords and keys, ${c.files} saved items and ${c.scheduled} things scheduled.`),
+    el("p", {}, `On: ${rep.on.join(", ") || "nothing yet"}.`),
+    todo.length ? el("p", {}, "Still to do on this computer (the next steps help):") : null,
+    todo.length ? el("ul", { class: "list" }, ...todo) : null));
+  await refresh();
+  $("#name").value = state.you.name || "";  // the first step saves these fields again if they go back to it
+  $("#tz").value = state.you.timezone || $("#tz").value;
+  $("#aname").value = state.you.assistant_name || "Kurooto";
+  $("#pr-next").hidden = false;
+}
+$("#pr-open").addEventListener("click", showRestore);
+$("#pr-back").addEventListener("click", () => show(0));
+$("#pr-go").addEventListener("click", restore);
+$("#pr-next").addEventListener("click", async () => { await refresh(); show(STEPS.indexOf("computer")); });
 
 // ---------------------------------------------------------------------------------------------- start
 document.addEventListener("click", async (e) => {
