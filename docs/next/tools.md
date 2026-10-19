@@ -10,7 +10,7 @@ ticks a `- [ ]` task, and asks you a question when it needs your answer. Each fe
 tools; a feature that's off has none. The notes tools never change what you wrote: they create new notes, add text
 at the end of a note or one of its sections, and tick tasks. Nothing is sent to anyone but you.
 
-- **API brains** (Gemini key, FreeLLMAPI, Ollama, Custom) call the tools directly. A model that can't use tools
+- **API brains** (Gemini key, Ollama, Custom) call the tools directly. A model that can't use tools
   (some small Ollama models) just answers without them.
 - **Agent programs** (agy, Codex, Claude Code) get them through `kurooto mcp`, a small MCP server that passes each
   call to the running Kurooto. Codex and Claude Code get it for each request only; nothing is saved in their own
@@ -76,3 +76,34 @@ All three need Kurooto running.
 ## Settings
 None new. Environment: `KUROOTO_AGY_TOOLS=1` lets a portable copy (KUROOTO_HOME set) register its tools with agy by
 itself; otherwise only the setup page's agy test does that for portable copies.
+
+## Terms review (maintainer-approved): changes outside my own sections
+
+### MANUAL, "Your AI brain" table
+- Delete the **FreeLLMAPI** row.
+- Gemini API key row, "Good for" column: "simplest; also needed for calls and voice notes. Free tier: Google may
+  use what you send to improve its products and human reviewers may read it; 18+; in the EEA, UK and Switzerland a
+  paid key is required (use a paid key if you don't want that)".
+- After the table, add: "**agy:** Kurooto runs Google's official agy program on your computer, signed in as you, and
+  never touches its sign-in token. Google's answers differ on whether other tools may start agy unattended, so there is
+  some risk to your Google account; for tools like Kurooto, Google recommends a Gemini API key."
+- And: "An AI set up as FreeLLMAPI with an earlier version keeps working; it now shows as 'Another OpenAI-compatible
+  service'."
+
+### README.md line 42
+"**AI, your choice:** Antigravity (agy), a Gemini key, ChatGPT/Codex, Claude Code, any OpenAI-compatible service, or
+local models" (drop FreeLLMAPI).
+
+### AGENTS.md
+No FreeLLMAPI mention there. Line 83's example ("a free Gemini key" as the fallback) can stay; if you want it
+precise: "a Gemini key (free tier: see PRIVACY.md)".
+
+### docs/PRIVACY.md
+Done directly on w/tools: the Chat row no longer names FreeLLMAPI, and "Free tiers" became "Free tiers and terms"
+(the Gemini free-tier points, the agy line, FreeLLMAPI no longer offered).
+
+### CHANGELOG (0.2.0)
+- FreeLLMAPI is no longer offered as an AI (it pools other providers' free tiers); one set up earlier keeps working
+  and shows as "Another OpenAI-compatible service".
+- The setup page says plainly what a free Gemini key means (Google may use and review what you send; 18+; a paid key
+  in the EEA, UK and Switzerland) and what using agy through Kurooto means for your Google account.

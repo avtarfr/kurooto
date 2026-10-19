@@ -23,7 +23,6 @@ BRAIN_ORDER = [
     ("agy", "Free with a Google account; the strongest free option. Runs on this computer and can read your notes."),
     ("gemini", "Free key from Google AI Studio; simplest to set up. Also needed later for phone calls."),
     ("codex", "If you pay for ChatGPT: OpenAI's Codex, signed in with your ChatGPT account."),
-    ("freellmapi", "A free pool of many providers' free tiers. More setup; for personal experimenting only."),
     ("ollama", "Small models on this computer: private and offline, but much weaker than the others."),
     ("custom", "Any other OpenAI-compatible service, with its address and key."),
     ("claude", "Advanced: if you pay for Claude, Anthropic's Claude Code, signed in with your Claude account."),
@@ -84,8 +83,10 @@ class Api:
         return out
 
     def _brains(self) -> list[dict]:
-        rows = []
-        for i, (bid, why) in enumerate(BRAIN_ORDER):
+        rows, order = [], list(BRAIN_ORDER)
+        if "freellmapi" in (self.app.settings.get("brain.main"), self.app.settings.get("brain.fallback")):
+            order.append(("freellmapi", "Set up with an earlier version of Kurooto; it keeps working."))  # not offered
+        for i, (bid, why) in enumerate(order):
             b = providers.build(self.app, bid)
             ok, reason = b.available() if b else (False, "")
             rows.append(

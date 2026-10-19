@@ -1,5 +1,5 @@
-"""Any service that speaks the OpenAI chat API: a free Gemini key, FreeLLMAPI, Ollama on this computer, or
-anything else with a base URL and a key."""
+"""Any service that speaks the OpenAI chat API: a Gemini key, Ollama on this computer, or anything else with a base
+URL and a key."""
 
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ PRESETS = {
         "models": {"low": "gemini-flash-lite-latest", "medium": "gemini-flash-latest", "high": "gemini-flash-latest"},
         "reasoning": True,
     },
-    "freellmapi": {
-        "label": "FreeLLMAPI (free pool of providers)",
+    "freellmapi": {  # no longer offered (it pools other providers' free tiers); one set up earlier keeps working
+        "label": "Another OpenAI-compatible service",
         "base_url": "http://127.0.0.1:3001/v1",
         "models": {},  # picked from its model list at setup
         "reasoning": False,

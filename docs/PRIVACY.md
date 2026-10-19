@@ -11,7 +11,7 @@ Everything below goes to services you chose, under your own accounts.
 | Feature | What leaves | Where to |
 |---|---|---|
 | Telegram | your messages to the bot and its replies; files you send it | Telegram (to your own bot) |
-| Chat with your AI | what you ask; notes the AI reads to answer | the AI service you picked (Google for agy/Gemini, OpenAI for Codex, Anthropic for Claude Code, the providers behind FreeLLMAPI, or nothing for local models) |
+| Chat with your AI | what you ask; notes the AI reads to answer | the AI service you picked (Google for agy/Gemini, OpenAI for Codex, Anthropic for Claude Code, the service you entered for a custom one, or nothing for local models) |
 | Files into notes | with Chat on, the files you send, for the AI to file them | the AI service you picked |
 | Nightly look back | counts of what happened today (never your messages) and your settings' values | the AI service you picked |
 | Notes brain (GBrain) | nothing on computers with a graphics card or Apple Silicon (the index is made locally); on others, note text, to make the index | Google (Gemini, your key), unless you chose keyword-only |
@@ -28,11 +28,24 @@ Everything below goes to services you chose, under your own accounts.
 | Research | your fields, keywords and searches (never your notes) | the sources you pick: arXiv, bioRxiv/medRxiv, PubMed, feeds (all public) |
 | Local AI models, Reminders, Check-ins, Deadlines, Subjects, Quiz, Weekly summary, After-class notes, Study tracker, Stay awake on charger | nothing | stays on your computer |
 
-## Free tiers
+## Free tiers and terms
 
-Google's free Gemini tier may use what you send to improve Google's products; paid tiers don't. Free AI providers
-reached through FreeLLMAPI have their own terms. If that matters to you for a feature, keep it off, or use local
-models where offered.
+**A free Gemini API key** (Google AI Studio's free tier):
+- Google may use what you send and what it answers to improve its products, and human reviewers may read it.
+- You must be 18 or older.
+- In the EEA, the UK and Switzerland you need a paid key (billing turned on).
+- Phone calls and voice notes always go through Gemini, whichever AI answers your messages.
+
+If you don't want that, use a paid key: on paid tiers Google doesn't use what you send to improve its products. Or
+keep those features off, or use local models where offered.
+
+**Antigravity (agy):** Kurooto runs Google's official agy program on your computer, signed in as you, and never touches
+its sign-in token. Google's answers differ on whether other tools may start agy unattended, so there is some risk to
+your Google account. For tools like Kurooto, Google recommends a Gemini API key.
+
+Every other AI service you pick (Codex, Claude Code, a custom OpenAI-compatible one) works under its own terms and your
+own account. Kurooto no longer offers FreeLLMAPI, which pools other providers' free tiers; one set up with an earlier
+version keeps working and shows as "Another OpenAI-compatible service".
 
 ## Secrets
 

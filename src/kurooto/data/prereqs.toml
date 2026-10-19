@@ -32,7 +32,7 @@ serve = ["ollama", "serve"]
 
 [node]
 title = "Node.js"
-why = "Needed for phone calls, deploying your call line, and FreeLLMAPI."
+why = "Needed for phone calls and deploying your call line."
 size_gb = 0.12
 programs = ["node"]
 dirs.windows = ["{app}/node"]
@@ -105,18 +105,6 @@ install.macos = { kind = "script", shell = "bash", script = "curl -fsSL https://
 install.linux = { kind = "script", shell = "bash", script = "curl -fsSL https://claude.ai/install.sh | bash" }
 signin = ["claude"]
 signin_hint = "A window opens: sign in with your Claude account, then close it."
-
-[freellmapi]
-title = "FreeLLMAPI"
-why = "A free pool of AI providers' free tiers (Advanced; personal experimenting only)."
-size_gb = 0.3
-programs = []
-dirs.windows = []
-dirs.macos = []
-dirs.linux = []
-install.windows = { kind = "url", url = "https://github.com/tashfeenahmed/freellmapi/releases" }
-install.macos = { kind = "url", url = "https://github.com/tashfeenahmed/freellmapi/releases" }
-install.linux = { kind = "url", url = "https://github.com/tashfeenahmed/freellmapi#install" }
 
 [git]
 title = "Git"

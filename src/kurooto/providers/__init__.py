@@ -1,7 +1,7 @@
 """The AI brains Kurooto can use, and which one handles what.
 
 Settings:
-    brain.main       agy | codex | gemini | freellmapi | ollama | custom | claude
+    brain.main       agy | codex | gemini | ollama | custom | claude   (freellmapi: set up earlier, works as custom)
     brain.fallback   another of those, used when the main one is rate-limited or signed out ("" = none)
     brain.classify   rules | main | ollama   (the quick "how hard is this" question)
 """
@@ -28,7 +28,7 @@ register_defaults(
         "fallback": "",
         "classify": "rules",
         "agy": {"io_mode": "pipe"},
-        "models": {},  # per brain: {"freellmapi": {"low": ..., "medium": ..., "high": ...}}
+        "models": {},  # per brain: {"custom": {"low": ..., "medium": ..., "high": ...}}
         "base_urls": {},  # per brain, to override a preset's address
         "timeout_min": {"low": 10, "medium": 15, "high": 30},
     },

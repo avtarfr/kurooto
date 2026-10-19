@@ -1,5 +1,5 @@
-"""What the AI can do for you, the same everywhere: on calls, in requests to an API brain (Gemini key, FreeLLMAPI,
-Ollama, ...), and for agent brains (agy, Codex, Claude Code) through `kurooto mcp`.
+"""What the AI can do for you, the same everywhere: on calls, in requests to an API brain (Gemini key, Ollama, any
+OpenAI-compatible service), and for agent brains (agy, Codex, Claude Code) through `kurooto mcp`.
 
 Every feature you turn on adds its own tools (Module.call_tools(), and Module.agent_tools() for ones that only make
 sense in unattended work). The notes tools below never change what's already written: a new note is created, or text
