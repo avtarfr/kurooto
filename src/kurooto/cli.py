@@ -17,6 +17,7 @@ kurooto top [--once]     a status board: this computer and Kurooto (q quits)
 kurooto logs [-f]        the end of Kurooto's log (-f: keep showing new lines)
 kurooto sync             sync everything that's on, now (notes, Classroom, calendar, research, notes brain)
 kurooto backup [--to F]  make a backup now · kurooto restore <zip>  put one back (stops, restores, starts)
+kurooto profile save|restore|status   your setup, encrypted in your private repository; restore on a new computer
 kurooto runlog start|metric|note|end|ls   log experiment runs into your notes (research/<project>/runs/)
 kurooto watch -- CMD...  run a long job; you get a message when it ends (exit code, time, last lines)
 """
@@ -661,6 +662,159 @@ def restore(zip_path: Path, yes: bool, notes: bool, start: bool) -> int:
     return 0
 
 
+# ------------------------------------------------------- `kurooto profile save|restore|status` (owner: profile)
+PASSPHRASE = "KUROOTO_PROFILE_PASSPHRASE"  # noqa: S105 (the variable's name): for scripts; typed otherwise
+
+
+def profile_parsers(sub) -> None:
+    pr = sub.add_parser("profile", help="your setup, encrypted in your private repository: save, restore, status")
+    psub = pr.add_subparsers(dest="action", required=True)
+    psub.add_parser("status", help="what's saved, and when")
+    sv = psub.add_parser("save", help="save it now (the first time: pick the repository and a passphrase)")
+    sv.add_argument("--replace", action="store_true", help="save over a profile another computer saved since")
+    rs = psub.add_parser("restore", help="bring your profile to this computer (stops Kurooto, restores, starts it)")
+    rs.add_argument("--repo", default="", help="owner/name of your private repository")
+    rs.add_argument("--remote", default="", help=argparse.SUPPRESS)  # tests: any Git address
+    rs.add_argument("--yes", action="store_true", help="don't ask first")
+    rs.add_argument("--no-start", action="store_true", help="don't start Kurooto afterwards")
+
+
+def _secret(prompt: str, env: str | None) -> str:
+    """A token or passphrase: from the environment (scripts), else typed without showing it."""
+    if env and os.environ.get(env) is not None:
+        return os.environ[env]
+    if not sys.stdin.isatty():
+        return ""
+    import getpass
+
+    try:
+        return getpass.getpass(prompt)
+    except (EOFError, KeyboardInterrupt):
+        return ""
+
+
+def profile_run(a) -> int | None:
+    """Runs `kurooto profile …`; None for any other command."""
+    if a.cmd != "profile":
+        return None
+    from kurooto.app import App
+    from kurooto.core import profile as core
+    from kurooto.modules.profile import describe
+
+    if a.action == "restore":
+        return profile_restore(a)
+    app = App()
+    try:
+        if a.action == "status":
+            print(describe(core.status(app)))
+            return 0
+        if not app.is_on("profile") or not core.cached_key(app):  # the first time: connect, then it saves
+            print("Profile sync isn't set up on this computer yet.")
+            ask = sys.stdin.isatty()
+            repo = input("Repository (owner/name; empty: the one Notes sync uses): ").strip() if ask else ""
+            token = _secret("Token for it (empty: Notes sync's): ", "KUROOTO_PROFILE_TOKEN") if repo else ""
+            phrase = _secret("Pick a passphrase (10+ characters; you need it on a new computer): ", PASSPHRASE)
+            again = phrase if os.environ.get(PASSPHRASE) is not None else _secret("The passphrase again: ", None)
+            if not phrase:
+                print("No passphrase given: nothing saved (or set it up in the dashboard: Features → Profile sync).")
+                return 1
+            out = app.modules["profile"].configure({"repo": repo, "token": token, "passphrase": phrase, "again": again})
+            print(out["message"])
+            if out["ok"] and not app.is_on("profile"):
+                if ask_running("modules/enable", {"ids": ["profile"]}) is None:
+                    app.settings.set("modules.enabled", [*(app.settings.get("modules.enabled") or []), "profile"])
+            return 0 if out["ok"] else 1
+        try:
+            ok, msg = core.save(app, force=a.replace)
+        except core.ProfileError as e:
+            ok, msg = False, str(e)
+        print(msg if ok else f"Couldn't save: {msg}")
+        return 0 if ok else 1
+    finally:
+        app.close()
+
+
+def profile_restore(a) -> int:
+    from kurooto.app import App
+    from kurooto.core import profile as core
+
+    app = App()
+    try:
+        s = app.settings
+        repo = a.repo or s.get("profile.repo") or s.get("notes_sync.repo") or ""
+        if not a.remote and not repo:
+            if not sys.stdin.isatty():
+                print("Which repository? kurooto profile restore --repo owner/name")
+                return 1
+            repo = input("Your private repository (owner/name): ").strip()
+        token = (
+            ""
+            if a.remote
+            else _secret(f"Token for {repo} (empty: the one this computer has): ", "KUROOTO_PROFILE_TOKEN")
+        )
+        phrase = _secret("Your profile's passphrase: ", PASSPHRASE)
+    finally:
+        app.close()
+    if not phrase:
+        print("No passphrase given: nothing changed.")
+        return 1
+    print("Kurooto's settings, keys and saved state here are replaced by your profile's (a copy of the settings is")
+    print("kept first). Your notes folder isn't touched; Notes sync brings your notes back if it was on.")
+    if not a.yes:
+        try:
+            if input("Restore it? [y/N] ").strip().lower() not in ("y", "yes"):
+                print("Nothing changed.")
+                return 1
+        except EOFError:
+            print("Nothing changed (run it with --yes to restore without asking).")
+            return 1
+    was = wait_for_web(1) is not None
+    if was:
+        print("Stopping Kurooto…")
+        stop(quiet=True)
+    app = App()
+    try:
+        try:
+            report = core.restore(app, phrase, repo=repo, token=token, remote=a.remote, progress=print)
+        except Exception as e:  # a ProfileError reads well as it is; anything else says what it was
+            print(f"Couldn't restore: {e if isinstance(e, core.ProfileError) else f'{type(e).__name__}: {e}'}")
+            if was and not a.no_start:
+                start_background()
+            return 1
+        for line in report["notes"]:
+            print(f"Note: {line}")
+        b = report.get("brain") or {}
+        if b.get("main") and not b.get("ready"):
+            print(f"Your AI ({b.get('label')}) isn't ready here: {b.get('why')}. The dashboard's setup page installs")
+            print("it and signs it in again (agent programs keep their sign-ins on the computer they ran on).")
+        left = [x for x in report["left"] if x["setup"]]
+        if left and sys.stdin.isatty() and not a.yes:
+            names = ", ".join(x["title"] for x in left)
+            if input(f"Set up {names} now? It installs what they need. [y/N] ").strip().lower() in ("y", "yes"):
+                for x in left:
+                    m = app.modules[x["id"]]
+                    try:
+                        ok, msg = m.setup(print)
+                    except Exception as e:
+                        ok, msg = False, f"{type(e).__name__}: {e}"
+                    print(msg)
+                    if ok and m.ready()[0] and not app.is_on(m.id):
+                        app.settings.set("modules.enabled", [*(app.settings.get("modules.enabled") or []), m.id])
+        elif left:
+            print("Set these up in the dashboard (Features): " + ", ".join(x["title"] for x in left))
+    finally:
+        app.close()
+    if a.no_start:
+        print("Restored. Start Kurooto with: kurooto start")
+        return 0
+    start_background()
+    url = wait_for_web(60)
+    print(
+        f"Restored, and Kurooto is running: {url}" if url else f"Restored. Kurooto didn't come up; logs: {paths().logs}"
+    )
+    return 0
+
+
 # ------------------------------------------------------------------- `kurooto ask`, `kurooto call` (owner: tools)
 def wait_job(jid: str, minutes: float) -> tuple[bool | None, str]:
     """Wait for a request's answer: (True, answer) / (False, why it failed) / (None, "") if it took too long."""
@@ -868,8 +1022,10 @@ def main(argv: list[str] | None = None) -> int:
     un = sub.add_parser("uninstall", help="remove Kurooto from this computer")
     un.add_argument("--keep-data", action="store_true", help="keep your settings, journal and notes index")
     home_parsers(sub)
+    profile_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
+    done = profile_run(a) if done is None else done
     if done is not None:
         return done
 

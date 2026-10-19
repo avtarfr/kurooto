@@ -11,6 +11,7 @@ import os
 import re
 from pathlib import Path
 
+from kurooto.core import overlay
 from kurooto.core.clock import now
 from kurooto.modules.base import Command, Incoming, Module
 from kurooto.modules.skills import parse, prompt_files, prompt_skill, slug
@@ -43,9 +44,16 @@ def json_str(s: str) -> str:
     return f'"{s.replace(chr(34), chr(39))}"' if re.search(r"[:#\[\]{}\"',&*!|>%@`]", s) else s
 
 
-def prompts(workspace: Path) -> list[dict]:
-    """Every prompt in <notes>/prompts: name (its path without .md), title, and whether it's also a skill."""
-    root = Path(workspace) / "prompts"
+def prompts(workspace: Path, extra: list[Path] = ()) -> list[dict]:
+    """Every prompt in <notes>/prompts: name (its path without .md), title, and whether it's also a skill. `extra`:
+    more prompt folders (your add-ons'), listed after yours as add-ons/<name>."""
+    out = []
+    for root, prefix in [(Path(workspace) / "prompts", ""), *((Path(d), "add-ons/") for d in extra)]:
+        out += _prompts_in(root, prefix)
+    return out
+
+
+def _prompts_in(root: Path, prefix: str) -> list[dict]:
     out = []
     for f in prompt_files(root):
         try:
@@ -54,7 +62,7 @@ def prompts(workspace: Path) -> list[dict]:
             continue
         out.append(
             {
-                "name": f.relative_to(root).with_suffix("").as_posix(),
+                "name": prefix + f.relative_to(root).with_suffix("").as_posix(),
                 "title": (meta.get("title") or meta.get("name") or f.stem).strip(),
                 "skill": prompt_skill(meta, f.stem),
                 "body": body.strip(),
@@ -98,7 +106,7 @@ class Library(Module):
         return f"Saved to {f.relative_to(self.app.workspace).as_posix()}."
 
     def _prompts(self, msg: Incoming, arg: str) -> str:
-        items = prompts(self.app.workspace)
+        items = prompts(self.app.workspace, overlay.dirs(self.app, "prompts"))
         if not items:
             return (
                 "No prompts yet. Save one with /prompt save <name> and the prompt on the next lines, or put Markdown "
@@ -116,7 +124,7 @@ class Library(Module):
         first, _, rest = arg.partition("\n")
         if first.strip().lower().startswith("save"):
             return self._save(first.strip()[4:].strip(), rest)
-        items = prompts(self.app.workspace)
+        items = prompts(self.app.workspace, overlay.dirs(self.app, "prompts"))
         hit = find_prompt(items, first)
         if not first.strip():
             return "Which one? /prompt <name> (/prompts lists them)"

@@ -74,6 +74,9 @@ class App:
 
         for cls in CATALOG:
             self.modules[cls.id] = cls(self)
+        from kurooto.core import overlay  # your own add-ons (core/overlay.py), only when you've turned them on
+
+        overlay.load(self)
 
     @property
     def name(self) -> str:
