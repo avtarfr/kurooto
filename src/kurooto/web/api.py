@@ -614,7 +614,7 @@ class Api:
             subprocess.Popen(["open" if _sys.platform == "darwin" else "xdg-open", str(p)], start_new_session=True)
         return 200, {"ok": True}
 
-    EDITABLE = ("you", "notify", "availability", "updates", "brain")
+    EDITABLE = ("you", "notify", "availability", "updates", "brain", "look")
 
     def _settings(self) -> dict:
         """Every setting you can change: the core sections plus each enabled feature's own."""

@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 register_defaults("web", {"port": 8770})
+register_defaults("look", {"palette": "kuro"})  # the pages' colours: kuro (deep greens) or rose (the original)
+PALETTES = ("kuro", "rose")
 CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; "
     "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
@@ -131,14 +133,12 @@ class Server:
                 if not path.startswith("/static/") and not self._same_user():  # the page (it holds the key), the API
                     return self._send(403, {"error": "not your account"})
                 if path == "/morning":  # the morning page (rhythm): today's plan, opened by the alarm
-                    html = (static("morning.html") or b"").decode()
-                    html = html.replace("{{TOKEN}}", server.token).replace("{{VERSION}}", __version__)
+                    html = server.fill((static("morning.html") or b"").decode())
                     return self._send(200, html.encode(), TYPES[".html"])
                 if path in ("/", "/setup"):
                     done = server.app.settings.get("setup.done")
                     page = "setup.html" if path == "/setup" or not done else "home.html"
-                    html = (static(page) or static("setup.html")).decode()
-                    html = html.replace("{{TOKEN}}", server.token).replace("{{VERSION}}", __version__)
+                    html = server.fill((static(page) or static("setup.html")).decode())
                     return self._send(200, html.encode(), TYPES[".html"])
                 if path.startswith("/static/"):
                     name = path[len("/static/") :]
@@ -157,7 +157,7 @@ class Server:
                         ok, msg = g.finish_signin(q.get("code", ""), q.get("state", ""))
                     page = (
                         '<!doctype html><meta charset=utf-8><title>Kurooto</title><body style="font:16px system-ui;'
-                        'background:#14111a;color:#ece8f2;padding:40px">'
+                        'background:#0b0f0a;color:#dad3c8;padding:40px">'
                         f"<h2>{'✓' if ok else '✗'} {html_escape(msg)}</h2>"
                     )
                     return self._send(200 if ok else 400, page.encode(), TYPES[".html"])
@@ -227,6 +227,12 @@ class Server:
 
         self.tools_token = pysecrets.token_urlsafe(24)
         jsave(access_file(app.paths), {"url": self.url, "token": self.tools_token, "started": time.time()})
+
+    def fill(self, html: str) -> str:
+        """A page with its key, the version and the palette (look.palette) written in."""
+        palette = self.app.settings.get("look.palette")
+        palette = palette if palette in PALETTES else "kuro"
+        return html.replace("{{TOKEN}}", self.token).replace("{{VERSION}}", __version__).replace("{{PALETTE}}", palette)
 
     def start(self) -> Server:
         threading.Thread(target=self.httpd.serve_forever, name="web", daemon=True).start()

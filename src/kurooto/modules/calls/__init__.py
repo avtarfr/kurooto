@@ -749,7 +749,7 @@ class Calls(Module):
         return {
             "code": code,
             "link": link,
-            "svg": qr.svg_inline(scale=5, dark="#14111a", light="#ffffff"),
+            "svg": qr.svg_inline(scale=5, dark="#0b0f0a", light="#ffffff"),
             "expires_min": 15,
         }
 

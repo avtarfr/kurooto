@@ -1,22 +1,25 @@
-:root { --bg: #14111a; --fg: #ece8f2; --dim: #9a93a8; --accent: #e85d8a; --ok: #4fbf8a; --card: #1f1a28; --line: #2c2538; }
+/* the "kuro" palette of the local pages (deep greens): go and stop fill the call buttons, ok and bad colour text */
+:root { --bg: #0b0f0a; --fg: #f2eee8; --dim: #95a682; --ok: #8ccb98; --bad: #e8735a; --go: #4f6e2c;
+  --stop: #b8432e; --card: #151b12; --me: #1f2a19; --line: #26311f; }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, -apple-system, sans-serif; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, -apple-system, sans-serif; accent-color: var(--ok); }
 main { max-width: 560px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; padding: max(20px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom)); gap: 16px; }
 h1 { font-size: 18px; font-weight: 600; margin: 0; }
 h2 { font-size: 16px; margin: 8px 0 0; }
 p { margin: 0; color: var(--dim); }
 a { color: var(--fg); }
 #reason { color: var(--dim); font-size: 15px; min-height: 1.4em; }
+#inbox { flex: 0 0 auto; }  /* a link, not a spacer: #log takes the room */
 #status { font-size: 14px; color: var(--dim); }
 #status.live, .ok { color: var(--ok); }
-#status.err, .err { color: var(--accent); }
+#status.err, .err { color: var(--bad); }
 #log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
 .m { padding: 8px 12px; border-radius: 12px; max-width: 88%; background: var(--card); white-space: pre-wrap; }
-.me { align-self: flex-end; background: #2a2236; }
+.me { align-self: flex-end; background: var(--me); }
 .sys { align-self: center; background: none; color: var(--dim); font-size: 13px; }
 .row { display: flex; gap: 12px; }
-button, .button { flex: 1; border: 0; border-radius: 999px; padding: 16px; font-size: 17px; font-weight: 600; color: #fff; background: var(--ok); text-align: center; text-decoration: none; display: block; }
-button.end { background: var(--accent); }
+button, .button { flex: 1; border: 0; border-radius: 999px; padding: 16px; font-size: 17px; font-weight: 600; color: #fff; background: var(--go); text-align: center; text-decoration: none; display: block; }
+button.end { background: var(--stop); }
 button.quiet, .button.quiet { background: var(--line); color: var(--fg); }
 button:disabled { opacity: .5; }
 .gate { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--dim); }
