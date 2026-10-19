@@ -22,6 +22,16 @@ def merge(base: dict, over: dict | None) -> dict:
     return out
 
 
+# your add-ons' settings.json (core/overlay.py): defaults laid between Kurooto's own and yours
+_LAYER: dict = {}
+
+
+def set_layer(defaults: dict | None) -> None:
+    """Defaults from your add-ons folder: over the registered ones, under your own settings."""
+    _LAYER.clear()
+    _LAYER.update(copy.deepcopy(defaults or {}))
+
+
 def register_defaults(section: str, defaults: dict) -> None:
     """A module declares its settings and their defaults under its own section."""
     _DEFAULTS[section] = merge(_DEFAULTS.get(section, {}), defaults)
@@ -35,7 +45,7 @@ class Settings:
         return jload(self.file, {}) or {}
 
     def all(self) -> dict:
-        return merge(_DEFAULTS, self.user())
+        return merge(merge(_DEFAULTS, _LAYER) if _LAYER else _DEFAULTS, self.user())
 
     def get(self, dotted: str, default=None):
         cur = self.all()

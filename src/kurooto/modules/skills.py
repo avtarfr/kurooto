@@ -189,6 +189,21 @@ def all_skills(app: App) -> dict[str, Skill]:
                     out[s.name] = s
     except (FileNotFoundError, NotADirectoryError):
         pass
+    from kurooto.core import overlay  # your add-ons' skills and prompts (core/overlay.py), when they're on
+
+    for root in overlay.dirs(app, "skills"):
+        for d in sorted(root.iterdir()):
+            f = d / "SKILL.md"
+            if f.is_file() and NAME.fullmatch(d.name):
+                s = make(f.read_text(encoding="utf-8", errors="replace"), d.name, "add-on", str(f))
+                if s:
+                    out[s.name] = s
+    for f in [p for root in overlay.dirs(app, "prompts") for p in prompt_files(root)]:
+        meta, _ = parse(f.read_text(encoding="utf-8", errors="replace"))
+        name = prompt_skill(meta, f.stem)
+        s = make(f.read_text(encoding="utf-8", errors="replace"), name, "add-on", str(f)) if name else None
+        if s:
+            out[s.name] = s
     for f in prompt_files(app.workspace / "prompts"):
         try:
             meta, _ = parse(f.read_text(encoding="utf-8", errors="replace"))
@@ -574,6 +589,7 @@ class Skills(Module):
                 "shipped": "comes with Kurooto (/skills copy " + s.name + " makes your own copy to change)",
                 "yours": f"yours: {rel(self.app, s.path)}",
                 "prompt": f"from your prompts: {rel(self.app, s.path)}",
+                "add-on": f"from your add-ons: {s.path}",
             }[s.source]
             return (
                 f"/{s.name} {s.args}".strip()
@@ -584,7 +600,7 @@ class Skills(Module):
             return "No skills yet. /newskill <what it should do> writes one."
         rows = []
         for s in sorted(skills.values(), key=lambda s: (s.source != "shipped", s.name)):
-            mark = "" if s.source == "shipped" else " (yours)"
+            mark = {"shipped": "", "add-on": " (add-on)"}.get(s.source, " (yours)")
             hint = f" {s.args}" if s.args else ""
             rows.append(f"/{s.name}{hint}{mark}\n   {s.description}")
         return (

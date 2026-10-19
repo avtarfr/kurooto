@@ -101,8 +101,10 @@ class Api:
         return rows
 
     def _modules(self) -> list[dict]:
+        from kurooto.core import overlay  # your add-ons' features come last (core/overlay.py)
+
         out = []
-        for mid in MODULE_ORDER:
+        for mid in [*MODULE_ORDER, *overlay.status(self.app)["modules"]]:
             m = self.app.modules.get(mid)
             if not m:
                 continue
@@ -120,6 +122,7 @@ class Api:
                     "starter": m.id in STARTER,
                     "setup": hasattr(m, "setup"),
                     "form": m.setup_form() if hasattr(m, "setup_form") else None,
+                    "addon": bool(getattr(m, "addon", False)),
                 }
             )
         return out
@@ -139,6 +142,10 @@ class Api:
             from kurooto.core import syncall
 
             return 200, syncall.status(self.app)
+        if path == "profile":  # Profile sync's status and the last restore (modules/profile.py)
+            from kurooto.modules.profile import web
+
+            return web(self, path, q, post=False)
         if path == "note":
             return self._note(q.get("id", ""))
         if path == "settings":
@@ -207,6 +214,10 @@ class Api:
 
             ok, message = syncall.start(self.app, notify=bool(b.get("notify", True)))
             return 200, {"ok": ok, "message": message}
+        if path.startswith("profile/"):  # save now; restore on a new computer (modules/profile.py)
+            from kurooto.modules.profile import web
+
+            return web(self, path, b, post=True)
         if path == "settings":
             return self._set(b.get("key", ""), b.get("value"))
         if path == "open-note":
