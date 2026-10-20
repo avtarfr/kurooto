@@ -54,6 +54,7 @@ class KurootoTerminal(Module):
         self._unsub = None
         self._lock = threading.Lock()
         self._last: tuple = ()
+        self._stopped = True  # turned off: a sync still queued must not put the launcher back
 
     # ---------------------------------------------------------------------------------------------- set up
     def _plan(self):
@@ -95,6 +96,8 @@ class KurootoTerminal(Module):
 
     # ------------------------------------------------------------------------------------------- lifecycle
     def start(self) -> None:
+        with self._lock:
+            self._stopped = False
         if self._unsub is None:
             from kurooto.core.events import subscribe
 
@@ -107,7 +110,7 @@ class KurootoTerminal(Module):
         if unsub:
             unsub()
         with self._lock:
-            self._last = ()
+            self._stopped, self._last = True, ()
             remove_everything(self.app.paths)
         super().stop()
 
@@ -120,7 +123,7 @@ class KurootoTerminal(Module):
         from kurooto.modules.terminal import defaults
 
         with self._lock:
-            if not self.app.is_on(self.id):
+            if self._stopped or not self.app.is_on(self.id):
                 return
             try:
                 state = self.app.paths.state / "terminal"
