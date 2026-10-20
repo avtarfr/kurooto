@@ -19,8 +19,10 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import os
+import sys
 import threading
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import psutil
@@ -36,12 +38,30 @@ register_defaults("power", {"on_battery": "saver"})  # saver | normal | pause
 MODES = ("normal", "saver", "paused")
 
 
+def mains_online(root: Path = Path("/sys/class/power_supply")) -> bool | None:
+    """Linux: whether a charger ("Mains" supply) is connected; None when there's no such supply to ask."""
+    seen = None
+    for d in root.glob("*"):
+        try:
+            if (d / "type").read_text().strip() != "Mains":
+                continue
+            seen = seen or (d / "online").read_text().strip() == "1"
+        except OSError:
+            continue
+    return seen
+
+
 def on_ac() -> bool:
     try:
         b = psutil.sensors_battery()
     except Exception:
         b = None
-    return True if b is None else bool(b.power_plugged)  # no battery: a desktop, always plugged in
+    if b is None:
+        return True  # no battery: a desktop, always plugged in
+    if b.power_plugged is None:  # psutil couldn't tell (some laptops name their charger ACAD): ask the system
+        known = mains_online() if sys.platform.startswith("linux") else None
+        return True if known is None else known
+    return bool(b.power_plugged)
 
 
 class Power:

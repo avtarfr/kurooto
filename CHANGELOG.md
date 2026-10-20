@@ -5,6 +5,8 @@
   and feature cards fill four columns instead of a narrow strip. On a phone the steps are numbered dots. Any step can
   be opened from the list, Back and Next stay in view on long steps, and buttons, boxes and cards are tidier, with a
   visible outline when you move through them with the keyboard.
+- On laptops whose charger the system names unusually (e.g. ACAD on Linux), Kurooto thought it was on battery while
+  plugged in, so battery-saving held back heavy work; it now asks the system directly.
 - The confidential-mail page follows your colours (Settings → Look), like the other pages.
 
 ## 0.2.0 (2026-10-20)
