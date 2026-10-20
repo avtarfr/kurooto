@@ -35,6 +35,12 @@ uv run tools/release.py sign --site ~/kurooto-site --base https://avtarfr.github
 uv run tools/release.py publish --site ~/kurooto-site --message "release 0.1.0"
 ```
 Try a release on the `beta` channel first (`--channel beta`; testers set `updates.channel` to `beta`).
+A tester installs straight from beta with `KUROOTO_CHANNEL=beta` in front of the installer
+(`curl -LsSf https://avtarfr.github.io/kurooto/install.sh | KUROOTO_CHANNEL=beta sh`; on Windows
+`$env:KUROOTO_CHANNEL = 'beta'` first): the installers pass `--channel beta` to `bootstrap.py`, which installs what
+`beta.json` names and saves `updates.channel` = `beta` in the new install's settings (`settings.json` in its config
+folder, made if there's none), so it keeps following beta. Sign the first beta before telling testers, or there's no
+`beta.json` to install from.
 Exam season holds every update back during its users' exams; `build --critical` marks a release that must install
 anyway (a fix that can't wait), in its signed manifest.
 

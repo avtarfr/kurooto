@@ -203,6 +203,8 @@ class Api:
             live = getattr(self.app, "live", None)
             return (200, live.vitals.board()) if live is not None else (503, {"error": "the page isn't up"})
         if path == "state":
+            from kurooto.core import zones
+
             s = self.app.settings
             tg = self.app.modules["telegram"]
             hw = self._hardware()
@@ -222,6 +224,8 @@ class Api:
                 "power": self._power(),
                 "autostart": autostart.status(),
                 "workspace": str(self.app.workspace),
+                "zones": zones.names(),  # the time zone picker: today's names (core/zones.py)
+                "computer_zone": zones.computer_zone(),
             }
         if path == "phone":
             return 200, self._phone()
@@ -303,10 +307,12 @@ class Api:
         if path == "open-note":
             return self._open_note(b.get("id", ""))
         if path == "you":
+            from kurooto.core import zones  # a zone is saved under today's name (Europe/Kiev -> Europe/Kyiv)
+
             for k in ("name", "timezone", "assistant_name"):
                 if k in b and isinstance(b[k], str):
-                    s.set(f"you.{k}", b[k].strip()[:80])
-            return 200, {"ok": True}
+                    s.set(f"you.{k}", (zones.canonical(b[k]) if k == "timezone" else b[k].strip())[:80])
+            return 200, {"ok": True, "timezone": s.get("you.timezone") or ""}
         if path == "hardware/refresh":
             return 200, self._hardware(refresh=True)
         if path == "brain":
@@ -813,6 +819,10 @@ class Api:
             return 400, {"error": wrong}
         if sec not in self.EDITABLE and not self.app.is_on(sec):
             return 400, {"error": "not a setting you can change here"}
+        if key == "you.timezone" and isinstance(value, str):  # saved under today's name (core/zones.py)
+            from kurooto.core import zones
+
+            value = zones.canonical(value)
         old = self.app.settings.get(key)
         if (
             old is not None

@@ -4,6 +4,8 @@
 
 Without --source it fetches the signed release pointer, checks both signatures and every file's sha256 before
 using anything. --source DIR installs an unsigned copy from a source folder (development and CI only).
+--channel beta (KUROOTO_CHANNEL=beta for the installers) installs from the beta channel and records
+updates.channel in the install's settings, so it keeps following that channel.
 Then it builds that version's own Python environment and hands over to `kurooto install-finish`, which places
 the launcher and the `kurooto` command, turns on start-at-sign-in, starts Kurooto and opens the setup page.
 """
@@ -12,6 +14,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -41,6 +44,51 @@ def app_dir():
         return home / "Library" / "Application Support" / "Kurooto" / "app"
     data = os.environ.get("XDG_DATA_HOME")
     return (Path(data) if data and data.startswith("/") else home / ".local" / "share") / "kurooto" / "app"
+
+
+def config_dir(platform=None, env=None, home=None):
+    """Where the app keeps settings.json: the same rules as kurooto/core/paths.py (the arguments are for tests)."""
+    platform = platform or sys.platform
+    env = os.environ if env is None else env
+    home = home or Path.home()
+    if env.get("KUROOTO_HOME"):
+        return Path(env["KUROOTO_HOME"]) / "config"
+    if platform == "win32":
+        return Path(env.get("LOCALAPPDATA") or home / "AppData" / "Local") / "Kurooto" / "config"
+    if platform == "darwin":
+        return home / "Library" / "Application Support" / "Kurooto" / "config"
+    xdg = env.get("XDG_CONFIG_HOME")
+    return (Path(xdg) if xdg and xdg.startswith("/") else home / ".config") / "kurooto"
+
+
+def remember_channel(channel, folder=None):
+    """A tester's install keeps following the channel it came from: updates.channel in its settings.json (made if
+    there's none yet; the rest of the file is kept). Stable is the default, so nothing is written for it."""
+    if channel == "stable":
+        return False
+    f = Path(folder or config_dir()) / "settings.json"
+    try:
+        doc = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {}
+    except (OSError, ValueError):
+        doc = None
+    if not isinstance(doc, dict):  # never write over settings it can't read
+        say(f"Couldn't read {f}, so it wasn't changed: set updates.channel to {channel} in Settings.")
+        return False
+    updates = doc.get("updates") if isinstance(doc.get("updates"), dict) else {}
+    doc["updates"] = {**updates, "channel": channel}
+    tmp = f.with_name(f"{f.name}.tmp{os.getpid()}")
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_text(json.dumps(doc, indent=1, ensure_ascii=False), encoding="utf-8")
+        if os.name != "nt":
+            os.chmod(tmp, 0o600)
+        os.replace(tmp, f)
+    except OSError as e:
+        tmp.unlink(missing_ok=True)
+        say(f"Couldn't save the channel ({e}): set updates.channel to {channel} in Settings.")
+        return False
+    say(f"This install follows the {channel} channel (Settings: updates.channel).")
+    return True
 
 
 def canonical(doc):
@@ -82,7 +130,9 @@ def run(args, what):
 def main():
     args = sys.argv[1:]
     source = Path(args[args.index("--source") + 1]) if "--source" in args else None
-    channel = args[args.index("--channel") + 1] if "--channel" in args else "stable"
+    channel = (args[args.index("--channel") + 1] if "--channel" in args else "") or "stable"
+    if not re.fullmatch(r"[a-z0-9-]{1,40}", channel):
+        raise SystemExit(f"  {channel!r} isn't a channel (stable or beta). Nothing was installed.")
     base = (os.environ.get("KUROOTO_UPDATE_BASE") or PAGES).rstrip("/")
     uv = shutil.which("uv") or os.environ.get("UV")
     # the Python that stays: uv's managed 3.12, not this script's short-lived environment
@@ -143,6 +193,7 @@ def main():
     else:
         run([uv, "pip", "install", "--python", vpy, str(vdir / "src")], "install it")
     run([vpy, "-m", "kurooto", "selftest"], "start it (self-test)")
+    remember_channel(channel)  # before it starts, so its first update check already asks that channel
     # Kurooto starts from here and keeps this environment until it restarts: leave out what `uv run` added for this
     # short-lived script (its throwaway environment and the uv cache on the PATH), so programs it runs don't see them
     cache = subprocess.run([uv, "cache", "dir"], capture_output=True, text=True, env=clean).stdout.strip()

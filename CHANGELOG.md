@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1 (unreleased)
+- Time zones are compared by what they mean, not by name: an old name and today's (`Europe/Kiev` and
+  `Europe/Kyiv`) are one zone for `kurooto doctor` and your call line, and a zone is saved under today's name (the
+  setup page's picker offers those; one saved under an old name is renamed at start).
+- Research: a project folder that isn't a git repository yet is a project with no commits to follow; doctor says so
+  as a note ("isn't a git repository (no commits to follow): `git init` it, or /repos remove it") instead of
+  "repository folder missing", and the Research tab can keep or remove it again.
+- Reminders: "remind me at 6 pm: …" no longer keeps the colon ("at 18:00: : …"); a ":", "-", "to", "that" or "about"
+  left at the start of the text goes, and `/remind 21:30 - …` too.
+- Installers: `KUROOTO_CHANNEL=beta` installs from the beta channel, and the install keeps following it
+  (`updates.channel` is saved in its settings).
+
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.
 

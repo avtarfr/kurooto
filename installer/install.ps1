@@ -3,6 +3,8 @@
 # It installs uv (a small Python manager), Python 3.12 and Kurooto for your user only (no admin rights),
 # turns on start-at-sign-in, starts Kurooto, and opens the setup page in your browser.
 # Run it again any time to repair or update. Uninstall: kurooto uninstall (or Settings > Apps).
+# Testers: KUROOTO_CHANNEL=beta installs from the beta channel, and the install keeps following it:
+#     $env:KUROOTO_CHANNEL = 'beta'; irm https://avtarfr.github.io/kurooto/install.ps1 | iex
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $UvVersion = '0.13.1'
@@ -11,6 +13,9 @@ function Say($text) { Write-Host "  $text" }
 Write-Host ''
 Write-Host '  KUROOTO' -ForegroundColor Magenta
 Say 'Setting up your assistant. This takes a few minutes the first time.'
+$Channel = if ($env:KUROOTO_CHANNEL) { $env:KUROOTO_CHANNEL } else { 'stable' }  # testers: beta
+if ($Channel -cnotmatch '^[a-z0-9-]+$') { throw "KUROOTO_CHANNEL is stable or beta, not '$Channel'. Nothing was installed." }
+if ($Channel -ne 'stable') { Say "From the $Channel channel (pre-releases, for testers)." }
 
 # 1. room on the disk
 $drive = (Get-Item $env:LOCALAPPDATA).PSDrive
@@ -33,11 +38,11 @@ uv python install 3.12 | Out-Null
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "kurooto-bootstrap.py"
 if ($env:KUROOTO_SOURCE) {
     Copy-Item (Join-Path $env:KUROOTO_SOURCE 'installer\bootstrap.py') $tmp -Force
-    uv run --no-project --python 3.12 --with 'cryptography>=43' $tmp --source $env:KUROOTO_SOURCE
+    uv run --no-project --python 3.12 --with 'cryptography>=43' $tmp --source $env:KUROOTO_SOURCE --channel $Channel
 } else {
     $base = if ($env:KUROOTO_UPDATE_BASE) { $env:KUROOTO_UPDATE_BASE } else { 'https://avtarfr.github.io/kurooto' }
     Invoke-WebRequest "$base/bootstrap.py" -OutFile $tmp -UseBasicParsing
-    uv run --no-project --python 3.12 --with 'cryptography>=43' $tmp
+    uv run --no-project --python 3.12 --with 'cryptography>=43' $tmp --channel $Channel
 }
 if ($LASTEXITCODE -ne 0) { throw 'Kurooto did not install. Nothing else was changed; you can run this again.' }
 Remove-Item $tmp -ErrorAction SilentlyContinue

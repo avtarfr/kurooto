@@ -56,7 +56,10 @@ def test_wizard_end_to_end(web):
     fake_tg, ai = FakeTelegram(), FakeOpenAI()
     try:
         app.settings.set("telegram.api_base", fake_tg.base)
-        assert call(srv, "/api/you", {"name": "Riya", "timezone": "Europe/Berlin"})[1] == {"ok": True}
+        assert call(srv, "/api/you", {"name": "Riya", "timezone": "Europe/Berlin"})[1] == {
+            "ok": True,
+            "timezone": "Europe/Berlin",
+        }
         st = call(srv, "/api/state")[1]
         assert st["you"]["name"] == "Riya" and st["brains"][0]["id"] == "gemini" and st["brains"][0]["recommended"]
         assert st["hardware"]["recommendation"]["profile"] and "need_gb" in st["room"]

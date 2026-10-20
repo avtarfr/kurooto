@@ -203,6 +203,12 @@ class App:
         except Exception as e:
             self.events.emit("module_failed", module="upgrade", error=f"{type(e).__name__}: {e}"[:300])
         try:
+            from kurooto.core import zones  # a time zone saved under an old name gets today's (core/zones.py)
+
+            zones.settle(self)
+        except Exception as e:
+            self.events.emit("module_failed", module="zones", error=f"{type(e).__name__}: {e}"[:300])
+        try:
             self.updates.start()
         except Exception as e:
             self.events.emit("module_failed", module="updates", error=str(e)[:300])

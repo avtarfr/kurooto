@@ -20,6 +20,14 @@ WHEN_WORDS = re.compile(
     r"|\d{1,2}(?:[:.]\d{2})\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)|tomorrow|tonight|today)\b",
     re.I,
 )
+JOIN = re.compile(r"^(?:\s*(?:[:;,.\-–—]+|(?:to|that|about)\b))+\s*", re.I)
+
+
+def tidy_what(text: str) -> str:
+    """What to be reminded of, without the joins left at its start once the time is taken out: "at 6 pm: call mum",
+    "- call mum", "to call mum", "about the exam" all give "call mum" / "the exam"."""
+    what = JOIN.sub("", re.sub(r"\s+", " ", text).strip())
+    return what.strip(" ,.;:-–—")
 
 
 class Reminders(Module):
@@ -108,8 +116,7 @@ class Reminders(Module):
             when = when_from(rest)
             if not when:
                 return None
-            what = WHEN_WORDS.sub("", rest)
-            what = re.sub(r"^\s*(?:to|that|about)\s+", "", re.sub(r"\s+", " ", what).strip(" ,.")).strip(" ,.")
+            what = tidy_what(WHEN_WORDS.sub("", rest))
             return {"when": when, "what": what or "you asked me to remind you"}
 
         return [Intent("remind", "set a reminder", match, lambda msg, s: self.add(s["when"], s["what"]))]
@@ -128,7 +135,7 @@ class Reminders(Module):
                     when = parse_when(" ".join(parts[:n]))
                 except ValueError:
                     continue
-                return self.add(when, " ".join(parts[n:]) or "you asked me to remind you")
+                return self.add(when, tidy_what(" ".join(parts[n:])) or "you asked me to remind you")
         return "Usage: /remind 21:30 call mum   (or: tomorrow 7am gym, in 20m tea)"
 
     def _list(self, msg: Incoming, arg: str) -> str | None:

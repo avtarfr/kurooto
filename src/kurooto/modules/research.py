@@ -247,14 +247,19 @@ class Research(Module):
         if not ok:
             return ok, why
         repos = self.setting("repos") or []
-        gone = [r for r in repos if not (Path(r).expanduser() / ".git").exists()]
+        gone = [r for r in repos if not Path(r).expanduser().is_dir()]
         if gone:
             return False, f"repository folder missing: {gone[0]} (/repos remove it, or put it back)"
-        if repos and not self.git_exe():
+        if any((Path(r).expanduser() / ".git").exists() for r in repos) and not self.git_exe():
             return False, "project logs need Git"
         bits = [f"{len(self.feeds())} sources"] if self.feeds() else []
         if repos:
             bits.append(f"{len(self.projects())} projects from {len(repos)} repositories")
+        plain = [r for r in repos if not (Path(r).expanduser() / ".git").exists()]
+        if plain:  # a project with no commits to follow yet (only a proposal, say): a note, not a problem
+            return None, ", ".join(
+                [*bits, f"{plain[0]} isn't a git repository (no commits to follow): `git init` it, or /repos remove it"]
+            )
         return True, ", ".join(bits)
 
     def start(self):
@@ -756,7 +761,8 @@ class Research(Module):
             s.set("research.rank", bool(b["rank"]))
         if "repos" in b:
             repos = [str(r).strip() for r in b["repos"] if str(r).strip()]
-            bad = [r for r in repos if not (Path(r).expanduser() / ".git").exists()]
+            had = set(self.setting("repos") or [])  # a folder already here that isn't git yet can stay (and go)
+            bad = [r for r in repos if r not in had and not (Path(r).expanduser() / ".git").exists()]
             if bad:
                 raise ValueError(f"not a git repository: {bad[0]}")
             s.set("research.repos", repos)
