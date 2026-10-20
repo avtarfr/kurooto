@@ -484,7 +484,7 @@ def test_secrets_move_to_the_file_and_back(tmp_path):
     s._kr = kr = Keyring()
     assert s.kr is kr
     assert s.keep_in_file(True, ["telegram.token", "gemini.api_key"]) == 1
-    assert s.kr is None and s.get("telegram.token") == "t0ken-123456"
+    assert s.kr is None and s.get("telegram.token") == "not-a-real-value"
     s.set("gemini.api_key", "new-key-7890")  # while kept in the file, new ones go there too
     assert "gemini.api_key" not in kr.vals
     assert s.keep_in_file(False, []) == 2
