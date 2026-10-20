@@ -35,6 +35,9 @@ computer only.
 | Remember | your how-to-help-me note (`about-me/how-to-help-me.md`) goes along with every AI request, like the profile's "In brief" part; health, money and password details are refused, never stored | the AI service you picked |
 | Nightly look back | what happened (events: what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out), your how-to-help-me note and the values of the settings it may change; for a skill change you approved, that skill's text | the AI service you picked |
 | Phone calls | call audio and what's said on calls; the call setup (your name, the assistant's name, which tools exist); for calls while the computer is off: a short brief (what's due, today's classes and check-ins, open questions, quiz questions, the alarm), the steps for check-in, wake-up and Sunday review calls with what they need (today's plan from your daily note, today's classes, study hours counted, the week's numbers), and your notes' titles, headings and first lines | Google (Gemini Live, your key); your own Cloudflare account (your call line) |
+| Phone calls: turn by turn (`calls.voice_mode` `phone`, or when Gemini Live is down) | your speech, to your phone's speech recognizer: on Android 13+ with your language downloaded it's recognised on the phone and stays there; otherwise your phone's speech service (usually Google's; Apple's on iPhone; Chrome sends it to Google). The text of each turn, the call's instructions and its tools' answers | the speech service your phone uses; Google (Gemini, your key) from your computer or your call line, or the model on your computer (`calls.turn_brain` = `local`): never an agent program |
+| Phone calls: text on Telegram (no speech recognition or microphone) | the call's conversation, as messages | Telegram (your own bot) and the AI service you picked, like your other messages |
+| Phone calls: how Live failed | which Live model failed, Google's error code, and what the call did instead, counted for `kurooto doctor` | your call line passes it to your computer; it stays there |
 | Phone calls: ringing and messages | "a call is ringing" messages, and the questions, approvals and messages you choose for the phone (`notify.app_kinds`), end-to-end encrypted (only your paired phones can read them) | ntfy.sh (Android) or Apple/Google push services (web app; the push itself is empty) |
 | Phone calls: what's waiting | the text of open questions, approvals and messages sent to your phones (at most 40; a message is gone after a day, a question or approval once it's answered or expires), so the iPhone app can list them | your own Cloudflare account (your call line) |
 | Going offline and coming back (on by default) | the "going offline", "back online" and "network was down" messages, and messages kept while the network was down | Telegram (your own bot); with Phone calls, the phone app through your call line |
@@ -83,7 +86,8 @@ computer only.
 - Google may use what you send and what it answers to improve its products, and human reviewers may read it.
 - You must be 18 or older.
 - In the EEA, the UK and Switzerland you need a paid key (billing turned on).
-- Phone calls and voice notes always go through Gemini, whichever AI answers your messages.
+- Phone calls and voice notes always go through Gemini, whichever AI answers your messages (a call turn by turn can
+  use the model on your computer instead: `calls.turn_brain` = `local`).
 
 If you don't want that, use a paid key: on paid tiers Google doesn't use what you send to improve its products. Or
 keep those features off, or use local models where offered.

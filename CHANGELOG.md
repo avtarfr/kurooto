@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.5.1 (unreleased)
+
+**Calls when Google's live voice is down** (Gemini Live answering "503 UNAVAILABLE" made calls fail to start, or hang up)
+- Live again first: a start Google refuses for now (503, 429, UNAVAILABLE) is tried after about 1 s and 3 s, each time
+  with the next model in `calls.live_models` (new; after `calls.live_model`). "Reconnecting…" shows meanwhile. A drop
+  in the middle of a call is tried again once.
+- Then turn by turn with the phone's own speech: the Android app uses Android's speech recognizer and voice, the call
+  page the browser's (Chrome). Same call: its instructions, the check-in's or wake-up's script and the same tools.
+  Each turn is answered by your computer (your Gemini key, or the model on your computer with `calls.turn_brain` =
+  `local`; never an agent program), or by Gemini on your call line while the computer is off or slow.
+- Then text on Telegram, when the phone has no speech recognition or microphone: the same call as messages (a
+  check-in stays a check-in); what you type is part of it until **End the call** or 20 quiet minutes. With the
+  computer off, it starts when the computer is back.
+- Whichever way the call went, its transcript feeds your journal and study logs as before.
+- `kurooto doctor`: "Phone calls: voice service" counts Live's failures this week, the retries that worked and the
+  calls that went on another way (also in the call status the dashboard reads).
+
+**Calls by your phone's own speech, by choice** (`calls.voice_mode`: `auto`, the default, `live` or `phone`)
+- `phone`: calls go turn by turn with your phone's speech every time, not Live; on Android 13+ with your language
+  downloaded, speech is recognised on the phone and the audio stays there. `calls.voice_by_kind` sets it per kind of
+  call (e.g. the alarm on `phone`, the evening debrief on `live`). The screen stays on during such a call (phones stop
+  listening when it goes off). The manual compares the two (feel, latency, languages, privacy, outages).
+- The Android app needs this version for turn by turn; older apps go to Telegram instead.
+
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.
 
