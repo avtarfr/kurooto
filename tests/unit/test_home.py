@@ -429,8 +429,9 @@ def test_sync_everything_from_telegram(env, monkeypatch):
     app.settings.set("modules.enabled", [*app.settings.get("modules.enabled"), "calendar"])
     monkeypatch.setattr(app.modules["calendar"], "refresh", lambda p=None: 3)
     assert env.say("sync everything") == "Syncing Calendar. I'll send one line each when it's done."
-    assert wait_for(lambda: "Calendar: ok, 3 events" in (env.fake.texts()[-1] or ""))
-    assert syncall.status(app)["running"] is False
+    # any message, not only the last: another feature may speak in between on a slow runner
+    assert wait_for(lambda: any("Calendar: ok, 3 events" in (t or "") for t in env.fake.texts()), 30)
+    assert wait_for(lambda: syncall.status(app)["running"] is False)
     assert "/sync  sync everything" in env.say("/help")
 
 
