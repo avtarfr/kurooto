@@ -51,18 +51,26 @@ def _xdg(env: dict, name: str, default: Path) -> Path:
     return Path(v) if v and v.startswith("/") else default
 
 
+def given(home: Path | None, env: dict | None) -> tuple[Path, dict]:
+    """The home and environment to go by: yours, or with only a home given (tests) that home alone, never your
+    XDG_* or APPDATA folders."""
+    if env is None:
+        env = os.environ if home is None else {}
+    return home or Path.home(), env
+
+
 def data_home(home: Path | None = None, env: dict | None = None) -> Path:
-    home, env = home or Path.home(), os.environ if env is None else env
+    home, env = given(home, env)
     return _xdg(env, "XDG_DATA_HOME", home / ".local" / "share")
 
 
 def config_home(home: Path | None = None, env: dict | None = None) -> Path:
-    home, env = home or Path.home(), os.environ if env is None else env
+    home, env = given(home, env)
     return _xdg(env, "XDG_CONFIG_HOME", home / ".config")
 
 
 def where(os_: str, home: Path | None = None, env: dict | None = None) -> Path:
-    home, env = home or Path.home(), os.environ if env is None else env
+    home, env = given(home, env)
     if os_ == "windows":
         appdata = Path(env.get("APPDATA") or home / "AppData" / "Roaming")
         return appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / f"{NAME}.lnk"

@@ -30,13 +30,19 @@ LABEL = "io.github.avtarfr.kurooto"
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 
-def command() -> list[str]:
-    """How to start Kurooto at sign-in: the launcher when installed by the Kurooto installer (so updates and
-    rollback work), otherwise this Python's supervisor. No console window on Windows."""
+def app_dir(home: Path | None = None) -> Path:
+    """The app folder (installed versions and the launcher). With a home given (tests, a pretend home) it's the one
+    under that home, never this account's real one."""
     from kurooto.core.paths import paths
-    from kurooto.core.state import jload
 
-    app = paths().app
+    return paths().app if home is None else paths(env={}, home=Path(home)).app
+
+
+def command(app: Path | None = None) -> list[str]:
+    """How to start Kurooto at sign-in: the launcher when installed by the Kurooto installer (so updates and
+    rollback work), otherwise this Python's supervisor. No console window on Windows. app: the app folder to look
+    in (default: this machine's)."""
+    app = app or app_dir()
     info = jload(app / "install.json", {}) or {}
     exe = Path(info.get("python") or sys.executable)
     if sys.platform == "win32":
@@ -53,8 +59,8 @@ def _env_lines() -> dict:
 
 
 def enable(home: Path | None = None) -> str:
+    cmd = command(app_dir(home))
     home = home or Path.home()
-    cmd = command()
     if sys.platform == "win32":
         import winreg
 

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from kurooto.core import proc
-from kurooto.core.autostart import command
+from kurooto.core.autostart import app_dir, command
 
 _PS = r"""
 $s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:KUROOTO_LNK)
@@ -19,25 +19,26 @@ $s.Save()
 """
 
 
-def on_command() -> list[str]:
+def on_command(app: Path | None = None) -> list[str]:
     """`kurooto on`, through the launcher when installed (so it's the current version)."""
-    cmd = command()
+    cmd = command(app)
     return [*cmd, "cli", "on"] if cmd[-1].endswith("launcher.py") else [cmd[0], "-m", "kurooto", "on"]
 
 
 def where(home: Path | None = None) -> Path:
+    env = os.environ if home is None else {}  # a home given (tests): everything under it
     home = home or Path.home()
     if sys.platform == "win32":
-        appdata = Path(os.environ.get("APPDATA") or home / "AppData" / "Roaming")
+        appdata = Path(env.get("APPDATA") or home / "AppData" / "Roaming")
         return appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Kurooto.lnk"
     if sys.platform == "darwin":
         return home / "Applications" / "Kurooto.app"
-    data = Path(os.environ.get("XDG_DATA_HOME") or home / ".local" / "share")
+    data = Path(env.get("XDG_DATA_HOME") or home / ".local" / "share")
     return data / "applications" / "kurooto.desktop"
 
 
 def create(home: Path | None = None) -> Path:
-    path, cmd = where(home), on_command()
+    path, cmd = where(home), on_command(app_dir(home))
     path.parent.mkdir(parents=True, exist_ok=True)
     if sys.platform == "win32":
         import base64

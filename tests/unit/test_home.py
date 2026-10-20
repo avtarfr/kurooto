@@ -21,22 +21,6 @@ import pytest
 needs_git = pytest.mark.skipif(not shutil.which("git"), reason="needs git")
 
 
-@pytest.fixture(autouse=True)
-def nowhere_real(tmp_path_factory):
-    """Even if a test loses KUROOTO_HOME, nothing reaches this computer's real folders or keychain: home, the XDG
-    folders and LOCALAPPDATA point into a temporary folder, and secrets go to a file. (Its own MonkeyPatch, so a
-    test's monkeypatch can't undo it.)"""
-    mp = pytest.MonkeyPatch()
-    home = tmp_path_factory.mktemp("home")
-    mp.setenv("HOME", str(home))
-    mp.setenv("USERPROFILE", str(home))
-    for var in ("LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"):
-        mp.setenv(var, str(home / var.lower()))
-    mp.setenv("KUROOTO_SECRETS", "file")
-    yield
-    mp.undo()
-
-
 def git(cwd, *args, env=None):
     return subprocess.run(
         ["git", "-C", str(cwd), "-c", "user.name=t", "-c", "user.email=t@example.com", *args],

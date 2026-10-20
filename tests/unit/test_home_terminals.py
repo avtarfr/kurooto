@@ -15,23 +15,6 @@ import pytest
 
 from kurooto.modules.terminals import Term, _cli_has, peer_uid, same_user
 
-
-@pytest.fixture(autouse=True)
-def nowhere_real(tmp_path_factory):
-    """Even if a test loses KUROOTO_HOME, nothing reaches this computer's real folders or keychain: home, the XDG
-    folders and LOCALAPPDATA point into a temporary folder, and secrets go to a file. (Its own MonkeyPatch, so a
-    test's monkeypatch can't undo it.)"""
-    mp = pytest.MonkeyPatch()
-    home = tmp_path_factory.mktemp("home")
-    mp.setenv("HOME", str(home))
-    mp.setenv("USERPROFILE", str(home))
-    for var in ("LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"):
-        mp.setenv(var, str(home / var.lower()))
-    mp.setenv("KUROOTO_SECRETS", "file")
-    yield
-    mp.undo()
-
-
 HEAD = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode\n"
 
 

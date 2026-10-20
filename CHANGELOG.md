@@ -57,6 +57,11 @@
 - **`kurooto ask`:** "!command" runs a shell command right there, after echoing it. A line typed as a shell command
   without the "!" ("call-me --cancel …", "systemctl …", "kurooto status") gets "that's a shell command: run it in a
   shell tab, or prefix it with !" and is never sent to Kurooto or the AI.
+- Tests no longer see or change a Kurooto installed on the computer that runs them: every test gets a pretend home
+  (HOME, the XDG folders, APPDATA, LOCALAPPDATA, KUROOTO_HOME) and no keychain, `loginctl`, `systemctl`, `launchctl`
+  and `kurooto` are refusing stand-ins, the running dashboard's port is out of reach, and a test that writes to or
+  deletes anything in the real install, its systemd unit, autostart or app-menu entries or ~/.gemini fails.
+  Autostart and the app-menu entries made for a given home now take every path from it, the app folder included.
 
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.
