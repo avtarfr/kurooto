@@ -14,6 +14,7 @@ kurooto ask-approval "question" [--timeout MIN]   ask for a yes/no and wait (exi
 kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB)
 kurooto note [--title T] TEXT       save a quick note to your notes' inbox (or pipe text in)
 kurooto top [--once]     a status board: this computer and Kurooto (q quits)
+kurooto term [--print]   Kurooto Terminal: your AI, your shell, Kurooto chat and its log in one window
 kurooto logs [-f]        the end of Kurooto's log (-f: keep showing new lines)
 kurooto sync             sync everything that's on, now (notes, Classroom, calendar, research, notes brain)
 kurooto backup [--to F]  make a backup now · kurooto restore <zip>  put one back (stops, restores, starts)
@@ -357,6 +358,10 @@ def uninstall(keep_data: bool) -> int:
         from kurooto.core import shortcuts
 
         shortcuts.remove()
+        from kurooto.modules.terminal import remove_everything  # Kurooto Terminal's launcher, profiles, default
+
+        for line in remove_everything(paths()):
+            print(line)
     p = paths()
     if not keep_data:
         for d in (p.config, p.data, p.state, p.cache, p.logs):
@@ -912,43 +917,66 @@ def plain(text: str, wait: bool, minutes: int, job: str = "") -> int:
 
 
 def plain_loop(minutes: int) -> int:
-    """Type requests one after another; answers to bigger ones print when they're ready."""
+    """Type requests one after another; answers to bigger ones print when they're ready. It looks like Kurooto
+    Terminal's chat tab: the name, a few examples and the `kurooto ❯` prompt, in Kurooto's colours."""
     import threading
 
+    from kurooto.modules.terminal.look import chat_look
+
     try:
-        import readline  # noqa: F401 (line editing and history, where Python has it)
+        import readline  # line editing and history, where Python has it
     except ImportError:
-        pass
+        readline = None
+    history = paths().state / "ask_history"
+    if readline is not None:
+        try:
+            readline.read_history_file(history)
+        except OSError:
+            pass
+        readline.set_history_length(500)
+    look = chat_look(sys.stdout, readline is not None)
     lock = threading.Lock()
+
+    def above(text: str) -> None:
+        """Print an answer above the prompt without losing what's being typed."""
+        typed = readline.get_line_buffer() if readline is not None else ""
+        sys.stdout.write("\r\x1b[K" + text + "\n" + look.prompt(for_input=False) + typed)
+        sys.stdout.flush()
 
     def later(jid: str, text: str) -> None:
         ok, answer = wait_job(jid, minutes)
         with lock:
-            head = f"── {text[:60]}" + ("" if ok else " (failed)" if ok is False else " (no answer yet)")
-            print(f"\n{head}\n{answer or f'still going: kurooto ask --job {jid}'}\n──", flush=True)
+            above(look.answer(text, ok, answer or f"still going: kurooto ask --job {jid}"))
 
-    print("Plain English, as on Telegram: quick things happen at once; answers to bigger requests print here when")
-    print("they're ready. Ctrl-D (Ctrl-Z, Enter on Windows) leaves.")
+    print(look.banner())
     while True:
         try:
-            line = input("kurooto> ").strip()
+            line = input(look.prompt()).strip()
         except EOFError:
             print()
             return 0
         except KeyboardInterrupt:
             print()
             continue
+        if readline is not None:
+            try:
+                readline.write_history_file(history)
+            except OSError:
+                pass
         if not line:
+            continue
+        if line.lower() == "clear":
+            print("\x1b[2J\x1b[H" + look.banner())
             continue
         r = say(line)
         if r is None:
             continue
         if r.get("job"):
-            print("Working on it; the answer prints here.")
+            print(look.working())
             threading.Thread(target=later, args=(r["job"], line), daemon=True).start()
         else:
             with lock:
-                print("\n".join(r.get("replies") or []) or "Done.")
+                print(look.done("\n".join(r.get("replies") or []) or "Done."))
 
 
 def call(reason: str, at: str, alarm: bool, force: bool) -> int:
@@ -1000,6 +1028,22 @@ def skills_command(a) -> int | None:
         print(f)
         return 0
     return None
+
+
+# ------------------------------------------------------------------------- Kurooto Terminal (`kurooto term`)
+def term_parsers(sub) -> None:
+    from kurooto.modules.terminal.run import parsers
+
+    parsers(sub)
+
+
+def term_run(a) -> int | None:
+    """`kurooto term` (modules/terminal/run.py); None for any other command."""
+    if a.cmd != "term":
+        return None
+    from kurooto.modules.terminal.run import main as term_main
+
+    return term_main(a)
 
 
 def utf8_output() -> None:
@@ -1075,9 +1119,11 @@ def main(argv: list[str] | None = None) -> int:
     un.add_argument("--keep-data", action="store_true", help="keep your settings, journal and notes index")
     home_parsers(sub)
     profile_parsers(sub)
+    term_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = profile_run(a) if done is None else done
+    done = term_run(a) if done is None else done
     if done is not None:
         return done
 

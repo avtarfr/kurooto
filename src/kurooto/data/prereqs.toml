@@ -1,8 +1,9 @@
 # Everything Kurooto can install for you, where it comes from, and how much disk it needs.
 # Official sources only. Updated with Kurooto, so a moved download is fixed by an update, not by you.
 # kinds: script (the vendor's own installer script), download-run (an installer program), download-zip,
-#        download-tar (unpacked into Kurooto's own folder), winget, flatpak, brew (Homebrew, macOS), url (we open the
-#        page for you)
+#        download-tar (unpacked into Kurooto's own folder), download-dmg (macOS: an app copied out of a disk
+#        image), winget, flatpak, brew (Homebrew, macOS), url (we open the page for you), none (not made for
+#        that system; `why` says so)
 
 [agy]
 title = "Antigravity (agy)"
@@ -133,6 +134,30 @@ dirs.linux = ["{app}/tectonic"]
 install.windows = { kind = "download-zip", into = "{app}/tectonic", urls = { amd64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-pc-windows-msvc.zip", arm64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-pc-windows-msvc.zip" }, sha256s = { amd64 = "f61ce51f0b0ade1015b7de7ef368541c5424e9756ecbd0d7af97d6d48030845f", arm64 = "f61ce51f0b0ade1015b7de7ef368541c5424e9756ecbd0d7af97d6d48030845f" } }
 install.macos = { kind = "download-tar", into = "{app}/tectonic", urls = { amd64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-apple-darwin.tar.gz", arm64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-aarch64-apple-darwin.tar.gz" }, sha256s = { amd64 = "7c90ef5b6ddb1eb1937e4337add5237b79338e4b9676459fa91187d24d6cdf80", arm64 = "a3f1cac7c5678f01661a92212f58480ae3b0634115d880dbc59e2953ded45667" } }
 install.linux = { kind = "download-tar", into = "{app}/tectonic", urls = { amd64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-unknown-linux-musl.tar.gz", arm64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-aarch64-unknown-linux-musl.tar.gz" }, sha256s = { amd64 = "8533d07f9ccbd7a65824b9e0459041bca34af1eb33daba48f59215593753a3b7", arm64 = "b10954a95404f3ab2328d2fa59a5ebab8e657f893fab096f98be8db7c0c979b8" } }
+
+[kitty]
+title = "kitty"
+why = "Optional: the terminal Kurooto Terminal opens in on Linux and macOS (the official build, in Kurooto's own folder; your own kitty is used if you have one). About 45 MB to download, 160 MB unpacked."
+size_gb = 0.25
+programs = ["kitty"]
+dirs.windows = []
+dirs.macos = ["{app}/kitty.app/Contents/MacOS", "~/Applications/kitty.app/Contents/MacOS", "/Applications/kitty.app/Contents/MacOS", "/opt/homebrew/bin", "/usr/local/bin"]
+dirs.linux = ["{app}/kitty/bin", "~/.local/kitty.app/bin"]
+install.windows = { kind = "none", why = "kitty doesn't run on Windows: Kurooto Terminal uses Windows Terminal there." }
+install.macos = { kind = "download-dmg", into = "{app}", app = "kitty.app", url = "https://github.com/kovidgoyal/kitty/releases/download/v0.49.2/kitty-0.49.2.dmg", sha256 = "e524b894145d89cb76b584e3a9691196ae56bfa31d51384a44aa774252b7cef7" }
+install.linux = { kind = "download-tar", into = "{app}/kitty", urls = { amd64 = "https://github.com/kovidgoyal/kitty/releases/download/v0.49.2/kitty-0.49.2-x86_64.txz", arm64 = "https://github.com/kovidgoyal/kitty/releases/download/v0.49.2/kitty-0.49.2-arm64.txz" }, sha256s = { amd64 = "d573618b911e9c461bd421b96c13c74c7f1cb2f1ac9c327818d4ff84366cf5c6", arm64 = "0c81a995614426cccf0fecaf7d104d47cd63bbccf173d14976e9f92e3d60fce6" } }
+
+[fish]
+title = "fish"
+why = "Optional: the shell in Kurooto Terminal on Linux (the official single-file build, in Kurooto's own folder; your own fish is used if you have one). About 3 MB to download."
+size_gb = 0.02
+programs = ["fish"]
+dirs.windows = []
+dirs.macos = ["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]
+dirs.linux = ["{app}/fish/bin"]
+install.windows = { kind = "none", why = "Kurooto Terminal uses PowerShell on Windows." }
+install.macos = { kind = "none", why = "On a Mac, Kurooto Terminal uses fish if you have it (Homebrew: brew install fish), otherwise your own shell." }
+install.linux = { kind = "download-tar", into = "{app}/fish/bin", urls = { amd64 = "https://github.com/fish-shell/fish-shell/releases/download/4.9.3/fish-4.9.3-linux-x86_64.tar.xz", arm64 = "https://github.com/fish-shell/fish-shell/releases/download/4.9.3/fish-4.9.3-linux-aarch64.tar.xz" }, sha256s = { amd64 = "8f643d10ad1abb0ef7072764c01ceb5cf61b2d373fda400cf60f0bad69b7e095", arm64 = "57349f0111728c64b703a84e611aa97ff4d1fa8466385d64e67bd5bc3ffa49fc" } }
 
 [tesseract]
 title = "Tesseract OCR"
