@@ -90,6 +90,16 @@
   replays each request at its own time and settings. All of it stays on this computer: not in backups, Profile sync
   or the diagnostics zip; cases not reviewed are forgotten after 30 days.
 
+**Start-by dates and crunch weeks** (new; off until you turn it on)
+- Each deadline gets a size from what it is (a problem set an evening, a report 2-3 days, a quiz 2 h, an exam what
+  you set for its subject; a subject's first exam asks once), corrected with one tap. Working back from your free
+  time (each day's window less classes and calendar events, and a share of the rest), each gets a start-by date;
+  later deadlines push earlier ones back.
+- From its start-by date the morning plan raises it (the morning page, the wake-up call, the plan drafted before the
+  alarm), with one "Time to start" message on the day for the big ones.
+- The Sunday summary flags crunch weeks: "week of 9 Nov: about 14 h of work, about 9 h free". `/startby`, "when
+  should I start the lab report?", "any crunch weeks coming?". An estimate, local arithmetic only, no AI.
+
 ## 0.4.0 (unreleased)
 
 **Books and PDFs** (new; off until you turn it on)

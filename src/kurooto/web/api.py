@@ -42,6 +42,7 @@ MODULE_ORDER = [
     "reminders",
     "checkins",
     "deadlines",
+    "startby",
     "gbrain",
     "local_models",
     "subjects",

@@ -185,6 +185,9 @@ def morning_view(app: App) -> dict:
                 for d in dl.deadlines_soon()  # deadlines.plan_h ahead
             ],
         )
+    sb = app.modules.get("startby")
+    if sb is not None and app.is_on("startby"):
+        part("start", sb.morning_rows)  # start-by dates that have come (modules/startby.py)
     if app.is_on("study"):
         part("study_h", lambda: round(sum(app.modules["study"].totals(1).values()) / 3600, 1))
     part("questions", lambda: [q["text"][:200] for q in app.ask.pending()[:5]])

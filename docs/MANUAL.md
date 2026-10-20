@@ -18,6 +18,9 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Deadlines](#deadlines) · [Recurring quizzes](#recurring-quizzes) · [Not interested](#not-interested) ·
     [Exam mode](#exam-mode) · [Exam season](#exam-season) · [Subjects and timetable](#subjects-and-timetable) ·
     [Quiz](#quiz) · [Weekly summary](#weekly-summary)
+    [Exam mode](#exam-mode) · [Start-by dates](#start-by-dates) · [Subjects and timetable](#subjects-and-timetable) ·
+    [Quiz](#quiz) ·
+    [Weekly summary](#weekly-summary)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back)
@@ -528,6 +531,51 @@ once, and the call-blocking during exams stops. Or switch off just the part you 
 stay in your notes; answers are kept in `exam_season.json` in the state folder for 30 days after the exam.
 *Leaves:* with Phone calls on, the leave-by alarm's time, the exam and what you said about it go to your call line
 (like any call). Nothing else.
+### Start-by dates
+Off until you turn it on (Features → Start-by dates; it needs Deadlines). When to start each deadline, worked back
+from how much work it is and your free time. It's an estimate, and plain arithmetic on this computer: no AI.
+
+**Sizes.** Each deadline gets a size from what it is: a problem set, homework or worksheet is an evening (3 h); a
+report, essay, project or presentation 2-3 days (12 h); a quiz or test 2 h; an exam what you set for its subject
+(10 h until you do); anything else 2 h. Correct one with a tap: the "Time to start" message and `/startby` have
+buttons with the other sizes (an hour, an evening, a day, 2-3 days, a week; for exams up to two weeks). A size you
+tap for an exam counts for that subject's exams from then on, and a subject's first exam asks you once ("How long do
+you usually need to prepare for a Topology exam?"). `/startby exam la 2-3 days` sets it too; `/startby exam` lists
+them. On a call, or to your AI: "the lab report is about a day of work".
+
+**Free time.** Each day from 09:00 to 22:00 (`startby.window`), less your classes (Subjects: the timetable, holidays,
+exam periods, the classes you skip) and your calendar's timed events (Calendar), in gaps of at least half an hour.
+Only 40% of it counts (`startby.share`): the rest is meals, rest, going over lectures and everything else. Calendar
+events are known two weeks ahead (`calendar.days`); after that only classes count, so far-off weeks look freer than
+they will be.
+
+**Start-by dates.** Working back from the due times, latest first, each deadline's hours go into the latest free
+time before it that a later one hasn't taken; the day its first hour lands on is its start-by date. Two big deadlines
+in the same week push each other earlier. From that date until it's due, the deadline is in the morning plan: the
+morning page (**Time to start**), the wake-up call, and the plan drafted before the alarm. On the day itself (at
+08:00, `startby.when`, never in quiet hours) you get one message, "Time to start: Lab report, due Fri 13 Nov. It's
+about 12 h (2-3 days) of work...", with the sizes to tap: at most three a day, and only when it's two days or more
+before the due date (closer than that, the deadline's own day-before nudge says it). When there isn't enough free
+time left, it says so. The first morning after you turn it on, one message lists what's to start now instead.
+
+**Crunch weeks.** The Sunday summary flags weeks in the next four (`startby.crunch_weeks`) where the work due adds up
+to more than the free time ("Crunch weeks (an estimate): week of 9 Nov: about 14 h of work, about 9 h free. Start
+some of it the week before."), and says what's to start in the coming week. "Any crunch weeks coming?" works any
+time.
+
+`/startby` lists the deadlines of the next five weeks (`startby.horizon_days`) with their start-by dates and sizes,
+and the sizes to tap; "when should I start the lab report?" answers for one.
+
+*Settings* (`startby.*`): `sizes` (hours: `problem_set` 3, `report` 12, `quiz` 2, `exam` 10, `other` 2),
+`exam_by_subject` (hours per subject, e.g. `{"linear-algebra": 25}`), `window` (`09:00-22:00`; an end before the
+start runs past midnight), `share` (40, %), `min_gap_min` (30), `horizon_days` (35), `when` (`daily 08:00`), `tell`
+(on: the message on a start-by day), `ask_exams` (on), `crunch_weeks` (4; 0: none).
+*Privacy:* stays on this computer.
+*Turn off:* Features → Start-by dates. Just the messages: `startby.tell` off; the exam question: `startby.ask_exams`
+off; crunch weeks: `startby.crunch_weeks` = 0.
+*Undo:* turn it off: the morning plan and the Sunday summary are as before at once. The sizes you tapped stay (in
+`startby.json` in the state folder, and `startby.exam_by_subject`) for when you turn it on again; reset
+`startby.exam_by_subject` in Settings to forget the exam sizes.
 
 ### Subjects and timetable
 Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable
@@ -611,7 +659,8 @@ and quiz check-ins ring you when it's on), `call_min` (10).
 ### Weekly summary
 Every Sunday evening (`weekly.when`, Sunday 19:00): the week in numbers (requests, reminders, check-ins, deadlines,
 quiz, study hours, journal days), and what isn't working that could wait until then
-([Kurooto keeps itself working](#kurooto-keeps-itself-working)). `/week` any time.
+([Kurooto keeps itself working](#kurooto-keeps-itself-working)). `/week` any time. With
+[Start-by dates](#start-by-dates) on, also crunch weeks ahead and what to start in the coming week.
 
 **Sunday review call** (optional, with Phone calls on; Settings → `weekly.call`): after the summary, a call of about
 15 minutes: the week in numbers and study hours per subject, what went well and what didn't, anything Kurooto should
@@ -2266,6 +2315,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | `kurooto autostart boot`: "Linux didn't allow that from here" | Run `loginctl enable-linger` in a terminal (it may ask for your password), then `kurooto autostart boot` (or Settings → Starting) again. |
 | "I can't answer free text yet" | Turn on **Chat** (Features). |
 | "Phrasings you taught: 1 phrasing you taught no longer works" | The request it stood for changed or its feature is off; it goes to the AI meanwhile. `/cases`: Unlearn it, then teach it again with `/wrong <words>` after it comes up. |
+| Start-by dates come too early (or too late) | Tap the right size on a deadline (`/startby`). If they're all off, change how much of your free time counts (`startby.share`) or the day's window (`startby.window`). |
 | The AI says it isn't signed in | Setup page → AI → Install / sign in again → Test. |
 | "It's at its usage limit" | Free tiers have daily limits: wait, or set a fallback brain (Settings → `brain.fallback`). `/usage` shows how often it happens. |
 | "Google's free limit for today is used up" | It comes back at the time the message says. Meanwhile set a fallback brain (Settings → `brain.fallback`); calls and reminders still work. `/usage` shows each limit and when it resets. |
