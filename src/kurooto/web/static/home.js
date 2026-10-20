@@ -23,6 +23,17 @@ const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 
 const mix = (a, b, t) => "#" + hexRgb(a).map((v, i) => Math.round(v + (hexRgb(b)[i] - v) * t).toString(16).padStart(2, "0")).join("");
 const rgba = (h, a) => { const [r, g, b] = hexRgb(h); return `rgba(${r},${g},${b},${a})`; };
 PAL.dim = mix(PAL.fg, PAL.bg, 0.5); PAL.line = mix(PAL.lav, PAL.bg, 0.62);
+// the palette can change while the page is open (look.palette = system follows the desktop): read it again
+function readPalette() {
+  Object.assign(PAL, { bg: css("--bg", PAL.bg), fg: css("--fg", PAL.fg), accent: css("--accent-text", PAL.accent), lav: css("--lav", PAL.lav),
+    pink: css("--pink", PAL.pink), peach: css("--peach", PAL.peach), sand: css("--sand", PAL.sand), rose: css("--rose", PAL.rose),
+    bad: css("--bad", PAL.bad), panel: css("--panel", PAL.panel) });
+  PAL.dim = mix(PAL.fg, PAL.bg, 0.5); PAL.line = mix(PAL.lav, PAL.bg, 0.62);
+  if (typeof SPRITES !== "undefined") SPRITES.clear();
+  if (typeof TERM !== "undefined") for (const x of Object.values(TERM.xs)) x.term.options.theme = { background: PAL.panel, foreground: PAL.fg, cursor: PAL.accent, selectionBackground: rgba(PAL.lav, 0.35) };
+  if (typeof last !== "undefined" && last) renderStatus(last);
+}
+window.addEventListener("kurooto:palette", () => requestAnimationFrame(readPalette));
 // cool to warm, for meters and graphs: the palette's lav, peach and pink
 const grad = (v) => (v = clamp(v || 0, 0, 1)) < 0.5 ? mix(PAL.lav, PAL.peach, v * 2) : mix(PAL.peach, PAL.pink, (v - 0.5) * 2);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1006,12 +1017,20 @@ async function renderAboutTab(body) {
 
 async function renderSettings(body) {
   const { sections } = await api("settings");
-  const field = (key, v) => {
+  // a section may offer choices for a setting (a list) and a line of help under it
+  const LAYOUTS = [["dense", "dense: one full-screen board (screens 1280 px wide or more)"], ["roomy", "roomy: bigger panes and type"]];
+  const field = (key, v, sec) => {
+    const k = key.split(".").slice(1).join("."), help = ((sec && sec.help) || {})[k];
+    const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : null);
+    const html = choices ? `<label>${esc(key)}<select data-key="${key}">${choices.map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
+    return help ? html.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : html;
+  };
+  const plain = (key, v) => {
     if (typeof v === "boolean") return `<label>${esc(key)}<input type="checkbox" data-key="${key}" ${v ? "checked" : ""}></label>`;
     if (Array.isArray(v) || (v && typeof v === "object")) return `<label>${esc(key)}<input data-key="${key}" data-json value="${esc(JSON.stringify(v))}"></label>`;
     return `<label>${esc(key)}<input data-key="${key}" ${typeof v === "number" ? 'type="number" data-num' : ""} value="${esc(v ?? "")}"></label>`;
   };
-  body.innerHTML = `<div class="form">${sections.map((s) => `<fieldset><legend>${esc(s.title)}</legend>${Object.entries(s.values).map(([k, v]) => field(`${s.section}.${k}`, v)).join("")}</fieldset>`).join("")}</div><p class="d" id="saved"></p>`;
+  body.innerHTML = `<div class="form">${sections.map((s) => `<fieldset><legend>${esc(s.title)}</legend>${Object.entries(s.values).map(([k, v]) => field(`${s.section}.${k}`, v, s)).join("")}</fieldset>`).join("")}</div><p class="d" id="saved"></p>`;
   body.onchange = async (e) => {
     const t = e.target; if (!t.dataset.key) return;
     let value = t.type === "checkbox" ? t.checked : t.dataset.num !== undefined ? Number(t.value) : t.value;

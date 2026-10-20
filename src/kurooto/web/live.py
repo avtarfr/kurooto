@@ -328,10 +328,11 @@ class Vitals:
                 continue
             if j.action.startswith("updates."):
                 continue
-            kind = "call" if j.module in ("calls", "alarm") else "job"
+            mod = j.module or j.action.partition(".")[0]
+            kind = "call" if mod in ("calls", "alarm") else "job"
             items.append(
                 {"at": time.strftime("%H:%M", time.localtime(j.next_run)), "what": j.label[:60], "kind": kind,
-                 "state": "next", "module": j.module}
+                 "state": "next", "module": mod}
             )  # fmt: skip
         items.sort(key=lambda x: x["at"])
         av = app.availability
@@ -434,8 +435,9 @@ class Vitals:
                 counts[cell_of(e["kind"])] = counts.get(cell_of(e["kind"]), 0) + 1
         nxt: dict[str, float] = {}
         for j in sched:
-            if j.next_run >= nowts and j.module not in nxt:
-                nxt[j.module] = j.next_run
+            mod = j.module or j.action.partition(".")[0]  # a job's feature (one-off jobs may not say)
+            if j.next_run >= nowts and mod not in nxt:
+                nxt[mod] = j.next_run
         own = self._cached("own", 10, self._own, {"pids": {}, "cells": {}, "watched": set()})
         features = []
         for m in app.enabled():
@@ -464,7 +466,9 @@ class Vitals:
         calls = [
             {"when": j.next_run, "what": j.label[:60]}
             for j in sched
-            if j.module in ("calls", "alarm") and j.kind == "once" and j.next_run >= nowts
+            if (j.module or j.action.partition(".")[0]) in ("calls", "alarm")
+            and j.kind == "once"
+            and j.next_run >= nowts
         ][:3]
         return {
             "name": app.name,

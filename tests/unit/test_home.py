@@ -681,7 +681,16 @@ def test_top_reads_and_draws(env):
         assert lines and all(top.vlen(ln) == max(30, w) for ln in lines), w
         assert len(lines) <= max(10, h)
     flat = "\n".join(top.ANSI.sub("", ln) for ln in top.render(data, 150, 80, colour=False))
-    for part in ("KUROOTO", "THIS COMPUTER", "FEATURES ON", "Reminders", "Summarise my week", "check-in call", "cpu"):
+    for part in (
+        "KUROOTO",
+        "CPU",
+        "MEM",
+        "PROCESSES",
+        "FEATURES ON",
+        "Reminders",
+        "Summarise my week",
+        "check-in call",
+    ):
         assert part in flat, part
     ascii_only = "\n".join(top.render(data, 150, 80, colour=False, unicode=False))
     assert ascii_only.isascii() and "\x1b[" not in ascii_only
