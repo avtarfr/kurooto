@@ -500,6 +500,10 @@ class Api:
                 return 200, {"ok": ok, "message": msg, "when": autostart.when(s)}
             msg = autostart.enable() if b.get("on", True) else autostart.disable()
             return 200, {"ok": True, "message": msg}
+        if path == "tryit":  # the setup page's try-it box: the same handler as a Telegram message (web/tryit.py)
+            from kurooto.web import tryit
+
+            return tryit.say(self.app, str(b.get("text") or ""))
         if path == "setup/done":
             s.set("setup.done", True)
             on = [m.title for m in self.app.enabled()]

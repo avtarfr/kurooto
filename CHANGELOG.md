@@ -52,6 +52,10 @@
   or just ended, else buttons ask.
 - Half an hour before the subject's next class (`doubts.before_min`), its open doubts arrive with a Tick button each
   that ticks it in the note. `/doubts [subject]`. No AI answers.
+**Try it on the setup page**
+- Once your AI passes its test, the setup page's AI step shows a chat box. What you type goes through the same handler
+  as a Telegram message, before Telegram is set up: "remind me in 2 minutes to stretch" pops up on this computer, and
+  questions go to your AI with the answer shown in the box. Nothing goes to Telegram or your phone.
 
 ## 0.4.0 (unreleased)
 

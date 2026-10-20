@@ -440,8 +440,42 @@ function renderBrainPanel(which) {
     box.append(el("p", {}, "Any OpenAI-compatible service: its help pages give these three."),
       field("Address", url, "Usually ends in /v1."), field("Key", key), field("Model name", model), el("div", { class: "row" }, go), out);
   }
+  if (brain.ready) box.append(tryBox());
   panel.replaceChildren(box);
   gloss(panel);
+}
+
+// Try it: once the AI answers its test, a box that talks to Kurooto here, before Telegram is set up. It goes through
+// the same handler as a Telegram message (web/tryit.py); nothing said here goes to the phone.
+const tried = []; // what was said in the box, kept while the page is open
+function tryBox() {
+  const who = (state.you && state.you.assistant_name) || "Kurooto";
+  const log = el("div", { class: "log tryit", "aria-live": "polite" });
+  const show = () => log.replaceChildren(...tried.map((t) => el("div", { class: "said" + (t.you ? " you" : "") }, `${t.you ? "You" : who}: ${t.text}`)));
+  const input = el("input", { placeholder: "remind me in 2 minutes to stretch", autocomplete: "off", "aria-label": `Say something to ${who}` });
+  const say = (text, you = false) => { tried.push({ you, text }); show(); };
+  const send = el("button", { class: "primary", onclick: async () => {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = ""; send.disabled = true;
+    say(text, true);
+    try {
+      const r = await api("tryit", { text });
+      r.replies.forEach((t) => say(t));
+      for (let i = 0; r.job && i < 200; i++) { // an AI request: its answer comes back here (up to five minutes)
+        await new Promise((ok) => setTimeout(ok, 1500));
+        const j = await api(`job?id=${encodeURIComponent(r.job)}`);
+        if (j.status === "ok" || j.status === "failed") { say(j.answer || "(no answer)"); break; }
+      }
+    } catch { say("It didn't answer. Test your AI again above, then try once more."); }
+    send.disabled = false; input.focus();
+  } }, "Send");
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); send.click(); } });
+  show();
+  return el("div", { class: "tryit-box" },
+    el("h3", {}, "Try it now"),
+    el("p", { class: "note" }, `Talk to ${who} here before Telegram is set up: try "remind me in 2 minutes to stretch" (it pops up on this computer), or ask it something. Nothing said here goes to your phone.`),
+    el("div", { class: "row" }, input, send), log);
 }
 
 // ----------------------------------------------------------------------------------------- about you

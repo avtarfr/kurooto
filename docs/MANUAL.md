@@ -136,6 +136,13 @@ what it means.
    API key. Make one at Google AI Studio, paste it and press **Save and test**. For the others, press **Install** if
    it isn't installed and follow the sign-in. Then press **Test it**: it asks the AI to reply, and tells you if it
    worked, or what to do if it didn't.
+
+   **Try it now:** once the AI works, a chat box appears under it. What you type there is handled exactly as a
+   Telegram message would be, before Telegram is set up: "remind me in 2 minutes to stretch" pops up on this computer
+   two minutes later, a question goes to your AI and its answer comes back in the box. Chat and Reminders answer there
+   even though they're turned on later, with Telegram; other features answer once they're on. Nothing said in the box
+   goes to Telegram or your phone. *Undo:* nothing to turn off; it's only there while you set up (a reminder set there
+   can be cancelled with `/reminders` once Telegram is connected).
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below.
 5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the
