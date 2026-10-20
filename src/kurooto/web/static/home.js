@@ -384,6 +384,7 @@ function renderTab() {
   else if (tab === "research") renderResearch(body);
   else if (tab === "settings") renderSettings(body);
 }
+const said = {}; // a feature's last Set up result (✓ or ✗), shown on its card
 async function renderFeatures(body) {
   const st = await api("state");
   const form = (m) => !m.form || m.ready ? "" : `<form class="sf" data-form="${m.id}"><p class="d">${esc(m.form.intro)}</p>
@@ -396,9 +397,10 @@ async function renderFeatures(body) {
     <li>a free Cloudflare account: Set up makes your own call line on it${m.ready ? " ✓" : ""}</li><li>then pair your phone (Phone tab)</li></ol>
     ${st.keys.gemini ? "" : `<form class="sf" data-gemini><label>Gemini API key (<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> → Create API key)<input name="key" autocomplete="off"></label><button class="primary" type="submit">Save key</button></form>`}`;
   const action = (m) => m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>`
-    : m.setup ? `<button class="primary" data-setup="${m.id}" ${m.id === "calls" && !st.keys.gemini ? "disabled" : ""}>Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`;
-  body.innerHTML = `<div class="feat">${st.modules.map((m) => `<div class="card2 ${m.on ? "on" : ""}"><b>${esc(m.title)}</b><p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>
-    ${action(m)}${calls(m)}${form(m)}</div>`).join("")}</div><div class="log" id="flog"></div>`;
+    : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`;
+  const kept = $("#flog") ? $("#flog").innerHTML : ""; // what the last step said survives the re-render
+  body.innerHTML = `<div class="feat">${st.modules.map((m) => `<div class="card2 ${m.on ? "on" : ""}" data-id="${m.id}"><b>${esc(m.title)}</b><p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>
+    ${action(m)}${calls(m)}${form(m)}${said[m.id] ? `<p class="${said[m.id].startsWith("✓") ? "ok2" : "bad2"}" style="font-weight:600">${esc(said[m.id])}</p>` : ""}</div>`).join("")}</div><div class="log" id="flog">${kept}</div>`;
   body.onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target, flog = $("#flog");
@@ -428,9 +430,16 @@ async function renderFeatures(body) {
     const t = e.target, flog = $("#flog");
     if (t.dataset.on) { const r = await api("modules/enable", { ids: [t.dataset.on] }); flog.textContent = Object.values(r.results).map((x) => x.message).join("\n"); renderFeatures(body); }
     if (t.dataset.off) { const r = await api("modules/disable", { id: t.dataset.off }); flog.textContent = r.message; renderFeatures(body); }
-    if (t.dataset.setup) { t.disabled = true; await api("modules/setup", { id: t.dataset.setup });
-      for (;;) { const p = await api("progress"); flog.innerHTML = linkify(p.lines.map((l) => l.line).join("\n")); if (!p.installing) break; await new Promise((r) => setTimeout(r, 1000)); }
-      renderFeatures(body); }
+    if (t.dataset.setup) {
+      const id = t.dataset.setup;
+      t.disabled = true;
+      const r = await api("modules/setup", { id });
+      if (r.started === false) { flog.textContent = r.message; t.disabled = false; return; } // something else is running
+      let lines = [];
+      for (;;) { const p = await api("progress"); lines = p.lines.map((l) => l.line); flog.innerHTML = linkify(lines.join("\n")); if (!p.installing) break; await new Promise((r) => setTimeout(r, 1000)); }
+      said[id] = [...lines].reverse().find((l) => /^[✓✗]/.test(l)) || "";
+      renderFeatures(body); // the log stays (kept), and the ✓/✗ line shows on the card
+    }
   };
 }
 // escaped text with its web addresses as links (the Cloudflare sign-in page shows up in a setup log)

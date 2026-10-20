@@ -411,3 +411,20 @@ def test_sign_in_page_explains_a_cancel(google):
         assert e.value.code == 400 and "You pressed Cancel" in e.value.read().decode()
     finally:
         server.stop()
+
+
+def test_setup_pages_always_show_a_sign_in_link_and_the_call_steps():
+    """Popup blockers stop window.open after an await: both pages show a link too (checked in a real browser before
+    0.1.6; this keeps the pieces from going missing)."""
+    from importlib import resources
+
+    static = resources.files("kurooto.web") / "static"
+    for page in ("setup.js", "home.js"):
+        js = (static / page).read_text(encoding="utf-8")
+        assert "Open Google sign-in" in js and "127.0.0.1 page" in js and "noopener" in js
+        assert "started === false" in js  # "something is already being set up" is shown, not polled silently
+        assert "even if agy or another AI answers your messages" in js
+        assert "1) Download the app (Android) or Add to Home Screen (iPhone), then 2) pairing" in js
+    assert "The phone app comes from your own call line: set up Phone calls first." in (static / "home.js").read_text()
+    assert "Set up now" in (static / "setup.js").read_text()
+    assert 'const kept = $("#flog")' in (static / "home.js").read_text()  # the setup log survives a re-render

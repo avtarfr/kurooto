@@ -295,7 +295,8 @@ function callsBox(m) {
   const btn = el("button", { class: "primary", disabled: !key || m.ready, onclick: async () => {
     btn.disabled = true;
     out.replaceChildren(el("p", {}, "Setting up your call line on Cloudflare. A Cloudflare sign-in page opens (its link is in the log too): sign in or make a free account, then come back."), logBox());
-    await api("modules/setup", { id: "calls" });
+    const r = await api("modules/setup", { id: "calls" });
+    if (r.started === false) { out.replaceChildren(el("p", { class: "bad" }, r.message)); btn.disabled = false; return; }
     await watchInstall();
     const c = state.modules.find((x) => x.id === "calls");
     if (c && c.ready) { renderFeatures(); return; }
@@ -486,17 +487,21 @@ function renderFinish() {
 async function finish() {
   const btn = $("#finish"), out = $("#finish-panel");
   btn.disabled = true;
-  // features that need installing first (e.g. the notes brain): set each up, showing its progress
+  // features that need installing first (e.g. the notes brain): set each up, showing its progress; every log stays
+  out.replaceChildren();
   for (const m of state.modules.filter((m) => chosen.has(m.id) && !m.ready && m.setup)) {
-    out.replaceChildren(el("div", { class: "box" }, el("p", {}, `Setting up ${m.title}…`), logBox()));
-    await api("modules/setup", { id: m.id });
-    await watchInstall();
+    const box = el("div", { class: "box" }, el("p", {}, `Setting up ${m.title}…`), logBox());
+    out.append(box);
+    const r = await api("modules/setup", { id: m.id });
+    if (r.started === false) box.append(el("p", { class: "bad" }, r.message));
+    else await watchInstall();
+    box.querySelector("#log").removeAttribute("id"); // the next feature's box gets the live log
   }
   const res = await api("modules/enable", { ids: [...chosen] });
   const failed = Object.entries(res.results).filter(([, v]) => !v.ok);
   if ($("#autostart").checked) await api("autostart", { on: true });
   await api("setup/done", {});
-  out.replaceChildren(el("div", { class: "box" },
+  out.append(el("div", { class: "box" },
     el("p", { class: "ok" }, "✓ Set up. Send /help to your bot to see what it can do."),
     failed.length ? el("p", { class: "bad" }, "Not turned on yet: " + failed.map(([k, v]) => `${k} (${v.message})`).join("; ")) : null));
   if (chosen.has("calls") && !(res.results.calls && !res.results.calls.ok)) out.append(await pairBox());
