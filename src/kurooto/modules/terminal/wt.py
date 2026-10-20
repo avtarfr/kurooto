@@ -24,7 +24,8 @@ PREVIEW = "Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe"
 
 
 def local_appdata(home: Path | None = None, env: dict | None = None) -> Path:
-    env = os.environ if env is None else env
+    if env is None:  # only a home given (tests): that home alone, never your LOCALAPPDATA
+        env = os.environ if home is None else {}
     return Path(env.get("LOCALAPPDATA") or (home or Path.home()) / "AppData" / "Local")
 
 

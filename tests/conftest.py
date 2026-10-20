@@ -1,7 +1,10 @@
+import os
+
 import pytest
 
-from kurooto.app import App
-from tests.fakes.telegram import FakeTelegram
+from tests import isolation
+
+isolation.start()  # before anything imports kurooto: a pretend home, stand-ins on PATH, the real-install guard
 
 
 class Env:
@@ -38,36 +41,47 @@ class Env:
 
 
 @pytest.fixture
-def env(tmp_path, monkeypatch):
-    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
-    fake = FakeTelegram()
-    app = App()
-    app.settings.set("telegram.api_base", fake.base)
-    tg = app.modules["telegram"]
-    link = tg.pair_start(fake.token)
-    fake.message(f"/start {link['code']}")
-    tg.pair_poll(wait=0)
-    app.enable("telegram")
-    yield Env(app, tg, fake)
-    fake.close()
-    app.close()
+def env(tmp_path):
+    from kurooto.app import App
+    from tests.fakes.telegram import FakeTelegram
+
+    with pytest.MonkeyPatch.context() as mp:  # its own: a test's `monkeypatch.undo()` keeps KUROOTO_HOME
+        mp.setenv("KUROOTO_HOME", str(tmp_path))
+        fake = FakeTelegram()
+        app = App()
+        app.settings.set("telegram.api_base", fake.base)
+        tg = app.modules["telegram"]
+        link = tg.pair_start(fake.token)
+        fake.message(f"/start {link['code']}")
+        tg.pair_poll(wait=0)
+        app.enable("telegram")
+        yield Env(app, tg, fake)
+        fake.close()
+        app.close()
 
 
 @pytest.fixture(autouse=True)
-def no_desktop_popups(tmp_path_factory, monkeypatch):
-    """Tests never show real desktop notifications: do-nothing notify-send/osascript/powershell come first on PATH
-    (a developer's machine would otherwise get a popup for every test that notifies)."""
-    import os
-    import sys
+def nowhere_real(tmp_path_factory):
+    """Every test gets a pretend home of its own: HOME, USERPROFILE, the XDG folders, APPDATA, LOCALAPPDATA and
+    KUROOTO_HOME (unless set for the run) point into a fresh temporary folder, Path.home() follows HOME, and secrets
+    go to a file. A developer's real Kurooto (its folders, systemd unit, app-menu entries, ~/.gemini, its keychain
+    entries) is never read or changed, even by a test that loses KUROOTO_HOME; tests/isolation.py guards it. Its own
+    MonkeyPatch: a test's `monkeypatch.undo()` keeps the pretend home."""
+    with pytest.MonkeyPatch.context() as mp:
+        for k, v in isolation.pretend_home(tmp_path_factory.mktemp("home")).items():
+            mp.setenv(k, v)
+        mp.setenv("KUROOTO_SECRETS", "file")
+        yield
 
-    d = tmp_path_factory.mktemp("quiet-bin")
-    for name in ("notify-send", "osascript"):
-        f = d / name
-        f.write_text("#!/bin/sh\nexit 0\n")
-        f.chmod(0o755)
-    if sys.platform == "win32":
-        (d / "powershell.cmd").write_text("@exit /b 0\r\n")
-    monkeypatch.setenv("PATH", str(d) + os.pathsep + os.environ.get("PATH", ""))
+
+@pytest.fixture(autouse=True)
+def no_desktop_popups(monkeypatch):
+    """Tests never show real desktop notifications or run the real loginctl, systemctl, launchctl or kurooto:
+    do-nothing notify-send/osascript/powershell and refusing stand-ins come first on PATH (a developer's machine
+    would otherwise get a popup for every test that notifies). tests/isolation.py makes them."""
+    path = os.environ.get("PATH", "")
+    if not path.startswith(str(isolation.BIN) + os.pathsep):
+        monkeypatch.setenv("PATH", str(isolation.BIN) + os.pathsep + path)
 
 
 @pytest.fixture(autouse=True)
@@ -89,3 +103,45 @@ def calendar_day_checkins():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(config._DEFAULTS["checkins"], "day_starts", "00:00")
         yield
+
+
+# ------------------------------------------------------------------------------------- the real-install guard
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_protocol(item, nextitem):
+    isolation.current["test"] = item.nodeid
+    yield
+    isolation.current["test"] = None
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """A test that touched the real install fails, whatever else it asserted."""
+    outcome = yield
+    rep = outcome.get_result()
+    found = isolation.take(item.nodeid)
+    if found:
+        before = f"{rep.longrepr}\n\n" if rep.failed and rep.longrepr else ""
+        rep.outcome, rep.longrepr = "failed", before + isolation.describe(found)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    if [v for v in isolation.violations if not v.get("reported")] and session.exitstatus == 0:
+        session.exitstatus = 1  # outside any test (collection, session fixtures): the run fails too
+
+
+def pytest_terminal_summary(terminalreporter):
+    tr, left = terminalreporter, [v for v in isolation.violations if not v.get("reported")]
+    tests = {v["test"] for v in isolation.violations}
+    tr.write_sep("-", "real-install guard")
+    tr.write_line(
+        f"{len(isolation.violations)} violation(s) in {len(tests)} test(s); "
+        f"{len(isolation.reads)} read(s) of the real install's folders"
+    )
+    if left:
+        tr.write_line(isolation.describe(left))
+    for test in sorted({r["test"] or "(outside a test)" for r in isolation.reads}):
+        tr.write_line(f"  read: {test}")
+
+
+def pytest_unconfigure(config):
+    isolation.finish()

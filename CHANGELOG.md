@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 (unreleased)
+- Tests no longer see or change a Kurooto installed on the computer that runs them: every test gets a pretend home
+  (HOME, the XDG folders, APPDATA, LOCALAPPDATA, KUROOTO_HOME) and no keychain, `loginctl`, `systemctl`, `launchctl`
+  and `kurooto` are refusing stand-ins, the running dashboard's port is out of reach, and a test that writes to or
+  deletes anything in the real install, its systemd unit, autostart or app-menu entries or ~/.gemini fails.
+  Autostart and the app-menu entries made for a given home now take every path from it, the app folder included.
+
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.
 
