@@ -575,3 +575,93 @@ def test_stopping_halts_running_requests_so_they_run_again(q):
     gate.go.set()
     thread_of(app, "you").join(5)
     assert app.jobs.get(jid).status == "running" and len(env.fake.texts()) == n  # no answer; it runs again next time
+
+
+# ------------------------------------------------------------------------------------------- quiz state, call brief
+def test_an_imported_quiz_state_without_seeded_works(env):
+    env.on("subjects", "deadlines", "quiz")
+    quiz = env.app.modules["quiz"]
+    d = env.app.workspace / "linear-algebra"
+    d.mkdir()
+    (d / "exam-prep.md").write_text(
+        "# Prep\n## Must know\n- A fact that is worth remembering well.\n", encoding="utf-8"
+    )
+    f = env.app.paths.state / "quiz" / "linear-algebra.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"items": {"old1": {"text": "An item from the old computer, kept."}, "bad": 3}}))
+    st = quiz.state("linear-algebra")  # no "seeded" (an import): it used to crash with KeyError
+    assert set(st["seeded"]) == {str(d / "exam-prep.md")} and "bad" not in st["items"]
+    assert st["items"]["old1"]["reps"] == 0 and len(st["items"]) == 2
+    assert quiz.grade("linear-algebra", "old1", 5).startswith("Grade 5/5.")
+    f.write_text(json.dumps({"seeded": {}}))  # no items either
+    assert quiz.due_count("linear-algebra") == 1
+
+
+def test_a_failing_part_of_the_call_brief_leaves_the_rest(env, monkeypatch):
+    from kurooto.modules.calls import deploy
+
+    env.app.secrets.set("gemini.api_key", "k")
+    deploy.ensure_secrets(env.app)
+    env.app.settings.set("calls.worker", {"url": "https://kurooto-abc.example.workers.dev"})
+    env.on("calls", "deadlines", "quiz")
+    monkeypatch.setattr(env.app.modules["quiz"], "call_brief", lambda: {}["seeded"])
+    monkeypatch.setattr(env.app.ask, "call_brief", lambda: {"questions": ["Which one?"]})
+    brief = env.app.modules["calls"].pending()
+    assert brief.get("questions") == ["Which one?"]
+    monkeypatch.setattr(env.app.ask, "call_brief", lambda: 1 / 0)
+    assert env.app.modules["calls"].pending()  # still a brief
+
+
+# ------------------------------------------------------------------------------------------- the doctor's call line
+class FakeLine:
+    """A call line behind Cloudflare, which turns Python's default user agent away with "error code: 1010"."""
+
+    def __init__(self):
+        import http.server
+
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.headers.get("User-Agent", "").startswith("Python-urllib"):
+                    body, code = b"error code: 1010\n", 403
+                else:
+                    body, code = b'{"ok": true, "version": "0.5.1"}', 200
+                self.send_response(code)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+        self.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        self.url = f"http://127.0.0.1:{self.srv.server_address[1]}"
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+
+    def close(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+
+
+def test_the_doctor_reaches_a_call_line_behind_cloudflare(env):
+    from kurooto import diagnostics
+    from kurooto.modules.calls import deploy
+
+    line = FakeLine()
+    try:
+        assert deploy.health(line.url) == {"ok": True, "version": "0.5.1"}
+        app = env.app
+        app.secrets.set("gemini.api_key", "k")
+        deploy.ensure_secrets(app)
+        app.settings.set("calls.worker", {"url": line.url})
+        calls = app.modules["calls"]
+        (app.paths.state / "calls").mkdir(parents=True, exist_ok=True)
+        (app.paths.state / "calls" / "link.json").write_text(json.dumps({"connected": True, "at": 1}))
+        assert diagnostics.call_line(app, calls, running=True) == (
+            True,
+            "your call line answers, and this computer is linked to it",
+        )
+        from kurooto.core.health_checks import _line_answers
+
+        assert _line_answers(app, calls) is True
+    finally:
+        line.close()

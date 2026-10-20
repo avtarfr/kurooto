@@ -28,6 +28,12 @@
   `KillMode=mixed` (an existing unit gets them at the next starts, once the new launcher runs), the macOS LaunchAgent
   `ExitTimeOut` 20.
 
+**Fixes**
+- `kurooto doctor` and the health checks said "your call line doesn't answer" while calls rang: Cloudflare turns
+  Python's default user agent away ("error code: 1010"), so the check now says it's Kurooto.
+- Practice quizzes: a quiz file without all its parts (brought over by an import) no longer breaks quizzes and the
+  quiz part of a call's brief; one part of a call's brief failing never stops the rest.
+
 **Google turns on when you sign in**
 - Signing in on the Google card turns Google on (and the Google features you set up that Google has OK'd), also when
   an import left it off.

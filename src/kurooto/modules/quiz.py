@@ -103,8 +103,24 @@ class Quiz(Module):
                 out.setdefault(slugify(subj), []).append(p)
         return out
 
+    def load(self, subject: str) -> dict:
+        """A subject's quiz state with every part there: a file from an import or an older version may lack some."""
+        st = jload(self._dir() / f"{subject}.json", {}) or {}
+        st = st if isinstance(st, dict) else {}
+        for key in ("items", "seeded"):
+            if not isinstance(st.get(key), dict):
+                st[key] = {}
+        today = dt.date.today().isoformat()
+        for iid, it in list(st["items"].items()):
+            if not isinstance(it, dict) or not it.get("text"):
+                del st["items"][iid]
+                continue
+            for k, v in (("section", ""), ("ef", 2.5), ("interval", 0), ("reps", 0), ("due", today), ("history", [])):
+                it.setdefault(k, v)
+        return st
+
     def state(self, subject: str) -> dict:
-        st = jload(self._dir() / f"{subject}.json", {"items": {}, "seeded": {}}) or {"items": {}, "seeded": {}}
+        st = self.load(subject)
         for p in self.sources().get(subject, []):
             mtime = str(p.stat().st_mtime)
             if st["seeded"].get(str(p)) == mtime:

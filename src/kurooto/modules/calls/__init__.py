@@ -263,7 +263,10 @@ class Calls(Module):
                     out.update(m.call_brief() or {})
                 except Exception as e:
                     self.app.events.emit("calls_brief_failed", module=m.id, error=str(e)[:200])
-        out.update(self.app.ask.call_brief())  # open questions and approvals for you (core/ask.py)
+        try:  # one part failing never hurts the call: the rest of the brief still goes
+            out.update(self.app.ask.call_brief())  # open questions and approvals for you (core/ask.py)
+        except Exception as e:
+            self.app.events.emit("calls_brief_failed", module="ask", error=str(e)[:200])
         upcoming = [f"{dt.datetime.fromtimestamp(c['at']):%H:%M} {c['reason']}" for c in self.schedule_list()[:5]]
         if upcoming:
             out["calls_planned"] = upcoming
