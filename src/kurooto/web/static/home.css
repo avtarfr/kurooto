@@ -44,6 +44,8 @@ body.home { color-scheme: dark;
 .form fieldset { border: 1px solid var(--line); border-radius: 2px; padding: 8px 10px; }
 .form legend { color: var(--lav); font-size: 12px; }
 .form label { margin: 6px 0; font: 12px var(--mono); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.form .help { font-size: 11.5px; margin: -4px 0 6px; }
+.form select { width: 55%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); padding: 3px 6px; font: 12px var(--mono); }
 .form input:not([type=checkbox]) { width: 55%; margin: 0; padding: 4px 6px; font: 12px var(--mono); }
 .ok2 { color: var(--ok); } .bad2 { color: var(--bad); }
 @media (max-width: 900px) { body.home { overflow: auto; height: auto; } .grid { grid-template-columns: 1fr; grid-template-rows: 300px 420px 420px 360px; } }
@@ -84,3 +86,130 @@ body.home { color-scheme: dark;
 .term-one { height: 100%; }
 .sf .copy-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
 .sf .form-steps { margin: 2px 0 4px 18px; font-size: 12px; }
+/* ------------------------------------------------------------------------------------------------ dense layout
+   One full-screen board (look.layout = dense, the default on screens 1280 px wide or more): thin borders with each
+   pane's name set into its top line, STATUS down the left (a btop-like monitor), SYSTEMS and NOTES on top, and the
+   terminal (with the other tabs) below. Colours come only from the palette's variables (style.css). */
+body.home { --fs: 12.5px; --lh: 1.38; --g1: var(--lav); --g2: var(--peach); --g3: var(--pink); }
+body.dense { font: var(--fs) / var(--lh) var(--mono); }
+body.dense .bar { display: none; }
+body.dense .grid { grid-template-columns: minmax(440px, 34%) 1fr 1fr; grid-template-rows: 55% minmax(0, 1fr);
+  grid-template-areas: "status systems notes" "status tabs tabs"; gap: 18px 12px; padding: 14px 12px 10px; }
+body.dense #pane-status { grid-area: status; } body.dense #pane-systems { grid-area: systems; }
+body.dense #pane-vault { grid-area: notes; } body.dense #pane-tabs { grid-area: tabs; }
+body.dense .pane { overflow: visible; border-radius: 2px; transition: border-color .3s ease; }
+body.dense .pane:focus-within { border-color: var(--hover); }
+body.dense .pane > h3, body.dense #pane-tabs > .tabs { position: absolute; top: -0.78em; left: 12px; right: 12px; z-index: 3;
+  display: flex; align-items: center; gap: 0; height: 1.5em; margin: 0; padding: 0; border: 0; background: none;
+  font: 400 11.5px/1.5em var(--mono); letter-spacing: 0; pointer-events: none; }
+body.dense .pane > h3 .t, body.dense .pane > h3 .meta, .tabs .t, .tabs .tab, .tabs .meta, .tabs .rule {
+  background: linear-gradient(var(--bg) 50%, var(--panel) 50%); padding: 0 5px; white-space: nowrap; }
+body.dense .pane > h3 .t, .tabs .t { color: var(--accent-text); letter-spacing: .14em; font-weight: 600; }
+body.dense .pane > h3 .t::before, .tabs .t::before, .box .lab .t::before { content: "┤ "; color: var(--line); font-weight: 400; letter-spacing: 0; }
+body.dense .pane > h3 .t::after, .tabs .t::after, .box .lab .t::after { content: " ├"; color: var(--line); font-weight: 400; letter-spacing: 0; }
+body.dense .pane > h3 .meta { margin-left: auto; color: var(--dim); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+body.dense .pane > h3 .meta:empty { display: none; }
+body.dense .pane > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+body.dense #body-card { right: 12px; bottom: 12px; }
+body.dense #mind-card { left: 12px; right: auto; bottom: 12px; }
+body.dense #mind-search { top: 18px; left: 50%; transform: translateX(-50%); width: min(380px, 70%); z-index: 5; }
+
+/* the terminal pane: tabs in its top border, then the other pages */
+body.dense #pane-tabs > .tabs { pointer-events: auto; right: 12px; overflow: hidden; }
+.tabs .tab { border: 0; border-radius: 0; color: var(--dim); cursor: pointer; font: inherit; line-height: 1.5em; height: 1.5em; }
+.tabs .tab:hover { color: var(--fg); }
+.tabs .tab.on { color: var(--accent-text); font-weight: 700; }
+.tabs .tab .k { color: var(--dim); opacity: .7; margin-right: 4px; font-weight: 400; }
+.tabs .tab .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--line); margin-left: 6px; vertical-align: 1px; }
+.tabs .tab .dot.live { background: var(--lav); }
+.tabs .tab.off { opacity: .7; }
+.tabs .rule { color: var(--line); padding: 0 2px; }
+.tabs .meta { margin-left: auto; color: var(--dim); overflow: hidden; text-overflow: ellipsis; min-width: 0; flex-shrink: 100; }
+.tabs .pages { display: flex; min-width: 0; overflow: hidden; flex-shrink: 1; }
+.tabs .pages .tab { padding: 0 4px; }
+body.dense .tab-body { position: absolute; inset: 14px 10px 8px 10px; padding: 0; overflow: hidden; font-size: 12.5px; }
+body.dense .tab-body > div { position: absolute; inset: 0; }
+body.dense .tab-body > .page { overflow: auto; padding: 2px 4px; }
+body.dense .term-host { height: 100%; min-height: 0; }
+.term-host .xterm { height: 100%; }
+.term-host .xterm-viewport { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+/* the kurooto tab: plain English, like Telegram, in the page */
+.chat { display: flex; flex-direction: column; font: 13px/1.5 var(--mono); }
+.chat-log { flex: 1; overflow: auto; white-space: pre-wrap; word-break: break-word; padding: 2px 4px 6px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.chat-log .banner { color: var(--accent-text); font-weight: 700; letter-spacing: .1em; }
+.chat-log .d, .chat .d { color: var(--dim); }
+.chat-log .q { color: var(--fg); }
+.chat-log .p, .chat-in .p { color: var(--accent-text); font-weight: 700; }
+.chat-log .a { color: var(--fg); opacity: .92; }
+.chat-log .w { color: var(--peach); }
+.chat-log .x { color: var(--bad); }
+.chat-log .ex { color: var(--sand); }
+.chat-in { display: flex; align-items: center; gap: 0; margin: 0; padding: 2px 4px; color: var(--fg); font: inherit; cursor: text; }
+.chat-in input { flex: 1; width: auto; margin: 0; padding: 0; border: 0; background: transparent; color: var(--fg); font: inherit; caret-color: var(--accent-text); }
+.chat-in input:focus { outline: none; border: 0; }
+
+/* STATUS: a btop-like monitor; every box is a thin border with its name in the top line */
+#status.board { padding: 12px 10px 8px; overflow: hidden; display: flex; flex-direction: column; gap: 0; height: 100%;
+  font: var(--fs) / var(--lh) var(--mono); }
+.board > * { flex-shrink: 0; }
+.board .hd { display: flex; justify-content: space-between; gap: 10px; white-space: nowrap; }
+.board .hd > span { display: flex; gap: 0 1.1em; align-items: baseline; }
+.board .hd b { color: var(--accent-text); letter-spacing: .08em; }
+.board .hd .clock b { color: var(--sand); letter-spacing: 0; }
+.board .hd .k { color: var(--dim); }
+.board .hd a, .board .hd button { color: var(--dim); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: none; }
+.board .hd a:hover, .board .hd button:hover { color: var(--fg); }
+.box { position: relative; border: 1px solid var(--line); margin-top: 11px; padding: 6px 8px 5px; min-width: 0; }
+.box .lab { position: absolute; top: -0.78em; left: 8px; right: 8px; display: flex; gap: 0; height: 1.5em; line-height: 1.5em;
+  font-size: 11.5px; pointer-events: none; z-index: 1; }
+.box .lab .t, .box .lab .meta { background: var(--panel); padding: 0 3px; white-space: nowrap; }
+.box .lab .t { color: var(--accent-text); letter-spacing: .1em; font-weight: 600; }
+.box .lab .meta { margin-left: auto; color: var(--dim); overflow: hidden; text-overflow: ellipsis; min-width: 0; pointer-events: auto; }
+.box .lab .meta button { background: none; border: 0; padding: 0 2px; color: var(--dim); font: inherit; cursor: pointer; }
+.box .lab .meta button.on { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+.board .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; min-width: 0; }
+.board .duo.one { grid-template-columns: 1fr; }
+.board .k { color: var(--dim); }
+.board .v { color: var(--fg); }
+.board .row { display: flex; align-items: center; gap: 7px; white-space: nowrap; min-width: 0; overflow: hidden; }
+.board .row .k { flex: none; }
+.board .row .grow { flex: 1; min-width: 0; }
+.board .row .r { margin-left: auto; text-align: right; }
+.board .cv { display: block; width: 100%; }
+.board .graph { position: relative; }
+.board .graph .pct { position: absolute; right: 0; top: 0; font-weight: 700; background: var(--panel); padding: 0 2px; }
+.board .graph .tag { position: absolute; left: 0; background: var(--panel); padding: 0 3px 0 0; }
+.board .graph .tag.top { top: 0; } .board .graph .tag.right { left: auto; right: 0; padding: 0 0 0 3px; } .board .graph .tag.bot { bottom: 0; }
+/* a meter: the palette's cool-to-warm gradient over the whole length, cut at the value, in character-sized steps */
+.board .m { position: relative; height: 0.72em; min-width: 3em; background: repeating-linear-gradient(90deg, var(--line) 0 5px, transparent 5px 7px); }
+.board .m i { position: absolute; inset: 0; background: linear-gradient(90deg, var(--g1), var(--g2) 55%, var(--g3));
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); }
+.board .cpus { display: grid; gap: 0 12px; margin-top: 4px; }
+.board .core { display: grid; grid-template-columns: 2.6em minmax(3em, 1fr) 3.4em minmax(0, 1.2fr); align-items: center; gap: 6px; white-space: nowrap; height: calc(var(--fs) * var(--lh)); }
+.board .cpus.narrow .core { grid-template-columns: 2.6em minmax(3em, 1fr) 3.4em; }
+.board .core .cv { height: 0.95em; }
+.board .cpus.narrow .core .cv { display: none; }
+.board .core .r { text-align: right; }
+.board > .procs { flex: 1 1 auto; min-height: 4em; display: flex; flex-direction: column; }
+.board > .procs > #proc-body { flex: 1; min-height: 0; overflow: hidden; }
+.procs table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.procs td, .procs th { padding: 0 6px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; text-align: right; height: calc(var(--fs) * var(--lh)); }
+.procs th { color: var(--dim); cursor: default; }
+.procs th[data-sort] { cursor: pointer; }
+.procs th.on { color: var(--fg); }
+.procs td.n, .procs th.n { text-align: left; }
+.procs .mine { color: var(--pink); }
+.procs .id { color: var(--dim); }
+.board .study .row, .board .proj .row { height: calc(var(--fs) * var(--lh)); }
+.proj .mark { color: var(--pink); }
+.board .hot { color: var(--bad); }
+.board .warm { color: var(--peach); }
+@media (max-height: 940px) { body.home { --fs: 11.5px; --lh: 1.34; } }
+@media (max-height: 820px) { body.home { --fs: 11px; --lh: 1.3; } }
+/* the other pages, in the terminal pane: a little smaller than in roomy */
+body.dense .page .feat .card2 { padding: 8px 10px; }
+body.dense .page .feat .card2 b { font-size: 13px; }
+body.dense .page .feat .card2 p { font-size: 12px; margin: 3px 0; }
+body.dense .page button { padding: 5px 12px; font-size: 12.5px; }
+body.dense .page table { font-size: 12px; }

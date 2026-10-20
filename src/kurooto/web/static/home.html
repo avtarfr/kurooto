@@ -8,17 +8,17 @@
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="/static/home.css">
 </head>
-<body class="home">
+<body class="home" data-layout="{{LAYOUT}}">
 <header class="bar">
   <div class="brand">KUROOTO <span class="ver" id="ver">{{VERSION}}</span></div>
   <div class="meta" id="meta">connecting…</div>
   <div class="right"><span id="update-badge" class="badge hidden"></span><a href="/setup">setup</a></div>
 </header>
 <main class="grid">
-  <section class="pane" id="pane-status"><h3>STATUS</h3><div id="status"></div></section>
-  <section class="pane" id="pane-systems"><h3>SYSTEMS <span class="meta" id="sys-meta"></span></h3><canvas id="body"></canvas><div id="body-card" class="card hidden"></div></section>
-  <section class="pane" id="pane-vault"><h3>NOTES <span class="meta" id="mind-meta"></span></h3><canvas id="mind"></canvas>
-    <input id="mind-search" class="hidden" placeholder="find a note…"><div id="mind-card" class="card hidden"></div></section>
+  <section class="pane" id="pane-status"><h3><span class="t">STATUS</span><span class="meta" id="status-meta"></span></h3><div id="status"></div></section>
+  <section class="pane" id="pane-systems"><h3><span class="t">SYSTEMS</span><span class="meta" id="sys-meta"></span></h3><canvas id="body"></canvas><div id="body-card" class="card hidden"></div></section>
+  <section class="pane" id="pane-vault"><h3><span class="t">NOTES</span><span class="meta" id="mind-meta"></span></h3><canvas id="mind"></canvas>
+    <input id="mind-search" class="hidden" placeholder="find a note…  (Enter: go · Esc: close)" spellcheck="false"><div id="mind-card" class="card hidden"></div></section>
   <section class="pane wide" id="pane-tabs">
     <nav class="tabs" id="tabs"></nav>
     <div class="tab-body" id="tab-body"></div>

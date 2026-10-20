@@ -35,6 +35,10 @@ if TYPE_CHECKING:
 register_defaults("web", {"port": 8770})
 register_defaults("look", {"palette": "kuro", "theme_file": ""})  # the pages' colours (core/palette.py)
 PALETTES = ("kuro", "rose", "system")
+# the dashboard's layout: dense (one full-screen board, on screens 1280 px wide or more; narrower ones get roomy) or
+# roomy; projects: folders of git repositories its PROJECTS box shows (empty: Research's repositories)
+register_defaults("look", {"layout": "dense", "projects": []})
+LAYOUTS = ("dense", "roomy")
 CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; "
     "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
@@ -239,15 +243,18 @@ class Server:
         jsave(access_file(app.paths), {"url": self.url, "token": self.tools_token, "started": time.time()})
 
     def fill(self, html: str) -> str:
-        """A page with its key, the version and the palette (look.palette) written in. The system palette's colours
-        come as a <style> (made only of checked #rrggbb values), and static/palette.js keeps them current."""
+        """A page with its key, the version, the palette (look.palette) and the layout (look.layout) written in. The
+        system palette's colours come as a <style> (made only of checked #rrggbb values), and static/palette.js keeps
+        them current."""
         from kurooto.core import palette as pal
 
         name = pal.resolve(self.app)[0]  # "system" with nothing found is kuro
+        layout = self.app.settings.get("look.layout")
+        layout = layout if layout in LAYOUTS else "dense"
         head = (
             f'<style id="kurooto-palette">{pal.css(self.app)}</style><script src="/static/palette.js" defer></script>'
         )
-        html = html.replace("</head>", head + "\n</head>", 1)
+        html = html.replace("</head>", head + "\n</head>", 1).replace("{{LAYOUT}}", layout)
         return html.replace("{{TOKEN}}", self.token).replace("{{VERSION}}", __version__).replace("{{PALETTE}}", name)
 
     def start(self) -> Server:
