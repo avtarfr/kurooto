@@ -1,10 +1,12 @@
 # Changelog
 
-## 0.5.3 (2026-10-21)
+## 0.5.4 (2026-10-21)
 
 - **Android ringtone & heads-up banner fix**: Replaced old `calls` channel with `calls_v2` using system default ringtone and `PRIORITY_MAX` heads-up notification priority; guarded against OEM `SecurityException` on ringtone queries.
+- **Android update banner**: Shortened update check throttle to 2 minutes on resume and automatically dismiss the update banner once updated.
 - **Sync status API fix**: Added POST handler for `/api/sync/status` and state-file fallback in CLI so `kurooto sync` polls and waits smoothly without false aborts.
-- **Removed legacy `oldphone` bridge**: Completely decommissioned and scrubbed legacy `oldphone` module.
+- **Cross-platform time zone canonicalization**: Fixed casing lookup in `canonical()` so case-insensitive file systems (macOS/Windows) resolve zone aliases properly.
+- **Scrapped legacy `oldphone` bridge**: Completely decommissioned and scrubbed legacy `oldphone` module.
 
 ## 0.5.2 (2026-10-21)
 
