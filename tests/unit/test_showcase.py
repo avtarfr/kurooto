@@ -25,7 +25,7 @@ def palette(page: str) -> str:
 
 def test_kuro_by_default_rose_on_request(web):
     app, srv = web
-    for path in ("/setup", "/morning"):
+    for path in ("/setup", "/morning", "/confidential"):
         code, page = call(srv, path, token=False)
         assert code == 200 and palette(page) == "kuro" and "{{" not in page
     app.settings.set("setup.done", True)
