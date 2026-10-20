@@ -130,6 +130,7 @@ def checks(app) -> list[tuple[str, bool, str]]:
             ok, why = False, f"{type(e).__name__}: {e}"
         out.append((m.title, ok, why or "ok"))
     out += more_checks(app)
+    out += health_rows(app)
     out += layout_checks(app)
     if "backups" in app.modules and not app.is_on("backups"):  # say when nothing is backed up (a note)
         from kurooto.modules.backups import age_line
@@ -195,6 +196,21 @@ def more_checks(app) -> list[tuple[str, bool | None, str]]:
             if isinstance(r, (list, tuple)) and len(r) == 3:
                 ok = r[1] if r[1] in (True, False, None) else bool(r[1])
                 out.append((f"{m.title}: {r[0]}"[:60], ok, str(r[2])[:300]))
+    return out
+
+
+def health_rows(app) -> list[tuple[str, bool | None, str]]:
+    """Kurooto keeps itself working (core/health.py): each feature's check, read-only, asking the internet too."""
+    try:
+        results = app.health.evaluate(net=True, save=False)
+    except Exception as e:
+        return [("working", False, f"the checks failed: {type(e).__name__}: {e}"[:200])]
+    out = []
+    for r in results:
+        detail = r.detail or ("ok" if r.ok else "")
+        if r.ok is False:
+            detail += f"; fix: kurooto doctor --fix {r.id}" if r.fix_label else (f". {r.help}" if r.help else "")
+        out.append((f"working: {r.title}"[:60], r.ok, detail[:400]))
     return out
 
 

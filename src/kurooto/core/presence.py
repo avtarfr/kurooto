@@ -21,8 +21,11 @@ been up for a minute. At night (or in focus time) it waits for the morning; if n
 dropped then. Never a call.
 
 Settings: notify.presence {on, after_min, channels ("telegram", "app"), line, line_telegram (None: asked once)}.
-State: state/presence.json (heartbeat, the last stop, the message waiting), state/net-outbox.jsonl (Telegram messages
-kept while the network was down). Events: presence_offline, presence_online.
+State: state/presence.json (heartbeat, the last stop, the message waiting, the offline periods of the last 15 days),
+state/net-outbox.jsonl (Telegram messages kept while the network was down). Events: presence_offline, presence_online.
+
+The offline periods (any length, and whether or not presence messages are on) are what core/health.py subtracts
+before it calls something quiet: a sync that couldn't run while the lid was shut hasn't failed.
 """
 
 from __future__ import annotations
@@ -62,6 +65,8 @@ ALIVE_S = 60  # the heartbeat on disk: when it was last running, if it didn't st
 BYE_S = 2.5  # the goodbye never takes longer than this
 PROBE_S = 60  # while the network is down, try Telegram this often
 OUTBOX_MAX = 200
+GAPS_KEEP_S = 15 * 86400  # offline periods kept for core/health.py
+GAPS_MAX = 400
 ASK_AGAIN_S = 30 * 86400
 WHY_UNKNOWN = "asleep, off or without internet"
 LINE_ASK = (
@@ -336,6 +341,7 @@ class Presence:
     def went_away(self, since: float, back: float, kind: str, told: bool = False, why: str = "") -> bool:
         """An offline period ended (kind: stop, off, restart, sleep, net, line). Long enough (or you were told it
         went): a "back" message waits until the computer has been up SETTLE_S; periods close together merge."""
+        self.note_gap(since, back, kind)
         if not self.on() or back - since < 0:
             return False
         short = back - since < self.after_s() and not told
@@ -364,6 +370,33 @@ class Presence:
             st["pending"] = p
             self._save(st)
         return True
+
+    def note_gap(self, since: float, back: float, kind: str) -> None:
+        """Keep an offline period (for core/health.py): those of the last 15 days, at most GAPS_MAX."""
+        if back - since < 1:
+            return
+        with self._lock:
+            st = self._load()
+            gaps = [
+                g for g in st.get("gaps") or [] if isinstance(g, list) and len(g) == 3 and g[1] > back - GAPS_KEEP_S
+            ]
+            gaps.append([round(since, 1), round(back, 1), kind])
+            st["gaps"] = sorted(gaps)[-GAPS_MAX:]
+            self._save(st)
+
+    def offline(self, start: float, end: float) -> list[tuple[float, float]]:
+        """The offline periods between start and end (clipped to them), the network outage going on now included."""
+        out = []
+        for g in self._load().get("gaps") or []:
+            try:
+                a, b = max(float(g[0]), start), min(float(g[1]), end)
+            except (TypeError, ValueError, IndexError):
+                continue
+            if b > a:
+                out.append((a, b))
+        if self.net_down() and self.net_fail_since is not None and self.net_fail_since < end:
+            out.append((max(self.net_fail_since, start), end))
+        return out
 
     def line_report(self, away: dict | None) -> None:
         """The call line's welcome: it told you this computer was offline (since when, on which channels)."""

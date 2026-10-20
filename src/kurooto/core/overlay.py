@@ -25,6 +25,8 @@ Extension points an add-on feature (a Module in modules/) may define, besides wh
     status_lines() -> [str]     extra lines for /status on Telegram
     doctor_checks() -> [(name, ok True|False|None, detail)]   extra lines for `kurooto doctor` (False counts as a
                                 problem; None is a note)
+    health_check() -> core.health.Check | None   its one check for the daily pass, the dashboard and doctor: how
+                                often it should work (an event it emits) and/or a read-only probe
 """
 
 from __future__ import annotations
@@ -54,8 +56,16 @@ GUARDED = (
     "classify_intent",
     "status_lines",
     "doctor_checks",
+    "health_check",
 )
-SAFE = {"callbacks": dict, "replies": dict, "help": list, "call_brief": str, "classify_intent": None}  # if one fails
+SAFE = {  # what a failing one gives instead
+    "callbacks": dict,
+    "replies": dict,
+    "help": list,
+    "call_brief": str,
+    "classify_intent": None,
+    "health_check": None,
+}
 CLASSIFY_TIMEOUT = 2.0  # seconds an intent classifier gets (an add-on's classify_timeout may change it, up to 10)
 MIN_CONFIDENCE = 0.6
 NO_DEFAULTS = ("modules", "overlay", "profile")  # an add-on folder can't turn features on or move itself

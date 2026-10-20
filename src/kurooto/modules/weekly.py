@@ -88,6 +88,10 @@ class Weekly(Module):
                     lines += m.weekly_lines()
                 except Exception as e:
                     self.app.events.emit("weekly_line_failed", module=m.id, error=str(e)[:200])
+        try:  # what isn't working and could wait until now (core/health.py)
+            lines += self.app.health.weekly_lines()
+        except Exception as e:
+            self.app.events.emit("weekly_line_failed", module="health", error=str(e)[:200])
         return "\n".join(lines)
 
     def journal_days(self, days: int = 7) -> int:

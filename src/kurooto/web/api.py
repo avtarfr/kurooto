@@ -155,6 +155,13 @@ class Api:
             t = self.app.modules.get("terminals")
             on = bool(t) and self.app.is_on("terminals")
             return 200, {"on": on, "terms": t.listing() if on else []}
+        if path == "health":  # Kurooto keeps itself working: every check, from what's known here (core/health.py)
+            from dataclasses import asdict
+
+            from kurooto.core.health import FIXES
+
+            rows = [{**asdict(r), "fix_label": r.fix_label} for r in self.app.health.evaluate(save=False)]
+            return 200, {"on": self.app.health.on(), "results": rows, "fixes": FIXES}
         if path == "sync/status":  # `kurooto sync` waits on this (core/syncall.py)
             from kurooto.core import syncall
 
@@ -245,6 +252,9 @@ class Api:
 
         if path in tools_api.POSTS:
             return tools_api.post(self.app, path, b)
+        if path == "health/fix":  # a Fix button on the dashboard, or `kurooto doctor --fix ID` (core/health.py)
+            ok, message = self.app.health.fix(str(b.get("id") or ""))
+            return 200, {"ok": ok, "message": message}
         if path.startswith("term/"):  # terminals: term/<name>/<attach|input|resize|leave|restart>
             t = self.app.modules.get("terminals")
             _, name, action = (path.split("/") + ["", ""])[:3]

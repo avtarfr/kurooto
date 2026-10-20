@@ -71,6 +71,9 @@ class App:
         from kurooto.core.presence import Presence  # "going offline" / "back online" messages (core/presence.py)
 
         self.presence = Presence(self)
+        from kurooto.core.health import Health  # Kurooto keeps itself working: checks, the daily pass, fixes
+
+        self.health = Health(self)
         self.stop_reason = ""  # why it's stopping, for the "going offline" message ("stopped", "turned off")
         self.restart_requested = False
         self._stop = None  # the daemon's stop event, so an update can ask for a restart
@@ -220,6 +223,10 @@ class App:
                 self.start_background(m)
             except Exception as e:
                 self.events.emit("module_failed", module=m.id, error=f"{type(e).__name__}: {e}"[:300])
+        try:
+            self.health.start()  # the daily pass, after the features' timers are in (core/health.py)
+        except Exception as e:
+            self.events.emit("module_failed", module="health", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
     def handle(self, msg: Incoming) -> None:
@@ -255,6 +262,10 @@ class App:
                 out = self.ask.command(msg, arg.strip())
                 if out:
                     msg.reply(out)
+                return
+            if name == "health":  # what isn't working, with Fix buttons (core/health.py)
+                text, buttons = self.health.command(arg)
+                msg.reply(text, buttons=buttons)
                 return
             for m in mods:
                 for c in m.commands():
@@ -326,6 +337,8 @@ class App:
             return self.updates.button(ref, act)
         if prefix == "ask":
             return self.ask.button(ref, act)
+        if prefix == "health":  # a Fix button (core/health.py)
+            return self.health.button(ref, act)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:
@@ -341,6 +354,7 @@ class App:
             lines += m.help()
         lines.append("/q  open questions I asked you (reply to one to answer it)")
         lines.append("/aboutme  what I know about you (your profile's In-brief part), and where to edit it")
+        lines.append("/health  what isn't working, with Fix buttons (/health now checks online too)")
         if not self.is_on("notes_sync"):
             lines.append("/sync  sync everything that's on (Classroom, calendar, research, notes brain)")
         if not self.is_on("chat"):

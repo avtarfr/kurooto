@@ -495,6 +495,7 @@ class Vitals:
             "study": self._cached("study", 30, self._study),
             "projects": self._cached("projects", 60, self._projects, []),
             "events_today": self._cached("events_today", 10, self._events_today, 0),
+            "health": self._cached("health", 60, app.health.board, []),  # what needs a look (core/health.py)
         }
 
     def snapshot(self) -> dict:
