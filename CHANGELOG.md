@@ -1,12 +1,13 @@
 # Changelog
 
-## 0.2.1 (unreleased)
+## 0.2.1 (2026-10-20)
 - Setup page: on a desktop it uses the whole window: the steps sit in a list on the left with what each one is for,
   and feature cards fill four columns instead of a narrow strip. On a phone the steps are numbered dots. Any step can
   be opened from the list, Back and Next stay in view on long steps, and buttons, boxes and cards are tidier, with a
   visible outline when you move through them with the keyboard.
+- The confidential-mail page follows your colours (Settings → Look), like the other pages.
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-10-20)
 Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) has the detail.
 
 **Updating from 0.1**
