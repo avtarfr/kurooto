@@ -541,6 +541,8 @@ def update(now: bool) -> int:
             return 1
         rel = app.updates.u.check(app.settings.get("updates.channel") or "stable")
         if not rel:
+            for v, why in app.updates.u.withdrawn.items():  # on the signed yank list: never installed
+                print(f"Kurooto {v} was withdrawn by its maintainer ({why}), so it isn't installed.")
             print(f"Up to date ({app.updates.u.installed()}).")
             return 0
         print(f"Kurooto {rel.version} is available.")

@@ -1999,6 +1999,22 @@ Every release is signed; Kurooto refuses anything unsigned, older, or changed on
 stay installed. If a new version crashes three times in its first five minutes, Kurooto goes back to the one before
 and won't offer the broken one again; you're told on Telegram. `kurooto update --now` installs an update right away.
 
+**Withdrawn versions.** When a release turns out to be broken, its maintainer puts it on a signed yank list on the
+release site. Kurooto never installs a version on that list: not when it finds it, not when it already downloaded it
+for the night, and not with `kurooto update --now` (it says the version was withdrawn, and why). It keeps the last
+list it read, so a withdrawn version stays refused while the site can't be reached; a list that isn't signed, or is
+older than one it has seen, stops the update instead.
+
+**Staged updates** (off until you turn it on: `updates.staged` = `true`). A new version waits until it has been out
+48 hours (`updates.wait_hours`), so a broken release is usually withdrawn before it reaches you, and nothing installs
+during your exams (`updates.exam_hold`, on): an exam period from Subjects (`/term exams ...`), or a quiz or exam within
+a day from Deadlines. A release signed as critical (a security fix) skips both. While one waits, the dashboard's update
+badge says "waiting" (point at it for why; with `updates.mode` = `ask` you're asked once it's done waiting), and
+`kurooto update --now` installs it anyway.
+
+**Undo:** `updates.staged` = `false` installs new versions as soon as they're found, as before. The yank list can't be
+turned off.
+
 Your call line is updated after Kurooto updates, if its code changed. The Android app shows an Update button; the
 iPhone web app updates itself.
 

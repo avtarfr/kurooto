@@ -40,6 +40,18 @@ Try a release on the `beta` channel first (`--channel beta`; testers set `update
 made from `docs/PRIVACY.md` inside `installer/privacy.html` (between its `PRIVACY:START` and `PRIVACY:END` markers).
 Google's sign-in setup links to that page, so publish the site whenever PRIVACY.md changes.
 
+## Withdrawing a release (yank)
+A release that turns out broken goes on the signed yank list; installs then never update to it, even ones that
+already downloaded it for the night:
+```sh
+uv run tools/release.py yank --site ~/kurooto-site --key ~/.config/kurooto-dev/release-key.pem 0.2.1 \
+  --reason "loses reminders after a restart"
+uv run tools/release.py publish --site ~/kurooto-site --message "yank 0.2.1"
+```
+`--undo` takes a version off the list again. A channel pointer that still names a yanked version keeps it refused,
+so sign a fixed version on that channel (the command warns). A security fix: `sign ... --critical`, so installs with
+staged updates on (`updates.staged`) don't wait their 48 hours or for exams to end.
+
 ## Checks before publishing
 - `uv run pytest`, CI green on all three systems (including the update rehearsal and the call line).
 - `python3 tools/privacy_scan.py --tree` and `--history` clean.

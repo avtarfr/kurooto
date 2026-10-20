@@ -34,6 +34,13 @@
 - `/usage`, `kurooto usage` and the usage API show today's limits, what's used of them, and the requests waiting.
 - A daily limit no longer waits a minute and asks again before the fallback; handwritten files that hit a limit are
   tried again later instead of being written off.
+**Staged updates and withdrawn versions**
+- A version its maintainer withdrew (the signed yank list on the release site, `tools/release.py yank`) is never
+  installed: not when found, not when it was already downloaded for the night, and not with `kurooto update --now`.
+  The last list read is kept, so it stays refused while the site can't be reached.
+- `updates.staged` (off until you turn it on): a new version installs only once it has been out 48 hours
+  (`updates.wait_hours`), and never in an exam period or within a day of a quiz or exam (`updates.exam_hold`). A
+  release signed as critical (`tools/release.py sign --critical`) skips both.
 
 ## 0.4.0 (unreleased)
 

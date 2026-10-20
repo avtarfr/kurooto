@@ -2,7 +2,8 @@
 
 Kurooto runs on your computer, and every feature is off until you turn it on. This page lists, per feature, exactly
 what goes where. **Nothing is ever sent to Kurooto's author** (no analytics, no crash reports, no "phone home"). The
-only things Kurooto fetches from its own release page are updates, checked against a signature.
+only things Kurooto fetches from its own release page are updates and the list of withdrawn versions, both checked
+against a signature.
 
 Everything below goes to services you chose, under your own accounts.
 

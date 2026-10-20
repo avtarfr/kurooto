@@ -3,8 +3,14 @@
 
     uv run tools/release.py keygen [--out ~/.config/kurooto-dev/release-key.pem] [--no-passphrase]
     uv run tools/release.py build --site SITE --base URL [--version V] [--notes TEXT] [--break-run]
-    uv run tools/release.py sign  --site SITE --base URL --version V --key PEM [--channel stable]
+    uv run tools/release.py sign  --site SITE --base URL --version V --key PEM [--channel stable] [--critical]
+    uv run tools/release.py yank  --site SITE --key PEM V [V ...] [--reason TEXT] [--undo]
     uv run tools/release.py publish --site SITE [--message TEXT]     push SITE to the gh-pages branch (GitHub Pages)
+
+sign --critical marks the release critical (a security fix): installs with staged updates on (updates.staged) don't
+wait their 48 hours for it, nor for the end of exams. yank adds versions to the signed yank list (SITE/yank.json; with
+--undo it takes them off): installs never update to a yanked version, even one already downloaded. Publish after
+either. A yanked version that a channel pointer still names stays refused, so sign a fixed version on that channel.
 
 build --apk PATH puts the release-signed Android app in the package (your call line serves it at /kurooto.apk) and
 on the site, with android.json for the app's update check. See docs/RELEASING.md for the whole routine.
@@ -14,6 +20,7 @@ SITE is a folder laid out like the GitHub Pages site:
     SITE/privacy.html                           docs/PRIVACY.md as a page (Google's sign-in setup links to it)
     SITE/media/                                 its screenshots and animation (from docs/media)
     SITE/stable.json, beta.json                 signed channel pointers
+    SITE/yank.json                              signed list of withdrawn versions, with reasons (yank)
     SITE/releases/<v>/manifest.json             signed list of files with sha256
     SITE/releases/<v>/kurooto-<v>.tar.gz        the source release (with requirements.lock, hash-pinned)
     SITE/releases/<v>/kurooto.apk, android.json the Android app and its version (with --apk)
@@ -253,7 +260,7 @@ def md_html(text: str) -> str:
     return "\n".join(out) + "\n"
 
 
-def sign(site: Path, base: str, version: str, key_path: Path, channel: str) -> None:
+def trusted_key(key_path: Path) -> Ed25519PrivateKey:
     key = load_key(key_path)
     allowed = [*signing.PUBLIC_KEYS, os.environ.get("KUROOTO_EXTRA_UPDATE_KEY", "")]  # the extra: test keys only
     if signing.public_b64(key) not in allowed:
@@ -261,6 +268,11 @@ def sign(site: Path, base: str, version: str, key_path: Path, channel: str) -> N
             "This key isn't one of the public keys built into Kurooto (signing.PUBLIC_KEYS): installs would "
             "refuse what it signs. Wrong key file?"
         )
+    return key
+
+
+def sign(site: Path, base: str, version: str, key_path: Path, channel: str, critical: bool = False) -> None:
+    key = trusted_key(key_path)
     rel = site / "releases" / version
     doc = json.loads((rel / "manifest.unsigned.json").read_text(encoding="utf-8"))
     (rel / "manifest.json").write_text(
@@ -272,10 +284,35 @@ def sign(site: Path, base: str, version: str, key_path: Path, channel: str) -> N
         "issued": time.time(),
         "channel": channel,
     }
+    if critical:
+        ptr["critical"] = True
     (site / f"{channel}.json").write_text(
         json.dumps({"doc": ptr, "sig": signing.sign(ptr, key)}, indent=1), encoding="utf-8"
     )
-    print(f"signed {version} on {channel}")
+    print(f"signed {version} on {channel}" + (" (critical: no waiting)" if critical else ""))
+
+
+def yank(site: Path, key_path: Path, versions: list[str], reason: str = "", undo: bool = False) -> dict:
+    """Add versions to the signed yank list (or take them off with undo). Returns the list's new document."""
+    key = trusted_key(key_path)
+    f = site / "yank.json"
+    old = json.loads(f.read_text(encoding="utf-8")).get("doc", {}) if f.exists() else {}
+    yanked = dict(old.get("yanked") or {})
+    for v in versions:
+        if undo:
+            yanked.pop(v, None)
+        else:
+            yanked[v] = reason.strip() or "withdrawn"
+    doc = {"yanked": yanked, "issued": max(time.time(), float(old.get("issued", 0)) + 1)}
+    site.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"doc": doc, "sig": signing.sign(doc, key)}, indent=1), encoding="utf-8")
+    print(("took off the yank list: " if undo else "yanked: ") + ", ".join(versions))
+    for ch in ("stable", "beta"):
+        p = site / f"{ch}.json"
+        named = json.loads(p.read_text(encoding="utf-8")).get("doc", {}).get("version") if p.exists() else None
+        if named in yanked:
+            print(f"warning: {ch}.json still names {named}; sign a fixed version on {ch} (installs refuse it)")
+    return doc
 
 
 def publish(site: Path, message: str) -> None:
@@ -332,6 +369,13 @@ def main() -> None:
     s.add_argument("--version", required=True)
     s.add_argument("--key", required=True)
     s.add_argument("--channel", default="stable")
+    s.add_argument("--critical", action="store_true", help="a security fix: staged installs don't wait for it")
+    y = sub.add_parser("yank")
+    y.add_argument("--site", required=True)
+    y.add_argument("--key", required=True)
+    y.add_argument("--reason", default="")
+    y.add_argument("--undo", action="store_true", help="take the versions off the yank list")
+    y.add_argument("versions", nargs="+")
     pb = sub.add_parser("publish")
     pb.add_argument("--site", required=True)
     pb.add_argument("--message", default="release")
@@ -342,8 +386,10 @@ def main() -> None:
         build(Path(a.site), a.base, a.version, a.notes, a.break_run, Path(a.apk) if a.apk else None)
     elif a.cmd == "publish":
         publish(Path(a.site), a.message)
+    elif a.cmd == "yank":
+        yank(Path(a.site), Path(a.key), a.versions, a.reason, a.undo)
     else:
-        sign(Path(a.site), a.base, a.version, Path(a.key), a.channel)
+        sign(Path(a.site), a.base, a.version, Path(a.key), a.channel, a.critical)
 
 
 if __name__ == "__main__":

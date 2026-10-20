@@ -2,7 +2,9 @@
 
 check()   read the channel pointer and the release manifest; both must be signed by a trusted key, the pointer
           must not be older than the last one seen (no replaying old releases), and the version must be newer
-          than this one and not marked bad.
+          than this one, not marked bad, and not on the signed yank list.
+yanked()  the signed yank list (yank.json on the site, written by `tools/release.py yank`): versions the maintainer
+          withdrew, each with a reason. Kept here, so a withdrawn version stays refused while the site can't be read.
 stage()   download, check each file's sha256, unpack into versions/<v>.partial, build its own .venv from the
           locked requirements, run its self-test, then rename it to versions/<v>.
 switch()  remember the current version as previous, point current.json at the new one, start its probation.
@@ -18,6 +20,7 @@ import re
 import shutil
 import tarfile
 import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,6 +48,7 @@ class Release:
     issued: float
     files: dict  # name -> {"url", "sha256", "size"}
     notes: str = ""
+    critical: bool = False  # signed as critical (a security fix): no waiting (updates.staged), not even in exams
 
 
 class UpdateError(RuntimeError):
@@ -57,6 +61,7 @@ class Updater:
         self.state = Path(state_dir)
         self.base = base_url.rstrip("/")
         self.keys = keys
+        self.withdrawn: dict[str, str] = {}  # what the last check() refused as yanked: {version: reason}
 
     # ------------------------------------------------------------------------------------------- local
     def installed(self) -> str | None:
@@ -86,7 +91,39 @@ class Updater:
             raise UpdateError("an update file wasn't signed by a trusted key; ignored")
         return doc
 
+    def yanked(self, fetch: bool = True) -> dict[str, str]:
+        """The versions the maintainer withdrew, {version: reason}. fetch: read the site's signed yank.json (none
+        there: the last one seen stands); a list that isn't signed, or is older than one already seen, is refused.
+        Without fetch, or when the site can't be reached, the last list seen."""
+        cache = self.state / "yank.json"
+        if fetch:
+            try:
+                wrapper = json.loads(self._get(f"{self.base}/yank.json"))
+            except urllib.error.HTTPError as e:
+                if e.code != 404:
+                    raise UpdateError(f"couldn't read the yank list ({e.code})") from e
+                wrapper = None
+            except (urllib.error.URLError, OSError):
+                wrapper = None  # offline: the last list seen
+            except ValueError as e:
+                raise UpdateError("unreadable yank list; not updating") from e
+            if wrapper is not None:
+                w = wrapper if isinstance(wrapper, dict) else {}
+                doc, sig = w.get("doc"), str(w.get("sig") or "")
+                if not isinstance(doc, dict) or not signing.verify(doc, sig, self.keys):
+                    raise UpdateError("the yank list wasn't signed by a trusted key; not updating")
+                seen = jload(self.state / "update-seen.json", {}) or {}
+                if float(doc.get("issued", 0)) < float(seen.get("yank", 0)):
+                    raise UpdateError("the yank list is older than one already seen; not updating")
+                seen["yank"] = float(doc.get("issued", 0))
+                jsave(self.state / "update-seen.json", seen)
+                jsave(cache, doc)
+        doc = jload(cache, {}) or {}
+        raw = doc.get("yanked") if isinstance(doc.get("yanked"), dict) else {}
+        return {str(v): str(why or "withdrawn") for v, why in raw.items()}
+
     def check(self, channel: str = "stable") -> Release | None:
+        self.withdrawn = {}
         ptr = self._signed(f"{self.base}/{channel}.json")
         seen = jload(self.state / "update-seen.json", {}) or {}
         if float(ptr.get("issued", 0)) < float(seen.get(channel, 0)):
@@ -97,10 +134,21 @@ class Updater:
         cur = self.installed()
         if (cur and vtuple(version) <= vtuple(cur)) or version in self.bad():
             return None
+        yanked = self.yanked()
+        if version in yanked:
+            self.withdrawn = {version: yanked[version]}
+            return None
         man = self._signed(ptr["manifest_url"])
         if str(man.get("version")) != version:
             raise UpdateError("the release manifest doesn't match the pointer; ignored")
-        return Release(version, channel, float(ptr.get("issued", 0)), man["files"], man.get("notes", ""))
+        return Release(
+            version,
+            channel,
+            float(ptr.get("issued", 0)),
+            man["files"],
+            man.get("notes", ""),
+            critical=ptr.get("critical") is True,
+        )
 
     # ---------------------------------------------------------------------------------------- staging
     def _download(self, name: str, f: dict, dest: Path) -> Path:
