@@ -88,7 +88,8 @@ The [manual](docs/MANUAL.md) has the detail.
   - STATUS is a btop-like monitor: history graphs, every core, a memory breakdown, the graphics card, network, disks,
     processes with Kurooto's own marked, study today and projects.
   - SYSTEMS has today, what's due, the AI's corner and recent events round the cells, the hours on the ring, and each
-    feature's own programs on its cell.
+    feature's own programs on its cell. The cells' words sit outside them and never overlap, however many features
+    are on: a crowded ring becomes two, and labels move a little (with a hairline to their cell) or shorten.
   - NOTES shows folders and recent edits.
   - The terminal below has its tabs and every other page in its border, and a **kurooto** tab for plain English
     without the Terminals feature.

@@ -221,9 +221,9 @@ def test_the_check_in_day_runs_from_5_am(ck):
     assert "finished the essay" in daily.note_path(env.app, D).read_text(encoding="utf-8")
     # still up at 1 am: a time already past, or a check-in that's over, means the coming day
     clock.t = at(D + dt.timedelta(days=1), 1, 0)
-    assert c.move("evening", "21:00") == "Evening check-in today at 21:00."
+    assert c.move("evening", "21:00") == "Evening check-in tomorrow at 21:00."  # as you'd say it at 1 am
     assert c.today(D + dt.timedelta(days=1))["evening"]["time"] == "21:00"
-    assert c.skip("night") == "No night check-in today."
+    assert c.skip("night") == "No night check-in tomorrow."
     assert c.today(D + dt.timedelta(days=1))["night"]["status"] == "skipped"
     assert c.today(D)["night"]["status"] == "answered"
     assert c.move("night", "01:30") == "Night check-in at 01:30."  # tonight's own, still ahead

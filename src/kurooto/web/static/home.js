@@ -86,7 +86,7 @@ const brainName = (b) => (b && BRAIN[b.id]) || "AI"; // agy, codex…; any other
 
 class Body {
   constructor(cv) {
-    this.cv = cv; this.state = null; this.o = new Map(); this.pulses = []; this.ripples = [];
+    this.cv = cv; this.state = null; this.o = new Map(); this.pulses = []; this.ripples = []; this.widths = new Map();
     this.beats = []; this.systoles = []; this.nextBeat = 0; this.beat = 0;
     cv.addEventListener("mousemove", (e) => { const r = cv.getBoundingClientRect(); this.mouse = { x: e.clientX - r.left, y: e.clientY - r.top }; });
     cv.addEventListener("mouseleave", () => { this.mouse = null; });
@@ -233,9 +233,11 @@ class Body {
     const cells = [...this.o.values()], n = Math.max(1, cells.length), orbit = LIGHT ? 0 : (t * TAU) / 180;
     // dense, with many features: the orbit widens sideways, where the pane has room
     const wide = DENSE ? Math.min(w * 0.42 / ringR, clamp(1 + (n - 10) * 0.035, 1, 1.3)) : 1;
+    // a crowded ring becomes two: every other cell rides a little closer in, so neighbours and their words have room
+    const twoRings = n >= 12 && (TAU * ringR * (1 + wide) / 2) / n < 80;
     for (const o of cells) {
       const a = -Math.PI / 2 + (o.i / n) * TAU + orbit + 0.05 * Math.sin(t * 0.13 + o.seed);
-      const rr = ringR * (1 + 0.04 * Math.sin(t * 0.21 + o.seed * 2));
+      const rr = ringR * (1 + 0.04 * Math.sin(t * 0.21 + o.seed * 2)) * (twoRings && o.i % 2 ? 0.86 : 1);
       o.x = cx + Math.cos(a) * rr * wide; o.y = cy + Math.sin(a) * rr * 0.86;
       o.act += ((o.target || 0) - o.act) * 0.05; o.flash *= 0.94; o.pump = (o.pump || 0) * 0.88;
     }
@@ -279,8 +281,8 @@ class Body {
       if (sp >= 1 && !p.done) { p.done = true; if (p.to === "core") { this.ripples.push({ t0: now, col: p.color }); this.beat = Math.max(this.beat, 0.6); } else o.flash = 1; }
     }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-    this.room = (TAU * ringR * (1 + wide) / 2) / n; // the arc each cell has: crowded rings say less per cell
     for (const o of cells) this.cell(ctx, o, t, ringR);
+    this.labels(ctx, cells, cx, cy, coreR, w, h);
     this.beat *= 0.9;
     const breath = 0.5 + 0.5 * Math.sin((TAU * t) / (6.5 - 3.5 * clamp(cpu * 2.5, 0, 1)));
     let lubdub = 0;
@@ -313,12 +315,68 @@ class Body {
     this.blob(ctx, o.x, o.y, r, t * (0.6 + o.act), o.seed, 0.05 + 0.05 * o.act + 0.05 * o.flash, spin);
     ctx.fillStyle = PAL.bg; ctx.fill(); ctx.fillStyle = rgba(col, 0.2 + 0.35 * o.act + 0.3 * o.flash); ctx.fill();
     ctx.strokeStyle = rgba(col, o.down ? 0.5 : 0.85); ctx.lineWidth = 1.1; ctx.setLineDash(o.down ? [2, 3] : []); ctx.stroke(); ctx.setLineDash([]);
-    const ly = o.y + hr + base * 0.55 + 10;
-    this.say(ctx, o.label, o.x, ly, rgba(o.down ? PAL.dim : PAL.fg, 0.95), "center", `600 10px ${FONT}`);
-    const vital = this.vital(o), tight = DENSE && this.room < 84;
-    if (!(tight && vital === "quiet")) this.say(ctx, vital, o.x, ly + 11, o.down ? rgba(PAL.bad, 0.85) : rgba(col, 0.85), "center", `9px ${FONT}`);
-    const more = DENSE && !tight ? this.detail(o) : "";
-    if (more) this.say(ctx, more, o.x, ly + 21, rgba(PAL.fg, 0.42), "center", `8px ${FONT}`);
+    o.reach = hr + base * 0.55 + 1; // the cell with its halo: what words mustn't cover
+  }
+  // Each cell's words sit outside it, along the line from the core (never on its own nerve). A label that would touch
+  // another cell, another label, the core or a corner panel tries a little further out, then turned a little either
+  // way, then with fewer words (no detail, then the name alone, then a shortened name). A label that had to give way
+  // needs a few pixels to spare before it grows back, so the words don't flicker as the cells orbit.
+  labels(ctx, cells, cx, cy, coreR, w, h) {
+    const LH = 11, placed = [], panels = DENSE ? this.panelRects || [] : [];
+    const width = (text, font) => { const k = font + "|" + text; let v = this.widths.get(k);
+      if (v === undefined) { ctx.font = font; v = ctx.measureText(text).width; if (this.widths.size > 4000) this.widths.clear(); this.widths.set(k, v); } return v; };
+    // how badly a box would cover what's there: 0 when it fits (pad: the room it must leave)
+    const cost = (b, o, pad) => {
+      let c = Math.max(0, 2 - b.x0) + Math.max(0, 2 - b.y0) + Math.max(0, b.x1 - w + 2) + Math.max(0, b.y1 - h + 2);
+      const into = (x, y, r) => Math.max(0, r - Math.hypot(clamp(x, b.x0 - pad, b.x1 + pad) - x, clamp(y, b.y0 - pad, b.y1 + pad) - y));
+      c += into(cx, cy, coreR * 1.25) * 4;
+      for (const q of cells) c += into(q.x, q.y, q === o ? q.reach - 1 : q.reach) * 3;
+      for (const r of [...placed, ...panels]) {
+        const ox = Math.min(b.x1 + pad, r.x1) - Math.max(b.x0 - pad, r.x0), oy = Math.min(b.y1 + pad, r.y1) - Math.max(b.y0 - pad, r.y0);
+        if (ox > 0 && oy > 0) c += Math.sqrt(ox * oy) * 2;
+      }
+      return c;
+    };
+    const order = [...cells].sort((a, b) => (b.data.events || 0) - (a.data.events || 0) || (b.proc ? 1 : 0) - (a.proc ? 1 : 0) || a.i - b.i);
+    for (const o of order) {
+      const col = o.down ? PAL.dim : PAL[o.color], vital = this.vital(o), more = DENSE ? this.detail(o) : "";
+      const name = [o.label, `600 10px ${FONT}`, rgba(o.down ? PAL.dim : PAL.fg, 0.95)];
+      const full = [name, [vital, `9px ${FONT}`, o.down ? rgba(PAL.bad, 0.85) : rgba(col, 0.85)], ...(more ? [[more, `8px ${FONT}`, rgba(PAL.fg, 0.42)]] : [])];
+      const short = o.label.length > 8 ? [[o.label.slice(0, 7) + "…", name[1], name[2]]] : [name];
+      const variants = [full, full.slice(0, 2), [name], short].filter((v, i, all) => i === 0 || v.length < all[i - 1].length || v[0][0] !== all[i - 1][0][0]);
+      const dx = o.x - cx, dy = o.y - cy, d = Math.hypot(dx, dy) || 1, a0 = Math.atan2(dy / d, dx / d);
+      // close to the cell first (straight out, then turned a little), trading words for closeness before distance;
+      // when nothing fits, a small short name; when even that won't, no words at all (hovering still shows the card)
+      const near = [[0, 0], [0.35, 0], [-0.35, 0]], mid = [[0, 1], [0.35, 1], [-0.35, 1], [0.7, 0], [-0.7, 0]];
+      const far = [[0, 2], [0.7, 1], [-0.7, 1], [1.15, 0], [-1.15, 0], [1.15, 1], [-1.15, 1], [0, 3], [0.35, 3], [-0.35, 3], [1.15, 2], [-1.15, 2]];
+      const tries = [];
+      for (const spots of [near, mid]) for (const lines of variants.slice(0, 3)) for (const sp of spots) tries.push([lines, sp]);
+      for (const lines of variants.slice(2)) for (const sp of [...near, ...mid, ...far]) tries.push([lines, sp]);
+      const tiny = [[o.label.length > 8 ? o.label.slice(0, 7) + "…" : o.label, `600 8px ${FONT}`, name[2]]];
+      for (const sp of [...near, ...mid, ...far]) tries.push([tiny, sp]);
+      let best = null, rank = 0;
+      for (const [lines, [turn, step]] of tries) {
+        const bw = Math.max(...lines.map(([s, f]) => width(s, f))) + 4, bh = lines.length * LH;
+        const ux = Math.cos(a0 + turn), uy = Math.sin(a0 + turn), dist = o.reach + 3 + step * 10, ax = o.x + ux * dist, ay = o.y + uy * dist;
+        const x0 = ax - bw / 2 + (bw / 2) * clamp(ux / 0.55, -1, 1), y0 = ay - bh / 2 + (bh / 2) * clamp(uy / 0.55, -1, 1);
+        const b = { x0, y0, x1: x0 + bw, y1: y0 + bh, ux }, moved = turn !== 0 || step > 0;
+        if (cost(b, o, rank < (o.labRank ?? 1e9) ? 5 : 1) === 0) { best = { b, lines, rank, moved }; break; }
+        rank++;
+      }
+      o.labRank = best ? best.rank : 1e6;
+      if (!best) continue;
+      placed.push(best.b);
+      if (best.moved) { // a hairline from the cell to words that had to move, so it's clear whose they are
+        const bx = clamp(o.x, best.b.x0, best.b.x1), by = clamp(o.y, best.b.y0, best.b.y1), dd = Math.hypot(bx - o.x, by - o.y) || 1;
+        ctx.strokeStyle = rgba(o.down ? PAL.dim : PAL[o.color], 0.35); ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.moveTo(o.x + ((bx - o.x) / dd) * o.reach, o.y + ((by - o.y) / dd) * o.reach); ctx.lineTo(bx, by); ctx.stroke();
+      }
+      const { b, lines } = best, align = b.ux > 0.5 ? "left" : b.ux < -0.5 ? "right" : "center";
+      const x = align === "left" ? b.x0 + 2 : align === "right" ? b.x1 - 2 : (b.x0 + b.x1) / 2;
+      lines.forEach(([s, f, c], k) => this.say(ctx, s, x, b.y0 + (k + 1) * LH - 2, c, align, f));
+      b.id = o.id;
+    }
+    this.placed = placed; // (what a check of the layout reads)
   }
   // a cell's figures: a feature with its own processes shows their cpu and memory, the others what they did
   vital(o) {
@@ -341,8 +399,15 @@ class Body {
     const cut = Math.max(16, Math.floor((w * 0.5 - 24) / 5.4));
     // a row is [text, colour] or [[title, tail], colour]: the title gives way so the tail (a time, a status) survives
     const fitRow = (s) => (Array.isArray(s) ? (s[0].length + s[1].length > cut ? s[0].slice(0, Math.max(4, cut - s[1].length - 1)) + "…" : s[0]) + s[1] : s.slice(0, cut));
-    const block = (rows, x, align, fromTop) => rows.slice(0, 6).forEach(([s, col], i, arr) =>
-      say(ctx, fitRow(s), x, fromTop ? 24 + i * lh : h - 20 - (arr.length - 1 - i) * lh, col, align));
+    const rects = (this.panelRects = []); // where the corners' words are: the cells' labels keep clear of them
+    const block = (rows, x, align, fromTop) => {
+      const r = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+      rows.slice(0, 6).forEach(([s, col], i, arr) => {
+        const y = fromTop ? 24 + i * lh : h - 20 - (arr.length - 1 - i) * lh, wd = say(ctx, fitRow(s), x, y, col, align), x0 = align === "right" ? x - wd : x;
+        Object.assign(r, { x0: Math.min(r.x0, x0 - 2), x1: Math.max(r.x1, x0 + wd + 2), y0: Math.min(r.y0, y - 9), y1: Math.max(r.y1, y + 3) });
+      });
+      rects.push(r);
+    };
     // recent events, newest first
     const ev = [[feed.length ? "events" : "no events yet", dim]];
     feed.slice(0, 5).forEach((e, i) => {

@@ -1629,7 +1629,9 @@ board with thin borders and each pane's name set into its top line:
   your AI's latest requests (with the local models and what's scheduled next), **today** (classes, calendar,
   check-ins, calls, focus and no-call holds) and **due** (overdue ones in red). A feature that runs programs of its
   own shows their cpu, memory, uptime and threads on its cell (grey and dashed when none is running); the others
-  show what they did last and when they run next.
+  show what they did last and when they run next. Each cell's words sit just outside it, away from the core; on a
+  crowded ring they move a little (with a hairline back to their cell) or say less, and never cover each other
+  (on a very small screen a few may hide: hover over a cell for its card).
 - **NOTES** adds your folders with their note counts, whether anything was touched this hour, and the notes you
   edited last.
 - **TERMINAL**, below, has its tabs in its border: your AI's program, a shell and the log (with Terminals on), and

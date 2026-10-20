@@ -67,11 +67,11 @@ SKIP = re.compile(r"\b(skip|cancel|drop|no (?:\w+ )?(?:check-?in|debrief))\b", r
 
 
 def _label(day: dt.date, today: dt.date) -> str:
-    """How to say a day: `today` is the check-in day; after midnight the calendar's today is "today" too."""
-    days = {today, now().date()}
-    if day in days:
+    """How to say a day, from the check-in day `today`: still up at 2 am, the coming day is "tomorrow", as you'd say
+    it yourself (and as "tomorrow" is read in what you write)."""
+    if day == today:
         return "today"
-    return "tomorrow" if day == max(days) + dt.timedelta(days=1) else f"on {day:%a %d %b}"
+    return "tomorrow" if day == today + dt.timedelta(days=1) else f"on {day:%a %d %b}"
 
 
 def _name_in(low: str) -> str:
