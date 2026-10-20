@@ -318,6 +318,9 @@ class App:
                     if out:
                         msg.reply(out)
                     return
+        calls = self.modules.get("calls")  # (livefallback) a call that went on as text: what you write is part of it
+        if calls is not None and self.is_on("calls") and calls.textcall.takes(msg):
+            return
         plain = tidy(text)
         cases = self.modules.get("cases") if self.is_on("cases") else None  # (wrong) Wrong button, taught phrasings
         taught = cases.watch(msg, plain, mods) if cases is not None else None  # (request, slots), "ai" or None

@@ -21,11 +21,17 @@
 //     the morning's first class and what's due, each as a time plus copies sealed for your Android phones with keys
 //     only those phones hold ("s1"; this Worker can't open them). Whichever side is awake at an item's time says it:
 //     your computer claims it then, or the cron sends it to the phones. One answer per item, so nothing comes twice.
+//   - When Gemini Live won't take a call (web/fallback.js): the call page asks for a token for the next Live model
+//     (the list your computer pushed), then goes turn by turn (/turn: each turn to your computer's AI, or to a Gemini
+//     text model with your key here while the computer is off, with the same instructions and tools), then to
+//     Telegram (/text-call, through your computer). Live failures and fallbacks are reported to your computer
+//     (/call-report) for `kurooto doctor`.
 // Vars: OWNER_ID, TZ, PUBLIC_URL, VERSION, LIVE_MODEL, NTFY_SERVER, NOTES_REPO (optional), GEMINI_BASE_URL and
 // TELEGRAM_API (tests).
 // Secrets: CALL_SECRET, CONNECTOR_SECRET, GEMINI_API_KEY, NTFY_TOPIC, NTFY_KEY, VAPID_JWK, VAPID_PUBLIC, and
 // GITHUB_TOKEN (optional: read-only access to the notes repo).
 import { GoogleGenAI } from '@google/genai';
+import { cleanHistory, cleanLines, googleError, spoken } from '../web/fallback.js';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -170,6 +176,12 @@ const ITEM_ID = /^[0-9a-f]{16}$/;
 const SEALED_MAX = 40, SEALED_TRIES = 5, SEALED_BUSY_MS = 120e3, SEALED_KEEP_MS = 3 * 86400e3;
 const SEAL_TOKEN = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,2210}$/; // at most 2300 in all: fits ntfy sealed again
 const SEAL_KEY = /^B[A-Za-z0-9_-]{86}$/; // a phone's P-256 public key, 65 bytes uncompressed, base64url
+// calls when Gemini Live won't (web/fallback.js): Live model ids; rounds of tool calls in one text turn; what a text
+// turn is told when your computer didn't push its own wording
+const MODEL_ID = /^[A-Za-z0-9][\w.-]{0,79}$/;
+const VOICE_MODES = ['live', 'phone', 'auto']; // calls.voice_mode: Gemini Live, the phone's own speech, or Live first
+const TURN_TOOL_ROUNDS = 4;
+const TURNS_TEXT = 'This call goes turn by turn: their phone turns what they say into text and reads your answers aloud. Keep each answer to one to three short spoken sentences: no lists, markdown, emojis or stage directions.';
 
 export class Line {
   constructor(state, env) {
@@ -244,9 +256,12 @@ export class Line {
     try {
       if (p === '/status') {
         const brief = await this.store.get('brief');
-        return json({ computer: this.online() ? 'online' : 'offline', brief_at: brief?.at || null, ...((await this.store.get('names')) || {}), device: who.kind === 'device' ? who.id : null });
+        return json({ computer: this.online() ? 'online' : 'offline', brief_at: brief?.at || null, ...((await this.store.get('names')) || {}), device: who.kind === 'device' ? who.id : null, voice: await this.voice('outgoing') });
       }
       if (p === '/token' && req.method === 'POST') return this.token(req, who);
+      if (p === '/turn' && req.method === 'POST') return this.turn(req, who);
+      if (p === '/text-call' && req.method === 'POST') return this.textCall(req, who);
+      if (p === '/call-report' && req.method === 'POST') return this.report(req);
       if (p === '/tool' && req.method === 'POST') return this.tool(req);
       if (p === '/tasks') return this.tasks(req);
       if (p === '/transcript' && req.method === 'POST') return this.transcript(req);
@@ -254,7 +269,7 @@ export class Line {
       if (who.kind !== 'device') return refuse('that needs a paired device', 403);
       if (p === '/pending') return json({ rings: await this.ringing(who.id), items: await this.openItems(), assistant: ((await this.store.get('names')) || {}).assistant || '' });
       if (p === '/answer' && req.method === 'POST') return this.answer(req, who);
-      if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
+      if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/?v=${await this.voice('outgoing')}#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
       if (p === '/ring-reply' && req.method === 'POST') {
         const { since = '', action = '' } = await req.json();
         if (!['later', 'skip', 'decline', 'answer'].includes(action)) return json({ error: 'unknown action' }, 400);
@@ -366,7 +381,7 @@ export class Line {
       const r = this.pending.get(m.id);
       if (r) { this.pending.delete(m.id); r(m); }
     } else if (m.type === 'state') {
-      for (const k of ['brief', 'config', 'texts', 'offline', 'schedule', 'names']) {
+      for (const k of ['brief', 'config', 'texts', 'offline', 'schedule', 'names', 'live']) {
         if (m[k] !== undefined) await this.store.put(k, k === 'brief' ? { ...m.brief, at: new Date().toISOString() } : m[k]);
       }
       if (m.presence !== undefined) await this.setPresence(m.presence);
@@ -445,33 +460,160 @@ export class Line {
   }
 
   // ---------------------------------------------------------------------------------------------- calls
-  async token(req, who) {
-    const { purpose = '', since = '' } = await req.json().catch(() => ({}));
-    const tpl = await this.store.get('config');
-    if (!tpl) return json({ error: 'your computer has never connected to this call line, so calls are not set up yet' }, 503);
-    const online = this.online();
+  // The Live models to try, in order: the one in the call setup, then the others your computer pushed.
+  async liveModels(tpl) {
+    const live = (await this.store.get('live')) || {};
+    const list = [tpl?._model || this.env.LIVE_MODEL || 'gemini-3.8-live', ...(Array.isArray(live.models) ? live.models : [])];
+    return [...new Set(list.map(String).filter((m) => MODEL_ID.test(m)))].slice(0, 6);
+  }
+
+  // The call's instructions, the same for Live and for turn-by-turn calls: the time, whether the computer is off,
+  // and why the call was placed.
+  async instructions(tpl, purpose, online) {
     const texts = (await this.store.get('texts')) || {};
     const brief = await this.store.get('brief');
     const when = new Date().toLocaleString('en-GB', { timeZone: this.env.TZ || 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const config = JSON.parse(JSON.stringify(tpl));
-    const model = config._model || this.env.LIVE_MODEL || 'gemini-3.8-live';
-    delete config._model;
-    let si = String(config.systemInstruction || '').replace('%%NOW%%', when);
+    let si = String(tpl.systemInstruction || '').replace('%%NOW%%', when);
     if (!online && texts.offline) si += '\n' + texts.offline.replace('%%BRIEF_AT%%', brief?.at ? brief.at.slice(0, 16).replace('T', ' ') + ' UTC' : 'unknown');
     if (purpose && texts.purpose) si += '\n' + texts.purpose.replace('%%REASON%%', String(purpose).slice(0, 300));
-    config.systemInstruction = si;
-    const ai = new GoogleGenAI({ apiKey: this.env.GEMINI_API_KEY, httpOptions: { apiVersion: 'v1alpha', ...(this.env.GEMINI_BASE_URL ? { baseUrl: this.env.GEMINI_BASE_URL } : {}) } });
-    const token = await ai.authTokens.create({ config: {
-      uses: 1,
-      expireTime: new Date(Date.now() + 30 * 60e3).toISOString(),
-      newSessionExpireTime: new Date(Date.now() + 2 * 60e3).toISOString(),
-      liveConnectConstraints: { model, config },
-      httpOptions: { apiVersion: 'v1alpha' },
-    } });
+    return si;
+  }
+
+  // A call got through (Live, turn by turn or on Telegram): the ring stops and your computer hears it was answered.
+  async started(purpose, since, who, online, layer) {
     if (since) await this.endRing(String(since));
+    await this.event({ name: 'call_started', purpose: String(purpose).slice(0, 120), since: String(since), via: who.kind, offline: !online, layer });
+  }
+
+  ai(apiVersion = 'v1alpha') { // v1alpha for Live tokens; text turns use the default (v1beta)
+    return new GoogleGenAI({ apiKey: this.env.GEMINI_API_KEY, httpOptions: { ...(apiVersion ? { apiVersion } : {}), ...(this.env.GEMINI_BASE_URL ? { baseUrl: this.env.GEMINI_BASE_URL } : {}) } });
+  }
+
+  // A Live token for one call (`model`: one of liveModels, else the first). announce: false for another try at the
+  // same call (it was announced already); resume: picking up a session that dropped. When Google refuses (503
+  // UNAVAILABLE, 429...) the answer says so (live, retry), and your computer counts it.
+  async token(req, who) {
+    const { purpose = '', since = '', model: want = '', announce = true, resume = false } = await req.json().catch(() => ({}));
+    const tpl = await this.store.get('config');
+    if (!tpl) return json({ error: 'your computer has never connected to this call line, so calls are not set up yet' }, 503);
+    const online = this.online();
+    const models = await this.liveModels(tpl);
+    const model = models.includes(String(want)) ? String(want) : models[0];
+    const config = JSON.parse(JSON.stringify(tpl));
+    for (const k of Object.keys(config)) if (k.startsWith('_')) delete config[k];
+    config.systemInstruction = await this.instructions(tpl, resume ? '' : purpose, online);
+    // what this model's session drops or changes (your computer works it out: calls/fallback.py live_profile)
+    const prof = (((await this.store.get('live')) || {}).profiles || {})[model] || {};
+    if (prof.non_blocking === false) for (const t of config.tools || []) for (const d of t.functionDeclarations || []) delete d.behavior;
+    if (typeof prof.voice === 'string') {
+      if (prof.voice) config.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: prof.voice } } };
+      else delete config.speechConfig;
+    }
+    let token;
+    try {
+      token = await this.ai().authTokens.create({ config: {
+        uses: 1,
+        expireTime: new Date(Date.now() + 30 * 60e3).toISOString(),
+        newSessionExpireTime: new Date(Date.now() + 2 * 60e3).toISOString(),
+        liveConnectConstraints: { model, config },
+        httpOptions: { apiVersion: 'v1alpha' },
+      } });
+    } catch (e) {
+      const g = googleError(e);
+      await this.event({ name: 'live_failed', model, code: g.code, status: g.status, stage: 'token' });
+      // a model other than the first that refuses the session may just not take it: the next one is tried
+      const badModel = g.badModel || (!g.retry && g.code === 400 && model !== models[0]);
+      return json({ error: `the voice service didn't start the call: ${g.text}`, live: true, retry: g.retry, bad_model: badModel, code: g.code, status: g.status, model, models }, 503);
+    }
     await this.store.put('oncall', Date.now());
-    await this.event({ name: 'call_started', purpose: String(purpose).slice(0, 120), since: String(since), via: who.kind, offline: !online });
-    return json({ token: token.name, model, config, offline: !online });
+    if (announce && !resume) await this.started(purpose, since, who, online, 'live');
+    else if (since) await this.endRing(String(since));
+    return json({ token: token.name, model, models, config, offline: !online });
+  }
+
+  // One turn of a turn-by-turn call: your computer's AI answers when it's online (the same AI and tools as your
+  // messages); otherwise, or when it couldn't, a Gemini text model with your key answers here, with the call's
+  // instructions and tools (the tools as on any call: your computer's, or what it last sent).
+  async turn(req, who) {
+    const b = await req.json().catch(() => ({}));
+    const history = cleanHistory(b.history);
+    if (!history.length) return json({ error: 'nothing to answer' }, 400);
+    const purpose = String(b.purpose || '').slice(0, 300), since = String(b.since || '');
+    const tpl = await this.store.get('config');
+    if (!tpl) return json({ error: 'your computer has never connected to this call line, so calls are not set up yet' }, 503);
+    const online = this.online();
+    await this.store.put('oncall', Date.now());
+    if (b.announce) await this.started(purpose, since, who, online, 'turns');
+    if (online) {
+      const r = await this.relay('POST', '/turn', JSON.stringify({ history, purpose, since }));
+      if (r.status === 200) {
+        try { const j = JSON.parse(r.body || '{}'); if (j.reply) return json({ reply: spoken(j.reply), via: 'computer' }); } catch { /* below */ }
+      }
+    }
+    try {
+      return json({ reply: await this.textTurn(tpl, history, purpose, online), via: 'line', offline: !online });
+    } catch (e) {
+      const g = googleError(e);
+      return json({ error: `no answer from Gemini: ${g.text}`, code: g.code }, 502);
+    }
+  }
+
+  async textTurn(tpl, history, purpose, online) {
+    const texts = (await this.store.get('texts')) || {};
+    const live = (await this.store.get('live')) || {};
+    const systemInstruction = (await this.instructions(tpl, purpose, online)) + '\n' + (texts.turns || TURNS_TEXT);
+    const decls = (((tpl.tools || [])[0] || {}).functionDeclarations || []).map(({ behavior, ...d }) => d); // NON_BLOCKING is Live's
+    const tools = decls.length ? [{ functionDeclarations: decls }] : undefined;
+    const contents = history.map((h) => ({ role: h.role, parts: [{ text: h.text }] }));
+    const model = MODEL_ID.test(String(live.text_model || '')) ? String(live.text_model) : 'gemini-flash-latest';
+    const ai = this.ai('');
+    for (let round = 0; ; round++) {
+      const last = round >= TURN_TOOL_ROUNDS;
+      const r = await ai.models.generateContent({ model, contents, config: { systemInstruction, tools, ...(tools && last ? { toolConfig: { functionCallingConfig: { mode: 'NONE' } } } : {}) } });
+      const calls = (r.functionCalls || []).slice(0, 8);
+      if (!calls.length || last) return spoken(r.text || '') || "Sorry, I didn't get that. Could you say it again?";
+      contents.push(r.candidates[0].content);
+      const parts = [];
+      for (const fc of calls) parts.push({ functionResponse: { id: fc.id, name: fc.name, response: { result: await this.runTool(String(fc.name || ''), fc.args || {}) } } });
+      contents.push({ role: 'user', parts });
+    }
+  }
+
+  // A tool for a turn answered here: your computer's when it's online, else what it last sent (offlineTool).
+  async runTool(name, args) {
+    if (this.online()) {
+      const r = await this.relay('POST', '/tool', JSON.stringify({ name, args }));
+      if (r.status === 200) { try { return JSON.parse(r.body || '{}').result; } catch { return 'That tool gave no answer.'; } }
+      if (r.status !== 503) return 'That tool failed on their computer.';
+    }
+    return this.offlineTool(name, args);
+  }
+
+  // The call goes on as text on Telegram: your computer starts the conversation now, or as soon as it's back.
+  async textCall(req, who) {
+    const b = await req.json().catch(() => ({}));
+    const body = { purpose: String(b.purpose || '').slice(0, 300), since: String(b.since || ''), why: String(b.why || '').replace(/[^\w-]/g, '').slice(0, 20), lines: cleanLines(b.lines) };
+    const online = this.online();
+    if (b.announce) await this.started(body.purpose, body.since, who, online, 'telegram');
+    if (online) {
+      const r = await this.relay('POST', '/textcall', JSON.stringify(body));
+      if (r.status === 200) return new Response(r.body, { status: 200, headers: { 'content-type': 'application/json', ...CORS } });
+    }
+    await this.queue({ kind: 'event', name: 'text_call', ...body });
+    return json({ ok: true, queued: true });
+  }
+
+  // What the call page saw: a Live start or session that failed, a retry that worked, a fallback (for `kurooto doctor`).
+  async report(req) {
+    const b = await req.json().catch(() => ({}));
+    const name = { failed: 'live_failed', recovered: 'live_recovered', fallback: 'call_fallback' }[String(b.what || '')];
+    if (!name) return json({ error: 'unknown report' }, 400);
+    const ev = { name };
+    if (MODEL_ID.test(String(b.model || ''))) ev.model = String(b.model);
+    for (const k of ['code', 'attempt']) if (Number.isFinite(Number(b[k]))) ev[k] = Number(b[k]);
+    for (const k of ['stage', 'layer', 'why', 'status']) if (b[k]) ev[k] = String(b[k]).replace(/[^\w .:-]/g, '').slice(0, 80);
+    await this.event(ev);
+    return json({ ok: true });
   }
 
   async tool(req) {
@@ -551,10 +693,17 @@ export class Line {
   }
 
   // ------------------------------------------------------------------------------------------- ringing
-  async ring({ reason = '', alarm = false, since = '', key = '', assistant = '' }) {
+  // How a call listens: what your computer said for this call, else its default ("live", "phone" or "auto").
+  async voice(which = 'voice', given = '') {
+    if (VOICE_MODES.includes(given)) return given;
+    const v = ((await this.store.get('live')) || {})[which];
+    return VOICE_MODES.includes(v) ? v : 'auto';
+  }
+
+  async ring({ reason = '', alarm = false, since = '', key = '', assistant = '', voice = '' }) {
     since = String(since || Math.floor(Date.now() / 1000));
     const ticket = await this.mintTicket(alarm ? 3 : 2);
-    const link = `${this.env.PUBLIC_URL}/?p=${encodeURIComponent(String(reason).slice(0, 300))}&s=${encodeURIComponent(since)}#${ticket}`;
+    const link = `${this.env.PUBLIC_URL}/?p=${encodeURIComponent(String(reason).slice(0, 300))}&s=${encodeURIComponent(since)}&v=${await this.voice('voice', voice)}#${ticket}`;
     const rings = ((await this.store.get('rings')) || []).filter((r) => r.until > Date.now() && r.since !== since);
     rings.push({ since, reason: String(reason).slice(0, 300), link, alarm: !!alarm, key, until: Date.now() + (alarm ? ALARM_RING_S : RING_S) * 1000 });
     await this.store.put('rings', rings.slice(-10));
@@ -833,7 +982,7 @@ export class Line {
       if (fired[key] || it.at > now || (it.at < now - 180 && !(held[key] && it.at > now - 7200))) continue;
       if (onCall && !it.alarm) { held[key] = now; continue; } // it rings when the call ends
       fired[key] = now;
-      await this.ring({ reason: it.reason, alarm: !!it.alarm, since: String(it.at), key: it.key || '' });
+      await this.ring({ reason: it.reason, alarm: !!it.alarm, since: String(it.at), key: it.key || '', voice: it.voice || '' });
       await this.queue({ kind: 'event', name: 'rang_offline', key: it.key || '', at: it.at, reason: String(it.reason || '').slice(0, 200) });
       placed.push(key);
     }

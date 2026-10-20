@@ -29,6 +29,10 @@ button:disabled { opacity: .5; }
 #level { height: 100%; width: 0; background: var(--dim); transition: width .1s; }
 .int { background: var(--line); color: var(--fg); }
 #mute, #out { flex: 0 0 auto; background: var(--line); padding: 16px 18px; font-size: 16px; }
+#mode { font-size: 14px; }  /* turn by turn (Live is down): what's heard so far, and one big button */
+#heard { color: var(--dim); font-size: 15px; font-style: italic; min-height: 1.4em; }
+.talk { background: var(--line); color: var(--fg); padding: 22px; }
+.talk[data-state="listening"] { background: var(--go); color: #fff; }
 .card { background: var(--card); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 ol { margin: 0; padding-left: 20px; color: var(--dim); }
 li { margin: 4px 0; }

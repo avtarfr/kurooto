@@ -22,12 +22,15 @@
   <a id="inbox" class="button quiet" href="/inbox" hidden>Waiting for you</a>
   <div id="status">Ready</div>
   <div id="log" aria-live="polite"></div>
-  <div class="gate">
+  <div class="gate" id="gatebox">
     <div class="bar"><div id="level"></div></div>
     <label>Mic gate <span id="gateval">normal</span>
       <input id="gate" type="range" min="0.6" max="3" step="0.2" value="1"></label>
   </div>
   <button id="int" class="int" hidden>Interrupt</button>
+  <p id="mode" hidden>Turn by turn: speak after it finishes; it listens until you stop talking.</p>
+  <div id="heard" hidden></div>
+  <button id="talk" class="talk" hidden>Talk</button>
   <div class="row">
     <button id="call">Call</button>
     <button id="mute" hidden>Mute</button>

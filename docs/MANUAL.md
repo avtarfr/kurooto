@@ -1155,10 +1155,64 @@ handy; the first answer counts and the others go away.
 **While you're on a call** nothing else rings: reminder calls and check-ins wait until the call ends (also when the
 computer is off), and updates wait too. Wake-up calls still ring.
 
+**When the voice service is down:** Google's live voice (Gemini Live) sometimes says "503: the service is currently
+unavailable". Your call still happens, one of three ways, tried in order:
+1. *Live again.* The call page says "Reconnecting…" and tries after about 1 second, then 3, each time with the next
+   Live model: `calls.live_model` first, then `calls.live_models` (by default `gemini-3.1-flash-live-preview` and
+   `gemini-2.5-flash-native-audio-latest`). The other models get a plainer session that any Live model takes: tools
+   that wait for their answer, and your voice (`calls.voice`) only if it's one of Google's prebuilt voices, else
+   Google's default; `calls.voice_by_model` picks a voice per model, e.g.
+   `{"gemini-2.5-flash-native-audio-latest": "Kore"}`. A call that drops in the middle is tried again once. If Google
+   says a model in the list doesn't exist any more, `kurooto doctor` says so: take it out of `calls.live_models`.
+2. *Turn by turn*, with your phone's own speech recognition and voice: you talk, it listens until you stop, then reads
+   the answer aloud. Tap **Talk** if it stopped listening, or tap while it speaks to skip the rest. It's the same call:
+   the same instructions, the check-in's or wake-up's script, and the same tools (reminders, deadlines, notes). Each
+   turn is answered by your computer (with your Gemini key, or the model on your computer with `calls.turn_brain` =
+   `local`; never agy or another agent program, which take seconds to start); while the computer is off, or if it
+   doesn't answer within 25 seconds, by Gemini on your call line. The Android app uses Android's speech recognizer;
+   the call page uses the browser's (Chrome; Safari asks you to allow dictation).
+3. *Text on Telegram*, when your phone can't turn speech into text (an older Android app, a browser without speech
+   recognition) or there's no microphone: the call says so and goes on as messages on Telegram, about the same thing
+   (a check-in stays a check-in). Reply to its messages or just type; **End the call** (or 20 minutes without a
+   message) ends it. Messages you type meanwhile are part of the call, not new requests. If the computer is off, it
+   starts on Telegram as soon as the computer is back (within 2 hours).
+
+Whichever way the call went, its transcript is kept and does what a live call's does: a check-in's becomes your
+journal and study logs. `kurooto doctor` has a line "Phone calls: voice service": how often Live failed this week
+and what the calls did instead.
+
+**Live or your phone's own speech:** `calls.voice_mode` chooses how calls listen and speak: `auto` (the default: Live,
+and your phone's speech when Live fails), `live` (Live only; when it fails, the call goes to Telegram), or `phone`
+(your phone's speech, turn by turn, every time; Live only when the phone can't). `calls.voice_by_kind` sets it per kind
+of call, to try both, e.g. `{"alarm": "phone", "checkins:night": "phone", "checkins:evening": "live"}`. Kinds: a
+feature's name (`alarm`, `checkins`, `weekly`, `quiz`, `deadlines`, `research`), one of its calls
+(`checkins:evening`, `checkins:night`, `checkins:midday`), `reminder` (reminder calls) and `outgoing` (calls you
+start). The more exact kind wins.
+
+| | Live (Gemini Live) | Your phone's speech (turn by turn) |
+|---|---|---|
+| Feel | a real conversation: you can interrupt, it hears your tone | walkie-talkie: you talk, then it answers; tap Talk to cut in |
+| Wait for an answer | under a second | about 2 to 5 seconds a turn (recognising, the text AI, speaking) |
+| Languages | the ones Gemini Live speaks; it follows yours | the languages your phone's recognizer and voice have installed (it uses your phone's language) |
+| Where your voice goes | the audio to Google (Gemini Live, your key) | on Android 13+ with your language downloaded, recognised on the phone: the audio stays there. Otherwise to your phone's speech service (usually Google; Apple on iPhone; Chrome sends it to Google). The text of each turn goes to your computer's AI or Gemini, as above |
+| When Google's live voice is down | it retries, then falls back to turn by turn | not affected (it only needs a text model) |
+| Screen | off at your ear (Android app, earpiece) | stays on, on the loudspeaker: phones stop listening when the screen goes off |
+
+*Limits of turn by turn:* the screen has to stay on (the app keeps it on; in a browser, don't lock the phone or switch
+apps, or tap **Talk** again after). It uses the loudspeaker by default; **Earpiece** switches, but with the screen on
+at your ear your cheek can tap buttons. It can't hear you while it speaks, so wait for it to finish (or tap to skip).
+iPhones and other browsers: answers are read aloud only where the browser has a voice; otherwise you read them.
+
 *Leaves:* call audio goes to Google (your key); the call line keeps a short brief (what's due, today's classes and
 check-ins, open questions, the steps for check-in, wake-up and Sunday review calls, your notes' titles) on your
 Cloudflare account for calls while the computer is off, and the questions and messages waiting for your phones.
-Transcripts stay on your computer.
+Transcripts stay on your computer. Turn by turn: your speech goes to your phone's speech service unless it's
+recognised on the phone (above); each turn's text to Gemini (your key) or the model on your computer. Text on
+Telegram: the conversation goes through your Telegram bot and your AI, like your other messages.
+
+*Turn off / undo:* `calls.voice_mode` = `live` stops turn by turn (failed calls go to Telegram); a call on Telegram
+ends with **End the call**. The Live retries can't be turned off; `calls.live_models` = `[]` keeps them to
+`calls.live_model`.
 
 ### Morning alarm
 Kurooto wakes you with a call. On the Android app it rings with your alarm sound on the alarm volume, so it rings even
@@ -2090,7 +2144,9 @@ you set it up):
 ### Android (recommended)
 The Kurooto app rings like a real phone call (full screen, even on the lock screen), uses the earpiece with the screen
 off at your ear, rings wake-up calls on the alarm volume, shows Kurooto's questions and approvals with a Reply box, and
-lets you share files to your notes. It works from Android 6.
+lets you share files to your notes. It works from Android 6. For calls turn by turn (see Phone calls), it uses
+Android's own speech recognizer and voice; on Android 13 and newer it recognises speech on the phone when your
+language is downloaded for on-device recognition (in the phone's language or speech settings; the place differs).
 
 1. On your computer: dashboard → **Phone** → **Pair a phone** (or send `/phone` to your bot and open the link on your
    phone).
@@ -2649,6 +2705,10 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Cloudflare sign-in didn't finish | Press Set up again; the sign-in link is also shown in the progress log. |
 | The phone doesn't ring | App checklist all ✓? Battery unrestricted, and not on a "sleeping apps" list? Dashboard → Phone → Ring my phone. |
 | A call keeps cutting itself off on loudspeaker | Use the earpiece or earphones, or move the mic gate slider to the right. |
+| A call says "Reconnecting…" and then goes turn by turn | Google's live voice was down (`kurooto doctor`: "Phone calls: voice service"). Nothing to do; next time it tries Live again. Know another Live model? Add it to `calls.live_models`. |
+| A call went to Telegram instead | Your phone couldn't turn speech into text, or the microphone wasn't allowed. Android: update the app (turn by turn needs this version) and allow the microphone; in a browser, use Chrome. Answer on Telegram meanwhile. |
+| Turn by turn stops listening | The screen went off or you switched apps: tap **Talk**. In the Android app the screen stays on by itself. |
+| Turn-by-turn answers are slow | Each turn waits for recognition, the text AI and the voice. With `calls.turn_brain` = `local` on a slow computer, use `gemini`. |
 | iPhone gets no notifications | Opened from the Home Screen (not Safari)? Turned on in the app? iOS 16.4+? Settings → Notifications → Kurooto. |
 | Questions don't show on the phone | Is `question` in `notify.app_kinds`? Android: is the app's "Questions and approvals" notification category on? iPhone: notifications on for Kurooto? Is the computer connected to your call line (Features → Phone calls)? |
 | "Not sent: tap to try again" on Android | The phone was offline or the call line didn't answer. Tap it to try again, or answer on Telegram. |
