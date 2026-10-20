@@ -181,7 +181,7 @@ const SEAL_KEY = /^B[A-Za-z0-9_-]{86}$/; // a phone's P-256 public key, 65 bytes
 const MODEL_ID = /^[A-Za-z0-9][\w.-]{0,79}$/;
 const VOICE_MODES = ['live', 'phone', 'auto']; // calls.voice_mode: Gemini Live, the phone's own speech, or Live first
 const TURN_TOOL_ROUNDS = 4;
-const TURNS_TEXT = 'The live voice service is down, so this call goes turn by turn: their phone turns what they say into text and reads your answers aloud. Keep each answer to one to three short spoken sentences: no lists, markdown, emojis or stage directions.';
+const TURNS_TEXT = 'This call goes turn by turn: their phone turns what they say into text and reads your answers aloud. Keep each answer to one to three short spoken sentences: no lists, markdown, emojis or stage directions.';
 
 export class Line {
   constructor(state, env) {

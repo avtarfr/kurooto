@@ -2136,7 +2136,7 @@ The Kurooto app rings like a real phone call (full screen, even on the lock scre
 off at your ear, rings wake-up calls on the alarm volume, shows Kurooto's questions and approvals with a Reply box, and
 lets you share files to your notes. It works from Android 6. For calls turn by turn (see Phone calls), it uses
 Android's own speech recognizer and voice; on Android 13 and newer it recognises speech on the phone when your
-language is downloaded (Settings → System → Languages → On-device recognition, on most phones).
+language is downloaded for on-device recognition (in the phone's language or speech settings; the place differs).
 
 1. On your computer: dashboard → **Phone** → **Pair a phone** (or send `/phone` to your bot and open the link on your
    phone).
