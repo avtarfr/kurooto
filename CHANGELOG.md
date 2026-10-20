@@ -14,6 +14,8 @@
   it found and counts what's left; a feature is found by its settings too.
 - A feature that's off can be hidden from the Features page (`look.hidden_features`); Show hidden (N) at the bottom
   brings it back, and a search still finds it. Only the page changes.
+- Links to other sites in Kurooto's pages (Google sign-in, token pages, guides) open in your default browser, also
+  when the dashboard runs in another browser's app window. `look.links_in = here` keeps them in the page's browser.
 
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.

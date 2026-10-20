@@ -302,6 +302,13 @@ class Api:
             return 200, {"ok": True, "message": m.card_action(str(b.get("act") or ""), b.get("value"))}
         if path == "open-note":
             return self._open_note(b.get("id", ""))
+        if path == "open-url":  # a link to another site, in the default browser (core/opener.py; look.links_in)
+            if s.get("look.links_in") == "here":
+                return 200, {"ok": False, "here": True}  # the page opens it itself
+            if not opener.safe_url(b.get("url")):
+                return 400, {"error": "Only http and https addresses open in the browser."}
+            ok, why = opener.open_url(b["url"])
+            return 200, {"ok": ok, **({"error": why} if why else {})}
         if path == "you":
             for k in ("name", "timezone", "assistant_name"):
                 if k in b and isinstance(b[k], str):

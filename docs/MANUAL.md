@@ -2172,6 +2172,12 @@ at the bottom, lists them with **Unhide**, and a search still finds them, marked
 roomy` keeps it everywhere. It always shows every pane, with the pages in its tabs (the Alt keys, the search and
 hiding features work there too).
 
+**Links to other sites** (Google sign-in, a token page, Cloudflare, AI Studio, the guides) open in this computer's
+default browser, also when the dashboard is in another browser's app window (`google-chrome --app=…`). Kurooto's own
+pages stay where they are, Ctrl-, Shift-, Alt- or ⌘-click still opens a link in the browser you're in, and if the
+default browser can't be reached the link opens here as before. On Linux and macOS a `$BROWSER` you've set is used.
+Settings → Look → `look.links_in`: `default`, or `here` to keep every link in the browser showing the page.
+
 The **morning page** (`http://127.0.0.1:8770/morning`) shows today's plan from your daily note, with your classes,
 calendar, what's due, check-ins and open questions. The alarm opens it.
 

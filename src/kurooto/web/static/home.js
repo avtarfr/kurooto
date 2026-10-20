@@ -1355,9 +1355,10 @@ async function renderSettings(body) {
   // change here, and "post" sends changes to the section's own request (Settings → Starting: /api/autostart)
   const LAYOUTS = [["dense", "dense: one full-screen board (screens 1280 px wide or more)"], ["roomy", "roomy: bigger panes and type"]];
   const NOTES = [["kurooto", "kurooto: journal/, about-me/, a folder per subject"], ["zettelkasten", "zettelkasten: dailies/, master/, sources/, zettel/"]];
+  const LINKS = [["default", "default: this computer's default browser"], ["here", "here: the browser showing this page"]];
   const field = (key, v, sec) => {
     const k = key.split(".").slice(1).join("."), help = ((sec && sec.help) || {})[k], fixed = ((sec && sec.fixed) || {})[k];
-    const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : null);
+    const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : key === "look.links_in" ? LINKS : null);
     const post = sec && sec.post ? ` data-post="${esc(sec.post)}"` : "";
     const html = fixed ? `<label><span>${esc(key)}</span><span class="fixed">${esc(fixed)}</span></label>`
       : choices ? `<label><span>${esc(key)}</span><select data-key="${key}"${post}>${choices.map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
@@ -1370,7 +1371,7 @@ async function renderSettings(body) {
   };
   // what the search looks through: the section, the key, what it's called and means, and its value
   const shay = (key, v, sec) => {
-    const k = key.split(".").slice(1).join("."), choices = ((sec.choices || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : null) || []);
+    const k = key.split(".").slice(1).join("."), choices = ((sec.choices || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : key === "look.links_in" ? LINKS : null) || []);
     const chosen = choices.find(([id]) => id === v);
     return [sec.section, sec.title, key, k.replace(/[._]/g, " "), (sec.help || {})[k] || "", (sec.fixed || {})[k] || "", chosen ? chosen[1] : "", typeof v === "string" ? v : JSON.stringify(v)].join("\n").toLowerCase();
   };
@@ -1499,6 +1500,7 @@ function settingChanged(key, value) {
   if (key === "look.palette") setTimeout(() => location.reload(), 300); // the canvases take their colours at load
   if (key === "look.panes") { HIDE = cleanHide(value); MAX = null; try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ } applyPanes(); }
   if (key === "look.hidden_features") HIDDEN_F = new Set(Array.isArray(value) ? value : []);
+  if (key === "look.links_in" && $('meta[name="kurooto-links"]')) $('meta[name="kurooto-links"]').content = value; // links.js
 }
 function applyLayout(force = false) {
   const d = denseFits();
