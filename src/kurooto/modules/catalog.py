@@ -21,6 +21,7 @@ from kurooto.modules.google_mail import DigestEmail, MailDigest, ReplyDrafts
 from kurooto.modules.google_plan import AgentPlan
 from kurooto.modules.handwritten import Handwritten
 from kurooto.modules.library import Library
+from kurooto.modules.lidsafe import LidSafe
 from kurooto.modules.local_models import LocalModels
 from kurooto.modules.notes_sync import NotesSync
 from kurooto.modules.overlay import AddOns
@@ -59,6 +60,7 @@ CATALOG = [
     Retro,
     Calls,
     Alarm,
+    LidSafe,
     VoiceNotes,
     Awake,
     Calendar,

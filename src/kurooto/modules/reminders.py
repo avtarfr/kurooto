@@ -1,6 +1,6 @@
 """Reminders: "remind me at 9 to call mum", "remind me in 20 minutes to take the tea off", /remind tomorrow 7am gym.
 They arrive on Telegram. If the computer was asleep at the time, the reminder still comes when it wakes, marked
-late."""
+late; with Reminders with the lid shut on, your phone gets it at its time instead (lidsafe.py)."""
 
 from __future__ import annotations
 
@@ -34,11 +34,27 @@ class Reminders(Module):
     def add(self, when: dt.datetime, what: str) -> str:
         key = f"reminders:{uuid.uuid4().hex[:8]}"
         self.app.scheduler.action("reminders.fire", self._fire)
-        self.app.scheduler.at(when, "reminders.fire", {"what": what}, key=key, module=self.id)
+        self.app.scheduler.at(
+            when, "reminders.fire", {"what": what, "ref": key.split(":", 1)[1]}, key=key, module=self.id
+        )
         self.app.events.emit("reminder_set", at=when.isoformat())
+        self._lidsafe_poke()
         return f"I'll remind you {when:%a %d %b at %H:%M}: {what}"
 
+    def _lidsafe(self):
+        """Reminders with the lid shut (lidsafe.py), when it's on: your call line holds the next day's reminders."""
+        m = self.app.modules.get("lidsafe")
+        return m if m is not None and self.app.is_on("lidsafe") else None
+
+    def _lidsafe_poke(self) -> None:
+        m = self._lidsafe()
+        if m is not None:
+            m.poke()
+
     def _fire(self, p: dict):
+        ls = self._lidsafe()
+        if ls is not None and ls.handed_over("reminders.fire", p):
+            return  # your call line has a sealed copy: whichever side is awake now says it, once (lidsafe.py)
         what = p.get("what", "")
         late = " (late: the computer was asleep)" if p.get("late_s") or p.get("missed") else ""
         ref = uuid.uuid4().hex[:8]
@@ -72,7 +88,9 @@ class Reminders(Module):
         return f"Again at {when:%H:%M}"
 
     def _cancel(self, ref: str, act: str) -> str:
-        return "Cancelled." if self.app.scheduler.cancel(f"reminders:{ref}") else "Already gone."
+        gone = self.app.scheduler.cancel(f"reminders:{ref}")
+        self._lidsafe_poke()
+        return "Cancelled." if gone else "Already gone."
 
     # ------------------------------------------------------------------------------- plain English
     def intents(self):

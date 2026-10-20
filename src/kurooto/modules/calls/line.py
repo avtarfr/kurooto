@@ -4,6 +4,10 @@
     k1   ntfy messages to your phones: AES-256-GCM, "k1." + base64url(nonce || ciphertext+tag)
     t1   call links made on this computer: "t1.<expires ms>.<hex HMAC-SHA256(call secret, 't1.<expires ms>')>"
     d1   a paired device's key: "d1.<8 hex id>.<64 hex secret>" (made by the Worker; only its hash is kept there)
+    s1   a reminder sealed for one Android phone (modules/lidsafe.py), which the Worker keeps but can't open: ECDH
+         P-256 between a fresh key and the phone's own (the phone made it; its private half never leaves it), HKDF-
+         SHA256 (salt: the fresh public key, info "kurooto s1") to an AES-256 key, then k1 with that key:
+         "s1." + base64url(fresh public key, 65 bytes uncompressed) + "." + the k1 token without its "k1."
 """
 
 from __future__ import annotations
@@ -16,8 +20,10 @@ import os
 import secrets
 import time
 
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 # no 0/O/1/I/L: easy to read out and type
 CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
@@ -49,6 +55,39 @@ def open_k1(key_b64: str, token: str) -> str | None:
         raw = unb64url(token[3:])
         return AESGCM(base64.b64decode(key_b64)).decrypt(raw[:12], raw[12:], None).decode()
     except Exception:
+        return None
+
+
+S1_INFO = b"kurooto s1"
+
+
+def _s1_key(shared: bytes, epk: bytes) -> str:
+    key = HKDF(algorithm=hashes.SHA256(), length=32, salt=epk, info=S1_INFO).derive(shared)
+    return base64.b64encode(key).decode()
+
+
+def seal_s1(
+    phone_pub: str, text: str, eph: ec.EllipticCurvePrivateKey | None = None, nonce: bytes | None = None
+) -> str:
+    """Seal text for one phone, given its public key (base64url, 65 bytes uncompressed P-256). Only that phone can
+    open it; raises ValueError for a key that isn't one."""
+    peer = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), unb64url(phone_pub))
+    eph = eph or ec.generate_private_key(ec.SECP256R1())
+    epk = eph.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    k1 = seal_k1(_s1_key(eph.exchange(ec.ECDH(), peer), epk), text, nonce)
+    return f"s1.{b64url(epk)}.{k1[3:]}"
+
+
+def open_s1(phone: ec.EllipticCurvePrivateKey, token: str) -> str | None:
+    """What the phone does (Seal.java); here for the tests."""
+    parts = token.split(".")
+    if len(parts) != 3 or parts[0] != "s1":
+        return None
+    try:
+        epk = unb64url(parts[1])
+        peer = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), epk)
+        return open_k1(_s1_key(phone.exchange(ec.ECDH(), peer), epk), "k1." + parts[2])
+    except ValueError:
         return None
 
 

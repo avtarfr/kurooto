@@ -38,11 +38,14 @@ import java.net.URL;
  *   tags "stop"  -> the call was answered elsewhere (or ended): stop ringing
  *   + "clear"    -> questions or messages dealt with elsewhere: take their notifications down
  *   tags "msg"   -> a question, approval or message, with ways to answer it (Inbox)
+ *   tags "sealed" -> a reminder your call line sent while your computer was asleep, sealed for this phone alone
+ *                   (Seal; the line can't read it): a normal notification. It also carries "stop", so an older
+ *                   app ignores it.
  *   anything else -> a normal notification
  */
 public class ListenService extends Service {
     static final String CH_SERVICE = "service", CH_CALL = "calls", CH_MSG = "messages", CH_ASK = "questions";
-    static final int ID_SERVICE = 1, ID_CALL = 2;
+    static final int ID_SERVICE = 1, ID_CALL = 2, ID_SEALED = 8;
     static final int SDK = Build.VERSION.SDK_INT;
 
     private static ListenService instance;
@@ -138,6 +141,7 @@ public class ListenService extends Service {
         while (running) {
             String topic = Prefs.topic(this);
             if (topic.isEmpty() || !Prefs.paired(this)) { sleep(30); continue; }
+            Line.sendSealKey(this); // so your computer can seal reminders for this phone (once; tried again on reconnects)
             HttpURLConnection c = null;
             try {
                 String since = Prefs.since(this);
@@ -178,6 +182,10 @@ public class ListenService extends Service {
             JSONArray tags = m.optJSONArray("tags");
             String tagStr = tags == null ? "" : tags.toString();
             String since = tagValue(tags, "since-");
+            if (tagStr.contains("\"sealed\"")) {
+                sealed(m);
+                return;
+            }
             if (tagStr.contains("\"clear\"")) {
                 Inbox.cancel(this, m.optJSONArray("ids"));
                 return;
@@ -291,6 +299,29 @@ public class ListenService extends Service {
     }
 
     // ---------- other messages ----------
+    /** A sealed reminder: only the copy for this phone opens (each paired phone gets its own). Shown once per id. */
+    private void sealed(JSONObject m) {
+        if (!m.optString("dev").equals(Prefs.deviceId(this))) return;
+        java.security.KeyPair k = Prefs.sealKeys(this);
+        if (k == null) return;
+        String plain = Seal.open(k.getPrivate(), ((java.security.interfaces.ECPublicKey) k.getPublic()).getParams(), m.optString("sealed"));
+        if (plain == null) return;
+        try {
+            JSONObject it = new JSONObject(plain);
+            String text = it.optString("text", "");
+            Notification n = builder(this, CH_MSG)
+                    .setSmallIcon(R.drawable.ic_stat)
+                    .setContentTitle(it.optString("title", Prefs.assistant(this)))
+                    .setContentText(text)
+                    .setStyle(new Notification.BigTextStyle().bigText(text))
+                    .setCategory(Notification.CATEGORY_REMINDER)
+                    .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE))
+                    .setAutoCancel(true)
+                    .build();
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify("sealed-" + it.optString("id"), ID_SEALED, n);
+        } catch (Exception ignored) { }
+    }
+
     private void notifyPlain(String title, String text, String click) {
         Notification.Builder b = builder(this, CH_MSG)
                 .setSmallIcon(R.drawable.ic_stat)

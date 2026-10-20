@@ -38,5 +38,22 @@ public final class CryptoTest {
         check(java.util.Arrays.equals(all, B64.decode(B64.encode(all, true))), "base64url round trip");
         check(java.util.Arrays.equals(all, B64.decode(B64.encode(all, false))), "base64 round trip");
         check(B64.encode(key, false).equals(java.util.Base64.getEncoder().encodeToString(key)), "base64 matches the JDK's");
+        sealedReminders(json);
+    }
+
+    /** s1: a reminder your computer sealed for this phone alone (Seal). */
+    private static void sealedReminders(String json) throws Exception {
+        java.security.KeyPair mine = Seal.newKeys();
+        java.security.spec.ECParameterSpec params = ((java.security.interfaces.ECPublicKey) mine.getPublic()).getParams();
+        java.security.PrivateKey phone = java.security.KeyFactory.getInstance("EC").generatePrivate(
+                new java.security.spec.ECPrivateKeySpec(new java.math.BigInteger(field(json, "s1", "phone_priv_hex"), 16), params));
+        String plain = field(json, "s1", "plain"), sealed = field(json, "s1", "sealed"), pub = field(json, "s1", "phone_pub");
+        check(plain.equals(Seal.open(phone, params, sealed)), "opening a reminder sealed for this phone on the computer");
+        check(Seal.open(phone, params, sealed.substring(0, sealed.length() - 2) + "AA") == null, "a changed reminder is refused");
+        check(Seal.open(mine.getPrivate(), params, sealed) == null, "another phone can't open it");
+        check(Seal.open(phone, params, "k1." + sealed.substring(3)) == null, "only s1 tokens");
+        java.security.interfaces.ECPublicKey back = Seal.fromRaw(B64.decode(pub), params);
+        check(B64.encode(Seal.raw(back), true).equals(pub), "the public key's 65 bytes round trip");
+        check(Seal.raw((java.security.interfaces.ECPublicKey) mine.getPublic()).length == 65, "a new key is a P-256 point");
     }
 }
