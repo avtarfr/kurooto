@@ -194,7 +194,8 @@ def with_default(text: str, value: str) -> tuple[str, str | None]:
     if i < 0:
         raise ValueError("Windows Terminal's settings file isn't a settings object")
     empty = text[i + 1 :].lstrip().startswith("}")
-    return text[: i + 1] + f'\n    "defaultProfile": "{value}"' + ("" if empty else ",") + text[i + 1 :], None
+    nl = "\r\n" if "\r\n" in text else "\n"  # the file's own line endings
+    return text[: i + 1] + f'{nl}    "defaultProfile": "{value}"' + ("" if empty else ",") + text[i + 1 :], None
 
 
 def without_default(text: str, ours: str, previous: str | None) -> str:
@@ -204,5 +205,5 @@ def without_default(text: str, ours: str, previous: str | None) -> str:
         return text
     if previous is not None:
         return text[: m.start(2)] + previous + text[m.end(2) :]
-    line = re.compile(r'\n?[ \t]*"defaultProfile"\s*:\s*"' + re.escape(ours) + r'"\s*,?')
+    line = re.compile(r'(?:\r?\n)?[ \t]*"defaultProfile"\s*:\s*"' + re.escape(ours) + r'"[ \t]*,?')
     return line.sub("", text, count=1)

@@ -51,8 +51,14 @@ def test_launchers_per_os_in_a_fake_home(tmp_path):
         and "Exec=/py /app/launcher.py cli term --shell\n" in shell.read_text()
     )
     assert "Categories=System;TerminalEmulator;" in shell.read_text()
-    env2 = {"XDG_DATA_HOME": str(tmp_path / "data")}
-    assert launchers.where("linux", home, env2) == tmp_path / "data" / "applications" / "kurooto-terminal.desktop"
+    env2 = {"XDG_DATA_HOME": "/xdg/data"}  # Linux's own kind of path, whatever this OS is
+    assert launchers.where("linux", home, env2) == Path("/xdg/data/applications/kurooto-terminal.desktop")
+    assert launchers.where("linux", home, {"XDG_DATA_HOME": "relative"}).parts[-4:] == (
+        ".local",
+        "share",
+        "applications",
+        "kurooto-terminal.desktop",
+    )  # not absolute: ignored, as the XDG rules say
     app = launchers.install("macos", cmd, home, env)
     assert app == home / "Applications" / "Kurooto Terminal.app"
     script = app / "Contents" / "MacOS" / "kurooto-terminal"
@@ -174,14 +180,30 @@ def test_windows_default_undo_after_your_changes(tmp_path):
     frag(tmp_path, env)
     state = tmp_path / "state"
     defaults.apply("windows", state, tmp_path, env)
-    f.write_text(f.read_text().replace("false", "true"))  # you changed something else since
+    f.write_bytes(f.read_bytes().replace(b"false", b"true"))  # you changed something else since
     ok, msg = defaults.undo(state, tmp_path, env)
-    assert f.read_text() == '{\n    "copyOnSelect": true\n}\n' and "back to the one you had" in msg
+    assert f.read_bytes() == b'{\n    "copyOnSelect": true\n}\n' and "back to the one you had" in msg
     # and if you picked another default yourself, it's yours
     defaults.apply("windows", state, tmp_path, env)
-    f.write_text(f.read_text().replace(wt.guid("Kurooto"), "{mine}") + " ")
+    f.write_bytes(f.read_bytes().replace(wt.guid("Kurooto").encode(), b"{mine}") + b" ")
     ok, msg = defaults.undo(state, tmp_path, env)
-    assert "{mine}" in f.read_text() and "left alone" in msg
+    assert b"{mine}" in f.read_bytes() and "left alone" in msg
+
+
+def test_windows_default_keeps_crlf_line_endings(tmp_path):
+    """A settings.json saved with Windows line endings: the line Kurooto adds uses them, and undo takes the whole
+    line out again (an earlier version left a stray carriage return: a blank line)."""
+    f, env = wt_settings(tmp_path, '{\r\n    "copyOnSelect": false\r\n}\r\n')
+    frag(tmp_path, env)
+    state = tmp_path / "state"
+    defaults.apply("windows", state, tmp_path, env)
+    assert (
+        f.read_bytes()
+        == ('{\r\n    "defaultProfile": "' + wt.guid("Kurooto") + '",\r\n    "copyOnSelect": false\r\n}\r\n').encode()
+    )
+    f.write_bytes(f.read_bytes().replace(b"false", b"true"))
+    defaults.undo(state, tmp_path, env)
+    assert f.read_bytes() == b'{\r\n    "copyOnSelect": true\r\n}\r\n'
 
 
 def test_macos_default_explains_itself(tmp_path):
@@ -211,9 +233,16 @@ def settle():
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="the Windows launcher is made by PowerShell")
-def test_turning_it_on_and_off(app, tmp_path):
+def test_turning_it_on_and_off(app, tmp_path, monkeypatch):
+    import os
+
     from kurooto.modules.terminal.plan import os_name
 
+    stand_in = tmp_path / "bin"  # a terminal program, so this runs where none is installed (CI)
+    stand_in.mkdir()
+    (stand_in / "xterm").write_text("#!/bin/sh\nexit 0\n")
+    (stand_in / "xterm").chmod(0o755)
+    monkeypatch.setenv("PATH", str(stand_in) + os.pathsep + os.environ.get("PATH", ""))
     m = app.modules["terminal"]
     home = tmp_path / "k" / "home"  # KUROOTO_HOME keeps every launcher inside it
     ok, why = app.enable("terminal")
