@@ -22,7 +22,8 @@ class Chat(Module):
         return (True, "") if ok else (False, f"{providers.CHOICES.get(main, main)}: {why}")
 
     def ask(self, msg: Incoming) -> str:
-        terminal = msg.via == "terminal"  # `kurooto ask` waits for the answer itself; Telegram doesn't get it
+        # `kurooto ask` and the setup page's try-it box wait for the answer themselves; Telegram doesn't get it
+        terminal = msg.via in ("terminal", "setup")
         jid = self.app.jobs.submit(msg.text, reply_to=None if terminal else msg.message_id, quiet=terminal)
         msg.job = jid
         return "On it."

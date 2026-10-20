@@ -2,7 +2,8 @@
 
 Kurooto runs on your computer, and every feature is off until you turn it on. This page lists, per feature, exactly
 what goes where. **Nothing is ever sent to Kurooto's author** (no analytics, no crash reports, no "phone home"). The
-only things Kurooto fetches from its own release page are updates, checked against a signature.
+only things Kurooto fetches from its own release page are updates and the list of withdrawn versions, both checked
+against a signature.
 
 Everything below goes to services you chose, under your own accounts.
 
@@ -18,7 +19,9 @@ computer only.
 | Questions and approvals | the question or approval, wherever Kurooto reaches you; open ones are also in the brief your call line keeps (see Phone calls) | Telegram (your own bot) and your paired phones; desktop notifications stay on this computer |
 | Chat with your AI | what you ask; notes the AI reads to answer; what its tools return (a note's text, your reminders or deadlines); the short "In brief" part of your profile and your how-to-help-me note | the AI service you picked (Google for agy/Gemini, OpenAI for Codex, Anthropic for Claude Code, the service you entered for a custom one, or nothing for local models) |
 | Files into notes | with Chat on, the files you send, for the AI to file them | the AI service you picked |
+| Setup page: Try it now | what you type in the box that isn't an instant request (a reminder, a command), like a Chat message; nothing goes to Telegram or your phone | the AI service you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI service you picked |
+| Hint ladder | the problem (its photo or text), the course's AI-policy line and the notes the AI reads to find the lecture note; with "no AI help" in that line, nothing | the AI service you picked |
 | Skills: revision packs | Tectonic (if you install it) downloads LaTeX packages; nothing of yours is sent | Tectonic's package server (public) |
 | Skills: packs before exams (`skills.auto_pack`) | the same as `/pack`: the subject's notes the AI reads to write the pack; with `ask` (the default) only after you tap Build it | the AI service you picked |
 | Sending files (`kurooto send`, the AI's send-file tool) | the file | Telegram (to your own bot) |
@@ -72,6 +75,7 @@ computer only.
 | Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list and exam mode), Subjects, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
 | Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list, exam mode and start-by dates), Subjects, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
 | Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list and exam mode), Subjects, Attendance and standing (its numbers reach calls and your AI only as tool answers, `attendance` and `skip_class`, like any tool; marks never), Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
+| Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list and exam mode), Subjects, Doubt queue, First-week quests, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
 
 ## Free tiers and terms
 

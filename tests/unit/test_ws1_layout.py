@@ -41,6 +41,7 @@ WANT = {  # kind, fields -> (kurooto, zettelkasten)
     ),
     ("concept", (("subject", "la"), ("slug", "rank"))): ("la/rank.md", "zettel/rank.md"),
     ("exam_prep", (("subject", "la"),)): ("la/exam-prep.md", "sources/la/exam-prep.md"),
+    ("doubts", (("subject", "la"),)): ("la/doubts.md", "sources/la/doubts.md"),
     ("research", ()): ("research/index.md", "maps/research.md"),
     ("project", (("project", "thesis"),)): ("research/thesis/index.md", "projects/thesis/index.md"),
     ("runs", (("project", "thesis"),)): ("research/thesis/runs", "projects/thesis/runs"),

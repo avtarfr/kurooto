@@ -127,6 +127,34 @@
 - `/standing` adds marks, after a "Set up marks?" question: weightage (`/marks la weights midsem 30, endsem 70`),
   scores (`/marks la midsem 21/30`) and grade lines (`/marks grades A 85, B 70`) give what you'd need on what's left
   for each grade, also an estimate.
+**Staged updates and withdrawn versions**
+- A version its maintainer withdrew (the signed yank list on the release site, `tools/release.py yank`) is never
+  installed: not when found, not when it was already downloaded for the night, and not with `kurooto update --now`.
+  The last list read is kept, so it stays refused while the site can't be reached.
+- `updates.staged` (off until you turn it on): a new version installs only once it has been out 48 hours
+  (`updates.wait_hours`), and never in an exam period or within a day of a quiz or exam (`updates.exam_hold`). A
+  release signed as critical (`tools/release.py sign --critical`) skips both.
+**First-week quests** (new; off until you turn it on)
+- For the first seven days, one short message a day with one thing to try, each leaving something real (tomorrow's
+  classes, a deadline, a reminder, a doubt, a quiz, a study session, a check-in answer, a journal entry). Only for
+  features that are on and pass their checks, and never one already done. Replying with the thing does it.
+- Skip this one moves on; Stop these, or a day's quest left alone, stops them for good. `/quests`, `/quests stop`.
+**Doubt queue** (new; off until you turn it on; needs Subjects)
+- `/doubt la <the doubt>`, or "I have a doubt about eigenvalues", adds a line to the subject's doubts note
+  (`<subject>/doubts.md`, a new `doubts` kind in the notes layout). The subject is the one named, else the class on now
+  or just ended, else buttons ask.
+- Half an hour before the subject's next class (`doubts.before_min`), its open doubts arrive with a Tick button each
+  that ticks it in the note. `/doubts [subject]`. No AI answers.
+**Try it on the setup page**
+- Once your AI passes its test, the setup page's AI step shows a chat box. What you type goes through the same handler
+  as a Telegram message, before Telegram is set up: "remind me in 2 minutes to stretch" pops up on this computer, and
+  questions go to your AI with the answer shown in the box. Nothing goes to Telegram or your phone.
+**Hint ladder** (new; off until you turn it on; needs Subjects)
+- A problem photo with `/hint la` (or the problem typed after it): the idea first, then the setup and the key step one
+  tap at a time; the full solution only when asked. Each step names the lecture note the problem belongs to.
+- The course's AI policy is asked the first time per subject and kept as an `AI policy: ...` line in its course note;
+  "no full solutions" ends at the key step, "no AI help" sends nothing to the AI. The shipped `hint` skill writes the
+  ladder (yours replaces it); an answer that isn't in steps is never passed on.
 
 ## 0.4.0 (unreleased)
 

@@ -232,10 +232,11 @@ class App:
             self.events.emit("module_failed", module="health", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
-    def handle(self, msg: Incoming) -> None:
+    def handle(self, msg: Incoming, also: list[Module] | None = None) -> None:
         """Route one message from you: a reply to something Kurooto asked, a /command, files, a plain-English
-        request that runs instantly, or (if Chat is on) a request for the AI."""
-        mods = self.enabled()
+        request that runs instantly, or (if Chat is on) a request for the AI. `also`: features that answer this
+        message as if they were on (the setup page's try-it box, web/tryit.py)."""
+        mods = self.enabled() + [m for m in also or [] if not self.is_on(m.id)]
         self.events.emit("message_in", via=msg.via, chars=len(msg.text), files=len(msg.files))
         if msg.reply_to and msg.reply_to.get("kind") == "ask":  # an answer to a question (core/ask.py)
             out = self.ask.reply(msg, msg.reply_to.get("ref"))
@@ -335,7 +336,7 @@ class App:
             msg.reply(syncall.start(self)[1])
             return
         chat = self.modules.get("chat")
-        if chat and self.is_on("chat") and text:
+        if chat and chat in mods and text:
             out = chat.ask(msg)
             if out:
                 msg.reply(out)

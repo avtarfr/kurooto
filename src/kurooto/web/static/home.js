@@ -616,7 +616,7 @@ function renderStatus(m) {
   $("#meta").textContent = `${m.cells.filter((c) => c.on).length} features on · ${m.jobs.filter((j) => j.status === "running").length} AI request running · cpu ${pct(s.cpu)}`;
   const u = m.updates || {};
   const badge = $("#update-badge");
-  if (u.ready && u.ready.version) { badge.textContent = `update ${u.ready.version} ${u.ready.staged ? "ready tonight" : "available"}`; badge.classList.remove("hidden"); } else badge.classList.add("hidden");
+  if (u.ready && u.ready.version) { badge.textContent = `update ${u.ready.version} ${u.ready.staged ? "ready tonight" : u.ready.waiting ? "waiting" : "available"}`; badge.title = u.ready.waiting ? `It waits: ${u.ready.waiting}` : ""; badge.classList.remove("hidden"); } else badge.classList.add("hidden");
   healthBadge($("#health-badge"), m.health);
   $("#ver").textContent = m.version;
 }

@@ -24,7 +24,11 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Weekly summary](#weekly-summary)
     [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) ·
     [Attendance and standing](#attendance-and-standing) · [Quiz](#quiz) · [Weekly summary](#weekly-summary)
+    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Doubt queue](#doubt-queue) ·
+    [Quiz](#quiz) ·
+    [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
+    [Hint ladder](#hint-ladder) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back)
   - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) ·
@@ -143,6 +147,13 @@ what it means.
    API key. Make one at Google AI Studio, paste it and press **Save and test**. For the others, press **Install** if
    it isn't installed and follow the sign-in. Then press **Test it**: it asks the AI to reply, and tells you if it
    worked, or what to do if it didn't.
+
+   **Try it now:** once the AI works, a chat box appears under it. What you type there is handled exactly as a
+   Telegram message would be, before Telegram is set up: "remind me in 2 minutes to stretch" pops up on this computer
+   two minutes later, a question goes to your AI and its answer comes back in the box. Chat and Reminders answer there
+   even though they're turned on later, with Telegram; other features answer once they're on. Nothing said in the box
+   goes to Telegram or your phone. *Undo:* nothing to turn off; it's only there while you set up (a reminder set there
+   still comes after a restart, and can be cancelled with `/reminders` once Telegram is connected).
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below.
 5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the
@@ -754,6 +765,23 @@ tools.
 *Undo:* turn the feature off (Features → Attendance and standing): `/skip` stops asking, and the Sunday line goes.
 Your corrections and marks stay; delete the `attendance` folder in Kurooto's state folder to forget them. Skips
 themselves belong to Subjects and are unchanged.
+### Doubt queue
+A doubt from class, kept for the next one (needs Subjects). `/doubt la why does the rank not change?`, or in plain
+words "I have a doubt about eigenvalues", adds a line to that subject's doubts note, `<subject>/doubts.md`
+(`sources/<subject>/doubts.md` in the zettelkasten layout; `notes.paths.doubts` for your own place):
+`- [ ] why does the rank not change? (2026-10-20)`. Half an hour before the subject's next class (`doubts.before_min`,
+30), its open doubts come to you as one message with a **Tick** button per doubt; a tap ticks it in the note
+(`[x]`). Tick them by hand in the note just as well. `/doubts` (or "show my doubts") lists the open ones, `/doubts la`
+one subject's.
+- **Which subject:** the one you name (its name or short name, anywhere in the doubt), else the class that's on now or
+  ended in the last 3 hours (`doubts.recent_h`), else buttons ask which subject.
+- Plain words work for a short, one-sentence doubt; a longer one, or several sentences, goes to the AI as a request
+  (with Chat on), so use `/doubt` for those.
+- No AI answers your doubts: they're for asking in class, a tutorial or office hours.
+
+**Undo:** turn Doubt queue off (dashboard → Features). The doubts notes are yours and stay; nothing is deleted.
+
+*Leaves:* nothing.
 
 ### Quiz
 Practice questions from your notes, spaced out so you see each again just before you'd forget it. Put a note named
@@ -790,6 +818,24 @@ quiz, study hours, journal days), and what isn't working that could wait until t
 do differently, and next week's deadlines and your priorities. Afterwards it becomes a weekly review in your journal
 (written by the AI with Chat on, your own words without). If the computer was off all Sunday evening, you get only the
 summary.
+
+### First-week quests
+For your first week: one short message a day (at 18:00, `quests.when`) with one thing to try, each leaving something
+real behind. "Add tomorrow's classes: /class tue 09:00-09:55 la", "send me one real deadline", "set a reminder for
+something real", "a doubt from class?", "quiz me on la", "/study la 25", tonight's check-in, "remember that I ...",
+`/journal`. Turn it on in the setup page's Features step or the dashboard.
+- Only features that are on and pass their checks (what `kurooto doctor` looks at) get a quest, and one you've already
+  done (there's a timetable, you set a reminder this week) is left out. A day with nothing to suggest sends nothing.
+- A quest is done when the thing happens. Replying to the message with it works too ("remind me at 21:00 to pack my
+  bag" as a reply sets the reminder).
+- **Skip this one**: tomorrow brings another. **Stop these** (or reply "stop"): no more, for good. Leaving a day's
+  quest alone (not done, not skipped, not answered) also stops them for good: no nagging.
+- Seven days at most (`quests.days`). `/quests` shows how far they got; `/quests stop` ends them.
+
+**Undo:** turn First-week quests off (dashboard → Features), or `/quests stop`. What the quests had you add (classes,
+deadlines, reminders) is yours and stays.
+
+*Leaves:* nothing; no AI.
 
 ### Files into notes
 Send a photo or PDF to your bot: it's saved in your notes folder's `inbox/` (or your files folder's, when you set one:
@@ -873,6 +919,30 @@ Your prompt library is the `prompts/` folder in your notes (Markdown files, subf
 
 *Needs:* Telegram. *Leaves your computer:* nothing (no AI involved). *Turn it off:* Features → Quick notes and
 prompts.
+
+### Hint ladder
+Stuck on a problem? Send a photo of it with `/hint la` as the caption (or type it: `/hint la show that the trace is
+basis-free`), and you get one step at a time: **the idea** first, then **Next hint** for **the setup**, then **the
+key step**. The full solution comes only when you ask: the **Show the solution** button after the key step, or a reply
+of "solution" to any hint. Reply "next" works like the button. Every step names the lecture note the problem belongs
+to (the AI's pick if that note exists, else the subject's note whose name fits the problem best).
+- **The course's AI policy.** The first time you use `/hint` for a subject, Kurooto asks what the course allows (Hints
+  and full solutions / Hints only, no full solutions / No AI help, or your own words) and keeps your answer as a line
+  in the subject's course note: `AI policy: Hints only, no full solutions (your answer to Kurooto, 2026-10-20)`. After
+  that it reads the line from the note, so change it there; a line you wrote yourself (`AI policy: ...`) counts too.
+  "No full solutions" (or "hints only") ends the ladder at the key step; "no AI help" (or "not allowed") means no hints
+  for that subject, and nothing is sent to the AI.
+- The AI works out the whole ladder once and Kurooto shows it a step at a time; an answer that doesn't come in steps
+  is never passed on (it could give the solution away). It's the shipped `hint` skill: copy it into your skills folder
+  to change how hints are written.
+- Needs Subjects (the subject's short name goes first). Photos need an AI that opens files itself (agy, Codex,
+  Claude Code); with a Gemini key or another service, type the problem instead.
+
+**Undo:** turn Hint ladder off (dashboard → Features). The "AI policy" lines stay in your course notes; delete them
+there if you like.
+
+*Leaves:* the problem (its photo or text), the subject's AI-policy line, and the notes the AI reads to find the lecture
+note go to the AI you picked.
 
 ### Notes brain (GBrain)
 Search your notes by meaning (`/notes what is a compact space`), and your AI gets a memory of them. Kurooto installs
@@ -2300,6 +2370,22 @@ Every release is signed; Kurooto refuses anything unsigned, older, or changed on
 exams are over. The previous two versions stay installed. If a new version crashes three times in its first five minutes, Kurooto goes back to the one before
 and won't offer the broken one again; you're told on Telegram. `kurooto update --now` installs an update right away.
 
+**Withdrawn versions.** When a release turns out to be broken, its maintainer puts it on a signed yank list on the
+release site. Kurooto never installs a version on that list: not when it finds it, not when it already downloaded it
+for the night, and not with `kurooto update --now` (it says the version was withdrawn, and why). It keeps the last
+list it read, so a withdrawn version stays refused while the site can't be reached; a list that isn't signed, or is
+older than one it has seen, stops the update instead.
+
+**Staged updates** (off until you turn it on: `updates.staged` = `true`). A new version waits until it has been out
+48 hours (`updates.wait_hours`), so a broken release is usually withdrawn before it reaches you, and nothing installs
+during your exams (`updates.exam_hold`, on): an exam period from Subjects (`/term exams ...`), or a quiz or exam within
+a day from Deadlines. A release signed as critical (a security fix) skips both. While one waits, the dashboard's update
+badge says "waiting" (point at it for why; with `updates.mode` = `ask` you're asked once it's done waiting), and
+`kurooto update --now` installs it anyway.
+
+**Undo:** `updates.staged` = `false` installs new versions as soon as they're found, as before. The yank list can't be
+turned off.
+
 Your call line is updated after Kurooto updates, if its code changed. The Android app shows an Update button; the
 iPhone web app updates itself.
 
@@ -2355,7 +2441,7 @@ don't fill your notes or their history. Both are settings: dashboard → Setting
 | Your profile, how to help you, not-interested topics | `about-me/` | `master/` |
 | Recurring quizzes, ideas, your own skills | `kurooto/recurring.md`, `kurooto/ideas.md`, `kurooto/skills/` | `master/recurring-assessments.md`, `master/ideas.md`, `master/skills/` |
 | A subject's course page | `<subject>/course.md` | `maps/courses/<subject>.md` |
-| Lecture notes, exam prep, class log | `<subject>/` | `sources/<subject>/` |
+| Lecture notes, exam prep, class log, doubts | `<subject>/` | `sources/<subject>/` |
 | Concept notes (one idea each) | `<subject>/<idea>.md` | `zettel/<idea>.md` |
 | Research projects and their runs | `research/<project>/`, hub `research/index.md` | `projects/<project>/`, hub `maps/research.md` |
 | Mail digests | `mail/<date>-<time>.md` | `digests/mail-<date>-<time>.md` |
@@ -2368,7 +2454,7 @@ are `[[wikilinks]]` either way. The AI is told your layout, and skills written f
 
 **Your own places** (`notes.paths`): any kind of note somewhere else, e.g. `{"daily": "diary/{date}.md", "ideas":
 "plans/ideas.md"}`. The kinds are `daily`, `profile`, `how_to_help`, `not_interested`, `recurring`, `ideas`, `skills`,
-`prompts`, `inbox`, `note`, `subject`, `course`, `class_log`, `lecture`, `concept`, `exam_prep`, `research`,
+`prompts`, `inbox`, `note`, `subject`, `course`, `class_log`, `lecture`, `concept`, `exam_prep`, `doubts`, `research`,
 `project`, `runs`, `handwritten`, `mail`; the parts in braces are `{date}`, `{time}`, `{subject}`, `{project}` and
 `{slug}`. A place that doesn't work (a part that doesn't exist, or `..`) falls back to the layout's own.
 

@@ -6,6 +6,12 @@
 After switching, the new version is on probation for 5 minutes; if it keeps crashing, the launcher goes back.
 A feature can hold back non-critical updates for a while (Exam season, during your exams: `holds`); a release signed
 as critical installs anyway.
+
+Staged updates (updates.staged, off until you turn it on): a new version installs only once it has been out
+updates.wait_hours (48) without being withdrawn, and never during your exams (an exam period in Subjects, or a quiz
+or exam within a day in Deadlines; updates.exam_hold). A release signed as critical skips both. Whatever the setting,
+a version on the maintainer's signed yank list is never installed, even one already downloaded and waiting for the
+night.
 """
 
 from __future__ import annotations
@@ -27,7 +33,17 @@ from kurooto.update.updater import PAGES, UpdateError, Updater, vtuple
 if TYPE_CHECKING:
     from kurooto.app import App
 
-register_defaults("updates", {"mode": "night", "channel": "stable", "window": ["03:00", "05:00"]})
+register_defaults(
+    "updates",
+    {
+        "mode": "night",
+        "channel": "stable",
+        "window": ["03:00", "05:00"],
+        "staged": False,  # wait until a release has been out wait_hours, and not during exams (critical ones don't)
+        "wait_hours": 48,
+        "exam_hold": True,  # with staged on: nothing installs in an exam period or within a day of a quiz or exam
+    },
+)
 
 
 class Updates:
@@ -55,6 +71,7 @@ class Updates:
             if why:
                 return str(why)
         return ""
+        self.clock = time.time
 
     def start(self) -> None:
         s = self.app.scheduler
@@ -64,7 +81,7 @@ class Updates:
         s.action("updates.rolled_back", lambda p: self.tell_rolled_back())
         s.every("updates:check", "every 6h", "updates.check")
         ready = str((jload(self.ready_file, None) or {}).get("version") or "")
-        if ready and (vtuple(ready) <= vtuple(__version__) or ready in self.u.bad()):
+        if ready and (vtuple(ready) <= vtuple(__version__) or ready in self.u.bad() or ready in self.u.yanked(False)):
             self.ready_file.unlink(missing_ok=True)  # installed (`kurooto update --now` leaves it), or rolled back
         u = jload(self.app.paths.app / "update.json", {}) or {}
         if u.get("phase") == "trial" and u.get("to") == __version__:
@@ -92,8 +109,17 @@ class Updates:
             self.app.events.emit("update_check_failed", error=str(e)[:200])
             return f"check failed: {e}"
         if not rel:
+            if self.u.withdrawn:  # on the maintainer's signed yank list
+                v, why = next(iter(self.u.withdrawn.items()))
+                self.app.events.emit("update_yanked", version=v)
+                return f"{v} was withdrawn ({why}); not installing it"
             return "up to date"
         self.app.events.emit("update_found", version=rel.version)
+        wait = self.hold(rel.issued, rel.critical)
+        if wait:
+            jsave(self.ready_file, {"version": rel.version, "staged": False, "notes": rel.notes, "waiting": wait})
+            self.app.events.emit("update_waiting", version=rel.version, why=wait)
+            return f"{rel.version} waits: {wait}"
         if mode == "off":
             jsave(self.ready_file, {"version": rel.version, "staged": False, "notes": rel.notes})
             return f"{rel.version} available (updates are off)"
@@ -136,8 +162,16 @@ class Updates:
                     f"Couldn't prepare Kurooto {rel.version}: {str(e)[:300]}. I'll try again later.", kind="update"
                 )
                 return False
-            ready = {"version": rel.version, "staged": True, "notes": rel.notes, "critical": rel.critical}
-            jsave(self.ready_file, ready)
+            jsave(
+                self.ready_file,
+                {
+                    "version": rel.version,
+                    "staged": True,
+                    "notes": rel.notes,
+                    "issued": rel.issued,
+                    "critical": rel.critical,
+                },
+            )
             return True
 
     def _stage_then_wait(self, rel) -> None:
@@ -164,7 +198,46 @@ class Updates:
         if busy or on_call:
             self.app.scheduler.at(now() + dt.timedelta(minutes=20), "updates.apply", key="updates:apply")
             return "busy; trying again in 20 min"
-        return self.switch_to(ready["version"])
+        version = str(ready["version"])
+        try:
+            yanked = self.u.yanked()  # withdrawn since it was downloaded? (offline: the last list seen)
+        except UpdateError as e:
+            self.app.events.emit("update_check_failed", error=str(e)[:200])
+            self.app.scheduler.at(now() + dt.timedelta(days=1), "updates.apply", key="updates:apply", grace_s=6 * 3600)
+            return f"not switching: {e}"
+        if version in yanked:
+            self.ready_file.unlink(missing_ok=True)
+            self.app.events.emit("update_yanked", version=version)
+            return f"{version} was withdrawn ({yanked[version]}); not installing it"
+        wait = self.hold(float(ready.get("issued") or 0), bool(ready.get("critical")))
+        if wait:
+            self.app.events.emit("update_waiting", version=version, why=wait)
+            self.app.scheduler.at(now() + dt.timedelta(days=1), "updates.apply", key="updates:apply", grace_s=6 * 3600)
+            return f"{version} waits: {wait}"
+        return self.switch_to(version)
+
+    def hold(self, issued: float, critical: bool = False) -> str:
+        """Why a release waits (updates.staged), or "" when it may install now. A critical release never waits."""
+        s = self.app.settings
+        if critical or not s.get("updates.staged"):
+            return ""
+        hours = float(s.get("updates.wait_hours") or 0)
+        if issued and self.clock() < issued + hours * 3600:
+            until = dt.datetime.fromtimestamp(issued + hours * 3600)
+            return f"it has been out less than {hours:g} h (until {until:%a %d %b %H:%M})"
+        return self.exams() if s.get("updates.exam_hold") else ""
+
+    def exams(self) -> str:
+        """Your exams, if they're now: an exam period (Subjects), or a quiz or exam within a day (Deadlines)."""
+        sub = self.app.modules.get("subjects")
+        if sub is not None and self.app.is_on("subjects") and sub.no_classes(now().date()) == "exams":
+            return "you're in an exam period"
+        dl = self.app.modules.get("deadlines")
+        if dl is not None and self.app.is_on("deadlines"):
+            soon = dl.exams_soon(1)
+            if soon:
+                return f"{soon[0]['title']} is within a day"
+        return ""
 
     def switch_to(self, version: str) -> str:
         self.u.switch(version)
@@ -201,6 +274,8 @@ class Updates:
             return "OK, I'll ask again later."
         rel = self.u.check(self.app.settings.get("updates.channel") or "stable")
         if not rel:
+            if self.u.withdrawn:
+                return f"{next(iter(self.u.withdrawn))} was withdrawn by its maintainer, so I'm not installing it."
             return "Already up to date."
 
         def go():

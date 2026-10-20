@@ -88,6 +88,11 @@ button:disabled { opacity: .5; cursor: default; }
 .qr { background: #fff; padding: 10px; width: fit-content; border-radius: 2px; margin: 8px 0; }
 .qr svg { display: block; width: 220px; height: auto; max-width: 70vw; }
 .log a { color: inherit; text-decoration: underline; word-break: break-all; }
+.tryit-box { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.log.tryit { max-height: 260px; }
+.log.tryit:empty { display: none; }
+.tryit .said { margin: 4px 0; color: var(--fg); }
+.tryit .said.you { color: var(--dim); }
 pre.prompt { white-space: pre-wrap; max-height: 260px; overflow: auto; font: 12px/1.45 var(--mono); background: var(--bg); border: 1px solid var(--line); padding: 10px; margin: 8px 0 0; }
 label.file { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); font-size: 14px; }
 label.file input { width: auto; margin: 0; padding: 4px; border: 0; }
