@@ -1170,9 +1170,6 @@ class Calls(Module):
                 match_now,
                 lambda msg, sl: self.place(sl["reason"], force=True, why="calls.own"),
             ),
-<<<<<<< HEAD
-=======
-            Intent("call_now", "call me now", match_now, lambda msg, sl: self.place(sl["reason"], force=True)),
             Intent(
                 "call_when",
                 "call me (its only time is one that didn't happen): asks when",
@@ -1183,5 +1180,4 @@ class Calls(Module):
                 ),
             ),
             Intent("cancel_call", "cancel that call, cancel the 12:00 call", match_cancel, self.cancel_by_words),
->>>>>>> w/wakefix
         ]
