@@ -99,6 +99,13 @@ class Module:
     def health(self) -> tuple[bool, str]:
         return self.ready()
 
+    def health_check(self):
+        """Its one check for "Kurooto keeps itself working" (core/health.py): a Check, or None. The built-in
+        features' checks are in core/health_checks.py; an add-on returns its own."""
+        from kurooto.core.health_checks import builtin
+
+        return builtin(self)
+
     # helpers
     def setting(self, key: str, default=None):
         return self.app.settings.get(f"{self.id}.{key}", default)

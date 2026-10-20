@@ -484,6 +484,9 @@ class Google(Module):
         email = id_email(t.get("id_token")) or old.get("email")
         if email:
             new["email"] = email
+        ends = t.get("refresh_token_expires_in")  # Google says when a sign-in ends (an app in Testing: 7 days)
+        if ends or (old.get("refresh_expires") and not t.get("refresh_token")):  # (core/health.py warns before)
+            new["refresh_expires"] = time.time() + int(ends) if ends else old["refresh_expires"]
         self.app.secrets.set(self._secret(account), json.dumps(new))
 
     def access_token(self, account: str = MAIN) -> str:

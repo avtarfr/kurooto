@@ -1310,6 +1310,9 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument(
         "--bundle", action="store_true", help="save a diagnostics zip (secrets blanked out) to send for help"
     )
+    d.add_argument(
+        "--fix", metavar="ID", help="run the fix a problem offers (the id doctor shows), in the running Kurooto"
+    )
     sub.add_parser("run", help="run the assistant in this window")
     sub.add_parser("supervise", help="run it and restart it if it crashes")
     sub.add_parser("start", help="start it in the background now")
@@ -1383,6 +1386,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name:<7} {getattr(p, name)}")
         return 0
     if a.cmd == "doctor":
+        if a.fix:  # (core/health.py) the fix runs inside Kurooto: its links and timers live there
+            r = ask_running("health/fix", {"id": a.fix})
+            if r is None:
+                print("Kurooto isn't running (`kurooto start` starts it); the fixes run inside it.", file=sys.stderr)
+                return 2
+            print(r.get("message", ""))
+            return 0 if r.get("ok") else 1
         return doctor(a.json, a.bundle)
     if a.cmd == "run":
         from kurooto.daemon import run
