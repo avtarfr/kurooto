@@ -50,6 +50,7 @@ words, one step at a time, and let them do the clicking in their browser.
 | `kurooto send FILE [--caption T]` | sends them a file on Telegram (up to 50 MB) | yes, a file they asked for |
 | `kurooto note [--title T] TEXT` | saves a quick note in their notes' inbox (or what's piped in) | yes, when they asked |
 | `kurooto top --once` | one screen of the status board (this computer and Kurooto) | yes |
+| `kurooto cases` / `kurooto cases export` | the Wrong-button test cases and taught phrasings / writes them as a pytest file | yes; the export holds what they typed: ask before sending it anywhere |
 | `kurooto logs [-n N] [-f]` | the end of Kurooto's log (`-f` keeps following) | yes |
 | `kurooto sync` | runs every sync that's on and prints one line each (needs Kurooto running) | yes |
 | `kurooto mcp` | Kurooto's tools for you, as an MCP server on stdin/stdout (add it to your MCP settings) | yes |

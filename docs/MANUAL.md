@@ -767,6 +767,46 @@ now.
 `retro` skill: put your own copy in `kurooto/skills/retro/SKILL.md` to change how it thinks (it's not a command).
 *Needs:* Chat. *Turn it off:* Features → Nightly look back. Waiting suggestions stay answerable for three days.
 
+### Wrong button and test cases
+When Kurooto gets a plain-English request wrong, tap **Wrong** under its reply (or under the AI's answer), or send
+`/wrong` right after it. That keeps the request as a **case**: what you wrote, what Kurooto did with it, the time and
+the settings that decided it. Short requests that no instant request understood (they went to the AI, or nowhere with
+Chat off) are kept as cases too, so you see what Kurooto keeps missing. Long messages, several requests in one, and
+anything about health, money or passwords are never kept.
+
+**Teach it your words.** Once a month (a Sunday evening) the look back shows the phrasings that came up most, each
+with **Make it a test case**. Tap it and reply with what you meant, in words Kurooto already understands ("what's
+due"), or tap **The AI**. That makes it a test case, and it teaches the phrasing: from then on "whats on my plate" is
+taken as "what's due", at once, with today's time ("skip gym tmrw" taught as "skip gym tomorrow" always means the day
+after you say it). To teach one straight away: `/wrong what's due` (or `/wrong ai`) right after the reply.
+
+Two rules keep this safe:
+- **A phrasing is learned only if every test case that passed before still passes with it.** If it would change what
+  another test case expects, you get "Saved as a test case, but not learned" and which case it would break.
+- **Requests that send, delete, call, ring or approve anything are never learned this way** (calls, holds on calls,
+  quizzes by call, the alarm, an add-on's "send" or "delete"). They keep needing their usual words; the test case is
+  still kept.
+
+A taught phrasing is matched whole (capitals and punctuation aside) and goes before the usual patterns. `/cases` shows
+how many test cases pass and lists the phrasings you taught, each with **Unlearn**; `/cases review` shows the look
+back's list now. If a taught phrasing stops working (its feature changed), it goes to the AI as before and
+`/health` (and `kurooto doctor`) says so.
+
+**On your computer:** `kurooto cases` lists the cases and taught phrasings; `kurooto cases check` runs the test cases
+here; `kurooto cases export` writes them as a pytest file (`test_kurooto_cases.py`; `--out FILE`, `--all` adds the
+ones not reviewed yet) that replays each request at its own time and settings on any version of Kurooto. They hold
+what you typed: read the file before you share it, for example with whoever gave you Kurooto. `kurooto cases forget
+<id>` (or `all`) deletes them.
+
+*Settings* (`cases.*`): `button` (the Wrong button, on), `fallthroughs` (keep requests nothing understood, on),
+`keep_days` (30: cases you didn't make test cases are forgotten after this; test cases stay), `review` (`weekly sun
+19:00`) and `review_days` (28: about once a month), `review_max` (5 phrasings), `learn` (on; off keeps test cases
+without teaching anything).
+*Needs:* Telegram. *Leaves:* nothing. The cases are in Kurooto's state folder (`cases/`), never in Backups, Profile
+sync or `kurooto doctor --bundle`; events record only counts and request names, never what you typed.
+*Undo:* turn it off (Features → Wrong button and test cases): the button goes and taught phrasings stop at once. Unlearn
+one phrasing with `/cases`; `kurooto cases forget all` deletes every case and taught phrasing.
+
 ### Phone calls
 Talk to Kurooto like a phone call, and let it call you: reminders ("call me at 5 about the laundry"), check-ins,
 deadline nudges, quizzes, the morning alarm. During a call it can search your notes, add reminders and deadlines,
@@ -2107,6 +2147,7 @@ the old places again; what was written in the meantime stays where it was put (n
 | Kurooto Terminal | its kitty settings and tabs: `terminal/` in the state folder (made again every time); the app-menu entries: `~/.local/share/applications/kurooto-terminal.desktop` and `kurooto-shell.desktop` (Linux), `~/Applications/Kurooto Terminal.app` (macOS), Start menu (Windows); Windows Terminal profiles: `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\Kurooto` |
 | Your own skills, ideas, recurring quizzes | `kurooto/` in your notes (`skills/`, `ideas.md`, `recurring.md`) |
 | How you like to be helped, not-interested list | `about-me/how-to-help-me.md`, `about-me/not-interested.md` in your notes |
+| Test cases and taught phrasings | `cases/cases.json` in the state folder (not in backups or Profile sync) |
 
 Secrets (bot token, keys) are in your system's keychain (Windows Credential Manager, macOS Keychain, or the Secret
 Service on Linux), or, where there is none, in a file only your user can read in the settings folder.
@@ -2114,7 +2155,7 @@ Service on Linux), or, where there is none, in a file only your user can read in
 Commands: `kurooto on` / `kurooto off` (completely, until turned on again), `kurooto pause [2h]` / `kurooto
 resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto doctor`, `kurooto top`, `kurooto
 term`, `kurooto logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
-`kurooto update`, `kurooto autostart on|off|status`, `kurooto paths`, `kurooto uninstall`. For scripts: `kurooto
+`kurooto update`, `kurooto autostart on|off|status`, `kurooto cases`, `kurooto paths`, `kurooto uninstall`. For scripts: `kurooto
 notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog`, `watch` (see
 [From a terminal or a script](#from-a-terminal-or-a-script) and [Research](#research)).
 
@@ -2133,6 +2174,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The laptop still sleeps with the lid closed on the charger (Linux) | `awake.lid` is off, or your system refuses the lid hold to background programs (doctor says so). Allow it in polkit (`org.freedesktop.login1.inhibit-handle-lid-switch`) or set `HandleLidSwitchExternalPower=ignore` in logind.conf. |
 | `kurooto autostart boot`: "Linux didn't allow that from here" | Run `loginctl enable-linger` in a terminal (it may ask for your password), then `kurooto autostart boot` (or Settings → Starting) again. |
 | "I can't answer free text yet" | Turn on **Chat** (Features). |
+| "Phrasings you taught: 1 phrasing you taught no longer works" | The request it stood for changed or its feature is off; it goes to the AI meanwhile. `/cases`: Unlearn it, then teach it again with `/wrong <words>` after it comes up. |
 | The AI says it isn't signed in | Setup page → AI → Install / sign in again → Test. |
 | "It's at its usage limit" | Free tiers have daily limits: wait, or set a fallback brain (Settings → `brain.fallback`). `/usage` shows how often it happens. |
 | "Google's free limit for today is used up" | It comes back at the time the message says. Meanwhile set a fallback brain (Settings → `brain.fallback`); calls and reminders still work. `/usage` shows each limit and when it resets. |
