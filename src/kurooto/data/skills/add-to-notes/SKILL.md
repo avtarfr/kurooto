@@ -14,7 +14,9 @@ File this into their notes: $ARGUMENTS
      book chapter, an exam or quiz, an article, or something else;
    - home: a subject (its folder, e.g. `linear-algebra/`), a project in `research/`, or neither (then `inbox/`).
 
-   Use list_notes and search_notes to see what's already there on the topic. If the subject, kind or date is
+   Use list_notes and search_notes to see what's already there on the topic. A whole textbook belongs in Books
+   instead (if they have the list_books tool): say they can send it with the caption "book for <subject>" so it's
+   read page by page, and only file a short note about it. If the subject, kind or date is
    genuinely unclear, file it in `inbox/` and ask one short question in your reply, with your best guess.
 3. **File it** as a new source note `<home>/<YYYY-MM-DD>-<slug>`, with `date` and `tags: [source, <kind>]` in its
    header, and these sections:
@@ -25,6 +27,9 @@ File this into their notes: $ARGUMENTS
    - `## Files`: where the file is (its path, in the notes folder or outside it), or the link.
    - `## Related`: links with a one-line reason each.
 4. **Connect it.**
+   - If it's for a subject and you have the course_sources tool, call it with the subject and the topic: under
+     `## Related`, link their notes and Classroom posts on it, and cite the book pages that cover the same ground
+     (book: <title>, p. 123).
    - Up to 4 key ideas: link existing concept notes with a reason (search first), or create short concept notes in
      the subject's folder (one idea each, with a reasoned link back to the source note).
    - The subject's course page `<subject>/course`: the new note under `## Lecture notes` for lectures, or under

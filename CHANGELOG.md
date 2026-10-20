@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.0 (unreleased)
+
+**Books and PDFs** (new; off until you turn it on)
+- Reference books and PDFs per subject: send one on Telegram with "book for <subject>", add it on the dashboard, or
+  drop it in the subject's books folder. Books live outside your notes (`files.folder`, or Kurooto's data folder).
+- Read at night on the charger, page by page, the best way for each page: the PDF's own text (Poppler, or Kurooto's
+  built-in reader), Tesseract OCR for scanned pages, or a local vision model that writes the maths in LaTeX. Gemini
+  only if you turn on `books.gemini`. It stops at 07:00 or when you unplug and carries on the next night.
+- Each book gets an index note in your notes (`<subject>/books/<book>.md`: chapters with their pages); its text, with
+  page markers, stays in Kurooto's data folder, and goes into the Notes brain when that's on.
+- `/books` (per subject, how far reading got), `/books read now`, `/books stop`, `/books folder`, `/books setup`.
+- Tesseract and Poppler join the things Kurooto can help install (winget for your user on Windows, Homebrew on a Mac;
+  on Linux your package manager, which Kurooto never runs for you).
+
+**Notes from every source**
+- The source mix: how much books, Classroom materials and your own class notes each count when the AI writes notes,
+  per subject (`/books mix <subject> book 30 classroom 30 own 40`, or an order: `prefer own book classroom`). Only the
+  sources a subject has are used; the shares grow to fill the gap.
+- `/study-log`, Classroom → notes, `/pack`, `/add-to-notes` and the new `/exam-prep` draw on all three through the AI's
+  `course_sources` tool and cite where each part came from: (book: <title>, p. 123), (Classroom: <post>),
+  (your notes: [[<note>]]). Your own words are quoted, never reworded.
+- `/exam-prep <subject>`: brings a subject's exam prep up to date from everything there is, also without Classroom.
+
 ## 0.3.0 (unreleased)
 - **Kurooto Terminal** (`kurooto term`, off until you turn it on): your AI's program, your shell, Kurooto chat and its
   log in a terminal window of its own, with `kurooto top` beside them, in Kurooto's colours. kitty on Linux and macOS

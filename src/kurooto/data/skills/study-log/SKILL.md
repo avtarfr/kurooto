@@ -14,6 +14,13 @@ names they use ("LA", "stats") usually match a folder or a course page's title; 
 search_notes. If a subject has no folder yet, create its course page `<subject>/course` with the first line
 `# <Subject name>`.
 
+**Sources.** If you have the course_sources tool, call it for each class: subject = its notes folder, topic = what
+the class covered. It returns their own notes, Classroom materials and their books (by page), in the shares they
+chose, each part labelled with how to cite it. Draw on them in about those shares, and cite each part right after it:
+(book: <title>, p. 123), (Classroom: <post>), (your notes: [[<note>]]). Where sources disagree (notation, a
+definition's conditions), follow the class and give the book's version with its page. Their own words are quoted as
+they are, never reworded. Without the tool, use the notes you find.
+
 For each class:
 
 1. **Read everything given for it**: the slides and photos they sent, their typed notes, and handwritten notes in
@@ -22,10 +29,12 @@ For each class:
 2. **Lecture note** `<subject>/<YYYY-MM-DD>-<topic-slug>` (a new note), with `date: YYYY-MM-DD` and
    `tags: [lecture]` in its header, and these sections:
    - `## Covered`: what the class covered, faithfully: definitions, theorems with all their hypotheses, formulas in
-     LaTeX (`$…$`, `$$…$$`). Nothing that isn't in what they gave you.
+     LaTeX (`$…$`, `$$…$$`). Nothing that isn't in what they gave you or the sources, each part cited. A book may
+     fill a gap in the slides (cited by page); it never overrides what the class said.
    - `## My notes`: their own notes, verbatim.
    - `## Unclear / to ask`: open questions from their notes, or gaps in the material.
    - `## Files`: links to the files where they are (in the notes folder or outside it).
+   - `## Sources`: each source you drew on, one line each (book pages, Classroom posts, their notes).
    - `## Related`: links with a reason each (the course page, the previous lecture, concept notes).
 3. **Concepts.** For up to 3 key ideas, search_notes for an existing note first. If there is one, add a line under
    its `## Links` pointing to the new lecture note, with the reason. If not, create a short concept note

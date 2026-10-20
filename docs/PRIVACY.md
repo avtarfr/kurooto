@@ -47,6 +47,8 @@ computer only.
 | Email reply drafts | the draft reply, written into your Gmail Drafts; sent only when you tap Send | Google (your Gmail) |
 | Agent plan calendar | the time blocks (title and time), in Kurooto's own calendar | Google (your Google Calendar) |
 | Handwritten notes | the scans and photos | Google (Gemini, your key), unless a local vision model handles them |
+| Books and PDFs | nothing while reading: the PDF's text, Tesseract and a local vision model all work on this computer, and the books, their text and the index notes stay here (the books outside your notes). Only with `books.gemini` on (off by default; books may be copyrighted): pictures of the pages nothing on this computer could read. When the AI writes your notes: excerpts of your books (the pages on the topic), Classroom materials and your notes, in the mix you chose (`course_sources`) | Google (Gemini, your key) only with `books.gemini`; the excerpts to the AI service you picked |
+| Books and PDFs: setting up | installing Tesseract (`/books setup`) downloads it from winget (Windows) or Homebrew (macOS); on Linux it only opens the install page. Nothing of yours is sent | Microsoft's winget sources or Homebrew |
 | About you | the reports you add stay on this computer (Kurooto's data folder, not synced); building the profile sends them to the AI you picked, and its short "In brief" part goes along with every AI request | the AI service you picked |
 | Research | your fields, keywords and searches (never your notes) | the sources you pick: arXiv, bioRxiv/medRxiv, PubMed, feeds (all public) |
 | Research: `kurooto watch` | the command's name, exit code, duration and last lines (`--lines 0`: none) | Telegram (your own bot), like any message |
