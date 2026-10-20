@@ -943,7 +943,8 @@ class Deadlines(Module):
                     when = parse_when(" ".join(parts[:n]))
                 except ValueError:
                     continue
-                return self.add(" ".join(parts[n:]), when)
+                title = re.sub(r"^(?:00\s+|-\s+|:\s+)", "", " ".join(parts[n:])).strip()
+                return self.add(title, when)
         return "Usage: /due fri 17:00 essay draft   (or: /due 2026-11-02 lab report)"
 
     def _exam(self) -> str:

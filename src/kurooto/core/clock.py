@@ -62,6 +62,12 @@ def parse_when(text: str, base: dt.datetime | None = None) -> dt.datetime:
         t = base.replace(hour=h, minute=mi, second=0)
         return t if t > base else t + dt.timedelta(days=1)
 
+    m = re.fullmatch(r"(?:at )?" + _TIME + r" (today|tonight|tomorrow|tmrw|tmr)", s)
+    if m:
+        day = base.date() + dt.timedelta(days=0 if m[4] in ("today", "tonight") else 1)
+        h, mi = _hm(m[1], m[2], m[3])
+        return dt.datetime.combine(day, dt.time(h, mi))
+
     m = re.fullmatch(r"(today|tonight|tomorrow|tmrw|tmr)(?: (?:at )?" + _TIME + ")?", s)
     if m:
         day = base.date() + dt.timedelta(days=0 if m[1] in ("today", "tonight") else 1)
@@ -69,10 +75,20 @@ def parse_when(text: str, base: dt.datetime | None = None) -> dt.datetime:
         return dt.datetime.combine(day, dt.time(h, mi))
 
     days = "mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?"
-    m = re.fullmatch(r"(?:next )?(" + days + r")(?: (?:at )?" + _TIME + ")?", s)
+    m = re.fullmatch(r"(?:(next) )?(" + days + r")(?: (?:at )?" + _TIME + ")?", s)
     if m:
-        ahead = (_DAYS[m[1][:3]] - base.weekday()) % 7 or 7
-        h, mi = _hm(m[2], m[3], m[4]) if m[2] else (9, 0)
+        is_next = bool(m[1])
+        target_day = _DAYS[m[2][:3]]
+        h, mi = _hm(m[3], m[4], m[5]) if m[3] else (9, 0)
+        diff = (target_day - base.weekday()) % 7
+        if diff == 0:
+            if is_next:
+                ahead = 7
+            else:
+                target_dt = dt.datetime.combine(base.date(), dt.time(h, mi))
+                ahead = 0 if target_dt > base else 7
+        else:
+            ahead = diff
         return dt.datetime.combine(base.date() + dt.timedelta(days=ahead), dt.time(h, mi))
 
     m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})(?:[ t]" + _TIME + ")?", s)

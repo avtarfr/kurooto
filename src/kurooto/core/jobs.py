@@ -575,12 +575,10 @@ class Jobs:
         ]
 
     def _last_resort(self, main):
-        """When the main AI can't do a request: an agent program (agy, Codex, Claude Code) hands over to your Gemini
-        key if one is saved; the Gemini key hands over to agy if agy is installed and has worked here before."""
+        """When the main AI can't do a request: Gemini hands over to agy if agy is installed and has worked here
+        before. CLI agent programs (agy) do NOT roll over to the free Gemini key to avoid rate-limit exhaustion."""
         if main is None:
             return None
-        if main.kind == "cli" and self.app.secrets.get(GEMINI_KEY):
-            return providers.build(self.app, "gemini")
         if main.id == "gemini":
             from kurooto.providers.agy import has_worked
 

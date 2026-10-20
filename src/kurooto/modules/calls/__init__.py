@@ -252,6 +252,14 @@ class Calls(Module):
                 hint="schedule_call calls them back later; hold_calls stops calls until a time.",
             ),
             Tool(
+                "call_now",
+                "Call their phone right now (rings their phone immediately).",
+                lambda a: self.place(str(a.get("reason") or "you asked me to call"), force=True, why="calls.own"),
+                {"reason": arg("what the call is for, optional")},
+                (),
+                hint="Use call_now to ring their phone immediately.",
+            ),
+            Tool(
                 "hold_calls",
                 'No calls until a time ("18:00", "2h"); "off" lifts the hold.',
                 self._hold,
@@ -1125,7 +1133,7 @@ class Calls(Module):
 
         now_pat = re.compile(
             r"^(?:please |can you |could you )?(?:call|ring|phone) me(?: (?:right )?now| back)?"
-            r"(?: (?:to|about|so|and) (.+))?$|^give me a (?:call|ring)(?: now)?(?: (?:to|about) (.+))?$",
+            r"(?:[,:\s]+(?:to|about|so|and|we|i|because)?\s*(.+))?$|^give me a (?:call|ring)(?: now)?(?:[,:\s]+(?:to|about|so|and)?\s*(.+))?$",
             re.I,
         )
 

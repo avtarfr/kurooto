@@ -1154,7 +1154,12 @@ class Skills(Module):
         p = Path(str(a.get("path") or "").strip())
         if not p.is_absolute():
             p = self.app.workspace / p
-        inside = [self.app.workspace, *([r] if (r := layout.files_root(self.app)) else [])]
+        classroom_dir = self.app.workspace.parent / "classroom"
+        inside = [
+            self.app.workspace,
+            *([r] if (r := layout.files_root(self.app)) else []),
+            *([classroom_dir] if classroom_dir.exists() else []),
+        ]
         to = "drive" if str(a.get("to") or "").strip().lower() == "drive" else ""
         return send_file(self.app, p, str(a.get("caption") or ""), inside=inside, to=to)[1]
 

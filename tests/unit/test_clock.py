@@ -22,8 +22,12 @@ BASE = dt.datetime(2026, 10, 19, 17, 40)  # a Monday
         ("tomorrow 7am", dt.datetime(2026, 10, 20, 7, 0)),
         ("tomorrow", dt.datetime(2026, 10, 20, 9, 0)),
         ("tonight", dt.datetime(2026, 10, 19, 21, 0)),
+        ("21:00 today", dt.datetime(2026, 10, 19, 21, 0)),
+        ("at 9pm tomorrow", dt.datetime(2026, 10, 20, 21, 0)),
         ("Wed 9:15", dt.datetime(2026, 10, 21, 9, 15)),
-        ("monday", dt.datetime(2026, 10, 26, 9, 0)),  # next week's, not today's
+        ("monday", dt.datetime(2026, 10, 26, 9, 0)),  # 9am already past today: next week's
+        ("monday 21:00", dt.datetime(2026, 10, 19, 21, 0)),  # 21:00 ahead today: today!
+        ("next monday 21:00", dt.datetime(2026, 10, 26, 21, 0)),  # explicitly next
         ("next friday at 6pm", dt.datetime(2026, 10, 23, 18, 0)),
         ("2026-11-02 14:00", dt.datetime(2026, 11, 2, 14, 0)),
         ("2026-11-02", dt.datetime(2026, 11, 2, 9, 0)),
