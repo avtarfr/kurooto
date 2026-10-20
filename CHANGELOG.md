@@ -81,6 +81,7 @@
   check still come first, and personal mail among it is only counted, never summarised. `/mail query off` clears it.
 
 ## 0.3.0 (unreleased)
+## 0.3.0 (2026-10-20)
 The [manual](docs/MANUAL.md) has the detail.
 
 **Kurooto Terminal**
