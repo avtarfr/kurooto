@@ -136,6 +136,22 @@ Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) h
 - The notes brain's sync no longer holds up the rest of Kurooto, and GBrain no longer checks for its own updates.
 - Long requests to agy no longer fail on Windows' command-line limit.
 
+## 0.1.6 (2026-10-20)
+- **Phone calls couldn't be set up at all**: building the call page always failed. Fixed; setup now goes on to the
+  Cloudflare sign-in. The Phone calls card lists what's needed in order (a free Gemini key, needed even when agy
+  answers your messages; a free Cloudflare account; then pairing your phone, which is where the app comes from) and
+  has a **Set up now** button.
+- **Google sign-in could seem to do nothing**: the browser blocked the pop-up. There's now always an **Open Google
+  sign-in** button, the card notices when you're signed in, and each way it can fail says what to do (including
+  boxes left unticked on Google's consent page).
+- Setup logs no longer vanish when the page redraws, and a refused setup says why.
+- Setting up local AI models on Linux could get Kurooto killed for running out of memory: Ollama's download was
+  unpacked in memory. It's now unpacked straight from disk, and the space check counts Ollama's real size.
+- Setup: click anywhere on a feature card to tick it, and the boxes are bigger.
+- A request to the AI could now and then vanish or fail when the setup page or the dashboard checked on it at the
+  same moment (mostly on Windows).
+- `kurooto start` works on computers where systemd's user session doesn't (WSL, containers).
+
 ## 0.1.5 (2026-10-20)
 Everything since 0.1.1, in one update.
 - **`kurooto stop` didn't stay stopped** on Linux and macOS (the background service restarted it 10 seconds later),
