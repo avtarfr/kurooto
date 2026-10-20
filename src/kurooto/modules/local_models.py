@@ -33,6 +33,17 @@ class LocalModels(Module):
         rec = (jload(self.app.paths.state / "hardware.json", {}) or {}).get("recommendation") or {}
         return rec.get("local_models") or []
 
+    def vision_model(self) -> dict | None:
+        """The model on this computer that reads pictures ({tag, size_gb, ...}): the vision model (12 GB cards), else
+        a helper model that sees images too (gemma4:e4b on 8 GB cards). None when there's none."""
+        from kurooto.core.hardware import _models
+
+        table = _models().get("models") or {}
+        wanted = self.wanted()
+        hit = next((m for m in wanted if m.get("key") == "vision"), None)
+        hit = hit or next((m for m in wanted if m.get("vision") or (table.get(m.get("key")) or {}).get("vision")), None)
+        return hit
+
     def api(self, path: str, body: dict | None = None, timeout: float = 10):
         req = urllib.request.Request(  # noqa: S310 (Ollama on this computer)
             OLLAMA + path,

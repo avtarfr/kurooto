@@ -15,6 +15,11 @@ The setup page's agy test says so and does it; someone who set agy up before (or
 once (Approve / Deny; Deny holds for 30 days) instead of having agy's settings changed by itself.
 To undo: `agy mcp remove kurooto`, and take those lines out of ~/.gemini/antigravity-cli/settings.json (or put back
 the backup from Kurooto's state folder, backups/).
+
+With your own GBrain (gbrain.managed = false) and gbrain.agy_mcp on, the same approval also gives agy that brain's own
+MCP server, registered as "gbrain" (unless agy has one by that name already, which is kept), and "mcp(gbrain/*)" in
+its allow-list (unless you listed gbrain's tools there yourself, which are kept as they are). Undo: `agy mcp remove
+gbrain` and that line.
 """
 
 from __future__ import annotations
@@ -43,6 +48,7 @@ LEVELS = {
 }
 ARG_LIMIT = 20_000 if sys.platform == "win32" else 100_000  # longer prompts go through a file (handover)
 ALLOW = "mcp(kurooto/*)"  # agy's allow-list entry for every Kurooto tool
+GBRAIN_ALLOW = "mcp(gbrain/*)"  # every tool of your own GBrain's MCP server (gbrain.agy_mcp)
 # shell commands that only read or are harmless (agy's rules name a program, not its arguments, so sed is left out:
 # `sed -i` writes; and never `kurooto`, whose off/uninstall/restore must not run unattended)
 COMMANDS = (
@@ -211,7 +217,40 @@ def wanted_rules(app: App) -> list[str]:
     rules = [ALLOW, *(f"command({c})" for c in COMMANDS)]
     rules += [f"read_file({p})" for p in read_roots(app)]
     rules += [f"write_file({p})" for p in write_roots(app)]
+    if gbrain_mcp(app):
+        rules.append(GBRAIN_ALLOW)
     return [*rules, "read_url(*)"]
+
+
+def gbrain_mcp(app: App):
+    """The GBrain module when agy should get your own brain's MCP server (your own GBrain, gbrain.agy_mcp on, the
+    Notes brain on), else None. Kurooto's own brain is never handed to agy this way: agy searches it through Kurooto's
+    tools."""
+    gb = app.modules.get("gbrain") if hasattr(app, "modules") else None
+    if gb is None or not app.is_on("gbrain") or not getattr(gb, "external", lambda: False)():
+        return None
+    return gb if gb.setting("agy_mcp") and gb.exe() else None
+
+
+def connect_gbrain(app: App, base: list[str]) -> tuple[bool, str]:
+    """Register your own brain's MCP server with agy as "gbrain" (`gbrain serve`), unless agy has a "gbrain" already."""
+    gb = gbrain_mcp(app)
+    if gb is None:
+        return True, ""
+    have = proc.run([*base, "mcp", "list"], timeout=60)
+    if have.code == 0 and re.search(r"(?mi)^\W*gbrain\b", have.out or ""):
+        return True, "agy has your GBrain already"
+    home = gb.brain_home()
+    flags = ["--env", f"GBRAIN_HOME={home}"] if home is not None else []
+    surface = str(gb.setting("mcp_surface") or "full")
+    surface = surface if surface in ("full", "starter", "verbs") else "full"
+    from kurooto.modules.gbrain import serve_command
+
+    cmd = [*serve_command(gb.exe()), "--surface", surface]
+    r = proc.run([*base, "mcp", "add", *flags, "gbrain", "--", *cmd], timeout=60)
+    if r.code != 0:
+        return False, f"agy didn't take your GBrain: {(r.err or r.out).strip()[-200:] or f'exit {r.code}'}"
+    return True, "agy has your GBrain's tools"
 
 
 def allow_tools(backups: Path, rules: list[str] | None = None, extra: dict | None = None) -> tuple[bool, str]:
@@ -224,7 +263,8 @@ def allow_tools(backups: Path, rules: list[str] | None = None, extra: dict | Non
     allow = perms.setdefault("allow", []) if isinstance(perms, dict) else None
     if not isinstance(allow, list):
         return False, f"agy's settings ({f}) aren't in the shape Kurooto expects; add {ALLOW} to permissions.allow"
-    add = [r for r in rules if r not in allow]
+    own_gbrain = any(str(a).startswith("mcp(gbrain/") for a in allow)  # your own picks of gbrain's tools stay
+    add = [r for r in rules if r not in allow and not (r == GBRAIN_ALLOW and own_gbrain)]
     keys = {k: v for k, v in extra.items() if k not in data}
     if not add and not keys:
         return True, "agy may already use Kurooto's tools"
@@ -257,6 +297,9 @@ def connect_tools(app: App, exe: str | list[str] | None = None) -> tuple[bool, s
         ok, msg = False, f"agy didn't take Kurooto's tools: {(r.err or r.out).strip()[-200:] or f'exit {r.code}'}"
     else:
         ok, msg = allow_tools(app.paths.state / "backups", wanted_rules(app), NON_WORKSPACE)
+        if ok:
+            ok, extra = connect_gbrain(app, base)
+            msg = f"{msg}; {extra}" if extra and ok else (extra or msg)
     jsave(
         app.paths.state / "agy-tools.json",
         {"command": cmd, "ok": ok, "message": msg, "version": __version__, "granted": wanted_rules(app)},
@@ -299,6 +342,10 @@ CONSENT = (
     "- run harmless commands such as ls, cat, grep, find and git, and latexmk to build PDFs (never Kurooto's own "
     "command)"
 )
+CONSENT_GBRAIN = (
+    '\n- your own GBrain\'s tools (its MCP server, as "gbrain"): all of them, also the ones that change or remove '
+    "pages in that brain"
+)
 DENY_DAYS = 30
 
 
@@ -318,8 +365,9 @@ def ask_consent(app: App, exe: str | None = None) -> str | None:
         return None
     if c.get("denied") and time.time() - float(c["denied"]) < DENY_DAYS * 86400:
         return None
+    text = CONSENT + (CONSENT_GBRAIN if gbrain_mcp(app) else "")
     qid = app.ask.ask(
-        CONSENT, kind="approval", hook="agy.tools", hook_payload={"exe": exe or ""}, source="agy", title="agy"
+        text, kind="approval", hook="agy.tools", hook_payload={"exe": exe or ""}, source="agy", title="agy"
     )
     jsave(f, {"qid": qid, "asked": time.time()})
     return qid

@@ -29,8 +29,9 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Google: setting up your own sign-in](#google-setting-up-your-own-sign-in-step-by-step) ·
     [Classroom → notes](#classroom--notes) · [Mail digest](#mail-digest) ·
     [Email reply drafts](#email-reply-drafts) · [Agent plan calendar](#agent-plan-calendar)
-  - [Handwritten notes](#handwritten-notes) · [Study tracker](#study-tracker) · [Research](#research) ·
-    [Terminals](#terminals) · [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) ·
+  - [Handwritten notes](#handwritten-notes) · [Books and PDFs](#books-and-pdfs) · [Study tracker](#study-tracker) ·
+    [Research](#research) · [Terminals](#terminals) · [Kurooto Terminal](#kurooto-terminal) ·
+    [Your add-ons](#your-add-ons) ·
     [From a terminal or a script](#from-a-terminal-or-a-script)
 - [Your phone](#your-phone)
 - [The dashboard](#the-dashboard)
@@ -526,6 +527,11 @@ LaTeX engine: the first pack without it comes as a `.tex` file, and a message as
 of LaTeX packages into Kurooto's cache). After **Not now** it doesn't ask again for 30 days. If a pack doesn't
 compile, the AI gets one try to fix it; otherwise you get the `.tex`.
 
+**Packs before exams.** With Deadlines on, the evening before a quiz or exam that has a subject (12 to 36 hours ahead,
+from 16:00, `skills.auto_pack_after`) you're asked **A revision pack for it tonight?** with **Build it** / **No
+thanks**, once per quiz or exam. `skills.auto_pack` = `auto` builds it without asking (it comes like a `/pack`); `off`
+never offers. *Undo:* set `skills.auto_pack` to `off`; packs already made stay where they are.
+
 The rules every skill follows: it only creates notes or adds to them (never rewords or deletes your text), puts your
 own words in verbatim, gives every link a reason, keeps health, money and other people's private details out of your
 notes, and sends nothing to anyone but you.
@@ -564,7 +570,31 @@ Three more things, each with its own switch in Settings (`gbrain.*`):
   message only when something is a warning or worse, with **Ignore these** (adds them to `gbrain.checkup_ignore`) and,
   when the brain needs a schema update, **Update the brain**.
 
+**Which steps the upkeep runs** (`gbrain.upkeep_steps`): empty means the light ones above. List GBrain's own phase
+names to choose, e.g. `["lint", "backlinks", "sync", "extract", "extract_facts", "consolidate",
+"edge_contradictions", "embed", "orphans"]`. Know what you add: `lint` and the repair steps rewrite note files, and
+`consolidate`, `synthesize` or `edge_contradictions` call the AI model GBrain is set up with (on a paid key, they
+spend). Kurooto never runs `purge` (it deletes pages for good); unknown names are skipped. *Undo:* empty the list.
+
 Kurooto pins GBrain's version and turns off its own update check.
+
+**Your own GBrain.** Already run GBrain yourself (for example on Postgres, with your notes as one of its sources)?
+Kurooto can use that brain instead of making its own: set `gbrain.managed` to `false`, `gbrain.exe` to your gbrain
+program (empty: the one on your PATH) and `gbrain.home` to its `GBRAIN_HOME` (empty: GBrain's default), then Set up.
+Setting up only checks that your brain answers. From then on Kurooto searches it (`/notes`, your AI's notes search,
+calls), adds pages through gbrain's own commands (books, with Books on), runs the nightly steps you turned on, and,
+if you name the source that is your notes folder (`gbrain.source`), runs `gbrain sync --source <it>` and
+`gbrain embed --stale --source <it>` every 15 minutes. It never creates, migrates, upgrades or reconfigures your
+brain (no `init`, no `apply-migrations`, no embedding set-up; the checkup has no **Update the brain** button), and it
+doesn't back it up: that's yours. The embedding and AI models are whatever your brain is set up with.
+**agy and your brain's own tools:** with `gbrain.agy_mcp` on, the next agy run asks you (the same Approve / Deny as
+for Kurooto's own tools) to also give agy your brain's MCP server, registered as `gbrain` (`gbrain serve --surface
+full`, or `gbrain.mcp_surface`: `starter`, `verbs`) and allowed with `mcp(gbrain/*)`. That is all of its tools, also the
+ones that change or remove pages in that brain. If agy already has a `gbrain` server, it's kept; if you listed
+gbrain's tools in agy's allow-list yourself, your list is kept and `mcp(gbrain/*)` isn't added.
+*Undo:* set `gbrain.managed` back to `true` (Kurooto's own brain is still there; Set up again if it never was);
+`agy mcp remove gbrain` and take `mcp(gbrain/*)` out of `~/.gemini/antigravity-cli/settings.json` (Kurooto kept a
+backup in its state folder, `backups/`).
 
 ### Local AI models
 Small AI models on your computer (through [Ollama](https://ollama.com)), picked for its graphics card, for quick
@@ -1113,9 +1143,94 @@ reminder (`agent_plan.remind_min`; 0 for none).
 Drop a PDF or photo of handwritten pages into a folder (by default `handwritten-inbox` in your notes folder; set
 `handwritten.folder` to one your tablet syncs to through Google Drive, OneDrive or Dropbox). Kurooto writes it out as
 a Markdown note with the maths in LaTeX, saved in `handwritten/` next to a copy of the original (the copy goes to your
-files folder when you set one). Every 15 minutes, or
-`/handwritten`. Uses Gemini (your key), or, on computers with 12 GB of graphics memory and Local models on, a model on
-your computer for photos.
+files folder when you set one; `handwritten.keep_original` = `link` makes no copy and links to the file where it is).
+It looks every 15 minutes; `/handwritten` does it now, `/handwritten status` says how far it got, `/handwritten retry`
+tries files that failed again.
+
+**Who reads the pages.** With Local models on, a model on your computer: the vision model on 12 GB graphics cards, or
+on 8 GB cards the helper model (gemma4:e4b reads handwriting too); `handwritten.local_model` names another Ollama model
+that reads pictures. Nothing leaves your computer then. Photos are read right away. PDFs are read **page by page at
+night on the charger** (`handwritten.pdf_hours`, 23:00–07:00; empty: any time), each page kept as it's done, so
+unplugging or the morning only pauses it and it carries on from the next page; you get one message when a PDF waits
+for the night (`/handwritten` starts it now). It waits while the graphics card is busy with something else, and
+writes out up to 60 pages per PDF (`handwritten.max_pages`). Drawing a tablet's PDF pages as pictures needs Poppler's
+PDF tools (scanned PDFs don't). Without a model here, Gemini (your key) reads them; `handwritten.cloud` = `false` keeps
+them on your computer: they wait for a model here.
+
+**Your own notes in it.** Kurooto's part of the note sits between `<!-- kurooto:handwritten -->` markers. When you
+change the original on your tablet, the same note is written again between the markers; what you wrote around them
+stays. Machine transcriptions aren't checked: look at the original for anything that matters.
+
+*Undo:* Features → Handwritten notes off; the notes and copies stay. `handwritten.local` = `false` goes back to Gemini
+for everything.
+
+### Books and PDFs
+Your reference books and other PDFs, per subject, read at night into text your AI uses when it writes your course
+notes, and cites by page.
+
+**Add a book** in any of three ways:
+- **Telegram:** send the PDF with a caption like `book for linear algebra` (or `linear algebra textbook`). It's moved
+  out of your notes into that subject's books folder. Telegram lets bots fetch files up to 20 MB; bigger books go in
+  the folder.
+- **The dashboard:** Features → Books and PDFs: the PDF's place on this computer and its subject (a copy is made).
+- **The folder:** drop PDFs into the subject's books folder. `/books folder linear-algebra` says where (and makes it).
+  Books are never kept in your notes: with `files.folder` set they go in `<files.folder>/<subject>/books/`, otherwise
+  in Kurooto's data folder (`books/<subject>/`); `books.folder` picks your own place (a folder per subject in it).
+
+**Reading.** At 01:00, on the charger, Kurooto reads every new book page by page and picks the best way for each page:
+1. the PDF's own text, when the page has a real text layer (Poppler's `pdftotext` if it's installed, otherwise
+   Kurooto's built-in reader);
+2. a scanned page: **Tesseract** OCR, if it's installed. Tesseract writes plain text: equations come out garbled,
+   not as LaTeX;
+3. without Tesseract, or for pages full of maths: a **vision model** on this computer (Local models, on computers with a
+   big graphics card), which writes the maths in LaTeX (`books.latex`: `maths`, `all` or `never`);
+4. **Gemini** only if you turn on `books.gemini`: pictures of pages nothing on this computer could read go to Google
+   with your key. Books may be copyrighted, so this is off by default.
+
+It stops at 07:00 (`books.until`), when you unplug or with `/books stop`, and carries on the next night from the page
+where it stopped. Pages no reader could handle wait, and are read once one is there (`/books setup` installs
+Tesseract). Encrypted PDFs need Poppler's PDF tools: your package manager's `poppler-utils` on Linux, `brew install
+poppler` on a Mac, or poppler.freedesktop.org.
+
+**What it makes:**
+- the text with page markers (`## [p. 123]`), in Kurooto's data folder (`book-text/<subject>/<book>/text.md`), outside
+  your notes;
+- an index note in your notes, `<subject>/books/<book>.md`: the title, the chapters with their pages (from the PDF's
+  bookmarks, or "Chapter 3 …" headings), how each page was read and links to the original. Kurooto writes only between
+  its two markers; your own notes around them stay;
+- with the Notes brain on, the text in the brain too (`books/<subject>/<book>/…`), so `/notes` finds book pages.
+
+Page numbers are the PDF's own (p. 1 is the first page of the file, often the cover).
+
+**The source mix.** When the AI writes course notes (`/study-log`, Classroom → notes, `/exam-prep`, `/pack`,
+`/add-to-notes`), it asks for a subject's material with the `course_sources` tool: your **books** (the pages on the
+topic), **Classroom** materials (posts and the files Classroom → notes downloaded) and your **own** class notes (notes
+you wrote, the class log, and the "My notes" part of lecture notes). How much each counts is yours to choose:
+- `/books mix linear-algebra book 30 classroom 30 own 40` (shares, any numbers);
+- `/books mix linear-algebra prefer own book classroom` (an order: the first counts most);
+- `/books mix linear-algebra` shows it; `/books mix linear-algebra reset` goes back to the general mix.
+
+Only the sources a subject has are used, and their shares grow to fill the room the others leave. The notes cite each
+part: (book: Linear Algebra, p. 123), (Classroom: Problem set 3), (your notes: [[linear-algebra/2026-10-12-eigen]]).
+Your own words are quoted, never reworded; notes the AI writes carry its header (`made_by`, or `trust_tier:
+agent_written` in the zettelkasten layout).
+
+- `/books`: your books per subject and how far reading got; `/books read now` starts now (on the charger).
+- `/exam-prep linear-algebra`: brings that subject's exam prep up to date from all three sources (also without
+  Classroom).
+
+*Settings:* `books.at` (`daily 01:00`), `books.until` (`07:00`), `books.ocr` (`auto` | `tesseract` | `vision` |
+`off`), `books.ocr_lang` (`eng`; e.g. `eng+deu`), `books.latex` (`maths`), `books.gemini` (off), `books.dpi` (200),
+`books.brain` (on), `books.max_mb` (400), `books.folder`; `sources.mix`, `sources.prefer`, `sources.cap` (characters
+from each source at most), `sources.budget` (24000), `sources.subjects` (per subject; `/books mix` sets it).
+*Leaves:* nothing while reading, unless you turn on `books.gemini` (page pictures to Google). Excerpts of your books,
+Classroom materials and notes go to the AI you picked when it writes your notes.
+*Turn it off:* Features → Books and PDFs → Turn off: reading stops after the current page; books, their text and the
+index notes stay.
+*Undo:* delete a book's PDF from its folder; its index note (`<subject>/books/<book>.md`) and its text
+(`book-text/<subject>/<book>/` in the data folder) are then yours to delete, Kurooto never deletes them. `/books mix
+<subject> reset` undoes a subject's mix; Settings → `sources` resets the general one. Tesseract installed by
+`/books setup` is removed like any program (winget uninstall or Homebrew on a Mac).
 
 ### Study tracker
 How long you spend on each subject, counted from the window you're working in: a window whose title names a subject
@@ -1173,6 +1288,14 @@ A digest of new papers in your fields, on Telegram, weekly by default. Set it up
 On Telegram: `/papers` (the digest now), `/feeds` (your sources), `/topics add …` (quick keywords searched across all of
 arXiv).
 
+**arXiv in its own words.** A source in `research.feeds` can be a search written the way arXiv's API takes it, with a
+name that heads its part of the digest: `{"type": "arxiv", "name": "Molecules", "query": "abs:\"graph neural
+network\" AND (abs:molecule OR abs:protein)"}` (`ti:` title, `abs:` abstract, `all:`, `cat:`, with `AND`,
+`OR`, `ANDNOT` and brackets; add `categories` to narrow it). Several arXiv sources are fetched three seconds apart, as
+arXiv asks. **A copy in your notes:** `research.save_note` = `true` also keeps each digest as a note in your inbox,
+`inbox/papers-<date>.md`, every new paper grouped by source with its first lines; keep what matters, delete the rest.
+*Undo:* `research.save_note` = `false`; take a search out of `research.feeds`.
+
 **Projects:** each project has a note in your notes, `research/<project>/index.md`, and `research/index.md` lists
 them all. Add your code repositories on the Research tab or with `/repos add ~/code/my-model`; a repository's project
 is its folder's name, or name it: `/repos add ~/code/model_v2 as Climate model` (several repositories can share a
@@ -1181,9 +1304,11 @@ day's new commits become one line under `## Log` in the project's note, e.g. `- 
 commits: …`. Kurooto only adds lines: your own text in these notes is never changed. (Logs from 0.1.0 in
 `research/<repository>-log.md` are left as they are.)
 
-**Quiet projects:** when a project has had no commits for 4 days (`research.idle_days`; 0 never asks), Kurooto asks
-once, at 18:00, what's up: **Busy**, **Working off-git**, **Remind me tomorrow** (a reminder comes the next day at
-18:00) or **Pausing it**. The answer goes into the project's log. It asks again only after the next quiet stretch.
+**Quiet projects:** when a project has had no commits or runs for 4 days (`research.idle_days`; 0 never asks),
+Kurooto asks once, at 18:00, what's up: **Busy**, **Working off-git**, **Remind me tomorrow** (with Phone calls on, a
+call the next day at 18:00, and a message if you miss it; otherwise a message then; `research.remind_by_call` =
+`false` always makes it a message) or **Pausing it**. The answer goes into the project's log. It asks again only after
+the next quiet stretch.
 
 **Experiment runs (`kurooto runlog`):** log a training or simulation run into the project's notes, with the code's
 exact state:
@@ -1199,6 +1324,24 @@ Each run is a folder `research/<project>/runs/<date>-<time>-<name>/` with `run.m
 so the exact code can be recovered), `metrics.jsonl` and `notes.md`; a row in `runs/index.csv`; and a line in the
 project's log when it ends. The commands find the run from `--run <id>`, else `$KUROOTO_RUN`, else the one you started
 last. It works without Kurooto running.
+
+**From Python:** a run is a `with` block, and it ends as `ok`, `failed` (an exception: its traceback goes into
+`meta.json` and `notes.md`, and the exception still stops your script) or `interrupted` (Ctrl+C):
+```python
+from kurooto.runlog import Run
+
+with Run("lr-sweep", config={"lr": 1e-3}, project="my-model") as run:
+    for step in range(n_steps):
+        run.log(step=step, loss=loss)
+    run.note("diverged after step 800")
+```
+With `project=` (or `$KUROOTO_PROJECT`) the run goes into your notes as above. Without one it stays in your code: a
+`runs/` folder where the script starts (`$RUNLOG_DIR` to put it elsewhere), with the same files plus the host, Python
+version and command line, and a row in `runs/index.csv`. **Runs kept in a repository** you added with `/repos add` are
+read every night: each new row of its `runs/index.csv` becomes a line in the project's log, e.g. `- **2026-10-20** |
+run:my-model/20261020-101500-lr-sweep — ok after 41m10s (step=900, loss=0.12)` (the first time, only the last 30
+days'). `research.repo_runs` is that folder's name (`runs`; empty: don't read them). *Undo:* empty
+`research.repo_runs`; the lines already in your notes stay.
 
 **Long jobs (`kurooto watch`):** `kurooto watch -- python train.py --epochs 50` runs the command (its output still shows
 in your terminal) and messages you when it ends: done, failed or stopped, the exit code, how long it took and its last
@@ -1707,6 +1850,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The setup page says agy "can't use Kurooto's tools yet" | agy's settings file isn't plain JSON, or `agy mcp add` failed. Add `mcp(kurooto/*)` to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself, then Test again. |
 | The AI said it did something but nothing happened | Tell it so; check `/jobs`. With a small local model, tools may not be supported: it answers without them. |
 | An agent program says Kurooto's tools aren't running | Kurooto is off or restarting; `kurooto on`, then ask again. |
+| A book stays "not started" or "waiting for a reader" | Reading happens at night on the charger (`/books read now` starts it now). Scanned pages need Tesseract (`/books setup`) or a vision model (Local models); encrypted PDFs need Poppler. `/books` says which. |
+| A book from Telegram wasn't added | Telegram lets bots fetch files up to 20 MB: drop bigger books into the folder (`/books folder <subject>`). The caption must say it's a book: `book for <subject>`. |
 | Kurooto Terminal opens separate windows instead of tabs | kitty (Linux, macOS) or Windows Terminal isn't there: `kurooto term --install`, or Windows Terminal from the Microsoft Store. `kurooto term --print` says what it found. |
 | "kitty didn't start" | kitty needs a graphics card driver with OpenGL 3.3 (some virtual machines lack it); set Settings → `terminal.kitty` off to use your usual terminal. kitty's own message is in `terminal/kitty.log` in the state folder. |
 | Kurooto Terminal's tabs or colours look old in Windows Terminal | Close every Windows Terminal window and open it again: it reads Kurooto's profiles when it starts. |
@@ -1745,6 +1890,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The look back never suggests anything | Most days that's right. `/lookback` shows when it last ran and what it noticed; on a laptop it waits for the charger. `/lookback now` runs one. |
 | A skill change says "nothing changed" | The AI's version was the same, or it broke the skill's header; it's never saved then. It may suggest it again another night. |
 | The nightly upkeep didn't finish | Search still works. Its log is in the state folder (`gbrain/upkeep-<date>.log`); it tries again the next night. Turn it off with `gbrain.upkeep`. |
+| Notes brain: "can't find your gbrain" or "your brain's folder isn't there" | Your own GBrain: set `gbrain.exe` to the full path of your gbrain program and `gbrain.home` to its `GBRAIN_HOME` (or set `gbrain.managed` back to `true`). |
+| A handwritten PDF isn't written out | PDFs read on this computer wait for the night on the charger (`/handwritten` starts it now; `/handwritten status` says where it is). It also waits while the graphics card is busy. "Can't be drawn": install Poppler's PDF tools. |
 | /notes or /timeline says the brain is busy | The nightly upkeep (or a sync) is using it; try again in a while. |
 | Phone calls: "not connected to your call line" | Is this computer online? It reconnects by itself within a minute. Still not: Features → Phone calls → Set up (redeploys). |
 | Cloudflare sign-in didn't finish | Press Set up again; the sign-in link is also shown in the progress log. |

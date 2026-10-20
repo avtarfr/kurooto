@@ -14,6 +14,17 @@ Three more things it can do, each on its own switch in Settings:
                       orphaned pages). Steps that would rewrite your note files or call an AI model are left out.
                       Heavy, so it waits for the charger.
     checkup    (off)  a weekly checkup (GBrain's advisor); you get a message only when something needs a look.
+The upkeep's steps are GBrain's own phase names (gbrain.upkeep_steps); add others (lint, sync, the repair steps,
+consolidate, edge_contradictions...) if you want them, knowing some rewrite note files or call the AI model GBrain is
+set up with. Kurooto never runs purge.
+
+Your own GBrain (gbrain.managed = false): Kurooto uses a GBrain you already run, for example one on Postgres, instead
+of making its own: gbrain.exe is your gbrain program (empty: the one on your PATH) and gbrain.home its GBRAIN_HOME
+(empty: GBrain's default). Kurooto doesn't own that brain: it never creates, migrates, upgrades or reconfigures it. It
+searches it, adds pages through gbrain's own commands (books, for example), keeps one of its sources in step with
+your notes when you name it (gbrain.source: `gbrain sync` and `gbrain embed --stale` every 15 minutes), and runs the
+nightly steps you turn on. With gbrain.agy_mcp, agy also gets your brain's own MCP server ("gbrain"), after you
+approve it like Kurooto's own tools.
 """
 
 from __future__ import annotations
@@ -46,6 +57,13 @@ register_defaults(
         "checkup": False,  # weekly checkup; a message only when something needs a look
         "nightly": "daily 03:00",
         "checkup_when": "weekly sun 19:30",
+        "upkeep_steps": [],  # the upkeep's steps (GBrain's phase names); empty: the light ones (UPKEEP_STEPS)
+        "managed": True,  # Kurooto runs its own brain; False: your own GBrain (gbrain.exe, gbrain.home)
+        "exe": "",  # your own GBrain: your gbrain program; empty: the one on your PATH
+        "home": "",  # your own GBrain: its GBRAIN_HOME; empty: GBrain's default
+        "source": "",  # your own GBrain: the source that is your notes folder, kept in step (empty: you do that)
+        "agy_mcp": False,  # your own GBrain: agy gets its MCP tools too (asked first)
+        "mcp_surface": "full",  # what that MCP server offers agy: full | starter | verbs
         # checkup findings that don't apply to a brain Kurooto runs for you (ids, or the start of one)
         "checkup_ignore": [
             "backup_",
@@ -67,6 +85,16 @@ MODELS = {"ollama": "ollama:nomic-embed-text", "gemini": "google:gemini-embeddin
 # files), sync (Kurooto's own import does that), and the steps that call an AI model (consolidate, takes, synthesis,
 # contradictions), which could run on a paid key and once ran a laptop's CPU at full heat for an hour.
 UPKEEP_STEPS = ("backlinks", "extract", "extract_facts", "embed", "orphans")
+# GBrain's phases (v0.60) you may add to gbrain.upkeep_steps. purge is never run: it deletes pages for good.
+PHASES = (
+    "lint", "backlinks", "sync", "fence_repair", "content_repair", "unindexed_files", "synthesize", "extract",
+    "extract_facts", "extract_atoms", "resolve_symbol_edges", "patterns", "synthesize_concepts",
+    "recompute_emotional_weight", "consolidate", "propose_takes", "grade_takes", "calibration_profile",
+    "edge_contradictions", "drift", "standing_questions", "chronicle", "facts_drain", "conversation_facts_backfill",
+    "enrich_thin", "skillopt", "embed", "orphans", "schema-suggest",
+)  # fmt: skip
+# what Kurooto runs on a brain it doesn't own: reading it, adding pages, keeping a source in step, the nightly steps
+EXTERNAL_OK = {"query", "search", "timeline", "extract", "dream", "advisor", "import", "sync", "embed", "--version"}
 BUSY = 75  # the exit code run() gives when the brain is busy (another step holds it)
 MIGRATIONS = ("pending_migration", "apply_migrations", "migration")
 
@@ -89,12 +117,38 @@ class GBrain(Module):
         self.busy = False  # the last search found the brain busy
 
     # ------------------------------------------------------------------------------------- plumbing
+    def external(self) -> bool:
+        """Your own GBrain (gbrain.managed = false), not one Kurooto runs."""
+        return self.setting("managed") is False
+
+    def brain_home(self) -> Path | None:
+        """The brain's GBRAIN_HOME: Kurooto's own folder, or yours (None: GBrain's default)."""
+        if not self.external():
+            return self.home
+        h = str(self.setting("home") or "").strip()
+        return Path(os.path.expanduser(h)) if h else None
+
     def exe(self) -> str | None:
+        if self.external():
+            own = str(self.setting("exe") or "").strip()
+            if own:
+                p = Path(os.path.expanduser(own))
+                return str(p) if p.is_file() else None
+            return proc.which("gbrain")
         return self.prereqs.items["gbrain"].find()
 
     def env(self) -> dict:
-        env = {**os.environ, "GBRAIN_HOME": str(self.home), "GBRAIN_NO_AUTOPILOT_INSTALL": "1"}
+        env = {**os.environ, "GBRAIN_NO_AUTOPILOT_INSTALL": "1"}
         env["GBRAIN_SELF_UPGRADE_MODE"] = "off"  # Kurooto pins GBrain's version: no update checks, no upgrade notes
+        if self.external():  # your brain's own settings; only its folder and program are Kurooto's to say
+            home = self.brain_home()
+            if home is not None:
+                env["GBRAIN_HOME"] = str(home)
+            exe = self.exe()
+            if exe:  # its folders first (Bun's bin, where gbrain lives with bun)
+                env["PATH"] = os.pathsep.join([*map(str, link_dirs(exe)), env.get("PATH", "")])
+            return env
+        env["GBRAIN_HOME"] = str(self.home)
         bun_bin = str(Path.home() / ".bun" / "bin")
         env["PATH"] = bun_bin + os.pathsep + env.get("PATH", "")
         key = self.app.secrets.get("gemini.api_key")
@@ -104,14 +158,20 @@ class GBrain(Module):
 
     def run(self, *args: str, timeout: float = 600, wait: float = -1) -> proc.Result:
         """Run gbrain. `wait`: how long to wait for the brain if another step is using it (-1: as long as it takes);
-        if it's still busy after that, the result has code BUSY."""
+        if it's still busy after that, the result has code BUSY. On your own brain, only what Kurooto may do there
+        runs (EXTERNAL_OK): never init, migrations or config changes."""
         exe = self.exe()
         if not exe:
-            return proc.Result(1, "", "GBrain isn't installed")
+            return proc.Result(1, "", "GBrain isn't installed" if not self.external() else "can't find your gbrain")
+        if self.external() and (not args or args[0] not in EXTERNAL_OK):
+            return proc.Result(
+                1, "", f"Kurooto doesn't run `gbrain {args[0] if args else ''}` on a brain it doesn't own"
+            )
+        home = self.brain_home()
         try:
             with Lock(self.app.paths.state, "gbrain", timeout=wait):  # its database allows one writer at a time
                 return proc.run(
-                    [exe, *args], timeout=timeout, env=self.env(), cwd=self.home if self.home.exists() else None
+                    [exe, *args], timeout=timeout, env=self.env(), cwd=home if home and home.exists() else None
                 )
         except Timeout:
             return proc.Result(BUSY, "", "the notes brain is busy (its nightly upkeep, or a sync)")
@@ -126,10 +186,19 @@ class GBrain(Module):
         return "gemini" if self.app.secrets.get("gemini.api_key") else "off"
 
     def initialised(self) -> bool:
+        if self.external():
+            return bool(self.exe())
         return (jload(self.app.paths.state / "gbrain.json", {}) or {}).get("initialised", False)
 
     # ---------------------------------------------------------------------------------------- setup
     def ready(self):
+        if self.external():
+            if not self.exe():
+                return False, "can't find your gbrain program (set gbrain.exe, or put gbrain on your PATH)"
+            home = self.brain_home()
+            if home is not None and not home.is_dir():
+                return False, f"your brain's folder isn't there: {home} (gbrain.home)"
+            return True, ""
         if not self.exe():
             return False, "needs setting up (installs Bun and GBrain, about 0.5 GB)"
         if not self.initialised():
@@ -137,7 +206,21 @@ class GBrain(Module):
         return True, ""
 
     def setup(self, progress=print) -> tuple[bool, str]:
-        """Install what it needs, create the brain, choose the index type, and import your notes once."""
+        """Install what it needs, create the brain, choose the index type, and import your notes once. Your own
+        brain is only checked: Kurooto searches it once to see it answers."""
+        if self.external():
+            ok, why = self.ready()
+            if not ok:
+                return False, why[:1].upper() + why[1:] + "."
+            progress("Checking your brain answers…")
+            r = self.run("search", "kurooto", timeout=300)
+            if not r.ok:
+                return False, f"Your gbrain didn't answer: {(r.err or r.out).strip()[-300:] or f'exit {r.code}'}"
+            jsave(self.app.paths.state / "gbrain.json", {"initialised": True, "external": True, "embeddings": "own"})
+            src = self.setting("source")
+            return True, "Kurooto uses your own brain now" + (
+                f"; it keeps the source {src} in step with your notes." if src else "."
+            )
         for key in ("bun", "gbrain"):
             if not self.prereqs.items[key].find():
                 ok, msg = self.prereqs.install(key, progress)
@@ -163,6 +246,8 @@ class GBrain(Module):
         return ok, ("Your notes brain is ready. " + msg) if ok else msg
 
     def sync(self, payload: dict | None = None) -> tuple[bool, str]:
+        if self.external():
+            return self.sync_source(payload)
         args = ["import", str(self.app.workspace)]
         if (jload(self.app.paths.state / "gbrain.json", {}) or {}).get("embeddings", "off") == "off":
             args.append("--no-embed")
@@ -173,6 +258,23 @@ class GBrain(Module):
         summary = next((ln.strip() for ln in out if "imported" in ln), "")
         self.app.events.emit("gbrain_sync", ok=r.ok)
         return r.ok, summary or (r.err[-200:] if not r.ok else "")
+
+    def sync_source(self, payload: dict | None = None) -> tuple[bool, str]:
+        """Your own brain: bring the source that is your notes folder up to date (gbrain.source), then embed what
+        changed, with the brain's own settings. Nothing when no source is named."""
+        src = str(self.setting("source") or "").strip()
+        if not src:
+            return True, "your brain keeps itself in step (no gbrain.source)"
+        wait = (payload or {}).get("wait", -1)
+        r = self.run("sync", "--source", src, "--no-hard-deadline", timeout=1800, wait=wait)
+        if r.code == BUSY:
+            return False, r.err
+        if r.ok:
+            self.run("embed", "--stale", "--source", src, timeout=1800, wait=wait)
+        out = (r.out or "").strip().splitlines()
+        summary = next((ln.strip() for ln in out if "imported" in ln.lower()), "")
+        self.app.events.emit("gbrain_sync", ok=r.ok, external=True)
+        return r.ok, summary or ((r.err or r.out)[-200:] if not r.ok else "")
 
     def start(self):
         # in a worker thread, so the rest of Kurooto keeps running; a sync that finds the brain busy waits for next time
@@ -213,10 +315,17 @@ class GBrain(Module):
         self.app.events.emit("gbrain_timelines", ok=r.ok, entries=n)
         return r.ok, n
 
+    def upkeep_steps(self) -> list[str]:
+        """The upkeep's steps: gbrain.upkeep_steps (GBrain's phase names, unknown ones and purge left out), else the
+        light ones."""
+        chosen = [str(x).strip() for x in self.setting("upkeep_steps") or [] if str(x).strip() in PHASES]
+        return list(dict.fromkeys(chosen)) or list(UPKEEP_STEPS)
+
     def upkeep(self) -> tuple[bool, str]:
-        """GBrain's nightly maintenance (its "dream" cycle) with the light steps only."""
-        args = ["dream", "--json", "--dir", str(self.app.workspace)]
-        for step in UPKEEP_STEPS:
+        """GBrain's nightly maintenance (its "dream" cycle) with the steps in upkeep_steps (the light ones unless
+        you choose). Your own brain runs over its own sources; Kurooto's over your notes folder."""
+        args = ["dream", "--json"] if self.external() else ["dream", "--json", "--dir", str(self.app.workspace)]
+        for step in self.upkeep_steps():
             args += ["--phase", step]
         started = now()
         r = self.run(*args, timeout=3600)
@@ -275,7 +384,7 @@ class GBrain(Module):
             jsave(self.app.paths.state / "gbrain-checkup.json", {ref: [f["id"] for f in found]})
             lines = [f"- {f['title']}" + (" (serious)" if f["severity"] == "critical" else "") for f in found[:8]]
             buttons = [("Ignore these", f"gbrain:{ref}:ignore")]
-            if any(f["id"] in MIGRATIONS for f in found):
+            if any(f["id"] in MIGRATIONS for f in found) and not self.external():
                 buttons.insert(0, ("Update the brain", f"gbrain:{ref}:migrate"))
             self.app.notify(
                 f"Notes brain checkup: {len(found)} thing(s) need a look.\n" + "\n".join(lines),
@@ -297,6 +406,8 @@ class GBrain(Module):
             self.app.settings.set("gbrain.checkup_ignore", have + [i for i in ids if i not in have])
             return "OK, the checkup won't mention those again."
         if act == "migrate":
+            if self.external():
+                return "Kurooto doesn't change a brain it doesn't own: run `gbrain apply-migrations` yourself."
             r = self.run("apply-migrations", "--yes", "--no-autopilot-install", timeout=1800, wait=0)
             if r.code == BUSY:
                 return "The brain is busy right now; try again in a while."
@@ -358,6 +469,28 @@ class GBrain(Module):
         if not out and self.busy:
             return "The notes brain is busy with its upkeep; try again in a while."
         return out[:3500] if out else "Nothing in your notes about that."
+
+
+def link_dirs(exe: str) -> list[Path]:
+    """The folders a program's links pass through (~/.local/bin/gbrain -> <bun>/bin/gbrain -> ...), nearest first:
+    where bun is, next to the gbrain it installed."""
+    p, out = Path(exe), []
+    for _ in range(8):
+        out.append(p.parent)
+        if not p.is_symlink():
+            break
+        p = p.parent / os.readlink(p)
+    return list(dict.fromkeys(out))
+
+
+def serve_command(exe: str) -> list[str]:
+    """How to start GBrain's MCP server from another program (agy): through the bun next to it, when there is one,
+    so it doesn't depend on that program's PATH."""
+    for d in link_dirs(exe):
+        for name in ("bun", "bun.exe"):
+            if (d / name).is_file():
+                return [str(d / name), exe, "serve"]
+    return [exe, "serve"]
 
 
 def gbrain_slug(note: str) -> str:

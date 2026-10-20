@@ -269,6 +269,12 @@ class App:
                 if out is not None:
                     msg.reply(out)
                     return
+        books = self.modules.get("books")  # a PDF sent as "book for <subject>" goes to that subject's books
+        if msg.files and books is not None and self.is_on("books"):
+            out = books.take_book(msg)
+            if out:
+                msg.reply(out)
+                return
         if msg.files:
             for m in mods:
                 h = getattr(m, "take_files", None)

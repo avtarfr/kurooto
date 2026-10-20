@@ -2,7 +2,8 @@
 # Official sources only. Updated with Kurooto, so a moved download is fixed by an update, not by you.
 # kinds: script (the vendor's own installer script), download-run (an installer program), download-zip,
 #        download-tar (unpacked into Kurooto's own folder), download-dmg (macOS: an app copied out of a disk
-#        image), winget, flatpak, url (we open the page for you), none (not made for that system; `why` says so)
+#        image), winget, flatpak, brew (Homebrew, macOS), url (we open the page for you), none (not made for
+#        that system; `why` says so)
 
 [agy]
 title = "Antigravity (agy)"
@@ -158,3 +159,29 @@ install.windows = { kind = "none", why = "Kurooto Terminal uses PowerShell on Wi
 # the official app, unpacked (not installed system-wide): its fish runs from inside it, as the app's own launcher does
 install.macos = { kind = "download-zip", into = "{app}/fish.app", strip = 1, url = "https://github.com/fish-shell/fish-shell/releases/download/4.9.3/fish-4.9.3.app.zip", sha256 = "3619fa92d540ed0dff4816594429290550d21b92226e0523457e5f0242c5e9a8" }
 install.linux = { kind = "download-tar", into = "{app}/fish/bin", urls = { amd64 = "https://github.com/fish-shell/fish-shell/releases/download/4.9.3/fish-4.9.3-linux-x86_64.tar.xz", arm64 = "https://github.com/fish-shell/fish-shell/releases/download/4.9.3/fish-4.9.3-linux-aarch64.tar.xz" }, sha256s = { amd64 = "8f643d10ad1abb0ef7072764c01ceb5cf61b2d373fda400cf60f0bad69b7e095", arm64 = "57349f0111728c64b703a84e611aa97ff4d1fa8466385d64e67bd5bc3ffa49fc" } }
+
+[tesseract]
+title = "Tesseract OCR"
+why = "Optional: reads scanned pages of your books (Books and PDFs). Plain text: it can't write equations as LaTeX. About 150 MB with English."
+size_gb = 0.15
+programs = ["tesseract"]
+dirs.windows = ["%LOCALAPPDATA%/Programs/Tesseract-OCR", "%LOCALAPPDATA%/Tesseract-OCR"]
+dirs.macos = ["/opt/homebrew/bin", "/usr/local/bin"]
+dirs.linux = []
+# Windows: winget with --scope user (no admin). macOS: Homebrew, which installs as you, if you have it.
+# Linux: your system's package manager (e.g. tesseract-ocr); Kurooto never installs system packages, so it opens the page.
+install.windows = { kind = "winget", id = "UB-Mannheim.TesseractOCR" }
+install.macos = { kind = "brew", formula = "tesseract", fallback = "https://tesseract-ocr.github.io/tessdoc/Installation.html" }
+install.linux = { kind = "url", url = "https://tesseract-ocr.github.io/tessdoc/Installation.html" }
+
+[poppler]
+title = "Poppler (PDF tools)"
+why = "Optional: reads encrypted and unusual PDFs and draws book pages for OCR (Books and PDFs). Without it, Kurooto's own reader handles most PDFs."
+size_gb = 0.05
+programs = ["pdftoppm"]
+dirs.windows = []
+dirs.macos = ["/opt/homebrew/bin", "/usr/local/bin"]
+dirs.linux = []
+install.windows = { kind = "url", url = "https://poppler.freedesktop.org/" }
+install.macos = { kind = "brew", formula = "poppler", fallback = "https://poppler.freedesktop.org/" }
+install.linux = { kind = "url", url = "https://poppler.freedesktop.org/" }

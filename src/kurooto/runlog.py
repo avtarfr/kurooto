@@ -15,6 +15,9 @@ project's runs):
     metrics.jsonl  one JSON object per `metric` call
 and one line in research/<project>/runs/index.csv, and one in the project's Log when it ends.
 Without --run, the commands use $KUROOTO_RUN, else the run you started last on this computer.
+
+From Python, a run is a `with` block (`Run` below): the same folder in your notes with a project, or, without one, a
+runs/ folder in your repository that Research reads into the project's Log each night.
 """
 
 from __future__ import annotations
@@ -23,8 +26,11 @@ import csv
 import datetime as dt
 import json
 import os
+import platform
 import re
+import sys
 import time
+import traceback
 from pathlib import Path
 
 from kurooto.core import layout, proc
@@ -129,7 +135,8 @@ class Runlog:
         lines = [
             f"# Run: {name}",
             "",
-            f"Project: [[research/{d.parent.parent.name}/index|{project}]]. Started {meta['start'].replace('T', ' ')}"
+            f"Project: [[{self.notes.link('project', project=_slug(project))}|{project}]]. "
+            f"Started {meta['start'].replace('T', ' ')}"
             f" in {repo.name or repo}.",
         ]
         if gs["commit"]:
@@ -185,7 +192,7 @@ class Runlog:
         return rid
 
     # ----------------------------------------------------------------------------------------------- end
-    def end(self, status: str = "ok", rid: str | None = None) -> dict:
+    def end(self, status: str = "ok", rid: str | None = None, error: str = "") -> dict:
         from kurooto.modules.research import log_lines
 
         if status not in STATUSES:
@@ -205,6 +212,8 @@ class Runlog:
             pass
         secs = round(time.time() - float(meta.get("t0") or time.time()), 1)
         meta.update(status=status, end=dt.datetime.now().isoformat(timespec="seconds"), duration_s=secs, last=last)
+        if error:
+            meta["error"] = error[-4000:]
         jsave(d / "meta.json", meta, mode=0o644)
         index = d.parent / "index.csv"
         new = not index.exists()
@@ -230,7 +239,7 @@ class Runlog:
         line = (
             f"- **{dt.date.today().isoformat()}** | run:{meta.get('name', rid)} — {status} after {_took(secs)}"
             + (f" ({shown})" if shown else "")
-            + f" [[research/{d.parent.parent.name}/runs/{rid}/run|details]]"
+            + f" [[{self.notes.link('runs', project=_slug(project))}/{rid}/run|details]]"
         )
         log_lines(self.notes, project, [line], self.assistant)
         st = self._state()
@@ -257,6 +266,135 @@ class Runlog:
                 }
             )
         return out
+
+
+def _slug(project: str) -> str:
+    from kurooto.modules.research import slug
+
+    return slug(project)
+
+
+class Run:
+    """An experiment run as a `with` block, for Python scripts:
+
+        from kurooto.runlog import Run
+
+        with Run("lr-sweep", config={"lr": 1e-3}, project="my-model") as run:
+            for step in range(n_steps):
+                ...
+                run.log(step=step, loss=loss)
+            run.note("diverged after step 800")
+
+    With a project (or $KUROOTO_PROJECT), the run goes into your notes exactly like `kurooto runlog` (and a line in
+    the project's Log). Without one, it goes to a runs/ folder where the script starts ($RUNLOG_DIR, or `root`):
+    <YYYYmmdd-HHMMSS>-<name>/ with config.json, meta.json (git commit, uncommitted changes, host, argv, start, end,
+    status, error), diff.patch, metrics.jsonl and notes.md, and a row in runs/index.csv, which Research reads into the
+    project's Log each night. It ends as ok, failed (an exception; its traceback is kept) or interrupted (Ctrl+C), and
+    never hides the exception."""
+
+    def __init__(self, name: str, config: dict | None = None, project: str | None = None, root=None):
+        self.name = str(name or "run")
+        self.config = dict(config or {})
+        self.project = project if project is not None else os.environ.get("KUROOTO_PROJECT") or None
+        self.root = None if self.project else Path(root or os.environ.get("RUNLOG_DIR") or "runs")
+        self.dir: Path | None = None
+        self.id = ""
+        self._rl: Runlog | None = None
+        self._metrics = None
+        self._last: dict = {}
+        self._t0 = time.time()
+
+    def __enter__(self) -> Run:
+        self._t0 = time.time()
+        if self.project:
+            self._rl = for_this_install()
+            self.id = self._rl.start(self.project, self.name, self.config, Path.cwd())
+            self.dir = self._rl.find(self.id)[1]
+        else:
+            self._start_here()
+        self._metrics = open(self.dir / "metrics.jsonl", "a", encoding="utf-8")  # noqa: SIM115 (closed in __exit__)
+        return self
+
+    def _start_here(self) -> None:
+        gs = git_state(Path.cwd(), proc.which("git"))
+        safe = re.sub(r"[^A-Za-z0-9._-]+", "-", self.name).strip("-")[:60] or "run"
+        stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        d = self.root / f"{stamp}-{safe}"
+        n = 2
+        while d.exists():
+            d = self.root / f"{stamp}-{safe}-{n}"
+            n += 1
+        d.mkdir(parents=True)
+        (d / "config.json").write_text(json.dumps(self.config, indent=2, default=str), encoding="utf-8")
+        if gs["diff"]:
+            (d / "diff.patch").write_text(gs["diff"][:DIFF_MAX], encoding="utf-8")
+        self.meta = {
+            "name": self.name,
+            "start": dt.datetime.now().isoformat(timespec="seconds"),
+            "commit": gs["commit"],
+            "branch": gs["branch"],
+            "dirty": gs["dirty"],
+            "host": platform.node(),
+            "python": sys.version.split()[0],
+            "argv": list(sys.argv),
+            "cwd": os.getcwd(),
+            "status": "running",
+        }
+        jsave(d / "meta.json", self.meta, mode=0o644)
+        self.dir, self.id = d, d.name
+
+    def log(self, step: int | None = None, **values) -> None:
+        """One row of numbers: run.log(step=10, loss=0.3)."""
+        row = {"time": round(time.time() - self._t0, 3)}
+        if step is not None:
+            row["step"] = step
+        row.update(values)
+        self._metrics.write(json.dumps(row, default=float) + "\n")
+        self._metrics.flush()
+        self._last.update({k: v for k, v in row.items() if k != "time"})
+
+    def note(self, text: str) -> None:
+        """A line in the run's notes.md."""
+        with open(self.dir / "notes.md", "a", encoding="utf-8") as f:
+            f.write(f"- {dt.datetime.now():%Y-%m-%d %H:%M:%S} {str(text).strip()}\n")
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        if self._metrics is not None:
+            self._metrics.close()
+        if exc_type is None:
+            status, error = "ok", ""
+        else:
+            status = "interrupted" if issubclass(exc_type, KeyboardInterrupt) else "failed"
+            error = "".join(traceback.format_exception(exc_type, exc, tb))[-4000:]
+            self.note(f"{status}: {exc_type.__name__}: {exc}"[:500])
+        if self._rl is not None:
+            self._rl.end(status, self.id, error=error)
+            return False
+        secs = round(time.time() - self._t0, 1)
+        self.meta.update(
+            status=status, end=dt.datetime.now().isoformat(timespec="seconds"), duration_s=secs, last=self._last
+        )
+        if error:
+            self.meta["error"] = error
+        jsave(self.dir / "meta.json", self.meta, mode=0o644)
+        index = self.dir.parent / "index.csv"
+        new = not index.exists()
+        with open(index, "a", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            if new:
+                w.writerow(["run", "start", "duration_s", "status", "commit", "dirty", "last_metrics"])
+            w.writerow(
+                [
+                    self.id,
+                    self.meta["start"],
+                    secs,
+                    status,
+                    (self.meta.get("commit") or "")[:10],
+                    self.meta.get("dirty"),
+                    json.dumps(self._last, default=float),
+                ]
+            )
+        return False  # never hide the exception
 
 
 def parse_values(pairs: list[str]) -> dict:

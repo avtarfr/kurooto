@@ -224,6 +224,14 @@ class Api:
             from kurooto.modules.google_confidential import view
 
             return 200, view(self.app, q.get("day"))
+        if path == "books":  # your books per subject and how far reading got (modules/books.py)
+            bk = self.app.modules.get("books")
+            if not bk or not self.app.is_on("books"):
+                return 200, {"on": False, "books": []}
+            rows = [
+                {"subject": x["subject"], "id": x["id"], "file": str(x["path"]), **bk.meta(x)} for x in bk.library()
+            ]
+            return 200, {"on": True, "folder": str(bk.roots()[0][0]), "status": bk.status, "books": rows}
         return 404, {"error": "not found"}
 
     # --------------------------------------------------------------------------------------------- POST
@@ -486,6 +494,12 @@ class Api:
             from kurooto.modules.google_confidential import settle
 
             return 200, {"message": settle(self.app, str(b.get("id", "")), bool(b.get("add")))}
+        if path == "books/add":  # a PDF on this computer into a subject's books: {"path", "subject"} (a copy)
+            bk = self.app.modules.get("books")
+            if not bk:
+                return 400, {"error": "Books isn't available"}
+            ok, msg = bk.add(str(b.get("path", "")), str(b.get("subject", "")), move=False)
+            return 200, {"ok": ok, "message": msg}
         return 404, {"error": "not found"}
 
     # ---------------------------------------------------------------------- questions and approvals

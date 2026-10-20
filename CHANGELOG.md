@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.4.0 (unreleased)
+
+**Books and PDFs** (new; off until you turn it on)
+- Reference books and PDFs per subject: send one on Telegram with "book for <subject>", add it on the dashboard, or
+  drop it in the subject's books folder. Books live outside your notes (`files.folder`, or Kurooto's data folder).
+- Read at night on the charger, page by page, the best way for each page: the PDF's own text (Poppler, or Kurooto's
+  built-in reader), Tesseract OCR for scanned pages, or a local vision model that writes the maths in LaTeX. Gemini
+  only if you turn on `books.gemini`. It stops at 07:00 or when you unplug and carries on the next night.
+- Each book gets an index note in your notes (`<subject>/books/<book>.md`: chapters with their pages); its text, with
+  page markers, stays in Kurooto's data folder, and goes into the Notes brain when that's on.
+- `/books` (per subject, how far reading got), `/books read now`, `/books stop`, `/books folder`, `/books setup`.
+- Tesseract and Poppler join the things Kurooto can help install (winget for your user on Windows, Homebrew on a Mac;
+  on Linux your package manager, which Kurooto never runs for you).
+
+**Notes from every source**
+- The source mix: how much books, Classroom materials and your own class notes each count when the AI writes notes,
+  per subject (`/books mix <subject> book 30 classroom 30 own 40`, or an order: `prefer own book classroom`). Only the
+  sources a subject has are used; the shares grow to fill the gap.
+- `/study-log`, Classroom → notes, `/pack`, `/add-to-notes` and the new `/exam-prep` draw on all three through the AI's
+  `course_sources` tool and cite where each part came from: (book: <title>, p. 123), (Classroom: <post>),
+  (your notes: [[<note>]]). Your own words are quoted, never reworded.
+- `/exam-prep <subject>`: brings a subject's exam prep up to date from everything there is, also without Classroom.
+
+**Handwriting on an 8 GB graphics card**
+- Handwritten notes are read by a model on your computer whenever there is one: the 12 GB vision model, or now the
+  8 GB helper model (gemma4:e4b reads handwriting), or one you name (`handwritten.local_model`). PDFs too, not only
+  photos: page by page with the maths in LaTeX, at night on the charger (`handwritten.pdf_hours`), resuming from the
+  next page after an unplug or the morning, and waiting while the graphics card is busy. Gemini only when no model
+  here can read them; `handwritten.cloud` = `false` never sends them.
+- A changed original updates the same note between `kurooto:handwritten` markers and keeps what you wrote around it.
+  `handwritten.keep_original` = `link` links to the original where it is instead of copying it. `/handwritten status`,
+  `/handwritten retry`.
+
+**Research**
+- arXiv sources in arXiv's own search words (`{"type": "arxiv", "name": …, "query": "abs:… AND (…)"}`), each named
+  in the digest; arXiv requests three seconds apart. `research.save_note` keeps each digest as `inbox/papers-<date>.md`.
+- Runs a script keeps in its repository (`runs/index.csv`) get a line in the project's log every night
+  (`research.repo_runs`). `from kurooto.runlog import Run`: `with Run("name", config=…) as run: run.log(step=…, x=…)`,
+  into your notes with a project, else into the repository's `runs/`; failed and interrupted runs keep their error.
+- Run links in project notes follow your notes layout. "Remind me tomorrow" for a quiet project is a call at 18:00
+  when Phone calls is on (`research.remind_by_call`).
+
+**Revision packs before exams**
+- The evening before a quiz or exam with a subject, Kurooto offers a revision pack (**Build it** / **No thanks**), or
+  builds it by itself with `skills.auto_pack` = `auto` (`off`: never).
+
+**Your own GBrain**
+- `gbrain.managed` = `false` uses a GBrain you already run (Postgres or PGLite; `gbrain.exe`, `gbrain.home`) instead
+  of Kurooto's own: Kurooto only searches it, adds pages through gbrain's commands, keeps your notes' source in step
+  (`gbrain.source`) and runs the nightly steps you choose. It never inits, migrates or reconfigures that brain.
+- `gbrain.upkeep_steps`: choose the nightly upkeep's steps (GBrain's phase names; `purge` is never run).
+- `gbrain.agy_mcp`: after your approval, agy gets your brain's own MCP server ("gbrain", `mcp(gbrain/*)`), keeping an
+  existing registration and your own allow-list picks.
+
 ## 0.3.0 (unreleased)
 The [manual](docs/MANUAL.md) has the detail.
 
