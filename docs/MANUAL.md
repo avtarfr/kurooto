@@ -1272,7 +1272,7 @@ notes, and cites by page.
 2. a scanned page: **Tesseract** OCR, if it's installed. Tesseract writes plain text: equations come out garbled,
    not as LaTeX;
 3. without Tesseract, or for pages full of maths: a **vision model** on this computer (Local models, on computers with a
-   big graphics card), which writes the maths in LaTeX (`books.latex`: `maths`, `all` or `never`);
+   graphics card of 8 GB or more), which writes the maths in LaTeX (`books.latex`: `maths`, `all` or `never`);
 4. **Gemini** only if you turn on `books.gemini`: pictures of pages nothing on this computer could read go to Google
    with your key. Books may be copyrighted, so this is off by default.
 

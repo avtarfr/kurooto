@@ -309,6 +309,23 @@ def test_reading_stops_in_the_morning_and_on_battery(books, pdfs, monkeypatch):
     assert not (books.book_dir(b) / "pages" / "00001.md").exists()
 
 
+@pytest.mark.parametrize(
+    "wanted,want",
+    [
+        ([{"key": "helper-large", "tag": "gemma4:e4b", "vision": True}], "gemma4:e4b"),  # 8 GB cards: the helper reads
+        ([{"key": "helper-large", "tag": "h"}, {"key": "vision", "tag": "v"}], "v"),  # 12 GB: the vision model first
+        ([{"key": "embed", "tag": "e"}], None),  # nothing that sees pictures
+    ],
+)
+def test_vision_model_comes_from_local_models(books, monkeypatch, wanted, want):
+    lm = books.app.modules["local_models"]
+    monkeypatch.setattr(lm, "wanted", lambda: wanted)
+    assert books.vision_model() is None  # Local models off
+    books.app.settings.set("modules.enabled", [*books.app.settings.get("modules.enabled"), "local_models"])
+    assert books.vision_model() == want
+    assert ("vision" in books.engines()) == bool(want)
+
+
 def test_the_night_window(books):
     day = dt.datetime(2026, 10, 20)
     assert books.night(day.replace(hour=1, minute=30)) and not books.night(day.replace(hour=9))
