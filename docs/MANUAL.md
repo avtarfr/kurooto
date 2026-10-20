@@ -34,7 +34,10 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [From a terminal or a script](#from-a-terminal-or-a-script)
 - [Your phone](#your-phone)
 - [The dashboard](#the-dashboard)
+- [Colours (Look)](#colours-look)
 - [Taking your laptop with you (battery, pause, off)](#taking-your-laptop-with-you-battery-pause-off)
+- [Starting at boot](#starting-at-boot)
+- [Going offline and coming back](#going-offline-and-coming-back)
 - [Updates and going back](#updates-and-going-back)
 - [Moving to a new computer](#moving-to-a-new-computer)
 - [Your computer and Kurooto (hardware profiles)](#your-computer-and-kurooto-hardware-profiles)
@@ -313,6 +316,11 @@ into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
 - **Change one in plain English:** "move tonight's check-in to 21:30", "push the check-in by 30 min", "skip the night
   check-in". Other days work too: "skip Friday's check-in", "move tomorrow's check-in to 9". A day Kurooto can't pin
   down ("yesterday", "next week", a date) goes to the AI instead of guessing.
+- **The check-in day runs from 05:00 to 05:00** (`checkins.day_starts`). A night check-in at 00:30, or one you push
+  past midnight ("push the night check-in by 30 min" at 23:50), is still that evening's: it rings at 00:20 and its
+  journal and study logs go to the evening's day. Still up at 1 am, "move the evening check-in to 21:00" means the
+  coming evening, and "skip the night check-in" skips the coming night's once tonight's is over. Set it to `00:00`
+  for calendar days.
 - `/checkins` lists today's, with **+30 min** and **Skip** buttons (and **Tomorrow morning** for the night one);
   `/checkin evening 21:30` (today only), `/checkin night skip`, `/checkin night morning` (to your wake-up call).
 
@@ -334,10 +342,16 @@ into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
   morning / Skip**; reply to it to answer by text. A check-in never stays "calling".
 - A check-in call never interrupts a class, a calendar event, `/hold`, focus, the night or another call: it waits until
   that ends, or comes as a message if that would be too late. The night doesn't hold the night check-in.
+- **Gone to bed:** with the alarm set, the night check-in doesn't ring once it's past your bedtime (`alarm.bedtime`),
+  or within 3 hours of you setting the alarm yourself. It moves to your wake-up call, and a message says so with
+  **Call me now** and **Skip**. A night check-in you moved after setting the alarm still rings.
+  `checkins.asleep_defers` (default on) turns this off.
 
 *Settings:* `checkins.times` (`evening`, `night`, `midday`; empty = off), `checkins.questions` (what each one asks),
 `checkins.by_call`, `checkins.journal`, `checkins.ai_notes` (default on: with Chat on, the AI writes the journal and
-study logs after a check-in call).
+study logs after a check-in call), `checkins.day_starts` (default `05:00`), `checkins.asleep_defers` (default on).
+*Undo:* `checkins.day_starts` = `00:00` (calendar days, as before 0.3.0); `checkins.asleep_defers` off (the night
+check-in always rings).
 *Leaves:* nothing; with check-ins by call and Chat on, what you said on the call goes to the AI to write your journal
 and study logs.
 
@@ -687,9 +701,17 @@ Needs Phone calls.
   daily note from what you said.
 - **The morning page:** at the alarm, if this computer is awake, it opens the morning page in your browser (today's
   plan, classes, calendar, what's due, check-ins). It's also at `http://127.0.0.1:8770/morning`.
+- **Keep this computer awake until the alarm** (`alarm.keep_awake`, off until you turn it on): from 12 hours before
+  the alarm until 15 minutes after it rings (or until you answer), this computer doesn't go to sleep by itself, so
+  the day's plan is drafted 20 minutes before the alarm even if it would have slept overnight. Linux: it keeps running
+  with the lid closed too. macOS: a closed lid still sleeps a Mac (unless an external display is attached). Windows:
+  the lid follows Power Options. On battery, setting the alarm reminds you to plug in. The hold ends by itself, even
+  if Kurooto stops; the screen can still turn off.
 
 *Settings:* `alarm.daily`, `alarm.days`, `alarm.bedtime`, `alarm.prep_min` (default 20; 0 = no draft),
-`alarm.open_page` (default on), `alarm.notes` (default on: the wake-up call goes into the daily note).
+`alarm.open_page` (default on), `alarm.notes` (default on: the wake-up call goes into the daily note),
+`alarm.keep_awake` (default off).
+*Undo:* `alarm.keep_awake` off; it lets go at once.
 *Leaves:* the alarm time goes to your call line; with Chat on, the AI reads your notes to draft the plan, and the
 wake-up call's transcript to settle it.
 
@@ -700,9 +722,17 @@ products, so don't say anything you wouldn't type.
 
 ### Stay awake on charger
 While your computer is plugged in, it doesn't go to sleep by itself, so Kurooto keeps answering; on battery it sleeps
-as usual. The screen can still turn off. **A closed lid usually still sleeps a laptop:** to keep it running with the
-lid closed, change the lid setting. Windows: Control Panel → Power Options → "Choose what closing the lid does" → "Do
-nothing" when plugged in. macOS: only with an external display. Linux: your desktop's power settings.
+as usual. The screen can still turn off.
+
+- **Lid closed (Linux):** turn on `awake.lid` and it keeps running with the lid closed while plugged in (it holds the
+  lid switch through systemd-inhibit). If your system doesn't let a background program hold the lid switch, it holds
+  the rest and its line in `kurooto doctor` says so.
+- **Windows and macOS** can't be changed by an app here. Windows: Control Panel → Power Options → "Choose what closing
+  the lid does" → "Do nothing" when plugged in. macOS: only with an external display.
+- The hold ends when Kurooto stops, even if it crashes.
+
+*Settings:* `awake.lid` (default off).
+*Undo:* `awake.lid` off, or turn the feature off; the computer sleeps as usual at once.
 
 ### Calendar
 Your calendar's events, read-only, from its private iCal link. Google Calendar on a computer: Settings → your calendar
@@ -735,8 +765,26 @@ repositories → that one; Permissions → Contents → **Read and write**. 3. P
 refuses a public repository. Git is installed for you if it's missing (on a Mac, Apple's installer opens: click
 Install, then press Set up again).
 
-If the same lines of a note changed in two places at once, your computer's version wins; the other is still in the
-history. With Phone calls on, your call line can read whole notes from the repository while your computer is off.
+**When a note changed in two places at once** (say, your phone and this computer), nothing is lost:
+
+- `notes_sync.on_conflict` = `keep both` (the default): the note keeps the version from elsewhere, and this
+  computer's goes beside it as `<note> (conflict, this computer, <date time>).md`. You get a message naming both;
+  merge them when you like and delete the copy. Notes changed on one side only merge as usual. A note deleted on one
+  side and changed on the other is kept, changed.
+- `stop`: sync stops, changes nothing, and tells you (at most every 6 hours) until you've sorted it out yourself in
+  the notes folder (`git pull --rebase`, fix the files it lists, `git add`, `git rebase --continue`). It never forces
+  anything.
+- A merge or rebase left half done in the notes folder (you, sorting one out) is left alone: sync waits until it's
+  finished.
+
+**A notes folder that's already a Git repository** keeps its remote: an `origin` that's the same repository (over
+HTTPS or SSH) is used as it is; an `origin` that's another repository is left alone and Kurooto adds a remote of its
+own (`kurooto`).
+
+With Phone calls on, your call line can read whole notes from the repository while your computer is off.
+
+*Settings:* `notes_sync.on_conflict` (`keep both` | `stop`).
+*Undo:* `notes_sync.on_conflict` = `stop`. Conflict copies are ordinary notes: delete them once merged.
 
 ### Sync everything
 `/sync all` or "sync everything" on Telegram, or `kurooto sync` in a terminal (with Kurooto running), runs every sync
@@ -1072,7 +1120,8 @@ your computer for photos.
 ### Study tracker
 How long you spend on each subject, counted from the window you're working in: a window whose title names a subject
 (its name or a short name, a PDF called `linear-algebra-week3.pdf`, a note in that subject's folder) counts while
-you're active. Only minutes per subject are kept, never window titles. Works on Windows, macOS (it asks once to see
+you're at the computer: not idle for 5 minutes (`study.idle_min`) and the screen not locked. Only minutes per subject
+are kept, never window titles. Works on Windows, macOS (it asks once to see
 window titles) and Linux on X11, Hyprland or Sway. Needs Subjects.
 
 - **Away from the computer:** `/study la 50` (or "starting linear algebra for 50 min") starts a session; `/study
@@ -1082,6 +1131,26 @@ window titles) and Linux on X11, Hyprland or Sway. Needs Subjects.
 - **How much:** `/study` (today), `/study week`, "how much did I study today?".
 - **In your notes:** at 23:45 the day's hours go into your daily note as "## Study hours" (`study.daily_note`; empty
   to turn it off).
+- **How it tells you're away:** Windows and macOS from the system's last-input time; Linux from your desktop (X11,
+  GNOME, KDE, logind's idle hint). On Hyprland, Sway and other Wayland desktops without an idle API it watches for
+  change instead (keyboard and touchpad activity, the cursor on Hyprland, the focused window; nothing you type is
+  read). A locked screen never counts (hyprlock, swaylock and other lockers, or your desktop's lock).
+  `kurooto doctor` says how this computer tells you're away.
+- **Your idle tool can tell it** (more exact on Wayland): `kurooto idle away` when you go idle, `kurooto idle back`
+  when you're back. hypridle, in `~/.config/hypr/hypridle.conf`:
+  ```
+  listener {
+      timeout = 300
+      on-timeout = kurooto idle away
+      on-resume = kurooto idle back
+  }
+  ```
+  swayidle: `swayidle timeout 300 'kurooto idle away' resume 'kurooto idle back'`.
+- **Research:** a window naming one of `study.research_paths` (words, or folders matched by their name, e.g.
+  `~/code/flow-model`) counts as **Research**; with Research on, its projects and repository folders count too.
+
+*Settings:* `study.idle_min` (default 5), `study.research_paths` (default empty), `study.daily_note`.
+*Undo:* empty `study.research_paths`; remove the idle hook lines (and run `kurooto idle back` once).
 
 ### Research
 A digest of new papers in your fields, on Telegram, weekly by default. Set it up on the dashboard's **Research** tab:
@@ -1266,6 +1335,10 @@ you set it up):
   off (your call line forgets it too). Check-ins and the alarm have their own commands (`/checkins`, `/alarm`).
 - `kurooto mcp`: Kurooto's tools for agent programs (see
   [What the AI can do](#what-the-ai-can-do-its-tools)). Without Kurooto running, it tells the agent so.
+- `kurooto autostart boot|login|status`: start before anyone logs in (Linux), or at login; `status` says which (see
+  [Starting at boot](#starting-at-boot)).
+- `kurooto idle away|back`: for your idle tool, you've stepped away or you're back (see
+  [Study tracker](#study-tracker)).
 
 `kurooto ask` and `kurooto call` need Kurooto running (`kurooto on`).
 
@@ -1418,6 +1491,26 @@ started), doesn't start when you sign in, and your call line stops placing sched
 --keep-calls` keeps them, e.g. for the alarm). It stays off until you open **Kurooto** from your app menu (Start
 menu, Applications, or your Linux app launcher) or run `kurooto on`; both also open the dashboard. Telegram doesn't
 answer while it's off; messages sent meanwhile (up to a day: Telegram keeps them that long) are handled when it's back.
+
+## Starting at boot
+
+Kurooto starts when you log in. On Linux (with systemd) it can start when the computer does, before anyone logs in, so
+Telegram and calls work after a power cut or a remote reboot:
+
+- **Settings → Starting** on the dashboard, or `kurooto autostart boot`, turns on lingering for your account
+  (`loginctl enable-linger`; it may ask for your password, or say to run that command yourself). Your keychain stays
+  locked until you log in, so Kurooto's keys move to its owner-only settings file (`secrets.json`, readable only by
+  your account).
+- **When you log in** (or `kurooto autostart login`) goes back: lingering is turned off again only if Kurooto turned
+  it on (if something else did, it says so and leaves it), and the keys go back to the keychain.
+- `kurooto autostart status` shows which. The setting is `autostart.when`.
+- Windows and macOS start Kurooto at sign-in only (Settings → Starting says so): starting before would need admin
+  rights (and on Windows your password kept in a scheduled task). On a Mac that restarts by itself, automatic login
+  brings Kurooto back.
+- If your home folder is encrypted and only unlocked at login, starting at boot can't reach Kurooto's files.
+
+*Undo:* **When you log in** in Settings → Starting, or `kurooto autostart login` (or `kurooto uninstall`, which also
+turns off the lingering Kurooto turned on).
 
 ## Going offline and coming back
 
@@ -1606,6 +1699,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | No "going offline" when the laptop sleeps | That message comes from your call line: it needs Phone calls set up, and Telegram from the line needs your OK (`notify.presence.line_telegram`); or add `"app"` to `notify.presence.channels`. |
 | Building my profile failed | It's a big request: if your AI hit a limit, try again later or with a stronger AI (Settings → `brain.main`). |
 | Something only happens when I plug in | That's the battery saver (Taking your laptop with you); set `power.on_battery` to `normal` to keep it all running. |
+| The laptop still sleeps with the lid closed on the charger (Linux) | `awake.lid` is off, or your system refuses the lid hold to background programs (doctor says so). Allow it in polkit (`org.freedesktop.login1.inhibit-handle-lid-switch`) or set `HandleLidSwitchExternalPower=ignore` in logind.conf. |
+| `kurooto autostart boot`: "Linux didn't allow that from here" | Run `loginctl enable-linger` in a terminal (it may ask for your password), then `kurooto autostart boot` (or Settings → Starting) again. |
 | "I can't answer free text yet" | Turn on **Chat** (Features). |
 | The AI says it isn't signed in | Setup page → AI → Install / sign in again → Test. |
 | "It's at its usage limit" | Free tiers have daily limits: wait, or set a fallback brain (Settings → `brain.fallback`). `/usage` shows how often it happens. |
@@ -1626,12 +1721,16 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | `kurooto ask`, `call`, `send`, `ask-me` or `ask-approval` say Kurooto isn't running | `kurooto on`, then try again. Note that `--timeout` is in minutes. |
 | No night check-in | It's off until you give it a time: Settings → Check-ins → `times`, e.g. `"night": "23:15"`. |
 | A night check-in I didn't want | Empty its time in Settings → Check-ins → `times`, or `/checkin night skip` for today. |
+| The night check-in didn't ring | The alarm was set and it was past your bedtime: it moved to the wake-up call (the message says so). `checkins.asleep_defers` off makes it always ring. |
 | "skip Friday's check-in" went to the AI | Kurooto acts by itself only for today, tomorrow, the day after or a weekday name; anything else (dates, "next week") goes to the AI. |
 | "Held a call until …" | A class, `/hold`, focus, a calendar event or the night was on. The call comes by itself when it ends; `/calls` lifts a `/hold`. Too many events hold calls? Set `calendar.nocall_events` to `tagged`. |
 | A call rang three times | It wasn't answered: repeats at +3 and +6 minutes. Answer, tap **Later**, or set `calls.realert_min` to `[]`. |
 | No plan before my alarm | It needs Chat on and the alarm set at least a few minutes ahead (`alarm.prep_min`). The AI's answer is in the AI jobs tab. |
+| The morning plan wasn't drafted (the computer slept) | Turn on `alarm.keep_awake`, and plug in overnight. |
 | The morning page didn't open | It opens only if the computer is awake with a screen at alarm time (`alarm.open_page`). Open `http://127.0.0.1:8770/morning` yourself. |
 | No after-class question | The class was skipped, it's a holiday or exam period, or the term is over (`/term`). |
+| Study time counts while I'm away (Wayland) | Add the hypridle or swayidle hook (`kurooto idle away` / `back`, see [Study tracker](#study-tracker)). `kurooto doctor` shows what it uses now. |
+| Study time stopped counting | A `kurooto idle away` without its `back`: run `kurooto idle back`. |
 | A deadline shows up twice | They didn't look like the same thing (different dates or numbers in the title). Tap **Not mine** on one. |
 | A calendar event became a deadline by mistake | **Not mine** on it, or `/ignore` a word in its title; to stop calendar deadlines altogether, `deadlines.from_calendar` off. |
 | No call six hours before a deadline | Phone calls on and set up? A class, `/hold`, focus or the night until shortly before the deadline means a message instead. |
@@ -1656,7 +1755,10 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | "Not sent: tap to try again" on Android | The phone was offline or the call line didn't answer. Tap it to try again, or answer on Telegram. |
 | "That answer is too old (or this phone's clock is off)" | Set the phone's clock to automatic, then answer again. |
 | "That's no longer open" | It was answered somewhere else (Telegram, a call, another phone) or expired. Nothing to do. |
+| A file named "(conflict, this computer, …)" appeared in my notes | The note changed here and elsewhere at once: both versions are kept. Merge them, then delete the copy. |
+| Notes sync: "a note was changed here and elsewhere at once" | `notes_sync.on_conflict` is `stop`. Nothing was lost: merge it in the notes folder (`git pull --rebase`, as the message says), or set it to `keep both`. |
 | Notes sync: "a change elsewhere clashes" | Nothing was lost. Open the repository on GitHub, keep the version you want in the note, then `/sync`. |
+| Notes sync: "a merge or rebase is unfinished" | Finish it in the notes folder (`git status` says how); sync goes on by itself. |
 | `kurooto doctor`: Backups FAIL "the backup folder isn't there" | Plug the drive in (or sign in to the cloud app); the next backup comes within the hour. A drive that's unplugged for a day or two is only a note. |
 | Backups: "not enough room in the backup folder" | Free space there, lower `backups.keep`, or turn `backups.index` off. |
 | A restore went wrong | `kurooto restore <the zip in restore-safety/>` puts things back as they were before it. |

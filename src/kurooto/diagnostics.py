@@ -129,6 +129,7 @@ def checks(app) -> list[tuple[str, bool, str]]:
             ok, why = False, f"{type(e).__name__}: {e}"
         out.append((m.title, ok, why or "ok"))
     out += more_checks(app)
+    out += layout_checks(app)
     if "backups" in app.modules and not app.is_on("backups"):  # say when nothing is backed up (a note)
         from kurooto.modules.backups import age_line
 
@@ -194,6 +195,22 @@ def more_checks(app) -> list[tuple[str, bool | None, str]]:
                 ok = r[1] if r[1] in (True, False, None) else bool(r[1])
                 out.append((f"{m.title}: {r[0]}"[:60], ok, str(r[2])[:300]))
     return out
+
+
+def layout_checks(app) -> list[tuple[str, bool | None, str]]:
+    """Your notes layout's settings (notes.layout, notes.paths, files.folder): one line per problem, or the layout in
+    use when there's none."""
+    from kurooto.core import layout
+
+    try:
+        lay = layout.of(app)
+        problems = lay.check()
+    except Exception as e:
+        return [("notes layout", False, f"{type(e).__name__}: {e}"[:200])]
+    if problems:
+        return [("notes layout", False, why) for why in problems]
+    files = lay.files_root()
+    return [("notes layout", True, lay.preset + (f"; files in {files}" if files else ""))]
 
 
 def timezone_check(app) -> tuple[str, bool, str] | None:

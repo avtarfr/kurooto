@@ -720,7 +720,30 @@ class Api:
             if vals:
                 title = self.app.modules[sec].title if sec in self.app.modules else sec.title()
                 out.append({"section": sec, "title": title, "values": vals, **look_choices(self.app, sec)})
+        at = next((i + 1 for i, x in enumerate(out) if x["section"] == "power"), len(out))
+        out.insert(at, self._autostart_section())  # Settings → Starting, after Power
         return {"sections": out}
+
+    def _autostart_section(self) -> dict:
+        """Settings → Starting: when you log in, or (Linux with systemd) when this computer starts. It changes through
+        POST /api/autostart ("post"), which also turns lingering on or off and moves the keys. Windows and macOS start
+        at sign-in only, so they get a line that says so ("fixed")."""
+        import sys
+
+        sec = {"section": "autostart", "title": "Starting", "values": {"when": autostart.when(self.app.settings)}}
+        ok, why = autostart.boot_possible()
+        if not sys.platform.startswith("linux"):
+            return {**sec, "fixed": {"when": "when you sign in"}, "help": {"when": why}}
+        text = (
+            "At boot, before anyone logs in, Telegram and calls work after a power cut or a remote reboot; Kurooto's "
+            "keys then move to its owner-only settings file (the keychain is locked until you log in)."
+        )
+        if not autostart.status():
+            text += " Right now Kurooto doesn't start by itself: `kurooto autostart on` turns that back on."
+        elif not ok:
+            text += " " + why
+        choices = [["login", "at login"], ["boot", "at boot (before login)"]]
+        return {**sec, "post": "autostart", "choices": {"when": choices}, "help": {"when": text}}
 
     def _set(self, key: str, value) -> tuple[int, dict]:
         from kurooto.core.palette import check as look_check

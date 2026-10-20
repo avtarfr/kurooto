@@ -36,7 +36,7 @@ computer only.
 | Morning alarm | the alarm time; with Chat on, the AI reads your notes before the alarm to draft the day's plan, and the wake-up call's transcript to settle it | your call line; the AI service you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
 | Calendar | nothing leaves; Kurooto reads your calendar's private link. Event descriptions are read only for `#nocall` and `#focus` and aren't kept | (read from Google/Outlook/Apple) |
-| Notes sync | your whole notes folder | your own private GitHub repository |
+| Notes sync | your whole notes folder; conflict copies (when a note changed here and elsewhere at once) are ordinary notes and go too | your own private GitHub repository |
 | Notes sync + Phone calls | read access to that repository, so calls can read notes while the computer is off | your call line (its secret store) |
 | Backups | a zip of Kurooto's settings, data and state (AI requests and answers, check-ins, deadlines, your profile reports); your notes and your keys only if you turn them on. Not encrypted | only the folder you pick; if your computer syncs that folder to a cloud (Google Drive, OneDrive, iCloud, Dropbox), that cloud |
 | Profile sync | your settings, passwords and keys, and saved state (deadlines, quiz progress, routines, observations, scheduled reminders and calls), all encrypted with your passphrase before they leave; in plain text only when it was saved, Kurooto's version, the kind of computer and a random id for it | your own private GitHub repository (the one Notes sync uses, or another you pick) |
@@ -53,6 +53,7 @@ computer only.
 | Terminals | nothing by themselves (see [Your own code and terminals](#your-own-code-and-terminals)) | stays on your computer |
 | Kurooto Terminal | nothing by itself; getting kitty or fish (only when you say yes) downloads them from their official GitHub releases. What you type to your AI's program goes to its service, as when you run it yourself | stays on your computer |
 | Your add-ons | nothing by the feature itself; your add-ons' own code can do anything Kurooto can, so they send whatever they're written to send | wherever your add-ons send it |
+| Study tracker: telling you're away | nothing: the idle check reads input interrupt counts (`/proc/interrupts`), the cursor position (Hyprland) and whether a screen locker runs; never what you type, and none of it is kept | stays on your computer |
 | Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list and exam mode), Subjects, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
 
 ## Free tiers and terms
@@ -157,6 +158,9 @@ Your bot token, keys, tokens and links are kept in your system's keychain (Windo
 the Secret Service on Linux), or, where there is none, in a file only your user can read. They're never written to
 logs. `kurooto doctor --bundle` blanks them out (and names, addresses and folders) before saving anything.
 
+- **Starting at boot** (Linux, opt-in: `kurooto autostart boot` or Settings → Starting): your keychain is locked
+  until you log in, so Kurooto's keys are kept in its owner-only settings file (`secrets.json`, readable only by your
+  account) instead. `kurooto autostart login` moves them back.
 - **Backups:** with `backups.secrets` on, your keys are copied into each backup zip (`secrets.json`), in plain text;
   anyone who gets the zip can use them. Off by default.
 - **Your call line and Telegram:** if you approve "going offline" messages from your call line (asked once), your

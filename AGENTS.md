@@ -91,7 +91,8 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
 | `free space FAIL` | under 5 GB free | help them free space; don't delete their files yourself |
 | `Telegram FAIL ... token` | the bot token is missing or revoked | setup page → Telegram (a new token from @BotFather if it was revoked) |
 | `Phone calls FAIL not connected` | the call line isn't reachable | check the internet connection; it reconnects by itself; else Features → Phone calls → Set up |
-| `Notes sync FAIL` | the repository can't be reached or a change clashes | read the detail; clashes are resolved on GitHub, then `/sync` on Telegram |
+| `Notes sync FAIL` | the repository can't be reached, a change clashes, or a merge is unfinished | read the detail; a clash: in `stop` mode merge it in the notes folder (`git pull --rebase`), or set `notes_sync.on_conflict` to `keep both`; an unfinished merge: finish it |
+| `notes layout FAIL` | a notes setting doesn't work (`notes.layout`, `notes.paths`, `files.folder`) | read the detail (it says what Kurooto does meanwhile); fix the setting in the dashboard's Settings → notes or files |
 | `Google FAIL sign in` | Google's sign-in expired | Features → Google → Save; if it happens weekly, the consent screen isn't published |
 | `Backups FAIL the backup folder isn't there` | the drive is unplugged or the cloud app signed out | they plug in or sign in, then `kurooto backup` |
 | Profile sync: another computer saved the profile | they used or restored Kurooto elsewhere | ask which computer is the one: `kurooto profile restore` here, or `/profile save` to keep this one |
