@@ -158,8 +158,12 @@ class Server:
 
                     q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
                     g = server.app.modules.get("google")
-                    if q.get("error") or not g:
-                        ok, msg = False, f"Google sign-in didn't finish ({q.get('error', 'not available')})."
+                    if not g:
+                        ok, msg = False, "Google sign-in isn't available in this version of Kurooto."
+                    elif q.get("error"):
+                        from kurooto.modules.google import signin_error
+
+                        ok, msg = False, signin_error(q["error"])
                     else:
                         ok, msg = g.finish_signin(q.get("code", ""), q.get("state", ""))
                     page = (

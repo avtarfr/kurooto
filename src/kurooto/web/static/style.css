@@ -107,3 +107,5 @@ pre.about-brief { white-space: pre-wrap; max-height: 220px; overflow: auto; font
 .copy-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
 .form-steps { margin: 6px 0 8px 20px; }
 .form-steps li { margin: 2px 0; }
+a.button { display: inline-block; font: 14px var(--sans); padding: 9px 16px; border: 1px solid var(--line); text-decoration: none; }
+a.button.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); font-weight: 600; }

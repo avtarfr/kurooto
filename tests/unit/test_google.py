@@ -94,7 +94,7 @@ def test_each_add_on_asks_for_its_own_permission(gx):
     msg = allow(env, g, "mail_digest", drop="gmail.readonly")
     assert "Turned on" not in msg and not app.is_on("mail_digest") and gm.ready() == (True, "")
     msg = allow(env, g, "mail_digest")
-    assert msg == "Signed in with Google. Turned on: Mail digest. You can close this tab."
+    assert msg == "Signed in with Google. Turned on: Mail digest. You can close this tab and go back to Kurooto."
     assert app.is_on("mail_digest") and md.ready() == (True, "")
     assert "gmail.readonly" in g.scope and "gmail.compose" not in g.scope  # nothing it didn't ask for
     assert set(SCOPES["agent_calendar"]) == {"https://www.googleapis.com/auth/calendar.app.created"}
@@ -154,7 +154,9 @@ def classroom(gx):
     g.courses.append({"id": "c2", "name": "Chess club"})
     g.materials["c2"] = None  # this course doesn't share materials: it's skipped quietly
     env.app.settings.set("classroom_notes.skip", ["chess"])
-    assert allow(env, g, "classroom_notes").endswith("Turned on: Classroom → notes. You can close this tab.")
+    assert allow(env, g, "classroom_notes").endswith(
+        "Turned on: Classroom → notes. You can close this tab and go back to Kurooto."
+    )
     yield env, g, ai, env.app.modules["classroom_notes"]
 
 
@@ -286,7 +288,9 @@ def mail(gx):
     )
     g.add_mail("n1", "Clubs <clubs@school.example>", "Pep rally tickets", "Tickets on sale")
     g.add_mail("s1", "Me <me@school.example>", "note to self", "mine")
-    assert allow(env, g, "mail_digest").endswith("Turned on: Mail digest. You can close this tab.")
+    assert allow(env, g, "mail_digest").endswith(
+        "Turned on: Mail digest. You can close this tab and go back to Kurooto."
+    )
     yield env, g, ai, env.app.modules["mail_digest"]
 
 
@@ -379,7 +383,9 @@ def drafts(mail):
     g.add_mail("nr", "Robot <no-reply@school.example>", "Your ticket", "Automated")
     md.digest()
     run_jobs(env.app)
-    assert allow(env, g, "reply_drafts").endswith("Turned on: Email reply drafts. You can close this tab.")
+    assert allow(env, g, "reply_drafts").endswith(
+        "Turned on: Email reply drafts. You can close this tab and go back to Kurooto."
+    )
     assert "gmail.compose" in g.scope
     yield env, g, ai, env.app.modules["reply_drafts"]
 
@@ -455,7 +461,9 @@ def test_reply_drafts_per_day_cap(drafts):
 def test_agent_plan_writes_only_to_its_own_calendar(gx):
     env, g, ai = gx
     app = env.app
-    assert allow(env, g, "agent_plan").endswith("Turned on: Agent plan calendar. You can close this tab.")
+    assert allow(env, g, "agent_plan").endswith(
+        "Turned on: Agent plan calendar. You can close this tab and go back to Kurooto."
+    )
     ap = app.modules["agent_plan"]
     day = (dt.datetime.now() + dt.timedelta(days=1)).date()
     out = run_tool(app, "plan_block", {"start": f"{day} 14:00", "end": "15:30", "title": "Problem set 4"})

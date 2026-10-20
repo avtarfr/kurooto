@@ -116,6 +116,47 @@ class NeedsSignIn(Exception):
     pass
 
 
+class TokenError(RuntimeError):
+    """Google's token endpoint said no; .code is its error ("invalid_client", ...)."""
+
+    def __init__(self, code: str, text: str):
+        super().__init__(text)
+        self.code = code
+
+
+# What went wrong, in plain words: errors Google sends back to the sign-in page, and from its token endpoint
+SIGNIN_ERRORS = {
+    "access_denied": "You pressed Cancel (or didn't allow access) on Google's page. Start the sign-in again from "
+    "Kurooto and press Continue, leaving every box ticked.",
+    "admin_policy_enforced": "Your organisation's Google admin doesn't allow this app for your account. Sign in with "
+    "another Google account (a personal one), or ask your admin.",
+    "org_internal": "This Google Cloud project only lets accounts of its own organisation sign in. Use one of those, "
+    "or set the project's Audience to External.",
+    "invalid_client": "Google doesn't recognise this OAuth client: it was deleted, or its secret was replaced. "
+    "Download a fresh client JSON from Google Cloud (Clients), paste it in Kurooto, and sign in again.",
+    "unauthorized_client": "This OAuth client isn't allowed to sign in this way: make a client of type Desktop app, "
+    "paste its JSON in Kurooto, and sign in again.",
+    "redirect_uri_mismatch": "This OAuth client isn't a Desktop app, so Google can't bring you back to Kurooto. Make a "
+    "Desktop app client, paste its JSON in Kurooto, and sign in again.",
+    "invalid_grant": "That sign-in code was already used or has expired. Start the sign-in again from Kurooto.",
+}
+SCOPE_WORDS = {  # what each permission is for, when its box was left unticked on Google's page
+    "classroom.courses.readonly": "your Classroom courses",
+    "classroom.coursework.me.readonly": "your Classroom coursework",
+    "classroom.announcements.readonly": "Classroom announcements",
+    "classroom.courseworkmaterials.readonly": "Classroom materials (Classroom → notes)",
+    "drive.readonly": "Drive files (Classroom → notes)",
+    "gmail.readonly": "reading your mail (Mail digest)",
+    "gmail.compose": "Gmail drafts",
+    "calendar.app.created": "the Agent plan calendar",
+}
+
+
+def signin_error(code: str) -> str:
+    """The sign-in page came back with ?error=<code>: what it means and what to do."""
+    return SIGNIN_ERRORS.get(code, f"Google's sign-in didn't finish ({code}). Start it again from Kurooto.")
+
+
 class GoogleError(RuntimeError):
     """Google answered with an error; .code is the HTTP status (404: it's gone, 403: no permission)."""
 
@@ -215,9 +256,15 @@ class Google(Module):
         pending = jload(f, {}) or {}
         f.unlink(missing_ok=True)  # single use, whatever happens
         if not pending or not secrets.compare_digest(str(state), pending.get("state", "")):
-            return False, "That sign-in link is stale. Start the sign-in again from Kurooto."
+            return False, (
+                "This sign-in page is out of date: it was already used, or a newer sign-in was started since. Start "
+                "the sign-in again from Kurooto (Save on the Google card)."
+            )
         if time.time() - pending.get("at", 0) > 900:
-            return False, "That sign-in took too long. Start it again."
+            return (
+                False,
+                "That sign-in took more than 15 minutes. Start it again from Kurooto (Save on the Google card).",
+            )
         c = self.client()
         try:
             t = self._token_call(
@@ -230,15 +277,22 @@ class Google(Module):
                     "code_verifier": pending["verifier"],
                 }
             )
+        except NeedsSignIn:
+            return False, SIGNIN_ERRORS["invalid_grant"]
+        except TokenError as e:
+            return False, SIGNIN_ERRORS.get(e.code) or f"Google didn't finish the sign-in: {e}"[:300]
         except Exception as e:
             return False, f"Google didn't finish the sign-in: {e}"[:300]
         if not t.get("refresh_token"):
             return (
                 False,
-                "Google didn't give a lasting sign-in. Remove Kurooto's access in your Google account and try again.",
+                "Google didn't give Kurooto a lasting sign-in (it does that when the app already had access). Remove "
+                "Kurooto's access at myaccount.google.com/connections, then start the sign-in again from Kurooto.",
             )
+        granted = set((t.get("scope") or "").split())
+        missing = [x for x in self.scopes() if x not in granted] if t.get("scope") else []
         self._save_tokens(t)
-        self.app.events.emit("google_signed_in")
+        self.app.events.emit("google_signed_in", missing=len(missing))
         turned_on = []
         for part, mid in PARTS.items():  # a feature you just set up turns on once Google has OK'd it
             m = self.app.modules.get(mid)
@@ -246,7 +300,16 @@ class Google(Module):
                 if self.app.enable(mid)[0]:
                     turned_on.append(m.title)
         on = f" Turned on: {', '.join(turned_on)}." if turned_on else ""
-        return True, f"Signed in with Google.{on} You can close this tab."
+        if missing:  # boxes left unticked on Google's page: say which, and that ticking them all fixes it
+            what = ", ".join(
+                dict.fromkeys(SCOPE_WORDS.get(x.rsplit("/", 1)[-1], x.rsplit("/", 1)[-1]) for x in missing)
+            )
+            base_ok = all(self.granted(p) for p in BASE if self.setting(p))
+            return base_ok, (
+                f"Signed in with Google.{on} Some boxes on Google's page weren't ticked, so Kurooto can't use: {what}. "
+                "Start the sign-in again from Kurooto and tick every box."
+            )
+        return True, f"Signed in with Google.{on} You can close this tab and go back to Kurooto."
 
     def _token_call(self, form: dict) -> dict:
         req = urllib.request.Request(self.ep("token"), data=urllib.parse.urlencode(form).encode())  # noqa: S310 (https)
@@ -260,7 +323,9 @@ class Google(Module):
                 err = {}
             if err.get("error") == "invalid_grant":
                 raise NeedsSignIn("Google's sign-in expired or was removed") from None
-            raise RuntimeError(err.get("error_description") or err.get("error") or f"HTTP {e.code}") from None
+            raise TokenError(
+                str(err.get("error") or ""), err.get("error_description") or err.get("error") or f"HTTP {e.code}"
+            ) from None
 
     def _save_tokens(self, t: dict) -> None:
         old = self.tokens()
