@@ -141,7 +141,7 @@ class KurootoTerminal(Module):
                     ok, msg = defaults.apply(self._plan().os, state, *outside(), opens=opens)
                     self.app.events.emit("terminal_default", on=True, ok=ok)
                     if not ok:
-                        self.app.notify(f"Kurooto Terminal couldn't become your default terminal: {msg}")
+                        self.app.notify(f"Kurooto Terminal couldn't become your default terminal: {msg}", why="asked")
                 elif have and not want:
                     defaults.undo(state)
                     self.app.events.emit("terminal_default", on=False, ok=True)

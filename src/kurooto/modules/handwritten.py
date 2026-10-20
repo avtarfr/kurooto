@@ -411,7 +411,9 @@ class Handwritten(Module):
                 except Exception as e:
                     seen[f.name] = sig  # don't retry a failing file every 15 minutes; it's retried if it changes
                     failed[f.name] = str(e)[:200]
-                    self.app.notify(f"Couldn't write out {f.name}: {e}"[:300], kind="info")
+                    self.app.notify(
+                        f"Couldn't write out {f.name}: {e}"[:300], kind="info", why="handwritten.failed", about=f.name
+                    )
                     self.app.events.emit("handwritten_failed", error=str(e)[:200])
                     continue
                 seen[f.name] = sig
@@ -424,7 +426,7 @@ class Handwritten(Module):
         finally:
             lock.release()
         if done:
-            self.app.notify("Written out: " + ", ".join(done), kind="result")
+            self.app.notify("Written out: " + ", ".join(done), kind="result", why="handwritten.done")
         return done
 
     def spawn(self, force: bool = False) -> bool:
@@ -451,6 +453,8 @@ class Handwritten(Module):
             f"Got {f.name} ({_pages(pages)}). I'll write it out with the model on this computer at night "
             f"({self.setting('pdf_hours')}, on the charger); /handwritten starts it now.",
             kind="info",
+            why="handwritten.got",
+            about=f.name,
         )
 
     # --------------------------------------------------------------------------------------- the note

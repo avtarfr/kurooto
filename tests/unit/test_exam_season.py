@@ -50,7 +50,7 @@ class World:
         monkeypatch.setattr(
             self.app.modules["calls"],
             "ring",
-            lambda reason, alarm=False, key="", buttons=None: self.rang.append((key, alarm, reason)) or "1",
+            lambda reason, alarm=False, key="", buttons=None, **kw: self.rang.append((key, alarm, reason)) or "1",
         )
 
     @property
@@ -131,8 +131,8 @@ def test_the_season_its_first_message_and_the_update_hold(season):
     assert said == [
         "Exam season: Mon 7 Dec to Fri 11 Dec, 2 exams. Until it's over: updates wait (critical fixes still install); "
         "your alarm is checked every night; the evening before each exam I ask where it is; an alarm to leave on "
-        "time; a two-minute debrief after each one; no calls during an exam. /examseason shows it and switches parts "
-        "off."
+        "time; a two-minute debrief after each one; no calls during an exam; during the day only deadlines, quizzes "
+        "and the alarm message you (the rest waits for the evening). /examseason shows it and switches parts off."
     ]
     w.go(at(dt.date(2026, 12, 6), 12, 15))
     assert len([t for t in w.texts() if t.startswith("Exam season:")]) == 1  # once a season
@@ -433,7 +433,7 @@ def test_the_card_its_switches_on_telegram_and_the_dashboard(season):
     assert out.startswith("Exam season. Next: Tue 8 Dec.\n- Linear Algebra final exam: Tue 8 Dec 09:00\nOn: Hold")
     sent = [p for m, p in w.env.fake.sent if m == "sendMessage" and "reply_markup" in p][-1]
     labels = [b["text"] for row in sent["reply_markup"]["inline_keyboard"] for b in row]
-    assert labels[0] == "Hold non-critical updates: on" and len(labels) == 6  # no quiz picks without Quiz and calls
+    assert labels[0] == "Hold non-critical updates: on" and len(labels) == len(es_mod.PIECES)  # no quiz picks
     assert w.env.press("es:debrief:t") == "Two-minute debrief after each exam: off."
     assert app.settings.get("exam_season.debrief") is False
     assert "\nOff: Two-minute debrief after each exam." in w.env.say("/examseason")
@@ -443,7 +443,7 @@ def test_the_card_its_switches_on_telegram_and_the_dashboard(season):
     card = next(m for m in st["modules"] if m["id"] == "exam_season")["card"]
     assert card["lines"] == ["Next: Tue 8 Dec.", "Linear Algebra final exam: Tue 8 Dec 09:00"]
     pick = [x for x in card["toggles"] if x["id"].startswith("quiz:")]
-    assert [x["id"] for x in card["toggles"][:6]] == list(es_mod.PIECES) and pick[0]["disabled"] is True
+    assert [x["id"] for x in card["toggles"][: len(es_mod.PIECES)]] == list(es_mod.PIECES) and pick[0]["disabled"]
     code, r = api.post("modules/card", {"id": "exam_season", "act": "debrief", "value": True})
     assert code == 200 and r["message"] == "Two-minute debrief after each exam: on."
     assert app.settings.get("exam_season.debrief") is True

@@ -94,7 +94,7 @@ def test_open_doubts_come_before_the_next_class_with_tick_buttons(dq):
     assert "1. why does the rank not change?" in msg and "2. is the trace basis-free?" in msg
     assert d.before_class() == 0  # once per class
     ticks = buttons(env)
-    assert [x[0] for x in ticks] == ["Tick 1", "Tick 2"]
+    assert [x[0] for x in ticks] == ["Tick 1", "Tick 2", "Why?", "Less of this"]
     assert env.press(ticks[0][1]) == "Ticked in your notes."
     assert env.press(ticks[0][1]) == "Already ticked (or changed in the note)."
     assert "- [x] why does the rank not change?" in note(env).read_text()

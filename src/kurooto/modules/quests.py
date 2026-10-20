@@ -255,6 +255,7 @@ class Quests(Module):
             buttons=[[("Skip this one", f"quest:{ref}:skip"), ("Stop these", f"quest:{ref}:stop")]],
             map_kind="quest",
             map_ref=ref,
+            why="quests.day",
         )
         self.app.events.emit("quest_sent", quest=q.id, day=day)
         return f"sent {q.id}"

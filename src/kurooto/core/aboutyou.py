@@ -208,6 +208,7 @@ class AboutYou:
                 + (result.detail or result.text)[:300]
                 + " Try again from the setup page (About you).",
                 kind="result",
+                why="asked",
             )
             return
         text = result.text[result.text.index("## In brief") :].strip()
@@ -228,6 +229,7 @@ class AboutYou:
                 f"The new one is {layout.shown(self.app, new)} in your notes: copy over what you "
                 "want.",
                 kind="result",
+                why="asked",
             )
             return
         if f.exists():  # keep the previous version next to it
@@ -239,6 +241,7 @@ class AboutYou:
             f"Your profile is ready: {layout.shown(self.app, f)} in your notes. "
             "Have a look and fix anything that's off." + (f"\n\n{note}" if (note := result.usage.get("note")) else ""),
             kind="result",
+            why="asked",
         )
 
     def brief(self, limit: int = 2500) -> str:

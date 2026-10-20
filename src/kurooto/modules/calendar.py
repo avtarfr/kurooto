@@ -453,7 +453,7 @@ class Calendar(Module):
             return
         s = dt.datetime.fromisoformat(p["start"]).astimezone(self.tz())
         where = f" ({p['location']})" if p.get("location") else ""
-        self.app.notify(f"{p['title']} at {s:%H:%M}{where}.", kind="reminder")
+        self.app.notify(f"{p['title']} at {s:%H:%M}{where}.", kind="reminder", why="calendar.remind", about=p["title"])
 
     # -------------------------------------------------------------------------------- telling you
     @staticmethod

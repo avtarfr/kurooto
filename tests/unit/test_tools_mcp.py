@@ -450,11 +450,11 @@ class FakeCalls:
     def __init__(self):
         self.rang, self.scheduled = [], []
 
-    def ring(self, reason, alarm=False, key=""):
+    def ring(self, reason, alarm=False, key="", **kw):
         self.rang.append((reason, alarm))
         return "1"
 
-    def schedule(self, at, reason, key=None, alarm=False):
+    def schedule(self, at, reason, key=None, alarm=False, **kw):
         self.scheduled.append((at, reason, alarm))
         return f"I'll call you {at:%a %d %b at %H:%M}: {reason}"
 

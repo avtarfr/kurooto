@@ -391,6 +391,8 @@ class Telegram(Module):
                 self.app.events.emit("telegram_menu_failed", module=m.id, error=str(e)[:200])
         add("q", "open questions I asked you")
         add("aboutme", "what I know about you")
+        add("calm", "messages that come by themselves: today's count and limit")  # (calm) core/calm.py
+        add("why", "why the last message came")
         if not self.app.is_on("notes_sync"):
             add("sync", "sync everything that's on")
         sk = self.app.modules.get("skills")

@@ -56,6 +56,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Starting at boot](#starting-at-boot)
 - [Going offline and coming back](#going-offline-and-coming-back)
 - [Kurooto keeps itself working](#kurooto-keeps-itself-working)
+- [Calm by default: why each message came, and a daily limit](#calm-by-default-why-each-message-came-and-a-daily-limit)
 - [Updates and going back](#updates-and-going-back)
 - [Moving to a new computer](#moving-to-a-new-computer)
 - [Your computer and Kurooto (hardware profiles)](#your-computer-and-kurooto-hardware-profiles)
@@ -529,6 +530,9 @@ to switch it) or in Settings → Exam season:
   subject's course note (`<subject>/course.md`) under **Exam debriefs**, or into that day's daily note when the exam
   has no subject. "Nothing new" skips it.
 - **No calls during an exam** (`no_calls`): from 15 minutes before an exam until `exam_min` after its start.
+- **Only deadlines, quizzes and the alarm by day** (`budget`):
+  [Calm](#calm-by-default-why-each-message-came-and-a-daily-limit) holds everything else that comes by itself for the
+  evening bundle. Your own reminders, approvals and anything urgent still come.
 
 **The quiz call before an exam stays off unless you pick it for that exam:** the card (and `/examseason`, with Quiz
 and Phone calls on) has a switch per exam. Picked, Kurooto calls you for a quiz at `quiz_call_at` (19:00) the evening
@@ -538,8 +542,9 @@ before, instead of the practice offer, and exam mode's daily practice (`quiz.exa
 "exam season?" or `/examseason` shows the season, its exams with what you told Kurooto, and the parts that are on.
 On calls on the exam day and the day before, the brief has the exam and what you said about it.
 
-*Settings* (`exam_season.*`): `hold_updates`, `alarm_check`, `eve`, `leave_alarm`, `debrief`, `no_calls` (all on),
-`night_at` (21:30), `eve_at` (18:00), `leave_min` (45), `exam_min` (180), `quizzes` (off), `quiz_call_at` (19:00).
+*Settings* (`exam_season.*`): `hold_updates`, `alarm_check`, `eve`, `leave_alarm`, `debrief`, `no_calls`, `budget`
+(all on), `night_at` (21:30), `eve_at` (18:00), `leave_min` (45), `exam_min` (180), `quizzes` (off), `quiz_call_at`
+(19:00).
 *Undo:* turn Exam season off in Features: its timers, leave-by alarms (also on your call line) and update hold go at
 once, and the call-blocking during exams stops. Or switch off just the part you don't want. Debriefs already written
 stay in your notes; answers are kept in `exam_season.json` in the state folder for 30 days after the exam.
@@ -2357,6 +2362,67 @@ line each; `kurooto doctor --fix <id>` runs a fix in the running Kurooto) and th
 your notes token works (a read-only look at your notes repository), and your call line whether it's up and how many
 phones are paired.
 
+## Calm by default: why each message came, and a daily limit
+
+On by default. Every message Kurooto sends **by itself** (not an answer to something you asked or did) records why it
+came: which feature, what for, the setting that controls it, and what it was about (the deadline, the class, the
+project). On Telegram such a message has two more buttons:
+- **Why?** answers from what was recorded when it was sent: "Why: Deadlines, a reminder before something on your
+  deadline list is due. About: Report on groups. Setting: deadlines.ping_h = 24 (Settings → Deadlines)." A message
+  that didn't say why (an add-on, a script) gets "No reason recorded"; Kurooto never guesses.
+- **Less of this** offers up to three choices, each changing **one** setting, with an **Undo** button after it:
+  - **Stop:** that kind stops. Where the feature has its own setting, that's what changes (practice offers:
+    `quiz.offer_at` empty; a check-in: its time off; after-class questions: After-class notes off). Otherwise that
+    kind goes on Calm's own list (`notify.calm.stopped`).
+  - **Fewer:** where it makes sense: the mail digest once a day instead of twice, the papers digest weekly instead of
+    daily, a quiet project asked about half as often, no after-class question for that one subject, or at most one
+    Classroom announcement a day (the rest wait for the evening).
+  - **Another time:** that kind always waits for the evening bundle (`notify.calm.evening`).
+The phone app, the desktop and calls get the plain message, as before.
+
+**A daily limit.** At most **6 messages and 1 call a day** come by themselves (`notify.calm.messages`,
+`notify.calm.calls`). Past that, messages wait for **one evening bundle** at 20:00 (`notify.calm.evening_at`): one
+Telegram message listing what waited, numbered, with each item's buttons ("2: Nothing new"). A question that waits
+is still open meanwhile (`/q`, and on your next call); replying to the bundle answers it when it's the only question
+in it; the phone app gets the waiting questions one by one at that time. A call past the limit isn't placed: a
+check-in comes as a message instead, anything else waits in the bundle with a **Call now** link. After 20:00,
+messages come as they are.
+
+**Never held, never stopped:** the alarm (and the alarm to leave for an exam, and "tonight's alarm might not ring"),
+approvals, your own reminders (reminders, calls you asked for, quiz times and study sessions you set, calendar event
+reminders), a deadline less than 12 hours away (also its call), anything urgent (Kurooto can't work until you act:
+a sign-in that ended, the AI's limit, crashes) and a newly paired device on your call line. They don't count against
+the limit and have no Less of this. Answers to what you asked or did (AI answers, `/sync`, a skill you ran, a button
+you tapped) aren't counted at all.
+
+**Exam season** (with [Exam season](#exam-season) on, its "Only deadlines, quizzes and the alarm by day" part):
+during the period, only Deadlines, Quiz, the alarm and Exam season itself come during the day; everything else that
+comes by itself waits for the evening bundle (also after 20:00: then until the next one). The day's limit still
+applies to what comes.
+
+**Once a month**, from the same records: the kind of question you answer least, if 8 or more came in 30 days and you
+answered a fifth of them or fewer: "In the last 30 days you answered 1 of 19 after-class questions. Turn them off?
+(Turns off After-class notes; Undo puts it back.)" with **Apply** / **No**. Only for questions you're meant to answer
+(check-ins, after-class questions, practice offers, exam-eve questions, quiet-project questions, look-back
+suggestions, first-week quests...), never for reminders. "No" keeps that kind out of it for 90 days.
+`notify.calm.monthly` = `false` turns it off.
+
+**On Telegram:** `/calm` shows today's count, what's waiting, and what you turned down (with "Start ... again"
+buttons); `/calm 8` sets the messages a day, `/calm calls 2` the calls, `/calm evening 21:00` the bundle's time,
+`/calm off` and `/calm on`. `/why` explains the last message that came by itself.
+
+**Settings** (Settings → `notify.calm`): `on` (`true`), `messages` (6), `calls` (1), `evening_at` (`20:00`),
+`monthly` (`true`), and the lists Less of this fills: `stopped`, `evening`, `fewer`.
+
+**Undo:** each Less-of-this choice and each Apply has an Undo button that puts that one setting back as it was (a
+feature it turned off goes back on). `/calm` lists what's stopped, with a button to start each again.
+**`notify.calm.on` = `false` (or `/calm off`) restores the old behaviour exactly:** nothing waits, no Why? buttons,
+nothing is recorded; anything already waiting still comes at the evening bundle.
+
+*Leaves:* nothing. What's recorded stays in `calm.db` in the state folder for 45 days: when, the reason, the setting,
+what it was about, the first 300 characters and whether you tapped or answered it; a waiting message in full until
+its evening.
+
 ## Updates and going back
 
 Kurooto updates itself. Settings → `updates.mode`:
@@ -2517,6 +2583,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | "needs a look" on the dashboard, or a "Needs a look" line in the weekly summary | `/health` (or the Features tab) says what and offers a Fix button where Kurooto can fix it; a sign-in that ended needs you (the line says where). |
 | "Your alarm ... might not ring" | Set your phone's own alarm for tonight, then: Phone calls set up and linked (`kurooto doctor`), a phone paired (Phone tab). The Fix button reconnects or plans the alarm again. |
 | A reminder didn't reach my phone while the lid was shut | `kurooto doctor`: the "Reminders with the lid shut" line says what your call line holds and for how many phones. "No phone can open them yet": update the Android app and open it once. Also check the app's checklist (notifications, **Battery: unrestricted**) and that the phone was online. Reminders set in the last seconds before the lid shut on a Mac come when it wakes. |
+| A message came only in the evening bundle, or not at all | More than `notify.calm.messages` (6) came by themselves that day, it's exam season, or you chose Fewer, Another time or Stop for that kind. `/why` on the next one (or its Why? button) says which; `/calm` lists what's turned down, with buttons to start it again. `/calm off` restores the old behaviour. |
+| A check-in call came as a message instead | The day's call (`notify.calm.calls`, 1) had come already. `/calm calls 2` allows two. |
 | "Back online" every morning | Your laptop sleeps at night. Raise `notify.presence.after_min` past your night, or turn it off (`notify.presence.on` = `false`). |
 | No "going offline" when the laptop sleeps | That message comes from your call line: it needs Phone calls set up, and Telegram from the line needs your OK (`notify.presence.line_telegram`); or add `"app"` to `notify.presence.channels`. |
 | Building my profile failed | It's a big request: if your AI hit a limit, try again later or with a stronger AI (Settings → `brain.main`). |

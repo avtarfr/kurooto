@@ -603,7 +603,7 @@ class Cases(Module):
             lines.append(f'{i}. "{_short(g["case"]["text"])}" ({times}; {how})')
             label = "Make it a test case" if len(rows) == 1 else f"Make {i} a test case"
             buttons.append([(label, f"case:{g['case']['id']}:test")])
-        self.app.notify("\n".join(lines), kind="info", title="Look back", buttons=buttons)
+        self.app.notify("\n".join(lines), kind="info", title="Look back", buttons=buttons, why="cases.review")
         self.store.change(lambda d: d.update(last_review=now().isoformat(timespec="seconds")), self._keep_days())
         self.app.events.emit("cases_review", shown=len(rows))
         return len(rows)
@@ -620,6 +620,7 @@ class Cases(Module):
             buttons=self._ai_button(cid),
             map_kind="case",
             map_ref=cid,
+            why="asked",
         )
         return "Reply to my message with what you meant."
 
@@ -660,7 +661,7 @@ class Cases(Module):
             return self._ask_meaning(ref)
         if act == "ai":
             text, buttons = self.teach(ref, "the AI")
-            self.app.notify(text, kind="info", title="Test case", buttons=buttons)
+            self.app.notify(text, kind="info", title="Test case", buttons=buttons, why="asked")
             return _short(text, 180)
         if act == "unlearn":
             return self.unlearn(ref)

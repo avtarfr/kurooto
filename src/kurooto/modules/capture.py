@@ -132,6 +132,9 @@ class Capture(Module):
             expires=dt.timedelta(hours=20),
             source=self.id,
             title="After class",
+            why="capture.after_class",
+            about=p["name"],
+            item=p["subject"],
         )
         self._set(p["day"], p["subject"], status="asked", qid=qid)
         self.app.events.emit("capture_asked", subject=p["subject"])

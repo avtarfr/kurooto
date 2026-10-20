@@ -180,6 +180,9 @@ class Checkins(Module):
                 "put it in your journal.",
                 map_kind="checkin",
                 map_ref=f"{name}:{day}",
+                why="checkins.question",
+                setting=f"checkins.times.{name}",
+                about=f"your {name} check-in",
             )
         elif self._by_call() and name == "night" and self._asleep(plan[name]):
             self._asleep_defer(name, dt.date.fromisoformat(day))
@@ -198,19 +201,28 @@ class Checkins(Module):
                 map_kind="checkin",
                 map_ref=f"{name}:{day}",
                 buttons=[[("In 30 min", f"chk:{name}|{day}:p30"), *later, ("Skip today", f"chk:{name}|{day}:skip")]],
+                why="checkins.question",
+                setting=f"checkins.times.{name}",
+                about=f"your {name} check-in",
             )
         plan[name]["status"] = "asked"
         self._save(plan, dt.date.fromisoformat(day))
         self.app.events.emit("checkin_asked", name=name)
 
-    def _call(self, name: str, day: dt.date) -> None:
+    def _call(self, name: str, day: dt.date, asked: bool = False) -> None:
         """Ring the check-in now. Whatever happens, it doesn't stay "calling": with no outcome after a while it becomes
-        a message."""
+        a message. Past the day's calls (notify.calm.calls; not when you tapped Call me now), it comes as a message
+        right away (call_outcome "held")."""
         ref = f"{name}|{day.isoformat()}"
         extra = [("Tomorrow morning", f"chk:{ref}:defer")] if name == "night" else []
-        self.app.modules["calls"].ring(
-            self._reason(name), key=f"checkins:{name}:{day.isoformat()}", buttons=[*extra, ("Skip", f"chk:{ref}:skip")]
+        rang = self.app.modules["calls"].ring(
+            self._reason(name),
+            key=f"checkins:{name}:{day.isoformat()}",
+            buttons=[*extra, ("Skip", f"chk:{ref}:skip")],
+            why="calls.own" if asked else "checkins.call",
         )
+        if rang == "":  # not placed (core/calm.py): the message went instead
+            return
         self._status(name, day, "calling")
         self.app.scheduler.at(
             time.time() + STUCK_MIN * 60,
@@ -237,6 +249,9 @@ class Checkins(Module):
             kind="question",
             map_kind="checkin",
             map_ref=f"{name}:{day.isoformat()}",
+            why="checkins.question",
+            setting=f"checkins.times.{name}",
+            about=f"your {name} check-in",
             buttons=[
                 [
                     ("Call me now", f"chk:{ref}:now"),
@@ -277,7 +292,12 @@ class Checkins(Module):
             grace_s=2 * 3600,
             respect="quiet",
         )
-        self.app.notify(f"Your {name} check-in call waits until {when:%H:%M} ({reason}).", kind="info")
+        self.app.notify(
+            f"Your {name} check-in call waits until {when:%H:%M} ({reason}).",
+            kind="info",
+            why="checkins.moved",
+            about=f"your {name} check-in",
+        )
         self.app.events.emit("checkin_held", name=name, reason=reason, to_time=f"{when:%H:%M}")
         return "later"
 
@@ -313,6 +333,8 @@ class Checkins(Module):
             f"Your alarm is set, so I took it you're asleep: the {name} check-in moves to your wake-up call.",
             kind="info",
             buttons=[[("Call me now", f"chk:{ref}:now"), ("Skip", f"chk:{ref}:skip")]],
+            why="checkins.moved",
+            about=f"your {name} check-in",
         )
 
     def replies(self):
@@ -478,6 +500,7 @@ class Checkins(Module):
             kind="question",
             map_kind="checkin",
             map_ref=f"{d['name']}:{d['day']}",
+            why="asked",  # you put it off to this morning
         )
 
     # ------------------------------------------------------------------------------------- buttons
@@ -493,7 +516,7 @@ class Checkins(Module):
                 if not self._by_call():
                     return "Phone calls aren't on."
                 self._undefer(name, d)
-                self._call(name, d)
+                self._call(name, d, asked=True)
                 return "Calling you now."
             return self.skip(name, d, via="button")
 
@@ -615,6 +638,8 @@ class Checkins(Module):
         elif outcome in ("missed", "decline"):
             if (self.today(d).get(name) or {}).get("status") == "calling":  # not already asked by message
                 self._fallback(name, d, "missed call" if outcome == "missed" else "declined")
+        elif outcome == "held":  # past the day's calls (core/calm.py): by message instead
+            self._fallback(name, d, "today's call came already")
         else:
             return False
         return True

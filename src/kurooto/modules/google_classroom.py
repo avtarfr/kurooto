@@ -472,6 +472,8 @@ class ClassroomNotes(GooglePart):
             self.app.notify(
                 f"Classroom: filed {n} new item{'s' if n != 1 else ''} from {data['course']} into {data['folder']}/.",
                 kind="result",
+                why="classroom_notes.filed",
+                about=data["course"],
             )
             self.app.events.emit("classroom_notes_filed", items=n)
             return
@@ -483,6 +485,8 @@ class ClassroomNotes(GooglePart):
                 f"Classroom: the AI couldn't file the new posts from {data['course']} three times "
                 f"({result.detail[:120] or result.verdict}). I'll keep trying at the next check.",
                 kind="info",
+                why="classroom_notes.failed",
+                about=data["course"],
             )
 
     # -------------------------------------------------------------------------------------------- tools

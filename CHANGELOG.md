@@ -36,6 +36,22 @@ Includes everything planned for 0.4.0 (below), which wasn't released on its own.
 - `/usage`, `kurooto usage` and the usage API show today's limits, what's used of them, and the requests waiting.
 - A daily limit no longer waits a minute and asks again before the fallback; handwritten files that hit a limit are
   tried again later instead of being written off.
+**Calm by default** (on; `notify.calm.on` = `false` restores the old behaviour exactly)
+- Every message that comes by itself records why: the feature, what for, the setting that controls it and what it was
+  about. On Telegram it has **Why?** (answered from those records; "No reason recorded" when a script or add-on
+  didn't say, never a guess) and **Less of this**: Stop / Fewer / Another time, each changing one setting (the
+  feature's own where it has one), with Undo. The phone app, the desktop and calls get the plain message.
+- A daily limit: 6 messages and 1 call that come by themselves (`notify.calm.messages`, `notify.calm.calls`). The rest
+  waits for one evening bundle at 20:00 (`notify.calm.evening_at`), numbered, with each item's buttons; a call past
+  the limit becomes a message (check-ins) or a Call now link in the bundle.
+- Never held and never stoppable: the alarm, approvals, your own reminders, a deadline under 12 hours away, anything
+  urgent. Answers to what you asked aren't counted.
+- Exam season gains a part, on by default: during the period only deadlines, quizzes and the alarm come by day; the
+  rest waits for the evening.
+- Once a month: "you answered 1 of 19 after-class questions: turn them off?" (Apply / No), only for questions.
+- `/calm` (today's count, what's waiting and turned down; `/calm 8`, `/calm calls 2`, `/calm evening 21:00`,
+  `/calm off`) and `/why` (the last one). For add-ons: `app.notify(..., why=, setting=, about=)`, `app.ask.ask(...,
+  why=)`, `calls.ring/place/schedule(..., why=)` and `jobs.submit(..., why=)` carry the reason.
 **Reminders with the lid shut** (new; off until you turn it on; needs Phone calls and the Android app)
 - When your computer is asleep or off, your Android phone still gets your reminders at their time, and a morning
   line with the day's first class and what's due (with that morning's alarm, else at 07:30). Your call line holds the

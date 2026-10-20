@@ -371,7 +371,13 @@ def ask_consent(app: App, exe: str | None = None) -> str | None:
         return None
     text = CONSENT + (CONSENT_GBRAIN if gbrain_mcp(app) else "")
     qid = app.ask.ask(
-        text, kind="approval", hook="agy.tools", hook_payload={"exe": exe or ""}, source="agy", title="agy"
+        text,
+        kind="approval",
+        hook="agy.tools",
+        hook_payload={"exe": exe or ""},
+        source="agy",
+        title="agy",
+        why="agy.consent",
     )
     jsave(f, {"qid": qid, "asked": time.time()})
     return qid

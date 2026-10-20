@@ -77,6 +77,9 @@ class App:
         from kurooto.core.health import Health  # Kurooto keeps itself working: checks, the daily pass, fixes
 
         self.health = Health(self)
+        from kurooto.core.calm import Calm  # (calm) why each message came, Less of this, the daily limit
+
+        self.calm = Calm(self)
         self.stop_reason = ""  # why it's stopping, for the "going offline" message ("stopped", "turned off")
         self.restart_requested = False
         self._stop = None  # the daemon's stop event, so an update can ask for a restart
@@ -230,6 +233,10 @@ class App:
             self.health.start()  # the daily pass, after the features' timers are in (core/health.py)
         except Exception as e:
             self.events.emit("module_failed", module="health", error=f"{type(e).__name__}: {e}"[:300])
+        try:
+            self.calm.start()  # (calm) the evening bundle and the monthly suggestion (core/calm.py)
+        except Exception as e:
+            self.events.emit("module_failed", module="calm", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
     def handle(self, msg: Incoming, also: list[Module] | None = None) -> None:
@@ -238,6 +245,8 @@ class App:
         message as if they were on (the setup page's try-it box, web/tryit.py)."""
         mods = self.enabled() + [m for m in also or [] if not self.is_on(m.id)]
         self.events.emit("message_in", via=msg.via, chars=len(msg.text), files=len(msg.files))
+        if msg.reply_to:  # (calm) you answered one of its messages (core/calm.py)
+            self.calm.touched(map_kind=msg.reply_to.get("kind"), map_ref=msg.reply_to.get("ref"))
         if msg.reply_to and msg.reply_to.get("kind") == "ask":  # an answer to a question (core/ask.py)
             out = self.ask.reply(msg, msg.reply_to.get("ref"))
             if out:
@@ -269,6 +278,10 @@ class App:
                 return
             if name == "health":  # what isn't working, with Fix buttons (core/health.py)
                 text, buttons = self.health.command(arg)
+                msg.reply(text, buttons=buttons)
+                return
+            if name in ("calm", "why"):  # (calm) the daily limit, what's turned down; why the last one came
+                text, buttons = self.calm.command(arg) if name == "calm" else self.calm.why_last()
                 msg.reply(text, buttons=buttons)
                 return
             for m in mods:
@@ -350,6 +363,9 @@ class App:
         """A button you tapped: "<prefix>:<ref>:<action>"."""
         prefix, ref, act = (data.split(":", 2) + ["", ""])[:3]
         self.notifier.retract(button=data)  # the phone app's copy of that message goes (core/notify.py)
+        self.calm.touched(button=data)  # (calm) you tapped it: answered (core/calm.py)
+        if prefix == "calm":  # Why? / Less of this / Undo / the monthly suggestion (core/calm.py)
+            return self.calm.button(ref, act)
         if prefix == "upd":
             return self.updates.button(ref, act)
         if prefix == "ask":
@@ -372,6 +388,7 @@ class App:
         lines.append("/q  open questions I asked you (reply to one to answer it)")
         lines.append("/aboutme  what I know about you (your profile's In-brief part), and where to edit it")
         lines.append("/health  what isn't working, with Fix buttons (/health now checks online too)")
+        lines.append("/calm  messages that come by themselves: today's count and limit; /why  why the last one came")
         if not self.is_on("notes_sync"):
             lines.append("/sync  sync everything that's on (Classroom, calendar, research, notes brain)")
         if not self.is_on("chat"):

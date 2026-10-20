@@ -531,6 +531,7 @@ class Retro(Module):
                 expires=dt.timedelta(days=3),
                 source="retro",
                 title="Suggestion",
+                why="retro.suggestion",
             )
             return
         self.app.notify(
@@ -540,6 +541,7 @@ class Retro(Module):
             buttons=[
                 [("Apply", f"retro:{pid}:yes"), ("Observe longer", f"retro:{pid}:observe"), ("No", f"retro:{pid}:no")]
             ],
+            why="retro.suggestion",
         )
 
     def callbacks(self):
@@ -712,7 +714,7 @@ class Retro(Module):
             why = "the AI's version lost the skill's header"
         if why:
             self._drop(store, pid)
-            self.app.notify(f"Nothing changed in your {name} skill: {why}.", kind="result")
+            self.app.notify(f"Nothing changed in your {name} skill: {why}.", kind="result", why="asked")
             return
         draft = self.app.paths.state / "retro-skills" / f"{pid}.md"
         draft.parent.mkdir(parents=True, exist_ok=True)
@@ -732,6 +734,7 @@ class Retro(Module):
             kind="question",
             title="Skill change",
             buttons=[[("Save", f"retro:{pid}:save"), ("Discard", f"retro:{pid}:discard")]],
+            why="asked",
         )
 
     def _skill_save(self, pid: str, p: dict, store: dict) -> str:
@@ -809,6 +812,7 @@ class Retro(Module):
             + (finding or "Nothing clear enough to say; there wasn't enough to go on."),
             kind="result",
             title="Finding",
+            why="asked",
         )
         self.app.events.emit("observe_ended", id=o["id"], found=bool(finding))
 

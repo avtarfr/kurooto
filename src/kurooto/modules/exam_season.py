@@ -20,12 +20,14 @@ Each part has its own switch (Settings, the card on the dashboard's Features tab
                   saved as you said it to the subject's course note under "Exam debriefs" (the daily note when the
                   exam has no subject)
     no_calls      no calls during an exam (from 15 minutes before it, for exam_min, 3 hours)
+    budget        the daily message limit (core/calm.py) tightens: during the day only deadlines, quizzes, the alarm
+                  and exam season itself come; everything else that comes by itself waits for the evening bundle
 The quiz call before an exam stays off unless you pick it for that exam (the card, or /examseason): then, with Quiz and
 Phone calls on, Kurooto calls you for a quiz the evening before (19:00) instead of offering one, and exam mode's
 practice check-ins may call for it (quiz.by_call). For the other exams of the season they stay messages.
 
-For the message budget (not built yet): budget_during_exams() names the features whose messages should still come
-during a season. State: state/exam_season.json.
+budget_during_exams() names the features whose messages still come during a season; Calm (core/calm.py) asks it
+before each message and call. State: state/exam_season.json.
 """
 
 from __future__ import annotations
@@ -54,6 +56,7 @@ register_defaults(
         "leave_min": 45,  # ...this long before the exam starts, unless you say a time ("leave 8:10")
         "debrief": True,  # after each exam: a two-minute debrief, into the subject's course note
         "no_calls": True,  # no calls during an exam
+        "budget": True,  # only deadlines, quizzes and the alarm during the day; the rest waits for the evening bundle
         "exam_min": 180,  # how long an exam takes (no calls then; the debrief comes half an hour after)
         "quizzes": False,  # quizzes and tests outside an exam period count as exams too
         "quiz_call_at": "19:00",  # the evening before an exam you picked a quiz call for
@@ -67,6 +70,7 @@ PIECES = {
     "leave_alarm": "Alarm to leave on time",
     "debrief": "Two-minute debrief after each exam",
     "no_calls": "No calls during an exam",
+    "budget": "Only deadlines, quizzes and the alarm by day",
 }
 SAID = {  # the season's first message, part by part
     "hold_updates": "updates wait (critical fixes still install)",
@@ -75,6 +79,7 @@ SAID = {  # the season's first message, part by part
     "leave_alarm": "an alarm to leave on time",
     "debrief": "a two-minute debrief after each one",
     "no_calls": "no calls during an exam",
+    "budget": "during the day only deadlines, quizzes and the alarm message you (the rest waits for the evening)",
 }
 BIG = re.compile(r"\b(exam|exams|midterm|mid-term|finals?|midsem|mid-sem|endsem|end-sem|viva|oral)\b", re.I)
 TIME = r"(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\b"
@@ -88,7 +93,7 @@ DEBRIEF_AFTER_MIN = 30  # the debrief comes this long after the exam ends
 DEBRIEF_UNTIL_H = 36  # ...and isn't asked later than this after it
 QUIZ_CALL_UNTIL_H = 3  # the picked quiz call isn't placed later than this after quiz_call_at
 SNOOZES = 2  # "Later" on the leave-by alarm rings again in 5 minutes, this many times
-BUDGET_KEEP = ("deadlines", "quiz", "alarm", "exam_season")  # for the message budget (not built yet)
+BUDGET_KEEP = ("deadlines", "quiz", "alarm", "exam_season")  # what still comes by day (core/calm.py)
 
 
 def _hhmm(h: str, mi: str | None, ap: str | None) -> dt.time | None:
@@ -264,9 +269,9 @@ class ExamSeason(Module):
         return f"your exams (until {_day(s[1])})" if s else ""
 
     def budget_during_exams(self) -> dict | None:
-        """The hook for the message budget (the notifier envelope, not built yet; nothing calls this today): during an
-        exam season, the features whose messages should still come ({"keep": feature ids, "until": the season's
-        last minute}); None outside a season. The budget will add its own switch to the card when it lands."""
+        """For Calm's daily limit (core/calm.py, which asks before each message and call while the "budget" part is
+        on): during an exam season, the features whose messages still come by day ({"keep": feature ids, "until":
+        the season's last minute}); None outside a season."""
         s = self.season()
         if not s:
             return None
@@ -332,7 +337,7 @@ class ExamSeason(Module):
         on = [SAID[k] for k in PIECES if self.setting(k)]
         text = f"Exam season: {span}" + (f", {n} exam{'s' if n != 1 else ''}" if n else "") + "."
         text += f" Until it's over: {'; '.join(on)}." if on else " Every part of it is switched off."
-        self.app.notify(text + " /examseason shows it and switches parts off.", kind="info")
+        self.app.notify(text + " /examseason shows it and switches parts off.", kind="info", why="exam_season.start")
         self.app.events.emit("exam_season_on", days=(b - a).days + 1, exams=n, parts=len(on))
         return True
 
@@ -388,6 +393,8 @@ class ExamSeason(Module):
             expires=expires,
             source=self.id,
             title=f"Exam {when.lower() if when in ('Tomorrow', 'Today') else 'coming'}",
+            why="exam_season.eve",
+            about=e["title"],
         )
         self._edit(e["id"], eve_q=qid, day=e["day"].isoformat())
         self.app.events.emit("exam_eve_asked", timed=bool(e["start"]))
@@ -466,7 +473,7 @@ class ExamSeason(Module):
         self._leave_cancel(e["id"], poke=False)
         key = f"{self.id}:leave:{e['id']}"
         if self._calls_ok():
-            self.app.modules["calls"].schedule(want, reason, key=key, alarm=True)
+            self.app.modules["calls"].schedule(want, reason, key=key, alarm=True, why="exam_season.leave")
             how = "call"
         else:
             self.app.scheduler.at(
@@ -491,7 +498,9 @@ class ExamSeason(Module):
         e = self._exam(str(p.get("id") or ""))
         if e is None or p.get("missed"):
             return
-        self.app.notify(self._leave_text(e), kind="reminder", title="Time to leave", urgent=True)
+        self.app.notify(
+            self._leave_text(e), kind="reminder", title="Time to leave", urgent=True, why="exam_season.leave"
+        )
         self.app.events.emit("exam_leave_rang", how="message")
 
     def call_outcome(self, key: str, outcome: str) -> bool:
@@ -507,11 +516,15 @@ class ExamSeason(Module):
             n = int(self._mine(e["id"]).get("snoozed") or 0)
             if n < SNOOZES and self._calls_ok():
                 at = now() + dt.timedelta(minutes=5)
-                self.app.modules["calls"].schedule(at, self._leave_text(e), key=key, alarm=True)
+                self.app.modules["calls"].schedule(
+                    at, self._leave_text(e), key=key, alarm=True, why="exam_season.leave"
+                )
                 self._edit(e["id"], snoozed=n + 1)
                 return True
         if outcome in ("missed", "later"):
-            self.app.notify(self._leave_text(e), kind="reminder", title="Time to leave", urgent=True)
+            self.app.notify(
+                self._leave_text(e), kind="reminder", title="Time to leave", urgent=True, why="exam_season.leave"
+            )
         return outcome == "later"
 
     # ------------------------------------------------------------------------------------------ the debrief
@@ -537,6 +550,8 @@ class ExamSeason(Module):
             expires=dt.timedelta(days=2),
             source=self.id,
             title="Exam debrief",
+            why="exam_season.debrief",
+            about=e["title"],
         )
         self._edit(e["id"], debrief_q=qid, day=e["day"].isoformat())
         self.app.events.emit("exam_debrief_asked")
@@ -588,7 +603,7 @@ class ExamSeason(Module):
             return ""
         self._edit(e["id"], quiz_called=now().isoformat(), day=e["day"].isoformat())
         self.app.events.emit("exam_quiz_call")
-        return quiz.call_quiz(e["subject"])
+        return quiz.call_quiz(e["subject"], why="quiz.call")
 
     def pick(self, i: str, on: bool) -> str:
         """Pick (or unpick) the quiz call the evening before one exam."""
@@ -645,6 +660,8 @@ class ExamSeason(Module):
                 f"No alarm is set for tomorrow, and {e['title']} is at {e['start']:%H:%M}. /alarm 7:00 sets one (or "
                 "set your phone's own).",
                 kind="reminder",
+                why="exam_season.alarm_check",
+                about=e["title"],
             )
             out["no_alarm"] = True
         if bad and not again and self.app.settings.get("health.auto_fix"):

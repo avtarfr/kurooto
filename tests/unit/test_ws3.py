@@ -264,7 +264,12 @@ def test_night_check_in_with_the_alarm_set_waits_for_the_morning(night):
     assert c.today(D)["night"]["status"] == "deferred" and c.deferred()["name"] == "night"
     assert "took it you're asleep" in env.fake.texts()[-1]
     sent = [p for m, p in env.fake.sent if m == "sendMessage"][-1]
-    assert [b["text"] for row in sent["reply_markup"]["inline_keyboard"] for b in row] == ["Call me now", "Skip"]
+    assert [b["text"] for row in sent["reply_markup"]["inline_keyboard"] for b in row] == [
+        "Call me now",
+        "Skip",
+        "Why?",
+        "Less of this",
+    ]
     assert "Last night's night check-in" in a.script()
     assert env.press(f"chk:night|{D.isoformat()}:now") == "Calling you now."
     assert len(rings(env.app)) == before + 1 and c.deferred() is None

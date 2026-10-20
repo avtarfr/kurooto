@@ -132,7 +132,7 @@ def start(app: App, notify: bool = True) -> tuple[bool, str]:
             text = summary(res)
             jsave(f, {"running": False, "started": status(app).get("started"), "finished": time.time(), "text": text})
             if notify:
-                app.notify(text, kind="result")
+                app.notify(text, kind="result", why="asked")
         except Exception as e:
             jsave(f, {"running": False, "finished": time.time(), "text": f"The sync stopped: {e}"[:300]})
         finally:

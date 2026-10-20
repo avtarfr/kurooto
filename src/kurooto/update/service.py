@@ -139,6 +139,8 @@ class Updates:
                         ("Skip this version", f"upd:{rel.version}:skip"),
                     ]
                 ],
+                why="updates.available",
+                about=rel.version,
             )
             jsave(self.ready_file, {"version": rel.version, "staged": False, "notes": rel.notes})
             return f"asked about {rel.version}"
@@ -159,7 +161,10 @@ class Updates:
             except Exception as e:
                 self.app.events.emit("update_failed", version=rel.version, error=str(e)[:300])
                 self.app.notify(
-                    f"Couldn't prepare Kurooto {rel.version}: {str(e)[:300]}. I'll try again later.", kind="update"
+                    f"Couldn't prepare Kurooto {rel.version}: {str(e)[:300]}. I'll try again later.",
+                    kind="update",
+                    why="updates.failed",
+                    about=rel.version,
                 )
                 return False
             jsave(
@@ -249,7 +254,7 @@ class Updates:
     def end_probation(self) -> None:
         if self.u.probation_passed(__version__):
             self.u.prune()
-            self.app.notify(f"Kurooto updated to {__version__}.", kind="update")
+            self.app.notify(f"Kurooto updated to {__version__}.", kind="update", why="updates.done")
 
     def tell_rolled_back(self) -> None:
         """The launcher went back to this version because the new one kept crashing: say so, once."""
@@ -262,6 +267,7 @@ class Updates:
             f"Kurooto {u.get('from')} didn't start properly, so I went back to {__version__}. "
             "It won't be installed again; a later version will be.",
             kind="update",
+            why="updates.rolled_back",
         )
 
     def button(self, version: str, act: str) -> str:

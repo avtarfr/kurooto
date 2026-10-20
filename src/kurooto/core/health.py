@@ -531,7 +531,7 @@ class Health:
             text = f"{r.title} still isn't working: {r.detail}." + (f" {r.help}" if r.help else "")
         else:
             text = f"{r.title} works again."
-        self.app.notify(text, kind="info")
+        self.app.notify(text, kind="info", why="asked")
         return text
 
     def threats(self) -> list[str]:
@@ -564,7 +564,7 @@ class Health:
         sent = []
         for r in alarm:
             text = f"{r.detail}. Set your phone's own alarm too." + self._tried(r, tried)
-            self.app.notify(text, kind="deadline", buttons=self._buttons([r]))
+            self.app.notify(text, kind="deadline", buttons=self._buttons([r]), why="health.alarm")
             sent.append(r)
         if now_:
             if threats:
@@ -573,7 +573,13 @@ class Health:
             else:
                 head = f"{self.app.name} needs a look:"
             lines = [f"- {r.line()}.{self._tried(r, tried)}" for r in now_]
-            self.app.notify("\n".join([head, *lines]), kind="deadline", buttons=self._buttons(now_))
+            self.app.notify(
+                "\n".join([head, *lines]),
+                kind="deadline",
+                buttons=self._buttons(now_),
+                why="health.now",
+                about=", ".join(r.title for r in now_),
+            )
             sent += now_
         rest = [r for r in bad if r not in sent and r.id not in told]
         digest = False
@@ -584,7 +590,9 @@ class Health:
             and now - float(st.get("digest_at") or 0) > DIGEST_S
         ):
             lines = [f"- {r.line()}" for r in bad if r.kind != "alarm"]
-            self.app.notify("\n".join(["Needs a look (Kurooto keeps itself working):", *lines]), kind="info")
+            self.app.notify(
+                "\n".join(["Needs a look (Kurooto keeps itself working):", *lines]), kind="info", why="health.digest"
+            )
             digest = True
         with self._lock:
             st = self._load()

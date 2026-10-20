@@ -641,6 +641,8 @@ class Books(Module):
             f"Its chapters are in {meta.get('index')}.{waiting}",
             kind="result",
             title="Books",
+            why="books.read",
+            about=meta["title"],
         )
 
     def read_all(self, until: dt.datetime | None = None) -> dict:
@@ -890,7 +892,7 @@ class Books(Module):
 
     def _setup_and_tell(self) -> None:
         ok, msg = self.setup(progress=lambda line: None)
-        self.app.notify(msg, kind="result" if ok else "info", title="Books")
+        self.app.notify(msg, kind="result" if ok else "info", title="Books", why="asked")
 
     # ---------------------------------------------------------------------------------------------- the AI
     def find(self, ref: str, subject: str = "") -> dict | None:

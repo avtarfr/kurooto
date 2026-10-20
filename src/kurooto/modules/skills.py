@@ -305,7 +305,7 @@ def send_file(app: App, path, caption: str = "", inside: list[Path] | None = Non
     if "telegram" not in app.notifier.channels:
         return False, "Telegram isn't set up, so there's nowhere to send it."
     focus = app.availability.focus_until()
-    ref = app.notify(caption.strip()[:900] or p.name, kind="result", file=str(p))
+    ref = app.notify(caption.strip()[:900] or p.name, kind="result", file=str(p), why="asked")
     app.events.emit("file_sent", bytes=size, queued=ref is None and bool(focus))
     if ref is None and focus:
         return True, f"{p.name} comes to your Telegram when focus ends ({focus:%H:%M})."
@@ -557,11 +557,15 @@ class Skills(Module):
             md = result_path(self.app, job.id)
             md.write_text(body, encoding="utf-8")
             self.app.notify(
-                f"{head}\n\n{body[:1500]}\n\n[…the full answer is attached]", kind="result", reply_to=reply_to, **tie
+                f"{head}\n\n{body[:1500]}\n\n[…the full answer is attached]",
+                kind="result",
+                reply_to=reply_to,
+                **tie,
+                why="asked",
             )
-            self.app.notify(job.title, kind="result", file=str(md))
+            self.app.notify(job.title, kind="result", file=str(md), why="asked")
         else:
-            self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to, **tie)
+            self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to, **tie, why="asked")
 
     def _done(self, job, result, payload: dict) -> None:
         self._deliver(job, result, payload)
@@ -675,6 +679,7 @@ class Skills(Module):
             self.app.notify(
                 "I couldn't write that skill: " + FRIENDLY.get(result.verdict, "it failed.").format(brain=label),
                 kind="result",
+                why="asked",
             )
             return
         text = extract_skill(result.text)
@@ -684,6 +689,7 @@ class Skills(Module):
                 "The AI's answer wasn't a usable skill (it needs a header with a name, then instructions). Try "
                 "/newskill again with a little more detail.",
                 kind="result",
+                why="asked",
             )
             self.app.events.emit("skill_draft_failed")
             return
@@ -698,6 +704,7 @@ class Skills(Module):
             f"(kurooto/skills/{name}/SKILL.md).\n\n{text}",
             kind="result",
             buttons=[[("Save", f"skn:{did}:save"), ("Discard", f"skn:{did}:discard")]],
+            why="asked",
         )
         self.app.events.emit("skill_drafted", name=name)
 
@@ -728,7 +735,7 @@ class Skills(Module):
         f.unlink(missing_ok=True)
         self.app.events.emit("skill_saved", name=name)
         s = load_skill(self.app, name)
-        self.app.notify(f"Saved. Try it: /{name}{' ' + s.args if s and s.args else ''}", kind="result")
+        self.app.notify(f"Saved. Try it: /{name}{' ' + s.args if s and s.args else ''}", kind="result", why="asked")
         return f"Saved as /{name}"
 
     # --------------------------------------------------------------------------------------- routines
@@ -810,7 +817,9 @@ class Skills(Module):
                 return self.run(name, args, title=f"Routine: {what[:60]}")
 
             def respond(text, buttons=None):
-                return self.app.notify(f"{r['label']}: {what[:60]}\n\n{text}", buttons=buttons, kind="result")
+                return self.app.notify(
+                    f"{r['label']}: {what[:60]}\n\n{text}", buttons=buttons, kind="result", why="asked"
+                )
 
             incoming = Incoming(text=what, via="routine", respond=respond)
             threading.Thread(target=self.app.handle, args=(incoming,), name="routine", daemon=True).start()
@@ -936,6 +945,8 @@ class Skills(Module):
                 kind="question",
                 title="Revision pack",
                 buttons=[[("Build it", f"skp:{e['id']}:yes"), ("No thanks", f"skp:{e['id']}:no")]],
+                why="packs.offer",
+                about=e["title"],
             )
             self.app.events.emit("auto_pack", mode="ask")
         return len(todo)
@@ -1018,6 +1029,7 @@ class Skills(Module):
                     "Install Tectonic so packs come as PDFs?",
                     kind="question",
                     buttons=[[("Install Tectonic", f"skt:{ref}:install"), ("Not now", f"skt:{ref}:no")]],
+                    why="asked",
                 )
             return
         ok, err = compile_tex(self.app, f)
@@ -1086,13 +1098,14 @@ class Skills(Module):
         ok, msg = Prereqs(self.app.paths.app, self.app.paths.cache).install("tectonic", progress=lambda s: None)
         self.app.events.emit("tectonic_installed" if ok else "tectonic_install_failed")
         if not ok:
-            self.app.notify(msg, kind="result")
+            self.app.notify(msg, kind="result", why="asked")
             return
         self.app.notify(
             "Tectonic is installed: revision packs come as PDFs now. The first PDF takes a few minutes while it "
             "fetches the LaTeX packages.",
             kind="result",
             buttons=[[("Make that PDF now", f"skt:{ref}:pdf")]] if ref else None,
+            why="asked",
         )
 
     def _link_in_daily(self, pdf: Path, label: str, subject: str | None = None) -> None:

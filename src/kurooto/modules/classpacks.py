@@ -328,7 +328,7 @@ class ClassPacks(Module):
     def _send_review(self, d: dict) -> None:
         text = self._review_text(d) if d["kind"] == "import" else self._making_text(d)
         buttons = self._review_buttons(d) if d["kind"] == "import" else self._making_buttons(d)
-        self.app.notify(text, kind="info", buttons=buttons, map_kind="classpack", map_ref=d["id"])
+        self.app.notify(text, kind="info", buttons=buttons, map_kind="classpack", map_ref=d["id"], why="asked")
 
     def _import_button(self, d: dict, action: str) -> str:
         pack = d["pack"]
@@ -394,7 +394,7 @@ class ClassPacks(Module):
         )
         if not self.app.is_on("deadlines") and (lay["quizzes"] or lay["exams"]):
             text += " Turn on Deadlines for its quizzes and exams."
-        self.app.notify(text, kind="result")
+        self.app.notify(text, kind="result", why="asked")
         return "Imported."
 
     def _refresh(self) -> None:
@@ -699,7 +699,7 @@ class ClassPacks(Module):
         if action == "ok":
             ok, said = self._finish(d, now().date().isoformat())
             if not ok or len(said) > 190:
-                self.app.notify(said, kind="result")
+                self.app.notify(said, kind="result", why="asked")
             return said if len(said) <= 190 else ("Made." if ok else "Not made: see the message.")
         m = re.fullmatch(r"e(\d+)", action)
         courses = d["pack"]["courses"]

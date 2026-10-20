@@ -213,7 +213,7 @@ def test_overdue_check_new_date_and_drop(study):
     dl.add("Reading response", now() - dt.timedelta(hours=3))
     dl._tick()
     assert [t for t in study.fake.texts() if t.startswith("Overdue?")]
-    assert [b["text"] for b in last_buttons(study)] == ["Done", "New date", "Drop"]
+    assert [b["text"] for b in last_buttons(study)] == ["Done", "New date", "Drop", "Why?", "Less of this"]
     dl._tick()
     assert len([t for t in study.fake.texts() if t.startswith("Overdue?")]) == 2  # once each
     i, _ = items_by_title(study)["Lab report"]
@@ -359,7 +359,7 @@ def test_quiz_offered_the_evening_before(calls):
     text = calls.fake.texts()[-1]
     assert text.startswith("Linear Algebra quiz 2 is tomorrow at 10:00. Practise? 4 questions are due.")
     labels = {b["text"]: b["callback_data"] for b in last_buttons(calls)}
-    assert list(labels) == ["Quiz me now", "Call me for a quiz", "Not tonight"]
+    assert list(labels) == ["Quiz me now", "Call me for a quiz", "Not tonight", "Why?", "Less of this"]
     app.modules["deadlines"]._tick()
     assert not [t for t in calls.fake.texts() if t.startswith("Linear Algebra quiz 2:")]  # no second reminder
     assert calls.press(labels["Quiz me now"]) == "4 due in linear-algebra."
@@ -412,7 +412,7 @@ def test_exam_mode_daily_practice(calls):
     app.modules["deadlines"].add("Linear Algebra quiz", now() + dt.timedelta(days=6))
     app.modules["quiz"]._exam_daily()
     assert calls.fake.texts()[-1].startswith("Exam mode: Linear Algebra quiz in 6 days. 4 questions to practise.")
-    assert [b["text"] for b in last_buttons(calls)] == ["Quiz me now", "Call me", "Skip today"]
+    assert [b["text"] for b in last_buttons(calls)] == ["Quiz me now", "Call me", "Skip today", "Why?", "Less of this"]
     assert calls.press(last_buttons(calls)[2]["callback_data"]) == "Skipped for today."
     app.settings.set("quiz.by_call", True)
     app.modules["quiz"]._exam_daily()

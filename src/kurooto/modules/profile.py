@@ -150,7 +150,7 @@ class Profile(Module):
         if not ok:  # held: another computer saved since; say so now and then, not every time
             st = core.local(self.app)
             if time.time() - st.get("told_held", 0) > 7 * 86400:
-                self.app.notify(f"Profile sync: {msg}.", kind="info")
+                self.app.notify(f"Profile sync: {msg}.", kind="info", why="profile.failed")
                 core.record(self.app, told_held=time.time())
         self.app.events.emit("profile_save", reason=reason, ok=ok)
         return ok, msg
@@ -159,7 +159,7 @@ class Profile(Module):
         st = core.local(self.app)
         changes = {"ok": False, "failed_at": time.time(), "error": why}
         if time.time() - st.get("told", 0) > 20 * 3600:  # at most once a day
-            self.app.notify(f"Profile sync didn't work: {why}", kind="info")
+            self.app.notify(f"Profile sync didn't work: {why}", kind="info", why="profile.failed")
             changes["told"] = time.time()
         core.record(self.app, **changes)
         self.app.events.emit("profile_failed", error=why[:200])

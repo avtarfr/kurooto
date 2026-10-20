@@ -678,7 +678,9 @@ class Presence:
         q = self.app.ask.get(st["line_q"]) if st.get("line_q") else None
         if (q and q.get("status") in OPEN) or t - float(st.get("line_asked") or 0) < ASK_AGAIN_S:
             return
-        qid = self.app.ask.ask(LINE_ASK, kind="approval", hook="presence.line", source="presence", title="Offline")
+        qid = self.app.ask.ask(
+            LINE_ASK, kind="approval", hook="presence.line", source="presence", title="Offline", why="presence.line"
+        )
         with self._lock:
             st = self._load()
             st["line_q"], st["line_asked"] = qid, t

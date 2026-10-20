@@ -286,7 +286,9 @@ class Study(Module):
 
     def _session_end(self, p: dict) -> None:
         if self.session().get("subject"):
-            self.app.notify(f"Session done. {self.stop_session(timer=True)} Take a break.", kind="reminder")
+            self.app.notify(
+                f"Session done. {self.stop_session(timer=True)} Take a break.", kind="reminder", why="study.timer"
+            )
 
     # -------------------------------------------------------------------------------- the daily note
     def write_day(self, p: dict | None = None) -> bool:

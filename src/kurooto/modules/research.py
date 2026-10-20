@@ -471,7 +471,7 @@ class Research(Module):
         note = f"\n\n(Couldn't reach: {'; '.join(failed)})" if failed else ""
         if not new:
             if failed:
-                self.app.notify("No new papers this time." + note, kind="result")
+                self.app.notify("No new papers this time." + note, kind="result", why="research.papers")
             return []
         if self.setting("save_note"):
             try:
@@ -492,11 +492,14 @@ class Research(Module):
                 title="New papers",
                 effort="medium",
                 background=True,
+                why="research.papers",
             )
         else:
             rows = [f"• {p['title']} ({', '.join(p['authors'][:2]) or p['source']})\n  {p['link']}" for p in new[:n]]
             more = f"\n…and {len(new) - n} more." if len(new) > n else ""
-            self.app.notify(f"New papers ({len(new)}):\n" + "\n".join(rows) + more + note, kind="result")
+            self.app.notify(
+                f"New papers ({len(new)}):\n" + "\n".join(rows) + more + note, kind="result", why="research.papers"
+            )
         return new
 
     def save_note(self, papers: list[dict]) -> Path:
@@ -696,6 +699,8 @@ class Research(Module):
                 expires="3d",
                 source=self.id,
                 title="Research",
+                why="research.idle",
+                about=project,
             )
             out.append(project)
         jsave(state_file, st)
@@ -714,6 +719,7 @@ class Research(Module):
                     f"A reminder they asked for yesterday: their research project {project} has been quiet. Ask what "
                     "the plan is, and help them pick one small next step.",
                     key=f"research:{slug(project)}",
+                    why="research.remind",
                 )
                 return f"I'll call you about {project} tomorrow at 18:00."
             self.app.scheduler.at(
@@ -725,13 +731,23 @@ class Research(Module):
         return f"Noted in {project}'s log."
 
     def _remind(self, p: dict) -> None:
-        self.app.notify(f"You asked me to remind you about {p.get('project', 'your project')} today.", kind="reminder")
+        self.app.notify(
+            f"You asked me to remind you about {p.get('project', 'your project')} today.",
+            kind="reminder",
+            why="research.remind",
+            about=p.get("project"),
+        )
 
     def call_outcome(self, key: str, outcome: str) -> bool:
         """The reminder call about a quiet project didn't happen: a message instead."""
         if outcome in ("missed", "decline", "skip"):
             project = key.partition(":")[2] or "your project"
-            self.app.notify(f"Missed my call: you asked me to remind you about {project} today.", kind="reminder")
+            self.app.notify(
+                f"Missed my call: you asked me to remind you about {project} today.",
+                kind="reminder",
+                why="research.remind",
+                about=project,
+            )
         return False
 
     def weekly_lines(self) -> list[str]:

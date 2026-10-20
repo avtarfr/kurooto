@@ -69,6 +69,8 @@ class Reminders(Module):
             f"Reminder{late}: {what}",
             kind="reminder",
             buttons=[[("+10 min", f"rem:{ref}:10"), ("+1 h", f"rem:{ref}:60")]],
+            why="reminders.own",
+            about=what,
         )
         self.app.events.emit("reminder_fired", late=bool(late))
 
