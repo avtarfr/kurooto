@@ -13,6 +13,7 @@ kurooto call --list | --cancel KEY  the calls booked for later, and taking one o
 kurooto mcp              Kurooto's tools for agent programs (an MCP server on stdin/stdout)
 kurooto ask-me "question" [--choices "a|b|c"] [--expires 2d] [--wait [--timeout MIN]]   ask yourself something
 kurooto ask-me --pending [--json] | --id ID [--wait]   the open questions; one asked earlier (wait for its answer)
+kurooto ask-me "question" --then "CMD {answer}"   run a command with the answer once it comes (no shell; {id} too)
 kurooto ask-approval "question" [--timeout MIN]   ask for a yes/no and wait (exit 0 yes, 1 no, 2 timeout)
 kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB; --to drive: Google Drive)
 kurooto note [--title T] TEXT       save a quick note to your notes' inbox (or pipe text in)
@@ -194,11 +195,18 @@ def ask_running(path: str, body: dict | None = None) -> dict | None:
         return None
 
 
-def ask_me(text: str, choices: str, expires: str, title: str, wait: bool, timeout: float, approval: bool) -> int:
+def ask_me(
+    text: str, choices: str, expires: str, title: str, wait: bool, timeout: float, approval: bool, then: str = ""
+) -> int:
     """Ask the person something through the running assistant (Telegram, desktop, phone app, the next call).
-    Without --wait it prints the question's id; with --wait, the answer (exit 2 if none came in time)."""
+    Without --wait it prints the question's id; with --wait, the answer (exit 2 if none came in time). --then: a
+    command run with the answer (after --wait here, else by a background copy of this command)."""
     if not text.strip():
         print("What's the question?", file=sys.stderr)
+        return 2
+    argv = then_argv(then) if then else []
+    if then and not argv:
+        print('--then needs a command, e.g. --then "notify-send Answer {answer}"', file=sys.stderr)
         return 2
     body = {
         "text": text,
@@ -212,6 +220,19 @@ def ask_me(text: str, choices: str, expires: str, title: str, wait: bool, timeou
     if not r or not r.get("ok"):
         print("Kurooto isn't running (`kurooto start` starts it), so nobody was asked.", file=sys.stderr)
         return 2
+    if argv and not wait:
+        then_in_background(r["id"], argv, expires_minutes(expires))
+        print(r["id"])
+        print(f"When you answer, {argv[0]} runs with it.", file=sys.stderr)
+        return 0
+    if argv:
+        answer = wait_open(r["id"], timeout)
+        if answer is None:
+            ask_running("ask/expire", {"id": r["id"]})
+            print("timeout")
+            return 2
+        print(answer, flush=True)
+        return run_then(r["id"], argv, answer, background=False)
     if not wait:
         print(r["id"])
         return 0
@@ -1113,10 +1134,133 @@ def ask_me_flags(am) -> None:
     am.add_argument("--pending", action="store_true", help="the questions still open (--json for programs)")
     am.add_argument("--json", action="store_true", help=argparse.SUPPRESS)
     am.add_argument("--id", default="", help="with --wait: wait for the answer to a question asked before")
+    am.add_argument(
+        "--then",
+        default="",
+        help='a command to run with the answer, e.g. --then "notify-send Answer {answer}" ({answer}, {id}); it runs '
+        "as a program, never through a shell, from here (in the background unless --wait)",
+    )
+    am.add_argument("--poll", type=float, default=3, help=argparse.SUPPRESS)  # seconds between looks
+    am.add_argument("--bg", action="store_true", help=argparse.SUPPRESS)  # the background copy: failures message you
+
+
+# (ws cutgaps) `kurooto ask-me --then CMD`: a follow-up command for scripts, like a hook. Kurooto itself never runs
+# it: this terminal command (or the background copy of it that it starts) waits for the answer and runs it, so
+# nothing typed on Telegram or decided by an AI can start a program.
+def then_argv(text: str) -> list[str]:
+    """--then's command as a program and its arguments: a JSON list, or words split like a shell would (quotes
+    keep spaces) without running one. [] when it can't be read."""
+    import shlex
+
+    t = (text or "").strip()
+    if t.startswith("["):
+        try:
+            v = json.loads(t)
+        except ValueError:
+            return []
+        return [str(x) for x in v] if isinstance(v, list) and v and all(isinstance(x, str) for x in v) else []
+    try:
+        parts = shlex.split(t, posix=os.name != "nt")
+    except ValueError:
+        return []
+    if os.name == "nt":
+        parts = [x[1:-1] if len(x) >= 2 and x[0] == x[-1] and x[0] in "\"'" else x for x in parts]
+    return parts
+
+
+def then_fill(argv: list[str], answer: str, qid: str) -> list[str]:
+    """{answer} and {id} filled in; each stays one argument whatever the answer holds."""
+    return [x.replace("{answer}", answer).replace("{id}", qid) for x in argv]
+
+
+def expires_minutes(text: str, default: float = 2 * 24 * 60) -> float:
+    """--expires (2d, 6h, 30m) in minutes: how long a background follow-up keeps waiting."""
+    import re
+
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([mhd])\w*\s*", text or "")
+    return float(m[1]) * {"m": 1, "h": 60, "d": 1440}[m[2]] if m else default
+
+
+def wait_open(qid: str, timeout_min: float, poll: float = 3.0) -> str | None:
+    """The answer to a question once it comes, or None (it expired, or the time ran out; the question stays open).
+    Kurooto restarting meanwhile is fine: this keeps asking."""
+    import time
+
+    end = time.monotonic() + timeout_min * 60
+    while time.monotonic() < end:
+        q = (ask_running("ask/get", {"id": qid}) or {}).get("question") or {}
+        if q.get("status") == "answered":
+            return q.get("answer") or ""
+        if q.get("status") == "expired":
+            return None
+        time.sleep(max(0.0, min(poll, end - time.monotonic())))
+    return None
+
+
+def run_then(qid: str, argv: list[str], answer: str, background: bool) -> int:
+    """Run the follow-up with the answer; its exit code. In the background a failure comes as a message."""
+    import shutil
+    import subprocess
+
+    from kurooto.core.proc import resolve_cmd_shim
+
+    cmd = then_fill(argv, answer, qid)
+    exe = shutil.which(os.path.expanduser(cmd[0]))
+    run = resolve_cmd_shim(exe) if exe else []  # an npm .cmd wrapper on Windows: its script with node
+    if not exe:
+        code, why = 127, f"{cmd[0]} isn't on this computer"
+    elif os.name == "nt" and run[0].lower().endswith((".cmd", ".bat")):
+        code, why = 126, f"{cmd[0]} is a batch file, and cmd.exe would read the answer as commands; use a program"
+    else:
+        try:
+            code = subprocess.run([*run, *cmd[1:]], check=False).returncode  # noqa: S603 (argv, no shell)
+            why = f"exit code {code}"
+        except OSError as e:
+            code, why = 126, str(e)[:120]
+    if code:
+        print(f"The follow-up ({cmd[0]}) failed: {why}.", file=sys.stderr)
+        if background:
+            ask_running("notify", {"text": f"The follow-up to your answer ({cmd[0]}) failed: {why}.", "kind": "info"})
+    return code
+
+
+def then_in_background(qid: str, argv: list[str], minutes: float) -> None:
+    """A copy of this command that waits for the answer on its own (it outlives this terminal) and then runs the
+    follow-up; what it prints goes to the logs folder (ask-then.log)."""
+    import subprocess
+
+    cmd = [sys.executable, "-m", "kurooto", "ask-me", "--id", qid, "--wait", "--timeout", f"{minutes:g}"]
+    cmd += ["--then", json.dumps(argv), "--poll", "10", "--bg"]
+    paths().logs.mkdir(parents=True, exist_ok=True)
+    log = open(paths().logs / "ask-then.log", "a", encoding="utf-8")  # noqa: SIM115 (the child keeps it)
+    kw: dict = {"stdin": subprocess.DEVNULL, "stdout": log, "stderr": log}
+    if sys.platform == "win32":
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        kw.update(creationflags=flags, close_fds=True)
+    else:
+        kw["start_new_session"] = True
+    try:
+        subprocess.Popen(cmd, **kw)  # noqa: S603 (this same program)
+    finally:
+        log.close()
 
 
 def ask_me_more(a) -> int:
-    """`kurooto ask-me --pending [--json]` and `kurooto ask-me --id ID --wait`."""
+    """`kurooto ask-me --pending [--json]` and `kurooto ask-me --id ID --wait [--then CMD]`."""
+    if a.id and a.then:
+        argv = then_argv(a.then)
+        if not argv:
+            print('--then needs a command, e.g. --then "notify-send Answer {answer}"', file=sys.stderr)
+            return 2
+        if not a.wait:
+            then_in_background(a.id, argv, a.timeout)
+            return 0
+        answer = wait_open(a.id, a.timeout, max(1.0, float(a.poll or 3)))
+        if answer is None:
+            print("timeout")
+            return 2
+        print(answer, flush=True)
+        return run_then(a.id, argv, answer, background=a.bg)
     if a.id:
         if not a.wait:
             q = (ask_running("ask/get", {"id": a.id}) or {}).get("question")
@@ -1431,7 +1575,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "ask-me":
         if a.pending or a.id:
             return ask_me_more(a)
-        return ask_me(" ".join(a.text), a.choices, a.expires, a.title, a.wait, a.timeout, approval=False)
+        return ask_me(" ".join(a.text), a.choices, a.expires, a.title, a.wait, a.timeout, False, a.then)
     if a.cmd == "ask-approval":
         return ask_me(" ".join(a.text), "", "", "", True, a.timeout, approval=True)
     if a.cmd in ("pause", "resume"):

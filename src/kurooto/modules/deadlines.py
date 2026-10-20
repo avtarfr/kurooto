@@ -5,7 +5,9 @@ Where deadlines come from (the same thing from two places is kept once):
 - unticked dated tasks in your notes, written like:  - [ ] Essay draft (2026-11-02 17:00)
 - Google Classroom coursework (with Google on);
 - calendar events that look like deadlines or exams ("Problem set 3 due", "Midterm"; with Calendar on);
-- recurring quizzes and tests, from the table in your notes at kurooto/recurring.md (/recurring).
+- recurring quizzes and tests, from the table in your notes at kurooto/recurring.md (/recurring);
+- the key dates in your term note (Subjects: /term note), read again whenever the note changes: its quizzes and
+  exams, and deadlines that name one of your subjects.
 Topics on your not-interested list (/ignore) are left out.
 
 The chase, for things you hand in: a message with Done / Snooze / Not mine a day before; six hours before, a call
@@ -44,6 +46,7 @@ register_defaults(
         "tick_notes": True,  # Done ticks the "- [ ]" line in your notes when the deadline came from one
         "from_calendar": True,  # calendar events that look like deadlines or exams (with Calendar on)
         "recurring": True,  # recurring quizzes from kurooto/recurring.md
+        "from_term_note": True,  # quizzes, exams and deadlines from the term note's key dates (Subjects: /term note)
         "horizon_days": 30,  # recurring quizzes become dated deadlines this far ahead
         "exam_mode_days": 14,  # exam mode starts this many days before a quiz or exam (0: never)
     },
@@ -226,9 +229,10 @@ class Deadlines(Module):
 
     def _slots(self, slug: str) -> list[tuple[str, str]]:
         """(day, start) of the subject's classes in your timetable."""
-        if not self._subjects():
+        s = self._subjects()
+        if not s:
             return []
-        rows = self.app.settings.get("subjects.timetable") or []
+        rows = s.timetable()
         return sorted(
             {(c["day"], c["start"]) for c in rows if c.get("subject") == slug},
             key=lambda x: (recurring.DAYS.index(x[0]), x[1]),
@@ -326,7 +330,7 @@ class Deadlines(Module):
     def refresh(self) -> int:
         """Bring the list up to date from your notes, calendar and recurring quizzes. Returns how many are new."""
         n = 0
-        for scan in (self.scan_notes, self.scan_calendar, self.scan_recurring):
+        for scan in (self.scan_notes, self.scan_calendar, self.scan_recurring, self.scan_term):
             try:
                 n += scan()
             except Exception as e:  # one broken source never stops the others
@@ -425,6 +429,28 @@ class Deadlines(Module):
             jsave(self.file, items)
         return n
 
+    def scan_term(self) -> int:
+        """The term note's key dates (Subjects: /term note): its quizzes and exams, and deadlines that name one of
+        your subjects (or that its Kind column calls due). A date taken out of the note goes from the list."""
+        s = self._subjects()
+        if not (self.setting("from_term_note") and s and hasattr(s, "key_dates")):
+            return 0
+        raw = str(s.setting("term_note") or "").strip()
+        if raw and raw.lower() not in ("off", "none") and s.term_path() is None:
+            return 0  # set but not there right now (a sync in progress, a folder not mounted): keep what we have
+        rows = []
+        for d in s.key_dates():
+            if d["kind"] == "exam":
+                kind = "exam"
+            elif d["kind"] == "due" and (d["subject"] or d.get("explicit")):
+                kind = "task"
+            else:
+                continue
+            due = f"{d['from']}T{d['time'] or ('09:00' if kind == 'exam' else '23:59')}:00"
+            rows.append((d["what"], due, {"subject": d["subject"], "kind": kind}))
+        until = iso(now() + dt.timedelta(days=400))
+        return self._sync_source("term-note", rows, until)
+
     # ----------------------------------------------------------------------------- recurring quizzes
     @property
     def recurring_note(self):
@@ -454,7 +480,7 @@ class Deadlines(Module):
             return 0
         today = now().date()
         horizon = self.setting("horizon_days") or 30
-        holidays = (self.app.settings.get("subjects.holidays") or []) if self._subjects() else []
+        holidays = self._subjects().holidays() if self._subjects() else []
         asked = (jload(self._over_file, {}) or {}).get("_asked", [])
         rows = []
         for r in self.recurring_rows():

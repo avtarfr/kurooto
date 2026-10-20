@@ -63,6 +63,9 @@ class Module:
     # ("bots/reply.js"): the dashboard's cell and `kurooto top` show their cpu, memory, uptime and threads, and the
     # cell turns grey and dashed when none is running. Add-ons use it to watch programs Kurooto didn't start.
     processes: tuple[str, ...] = ()
+    # True for programs that only run now and then (a backup run, a nightly job): with none running the cell says
+    # "idle" (not grey, not dashed), and "running" with the figures while one does. Its health is still health().
+    processes_intermittent = False
 
     def __init__(self, app: App):
         self.app = app

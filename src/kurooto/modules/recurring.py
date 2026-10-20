@@ -9,7 +9,8 @@ rows into dated items, so exam mode, quiz offers and reminders follow from them.
 
 "Every" is in weeks (1, 2, or words like "weekly", "every other week"). "Next" is any date it happens on (needed when
 it's every two weeks, so Kurooto knows which week); "Until" is optional. Empty Day or Time: Kurooto uses the subject's
-class from your timetable, or asks you.
+class from your timetable, or asks you. The header row may name the columns your own way ("Course" for "Subject");
+the columns are read by position.
 
 This file only reads and writes the table; the Deadlines feature uses it.
 """
@@ -57,15 +58,46 @@ def hhmm(text: str) -> str:
     return f"{int(m[1]):02d}:{m[2]}" if m and int(m[1]) < 24 and int(m[2]) < 60 else ""
 
 
+# Words that only appear in a header row ("| Course | What | Every | Day | ..."), whatever the user calls the columns.
+HEAD_WORDS = {
+    "subject", "subjects", "course", "courses", "class", "module", "paper", "unit", "what", "type", "kind", "item",
+    "assessment", "every", "every (weeks)", "weeks", "frequency", "how often", "repeat", "repeats", "day", "days",
+    "weekday", "time", "at", "when", "next", "next date", "from", "start", "starts", "until", "till", "end", "ends",
+    "notes", "note", "comment", "comments", "where", "room", "#",
+}  # fmt: skip
+
+
+def cells_of(line: str) -> list[str] | None:
+    """A table row's cells, or None when the line isn't a table row."""
+    s = (line or "").strip()
+    return [c.strip() for c in s.strip("|").split("|")] if s.startswith("|") else None
+
+
+def is_rule(cells: list[str]) -> bool:
+    """The separator under a header: | :--- | --- | ---: |."""
+    return bool(cells) and all(re.fullmatch(r":?-{2,}:?", c.replace(" ", "")) for c in cells if c) and any(cells)
+
+
+def is_header(cells: list[str], next_line: str = "") -> bool:
+    """A header row: the row just above a | --- | separator, or one whose cells are all column names."""
+    nxt = cells_of(next_line)
+    if nxt is not None and is_rule(nxt):
+        return True
+    words = [c.lower().strip("*_` ") for c in cells if c.strip()]
+    return bool(words) and all(w in HEAD_WORDS for w in words)
+
+
 def parse(text: str) -> list[dict]:
-    """The table's rows: subject, what, every, day, time, next, until (empty strings when not given), line."""
+    """The table's rows: subject, what, every, day, time, next, until (empty strings when not given), line. Header
+    rows (whatever their column names) and separators are skipped."""
     out = []
-    for ln in (text or "").splitlines():
-        s = ln.strip()
-        if not s.startswith("|"):
+    lines = (text or "").splitlines()
+    for k, ln in enumerate(lines):
+        cells = cells_of(ln)
+        if cells is None:
             continue
-        cells = [c.strip() for c in s.strip("|").split("|")]
-        if len(cells) < 2 or cells[0].lower() == "subject" or not "".join(cells).strip(":- "):
+        nxt = lines[k + 1] if k + 1 < len(lines) else ""
+        if len(cells) < 2 or is_rule(cells) or is_header(cells, nxt) or not "".join(cells).strip(":- "):
             continue
         cells += [""] * (7 - len(cells))
         if not cells[0]:
@@ -147,7 +179,14 @@ def insert(text: str, row_line: str) -> str:
     """The note with a row added at the end of its table (a table is added at the end if there isn't one). Nothing
     else in the note changes."""
     lines = text.split("\n")
-    head = next((k for k, ln in enumerate(lines) if ln.strip().lower().startswith("| subject")), None)
+    head = next(
+        (
+            k
+            for k, ln in enumerate(lines)
+            if (c := cells_of(ln)) is not None and is_header(c, lines[k + 1] if k + 1 < len(lines) else "")
+        ),
+        None,
+    )
     if head is None:
         return text.rstrip("\n") + "\n\n" + HEAD + "\n" + SEP + "\n" + row_line + "\n"
     end = head

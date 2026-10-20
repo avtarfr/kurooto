@@ -10,7 +10,7 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING
 
 from kurooto import __version__, providers
-from kurooto.core import autostart, hardware
+from kurooto.core import autostart, hardware, opener
 from kurooto.core.prereqs import Prereqs
 from kurooto.core.state import jload, jsave
 from kurooto.modules.telegram.api import TelegramError
@@ -704,19 +704,12 @@ class Api:
         }
 
     def _open_note(self, nid: str) -> tuple[int, dict]:
-        import subprocess
-        import sys as _sys
-
+        """Open a note in your program (notes.open_with, e.g. "kitty nvim {path}"), else the default app."""
         p = self._note_path(nid)
         if not p:
             return 404, {"error": "no such note"}
-        if _sys.platform == "win32":
-            import os as _os
-
-            _os.startfile(str(p))  # noqa: S606 (opens the user's own note in their default app)
-        else:
-            subprocess.Popen(["open" if _sys.platform == "darwin" else "xdg-open", str(p)], start_new_session=True)
-        return 200, {"ok": True}
+        ok, note = opener.open_note(self.app.settings, p, self.app.workspace)
+        return 200, {"ok": ok, **({"message": note} if note else {})}
 
     EDITABLE = ("you", "notify", "availability", "updates", "brain", "ask", "look", "power", "notes", "files")
 

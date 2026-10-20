@@ -102,7 +102,7 @@ class Body {
       if (!o) { o = { id: c.id, label: SHORT[c.id] || c.title, color: COLORS[c.id] || "fg", seed: Math.random() * 10, act: 0, flash: 0, hist: [] }; this.o.set(c.id, o); }
       o.i = i; o.target = c.act; o.data = c; o.hist.push(c.act); if (o.hist.length > 60) o.hist.shift();
       const f = fx[c.id] || {};
-      o.proc = f.proc || null; o.last = f.last; o.next = f.next; o.down = !!f.down;
+      o.proc = f.proc || null; o.last = f.last; o.next = f.next; o.down = !!f.down; o.idle = !!f.idle; o.often = !!f.intermittent;
     });
     let meta = `${on.length} feature${on.length === 1 ? "" : "s"} on`;
     const down = (m.features || []).filter((f) => f.down).length;
@@ -382,8 +382,9 @@ class Body {
   vital(o) {
     const ev = o.data.events;
     if (o.down) return "not running";
-    if (!DENSE) return ev ? `${ev} in 2 min` : "quiet";
-    if (o.proc) return `${(o.proc.cpu * 100).toFixed(1)}% · ${bytes(o.proc.mem)}`;
+    if (o.idle) return "idle"; // its programs run now and then (Module.processes_intermittent)
+    if (!DENSE) return o.often && o.proc ? "running" : ev ? `${ev} in 2 min` : "quiet";
+    if (o.proc) return `${o.often ? "running · " : ""}${(o.proc.cpu * 100).toFixed(1)}% · ${bytes(o.proc.mem)}`;
     if (ev) return `${ev} in 2 min`;
     return o.last != null ? `last ${ago(o.last)} ago` : "quiet";
   }
@@ -454,6 +455,7 @@ class Body {
     const p = best.proc;
     card.innerHTML = `<div class="h">${esc(best.data.title)}</div><div>${best.data.events} event${best.data.events === 1 ? "" : "s"} in the last 2 minutes</div>` +
       (best.down ? '<div class="bad2">its program isn\'t running</div>' : "") +
+      (best.idle ? '<div class="d">idle: its program runs now and then</div>' : "") +
       (p ? `<div class="d">${p.n > 1 ? `its ${p.n} processes` : "its process"}: cpu ${(p.cpu * 100).toFixed(1)}% · ${bytes(p.mem)} · ${p.threads} threads · up ${ago(p.up)}</div>` : "") +
       (best.last != null ? `<div class="d">last event ${ago(best.last)} ago</div>` : "") +
       (best.next ? `<div class="d">next scheduled ${hm(best.next)}</div>` : "");
