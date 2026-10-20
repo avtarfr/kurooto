@@ -137,7 +137,7 @@ def find_shell(
         own = login()
         if choice == "auto":
             return shell_argv(own), ""
-        hint = " (`kurooto term --install` gets it)" if os_ == "linux" else ""
+        hint = " (`kurooto term --install` gets it)"
         return shell_argv(own), f"fish isn't installed{hint}; using {program_name(own)}."
     exe = which(choice, []) or (choice if os.path.isabs(choice) and os.path.isfile(choice) else None)
     if exe:

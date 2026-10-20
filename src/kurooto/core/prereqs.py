@@ -153,7 +153,7 @@ class Prereqs:
                 f = self._download(
                     url, progress, sha256=(p.step.get("sha256s") or {}).get(arch()) or p.step.get("sha256")
                 )
-                self._unzip(f, expand(p.step["into"], self.app_dir))
+                self._unzip(f, expand(p.step["into"], self.app_dir), strip=int(p.step.get("strip", 0)))
                 ok, msg = True, ""
             elif kind == "download-tar":
                 url = ((p.step.get("urls") or {}).get(arch()) or p.step["url"]).replace("{arch}", arch())

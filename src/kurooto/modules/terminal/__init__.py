@@ -4,15 +4,17 @@ each for your AI's own program (agy, Codex or Claude Code, started in your notes
 `kurooto term` opens it; turning this feature on adds "Kurooto Terminal" to your app menu.
 
     Linux, macOS   kitty: your own if you have it, or the official kitty that Set up or `kurooto term --install`
-                   puts in Kurooto's folder (no admin). The shell is fish if you have it (on Linux Kurooto can get
-                   the official fish too), otherwise your own.
+                   puts in Kurooto's folder (no admin). The shell is fish if you have it (Kurooto can get the
+                   official fish too, the same way), otherwise your own.
     Windows        Windows Terminal: Kurooto adds its profiles and colours as a "fragment" (no admin). PowerShell.
 
 Settings (terminal.*): tabs (in order: agent, shell, chat, logs, top), top ("left": a column beside the first tab;
 "tab"; "off"), shell ("auto": fish if you have it, else yours; or a program, e.g. "zsh"), font_size, kitty (Linux
 and macOS: off uses your usual terminal, a window per tab), default (make Kurooto Terminal your default terminal:
-see defaults.py; off undoes it). Turning the feature off removes the launcher and Kurooto's Windows Terminal
-profiles and undoes "default terminal". Nothing leaves this computer.
+see defaults.py; off undoes it), default_opens (what a default-terminal launch opens on Linux: "shell", one window
+with your shell in Kurooto's colours, or "layout", the whole window; on Windows it's always the shell). Turning the
+feature off removes the launchers and Kurooto's Windows Terminal profiles and undoes "default terminal". Nothing
+leaves this computer.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ register_defaults(
         "font_size": 11,
         "kitty": True,  # Linux and macOS: kitty (yours, or Kurooto's copy); off: your usual terminal, a window a tab
         "default": False,  # Kurooto Terminal as your default terminal (opt-in; turning it off undoes it)
+        "default_opens": "shell",  # as the default terminal, a launch opens: "shell" (one tab) or "layout" (all)
     },
 )
 WATCH = ("terminal.", "brain.main", "look.palette", "you.assistant_name", "you.workspace")
@@ -69,7 +72,7 @@ class KurootoTerminal(Module):
         return False, "needs a terminal program: Set up gets the official kitty into Kurooto's folder (about 45 MB)"
 
     def setup(self, progress=print) -> tuple[bool, str]:
-        """Get kitty (and fish on Linux) into Kurooto's folder, from their official releases (checksums checked)."""
+        """Get kitty and fish into Kurooto's folder, from their official releases (checksums checked)."""
         from kurooto.modules.terminal.run import Context, install, missing
 
         ctx = Context(self.app.paths)
@@ -128,11 +131,14 @@ class KurootoTerminal(Module):
             try:
                 state = self.app.paths.state / "terminal"
                 self._last = self.files(self.app.settings, self.app.paths, self.app.workspace, self._last)
-                want, have = bool(self.setting("default")), defaults.status(state) is not None
-                if want and not have:
+                rec = defaults.status(state)
+                want, have = bool(self.setting("default")), rec is not None
+                opens = str(self.setting("default_opens") or "shell")
+                moved = have and rec.get("os") == "linux" and rec.get("entry") != defaults.entry(opens)
+                if want and (not have or moved):
                     from kurooto.modules.terminal.launchers import outside
 
-                    ok, msg = defaults.apply(self._plan().os, state, *outside())
+                    ok, msg = defaults.apply(self._plan().os, state, *outside(), opens=opens)
                     self.app.events.emit("terminal_default", on=True, ok=ok)
                     if not ok:
                         self.app.notify(f"Kurooto Terminal couldn't become your default terminal: {msg}")

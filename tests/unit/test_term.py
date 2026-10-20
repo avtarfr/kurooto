@@ -100,7 +100,7 @@ def test_shell_choice(tmp_path):
     argv, note = find_shell("fish", "linux", app, no_fish, lambda: "/bin/bash")
     assert argv == ["/bin/bash", "-l"] and "kurooto term --install" in note
     argv, note = find_shell("fish", "macos", app, no_fish, lambda: "/bin/zsh")
-    assert "--install" not in note  # nothing to install on a Mac
+    assert argv == ["/bin/zsh", "-l"] and "kurooto term --install" in note  # the official fish app, on a Mac too
     assert find_shell("auto", "linux", app, fake_which(fish="/a/fish"), lambda: "/bin/zsh")[0] == ["/a/fish", "-l"]
     assert find_shell("zsh", "linux", app, fake_which(zsh="/bin/zsh"), lambda: "/bin/sh")[0] == ["/bin/zsh", "-l"]
     assert find_shell("nope", "linux", app, no_fish, lambda: "/bin/sh")[1] == "nope isn't installed; using sh."
