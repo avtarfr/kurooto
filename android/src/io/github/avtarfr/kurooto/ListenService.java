@@ -82,8 +82,14 @@ public class ListenService extends Service {
         NotificationChannel svc = new NotificationChannel(CH_SERVICE, "Listening for calls", NotificationManager.IMPORTANCE_MIN);
         svc.setShowBadge(false);
         NotificationChannel call = new NotificationChannel(CH_CALL, "Calls from Kurooto", NotificationManager.IMPORTANCE_HIGH);
-        call.setSound(null, null); // the app plays the ringtone itself, looping
-        call.enableVibration(false);
+        Uri ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+        call.setSound(ringtoneUri, audioAttributes);
+        call.enableVibration(true);
+        call.setVibrationPattern(new long[]{0, 800, 600, 800, 1600});
         call.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         call.setBypassDnd(true);
         NotificationChannel msg = new NotificationChannel(CH_MSG, "Messages", NotificationManager.IMPORTANCE_HIGH);
