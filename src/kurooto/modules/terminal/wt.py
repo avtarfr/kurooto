@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 
 from kurooto.modules.terminal.look import wt_scheme
-from kurooto.modules.terminal.plan import Plan, Tab
+from kurooto.modules.terminal.plan import Plan, Tab, program_name
 
 APP = "Kurooto"  # the fragment's folder; with each profile's name it makes the profile's GUID
 SCHEME = "Kurooto"
@@ -50,7 +50,7 @@ def _profiles(plan: Plan) -> list[Tab]:
     """Every tab's profile, the shell's always (it's the main one), in the order the tabs open."""
     tabs = ([plan.top] if plan.top else []) + plan.tabs
     if not any(t.key == "shell" for t in tabs):
-        tabs.append(Tab("shell", Path(plan.shell[0]).stem.lower(), plan.shell, str(Path.home())))
+        tabs.append(Tab("shell", program_name(plan.shell[0]), plan.shell, str(Path.home())))
     out, seen = [], set()
     for t in tabs:
         if profile_name(t) not in seen:
@@ -166,13 +166,31 @@ def current_default(text: str) -> str | None:
     return m.group(2) if m else None
 
 
+def _object_start(text: str) -> int:
+    """Where the settings object's { is: the first one that isn't in a comment."""
+    i, n = 0, len(text)
+    while i < n:
+        if text.startswith("//", i):
+            i = text.find("\n", i)
+            if i < 0:
+                return -1
+        elif text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            i = j + 2 if j >= 0 else n
+        elif text[i] == "{":
+            return i
+        else:
+            i += 1
+    return -1
+
+
 def with_default(text: str, value: str) -> tuple[str, str | None]:
     """settings.json with defaultProfile set to value, and the value it had (None: it had none). Only that value
     changes; comments, order and spacing stay as they were."""
     m = _live(text)
     if m:
         return text[: m.start(2)] + value + text[m.end(2) :], m.group(2)
-    i = text.find("{")
+    i = _object_start(text)
     if i < 0:
         raise ValueError("Windows Terminal's settings file isn't a settings object")
     empty = text[i + 1 :].lstrip().startswith("}")

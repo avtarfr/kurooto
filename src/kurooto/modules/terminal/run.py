@@ -60,6 +60,13 @@ class Context:
         return "terminal" in (self.settings.get("modules.enabled") or [])
 
 
+def running(ctx: Context) -> bool:
+    from kurooto.core.proc import pid_alive
+
+    pid = (jload(ctx.paths.state / "daemon.json", {}) or {}).get("pid")
+    return bool(pid) and pid_alive(pid)
+
+
 def colours_for(plan: Plan) -> dict[str, str]:
     return look.colours(plan.palette)
 
@@ -280,10 +287,16 @@ def main(a, ctx: Context | None = None) -> int:
             print(msg, file=sys.stderr)
         return 0 if ok else 1
     plan = offer(ctx, plan)
-    for n in plan.notes:
-        print(n)
+    notes = list(plan.notes)
+    if any(t.key == "chat" for t in plan.tabs) and not running(ctx):
+        notes.append("Kurooto isn't running, so the chat tab can't answer yet: `kurooto on` starts it.")
     ok, msg = launch(ctx, plan)
-    print(msg)
+    for line in [*notes, msg]:
+        print(line)
+    if not sys.stdout.isatty() and (notes or not ok):  # opened from the app menu: nobody sees what's printed
+        from kurooto.core import desktop
+
+        desktop.notify("Kurooto Terminal", " ".join(notes if ok else [msg, *notes])[:400])
     try:
         from kurooto.core.events import Events
 

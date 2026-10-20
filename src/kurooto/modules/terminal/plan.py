@@ -12,7 +12,7 @@ import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from kurooto.core import proc
 from kurooto.core.state import jload
@@ -104,8 +104,13 @@ def login_shell() -> str:
     return sh or shutil.which("bash") or "/bin/sh"
 
 
+def program_name(exe: str) -> str:
+    """fish for /usr/bin/fish, pwsh for C:\\...\\pwsh.exe (either kind of path, on any OS)."""
+    return PureWindowsPath(exe).name.lower().removesuffix(".exe")
+
+
 def shell_argv(exe: str) -> list[str]:
-    name = Path(exe).name.lower().removesuffix(".exe")
+    name = program_name(exe)
     if name in ("pwsh", "powershell"):
         return [exe, "-NoLogo"]
     return [exe, "-l"] if name in LOGIN_SHELLS else [exe]
@@ -133,12 +138,12 @@ def find_shell(
         if choice == "auto":
             return shell_argv(own), ""
         hint = " (`kurooto term --install` gets it)" if os_ == "linux" else ""
-        return shell_argv(own), f"fish isn't installed{hint}; using {Path(own).name}."
+        return shell_argv(own), f"fish isn't installed{hint}; using {program_name(own)}."
     exe = which(choice, []) or (choice if os.path.isabs(choice) and os.path.isfile(choice) else None)
     if exe:
         return shell_argv(exe), ""
     own = login()
-    return shell_argv(own), f"{choice} isn't installed; using {Path(own).name}."
+    return shell_argv(own), f"{choice} isn't installed; using {program_name(own)}."
 
 
 def find_agent(settings, app_dir: Path, os_: str, which: Which = proc.which) -> tuple[str, list[str]] | None:
@@ -185,7 +190,7 @@ def find_kitty(
             found.append(hit)
     best = ("", ())
     for exe in found:
-        v = version_of(exe)
+        v = version_of(exe) or ()
         if v >= KITTY_GOOD:
             return exe, v
         if not best[0]:
@@ -296,7 +301,7 @@ def build(
                 return None
             return Tab("agent", found[0], found[1], str(workspace), hold=True)
         if key == "shell":
-            return Tab("shell", Path(shell[0]).name.lower().removesuffix(".exe"), shell, str(home))
+            return Tab("shell", program_name(shell[0]), shell, str(home))
         if key == "chat":
             return Tab("chat", name, kurooto_argv("ask", app_dir=app_dir), str(home), hold=True)
         if key == "logs":

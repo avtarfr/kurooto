@@ -45,6 +45,7 @@ Everything below goes to services you chose, under your own accounts.
 | Research | your fields, keywords and searches (never your notes) | the sources you pick: arXiv, bioRxiv/medRxiv, PubMed, feeds (all public) |
 | Research: `kurooto watch` | the command's name, exit code, duration and last lines (`--lines 0`: none) | Telegram (your own bot), like any message |
 | Terminals | nothing by themselves (see [Your own code and terminals](#your-own-code-and-terminals)) | stays on your computer |
+| Kurooto Terminal | nothing by itself; getting kitty or fish (only when you say yes) downloads them from their official GitHub releases. What you type to your AI's program goes to its service, as when you run it yourself | stays on your computer |
 | Your add-ons | nothing by the feature itself; your add-ons' own code can do anything Kurooto can, so they send whatever they're written to send | wherever your add-ons send it |
 | Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list and exam mode), Subjects, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
 
