@@ -186,11 +186,15 @@ def run_pty(
         from ptyprocess import PtyProcessUnicode as PtyProcess
 
         p = PtyProcess.spawn(args, cwd=str(cwd) if cwd else None, env=env, dimensions=(50, 400))
-    if on_start is not None and getattr(p, "pid", None):
-        try:
-            on_start(p.pid)
-        except Exception:
-            pass
+    if getattr(p, "pid", None):
+        from kurooto.core import children
+
+        children.session(p.pid)  # a pty's program leads its own session (core/children.py)
+        if on_start is not None:
+            try:
+                on_start(p.pid)
+            except Exception:
+                pass
     code: int | None = None
     try:
         while time.monotonic() < deadline:

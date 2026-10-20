@@ -52,7 +52,10 @@ def spawn(argv: list[str]) -> None:
         kw["close_fds"] = True
     else:
         kw["start_new_session"] = True
-    subprocess.Popen(argv, **kw)  # noqa: S603 (argv, no shell; the command is the user's own setting)
+    p = subprocess.Popen(argv, **kw)  # noqa: S603 (argv, no shell; the command is the user's own setting)
+    from kurooto.core import children
+
+    children.keep(p.pid)  # yours: it stays open when Kurooto stops
 
 
 def open_default(path) -> bool:

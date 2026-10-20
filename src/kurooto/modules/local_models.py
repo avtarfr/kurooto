@@ -85,6 +85,9 @@ class LocalModels(Module):
             start_new_session=os.name != "nt",
         )
         jsave(self.app.paths.state / "ollama-ours.json", {"pid": child.pid})
+        from kurooto.core import children
+
+        children.session(child.pid)  # Kurooto started it: it stops with Kurooto (core/children.py)
         import time
 
         for _ in range(40):

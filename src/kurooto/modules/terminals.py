@@ -76,6 +76,9 @@ class UnixPty:
             raise
         finally:
             os.close(slave)
+        from kurooto.core import children
+
+        children.session(self.p.pid)  # what's left in this terminal ends with Kurooto (core/children.py)
 
     @staticmethod
     def _winsize(fd: int, cols: int, rows: int) -> None:

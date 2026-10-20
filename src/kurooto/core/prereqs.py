@@ -397,7 +397,10 @@ class Prereqs:
                 if shutil.which(term):
                     import subprocess
 
-                    subprocess.Popen([term, "-e", *cmd], start_new_session=True)
+                    w = subprocess.Popen([term, "-e", *cmd], start_new_session=True)
+                    from kurooto.core import children
+
+                    children.keep(w.pid)  # the sign-in window is yours
                     break
             else:
                 return False, f"Open a terminal and run: {' '.join(cmd)}"

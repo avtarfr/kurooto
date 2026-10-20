@@ -512,6 +512,12 @@ class Jobs:
         hit = [j for j in act if j.id == ref] or [j for j in act if ref and j.id.startswith(ref)]
         return hit[0] if len(hit) == 1 else None
 
+    def halt(self) -> None:
+        """Kurooto is stopping: running jobs take no more steps and give no answer. They stay "running" with this
+        process gone, so the next start runs them again (recover)."""
+        for ev in list(self._stops.values()):
+            ev.set()
+
     def watchdog(self) -> list[str]:
         """End this process's stuck jobs as failed: no AI at work on it and no program running for jobs.stuck_min
         minutes, or a try still going past its time limit plus grace. Returns their ids."""

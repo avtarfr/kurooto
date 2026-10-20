@@ -428,6 +428,7 @@ class App:
 
     def close(self) -> None:
         if self._stop is not None:  # the assistant itself is stopping (not a `kurooto` command): last words
+            self.jobs.halt()  # running AI requests stop where they are; they run again at the next start
             for m in self.enabled():
                 down = getattr(m, "shutdown", None)  # e.g. Notes sync sends up what's left
                 if down:

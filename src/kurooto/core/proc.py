@@ -102,6 +102,10 @@ def run(
         creationflags=flags,
         start_new_session=not WINDOWS,
     )
+    if not WINDOWS:  # what it leaves behind in its session ends with Kurooto (core/children.py)
+        from kurooto.core import children
+
+        children.session(p.pid)
     if on_start is not None:
         try:
             on_start(p.pid)

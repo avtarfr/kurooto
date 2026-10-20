@@ -9,6 +9,7 @@ import datetime as dt
 import http.client
 import json
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -417,3 +418,160 @@ def test_status_answers_with_telegram_off(tmp_path, monkeypatch):
         assert out and "is off" not in out[0]  # /sync syncs everything while Notes sync is off
     finally:
         app.close()
+
+
+# ------------------------------------------------------------------------------- stopping: programs end with Kurooto
+FAKE_KUROOTO = """import json, subprocess, sys, time
+py = sys.executable
+deaf = subprocess.Popen(
+    [py, "-c", "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)"]
+)
+plain = subprocess.Popen([py, "-c", "import time; time.sleep(60)"])
+lead = subprocess.Popen(
+    [py, "-c", "import subprocess, sys, time; subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); "
+     "time.sleep(0.5)"],
+    start_new_session=True,
+)
+mine = subprocess.Popen([py, "-c", "import time; time.sleep(60)"], start_new_session=True)
+lead.wait()  # the session leader has gone; its helper is left in its session
+json.dump({"deaf": deaf.pid, "plain": plain.pid, "lead": lead.pid, "mine": mine.pid}, open(sys.argv[1], "w"))
+time.sleep(60)
+"""
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="SIGTERM and sessions are POSIX; Windows ends the tree at once")
+def test_stopping_ends_every_program_kurooto_started_even_one_that_ignores_sigterm(tmp_path, monkeypatch):
+    from kurooto.core import children
+
+    out = tmp_path / "pids.json"
+    script = tmp_path / "fake_kurooto.py"
+    script.write_text(FAKE_KUROOTO)
+    fake = subprocess.Popen([sys.executable, str(script), str(out)])
+    try:
+        assert until(lambda: out.exists() and out.read_text().strip(), 20)
+        pids = json.loads(out.read_text())
+        orphans = [p.pid for p in psutil.process_iter() if _sid(p.pid) == pids["lead"]]
+        assert orphans and pids["lead"] not in orphans  # the helper outlived the program that started it
+        monkeypatch.setattr(children, "_sessions", {pids["lead"]: None})  # proc.run notes the sessions it starts
+        monkeypatch.setattr(children, "_kept", {})
+        children.keep(pids["mine"])  # opened for you (core/opener.py): yours
+        t0 = time.monotonic()
+        n = children.stop_all(grace=1.0, me=psutil.Process(fake.pid))
+        assert time.monotonic() - t0 < 10
+        assert n["killed"] >= 1 and n["stopped"] >= 2  # the deaf one needed the kill
+        for pid in (pids["deaf"], pids["plain"], *orphans):
+            assert until(lambda pid=pid: not _running(pid), 5), pid
+        assert _running(pids["mine"])
+    finally:
+        for pid in (json.loads(out.read_text()).get("mine") if out.exists() else None, fake.pid):
+            if pid:
+                try:
+                    os.kill(pid, 9)
+                except OSError:
+                    pass
+        fake.wait(5)
+
+
+def _sid(pid: int) -> int | None:
+    try:
+        return os.getsid(pid)
+    except OSError:
+        return None
+
+
+def _running(pid: int) -> bool:
+    try:
+        return psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
+    except psutil.Error:
+        return False
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="signals; Windows stops through `kurooto stop`")
+def test_the_launcher_passes_a_stop_on_and_waits(tmp_path):
+    from importlib import resources
+
+    from tests.unit.test_update import make_version
+
+    app = tmp_path / "app"
+    app.mkdir()
+    (app / "launcher.py").write_bytes(resources.files("kurooto.update").joinpath("launcher.py").read_bytes())
+    make_version(app, "0.5.1", crash=False)
+    main = app / "versions" / "0.5.1" / "pkg" / "kurooto" / "__main__.py"
+    main.write_text(  # a Kurooto that takes its time to stop the normal way, then exits with a crash code
+        "import signal, sys, time\n"
+        f"open(r'{app / 'up'}', 'w').write('up')\n"
+        "def stop(*a):\n"
+        "    time.sleep(1)\n"
+        f"    open(r'{app / 'stopped'}', 'w').write('clean')\n"
+        "    sys.exit(1)\n"
+        "signal.signal(signal.SIGTERM, stop)\n"
+        "time.sleep(60)\n"
+    )
+    (app / "current.json").write_text(json.dumps({"version": "0.5.1"}))
+    launcher = subprocess.Popen([sys.executable, str(app / "launcher.py")])
+    try:
+        assert until(lambda: (app / "up").exists(), 20)
+        assert json.loads((app / "launcher.json").read_text())["forwards"] is True
+        launcher.send_signal(15)  # what systemd's KillMode=mixed sends: to the launcher only
+        assert launcher.wait(15) == 0  # it waited for Kurooto, and didn't start it again
+        assert (app / "stopped").read_text() == "clean"
+    finally:
+        if launcher.poll() is None:
+            launcher.kill()
+
+
+def test_the_service_files_have_stop_limits(tmp_path, monkeypatch):
+    from kurooto.core import autostart
+
+    calls = []
+    monkeypatch.setattr(autostart.proc, "run", lambda args, **kw: calls.append(args) or type("R", (), {"ok": True})())
+    monkeypatch.setattr(autostart.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(autostart.sys, "platform", "linux")
+    autostart.enable(home=tmp_path)
+    unit = tmp_path / ".config" / "systemd" / "user" / "kurooto.service"
+    assert "RestartSec=10\nTimeoutStopSec=20\nKillMode=mixed\n" in unit.read_text()
+    monkeypatch.setattr(autostart.sys, "platform", "darwin")
+    autostart.enable(home=tmp_path)
+    plist = (tmp_path / "Library" / "LaunchAgents" / f"{autostart.LABEL}.plist").read_text()
+    assert "<key>ExitTimeOut</key><integer>20</integer>" in plist
+
+
+def test_an_older_install_gets_the_new_launcher_then_the_stop_limits(tmp_path, monkeypatch):
+    from kurooto.core import autostart
+
+    calls = []
+    monkeypatch.setattr(autostart.proc, "run", lambda args, **kw: calls.append(args) or type("R", (), {"ok": True})())
+    monkeypatch.setattr(autostart.shutil, "which", lambda name: "/usr/bin/" + name)
+    monkeypatch.setattr(autostart.sys, "platform", "linux")
+    app = tmp_path / "app"
+    app.mkdir()
+    (app / "launcher.py").write_text("# 0.5.0's launcher\n")
+    (app / "launcher.json").write_text(json.dumps({"pid": 1}))  # running: the old one, which doesn't pass stops on
+    unit = tmp_path / ".config" / "systemd" / "user" / "kurooto.service"
+    unit.parent.mkdir(parents=True)
+    old = "[Unit]\nDescription=Kurooto\n\n[Service]\nExecStart=/py /app/launcher.py\nRestartSec=10\n\n[Install]\n"
+    unit.write_text(old.replace("RestartSec", "Restart=on-failure\nRestartSec"))
+    assert autostart.refresh(app, tmp_path) == ["launcher", "unit"]
+    assert b"forwards" in (app / "launcher.py").read_bytes()
+    text = unit.read_text()
+    assert "TimeoutStopSec=20\n" in text and "KillMode" not in text  # not yet: the old launcher would just die
+    assert calls[-1] == ["systemctl", "--user", "daemon-reload"]
+    (app / "launcher.json").write_text(json.dumps({"pid": 1, "forwards": True}))  # after the next restart
+    assert autostart.refresh(app, tmp_path) == ["unit"]
+    assert "RestartSec=10\nKillMode=mixed\nTimeoutStopSec=20\n" in unit.read_text()
+    assert autostart.refresh(app, tmp_path) == []
+    unit.write_text("[Service]\nExecStart=/someone/else\n")  # not the unit Kurooto wrote
+    assert autostart.refresh(app, tmp_path) == []
+
+
+def test_stopping_halts_running_requests_so_they_run_again(q):
+    env, gate = q
+    app = env.app
+    jid = app.jobs.submit("a long one", reply_to=4)
+    app.jobs._tick()
+    assert gate.entered.wait(5)
+    n = len(env.fake.texts())
+    app.jobs.halt()  # Kurooto is stopping
+    gate.go.set()
+    thread_of(app, "you").join(5)
+    assert app.jobs.get(jid).status == "running" and len(env.fake.texts()) == n  # no answer; it runs again next time

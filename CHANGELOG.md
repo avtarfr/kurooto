@@ -17,6 +17,17 @@
   and `kurooto jobs --cancel ID|all`; a Cancel button on the dashboard's AI jobs page. Cancelling a running request
   stops its program and everything it started.
 
+**Stopping is quick and leaves nothing behind**
+- Fixed: restarting Kurooto could take 90 s because a program it had started ignored the stop. When Kurooto stops,
+  every program it started (terminals and what runs in them, an AI request's agent program and its helpers, your
+  GBrain's server, Ollama if Kurooto started it, add-ons' programs) is asked to stop and killed after 5 s if it's
+  still there; programs that left a terminal's or agent program's session behind are found too. Programs it opened
+  for you (an editor, a browser, a terminal window) stay open. Running AI requests stop where they are and run again
+  at the next start.
+- The launcher passes a stop on to Kurooto and waits for it. The systemd unit gets `TimeoutStopSec=20` and
+  `KillMode=mixed` (an existing unit gets them at the next starts, once the new launcher runs), the macOS LaunchAgent
+  `ExitTimeOut` 20.
+
 **Google turns on when you sign in**
 - Signing in on the Google card turns Google on (and the Google features you set up that Google has OK'd), also when
   an import left it off.
