@@ -60,7 +60,8 @@ SENSITIVE_KEYS = re.compile(
 class Redactor:
     def __init__(self, app):
         self.values = []
-        for n in sorted(set(app.secrets.names()) | set(KNOWN_SECRETS)):
+        accounts = [f"google.tokens.{a}" for a in app.settings.get("google.accounts") or [] if isinstance(a, str)]
+        for n in sorted(set(app.secrets.names()) | set(KNOWN_SECRETS) | set(accounts)):  # (ws2) other Google accounts
             v = app.secrets.get(n)
             if v and len(v) >= 6:
                 self.values.append(v)

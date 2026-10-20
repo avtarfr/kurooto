@@ -89,7 +89,8 @@ def test_each_add_on_asks_for_its_own_permission(gx):
     assert md.ready() == (False, "needs Google's OK for this: Set up, then sign in")
     assert app.enable("mail_digest")[0] is False
     form = md.setup_form()
-    assert form["fields"] == [] and "read your email (read-only" in form["intro"] and "hasn't verified" in form["intro"]
+    assert [f["name"] for f in form["fields"]] == ["account"] and form["fields"][0]["placeholder"] == "main"
+    assert "read your email (read-only" in form["intro"] and "hasn't verified" in form["intro"]
     # the user unticks Gmail on Google's consent screen: nothing turns on, Classroom keeps working
     msg = allow(env, g, "mail_digest", drop="gmail.readonly")
     assert "Turned on" not in msg and not app.is_on("mail_digest") and gm.ready() == (True, "")
