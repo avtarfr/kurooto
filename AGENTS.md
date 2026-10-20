@@ -63,7 +63,8 @@ words, one step at a time, and let them do the clicking in their browser.
 | `kurooto update` / `kurooto update --now` | checks for / installs an update now | ask first |
 | `kurooto restore ZIP` | replaces Kurooto's settings and data with a backup's (keeps a copy first; notes are only added, never overwritten) | **ask first** |
 | `kurooto profile restore` | replaces Kurooto's settings, keys and saved state with the profile's (keeps a copy of the settings first) | **ask first**; it needs their passphrase, which only they type |
-| `kurooto uninstall [--keep-data]` | removes Kurooto | **ask first**; explain what goes |
+| `kurooto rotate [--yes]` | new keys for their call line (a lost phone, a backup with keys that got out); every paired phone has to pair again | **ask first**; they pair their phones, not you |
+| `kurooto uninstall [--keep-data] [--revoke]` | removes Kurooto; `--revoke` first deletes their call line and takes back Google's and the bot's access | **ask first**; explain what goes |
 
 Install (only if it isn't installed; ask first):
 - Windows PowerShell: `irm https://avtarfr.github.io/kurooto/install.ps1 | iex`

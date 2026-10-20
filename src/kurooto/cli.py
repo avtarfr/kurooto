@@ -376,12 +376,18 @@ def stop(quiet: bool = False, graceful: bool = False) -> int:
     return 0
 
 
-def uninstall(keep_data: bool) -> int:
+def uninstall(keep_data: bool, revoke: bool = False) -> int:
     import shutil
 
     from kurooto.core import autostart
 
     stop()
+    if revoke:  # (revoke) take back the call line, Google's grant, the bot's webhook: while the keys are still here
+        from kurooto.core import leave
+
+        if not leave.uninstall_revoke(print):
+            print("Nothing was removed. `kurooto uninstall` without --revoke removes Kurooto anyway.")
+            return 1
     try:  # (ws5) the copies of your skills Kurooto put in agy and other agent programs (core/agent_export.py)
         from kurooto.core import agent_export
 
@@ -1511,6 +1517,11 @@ def main(argv: list[str] | None = None) -> int:
     fin.add_argument("--python", required=True)
     un = sub.add_parser("uninstall", help="remove Kurooto from this computer")
     un.add_argument("--keep-data", action="store_true", help="keep your settings, journal and notes index")
+    un.add_argument(
+        "--revoke", action="store_true", help="first delete your call line and take back Google's and the bot's access"
+    )
+    ro = sub.add_parser("rotate", help="new keys for your call line (a lost phone, a backup that got out)")
+    ro.add_argument("--yes", action="store_true", help="don't ask first (every paired phone has to pair again)")
     home_parsers(sub)
     profile_parsers(sub)
     term_parsers(sub)
@@ -1612,7 +1623,11 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "update":
         return update(a.now)
     if a.cmd == "uninstall":
-        return uninstall(a.keep_data)
+        return uninstall(a.keep_data, a.revoke)
+    if a.cmd == "rotate":  # (revoke) core/leave.py; the running Kurooto makes the new pairing link
+        from kurooto.core import leave
+
+        return leave.rotate_command(a.yes, ask_running, print, interactive=sys.stdin.isatty())
     if a.cmd == "autostart":
         from kurooto.core import autostart
 

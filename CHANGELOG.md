@@ -34,6 +34,19 @@
 - `/usage`, `kurooto usage` and the usage API show today's limits, what's used of them, and the requests waiting.
 - A daily limit no longer waits a minute and asks again before the fallback; handwritten files that hit a limit are
   tried again later instead of being written off.
+**Leave cleanly** (new; only when you run it)
+- `kurooto uninstall --revoke` first takes back what Kurooto set up on your accounts: deletes your call line from
+  Cloudflare with its keys and stored data (through Kurooto's own Cloudflare sign-in, then signs that out; if it has
+  expired, it prints the dashboard steps), revokes each Google account's access at Google's revoke endpoint, and
+  clears your bot's webhook, waiting messages and command menu. It links what's left for you (the GitHub token page,
+  the Gemini key, `/deletebot`), then removes Kurooto's keys from the keychain, which a plain uninstall left there.
+- `kurooto rotate`, for a lost phone or a backup with your keys that got out: new keys for your call line (this
+  computer's key to it, the key that signs call links, the phone notification key and channel, the Web Push keys),
+  deployed to the same address; the old keys come back if the deploy fails. The call line then forgets every paired
+  phone, its call links and open pairing codes, and the running Kurooto prints a pairing link and QR code to pair your
+  phones again. The keys only you can replace come from the health checks' credential list.
+- The call line forgets its paired phones, call links and pairing codes whenever its call-link key changes (after an
+  update it only notes the key, so nothing is unpaired).
 
 ## 0.4.0 (unreleased)
 

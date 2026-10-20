@@ -52,6 +52,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Where things are](#where-things-are)
 - [Troubleshooting](#troubleshooting)
 - [Getting help (diagnostics)](#getting-help-diagnostics)
+- [Lost phone or keys that got out](#lost-phone-or-keys-that-got-out)
 - [Uninstall](#uninstall)
 - [FAQ](#faq)
 
@@ -786,7 +787,8 @@ calls still work from what it last sent, and anything that needs the computer wa
 
 **Use:** `/call` gives you a link to call now from any phone or browser (it works for 2 hours). "call me in 20 minutes
 about the essay". `/phones` lists paired phones, `/unpair <id>` removes one. Kurooto tells you whenever a new device
-pairs; if it wasn't you, remove it.
+pairs; if it wasn't you, remove it. A lost phone: `kurooto rotate` ([Lost phone or keys that got
+out](#lost-phone-or-keys-that-got-out)).
 
 **When Kurooto calls you:** a call you don't answer rings again 3 and 6 minutes later (`calls.realert_min`; `[]` rings
 once), then becomes a "Missed call" message. The alarm has its own repeats. No calls during a class you attend, a
@@ -2114,7 +2116,8 @@ Service on Linux), or, where there is none, in a file only your user can read in
 Commands: `kurooto on` / `kurooto off` (completely, until turned on again), `kurooto pause [2h]` / `kurooto
 resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto doctor`, `kurooto top`, `kurooto
 term`, `kurooto logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
-`kurooto update`, `kurooto autostart on|off|status`, `kurooto paths`, `kurooto uninstall`. For scripts: `kurooto
+`kurooto update`, `kurooto autostart on|off|status`, `kurooto paths`, `kurooto rotate`, `kurooto uninstall
+[--revoke]`. For scripts: `kurooto
 notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog`, `watch` (see
 [From a terminal or a script](#from-a-terminal-or-a-script) and [Research](#research)).
 
@@ -2238,22 +2241,66 @@ your settings and what happened recently, with **secrets, names, email and web a
 out**. It never contains your messages, notes, journal, transcripts, or what you asked the AI. Nothing is sent
 anywhere: look inside the zip first, then send it yourself.
 
+## Lost phone or keys that got out
+
+`kurooto rotate` gives your call line new keys. Use it when a paired phone is lost or stolen, or when a backup zip
+with your keys in it (`backups.secrets`) or a diagnostics file you didn't mean to share got out. It replaces:
+- this computer's key to the line, and the key that signs call links (call links sent before stop working);
+- the phone notification key and channel (Android) and the Web Push keys (iPhone).
+
+It asks first (`--yes` skips that), deploys your call line again with the new keys (a minute or two; the same
+address, so nothing else changes), and the line then **forgets every paired phone**, the call links it made and open
+pairing codes. If the deploy fails, the old keys are put back and nothing changed. Then it walks you through pairing
+again: with Kurooto running, it prints a pairing link (and a QR code) for one phone.
+- *Android:* in the Kurooto app, tap **Unpair this phone**, then open the link on the phone (or scan the code).
+- *iPhone:* delete Kurooto from the Home Screen, open the link in Safari and add it to the Home Screen again.
+- Another phone: `/phone` on Telegram, or the dashboard's Phone tab → **Pair a phone**.
+
+It also lists the keys only you can replace, from the health checks of the features you have on (your bot's token
+with @BotFather's `/revoke`, Google's access at myaccount.google.com/connections, the GitHub token for your notes, and
+your Gemini key; replace the Gemini key *before* `kurooto rotate`, and the redeploy takes the new one to your call
+line). A lost phone that was signed in to Telegram: end that session from another device (Telegram → Settings →
+Devices). With Profile sync on, run `kurooto profile save` afterwards, so a restore brings the new keys.
+
+*Undo:* none, on purpose: the old keys are gone. Pair your phones again (above); a phone you didn't pair again can't
+call or be called.
+
+*Leaves:* the new keys go to your call line on your own Cloudflare account, as on every setup.
+
 ## Uninstall
 
 `kurooto uninstall` removes Kurooto: the program, its settings, data and start-at-sign-in. `kurooto uninstall
 --keep-data` keeps your settings and data. On Windows you can also use Settings → Apps → Kurooto. Want to keep a copy
 first? `kurooto backup --to <folder>`.
 
+**Leaving for good? `kurooto uninstall --revoke`** first takes back what Kurooto set up on your accounts, while its keys
+are still on this computer:
+- **Your call line:** deleted from your Cloudflare account, with its keys and stored data, through Kurooto's own
+  Cloudflare sign-in, which is then signed out. If that sign-in has expired (or is for another account), it prints the
+  steps instead: Cloudflare dashboard → Workers & Pages → the `kurooto-…` worker → Settings → Delete.
+- **Google:** each signed-in Google account's access is revoked (Kurooto drops off myaccount.google.com/connections).
+- **Telegram:** your bot's webhook and the messages waiting for Kurooto are dropped, and the command menu Kurooto set
+  is removed. The bot stays yours (`/deletebot` to @BotFather deletes it).
+- **Left for you,** with links: delete the GitHub token(s) you made for Kurooto
+  (github.com/settings/personal-access-tokens), the Gemini key if you made it only for Kurooto, the Google client's
+  Cloud project, Profile sync's branch.
+- Then Kurooto's keys are removed from your system's keychain too (also with `--keep-data`; a plain uninstall leaves
+  them there).
+
+Each line says `ok`, `FAIL` (with what to do yourself) or `--` (nothing was set up). *Undo:* none: install again and
+set up again (sign in to Google, paste your bot's token, Phone calls → Set up makes a new call line, pair your phones).
+*Leaves:* Cloudflare gets the request to delete your line, Google the sign-in being revoked (that's how its revoke
+endpoint works), Telegram the two requests to clear the bot.
+
 **Your notes folder is never deleted.** Things Kurooto installed for you that live in its own folder (Node.js, MinGit,
 Ollama on Linux, Tectonic) go with it; programs installed system-wide (agy, Ollama on Windows/macOS, Telegram Desktop)
-stay, since you may use them. Your call line stays on your Cloudflare account until you delete it there (Workers &
-Pages → the `kurooto-…` worker → Settings → Delete); paired phones stop working once it's gone. A Google client can be
-deleted in Google Cloud, and the Agent plan calendar in Google Calendar; a notes repository stays yours (delete its
-`kurooto-profile` branch if you used Profile sync). Backup zips stay in the folder you picked, and your add-ons folder
-is never touched. Kurooto Terminal's app-menu entry and Windows Terminal profiles are removed and "default terminal" is
-undone; kitty and fish that Kurooto got for it were in its folder, so they go too.
-is never touched. The copies of your skills Kurooto put in agy and other agent programs are removed; skills you made
-there yourself stay.
+stay, since you may use them. Without `--revoke`, your call line stays on your Cloudflare account until you delete it
+there (Workers & Pages → the `kurooto-…` worker → Settings → Delete); paired phones stop working once it's gone. A
+Google client can be deleted in Google Cloud, and the Agent plan calendar in Google Calendar; a notes repository stays
+yours (delete its `kurooto-profile` branch if you used Profile sync). Backup zips stay in the folder you picked, and
+your add-ons folder is never touched. Kurooto Terminal's app-menu entry and Windows Terminal profiles are removed and
+"default terminal" is undone; kitty and fish that Kurooto got for it were in its folder, so they go too. The copies of
+your skills Kurooto put in agy and other agent programs are removed; skills you made there yourself stay.
 
 ## FAQ
 
