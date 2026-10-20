@@ -9,10 +9,12 @@
 </head>
 <body>
 <main class="wizard">
-  <header>
+  <aside class="rail">
     <div class="brand">KUROOTO <span class="ver">{{VERSION}}</span></div>
-    <ol class="steps" id="steps"></ol>
-  </header>
+    <ol class="steps" id="steps" aria-label="Setup steps"></ol>
+    <p class="rail-note">Saved as you go: close this page any time and pick up where you left off.</p>
+  </aside>
+  <div class="pages">
 
   <section data-step="you">
     <h1>Hi! Let's set up your assistant.</h1>
@@ -111,6 +113,7 @@
     <div class="panel" id="finish-panel"></div>
     <div class="nav"><button data-back>Back</button><button class="primary" id="finish">Finish setup</button></div>
   </section>
+  </div>
 </main>
 <script src="/static/aboutme.js"></script>
 <script src="/static/setup.js"></script>
