@@ -79,10 +79,13 @@ def no_path_changes(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def calendar_day_checkins(monkeypatch):
+def calendar_day_checkins():
     """A check-in day runs 05:00 to 05:00 (checkins.day_starts). Tests written for calendar days must pass at any
-    hour, 1 am included, so here it starts at midnight; tests/unit/test_ws3.py sets 05:00 itself."""
+    hour, 1 am included, so here it starts at midnight; tests/unit/test_ws3.py sets 05:00 itself. Its own
+    MonkeyPatch: a test's `monkeypatch.undo()` mustn't drop it halfway through."""
     from kurooto.core import config
     from kurooto.modules import checkins  # noqa: F401 (registers its defaults)
 
-    monkeypatch.setitem(config._DEFAULTS["checkins"], "day_starts", "00:00")
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(config._DEFAULTS["checkins"], "day_starts", "00:00")
+        yield
