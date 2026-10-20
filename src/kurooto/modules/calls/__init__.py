@@ -37,6 +37,7 @@ from kurooto.modules.calls.connector import Connector
 from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, live_profile
 from kurooto.modules.calls.phone import PhoneApp
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
+from kurooto.modules.text import a_time, stale_time
 
 register_defaults(
     "calls",
@@ -593,10 +594,59 @@ class Calls(Module):
         return False
 
     def callbacks(self):
-        return {"call": self._button, "callchat": self.textcall.button}
+        return {"call": self._button, "callchat": self.textcall.button, "callx": self._cancel_button}
 
     def replies(self):
         return {"callchat": self.textcall.reply}  # a call that went on as text messages (fallback.py)
+
+    def _cancel_button(self, ref: str, act: str) -> str:
+        return "Cancelled." if self.cancel_booked(ref.replace("|", ":")) else "Already gone."
+
+    def cancel_booked(self, key: str) -> bool:
+        """Take a booked call off (and off the call line, so it doesn't ring while this computer is off)."""
+        gone = self.app.scheduler.cancel(f"calls:ring:{key}")
+        if gone:
+            self.connector.poke()
+            self.app.events.emit("call_cancelled", via="intent")
+        return gone
+
+    def booked(self) -> list:
+        """Calls booked for later ("call me at 5", held calls, ones the AI booked), soonest first. Check-ins and the
+        alarm have their own commands, so they aren't here."""
+        return [
+            j
+            for j in self.app.scheduler.jobs("calls:ring:")
+            if not j.payload.get("alarm") and not str(j.payload.get("key", "")).startswith("checkins:")
+        ]
+
+    def cancel_by_words(self, msg: Incoming, sl: dict) -> str:
+        """ "cancel that call", "cancel the 12:00 call": the one booked call it can mean goes; otherwise the list,
+        each with a Cancel button and its key (for `kurooto call --cancel KEY` in a terminal)."""
+        booked = self.booked()
+        pick, tm = booked, sl.get("time")
+        if tm:
+            h, mi = map(int, tm.split(":"))
+            at = [dt.datetime.fromtimestamp(j.next_run) for j in pick]
+            pick = [j for j, w in zip(pick, at, strict=True) if w.minute == mi and w.hour % 12 == h % 12]  # am or pm
+        if sl.get("tomorrow"):
+            day = now().date() + dt.timedelta(days=1)
+            pick = [j for j in pick if dt.datetime.fromtimestamp(j.next_run).date() == day]
+        if len(pick) == 1:
+            j = pick[0]
+            self.cancel_booked(j.key.removeprefix("calls:ring:"))
+            return f"Cancelled the {dt.datetime.fromtimestamp(j.next_run):%a %H:%M} call: {j.payload.get('reason', '')}"
+        if not booked:
+            return "No calls booked. (Check-ins and the alarm: /checkins and /alarm.)"
+        msg.reply(
+            (f"No booked call at {sl.get('said') or tm}." if tm and not pick else "Which one?") + " Booked calls:"
+        )
+        for j in booked[:10]:
+            key = j.key.removeprefix("calls:ring:")
+            msg.reply(
+                f"{dt.datetime.fromtimestamp(j.next_run):%a %d %b %H:%M}  {key}  {j.payload.get('reason', '')[:80]}",
+                buttons=[[("Cancel", f"callx:{key.replace(':', '|')}:x")]],
+            )
+        return 'Or say "cancel the 12:00 call" (in a terminal: kurooto call --cancel KEY).'
 
     def _button(self, since: str, act: str) -> str:
         r = (jload(self.dir / "rings.json", {}) or {}).get(since)
@@ -1062,8 +1112,11 @@ class Calls(Module):
             m = pat.match(text.strip().rstrip(".!"))
             if not m:
                 return None
+            w = m.group(1)
+            if re.fullmatch(r"at \d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)?", w, re.I):
+                w = a_time(w) or w  # "at 5" is five o'clock, never "in 5 minutes"
             try:
-                return {"at": parse_when(m.group(1)), "reason": (m.group(2) or "a reminder call").strip()}
+                return {"at": parse_when(w), "reason": (m.group(2) or "a reminder call").strip()}
             except ValueError:
                 return None
 
@@ -1080,6 +1133,30 @@ class Calls(Module):
                 return None
             return {"reason": (m.group(1) or m.group(2) or "you asked me to call").strip()}
 
+        ask_pat = re.compile(
+            r"^(?:please |can you |could you )?(?:(?:call|ring|phone) me|give me a (?:call|ring))\b", re.I
+        )
+
+        def match_when(text: str):
+            """ "call me, I didn't wake up at 12": its only time is one that didn't happen, so it asks."""
+            t = text.strip()
+            said = stale_time(t)
+            if not ask_pat.match(t) or not said or a_time(t) or re.search(r"\bquiz|\btest me\b", t, re.I):
+                return None
+            return {"said": said}
+
+        cancel_pat = re.compile(
+            r"^(?:please )?(?:cancel|drop|delete|remove|scrap|kill|call off)\b.*\b(?:calls?|ring)\b", re.I
+        )
+
+        def match_cancel(text: str):
+            t = text.strip().rstrip(".!")
+            if not cancel_pat.match(t) or re.search(r"\b(?:alarm|wake-?up|check-?in|debrief)\b", t, re.I):
+                return None
+            said = re.search(r"\b\d{1,2}(?:[:.]\d{2})?(?:\s*[ap]m)?\b", t, re.I)
+            tm = (a_time(t) or a_time(f"at {said[0]}")) if said else None
+            return {"time": tm, "said": said[0] if said else "", "tomorrow": bool(re.search(r"\btomorrow\b", t, re.I))}
+
         return [
             Intent(
                 "call_me",
@@ -1093,4 +1170,18 @@ class Calls(Module):
                 match_now,
                 lambda msg, sl: self.place(sl["reason"], force=True, why="calls.own"),
             ),
+<<<<<<< HEAD
+=======
+            Intent("call_now", "call me now", match_now, lambda msg, sl: self.place(sl["reason"], force=True)),
+            Intent(
+                "call_when",
+                "call me (its only time is one that didn't happen): asks when",
+                match_when,
+                lambda msg, sl: (
+                    f"When should I call? I didn't book one: the {sl['said']} in that is about what "
+                    'didn\'t happen or what was planned. Say "call me now" or "call me at 4:30".'
+                ),
+            ),
+            Intent("cancel_call", "cancel that call, cancel the 12:00 call", match_cancel, self.cancel_by_words),
+>>>>>>> w/wakefix
         ]

@@ -43,6 +43,20 @@
 - `/calm` (today's count, what's waiting and turned down; `/calm 8`, `/calm calls 2`, `/calm evening 21:00`,
   `/calm off`) and `/why` (the last one). For add-ons: `app.notify(..., why=, setting=, about=)`, `app.ask.ask(...,
   why=)`, `calls.ring/place/schedule(..., why=)` and `jobs.submit(..., why=)` carry the reason.
+- **"I'm awake"** (or "I just woke up", "I'm up", even with "call me if you need to …") rings the morning call now,
+  planned from the current time, with the morning page opened here. With the Morning alarm on, it's a normal call,
+  not the alarm: no snooze and no repeat rings, and an alarm still set for later is mentioned.
+- **A time about the past, or about something that didn't happen** ("since I didn't wake up at 12", "as I said I
+  would", "was supposed to at 9") is never used as the time of a call, reminder or check-in. Before, "… call me if you
+  need to, I didn't wake up at 12" could book a call for 12:00 the next day. If that's the only time in a call or
+  reminder request, Kurooto asks when instead of booking.
+- "call me at 5" means five o'clock (17:00 when said in the afternoon), not five minutes from now.
+- **"cancel that call" / "cancel the 12:00 call"** cancels the booked call it means, or lists the booked calls with a
+  Cancel button and their keys. A bare "call" no longer counts as the evening check-in, so "cancel that call" can't
+  skip it.
+- **`kurooto ask`:** "!command" runs a shell command right there, after echoing it. A line typed as a shell command
+  without the "!" ("call-me --cancel …", "systemctl …", "kurooto status") gets "that's a shell command: run it in a
+  shell tab, or prefix it with !" and is never sent to Kurooto or the AI.
 
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.

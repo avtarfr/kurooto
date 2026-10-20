@@ -26,6 +26,26 @@ OTHER_DAY = re.compile(
 )
 NEG = re.compile(r"\b(?:don'?t|do not|never|no need to|stop)\b", re.I)
 THANKS = re.compile(r"[\s,.!]*\b(?:thanks|thank you|thx|ty|pls|please)\b[\s.!]*$", re.I)
+# A clause about the past or a plan that didn't happen: "since I didn't wake up at 12", "as I said I would", "was
+# supposed to at 9". Its time is never the time of a call, reminder or check-in.
+CLAUSE = re.compile(
+    r"[,;!?()]|[.:](?!\d)|\s[-–—]\s|\b(?:since|because|cause|cuz|coz|as|but|though|although|so|and|or)\b", re.I
+)
+STALE = re.compile(
+    r"\b(?:didn'?t|did not|couldn'?t|could not|wasn'?t|was not|weren'?t|haven'?t|hadn'?t|was|were|supposed to|meant to"
+    r"|planned|promised|(?:would|should|could)(?:'ve| have)|said (?:i|i'd|i'll|that)|woke|overslept|slept|got up|missed"
+    r"|yesterday|last night|ago)\b",
+    re.I,
+)
+# "I'm awake", "I just woke up", "I'm up": up now (not "I'm still up", "I'm up for it", "I didn't wake up")
+AWAKE = re.compile(
+    r"\b(?:i'?m|i am|im)\s+(?:(?:now|finally|already|just|wide)\s+)?(?:awake|up)\b"
+    r"(?!\s+(?:for|to|at|late|till|until|with|against|all)\b)"
+    r"|\b(?:just|finally)\s+(?:woke|got)\s+up\b|\bi(?:'ve| have)\s+(?:just\s+)?(?:woken|got)\s+up\b",
+    re.I,
+)
+STILL_UP = re.compile(r"\b(?:still|can'?t sleep|cannot sleep|couldn'?t sleep|not (?:yet )?(?:awake|up))\b", re.I)
+ALSO = re.compile(r"\b(?:also|plus|and then|after that|btw|by the way)\b", re.I)
 
 
 WEEKDAY = re.compile(r"\b(mon|tues|wednes|thurs|fri|satur|sun)day\b", re.I)
@@ -64,8 +84,17 @@ def too_complex(text: str) -> bool:
     return not text or len(text) > 300 or text.startswith("/") or bool(MULTI.search(text))
 
 
-def _time_match(text: str) -> re.Match | None:
-    """The first time in the text (not a duration, not a bare number)."""
+def stale(text: str, pos: int) -> bool:
+    """Is the time at pos in a clause about the past or about what didn't happen ("didn't wake up at 12")?"""
+    cuts = [(c.start(), c.end()) for c in CLAUSE.finditer(text)]
+    start = max([e for s, e in cuts if e <= pos], default=0)
+    end = min([s for s, e in cuts if s >= pos], default=len(text))
+    return bool(STALE.search(text[start:end]))
+
+
+def _time_match(text: str, past: bool = False) -> re.Match | None:
+    """The first time in the text (not a duration, not a bare number) that isn't in a past or negated clause; with
+    past=True, the first one that is."""
     for m in TIME.finditer(text):
         h, mi, ap = int(m[1]), int(m[2] or 0), (m[3] or "").lower()
         if h > 23 or mi > 59:
@@ -74,8 +103,25 @@ def _time_match(text: str) -> re.Match | None:
             continue  # "2 hours" is a duration
         if not m[2] and not ap and not re.match(r"(?:at|till|until|by)\s", m[0], re.I):
             continue  # a bare number isn't a time
+        if stale(text, m.start(1)) != past:
+            continue  # "since I didn't wake up at 12": not when you want anything
         return m
     return None
+
+
+def stale_time(text: str) -> str | None:
+    """The time only a past or negated clause mentions ("12" in "I didn't wake up at 12"), or None. A request whose
+    only time is one of these asks when, instead of acting on it."""
+    m = _time_match(text, past=True)
+    return re.sub(r"^(?:at|till|until|by)\s+", "", m[0].strip(), flags=re.I) if m else None
+
+
+def up_now(text: str) -> bool:
+    """ "I'm awake", "I just woke up", "I'm up" (also with "call me if you need to …"): up now, nothing else asked
+    for at a time, not "I'm still up" or "don't call"."""
+    if not AWAKE.search(text) or STILL_UP.search(text) or NEG.search(text) or ALSO.search(text):
+        return False
+    return not (another_day(text) or _time_match(text) or re.search(r"\bin\s+(?:\d|an?\b|half\b)", text, re.I))
 
 
 def _written_24h(m: re.Match) -> bool:

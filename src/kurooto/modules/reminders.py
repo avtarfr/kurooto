@@ -12,7 +12,7 @@ import uuid
 from kurooto.core.clock import now, parse_when
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
-from kurooto.modules.text import NEG, when_from
+from kurooto.modules.text import NEG, stale_time, when_from
 
 REMIND = re.compile(r"^\s*remind me\s+(?P<rest>.+)$", re.I)
 WHEN_WORDS = re.compile(
@@ -109,12 +109,21 @@ class Reminders(Module):
             rest = m["rest"]
             when = when_from(rest)
             if not when:
-                return None
+                said = stale_time(rest)  # "remind me, I didn't do it at 3": that time didn't happen, so ask
+                return {"ask": said} if said else None
             what = WHEN_WORDS.sub("", rest)
             what = re.sub(r"^\s*(?:to|that|about)\s+", "", re.sub(r"\s+", " ", what).strip(" ,.")).strip(" ,.")
             return {"when": when, "what": what or "you asked me to remind you"}
 
-        return [Intent("remind", "set a reminder", match, lambda msg, s: self.add(s["when"], s["what"]))]
+        def run(msg, s):
+            if s.get("ask"):
+                return (
+                    f"When should I remind you? I didn't set one: the {s['ask']} in that is about what didn't happen "
+                    'or what was planned. Say "remind me at 4:30 to …" or "remind me in 20 minutes to …".'
+                )
+            return self.add(s["when"], s["what"])
+
+        return [Intent("remind", "set a reminder", match, run)]
 
     def commands(self):
         return [
