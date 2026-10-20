@@ -118,8 +118,9 @@ public class MainActivity extends Activity {
         loadWaiting();
 
         String upd = Prefs.sp(this).getString("updateLink", "");
-        if (!upd.isEmpty()) {
-            Button u = big("Update available: " + Prefs.sp(this).getString("updateName", ""), "#e85d8a");
+        String updName = Prefs.sp(this).getString("updateName", "");
+        if (!upd.isEmpty() && !versionName().equals(updName)) {
+            Button u = big("Update available: " + updName, "#e85d8a");
             u.setOnClickListener(v -> open(Uri.parse(upd)));
             box.addView(u);
         }
@@ -293,16 +294,16 @@ public class MainActivity extends Activity {
         try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return "?"; }
     }
 
-    /** At most once a day: is there a newer app on Kurooto's release page? If so, show a button to get it. */
+    /** Check if there is a newer app on Kurooto's release page. */
     private void checkForUpdate() {
-        if (System.currentTimeMillis() - Prefs.lastUpdateCheck(this) < 24 * 3600e3) return;
+        if (System.currentTimeMillis() - Prefs.lastUpdateCheck(this) < 120_000) return;
         new Thread(() -> {
             Net.Reply r = Net.request("GET", UPDATES, null, null, null, 20000);
             try {
                 JSONObject j = new JSONObject(r.ok() ? r.body : "{}");
                 boolean newer = j.optLong("versionCode", 0) > versionCode() && j.optString("url", "").startsWith("https://");
                 Prefs.setUpdate(this, newer ? j.optString("versionName") : "", newer ? j.optString("url") : "");
-                if (newer) h.post(this::build);
+                h.post(this::build);
             } catch (Exception ignored) {
                 Prefs.setUpdate(this, "", "");
             }
