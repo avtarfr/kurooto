@@ -170,6 +170,10 @@ class Api:
 
         if path in tools_api.GETS:
             return tools_api.get(self.app, path, q)
+        if path == "jobs":  # what the AI is working on and what waits (core/jobs.py; `kurooto jobs`)
+            from kurooto.core.jobs import public
+
+            return 200, {"active": [{**public(j), "line": self.app.jobs.line(j)} for j in self.app.jobs.active()]}
         if path == "term":  # the dashboard's terminals (modules/terminals.py)
             t = self.app.modules.get("terminals")
             on = bool(t) and self.app.is_on("terminals")
@@ -275,6 +279,12 @@ class Api:
 
         if path in tools_api.POSTS:
             return tools_api.post(self.app, path, b)
+        if path == "jobs/cancel":  # a Cancel button on the AI jobs page, `kurooto jobs --cancel ID|all` (core/jobs.py)
+            ref = str(b.get("id") or "").strip()
+            if not ref:
+                return 400, {"ok": False, "message": "which request?"}
+            gone = ref.lower() == "all" or self.app.jobs.find(ref) is not None
+            return 200, {"ok": gone, "message": self.app.jobs.cancel_text(ref)}
         if path == "health/fix":  # a Fix button on the dashboard, or `kurooto doctor --fix ID` (core/health.py)
             ok, message = self.app.health.fix(str(b.get("id") or ""))
             return 200, {"ok": ok, "message": message}

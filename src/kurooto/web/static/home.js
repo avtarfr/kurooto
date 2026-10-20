@@ -993,7 +993,16 @@ function renderTab() {
 function renderPage(name, body) {
   if (!body) return;
   if (name === "activity") body.innerHTML = feed.length ? `<table>${feed.slice(0, 80).map((e) => `<tr><td>${esc((e.ts || "").slice(11, 19))}</td><td>${esc(e.kind.replace(/_/g, " "))}</td><td class="d">${esc(Object.entries(e).filter(([k]) => !["ts", "kind", "t", "cell"].includes(k)).map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`).join(" ").slice(0, 160))}</td></tr>`).join("")}</table>` : "Nothing yet. Things Kurooto does appear here as they happen.";
-  else if (name === "jobs" && last) body.innerHTML = last.jobs.length ? `<table><tr><th>when</th><th>request</th><th>effort</th><th>took</th><th>result</th></tr>${last.jobs.map((j) => `<tr><td>${ago(Date.now() / 1000 - j.created)} ago</td><td>${esc(j.title)}</td><td>${esc(j.effort || "")}</td><td>${j.seconds ? Math.round(j.seconds) + "s" : ""}</td><td class="${j.status === "ok" ? "ok2" : j.status === "failed" ? "bad2" : ""}">${esc(j.status)}${j.verdict && j.verdict !== "ok" ? " · " + esc(j.verdict) : ""}</td></tr>`).join("")}</table>` : "No AI requests yet.";
+  else if (name === "jobs" && last) {
+    // running and waiting requests get a Cancel button (a running agent program stops with what it started)
+    body.innerHTML = last.jobs.length ? `<table><tr><th>when</th><th>request</th><th>effort</th><th>took</th><th>result</th><th></th></tr>${last.jobs.map((j) => `<tr><td>${ago(Date.now() / 1000 - j.created)} ago</td><td>${esc(j.title)}</td><td>${esc(j.effort || "")}</td><td>${j.seconds ? Math.round(j.seconds) + "s" : ""}</td><td class="${j.status === "ok" ? "ok2" : j.status === "failed" ? "bad2" : ""}">${esc(j.status)}${j.status === "running" && j.brain ? " · " + esc(j.brain) : ""}${j.verdict && j.verdict !== "ok" ? " · " + esc(j.verdict) : ""}</td><td>${j.status === "running" || j.status === "queued" ? `<button data-cancel="${esc(j.id)}">Cancel</button>` : ""}</td></tr>`).join("")}</table>` : "No AI requests yet.";
+    body.onclick = async (e) => {
+      const b = e.target.closest("[data-cancel]"); if (!b) return;
+      b.disabled = true;
+      const r = await api("jobs/cancel", { id: b.dataset.cancel });
+      b.textContent = r.ok ? "cancelled" : "finished";
+    };
+  }
   else if (name === "schedule" && last) body.innerHTML = last.schedule.length ? `<table><tr><th>when</th><th>what</th></tr>${last.schedule.map((s) => `<tr><td>${new Date(s.when * 1000).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</td><td>${esc(s.what)}</td></tr>`).join("")}</table>` : "Nothing scheduled.";
   else if (name === "features") renderFeatures(body);
   else if (name === "phone") renderPhone(body);

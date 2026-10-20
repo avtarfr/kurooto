@@ -1609,6 +1609,42 @@ def classpack_run(a) -> int | None:
         app.close()
 
 
+# ------------------------------------------------- `kurooto jobs [--cancel ID|all]` (owner: jobsfix, core/jobs.py)
+def jobs_parsers(sub) -> None:
+    jb = sub.add_parser("jobs", help="what the AI is working on and what waits; --cancel ID (or all) cancels")
+    jb.add_argument("--cancel", default="", metavar="ID", help="cancel this request (an id from the list, or all)")
+
+
+def jobs_run(a) -> int | None:
+    """Runs `kurooto jobs`; None for any other command. A cancel goes through the running Kurooto (it stops the
+    request's program and its thread); with Kurooto stopped, the queue itself is changed."""
+    if a.cmd != "jobs":
+        return None
+    if a.cancel:
+        r = ask_running("jobs/cancel", {"id": a.cancel})
+        if r is not None:
+            print(r.get("message", ""))
+            return 0 if r.get("ok") else 1
+    from kurooto.app import App
+
+    app = App()
+    try:
+        if a.cancel:
+            gone = a.cancel.lower() == "all" or app.jobs.find(a.cancel) is not None
+            print(app.jobs.cancel_text(a.cancel))
+            return 0 if gone else 1
+        act = app.jobs.active()
+        for j in act:
+            print(f"{j.status:8}{app.jobs.line(j)[2:]}")
+        if not act:
+            print("Nothing running or waiting.")
+        else:
+            print("kurooto jobs --cancel ID (or all) cancels.")
+        return 0
+    finally:
+        app.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     utf8_output()
     ap = argparse.ArgumentParser(prog="kurooto", description="Your assistant, on your own computer.")
@@ -1688,6 +1724,7 @@ def main(argv: list[str] | None = None) -> int:
     machine_parsers(sub)
     cases_parsers(sub)
     classpack_parsers(sub)
+    jobs_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = ws5_run(a) if done is None else done
@@ -1696,6 +1733,7 @@ def main(argv: list[str] | None = None) -> int:
     done = machine_run(a) if done is None else done
     done = cases_run(a) if done is None else done
     done = classpack_run(a) if done is None else done
+    done = jobs_run(a) if done is None else done
     if done is not None:
         return done
 

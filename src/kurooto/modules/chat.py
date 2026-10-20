@@ -31,7 +31,6 @@ class Chat(Module):
     def commands(self):
         return [
             Command("brain", "which AI answers, and whether it's working", self._brain),
-            Command("jobs", "the last few requests and how they went", self._jobs),
             Command(
                 "usage", "AI requests per day over the last week, usage limits hit, and today's limits", self._usage
             ),
@@ -48,13 +47,6 @@ class Chat(Module):
             ok, why = b.available() if b else (False, "unknown")
             out.append(f"{role}: {providers.CHOICES.get(which, which)} ({'ready' if ok else why})")
         return "\n".join(out) or "No AI brain is set up yet."
-
-    def _jobs(self, msg: Incoming, arg: str) -> str:
-        rows = [
-            f"{j.status:7} {j.effort or '-':6} {f'{j.seconds:.0f}s' if j.seconds else '':>5}  {j.title}"
-            for j in self.app.jobs.recent(8)
-        ]
-        return "\n".join(rows) or "No requests yet."
 
     def _usage(self, msg: Incoming, arg: str) -> str:
         days = int(arg) if arg.strip().isdigit() and 1 <= int(arg) <= 60 else 7

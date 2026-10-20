@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 
 class Verdict(StrEnum):
@@ -17,6 +18,8 @@ class Verdict(StrEnum):
     AUTH = "auth"  # signed out, or the key is wrong
     TIMEOUT = "timeout"
     ERROR = "error"
+    CANCELLED = "cancelled"  # you cancelled it (/jobs, the dashboard, `kurooto jobs --cancel`)
+    STUCK = "stuck"  # nothing was happening, so the queue's watchdog ended it (core/jobs.py)
 
 
 EFFORTS = ("low", "medium", "high")
@@ -36,6 +39,8 @@ class Task:
     mcp: list[str] | None = None  # the command that serves the same tools over MCP, for agent programs
     mcp_env: dict = field(default_factory=dict)  # what that command needs to reach the running Kurooto
     text_only: bool = False  # the answer is just text: agent programs are told to use no tools
+    on_process: Callable | None = None  # (pid) when an agent program starts: cancelling it stops its process tree
+    stop: Any = None  # a threading.Event set when the request is cancelled or stopped: no more steps after it
 
 
 @dataclass

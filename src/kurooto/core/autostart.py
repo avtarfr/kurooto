@@ -28,6 +28,10 @@ register_defaults("autostart", {"when": "login"})  # login | boot (Linux with sy
 NAME = "Kurooto"
 LABEL = "io.github.avtarfr.kurooto"
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+# Stopping takes 20 s at most: the stop signal goes to the launcher, which passes it on and waits while Kurooto ends
+# its programs (core/children.py); anything still running then is killed (update/launcher.py, KillMode=mixed).
+STOP_S = 20
+UNIT_STOP = f"TimeoutStopSec={STOP_S}\nKillMode=mixed\n"
 
 
 def app_dir(home: Path | None = None) -> Path:
@@ -78,6 +82,7 @@ def enable(home: Path | None = None) -> str:
             '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict>'
             f"<key>Label</key><string>{LABEL}</string><key>ProgramArguments</key><array>{args}</array>"
             f"<key>RunAtLoad</key><true/><key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>"
+            f"<key>ExitTimeOut</key><integer>{STOP_S}</integer>"
             + (f"<key>EnvironmentVariables</key><dict>{env}</dict>" if env else "")
             + "</dict></plist>\n",
             encoding="utf-8",
@@ -91,7 +96,7 @@ def enable(home: Path | None = None) -> str:
         env = "".join(f"Environment={k}={v}\n" for k, v in _env_lines().items())
         (unit_dir / "kurooto.service").write_text(
             "[Unit]\nDescription=Kurooto, your assistant\nAfter=network-online.target\n\n"
-            f"[Service]\nExecStart={' '.join(cmd)}\n{env}Restart=on-failure\nRestartSec=10\n\n"
+            f"[Service]\nExecStart={' '.join(cmd)}\n{env}Restart=on-failure\nRestartSec=10\n{UNIT_STOP}\n"
             "[Install]\nWantedBy=default.target\n",
             encoding="utf-8",
         )
@@ -147,6 +152,41 @@ def managed(home: Path | None = None) -> str | None:
     ):
         return "systemd"
     return None
+
+
+def refresh(app_dir: Path, home: Path | None = None) -> list[str]:
+    """At start, for installs made before this version: the launcher (installed by the Kurooto installer) is brought
+    up to date, and Kurooto's systemd unit gets its stop limits: TimeoutStopSec at once, KillMode=mixed only once the
+    running launcher passes stop signals on (else a stop would kill Kurooto before its last steps). Nothing else in
+    the unit changes. Returns what changed."""
+    from importlib import resources
+
+    done = []
+    launcher = Path(app_dir) / "launcher.py"
+    if launcher.exists():
+        new = resources.files("kurooto.update").joinpath("launcher.py").read_bytes()
+        if launcher.read_bytes() != new:
+            tmp = launcher.with_name("launcher.py.new")
+            tmp.write_bytes(new)
+            os.replace(tmp, launcher)  # the running launcher keeps its copy in memory; the next start uses this
+            done.append("launcher")
+    if managed(home) != "systemd":
+        return done
+    unit = (home or Path.home()) / ".config" / "systemd" / "user" / "kurooto.service"
+    text = unit.read_text(encoding="utf-8")
+    if "\nExecStart=" not in text or "RestartSec=10\n" not in text:  # not the unit Kurooto wrote: leave it
+        return done
+    add = ""
+    if "TimeoutStopSec=" not in text:
+        add += f"TimeoutStopSec={STOP_S}\n"
+    forwards = (jload(Path(app_dir) / "launcher.json", {}) or {}).get("forwards")
+    if "KillMode=" not in text and forwards:
+        add += "KillMode=mixed\n"
+    if add:
+        unit.write_text(text.replace("RestartSec=10\n", "RestartSec=10\n" + add, 1), encoding="utf-8")
+        proc.run(["systemctl", "--user", "daemon-reload"], timeout=30)  # applies at the next stop
+        done.append("unit")
+    return done
 
 
 def service(action: str, home: Path | None = None) -> bool:

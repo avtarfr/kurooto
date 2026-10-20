@@ -8,10 +8,15 @@ update can never break it. It runs the current version and keeps it running:
 
     python launcher.py            run (what autostart does)
     python launcher.py cli ARGS   run a `kurooto` command with the current version (the `kurooto` shim uses this)
+
+A stop signal (SIGTERM, SIGINT, SIGHUP: systemd, launchd, a logout) is passed on to the running version, which stops
+the normal way (its programs end too); the launcher waits for it and then stops itself. So a service manager that
+signals only the launcher (systemd's KillMode=mixed) still gets a clean stop.
 """
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -72,17 +77,52 @@ def rollback(reason):
     return True
 
 
+STOPPING = []  # a stop signal came: don't start the version again
+
+
+def forward(child):
+    """Pass stop signals on to the running version instead of dying at once (which leaves it to be killed)."""
+
+    def on_signal(signum, frame):
+        STOPPING.append(signum)
+        if child[0] is not None and child[0].poll() is None:
+            try:
+                child[0].send_signal(signal.SIGTERM)  # the version treats it as a stop request
+            except OSError:
+                pass
+
+    for name in ("SIGTERM", "SIGINT", "SIGHUP"):
+        sig = getattr(signal, name, None)
+        if sig is not None and os.name != "nt":
+            try:
+                signal.signal(sig, on_signal)
+            except (OSError, ValueError):
+                pass
+
+
 def run():
-    write("launcher.json", {"pid": os.getpid(), "started": time.time()})
+    write("launcher.json", {"pid": os.getpid(), "started": time.time(), "forwards": True})
     crashes, backoff = 0, 5
     flags = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
-    while True:
+    child = [None]
+    forward(child)
+    while not STOPPING:
         version = (read("current.json", {}) or {}).get("version")
         if not version or not python_of(version).exists():
             sys.stderr.write(f"Kurooto: version {version!r} isn't installed properly; run the installer again.\n")
             return 1
         started = time.monotonic()
-        code = subprocess.run([str(python_of(version)), "-m", "kurooto", "run"], creationflags=flags).returncode
+        child[0] = subprocess.Popen([str(python_of(version)), "-m", "kurooto", "run"], creationflags=flags)
+        if STOPPING and os.name != "nt":  # the signal came while it was starting
+            child[0].send_signal(signal.SIGTERM)
+        while True:
+            try:
+                code = child[0].wait()
+                break
+            except InterruptedError:
+                continue
+        if STOPPING:
+            return 0
         if code in (0, 3):
             return code
         if code == RESTART:
@@ -97,6 +137,7 @@ def run():
                 continue
         backoff = min(backoff * 2, 300) if lived < 300 else 5
         time.sleep(backoff)
+    return 0
 
 
 def cli(args):

@@ -467,7 +467,7 @@ class Skills(Module):
 
     def reserved(self) -> set[str]:
         """Command names a skill can't take (they belong to features)."""
-        out = {"start", "help"}
+        out = {"start", "help", "jobs"}  # /jobs is Kurooto's own (core/jobs.py)
         for m in self.app.modules.values():
             try:
                 out |= {c.name for c in m.commands()}
@@ -486,9 +486,11 @@ class Skills(Module):
         background: bool = False,
         files=None,
         title: str | None = None,
+        lane: str | None = None,
     ) -> str:
         """Run a skill as an AI request; returns the job id. Without `then` or `quiet`, the answer comes to you as a
-        reply you can answer back (which runs the skill again with your reply)."""
+        reply you can answer back (which runs the skill again with your reply). lane="bg": automatic work, which never
+        holds up your own requests (core/jobs.py)."""
         s = load_skill(self.app, name)
         if s is None:
             raise KeyError(f"there's no skill called {name}")
@@ -513,6 +515,7 @@ class Skills(Module):
             then=then,
             then_payload=payload,
             background=background,
+            lane=lane,
         )
         self.app.events.emit("skill_run", name=s.name, source=s.source, job=jid)
         return jid
@@ -813,8 +816,8 @@ class Skills(Module):
             name, args = (m[1].lower(), m[2]) if m else ("", "")
             if name and name not in self.reserved() and load_skill(self.app, name):
                 if name == "revision-pack":
-                    return self.pack_for(args, title_prefix="Routine: ")
-                return self.run(name, args, title=f"Routine: {what[:60]}")
+                    return self.pack_for(args, title_prefix="Routine: ", lane="bg")
+                return self.run(name, args, title=f"Routine: {what[:60]}", lane="bg")
 
             def respond(text, buttons=None):
                 return self.app.notify(
@@ -824,7 +827,7 @@ class Skills(Module):
             incoming = Incoming(text=what, via="routine", respond=respond)
             threading.Thread(target=self.app.handle, args=(incoming,), name="routine", daemon=True).start()
             return "ran"
-        return self.app.jobs.submit(what, title=f"Routine: {what[:60]}")
+        return self.app.jobs.submit(what, title=f"Routine: {what[:60]}", lane="bg")
 
     def intents(self):
         def match(text: str):
@@ -878,8 +881,8 @@ class Skills(Module):
         """A top-level folder your notes layout uses for something else (not a subject)."""
         return layout.of(self.app).kind_of_folder(name)
 
-    def pack_for(self, text: str, reply_to=None, title_prefix: str = "") -> str:
-        """Start a revision pack; returns the job id."""
+    def pack_for(self, text: str, reply_to=None, title_prefix: str = "", lane: str | None = None) -> str:
+        """Start a revision pack; returns the job id. lane="bg" for one nobody asked for just now."""
         folder, name, what = self._subject(text)
         day = f"{now():%Y-%m-%d}"
         out = (
@@ -907,6 +910,7 @@ class Skills(Module):
             then="skills.latex",
             then_payload={"name": "revision-pack", "tex": tex, "label": f"Revision pack: {name}", "subject": folder},
             title=f"{title_prefix}Revision pack: {name}"[:80],
+            lane=lane,
         )
 
     # ------------------------------------------------------------------- packs before quizzes and exams
@@ -936,8 +940,8 @@ class Skills(Module):
                 jsave(f, keep)
         for e in todo:
             text = done[e["id"]]["text"]
-            if mode == "auto":
-                self.pack_for(text, title_prefix="Before your exam: ")
+            if mode == "auto":  # nobody is waiting on it: it never holds up your own requests
+                self.pack_for(text, title_prefix="Before your exam: ", lane="bg")
                 self.app.events.emit("auto_pack", mode="auto")
                 continue
             self.app.notify(
@@ -1008,7 +1012,7 @@ class Skills(Module):
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(tex, encoding="utf-8")
         summary = re.sub(r"```.*?```", "", result.text, flags=re.S).strip()[-400:]
-        payload = {**payload, "tex": rel(self.app, f), "summary": summary, "reply_to": job.reply_to}
+        payload = {**payload, "tex": rel(self.app, f), "summary": summary, "reply_to": job.reply_to, "lane": job.lane}
         self.app.events.emit("latex_saved", name=payload.get("name"), chars=len(tex))
         threading.Thread(target=self._finish_pack, args=(f, payload), name="latex", daemon=True).start()
 
@@ -1048,6 +1052,7 @@ class Skills(Module):
                 quiet=True,
                 then="skills.latex",
                 then_payload={**payload, "tex": payload["tex"], "attempt": 2, "overwrite": True},
+                lane=payload.get("lane"),
             )
             return
         send_file(

@@ -161,8 +161,15 @@ def cf_api(token: str, method: str, path: str, body: dict | None = None) -> dict
 
 
 def health(url: str, timeout: float = 10) -> dict | None:
+    """Your call line's /health answer, or None. It says who's asking: Cloudflare turns Python's default user agent
+    away (403, "error code: 1010"), which made a working line look dead to `kurooto doctor` and the health checks."""
+    from kurooto import __version__
+
+    req = urllib.request.Request(  # noqa: S310 (your call line, https)
+        url.rstrip("/") + "/health", headers={"User-Agent": f"Kurooto/{__version__}", "Accept": "application/json"}
+    )
     try:
-        with urllib.request.urlopen(url.rstrip("/") + "/health", timeout=timeout) as r:  # noqa: S310 (your call line)
+        with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
             return json.loads(r.read())
     except (OSError, ValueError):
         return None

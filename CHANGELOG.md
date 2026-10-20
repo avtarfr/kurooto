@@ -92,6 +92,45 @@
   brings it back, and a search still finds it. Only the page changes.
 - Links to other sites in Kurooto's pages (Google sign-in, token pages, guides) open in your default browser, also
   when the dashboard runs in another browser's app window. `look.links_in = here` keeps them in the page's browser.
+**A stuck AI request no longer holds up the queue**
+- Fixed: an automatic revision pack stayed "running" for 20+ minutes and everything you sent after it waited. agy
+  stopped (its tool permission was still being asked), your Gemini key took over, and its next request never came
+  back when the network dropped behind a login page: one request could wait the job's whole time (30 min for high
+  effort), and a connection cut mid-answer could stop the queue for good. A request to a service on the internet now
+  waits at most 3/5/10 minutes (low/medium/high), any failure there is a plain failure, and a mistake inside a job
+  fails that job instead of stopping the queue. Which AI is working on a request shows while it runs.
+- Two lanes: your own requests and background work (automatic packs, routines, the morning plan, digests) run side
+  by side, so your request never waits behind background work.
+- A watchdog ends a request with no AI at work and no program running for `jobs.stuck_min` minutes (10), or one still
+  going past its time limit plus a grace, as failed, with a plain message.
+- Cancel: `/jobs` shows what's running and waiting with Cancel buttons (and `/jobs cancel <id|all>`); `kurooto jobs`
+  and `kurooto jobs --cancel ID|all`; a Cancel button on the dashboard's AI jobs page. Cancelling a running request
+  stops its program and everything it started.
+
+**Stopping is quick and leaves nothing behind**
+- Fixed: restarting Kurooto could take 90 s because a program it had started ignored the stop. When Kurooto stops,
+  every program it started (terminals and what runs in them, an AI request's agent program and its helpers, your
+  GBrain's server, Ollama if Kurooto started it, add-ons' programs) is asked to stop and killed after 5 s if it's
+  still there; programs that left a terminal's or agent program's session behind are found too. Programs it opened
+  for you (an editor, a browser, a terminal window) stay open. Running AI requests stop where they are and run again
+  at the next start.
+- The launcher passes a stop on to Kurooto and waits for it. The systemd unit gets `TimeoutStopSec=20` and
+  `KillMode=mixed` (an existing unit gets them at the next starts, once the new launcher runs), the macOS LaunchAgent
+  `ExitTimeOut` 20.
+
+**Fixes**
+- `kurooto doctor` and the health checks said "your call line doesn't answer" while calls rang: Cloudflare turns
+  Python's default user agent away ("error code: 1010"), so the check now says it's Kurooto.
+- Practice quizzes: a quiz file without all its parts (brought over by an import) no longer breaks quizzes and the
+  quiz part of a call's brief; one part of a call's brief failing never stops the rest.
+
+**Google turns on when you sign in**
+- Signing in on the Google card turns Google on (and the Google features you set up that Google has OK'd), also when
+  an import left it off.
+
+**Commands of features that are off**
+- A /command of a feature that's off answers "Google is off: Features → Google → Turn on" (a skill while Skills is off
+  the same) instead of going to the AI. `/jobs`, `/status` and `/help` answer whichever features are on.
 
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.

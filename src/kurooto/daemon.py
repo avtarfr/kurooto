@@ -66,6 +66,19 @@ async def serve(app: App, stop: asyncio.Event, web: bool = True) -> None:
     app.events.emit("stopped")
 
 
+def end_children() -> None:
+    """Every program Kurooto started stops with it (core/children.py): asked first, killed after a few seconds."""
+    from kurooto.core import children
+
+    try:
+        n = children.stop_all()
+    except Exception as e:  # stopping never fails over this
+        log.warning("couldn't end child programs: %s", e)
+        return
+    if n["stopped"] or n["killed"]:
+        log.info("child programs: %d stopped, %d killed", n["stopped"], n["killed"])
+
+
 def run(web: bool = True) -> int:
     p = paths().ensure()
     setup_logging(p.logs)
@@ -87,6 +100,15 @@ def run(web: bool = True) -> int:
         except Exception:  # never stop Kurooto over this
             pass
         app.power.off_file.unlink(missing_ok=True)  # started on purpose: it's on
+        try:  # the launcher and the service's stop limits, for installs from before (core/autostart.py)
+            from kurooto.core import autostart, pathfix
+
+            if pathfix.allowed():
+                changed = autostart.refresh(p.app)
+                if changed:
+                    log.info("brought up to date: %s", ", ".join(changed))
+        except Exception as e:  # never stop Kurooto over this
+            log.warning("couldn't bring the launcher or service up to date: %s", e)
 
         async def main():
             stop = asyncio.Event()
@@ -106,7 +128,10 @@ def run(web: bool = True) -> int:
         except KeyboardInterrupt:
             pass
         restart = app.restart_requested
-        app.close()
+        try:
+            app.close()
+        finally:
+            end_children()
         return RESTART if restart else 0
     finally:
         lock.release()

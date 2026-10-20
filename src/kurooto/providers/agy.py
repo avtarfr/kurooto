@@ -98,9 +98,11 @@ class Agy(Brain):
         t0 = time.monotonic()
         try:
             if self.io_mode == "pty":
-                code, out, err = run_pty(args, task.cwd, task.timeout_s + self.grace_s, env)
+                code, out, err = run_pty(args, task.cwd, task.timeout_s + self.grace_s, env, task.on_process)
             else:
-                r = proc.run(args, cwd=task.cwd, timeout=task.timeout_s + self.grace_s, env=env)
+                r = proc.run(
+                    args, cwd=task.cwd, timeout=task.timeout_s + self.grace_s, env=env, on_start=task.on_process
+                )
                 code, out, err = r.code, r.out, r.err
         finally:
             if long:
@@ -169,8 +171,11 @@ def verdict(code: int | None, out: str, err: str, secs: float, minutes: int) -> 
     return Result(Verdict.OK if out else Verdict.EMPTY, out, secs, "" if out else (err[-500:] or "no output"))
 
 
-def run_pty(args: list[str], cwd: Path | None, timeout: float, env: dict | None = None) -> tuple[int | None, str, str]:
-    """Run under a pseudo-terminal (ConPTY on Windows) and return (exit code, cleaned output, "")."""
+def run_pty(
+    args: list[str], cwd: Path | None, timeout: float, env: dict | None = None, on_start=None
+) -> tuple[int | None, str, str]:
+    """Run under a pseudo-terminal (ConPTY on Windows) and return (exit code, cleaned output, ""). `on_start(pid)`:
+    as in proc.run."""
     deadline = time.monotonic() + timeout
     chunks: list[str] = []
     if sys.platform == "win32":
@@ -181,6 +186,15 @@ def run_pty(args: list[str], cwd: Path | None, timeout: float, env: dict | None 
         from ptyprocess import PtyProcessUnicode as PtyProcess
 
         p = PtyProcess.spawn(args, cwd=str(cwd) if cwd else None, env=env, dimensions=(50, 400))
+    if getattr(p, "pid", None):
+        from kurooto.core import children
+
+        children.session(p.pid)  # a pty's program leads its own session (core/children.py)
+        if on_start is not None:
+            try:
+                on_start(p.pid)
+            except Exception:
+                pass
     code: int | None = None
     try:
         while time.monotonic() < deadline:

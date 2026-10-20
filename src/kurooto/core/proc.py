@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -79,9 +80,16 @@ def kill_tree(pid: int) -> None:
 
 
 def run(
-    args: list[str], *, input: str | None = None, timeout: float = 60, cwd: Path | None = None, env: dict | None = None
+    args: list[str],
+    *,
+    input: str | None = None,
+    timeout: float = 60,
+    cwd: Path | None = None,
+    env: dict | None = None,
+    on_start: Callable[[int], None] | None = None,
 ) -> Result:
-    """Run a program and wait for it. `input` is written to its stdin."""
+    """Run a program and wait for it. `input` is written to its stdin. `on_start(pid)` is told the program's pid as
+    soon as it runs (the AI queue keeps it, so a cancel can stop the program and everything it started)."""
     args = resolve_cmd_shim(args[0]) + list(args[1:])
     flags = subprocess.CREATE_NO_WINDOW if WINDOWS else 0
     p = subprocess.Popen(
@@ -94,14 +102,31 @@ def run(
         creationflags=flags,
         start_new_session=not WINDOWS,
     )
+    if not WINDOWS:  # what it leaves behind in its session ends with Kurooto (core/children.py)
+        from kurooto.core import children
+
+        children.session(p.pid)
+    if on_start is not None:
+        try:
+            on_start(p.pid)
+        except Exception:
+            pass
     try:
         out, err = p.communicate(input=input.encode("utf-8") if input is not None else None, timeout=timeout)
         code = p.returncode
     except subprocess.TimeoutExpired:
         kill_tree(p.pid)
-        out, err = p.communicate()
+        try:  # a process that slipped out of the tree can hold the pipes open: never wait for it for ever
+            out, err = p.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            out, err = b"", b""
+            for f in (p.stdout, p.stderr):
+                try:
+                    f.close()
+                except OSError:
+                    pass
         code = None
-    return Result(code, out.decode("utf-8", "replace"), err.decode("utf-8", "replace"))
+    return Result(code, (out or b"").decode("utf-8", "replace"), (err or b"").decode("utf-8", "replace"))
 
 
 def pid_alive(pid: int, must_contain: str = "") -> bool:

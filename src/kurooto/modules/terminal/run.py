@@ -97,6 +97,9 @@ def _detached(argv: list[str], cwd: str | None = None, log: Path | None = None, 
     finally:
         if log:
             out.close()
+    from kurooto.core import children
+
+    children.keep(p.pid)  # your terminal window stays open when Kurooto stops
     if wait:
         try:
             code = p.wait(timeout=wait)
@@ -120,8 +123,11 @@ def window_per_tab(plan: Plan) -> tuple[bool, str]:
     """No kitty or Windows Terminal: each tab in a window of its own, in the terminal this computer has."""
     tabs = ([plan.top] if plan.top else []) + plan.tabs
     if plan.terminal == "console":
+        from kurooto.core import children
+
         for t in tabs:
-            subprocess.Popen(t.argv, cwd=t.cwd, env=tab_env(), creationflags=subprocess.CREATE_NEW_CONSOLE)
+            w = subprocess.Popen(t.argv, cwd=t.cwd, env=tab_env(), creationflags=subprocess.CREATE_NEW_CONSOLE)
+            children.keep(w.pid)
         return True, f"Opened {len(tabs)} console windows."
     if plan.terminal == "terminal-app":
         script = 'on run argv\ntell application "Terminal"\nactivate\ndo script (item 1 of argv)\nend tell\nend run'

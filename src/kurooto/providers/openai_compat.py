@@ -1,5 +1,10 @@
 """Any service that speaks the OpenAI chat API: a Gemini key, Ollama on this computer, or anything else with a base
-URL and a key."""
+URL and a key.
+
+One request to a service on the internet waits at most REQUEST_S for its answer (less when the request's own time is
+shorter): a connection that died on the way (the network changed, a login page took over the Wi-Fi) fails then
+instead of holding the request for its whole time. A model on this computer gets the request's whole time.
+"""
 
 from __future__ import annotations
 
@@ -7,11 +12,14 @@ import json
 import re
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
 
 MAX_ROUNDS = 16  # rounds of tool calls in one request, at most; then it must answer
+REQUEST_S = {"low": 180, "medium": 300, "high": 600}  # one request on the internet waits this long at most
+LOOPBACK = ("127.0.0.1", "localhost", "::1")
 ENOUGH = "Stop using tools now. Answer with what you have, and say plainly what you did and what you couldn't do."
 # a 4xx that says the model or service can't take tools (Ollama: "... does not support tools")
 NO_TOOLS = re.compile(r"^HTTP 4\d\d:.*\b(tools?|functions?|function.?call(ing)?)\b", re.I | re.S)
@@ -60,6 +68,10 @@ class OpenAICompat(Brain):
             return False, "no model chosen"
         return True, ""
 
+    def local(self) -> bool:
+        """Is the service on this computer (Ollama, a local server)?"""
+        return (urllib.parse.urlsplit(self.base_url).hostname or "") in LOOPBACK
+
     def _post(self, path: str, body: dict, timeout: float) -> dict:
         req = urllib.request.Request(  # noqa: S310 (an http(s) address the user configured)
             f"{self.base_url}{path}",
@@ -99,6 +111,8 @@ class OpenAICompat(Brain):
         if self.reasoning and effort in ("low", "medium", "high"):
             body["reasoning_effort"] = effort
         t0 = time.monotonic()
+        if not self.local():  # a dead connection fails in minutes, not after the whole request's time
+            timeout = min(timeout, REQUEST_S.get(effort, REQUEST_S["medium"]))
         try:
             data = self._post("/chat/completions", body, timeout)
         except urllib.error.HTTPError as e:
@@ -119,6 +133,8 @@ class OpenAICompat(Brain):
             return Result(Verdict.TIMEOUT, "", time.monotonic() - t0, f"no answer in {timeout:.0f}s"), {}, {}
         except (urllib.error.URLError, OSError, ValueError) as e:
             return Result(Verdict.ERROR, "", time.monotonic() - t0, f"{type(e).__name__}: {e}"), {}, {}
+        except Exception as e:  # e.g. http.client.IncompleteRead (a connection cut mid-answer), which isn't an OSError
+            return Result(Verdict.ERROR, "", time.monotonic() - t0, f"{type(e).__name__}: {e}"[:500]), {}, {}
         secs = time.monotonic() - t0
         try:
             msg = dict(data["choices"][0].get("message") or {})
@@ -145,7 +161,12 @@ class OpenAICompat(Brain):
         def left() -> float:
             return task.timeout_s - (time.monotonic() - t0)
 
+        def stopped() -> bool:
+            return task.stop is not None and task.stop.is_set()
+
         for rnd in range(MAX_ROUNDS + 1):
+            if stopped():  # cancelled, or ended by the queue's watchdog: no more requests or tools
+                return Result(Verdict.CANCELLED, "", time.monotonic() - t0, "stopped")
             if left() < 5:
                 return Result(Verdict.TIMEOUT, "", time.monotonic() - t0, "ran out of time while using tools")
             final = rnd == MAX_ROUNDS
@@ -182,6 +203,8 @@ class OpenAICompat(Brain):
                 c["id"] = c.get("id") or f"call_{rnd}_{i}"  # some local servers leave it out
             msgs.append({"role": "assistant", "content": msg.get("content") or None, "tool_calls": calls})
             for c in calls:
+                if stopped():
+                    return Result(Verdict.CANCELLED, "", time.monotonic() - t0, "stopped")
                 fn = c.get("function") or {}
                 name, raw = str(fn.get("name") or ""), fn.get("arguments")
                 try:

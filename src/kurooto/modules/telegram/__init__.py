@@ -390,6 +390,7 @@ class Telegram(Module):
             except Exception as e:  # one feature's mistake never hides the others' commands
                 self.app.events.emit("telegram_menu_failed", module=m.id, error=str(e)[:200])
         add("q", "open questions I asked you")
+        add("jobs", "what the AI is working on; cancel it")
         add("aboutme", "what I know about you")
         add("calm", "messages that come by themselves: today's count and limit")  # (calm) core/calm.py
         add("why", "why the last message came")
