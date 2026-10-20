@@ -39,7 +39,7 @@ class Chat(Module):
 
         terminal = msg.via in ("terminal", "setup")
         history = jload(self.history_file, []) or []
-        
+
         # Only inject history if there is recent conversation within 2 hours
         now_ts = time.time()
         recent = [h for h in history if now_ts - h.get("at", 0) < 7200][-6:]
@@ -54,7 +54,9 @@ class Chat(Module):
         else:
             prompt = text
 
-        jid = self.app.jobs.submit(prompt, title=text[:80], reply_to=None if terminal else msg.message_id, quiet=terminal)
+        jid = self.app.jobs.submit(
+            prompt, title=text[:80], reply_to=None if terminal else msg.message_id, quiet=terminal
+        )
         msg.job = jid
         return "On it."
 
@@ -67,11 +69,13 @@ class Chat(Module):
         if "Current request:\n" in prompt:
             user_text = prompt.split("Current request:\n", 1)[1].strip()
         history = jload(self.history_file, []) or []
-        history.append({
-            "user": user_text,
-            "assistant": reply[:1200].strip(),
-            "at": time.time(),
-        })
+        history.append(
+            {
+                "user": user_text,
+                "assistant": reply[:1200].strip(),
+                "at": time.time(),
+            }
+        )
         jsave(self.history_file, history[-10:])
 
     def clear_history(self) -> str:

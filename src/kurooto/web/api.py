@@ -23,11 +23,13 @@ STARTER = ["telegram", "chat", "reminders", "checkins", "deadlines"]  # GBrain: 
 BRAIN_ORDER = [  # the first one is the ★ recommendation
     (
         "agy",
-        "Recommended: Google's agent program (Antigravity), run locally on this computer; full tool access and higher limits with a Google account.",
+        "Recommended: Google's agent program (Antigravity), run locally on this computer; "
+        "full tool access and higher limits with a Google account.",
     ),
     (
         "gemini",
-        "A key from Google AI Studio. Warning: Free-tier keys have strict daily limits (20 requests/day) and exhaust quickly; best kept for Phone Calls and Voice Notes.",
+        "A key from Google AI Studio. Warning: Free-tier keys have strict daily limits (20 requests/day) "
+        "and exhaust quickly; best kept for Phone Calls and Voice Notes.",
     ),
     ("codex", "If you pay for ChatGPT: OpenAI's Codex, signed in with your ChatGPT account."),
     ("claude", "Advanced: if you pay for Claude, Anthropic's Claude Code, signed in with your Claude account."),

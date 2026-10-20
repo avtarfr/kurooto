@@ -466,9 +466,11 @@ class Calls(Module):
             return False
         try:
             sealed = line.seal_k1(key, json.dumps(fields))
-            req = urllib.request.Request(
+            req = urllib.request.Request(  # noqa: S310
                 f"{server}/",
-                data=json.dumps({"topic": topic, "message": sealed, "priority": fields.get("priority", 3), "tags": ["k1"]}).encode(),
+                data=json.dumps(
+                    {"topic": topic, "message": sealed, "priority": fields.get("priority", 3), "tags": ["k1"]}
+                ).encode(),
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
@@ -518,15 +520,17 @@ class Calls(Module):
             "ring", reason=reason, alarm=alarm, since=since, key=key, assistant=self.app.name, voice=voice
         )
         # Direct ntfy publish from laptop to ensure the paired phone app rings even if Worker egress fails
-        self.publish_ntfy({
-            "title": "Wake-up call" if alarm else "Incoming call",
-            "message": str(reason)[:300],
-            "priority": 5,
-            "tags": ["call", f"since-{since}"] + (["alarm"] if alarm else []),
-            "click": self.link(reason, since=since, voice=voice),
-            "time": int(time.time()),
-            "assistant": self.app.name,
-        })
+        self.publish_ntfy(
+            {
+                "title": "Wake-up call" if alarm else "Incoming call",
+                "message": str(reason)[:300],
+                "priority": 5,
+                "tags": ["call", f"since-{since}"] + (["alarm"] if alarm else []),
+                "click": self.link(reason, since=since, voice=voice),
+                "time": int(time.time()),
+                "assistant": self.app.name,
+            }
+        )
         answer = [
             [("Answer", {"url": self.link(reason, since=since, voice=voice)}), *[tuple(b) for b in buttons or []]]
         ]
@@ -567,7 +571,9 @@ class Calls(Module):
             return
         self._ring_state(p["since"], "missed")
         self.connector.admin_later("stop-ring", since=p["since"])
-        self.publish_ntfy({"title": "stop", "message": "", "tags": ["stop", f"since-{p['since']}"], "time": int(time.time())})
+        self.publish_ntfy(
+            {"title": "stop", "message": "", "tags": ["stop", f"since-{p['since']}"], "time": int(time.time())}
+        )
         if not self._realert_later(p["since"], r):
             self._missed_for_good(p["since"], r)
 
@@ -1166,7 +1172,8 @@ class Calls(Module):
 
         now_pat = re.compile(
             r"^(?:please |can you |could you )?(?:call|ring|phone) me(?: (?:right )?now| back)?"
-            r"(?:[,:\s]+(?:to|about|so|and|we|i|because)?\s*(.+))?$|^give me a (?:call|ring)(?: now)?(?:[,:\s]+(?:to|about|so|and)?\s*(.+))?$",
+            r"(?:[,:\s]+(?:to|about|so|and|we|i|because)?\s*(.+))?$"
+            r"|^give me a (?:call|ring)(?: now)?(?:[,:\s]+(?:to|about|so|and)?\s*(.+))?$",
             re.I,
         )
 
