@@ -370,3 +370,28 @@ def test_fragment_json_is_valid_for_windows_terminal(tmp_path):
     s = data["schemes"][0]
     assert {"black", "red", "green", "yellow", "blue", "purple", "cyan", "white"} <= set(s)
     assert s["background"] == look.palette("rose")["bg"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="a shell-script stand-in for a Linux terminal")
+def test_without_kitty_each_tab_gets_a_window_of_the_usual_terminal(tmp_path):
+    import time
+
+    from kurooto.modules.terminal import run
+    from kurooto.modules.terminal.plan import Plan, Tab
+
+    log = tmp_path / "opened"
+    log.mkdir()
+    stub = tmp_path / "xterm"
+    stub.write_text(f'#!/bin/sh\necho "$KUROOTO_TERMINAL $(pwd) $*" > "{log}/$$"\n')
+    stub.chmod(0o755)
+    tabs = [Tab("shell", "zsh", ["/bin/zsh", "-l"], str(tmp_path)), Tab("logs", "logs", ["kurooto", "logs"], "/")]
+    plan = Plan("linux", tabs, top=Tab("top", "top", ["kurooto", "top"], str(tmp_path)), terminal="xterm")
+    plan.exe = str(stub)
+    ok, msg = run.window_per_tab(plan)
+    assert ok and msg == "Opened 3 xterm windows."
+    for _ in range(50):
+        if len(list(log.iterdir())) == 3:
+            break
+        time.sleep(0.1)
+    opened = sorted(f.read_text().strip() for f in log.iterdir())
+    assert opened == sorted([f"1 {tmp_path} -e kurooto top", f"1 {tmp_path} -e /bin/zsh -l", "1 / -e kurooto logs"])
