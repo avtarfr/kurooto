@@ -370,3 +370,18 @@ def test_line_is_redeployed_only_when_its_code_changed(calls, monkeypatch):
             break
         _t.sleep(0.05)
     assert ran == [True]  # nobody is watching: it never opens a sign-in page
+
+
+def test_the_call_page_source_is_copied_and_the_built_one_is_not(tmp_path):
+    """Skipping every app.js once left web/app.js behind, so building the call page failed for everyone."""
+    import shutil
+
+    src = tmp_path / "src"
+    for rel in ("web/app.js", "public/app.js", "public/index.html", "node_modules/x/y.js", "src/worker.js"):
+        (src / rel).parent.mkdir(parents=True, exist_ok=True)
+        (src / rel).write_text("x")
+    dst = tmp_path / "dst"
+    shutil.copytree(src, dst, ignore=deploy.skip_built)
+    assert (dst / "web" / "app.js").is_file() and (dst / "public" / "index.html").is_file()
+    assert not (dst / "public" / "app.js").exists() and not (dst / "node_modules").exists()
+    assert (dst / "src" / "worker.js").is_file()

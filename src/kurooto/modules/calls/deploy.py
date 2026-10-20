@@ -87,6 +87,16 @@ def accounts_from_whoami(text: str) -> list[str]:
     return list(dict.fromkeys(re.findall(r"\b[0-9a-f]{32}\b", text)))
 
 
+def skip_built(folder: str, names: list[str]) -> set[str]:
+    """What not to copy into the call line's folder: installed packages, and the BUILT page (public/app.js), which is
+    made fresh. Never the source web/app.js: skipping every "app.js" once left nothing to build, so no call line could
+    be set up."""
+    skip = {"node_modules"} & set(names)
+    if Path(folder).name == "public" and "app.js" in names:
+        skip.add("app.js")
+    return skip
+
+
 def toml_str(v: str) -> str:
     return json.dumps(str(v))[1:-1]  # a TOML basic string accepts JSON's escapes
 
@@ -215,7 +225,7 @@ class Deployer:
         for name in FILES:
             src, dst = SOURCE / name, self.dir / name
             if src.is_dir():
-                shutil.copytree(src, dst, dirs_exist_ok=True, ignore=shutil.ignore_patterns("node_modules", "app.js"))
+                shutil.copytree(src, dst, dirs_exist_ok=True, ignore=skip_built)
             else:
                 shutil.copy2(src, dst)
         apk = SOURCE.parent / "kurooto.apk"
