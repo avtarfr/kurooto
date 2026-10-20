@@ -754,7 +754,14 @@ class Calls(Module):
                 "notes": self.offline_notes(),
             },
             "brief": {t.name: self._brief_value(t) for t in tools if t.name in briefs},
+            "presence": self._presence(),  # speaking for this computer while it's gone (core/presence.py)
         }
+
+    def _presence(self) -> dict:
+        try:
+            return self.app.presence.line_config()
+        except Exception as e:
+            return {"on": False, "error": str(e)[:200]}
 
     def _brief_value(self, t: Tool):
         try:

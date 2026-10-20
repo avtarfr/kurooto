@@ -68,6 +68,10 @@ class App:
         from kurooto.providers.agy import consent_answer  # may agy use Kurooto's tools? (asked once, providers/agy.py)
 
         self.ask.hooks["agy.tools"] = lambda q, answer: consent_answer(self, q, answer)
+        from kurooto.core.presence import Presence  # "going offline" / "back online" messages (core/presence.py)
+
+        self.presence = Presence(self)
+        self.stop_reason = ""  # why it's stopping, for the "going offline" message ("stopped", "turned off")
         self.restart_requested = False
         self._stop = None  # the daemon's stop event, so an update can ask for a restart
         self._loop = None
@@ -200,6 +204,10 @@ class App:
             self.ask.start()
         except Exception as e:
             self.events.emit("module_failed", module="ask", error=str(e)[:300])
+        try:
+            self.presence.start()  # back after being away? (core/presence.py)
+        except Exception as e:
+            self.events.emit("module_failed", module="presence", error=str(e)[:300])
         for m in self.enabled():
             try:
                 m.start()

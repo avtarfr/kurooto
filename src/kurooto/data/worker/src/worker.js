@@ -13,7 +13,12 @@
 //     (the Android app's are sealed with the ntfy key, so this Worker can't read them), or wait here till it's back.
 //   - While your computer is off: answers come from the brief it last pushed, notes from the index it pushed (and,
 //     with Notes sync, whole notes from your private GitHub repo); anything that needs the computer is queued.
-// Vars: OWNER_ID, TZ, PUBLIC_URL, VERSION, LIVE_MODEL, NTFY_SERVER, NOTES_REPO (optional), GEMINI_BASE_URL (tests).
+//   - Going offline: when your computer's link has been gone for a while (it's asleep, crashed or lost its network)
+//     the cron says so for it, once, outside the night hours it pushed: on the phone app, and on Telegram if you
+//     allowed this line to keep your bot's token (pushed over the link, kept in this object's storage, deleted when
+//     you turn it off). A clean stop says "bye" first, so nothing is said twice.
+// Vars: OWNER_ID, TZ, PUBLIC_URL, VERSION, LIVE_MODEL, NTFY_SERVER, NOTES_REPO (optional), GEMINI_BASE_URL and
+// TELEGRAM_API (tests).
 // Secrets: CALL_SECRET, CONNECTOR_SECRET, GEMINI_API_KEY, NTFY_TOPIC, NTFY_KEY, VAPID_JWK, VAPID_PUBLIC, and
 // GITHUB_TOKEN (optional: read-only access to the notes repo).
 import { GoogleGenAI } from '@google/genai';
@@ -123,6 +128,25 @@ function phoneMessage(it) {
   return m;
 }
 
+// Telegram, for "your computer is offline" (only with the token your computer pushed after you allowed it).
+async function sendTelegram(env, tg, text) {
+  if (!tg || !tg.token || !tg.chat) return false;
+  const base = (env.TELEGRAM_API || 'https://api.telegram.org').replace(/\/+$/, '');
+  const r = await fetch(`${base}/bot${tg.token}/sendMessage`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id: tg.chat, text: String(text).slice(0, 4000), link_preview_options: { is_disabled: true } }),
+  });
+  return r.ok;
+}
+
+// 22:10 today, "Mon 22:10" another day, in your time zone.
+function clockTime(ms, tz) {
+  const d = new Date(ms);
+  const day = (x) => x.toLocaleDateString('en-GB', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const t = d.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+  return day(d) === day(new Date()) ? t : `${d.toLocaleDateString('en-GB', { timeZone: tz, weekday: 'short' })} ${t}`;
+}
+
 async function githubNote(env, slug) {
   if (!env.GITHUB_TOKEN || !env.NOTES_REPO) return null;
   const p = String(slug).replace(/^\/+|\.md$/g, '') + '.md';
@@ -157,6 +181,16 @@ export class Line {
       const seen = ws.deserializeAttachment()?.at || 0;
       return now - Math.max(beat, seen) < 90e3;
     });
+  }
+
+  // When the computer was last heard from, by the sockets still here (0 if none).
+  lastSeen() {
+    let seen = 0;
+    for (const ws of this.state.getWebSockets()) {
+      const beat = this.state.getWebSocketAutoResponseTimestamp(ws)?.getTime() || 0;
+      seen = Math.max(seen, beat, ws.deserializeAttachment()?.at || 0);
+    }
+    return seen;
   }
 
   tell(msg) {
@@ -303,14 +337,19 @@ export class Line {
       for (const k of ['brief', 'config', 'texts', 'offline', 'schedule', 'names']) {
         if (m[k] !== undefined) await this.store.put(k, k === 'brief' ? { ...m.brief, at: new Date().toISOString() } : m[k]);
       }
+      if (m.presence !== undefined) await this.setPresence(m.presence);
       if (m.inbox && Array.isArray(m.inbox.items)) await this.setInbox(m.inbox.items, Number(m.inbox.rev) || 0);
     } else if (m.type === 'index') {
       await this.store.put(`index:${m.part || 0}`, m.items || []);
       if ((m.part || 0) === 0) await this.store.put('index:parts', m.parts || 1);
     } else if (m.type === 'hello') {
       const q = (await this.store.get('queue')) || [];
-      ws.send(JSON.stringify({ type: 'welcome', version: this.env.VERSION || '', queue: q }));
+      const away = (await this.store.get('away')) || null; // what this line told you while the computer was gone
+      const told = away && away.told ? { since: away.since, told: away.told, channels: away.channels || [] } : null;
+      ws.send(JSON.stringify({ type: 'welcome', version: this.env.VERSION || '', queue: q, away: told }));
       if (q.length) await this.store.put('queue', []);
+      if (away && !away.told) await this.store.delete('away'); // back before anything was said: nothing to say
+      await this.store.put('seen', Date.now());
     } else if (m.type === 'admin') {
       let result;
       try { result = await this.admin(m); } catch (e) { result = { error: String(e?.message || e) }; }
@@ -318,7 +357,9 @@ export class Line {
     }
   }
 
-  async webSocketClose() { /* the computer reconnects by itself */ }
+  async webSocketClose() { await this.store.put('seen', Date.now()); /* the computer reconnects by itself */ }
+
+  async webSocketError() { await this.store.put('seen', Date.now()); }
 
   async admin(m) {
     if (m.op === 'ring') return this.ring(m);
@@ -343,6 +384,7 @@ export class Line {
       return { ok: had };
     }
     if (m.op === 'ticket') return { ticket: await this.mintTicket(Math.min(Number(m.hours) || 2, 24)) };
+    if (m.op === 'bye') return this.bye(m);
     if (m.op === 'notify') return this.notify(m.item || {}, Number(m.rev) || 0, m.assistant);
     if (m.op === 'notify-clear') {
       const inbox = (await this.store.get('inbox')) || { rev: 0, items: [] };
@@ -580,8 +622,81 @@ export class Line {
     return json({ ok: true, queued: true, note: texts.answer_queued || 'Saved. Your computer gets it when it is back on.' });
   }
 
+  // ------------------------------------------------------------------------------------- going offline
+  // Your computer's settings for this (pushed with its state): on, after_min, channels, hush ([from ms, to ms]: night
+  // and focus, when nothing is said), text, why, back_at (when it last said it's back), tg (token and chat, or none).
+  async setPresence(p) {
+    const { tg, ...cfg } = p && typeof p === 'object' ? p : {};
+    if (tg && tg.token && tg.chat) await this.store.put('tg', { token: String(tg.token), chat: String(tg.chat) });
+    else await this.store.delete('tg');
+    await this.store.put('presence', cfg);
+    const away = await this.store.get('away');
+    if (away && (!cfg.on || (Number(cfg.back_at) || 0) > away.since)) await this.store.delete('away'); // it said it's back
+  }
+
+  // Say it on the channels you chose (or only some of them). Returns the ones it reached.
+  async sayAway(cfg, away, only = null) {
+    const text = String(away.text || cfg.text || 'Kurooto has been offline since %%SINCE%% (%%WHY%%).')
+      .replace('%%SINCE%%', clockTime(away.since, this.env.TZ || 'UTC'))
+      .replace('%%WHY%%', away.why || cfg.why || 'asleep, off or without internet');
+    const chans = (cfg.channels || []).filter((c) => !only || only.includes(c));
+    const sent = [];
+    if (chans.includes('telegram') && await sendTelegram(this.env, await this.store.get('tg'), text).catch(() => false)) sent.push('telegram');
+    if (chans.includes('app')) {
+      const s = Math.floor(Date.now() / 1000);
+      const names = (await this.store.get('names')) || {};
+      const r = await this.notify({ id: randomHex(8), kind: 'info', title: names.assistant || 'Kurooto', text, at: s, until: s + 12 * 3600 }, 0).catch(() => null);
+      if (r && (r.android || r.web)) sent.push('app');
+    }
+    return sent;
+  }
+
+  // Your computer is stopping on purpose: it says so itself on what it can (told), this says it on the rest. At night
+  // (hush) nothing now: the cron says it in the morning if the computer isn't back. An update's restart: nothing.
+  async bye(m) {
+    const cfg = (await this.store.get('presence')) || {};
+    const now = Date.now();
+    await this.store.put('seen', now);
+    const away = { since: now, told: 0, why: String(m.why || '').slice(0, 80), text: String(m.later || '').slice(0, 600), channels: [] };
+    let sent = [];
+    if (!m.restart && cfg.on) {
+      const told = (m.told || []).map(String);
+      const rest = (cfg.channels || []).filter((c) => !told.includes(c));
+      if (!m.hush && rest.length) sent = await this.sayAway(cfg, { ...away, text: String(m.text || '').slice(0, 600) }, rest);
+      if (told.length || sent.length) Object.assign(away, { told: now, channels: [...told, ...sent] });
+    }
+    await this.store.put('away', away);
+    return { ok: true, sent };
+  }
+
+  // Every minute: if the computer has been gone for after_min (and it isn't night), say so, once per time away.
+  async presenceTick() {
+    try {
+      const cfg = (await this.store.get('presence')) || {};
+      if (!cfg.on) return null;
+      const now = Date.now();
+      if (this.online()) { await this.store.put('seen', now); return null; }
+      let away = await this.store.get('away');
+      if (!away) {
+        const seen = Math.max((await this.store.get('seen')) || 0, this.lastSeen());
+        if (!seen) return null;
+        away = { since: seen, told: 0, why: '', text: '', channels: [] };
+        await this.store.put('away', away);
+      }
+      if (away.told || now - away.since < Math.max(0, Number(cfg.after_min ?? 10)) * 60e3) return null;
+      if ((cfg.hush || []).some(([a, b]) => a <= now && now < b)) return null;
+      away.channels = await this.sayAway(cfg, away);
+      away.told = now;
+      await this.store.put('away', away);
+      return { told: away.channels };
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 200) };
+    }
+  }
+
   // Every minute (cron): place the calls that fall due while the computer is off, from the schedule it pushed.
   async tick() {
+    const presence = await this.presenceTick();
     if (this.online()) return { skipped: 'computer online' };
     const now = Math.floor(Date.now() / 1000);
     const sched = (await this.store.get('schedule')) || [];
@@ -602,7 +717,7 @@ export class Line {
     for (const [k, t] of Object.entries(held)) if (fired[k] || t < now - 7200) delete held[k];
     await this.store.put('fired', fired);
     await this.store.put('held', held);
-    return { placed };
+    return { placed, presence };
   }
 }
 

@@ -76,6 +76,8 @@ class Connector:
             except asyncio.CancelledError:
                 raise
             except Exception as e:
+                if getattr(self.app, "presence", None) is not None:  # no network? (core/presence.py)
+                    self.app.presence.net_failed("line", e)
                 self._state(False, f"{type(e).__name__}: {e}"[:200])
                 log.info("call line: %s; retrying in %ss", e, backoff)
             finally:
@@ -93,6 +95,8 @@ class Connector:
         self.ws, self.connected_since, self.last_pong = ws, time.time(), time.time()
         self._state(True)
         self.app.events.emit("calls_link", connected=True)
+        if getattr(self.app, "presence", None) is not None:
+            self.app.presence.net_ok("line")
         await ws.send(json.dumps({"type": "hello"}))
         tasks = [
             asyncio.create_task(self._reader(ws)),
@@ -131,6 +135,8 @@ class Connector:
             elif kind == "welcome":
                 self.version = m.get("version", "")
                 await asyncio.to_thread(self.calls.on_queue, m.get("queue") or [])
+                if m.get("away") and getattr(self.app, "presence", None) is not None:  # it told you this was offline
+                    await asyncio.to_thread(self.app.presence.line_report, m["away"])
                 self.dirty.set()
             elif kind == "event":
                 await asyncio.to_thread(self.calls.on_event, m)
