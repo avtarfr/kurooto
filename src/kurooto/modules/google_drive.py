@@ -59,9 +59,9 @@ class DriveUpload(GooglePart):
     def folder_id(self) -> str:
         """Kurooto's folder in your Drive: found (it can only see folders it made) or made, then remembered."""
         st = jload(self.file, {}) or {}
-        if st.get("id") and st.get("account") == self.account:
-            return st["id"]
         name = str(self.setting("folder") or "Kurooto").strip() or "Kurooto"
+        if st.get("id") and st.get("account") == self.account and st.get("name", name) == name:
+            return st["id"]
         q = f"name = '{quoted(name)}' and mimeType = '{FOLDER}' and trashed = false"
         found = self.google.api(
             "drive", "/files?" + urllib.parse.urlencode({"q": q, "fields": "files(id)", "spaces": "drive"})
@@ -70,7 +70,7 @@ class DriveUpload(GooglePart):
             fid = found[0]["id"]
         else:
             fid = self.google.api("drive", "/files?fields=id", {"name": name, "mimeType": FOLDER})["id"]
-        jsave(self.file, {"id": fid, "account": self.account})
+        jsave(self.file, {"id": fid, "account": self.account, "name": name})
         return fid
 
     # ------------------------------------------------------------------------------------------ uploading
