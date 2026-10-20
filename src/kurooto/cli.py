@@ -939,6 +939,49 @@ def say(text: str) -> dict | None:
     return r
 
 
+# (wakefix) `kurooto ask` and shell commands: "!command" runs one in this terminal (after echoing it); a line typed
+# as a shell command without the ! ("call-me --cancel …", "systemctl …", "kurooto status") is never sent to Kurooto
+# or its AI, where it would be read as English.
+SHELL_CMDS = frozenset(
+    "kurooto call-me ask-me ask-approval systemctl journalctl launchctl sudo git agy gemini codex ls dir cd cat rm mv "
+    "cp mkdir grep rg python python3 py pip uv bash sh zsh fish pwsh powershell nvim vim nano npm npx node bun brew "
+    "apt pacman yay winget docker podman ssh curl wget chmod tail htop btop pkill killall taskkill".split()
+)
+SHELL_HINT = "that's a shell command: run it in a shell tab, or prefix it with !"
+
+
+def shell_line(text: str) -> bool:
+    """A line typed as a shell command: a known command name first ("systemctl …", "call-me --cancel …"), or any
+    installed command followed by a flag or a pipe. A command that's also a word ("focus off") stays English."""
+    import re
+    import shutil
+
+    m = re.match(r"([a-z][a-z0-9._+-]*)(?=\s|$)(.*)$", text.strip(), re.S)
+    if not m:
+        return False
+    word, rest = m[1], m[2]
+    if word in SHELL_CMDS or ("-" in word and shutil.which(word)):
+        return True
+    flagged = re.match(r"\s+--?[a-z]", rest) or re.search(r"\|\s*\w|&&|\$\(|`|\s>>?\s*\S", rest)
+    return bool(flagged) and ("-" in word or bool(shutil.which(word)))
+
+
+def run_shell(cmd: str, echo) -> None:
+    """ "!command" in `kurooto ask`: echo it, then run it here, with your shell (cmd.exe on Windows)."""
+    import subprocess
+
+    print(echo(f"$ {cmd}"), flush=True)
+    try:
+        if sys.platform == "win32":
+            subprocess.run(cmd, shell=True)  # noqa: S602 (you typed it, in your own terminal)
+        else:
+            subprocess.run(cmd, shell=True, executable=os.environ.get("SHELL") or "/bin/sh")  # noqa: S602
+    except KeyboardInterrupt:
+        print()
+    except OSError as e:
+        print(f"Couldn't run it: {e}")
+
+
 def plain(text: str, wait: bool, minutes: int, job: str = "") -> int:
     """`kurooto ask`: like typing to Kurooto on Telegram. Quick things answer at once; a bigger request goes to
     the AI and its answer prints here (not on Telegram)."""
@@ -946,6 +989,9 @@ def plain(text: str, wait: bool, minutes: int, job: str = "") -> int:
         ok, answer = wait_job(job, minutes)
     elif not text:
         return plain_loop(minutes)
+    elif text.startswith("!") or shell_line(text):
+        print("That's a shell command: run it in your shell, not through kurooto ask.", file=sys.stderr)
+        return 2
     else:
         r = say(text)
         if r is None:
@@ -968,7 +1014,8 @@ def plain(text: str, wait: bool, minutes: int, job: str = "") -> int:
 
 def plain_loop(minutes: int) -> int:
     """Type requests one after another; answers to bigger ones print when they're ready. It looks like Kurooto
-    Terminal's chat tab: the name, a few examples and the `kurooto ❯` prompt, in Kurooto's colours."""
+    Terminal's chat tab: the name, a few examples and the `kurooto ❯` prompt, in Kurooto's colours. "!command" runs
+    a shell command here; a shell command typed without the ! is refused, never sent (shell_line)."""
     import threading
 
     from kurooto.modules.terminal.look import chat_look
@@ -1017,6 +1064,13 @@ def plain_loop(minutes: int) -> int:
             continue
         if line.lower() == "clear":
             print("\x1b[2J\x1b[H" + look.banner())
+            continue
+        if line.startswith("!"):  # a shell command, on purpose
+            if line[1:].strip():
+                run_shell(line[1:].strip(), lambda t: look.paint("dim", t))
+            continue
+        if shell_line(line):  # never to Kurooto or its AI
+            print(look.paint("peach", SHELL_HINT) + look.paint("dim", f"   !{line}"))
             continue
         r = say(line)
         if r is None:

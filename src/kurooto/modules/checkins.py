@@ -538,7 +538,11 @@ class Checkins(Module):
 
     def intents(self):
         def match(text: str):
-            if not WORDS.search(text) or re.search(r"\b(?:call|ring) me\b", text, re.I):
+            if re.search(r"\b(?:call|ring) me\b", text, re.I):
+                return None
+            # a check-in named ("the evening call", "tonight's call", "check-in"), not any call: "cancel that call"
+            # and "call-me --cancel …" aren't about the evening check-in
+            if not any(w.group(1) or w.group(2).lower() != "call" for w in WORDS.finditer(text)):
                 return None
             low = text.lower()
             day = a_day(text, self._base())

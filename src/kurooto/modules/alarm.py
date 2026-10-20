@@ -12,6 +12,10 @@ morning: an alarm you set for a morning replaces the daily one. "No alarm tomorr
 "/alarm skip friday") skips one day and the daily alarm is back after it; "cancel my alarm" skips the one that's set;
 "turn my daily alarm off" (/alarm daily off) stops it, and "/alarm daily 7:00" sets it.
 
+"I'm awake" (or "I just woke up", "I'm up", even with "call me if you need to …") rings the same morning run-through
+now, from the current time: a plain call, not the alarm, and a time you mention about what didn't happen ("I didn't
+wake up at 7") is never read as when to call.
+
 While it's set, the night runs from your bedtime until the alarm: no other calls then, and once you're up they can
 come. With Chat on, 20 minutes before the alarm the AI drafts the day's plan into today's daily note (the
 morning-prep skill); the call goes through it with you, and if this computer is awake it opens the morning page.
@@ -37,7 +41,7 @@ from kurooto.core.state import jload, jsave
 from kurooto.modules import daily
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
-from kurooto.modules.text import a_day
+from kurooto.modules.text import a_day, up_now
 
 register_defaults(
     "alarm",
@@ -56,6 +60,7 @@ register_defaults(
 )
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 KEY = "alarm:next"
+AWAKE_KEY = "alarm:awake"  # "I'm awake": the morning call, rung now (not the alarm: no snooze, no repeat rings)
 PLAN_EVERY = "every 30m"  # the next daily alarm is checked this often too (and caught up after sleep)
 AWAKE_AFTER_MIN = 15  # keep_awake holds until this long after the alarm (repeat rings, the plan)
 AWAKE_BEFORE_H = 12  # ... from this long before it (a daily alarm set in the morning doesn't hold all day)
@@ -408,9 +413,27 @@ class Alarm(Module):
         head = "Wake-up call. Say good morning, briefly and warmly; they've just woken up, so keep it light."
         return "\n".join([head] + [f"{i}. {x}" for i, x in enumerate(steps, 1)])
 
-    def call_reschedule(self, key: str, at: dt.datetime) -> str:
+    def call_reschedule(self, key: str, at: dt.datetime) -> str | None:
         """ "Call me back in ten minutes" on the wake-up call: the alarm again then (like a snooze)."""
+        if key != KEY:
+            return None  # the "I'm awake" call: a plain call later, never the alarm
         return self.set(at.replace(tzinfo=None), first=False)
+
+    def up(self, text: str) -> str:
+        """ "I'm awake": the wake-up call's run-through now, from the current time. Forced, since you're up: the night
+        before a pending alarm would otherwise hold it. The morning page opens here too."""
+        said = re.sub(r"\s+", " ", text).strip()[:200]
+        reason = (
+            f'Morning call: they just told you they\'re up ("{said}"). First call morning_plan and follow it, planning '
+            f"the rest of today from now ({now():%H:%M})."
+        )
+        self.app.modules["calls"].place(reason, key=AWAKE_KEY, force=True)
+        self.app.events.emit("alarm_up_now", page=self.open_morning_page())
+        out = "Good morning. Calling you now to plan the rest of today."
+        at = self.next()
+        if at and at - now() < dt.timedelta(hours=AWAKE_BEFORE_H):
+            out += f' Your alarm at {at:%a %H:%M} is still set ("cancel my alarm" turns it off).'
+        return out
 
     def call_transcript(self, key: str, lines: list[dict]) -> None:
         """After the wake-up call: with Chat on, the AI settles today's plan in the daily note from what you said;
@@ -464,6 +487,8 @@ class Alarm(Module):
         ]
 
     def call_outcome(self, key: str, outcome: str) -> bool:
+        if key != KEY:
+            return False  # the "I'm awake" call: Later and missed work like any call's
         tries = (jload(self.ringing_file, {}) or {}).get("tries", 0)
         if outcome == "later":
             self.set(now().replace(tzinfo=None) + dt.timedelta(minutes=self.setting("snooze_min") or 10), first=False)
@@ -590,7 +615,15 @@ class Alarm(Module):
                 return self.skip(sl["skip"])
             return self.clear() if sl.get("off") else self.set(sl["at"])
 
-        return [Intent("alarm", "wake me at …, no alarm tomorrow, turn my daily alarm off", match, run)]
+        return [
+            Intent("alarm", "wake me at …, no alarm tomorrow, turn my daily alarm off", match, run),
+            Intent(
+                "up_now",
+                "I'm awake, I just woke up (the morning call now)",
+                lambda text: {"text": text} if up_now(text) else None,
+                lambda msg, sl: self.up(sl["text"]),
+            ),
+        ]
 
     def _day(self, words: str) -> dt.date | None:
         """The morning a request names: "tomorrow" said at 2 am is the coming morning; "today", a weekday."""
