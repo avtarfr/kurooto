@@ -1,0 +1,2 @@
+# a made-up key in a test, already removed from the code; gitleaks still sees it in that commit
+9d2e8b6a9fa36b3ed12b277d63fbce201e2a4cac:tests/unit/test_home.py:generic-api-key:58

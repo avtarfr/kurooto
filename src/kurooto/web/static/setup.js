@@ -274,9 +274,44 @@ function renderFeatures() {
     } },
       el("label", {}, box, el("h3", {}, m.title)), el("p", {}, m.description),
       m.starter ? el("div", { class: "star" }, "★ in Starter") : null, el("div", { class: "privacy" }, m.privacy),
-      m.form && chosen.has(m.id) && !m.ready ? setupForm(m) : null);
+      m.form && chosen.has(m.id) && !m.ready ? setupForm(m) : null,
+      m.form && chosen.has(m.id) && m.ready ? el("p", { class: "ok" }, "✓ Set up") : null,
+      m.id === "calls" && chosen.has(m.id) ? callsBox(m) : null,
+      m.id === keyCard() ? keyBox() : null);
   }));
   renderKeyBox();
+}
+
+// The Gemini key box goes right under the first ticked card that needs it.
+function keyCard() {
+  if (state.keys.gemini) return null;
+  const m = state.modules.find((x) => NEEDS_GEMINI.includes(x.id) && chosen.has(x.id));
+  return m ? m.id : null;
+}
+
+// Phone calls: what it needs, in order, and the call line set up right here (not only when you press Done).
+function callsBox(m) {
+  const key = state.keys.gemini, out = el("div", {});
+  const btn = el("button", { class: "primary", disabled: !key || m.ready, onclick: async () => {
+    btn.disabled = true;
+    out.replaceChildren(el("p", {}, "Setting up your call line on Cloudflare. A Cloudflare sign-in page opens (its link is in the log too): sign in or make a free account, then come back."), logBox());
+    const r = await api("modules/setup", { id: "calls" });
+    if (r.started === false) { out.replaceChildren(el("p", { class: "bad" }, r.message)); btn.disabled = false; return; }
+    await watchInstall();
+    const c = state.modules.find((x) => x.id === "calls");
+    if (c && c.ready) { renderFeatures(); return; }
+    out.append(el("p", { class: "bad" }, `Not ready yet: ${c ? c.why : "it didn't finish"}. Press Set up now to try again.`));
+    btn.disabled = false;
+  } }, "Set up now");
+  return el("div", { class: "box", onclick: (e) => e.stopPropagation() },
+    el("p", {}, "Phone calls need, in this order:"),
+    el("ol", {},
+      el("li", {}, "a free Gemini API key (needed even if agy or another AI answers your messages: calls talk through Gemini Live)", key ? " ✓" : ""),
+      el("li", {}, "a free Cloudflare account: Kurooto makes your own call line on it", m.ready ? " ✓" : ""),
+      el("li", {}, "then pair your phone (after Done)")),
+    m.ready ? el("p", { class: "ok" }, "✓ Your call line is set up. Press Done at the end: then you pair your phone.")
+      : el("p", {}, btn, key ? "" : el("span", { class: "note" }, " First save your Gemini key in the box below.")),
+    out);
 }
 
 // A feature's own details (an iCal link, a repository and token, a Google client): shown when it's ticked.
@@ -298,28 +333,56 @@ function setupForm(m) {
       const values = Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, v.value]));
       const r = await api("modules/configure", { id: m.id, values, enable: false });
       out.textContent = r.message; out.className = r.ok ? "ok" : "bad";
-      if (r.open) window.open(r.open, "_blank", "noopener");
       if (r.ok) { state.modules = r.modules; }
+      if (r.open) {
+        try { window.open(r.open, "_blank", "noopener"); } catch { /* blocked: the link below always works */ }
+        out.replaceChildren(signinLink(r.open), signinNote());
+        out.className = "";
+        waitReady(m.id, out);
+      }
     } }, "Save"), out);
 }
 
-// Phone calls, voice notes and the alarm use a free Gemini key (whichever AI answers your messages).
+// Popup blockers stop a tab opened after waiting for Kurooto, so the sign-in is always a link you can press.
+function signinLink(href) {
+  return el("p", {}, el("a", { class: "button primary", href, target: "_blank", rel: "noopener" }, "Open Google sign-in"));
+}
+function signinNote() {
+  return el("p", { class: "note" }, "After you approve, Google brings you back to this computer (a 127.0.0.1 page) that says 'Signed in with Google'. This card then turns to ✓ by itself.");
+}
+
+// Until the feature is ready (you signed in), look again every few seconds; then show it on the card.
+const waiting = {};
+async function waitReady(id, out) {
+  const run = (waiting[id] = (waiting[id] || 0) + 1);
+  for (let i = 0; i < 300 && run === waiting[id]; i++) {
+    await new Promise((ok) => setTimeout(ok, 3000));
+    let st;
+    try { st = await api("state"); } catch { continue; }
+    const m = st.modules.find((x) => x.id === id);
+    if (m && m.ready) { state.modules = st.modules; out.replaceChildren(el("p", { class: "ok" }, "✓ Signed in.")); renderFeatures(); return; }
+  }
+}
+
+// Phone calls, voice notes and the alarm use a free Gemini key (whichever AI answers your messages). The box sits
+// under the first ticked card that needs it (keyCard); the old panel at the bottom stays empty.
 function renderKeyBox() {
-  const p = $("#key-panel");
-  if (state.keys.gemini || !NEEDS_GEMINI.some((id) => chosen.has(id))) { p.replaceChildren(); return; }
+  $("#key-panel").replaceChildren();
+}
+function keyBox() {
   const key = el("input", { placeholder: "Paste your Gemini API key", autocomplete: "off", spellcheck: "false" });
   const out = el("p", {});
-  p.replaceChildren(el("div", { class: "box" },
-    el("p", {}, "Phone calls, voice notes and the alarm need a free Gemini API key (it takes a minute): open ",
+  return el("div", { class: "box", id: "gemini-box", onclick: (e) => e.stopPropagation() },
+    el("p", {}, "Phone calls, voice notes and the alarm need a free Gemini API key, even if agy or another AI answers your messages (calls talk through Gemini Live). It takes a minute: open ",
       el("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noopener" }, "Google AI Studio"),
       ", sign in with your Google account, tap Create API key, and paste it here."),
     geminiTerms(),
     el("div", { class: "row" }, key, el("button", { class: "primary", onclick: async () => {
       out.textContent = "Checking…"; out.className = "";
       const r = await api("keys/gemini", { key: key.value });
-      if (r.ok) { state.keys.gemini = true; p.replaceChildren(el("p", { class: "ok" }, "✓ Gemini key saved.")); }
+      if (r.ok) { state.keys.gemini = true; renderFeatures(); }
       else { out.textContent = r.error; out.className = "bad"; }
-    } }, "Check")), out));
+    } }, "Check")), out);
 }
 
 // After setup: pair a phone with the call line (QR code, or the link on the phone itself).
@@ -330,9 +393,8 @@ async function pairBox() {
   const qr = el("div", { class: "qr" });
   qr.innerHTML = r.svg; // made by Kurooto from the link below
   box.replaceChildren(el("h3", {}, "Pair your phone"),
-    el("p", {}, "Scan this with your phone's camera (or send /phone to your bot and tap the link on your phone). It works for 15 minutes."),
-    qr, el("p", { class: "note" }, "Code: ", el("code", {}, r.code), " · ", el("a", { href: r.link, target: "_blank", rel: "noopener" }, "the link")),
-    el("p", { class: "note" }, "Android: the page offers the Kurooto app. iPhone: it shows how to add Kurooto to your Home Screen."));
+    el("p", {}, "Scan this with your phone. The page that opens has 1) Download the app (Android) or Add to Home Screen (iPhone), then 2) pairing. It works for 15 minutes (or send /phone to your bot and tap the link on your phone)."),
+    qr, el("p", { class: "note" }, "Code: ", el("code", {}, r.code), " · ", el("a", { href: r.link, target: "_blank", rel: "noopener" }, "the link")));
   return box;
 }
 
@@ -425,17 +487,21 @@ function renderFinish() {
 async function finish() {
   const btn = $("#finish"), out = $("#finish-panel");
   btn.disabled = true;
-  // features that need installing first (e.g. the notes brain): set each up, showing its progress
+  // features that need installing first (e.g. the notes brain): set each up, showing its progress; every log stays
+  out.replaceChildren();
   for (const m of state.modules.filter((m) => chosen.has(m.id) && !m.ready && m.setup)) {
-    out.replaceChildren(el("div", { class: "box" }, el("p", {}, `Setting up ${m.title}…`), logBox()));
-    await api("modules/setup", { id: m.id });
-    await watchInstall();
+    const box = el("div", { class: "box" }, el("p", {}, `Setting up ${m.title}…`), logBox());
+    out.append(box);
+    const r = await api("modules/setup", { id: m.id });
+    if (r.started === false) box.append(el("p", { class: "bad" }, r.message));
+    else await watchInstall();
+    box.querySelector("#log").removeAttribute("id"); // the next feature's box gets the live log
   }
   const res = await api("modules/enable", { ids: [...chosen] });
   const failed = Object.entries(res.results).filter(([, v]) => !v.ok);
   if ($("#autostart").checked) await api("autostart", { on: true });
   await api("setup/done", {});
-  out.replaceChildren(el("div", { class: "box" },
+  out.append(el("div", { class: "box" },
     el("p", { class: "ok" }, "✓ Set up. Send /help to your bot to see what it can do."),
     failed.length ? el("p", { class: "bad" }, "Not turned on yet: " + failed.map(([k, v]) => `${k} (${v.message})`).join("; ")) : null));
   if (chosen.has("calls") && !(res.results.calls && !res.results.calls.ok)) out.append(await pairBox());
