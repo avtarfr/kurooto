@@ -29,7 +29,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from kurooto import __version__
-from kurooto.core import proc
+from kurooto.core import proc, zones
 from kurooto.core.prereqs import Prereqs
 from kurooto.modules.calls import line
 
@@ -338,7 +338,7 @@ class Deployer:
         values = {
             "name": name,
             "owner_id": "owner",
-            "tz": s.get("you.timezone") or "UTC",
+            "tz": zones.canonical(s.get("you.timezone")) or "UTC",
             "public_url": url,
             "version": f"{__version__}+{source_hash()}",
             "live_model": s.get("calls.live_model") or "gemini-3.8-live",
@@ -403,7 +403,7 @@ def fingerprint(app) -> str:
     s = app.settings
     parts = [
         source_hash(),
-        s.get("you.timezone") or "",
+        zones.canonical(s.get("you.timezone")),  # an old name for the same zone isn't a change
         s.get("calls.live_model") or "",
         s.get("calls.ntfy_server") or "",
         s.get("calls.notes_repo") or "",

@@ -233,23 +233,23 @@ def layout_checks(app) -> list[tuple[str, bool | None, str]]:
 def timezone_check(app) -> tuple[str, bool, str] | None:
     """Your time zone (Settings → You) and this computer's should be the same: until 0.2.1, some times (repeating
     ones: check-in planning, the look back, digests) follow the setting and others (reminders, check-ins) the
-    computer's clock."""
+    computer's clock. Compared by what they mean (the same clock over the next year), so an old name and today's
+    (Europe/Kiev, Europe/Kyiv) are the same zone (core/zones.py)."""
     import datetime as dt
-    from zoneinfo import ZoneInfo
+
+    from kurooto.core import zones
 
     name = str(app.settings.get("you.timezone") or "").strip()
     if not name:
         return None
-    try:
-        tz = ZoneInfo(name)
-    except Exception:
+    if not zones.valid(name):
         return ("time zone", False, f"{name!r} isn't a time zone name Kurooto knows (Settings → You → timezone)")
-    t = dt.datetime.now().astimezone()
-    if any(d.astimezone(tz).utcoffset() != d.astimezone().utcoffset() for d in (t, t + dt.timedelta(days=182))):
+    if not zones.matches_computer(name):
+        here = zones.computer_zone() or dt.datetime.now().astimezone().tzname()
         return (
             "time zone",
             False,
-            f"{name} (Settings → You) isn't this computer's time zone ({t.tzname()}): some times follow one and some "
+            f"{name} (Settings → You) isn't this computer's time zone ({here}): some times follow one and some "
             "the other. Set them the same.",
         )
     return ("time zone", True, f"{name}, the same as this computer")

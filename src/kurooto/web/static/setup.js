@@ -171,11 +171,14 @@ async function go(i) {
 }
 
 // ---------------------------------------------------------------------------------------------- you
-// The time zone: picked from the browser's list as you type; a name it doesn't know is said before going on.
-const ZONES = (() => { try { return Intl.supportedValuesOf("timeZone"); } catch { return []; } })();
+// The time zone: picked from today's names (Kurooto's list, core/zones.py) as you type; a name it doesn't know is said
+// before going on. The browser's own list may hold old names (Europe/Kiev for Europe/Kyiv): those are accepted
+// too, and saved under today's name.
+const BROWSER_ZONES = (() => { try { return Intl.supportedValuesOf("timeZone"); } catch { return []; } })();
+let ZONES = BROWSER_ZONES;
 function checkYou() {
   const tz = $("#tz"), msg = $("#you-msg"), v = tz.value.trim();
-  const known = !v || !ZONES.length || ZONES.includes(v) || v === "UTC";
+  const known = !v || !ZONES.length || ZONES.includes(v) || BROWSER_ZONES.includes(v) || v === "UTC";
   const near = known ? null : ZONES.find((z) => z.toLowerCase() === v.toLowerCase() || z.toLowerCase().endsWith("/" + v.toLowerCase().replace(/ /g, "_")));
   if (near) { tz.value = near; msg.textContent = ""; return true; }
   msg.textContent = known ? "" : `"${v}" isn't a time zone name. Start typing your city or region and pick it from the list (e.g. Europe/Berlin, America/New_York), or leave it empty to use this computer's.`;
@@ -184,7 +187,8 @@ function checkYou() {
 }
 
 async function saveYou() {
-  await api("you", { name: $("#name").value, timezone: $("#tz").value, assistant_name: $("#aname").value || "Kurooto" });
+  const r = await api("you", { name: $("#name").value, timezone: $("#tz").value, assistant_name: $("#aname").value || "Kurooto" });
+  if (r && typeof r.timezone === "string") $("#tz").value = r.timezone;  // under today's name
 }
 
 // ------------------------------------------------------------------------------------------ computer
@@ -897,10 +901,11 @@ $("#ay-files").addEventListener("change", async (e) => {
 $("#finish").addEventListener("click", finish);
 
 (async () => {
-  $("#tz-list").replaceChildren(...ZONES.map((z) => el("option", { value: z })));
   await refresh();
+  if (state.zones && state.zones.length) ZONES = state.zones;
+  $("#tz-list").replaceChildren(...ZONES.map((z) => el("option", { value: z })));
   $("#name").value = state.you.name || "";
-  $("#tz").value = state.you.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  $("#tz").value = state.you.timezone || state.computer_zone || Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   $("#aname").value = state.you.assistant_name || "Kurooto";
   let saved = 0;
   try { saved = Number(localStorage.getItem("kurooto.setup.step") || 0); } catch { /* fine */ }

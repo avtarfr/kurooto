@@ -62,6 +62,22 @@
   and `kurooto` are refusing stand-ins, the running dashboard's port is out of reach, and a test that writes to or
   deletes anything in the real install, its systemd unit, autostart or app-menu entries or ~/.gemini fails.
   Autostart and the app-menu entries made for a given home now take every path from it, the app folder included.
+- Time zones are compared by what they mean, not by name: an old name and today's (`Europe/Kiev` and
+  `Europe/Kyiv`) are one zone for `kurooto doctor` and your call line, and a zone is saved under today's name (the
+  setup page's picker offers those; one saved under an old name is renamed at start).
+- Research: a project folder that isn't a git repository yet is a project with no commits to follow; doctor says so
+  as a note ("isn't a git repository (no commits to follow): `git init` it, or /repos remove it") instead of
+  "repository folder missing", and the Research tab can keep or remove it again.
+- Reminders: "remind me at 6 pm: …" no longer keeps the colon ("at 18:00: : …"); a ":", "-", "to", "that" or "about"
+  left at the start of the text goes, and `/remind 21:30 - …` too.
+- Google: a permission Google grants under its older name (Classroom coursework as
+  `classroom.student-submissions.me.readonly`) counts as the one asked for. Every sign-in said "Some boxes weren't
+  ticked: your Classroom coursework", and Classroom → notes never turned on.
+- Google: which account is which. Every account (main too) is asked for its address; `/google` and the Google card
+  list each account with it, the sign-in page names the account it saved ("Signed in with Google as … (main)"), and a
+  feature's account box shows the address of the account in use.
+- Installers: `KUROOTO_CHANNEL=beta` installs from the beta channel, and the install keeps following it
+  (`updates.channel` is saved in its settings).
 
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.

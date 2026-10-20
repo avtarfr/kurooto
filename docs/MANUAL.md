@@ -124,6 +124,22 @@ What it does, in order:
 
 Run the same line again any time to repair or update an installation.
 
+**Testers: the beta channel.** To try releases before everyone else, put `KUROOTO_CHANNEL=beta` in front of the
+installer. The install then keeps following beta (it saves `updates.channel` = `beta` in its settings), and its
+updates come from there too:
+
+```sh
+curl -LsSf https://avtarfr.github.io/kurooto/install.sh | KUROOTO_CHANNEL=beta sh
+```
+
+```powershell
+$env:KUROOTO_CHANNEL = 'beta'; irm https://avtarfr.github.io/kurooto/install.ps1 | iex
+```
+
+To repair a beta install, run it the same way (without `KUROOTO_CHANNEL` it installs the stable release, though the
+setting stays beta). *Undo:* Settings → `updates.channel` = `stable`; you get the next stable release when it's newer
+than the beta you have.
+
 **If something looks scary:**
 
 - *Windows Defender / antivirus warns about a script:* the line downloads a PowerShell script from Kurooto's own
@@ -140,7 +156,9 @@ phone) opens any step; a step you passed but haven't finished (an AI that doesn'
 shows **!** instead of a tick. Words like *API key*, *token* or *repository* are underlined with dots: tap one to read
 what it means.
 
-1. **You:** what Kurooto calls you, your time zone (filled in from your browser) and the assistant's name.
+1. **You:** what Kurooto calls you, your time zone (filled in from this computer, or your browser) and the
+   assistant's name. An old name for a zone is saved under today's (`Europe/Kiev` becomes `Europe/Kyiv`), and
+   zones are compared by their clocks, never their names.
 2. **Your computer:** what Kurooto found (processor, memory, graphics card, free space) and what it recommends for
    it, marked ★. You can change any of it later. On a laptop, what to do on battery; and the pages' **Colours**
    (see [Colours](#colours-look)): this computer's own colours are marked ★ when Kurooto finds them.
@@ -1499,8 +1517,11 @@ To withdraw a permission: your Google account → Security → Third-party acces
 A personal account and a school one, say: each feature can use the account you choose. The first account you sign in
 with is **main**; every feature uses main unless you say otherwise. Each account signs in separately (with the same
 Google Cloud project), and each is asked only for what the features using it need, when you set them up; Kurooto
-also asks other accounts for their address, so it can tell them apart.
-- **On a feature's card:** the **Which Google account** box. Empty keeps the account it uses; a new name (`school`)
+also asks every account for its address (main too, from 0.5.1), so it can tell them apart: the sign-in page says
+which account it just saved ("Signed in with Google as sam@school.example (school)"), and the Google card lists each
+account with its address.
+- **On a feature's card:** the **Which Google account** box (it names the account in use, with its address). Empty
+  keeps the account it uses; a new name (`school`)
   adds that account: Google's page opens with its account chooser, so pick the right one. Google Calendar can read
   several at once (`main, school`): press Save once for each account.
 - **On Telegram:** `/google` lists your accounts, their addresses and what uses each. `/google use mail school` moves
@@ -1939,7 +1960,9 @@ arXiv asks. **A copy in your notes:** `research.save_note` = `true` also keeps e
 **Projects:** each project has a note in your notes, `research/<project>/index.md`, and `research/index.md` lists
 them all. Add your code repositories on the Research tab or with `/repos add ~/code/my-model`; a repository's project
 is its folder's name, or name it: `/repos add ~/code/model_v2 as Climate model` (several repositories can share a
-project; `research.projects` in Settings holds the mapping). `/repos remove <folder>` takes one off. Every night each
+project; `research.projects` in Settings holds the mapping). `/repos remove <folder>` takes one off. A project folder
+that isn't a git repository yet (only a proposal, say) stays a project with no commits to follow: `kurooto doctor`
+notes it (not a problem) until you `git init` it. Every night each
 day's new commits become one line under `## Log` in the project's note, e.g. `- **2026-10-20** | git:my-model — 3
 commits: …`. Kurooto only adds lines: your own text in these notes is never changed. (Logs from 0.1.0 in
 `research/<repository>-log.md` are left as they are.)
@@ -2738,6 +2761,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Classroom notes say a PDF wasn't read | Install Poppler (`pdftotext`), or use agy as your AI (it opens PDFs itself). |
 | Classroom notes went to the wrong folder | Settings → `classroom_notes.folders`: `{"Exact course name": "folder-name"}`. |
 | Research: "repository folder missing" | You moved or deleted it: `/repos remove <folder>`, then `/repos add <new folder>`. |
+| Research: "isn't a git repository (no commits to follow)" | A note, not a problem: that project's folder has no git history yet, so its Log gets no commit lines. `git init` it (and commit) to follow it, or `/repos remove <folder>`. |
 | `kurooto watch` says "only shown on this computer" | Kurooto wasn't running: `kurooto start`. |
 | The Terminals tab says it's off, or a terminal won't type | Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose. |
 | `/term` says "Term note …: not found" | The path is relative to your notes folder (`terms/2026-autumn`, `maps/semester-*`); `/term note <path>` again, or `/term note off`. |
