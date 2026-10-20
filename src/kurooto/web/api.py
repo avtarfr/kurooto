@@ -47,6 +47,7 @@ MODULE_ORDER = [
     "subjects",
     "capture",
     "quiz",
+    "exam_season",
     "weekly",
     "files",
     "skills",
@@ -140,9 +141,19 @@ class Api:
                     "setup": hasattr(m, "setup"),
                     "form": m.setup_form() if hasattr(m, "setup_form") else None,
                     "addon": bool(getattr(m, "addon", False)),
+                    "card": self._card(m),
                 }
             )
         return out
+
+    def _card(self, m) -> dict | None:
+        """A feature's own card parts while it's on (Module.card(): lines and switches, e.g. Exam season's)."""
+        if not hasattr(m, "card") or not self.app.is_on(m.id):
+            return None
+        try:
+            return m.card()
+        except Exception as e:
+            return {"lines": [f"Couldn't show this: {type(e).__name__}"], "toggles": []}
 
     # ---------------------------------------------------------------------------------------------- GET
     def get(self, path: str, q: dict | None = None) -> tuple[int, dict]:
@@ -276,6 +287,11 @@ class Api:
             return web(self, path, b, post=True)
         if path == "settings":
             return self._set(b.get("key", ""), b.get("value"))
+        if path == "modules/card":  # a switch on a feature's card (Module.card_action, e.g. Exam season's parts)
+            m = self.app.modules.get(str(b.get("id") or ""))
+            if m is None or not self.app.is_on(m.id) or not hasattr(m, "card_action"):
+                return 400, {"error": "no such card"}
+            return 200, {"ok": True, "message": m.card_action(str(b.get("act") or ""), b.get("value"))}
         if path == "open-note":
             return self._open_note(b.get("id", ""))
         if path == "you":

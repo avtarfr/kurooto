@@ -40,6 +40,7 @@ body.home { color-scheme: dark;
 .feat .card2.on { border-color: var(--accent); }
 .feat .card2 b { font-size: 14px; }
 .feat .card2 p { margin: 4px 0; color: var(--dim); font-size: 13px; }
+.feat .card2 .pieces label { display: block; margin: 3px 0; font-size: 13px; }
 .form { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .form fieldset { border: 1px solid var(--line); border-radius: 2px; padding: 8px 10px; }
 .form legend { color: var(--lav); font-size: 12px; }

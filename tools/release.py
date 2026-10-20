@@ -2,7 +2,7 @@
 """Make and sign Kurooto releases. The signing key never leaves the maintainer's laptop.
 
     uv run tools/release.py keygen [--out ~/.config/kurooto-dev/release-key.pem] [--no-passphrase]
-    uv run tools/release.py build --site SITE --base URL [--version V] [--notes TEXT] [--break-run]
+    uv run tools/release.py build --site SITE --base URL [--version V] [--notes TEXT] [--critical] [--break-run]
     uv run tools/release.py sign  --site SITE --base URL --version V --key PEM [--channel stable]
     uv run tools/release.py publish --site SITE [--message TEXT]     push SITE to the gh-pages branch (GitHub Pages)
 
@@ -19,6 +19,8 @@ SITE is a folder laid out like the GitHub Pages site:
     SITE/releases/<v>/kurooto.apk, android.json the Android app and its version (with --apk)
 The passphrase for the key comes from KUROOTO_RELEASE_PASSPHRASE, or is asked for.
 --break-run builds a version whose `kurooto run` crashes at once (only for testing rollback).
+--critical marks the release critical in its signed manifest: it installs even while a feature holds updates (Exam
+season, during someone's exams). Only for fixes that can't wait.
 """
 
 from __future__ import annotations
@@ -84,7 +86,9 @@ def version_code(version: str) -> int:
     return ((major * 1000 + minor) * 1000 + patch) * 10 + rc
 
 
-def build(site: Path, base: str, version: str | None, notes: str, break_run: bool, apk: Path | None = None) -> str:
+def build(
+    site: Path, base: str, version: str | None, notes: str, break_run: bool, apk: Path | None = None, critical=False
+) -> str:
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "src"
         shutil.copytree(
@@ -136,6 +140,7 @@ def build(site: Path, base: str, version: str | None, notes: str, break_run: boo
     doc = {
         "version": version,
         "notes": notes,
+        **({"critical": True} if critical else {}),
         "created": time.time(),
         "files": {
             name: {
@@ -325,6 +330,7 @@ def main() -> None:
     b.add_argument("--version")
     b.add_argument("--notes", default="")
     b.add_argument("--break-run", action="store_true")
+    b.add_argument("--critical", action="store_true", help="installs even during someone's exams")
     b.add_argument("--apk", help="the release-signed Android app (android/build/kurooto.apk)")
     s = sub.add_parser("sign")
     s.add_argument("--site", required=True)
@@ -339,7 +345,7 @@ def main() -> None:
     if a.cmd == "keygen":
         keygen(Path(a.out), a.no_passphrase)
     elif a.cmd == "build":
-        build(Path(a.site), a.base, a.version, a.notes, a.break_run, Path(a.apk) if a.apk else None)
+        build(Path(a.site), a.base, a.version, a.notes, a.break_run, Path(a.apk) if a.apk else None, a.critical)
     elif a.cmd == "publish":
         publish(Path(a.site), a.message)
     else:

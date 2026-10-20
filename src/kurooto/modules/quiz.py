@@ -337,8 +337,8 @@ class Quiz(Module):
             due = dt.datetime.fromisoformat(e["due"])
             tomorrow = due.date() == t.date() + dt.timedelta(days=1) and t.time() >= dt.time.fromisoformat(at)
             today = due.date() == t.date() and e["hours"] >= 2
-            if e["id"] in offered or not (tomorrow or today):
-                continue
+            if e["id"] in offered or not (tomorrow or today) or self._season_call(e["id"]):
+                continue  # (a quiz call you picked in Exam season takes the offer's place)
             offered[e["id"]] = t.isoformat()
             self._offer(e, "tomorrow" if tomorrow else "today")
             n += 1
@@ -374,7 +374,7 @@ class Quiz(Module):
         count = self.due_count(subject) if subject else len(self.due(None)[1])
         if not count:
             return
-        if self.setting("by_call") and self._calls_ok():
+        if self.setting("by_call") and self._calls_ok() and self._season_call(e["id"]) is not False:
             self.call_quiz(subject)
             return
         row = [("Quiz me now", f"qo:{e['id']}:now")]
@@ -385,6 +385,12 @@ class Quiz(Module):
             f"Exam mode: {e['title']} {e['when']}. {count} questions to practise. Now?", kind="question", buttons=[row]
         )
         self.app.events.emit("quiz_checkin", via="message", exam=True)
+
+    def _season_call(self, exam_id: str) -> bool | None:
+        """Exam season (modules/exam_season.py) on: True when you picked the quiz call for this exam, False for its
+        other exams (no quiz call rings for them by itself); None when it's off or the exam isn't one of its."""
+        s = self.app.modules.get("exam_season")
+        return s.quiz_call(exam_id) if s is not None and self.app.is_on("exam_season") else None
 
     def _offer_button(self, ref: str, act: str) -> str:
         if ref.startswith("s-"):

@@ -35,6 +35,8 @@ uv run tools/release.py sign --site ~/kurooto-site --base https://avtarfr.github
 uv run tools/release.py publish --site ~/kurooto-site --message "release 0.1.0"
 ```
 Try a release on the `beta` channel first (`--channel beta`; testers set `updates.channel` to `beta`).
+Exam season holds every update back during its users' exams; `build --critical` marks a release that must install
+anyway (a fix that can't wait), in its signed manifest.
 
 `build` also writes the site's own pages: the installers and landing page from `installer/`, and `privacy.html`,
 made from `docs/PRIVACY.md` inside `installer/privacy.html` (between its `PRIVACY:START` and `PRIVACY:END` markers).

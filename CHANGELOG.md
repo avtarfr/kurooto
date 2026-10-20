@@ -35,6 +35,24 @@
 - A daily limit no longer waits a minute and asks again before the fallback; handwritten files that hit a limit are
   tried again later instead of being written off.
 
+**Exam season** (new; off until you turn it on, and nothing happens without exam dates)
+- One card for the whole exam period (the exam periods in Subjects and the exams on your deadline list, from the day
+  before the first to the end of the last), told once when it starts. Every part has its own switch on the card,
+  with `/examseason` or in Settings.
+- Non-critical updates wait until the exams are over; a release marked critical in its signed manifest still installs
+  (`tools/release.py build --critical`).
+- Every night of the period (21:30), the alarm check from "Kurooto keeps itself working" runs (and the call line's,
+  when a leave-by call is set), with its safe fix first: "set your phone's own alarm too" if it might not ring.
+- The evening before each exam, one question: where is it, which seat, calculator, ID card (and when, if unknown).
+  An alarm to leave on time follows (45 minutes before, or "leave 8:10"): a call that rings like the wake-up alarm,
+  or an urgent message without Phone calls.
+- Half an hour after each exam, a two-minute debrief, saved as you said it under "Exam debriefs" in the subject's
+  course note. No calls during an exam.
+- The quiz call before an exam is off unless you pick it for that exam; exam mode's daily practice only calls for the
+  exams you picked.
+- For add-ons: `Module.card()` and `card_action()` put lines and switches on a feature's dashboard card;
+  `app.updates.holds` lets a feature hold back non-critical updates.
+
 ## 0.4.0 (unreleased)
 
 **Books and PDFs** (new; off until you turn it on)

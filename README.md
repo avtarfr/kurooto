@@ -69,7 +69,7 @@ recommends settings for it (★), installs whatever the features you pick need, 
 | **Remember** | reminders, check-ins into a journal, deadlines (also from Google Classroom and your calendar), recurring quizzes, how you like to be helped |
 | **Phone** | call it like a phone call, and it calls you (reminders, check-in debriefs, deadline nudges, quizzes, a wake-up alarm that rings on silent), even with your computer off; Android app from Android 6, iPhone as a Home Screen app |
 | **Notes** | search your notes by meaning, skills like `/journal` and `/study-log`, revision packs as PDF, quick notes, files and handwritten pages into notes, sync to your private GitHub repository |
-| **Study** | subjects, timetable and term dates, a spaced-repetition quiz with an exam mode, after-class notes, a study-time tracker |
+| **Study** | subjects, timetable and term dates, a spaced-repetition quiz with an exam mode, an exam-season card, after-class notes, a study-time tracker |
 | **Google** | Classroom materials into your notes, a mail digest that reads only what you choose, reply drafts you send with a tap, its own calendar for planned time |
 | **Research** | a digest of new papers in your fields (arXiv, bioRxiv, medRxiv, PubMed, any journal's feed), project notes from your code, experiment run logs, a message when a long job ends |
 | **Your setup** | daily backups to a folder you pick; your setup encrypted in your private repository, so a new computer is ready in a minute |

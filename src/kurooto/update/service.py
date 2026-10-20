@@ -4,6 +4,8 @@
     ask              a Telegram message with Update / Later / Skip this version
     off              only a note in the dashboard
 After switching, the new version is on probation for 5 minutes; if it keeps crashing, the launcher goes back.
+A feature can hold back non-critical updates for a while (Exam season, during your exams: `holds`); a release signed
+as critical installs anyway.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import os
 import random
 import threading
 import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from kurooto import __version__
@@ -37,6 +40,21 @@ class Updates:
         self.u = Updater(app.paths.app, app.paths.state, os.environ.get("KUROOTO_UPDATE_BASE") or PAGES, keys)
         self.ready_file = app.paths.state / "update-ready.json"
         self._busy = threading.Lock()
+        # features that hold back non-critical updates for a while: name -> fn() giving the reason ("" = no hold);
+        # exam season holds them during your exams (modules/exam_season.py)
+        self.holds: dict[str, Callable[[], str]] = {}
+
+    def held(self) -> str:
+        """Why a non-critical update waits now ("" when it doesn't). A release signed as critical never waits, and
+        neither do `kurooto update` and an Update tap."""
+        for fn in list(self.holds.values()):
+            try:
+                why = fn()
+            except Exception:
+                why = ""
+            if why:
+                return str(why)
+        return ""
 
     def start(self) -> None:
         s = self.app.scheduler
@@ -79,6 +97,11 @@ class Updates:
         if mode == "off":
             jsave(self.ready_file, {"version": rel.version, "staged": False, "notes": rel.notes})
             return f"{rel.version} available (updates are off)"
+        why = "" if rel.critical else self.held()
+        if why:
+            jsave(self.ready_file, {"version": rel.version, "staged": False, "notes": rel.notes, "held": why})
+            self.app.events.emit("update_held", version=rel.version)
+            return f"{rel.version} is held back: {why}"
         if mode == "ask":
             self.app.notify(
                 f"Kurooto {rel.version} is available.\n\n{rel.notes[:1500]}".strip(),
@@ -113,7 +136,8 @@ class Updates:
                     f"Couldn't prepare Kurooto {rel.version}: {str(e)[:300]}. I'll try again later.", kind="update"
                 )
                 return False
-            jsave(self.ready_file, {"version": rel.version, "staged": True, "notes": rel.notes})
+            ready = {"version": rel.version, "staged": True, "notes": rel.notes, "critical": rel.critical}
+            jsave(self.ready_file, ready)
             return True
 
     def _stage_then_wait(self, rel) -> None:
@@ -131,6 +155,10 @@ class Updates:
         ready = jload(self.ready_file, None)
         if not ready or not ready.get("staged"):
             return "nothing staged"
+        why = "" if ready.get("critical") else self.held()
+        if why:  # prepared before the hold began: the same window tomorrow night
+            self.app.scheduler.at(now() + dt.timedelta(days=1), "updates.apply", key="updates:apply", grace_s=6 * 3600)
+            return f"held back: {why}"
         busy = self.app.jobs._read("select 1 from jobs where status in ('queued','running') limit 1")
         on_call = self.app.availability.call_block()[0] == "you're on a call"
         if busy or on_call:

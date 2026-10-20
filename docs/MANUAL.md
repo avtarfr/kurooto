@@ -16,8 +16,8 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Telegram](#telegram) · [Questions and approvals](#questions-and-approvals) ·
     [Chat with your AI](#chat-with-your-ai) · [Reminders](#reminders) · [Check-ins](#check-ins) ·
     [Deadlines](#deadlines) · [Recurring quizzes](#recurring-quizzes) · [Not interested](#not-interested) ·
-    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Quiz](#quiz) ·
-    [Weekly summary](#weekly-summary)
+    [Exam mode](#exam-mode) · [Exam season](#exam-season) · [Subjects and timetable](#subjects-and-timetable) ·
+    [Quiz](#quiz) · [Weekly summary](#weekly-summary)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back)
@@ -478,6 +478,52 @@ once when it starts. While it's on:
   exam, and, if you like, a short practice check-in every day (set `quiz.exam_daily` to a time, e.g. 18:00).
 
 *Turn off:* `deadlines.exam_mode_days` = 0.
+
+### Exam season
+One card for the whole exam period, on top of exam mode. Off until you turn it on (Features → Exam season; it needs
+Deadlines). **It does nothing without exam dates:** the exam periods in Subjects (`/term exams 2026-12-07 to
+2026-12-18`, or your term note) and the exams on your deadline list ("Linear Algebra final exam", "Topology midterm",
+a viva). Quizzes and tests count only inside an exam period, unless you set `exam_season.quizzes` on. A season runs
+from the day before its first exam to the end of its last; exam days up to three days apart are one season. You're
+told once when one starts, with what it will do.
+
+Each part has its own switch, on the card in the dashboard's Features tab, with `/examseason` on Telegram (tap a part
+to switch it) or in Settings → Exam season:
+- **Hold non-critical updates** (`hold_updates`): updates wait until the exams are over. A release marked critical
+  still installs, and so does `kurooto update --now` or an Update tap.
+- **Check the alarm every night** (`alarm_check`, at `night_at`, 21:30): every night of the period, the alarm check
+  from [Kurooto keeps itself working](#kurooto-keeps-itself-working) runs (with the Morning alarm on), and your call
+  line's check when a leave-by call is set for tomorrow. It tries the safe fix first; if tomorrow's alarm might still
+  not ring: "... Set your phone's own alarm too." A morning exam with no alarm before it gets one line too.
+- **Ask the evening before** (`eve`, from `eve_at`, 18:00): once per exam, "Tomorrow: Linear Algebra final exam at
+  09:00. Where is it, which seat? Calculator? ID card?". Reply in one line ("Hall B, seat 34, calculator, ID card"),
+  tap Later to answer on your next call, or answer on the phone app. When the exam's time isn't known it asks that
+  too ("starts 14:00").
+- **Alarm to leave on time** (`leave_alarm`): on the exam day, `leave_min` (45) minutes before it starts, or the time
+  you said ("leave 8:10"). With Phone calls on it's a call that rings like the wake-up alarm (also on silent, also
+  while this computer sleeps), saying where to go and what you said; **Later** rings again in 5 minutes, twice.
+  Without Phone calls it's an urgent message. "no alarm" in your answer turns it off for that exam.
+- **Two-minute debrief after each exam** (`debrief`): half an hour after it ends (`exam_min`, 180 minutes, after the
+  start; the evening, when its time isn't known), "How did it go?". Your answer goes, as you said it, into the
+  subject's course note (`<subject>/course.md`) under **Exam debriefs**, or into that day's daily note when the exam
+  has no subject. "Nothing new" skips it.
+- **No calls during an exam** (`no_calls`): from 15 minutes before an exam until `exam_min` after its start.
+
+**The quiz call before an exam stays off unless you pick it for that exam:** the card (and `/examseason`, with Quiz
+and Phone calls on) has a switch per exam. Picked, Kurooto calls you for a quiz at `quiz_call_at` (19:00) the evening
+before, instead of the practice offer, and exam mode's daily practice (`quiz.exam_daily`) may call for it with
+`quiz.by_call` on. For the season's other exams, the practice stays a message.
+
+"exam season?" or `/examseason` shows the season, its exams with what you told Kurooto, and the parts that are on.
+On calls on the exam day and the day before, the brief has the exam and what you said about it.
+
+*Settings* (`exam_season.*`): `hold_updates`, `alarm_check`, `eve`, `leave_alarm`, `debrief`, `no_calls` (all on),
+`night_at` (21:30), `eve_at` (18:00), `leave_min` (45), `exam_min` (180), `quizzes` (off), `quiz_call_at` (19:00).
+*Undo:* turn Exam season off in Features: its timers, leave-by alarms (also on your call line) and update hold go at
+once, and the call-blocking during exams stops. Or switch off just the part you don't want. Debriefs already written
+stay in your notes; answers are kept in `exam_season.json` in the state folder for 30 days after the exam.
+*Leaves:* with Phone calls on, the leave-by alarm's time, the exam and what you said about it go to your call line
+(like any call). Nothing else.
 
 ### Subjects and timetable
 Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable
@@ -1995,8 +2041,9 @@ Kurooto updates itself. Settings → `updates.mode`:
 - **ask**: Telegram asks you (Update / Later / Skip).
 - **off**.
 
-Every release is signed; Kurooto refuses anything unsigned, older, or changed on the way. The previous two versions
-stay installed. If a new version crashes three times in its first five minutes, Kurooto goes back to the one before
+Every release is signed; Kurooto refuses anything unsigned, older, or changed on the way. During your exams,
+[Exam season](#exam-season) holds back every update that isn't marked critical (in its signed manifest) until the
+exams are over. The previous two versions stay installed. If a new version crashes three times in its first five minutes, Kurooto goes back to the one before
 and won't offer the broken one again; you're told on Telegram. `kurooto update --now` installs an update right away.
 
 Your call line is updated after Kurooto updates, if its code changed. The Android app shows an Update button; the

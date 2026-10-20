@@ -45,6 +45,7 @@ class Release:
     issued: float
     files: dict  # name -> {"url", "sha256", "size"}
     notes: str = ""
+    critical: bool = False  # signed in the manifest: installs even while a feature holds updates (exam season)
 
 
 class UpdateError(RuntimeError):
@@ -100,7 +101,8 @@ class Updater:
         man = self._signed(ptr["manifest_url"])
         if str(man.get("version")) != version:
             raise UpdateError("the release manifest doesn't match the pointer; ignored")
-        return Release(version, channel, float(ptr.get("issued", 0)), man["files"], man.get("notes", ""))
+        notes, critical = man.get("notes", ""), bool(man.get("critical"))
+        return Release(version, channel, float(ptr.get("issued", 0)), man["files"], notes, critical)
 
     # ---------------------------------------------------------------------------------------- staging
     def _download(self, name: str, f: dict, dest: Path) -> Path:
