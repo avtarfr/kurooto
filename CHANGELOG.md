@@ -177,6 +177,11 @@ The [manual](docs/MANUAL.md) has the detail.
   (`checkins.asleep_defers`).
 - Morning alarm: `alarm.keep_awake` keeps this computer awake from 12 hours before the alarm until it rings (Linux:
   lid closed too; macOS through caffeinate; Windows), so the morning plan is drafted on time. Off until you turn it on.
+- Morning alarm: the daily alarm rings even if this computer slept all night. The next one goes to your call line
+  as soon as the last one has rung (and at start, and after the computer wakes), instead of only at 00:02.
+- Morning alarm: "no alarm tomorrow", "cancel Friday's alarm" or `/alarm skip friday` skips one day and the daily
+  alarm comes back after it; "cancel my alarm" skips the morning that's set instead of the daily alarm coming back
+  at midnight; "turn my daily alarm off" (`/alarm daily off`) stops it, `/alarm daily 7:00` sets it.
 - Stay awake on charger: `awake.lid` keeps a Linux laptop running with its lid closed while plugged in. Off until you
   turn it on. The hold now ends when Kurooto stops, even after a crash.
 - Study tracker: it notices you're away on Wayland too (GNOME, KDE, logind, and a watch for change on Hyprland and

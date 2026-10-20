@@ -792,6 +792,12 @@ on silent. The call line places it, so it rings even if your computer is asleep.
 answered: it rings twice more, 5 minutes apart (`alarm.retries`). **Snooze** gives 10 minutes (`alarm.snooze_min`).
 Needs Phone calls.
 
+- **The daily alarm** (`alarm.daily`, on `alarm.days`) is always with your call line well before the night: the next
+  one is sent as soon as one has rung (and at start, and after this computer wakes), so it rings even if the computer
+  sleeps all night. One alarm per morning: one you set for a morning replaces the daily one. **Skip a day:** "no alarm
+  tomorrow", "cancel Friday's alarm", `/alarm skip friday` (the daily alarm is back the day after); "cancel my alarm"
+  skips the morning that's set. **Turn it off:** "turn my daily alarm off" or `/alarm daily off`; `/alarm daily 7:00`
+  sets it. *Undo:* a skipped day can't be un-skipped; set that morning's alarm yourself ("wake me at 7 tomorrow").
 - **The night follows your alarm:** while it's set, no other calls from your bedtime (`alarm.bedtime`, default: the
   start of the night hours) until it rings; once you're up, calls can come even if the usual night hours aren't over.
   Without an alarm, the night is the fixed hours (`availability.night`, 23:30 to 07:00).
