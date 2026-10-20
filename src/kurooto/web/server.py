@@ -35,6 +35,10 @@ if TYPE_CHECKING:
 register_defaults("web", {"port": 8770})
 register_defaults("look", {"palette": "kuro"})  # the pages' colours: kuro (deep greens) or rose (the original)
 PALETTES = ("kuro", "rose")
+# the dashboard's layout: dense (one full-screen board, on screens 1280 px wide or more; narrower ones get roomy) or
+# roomy; projects: folders of git repositories its PROJECTS box shows (empty: Research's repositories)
+register_defaults("look", {"layout": "dense", "projects": []})
+LAYOUTS = ("dense", "roomy")
 CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; "
     "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
@@ -240,9 +244,12 @@ class Server:
         jsave(access_file(app.paths), {"url": self.url, "token": self.tools_token, "started": time.time()})
 
     def fill(self, html: str) -> str:
-        """A page with its key, the version and the palette (look.palette) written in."""
+        """A page with its key, the version, the palette (look.palette) and the layout (look.layout) written in."""
         palette = self.app.settings.get("look.palette")
         palette = palette if palette in PALETTES else "kuro"
+        layout = self.app.settings.get("look.layout")
+        layout = layout if layout in LAYOUTS else "dense"
+        html = html.replace("{{LAYOUT}}", layout)
         return html.replace("{{TOKEN}}", self.token).replace("{{VERSION}}", __version__).replace("{{PALETTE}}", palette)
 
     def start(self) -> Server:

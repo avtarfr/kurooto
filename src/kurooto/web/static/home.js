@@ -1,6 +1,13 @@
 // The dashboard: STATUS (this computer), SYSTEMS (Kurooto's features as living cells round a beating core; what
 // happens runs along the nerves), NOTES (your notes and their links) and tabs for activity, AI jobs, the
 // schedule, features and settings. Everything comes from /api/stream; nothing loads from the internet.
+//
+// Two layouts (Settings → look.layout). "dense", the default on screens 1280 px wide or more, is one full-screen
+// board: thin borders with each pane's name in its top line, STATUS down the left as a btop-like monitor (processor,
+// memory, graphics card, network, disks, processes, study today, projects), SYSTEMS with today, what's due, the AI's
+// corner and recent events round the cells, NOTES with its folders and latest edits, and a terminal below whose
+// border also holds the other tabs (Alt+1… switches terminals, Alt+/ finds a note). "roomy" is the earlier
+// layout with bigger type, used by itself on narrower screens.
 "use strict";
 const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s) => document.querySelector(s);
@@ -10,16 +17,25 @@ const FONT = '"JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace'
 // the canvases' colours are the page's palette (style.css: "kuro" by default, "rose" with look.palette = rose)
 const css = (name, fallback) => { const v = getComputedStyle(document.body).getPropertyValue(name).trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : fallback; };
 const PAL = { bg: css("--bg", "#0b0f0a"), fg: css("--fg", "#dad3c8"), accent: css("--accent-text", "#a6c07a"), lav: css("--lav", "#8dbdb3"),
-  pink: css("--pink", "#d6967a"), peach: css("--peach", "#ddb866"), sand: css("--sand", "#e4d8b4"), rose: css("--rose", "#b9a6cc") };
+  pink: css("--pink", "#d6967a"), peach: css("--peach", "#ddb866"), sand: css("--sand", "#e4d8b4"), rose: css("--rose", "#b9a6cc"),
+  bad: css("--bad", "#e8735a"), panel: css("--panel", "#151b12") };
 const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const mix = (a, b, t) => "#" + hexRgb(a).map((v, i) => Math.round(v + (hexRgb(b)[i] - v) * t).toString(16).padStart(2, "0")).join("");
 const rgba = (h, a) => { const [r, g, b] = hexRgb(h); return `rgba(${r},${g},${b},${a})`; };
 PAL.dim = mix(PAL.fg, PAL.bg, 0.5); PAL.line = mix(PAL.lav, PAL.bg, 0.62);
+// cool to warm, for meters and graphs: the palette's lav, peach and pink
+const grad = (v) => (v = clamp(v || 0, 0, 1)) < 0.5 ? mix(PAL.lav, PAL.peach, v * 2) : mix(PAL.peach, PAL.pink, (v - 0.5) * 2);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const ago = (sec) => { if (sec == null || !isFinite(sec)) return "—"; sec = Math.max(0, sec); if (sec < 60) return `${Math.round(sec)}s`; if (sec < 3600) return `${Math.round(sec / 60)}m`; if (sec < 86400) return `${Math.floor(sec / 3600)}h${String(Math.floor((sec % 3600) / 60)).padStart(2, "0")}`; return `${Math.floor(sec / 86400)}d`; };
 const bytes = (n) => { if (!n) return "0"; const u = ["B", "K", "M", "G", "T"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return `${n.toFixed(i > 1 ? 1 : 0)}${u[i]}`; };
+const hm = (ts) => new Date(ts * 1000).toTimeString().slice(0, 5);
 const api = async (path, body) => (await fetch(`/api/${path}`, { method: body === undefined ? "GET" : "POST", headers: { "X-Kurooto": TOKEN, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) })).json();
 let LIGHT = false; // lighter drawing on modest computers (hardware profile "light") or with reduced motion
+
+// ------------------------------------------------------------------------------------------------ layout
+const WANT = () => (document.body.dataset.layout === "roomy" ? "roomy" : "dense");
+let DENSE = false;
+const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && window.innerHeight >= 600;
 
 const SPRITES = new Map();
 function glow(color) {
@@ -34,6 +50,13 @@ function fitCanvas(cv) {
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, w, h };
 }
+// text on a plate of background, so it stays readable over whatever moves behind it
+function say(ctx, s, x, y, col, align = "left", font = `9px ${FONT}`) {
+  ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
+  const wd = ctx.measureText(s).width, x0 = align === "right" ? x - wd : align === "center" ? x - wd / 2 : x;
+  ctx.fillStyle = rgba(PAL.bg, 0.72); ctx.fillRect(x0 - 2, y - 9, wd + 4, 12); ctx.fillStyle = col; ctx.fillText(s, x, y);
+  return wd;
+}
 
 // ------------------------------------------------------------------------------------------------ SYSTEMS
 const COLORS = { telegram: "lav", chat: "peach", reminders: "pink", checkins: "rose", deadlines: "accent", gbrain: "lav",
@@ -47,6 +70,8 @@ const SHORT = { telegram: "telegram", chat: "chat", reminders: "reminders", chec
   handwritten: "handwritten", study: "study", research: "research", calendar: "calendar", alarm: "alarm", calls: "calls",
   skills: "skills", remember: "remember", terminals: "terminals", backups: "backups", google: "google" };
 const OUTBOUND = /fired|asked|told|notified|done|reply/;
+const BRAIN = { agy: "agy", codex: "codex", claude: "claude", gemini: "gemini", ollama: "local AI" };
+const brainName = (b) => (b && BRAIN[b.id]) || "AI"; // agy, codex…; any other brain is "your AI"
 
 class Body {
   constructor(cv) {
@@ -60,12 +85,20 @@ class Body {
     const on = m.cells.filter((c) => c.on);
     const ids = on.map((c) => c.id);
     for (const id of [...this.o.keys()]) if (!ids.includes(id)) this.o.delete(id);
+    const fx = Object.fromEntries((m.features || []).map((f) => [f.id, f]));
     on.forEach((c, i) => {
       let o = this.o.get(c.id);
       if (!o) { o = { id: c.id, label: SHORT[c.id] || c.title, color: COLORS[c.id] || "fg", seed: Math.random() * 10, act: 0, flash: 0, hist: [] }; this.o.set(c.id, o); }
       o.i = i; o.target = c.act; o.data = c; o.hist.push(c.act); if (o.hist.length > 60) o.hist.shift();
+      const f = fx[c.id] || {};
+      o.proc = f.proc || null; o.last = f.last; o.next = f.next; o.down = !!f.down;
     });
-    $("#sys-meta").textContent = `${on.length} feature${on.length === 1 ? "" : "s"} on`;
+    let meta = `${on.length} feature${on.length === 1 ? "" : "s"} on`;
+    const down = (m.features || []).filter((f) => f.down).length;
+    if (down) meta += ` · ${down} not running`;
+    if (DENSE && m.core && m.core.mem) meta += ` · kurooto ${(m.core.cpu * 100).toFixed(1)}% · ${bytes(m.core.mem)}`;
+    if (m.link) meta += ` · call line ${m.link.connected ? "linked" : "offline"}`;
+    $("#sys-meta").textContent = meta;
   }
   event(e) {
     const o = this.o.get(e.cell);
@@ -102,11 +135,7 @@ class Body {
     for (let i = 0; i < N; i++) { const p = pts[i], q = pts[(i + 1) % N]; m = mid(p, q); ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]); }
     ctx.closePath();
   }
-  say(ctx, s, x, y, col, align = "left", font = `9px ${FONT}`) {
-    ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
-    const wd = ctx.measureText(s).width, x0 = align === "right" ? x - wd : align === "center" ? x - wd / 2 : x;
-    ctx.fillStyle = rgba(PAL.bg, 0.72); ctx.fillRect(x0 - 2, y - 9, wd + 4, 12); ctx.fillStyle = col; ctx.fillText(s, x, y);
-  }
+  say(ctx, s, x, y, col, align = "left", font = `9px ${FONT}`) { return say(ctx, s, x, y, col, align, font); }
   ecg(ctx, w, now, base, amp) {
     const g = (d, mu, sd) => Math.exp(-((d - mu) ** 2) / (2 * sd * sd));
     const at = (tt) => { let v = 0.004 * Math.sin(tt * 47), col = null, best = 0;
@@ -133,13 +162,40 @@ class Body {
     }
     flush(); ctx.globalCompositeOperation = "source-over";
   }
+  // dense: the day's hour lines carried out past the clock, the hours on the outer ring, and the cells' orbit
+  grid(ctx, cx, cy, r0, ringR, wide = 1) {
+    ctx.lineWidth = 1;
+    const r1 = ringR * 1.2;
+    for (let k = 0; k < 24; k++) {
+      const a = -Math.PI / 2 + (k / 24) * TAU, c = Math.cos(a), s = Math.sin(a);
+      ctx.strokeStyle = rgba(PAL.fg, k % 6 ? 0.03 : 0.07);
+      ctx.beginPath(); ctx.moveTo(cx + c * r0, cy + s * r0 * 0.86); ctx.lineTo(cx + c * r1 * wide, cy + s * r1 * 0.86); ctx.stroke();
+      if (k % 3 === 0) {
+        ctx.font = `8px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = rgba(PAL.fg, 0.24);
+        ctx.fillText(String(k).padStart(2, "0"), cx + c * (r1 * wide + 9), cy + s * (r1 + 9) * 0.86);
+      }
+    }
+    ctx.strokeStyle = rgba(PAL.fg, 0.06); ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.ellipse(cx, cy, ringR * wide, ringR * 0.86, 0, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]); ctx.strokeStyle = rgba(PAL.fg, 0.05);
+    ctx.beginPath(); ctx.ellipse(cx, cy, r1 * wide, r1 * 0.86, 0, 0, TAU); ctx.stroke();
+  }
   clock(ctx, cx, cy, r, t) {
     ctx.strokeStyle = rgba(PAL.line, 0.9); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
     for (let h = 0; h < 24; h++) { const a = -Math.PI / 2 + (h / 24) * TAU, L = h % 6 === 0 ? 6 : 3;
       ctx.strokeStyle = rgba(PAL.fg, h % 6 === 0 ? 0.45 : 0.18);
       ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * (r - L), cy + Math.sin(a) * (r - L)); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); ctx.stroke(); }
+    const angHM = (s) => { const [H, M] = String(s).split(":").map(Number); return -Math.PI / 2 + ((H + (M || 0) / 60) / 24) * TAU; };
     const ang = (d) => -Math.PI / 2 + ((d.getHours() + d.getMinutes() / 60) / 24) * TAU;
-    for (const j of (this.state && this.state.schedule) || []) {
+    const today = (this.state && this.state.today) || {};
+    for (const c of (today.items || []).filter((x) => x.end)) { // classes and calendar events: arcs on the day's ring
+      ctx.strokeStyle = rgba(c.state === "now" ? PAL.accent : c.kind === "event" ? PAL.rose : PAL.lav, c.state === "skipped" ? 0.25 : c.state === "done" ? 0.4 : 0.85);
+      ctx.lineWidth = 4; ctx.setLineDash(c.state === "skipped" ? [2, 3] : []);
+      ctx.beginPath(); ctx.arc(cx, cy, r + 4, angHM(c.at), angHM(c.end)); ctx.stroke();
+    }
+    ctx.setLineDash([]); ctx.lineWidth = 1;
+    for (const j of (today.items || []).filter((x) => !x.end)) { const a = angHM(j.at); ctx.fillStyle = PAL.pink; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r + 4), cy + Math.sin(a) * (r + 4), 2.4, 0, TAU); ctx.fill(); }
+    if (!today.items) for (const j of (this.state && this.state.schedule) || []) {
       if (j.kind !== "once") continue;
       const when = new Date(j.when * 1000); if (when - Date.now() > 86400000) continue;
       const a = ang(when); ctx.fillStyle = PAL.pink; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r + 4), cy + Math.sin(a) * (r + 4), 2.3, 0, TAU); ctx.fill();
@@ -154,25 +210,35 @@ class Body {
     ctx.clearRect(0, 0, w, h);
     if (!this.state) return;
     const now = performance.now() / 1000, cpu = this.state.sys.cpu || 0;
-    const ringR = clamp(Math.min(w * 0.36, (h - 70) / 1.9), 60, 420), cx = w / 2, cy = h / 2 + 4;
+    let ringR, cx = w / 2, cy = h / 2 + 4;
+    if (DENSE) { // room for the four corners: events, the AI, today, what's due
+      const lh = 12, top = 24 + 6 * lh, bottom = h - 18 - 6 * lh;
+      ringR = clamp(Math.min(w * 0.35, (bottom - top - 88) / 1.72), 56, 420);
+      cy = top + 0.86 * ringR + 28 + Math.max(0, (bottom - top - 88 - 1.72 * ringR) / 2);
+    } else ringR = clamp(Math.min(w * 0.36, (h - 70) / 1.9), 60, 420);
     const coreR = ringR * 0.18, rc = coreR * 2.2;
     this.tickBeats(now, cpu);
     if (!LIGHT) this.ecg(ctx, w, now, cy, ringR * 0.55);
     const cells = [...this.o.values()], n = Math.max(1, cells.length), orbit = LIGHT ? 0 : (t * TAU) / 180;
+    // dense, with many features: the orbit widens sideways, where the pane has room
+    const wide = DENSE ? Math.min(w * 0.42 / ringR, clamp(1 + (n - 10) * 0.035, 1, 1.3)) : 1;
     for (const o of cells) {
       const a = -Math.PI / 2 + (o.i / n) * TAU + orbit + 0.05 * Math.sin(t * 0.13 + o.seed);
       const rr = ringR * (1 + 0.04 * Math.sin(t * 0.21 + o.seed * 2));
-      o.x = cx + Math.cos(a) * rr; o.y = cy + Math.sin(a) * rr * 0.86;
+      o.x = cx + Math.cos(a) * rr * wide; o.y = cy + Math.sin(a) * rr * 0.86;
       o.act += ((o.target || 0) - o.act) * 0.05; o.flash *= 0.94; o.pump = (o.pump || 0) * 0.88;
     }
+    if (DENSE) this.grid(ctx, cx, cy, rc + 14, ringR, wide);
     const ctrl = (a, b, seed) => { const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, k = 0.12 * d * Math.sin(t * 0.37 + seed); return { x: mx - (dy / d) * k, y: my + (dx / d) * k }; };
     const core = { x: cx, y: cy };
     for (const o of cells) {
       const c = ctrl(core, o, o.seed), fill = o.pump || 0, g = ctx.createLinearGradient(cx, cy, o.x, o.y);
       g.addColorStop(0, rgba(PAL.accent, 0.18 + 0.12 * fill)); g.addColorStop(1, rgba(PAL[o.color], 0.28 + 0.4 * o.act + 0.12 * fill));
       ctx.strokeStyle = g; ctx.lineWidth = 0.8 + 2 * o.act + o.flash * 1.5 + 0.5 * fill;
+      ctx.setLineDash(o.down ? [3, 6] : []);
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.quadraticCurveTo(c.x, c.y, o.x, o.y); ctx.stroke();
     }
+    ctx.setLineDash([]);
     ctx.globalCompositeOperation = "lighter";
     for (const p of this.systoles) {
       const d = now - p.t; if (d < 0 || d > 1.0) continue;
@@ -202,6 +268,7 @@ class Body {
       if (sp >= 1 && !p.done) { p.done = true; if (p.to === "core") { this.ripples.push({ t0: now, col: p.color }); this.beat = Math.max(this.beat, 0.6); } else o.flash = 1; }
     }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    this.room = (TAU * ringR * (1 + wide) / 2) / n; // the arc each cell has: crowded rings say less per cell
     for (const o of cells) this.cell(ctx, o, t, ringR);
     this.beat *= 0.9;
     const breath = 0.5 + 0.5 * Math.sin((TAU * t) / (6.5 - 3.5 * clamp(cpu * 2.5, 0, 1)));
@@ -218,11 +285,12 @@ class Body {
     ctx.fillText((this.state.name || "Kurooto").toUpperCase().slice(0, 10), cx, cy);
     this.ripples = this.ripples.filter((r) => now - r.t0 < 1.8);
     for (const r of this.ripples) { const k = (now - r.t0) / 1.8; ctx.strokeStyle = rgba(r.col, 0.45 * (1 - k)); ctx.lineWidth = 1.5 * (1 - k); ctx.beginPath(); ctx.arc(cx, cy, coreR * (1.1 + k * 3.2), 0, TAU); ctx.stroke(); }
-    if (!cells.length) this.say(ctx, "No features on yet: turn some on in the Features tab below.", cx, h - 16, PAL.dim, "center", `11px ${FONT}`);
+    if (DENSE) this.panels(ctx, w, h, 12);
+    if (!cells.length) this.say(ctx, `No features on yet: turn some on in the ${DENSE ? "features tab (terminal's border)" : "Features tab below"}.`, cx, h - 16 - (DENSE ? 84 : 0), PAL.dim, "center", `11px ${FONT}`);
     this.hoverCard();
   }
   cell(ctx, o, t, ringR) {
-    const base = ringR * 0.075, col = PAL[o.color], breath = 0.5 + 0.5 * Math.sin((TAU * t) / (5.5 - 4.2 * o.act) + o.seed);
+    const base = ringR * 0.075, col = o.down ? PAL.dim : PAL[o.color], breath = 0.5 + 0.5 * Math.sin((TAU * t) / (5.5 - 4.2 * o.act) + o.seed);
     const r = base * (1 + (0.05 + 0.1 * o.act) * breath + 0.2 * o.flash + 0.08 * (o.pump || 0)); o.r = r;
     const hr = base * 1.32; ctx.lineWidth = 1;
     o.hist.forEach((v, k) => { const a = -Math.PI / 2 + (k / 60) * TAU, L = 1.2 + base * 0.55 * v;
@@ -233,11 +301,73 @@ class Body {
       const gs = r * (3.5 + 2 * o.act); ctx.drawImage(glow(col), o.x - gs / 2, o.y - gs / 2, gs, gs); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
     this.blob(ctx, o.x, o.y, r, t * (0.6 + o.act), o.seed, 0.05 + 0.05 * o.act + 0.05 * o.flash, spin);
     ctx.fillStyle = PAL.bg; ctx.fill(); ctx.fillStyle = rgba(col, 0.2 + 0.35 * o.act + 0.3 * o.flash); ctx.fill();
-    ctx.strokeStyle = rgba(col, 0.85); ctx.lineWidth = 1.1; ctx.stroke();
+    ctx.strokeStyle = rgba(col, o.down ? 0.5 : 0.85); ctx.lineWidth = 1.1; ctx.setLineDash(o.down ? [2, 3] : []); ctx.stroke(); ctx.setLineDash([]);
     const ly = o.y + hr + base * 0.55 + 10;
-    this.say(ctx, o.label, o.x, ly, rgba(PAL.fg, 0.95), "center", `600 10px ${FONT}`);
+    this.say(ctx, o.label, o.x, ly, rgba(o.down ? PAL.dim : PAL.fg, 0.95), "center", `600 10px ${FONT}`);
+    const vital = this.vital(o), tight = DENSE && this.room < 84;
+    if (!(tight && vital === "quiet")) this.say(ctx, vital, o.x, ly + 11, o.down ? rgba(PAL.bad, 0.85) : rgba(col, 0.85), "center", `9px ${FONT}`);
+    const more = DENSE && !tight ? this.detail(o) : "";
+    if (more) this.say(ctx, more, o.x, ly + 21, rgba(PAL.fg, 0.42), "center", `8px ${FONT}`);
+  }
+  // a cell's figures: a feature with its own processes shows their cpu and memory, the others what they did
+  vital(o) {
     const ev = o.data.events;
-    this.say(ctx, ev ? `${ev} in 2 min` : "quiet", o.x, ly + 11, rgba(col, 0.85), "center", `9px ${FONT}`);
+    if (o.down) return "not running";
+    if (!DENSE) return ev ? `${ev} in 2 min` : "quiet";
+    if (o.proc) return `${(o.proc.cpu * 100).toFixed(1)}% · ${bytes(o.proc.mem)}`;
+    if (ev) return `${ev} in 2 min`;
+    return o.last != null ? `last ${ago(o.last)} ago` : "quiet";
+  }
+  detail(o) {
+    if (o.proc) return [`up ${ago(o.proc.up)}`, o.proc.threads ? `${o.proc.threads} threads` : ""].filter(Boolean).join(" · ");
+    if (o.next) { const d = o.next - Date.now() / 1000; return d < 86400 ? `next ${d < 3600 ? "in " + ago(d) : hm(o.next)}` : ""; }
+    return "";
+  }
+  // the four corners: recent events, the AI's corner, today, what's due
+  panels(ctx, w, h, lh) {
+    const st = this.state || {}, nowS = Date.now() / 1000;
+    const dim = rgba(PAL.fg, 0.42), mid = rgba(PAL.fg, 0.64);
+    const cut = Math.max(16, Math.floor((w * 0.5 - 24) / 5.4));
+    // a row is [text, colour] or [[title, tail], colour]: the title gives way so the tail (a time, a status) survives
+    const fitRow = (s) => (Array.isArray(s) ? (s[0].length + s[1].length > cut ? s[0].slice(0, Math.max(4, cut - s[1].length - 1)) + "…" : s[0]) + s[1] : s.slice(0, cut));
+    const block = (rows, x, align, fromTop) => rows.slice(0, 6).forEach(([s, col], i, arr) =>
+      say(ctx, fitRow(s), x, fromTop ? 24 + i * lh : h - 20 - (arr.length - 1 - i) * lh, col, align));
+    // recent events, newest first
+    const ev = [[feed.length ? "events" : "no events yet", dim]];
+    feed.slice(0, 5).forEach((e, i) => {
+      const fresh = SEEN.has(e) && performance.now() / 1000 - SEEN.get(e) < 6;
+      const o = this.o.get(e.cell);
+      ev.push([`${(e.ts || "").slice(11, 16)} ${String(e.kind).replace(/_/g, " ")}${detailOf(e) ? " · " + detailOf(e) : ""}`,
+        fresh ? (o ? PAL[o.color] : PAL.accent) : rgba(PAL.fg, 0.62 - i * 0.08)]);
+    });
+    block(ev, 12, "left", true);
+    // the AI: what it ran lately, the local models, what's scheduled
+    const ag = st.agent || {}, jobs = st.jobs || [];
+    const rows = [[brainName(ag.brain) === "AI" ? "your AI" : brainName(ag.brain), dim]];
+    const run = jobs.filter((j) => j.status === "running" || j.status === "queued");
+    for (const j of run.slice(0, 2)) rows.push([[j.title || "a request", `  ${j.effort || ""} ${ago(nowS - j.created)}  ${j.status}`], PAL.peach]);
+    for (const j of jobs.filter((x) => !run.includes(x)).slice(0, 3 - Math.min(2, run.length)))
+      rows.push([[j.title || "a request", `  ${j.seconds ? ago(j.seconds) : ""}  ${j.status}`], j.status === "ok" ? mid : PAL.bad]);
+    if (!jobs.length) rows.push(["no AI requests yet", mid]);
+    if (ag.models) rows.push([`local models: ${ag.models.length ? ag.models.map((m) => `${m.name} ${bytes(m.vram)}`).join(", ") : "nothing loaded"}`, mid]);
+    if (ag.next) rows.push([[`${ag.scheduled} scheduled · next ${ag.next.what}`, ` in ${ago(ag.next.when - nowS)}`], mid]);
+    block(rows, w - 12, "right", true);
+    // today
+    const td = st.today || {}, items = td.items || [];
+    const day = [["today", dim]];
+    const live = items.filter((x) => x.state !== "done" && x.state !== "skipped");
+    for (const x of live.slice(0, 4)) day.push([`${x.at}${x.end ? "–" + x.end : ""} ${x.what}${x.state === "now" ? "  now" : ""}`, x.state === "now" ? PAL.accent : mid]);
+    if (td.focus) day.push([`focus until ${td.focus}`, PAL.peach]);
+    if (td.quiet) day.push([`no calls until ${td.quiet}`, PAL.peach]);
+    if (day.length === 1) day.push([items.length ? "nothing more today" : "nothing scheduled", mid]);
+    block(day, 12, "left", false);
+    // what's due
+    const dl = st.deadlines || [];
+    const when = (hr) => (hr < 0 ? `overdue ${ago(-hr * 3600)}` : `in ${ago(hr * 3600)}`);
+    const due = [[`due · ${st.deadlines_open != null ? st.deadlines_open : dl.length} open`, dim]];
+    for (const d of dl.slice(0, 5)) due.push([[d.title, `  ${when(d.hours)}`], d.hours < 0 ? PAL.bad : d.hours < 24 ? PAL.peach : mid]);
+    if (!dl.length) due.push([this.o.has("deadlines") ? "nothing due" : "deadlines are off", mid]);
+    block(due, w - 12, "right", false);
   }
   hoverCard() {
     const card = $("#body-card");
@@ -245,10 +375,18 @@ class Body {
     let best = null, bd = 1e9;
     for (const o of this.o.values()) { const d = Math.hypot(o.x - this.mouse.x, o.y - this.mouse.y); if (d < (o.r || 10) * 2.2 && d < bd) { bd = d; best = o; } }
     if (!best) { card.classList.add("hidden"); return; }
-    card.innerHTML = `<div class="h">${esc(best.data.title)}</div><div>${best.data.events} event${best.data.events === 1 ? "" : "s"} in the last 2 minutes</div>`;
+    const p = best.proc;
+    card.innerHTML = `<div class="h">${esc(best.data.title)}</div><div>${best.data.events} event${best.data.events === 1 ? "" : "s"} in the last 2 minutes</div>` +
+      (best.down ? '<div class="bad2">its program isn\'t running</div>' : "") +
+      (p ? `<div class="d">${p.n > 1 ? `its ${p.n} processes` : "its process"}: cpu ${(p.cpu * 100).toFixed(1)}% · ${bytes(p.mem)} · ${p.threads} threads · up ${ago(p.up)}</div>` : "") +
+      (best.last != null ? `<div class="d">last event ${ago(best.last)} ago</div>` : "") +
+      (best.next ? `<div class="d">next scheduled ${hm(best.next)}</div>` : "");
     card.classList.remove("hidden");
   }
 }
+// an event's details in a few words (never message text: the events hold names, counts and times)
+const detailOf = (e) => Object.entries(e).filter(([k]) => !["ts", "kind", "t", "cell"].includes(k))
+  .map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`).join(" ").slice(0, 60);
 
 // -------------------------------------------------------------------------------------------------- NOTES
 const GROUP_COL = { inbox: "fg", journal: "sand", root: "fg" };
@@ -266,11 +404,13 @@ class Mind {
     for (const n of this.nodes.values()) { n.deg = 0; n.nb = new Set(); }
     for (const [a, b] of this.links) { a.deg++; b.deg++; a.nb.add(b.id); b.nb.add(a.id); }
     const groups = [...new Set([...this.nodes.values()].map((n) => n.group))].sort();
+    this.groups = groups.length;
     this.anchor = new Map(groups.map((gname, i) => [gname, { x: Math.cos((i / groups.length) * TAU) * 210, y: Math.sin((i / groups.length) * TAU) * 190 }]));
     if (first) for (const n of this.nodes.values()) { const a = this.anchor.get(n.group); n.x = a.x + (Math.random() - 0.5) * 120; n.y = a.y + (Math.random() - 0.5) * 120; }
     else for (const id of g.changed || []) { const n = this.nodes.get(id); if (n) this.flares.push({ n, t0: performance.now() / 1000 }); this.alpha = Math.max(this.alpha, 0.35); }
-    $("#mind-meta").textContent = `${this.nodes.size} notes · ${this.links.length} links`;
+    this.meta();
   }
+  meta() { $("#mind-meta").textContent = `${this.nodes.size} notes · ${this.links.length} links` + (DENSE ? ` · ${this.groups || 0} folders` : ""); }
   step() {
     const nodes = [...this.nodes.values()]; if (!nodes.length) return; const a = this.alpha;
     for (let i = 0; i < nodes.length; i++) { const p = nodes[i];
@@ -289,7 +429,7 @@ class Mind {
     const xs = nodes.map((n) => n.x).sort((a, b) => a - b), ys = nodes.map((n) => n.y).sort((a, b) => a - b);
     const q = (arr, f) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(f * (arr.length - 1))))];
     const x0 = q(xs, 0.02), x1 = q(xs, 0.98), y0 = q(ys, 0.02), y1 = q(ys, 0.98);
-    const k = Math.min((w - 160) / Math.max(50, x1 - x0), (h - 90) / Math.max(50, y1 - y0)), tk = clamp(k, 0.25, 2.5);
+    const k = Math.min((w - (DENSE ? 120 : 160)) / Math.max(50, x1 - x0), (h - 90) / Math.max(50, y1 - y0)), tk = clamp(k, 0.25, 2.5);
     this.view.k += (tk - this.view.k) * 0.05; this.view.x += (-(x0 + x1) / 2 - this.view.x) * 0.05; this.view.y += (-(y0 + y1) / 2 - this.view.y) * 0.05;
   }
   toScreen(n, w, h) { return { x: w / 2 + (n.x + this.view.x) * this.view.k, y: h / 2 + 8 + (n.y + this.view.y) * this.view.k }; }
@@ -316,6 +456,26 @@ class Mind {
     for (const n of this.nodes.values()) { const show = n === focus || (match && match.has(n.id) && match.size < 25) || (!focus && !match && hubs.has(n.id)); if (!show) continue;
       const S = this.toScreen(n, w, h), txt = n.title.length > 30 ? n.title.slice(0, 29) + "…" : n.title, tw = ctx.measureText(txt).width;
       ctx.fillStyle = rgba(PAL.bg, 0.75); ctx.fillRect(S.x - tw / 2 - 3, S.y - 21, tw + 6, 13); ctx.fillStyle = rgba(n === focus ? PAL.fg : this.colorOf(n.group), 0.9); ctx.fillText(txt, S.x, S.y - 8); }
+    if (DENSE) this.hud(ctx, w, h, nowS);
+  }
+  // dense: the folders and their counts, whether anything was touched this hour, and the notes edited last
+  hud(ctx, w, h, nowS) {
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.font = `11px ${FONT}`;
+    const counts = new Map();
+    for (const n of this.nodes.values()) counts.set(n.group, (counts.get(n.group) || 0) + 1);
+    const legend = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const lw = Math.max(...legend.map(([g, c]) => ctx.measureText(`${g.slice(0, 14)} ${c}`).width)) + 26;
+    ctx.fillStyle = rgba(PAL.bg, 0.72); ctx.fillRect(w - lw - 10, 14, lw, legend.length * 14 + 6);
+    let y = 26;
+    for (const [gname, c] of legend) {
+      ctx.fillStyle = this.colorOf(gname); ctx.beginPath(); ctx.arc(w - lw - 1, y - 4, 3, 0, TAU); ctx.fill();
+      ctx.fillStyle = rgba(PAL.fg, 0.58); ctx.fillText(`${gname.slice(0, 14)} ${c}`, w - lw + 8, y); y += 14;
+    }
+    const hot = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 3600).length;
+    say(ctx, hot ? `${hot} note${hot > 1 ? "s" : ""} touched this hour` : "quiet: nothing touched this hour", 14, 26, rgba(PAL.fg, 0.5), "left", `11px ${FONT}`);
+    const recent = [...this.nodes.values()].sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 5);
+    recent.forEach((n, i) => say(ctx, `~ ${n.id.slice(-40)} · ${ago(nowS - (n.mtime || 0))} ago`, 14, h - 14 - i * 15,
+      rgba(i === 0 ? PAL.sand : PAL.fg, 0.72 - i * 0.11), "left", `11px ${FONT}`));
   }
   pick(x, y) { let best = null, bd = 14; for (const n of this.nodes.values()) { const S = this.toScreen(n, this.w, this.h), d = Math.hypot(S.x - x, S.y - y); if (d < bd) { bd = d; best = n; } } return best; }
   async showCard(n, pinned) {
@@ -324,6 +484,7 @@ class Mind {
     card.classList.remove("hidden");
     if (pinned) { try { const r = await api(`note?id=${encodeURIComponent(n.id)}`); if (this.selected === n) card.querySelector("pre").textContent = (r.text || "").trim().split("\n").slice(0, 14).join("\n"); } catch { /* leave it */ } }
   }
+  openSearch() { const s = $("#mind-search"); s.classList.remove("hidden"); s.value = this.query; s.focus(); }
   wire() {
     const cv = this.cv; let down = null;
     cv.addEventListener("wheel", (e) => { e.preventDefault(); this.autofit = false; const r = cv.getBoundingClientRect(), before = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
@@ -341,24 +502,33 @@ class Mind {
     cv.addEventListener("dblclick", async (e) => { const r = cv.getBoundingClientRect(), n = this.pick(e.clientX - r.left, e.clientY - r.top); if (n) await api("open-note", { id: n.id }); });
     const s = $("#mind-search");
     s.addEventListener("input", () => { this.query = s.value.trim().toLowerCase(); });
-    s.addEventListener("keydown", (e) => { if (e.key === "Escape") { this.query = ""; s.value = ""; s.classList.add("hidden"); } });
-    window.addEventListener("keydown", (e) => { if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); s.classList.remove("hidden"); s.focus(); } });
+    s.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { this.query = ""; s.value = ""; s.classList.add("hidden"); }
+      if (e.key === "Enter") { // go to the first match
+        const hit = [...this.nodes.values()].find((n) => (n.title + " " + n.id).toLowerCase().includes(this.query));
+        if (hit) { this.selected = hit; this.autofit = false; this.view.x = -hit.x; this.view.y = -hit.y; this.view.k = Math.max(this.view.k, 1.6); this.showCard(hit, true); }
+      }
+    });
+    window.addEventListener("keydown", (e) => { if (e.key === "/" && !e.altKey && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) { e.preventDefault(); this.openSearch(); } });
   }
 }
 
 // -------------------------------------------------------------------------------------- STATUS and tabs
 let last = null;
 function renderStatus(m) {
+  if (DENSE) { renderBoard(m); return; }
   const s = m.sys, pct = (v) => `${Math.round((v || 0) * 100)}%`;
   const meter = (v, col) => `<div class="meter"><i style="width:${clamp(v * 100, 0, 100)}%;background:var(--${col})"></i></div>`;
   const gpu = (s.gpus || []).map((g) => esc(g.name) + (g.vram_gb ? ` (${g.vram_gb} GB)` : "")).join(", ") || "none in use";
+  $("#status").className = "";
+  $("#status-meta").textContent = "";
   $("#status").innerHTML = `
     <div class="row2"><span class="k">cpu</span><span>${pct(s.cpu)}${s.temps.cpu ? ` · ${s.temps.cpu}°C` : ""}</span></div>
     <div class="cores">${s.cores.map((c) => `<i style="height:${Math.max(4, c * 100)}%"></i>`).join("")}</div>
     <div class="row2"><span class="k">memory</span><span>${bytes(s.mem_used)} / ${bytes(s.mem_total)}</span></div>${meter(s.mem, "lav")}
     <div class="row2"><span class="k">network</span><span>↓ ${bytes(s.rx)}/s ↑ ${bytes(s.tx)}/s</span></div>
     <div class="row2"><span class="k">disk free</span><span>${bytes(s.disk_free)} of ${bytes(s.disk_total)}</span></div>${meter(1 - s.disk_free / s.disk_total, "peach")}
-    ${s.battery ? `<div class="row2"><span class="k">battery</span><span>${Math.round(s.battery.percent)}% ${s.battery.ac ? "on charger" : "on battery"}</span></div>` : ""}
+    ${s.battery ? `<div class="row2"><span class="k">battery</span><span>${Math.round(s.battery.percent)}% ${s.battery.ac === false ? "on battery" : "on charger"}</span></div>` : ""}
     <div class="row2"><span class="k">graphics</span><span>${gpu}</span></div>
     <div class="row2"><span class="k">profile</span><span>${esc(s.profile || "—")}</span></div>
     <div class="row2"><span class="k">up</span><span>${ago(s.uptime)}</span></div>
@@ -372,28 +542,276 @@ function renderStatus(m) {
   $("#ver").textContent = m.version;
 }
 
+// ---------------------------------------------------------------------------- STATUS, dense: a btop-like monitor
+// Graphs are dots in character-sized cells (two columns and four rows of dots per character, like braille), coloured
+// cool to warm by height; meters are the same gradient cut at the value.
+const SB = { built: false, sort: "cpu", cw: 7.5, lh: 17 };
+try { SB.sort = localStorage.getItem("kurooto.dash.procsort") === "mem" ? "mem" : "cpu"; } catch { /* fine */ }
+function dotGraph(cv, vals, { max = 1, mirror = null, lines = null } = {}) {
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  const px = SB.cw / 2, py = SB.lh / 4, cols = Math.max(4, Math.floor(w / px)), r = Math.max(0.8, Math.min(px, py) * 0.3);
+  const draw = (series, top, height, down, peak) => {
+    const rows = Math.max(1, Math.floor(height / py)), colors = [...Array(rows)].map((_, i) => grad(rows > 1 ? i / (rows - 1) : 0.5));
+    const v = series.slice(-cols), off = cols - v.length;
+    v.forEach((x, i) => {
+      const k = clamp((x || 0) / (peak || 1), 0, 1), n = k > 0 ? Math.max(1, Math.round(k * rows)) : 0;
+      for (let j = 0; j < n; j++) {
+        ctx.fillStyle = colors[j];
+        const y = down ? top + (j + 0.5) * py : top + height - (j + 0.5) * py;
+        ctx.beginPath(); ctx.arc((off + i + 0.5) * px, y, r, 0, TAU); ctx.fill();
+      }
+    });
+  };
+  if (mirror) { // two series about the middle: the first grows up, the second down (network: down and up)
+    const half = h / 2;
+    draw(vals, 0, half, false, max); draw(mirror, half, half, true, lines || max);
+    ctx.fillStyle = rgba(PAL.fg, 0.08); ctx.fillRect(0, Math.round(half), w, 1);
+  } else draw(vals, 0, h, false, max);
+}
+const meter = (v, cls = "") => `<span class="m grow ${cls}"><i style="clip-path:inset(0 ${(100 - clamp((v || 0) * 100, 0, 100)).toFixed(1)}% 0 0)"></i></span>`;
+const pct = (v) => `${Math.round((v || 0) * 100)}%`;
+const temp = (c) => (c == null ? "" : `<span class="${c >= 90 ? "hot" : c >= 80 ? "warm" : "v"}">${Math.round(c)}°</span>`);
+function buildBoard() {
+  const st = $("#status");
+  st.className = "board";
+  st.innerHTML = `
+  <div class="hd"><span><b id="sb-name">KUROOTO</b> <span class="k" id="sb-ver"></span> <span id="sb-mode" class="warm"></span><span id="sb-badge" class="warm"></span></span><span class="clock" id="sb-clock"></span></div>
+  <div class="hd"><span id="sb-up"></span><span id="sb-act"></span></div>
+  <div class="box" id="bx-cpu"><div class="lab"><span class="t">CPU</span><span class="meta" id="cpu-meta"></span></div>
+    <div class="graph"><canvas class="cv" id="g-cpu"></canvas><span class="pct" id="cpu-pct"></span></div>
+    <div class="cpus" id="cpu-cores"></div><div class="row" id="cpu-info"></div></div>
+  <div class="duo" id="duo-mem">
+    <div class="box" id="bx-mem"><div class="lab"><span class="t">MEM</span><span class="meta" id="mem-meta"></span></div><div id="mem-body"></div></div>
+    <div class="box" id="bx-gpu"><div class="lab"><span class="t">GPU</span><span class="meta" id="gpu-meta"></span></div><div id="gpu-body"></div><div class="graph"><canvas class="cv" id="g-gpu"></canvas></div></div>
+  </div>
+  <div class="duo">
+    <div class="box" id="bx-net"><div class="lab"><span class="t">NET</span><span class="meta" id="net-meta"></span></div>
+      <div class="graph"><canvas class="cv" id="g-net"></canvas><span class="tag top" id="net-rx"></span><span class="tag top right k" id="net-peak"></span><span class="tag bot" id="net-tx"></span></div><div class="row" id="net-tot"></div></div>
+    <div class="box" id="bx-disk"><div class="lab"><span class="t">DISKS</span><span class="meta" id="disk-meta"></span></div><div id="disk-body"></div></div>
+  </div>
+  <div class="box procs" id="bx-proc"><div class="lab"><span class="t">PROCESSES</span><span class="meta" id="proc-meta"></span></div><div id="proc-body"></div></div>
+  <div class="box study" id="bx-study"><div class="lab"><span class="t">STUDY TODAY</span><span class="meta" id="study-meta"></span></div><div id="study-body"></div></div>
+  <div class="box proj" id="bx-proj"><div class="lab"><span class="t">PROJECTS</span><span class="meta" id="proj-meta"></span></div><div id="proj-body"></div></div>`;
+  const probe = document.createElement("canvas").getContext("2d");
+  const fs = getComputedStyle(st);
+  probe.font = `${fs.fontSize} ${FONT}`;
+  SB.cw = probe.measureText("0000000000").width / 10 || 7.5;
+  SB.lh = parseFloat(fs.lineHeight) || 17;
+  $("#g-cpu").style.height = `${SB.lh * 4}px`;
+  $("#g-gpu").style.height = `${SB.lh}px`;
+  $("#g-net").style.height = `${SB.lh * 3}px`;
+  $("#proc-meta").onclick = (e) => { const b = e.target.closest("[data-sort]"); if (b) setSort(b.dataset.sort); };
+  $("#proc-body").onclick = (e) => { const b = e.target.closest("[data-sort]"); if (b) setSort(b.dataset.sort); };
+  SB.built = true; SB.cores = -1;
+  clockTick();
+}
+function setSort(k) { SB.sort = k; try { localStorage.setItem("kurooto.dash.procsort", k); } catch { /* fine */ } if (last) renderBoard(last); }
+function clockTick() {
+  const c = $("#sb-clock"); if (!c) return;
+  const d = new Date();
+  c.innerHTML = `${d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }).toUpperCase().replace(",", "")} <b>${d.toTimeString().slice(0, 8)}</b>`;
+}
+function renderBoard(m) {
+  if (!SB.built || !$("#bx-cpu")) buildBoard();
+  $("#status-meta").textContent = "kurooto top";
+  const s = m.sys, H = s.hist || {}, nowS = Date.now() / 1000;
+  // header: name, version, mode; up, events today, power; pause / off / setup
+  $("#sb-name").textContent = (m.name || "Kurooto").toUpperCase();
+  $("#sb-ver").textContent = m.version;
+  const mode = m.power && m.power.mode !== "normal" ? (m.power.mode === "saver" ? " saving battery" : ` paused ${m.power.why}`) : "";
+  $("#sb-mode").textContent = mode;
+  const u = m.updates || {};
+  $("#sb-badge").textContent = u.ready && u.ready.version ? ` update ${u.ready.version} ${u.ready.staged ? "tonight" : "available"}` : "";
+  const p = s.power;
+  const pw = !p ? "" : p.ac === false
+    ? ` · <span class="k">battery</span> <span class="${p.pct < 20 ? "hot" : "v"}">${Math.round(p.pct)}%</span>${p.secs ? ` <span class="k">${ago(p.secs)} left</span>` : ""}${p.watts ? ` <span class="k">${p.watts.toFixed(1)}W</span>` : ""}`
+    : ` · <span class="k">${p.ac ? "ac" : "power"}</span> <span class="v">${Math.round(p.pct)}%</span>`;
+  $("#sb-up").innerHTML = `<span><span class="k">UP</span> <span class="v">${ago(s.uptime)}</span></span><span><span class="k">EVENTS TODAY</span> <span class="v">${m.events_today || 0}</span></span>${pw ? `<span>${pw.replace(/^ · /, "")}</span>` : ""}`;
+  $("#sb-act").innerHTML = `${m.power && m.power.mode === "paused" ? '<button data-pw="resume">resume</button>' : '<button data-pw="pause">pause 1h</button>'} · <button data-pw="off">off</button> · <a href="/setup">setup</a>`;
+  // CPU: the history, every core with its own short history, speed, load, temperatures, fans
+  $("#cpu-meta").textContent = [s.cpu_name, s.phys && s.phys !== s.threads ? `${s.phys} cores` : "", `${s.threads} threads`].filter(Boolean).join(" · ");
+  $("#cpu-pct").innerHTML = `<span style="color:${grad(s.cpu)}">${pct(s.cpu)}</span>`;
+  dotGraph($("#g-cpu"), H.cpu || []);
+  const n = s.cores.length, cols = n <= 8 ? 1 : n <= 20 ? 2 : n <= 36 ? 3 : 4, rows = Math.ceil(n / cols);
+  const grid = $("#cpu-cores");
+  if (SB.cores !== n) {
+    SB.cores = n;
+    grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`; grid.style.gridAutoFlow = "column";
+    grid.style.gridTemplateRows = `repeat(${rows}, auto)`;
+    grid.classList.toggle("narrow", cols > 2);
+    grid.innerHTML = s.cores.map((_, i) => `<div class="core"><span class="k">C${i}</span>${meter(0)}<span class="r v" id="c${i}"></span><canvas class="cv" id="gc${i}"></canvas></div>`).join("");
+  }
+  s.cores.forEach((v, i) => {
+    const row = grid.children[i];
+    row.querySelector("i").style.clipPath = `inset(0 ${(100 - clamp(v * 100, 0, 100)).toFixed(1)}% 0 0)`;
+    row.querySelector(".r").textContent = pct(v);
+    if (cols <= 2 && H.cores && H.cores[i]) dotGraph(row.querySelector("canvas"), H.cores[i]);
+  });
+  const t = s.temps || {}, info = [];
+  if (s.freq) info.push(`<span class="v">${(s.freq.cur / 1000).toFixed(1)}</span><span class="k">GHz</span>`);
+  if (s.load) info.push(`<span class="k">load</span> <span class="v">${s.load.map((x) => x.toFixed(2)).join(" ")}</span>`);
+  if (t.cpu != null) info.push(`<span class="k">cpu</span> ${temp(t.cpu)}`);
+  if (t.disk != null) info.push(`<span class="k">disk</span> ${temp(t.disk)}`);
+  if (s.fans && s.fans.length) info.push(`<span class="k">fans</span> <span class="v">${s.fans.join("/")}</span><span class="k"> rpm</span>`);
+  $("#cpu-info").innerHTML = info.join("  ");
+  // memory: used, cached, available, swap
+  const mx = s.memx || {}, sw = s.swapx;
+  $("#mem-meta").textContent = bytes(mx.total);
+  const mrow = (k, v, frac, extra = "") => `<div class="row"><span class="k" style="width:3.6em">${k}</span>${meter(frac)}<span class="v r" style="min-width:4.4em">${v}</span>${extra}</div>`;
+  $("#mem-body").innerHTML = mrow("used", bytes(mx.used), mx.used / mx.total) + mrow("cache", bytes(mx.cached), mx.cached / mx.total) +
+    mrow("avail", bytes(mx.available), mx.available / mx.total) + (sw ? mrow("swap", `${bytes(sw.used)}/${bytes(sw.total)}`, sw.pct) : "");
+  // the graphics card: live figures where the computer gives them, else its name
+  const g = s.gpu, known = (s.gpus || [])[0], gbox = $("#bx-gpu");
+  gbox.classList.toggle("hidden", !g && !known);
+  $("#duo-mem").classList.toggle("one", !g && !known);
+  if (g && !g.asleep) {
+    $("#gpu-meta").textContent = (g.name || "").replace(/^NVIDIA (GeForce )?/, "");
+    $("#gpu-body").innerHTML = mrow("use", pct(g.util), g.util) + mrow("vram", `${bytes(g.mem_used)}/${bytes(g.mem_total)}`, g.mem_total ? g.mem_used / g.mem_total : 0) +
+      `<div class="row">${g.temp != null ? temp(g.temp) : ""}${g.watts != null ? ` <span class="v">${g.watts.toFixed(0)}W</span>${g.watts_max ? `<span class="k">/${g.watts_max.toFixed(0)}W</span>` : ""}` : ""}</div>`;
+    $("#g-gpu").parentElement.classList.remove("hidden");
+    dotGraph($("#g-gpu"), H.gpu || []);
+  } else if (g || known) {
+    $("#gpu-meta").textContent = ((g && g.name) || (known && known.name) || "").replace(/^NVIDIA (GeForce )?/, "");
+    $("#gpu-body").innerHTML = `<div class="row"><span class="k">${g && g.asleep ? "asleep (saving power)" : "no live figures"}</span></div>` +
+      (known && known.vram_gb ? `<div class="row"><span class="k">vram</span> <span class="v">${known.vram_gb} GB</span></div>` : "");
+    $("#g-gpu").parentElement.classList.add("hidden");
+  }
+  // network: down above the line, up below; totals since the computer started
+  const net = s.net || {}, peak = Math.max(10240, ...(H.rx || []), ...(H.tx || []));
+  $("#net-meta").textContent = net.dev || "";
+  $("#net-rx").innerHTML = `<span style="color:var(--lav)">↓</span> <span class="v">${bytes(net.rx)}/s</span>`;
+  $("#net-tx").innerHTML = `<span style="color:var(--pink)">↑</span> <span class="v">${bytes(net.tx)}/s</span>`;
+  dotGraph($("#g-net"), H.rx || [], { max: peak, mirror: H.tx || [] });
+  $("#net-peak").textContent = `${bytes(peak)}/s`;
+  $("#net-tot").innerHTML = net.dev ? `<span class="k">total</span> <span class="v">↓${bytes(net.rx_total)} ↑${bytes(net.tx_total)}</span>` : '<span class="k">no connection</span>';
+  // disks: how full; reads and writes per second
+  const io = s.io;
+  $("#disk-meta").textContent = io ? `r ${bytes(io.read)}/s w ${bytes(io.write)}/s` : "";
+  const label = (mnt) => (mnt.length > 1 ? mnt.replace(/[\\/]+$/, "") : mnt).split(/[\\/]/).slice(-1)[0] || mnt;
+  $("#disk-body").innerHTML = (s.disks || []).slice(0, 4).map((d) => `<div class="row" title="${esc(d.mount)}"><span class="k" style="width:5.5em;overflow:hidden;text-overflow:ellipsis">${esc(d.mount === "/" ? "/" : label(d.mount))}</span>${meter(d.pct)}<span class="v r" style="min-width:3em">${pct(d.pct)}</span></div>`).join("") ||
+    '<div class="row"><span class="k">no disks to show</span></div>';
+  // processes: sorted by cpu or memory; Kurooto's own marked ✦
+  $("#proc-meta").innerHTML = `<button data-sort="cpu" class="${SB.sort === "cpu" ? "on" : ""}">cpu</button><button data-sort="mem" class="${SB.sort === "mem" ? "on" : ""}">mem</button> · <span class="mine" style="color:var(--pink)">✦</span> kurooto`;
+  const procs = [...(m.procs || [])].sort((a, b) => (SB.sort === "mem" ? b.mem - a.mem : b.cpu - a.cpu || b.mem - a.mem));
+  // study today and projects first, so the processes take what's left
+  const study = m.study, sbox = $("#bx-study");
+  sbox.classList.toggle("hidden", study == null);
+  if (study != null) {
+    const tot = study.reduce((a, r) => a + r.seconds, 0), top = Math.max(1, ...study.map((r) => r.seconds));
+    $("#study-meta").textContent = `${(tot / 3600).toFixed(1)}h`;
+    $("#study-body").innerHTML = study.slice(0, 4).map((r) => `<div class="row"><span class="v" style="width:9em;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</span>${meter(r.seconds / top)}<span class="v r" style="min-width:3.5em">${(r.seconds / 3600).toFixed(1)}h</span></div>`).join("") ||
+      '<div class="row"><span class="k">no study time yet today</span></div>';
+  }
+  const pr = m.projects || [];
+  $("#proj-meta").textContent = pr.length ? `${pr.length}` : "";
+  $("#proj-body").innerHTML = pr.slice(0, 5).map((r) => {
+    const bits = [r.last ? `<span class="k">commit</span> <span class="v">${ago(nowS - r.last)}</span>` : '<span class="k">no commits</span>'];
+    if (r.ahead) bits.push(`<span class="warm">↑${r.ahead} to push</span>`); else if (r.ahead === 0) bits.push('<span class="k">pushed</span>');
+    if (r.dirty) bits.push(`<span class="k">${r.dirty} changed</span>`);
+    return `<div class="row"><span class="mark">⌥</span><span class="v" style="width:13em;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</span>${bits.join(" · ")}</div>`;
+  }).join("") || '<div class="row"><span class="k">your git folders: Settings → look.projects</span></div>';
+  const body = $("#proc-body"), box = $("#bx-proc");
+  const avail = box.clientHeight - 12, fit = Math.max(1, Math.floor(avail / SB.lh) - 1);
+  const head = `<tr><th class="id" style="width:5.6em">pid</th><th class="n">process</th><th style="width:3em">thr</th><th data-sort="cpu" class="${SB.sort === "cpu" ? "on" : ""}" style="width:4.4em">cpu</th><th data-sort="mem" class="${SB.sort === "mem" ? "on" : ""}" style="width:5em">mem</th></tr>`;
+  body.innerHTML = `<table>${head}${procs.slice(0, fit).map((r) => `<tr><td class="id">${r.pid}</td><td class="n">${r.own ? `<span class="mine">✦ ${esc(r.own === "kurooto" ? "kurooto" : r.name)}</span>` : `<span class="v">${esc(r.name)}</span>`}</td><td class="k">${r.threads ?? ""}</td><td style="color:${grad(Math.min(1, r.cpu))}">${(r.cpu * 100).toFixed(1)}%</td><td class="v">${bytes(r.mem)}</td></tr>`).join("")}</table>`;
+}
+
 const feed = [];
+const SEEN = new WeakMap(); // when each live event arrived (fresh ones are bright in SYSTEMS)
 const TABS = { activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
-let tab = "activity";
+const DLABEL = { activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
+let tab = "activity"; // roomy: the tab below the panes
+let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat), a terminal, or one of TABS
+const current = () => (DENSE ? dtab : tab);
 function showTab(name) {
+  if (DENSE) { showDense(name === "terminals" ? (TERM.list[0] || {}).name || "kurooto" : name); return; }
   tab = name;
-  $("#tabs").replaceChildren(...Object.entries(TABS).map(([k, v]) => { const b = document.createElement("button"); b.textContent = v; b.className = k === tab ? "on" : ""; b.onclick = () => showTab(k); return b; }));
+  renderNav();
   try { localStorage.setItem("kurooto.dash.tab", name); } catch { /* fine */ }
   // the settings-like tabs get room (the canvases above shrink and redraw by themselves)
   $(".grid").classList.toggle("tall", ["features", "phone", "research", "about", "settings", "terminals"].includes(name));
   renderTab();
 }
+function renderNav() {
+  const nav = $("#tabs");
+  if (!DENSE) {
+    nav.onclick = null;
+    nav.replaceChildren(...Object.entries(TABS).map(([k, v]) => { const b = document.createElement("button"); b.textContent = v; b.className = k === tab ? "on" : ""; b.onclick = () => showTab(k); return b; }));
+    return;
+  }
+  // dense: TERMINAL and its tabs set into the pane's top border, then the other pages, then the keys
+  const terms = denseTerms(), isTerm = TERM.list.some((t) => t.name === dtab);
+  let html = '<span class="t">TERMINAL</span><span class="rule">─</span>';
+  terms.forEach((t, i) => { html += `<button class="tab${dtab === t.name ? " on" : ""}" data-dt="${esc(t.name)}" title="Alt+${i + 1}"><span class="k">${i + 1}</span>${esc(t.label)}<span class="dot${t.live ? " live" : ""}"></span></button><span class="rule">─</span>`; });
+  if (!TERM.on) html += `<button class="tab off${dtab === "termsoff" ? " on" : ""}" data-dt="termsoff" title="a shell, your AI's program and the log, right here">+ terminals</button><span class="rule">─</span>`;
+  if (isTerm) html += '<button class="tab" data-restart="1" title="end the program in this terminal and start it again">restart</button><span class="rule">─</span>';
+  html += `<span class="rule">┤</span><span class="pages">${Object.keys(DLABEL).map((k) => `<button class="tab${dtab === k ? " on" : ""}" data-dt="${k}">${DLABEL[k]}</button>`).join("")}</span><span class="rule">├</span>`;
+  html += `<span class="meta">alt+1..${terms.length} tabs · alt+/ find note</span>`;
+  nav.innerHTML = html;
+  nav.onclick = (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.dt) showDense(b.dataset.dt);
+    if (b.dataset.restart && TERM.shown) api(`term/${TERM.shown}/restart`, {}).then(() => termAttach(TERM.shown));
+  };
+}
 function renderTab() {
-  const body = $("#tab-body");
-  if (tab === "activity") body.innerHTML = feed.length ? `<table>${feed.slice(0, 80).map((e) => `<tr><td>${esc((e.ts || "").slice(11, 19))}</td><td>${esc(e.kind.replace(/_/g, " "))}</td><td class="d">${esc(Object.entries(e).filter(([k]) => !["ts", "kind", "t", "cell"].includes(k)).map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`).join(" ").slice(0, 160))}</td></tr>`).join("")}</table>` : "Nothing yet. Things Kurooto does appear here as they happen.";
-  else if (tab === "jobs" && last) body.innerHTML = last.jobs.length ? `<table><tr><th>when</th><th>request</th><th>effort</th><th>took</th><th>result</th></tr>${last.jobs.map((j) => `<tr><td>${ago(Date.now() / 1000 - j.created)} ago</td><td>${esc(j.title)}</td><td>${esc(j.effort || "")}</td><td>${j.seconds ? Math.round(j.seconds) + "s" : ""}</td><td class="${j.status === "ok" ? "ok2" : j.status === "failed" ? "bad2" : ""}">${esc(j.status)}${j.verdict && j.verdict !== "ok" ? " · " + esc(j.verdict) : ""}</td></tr>`).join("")}</table>` : "No AI requests yet.";
-  else if (tab === "schedule" && last) body.innerHTML = last.schedule.length ? `<table><tr><th>when</th><th>what</th></tr>${last.schedule.map((s) => `<tr><td>${new Date(s.when * 1000).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</td><td>${esc(s.what)}</td></tr>`).join("")}</table>` : "Nothing scheduled.";
-  else if (tab === "features") renderFeatures(body);
-  else if (tab === "phone") renderPhone(body);
-  else if (tab === "research") renderResearch(body);
-  else if (tab === "about") renderAboutTab(body);
-  else if (tab === "settings") renderSettings(body);
-  else if (tab === "terminals") renderTerminals(body);
+  if (DENSE) { if (DLABEL[dtab]) renderPage(dtab, $("#page-host")); return; }
+  renderPage(tab, $("#tab-body"));
+}
+function renderPage(name, body) {
+  if (!body) return;
+  if (name === "activity") body.innerHTML = feed.length ? `<table>${feed.slice(0, 80).map((e) => `<tr><td>${esc((e.ts || "").slice(11, 19))}</td><td>${esc(e.kind.replace(/_/g, " "))}</td><td class="d">${esc(Object.entries(e).filter(([k]) => !["ts", "kind", "t", "cell"].includes(k)).map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`).join(" ").slice(0, 160))}</td></tr>`).join("")}</table>` : "Nothing yet. Things Kurooto does appear here as they happen.";
+  else if (name === "jobs" && last) body.innerHTML = last.jobs.length ? `<table><tr><th>when</th><th>request</th><th>effort</th><th>took</th><th>result</th></tr>${last.jobs.map((j) => `<tr><td>${ago(Date.now() / 1000 - j.created)} ago</td><td>${esc(j.title)}</td><td>${esc(j.effort || "")}</td><td>${j.seconds ? Math.round(j.seconds) + "s" : ""}</td><td class="${j.status === "ok" ? "ok2" : j.status === "failed" ? "bad2" : ""}">${esc(j.status)}${j.verdict && j.verdict !== "ok" ? " · " + esc(j.verdict) : ""}</td></tr>`).join("")}</table>` : "No AI requests yet.";
+  else if (name === "schedule" && last) body.innerHTML = last.schedule.length ? `<table><tr><th>when</th><th>what</th></tr>${last.schedule.map((s) => `<tr><td>${new Date(s.when * 1000).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</td><td>${esc(s.what)}</td></tr>`).join("")}</table>` : "Nothing scheduled.";
+  else if (name === "features") renderFeatures(body);
+  else if (name === "phone") renderPhone(body);
+  else if (name === "research") renderResearch(body);
+  else if (name === "about") renderAboutTab(body);
+  else if (name === "settings") renderSettings(body);
+  else if (name === "terminals") renderTerminals(body);
+}
+// dense: the terminal pane's three hosts (the chat, a terminal, a page) stay; switching shows one
+function denseHosts() {
+  const tb = $("#tab-body");
+  if ($("#page-host")) return;
+  tb.onclick = tb.onchange = tb.onsubmit = null;
+  tb.innerHTML = '<div id="chat-host" class="chat hidden"></div><div id="term-host" class="term-host hidden"></div><div id="page-host" class="page hidden"></div>';
+  chatInit($("#chat-host"));
+}
+function showDense(name) {
+  const isTerm = TERM.list.some((t) => t.name === name);
+  if (!(name === "kurooto" || name === "termsoff" || isTerm || DLABEL[name])) name = "kurooto";
+  dtab = name;
+  try { localStorage.setItem("kurooto.dash.dtab", name); } catch { /* fine */ }
+  denseHosts(); renderNav();
+  $("#chat-host").classList.toggle("hidden", name !== "kurooto");
+  $("#term-host").classList.toggle("hidden", !isTerm);
+  $("#page-host").classList.toggle("hidden", name === "kurooto" || isTerm);
+  if (name === "kurooto") { chatDraw(); $("#chat-input").focus({ preventScroll: true }); }
+  else if (isTerm) loadXterm().then(() => termShow(name)).catch(() => { $("#page-host").classList.remove("hidden"); $("#page-host").textContent = "The terminal display couldn't load."; });
+  else if (name === "termsoff") {
+    const p = $("#page-host"); p.onclick = p.onchange = p.onsubmit = null;
+    p.innerHTML = '<p>Terminals is off. With it on, this pane also has your AI\'s own program (agy, Codex or Claude Code), a shell and Kurooto\'s log, each a real terminal. Turn it on in <a href="#" data-goto="features">features</a>, only on a computer that\'s yours alone: anyone who can open this page can type into them.</p>';
+    p.onclick = (e) => { if (e.target.dataset.goto) { e.preventDefault(); showDense(e.target.dataset.goto); } };
+  } else renderPage(name, $("#page-host"));
+}
+// the terminal tabs: your AI's program, a shell, the kurooto chat, the log (the chat works without Terminals)
+function agentLabel(title) {
+  const b = last && last.agent && last.agent.brain;
+  if (b && BRAIN[b.id]) return BRAIN[b.id];
+  const known = { "Antigravity (agy)": "agy", "ChatGPT / Codex": "codex", "Claude Code (Advanced)": "claude" };
+  return known[title] || String(title || "agent").toLowerCase().split(/[ (/]/)[0];
+}
+function denseTerms() {
+  const by = Object.fromEntries(TERM.list.map((t) => [t.name, t])), out = [];
+  const add = (name, label) => { if (by[name]) out.push({ name, label, live: by[name].alive || TERM.live.has(name) }); };
+  add("agent", by.agent ? agentLabel(by.agent.title) : "");
+  add("shell", "shell");
+  out.push({ name: "kurooto", label: ((last && last.name) || "Kurooto").toLowerCase(), live: true });
+  add("logs", "logs");
+  for (const t of TERM.list) if (!["agent", "shell", "ask", "logs"].includes(t.name)) add(t.name, String(t.title).toLowerCase());
+  return out;
 }
 const said = {}; // a feature's last Set up result (✓ or ✗), shown on its card
 async function renderFeatures(body) {
@@ -600,7 +1018,83 @@ async function renderSettings(body) {
     if (t.dataset.json !== undefined) { try { value = JSON.parse(t.value); } catch { $("#saved").textContent = "That isn't valid; it wasn't saved."; return; } }
     const r = await api("settings", { key: t.dataset.key, value });
     $("#saved").textContent = r.ok ? `Saved ${t.dataset.key}.` : r.error;
+    if (r.ok) settingChanged(t.dataset.key, value);
   };
+}
+
+// ------------------------------------------------------------------------------------------- the kurooto tab
+// Plain English, as on Telegram: quick things happen at once, a bigger request goes to your AI and its answer prints
+// here (not on Telegram). help, check, jobs and clear are this tab's own words.
+const CHAT = { log: [], hist: [], hi: -1 };
+const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+const promptText = () => `${((last && last.name) || "Kurooto").toLowerCase()} ) `;
+function chatInit(host) {
+  host.innerHTML = '<div class="chat-log" id="chat-log"></div><label class="chat-in"><span class="p" id="chat-p"></span><input id="chat-input" spellcheck="false" autocomplete="off" aria-label="Ask in plain English"></label>';
+  const inp = $("#chat-input");
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { const v = inp.value.trim(); inp.value = ""; if (v) chatSend(v); }
+    else if (e.key === "ArrowUp" && CHAT.hist.length) { e.preventDefault(); CHAT.hi = CHAT.hi < 0 ? CHAT.hist.length - 1 : Math.max(0, CHAT.hi - 1); inp.value = CHAT.hist[CHAT.hi]; }
+    else if (e.key === "ArrowDown" && CHAT.hi >= 0) { e.preventDefault(); CHAT.hi++; if (CHAT.hi >= CHAT.hist.length) { CHAT.hi = -1; inp.value = ""; } else inp.value = CHAT.hist[CHAT.hi]; }
+    else if (e.key === "l" && e.ctrlKey) { e.preventDefault(); CHAT.log = []; chatDraw(); }
+  });
+  host.addEventListener("mouseup", () => { if (!String(getSelection())) inp.focus({ preventScroll: true }); });
+  chatDraw();
+}
+function chatBanner() {
+  const name = ((last && last.name) || "Kurooto").toUpperCase().split("").join(" ");
+  const brain = brainName(last && last.agent && last.agent.brain);
+  return `<span class="banner">${esc(name)}</span>   <span class="d">plain English, right here</span>
+<span class="d">quick:</span> <span class="ex">"push the evening check-in by 30 min"</span> <span class="d">·</span> <span class="ex">"what's due this week?"</span> <span class="d">·</span> <span class="ex">"no calls till 6"</span>
+<span class="d">bigger:</span> anything else goes to ${esc(brain === "AI" ? "your AI" : brain)}; the answer prints here   <span class="d">(help · check · jobs · clear)</span>
+`;
+}
+function chatDraw() {
+  const el = $("#chat-log"); if (!el) return;
+  el.innerHTML = chatBanner() + CHAT.log.map((l) => `\n<span class="${l.c}">${l.html}</span>`).join("");
+  el.scrollTop = el.scrollHeight;
+  $("#chat-p").textContent = promptText();
+}
+function chatAdd(text, c = "a", html = false) { CHAT.log.push({ c, html: html ? text : esc(text) }); if (CHAT.log.length > 400) CHAT.log.splice(0, 100); chatDraw(); }
+const CHAT_HELP = `Type what you'd send Kurooto on Telegram: a reminder, "what's due this week?", a question for your AI.
+  check   is every feature that's on working?
+  jobs    your AI's latest requests
+  clear   a clean screen (Ctrl+L)
+  ↑ ↓     what you typed before
+Alt+1… switches the terminal pane's tabs; Alt+/ finds a note.`;
+async function chatSend(text) {
+  CHAT.hist.push(text); CHAT.hi = -1;
+  chatAdd(`<span class="p">${esc(promptText())}</span>${esc(text)}`, "q", true);
+  const word = text.toLowerCase();
+  if (word === "clear") { CHAT.log = []; chatDraw(); return; }
+  if (word === "help") { chatAdd(CHAT_HELP, "d"); return; }
+  if (word === "jobs") {
+    const js = (last && last.jobs) || [];
+    chatAdd(js.length ? js.map((j) => `${(j.status || "").padEnd(7)} ${ago(Date.now() / 1000 - j.created).padStart(5)} ago  ${j.title}${j.seconds ? `  (${Math.round(j.seconds)}s)` : ""}`).join("\n") : "No AI requests yet.", "a");
+    return;
+  }
+  if (word === "check") {
+    try {
+      const st = await api("state"), on = st.modules.filter((m) => m.on);
+      chatAdd(on.length ? on.map((m) => `${m.ready ? "✓" : "✗"} ${m.title}${m.ready ? "" : ": " + m.why}`).join("\n") : "No features are on yet (the features tab).", "a");
+    } catch { chatAdd("Kurooto didn't answer (is it running?).", "x"); }
+    return;
+  }
+  let r;
+  try { r = await api("say", { text }); } catch { chatAdd("Kurooto didn't answer (is it running?).", "x"); return; }
+  if (!r.ok) { chatAdd(r.error || "That didn't work.", "x"); return; }
+  if (!r.job) { chatAdd((r.replies || []).join("\n") || "Done."); return; }
+  chatAdd("working on it; the answer prints here", "w");
+  for (let i = 0; i < 900; i++) {
+    await sleep(2000);
+    let j; try { j = await api(`job?id=${encodeURIComponent(r.job)}`); } catch { continue; }
+    if (j.ok === false) { chatAdd(j.error || "That request is gone.", "x"); return; }
+    if (j.status === "ok" || j.status === "failed") {
+      chatAdd(`── ${text.slice(0, 60)}${j.status === "failed" ? " (failed)" : ""}`, "d");
+      chatAdd(String(j.answer || "").trim() || "(no answer)", j.status === "ok" ? "a" : "x");
+      return;
+    }
+  }
+  chatAdd("No answer after 30 minutes; it may still be going (the jobs tab).", "d");
 }
 
 // ------------------------------------------------------------------------------------------------ wiring
@@ -610,12 +1104,34 @@ function connect() {
   es.onmessage = (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     if (m.t === "graph") mind.update(m);
-    else if (m.t === "body") { last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches; body.update(m); renderStatus(m); if (tab === "jobs" || tab === "schedule") renderTab(); }
-    else if (m.t === "event") { feed.unshift(m); feed.length = Math.min(feed.length, 200); body.event(m); if (tab === "activity") renderTab(); }
+    else if (m.t === "body") {
+      const first = !last; last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches;
+      body.update(m); renderStatus(m);
+      if (current() === "jobs" || current() === "schedule") renderTab();
+      if (first && DENSE) { renderNav(); if (dtab === "kurooto") chatDraw(); }
+    }
+    else if (m.t === "event") { SEEN.set(m, performance.now() / 1000); feed.unshift(m); feed.length = Math.min(feed.length, 200); body.event(m); if (current() === "activity") renderTab(); }
     else if (m.t === "hello") { TERM.cid = m.cid; if (TERM.shown) termAttach(TERM.shown); }
-    else if (m.t === "pty") termData(m);
+    else if (m.t === "pty") { termData(m); if (!TERM.live.has(m.n)) { TERM.live.add(m.n); if (DENSE) renderNav(); } }
   };
-  es.onerror = () => { $("#meta").textContent = "reconnecting…"; };
+  es.onerror = () => { (DENSE ? $("#sys-meta") : $("#meta")).textContent = "reconnecting…"; };
+}
+// a setting changed on the Settings tab that changes this page
+function settingChanged(key, value) {
+  if (key === "look.layout") { document.body.dataset.layout = value; applyLayout(); }
+  if (key === "look.palette") setTimeout(() => location.reload(), 300); // the canvases take their colours at load
+}
+function applyLayout(force = false) {
+  const d = denseFits();
+  if (d === DENSE && !force) return;
+  DENSE = d;
+  document.body.classList.toggle("dense", DENSE);
+  $(".grid").classList.remove("tall");
+  SB.built = false;
+  const tb = $("#tab-body"); tb.onclick = tb.onchange = tb.onsubmit = null; tb.innerHTML = "";
+  if (last) renderStatus(last);
+  if (mind) mind.meta();
+  if (DENSE) showDense(dtab); else showTab(tab === "terminals" && !TERM.on ? "activity" : tab);
 }
 // Pause, resume, or off completely (until Kurooto is opened again from the app menu or `kurooto on`)
 document.addEventListener("click", async (e) => {
@@ -624,13 +1140,20 @@ document.addEventListener("click", async (e) => {
   if (what === "off" && !confirm("Turn Kurooto off completely?\n\nIt stops now and won't start when you sign in, and your call line won't call you, until you open Kurooto from your app menu again (or run `kurooto on`).")) return;
   const r = await api(`power/${what}`, what === "pause" ? { when: "1h" } : {});
   $("#meta").textContent = r.message || "";
+  if (DENSE && r.message) chatAdd(r.message, "d");
   if (what === "off") document.body.innerHTML = `<p style="padding:40px;font:16px var(--sans)">${esc(r.message || "Kurooto is off.")}</p>`;
 });
 
 // ------------------------------------------------------------------------------------------------ terminals
-// Real terminals (modules/terminals.py): xterm.js (vendored, loaded the first time the tab opens) draws them; what you
+// Real terminals (modules/terminals.py): xterm.js (vendored, loaded the first time one opens) draws them; what you
 // type goes to /api/term/<name>/input, their output comes back on the stream, only to this page.
-const TERM = { cid: null, shown: null, list: [], xs: {}, loading: null };
+const TERM = { cid: null, shown: null, list: [], xs: {}, loading: null, on: false, live: new Set() };
+async function refreshTerms() {
+  let r; try { r = await api("term"); } catch { return; }
+  TERM.on = !!r.on; TERM.list = r.on ? r.terms : [];
+  if (TERM.on) TABS.terminals = "Terminals"; else delete TABS.terminals;
+  renderNav();
+}
 function loadXterm() {
   if (window.Terminal) return Promise.resolve();
   if (TERM.loading) return TERM.loading;
@@ -643,7 +1166,7 @@ function termMake(name) {
   if (TERM.xs[name]) return TERM.xs[name];
   const el = document.createElement("div"); el.className = "term-one";
   const term = new window.Terminal({ fontFamily: FONT, fontSize: 13, cursorBlink: true, scrollback: 5000, allowProposedApi: false,
-    theme: { background: PAL.bg, foreground: PAL.fg, cursor: PAL.accent, selectionBackground: rgba(PAL.lav, 0.35) } });
+    theme: { background: PAL.panel, foreground: PAL.fg, cursor: PAL.accent, selectionBackground: rgba(PAL.lav, 0.35) } });
   const fit = new window.FitAddon.FitAddon(); term.loadAddon(fit);
   let pending = "", timer = null;
   term.onData((d) => { pending += d; if (!timer) timer = setTimeout(() => { const data = pending; pending = ""; timer = null; api(`term/${name}/input`, { data }).catch(() => {}); }, 12); });
@@ -690,19 +1213,34 @@ async function renderTerminals(body) {
   TERM.shown = null;
   if (want) termShow(want);
 }
-document.addEventListener("keydown", (e) => {
-  if (tab !== "terminals" || !e.altKey || !/^[1-9]$/.test(e.key)) return;
-  const t = TERM.list[Number(e.key) - 1]; if (t) { e.preventDefault(); termShow(t.name); }
+// Alt+1… switches terminals (dense: the terminal pane's tabs), Alt+/ finds a note; caught before a terminal sees them
+window.addEventListener("keydown", (e) => {
+  if (!e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === "/") { e.preventDefault(); e.stopPropagation(); mind.openSearch(); return; }
+  if (!/^[1-9]$/.test(e.key)) return;
+  const t = DENSE ? denseTerms()[Number(e.key) - 1] : tab === "terminals" ? TERM.list[Number(e.key) - 1] : null;
+  if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  if (DENSE) showDense(t.name); else termShow(t.name);
+}, true);
+window.addEventListener("resize", () => {
+  applyLayout();
+  if (DENSE && last) renderStatus(last); // the processes box shows as many as fit
+  const showing = DENSE ? TERM.list.some((t) => t.name === dtab) : tab === "terminals";
+  if (showing && TERM.shown && TERM.xs[TERM.shown]) try { TERM.xs[TERM.shown].fit.fit(); } catch { /* hidden */ }
 });
-window.addEventListener("resize", () => { if (tab === "terminals" && TERM.shown && TERM.xs[TERM.shown]) try { TERM.xs[TERM.shown].fit.fit(); } catch { /* hidden */ } });
 
 (function main() {
   body = new Body($("#body")); mind = new Mind($("#mind"));
-  let saved = "activity"; try { saved = localStorage.getItem("kurooto.dash.tab") || "activity"; } catch { /* fine */ }
-  api("events").then((r) => { for (const e of (r.events || []).reverse()) feed.push(e); if (tab === "activity") renderTab(); }).catch(() => {});
+  try { tab = localStorage.getItem("kurooto.dash.tab") || "activity"; dtab = localStorage.getItem("kurooto.dash.dtab") || "kurooto"; } catch { /* fine */ }
+  if (!TABS[tab] && tab !== "terminals") tab = "activity";
   const asked = location.hash.slice(1); // e.g. /#about, the link /aboutme sends
-  showTab(TABS[asked] ? asked : TABS[saved] ? saved : "activity");
-  api("term").then((r) => { if (r.on) { TABS.terminals = "Terminals"; showTab(saved === "terminals" ? "terminals" : tab); } }).catch(() => {});
+  if (TABS[asked]) { tab = asked; dtab = asked; }
+  api("events").then((r) => { for (const e of (r.events || []).reverse()) feed.push(e); if (current() === "activity") renderTab(); }).catch(() => {});
+  applyLayout(true);
+  refreshTerms().then(() => { if (DENSE && TERM.list.some((t) => t.name === dtab)) showDense(dtab); else if (!DENSE && tab === "terminals") showTab("terminals"); });
+  setInterval(refreshTerms, 20000);
+  setInterval(() => { if (DENSE) clockTick(); }, 1000);
   connect();
   let lastT = 0;
   const frame = (ts) => { requestAnimationFrame(frame); if (document.hidden || ts - lastT < (LIGHT ? 33 : 16)) return; lastT = ts;

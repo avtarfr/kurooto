@@ -59,6 +59,10 @@ class Module:
     privacy = "Stays on this computer."
     defaults: dict = {}
     heavy = False  # True: its scheduled work waits for the charger when the laptop is on battery ("saver" mode)
+    # processes that are this feature's own work, by program name ("ollama") or a piece of the command line
+    # ("bots/reply.js"): the dashboard's cell and `kurooto top` show their cpu, memory, uptime and threads, and the
+    # cell turns grey and dashed when none is running. Add-ons use it to watch programs Kurooto didn't start.
+    processes: tuple[str, ...] = ()
 
     def __init__(self, app: App):
         self.app = app

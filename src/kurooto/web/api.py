@@ -164,6 +164,9 @@ class Api:
             return 200, self._settings()
         if path == "events":
             return 200, {"events": self.app.events.tail(80)}
+        if path == "board":  # Kurooto's side of the dashboard's board, for `kurooto top` (web/live.py)
+            live = getattr(self.app, "live", None)
+            return (200, live.vitals.board()) if live is not None else (503, {"error": "the page isn't up"})
         if path == "state":
             s = self.app.settings
             tg = self.app.modules["telegram"]
