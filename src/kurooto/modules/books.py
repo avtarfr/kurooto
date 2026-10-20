@@ -9,7 +9,7 @@ Add a book in one of three ways:
 At night, on the charger, Kurooto reads each new book page by page and picks the best way for each page:
     text        the PDF's own text (Poppler's pdftotext when it's installed, else Kurooto's built-in reader)
     tesseract   scanned pages, with Tesseract OCR if it's installed: plain text, so equations come out garbled
-    vision      a vision model on this computer (Local models, on computers with a big graphics card): the maths in
+    vision      a vision model on this computer (Local models, graphics cards from 8 GB): the maths in
                 LaTeX. Pages full of maths go to it even when they have text (books.latex)
     gemini      Google's Gemini with your free key, only if you turn on books.gemini: page pictures go to Google
 It stops at 07:00 or when you unplug, and carries on the next night from the page where it stopped.
@@ -343,10 +343,12 @@ class Books(Module):
         return self.prereqs.items["tesseract"].find() if "tesseract" in self.prereqs.items else None
 
     def vision_model(self) -> str | None:
-        if not self.app.is_on("local_models"):
-            return None
+        """The local model that reads pages: the vision model (12 GB cards), else a helper that sees pictures too."""
         lm = self.app.modules.get("local_models")
-        return next((m["tag"] for m in lm.wanted() if m.get("key") == "vision"), None) if lm else None
+        if lm is None or not self.app.is_on("local_models"):
+            return None
+        hit = lm.vision_model()
+        return hit.get("tag") if hit else None
 
     def engines(self) -> set[str]:
         out = {"text"}
