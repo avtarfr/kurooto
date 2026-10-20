@@ -226,7 +226,9 @@ def test_each_page_read_its_best_way_and_reading_resumes(books, pdfs, monkeypatc
     assert first["result"] == "stopped" and first["read"] == 2  # page 1 (text), page 2 (OCR), then interrupted
     pages = books.book_dir(b) / "pages"
     assert sorted(p.name for p in pages.iterdir()) == ["00001.md", "00002.md"]
-    assert "· text -->" in (pages / "00001.md").read_text() and "OCR text of page 2" in (pages / "00002.md").read_text()
+    assert "· text -->" in (pages / "00001.md").read_text(encoding="utf-8") and "OCR text of page 2" in (
+        pages / "00002.md"
+    ).read_text(encoding="utf-8")
 
     books._halt.clear()
     ocr.stop_after = None
@@ -235,7 +237,7 @@ def test_each_page_read_its_best_way_and_reading_resumes(books, pdfs, monkeypatc
     assert ocr.calls == [("tesseract", 2), ("tesseract", 4)]  # page 2 not read twice; page 3 has no text: blank
     meta = books.meta(b)
     assert meta["routes"] == {"text": 1, "tesseract": 2, "blank": 1} and meta["done"] == 4
-    text = (books.book_dir(b) / "text.md").read_text()
+    text = (books.book_dir(b) / "text.md").read_text(encoding="utf-8")
     assert '<a id="p-4"></a>\n## [p. 4]' in text and "OCR text of page 4" in text
     assert books.read_book(b)["read"] == 0  # nothing left
 
@@ -249,7 +251,7 @@ def test_pages_wait_for_a_reader_and_are_read_when_one_arrives(books, pdfs, monk
     assert books.read_book(b)["read"] == 0
     meta = books.meta(b)
     assert set(meta["skipped"]) == {"1", "2"} and "Tesseract" in meta["skipped"]["1"]
-    assert "Not read yet: 2 page(s)" in (books.app.workspace / meta["index"]).read_text()
+    assert "Not read yet: 2 page(s)" in (books.app.workspace / meta["index"]).read_text(encoding="utf-8")
     monkeypatch.setattr(books, "engines", lambda: {"text", "vision"})
     monkeypatch.setattr(books, "read_picture", FakeOCR(books))
     assert books.read_book(b)["read"] == 2
@@ -278,12 +280,12 @@ def test_index_note_has_chapters_and_keeps_your_text(books, pdfs, monkeypatch):
     b = books.library()[0]
     books.read_book(b)
     note = books.app.workspace / "linear-algebra" / "books" / "axler.md"
-    text = note.read_text()
+    text = note.read_text(encoding="utf-8")
     assert text.startswith("---\nmade_by: ") and "# Linear Algebra" in text
     assert "- p. 1–1: 1 Vector spaces" in text and "- p. 2–2: 2 Eigenvalues" in text
-    note.write_text(text + "\nMy own remark about this book.\n")
+    note.write_text(text + "\nMy own remark about this book.\n", encoding="utf-8")
     books.finish(b, books.meta(b))
-    again = note.read_text()
+    again = note.read_text(encoding="utf-8")
     assert "My own remark about this book." in again and again.count("<!-- /kurooto:book -->") == 1
 
 
@@ -409,18 +411,20 @@ def test_gather_mixes_the_sources_and_labels_citations(books, pdfs):
     ws = app.workspace / "linear-algebra"
     ws.mkdir(parents=True)
     (ws / "eigen-tricks.md").write_text(
-        "# Eigen tricks\n\nMy trick: the eigenvalue of a triangular matrix is on the diagonal.\n"
+        "# Eigen tricks\n\nMy trick: the eigenvalue of a triangular matrix is on the diagonal.\n", encoding="utf-8"
     )
     (ws / "2026-10-12-eigenvalues.md").write_text(
         "---\nmade_by: Kurooto\ndate: 2026-10-12\n---\n\n# Eigenvalues\n\n"
         "## Covered\nAI summary of eigenvalue facts.\n\n"
-        "## My notes\nEigenvalue: Av = λv, written in class.\n\n## Files\n- none\n"
+        "## My notes\nEigenvalue: Av = λv, written in class.\n\n## Files\n- none\n",
+        encoding="utf-8",
     )
     (ws / "2026-10-10-problem-set-3.md").write_text(
         "---\nmade_by: Kurooto\n---\n\n# Problem set 3\n\n## Covered\nEigenvalue problems.\n\n## From the post\n"
-        "Solve the eigenvalue questions by Friday.\n"
+        "Solve the eigenvalue questions by Friday.\n",
+        encoding="utf-8",
     )
-    (ws / "2026-10-01-unrelated.md").write_text("# Groups\n\nNothing about the topic.\n")
+    (ws / "2026-10-01-unrelated.md").write_text("# Groups\n\nNothing about the topic.\n", encoding="utf-8")
     d = books.folder("linear-algebra")
     d.mkdir(parents=True)
     (d / "axler.pdf").write_bytes(pdfs["text"].read_bytes())
