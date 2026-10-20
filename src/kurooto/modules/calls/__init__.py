@@ -556,6 +556,10 @@ class Calls(Module):
             self.app.notify(
                 f"While this computer was off, your call line called you: {m.get('reason') or 'a call'}", kind="info"
             )
+        elif name in ("sealed_sent", "sealed_failed", "device_key"):  # reminders with the lid shut (lidsafe.py)
+            ls = self.app.modules.get("lidsafe")
+            if ls is not None and self.app.is_on("lidsafe"):
+                ls.on_line_event(m)
 
     def on_queue(self, items: list[dict]) -> None:
         """What you asked for on calls while this computer was off: do it now."""
@@ -756,6 +760,7 @@ class Calls(Module):
             },
             "brief": {t.name: self._brief_value(t) for t in tools if t.name in briefs},
             "presence": self._presence(),  # speaking for this computer while it's gone (core/presence.py)
+            "sealed_on": self.app.is_on("lidsafe"),  # off: the line drops the reminders it holds (lidsafe.py)
         }
 
     def _presence(self) -> dict:
@@ -772,7 +777,8 @@ class Calls(Module):
             return {"note": f"couldn't prepare this: {e}"[:200]}
 
     def silence_line(self) -> bool:
-        """Kurooto is being turned off: the call line forgets the scheduled calls, so it doesn't ring meanwhile."""
+        """Kurooto is being turned off: the call line forgets the scheduled calls (and sealed reminders), so it doesn't
+        ring meanwhile."""
         import asyncio
 
         self.silenced = True
@@ -780,7 +786,7 @@ class Calls(Module):
         if c.loop is None or c.ws is None:
             return False
         try:
-            msg = json.dumps({"type": "state", "schedule": []})
+            msg = json.dumps({"type": "state", "schedule": [], "sealed_on": False})
             asyncio.run_coroutine_threadsafe(c.ws.send(msg), c.loop).result(10)
             return True
         except Exception:

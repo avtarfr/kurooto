@@ -11,5 +11,13 @@
     "now_ms": 1760000000000,
     "hours": 2,
     "ticket": "t1.1760007200000.55eafd0ce800900bb761e8623a073f44194fc2ee50fe6656b40f600c8b102c71"
+  },
+  "s1": {
+    "phone_priv_hex": "1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f07",
+    "phone_pub": "BG4E3m-9FlfAT-NxFsXL_-HEtLmJLXF1QF9yhhjiyDpwNiIbVz3eInfW8gYIocil2Zley5nXbsGjJ8FgDpbqiFA",
+    "eph_priv_hex": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a0b",
+    "nonce_hex": "707172737475767778797a7b",
+    "plain": "{\"id\":\"0123456789abcdef\",\"title\":\"Kurooto\",\"text\":\"Reminder: Ünïcode ✓ call Sam\",\"at\":1760000000}",
+    "sealed": "s1.BDb1J-_a1ti7F13WzhX0RqcNCWXxUE3KFyUkq_mVcJARqPcpicJh_QNb_LaFDz_ifdm7Wp5zsMi7fgxled8-_tA.cHFyc3R1dnd4eXp7nhluXKN8qvDUtHDTIcPB2LovbhsUr4OZu0tGSgwu4TANVweKrVqTcSe3QR4n3gee8Xu5nczTnJy363PRBS-t2IHrUmXKVY-fABkBx953PMwRAAygZe8Z5kcjXCb3ypYd5uYoHS12_jo6K_ymweoF-ummrPO_"
   }
 }

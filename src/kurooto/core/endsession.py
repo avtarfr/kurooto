@@ -7,7 +7,8 @@ at most) before it ends the program.
 
 There's one window per process (a window class can be registered only once): watch() makes it the first time and,
 after that, only changes what it calls. handle() is what the window does with a message, kept apart so it can be
-tested anywhere.
+tested anywhere. The same window hears that the computer is about to sleep (WM_POWERBROADCAST, PBT_APMSUSPEND) for
+whoever asked with on_suspend() (Reminders with the lid shut: modules/lidsafe.py).
 
 Elsewhere this does nothing: macOS and Linux send SIGTERM (or SIGHUP), which the daemon already treats as a stop.
 """
@@ -19,22 +20,25 @@ import threading
 from collections.abc import Callable
 
 WM_QUERYENDSESSION, WM_ENDSESSION = 0x0011, 0x0016
+WM_POWERBROADCAST, PBT_APMSUSPEND = 0x0218, 0x0004
 ENDSESSION_LOGOFF = 0x80000000
 CLASS = "KurootoEndSession"
 
 _on_end: Callable[[str], None] | None = None  # what the window calls (the latest watch())
 _thread: threading.Thread | None = None
 _lock = threading.Lock()
+_on_suspend: list[Callable[[], None]] = []  # called when the computer is about to sleep
 
 
-def watch(on_end: Callable[[str], None]) -> threading.Thread | None:
+def watch(on_end: Callable[[str], None] | None) -> threading.Thread | None:
     """Call on_end when Windows ends the session. The window is made once per process; later calls change what it
-    calls. Returns its thread once the window exists (None elsewhere, or if it couldn't be made)."""
+    calls (None keeps it). Returns its thread once the window exists (None elsewhere, or if it couldn't be made)."""
     global _on_end, _thread
     if sys.platform != "win32":
         return None
     with _lock:
-        _on_end = on_end
+        if on_end is not None:
+            _on_end = on_end
         if _thread is None or not _thread.is_alive():
             ready = threading.Event()
             _thread = threading.Thread(target=_run, args=(ready,), name="end-session", daemon=True)
@@ -55,7 +59,25 @@ def handle(msg: int, wparam: int, lparam: int) -> int | None:
             except Exception:
                 pass
         return 0
+    if msg == WM_POWERBROADCAST:
+        if wparam == PBT_APMSUSPEND:  # Windows allows about 2 seconds before it sleeps
+            for fn in list(_on_suspend):
+                try:
+                    fn()
+                except Exception:
+                    pass
+        return 1
     return None
+
+
+def on_suspend(fn: Callable[[], None]) -> Callable[[], None]:
+    """Windows: also call fn (from the window's thread) when the computer is about to sleep. Returns how to stop
+    that. Elsewhere it does nothing."""
+    if sys.platform != "win32":
+        return lambda: None
+    _on_suspend.append(fn)
+    watch(None)
+    return lambda: _on_suspend.remove(fn) if fn in _on_suspend else None
 
 
 def _run(ready: threading.Event) -> None:  # pragma: no cover (Windows only; tests/unit/test_presence.py)

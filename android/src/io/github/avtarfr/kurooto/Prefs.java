@@ -44,12 +44,42 @@ final class Prefs {
                 .putString("topic", n == null ? "" : n.optString("topic", ""))
                 .putString("ntfyKey", n == null ? "" : n.optString("key", ""))
                 .putString("since", "")
+                .putString("sealSent", "") // a new pairing is a new device on the call line: it needs the key again
                 .apply();
     }
 
     static void forget(Context c) {
-        sp(c).edit().remove("url").remove("device").remove("topic").remove("ntfyKey").remove("since").apply();
+        sp(c).edit().remove("url").remove("device").remove("topic").remove("ntfyKey").remove("since").remove("sealSent").apply();
     }
+
+    /** This phone's id on the call line (the "<id>" in its key "d1.<id>.<secret>"), or "". */
+    static String deviceId(Context c) {
+        String[] p = device(c).split("\\.");
+        return p.length == 3 ? p[1] : "";
+    }
+
+    /** This phone's own key pair for sealed reminders (Seal), made the first time it's needed. The private half
+     *  stays here; the call line gets the public half (Line.sendSealKey). Null if this phone can't make one. */
+    static synchronized java.security.KeyPair sealKeys(Context c) {
+        try {
+            String priv = sp(c).getString("sealPriv", ""), pub = sp(c).getString("sealPub", "");
+            java.security.KeyFactory f = java.security.KeyFactory.getInstance("EC");
+            if (!priv.isEmpty() && !pub.isEmpty()) {
+                return new java.security.KeyPair(f.generatePublic(new java.security.spec.X509EncodedKeySpec(B64.decode(pub))),
+                        f.generatePrivate(new java.security.spec.PKCS8EncodedKeySpec(B64.decode(priv))));
+            }
+            java.security.KeyPair k = Seal.newKeys();
+            sp(c).edit().putString("sealPriv", B64.encode(k.getPrivate().getEncoded(), false))
+                    .putString("sealPub", B64.encode(k.getPublic().getEncoded(), false)).putString("sealSent", "").apply();
+            return k;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** The public key the call line has for this phone (base64url, 65 bytes), or "" until it has one. */
+    static String sealSent(Context c) { return sp(c).getString("sealSent", ""); }
+    static void setSealSent(Context c, String raw) { sp(c).edit().putString("sealSent", raw).apply(); }
 
     static String since(Context c) { return sp(c).getString("since", ""); }
     static void setSince(Context c, String id) { sp(c).edit().putString("since", id).apply(); }

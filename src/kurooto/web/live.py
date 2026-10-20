@@ -48,6 +48,7 @@ EVENT_CELL = [
     ("calls_held", "telegram"),
     ("call", "calls"),
     ("alarm", "alarm"),
+    ("lidsafe", "lidsafe"),
     ("voice_note", "voice_notes"),
     ("awake", "awake"),
     ("calendar", "calendar"),

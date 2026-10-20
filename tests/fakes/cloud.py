@@ -13,6 +13,7 @@ class FakeCloud:
         self.tokens: list[dict] = []  # Gemini auth_tokens requests
         self.ntfy: list[dict] = []
         self.pushes: list[dict] = []
+        self.ntfy_down = False  # ntfy refuses messages (they aren't recorded)
         self.generate: list[dict] = []  # Gemini generateContent (voice notes)
         self.transcript = "remind me at nine to call home"
         fake = self
@@ -44,6 +45,10 @@ class FakeCloud:
                 if self.path.startswith("/push/"):
                     fake.pushes.append({"path": self.path, "headers": hdrs, "len": len(raw)})
                     self.send_response(201)
+                    self.end_headers()
+                    return None
+                if self.path == "/" and fake.ntfy_down:
+                    self.send_response(503)
                     self.end_headers()
                     return None
                 if self.path == "/":

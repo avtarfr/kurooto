@@ -17,7 +17,7 @@ PKG=io/github/avtarfr/kurooto
 
 crypto_test() {
   local t; t=$(mktemp -d)
-  javac -nowarn -d "$t" "$HERE/src/$PKG/B64.java" "$HERE/src/$PKG/Crypto.java" "$HERE/test/CryptoTest.java"
+  javac -nowarn -d "$t" "$HERE/src/$PKG/B64.java" "$HERE/src/$PKG/Crypto.java" "$HERE/src/$PKG/Seal.java" "$HERE/test/CryptoTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CryptoTest "$ROOT/tests/fixtures/call-vectors.json"
   rm -rf "$t"
 }

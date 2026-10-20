@@ -17,6 +17,10 @@
 //     the cron says so for it, once, outside the night hours it pushed: on the phone app, and on Telegram if you
 //     allowed this line to keep your bot's token (pushed over the link, kept in this object's storage, deleted when
 //     you turn it off). A clean stop says "bye" first, so nothing is said twice.
+//   - Reminders with the lid shut (only with that feature on): your computer hands over the next day's reminders and
+//     the morning's first class and what's due, each as a time plus copies sealed for your Android phones with keys
+//     only those phones hold ("s1"; this Worker can't open them). Whichever side is awake at an item's time says it:
+//     your computer claims it then, or the cron sends it to the phones. One answer per item, so nothing comes twice.
 // Vars: OWNER_ID, TZ, PUBLIC_URL, VERSION, LIVE_MODEL, NTFY_SERVER, NOTES_REPO (optional), GEMINI_BASE_URL and
 // TELEGRAM_API (tests).
 // Secrets: CALL_SECRET, CONNECTOR_SECRET, GEMINI_API_KEY, NTFY_TOPIC, NTFY_KEY, VAPID_JWK, VAPID_PUBLIC, and
@@ -161,6 +165,11 @@ const MAX_DEVICES = 10;
 const RING_S = 60, ALARM_RING_S = 300;
 const ON_CALL_MS = 90e3; // a live call checks in every few seconds (/tasks); this long after the last one it's over
 const ITEM_ID = /^[0-9a-f]{16}$/;
+// sealed reminders: at most this many held; a failed send is tried again each minute this many times; a send in
+// progress counts as sent this long; answers are kept this long
+const SEALED_MAX = 40, SEALED_TRIES = 5, SEALED_BUSY_MS = 120e3, SEALED_KEEP_MS = 3 * 86400e3;
+const SEAL_TOKEN = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,2210}$/; // at most 2300 in all: fits ntfy sealed again
+const SEAL_KEY = /^B[A-Za-z0-9_-]{86}$/; // a phone's P-256 public key, 65 bytes uncompressed, base64url
 
 export class Line {
   constructor(state, env) {
@@ -251,6 +260,17 @@ export class Line {
         await this.store.put('devices', devices);
         return json({ ok: true });
       }
+      if (p === '/device/key' && req.method === 'POST') { // the Android app's public key for sealed reminders
+        const { pub = '' } = await req.json().catch(() => ({}));
+        if (!SEAL_KEY.test(String(pub))) return json({ error: 'not a key' }, 400);
+        const devices = (await this.store.get('devices')) || {};
+        if (devices[who.id]?.kind !== 'android') return json({ error: 'only the Android app has a key' }, 403);
+        const changed = devices[who.id].seal !== pub;
+        devices[who.id].seal = String(pub);
+        await this.store.put('devices', devices);
+        if (changed) await this.event({ name: 'device_key', id: who.id });
+        return json({ ok: true });
+      }
       return json({ error: 'not found' }, 404);
     } catch (e) {
       return json({ error: String(e?.message || e).slice(0, 300) }, 500);
@@ -339,6 +359,7 @@ export class Line {
       }
       if (m.presence !== undefined) await this.setPresence(m.presence);
       if (m.inbox && Array.isArray(m.inbox.items)) await this.setInbox(m.inbox.items, Number(m.inbox.rev) || 0);
+      if (m.sealed_on === false) await this.store.delete('sealed'); // reminders with the lid shut is off: drop them
     } else if (m.type === 'index') {
       await this.store.put(`index:${m.part || 0}`, m.items || []);
       if ((m.part || 0) === 0) await this.store.put('index:parts', m.parts || 1);
@@ -374,7 +395,7 @@ export class Line {
     }
     if (m.op === 'devices') {
       const d = (await this.store.get('devices')) || {};
-      return { devices: Object.entries(d).map(([id, v]) => ({ id, name: v.name, kind: v.kind, created: v.created, push: !!v.push })) };
+      return { devices: Object.entries(d).map(([id, v]) => ({ id, name: v.name, kind: v.kind, created: v.created, push: !!v.push, seal: v.seal || '' })) };
     }
     if (m.op === 'revoke') {
       const d = (await this.store.get('devices')) || {};
@@ -392,6 +413,8 @@ export class Line {
       await this.setInbox(inbox.items.filter((i) => !ids.includes(i.id)), Math.max(inbox.rev, Number(m.rev) || 0), ids);
       return { ok: true };
     }
+    if (m.op === 'sealed-put') return this.sealedPut(Array.isArray(m.items) ? m.items : [], Number(m.rev) || 0);
+    if (m.op === 'sealed-claim') return this.sealedClaim((Array.isArray(m.ids) ? m.ids : []).map(String));
     return { error: 'unknown op' };
   }
 
@@ -694,9 +717,98 @@ export class Line {
     }
   }
 
+  // --------------------------------------------------------------------------- reminders with the lid shut
+  // The box ('sealed'): what your computer handed over for the next day, each {id, at, until (s), seal: {device id:
+  // s1 token}}. The answers ('sealdone'), one per id: {by: 'computer'} (your computer was awake and said it, or will),
+  // or {by: 'line', ok} (this line sent it; while a send is under way or failed it has busy and tries). Every change
+  // to them is read, changed and written with no other request in between (nothing else is awaited meanwhile).
+  async sealedDone() {
+    const done = (await this.store.get('sealdone')) || {};
+    const cut = Date.now() - SEALED_KEEP_MS;
+    for (const [k, v] of Object.entries(done)) if (!v || !(v.t > cut)) delete done[k];
+    return done;
+  }
+
+  // Your computer's batch replaces the box (an older one never replaces a newer). Items already answered stay out.
+  async sealedPut(items, rev) {
+    const cur = (await this.store.get('sealed')) || { rev: 0, items: [] };
+    if (rev < cur.rev) return { ok: false, stale: true };
+    const done = await this.sealedDone();
+    const keep = [], told = {};
+    for (const it of items.slice(0, SEALED_MAX)) {
+      if (!it || !ITEM_ID.test(String(it.id)) || !Number.isFinite(it.at) || !Number.isFinite(it.until)) continue;
+      const d = done[it.id];
+      if (d && (d.by === 'computer' || d.ok)) { told[it.id] = d.by; continue; }
+      const seal = {};
+      for (const [dev, tok] of Object.entries(it.seal || {})) if (/^[0-9a-f]{8}$/.test(dev) && SEAL_TOKEN.test(String(tok))) seal[dev] = String(tok);
+      if (Object.keys(seal).length) keep.push({ id: String(it.id), at: Math.floor(it.at), until: Math.floor(it.until), seal });
+    }
+    while (keep.length && JSON.stringify(keep).length > 120000) keep.pop(); // one stored value; the latest go first
+    await this.store.put('sealed', { rev, items: keep });
+    await this.store.put('sealdone', done);
+    return { ok: true, held: keep.length, done: told };
+  }
+
+  // Your computer is awake at these items' time: it says them, unless this line already has (or is sending them).
+  async sealedClaim(ids) {
+    const done = await this.sealedDone();
+    const now = Date.now(), out = {};
+    for (const id of ids.slice(0, 100)) {
+      if (!ITEM_ID.test(id)) continue;
+      const d = done[id];
+      if (d && d.by === 'line' && (d.ok || now - (d.busy || 0) < SEALED_BUSY_MS)) { out[id] = 'line'; continue; }
+      if (!d || d.by !== 'computer') done[id] = { by: 'computer', t: now }; // a send that failed: it's your computer's now
+      out[id] = 'computer';
+    }
+    await this.store.put('sealdone', done);
+    const box = (await this.store.get('sealed')) || { rev: 0, items: [] };
+    const left = box.items.filter((it) => out[it.id] !== 'computer');
+    if (left.length !== box.items.length) await this.store.put('sealed', { ...box, items: left });
+    return { ids: out };
+  }
+
+  // Every minute, while your computer is offline: send what's due and not yet answered to the phones it was sealed
+  // for. Marked as this line's before it goes out, so a claim meanwhile hears "line"; told to your computer after.
+  async sealedTick() {
+    if (this.online()) return null;
+    const box = (await this.store.get('sealed')) || { rev: 0, items: [] };
+    if (!box.items.length) return null;
+    const s = Math.floor(Date.now() / 1000);
+    const devices = (await this.store.get('devices')) || {};
+    const sent = [];
+    for (const it of box.items) {
+      if (it.at > s || s >= it.until) continue;
+      const done = await this.sealedDone();
+      const d = done[it.id];
+      if (d && (d.by !== 'line' || d.ok || Date.now() - (d.busy || 0) < SEALED_BUSY_MS || (d.tries || 0) >= SEALED_TRIES)) continue;
+      const tries = (d?.tries || 0) + 1;
+      done[it.id] = { by: 'line', t: Date.now(), ok: false, busy: Date.now(), tries };
+      await this.store.put('sealdone', done);
+      let ok = false;
+      for (const [dev, sealed] of Object.entries(it.seal)) {
+        if (devices[dev]?.kind !== 'android') continue; // unpaired since
+        ok = (await this.toPhones({ title: 'sealed', message: '', tags: ['stop', 'sealed'], id: it.id, dev, sealed, time: s }).catch(() => false)) || ok;
+      }
+      const after = await this.sealedDone();
+      const failed = !ok && tries >= SEALED_TRIES;
+      after[it.id] = ok ? { by: 'line', t: Date.now(), ok: true } : failed ? { by: 'computer', t: Date.now(), failed: true } : { by: 'line', t: Date.now(), ok: false, busy: 0, tries };
+      await this.store.put('sealdone', after);
+      if (ok || failed) await this.queue({ kind: 'event', name: ok ? 'sealed_sent' : 'sealed_failed', id: it.id, at: it.at });
+      if (ok) sent.push(it.id);
+    }
+    const done = await this.sealedDone();
+    const now = await this.store.get('sealed');
+    if (now) {
+      const left = now.items.filter((it) => s < it.until && !(done[it.id] && (done[it.id].ok || done[it.id].by === 'computer')));
+      if (left.length !== now.items.length) await this.store.put('sealed', { ...now, items: left });
+    }
+    return { sent };
+  }
+
   // Every minute (cron): place the calls that fall due while the computer is off, from the schedule it pushed.
   async tick() {
     const presence = await this.presenceTick();
+    const sealed = await this.sealedTick().catch((e) => ({ error: String(e?.message || e).slice(0, 200) }));
     if (this.online()) return { skipped: 'computer online' };
     const now = Math.floor(Date.now() / 1000);
     const sched = (await this.store.get('schedule')) || [];
@@ -717,7 +829,7 @@ export class Line {
     for (const [k, t] of Object.entries(held)) if (fired[k] || t < now - 7200) delete held[k];
     await this.store.put('fired', fired);
     await this.store.put('held', held);
-    return { placed, presence };
+    return { placed, presence, sealed };
   }
 }
 

@@ -55,6 +55,7 @@ MODULE_ORDER = [
     "retro",
     "calls",
     "alarm",
+    "lidsafe",
     "voice_notes",
     "awake",
     "calendar",

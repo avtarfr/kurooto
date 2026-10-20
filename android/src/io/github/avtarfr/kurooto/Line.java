@@ -65,6 +65,23 @@ final class Line {
         try { return r.ok() ? new JSONObject(r.body).optString("link", null) : null; } catch (Exception e) { return null; }
     }
 
+    /** Give the call line this phone's public key for sealed reminders (once per pairing, and again if it changes).
+     *  True when the line has it; an older line that doesn't know it answers 404, and this is tried again later. */
+    static boolean sendSealKey(Context c) {
+        java.security.KeyPair k = Prefs.sealKeys(c);
+        if (k == null || !Prefs.paired(c)) return false;
+        String raw = B64.encode(Seal.raw((java.security.interfaces.ECPublicKey) k.getPublic()), true);
+        if (raw.equals(Prefs.sealSent(c))) return true;
+        try {
+            Net.Reply r = Net.postJson(Prefs.url(c) + "/device/key", new JSONObject().put("pub", raw).toString(), Prefs.device(c));
+            if (!r.ok()) return false;
+            Prefs.setSealSent(c, raw);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /** Decline / Later on a ringing call. */
     static boolean ringReply(Context c, String since, String action) {
         try {
