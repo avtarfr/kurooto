@@ -21,7 +21,8 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back)
-  - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) · [Voice notes](#voice-notes) ·
+  - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) ·
+    [Reminders with the lid shut](#reminders-with-the-lid-shut) · [Voice notes](#voice-notes) ·
     [Stay awake on charger](#stay-awake-on-charger) · [Calendar](#calendar)
   - [Notes sync](#notes-sync) · [Sync everything](#sync-everything) · [Backups](#backups) ·
     [Profile sync](#profile-sync)
@@ -351,7 +352,9 @@ many AI requests ran each day and the limits hit.
 
 ### Reminders
 "remind me at 9 to call mum", "remind me in 20 minutes to take the pasta off", `/remind tomorrow 7am gym`,
-`/reminders`. A reminder due while the computer slept arrives when it wakes, marked late. Buttons: +10 min, +1 h.
+`/reminders`. A reminder due while the computer slept arrives when it wakes, marked late (with
+[Reminders with the lid shut](#reminders-with-the-lid-shut) on, your Android phone gets it at its time instead).
+Buttons: +10 min, +1 h.
 
 ### Check-ins
 At times you choose, Kurooto asks how the day is going: the **evening** check-in (default 22:00, the day in review),
@@ -864,6 +867,42 @@ Needs Phone calls.
 calls again at once.
 *Leaves:* the alarm time goes to your call line; with Chat on, the AI reads your notes to draft the plan, and the
 wake-up call's transcript to settle it.
+
+### Reminders with the lid shut
+When this computer is asleep or off (a shut lid, a flat battery, `kurooto stop`), your Android phone still gets your
+reminders at their time, and in the morning one line with the day's first class and what's due that day. Off until you
+turn it on (Settings → Features). Needs Phone calls and the Kurooto app on an Android phone. An iPhone can't get these:
+its Home Screen app comes from your call line, so it can't hold a key the call line doesn't have.
+
+- **How it works:** whenever your reminders change, every 10 minutes, and as the computer goes to sleep (Linux and
+  Windows say so), Kurooto hands your call line what's timed in the next day: each reminder, and the morning line.
+  Each one is sealed for your phone with a key only the phone has (the app makes it the first time it runs), so your
+  call line holds a time and text it can't read.
+- **Whichever side is awake says it, once:** if this computer is awake at the time, it says the reminder on Telegram
+  as usual and your call line doesn't. If it's asleep, your call line sends it to your phone, which shows it as a
+  normal notification, and when the computer wakes it doesn't say it again. Telegram doesn't get reminders while the
+  computer sleeps (your bot's token never leaves this computer for this); they come when it wakes, unless your phone
+  already had them.
+- **The morning line**, e.g. "First class 09:00: Linear Algebra. Due today: Problem set 3 (17:00).", comes with your
+  alarm if one is set that morning, else at `lidsafe.morning` (07:30), and never later than 30 minutes before the
+  first class. It only comes from your call line: when this computer is awake, the morning page and your check-ins
+  have it.
+- **If this computer is on but can't reach your call line** when a reminder is due, it waits 2 minutes for it (30
+  just after waking up), then says it anyway. If your call line sent it to your phone meanwhile, that one comes twice.
+- **macOS** doesn't tell programs it's about to sleep, so there your call line has the reminders from the last change
+  or the last 10 minutes: one you set in the seconds before you shut the lid may wait until the computer wakes.
+- A reminder your call line couldn't get to your phone (5 tries, a minute apart) is said here when the computer is
+  back. `kurooto off` silences your call line, these included, until you turn Kurooto on again.
+
+*Settings:* `lidsafe.hours` (24; 12 to 24), `lidsafe.reminders` (on), `lidsafe.today` (on: the morning line),
+`lidsafe.morning` ("07:30").
+*Check:* `kurooto doctor` (or `/health`) says "Reminders with the lid shut: your call line holds 5 for 1 phone(s)".
+"No phone can open them yet": update the Kurooto app on your Android phone and open it once.
+*Undo:* turn it off (Settings → Features). Your call line drops what it holds at once (or the next time this computer
+reaches it), and reminders are Telegram's only again, late after a sleep as before.
+*Leaves:* the next day's reminder times and ids, and for each Android phone a copy sealed with that phone's key, go to
+your call line; your phone's public key too. When your call line sends one, the sealed copy goes through ntfy.sh. The
+text can be read only on your phones.
 
 ### Voice notes
 Send your bot a voice message: it's written out (you see what it heard) and handled like a typed message. Uses your
@@ -2126,6 +2165,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The bot says it's paused | `/resume`; or it's on battery with `power.on_battery` set to `pause`: plug in, or choose `saver`. |
 | "needs a look" on the dashboard, or a "Needs a look" line in the weekly summary | `/health` (or the Features tab) says what and offers a Fix button where Kurooto can fix it; a sign-in that ended needs you (the line says where). |
 | "Your alarm ... might not ring" | Set your phone's own alarm for tonight, then: Phone calls set up and linked (`kurooto doctor`), a phone paired (Phone tab). The Fix button reconnects or plans the alarm again. |
+| A reminder didn't reach my phone while the lid was shut | `kurooto doctor`: the "Reminders with the lid shut" line says what your call line holds and for how many phones. "No phone can open them yet": update the Android app and open it once. Also check the app's checklist (notifications, **Battery: unrestricted**) and that the phone was online. Reminders set in the last seconds before the lid shut on a Mac come when it wakes. |
 | "Back online" every morning | Your laptop sleeps at night. Raise `notify.presence.after_min` past your night, or turn it off (`notify.presence.on` = `false`). |
 | No "going offline" when the laptop sleeps | That message comes from your call line: it needs Phone calls set up, and Telegram from the line needs your OK (`notify.presence.line_telegram`); or add `"app"` to `notify.presence.channels`. |
 | Building my profile failed | It's a big request: if your AI hit a limit, try again later or with a stronger AI (Settings → `brain.main`). |

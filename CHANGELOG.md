@@ -34,6 +34,17 @@
 - `/usage`, `kurooto usage` and the usage API show today's limits, what's used of them, and the requests waiting.
 - A daily limit no longer waits a minute and asks again before the fallback; handwritten files that hit a limit are
   tried again later instead of being written off.
+**Reminders with the lid shut** (new; off until you turn it on; needs Phone calls and the Android app)
+- When your computer is asleep or off, your Android phone still gets your reminders at their time, and a morning
+  line with the day's first class and what's due (with that morning's alarm, else at 07:30). Your call line holds the
+  next day's items sealed for each phone with a key only that phone has: it keeps times and ids, never the text, and
+  your Telegram bot's token stays on your computer.
+- Whichever side is awake at an item's time says it, once: your computer claims it from the call line and says it on
+  Telegram as usual, or the call line sends it to the phone and your computer, awake again, doesn't repeat it. A send
+  the call line couldn't make comes back to your computer.
+- The batch goes when your reminders change, every 10 minutes, and as the computer goes to sleep (Linux and Windows).
+- The Android app makes its own key the first time it runs and gives your call line the public half; a sealed
+  reminder shows as a normal notification. Your call line updates itself overnight (or Phone calls → Set up).
 
 ## 0.4.0 (unreleased)
 
