@@ -1450,6 +1450,23 @@ def machine_run(a) -> int | None:
     return 0 if ok else 1
 
 
+# ------------------------------------------ `kurooto cases [list|check|export|forget]` (owner: wrong, modules/cases.py)
+def cases_parsers(sub) -> None:
+    cs = sub.add_parser("cases", help="test cases from the Wrong button and requests I didn't understand")
+    cs.add_argument("action", nargs="?", choices=["list", "check", "export", "forget"], default="list")
+    cs.add_argument("ref", nargs="?", default="", help="forget: a case's id, or all")
+    cs.add_argument("--out", default="", help="export: the file to write (default test_kurooto_cases.py here)")
+    cs.add_argument("--all", action="store_true", help="export: the cases waiting for review too")
+
+
+def cases_run(a) -> int | None:
+    if a.cmd != "cases":
+        return None
+    from kurooto.modules.cases import cli
+
+    return cli(a.action, a.ref, a.out, a.all)
+
+
 def main(argv: list[str] | None = None) -> int:
     utf8_output()
     ap = argparse.ArgumentParser(prog="kurooto", description="Your assistant, on your own computer.")
@@ -1527,12 +1544,14 @@ def main(argv: list[str] | None = None) -> int:
     term_parsers(sub)
     ws5_parsers(sub)
     machine_parsers(sub)
+    cases_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = ws5_run(a) if done is None else done
     done = profile_run(a) if done is None else done
     done = term_run(a) if done is None else done
     done = machine_run(a) if done is None else done
+    done = cases_run(a) if done is None else done
     if done is not None:
         return done
 

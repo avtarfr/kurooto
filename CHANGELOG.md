@@ -77,6 +77,19 @@
 - The call line forgets its paired phones, call links and pairing codes whenever its call-link key changes (after an
   update it only notes the key, so nothing is unpaired).
 
+**Wrong button and test cases** (new; off until you turn it on)
+- A Wrong button under replies to plain-English requests and under the AI's answers, and `/wrong` right after a
+  reply: the request is kept as a case with what Kurooto did, the time and the settings that decided it. Short
+  requests nothing understood (they went to the AI) are kept too; long ones and anything about health, money or
+  passwords never are.
+- Once a month the look back shows the phrasings that came up most, each with "Make it a test case". Say what you
+  meant in words Kurooto understands ("what's due"), or "the AI": it becomes a test case and the phrasing is taught,
+  only if every test case that passed still passes. Requests that send, delete, call, ring or approve are never
+  learned this way. `/wrong <what you meant>` teaches at once; `/cases` lists what you taught, with Unlearn.
+- `kurooto cases` lists them, `kurooto cases check` runs them, `kurooto cases export` writes a pytest file that
+  replays each request at its own time and settings. All of it stays on this computer: not in backups, Profile sync
+  or the diagnostics zip; cases not reviewed are forgotten after 30 days.
+
 ## 0.4.0 (unreleased)
 
 **Books and PDFs** (new; off until you turn it on)

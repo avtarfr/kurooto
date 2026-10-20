@@ -54,6 +54,7 @@ MODULE_ORDER = [
     "library",
     "remember",
     "retro",
+    "cases",
     "calls",
     "alarm",
     "lidsafe",

@@ -61,7 +61,7 @@ SKIP_STATE = {
     "focus-queue.jsonl",
     "profile.json",  # this computer's own id for the encrypted profile: it mustn't move to another computer
 }
-SKIP_STATE_DIRS = {"locks", "logs"}
+SKIP_STATE_DIRS = {"locks", "logs", "cases"}  # cases: what you typed, kept on this computer only
 SKIP_STATE_FILES = {("telegram", "offset.json"), ("telegram", "pairing.json"), ("calls", "link.json")}
 SKIP_NOTES_DIRS = {".git", ".trash", "node_modules", ".obsidian"}
 TOPS = ("config", "data", "state", "notes")

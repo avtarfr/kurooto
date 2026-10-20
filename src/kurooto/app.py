@@ -298,7 +298,13 @@ class App:
                         msg.reply(out)
                     return
         plain = tidy(text)
-        if plain and not too_complex(plain):
+        cases = self.modules.get("cases") if self.is_on("cases") else None  # (wrong) Wrong button, taught phrasings
+        taught = cases.watch(msg, plain, mods) if cases is not None else None  # (request, slots), "ai" or None
+        if taught and taught != "ai":
+            self.events.emit("intent", name=taught[0].name, via="taught")
+            msg.reply(taught[0].run(msg, taught[1]) or "Done.")
+            return
+        if plain and not too_complex(plain) and taught != "ai":
             asks = bool(QUESTION.search(plain))
             from kurooto.core import overlay  # (ws5) an add-on's intent classifier goes first (core/overlay.py)
 
