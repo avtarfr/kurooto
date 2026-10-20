@@ -615,7 +615,24 @@ function renderStatus(m) {
   const u = m.updates || {};
   const badge = $("#update-badge");
   if (u.ready && u.ready.version) { badge.textContent = `update ${u.ready.version} ${u.ready.staged ? "ready tonight" : "available"}`; badge.classList.remove("hidden"); } else badge.classList.add("hidden");
+  healthBadge($("#health-badge"), m.health);
   $("#ver").textContent = m.version;
+}
+// what isn't working (core/health.py): a badge that opens the Features tab, where each has its Fix button
+function healthBadge(el, hp) {
+  if (!el) return;
+  hp = hp || [];
+  el.textContent = hp.length ? `${hp.length} need${hp.length === 1 ? "s" : ""} a look` : "";
+  el.title = hp.map((r) => `${r.title}: ${r.detail}`).join("\n");
+  el.classList.toggle("hidden", !hp.length);
+  el.style.cursor = "pointer";
+  el.onclick = () => showTab("features");
+}
+function healthBlock(h) {
+  const bad = (h.results || []).filter((r) => r.ok === false);
+  if (!bad.length) return "";
+  return `<div class="card2 health"><b>Needs a look</b>${bad.map((r) => `<p><span class="warn">${esc(r.title)}</span>: ${esc(r.detail)}${r.fix_label
+    ? ` <button data-fix="${esc(r.id)}">${esc(r.fix_label)}</button>` : r.help ? ` <span class="d">${esc(r.help)}</span>` : ""}</p>`).join("")}</div>`;
 }
 
 // ---------------------------------------------------------------------------- STATUS, dense: a btop-like monitor
@@ -652,7 +669,7 @@ function buildBoard() {
   const st = $("#status");
   st.className = "board";
   st.innerHTML = `
-  <div class="hd"><span><b id="sb-name">KUROOTO</b> <span class="k" id="sb-ver"></span> <span id="sb-mode" class="warm"></span><span id="sb-badge" class="warm"></span></span><span class="clock" id="sb-clock"></span></div>
+  <div class="hd"><span><b id="sb-name">KUROOTO</b> <span class="k" id="sb-ver"></span> <span id="sb-mode" class="warm"></span><span id="sb-badge" class="warm"></span> <span id="sb-health" class="hot"></span></span><span class="clock" id="sb-clock"></span></div>
   <div class="hd"><span id="sb-up"></span><span id="sb-act"></span></div>
   <div class="box" id="bx-cpu"><div class="lab"><span class="t">CPU</span><span class="meta" id="cpu-meta"></span></div>
     <div class="graph"><canvas class="cv" id="g-cpu"></canvas><span class="pct" id="cpu-pct"></span></div>
@@ -699,6 +716,7 @@ function renderBoard(m) {
   $("#sb-mode").textContent = mode;
   const u = m.updates || {};
   $("#sb-badge").textContent = u.ready && u.ready.version ? ` update ${u.ready.version} ${u.ready.staged ? "tonight" : "available"}` : "";
+  healthBadge($("#sb-health"), m.health);
   const p = s.power;
   const pw = !p ? "" : p.ac === false
     ? ` · <span class="k">battery</span> <span class="${p.pct < 20 ? "hot" : "v"}">${Math.round(p.pct)}%</span>${p.secs ? ` <span class="k">${ago(p.secs)} left</span>` : ""}${p.watts ? ` <span class="k">${p.watts.toFixed(1)}W</span>` : ""}`
@@ -892,6 +910,8 @@ function denseTerms() {
 const said = {}; // a feature's last Set up result (✓ or ✗), shown on its card
 async function renderFeatures(body) {
   const st = await api("state");
+  let health = {};
+  try { health = await api("health"); } catch { /* an older Kurooto */ }
   const form = (m) => !m.form || m.ready ? "" : `<form class="sf" data-form="${m.id}"><p class="d">${esc(m.form.intro)}</p>
     ${m.form.steps ? `<ol class="d form-steps">${m.form.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
     ${m.form.guide ? `<p><a href="${esc(m.form.guide[1])}" target="_blank" rel="noopener">${esc(m.form.guide[0])}</a></p>` : ""}
@@ -908,7 +928,7 @@ async function renderFeatures(body) {
     ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${calls(m)}${form(m)}${said[m.id] ? `<p class="${said[m.id].startsWith("✓") ? "ok2" : "bad2"}" style="font-weight:600">${esc(said[m.id])}</p>` : ""}</div>`;
   const addons = st.modules.filter((m) => m.addon); // features from your own add-ons folder (core/overlay.py)
   const kept = $("#flog") ? $("#flog").innerHTML : ""; // what the last step said survives the re-render
-  body.innerHTML = `<div class="feat">${st.modules.filter((m) => !m.addon).map(card).join("")}</div>${addons.length
+  body.innerHTML = `${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon).map(card).join("")}</div>${addons.length
     ? `<p class="d">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${addons.map(card).join("")}</div>` : ""}<div class="log" id="flog">${kept}</div>`;
   body.onsubmit = async (e) => {
     e.preventDefault();
@@ -946,6 +966,7 @@ async function renderFeatures(body) {
       (navigator.clipboard ? navigator.clipboard.writeText(t.dataset.copy) : Promise.reject()).then(done).catch(() => { t.textContent = "Press Ctrl+C"; });
       return;
     }
+    if (t.dataset.fix) { t.disabled = true; const r = await api("health/fix", { id: t.dataset.fix }); flog.textContent = r.message || ""; renderFeatures(body); return; }
     if (t.dataset.on) { const r = await api("modules/enable", { ids: [t.dataset.on] }); flog.textContent = Object.values(r.results).map((x) => x.message).join("\n"); renderFeatures(body); }
     if (t.dataset.off) { const r = await api("modules/disable", { id: t.dataset.off }); flog.textContent = r.message; renderFeatures(body); }
     if (t.dataset.setup) {
