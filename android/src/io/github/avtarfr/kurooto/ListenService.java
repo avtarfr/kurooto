@@ -44,7 +44,7 @@ import java.net.URL;
  *   anything else -> a normal notification
  */
 public class ListenService extends Service {
-    static final String CH_SERVICE = "service", CH_CALL = "calls", CH_MSG = "messages", CH_ASK = "questions";
+    static final String CH_SERVICE = "service", CH_CALL = "calls_v2", CH_MSG = "messages", CH_ASK = "questions";
     static final int ID_SERVICE = 1, ID_CALL = 2, ID_SEALED = 8;
     static final int SDK = Build.VERSION.SDK_INT;
 
@@ -79,10 +79,13 @@ public class ListenService extends Service {
     static void channels(Context c) {
         if (SDK < 26) return;
         NotificationManager nm = c.getSystemService(NotificationManager.class);
+        try { nm.deleteNotificationChannel("calls"); } catch (Exception ignored) {}
         NotificationChannel svc = new NotificationChannel(CH_SERVICE, "Listening for calls", NotificationManager.IMPORTANCE_MIN);
         svc.setShowBadge(false);
         NotificationChannel call = new NotificationChannel(CH_CALL, "Calls from Kurooto", NotificationManager.IMPORTANCE_HIGH);
-        Uri ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        Uri ringtoneUri = RingtoneManager.getActualDefaultRingtoneUri(c, RingtoneManager.TYPE_RINGTONE);
+        if (ringtoneUri == null) ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+        if (ringtoneUri == null) ringtoneUri = android.provider.Settings.System.DEFAULT_RINGTONE_URI;
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -253,8 +256,9 @@ public class ListenService extends Service {
                 .setFullScreenIntent(fullPi, true)
                 .setContentIntent(fullPi)
                 .setOngoing(true)
-                .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .addAction(new Notification.Action.Builder(null, "Decline", declinePi).build())
+                .setVisibility(Notification.VISIBILITY_PUBLIC);
+        if (SDK >= 21) b.setPriority(Notification.PRIORITY_MAX);
+        b.addAction(new Notification.Action.Builder(null, "Decline", declinePi).build())
                 .addAction(new Notification.Action.Builder(null, alarm ? "Snooze" : "Later", laterPi).build())
                 .addAction(new Notification.Action.Builder(null, "Answer", answerPi).build());
         if (SDK >= 26) b.setTimeoutAfter(ringMs);
