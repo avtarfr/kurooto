@@ -102,7 +102,7 @@ body.dense #pane-status { grid-area: status; } body.dense #pane-systems { grid-a
 body.dense #pane-vault { grid-area: notes; } body.dense #pane-tabs { grid-area: tabs; }
 body.dense .pane { overflow: visible; border-radius: 2px; transition: border-color .3s ease; }
 body.dense .pane:focus-within { border-color: var(--hover); }
-body.dense .pane > h3, body.dense #pane-tabs > .tabs { position: absolute; top: -0.78em; left: 12px; right: 12px; z-index: 3;
+body.dense .pane > h3, body.dense #pane-tabs > .tabs, body.dense #pane-page > .tabs { position: absolute; top: -0.78em; left: 12px; right: 12px; z-index: 3;
   display: flex; align-items: center; gap: 0; height: 1.5em; margin: 0; padding: 0; border: 0; background: none;
   font: 400 11.5px/1.5em var(--mono); letter-spacing: 0; pointer-events: none; }
 body.dense .pane > h3 .t, body.dense .pane > h3 .meta, .tabs .t, .tabs .tab, .tabs .meta, .tabs .rule {
@@ -118,7 +118,7 @@ body.dense #mind-card { left: 12px; right: auto; bottom: 12px; }
 body.dense #mind-search { top: 18px; left: 50%; transform: translateX(-50%); width: min(380px, 70%); z-index: 5; }
 
 /* the terminal pane: tabs in its top border, then the other pages */
-body.dense #pane-tabs > .tabs { pointer-events: auto; right: 12px; overflow: hidden; }
+body.dense #pane-tabs > .tabs, body.dense #pane-page > .tabs { pointer-events: auto; right: 12px; overflow: hidden; }
 .tabs .tab { border: 0; border-radius: 0; color: var(--dim); cursor: pointer; font: inherit; line-height: 1.5em; height: 1.5em; }
 .tabs .tab:hover { color: var(--fg); }
 .tabs .tab.on { color: var(--accent-text); font-weight: 700; }
@@ -220,3 +220,58 @@ body.dense .page table { font-size: 12px; }
 .card2.health { border: 1px solid var(--warn); padding: 10px; margin-bottom: 10px; border-radius: 2px; font-family: var(--sans); }
 .card2.health p { margin: 4px 0; font-size: 13px; }
 .card2.health button { margin-left: 6px; }
+/* ------------------------------------------------------------------------------------------------ panes and pages
+   Dense: a pane fills the board (a click on its name, or a double-click on its border), the panes menu in the board's
+   top-right corner hides some (home.js then sets the grid's areas), and the pages open over the whole board. */
+.panes-ctl { display: none; }
+body.dense .grid { position: relative; }
+body.dense .pane.gone { display: none; }
+body.dense .pane > h3 .t, body.dense .tabs .t { pointer-events: auto; cursor: pointer; user-select: none; }
+body.dense .mx { font-style: normal; }
+body.dense .mx::before { content: "⤢"; margin-left: .45em; color: var(--dim); font-weight: 400; letter-spacing: 0; }
+body.dense .maxed .mx::before, body.dense .pane.ov .mx::before { content: "⤡"; color: var(--fg); }
+body.dense .t:hover .mx::before { color: var(--accent-text); }
+body.dense .pane.tr > h3, body.dense #pane-tabs.tr > .tabs, body.dense #pane-page > .tabs { right: calc(var(--ctlw, 84px) + 18px); }
+.tabs .tab u, .panes-menu u { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); }
+body.dense .panes-ctl { display: block; position: absolute; top: calc(14px - 0.78em); right: 24px; z-index: 8; font: 400 11.5px/1.5em var(--mono); }
+body.dense .panes-ctl > button { display: block; height: 1.5em; padding: 0 5px; border: 0; border-radius: 0; font: inherit; color: var(--dim);
+  cursor: pointer; background: linear-gradient(var(--bg) 50%, var(--panel) 50%); }
+body.dense .panes-ctl > button::before { content: "┤ "; color: var(--line); }
+body.dense .panes-ctl > button::after { content: " ├"; color: var(--line); }
+body.dense .panes-ctl > button:hover, body.dense .panes-ctl > button[aria-expanded="true"] { color: var(--fg); }
+.panes-menu { position: absolute; top: calc(1.5em + 4px); right: 0; width: 270px; display: flex; flex-direction: column; gap: 1px;
+  background: var(--bg); border: 1px solid var(--line); padding: 8px 10px 10px; font: 12px/1.5 var(--mono); }
+.panes-menu .mh { color: var(--accent-text); letter-spacing: .12em; font-size: 11px; margin: 4px 0 2px; }
+.panes-menu label { display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; font: inherit; color: var(--fg); }
+.panes-menu input[type=checkbox] { margin: 0; accent-color: var(--accent); cursor: pointer; }
+.panes-menu button { display: flex; justify-content: space-between; border: 0; background: none; padding: 1px 0; font: inherit; color: var(--fg); text-align: left; cursor: pointer; }
+.panes-menu button:hover { color: var(--accent-text); }
+.panes-menu p { margin: 4px 0; font-size: 11px; line-height: 1.45; }
+/* a page over the board: the whole grid, above the panes */
+body.dense #pane-page { grid-area: 1 / 1 / -1 / -1; z-index: 6; }
+body.dense .grid.paged > .pane:not(.ov) { visibility: hidden; } /* their names would show above the page's border */
+body.dense #ov-body { position: absolute; inset: 16px 14px 10px; overflow: auto; padding: 0 4px 2px; font-size: 12.5px; line-height: 1.55;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+/* search on the Features and Settings pages */
+.find { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 4px 0 8px; margin-bottom: 6px; background: var(--panel); }
+.find input[type=search] { display: block; flex: 0 1 460px; width: auto; min-width: 0; margin: 0; padding: 5px 9px; border: 1px solid var(--line); border-radius: 2px;
+  background: var(--bg); color: var(--fg); font: 12.5px var(--mono); }
+.find input[type=search]:focus { outline: none; border-color: var(--hover); }
+.find-n { font: 12px var(--mono); white-space: nowrap; }
+.find-none { margin: 6px 0 12px; font: 12.5px var(--mono); color: var(--warn); }
+mark.hit { background: color-mix(in srgb, var(--peach) 34%, transparent); color: var(--fg); border-radius: 1px; }
+.form .hit { border-color: var(--peach); }
+.feat .card2 .find-why { margin: 4px 0 0; font: 11.5px var(--mono); }
+/* hidden features (look.hidden_features): a hide link on the card of one that's off; the list at the bottom */
+.feat .card2 .hide-f { float: right; margin: -2px -4px 0 6px; padding: 0 6px; border-color: transparent; background: none; color: var(--dim); font: 11px var(--mono); }
+.feat .card2 .hide-f:hover { border-color: var(--line); color: var(--fg); }
+.feat .card2.hid { border-style: dashed; }
+.card2 .tag-h { margin-left: 6px; padding: 0 5px; border: 1px solid var(--line); border-radius: 2px; color: var(--warn); font: 11px var(--mono); vertical-align: 1px; }
+.hid-box { margin: 12px 0 4px; font: 12.5px var(--mono); }
+body .hid-box button.linkish { padding: 0; border: 0; background: none; color: var(--link); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.hid-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; max-width: 980px; }
+.hid-list li { display: flex; align-items: baseline; gap: 12px; }
+.hid-list li b { flex: none; font-family: var(--sans); font-size: 13px; }
+.hid-list li .d { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--sans); font-size: 12.5px; }
+body .hid-list li button { flex: none; padding: 1px 10px; font: 11.5px var(--mono); }

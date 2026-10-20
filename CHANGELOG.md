@@ -78,6 +78,20 @@
   feature's account box shows the address of the account in use.
 - Installers: `KUROOTO_CHANNEL=beta` installs from the beta channel, and the install keeps following it
   (`updates.channel` is saved in its settings).
+**The dense dashboard makes room**
+- Any pane fills the board: click its name (⤢) or double-click its border; Esc or the name again brings the others
+  back.
+- A **panes** menu in the board's top-right corner hides STATUS, SYSTEMS, NOTES or TERMINAL (one always stays) and
+  the others take the room. It's the setting `look.panes`, so every browser shows the same.
+- The pages (Features, Settings, Phone, Research, You, Schedule, Jobs, Activity) open over the whole board instead of
+  the short terminal pane. Alt and the underlined letter opens one (Alt+F features, Alt+S settings…), Esc goes back;
+  a terminal keeps its own Alt keys.
+- Features and Settings have a search box (`/` or Ctrl+F, Esc empties it): it filters as you type, marks the words
+  it found and counts what's left; a feature is found by its settings too.
+- A feature that's off can be hidden from the Features page (`look.hidden_features`); Show hidden (N) at the bottom
+  brings it back, and a search still finds it. Only the page changes.
+- Links to other sites in Kurooto's pages (Google sign-in, token pages, guides) open in your default browser, also
+  when the dashboard runs in another browser's app window. `look.links_in = here` keeps them in the page's browser.
 
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.

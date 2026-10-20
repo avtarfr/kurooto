@@ -1,4 +1,5 @@
-"""Opening one of your notes in your own program (the dashboard's notes map: double-click a note).
+"""Opening one of your notes in your own program (the dashboard's notes map: double-click a note), and the dashboard's
+links to other sites in your default browser (open_url, at the end).
 
 notes.open_with: empty (the default) opens the note in this computer's default app for Markdown files (Linux:
 xdg-open, macOS: open, Windows: the file's default program). Or a command that opens its own window, for example
@@ -14,6 +15,8 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
+import urllib.parse
 from pathlib import Path
 
 from kurooto.core.config import register_defaults
@@ -86,3 +89,50 @@ def open_note(settings, path, folder="") -> tuple[bool, str]:
     elif template:
         note = "Settings: notes.open_with couldn't be read (an unclosed quote?), so the default app opened it."
     return open_default(path), note
+
+
+# ------------------------------------------------------------------------------------------------ web addresses
+# The dashboard's links to other sites (Google sign-in, a token page, docs) open in this computer's default browser
+# (look.links_in = "default"), not in the window showing the dashboard, which may be another browser's app window
+# (`google-chrome --app=...`). POST /api/open-url; the pages fall back to opening the link themselves when it fails.
+def safe_url(url) -> str | None:
+    """A web address that may go to the browser: http or https with a host, at most 4,000 characters, no spaces or
+    control characters. Anything else (file:, javascript:, data:) is None."""
+    if not isinstance(url, str) or not url or len(url) > 4000 or any(ord(c) <= 32 or ord(c) == 127 for c in url):
+        return None
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return None
+    return url if parts.scheme.lower() in ("http", "https") and parts.hostname else None
+
+
+def open_url(url, wait: float = 2.0) -> tuple[bool, str]:
+    """Open a web address in the default browser: Windows through os.startfile, Linux and macOS through webbrowser
+    (xdg-open or open, or $BROWSER when it's set). A $BROWSER command may not return until that browser closes, so
+    this waits at most `wait` seconds and counts one still going as opened. Returns (opened, why not)."""
+    u = safe_url(url)
+    if not u:
+        return False, "Only http and https addresses open in the browser."
+    if sys.platform == "win32":
+        try:
+            os.startfile(u)  # noqa: S606 (an http(s) address: the default browser)
+            return True, ""
+        except OSError as e:
+            return False, str(e)
+    import webbrowser
+
+    got: dict = {}
+
+    def go() -> None:
+        try:
+            got["ok"] = bool(webbrowser.open(u, new=2))
+        except Exception as e:  # no browser, a broken $BROWSER: the page opens it itself
+            got["why"] = str(e)
+
+    t = threading.Thread(target=go, name="open-url", daemon=True)
+    t.start()
+    t.join(wait)
+    if t.is_alive() or got.get("ok"):
+        return True, ""
+    return False, got.get("why") or "No browser answered on this computer."
