@@ -16,7 +16,8 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Telegram](#telegram) · [Questions and approvals](#questions-and-approvals) ·
     [Chat with your AI](#chat-with-your-ai) · [Reminders](#reminders) · [Check-ins](#check-ins) ·
     [Deadlines](#deadlines) · [Recurring quizzes](#recurring-quizzes) · [Not interested](#not-interested) ·
-    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Quiz](#quiz) ·
+    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Class packs](#class-packs) ·
+    [Quiz](#quiz) ·
     [Weekly summary](#weekly-summary)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
@@ -533,6 +534,78 @@ read and the next key dates. The note needs two tables:
 `subjects.margin_min`, `subjects.term_note` (empty: no term note).
 *Undo:* `/term note off` (or empty `subjects.term_note`): the note's classes and dates stop counting, and its dated
 items leave the deadline list. Your note itself is never changed.
+
+### Class packs
+One person turns the section's setup into a small file; everyone else sends it to their own Kurooto and has the
+timetable, term dates, holidays, recurring quizzes, dated exams and attendance rules from day one. Off until you turn
+it on (Features → Class packs; it needs Subjects).
+
+**What a pack carries, and nothing else:** the courses (names, short names, which are electives, a course's own
+attendance rule), the weekly timetable (lecture, lab or tutorial, and a lab batch), the term (last day of classes,
+holidays, exam periods), recurring quizzes, dated exams, the section's attendance rule (75%, labs counted separately,
+unless it says otherwise) and the day it was checked against the official timetable. The format is strict
+(`<name>.kurooto-course`, JSON): a field it doesn't know makes the whole file invalid, so there's no place in it for
+names, keys, notes, skills, your skips or your own deadlines, and every piece of text in it is checked for an email
+address, phone number, link, @handle, file path or anything that looks like a key. A file that breaks a rule is
+refused whole, with the reason.
+
+**Making one.** `/classpack export` makes a pack of your setup: your subjects and timetable, your term note, your
+`/term` dates and holidays, and your recurring quizzes. For the whole section (every elective, every lab batch), keep a
+term note ([Subjects and timetable](#subjects-and-timetable)) with two more columns in its timetable and two more
+tables, and `/classpack export from terms/section-b` reads that note alone:
+
+```
+## Weekly timetable
+| Day | Time | Subject | Code | Type | Batch |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Mon | 09:00-09:55 | Linear Algebra | MA101 | | |
+| Thu | 14:00-16:55 | Statistics | | Lab | A |
+| Fri | 14:00-16:55 | Statistics | | Lab | B |
+| Wed | 10:00-10:55 | Machine Learning | | Elective | |
+
+## Recurring quizzes
+| Subject | What | Every (weeks) | Day | Time | Next | Until |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Linear Algebra | Quiz | 1 | Thu | 10:00 | | |
+
+## Attendance
+| Course | Minimum | Labs |
+| :--- | :--- | :--- |
+| All | 75 | separate |
+| Statistics | 80 | together |
+```
+
+Type says lecture, lab or tutorial ("Elective" marks a course not everyone takes); Batch is a lab batch. Write a lab
+under its course's name ("Statistics", Type Lab) to keep it one course. Kurooto's message lists what's in the pack and
+what it left out (and why). Tap the electives; reply to change anything: "title Year 2 section B", "la 80" or "all 80",
+"la labs together", "la quiz off", "holiday 2026-10-02 off". Then check it against the official timetable and tap
+**Checked today, make it** (or reply "checked 2026-10-18"): that date is stamped in the pack, and the file comes to
+your Telegram for you to forward (a copy stays in Kurooto's data folder, `classpacks/`). From a terminal: `kurooto
+classpack export --checked today [--from terms/section-b] [--title "Year 2 section B"] [--elective machine-learning]
+[--out FOLDER]`; `kurooto classpack check FILE` says whether a file is a pack Kurooto can use, and what's in it.
+
+**Importing one.** Send the `.kurooto-course` file to your bot (or `kurooto classpack import FILE`). Nothing counts
+yet: first a review says when it was checked against the official timetable (where they differ, the official one is
+right), what's in it, what it means for you and its attendance rules. Tap the electives you take and your lab batch,
+reply to change any rule ("la 80", "la labs together", "la quiz off", "la quiz fri 11:00", "all 80"), then **Import**.
+The pack sits under your own setup, never in it: your own classes (`/class`), term dates (`/term`), term note and
+recurring table win where they say something else, and nothing is written into your notes. Its classes keep calls
+away like yours, holidays and exam periods have no classes, and its quizzes and exams reach [Deadlines](#deadlines)
+(with `deadlines.recurring` and `deadlines.from_term_note` on). `/recurring` marks its quizzes "(class pack)".
+
+**After a mid-term reshuffle,** send the new pack: the review lists what changes for you (classes moved, holidays,
+quiz times, exam dates, rules) before anything does, and keeps your electives, batch and changes. The same pack again
+changes nothing. `/classpack` shows what you have; `/classpack set la 80` (or any change above, `electives ml,
+topology`, `batch B`, `la reset`) changes it later and lists what changed for you. A pack whose term ended more than two
+weeks ago shows up in `/health`.
+
+*Settings:* `classpacks.min_pct` (75) and `classpacks.labs` (`separate` or `together`): the section's attendance rule
+in packs you make, when your term note has no Attendance table.
+*Privacy:* everything stays on this computer; a pack you make goes to your own Telegram, and you decide whom to
+forward it to.
+*Turn off:* Features → Class packs; the pack stops counting and is kept for when you turn it on again.
+*Undo:* `/classpack remove` takes the pack out (your own setup stays); `/classpack undo` goes back one step (to the
+pack you had before a re-import, or back after a remove).
 
 ### Quiz
 Practice questions from your notes, spaced out so you see each again just before you'd forget it. Put a note named
@@ -1675,6 +1748,7 @@ you set it up):
   link ([Drive upload](#drive-upload); bigger files go there by itself). With Skills on, the AI can send you files from your notes folder too
   ("send me my linear algebra pack"), on calls as well; it can't send files from anywhere else.
 - `kurooto note "an idea"` saves a quick note (see [Quick notes and prompts](#quick-notes-and-prompts)).
+- `kurooto classpack check|export|import`: check, make or import a class pack (see [Class packs](#class-packs)).
 - `kurooto ask-me "Which folder should the photos go in?" --choices "camera|screenshots"` asks you something (see
   [Questions and approvals](#questions-and-approvals)); it prints the question's id and returns. Add `--wait` (and
   `--timeout 30`, in minutes) to wait and print your answer. `--expires 6h` changes how long it stays open; `--title
@@ -2133,6 +2207,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The laptop still sleeps with the lid closed on the charger (Linux) | `awake.lid` is off, or your system refuses the lid hold to background programs (doctor says so). Allow it in polkit (`org.freedesktop.login1.inhibit-handle-lid-switch`) or set `HandleLidSwitchExternalPower=ignore` in logind.conf. |
 | `kurooto autostart boot`: "Linux didn't allow that from here" | Run `loginctl enable-linger` in a terminal (it may ask for your password), then `kurooto autostart boot` (or Settings → Starting) again. |
 | "I can't answer free text yet" | Turn on **Chat** (Features). |
+| A class pack "isn't a class pack I can use" | The message says why: a field the format doesn't have, or text that looks personal (an email, a link, a phone number). Ask whoever made it to fix that and make it again; `kurooto classpack check FILE` checks a file. |
 | The AI says it isn't signed in | Setup page → AI → Install / sign in again → Test. |
 | "It's at its usage limit" | Free tiers have daily limits: wait, or set a fallback brain (Settings → `brain.fallback`). `/usage` shows how often it happens. |
 | "Google's free limit for today is used up" | It comes back at the time the message says. Meanwhile set a fallback brain (Settings → `brain.fallback`); calls and reminders still work. `/usage` shows each limit and when it resets. |
