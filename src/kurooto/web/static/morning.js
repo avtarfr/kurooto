@@ -51,6 +51,7 @@ async function load() {
     section("Classes", (d.classes || []).map((c) => `<li class="${c.skipping ? "off" : ""}"><span class="t">${esc(c.time)}</span>${esc(c.name)}${c.skipping ? " (skipping)" : ""}</li>`)),
     section("Calendar", (d.calendar || []).map((e) => `<li>${esc(e)}</li>`)),
     section("Due soon", (d.due || []).map((x) => `<li>${esc(x.title)} <span class="t">${esc(x.when)}</span></li>`)),
+    section("Time to start", (d.start || []).map((x) => `<li>${esc(x.title)} <span class="t">${esc(x.when)}</span></li>`)),
     section("Check-ins", (d.checkins || []).map((c) => `<li class="${c.status === "skipped" ? "off" : ""}"><span class="t">${esc(c.time)}</span>${esc(c.name)} (${esc(c.status)})</li>`)),
     section("Open questions", (d.questions || []).map((q) => `<li>${esc(q)}</li>`)),
     section("So far", [d.alarm ? `<li>Next alarm: ${esc(d.alarm)}</li>` : "", d.study_h ? `<li>Studied today: ${esc(d.study_h)} h</li>` : ""].filter(Boolean)),

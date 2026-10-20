@@ -65,7 +65,7 @@ computer only.
 | Kurooto Terminal | nothing by itself; getting kitty or fish (only when you say yes) downloads them from their official GitHub releases. What you type to your AI's program goes to its service, as when you run it yourself | stays on your computer |
 | Your add-ons | nothing by the feature itself; your add-ons' own code can do anything Kurooto can, so they send whatever they're written to send | wherever your add-ons send it |
 | Study tracker: telling you're away | nothing: the idle check reads input interrupt counts (`/proc/interrupts`), the cursor position (Hyprland) and whether a screen locker runs; never what you type, and none of it is kept | stays on your computer |
-| Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list and exam mode), Subjects, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
+| Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list, exam mode and start-by dates), Subjects, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
 
 ## Free tiers and terms
 

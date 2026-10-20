@@ -387,6 +387,16 @@ class Alarm(Module):
                 due = []
             if due:
                 steps.append("Due soon: " + "; ".join(f"{d.get('title')} ({d.get('when', '')})" for d in due[:6]) + ".")
+        sb = app.modules.get("startby")
+        if sb is not None and app.is_on("startby"):
+            try:
+                start = sb.morning_lines()  # start-by dates that have come (modules/startby.py)
+            except Exception:
+                start = []
+            if start:
+                steps.append(
+                    "Time to start (an estimate): " + "; ".join(start[:4]) + ". Ask which they'll begin today."
+                )
         if app.is_on("checkins"):
             plan_today = app.modules["checkins"].today()
             ev = (plan_today.get("evening") or {}).get("time")
