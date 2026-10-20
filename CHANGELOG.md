@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.5.0 (unreleased)
+## 0.5.0 (2026-10-20)
+Includes everything planned for 0.4.0 (below), which wasn't released on its own.
+
 
 **Kurooto keeps itself working** (on by default; `health.on`)
 - Every feature that's on has one health check: how often it should work (Classroom within 26 h, Calendar 12, Notes
@@ -156,7 +158,7 @@
   "no full solutions" ends at the key step, "no AI help" sends nothing to the AI. The shipped `hint` skill writes the
   ladder (yours replaces it); an answer that isn't in steps is never passed on.
 
-## 0.4.0 (unreleased)
+## 0.4.0 (part of 0.5.0)
 
 **Books and PDFs** (new; off until you turn it on)
 - Reference books and PDFs per subject: send one on Telegram with "book for <subject>", add it on the dashboard, or
@@ -258,7 +260,6 @@
   job): its dashboard cell and `kurooto top` line say "idle" instead of a grey "not running", and "running" with the
   figures while one runs.
 
-## 0.3.0 (unreleased)
 ## 0.3.0 (2026-10-20)
 The [manual](docs/MANUAL.md) has the detail.
 
