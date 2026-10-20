@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.2.0",
+  "notes": "Every feature of the original Kurooto, each off until you turn it on: the AI acts through Kurooto's tools, and agy and a Gemini key get real permissions after one approval; questions and approvals on Telegram, the phone app or a call; evening debrief and night calls; mornings; deadlines from your calendar; exam mode; skills, remember and a weekly look back; backups and profile sync. Plus every 0.1.6 fix.",
+  "created": 1792458104.6984255,
+  "files": {
+   "kurooto-0.2.0.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.2.0/kurooto-0.2.0.tar.gz",
+    "sha256": "3bf6a23490313fa4b1e6ed32e3f006364c1658281d18395453434e891513bdbc",
+    "size": 964052
+   }
+  }
+ },
+ "sig": "pnPGiax6se7j+9p0DSy4dWbg5HIZG7nDP3zty7Hdek8w7nP64mWgxoS5u/s8GOsfUXXGsPRIDf5noJjYg2IADQ=="
+}

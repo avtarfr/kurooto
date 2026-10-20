@@ -164,6 +164,49 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
 .interest-title { font-size: 1.08rem; font-weight: 600; line-height: 1.35; margin-bottom: 0.5rem; }
 .interest-desc { color: var(--text-muted); font-size: 0.9rem; }
 
+/* hero: the words on the left, the dashboard's SYSTEMS view on the right (stacked on phones) */
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; align-items: center; }
+.hero-media { position: relative; margin: 0; }
+.hero-media video, .hero-media img {
+  display: block; width: 100%; height: auto; aspect-ratio: 1200 / 1060; object-fit: cover; background: #151B12;
+  border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+}
+.hero-media figcaption { margin-top: 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
+.motion-btn {
+  position: absolute; right: 0.6rem; top: 0.6rem; width: 30px; height: 30px; display: grid; place-items: center; cursor: pointer;
+  background: rgba(11, 15, 10, 0.72); color: #F2EEE8; border: 1px solid #26311F; border-radius: var(--radius-md);
+}
+.motion-btn:hover { border-color: var(--border-focus); }
+.motion-btn svg { width: 13px; height: 13px; }
+.motion-btn .i-play, .motion-btn.paused .i-pause { display: none; }
+.motion-btn.paused .i-play { display: block; }
+@media (min-width: 900px) { .hero-grid { grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); gap: 3rem; } }
+
+/* showcase: screenshots in the cards' style */
+.shots-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+.shot-card {
+  margin: 0; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.25s var(--ease), box-shadow 0.25s ease;
+}
+.shot-card:hover { border-color: var(--border-focus); transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.shot-card.wide { grid-column: 1 / -1; }
+.shot-card > a { display: block; background: #0B0F0A; border-bottom: 1px solid var(--border-soft); }
+.shot-card img { display: block; width: 100%; height: auto; }
+.shot-card .crop { aspect-ratio: 16 / 10; object-fit: cover; object-position: top; }
+.shot-card figcaption { padding: 1.1rem 1.3rem 1.25rem; }
+.shot-card .interest-title { margin-bottom: 0.3rem; }
+.phones {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.9rem; padding: 1.2rem; background: #0B0F0A;
+  border-bottom: 1px solid var(--border-soft);
+}
+.phones a { display: block; }
+.phones img { border-radius: 14px; border: 1px solid #26311F; }
+.shot-light { display: none !important; }
+[data-theme="light"] .shot-light { display: block !important; }
+[data-theme="light"] .shot-dark { display: none !important; }
+.shots-more { margin-top: 1.4rem; color: var(--text-muted); font-size: 0.88rem; }
+@media (prefers-reduced-motion: reduce) { .shot-card, .interest-card { transition: none; } .shot-card:hover { transform: none; } }
+
 .links-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
 .site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
@@ -171,9 +214,11 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
 @media (max-width: 860px) {
   .interests-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .install-grid { grid-template-columns: minmax(0, 1fr); }
+  .shots-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {
   .interests-grid { grid-template-columns: minmax(0, 1fr); }
+  .phones { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0.9rem; }
   .nav-links { display: none; }
   .hero-section { padding: 3.5rem 0 3rem; }
   .container { padding: 0 1rem; }
@@ -189,6 +234,7 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
       <ul class="nav-links">
         <li><a href="#install">Install</a></li>
         <li><a href="#features">Features</a></li>
+        <li><a href="#showcase">Showcase</a></li>
         <li><a href="https://github.com/avtarfr/kurooto/blob/main/docs/MANUAL.md">Manual</a></li>
         <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
       </ul>
@@ -202,7 +248,8 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
 
 <main id="main">
   <section class="hero-section">
-    <div class="container">
+    <div class="container hero-grid">
+      <div class="hero-text">
       <h1 class="hero-name">Kurooto</h1>
       <p class="hero-role">A personal assistant that runs on your own computer</p>
       <p class="hero-bio">
@@ -215,6 +262,18 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
         <a class="btn btn-outline" href="https://github.com/avtarfr/kurooto/blob/main/docs/MANUAL.md">Read the manual</a>
       </div>
       <p class="version" id="version"></p>
+      </div>
+      <figure class="hero-media">
+        <video id="hero-video" autoplay muted loop playsinline preload="auto" poster="media/systems-poster.webp"
+          aria-label="The dashboard's Systems view: each feature is a cell around a beating core, and pulses run along the lines as messages, reminders and AI answers come and go.">
+          <source src="media/systems-loop.mp4" type="video/mp4">
+        </video>
+        <button class="motion-btn" id="motion-btn" type="button" aria-label="Pause the animation">
+          <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+          <svg class="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg>
+        </button>
+        <figcaption>The dashboard's Systems view, with sample data.</figcaption>
+      </figure>
     </div>
   </section>
 
@@ -266,7 +325,76 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
     </div>
   </section>
 
-  <section class="section section-alt">
+
+  <section class="section section-alt" id="showcase">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-headline">Showcase</h2>
+        <p class="section-subtitle">A demo with made-up data: Sam, a student taking Linear Algebra, Organic Chemistry and Signals &amp; Systems.</p>
+      </div>
+      <div class="shots-grid">
+        <figure class="shot-card wide">
+          <a href="media/dashboard.webp"><img src="media/dashboard.webp" width="2880" height="1800" loading="lazy" decoding="async"
+            alt="The dashboard: this computer's status on the left, Kurooto's features as cells around a beating core in the middle, the notes and their links as a graph on the right, and a live activity feed below."></a>
+          <figcaption><h3 class="interest-title">The dashboard</h3>
+            <p class="interest-desc">Your computer, every feature at work, your notes and their links, and everything that happens, live, on a page only this computer can open.</p></figcaption>
+        </figure>
+        <figure class="shot-card">
+          <a href="media/setup-computer.webp"><img class="crop shot-dark" src="media/setup-computer.webp" width="2080" height="1800" loading="lazy" decoding="async"
+            alt="The setup wizard's Your computer step: the graphics card, memory and free space it found, the local models it recommends, and what to do on battery."><img
+            class="crop shot-light" src="media/setup-computer-light.webp" width="2080" height="1800" loading="lazy" decoding="async"
+            alt="The setup wizard's Your computer step, in the light theme."></a>
+          <figcaption><h3 class="interest-title">Setup that reads your computer</h3>
+            <p class="interest-desc">The wizard checks your graphics card, memory and free space, then recommends what to run here and what to leave to the AI you pick.</p></figcaption>
+        </figure>
+        <figure class="shot-card">
+          <a href="media/morning.webp"><img class="crop shot-dark" src="media/morning.webp" width="2560" height="1870" loading="lazy" decoding="async"
+            alt="The morning page: today's plan from the daily note, with the day's classes, calendar, what's due soon, check-ins and an open question."><img
+            class="crop shot-light" src="media/morning-light.webp" width="2560" height="1870" loading="lazy" decoding="async"
+            alt="The morning page, in the light theme."></a>
+          <figcaption><h3 class="interest-title">A morning page</h3>
+            <p class="interest-desc">The day's plan, drafted before your alarm, next to your classes, calendar, deadlines and check-ins.</p></figcaption>
+        </figure>
+        <figure class="shot-card wide">
+          <div class="phones">
+            <a href="media/chat-example-1.webp"><img src="media/chat-example-1.webp" width="1170" height="2532" loading="lazy" decoding="async"
+              alt="Example chat: Sam asks for a reminder in two minutes and what's due this week; the reminder arrives with +10 min and +1 h buttons."></a>
+            <a href="media/chat-example-2.webp"><img src="media/chat-example-2.webp" width="1170" height="2532" loading="lazy" decoding="async"
+              alt="Example chat: an AI answer about the Gibbs phenomenon, then the evening check-in, Sam's reply, and the note that it was saved to the journal."></a>
+            <a href="media/phone-call.webp"><img src="media/phone-call.webp" width="1170" height="2532" loading="lazy" decoding="async"
+              alt="The phone's call page during an evening debrief call, with the conversation as text and Hang up, Mute and Earpiece buttons."></a>
+            <a href="media/phone-inbox.webp"><img src="media/phone-inbox.webp" width="1170" height="2532" loading="lazy" decoding="async"
+              alt="The phone's inbox: a call to answer and a question with answer buttons, a reply box and Later."></a>
+          </div>
+          <figcaption><h3 class="interest-title">On your phone</h3>
+            <p class="interest-desc">Plain English on Telegram (an example chat), and your own call line: Kurooto calls you, and questions wait in an inbox on Android or iPhone.</p></figcaption>
+        </figure>
+        <figure class="shot-card">
+          <a href="media/dashboard-terminal.webp"><img class="crop" src="media/dashboard-terminal.webp" width="1536" height="960" loading="lazy" decoding="async"
+            alt="The dashboard's Terminals tab: asking what's due this week and how much was studied today, in plain English, in a terminal."></a>
+          <figcaption><h3 class="interest-title">Terminals in the dashboard</h3>
+            <p class="interest-desc">Your AI's own program, a shell, plain English and Kurooto's log, for a computer that's yours alone.</p></figcaption>
+        </figure>
+        <figure class="shot-card">
+          <a href="media/setup-features.webp"><img class="crop shot-dark" src="media/setup-features.webp" width="2080" height="2786" loading="lazy" decoding="async"
+            alt="The setup wizard's features step: each feature as a card saying what it does and what leaves the computer, with a recommended Starter set."><img
+            class="crop shot-light" src="media/setup-features-light.webp" width="2080" height="2786" loading="lazy" decoding="async"
+            alt="The setup wizard's features step, in the light theme."></a>
+          <figcaption><h3 class="interest-title">Only what you turn on</h3>
+            <p class="interest-desc">Each feature says what it does and what leaves your computer. Start with the recommended set and add more later.</p></figcaption>
+        </figure>
+      </div>
+      <p class="shots-more">More:
+        <a href="media/setup-welcome.webp">setup: welcome</a> ·
+        <a href="media/setup-ai.webp">setup: AI</a> ·
+        <a href="media/setup-about-you.webp">setup: about you</a> ·
+        <a href="media/dashboard-research.webp">research sources</a> ·
+        <a href="media/dashboard-features.webp">features tab</a> ·
+        <a href="media/phone-pair.webp">pairing an iPhone</a></p>
+    </div>
+  </section>
+
+  <section class="section">
     <div class="container">
       <div class="section-head">
         <h2 class="section-headline">More</h2>
@@ -274,7 +402,7 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
       </div>
       <div class="links-row">
         <a class="btn btn-outline" href="https://github.com/avtarfr/kurooto/blob/main/docs/MANUAL.md">Manual</a>
-        <a class="btn btn-outline" href="https://github.com/avtarfr/kurooto/blob/main/docs/PRIVACY.md">Privacy</a>
+        <a class="btn btn-outline" href="privacy.html">Privacy</a>
         <a class="btn btn-outline" href="https://github.com/avtarfr/kurooto/blob/main/AGENTS.md">AGENTS.md</a>
         <a class="btn btn-outline" href="https://github.com/avtarfr/kurooto/blob/main/CHANGELOG.md">Changelog</a>
       </div>
@@ -285,7 +413,7 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
 <footer class="site-footer">
   <div class="container">
     <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
-    <span><a href="https://avtarfr.github.io/">avtarfr.github.io</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+    <span><a href="privacy.html">Privacy</a> · <a href="https://avtarfr.github.io/">avtarfr.github.io</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
   </div>
 </footer>
 
@@ -304,6 +432,14 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
       }).catch(function () { b.textContent = 'Select it'; });
     });
   });
+  // the hero animation: still for reduced motion, and a pause button (it loops forever otherwise)
+  (function () {
+    var v = document.getElementById('hero-video'), b = document.getElementById('motion-btn');
+    if (!v || !b) return;
+    function show(paused) { b.classList.toggle('paused', paused); b.setAttribute('aria-label', paused ? 'Play the animation' : 'Pause the animation'); }
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { v.removeAttribute('autoplay'); v.pause(); show(true); }
+    b.addEventListener('click', function () { if (v.paused) { v.play(); show(false); } else { v.pause(); show(true); } });
+  })();
   fetch('stable.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
     var v = (j.doc || j).version; if (v) document.getElementById('version').textContent = 'Current version: ' + v;
   }).catch(function () {});
