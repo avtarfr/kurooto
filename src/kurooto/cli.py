@@ -12,6 +12,7 @@ kurooto call "reason" [--at TIME] [--alarm] [--force]   ring your phone now or l
 kurooto call --list | --cancel KEY  the calls booked for later, and taking one off
 kurooto mcp              Kurooto's tools for agent programs (an MCP server on stdin/stdout)
 kurooto ask-me "question" [--choices "a|b|c"] [--expires 2d] [--wait [--timeout MIN]]   ask yourself something
+kurooto ask-me --pending [--json] | --id ID [--wait]   the open questions; one asked earlier (wait for its answer)
 kurooto ask-approval "question" [--timeout MIN]   ask for a yes/no and wait (exit 0 yes, 1 no, 2 timeout)
 kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB)
 kurooto note [--title T] TEXT       save a quick note to your notes' inbox (or pipe text in)
@@ -1062,6 +1063,53 @@ def booked_calls(cancel: str = "") -> int:
     return 0
 
 
+def ask_me_flags(am) -> None:
+    am.add_argument("--pending", action="store_true", help="the questions still open (--json for programs)")
+    am.add_argument("--json", action="store_true", help=argparse.SUPPRESS)
+    am.add_argument("--id", default="", help="with --wait: wait for the answer to a question asked before")
+
+
+def ask_me_more(a) -> int:
+    """`kurooto ask-me --pending [--json]` and `kurooto ask-me --id ID --wait`."""
+    if a.id:
+        if not a.wait:
+            q = (ask_running("ask/get", {"id": a.id}) or {}).get("question")
+            if not q:
+                print(f"There's no question {a.id} (or Kurooto isn't running).", file=sys.stderr)
+                return 2
+            print(json.dumps(q, ensure_ascii=False) if a.json else f"{q['status']}: {q.get('answer') or ''}".rstrip())
+            return 0
+        import time
+
+        end = time.monotonic() + a.timeout * 60
+        while time.monotonic() < end:  # unlike `ask-me --wait`, a timeout here leaves the question open
+            q = (ask_running("ask/get", {"id": a.id}) or {}).get("question") or {}
+            if q.get("status") == "answered":
+                print(q.get("answer") or "")
+                return 0
+            if q.get("status") == "expired":
+                break
+            time.sleep(max(0.0, min(3.0, end - time.monotonic())))
+        print("timeout")
+        return 2
+    r = ask_running("ask/pending")
+    if r is None:
+        print("Kurooto isn't running (`kurooto on` starts it).", file=sys.stderr)
+        return 2
+    qs = r.get("questions") or []
+    if a.json:
+        print(json.dumps(qs, ensure_ascii=False))
+    else:
+        for q in qs:
+            print(
+                f"{q['id']}  {q['text'][:100]}"
+                + (f"  [{' | '.join(q.get('choices') or [])}]" if q.get("choices") else "")
+            )
+        if not qs:
+            print("No open questions.")
+    return 0
+
+
 def sync_flags(sy) -> None:
     sy.add_argument("--status", action="store_true", help="is a sync running, and how did the last one go")
     sy.add_argument("--no-wait", action="store_true", help="start it and return; the summary comes as a message")
@@ -1200,12 +1248,13 @@ def main(argv: list[str] | None = None) -> int:
     no.add_argument("--urgent", action="store_true")
     notify_flags(no)
     am = sub.add_parser("ask-me", help="ask yourself something, answered anywhere (prints its id, or the answer)")
-    am.add_argument("text", nargs="+")
+    am.add_argument("text", nargs="*")
     am.add_argument("--choices", default="", help='answers to offer as buttons, e.g. "yes|no|later today"')
     am.add_argument("--expires", default="", help="how long it stays open: 2d, 6h, 30m (default 2 days)")
     am.add_argument("--title", default="", help='a label instead of "Question"')
     am.add_argument("--wait", action="store_true", help="wait for the answer and print it")
     am.add_argument("--timeout", type=float, default=30, help="minutes to wait (default 30)")
+    ask_me_flags(am)
     aa = sub.add_parser("ask-approval", help="ask for a yes/no and wait: exit 0 approved, 1 denied, 2 timeout")
     aa.add_argument("text", nargs="+")
     aa.add_argument("--timeout", type=float, default=30, help="minutes to wait (default 30)")
@@ -1292,6 +1341,8 @@ def main(argv: list[str] | None = None) -> int:
         print("Kurooto isn't running, so this was only shown on this computer.", file=sys.stderr)
         return 2
     if a.cmd == "ask-me":
+        if a.pending or a.id:
+            return ask_me_more(a)
         return ask_me(" ".join(a.text), a.choices, a.expires, a.title, a.wait, a.timeout, approval=False)
     if a.cmd == "ask-approval":
         return ask_me(" ".join(a.text), "", "", "", True, a.timeout, approval=True)

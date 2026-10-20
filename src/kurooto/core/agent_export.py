@@ -133,7 +133,14 @@ def _ours(root: Path, install: str) -> list[Path]:
 def sync(app: App) -> dict:
     """Bring the copies in line with the skills you have now, in the places agents.export names, and remove them
     from places it no longer names. Returns what happened: written, removed, renamed (yours had the name), edited
-    (yours now, left alone), problems."""
+    (yours now, left alone), problems. One at a time (the hourly update and a terminal may overlap)."""
+    from kurooto.core.lock import Lock
+
+    with Lock(app.paths.state, "agent-skills", timeout=60):
+        return _sync(app)
+
+
+def _sync(app: App) -> dict:
     from kurooto.modules.skills import all_skills
 
     rep: dict = {"targets": [], "written": [], "same": 0, "removed": [], "renamed": [], "edited": [], "problems": []}

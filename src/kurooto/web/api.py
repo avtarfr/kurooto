@@ -486,8 +486,8 @@ class Api:
         """
         ask = self.app.ask
         sub = path.partition("/")[2]
-        if not post or sub == "get":
-            if not sub:
+        if not post or sub in ("get", "pending"):
+            if not sub or sub == "pending":  # POST ask/pending: `kurooto ask-me --pending`
                 return 200, {"questions": [ask.public(q) for q in ask.pending()]}
             q = ask.get(str(b.get("id") or "") if sub == "get" else sub)
             return (200, {"question": ask.public(q)}) if q else (404, {"error": "no such question"})

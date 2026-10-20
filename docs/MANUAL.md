@@ -196,7 +196,9 @@ working; it now shows as "Another OpenAI-compatible service". What each service'
 **Limits:** free tiers have daily limits. When the brain hits one, Kurooto tells you once and uses your fallback if
 you set one. `/usage` (with Chat on) lists AI requests per day over the last 7 days (`/usage 14` for two weeks), per
 brain, and how often a limit was hit, from Kurooto's own request log; quick checks (how hard a request is, grading a
-quiz answer) and phone calls aren't counted. **How hard it thinks:** Kurooto picks low, medium or high effort per
+quiz answer) and phone calls aren't counted. If agy is on this computer, `/usage` also counts **agy itself** from its
+own logs: every agy run, including the ones you type yourself, its model requests and the days it hit its limit (only
+counted; nothing in the logs is read out). `kurooto usage [days]` shows the same in a terminal. **How hard it thinks:** Kurooto picks low, medium or high effort per
 request; start a message with `high:` or `low:` to choose.
 
 ### What the AI can do (its tools)
@@ -257,8 +259,9 @@ check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything
 features you have on.
 
 ### Telegram
-Your own bot, which only answers you. Commands: `/status` (what's going on), `/hold 2h` or `/hold 18:00` (no calls
-until then), `/calls` (allow calls again), `/focus 2h` (do-not-disturb: messages wait until it ends).
+Your own bot, which only answers you. Commands: `/status` (what's going on: whether calls are held, focus, what's
+coming up, open questions, today's check-ins, what's due in the next 3 days, the alarm, your last AI requests and
+the features that are on), `/hold 2h` or `/hold 18:00` (no calls until then), `/calls` (allow calls again), `/focus 2h` (do-not-disturb: messages wait until it ends).
 *Leaves your computer:* your messages travel through Telegram to your bot.
 
 ### Questions and approvals
@@ -475,6 +478,17 @@ it in your notes (`kurooto/skills/<name>/SKILL.md`), **Discard** throws it away.
 To change a skill that comes with Kurooto, `/skills copy journal` makes your own copy in that folder; edit it there
 (your copy replaces Kurooto's for you; delete your copy to go back). A prompt in your prompt library with
 `skill: true` in its header is a skill too.
+
+**In agy and other agent programs.** `kurooto export-skills on` puts every skill you can run here (Kurooto's, your
+add-ons', your own, and prompts with `skill: true`) into agy's skills folder, so `/journal my day` typed in agy runs
+the same instructions; each copy says where your notes folder is and carries the same rules. `--to agy,agents` also
+puts them in `~/.agents/skills` (Codex as `$journal`, GitHub Copilot CLI as `/journal`); Claude Code's folder is never
+used. Kurooto only ever changes or removes the copies it made (they carry a `.kurooto-skill` marker): if you have a
+skill of your own with the same name, yours stays and Kurooto's goes in as `kurooto-<name>`; a copy you edit by hand is
+yours from then on. They're kept up to date when Kurooto starts (so after every update) and every hour, and ones whose
+skill is gone are removed. `kurooto export-skills status` lists them; `agents.prefix` (e.g. `k-`) puts a prefix on
+all of them. *Turn it off:* `kurooto export-skills off` removes every copy Kurooto made (`kurooto uninstall` does
+too); your own skills stay.
 
 **On a schedule.** `/every monday 9:00 /journal plan my week`, `/every weekdays 7:30 /morning-prep`,
 `/every daily 21:00 how did today go?` (a request for the AI), or any command (`/every friday 18:00 /week`). Days:
@@ -720,9 +734,12 @@ history. With Phone calls on, your call line can read whole notes from the repos
 ### Sync everything
 `/sync all` or "sync everything" on Telegram, or `kurooto sync` in a terminal (with Kurooto running), runs every sync
 that's on, one after another: your notes with your repository, Google (Classroom, Classroom → notes and the mail
-digest), your calendars, research project logs, the notes brain's index, then your notes again (to send up what the
-others just wrote). A feature that's off is left out. It runs in the background and you get one line each when it's
-done, e.g. `Calendar: ok, 23 events`. With Notes sync off, plain `/sync` does the same.
+digest), your calendars, research project logs, the notes brain's index, a backup (with Backups on; skipped when the
+backup folder isn't there, e.g. the drive is unplugged), then your notes again (to send up what the others just
+wrote). A feature that's off is left out. It runs in the background and you get one line each when it's done,
+e.g. `Calendar: ok, 23 events`. With Notes sync off, plain `/sync` does the same. `kurooto sync` waits and prints the
+summary; `kurooto sync --no-wait` starts it and returns (the summary comes as a message); `kurooto sync --status` says
+whether one is running and how the last one went (it works with Kurooto stopped, too).
 
 ### Backups
 Once a day, a zip of Kurooto's settings, data and state in a folder you pick: a folder on an external drive, or one
@@ -1146,6 +1163,18 @@ stops Kurooto: a file that fails to load is skipped, and an add-on that fails wh
 request; both are logged and shown by `/addons` and `kurooto doctor`. The folder can't be inside Kurooto's own folders,
 and updates never change it. Restart Kurooto after editing their code.
 
+**What an add-on feature can plug into,** besides commands, buttons, intents, tools and settings (the details are at
+the top of `src/kurooto/core/overlay.py`):
+
+- `classify_intent(text, intents)`: picks which plain-English request a message is, before Kurooto's own patterns try
+  (for example a small local model that understands how you talk). It gets the message and the requests that are on,
+  and answers with a request's name (and, if it likes, its details and how sure it is). Kurooto only uses an answer
+  that names a request that's on, is at least 60% sure, and comes within 2 seconds (`classify_timeout` changes that,
+  up to 10); anything else, or an error, falls through to the usual patterns. Long messages and several requests in
+  one still go to the AI, and questions only go to requests that answer questions.
+- `status_lines()`: extra lines at the end of `/status`.
+- `doctor_checks()`: extra lines for `kurooto doctor`, each `(name, ok, detail)`; a failing one counts as a problem.
+
 *Turn it off:* Features → Your add-ons → Turn off; the add-ons are unloaded and their folder stays as it is.
 
 ### From a terminal or a script
@@ -1153,7 +1182,12 @@ Scripts and other tools on your computer can reach you through Kurooto (Telegram
 you set it up):
 
 - `kurooto notify --title "Backup" "The backup finished."` sends you a message. If Kurooto isn't running, the message
-  only shows on this computer, and the command exits with 2.
+  only shows on this computer, and the command exits with 2. `--kind` sets what it is (`info`, `result`, `reminder`,
+  `deadline`, `question`, `approval`: that decides where it shows, as in Settings → notify; `approval` and `--urgent`
+  get through focus). `--button "Rerun=runs:42:again"` adds a button (one row each, up to 8): after the `=` either a
+  web address, or `prefix:ref:action` for a feature (or one of your add-ons) that handles that prefix; `--click URL`
+  adds an **Open** button for a link. `--print-id` prints the Telegram message's id, and `--reply-to ID` sends the
+  next message as a reply to it.
 - `kurooto send report.pdf --caption "This week's numbers"` sends a file from this computer to your Telegram (up to
   50 MB; exit code 2 when Kurooto isn't running). With Skills on, the AI can send you files from your notes folder too
   ("send me my linear algebra pack"), on calls as well; it can't send files from anywhere else.
@@ -1161,7 +1195,8 @@ you set it up):
 - `kurooto ask-me "Which folder should the photos go in?" --choices "camera|screenshots"` asks you something (see
   [Questions and approvals](#questions-and-approvals)); it prints the question's id and returns. Add `--wait` (and
   `--timeout 30`, in minutes) to wait and print your answer. `--expires 6h` changes how long it stays open; `--title
-  "Backup"` replaces the "Question" label.
+  "Backup"` replaces the "Question" label. `kurooto ask-me --pending` lists the questions still open (`--json` for
+  programs); `kurooto ask-me --id <id> --wait` waits for the answer to one asked earlier (a timeout leaves it open).
 - `kurooto ask-approval "Delete last month's build folders?" --timeout 30` waits for Approve / Deny: it prints `yes`,
   `no` or `timeout` and exits with 0, 1 or 2. Use it in scripts before anything that needs your OK. If Kurooto isn't
   running, `ask-me` and `ask-approval` exit with 2 and nobody is asked.
@@ -1172,6 +1207,8 @@ you set it up):
 - `kurooto call "the backup finished"`: rings your phone (needs Phone calls). It waits out your no-call rules
   (classes, /hold, focus, night) and calls when they end; `--force` rings now anyway, `--alarm` rings as a wake-up
   alarm, `--at 17:30` (or "in 20 min", "tomorrow 7:00") calls later. Nothing ever rings while you're on a call.
+  `kurooto call --list` shows the calls booked for later with their keys, and `kurooto call --cancel <key>` takes one
+  off (your call line forgets it too). Check-ins and the alarm have their own commands (`/checkins`, `/alarm`).
 - `kurooto mcp`: Kurooto's tools for agent programs (see
   [What the AI can do](#what-the-ai-can-do-its-tools)). Without Kurooto running, it tells the agent so.
 
@@ -1419,7 +1456,10 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 
 ## Getting help (diagnostics)
 
-`kurooto doctor` checks Kurooto, your AI, every feature you have on, and free space; each line says what's wrong.
+`kurooto doctor` checks Kurooto, your AI, every feature you have on, and free space; each line says what's wrong, and
+the exit code is the number of problems (handy after moving to a new computer). It also asks Telegram whether your
+bot answers, asks your call line whether it's up (and whether the running Kurooto is linked to it), checks the skills
+copied into agy, and runs your add-ons' own checks.
 `kurooto top` and `kurooto logs -f` show what it's doing right now.
 
 `kurooto doctor --bundle` saves a zip you can send to someone helping you. It contains Kurooto's checks, its log,
@@ -1439,7 +1479,8 @@ stay, since you may use them. Your call line stays on your Cloudflare account un
 Pages → the `kurooto-…` worker → Settings → Delete); paired phones stop working once it's gone. A Google client can be
 deleted in Google Cloud, and the Agent plan calendar in Google Calendar; a notes repository stays yours (delete its
 `kurooto-profile` branch if you used Profile sync). Backup zips stay in the folder you picked, and your add-ons folder
-is never touched.
+is never touched. The copies of your skills Kurooto put in agy and other agent programs are removed; skills you made
+there yourself stay.
 
 ## FAQ
 

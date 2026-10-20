@@ -2,6 +2,7 @@
 classifier, and skills exported to agent programs."""
 
 import datetime as dt
+import json
 import time
 from pathlib import Path
 
@@ -410,3 +411,26 @@ def test_uninstall_without_exports_touches_no_agent_folder(tmp_path, monkeypatch
     state = tmp_path / "state"
     state.mkdir()
     assert agent_export.remove_all(state, tmp_path / "config") == []  # nothing recorded: nothing scanned
+
+
+# ============================================================================================ ask-me for scripts
+def test_ask_me_pending_and_waiting_on_an_earlier_question(env, monkeypatch, capsys):
+    app = env.app
+    api = Api(app)
+
+    def running(path, body=None):
+        code, r = api.post(path, body or {})
+        return r if code == 200 else None
+
+    monkeypatch.setattr(cli, "ask_running", running)
+    qid = app.ask.ask("Which room?", choices=["A", "B"])
+    assert cli.main(["ask-me", "--pending"]) == 0
+    assert f"{qid}  Which room?  [A | B]" in capsys.readouterr().out
+    assert cli.main(["ask-me", "--pending", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)[0]["id"] == qid
+    assert cli.main(["ask-me", "--id", qid]) == 0 and capsys.readouterr().out.startswith("open")
+    app.ask.answer(qid, "B", "test")
+    assert cli.main(["ask-me", "--id", qid, "--wait", "--timeout", "0.05"]) == 0
+    assert capsys.readouterr().out.strip() == "B"
+    assert cli.main(["ask-me", "--pending"]) == 0 and "No open questions." in capsys.readouterr().out
+    assert cli.main(["ask-me", "--id", "nope"]) == 2
