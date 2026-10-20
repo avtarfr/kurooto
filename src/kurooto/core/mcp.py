@@ -152,17 +152,19 @@ class Server:
         tools = r[1].get("tools") if r and r[0] == 200 else None
         if not isinstance(tools, list):
             tools = jload(tools_cache(), []) or []  # not running: what it last listed
-        return {
-            "tools": [
-                {
-                    "name": t["name"],
-                    "description": str(t.get("description") or ""),
-                    "inputSchema": t.get("schema") or {"type": "object", "properties": {}},
-                }
-                for t in tools
-                if isinstance(t, dict) and t.get("name")
-            ]
-        }
+        out = []
+        for t in tools:
+            if not isinstance(t, dict) or not t.get("name"):
+                continue
+            item = {
+                "name": t["name"],
+                "description": str(t.get("description") or ""),
+                "inputSchema": t.get("schema") or {"type": "object", "properties": {}},
+            }
+            if isinstance(t.get("writes"), bool):  # agent programs may ask before tools that change things
+                item["annotations"] = {"readOnlyHint": not t["writes"]}
+            out.append(item)
+        return {"tools": out}
 
     def call_tool(self, params: dict) -> dict:
         name, args = params.get("name"), params.get("arguments")

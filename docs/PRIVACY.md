@@ -113,7 +113,18 @@ tools exist only on calls, with you.
 - `kurooto mcp` (how agent programs reach the tools) talks only to Kurooto on `127.0.0.1`, with a key that is good for
   the tools and nothing else; it changes at every start and is kept in an owner-only file in Kurooto's state folder
   (`tools-access.json`).
-- agy's settings file is changed in one place (`mcp(kurooto/*)` added to its allow-list), after a backup.
+- What the AI may read on this computer (Kurooto's own tools and agy alike): your notes, Documents, Downloads and
+  Screenshots folders, and Kurooto's copies of Classroom and mail; hidden files (like `.git`) are left out. What it
+  reads goes to the AI service you picked. It may write only in your notes folder, your Classroom course files and,
+  with add-ons on, your add-ons' `skills/`; Documents and Downloads stay read-only. Before it changes existing text
+  (`edit_note`), the previous version is kept in Kurooto's state folder (`note-history/`, the last 20 per file); Notes
+  sync's history has every version too.
+- The AI may read public web pages (GET only). It never fetches this computer or your local network, so a page or a
+  note can't steer it into your router or other programs here.
+- agy's settings file is changed only by adding (after a backup; your own rules stay): `mcp(kurooto/*)`, `read_file`
+  and `write_file` for the folders above, `read_url(*)`, harmless commands (cat, find, git, grep, latexmk, ls, rg and
+  similar; never `kurooto` or `sed`), and non-workspace file access if you hadn't set it. Kurooto asks before adding
+  anything (Approve / Deny), except when you test agy on the setup page, which says what it allows.
 - A long agy request is written, for the length of the run, to `.kurooto/requests/` inside your notes folder (a hidden
   folder Notes sync ignores, so it's never uploaded), then deleted.
 

@@ -203,24 +203,46 @@ request; start a message with `high:` or `low:` to choose.
 
 Your AI doesn't only answer: it can act, the same way on a phone call, in Chat, and in background requests. It adds a
 reminder, calls you back later, holds calls, adds a deadline, logs study time, creates a note or adds to one, ticks a
-`- [ ]` task, and asks you a question when it needs your answer. Each feature you turn on adds its own tools; a feature
-that's off has none. The notes tools never change what you wrote: they create new notes, add text at the end of a note
-or one of its sections, and tick tasks. Nothing is sent to anyone but you.
+`- [ ]` task, edits a note when you ask, reads your files and web pages, says how your syncs are doing ("what's the
+sync status?"), and asks you a question when it needs your answer. Each feature you turn on adds its own tools; a
+feature that's off has none. Nothing is sent to anyone but you.
+
+**What it may read and write** (the same for Kurooto's own tools and for agy):
+- **Read:** your notes folder, your Documents, Downloads and Screenshots folders (each OS's real ones), and
+  Kurooto's copies of Classroom (course files and the batches it files) and mail (the digest's batches). Hidden files
+  and folders (like `.git`) are left out, and a link that leads anywhere else is refused.
+- **Write:** your notes folder (all of it, so it can also make a `.tex` for a revision pack), the folder Classroom's
+  course files go to, and, with **Your add-ons** on, your add-ons' `skills/` (never the skills Kurooto ships, which
+  updates replace). Text files only (`.md`, `.txt`, `.tex`, `.bib`, `.csv`, `.json`, `.yaml`, ...). Documents and
+  Downloads stay read-only.
+- **Your text:** it creates notes and files and adds to them; it changes existing text only with `edit_note`, when you
+  asked, one exact passage at a time, and keeps the previous version first (Kurooto's state folder →
+  `note-history/`, the last 20 per file). With Notes sync on, your repository's history has every version too.
+- **The web:** a public page as plain text (GET only, at most a few MB); never this computer or your local network.
 
 - **API brains** (a Gemini key, Ollama, another OpenAI-compatible service) call the tools directly. A model that can't
   use tools (some small Ollama models) just answers without them.
 - **Agent programs** (agy, Codex, Claude Code) get them through `kurooto mcp`, a small MCP server that passes each call
   to the running Kurooto. Codex and Claude Code get it for each request only; nothing is saved in their own settings.
-  agy gets it once, when you test agy on the setup page (the page says so), or, if you set agy up before tools
-  existed, when you tap Approve on the question Kurooto asks once (Deny: it asks again in 30 days at the earliest):
-  Kurooto runs `agy mcp add kurooto ...` and adds `mcp(kurooto/*)` to agy's allow-list
-  (`~/.gemini/antigravity-cli/settings.json`, backed up first to Kurooto's state folder → `backups/`).
+  agy gets it once, when you test agy on the setup page (the page says what it allows), or, if you set agy up
+  before, when you tap Approve on the question Kurooto asks (Deny: it asks again in 30 days at the earliest; it also
+  asks before adding more later, e.g. when you turn on add-ons). Kurooto runs `agy mcp add kurooto ...` and adds to
+  agy's allow-list (`~/.gemini/antigravity-cli/settings.json`, backed up first to Kurooto's state folder →
+  `backups/`; your own rules stay): `mcp(kurooto/*)`; `read_file(...)` and `write_file(...)` for the folders above;
+  `read_url(*)`; and harmless commands: cat, cd, date, echo, file, find, git, grep, head, jq, latexmk (to build PDFs),
+  ls, mkdir, pdftotext, pwd, rg, sort, stat, tail, tree, uniq, wc, which. Never `kurooto` itself (its off, uninstall
+  and restore must not run unattended; everything useful is a tool) and not `sed` (agy's rules can't stop `sed -i`
+  from writing). Reading outside the notes folder needs agy's non-workspace access, so Kurooto turns that on
+  (`allowNonWorkspaceAccess`, `nonWorkspaceFileAccess`) unless you've set it yourself; agy's other settings, such as
+  its tool execution policy, are left as they are. agy doesn't get GBrain directly (Kurooto owns its index); it
+  searches your notes through Kurooto's `search_notes`.
 - **Your own agent sessions** can use them too: add `kurooto mcp` as an MCP server in any MCP client. It works while
   Kurooto is running.
 - The AI is told to say plainly when it couldn't do something, never to claim it did.
 
 *Turn it off:* the tools come from the features you have on; turn a feature off and its tools go. To take them away
-from agy: `agy mcp remove kurooto`, and delete the `mcp(kurooto/*)` line from agy's settings.
+from agy: `agy mcp remove kurooto`, and delete Kurooto's lines from agy's settings (or put back the copy in Kurooto's
+state folder → `backups/`).
 *Leaves your computer:* nothing new. What a tool returns (a note's text, your deadlines) goes to the AI you picked,
 like the notes it reads.
 

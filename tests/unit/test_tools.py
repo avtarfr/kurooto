@@ -4,6 +4,7 @@ runs get, and the local API that lists and runs them."""
 import json
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -207,7 +208,7 @@ def run(nt, name, **args):
 def test_unsafe_note_names(notes, slug):
     nt, root = notes
     assert T.note_path(root, slug, must_exist=False) is None
-    assert "usable note name" in run(nt, "write_note", slug=slug, text="hi")
+    assert not run(nt, "write_note", slug=slug, text="hi").startswith("Created")
 
 
 def test_names_are_notes_inside_the_folder(notes, tmp_path):
@@ -215,8 +216,10 @@ def test_names_are_notes_inside_the_folder(notes, tmp_path):
     assert T.note_path(root, "inbox/idea", False) == (root / "inbox" / "idea.md").resolve()
     assert T.note_path(root, "/inbox/idea.md", False) == (root / "inbox" / "idea.md").resolve()
     assert T.note_path(root, "inbox\\idea", False) == (root / "inbox" / "idea.md").resolve()
-    assert run(nt, "write_note", slug="plan.txt", text="x") == "Created plan.txt."
-    assert (root / "plan.txt.md").is_file() and not (root / "plan.txt").exists()  # always a .md note
+    assert run(nt, "write_note", slug="plan.txt", text="x") == "Created plan.txt."  # a text file, as named
+    assert (root / "plan.txt").read_text(encoding="utf-8") == "x\n"  # no front matter outside Markdown notes
+    assert run(nt, "write_note", slug="run.exe", text="x") == "Created run.exe."  # not text: a note of that name
+    assert (root / "run.exe.md").is_file() and not (root / "run.exe").exists()
 
 
 @pytest.mark.skipif(os.name == "nt", reason="symlinks need extra rights on Windows")
@@ -374,8 +377,9 @@ def names(app):
 
 def test_agent_tools_gathers_from_features_that_are_on(app):
     base = names(app)
-    notes = ["search_notes", "read_note", "list_notes", "write_note", "add_to_note", "tick_task"]
-    assert base == notes + ["ask_user"]  # ask_user: core (app.ask), always there
+    notes = ["search_notes", "read_note", "list_notes", "write_note", "add_to_note", "edit_note", "tick_task"]
+    always = ["read_file", "list_files", "fetch_url", "sync_status"]
+    assert base == notes + always + ["ask_user"]  # ask_user: core (app.ask), always there
     app.modules["extra"], app.modules["broken"] = Extra(app), Broken(app)
     assert names(app) == base  # off: none of their tools
     app.settings.set("modules.enabled", ["extra", "broken"])
@@ -499,3 +503,134 @@ def test_tools_only_key(tmp_path, monkeypatch):
 def test_nothing_secret_in_the_tools_list(app):
     out = json.dumps(Api(app).get("tools")[1])
     assert str(app.workspace) not in out
+
+
+# ---------------------------------------------------------------------------------------- files, web, syncs
+@pytest.fixture
+def places_env(app, tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    for d in ("Documents", "Downloads"):
+        (home / d).mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    from kurooto.core import places
+
+    monkeypatch.setattr(places, "user_folder", lambda kind: home / kind.capitalize() if kind != "pictures" else None)
+    secret = tmp_path / "secret.txt"
+    secret.write_text("private", encoding="utf-8")
+    return app, home, secret
+
+
+def ftool(app, name, **args):
+    return next(t for t in T.FileTools(app).tools() if t.name == name).run(args)
+
+
+def test_read_file_stays_inside_its_folders(places_env, tmp_path):
+    app, home, secret = places_env
+    ws = app.workspace
+    (ws / "course").mkdir()
+    (ws / "course" / "week1.txt").write_text("eigenvalues", encoding="utf-8")
+    (home / "Documents" / "cv.md").write_text("my cv", encoding="utf-8")
+    (ws / ".git").mkdir()
+    (ws / ".git" / "config").write_text("[remote]", encoding="utf-8")
+    assert ftool(app, "read_file", path="course/week1.txt") == "eigenvalues"
+    assert ftool(app, "read_file", path=str(home / "Documents" / "cv.md")) == "my cv"
+    for bad in (str(secret), "../secret.txt", "course/../../secret.txt", str(app.paths.config / "settings.json")):
+        assert "outside the folders" in ftool(app, "read_file", path=bad), bad
+    assert "Hidden" in ftool(app, "read_file", path=".git/config")
+    if os.name != "nt":
+        (ws / "link.txt").symlink_to(secret)
+        assert "outside the folders" in ftool(app, "read_file", path="link.txt")
+        (ws / "linkdir").symlink_to(tmp_path)
+        assert "outside the folders" in ftool(app, "list_files", path="linkdir")
+    big = "x" * (T.CHUNK + 10)
+    (ws / "big.txt").write_text(big, encoding="utf-8")
+    first = ftool(app, "read_file", path="big.txt")
+    assert first.startswith("x" * T.CHUNK) and f"start={T.CHUNK}" in first
+    assert ftool(app, "read_file", path="big.txt", start=str(T.CHUNK)) == "x" * 10
+    (ws / "img.png").write_bytes(b"\x89PNG\x00\x00")
+    assert "isn't a text file" in ftool(app, "read_file", path="img.png")
+    listed = ftool(app, "list_files", path="")
+    assert str(ws.resolve()) in [str(Path(f).resolve()) for f in listed["folders"]]
+    entries = ftool(app, "list_files", path=str(ws), pattern="**/*.txt")["entries"]
+    assert any(e.startswith("course/week1.txt") for e in entries) and not any(".git" in e for e in entries)
+
+
+def test_write_and_edit_cover_the_notes_folder_only(places_env, tmp_path):
+    app, home, secret = places_env
+    nt, ws = T.NoteTools(app), app.workspace
+    assert run(nt, "write_note", slug="pack/week3.tex", text="\\section{Week 3}") == "Created pack/week3.tex."
+    assert run(nt, "edit_note", slug="pack/week3.tex", old="Week 3", new="Week three").startswith("Edited")
+    assert (ws / "pack" / "week3.tex").read_text(encoding="utf-8") == "\\section{Week three}\n"
+    for bad in (str(home / "Documents" / "x.md"), str(secret), "../x.txt", "a/../../x.tex", str(tmp_path / "y.md")):
+        assert "outside" in run(nt, "write_note", slug=bad, text="x") or "usable" in run(
+            nt, "write_note", slug=bad, text="x"
+        ), bad
+    assert not (home / "Documents" / "x.md").exists() and secret.read_text(encoding="utf-8") == "private"
+    assert "Only text files" in run(nt, "write_note", slug=str(ws / "x.sh"), text="rm -rf /")
+    assert "usable" in run(nt, "write_note", slug=".hidden/x.txt", text="x")
+    if os.name != "nt":
+        (ws / "out").symlink_to(tmp_path)
+        assert "outside" in run(nt, "write_note", slug="out/x.txt", text="x") and not (tmp_path / "x.txt").exists()
+    (ws / "plan.md").write_text("# Plan\nread ch 3\nread ch 3\n", encoding="utf-8")
+    assert "2 times" in run(nt, "edit_note", slug="plan", old="read ch 3", new="x")
+    assert run(nt, "edit_note", slug="plan", old="# Plan\n", new="# The plan\n") == (
+        "Edited plan (the previous version is kept)."
+    )
+    kept = list((app.paths.state / "note-history").glob("plan*/*.md"))
+    assert len(kept) == 1 and kept[0].read_text(encoding="utf-8").startswith("# Plan")
+    assert "isn't in the file" in run(nt, "edit_note", slug="plan", old="nope", new="x")
+
+
+def test_fetch_url_public_pages_only(app, monkeypatch):
+    import http.server
+    import threading
+
+    page = b"<html><head><title>Basil</title><script>bad()</script></head><body><p>Water &amp; sun.</p></body></html>"
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            if self.path == "/away":
+                self.send_response(302)
+                self.send_header("Location", "http://127.0.0.1:9/")
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(page)
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    try:
+        assert "this computer or a private network" in ftool(app, "fetch_url", url=base + "/")
+        for bad in ("file:///etc/passwd", "ftp://example.com/x", "http://169.254.169.254/latest", "http://localhost:9/"):
+            assert "Only http" in ftool(app, "fetch_url", url=bad) or "private" in ftool(app, "fetch_url", url=bad)
+        allowed = []  # the test server stands in for a public site; each answer is used once
+        monkeypatch.setattr(T, "public_host", lambda host: bool(allowed and allowed.pop()))
+        allowed.append(True)
+        text = ftool(app, "fetch_url", url=base + "/")
+        assert text.startswith("# Basil") and "Water & sun." in text and "bad()" not in text
+        allowed.append(True)  # the page itself, but not where it redirects: that's checked again
+        assert "Couldn't fetch" in ftool(app, "fetch_url", url=base + "/away")
+    finally:
+        srv.shutdown()
+
+
+def test_sync_status(app):
+    app.settings.set("modules.enabled", ["calendar", "research"])
+    app.modules["calendar"].start()
+    st = T.sync_status(app)
+    rows = {r["sync"]: r for r in st["syncs"]}
+    assert rows["Calendar"]["last"] == "never" and rows["Calendar"]["result"] == "hasn't run yet"
+    assert rows["Calendar"]["next"] != "not scheduled"
+    assert "Notes sync (git)" in st["off"] and st["sync_everything"]["running"] is False
+    assert T._outcome("(False, 'no network')") == "failed: no network"
+    assert T._outcome("RuntimeError: boom") == "failed: RuntimeError: boom"
+    assert T._outcome("12") == "ok: 12" and T._outcome(None) == "ok"
+    assert "sync_status" in [t.name for t in app.modules["calls"].tools()]

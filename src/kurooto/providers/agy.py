@@ -4,11 +4,17 @@ and write notes there.
 Two ways to read its answer, picked at setup by a quick test: through pipes ("pipe"), or through a pseudo-terminal
 ("pty") for builds that print nothing when their output isn't a terminal.
 
-Kurooto's tools reach agy as an MCP server, added once when agy is set up (`agy mcp add kurooto ...`, plus
-"mcp(kurooto/*)" in agy's own allow-list so unattended runs may use them; its settings file is backed up first).
-The setup page's agy test says so and does it; someone who set agy up before tools existed is asked once (Approve /
-Deny; Deny holds for 30 days) instead of having agy's settings changed by itself.
-To undo: `agy mcp remove kurooto`, and take that line out of ~/.gemini/antigravity-cli/settings.json.
+Kurooto's tools reach agy as an MCP server, added once when agy is set up (`agy mcp add kurooto ...`). Unattended
+runs may only do what agy's own allow-list says, so Kurooto adds what it needs to work for you (its settings file is
+backed up first; your own rules are never removed): "mcp(kurooto/*)" for Kurooto's tools; reading your notes, your
+Documents, Downloads and Screenshots, and Kurooto's copies of Classroom and mail (core/places.py); writing in your
+notes folder, course files and add-ons' skills; reading web pages; harmless commands (ls, cat, grep, find, git, latexmk
+...), never `kurooto` itself.
+Outside the notes folder agy needs non-workspace access turned on, so that's set too unless you set it yourself.
+The setup page's agy test says so and does it; someone who set agy up before (or before these permissions) is asked
+once (Approve / Deny; Deny holds for 30 days) instead of having agy's settings changed by itself.
+To undo: `agy mcp remove kurooto`, and take those lines out of ~/.gemini/antigravity-cli/settings.json (or put back
+the backup from Kurooto's state folder, backups/).
 """
 
 from __future__ import annotations
@@ -37,6 +43,13 @@ LEVELS = {
 }
 ARG_LIMIT = 20_000 if sys.platform == "win32" else 100_000  # longer prompts go through a file (handover)
 ALLOW = "mcp(kurooto/*)"  # agy's allow-list entry for every Kurooto tool
+# shell commands that only read or are harmless (agy's rules name a program, not its arguments, so sed is left out:
+# `sed -i` writes; and never `kurooto`, whose off/uninstall/restore must not run unattended)
+COMMANDS = (
+    "cat", "cd", "date", "echo", "file", "find", "git", "grep", "head", "jq", "latexmk", "ls", "mkdir", "pdftotext",
+    "pwd", "rg", "sort", "stat", "tail", "tree", "uniq", "wc", "which",
+)  # fmt: skip
+NON_WORKSPACE = {"allowNonWorkspaceAccess": True, "nonWorkspaceFileAccess": "allow"}  # set only when absent
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[()][A-Z0-9]|\r")
 
 
@@ -190,20 +203,36 @@ def settings_file() -> Path:
     return Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
 
 
-def allow_tools(backups: Path) -> tuple[bool, str]:
-    """Add "mcp(kurooto/*)" to agy's permissions.allow, backing its settings file up first. Changes nothing else."""
+def wanted_rules(app: App) -> list[str]:
+    """agy's allow-list entries Kurooto adds: its tools, harmless commands, what it may read (core/places.py: the same
+    folders Kurooto's own read_file tool may), writing in the notes folder, and the web."""
+    from kurooto.core.places import read_roots, write_roots
+
+    rules = [ALLOW, *(f"command({c})" for c in COMMANDS)]
+    rules += [f"read_file({p})" for p in read_roots(app)]
+    rules += [f"write_file({p})" for p in write_roots(app)]
+    return [*rules, "read_url(*)"]
+
+
+def allow_tools(backups: Path, rules: list[str] | None = None, extra: dict | None = None) -> tuple[bool, str]:
+    """Add Kurooto's entries to agy's permissions.allow (and `extra` settings that aren't set yet), backing its
+    settings file up first. Your own rules and settings stay as they are; nothing is removed."""
+    rules, extra = rules or [ALLOW], extra or {}
     f = settings_file()
     data = jload(f, None) if f.exists() else {}
     perms = data.setdefault("permissions", {}) if isinstance(data, dict) else None
     allow = perms.setdefault("allow", []) if isinstance(perms, dict) else None
     if not isinstance(allow, list):
         return False, f"agy's settings ({f}) aren't in the shape Kurooto expects; add {ALLOW} to permissions.allow"
-    if ALLOW in allow:
+    add = [r for r in rules if r not in allow]
+    keys = {k: v for k, v in extra.items() if k not in data}
+    if not add and not keys:
         return True, "agy may already use Kurooto's tools"
     if f.exists():
         backups.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(f, backups / f"agy-settings-{time.strftime('%Y%m%d-%H%M%S')}.json")
-    allow.append(ALLOW)
+        shutil.copy2(f, backups / f"agy-settings-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:4]}.json")
+    allow.extend(add)
+    data.update(keys)
     jsave(f, data)
     return True, "agy may use Kurooto's tools"
 
@@ -227,8 +256,11 @@ def connect_tools(app: App, exe: str | list[str] | None = None) -> tuple[bool, s
     if r.code != 0:
         ok, msg = False, f"agy didn't take Kurooto's tools: {(r.err or r.out).strip()[-200:] or f'exit {r.code}'}"
     else:
-        ok, msg = allow_tools(app.paths.state / "backups")
-    jsave(app.paths.state / "agy-tools.json", {"command": cmd, "ok": ok, "message": msg, "version": __version__})
+        ok, msg = allow_tools(app.paths.state / "backups", wanted_rules(app), NON_WORKSPACE)
+    jsave(
+        app.paths.state / "agy-tools.json",
+        {"command": cmd, "ok": ok, "message": msg, "version": __version__, "granted": wanted_rules(app)},
+    )
     app.events.emit("agy_tools", ok=ok)
     return ok, msg
 
@@ -244,9 +276,10 @@ def tools_once(app: App, brain: Agy) -> None:
     if os.environ.get("KUROOTO_HOME") and os.environ.get("KUROOTO_AGY_TOOLS") != "1":
         return  # a portable or test copy leaves agy's own settings alone unless set up through the setup page
     before = jload(app.paths.state / "agy-tools.json", {}) or {}
-    if before.get("command") == command(persistent=True):
+    covered = set(wanted_rules(app)) <= set(before.get("granted") or [])
+    if before.get("command") == command(persistent=True) and covered:
         return
-    if not before:
+    if not covered:  # never connected, or more is wanted than was agreed (e.g. add-ons turned on): yours to decide
         ask_consent(app, brain.exe)
         return
     try:
@@ -256,7 +289,15 @@ def tools_once(app: App, brain: Agy) -> None:
 
 
 CONSENT = (
-    "Let agy use Kurooto's tools (reminders, notes, calls…)? This adds Kurooto to agy's settings; a backup is kept."
+    "Let agy work for you unattended? Kurooto adds these to agy's settings (a backup is kept; nothing of yours is "
+    "removed):\n"
+    "- Kurooto's tools: reminders, notes, calls, deadlines and the rest you have on\n"
+    "- read your notes, your Documents, Downloads and Screenshots, and Kurooto's copies of Classroom and mail\n"
+    "- write in your notes folder, your course files folder and, with add-ons on, your add-ons' skills (Documents and "
+    "Downloads stay read-only)\n"
+    "- read web pages\n"
+    "- run harmless commands such as ls, cat, grep, find and git, and latexmk to build PDFs (never Kurooto's own "
+    "command)"
 )
 DENY_DAYS = 30
 

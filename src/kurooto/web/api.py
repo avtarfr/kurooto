@@ -599,7 +599,12 @@ class Api:
 
                 mark_worked(self.app.paths.state)
                 ok_t, why = connect_tools(self.app, brain.exe)
-                msg += " It can use Kurooto's tools too." if ok_t else f" (It can't use Kurooto's tools yet: {why}.)"
+                msg += (
+                    " It can now use Kurooto's tools, read your notes, Documents and Downloads, and write in your "
+                    "notes folder."
+                    if ok_t
+                    else f" (It can't use Kurooto's tools yet: {why}.)"
+                )
             return {"ok": True, "message": msg}
         msgs = {
             Verdict.AUTH: "It isn't signed in (or the key is wrong).",

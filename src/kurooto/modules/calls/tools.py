@@ -26,6 +26,7 @@ class Tool:
     required: tuple[str, ...] = ()
     offline: str = "needs"  # needs | queue | brief
     hint: str = ""  # one line for the call's instructions: when to use it
+    writes: bool | None = None  # True: it changes something; False: it only reads (agent programs are told so)
 
     def declaration(self) -> dict:
         return {

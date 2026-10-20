@@ -167,7 +167,9 @@ class Calls(Module):
 
     # ----------------------------------------------------------------------------------------- tools
     def tools(self) -> list[Tool]:
-        out = self._own_tools() + self.app.ask.call_tools()  # answer_question, answer_approval (core/ask.py)
+        from kurooto.core.tools import sync_tools  # sync_status, shared with unattended AI runs
+
+        out = self._own_tools() + self.app.ask.call_tools() + sync_tools(self.app)  # + answer_question/_approval
         for m in self.app.enabled():
             if m.id != self.id and hasattr(m, "call_tools"):
                 try:

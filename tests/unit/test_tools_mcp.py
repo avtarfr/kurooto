@@ -19,7 +19,16 @@ from kurooto.core import mcp
 from kurooto.modules.base import Module
 from kurooto.modules.calls.tools import Tool
 from kurooto.modules.chat import usage_text
-from kurooto.providers.agy import ALLOW, CONSENT, Agy, connect_tools, consent_file, tools_once
+from kurooto.providers.agy import (
+    ALLOW,
+    CONSENT,
+    NON_WORKSPACE,
+    Agy,
+    connect_tools,
+    consent_file,
+    tools_once,
+    wanted_rules,
+)
 from kurooto.providers.base import Task, Verdict
 from kurooto.providers.cli_agents import ClaudeCode, Codex
 from kurooto.web import tools_api
@@ -305,7 +314,9 @@ def test_agy_setup_registers_and_allows_the_tools(home, monkeypatch, tmp_path):
             *mcp.command(),
         ]
         data = json.loads(f.read_text(encoding="utf-8"))
-        assert data == {**original, "permissions": {"allow": ["command(ls)", ALLOW]}}
+        rules = wanted_rules(app)
+        mine = ["command(ls)", *(r for r in rules if r != "command(ls)")]  # theirs first, nothing twice
+        assert data == {**original, **NON_WORKSPACE, "permissions": {"allow": mine}}
         backups = list((app.paths.state / "backups").iterdir())
         assert len(backups) == 1 and json.loads(backups[0].read_text(encoding="utf-8")) == original
         assert connect_tools(app, AGENT) == (True, "agy may already use Kurooto's tools")  # again: no change
@@ -325,8 +336,11 @@ def test_agy_setup_leaves_odd_settings_alone(home, monkeypatch):
         ok, msg = connect_tools(app, AGENT)
         assert not ok and "permissions.allow" in msg and f.read_text(encoding="utf-8").startswith("{ //")
         f.unlink()
-        assert connect_tools(app, AGENT)[0] is True  # no settings yet: made with just that line
-        assert json.loads(f.read_text(encoding="utf-8")) == {"permissions": {"allow": [ALLOW]}}
+        assert connect_tools(app, AGENT)[0] is True  # no settings yet: made with just Kurooto's part
+        assert json.loads(f.read_text(encoding="utf-8")) == {
+            "permissions": {"allow": wanted_rules(app)},
+            **NON_WORKSPACE,
+        }
         monkeypatch.setenv("FAKE_AGENT_EXIT", "1")
         f.unlink()
         ok, msg = connect_tools(app, AGENT)
@@ -402,7 +416,7 @@ def test_agy_setup_test_connects_the_tools(home, monkeypatch, tmp_path):
 
         monkeypatch.setattr(providers, "build", lambda a, which: Agy(exe=[sys.executable, str(fake)]))
         r = Api(app).post("brain/test", {"which": "agy"})[1]
-        assert r["ok"] and r["message"].endswith("It can use Kurooto's tools too.")
+        assert r["ok"] and r["message"].endswith("and write in your notes folder.")
         assert ALLOW in settings(home).read_text(encoding="utf-8")
     finally:
         app.close()
@@ -652,3 +666,96 @@ def test_long_agy_requests_go_through_a_file(home, monkeypatch, tmp_path):
     assert (req / ".gitignore").read_text(encoding="utf-8") == "*\n"
     short_run = Agy(exe=AGENT).run(Task(prompt="short", cwd=ws, timeout_s=60))
     assert short_run.text == "no tools given"
+
+
+def test_what_agy_may_do(home, monkeypatch, tmp_path):
+    from kurooto.core import places
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    for d in ("Documents", "Downloads", "Pictures/Screenshots"):
+        (home / "home" / d).mkdir(parents=True)
+    app = App()
+    try:
+        rules = wanted_rules(app)
+        notes = os.path.abspath(app.workspace)
+        assert rules[0] == ALLOW and "read_url(*)" in rules
+        writes = [r[11:-1] for r in rules if r.startswith("write_file(")]
+        assert writes == [notes, str(app.paths.data / "classroom")]  # notes and course files; add-ons are off
+        cmds = {r[8:-1] for r in rules if r.startswith("command(")}
+        assert {"git", "grep", "rg", "cat", "ls", "pdftotext", "latexmk", "mkdir", "find"} <= cmds
+        assert not cmds & {"sed", "kurooto", "rm", "mv", "cp", "python", "python3", "bash", "sh", "curl"}
+        reads = [r[10:-1] for r in rules if r.startswith("read_file(")]
+        assert reads == [str(p) for p in places.read_roots(app)] and reads[0] == notes
+        assert str(app.paths.state / "mail-digest") in reads and str(app.paths.data / "classroom") in reads
+        assert str(app.paths.config) not in reads and all(os.path.isabs(r) for r in reads)
+        if sys.platform != "win32":  # Windows asks its known folders, which a fake home doesn't move
+            assert {str(home / "home" / d) for d in ("Documents", "Downloads", "Pictures/Screenshots")} <= set(reads)
+        assert not {str(home / "home" / d) for d in ("Documents", "Downloads")} & set(writes)  # read-only
+        for words in ("Kurooto's tools", "Documents, Downloads", "course files", "stay read-only", "latexmk", "git"):
+            assert words in CONSENT, words
+        # the user's own choices stay: their rules, and a non-workspace setting they made themselves
+        f = settings(home)
+        f.parent.mkdir(parents=True)
+        f.write_text(json.dumps({"nonWorkspaceFileAccess": "deny", "permissions": {"allow": ["command(sed)"]}}))
+        assert connect_tools(app, AGENT)[0]
+        data = json.loads(f.read_text(encoding="utf-8"))
+        assert data["nonWorkspaceFileAccess"] == "deny" and data["allowNonWorkspaceAccess"] is True
+        assert data["permissions"]["allow"] == ["command(sed)", *rules]
+    finally:
+        app.close()
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="XDG user dirs are Linux's")
+def test_user_folders_follow_xdg(home, monkeypatch, tmp_path):
+    from kurooto.core import places
+
+    cfg = tmp_path / "xdg"
+    cfg.mkdir()
+    docs = tmp_path / "Dokumente"
+    docs.mkdir()
+    (cfg / "user-dirs.dirs").write_text(f'XDG_DOCUMENTS_DIR="{docs}"\nXDG_DOWNLOAD_DIR="$HOME/Nope"\n')
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(cfg))
+    assert places.user_folder("documents") == docs
+    assert places.user_folder("downloads") is None  # named, but not there
+    assert places.screenshots() is None
+
+
+@pytest.mark.skipif(os.name == "nt", reason="a POSIX script stands in for an installed agy")
+def test_agy_asks_again_before_more_permissions(home, monkeypatch, tmp_path):
+    app = App()
+    try:
+        monkeypatch.setenv("FAKE_AGENT_LOG", str(tmp_path / "agy.log"))
+        monkeypatch.setenv("KUROOTO_AGY_TOOLS", "1")
+        exe = tmp_path / "agy"
+        exe.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{AGENT[1]}" "$@"\n', encoding="utf-8")
+        exe.chmod(0o755)
+        f = app.paths.state / "agy-tools.json"  # connected by an earlier 0.2 build: only mcp(kurooto/*)
+        f.write_text(json.dumps({"command": mcp.command(persistent=True), "ok": True}), encoding="utf-8")
+        tools_once(app, Agy(exe=str(exe)))
+        (q,) = app.ask.pending()
+        assert q["text"] == CONSENT and not (tmp_path / "agy.log").exists()
+        app.ask.answer(q["id"], "Approve")
+        assert ALLOW in settings(home).read_text(encoding="utf-8")
+        assert set(wanted_rules(app)) <= set(json.loads(f.read_text(encoding="utf-8"))["granted"])
+        tools_once(app, Agy(exe=str(exe)))
+        assert not app.ask.pending() and len(log_of(tmp_path / "agy.log")) == 1
+    finally:
+        app.close()
+
+
+def test_add_ons_skills_become_writable_and_agy_is_asked_again(home, monkeypatch, tmp_path):
+    from kurooto.core import places
+
+    addons = tmp_path / "addons"
+    (addons / "skills").mkdir(parents=True)
+    (addons / "modules").mkdir()
+    app = App()
+    try:
+        before = set(wanted_rules(app))
+        app.settings.set("overlay.path", str(addons))
+        app.settings.set("modules.enabled", ["overlay"])
+        assert places.write_roots(app)[-1] == addons / "skills"
+        assert f"write_file({addons / 'skills'})" in set(wanted_rules(app)) - before
+        assert f"write_file({addons / 'modules'})" not in wanted_rules(app)  # never its code
+    finally:
+        app.close()

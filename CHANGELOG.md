@@ -24,6 +24,10 @@ Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) h
   you) reach API brains directly and agent programs (agy, Codex, Claude Code) through `kurooto mcp`, a built-in MCP
   server. The notes tools only create, add to and tick; they never change what you wrote.
 - `/usage`: AI requests per day per brain over the last week, and usage limits hit.
+- Your AI can read your files (notes, Documents, Downloads, Screenshots, Kurooto's Classroom and mail copies) and
+  public web pages, write and edit text files in your notes (the previous version is kept), and tell you how your
+  syncs are doing (`sync_status`). agy gets the same reach through its allow-list, after you approve it: those
+  folders, the web, and harmless commands such as git and latexmk; never `kurooto` itself.
 
 **Questions, approvals and your phone**
 - Questions and approvals from features, AI requests and your own scripts, answered anywhere: Telegram buttons or a

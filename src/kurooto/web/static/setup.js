@@ -152,8 +152,11 @@ function renderBrainPanel(which) {
     else box.append(
       el("p", {}, "Sign in once with your Google account: a window opens, follow it, then close it."),
       el("button", { onclick: async () => { const r = await api("prereqs/signin", { key: "agy" }); alert(r.message); } }, "Open the sign-in window"),
-      el("p", {}, "Then check it works. The test also lets agy use Kurooto's tools (reminders, notes, calls…): " +
-        "this adds Kurooto to agy's settings; a backup is kept."), ...testButton("agy"));
+      el("p", {}, "Then check it works. When it does, Kurooto lets agy work for you unattended, in agy's own " +
+        "settings (a backup is kept; nothing of yours is removed): use Kurooto's tools (reminders, notes, calls…); " +
+        "read your notes, Documents, Downloads, Screenshots and Kurooto's copies of Classroom and mail; write in your " +
+        "notes folder and course files (Documents and Downloads stay read-only); read web pages; run harmless " +
+        "commands such as ls, grep and git, and latexmk for PDFs."), ...testButton("agy"));
     box.append(el("p", { class: "note" }, AGY_NOTE));
   } else if (which === "codex" || which === "claude") {
     const key = which, label = which === "codex" ? "Codex" : "Claude Code";
