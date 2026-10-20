@@ -14,7 +14,7 @@ from email import message_from_bytes, policy
 import pytest
 
 from kurooto.core.tools import run_tool
-from kurooto.modules import google_drive, skills
+from kurooto.modules import capture, google_drive, skills, subjects
 from kurooto.modules.calendar import BUSY, parse_ics
 from kurooto.modules.google import SCOPES, id_email
 from kurooto.modules.google_calendar import GoogleCalendar
@@ -211,8 +211,11 @@ def test_agent_plan_calendar_is_left_out(gcal):
     env, g, ai, t = gcal
     app = env.app
     allow(env, g, "agent_plan")
-    run_tool(app, "plan_block", {"start": f"{t:%Y-%m-%d %H:%M}", "end": f"{t + dt.timedelta(hours=1):%H:%M}",
-                                 "title": "Study block"})  # fmt: skip
+    end = t + dt.timedelta(hours=1)
+    said = run_tool(
+        app, "plan_block", {"start": f"{t:%Y-%m-%d %H:%M}", "end": f"{end:%Y-%m-%d %H:%M}", "title": "Study block"}
+    )
+    assert said.startswith("Planned")
     setup(env, g, "google_calendar")
     titles = [e["title"] for e in json.loads((app.paths.state / "calendar.json").read_text())["events"]]
     assert "Study block" not in titles and BUSY in titles
@@ -241,7 +244,8 @@ END:VCALENDAR
 @pytest.fixture
 def ical(env):
     app = env.app
-    t = dt.datetime.now().replace(second=0, microsecond=0) + dt.timedelta(minutes=30)
+    # tomorrow at noon, whatever the time now: never at night (night holds calls before classes do)
+    t = dt.datetime.combine(dt.date.today() + dt.timedelta(days=1), dt.time(12, 0))
     f = "%Y%m%dT%H%M%S"
     text = ICS.format(
         s=t.strftime(f),
@@ -268,11 +272,9 @@ def test_ical_private_events_are_busy_everywhere(ical):
 
 
 # ------------------------------------------------------------------------------------------ class calendars (F18)
-def test_class_calendar_events_count_as_classes(ical):
+def test_class_calendar_events_count_as_classes(ical, monkeypatch):
     env, cal, t = ical
     app = env.app
-    if t.date() != (t + dt.timedelta(hours=1)).date():
-        pytest.skip("too close to midnight")
     app.settings.set("subjects.list", [{"slug": "probability", "name": "Probability", "aliases": ["prob"]}])
     env.on("subjects", "calendar", "capture")
     subj = app.modules["subjects"]
@@ -287,7 +289,9 @@ def test_class_calendar_events_count_as_classes(ical):
     # no calls in class (Subjects holds them, with its margin)
     reason, until = app.availability.call_block(t + dt.timedelta(minutes=5))
     assert reason == "class: Probability" and until == t + dt.timedelta(hours=1)
-    # the after-class question is planned for it
+    # the after-class question is planned for it (planned on the class's day, that morning)
+    for mod in (capture, subjects):
+        monkeypatch.setattr(mod, "now", lambda: t - dt.timedelta(hours=3))
     app.modules["capture"]._plan()
     assert app.scheduler.get(f"capture:probability:{c['end']}") is not None
     # skipping it: no class then
