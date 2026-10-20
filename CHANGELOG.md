@@ -114,6 +114,19 @@
   an attendance feature to read.
 - Importing again after a reshuffle lists what changes for you first and keeps your choices. `/classpack`,
   `/classpack set`, `/classpack remove`, `/classpack undo`; `kurooto classpack export|import`.
+**Attendance and standing** (new; off until you turn it on)
+- `/attendance`: each course's attendance against its rule (75% unless you set another; labs counted on their own),
+  with how many more classes you can miss: "Linear Algebra 82% (23/28), you can miss 3 more this term". Every class on
+  your timetable counts as attended unless you `/skip` it; holidays, exam periods and the days after the last day of
+  classes don't count. Everything is labelled an estimate.
+- `/attendance set la 23/30` corrects drift from the official register; `/attendance rule la 80`, `/attendance rule
+  labs 100`, `/attendance lab thu 14:00` (a slot that's a lab), `/attendance since 2026-08-03`.
+- `/skip` asks first (Skip anyway / Don't skip) when a skip would leave a course under its rule; `/skip la anyway`
+  doesn't ask. Calls tell you before marking such a skip. "can I skip LA on Friday?" answers without marking it.
+- One line in the Sunday summary.
+- `/standing` adds marks, after a "Set up marks?" question: weightage (`/marks la weights midsem 30, endsem 70`),
+  scores (`/marks la midsem 21/30`) and grade lines (`/marks grades A 85, B 70`) give what you'd need on what's left
+  for each grade, also an estimate.
 
 ## 0.4.0 (unreleased)
 

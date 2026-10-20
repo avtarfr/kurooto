@@ -1,6 +1,7 @@
 """Every feature Kurooto has, in the order the wizard and Settings show them."""
 
 from kurooto.modules.alarm import Alarm
+from kurooto.modules.attendance import Attendance
 from kurooto.modules.awake import Awake
 from kurooto.modules.backups import Backups
 from kurooto.modules.books import Books
@@ -52,6 +53,7 @@ CATALOG = [
     StartBy,
     Subjects,
     ClassPacks,
+    Attendance,
     Quiz,
     ExamSeason,
     Weekly,
