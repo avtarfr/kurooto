@@ -4,8 +4,6 @@ A personal assistant that runs on your own computer. You talk to it on Telegram,
 reminds you of things, keeps track of deadlines and your calendar, asks how your day went, searches your notes, and
 wakes you up in the morning. You choose the AI behind it, and every feature is off until you turn it on.
 
-> **Status: pre-release.** The install line below works once the first release (v0.1.0) is published.
-
 ## Showcase
 
 <p align="center">

@@ -139,8 +139,7 @@ class Server:
                     html = server.fill((static("morning.html") or b"").decode())
                     return self._send(200, html.encode(), TYPES[".html"])
                 if path == "/confidential":  # confidential mail summarised on this computer (google): read-only
-                    html = (static("confidential.html") or b"").decode()
-                    html = html.replace("{{TOKEN}}", server.token).replace("{{VERSION}}", __version__)
+                    html = server.fill((static("confidential.html") or b"").decode())
                     return self._send(200, html.encode(), TYPES[".html"])
                 if path in ("/", "/setup"):
                     done = server.app.settings.get("setup.done")

@@ -30,6 +30,7 @@ from kurooto.modules.skills import Skills
 from kurooto.modules.study import Study
 from kurooto.modules.subjects import Subjects
 from kurooto.modules.telegram import Telegram
+from kurooto.modules.terminal import KurootoTerminal
 from kurooto.modules.terminals import Terminals
 from kurooto.modules.voice_notes import VoiceNotes
 from kurooto.modules.weekly import Weekly
@@ -68,5 +69,6 @@ CATALOG = [
     Study,
     Research,
     Terminals,
+    KurootoTerminal,
     AddOns,
 ]

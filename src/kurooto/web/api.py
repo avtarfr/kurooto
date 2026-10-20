@@ -70,6 +70,7 @@ MODULE_ORDER = [
     "study",
     "research",
     "terminals",
+    "terminal",
     "overlay",
 ]
 

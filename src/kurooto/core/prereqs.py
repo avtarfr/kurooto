@@ -1,5 +1,6 @@
-"""Installing what Kurooto needs (agy, Ollama, Node, Telegram Desktop) from official sources, without admin rights
-where the vendor allows it, and checking there's room on the disk first. The list lives in data/prereqs.toml.
+"""Installing what Kurooto needs (agy, Ollama, Node, Telegram Desktop, kitty, ...) from official sources, without
+admin rights where the vendor allows it, and checking there's room on the disk first. The list lives in
+data/prereqs.toml.
 """
 
 from __future__ import annotations
@@ -103,6 +104,7 @@ class Prereqs:
                 "size_gb": p.size_gb,
                 "installed": bool(p.find()),
                 "manual": p.step.get("kind") == "url",
+                "available": p.step.get("kind") != "none",  # e.g. kitty on Windows
             }
             for k, p in self.items.items()
         }
@@ -129,6 +131,8 @@ class Prereqs:
         p = self.items[key]
         if p.find():
             return True, f"{p.title} is already installed."
+        if p.step.get("kind") == "none":  # not made for this system
+            return False, p.step.get("why") or f"{p.title} isn't available for this system."
         r = self.room([key], margin_gb=margin_gb)
         if not r["ok"]:
             return False, (
@@ -157,6 +161,10 @@ class Prereqs:
                     url, progress, sha256=(p.step.get("sha256s") or {}).get(arch()) or p.step.get("sha256")
                 )
                 self._untar(f, expand(p.step["into"], self.app_dir))
+                ok, msg = True, ""
+            elif kind == "download-dmg":  # macOS: an app copied out of the vendor's disk image
+                f = self._download(p.step["url"], progress, sha256=p.step.get("sha256"))
+                self._dmg(f, p.step["app"], expand(p.step["into"], self.app_dir))
                 ok, msg = True, ""
             elif kind == "node-lts":
                 ok, msg = self._node(progress)
@@ -295,6 +303,40 @@ class Prereqs:
         else:
             with tarfile.open(f, mode="r:*") as t:
                 unpack(t)
+
+    @staticmethod
+    def _dmg(f: Path, app: str, into: Path) -> None:
+        """Copy an app out of a macOS disk image: mounted read-only and out of sight, copied with ditto (which keeps
+        its signature intact), then let go. No admin: the app goes to a folder of yours."""
+        import tempfile
+
+        mount = Path(tempfile.mkdtemp(prefix="kurooto-dmg-"))
+        res = proc.run(
+            ["hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", str(mount), str(f)],
+            timeout=300,
+        )
+        if not res.ok:
+            mount.rmdir()
+            raise RuntimeError(f"couldn't open {f.name}: {res.err.strip()[-200:]}")
+        try:
+            src = mount / app
+            if not src.is_dir():
+                raise RuntimeError(f"{app} isn't in {f.name}")
+            into.mkdir(parents=True, exist_ok=True)
+            part = into / f".{app}.part"
+            shutil.rmtree(part, ignore_errors=True)
+            copied = proc.run(["ditto", str(src), str(part)], timeout=900)
+            if not copied.ok:
+                raise RuntimeError(f"couldn't copy {app}: {copied.err.strip()[-200:]}")
+            shutil.rmtree(into / app, ignore_errors=True)
+            os.replace(part, into / app)
+        finally:
+            if not proc.run(["hdiutil", "detach", str(mount), "-quiet"], timeout=60).ok:
+                proc.run(["hdiutil", "detach", str(mount), "-force", "-quiet"], timeout=60)
+            try:
+                mount.rmdir()
+            except OSError:
+                pass
 
     def _node(self, progress: Progress, dist: str = NODE_DIST) -> tuple[bool, str]:
         with urllib.request.urlopen(f"{dist}/index.json", timeout=30) as r:  # noqa: S310

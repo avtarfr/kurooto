@@ -30,7 +30,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Classroom → notes](#classroom--notes) · [Mail digest](#mail-digest) ·
     [Email reply drafts](#email-reply-drafts) · [Agent plan calendar](#agent-plan-calendar)
   - [Handwritten notes](#handwritten-notes) · [Study tracker](#study-tracker) · [Research](#research) ·
-    [Terminals](#terminals) · [Your add-ons](#your-add-ons) ·
+    [Terminals](#terminals) · [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) ·
     [From a terminal or a script](#from-a-terminal-or-a-script)
 - [Your phone](#your-phone)
 - [The dashboard](#the-dashboard)
@@ -1128,6 +1128,46 @@ websites; on Linux it also checks that every request comes from your own user ac
 
 *Turn it off:* Features → Terminals → Turn off (the terminals end).
 
+### Kurooto Terminal
+Kurooto in a real terminal window of its own, laid out like the dashboard's terminals: one tab each for your AI's own
+program (agy, Codex or Claude Code, started in your notes folder; agy if you have it and your AI is an API key), your
+shell, Kurooto chat (`kurooto ask`) and Kurooto's log, with `kurooto top` as a column on the left of the first tab.
+Everything is in Kurooto's colours (Settings → `look.palette`). The chat tab shows Kurooto's name, a few examples and
+a `kurooto ❯` prompt; type plain English as on Telegram.
+
+**Open it:** `kurooto term`, or **Kurooto Terminal** in your app menu (Start menu, Launchpad, your Linux app launcher)
+once the feature is on. `kurooto term --print` shows what it would open without opening anything.
+
+| | What it uses |
+|---|---|
+| Linux, macOS | **kitty**: yours if you have it; otherwise `kurooto term` offers once to get the official kitty into Kurooto's own folder (about 45 MB to download; no admin; checksum checked). Alt+1 to Alt+9 switch tabs on Linux, Cmd+1 to Cmd+9 on a Mac. Your own `kitty.conf` is read first (your fonts and keys stay) and never changed. Without kitty, each tab opens in a window of your usual terminal. |
+| Windows | **Windows Terminal** (built into Windows 11; free in the Microsoft Store for Windows 10). Turning the feature on adds Kurooto's profiles and colour scheme to Windows Terminal (no admin): the **Kurooto** profile is PowerShell in Kurooto's colours, and Kurooto chat, top, logs and your AI are in Windows Terminal's new-tab menu too. Without Windows Terminal, each tab opens in a console window of its own. |
+| The shell | **fish** if you have it; on Linux, `kurooto term` also offers the official fish (3 MB, into Kurooto's folder). Otherwise your own shell (PowerShell on Windows). |
+
+`kurooto term --install` gets kitty (and fish on Linux) any time; so does **Set up** on the card when there's no
+terminal program at all. `kurooto term -e CMD` opens one window in Kurooto's colours running CMD.
+
+**Settings** (Settings → Kurooto Terminal, once it's on): `tabs` (in order; any of `agent`, `shell`, `chat`, `logs`,
+`top`), `top` (`left`: a column beside the first tab; `tab`: a tab of its own; `off`), `shell` (`auto`, or a program
+such as `zsh` or `pwsh`), `font_size`, `kitty` (Linux and macOS; off: your usual terminal, a window per tab), and
+`default`.
+
+**Make Kurooto my default terminal** (off unless you turn it on: Settings → Kurooto Terminal → `default`, or
+`kurooto term --default on`):
+
+| | What changes | Undo |
+|---|---|---|
+| Linux | Kurooto Terminal goes first in `~/.config/xdg-terminals.list`, the list `xdg-terminal-exec` reads (newer GNOME and many window managers' "open a terminal" use it). Your desktop's keys and window manager config aren't touched: bind a key to `kurooto term` yourself (GNOME: Settings → Keyboard → Custom Shortcuts; KDE: System Settings → Default Applications → Terminal Emulator → Kurooto Terminal; Hyprland, Sway, i3: your own config). | `default` off, or `kurooto term --default off`: the list goes back exactly as it was (or just Kurooto's line comes out, if you've changed the list since). |
+| Windows | Windows Terminal's default profile becomes **Kurooto**, after a backup of Windows Terminal's `settings.json`. | `default` off, or `kurooto term --default off`: `settings.json` goes back from the backup (or just the default profile, if you've changed other settings since; if you've picked another default yourself, it's left alone). |
+| macOS | macOS has no default-terminal setting: Kurooto Terminal is in your Applications folder; keep it in the Dock. | nothing to undo |
+
+Backups of anything Kurooto changed are in the state folder, under `terminal/backups`. `kurooto term --default
+status` says whether it's your default.
+
+*Turn it off:* Features → Kurooto Terminal → Turn off. The app-menu entry and Kurooto's Windows Terminal profiles are
+removed and "default terminal" is undone. kitty or fish that Kurooto got stay in its folder (they go with `kurooto
+uninstall`). Nothing about this feature leaves your computer.
+
 ### Your add-ons
 Your own extra features, skills and prompts, from a folder of yours: for example a private repository you cloned, so
 you can keep things for yourself while running the normal Kurooto. Turn on **Your add-ons** and paste the folder's full
@@ -1219,6 +1259,11 @@ that pulses when something happens; NOTES is a map of your notes and their links
 
 The **morning page** (`http://127.0.0.1:8770/morning`) shows today's plan from your daily note, with your classes,
 calendar, what's due, check-ins and open questions. The alarm opens it.
+
+**Colours:** Kurooto's pages (the setup page, the dashboard, the morning page, and your call line's pages on the phone)
+use deep greens, like the website. If you liked the earlier pink and rose colours better, set Settings → Look →
+`look.palette` to `rose` and reload the page; `kuro` (the default) brings the greens back. The setup and morning pages
+follow your system's light or dark mode; the dashboard is always dark. Your call line's pages on the phone stay green.
 
 Only your computer can open the dashboard; it needs a key that only this computer has. On Linux, where several people
 can be signed in to one computer at once, it also checks that the page and every request come from your own user
@@ -1330,6 +1375,7 @@ index. Settings → **Your computer** shows what was found and lets you change i
 | Backups | the folder you picked (`backups.folder`); before a restore, a copy of how things were: `restore-safety/` in the data folder |
 | Experiment runs | `research/<project>/runs/` in your notes |
 | Watched jobs | `watch.log` in the state folder (time, exit code, duration, folder, command) |
+| Kurooto Terminal | its kitty settings and tabs: `terminal/` in the state folder (made again every time); the app-menu entry: `~/.local/share/applications/kurooto-terminal.desktop` (Linux), `~/Applications/Kurooto Terminal.app` (macOS), Start menu (Windows); Windows Terminal profiles: `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\Kurooto` |
 | Your own skills, ideas, recurring quizzes | `kurooto/` in your notes (`skills/`, `ideas.md`, `recurring.md`) |
 | How you like to be helped, not-interested list | `about-me/how-to-help-me.md`, `about-me/not-interested.md` in your notes |
 
@@ -1338,7 +1384,7 @@ Service on Linux), or, where there is none, in a file only your user can read in
 
 Commands: `kurooto on` / `kurooto off` (completely, until turned on again), `kurooto pause [2h]` / `kurooto
 resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto doctor`, `kurooto top`, `kurooto
-logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
+term`, `kurooto logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
 `kurooto update`, `kurooto autostart on|off|status`, `kurooto paths`, `kurooto uninstall`. For scripts: `kurooto
 notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog`, `watch` (see
 [From a terminal or a script](#from-a-terminal-or-a-script) and [Research](#research)).
@@ -1357,6 +1403,9 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The setup page says agy "can't use Kurooto's tools yet" | agy's settings file isn't plain JSON, or `agy mcp add` failed. Add `mcp(kurooto/*)` to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself, then Test again. |
 | The AI said it did something but nothing happened | Tell it so; check `/jobs`. With a small local model, tools may not be supported: it answers without them. |
 | An agent program says Kurooto's tools aren't running | Kurooto is off or restarting; `kurooto on`, then ask again. |
+| Kurooto Terminal opens separate windows instead of tabs | kitty (Linux, macOS) or Windows Terminal isn't there: `kurooto term --install`, or Windows Terminal from the Microsoft Store. `kurooto term --print` says what it found. |
+| "kitty didn't start" | kitty needs a graphics card driver with OpenGL 3.3 (some virtual machines lack it); set Settings → `terminal.kitty` off to use your usual terminal. kitty's own message is in `terminal/kitty.log` in the state folder. |
+| Kurooto Terminal's tabs or colours look old in Windows Terminal | Close every Windows Terminal window and open it again: it reads Kurooto's profiles when it starts. |
 | The setup page won't open | `kurooto open`, or go to `http://127.0.0.1:8770`. If another program uses that port, Kurooto picks the next one (`kurooto paths` → `web.json` in the state folder says which). |
 | Not enough space | The wizard says what needs it. Free some space, or choose fewer features. |
 | "That question expired" | It waited longer than `ask.expire_hours` (or its asker stopped waiting); nothing was done. The asker asks again if it still matters. |
@@ -1439,7 +1488,8 @@ stay, since you may use them. Your call line stays on your Cloudflare account un
 Pages → the `kurooto-…` worker → Settings → Delete); paired phones stop working once it's gone. A Google client can be
 deleted in Google Cloud, and the Agent plan calendar in Google Calendar; a notes repository stays yours (delete its
 `kurooto-profile` branch if you used Profile sync). Backup zips stay in the folder you picked, and your add-ons folder
-is never touched.
+is never touched. Kurooto Terminal's app-menu entry and Windows Terminal profiles are removed and "default terminal" is
+undone; kitty and fish that Kurooto got for it were in its folder, so they go too.
 
 ## FAQ
 
