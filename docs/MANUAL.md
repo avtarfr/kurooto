@@ -32,6 +32,11 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Handwritten notes](#handwritten-notes) · [Books and PDFs](#books-and-pdfs) · [Study tracker](#study-tracker) ·
     [Research](#research) · [Terminals](#terminals) · [Kurooto Terminal](#kurooto-terminal) ·
     [Your add-ons](#your-add-ons) ·
+    [Email reply drafts](#email-reply-drafts) · [Agent plan calendar](#agent-plan-calendar) ·
+    [Several Google accounts](#several-google-accounts) · [Google Calendar](#google-calendar) ·
+    [Mail digest by email](#mail-digest-by-email) · [Drive upload](#drive-upload)
+  - [Handwritten notes](#handwritten-notes) · [Study tracker](#study-tracker) · [Research](#research) ·
+    [Terminals](#terminals) · [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) ·
     [From a terminal or a script](#from-a-terminal-or-a-script)
 - [Your phone](#your-phone)
 - [The dashboard](#the-dashboard)
@@ -778,9 +783,24 @@ that calendar, so it's kept in your computer's keychain.
   and messages that can wait are kept until it ends, then delivered together.
 - Events that look like deadlines or exams go into [Deadlines](#deadlines) (`deadlines.from_calendar`).
 
+- **Google calendars without an iCal link:** set up [Google Calendar](#google-calendar) instead (or as well). It
+  reads your Google calendars through Google's API, from one account or several, and turns Calendar on.
+- **Private events are "Busy (private)":** an event marked private (Google Calendar's **Private** visibility,
+  `CLASS:PRIVATE` in an iCal calendar, or `#private` in its title or description) shows as **Busy (private)**
+  wherever Kurooto shows or tells it: `/today`, `/cal`, the dashboard, calls, reminders and the AI. Its title, place
+  and description aren't kept, only its time. It still holds calls like any event.
+- **Class calendars:** `/cal classes Timetable` (several: `/cal classes Timetable, Labs`) makes the events of the
+  calendars with those names classes: no calls during them (with Subjects' margin, and `/skip` works), they're in
+  your day's classes (morning call, evening debrief, dashboard), and one whose title names a subject ("Linear Algebra
+  lecture") gets the [after-class](#after-class-notes) question. `/cal classes` lists your calendars' names;
+  `/cal classes none` stops it. A timetable class at the same time isn't counted twice.
+
 *Settings:* `availability.nocall_keyword` (`#nocall`), `availability.nocall_calendar` (`no call`),
-`availability.focus_keyword` (`#focus`).
-*Leaves:* nothing; event descriptions are read only for `#nocall` and `#focus` and aren't kept.
+`availability.focus_keyword` (`#focus`), `calendar.mask_private` (on), `calendar.private_keyword` (`#private`),
+`calendar.class_calendars` (`[]`).
+*Leaves:* nothing; event descriptions are read only for `#nocall`, `#focus` and `#private` and aren't kept.
+*Undo:* `/cal classes none`; `calendar.mask_private` = `false` shows private events' titles again (on this computer
+and to your AI).
 
 ### Notes sync
 Your notes folder, kept in your own **private** GitHub repository: every change is in its history, and edits made
@@ -926,8 +946,30 @@ What each one asks Google for, in plain words:
 | Mail digest | Read your email (read-only) | Reads only the mail you choose for the digest; the rest it counts by its sender, subject and labels, on your computer. Can't send, delete or mark anything. |
 | Email reply drafts | Manage drafts and send email | Writes reply drafts to mail in your digest; sends one only when you tap Send. |
 | Agent plan calendar | Make secondary calendars and manage their events | Makes one calendar of its own, "Agent plan", and writes only there. It can't see or change your other calendars. |
+| Google Calendar | See your calendars (read-only) | Reads your own calendars and the ones you subscribed to, the next two weeks; other people's shared calendars are left out. Changes nothing. |
+| Mail digest by email | Send email on your behalf; see your email address | Emails each mail digest to that account's own address, and to no one else. Can't read your mail. |
+| Drive upload | See, edit, create and delete only the Drive files it uses | Makes one folder, "Kurooto", and uploads there the files you send yourself. Can't see your other files; shares nothing. |
 
 To withdraw a permission: your Google account → Security → Third-party access → your project.
+
+### Several Google accounts
+A personal account and a school one, say: each feature can use the account you choose. The first account you sign in
+with is **main**; every feature uses main unless you say otherwise. Each account signs in separately (with the same
+Google Cloud project), and each is asked only for what the features using it need, when you set them up; Kurooto
+also asks other accounts for their address, so it can tell them apart.
+- **On a feature's card:** the **Which Google account** box. Empty keeps the account it uses; a new name (`school`)
+  adds that account: Google's page opens with its account chooser, so pick the right one. Google Calendar can read
+  several at once (`main, school`): press Save once for each account.
+- **On Telegram:** `/google` lists your accounts, their addresses and what uses each. `/google use mail school` moves
+  a feature (`classroom`, `drafts`, `mail`, `email`, `calendar`, `plan`, `drive`, `classroom_notes`); if that account
+  hasn't allowed it yet, the feature pauses until you press Save on its card and sign in. Reply drafts always use the
+  mail digest's account.
+- If you sign in to the same Google account under two names, Kurooto says so.
+- If one account's sign-in expires, only the features using it pause, and you're told which.
+
+*Settings:* `google.accounts` (the names), `google.use` (feature → account).
+*Undo:* `/google forget school` forgets that account's sign-in on this computer (its features go back to main); to
+take Kurooto's access away at Google too, use myaccount.google.com/connections while signed in to that account.
 
 ### Google: setting up your own sign-in (step by step)
 Kurooto signs in to Google with **your own app registration**: a free Google Cloud project that only you own, with an
@@ -1138,6 +1180,53 @@ reminder (`agent_plan.remind_min`; 0 for none).
 - To see the blocks in Kurooto's own Calendar feature too, add the Agent plan calendar's private iCal link there.
 
 *Turn it off:* Features → Agent plan calendar → Turn off (the calendar stays in Google Calendar until you delete it).
+With [several accounts](#several-google-accounts), the calendar lives on the one you choose on its card (`/google use
+plan personal`); moving it makes a new Agent plan calendar there.
+
+### Google Calendar
+Calendar reads your Google calendars through Google's own Calendar API instead of private iCal links: for school or
+work accounts that don't offer a "secret address in iCal format", and for reading two accounts at once. Set it up on
+its card (Which Google account: `main`, `school`, or `main, school`); when Google says yes, it turns Calendar on too.
+Everything in [Calendar](#calendar) works the same: `/today`, no calls during events, `#focus`, reminders, class
+calendars, private events as Busy (private).
+- It reads your own calendars and the ones you subscribed to (a class calendar, holidays). Calendars other people
+  share with you (a friend's or a teacher's own calendar) are their data and are left out, and so is Kurooto's own
+  Agent plan calendar (`/blocks` shows that). Hidden calendars are left out too.
+- Leave out more by name: `google_calendar.skip` = `["Birthdays"]`.
+- A calendar that's also an iCal link in Calendar comes twice: leave it out here with `google_calendar.skip`.
+
+*Leaves:* nothing; Kurooto reads from Google. *Turn it off:* Features → Google Calendar → Turn off (Calendar keeps
+its iCal links, if any).
+
+### Mail digest by email
+Each [mail digest](#mail-digest) also comes to your own inbox, sent from your Gmail to yourself (subject "Mail
+digest, Tue 20 Oct 18:00"). With [several accounts](#several-google-accounts) it can send from another one than the
+digest reads: a personal account, say, while the digest reads a school one. It always goes to the sending account's
+own address; there's no way to give it another recipient. A digest that mentions confidential material anywhere
+(beyond its own "Confidential: 2" count) isn't emailed; you get it on Telegram only, and a note saying so.
+
+*Leaves:* the digest's text, from your Gmail to your own inbox. *Turn it off:* Features → Mail digest by email → Turn
+off.
+
+### Drive upload
+Files you send yourself go to a folder of Kurooto's own in your Google Drive, **Kurooto**, and the link comes to you
+(an **Open in Drive** button). `kurooto send lecture.mp4 --to drive` sends one there; the AI can too (send_file with
+`to` = drive); anything bigger than Telegram's 50 MB goes there by itself (`drive_upload.big_files`). Big files go up
+in pieces in the background; the link comes when it's done. Google's permission covers only the files Kurooto makes,
+so it can't see the rest of your Drive, and nothing is shared: the link opens only for you.
+
+*Settings:* `drive_upload.folder` (`Kurooto`), `drive_upload.big_files` (on).
+*Leaves:* the files you send, to your own Drive. *Turn it off:* Features → Drive upload → Turn off (the files stay in
+Drive until you delete them).
+
+| Feature | What changes | Undo |
+|---|---|---|
+| Several Google accounts | another sign-in kept in your keychain; `google.accounts`, `google.use` | `/google forget <name>`; myaccount.google.com/connections |
+| Google Calendar | Calendar reads Google's API; turns Calendar on | Features → Google Calendar → Turn off |
+| Private events as Busy | titles of private events aren't kept or told | `calendar.mask_private` = `false` |
+| Class calendars | those calendars' events are classes (no calls, after-class question) | `/cal classes none` |
+| Mail digest by email | each digest also emailed to yourself | Features → Mail digest by email → Turn off |
+| Drive upload | a Kurooto folder in your Drive; files over 50 MB go there | Features → Drive upload → Turn off; delete the folder in Drive |
 
 ### Handwritten notes
 Drop a PDF or photo of handwritten pages into a folder (by default `handwritten-inbox` in your notes folder; set
@@ -1456,7 +1545,8 @@ you set it up):
   adds an **Open** button for a link. `--print-id` prints the Telegram message's id, and `--reply-to ID` sends the
   next message as a reply to it.
 - `kurooto send report.pdf --caption "This week's numbers"` sends a file from this computer to your Telegram (up to
-  50 MB; exit code 2 when Kurooto isn't running). With Skills on, the AI can send you files from your notes folder too
+  50 MB; exit code 2 when Kurooto isn't running). `--to drive` puts it in your Google Drive instead and sends the
+  link ([Drive upload](#drive-upload); bigger files go there by itself). With Skills on, the AI can send you files from your notes folder too
   ("send me my linear algebra pack"), on calls as well; it can't send files from anywhere else.
 - `kurooto note "an idea"` saves a quick note (see [Quick notes and prompts](#quick-notes-and-prompts)).
 - `kurooto ask-me "Which folder should the photos go in?" --choices "camera|screenshots"` asks you something (see
@@ -1918,6 +2008,9 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | "Mail digest is paused: needs Google's OK" (or another Google feature) | Features → that feature → Save, then sign in with Google and leave its permission ticked. |
 | A Google feature didn't turn on after signing in | Did you untick its permission on Google's screen? Save on its card again. Is its API on in your Google Cloud project (the link on its card)? |
 | Google says "Access blocked" for a school account | Your school doesn't allow unverified apps for that permission. Use a personal Google account, or ask your school's admin. |
+| A feature says "needs your school Google account" | Its account's sign-in is missing or expired. Features → that feature → Save, and pick that account on Google's page. `/google` shows which account each feature uses. |
+| "That's the same Google account as your main one" | The browser picked the account you were already signed in with. Save on the card again and choose the other account in Google's chooser (or sign out of the first one in that browser). |
+| The mail digest wasn't emailed | It mentioned confidential material (you got a note saying so), or the sending account's address isn't known: Features → Mail digest by email → Save, and sign in again. |
 | The mail digest says it only counted my mail | It reads only what you chose: `/mail read @your-school.example` or `/mail read label:Name`. Mail marked confidential (a confidentiality footer counts) is always only counted, unless you choose local summaries (`mail_digest.confidential` = `local`). |
 | "Confidential mail is only counted for now" | Local summaries need Local AI models on and ready (Features → Local AI models; on a laptop they run on the charger). |
 | Classroom notes say a PDF wasn't read | Install Poppler (`pdftotext`), or use agy as your AI (it opens PDFs itself). |

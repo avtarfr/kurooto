@@ -65,8 +65,12 @@ MODULE_ORDER = [
     "classroom_notes",
     "mail_digest",
     "reply_drafts",
+    "digest_email",
     "agent_plan",
+    "google_calendar",
+    "drive_upload",
     "handwritten",
+    "books",
     "study",
     "research",
     "terminals",
@@ -398,7 +402,8 @@ class Api:
         if path == "send-file":  # `kurooto send FILE`: a file from this computer to your Telegram
             from kurooto.modules.skills import send_file
 
-            ok, message = send_file(self.app, str(b.get("path") or ""), str(b.get("caption") or "")[:900])
+            to = "drive" if b.get("to") == "drive" else ""  # (ws2) --to drive: Google Drive, with a link
+            ok, message = send_file(self.app, str(b.get("path") or ""), str(b.get("caption") or "")[:900], to=to)
             return 200, {"ok": ok, "message": message}
         if path == "aboutyou/add":
             try:

@@ -2,6 +2,7 @@
 plans with you (the morning plan, "block 2 to 4 for the problem set" on a call). Kurooto writes only to that calendar:
 Google's permission for it ("calendars this app creates") doesn't let it see or change any other calendar. Hide or
 delete the calendar in Google Calendar any time; Kurooto makes a new one the next time it plans something.
+With several Google accounts, it lives on the one you choose on its card (or /google use plan personal).
 
     /blocks                          today's blocks
     /blocks add 14:00-15:30 problem set 4
@@ -70,8 +71,11 @@ class AgentPlan(GooglePart):
 
     # -------------------------------------------------------------------------------------- the calendar
     def calendar_id(self, create: bool = True) -> str | None:
-        """Kurooto's own calendar (made on first use, and again if you deleted it)."""
+        """Kurooto's own calendar (made on first use, again if you deleted it, and on another account if you moved
+        it there)."""
         st = jload(self.file, {}) or {}
+        if st.get("id") and st.get("account", "main") != self.account:
+            st.pop("id")  # it's on the account you used before
         if st.get("id") or not create:
             return st.get("id")
         body = {
@@ -82,7 +86,7 @@ class AgentPlan(GooglePart):
         if tzname:
             body["timeZone"] = tzname
         cal = self.google.api("calendar", "/calendars", body)
-        st["id"] = cal["id"]
+        st["id"], st["account"] = cal["id"], self.account
         jsave(self.file, st)
         self.app.events.emit("agent_calendar_made")
         return st["id"]

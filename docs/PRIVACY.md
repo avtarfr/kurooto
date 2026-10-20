@@ -39,6 +39,8 @@ computer only.
 | Voice notes | the recordings | Google (Gemini, your key) |
 | Calendar | nothing leaves; Kurooto reads your calendar's private link. Event descriptions are read only for `#nocall` and `#focus` and aren't kept | (read from Google/Outlook/Apple) |
 | Notes sync | your whole notes folder; conflict copies (when a note changed here and elsewhere at once) are ordinary notes and go too | your own private GitHub repository |
+| Calendar | nothing leaves; Kurooto reads your calendar's private link (or Google Calendar). Event descriptions are read only for `#nocall`, `#focus` and `#private` and aren't kept. Events marked private are kept and told only as "Busy (private)": their title and place go nowhere, not even to your AI | (read from Google/Outlook/Apple) |
+| Notes sync | your whole notes folder | your own private GitHub repository |
 | Notes sync + Phone calls | read access to that repository, so calls can read notes while the computer is off | your call line (its secret store) |
 | Backups | a zip of Kurooto's settings, data and state (AI requests and answers, check-ins, deadlines, your profile reports); your notes and your keys only if you turn them on. Not encrypted | only the folder you pick; if your computer syncs that folder to a cloud (Google Drive, OneDrive, iCloud, Dropbox), that cloud |
 | Profile sync | your settings, passwords and keys, and saved state (deadlines, quiz progress, routines, observations, scheduled reminders and calls), all encrypted with your passphrase before they leave; in plain text only when it was saved, Kurooto's version, the kind of computer and a random id for it | your own private GitHub repository (the one Notes sync uses, or another you pick) |
@@ -51,6 +53,10 @@ computer only.
 | Handwritten notes | nothing when a model on this computer reads them (Local models: the vision model on 12 GB graphics cards, the helper model on 8 GB ones, or `handwritten.local_model`); otherwise the scans and photos, unless you turn that off (`handwritten.cloud` = `false`: they wait for a model here) | Google (Gemini, your key) only when no model here reads them |
 | Books and PDFs | nothing while reading: the PDF's text, Tesseract and a local vision model all work on this computer, and the books, their text and the index notes stay here (the books outside your notes). Only with `books.gemini` on (off by default; books may be copyrighted): pictures of the pages nothing on this computer could read. When the AI writes your notes: excerpts of your books (the pages on the topic), Classroom materials and your notes, in the mix you chose (`course_sources`) | Google (Gemini, your key) only with `books.gemini`; the excerpts to the AI service you picked |
 | Books and PDFs: setting up | installing Tesseract (`/books setup`) downloads it from winget (Windows) or Homebrew (macOS); on Linux it only opens the install page. Nothing of yours is sent | Microsoft's winget sources or Homebrew |
+| Google Calendar | nothing leaves; Kurooto reads your own calendars (read-only). Other people's calendars shared with you are left out | (read from Google) |
+| Mail digest by email | each mail digest's text, sent from your Gmail to your own address only (never another recipient); not sent if it mentions confidential material | Google (your Gmail, to yourself) |
+| Drive upload | the files you send yourself, into a Kurooto folder in your Drive; nothing is shared | Google (your Drive) |
+| Handwritten notes | the scans and photos | Google (Gemini, your key), unless a local vision model handles them |
 | About you | the reports you add stay on this computer (Kurooto's data folder, not synced); building the profile sends them to the AI you picked, and its short "In brief" part goes along with every AI request | the AI service you picked |
 | Research | your fields, keywords and searches, arXiv searches you wrote in arXiv's own words included (never your notes). Runs kept in your repositories (`runs/index.csv`) and `research.save_note` stay on your computer | the sources you pick: arXiv, bioRxiv/medRxiv, PubMed, feeds (all public) |
 | Research: "Remind me tomorrow" by call (Phone calls on) | the project's name, as the call's reason | your call line (Cloudflare, Gemini Live), like any call |
@@ -92,6 +98,14 @@ ever holds your Google access. Each Google feature asks for only the permission 
 | Classroom → notes | see your Classroom course materials; see and download your Google Drive files (read-only) | reads materials, coursework and announcements, and opens only the Drive files attached to or linked from a post. Changes nothing |
 | Mail digest | read your email (read-only) | reads only the mail you choose for the digest; the rest it counts by its sender, subject and labels, on your computer. Can't send, delete or mark anything |
 | Agent plan calendar | make secondary calendars and manage their events | makes one calendar of its own, "Agent plan", and writes only there; it can't see or change your other calendars |
+| Google Calendar | see your calendars (read-only) | reads your own calendars and the ones you subscribed to, the next two weeks; calendars other people share with you are left out. Changes nothing |
+| Mail digest by email | send email on your behalf; see your email address | sends each mail digest to that account's own address and to no one else. Can't read your mail |
+| Drive upload | see, edit, create and delete only the Drive files it uses | makes one folder, "Kurooto", and uploads the files you send yourself there. Can't see your other files; shares nothing |
+| Any account but the first | see your email address | to show which account is which ("school: sam@school.example") |
+
+**Several accounts.** Each Google account you add signs in on its own and is asked only for the permissions of the
+features you give it (`/google` lists them). Its sign-in is kept in this computer's keychain like the first one's;
+`/google forget <name>` removes it from this computer.
 
 **Mail marked confidential is never read.** Work or school mail may be covered by your institution's email policy
 (many forbid forwarding confidential messages, and institutional mail belongs to the institution). If a mail's

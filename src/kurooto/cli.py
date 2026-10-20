@@ -14,7 +14,7 @@ kurooto mcp              Kurooto's tools for agent programs (an MCP server on st
 kurooto ask-me "question" [--choices "a|b|c"] [--expires 2d] [--wait [--timeout MIN]]   ask yourself something
 kurooto ask-me --pending [--json] | --id ID [--wait]   the open questions; one asked earlier (wait for its answer)
 kurooto ask-approval "question" [--timeout MIN]   ask for a yes/no and wait (exit 0 yes, 1 no, 2 timeout)
-kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB)
+kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB; --to drive: Google Drive)
 kurooto note [--title T] TEXT       save a quick note to your notes' inbox (or pipe text in)
 kurooto top [--once]     a status board: this computer and Kurooto (q quits)
 kurooto term [--print]   Kurooto Terminal: your AI, your shell, Kurooto chat and its log in one window
@@ -1015,6 +1015,7 @@ def skills_parsers(sub) -> None:
     se = sub.add_parser("send", help="send yourself a file on Telegram (up to 50 MB)")
     se.add_argument("file")
     se.add_argument("--caption", default="")
+    se.add_argument("--to", choices=["telegram", "drive"], default="telegram", help="drive: your Google Drive, a link")
     nt = sub.add_parser("note", help="save a quick note to your notes' inbox (the text, or what's piped in)")
     nt.add_argument("text", nargs="*")
     nt.add_argument("--title", default="")
@@ -1027,7 +1028,7 @@ def skills_command(a) -> int | None:
         if not f.is_file():
             print(f"There's no file {a.file}.", file=sys.stderr)
             return 1
-        r = ask_running("send-file", {"path": str(f.resolve()), "caption": a.caption})
+        r = ask_running("send-file", {"path": str(f.resolve()), "caption": a.caption, "to": a.to})
         if r is None:
             print("Kurooto isn't running (`kurooto on` starts it), so nothing was sent.", file=sys.stderr)
             return 2
