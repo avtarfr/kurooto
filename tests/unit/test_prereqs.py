@@ -150,7 +150,7 @@ def test_untar_streams_from_disk_never_whole_in_memory(tmp_path, monkeypatch):
     """Ollama's Linux archive is gigabytes unpacked; reading it whole once got Kurooto killed for memory."""
     import io as _io
 
-    import zstandard
+    zstandard = pytest.importorskip("zstandard")  # only installed on Linux, where Ollama's archive is .tar.zst
 
     from kurooto.core import prereqs as pq
 
