@@ -991,6 +991,7 @@ class Skills(Module):
         try:
             import io
             import zipfile
+
             buf = io.BytesIO()
             with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
                 zf.writestr("PROMPT.md", f"# Study Pack: {subject}\n\nMaterials for {subject}.\n")

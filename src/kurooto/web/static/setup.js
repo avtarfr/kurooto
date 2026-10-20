@@ -855,7 +855,8 @@ async function restore() {
   if (!rep.counts) { msg.textContent = rep.error || "It didn't work; the log below says why."; msg.className = "bad"; return; }
   $("#pr-pass").value = ""; $("#pr-token").value = "";
   restored = st.wanted || [];
-  chosen = new Set();
+  chosen = new Set(restored);
+  renderFeatures.seeded = true;
   const c = rep.counts, b = rep.brain || {};
   const todo = [
     ...rep.left.map((x) => el("li", {}, `${x.title}: ${x.why}`)),

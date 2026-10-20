@@ -45,6 +45,7 @@ def run(app, prompt="what's due?", **kw):
     return app.jobs.get(jid)
 
 
+@pytest.mark.skip(reason="0.5.1 disabled agy rolling over to Gemini key to protect free-tier limits")
 def test_agy_refuses_then_the_gemini_key_answers(env):
     app, gem, sent, mp = env
     mp.setenv("FAKE_AGY_MODE", "denied")
@@ -54,6 +55,7 @@ def test_agy_refuses_then_the_gemini_key_answers(env):
     assert sent[-1].endswith("From Gemini.\n\n(Answered with your Gemini key: agy couldn't do this unattended.)")
 
 
+@pytest.mark.skip(reason="0.5.1 disabled agy rolling over to Gemini key to protect free-tier limits")
 @pytest.mark.parametrize("mode", ["limit", "auth", "crash", "silent"])
 def test_other_agy_failures_go_to_the_key_too(env, mode):
     app, gem, sent, mp = env
@@ -71,6 +73,7 @@ def test_no_key_says_what_to_do(env):
     assert gem.requests == []
 
 
+@pytest.mark.skip(reason="0.5.1 disabled agy rolling over to Gemini key to protect free-tier limits")
 def test_a_set_fallback_goes_first_and_no_brain_runs_twice(env):
     app, gem, sent, mp = env
     mp.setenv("FAKE_AGY_MODE", "denied")
@@ -135,6 +138,7 @@ def test_text_only_work_tells_agy_to_use_no_tools(env):
     assert job.brain == "agy" and job.result.startswith(TEXT_ONLY)
 
 
+@pytest.mark.skip(reason="0.5.1 disabled agy rolling over to Gemini key to protect free-tier limits")
 def test_profile_build_is_text_only_and_says_who_answered(env):
     app, gem, sent, mp = env
     mp.setenv("FAKE_AGY_MODE", "denied")
@@ -180,7 +184,7 @@ def test_the_wizard_recommends_the_gemini_key(tmp_path, monkeypatch):
     app = App()
     try:
         rows = Api(app)._brains()
-        assert [(r["id"], r["recommended"]) for r in rows[:2]] == [("gemini", True), ("agy", False)]
+        assert [(r["id"], r["recommended"]) for r in rows[:2]] == [("agy", True), ("gemini", False)]
         assert sum(r["recommended"] for r in rows) == 1
     finally:
         app.close()

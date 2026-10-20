@@ -105,6 +105,7 @@ def world(tmp_path_factory):
     app.notifier.register("telegram", lambda m: sent.append(m) or len(sent))
     app.settings.set("you.name", "Sam")
     app.settings.set("you.timezone", "Europe/Berlin")
+    app.settings.set("you.workspace", str(tmp / "kurooto" / "workspace"))
     app.settings.set("calls.ntfy_server", cloud.base)
     app.settings.set("calls.live_model", "gemini-test-live")
     app.secrets.set("gemini.api_key", "fake-gemini-key")

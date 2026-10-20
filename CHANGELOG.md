@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.2 (2026-10-21)
+
+- **Setup wizard profile restore fix**: Restoring an existing profile archive in setup now seeds and retains restored feature choices instead of wiping selection.
+- **Call line & wake intent disambiguation**: Ordered `call_when` ("call me, I didn't wake up at 12") before general `call_now` pattern to prevent misinterpreting past statements as immediate ringing requests.
+- **Call invocation resilience**: Fixed `why` and `due` keyword compatibility in `calls.ring()` call-chain when wrapped by legacy bridges.
+- **CI & unit test fixes**: Updated brain recommendation assertions to match `agy` first recommendation, aligned call line test isolation with per-test workspace settings, and fixed ruff formatting checks in CI workflows.
+
 ## 0.5.1 (2026-10-20)
 
 - **Gemini free-tier key rollover disabled**: Requests using CLI brains (`agy`) no longer roll over to the free Gemini API key on error, preventing unintended rate-limit exhaustion.

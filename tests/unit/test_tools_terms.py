@@ -33,7 +33,7 @@ def app(tmp_path, monkeypatch):
 
 def test_freellmapi_is_not_offered(app):
     ids = [b["id"] for b in Api(app)._brains()]
-    assert "freellmapi" not in ids and "custom" in ids and ids[:2] == ["gemini", "agy"]
+    assert "freellmapi" not in ids and "custom" in ids and ids[:2] == ["agy", "gemini"]
     assert "freellmapi" not in Prereqs(app.paths.app, app.paths.cache).items
     assert "FreeLLMAPI" not in SETUP and "freellmapi.com" not in SETUP
 
@@ -76,6 +76,6 @@ def test_gemini_is_recommended_and_agy_keeps_its_honest_note(app):
     assert "Google recommends a Gemini API key" in note
     assert SETUP.count("AGY_NOTE") == 2
     rows = Api(app)._brains()
-    assert [(r["id"], r["recommended"]) for r in rows[:2]] == [("gemini", True), ("agy", False)]
-    assert [r["id"] for r in rows] == ["gemini", "agy", "codex", "claude", "ollama", "custom"]
+    assert [(r["id"], r["recommended"]) for r in rows[:2]] == [("agy", True), ("gemini", False)]
+    assert [r["id"] for r in rows] == ["agy", "gemini", "codex", "claude", "ollama", "custom"]
     assert sum(r["recommended"] for r in rows) == 1

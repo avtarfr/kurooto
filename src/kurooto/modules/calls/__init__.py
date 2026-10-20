@@ -1216,12 +1216,6 @@ class Calls(Module):
                 lambda msg, sl: self.schedule(sl["at"], sl["reason"], why="calls.own"),
             ),
             Intent(
-                "call_now",
-                "call me now",
-                match_now,
-                lambda msg, sl: self.place(sl["reason"], force=True, why="calls.own"),
-            ),
-            Intent(
                 "call_when",
                 "call me (its only time is one that didn't happen): asks when",
                 match_when,
@@ -1229,6 +1223,12 @@ class Calls(Module):
                     f"When should I call? I didn't book one: the {sl['said']} in that is about what "
                     'didn\'t happen or what was planned. Say "call me now" or "call me at 4:30".'
                 ),
+            ),
+            Intent(
+                "call_now",
+                "call me now",
+                match_now,
+                lambda msg, sl: self.place(sl["reason"], force=True, why="calls.own"),
             ),
             Intent("cancel_call", "cancel that call, cancel the 12:00 call", match_cancel, self.cancel_by_words),
         ]

@@ -61,7 +61,7 @@ def test_wizard_end_to_end(web):
             "timezone": "Europe/Berlin",
         }
         st = call(srv, "/api/state")[1]
-        assert st["you"]["name"] == "Riya" and st["brains"][0]["id"] == "gemini" and st["brains"][0]["recommended"]
+        assert st["you"]["name"] == "Riya" and st["brains"][0]["id"] == "agy" and st["brains"][0]["recommended"]
         assert st["hardware"]["recommendation"]["profile"] and "need_gb" in st["room"]
         call(
             srv,
