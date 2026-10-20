@@ -7,6 +7,7 @@ from kurooto.modules.books import Books
 from kurooto.modules.calendar import Calendar
 from kurooto.modules.calls import Calls
 from kurooto.modules.capture import Capture
+from kurooto.modules.cases import Cases
 from kurooto.modules.chat import Chat
 from kurooto.modules.checkins import Checkins
 from kurooto.modules.deadlines import Deadlines
@@ -55,6 +56,7 @@ CATALOG = [
     Capture,
     Remember,
     Retro,
+    Cases,
     Calls,
     Alarm,
     VoiceNotes,

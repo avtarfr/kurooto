@@ -442,15 +442,20 @@ class Jobs:
         else:
             body = FRIENDLY.get(result.verdict, "It failed.").format(brain=label)
         reply_to = int(job.reply_to) if job.reply_to and job.reply_to.isdigit() else job.reply_to
+        cases = self.app.modules.get("cases") if self.app.is_on("cases") else None  # (wrong) a Wrong button on it
+        buttons = cases.answer_buttons(job.id) if cases is not None else None
         if len(body) > LONG:
             md = self.dir / f"{job.id}-result.md"
             md.write_text(body, encoding="utf-8")
             self.app.notify(
-                f"{head}\n\n{body[:1500]}\n\n[…the full answer is attached]", kind="result", reply_to=reply_to
+                f"{head}\n\n{body[:1500]}\n\n[…the full answer is attached]",
+                kind="result",
+                reply_to=reply_to,
+                buttons=buttons,
             )
             self.app.notify(job.title, kind="result", file=str(md))
         else:
-            self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to)
+            self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to, buttons=buttons)
 
     def _defer(self, jid: str, until: float) -> None:
         """Background work whose free limits are kept for you: back in the queue until the reset, never dropped."""
