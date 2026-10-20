@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (unreleased)
+## 0.3.0 (2026-10-20)
 The [manual](docs/MANUAL.md) has the detail.
 
 **Kurooto Terminal**
