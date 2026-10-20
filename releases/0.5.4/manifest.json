@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.4",
+  "notes": "0.5.4: fix Android ringtone crash, sync status API handler, cross-platform time zone canonicalization, and update banner check.",
+  "created": 1792526378.5274951,
+  "files": {
+   "kurooto-0.5.4.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.4/kurooto-0.5.4.tar.gz",
+    "sha256": "12be3551c12bafa9c39154534311b10c7196a666ee33d04be6e6dde1cdf5a089",
+    "size": 1633562
+   }
+  }
+ },
+ "sig": "aGaapauoG+h4nbtIjXzkKLXCBjcsyKZTZFHmnVr5OtX+sTrI2nqo0WKJcdXlNxK8S5HGgj5nWBzh6C4G49roDA=="
+}
