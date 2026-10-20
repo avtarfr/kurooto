@@ -1130,10 +1130,10 @@ websites; on Linux it also checks that every request comes from your own user ac
 
 ### Kurooto Terminal
 Kurooto in a real terminal window of its own, laid out like the dashboard's terminals: one tab each for your AI's own
-program (agy, Codex or Claude Code, started in your notes folder; agy if your AI is a key), your shell, Kurooto chat
-(`kurooto ask`) and Kurooto's log, with `kurooto top` as a column on the left of the first tab. Everything is in
-Kurooto's colours (Settings → `look.palette`). The chat tab shows Kurooto's name, a few examples and a `kurooto ❯`
-prompt; type plain English as on Telegram.
+program (agy, Codex or Claude Code, started in your notes folder; agy if you have it and your AI is an API key), your
+shell, Kurooto chat (`kurooto ask`) and Kurooto's log, with `kurooto top` as a column on the left of the first tab.
+Everything is in Kurooto's colours (Settings → `look.palette`). The chat tab shows Kurooto's name, a few examples and
+a `kurooto ❯` prompt; type plain English as on Telegram.
 
 **Open it:** `kurooto term`, or **Kurooto Terminal** in your app menu (Start menu, Launchpad, your Linux app launcher)
 once the feature is on. `kurooto term --print` shows what it would open without opening anything.
