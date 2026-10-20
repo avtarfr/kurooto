@@ -3,6 +3,8 @@
 
 Make your own: /newskill <what it should do> has the AI write one; you see it in full and tap Save (or Discard).
 Run any skill or request on a schedule: /every monday 9:00 /journal plan my week; /routines lists them.
+The evening before a quiz or exam (from Deadlines), a revision pack for it: offered with a button, or built by itself
+(skills.auto_pack: ask | auto | off).
 Reply to a skill's answer to carry on (answer its questions, ask for changes).
 
 Where skills live:
@@ -24,6 +26,7 @@ command:
 
 from __future__ import annotations
 
+import datetime as dt
 import os
 import re
 import threading
@@ -37,6 +40,7 @@ from typing import TYPE_CHECKING
 from kurooto import providers
 from kurooto.core import layout
 from kurooto.core.clock import now
+from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
@@ -44,6 +48,14 @@ from kurooto.modules.calls.tools import Tool, arg
 
 if TYPE_CHECKING:
     from kurooto.app import App
+
+register_defaults(
+    "skills",
+    {
+        "auto_pack": "ask",  # the evening before a quiz or exam: ask (a button) | auto (build it) | off
+        "auto_pack_after": "16:00",  # not before this time of day, 12 to 36 hours before it
+    },
+)
 
 NAME = re.compile(r"[a-z0-9][a-z0-9-]{1,39}")
 EFFORTS = ("low", "medium", "high")
@@ -436,6 +448,7 @@ class Skills(Module):
         self.app.scheduler.action("skills.routine", self._routine)
         for r in self.routines():
             self._schedule(r)
+        self.every("autopack", "every 30m", self.auto_packs)
 
     # -------------------------------------------------------------------------------------- running
     def all(self) -> dict[str, Skill]:
@@ -680,7 +693,12 @@ class Skills(Module):
         self.app.events.emit("skill_drafted", name=name)
 
     def callbacks(self):
-        return {"skn": self._draft_button, "skr": self._routine_button, "skt": self._tectonic_button}
+        return {
+            "skn": self._draft_button,
+            "skr": self._routine_button,
+            "skt": self._tectonic_button,
+            "skp": self._auto_pack_button,
+        }
 
     def _draft_button(self, ref: str, act: str) -> str:
         f = self.dir / "drafts" / f"{re.sub(r'[^a-f0-9]', '', ref)}.json"
@@ -873,6 +891,69 @@ class Skills(Module):
             title=f"{title_prefix}Revision pack: {name}"[:80],
         )
 
+    # ------------------------------------------------------------------- packs before quizzes and exams
+    def auto_packs(self, p: dict | None = None) -> int:
+        """The evening before a quiz or exam with a subject (12 to 36 hours ahead, after skills.auto_pack_after): a
+        revision pack, offered with a button (ask) or built (auto). Once per quiz or exam."""
+        mode = str(self.setting("auto_pack") or "off").strip().lower()
+        dl = self.app.modules.get("deadlines") if self.app.is_on("deadlines") else None
+        if mode not in ("ask", "auto") or dl is None or not load_skill(self.app, "revision-pack"):
+            return 0
+        t = now()
+        try:
+            after = dt_time(str(self.setting("auto_pack_after") or "16:00"))
+        except ValueError:
+            after = dt_time("16:00")
+        if t.time() < after:
+            return 0
+        f = self.dir / "auto-packs.json"
+        with Lock(self.app.paths.state, "skills-packs"):
+            done = jload(f, {}) or {}
+            todo = [e for e in dl.exams_soon(2) if e.get("subject") and 12 <= e["hours"] <= 36 and e["id"] not in done]
+            for e in todo:
+                done[e["id"]] = {"at": t.isoformat(timespec="seconds"), "text": self._pack_text(dl, e), "mode": mode}
+            if todo:
+                cutoff = t.timestamp() - 60 * 86400  # forgotten after two months
+                keep = {k: v for k, v in done.items() if _ts(v.get("at")) >= cutoff}
+                jsave(f, keep)
+        for e in todo:
+            text = done[e["id"]]["text"]
+            if mode == "auto":
+                self.pack_for(text, title_prefix="Before your exam: ")
+                self.app.events.emit("auto_pack", mode="auto")
+                continue
+            self.app.notify(
+                f"{e['title']} is {e['when']}. A revision pack for it tonight?",
+                kind="question",
+                title="Revision pack",
+                buttons=[[("Build it", f"skp:{e['id']}:yes"), ("No thanks", f"skp:{e['id']}:no")]],
+            )
+            self.app.events.emit("auto_pack", mode="ask")
+        return len(todo)
+
+    @staticmethod
+    def _pack_text(dl, e: dict) -> str:
+        """What to /pack for a quiz or exam: "<subject>: <title> on Fri 24 Oct 10:00"."""
+        when = dt.datetime.fromisoformat(e["due"]).strftime("%a %d %b %H:%M")
+        return f"{e['subject']}: {e['title']} on {when}"
+
+    def _auto_pack_button(self, ref: str, act: str) -> str:
+        d = (jload(self.dir / "auto-packs.json", {}) or {}).get(ref)
+        if not d:
+            return "That one is old."
+        if act != "yes":
+            self.app.events.emit("auto_pack_declined")
+            return "OK, no pack."
+        if d.get("built"):
+            return "It's on its way already."
+        with Lock(self.app.paths.state, "skills-packs"):
+            all_ = jload(self.dir / "auto-packs.json", {}) or {}
+            all_.setdefault(ref, d)["built"] = True
+            jsave(self.dir / "auto-packs.json", all_)
+        self.pack_for(d["text"], title_prefix="Before your exam: ")
+        self.app.events.emit("auto_pack_accepted")
+        return "Building it; it comes here in a few minutes."
+
     def _pack(self, msg: Incoming, arg: str) -> str:
         if not arg.strip():
             return "Which subject? /pack linear algebra (add what it's for: /pack linear algebra midterm friday)"
@@ -1046,3 +1127,15 @@ class Skills(Module):
             p = self.app.workspace / p
         inside = [self.app.workspace, *([r] if (r := layout.files_root(self.app)) else [])]
         return send_file(self.app, p, str(a.get("caption") or ""), inside=inside)[1]
+
+
+def dt_time(text: str) -> dt.time:
+    """A time of day from "16:00" (ValueError if it isn't one)."""
+    return dt.time.fromisoformat(text.strip().zfill(5))
+
+
+def _ts(iso) -> float:
+    try:
+        return dt.datetime.fromisoformat(str(iso)).timestamp()
+    except ValueError:
+        return 0.0
