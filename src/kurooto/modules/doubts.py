@@ -150,9 +150,9 @@ class Doubts(Module):
         t = now()
         ahead = dt.timedelta(minutes=float(self.setting("before_min") or 30))
         f = self.dir / "told.json"
-        told = jload(f, {}) or {}
+        old = jload(f, {}) or {}
         today = t.date().isoformat()
-        told = {k: v for k, v in told.items() if v >= (t.date() - dt.timedelta(days=2)).isoformat()}
+        told = {k: v for k, v in old.items() if v >= (t.date() - dt.timedelta(days=2)).isoformat()}
         sent = 0
         for c in self.app.modules["subjects"].classes_on(t.date()):
             slug = c.get("subject")
@@ -166,7 +166,8 @@ class Doubts(Module):
                 self._send(slug, items, head)
                 self.app.events.emit("doubts_told", subject=slug, n=len(items))
                 sent += 1
-        jsave(f, told)
+        if told != old:
+            jsave(f, told)
         return sent
 
     # -------------------------------------------------------------------------------------- messages
