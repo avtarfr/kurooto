@@ -1,9 +1,10 @@
 """Sync everything: every sync that's on, in one go, with one line each when it's done.
 
 /sync all (or "sync everything") on Telegram, `kurooto sync` in a terminal. In order: your notes with your repository
-(to take in what changed elsewhere), Google Classroom, your calendars, research project logs, your notes again (to
-send up what the others just wrote), then the notes brain's index. A feature that's off is left out. It runs in the
-background; the summary comes as a message.
+(to take in what changed elsewhere), Google Classroom, your calendars, research project logs, the notes brain's index,
+a backup (when Backups is on and its folder is there), then your notes again (to send up what the others just
+wrote). A feature that's off is left out. It runs in the background; the summary comes as a message.
+`kurooto sync --status` says whether one is running and how the last one went.
 
 A feature joins in by having a `sync_now() -> (ok, detail)` method; the ones below that don't are called the way their
 own timers call them.
@@ -27,6 +28,7 @@ ORDER = [  # (module id, what to call it)
     ("calendar", "Calendar"),
     ("research", "Research"),
     ("gbrain", "Notes brain"),
+    ("backups", "Backup"),
 ]
 ASK = re.compile(
     r"^(?:please\s+)?(?:/sync\s+(?:all|everything)|sync\s+(?:everything|all(?:\s+the\s+things)?|it\s+all)"
@@ -60,6 +62,11 @@ def _one(app: App, mid: str) -> tuple[bool | None, str]:
         return True, f"{n} events"
     if mid == "gbrain":
         return m.sync()
+    if mid == "backups":
+        ok, why = m.ready()
+        if not ok:  # an external drive that isn't plugged in now: skipped, not failed
+            return None, why
+        return m.backup("sync")
     return None, "nothing to do"
 
 
@@ -97,7 +104,7 @@ def _safe(app: App, mid: str) -> tuple[bool | None, str]:
 
 def summary(results: list[tuple[str, bool | None, str]]) -> str:
     if not results:
-        return "Nothing to sync: notes sync, Classroom, calendar, research and the notes brain are all off."
+        return "Nothing to sync: notes sync, Classroom, calendar, research, the notes brain and backups are all off."
     good = sum(1 for _, ok, _ in results if ok)
     bad = sum(1 for _, ok, _ in results if ok is False)
     head = "Synced everything that's on" + (f" ({good} ok, {bad} failed):" if bad else ":")

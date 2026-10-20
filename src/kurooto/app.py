@@ -200,6 +200,12 @@ class App:
             self.ask.start()
         except Exception as e:
             self.events.emit("module_failed", module="ask", error=str(e)[:300])
+        try:  # (ws5) your skills as slash commands in agy and other agents, when that's on (core/agent_export.py)
+            from kurooto.core import agent_export
+
+            agent_export.start(self)
+        except Exception as e:
+            self.events.emit("module_failed", module="agent_export", error=str(e)[:300])
         for m in self.enabled():
             try:
                 m.start()
@@ -266,6 +272,13 @@ class App:
         plain = tidy(text)
         if plain and not too_complex(plain):
             asks = bool(QUESTION.search(plain))
+            from kurooto.core import overlay  # (ws5) an add-on's intent classifier goes first (core/overlay.py)
+
+            picked = overlay.classify(self, plain, mods, asks)
+            if picked:
+                self.events.emit("intent", name=picked[0].name, via="classifier")
+                msg.reply(picked[0].run(msg, picked[1]) or "Done.")
+                return
             for m in mods:
                 for it in m.intents():
                     if asks and not it.questions:

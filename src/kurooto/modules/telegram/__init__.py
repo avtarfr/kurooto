@@ -371,8 +371,53 @@ class Telegram(Module):
             lines.append("Coming up:\n" + "\n".join(rows))
         if self.app.ask.status_line():  # questions waiting for you (core/ask.py)
             lines.append(self.app.ask.status_line())
+        lines += self._status_more()
         lines.append("On: " + ", ".join(m.title for m in self.app.enabled()))
         return "\n".join(lines)
+
+    def _status_more(self) -> list[str]:
+        """(ws5) Today's check-ins, what's due in 3 days, the alarm, the last AI requests, and add-ons' lines. Each
+        part is skipped when its feature is off or fails."""
+        app, out = self.app, []
+
+        def part(fn) -> None:
+            try:
+                got = fn()
+            except Exception as e:
+                app.events.emit("status_failed", error=f"{type(e).__name__}: {e}"[:200])
+                return
+            out.extend([got] if isinstance(got, str) else got or [])
+
+        def checkins():
+            plan = app.modules["checkins"].today() if app.is_on("checkins") else {}
+            rows = [f"{n} {c.get('time') or '-'} ({c.get('status', '?')})" for n, c in plan.items()]
+            return f"Check-ins today: {', '.join(rows)}" if rows else []
+
+        def due():
+            if not app.is_on("deadlines"):
+                return []
+            soon = app.modules["deadlines"].deadlines_soon(72)
+            if not soon:
+                return "Nothing due in the next 3 days."
+            rows = [f"  {r['title'][:70]} ({r['when']})" for r in soon[:6]]
+            more = [f"  and {len(soon) - 6} more (/deadlines)"] if len(soon) > 6 else []
+            return "Due in the next 3 days:\n" + "\n".join(rows + more)
+
+        def alarm():
+            t = app.modules["alarm"].next() if app.is_on("alarm") else None
+            return f"Alarm: {t:%a %H:%M}" if t else []
+
+        def jobs():
+            recent = app.jobs.recent(3)
+            rows = [f"  {j.status:7} {j.title[:60]}" + (f" ({j.seconds:.0f}s)" if j.seconds else "") for j in recent]
+            return "Recent AI requests (/jobs):\n" + "\n".join(rows) if rows else []
+
+        for fn in (checkins, due, alarm, jobs):
+            part(fn)
+        for m in app.enabled():  # an add-on's own lines (core/overlay.py: status_lines)
+            if callable(getattr(m, "status_lines", None)):
+                part(lambda m=m: [str(x)[:300] for x in (m.status_lines() or [])][:5])
+        return out
 
     def _pause(self, msg: Incoming, arg: str) -> str:
         arg = arg.strip().lower().removeprefix("for ").removeprefix("until ")

@@ -375,14 +375,9 @@ class Api:
             threading.Thread(target=r.papers, name="papers", daemon=True).start()
             return 200, {"ok": True, "message": "Looking now; the digest comes on Telegram in a minute or two."}
         if path == "notify":  # other programs on this computer message you through Kurooto (`kurooto notify`)
-            text = str(b.get("text", "")).strip()[:3500]
-            if not text:
-                return 400, {"error": "nothing to say"}
-            kind = b.get("kind") if b.get("kind") in ("info", "result", "reminder", "deadline") else "info"
-            title = str(b.get("title") or "").strip()[:80] or None
-            self.app.notify(text, title=title, kind=kind, urgent=bool(b.get("urgent")))
-            self.app.events.emit("notify_external", source=(title or "")[:40])
-            return 200, {"ok": True}
+            from kurooto.web.tools_api import notify_from_program  # (ws5) buttons, --click, --reply-to
+
+            return notify_from_program(self.app, b)
         if path == "send-file":  # `kurooto send FILE`: a file from this computer to your Telegram
             from kurooto.modules.skills import send_file
 

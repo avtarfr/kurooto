@@ -51,7 +51,7 @@ def test_other_programs_can_message_you(env):
     from kurooto.web.api import Api
 
     api = Api(env.app)
-    assert api.post("notify", {"text": "The backup finished.", "title": "Backup"})[1] == {"ok": True}
+    assert api.post("notify", {"text": "The backup finished.", "title": "Backup"})[1]["ok"] is True
     assert env.fake.texts()[-1] == "Backup\n\nThe backup finished."
     assert api.post("notify", {"text": " "})[0] == 400
     assert api.post("notify", {"text": "x", "kind": "call"})[1]["ok"]  # unknown kinds become plain info
