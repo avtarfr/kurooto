@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.0",
+  "notes": "Google with several accounts, your own GBrain, research and handwriting, books and PDFs, the semester map read live, exam season, reminders that survive a shut lid, health checks, the free-tier reserve, class packs, attendance, start-by dates, and more.",
+  "created": 1792489193.538242,
+  "files": {
+   "kurooto-0.5.0.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.0/kurooto-0.5.0.tar.gz",
+    "sha256": "5c53c34060426d3ac2218bbbf28c7bf2394c97af7b03fb3044152ac0397a3f1b",
+    "size": 1499035
+   }
+  }
+ },
+ "sig": "v3psR0SpHeHM8A5GkVZGkDzP2QqmMd2nw5+GBzBa/KjB4LzwHFP13vrSr7BkLHUx15QdNWtL4vwbnn/gpRCuAw=="
+}
