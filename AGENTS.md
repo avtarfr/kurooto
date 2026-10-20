@@ -38,6 +38,7 @@ words, one step at a time, and let them do the clicking in their browser.
 | `kurooto doctor` | checks Kurooto, the AI, every feature that's on, free space; exit code = number of problems | yes |
 | `kurooto doctor --json` | the same, as JSON | yes |
 | `kurooto doctor --bundle` | saves a diagnostics zip (secrets and personal details blanked out) | yes; ask before sending it anywhere |
+| `kurooto doctor --fix ID` | runs the fix a `working: ...` line offers (Kurooto's own state only: a sync, timers, the call line link, the alarm, stuck messages) | yes |
 | `kurooto open` | opens the setup page or dashboard in the browser | yes |
 | `kurooto start` / `kurooto stop` | starts / stops the background program (it starts again at sign-in) | yes |
 | `kurooto pause [2h\|18:00]` / `kurooto resume` | pauses it (Telegram answers "paused" and keeps what's sent) / wakes it | yes |
@@ -97,6 +98,7 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
 | `Backups FAIL the backup folder isn't there` | the drive is unplugged or the cloud app signed out | they plug in or sign in, then `kurooto backup` |
 | Profile sync: another computer saved the profile | they used or restored Kurooto elsewhere | ask which computer is the one: `kurooto profile restore` here, or `/profile save` to keep this one |
 | Your add-ons: a file failed | their own add-on code has an error | `/addons` shows the file and error; they fix it, then `kurooto stop` and `kurooto start` |
+| `working: <feature> FAIL` | that feature stopped working (it went quiet, a sign-in ended, the call line or tonight's alarm is broken) | read the detail; if it ends in `fix: kurooto doctor --fix <id>`, run that; a sign-in that ended needs the person (the detail says where) |
 | a folder `FAIL` | Kurooto can't write its own folder | check disk space and permissions on that folder |
 
 ## Common jobs

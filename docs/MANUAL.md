@@ -44,6 +44,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Taking your laptop with you (battery, pause, off)](#taking-your-laptop-with-you-battery-pause-off)
 - [Starting at boot](#starting-at-boot)
 - [Going offline and coming back](#going-offline-and-coming-back)
+- [Kurooto keeps itself working](#kurooto-keeps-itself-working)
 - [Updates and going back](#updates-and-going-back)
 - [Moving to a new computer](#moving-to-a-new-computer)
 - [Your computer and Kurooto (hardware profiles)](#your-computer-and-kurooto-hardware-profiles)
@@ -471,7 +472,8 @@ off), `exam_daily` (off; a time like 18:00 turns on a daily exam-mode practice),
 
 ### Weekly summary
 Every Sunday evening (`weekly.when`, Sunday 19:00): the week in numbers (requests, reminders, check-ins, deadlines,
-quiz, study hours, journal days). `/week` any time.
+quiz, study hours, journal days), and what isn't working that could wait until then
+([Kurooto keeps itself working](#kurooto-keeps-itself-working)). `/week` any time.
 
 **Sunday review call** (optional, with Phone calls on; Settings → `weekly.call`): after the summary, a call of about
 15 minutes: the week in numbers and study hours per subject, what went well and what didn't, anything Kurooto should
@@ -1820,6 +1822,61 @@ while your computer is connected). The dashboard's activity shows `presence_offl
 and focus hours for the next day and the message's wording go to your call line, and, only after you approve, your
 bot's token and chat id.
 
+## Kurooto keeps itself working
+
+Every feature that's on has one health check, and Kurooto looks at all of them once a day. **It stays quiet unless
+something is wrong**, and even then it only messages you when it matters now.
+
+**What's checked** (only for features that are on):
+- **Things that should keep happening:** Classroom synced within 26 hours, Calendar within 12, Notes sync and the
+  Notes brain within 24, Backups and Profile sync within 72. Only the hours your computer was awake and Kurooto wasn't
+  paused count: a shut lid, a shutdown, a network outage or a pause never makes a sync "late", and for work that waits
+  for the charger, time on battery doesn't count either.
+- **Sign-ins that ended or end soon:** your Google sign-in (a Google app still in Testing ends it every 7 days), the
+  GitHub token Notes sync uses (expiring within 10 days; GitHub also emails you 7 days before), the Cloudflare login
+  your call line's updates need, and a Telegram bot whose token was revoked.
+- **Your call line:** this computer is linked to it and it answers.
+- **Tonight's alarm:** it's planned, your call line has it and answers, and a phone is paired to ring.
+- **Kurooto's own queues:** messages that waited for focus time or the network and never went out.
+
+**When you hear about it:**
+- **Tonight's alarm might not ring:** at once: "Your alarm at 07:00 might not ring: ... Set your phone's own alarm
+  too."
+- **Your Telegram bot stopped answering:** at once (on the desktop and the phone app, since Telegram can't).
+- **A problem that could make you miss a deadline or exam in the next 48 hours** (Classroom, Calendar or your call
+  line): one message now, with a **Fix** button when there's one.
+- **Anything else** waits for the weekly summary ("Needs a look: ..."). With the weekly summary off, you get one
+  message on Sundays instead.
+- Each problem is told once; if it's fixed and breaks again, you hear again.
+
+**Fixes.** Before telling you, Kurooto tries a fix that's safe to run unasked, then looks again ten minutes later.
+There are five, all limited to Kurooto's own state, never your notes or other data:
+- **Sync now:** runs that feature's sync once (what its timer does anyway). Only when you tap it.
+- **Put its timers back:** a feature whose timers went missing gets them back.
+- **Reconnect:** restarts this computer's link to your call line, or Telegram's reading of your messages.
+- **Set the alarm again:** plans your daily alarm now (it's otherwise planned at midnight, which a sleeping laptop
+  misses) and sends it to your call line.
+- **Send them now:** sends messages stuck in Kurooto's queues.
+A sign-in that ended has no fix Kurooto can do; the message says what to do. After you tap **Fix**, you hear ten
+minutes later whether it worked.
+
+**Where to look:** `/health` on Telegram (what's wrong, with Fix buttons; `/health now` checks online too), the
+dashboard (a "needs a look" badge; the Features tab lists them with Fix buttons), `kurooto doctor` (a `working: ...`
+line each; `kurooto doctor --fix <id>` runs a fix in the running Kurooto) and the weekly summary.
+
+**Settings** (Settings → `health`):
+- `on`: the daily pass (default `true`). `/health`, the dashboard and doctor check either way.
+- `when`: when the daily pass runs (default `daily 21:00`, before bedtime, so tonight's alarm is checked in time).
+- `auto_fix`: try the safe fixes before telling you (default `true`).
+
+**Undo:** `health.on` = `false` stops the daily pass and its messages (nothing else changes); `health.auto_fix` =
+`false` leaves every fix to your tap. The dashboard's activity shows `health_checked`, `health_fixed` and
+`health_told`.
+
+*Leaves:* nothing new. The checks ask services Kurooto already uses: Telegram whether your bot answers, GitHub whether
+your notes token works (a read-only look at your notes repository), and your call line whether it's up and how many
+phones are paired.
+
 ## Updates and going back
 
 Kurooto updates itself. Settings → `updates.mode`:
@@ -1957,6 +2014,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 |---|---|
 | The bot doesn't answer | `kurooto doctor`; is it running? Turned off? `kurooto on` (or Kurooto in your app menu). Is the computer asleep? See Stay awake on charger. |
 | The bot says it's paused | `/resume`; or it's on battery with `power.on_battery` set to `pause`: plug in, or choose `saver`. |
+| "needs a look" on the dashboard, or a "Needs a look" line in the weekly summary | `/health` (or the Features tab) says what and offers a Fix button where Kurooto can fix it; a sign-in that ended needs you (the line says where). |
+| "Your alarm ... might not ring" | Set your phone's own alarm for tonight, then: Phone calls set up and linked (`kurooto doctor`), a phone paired (Phone tab). The Fix button reconnects or plans the alarm again. |
 | "Back online" every morning | Your laptop sleeps at night. Raise `notify.presence.after_min` past your night, or turn it off (`notify.presence.on` = `false`). |
 | No "going offline" when the laptop sleeps | That message comes from your call line: it needs Phone calls set up, and Telegram from the line needs your OK (`notify.presence.line_telegram`); or add `"app"` to `notify.presence.channels`. |
 | Building my profile failed | It's a big request: if your AI hit a limit, try again later or with a stronger AI (Settings → `brain.main`). |
@@ -2055,7 +2114,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 `kurooto doctor` checks Kurooto, your AI, every feature you have on, and free space; each line says what's wrong, and
 the exit code is the number of problems (handy after moving to a new computer). It also asks Telegram whether your
 bot answers, asks your call line whether it's up (and whether the running Kurooto is linked to it), checks the skills
-copied into agy, and runs your add-ons' own checks.
+copied into agy, and runs your add-ons' own checks. A `working: ...` line per feature says whether it kept working
+([Kurooto keeps itself working](#kurooto-keeps-itself-working)); `kurooto doctor --fix <id>` runs the fix one offers.
 `kurooto top` and `kurooto logs -f` show what it's doing right now.
 
 `kurooto doctor --bundle` saves a zip you can send to someone helping you. It contains Kurooto's checks, its log,

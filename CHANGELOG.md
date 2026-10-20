@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+**Kurooto keeps itself working** (on by default; `health.on`)
+- Every feature that's on has one health check: how often it should work (Classroom within 26 h, Calendar 12, Notes
+  sync and the Notes brain 24, Backups and Profile sync 72) and/or a read-only probe (a Google sign-in, GitHub notes
+  token or Cloudflare login that ended or ends soon, a Telegram bot that stopped answering, the link to your call line,
+  tonight's alarm, messages stuck in a queue). Only awake, unpaused hours count: sleep, shutdowns, network outages and
+  pauses (and battery saver, for work that waits for the charger) are taken out first, so a shut lid is never a
+  failed sync.
+- A daily pass (`health.when`, 21:00) that's silent unless something is wrong. Tonight's alarm might not ring: a
+  message now ("set your phone's own alarm too"). A problem that could make you miss a deadline or exam in the next
+  48 h: one message now with a Fix button. Anything else: a "Needs a look" part in the weekly summary (or one Sunday
+  message with the summary off). Each problem is told once.
+- Five fixes, only of Kurooto's own state: sync now, put timers back, reconnect, set the alarm again (the daily alarm
+  is otherwise planned at midnight, which a sleeping laptop misses), send stuck messages. The safe ones run before
+  you're told (`health.auto_fix`); after a Fix tap you hear whether it worked.
+- `/health` on Telegram, a "needs a look" badge and Fix buttons on the dashboard (Features), `working: ...` lines in
+  `kurooto doctor`, and `kurooto doctor --fix <id>`. Add-ons can give their own check (`health_check()`).
+- Going offline and coming back now keeps the offline periods of the last 15 days (for the checks above). Google's
+  sign-in keeps when Google says it ends.
+
 ## 0.4.0 (unreleased)
 
 **Books and PDFs** (new; off until you turn it on)
