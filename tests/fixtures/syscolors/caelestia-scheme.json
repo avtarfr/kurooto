@@ -1,0 +1,3 @@
+{"name": "dynamic", "flavour": "default", "mode": "light", "variant": "tonalspot",
+ "colours": {"primary": "6750a4", "onPrimary": "ffffff", "background": "fef7ff", "onSurface": "1d1b20",
+             "surfaceContainer": "f3edf7", "outlineVariant": "cac4d0"}}

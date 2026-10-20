@@ -9,24 +9,28 @@
 </head>
 <body>
 <main class="wizard">
-  <header>
+  <aside class="rail">
     <div class="brand">KUROOTO <span class="ver">{{VERSION}}</span></div>
-    <ol class="steps" id="steps"></ol>
-  </header>
+    <ol class="steps" id="steps" aria-label="Setup steps"></ol>
+    <p class="rail-note">Saved as you go: close this page any time and pick up where you left off.</p>
+  </aside>
+  <div class="pages">
 
   <section data-step="you">
     <h1>Hi! Let's set up your assistant.</h1>
     <p class="lead">Everything is optional, and everything stays on this computer unless a feature tells you otherwise. Nothing is ever sent to whoever gave you Kurooto.</p>
     <div class="box again"><p>Used Kurooto before, on another computer or before a reinstall? Bring your setup back from your private repository (if Profile sync was on there).</p><button id="pr-open">I've used Kurooto before</button></div>
-    <label>What should it call you?<input id="name" autocomplete="given-name" placeholder="Your first name"></label>
-    <label>Your time zone<input id="tz" placeholder="e.g. Europe/Berlin"></label>
-    <label>Your assistant's name<input id="aname" value="Kurooto"></label>
+    <label>What should it call you?<input id="name" autocomplete="given-name" placeholder="Your first name"><span class="field-note">How it greets you and talks about you.</span></label>
+    <label>Your time zone<input id="tz" list="tz-list" placeholder="e.g. Europe/Berlin" autocomplete="off" spellcheck="false"><span class="field-note">Reminders, check-ins and calls go by it. Filled in from this computer.</span></label>
+    <datalist id="tz-list"></datalist>
+    <label>Your assistant's name<input id="aname" value="Kurooto"><span class="field-note">What it calls itself. You can change it later.</span></label>
+    <p class="bad" id="you-msg" role="alert"></p>
     <div class="nav"><span></span><button class="primary" data-next>Next</button></div>
   </section>
 
   <section data-step="restore">
     <h1>Welcome back</h1>
-    <p class="lead">Your settings, passwords and keys and saved state come back from the private GitHub repository Profile sync kept them in, encrypted. If you kept them in the repository Notes sync uses, that's the one; your notes come back too.</p>
+    <p class="lead">Your settings, passwords and keys and saved state come back from the private GitHub repository Profile sync kept them in, encrypted. If you kept them in the repository Notes sync uses, that's the one; your notes come back too. Never used Profile sync? Go back and set up as new.</p>
     <label>Repository (owner/name)<input id="pr-repo" placeholder="you/notes" autocomplete="off" spellcheck="false"></label>
     <label>A token for it<input id="pr-token" type="password" placeholder="github_pat_…" autocomplete="off"></label>
     <p class="note">Don't have the token any more? Make a new one: <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">New fine-grained token</a>, Repository access → only that repository, Permissions → Contents → Read and write.</p>
@@ -41,15 +45,17 @@
     <p class="lead" id="hw-summary">Looking at your computer…</p>
     <div class="chips" id="hw-chips"></div>
     <h2>Recommended for it</h2>
+    <p class="note">Nothing is installed yet: these come with the features that use them (Local AI models, Notes brain), if you turn those on in step 5.</p>
     <ul class="list" id="hw-reco"></ul>
     <p class="note" id="hw-notes"></p>
     <div id="power-choice"></div>
+    <div id="look-choice"></div>
     <div class="nav"><button data-back>Back</button><button class="primary" data-next>Next</button></div>
   </section>
 
   <section data-step="brain">
     <h1>Pick the AI that answers you</h1>
-    <p class="lead">You can change this any time, and add a second one as a fallback for when the first hits its limit.</p>
+    <p class="lead">The AI reads what you send and writes the answers. ★ is the easiest start. You can change it any time, and add a second one as a fallback for when the first hits its limit.</p>
     <div class="cards" id="brains"></div>
     <div class="panel" id="brain-panel"></div>
     <div class="nav"><button data-back>Back</button><button class="primary" data-next>Next</button></div>
@@ -80,7 +86,7 @@
 
   <section data-step="features">
     <h1>What should it do?</h1>
-    <p class="lead">Turn on as little or as much as you like. You can change this later in Settings.</p>
+    <p class="lead">Each feature is off until you tick it. ★ Starter is a good start; turn on as little or as much as you like. You can change any of it later on the dashboard (its Features tab).</p>
     <div class="presets">
       <button data-preset="starter" class="preset on">★ Starter (recommended)</button>
       <button data-preset="all" class="preset">Everything</button>
@@ -99,18 +105,20 @@
       <li>Open <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>, send <code>/newbot</code>, and answer its two questions (a display name, then a username ending in <code>bot</code>).</li>
       <li>BotFather replies with a token like <code>123456789:AAH…</code>. Copy it and paste it here:</li>
     </ol>
-    <div class="row"><input id="tg-token" placeholder="Paste the token from BotFather" autocomplete="off" spellcheck="false"><button id="tg-check" class="primary">Check</button></div>
+    <div class="row"><input id="tg-token" placeholder="Paste the token from BotFather" autocomplete="off" spellcheck="false" aria-label="Your bot's token"><button id="tg-check" class="primary">Check the token</button></div>
     <div class="panel" id="tg-panel"></div>
     <div class="nav"><button data-back>Back</button><button class="primary" data-next>Next</button></div>
   </section>
 
   <section data-step="finish">
     <h1>Almost done</h1>
-    <ul class="list" id="summary"></ul>
+    <p class="lead">Finish setup installs what your features need (you'll see each one's progress), turns them on, and starts your assistant. Anything not ready yet can be finished later from the dashboard.</p>
+    <ul class="list summary" id="summary"></ul>
     <label class="check"><input type="checkbox" id="autostart" checked> Start Kurooto when I sign in to this computer (★ recommended)</label>
     <div class="panel" id="finish-panel"></div>
     <div class="nav"><button data-back>Back</button><button class="primary" id="finish">Finish setup</button></div>
   </section>
+  </div>
 </main>
 <script src="/static/aboutme.js"></script>
 <script src="/static/setup.js"></script>

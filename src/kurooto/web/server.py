@@ -33,8 +33,8 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 register_defaults("web", {"port": 8770})
-register_defaults("look", {"palette": "kuro"})  # the pages' colours: kuro (deep greens) or rose (the original)
-PALETTES = ("kuro", "rose")
+register_defaults("look", {"palette": "kuro", "theme_file": ""})  # the pages' colours (core/palette.py)
+PALETTES = ("kuro", "rose", "system")
 CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; "
     "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
@@ -239,10 +239,16 @@ class Server:
         jsave(access_file(app.paths), {"url": self.url, "token": self.tools_token, "started": time.time()})
 
     def fill(self, html: str) -> str:
-        """A page with its key, the version and the palette (look.palette) written in."""
-        palette = self.app.settings.get("look.palette")
-        palette = palette if palette in PALETTES else "kuro"
-        return html.replace("{{TOKEN}}", self.token).replace("{{VERSION}}", __version__).replace("{{PALETTE}}", palette)
+        """A page with its key, the version and the palette (look.palette) written in. The system palette's colours
+        come as a <style> (made only of checked #rrggbb values), and static/palette.js keeps them current."""
+        from kurooto.core import palette as pal
+
+        name = pal.resolve(self.app)[0]  # "system" with nothing found is kuro
+        head = (
+            f'<style id="kurooto-palette">{pal.css(self.app)}</style><script src="/static/palette.js" defer></script>'
+        )
+        html = html.replace("</head>", head + "\n</head>", 1)
+        return html.replace("{{TOKEN}}", self.token).replace("{{VERSION}}", __version__).replace("{{PALETTE}}", name)
 
     def start(self) -> Server:
         threading.Thread(target=self.httpd.serve_forever, name="web", daemon=True).start()

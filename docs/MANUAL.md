@@ -111,14 +111,19 @@ Run the same line again any time to repair or update an installation.
 ## The setup wizard
 
 The wizard is a page on your own computer (`127.0.0.1` means "this computer"; nothing outside can open it). It saves
-as you go, so you can close it and come back.
+as you go, so you can close it and come back. The list of steps (on the left on a wide screen, numbered dots on a
+phone) opens any step; a step you passed but haven't finished (an AI that doesn't answer yet, Telegram not connected)
+shows **!** instead of a tick. Words like *API key*, *token* or *repository* are underlined with dots: tap one to read
+what it means.
 
 1. **You:** what Kurooto calls you, your time zone (filled in from your browser) and the assistant's name.
 2. **Your computer:** what Kurooto found (processor, memory, graphics card, free space) and what it recommends for
-   it, marked ★. You can change any of it later.
+   it, marked ★. You can change any of it later. On a laptop, what to do on battery; and the pages' **Colours**
+   (see [Colours](#colours-look)): this computer's own colours are marked ★ when Kurooto finds them.
 3. **AI:** pick the AI that answers you (see [Your AI brain](#your-ai-brain)). ★ marks the recommendation: a Gemini
-   API key. Make one at Google AI Studio, paste it and press **Save**. For the others, press **Install** if it isn't
-   installed and follow the sign-in. Then press **Test**: it asks the AI to reply, and tells you if it worked.
+   API key. Make one at Google AI Studio, paste it and press **Save and test**. For the others, press **Install** if
+   it isn't installed and follow the sign-in. Then press **Test it**: it asks the AI to reply, and tells you if it
+   worked, or what to do if it didn't.
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below.
 5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the
@@ -1275,6 +1280,37 @@ questions, notes sync and backup age, the features on, AI requests, what's sched
 `r` refreshes. `kurooto top --once` prints one screen. It only reads, so it's safe while Kurooto works. `kurooto logs
 -f` follows Kurooto's log.
 
+## Colours (Look)
+
+Kurooto's pages (the setup page, the dashboard and the morning page) come in three palettes. Pick one on the setup
+page (step 2, **Colours**) or in **Settings → Look → `look.palette`**:
+
+- **kuro** (the default): deep greens.
+- **rose**: the pinks of earlier versions.
+- **system**: this computer's own colours. Kurooto takes your desktop's accent colour and whether it's in light or
+  dark mode, and follows them when they change (within half a minute, without reloading the page). It looks, best
+  first:
+  - **Linux:** Material You colours made from your wallpaper by matugen (end-4's Hyprland setup, Caelestia and
+    others write them), pywal, then KDE's accent colour, GNOME's (GNOME 47 or later) and your GTK theme's (a
+    libadwaita accent colour, or a dark theme).
+  - **Windows:** the accent colour and app mode (Settings → Personalization → Colors).
+  - **macOS:** the accent colour and appearance (System Settings → Appearance).
+
+  When nothing is found, the pages look like kuro until something is. Settings → Look says what was found.
+
+Text always stays readable: any colour that would be hard to read on its background is made lighter or darker until it
+passes the WCAG AA contrast level (4.5:1).
+
+**Your own colours file:** set **Settings → Look → `look.theme_file`** to the full path of a kitty theme (lines like
+`background #1a1110` and `color4 #9ccaff`) or a matugen or pywal `colors.json`. It's used instead of the desktop's
+colours, and switches the palette to system. Kurooto says so if it can't find colours in the file.
+
+The dashboard is always dark (with the system palette, its dark version); the other pages follow light or dark mode.
+
+*Settings:* `look.palette` (`kuro`, `rose` or `system`; default `kuro`), `look.theme_file` (empty).
+*Leaves your computer:* nothing. Kurooto only reads the colour settings and files above, on this computer.
+*Undo:* press **Kuro** on the setup page's step 2, or set `look.palette` back to `kuro`; empty `look.theme_file`.
+
 ## Taking your laptop with you (battery, pause, off)
 
 **On battery**, Kurooto saves your battery by default: everything that leans on the laptop waits for the charger,
@@ -1406,6 +1442,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Kurooto Terminal opens separate windows instead of tabs | kitty (Linux, macOS) or Windows Terminal isn't there: `kurooto term --install`, or Windows Terminal from the Microsoft Store. `kurooto term --print` says what it found. |
 | "kitty didn't start" | kitty needs a graphics card driver with OpenGL 3.3 (some virtual machines lack it); set Settings → `terminal.kitty` off to use your usual terminal. kitty's own message is in `terminal/kitty.log` in the state folder. |
 | Kurooto Terminal's tabs or colours look old in Windows Terminal | Close every Windows Terminal window and open it again: it reads Kurooto's profiles when it starts. |
+| The system palette doesn't use my colours | Settings → Look shows what Kurooto found. Changes show within half a minute. Your setup keeps its colours somewhere else? Point `look.theme_file` at a kitty theme or a matugen or pywal `colors.json`. |
+| The setup page says "Kurooto isn't answering" | It stopped or is restarting: start it from your apps menu (or `kurooto on`), then press the button again. What you typed stays. "Out of date": reload the page. |
 | The setup page won't open | `kurooto open`, or go to `http://127.0.0.1:8770`. If another program uses that port, Kurooto picks the next one (`kurooto paths` → `web.json` in the state folder says which). |
 | Not enough space | The wizard says what needs it. Free some space, or choose fewer features. |
 | "That question expired" | It waited longer than `ask.expire_hours` (or its asker stopped waiting); nothing was done. The asker asks again if it still matters. |

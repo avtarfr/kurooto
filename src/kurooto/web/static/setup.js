@@ -5,18 +5,109 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const STEPS = ["you", "computer", "brain", "about", "features", "telegram", "finish"];
 const LABELS = ["You", "Computer", "AI", "About you", "Features", "Telegram", "Done"];
+const HINTS = ["Your name and time zone", "What it found here", "Who answers you", "Optional: what other AIs know",
+  "What it does for you", "Where you talk to it", "Install and turn on"];
 let state = null;
 let step = 0;
 let chosen = new Set();
 
 async function api(path, body) {
-  const r = await fetch(`/api/${path}`, {
-    method: body === undefined ? "GET" : "POST",
-    headers: { "X-Kurooto": TOKEN, "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let r;
+  try {
+    r = await fetch(`/api/${path}`, {
+      method: body === undefined ? "GET" : "POST",
+      headers: { "X-Kurooto": TOKEN, "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (e) {
+    trouble("Kurooto isn't answering. Is it still running? Start it again from your apps menu (or run kurooto on in a terminal), then press the button again. What you typed here is kept.");
+    throw e;
+  }
+  if (r.status === 403) trouble("This page is out of date (Kurooto was restarted). Reload the page: everything you saved is kept.");
   if (!r.ok) throw new Error(`${path}: ${r.status}`);
+  trouble(null);
   return r.json();
+}
+
+// A bar at the top when Kurooto can't be reached, saying what to do; it goes away by itself when it answers again.
+function trouble(text) {
+  let bar = $("#trouble");
+  if (!text) { if (bar) bar.remove(); return; }
+  if (!bar) { bar = el("div", { id: "trouble", class: "trouble", role: "alert" }); document.body.prepend(bar); }
+  bar.textContent = text;
+}
+window.addEventListener("unhandledrejection", (e) => { e.preventDefault(); }); // trouble() has said what to do
+
+// Words that need a line of explanation: the first one in each card or step gets a dotted underline; tap it to read.
+const GLOSSARY = [
+  ["API key", "A password that lets a program use your account on a service. Keep it private; you can delete it and make a new one any time."],
+  ["OpenAI-compatible", "Works the same way as ChatGPT's service, so Kurooto can talk to it: e.g. OpenRouter, Groq, Together, or LM Studio on this computer."],
+  ["fine-grained token", "A GitHub token limited to the repositories and permissions you pick."],
+  ["token", "A password made for one program or one bot. Keep it private: whoever has it can use what it opens."],
+  ["repository", "A folder on GitHub that keeps the history of every change. Make it private, so only you can see it."],
+  ["iCal", "A private web address of your calendar that other apps can read (Google Calendar: Settings → your calendar → Secret address in iCal format)."],
+  ["Cloudflare", "A web company with a free plan. Kurooto puts your own call line on your account there, so your phone can reach it when this computer is off."],
+  ["Gemini Live", "Google's real-time voice AI: it does the talking on calls."],
+  ["Ollama", "A free program that runs AI models on this computer, without the internet."],
+  ["GBrain", "An open-source index of your notes: it lets the AI find notes by what they mean, not only by exact words."],
+  ["embeddings", "Numbers that capture what a piece of text means, so notes can be found by meaning."],
+  ["MCP", "A standard way for AI programs (agy, Codex, Claude Code) to use another program's tools; here, Kurooto's."],
+  ["OAuth", "Signing in on Google's own page and approving access there, so Kurooto never sees your password."],
+  ["agy", "Antigravity, Google's agent program: it can read and write files and run commands on this computer for you."],
+  ["Codex", "OpenAI's agent program, signed in with your ChatGPT account."],
+  ["passphrase", "A long password you choose. Only you know it: without it, the saved setup can't be opened."],
+  ["keychain", "Your computer's safe place for passwords (Credential Manager on Windows, Keychain on macOS, the Secret Service on Linux)."],
+  ["webhook", "A setting that sends your bot's messages to another program instead of Kurooto."],
+  ["BotFather", "Telegram's own bot for making bots. It's official: the blue tick shows it."],
+  ["LaTeX", "A way of writing maths that turns into neat PDFs."],
+  ["Markdown", "Plain text with a few marks for headings and lists; any text editor opens it."],
+  ["matugen", "A tool that makes a colour scheme from your wallpaper (Material You); some desktop setups run it for you."],
+  ["pywal", "A tool that makes terminal and desktop colours from your wallpaper."],
+];
+const GLOSS_RE = new RegExp(`\\b(${GLOSSARY.map(([t]) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})s?\\b`, "i");
+const glossed = new WeakMap(); // card or step -> the words already explained in it
+function gloss(root) {
+  const skip = "a, button, code, pre, input, textarea, h1, h2, h3, .chip, .star, .state, .tip, .log, .term, .eyebrow";
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (n.parentElement && !n.parentElement.closest(skip) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+  });
+  const nodes = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
+  for (let node of nodes) {
+    const scope = node.parentElement.closest(".card, .box, section") || root;
+    const done = glossed.get(scope) || new Set();
+    glossed.set(scope, done);
+    for (;;) {
+      const m = GLOSS_RE.exec(node.data);
+      if (!m) break;
+      const entry = GLOSSARY.find(([t]) => t.toLowerCase() === m[1].toLowerCase());
+      const after = node.splitText(m.index);
+      const rest = after.splitText(m[0].length);
+      node = rest;
+      if (done.has(entry[0])) continue;
+      done.add(entry[0]);
+      const tip = el("span", { class: "tip", role: "note", hidden: true }, entry[1]);
+      const term = el("button", { type: "button", class: "term", "aria-expanded": "false", title: entry[1], onclick: (e) => {
+        e.stopPropagation();
+        tip.hidden = !tip.hidden;
+        term.setAttribute("aria-expanded", String(!tip.hidden));
+      } }, after.data);
+      after.replaceWith(term);
+      (term.parentElement.closest("p, li, label, .privacy, .note, div") || term).after(tip); // under the line, not inside it
+    }
+  }
+}
+
+// A line that shows a long step is still working, with the time so far.
+function working(text) {
+  const out = el("p", { class: "working" }, el("span", { class: "spin", "aria-hidden": "true" }), el("span", {}, text), el("span", { class: "t" }));
+  const t0 = Date.now();
+  const tick = setInterval(() => {
+    const s = Math.round((Date.now() - t0) / 1000);
+    out.querySelector(".t").textContent = s < 3 ? "" : ` ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }, 1000);
+  out.stop = () => { clearInterval(tick); out.remove(); };
+  return out;
 }
 
 function el(tag, attrs = {}, ...kids) {
@@ -33,27 +124,85 @@ function el(tag, attrs = {}, ...kids) {
 function show(i) {
   step = Math.max(0, Math.min(STEPS.length - 1, i));
   $$("section").forEach((s) => s.classList.toggle("on", s.dataset.step === STEPS[step]));
-  $("#steps").replaceChildren(...LABELS.map((l, j) => el("li", { class: j === step ? "on" : j < step ? "done" : "" }, l)));
+  // the steps: a row on phones, a rail with what each is for on wide screens; any of them can be opened
+  // (a step passed but not finished, like an AI that doesn't answer yet, shows "!" instead of a tick)
+  const brain = state && state.brains.find((b) => b.id === state.brain.main);
+  const open = { brain: state && !(brain && brain.ready), telegram: state && !state.telegram.paired };
+  $("#steps").replaceChildren(...LABELS.map((l, j) => {
+    const todo = j < step && open[STEPS[j]], hint = todo ? "not finished yet" : HINTS[j];
+    return el("li", { class: j === step ? "on" : todo ? "todo" : j < step ? "done" : "" },
+      el("button", { type: "button", title: `${l}: ${hint.toLowerCase()}`, "aria-current": j === step ? "step" : false, onclick: () => go(j) },
+        el("span", { class: "n" }, todo ? "!" : j < step ? "✓" : String(j + 1)), el("span", { class: "lbl" }, l, el("small", {}, hint))));
+  }));
+  const sec = $(`section[data-step="${STEPS[step]}"]`);
+  if (!$(".eyebrow", sec)) sec.prepend(el("p", { class: "eyebrow" }));
+  $(".eyebrow", sec).textContent = `Step ${step + 1} of ${STEPS.length}`;
   try { localStorage.setItem("kurooto.setup.step", String(step)); } catch { /* private mode */ }
   ({ computer: renderComputer, brain: renderBrains, about: renderAbout, features: renderFeatures, telegram: renderTelegram, finish: renderFinish }[STEPS[step]] || (() => {}))();
+  navHint();
+  gloss(sec);
   window.scrollTo(0, 0);
+}
+
+// Beside Next: what happens if you go on now (nothing is lost by skipping; every step can be opened again).
+function navHint() {
+  const nav = $(`section[data-step="${STEPS[step]}"] .nav`);
+  if (!nav || !state) return;
+  let hint = $(".nav-hint", nav);
+  if (!hint) { hint = el("span", { class: "nav-hint" }); nav.lastElementChild.before(hint); }
+  const brain = state.brains.find((b) => b.id === state.brain.main);
+  hint.textContent = {
+    brain: brain && brain.ready ? "" : "Not working yet? You can go on and finish it later: this page opens again from the dashboard.",
+    about: "Optional: Next skips it.",
+    features: `${chosen.size} of ${state.modules.length} on.`,
+    telegram: state.telegram.paired ? "" : "Not connected yet? You can go on and connect it later.",
+  }[STEPS[step]] || "";
 }
 
 async function refresh() { state = await api("state"); }
 
+// Leaving a step saves what it holds (Next, Back or a step in the list alike).
+async function go(i) {
+  if (STEPS[step] === "you" && i > step && !checkYou()) return;
+  if (STEPS[step] === "you") await saveYou();
+  if (STEPS[step] === "brain" && state.brain.main) await api("brain", { main: state.brain.main });
+  await refresh();
+  show(i);
+}
+
 // ---------------------------------------------------------------------------------------------- you
+// The time zone: picked from the browser's list as you type; a name it doesn't know is said before going on.
+const ZONES = (() => { try { return Intl.supportedValuesOf("timeZone"); } catch { return []; } })();
+function checkYou() {
+  const tz = $("#tz"), msg = $("#you-msg"), v = tz.value.trim();
+  const known = !v || !ZONES.length || ZONES.includes(v) || v === "UTC";
+  const near = known ? null : ZONES.find((z) => z.toLowerCase() === v.toLowerCase() || z.toLowerCase().endsWith("/" + v.toLowerCase().replace(/ /g, "_")));
+  if (near) { tz.value = near; msg.textContent = ""; return true; }
+  msg.textContent = known ? "" : `"${v}" isn't a time zone name. Start typing your city or region and pick it from the list (e.g. Europe/Berlin, America/New_York), or leave it empty to use this computer's.`;
+  if (!known) tz.focus();
+  return known;
+}
+
 async function saveYou() {
   await api("you", { name: $("#name").value, timezone: $("#tz").value, assistant_name: $("#aname").value || "Kurooto" });
 }
 
 // ------------------------------------------------------------------------------------------ computer
+const PROFILES = {  // the hardware profile (core/hardware.py), in words
+  light: "AI services only (no local models)",
+  "small-gpu": "small local AI models",
+  "big-gpu": "local AI models (8 GB graphics card)",
+  "big-gpu-12": "bigger local AI models",
+  apple: "local AI models (Apple silicon)",
+  "apple-8": "small local AI models (Apple silicon)",
+};
 function renderComputer() {
   const hw = state.hardware, m = hw.machine, r = hw.recommendation;
   $("#hw-summary").textContent = r.summary;
   const gpu = m.gpus.map((g) => g.name + (g.vram_gb ? ` (${g.vram_gb} GB)` : "")).join(", ") || "none Kurooto can use";
   $("#hw-chips").replaceChildren(
     chip("System", `${m.os} ${m.os_version}`), chip("Processor", m.cpu), chip("Memory", `${m.ram_gb} GB`),
-    chip("Graphics", gpu), chip("Free space", `${m.disk_free_gb} GB`), chip("Profile", r.profile),
+    chip("Graphics", gpu), chip("Free space", `${m.disk_free_gb} GB`), chip("Suits", PROFILES[r.profile] || r.profile),
   );
   const reco = r.local_models.length
     ? r.local_models.map((x) => el("li", {}, `${x.tag} (${x.size_gb} GB): ${x.use}`))
@@ -66,6 +215,35 @@ function renderComputer() {
     : `Disk: only ${room.free_gb} GB free. Kurooto keeps ${room.margin_gb} GB spare, so it will skip local models unless you free some space.`);
   $("#hw-notes").textContent = notes.join(" ");
   renderPower();
+  renderLook();
+  gloss($('section[data-step="computer"]'));
+}
+
+// The pages' colours (core/palette.py): this computer's own colours are recommended when they're found.
+async function renderLook() {
+  const box = $("#look-choice");
+  let look;
+  try { look = await api("look"); } catch { return; }
+  const light = matchMedia("(prefers-color-scheme: light)").matches;
+  const sys = look.system;
+  const about = {
+    kuro: "Deep greens. The default.",
+    rose: "The pinks of earlier versions.",
+    system: sys ? `${sys.label}${sys.mode ? `, ${sys.mode} mode` : ""}. Changes when they do.`
+      : "Nothing found here yet. Kurooto reads matugen, pywal, KDE, GNOME and GTK colours, and the accent colour of Windows and macOS.",
+  };
+  box.replaceChildren(el("h2", {}, "Colours"), el("div", { class: "cards looks" }, ...look.choices.map(({ id, label }) =>
+    el("button", { class: "card" + (id === look.chosen ? " on" : ""), "aria-pressed": String(id === look.chosen), disabled: id === "system" && !sys,
+      onclick: async () => {
+        await api("settings", { key: "look.palette", value: id });
+        if (window.kurootoLook) await window.kurootoLook.refresh();
+        renderLook();
+      } },
+    id === "system" && sys ? el("div", { class: "star" }, "★ RECOMMENDED: FOUND HERE") : null,
+    el("div", { class: "swatches", "aria-hidden": "true" }, ...((look.previews[id] || {})[light ? "light" : "dark"] || []).map((c) => el("i", { style: `background:${c}` }))),
+    el("h3", {}, label), el("p", {}, about[id])))),
+  el("p", { class: "note" }, "Only how Kurooto's pages look. Change it any time: Settings → Look."));
+  gloss(box);
 }
 
 // Laptops: what to do on battery. Saved at once; Settings → power.on_battery changes it later.
@@ -91,10 +269,13 @@ function renderBrains() {
   if (!state.brain.main) state.brain.main = state.brains.find((b) => b.recommended).id; // the ★ pick until you choose
   const main = state.brain.main;
   $("#brains").replaceChildren(...state.brains.map((b) => el("button", {
-    class: "card" + (b.id === main ? " on" : ""), onclick: () => { state.brain.main = b.id; renderBrains(); },
+    class: "card" + (b.id === main ? " on" : ""), "aria-pressed": String(b.id === main),
+    onclick: () => { state.brain.main = b.id; renderBrains(); },
   }, b.recommended ? el("div", { class: "star" }, "★ RECOMMENDED") : null, el("h3", {}, b.label), el("p", {}, b.why),
-    b.ready ? el("div", { class: "state" }, "ready") : null)));
+    b.ready ? el("div", { class: "state" }, "✓ working") : null)));
   renderBrainPanel(main);
+  gloss($("#brains"));
+  navHint();
 }
 
 function logBox() { return el("div", { class: "log", id: "log" }); }
@@ -105,28 +286,80 @@ function linkify(text) {
     i % 2 ? el("a", { href: part, target: "_blank", rel: "noopener" }, part.length > 90 ? part.slice(0, 87) + "…" : part) : document.createTextNode(part));
 }
 
-async function watchInstall(done) {
+async function watchInstall(done, label = "Installing… this can take a few minutes; keep this page open.") {
   const log = $("#log");
-  for (;;) {
-    const p = await api("progress");
-    if (log) log.replaceChildren(...linkify(p.lines.map((l) => l.line).join("\n")));
-    if (!p.installing) break;
-    await new Promise((r) => setTimeout(r, 1000));
-  }
+  const busy = working(label);
+  if (log) log.before(busy);
+  try {
+    for (;;) {
+      const p = await api("progress");
+      if (log) log.replaceChildren(...linkify(p.lines.map((l) => l.line).join("\n")));
+      if (!p.installing) break;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  } finally { busy.stop(); }
   await refresh();
   done && done();
 }
 
-function testButton(which) {
-  const out = el("p", {});
-  const btn = el("button", { class: "primary", onclick: async () => {
-    btn.disabled = true; out.textContent = "Asking it to reply…"; out.className = "";
+// When a test fails: what to do about it, for each kind of AI.
+const FIX = {
+  gemini: "Copy the key again from Google AI Studio (all of it; it starts with AIza) and press Save and test. If it says it's at its limit, wait a minute or use a paid key.",
+  agy: "Press Open the sign-in window, finish signing in with your Google account, close the window, then test again.",
+  codex: "Press Open the sign-in window, finish signing in with your ChatGPT account, close the window, then test again.",
+  claude: "Press Open the sign-in window, finish signing in with your Claude account, close the window, then test again.",
+  ollama: "Make sure Ollama is running (open the Ollama app, or run ollama serve in a terminal), then test again.",
+  custom: "Check the address (it usually ends in /v1), the key and the model name: the service's own help pages list them.",
+};
+function fixFor(which, message) {
+  if (/limit/i.test(message)) return "Wait a minute and test again, or pick another AI above (you can add this one as a fallback later).";
+  return FIX[which] || FIX.custom;
+}
+
+async function runTest(which, out) {
+  const busy = working("Asking it to reply… (up to a minute, longer the first time)");
+  out.replaceChildren(busy); out.className = "";
+  let r;
+  try {
     await api("brain", { main: which });
-    const r = await api("brain/test", { which });
-    out.textContent = r.message; out.className = r.ok ? "ok" : "bad"; btn.disabled = false;
-    if (r.ok) await refresh();
-  } }, "Test it");
+    r = await api("brain/test", { which });
+  } catch { busy.stop(); out.textContent = "Couldn't ask Kurooto to test it (see the bar at the top)."; out.className = "bad"; return false; }
+  busy.stop();
+  out.replaceChildren(el("span", {}, (r.ok ? "✓ " : "") + r.message), r.ok ? null : el("span", { class: "fix" }, " " + fixFor(which, r.message)));
+  out.className = r.ok ? "ok" : "bad";
+  if (r.ok) { await refresh(); renderBrains(); }
+  return r.ok;
+}
+
+function testButton(which, label = "Test it") {
+  const out = el("p", { "aria-live": "polite" });
+  const btn = el("button", { class: "primary", onclick: async () => {
+    btn.disabled = true; await runTest(which, out); btn.disabled = false;
+  } }, label);
   return [btn, out];
+}
+
+// Opening a program's sign-in window; what happened is said here (not in a pop-up).
+function signinButton(key, account) {
+  const out = el("span", { class: "note", "aria-live": "polite" });
+  return el("p", {}, el("button", { onclick: async () => {
+    const r = await api("prereqs/signin", { key });
+    out.textContent = " " + (r.message || (r.ok ? `A window opened: sign in with your ${account} account there, then close it.` : ""));
+    out.className = r.ok ? "note" : "bad";
+  } }, "Open the sign-in window"), out);
+}
+
+function installButton(key, label, which) {
+  return el("button", { class: "primary", onclick: async (e) => {
+    e.target.disabled = true;
+    const r = await api("prereqs/install", { keys: [key] });
+    if (r.started === false) { e.target.disabled = false; e.target.after(el("p", { class: "bad" }, r.message || "Something else is being installed: try again when it has finished.")); return; }
+    watchInstall(() => renderBrainPanel(which));
+  } }, label);
+}
+
+function field(label, input, note) {
+  return el("label", {}, label, input, note ? el("span", { class: "field-note" }, note) : null);
 }
 
 // What a Gemini key's free tier means, said plainly wherever the wizard asks for one.
@@ -143,57 +376,72 @@ const AGY_NOTE = "Kurooto runs Google's official agy program on this computer, s
 function renderBrainPanel(which) {
   const panel = $("#brain-panel");
   const box = el("div", { class: "box" });
+  const brain = state.brains.find((b) => b.id === which) || {};
+  if (brain.ready) box.append(el("p", { class: "ok" }, `✓ ${brain.label} is working. Go on to the next step, or test it again.`));
   if (which === "agy") {
     const installed = state.prereqs.agy.installed;
-    box.append(el("p", {}, installed ? "agy is installed." : "agy isn't installed yet. Kurooto installs it from Google's official installer."));
-    if (!installed) box.append(el("button", { class: "primary", onclick: async (e) => {
-      e.target.disabled = true; await api("prereqs/install", { keys: ["agy"] }); watchInstall(() => renderBrainPanel("agy"));
-    } }, "Install agy"), logBox());
+    box.append(el("p", {}, installed ? "1. agy is installed." : "1. agy isn't installed yet. Kurooto installs it from Google's official installer."));
+    if (!installed) box.append(installButton("agy", "Install agy", "agy"), logBox());
     else box.append(
-      el("p", {}, "Sign in once with your Google account: a window opens, follow it, then close it."),
-      el("button", { onclick: async () => { const r = await api("prereqs/signin", { key: "agy" }); alert(r.message); } }, "Open the sign-in window"),
-      el("p", {}, "Then check it works. When it does, Kurooto lets agy work for you unattended, in agy's own " +
+      el("p", {}, "2. Sign in once with your Google account: a window opens, follow it, then close it."),
+      signinButton("agy", "Google"),
+      el("p", {}, "3. Check it works. When it does, Kurooto lets agy work for you unattended, in agy's own " +
         "settings (a backup is kept; nothing of yours is removed): use Kurooto's tools (reminders, notes, calls…); " +
         "read your notes, Documents, Downloads, Screenshots and Kurooto's copies of Classroom and mail; write in your " +
         "notes folder and course files (Documents and Downloads stay read-only); read web pages; run harmless " +
         "commands such as ls, grep and git, and latexmk for PDFs."), ...testButton("agy"));
     box.append(el("p", { class: "note" }, AGY_NOTE));
   } else if (which === "codex" || which === "claude") {
-    const key = which, label = which === "codex" ? "Codex" : "Claude Code";
+    const key = which, label = which === "codex" ? "Codex" : "Claude Code", account = which === "codex" ? "ChatGPT" : "Claude";
     const installed = state.prereqs[key].installed;
-    box.append(el("p", {}, installed ? `${label} is installed.` : `${label} isn't installed yet. Kurooto installs it from the official source.`));
-    if (!installed) box.append(el("button", { class: "primary", onclick: async (e) => {
-      e.target.disabled = true; await api("prereqs/install", { keys: [key] }); watchInstall(() => renderBrainPanel(which));
-    } }, `Install ${label}`), logBox());
+    box.append(el("p", {}, installed ? `1. ${label} is installed.` : `1. ${label} isn't installed yet. Kurooto installs it from the official source.`));
+    if (!installed) box.append(installButton(key, `Install ${label}`, which), logBox());
     else box.append(
-      el("p", {}, `Sign in once with your ${which === "codex" ? "ChatGPT" : "Claude"} account: a window opens, follow it, then close it.`),
-      el("button", { onclick: async () => { const r = await api("prereqs/signin", { key }); alert(r.message); } }, "Open the sign-in window"),
-      el("p", {}, "Then check it works:"), ...testButton(which));
+      el("p", {}, `2. Sign in once with your ${account} account: a window opens, follow it, then close it.`),
+      signinButton(key, account),
+      el("p", {}, "3. Check it works:"), ...testButton(which));
   } else if (which === "gemini") {
-    const key = el("input", { placeholder: "Paste your Gemini API key", autocomplete: "off", spellcheck: "false" });
+    const key = el("input", { placeholder: "AIza…", autocomplete: "off", spellcheck: "false" });
+    const out = el("p", { "aria-live": "polite" });
+    const go = el("button", { class: "primary", onclick: async () => {
+      if (!key.value.trim() && !brain.ready) {
+        out.textContent = "Paste your key first: it starts with AIza, and Google AI Studio (the link above) makes one."; out.className = "bad";
+        return;
+      }
+      go.disabled = true;
+      if (key.value.trim()) await api("brain", { main: "gemini", key: key.value.trim() });
+      await runTest("gemini", out);
+      go.disabled = false;
+    } }, brain.ready ? "Test it again" : "Save and test");
     box.append(
-      el("p", {}, "Get a free key: ", el("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noopener" }, "Google AI Studio → Create API key"), "."),
+      el("p", {}, "1. Get a free API key: ", el("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noopener" }, "Google AI Studio → Create API key"), " (sign in with your Google account)."),
       geminiTerms(),
-      key, el("p", {}), el("button", { onclick: async () => { await api("brain", { main: "gemini", key: key.value }); } }, "Save"), " ",
-      ...testButton("gemini"));
+      field("2. Paste it here", key, brain.ready ? "A key is saved. Paste a new one only to replace it." : "It stays on this computer, in its password store."),
+      el("div", { class: "row" }, go), out);
   } else if (which === "freellmapi") { // set up with an earlier version: no longer offered, but it keeps working
     box.append(el("p", {}, "This AI was set up with an earlier version of Kurooto and keeps working. To change it, pick another one above."),
       ...testButton("freellmapi"));
   } else if (which === "ollama") {
     box.append(el("p", {}, "Local models are private and work offline, but they're much weaker than the services above, and need a good graphics card. Kurooto uses them best as a helper next to another AI."),
       el("p", {}, state.prereqs.ollama.installed ? "Ollama is installed." : "Ollama isn't installed."));
-    if (!state.prereqs.ollama.installed) box.append(el("button", { onclick: async (e) => {
-      e.target.disabled = true; await api("prereqs/install", { keys: ["ollama"] }); watchInstall(() => renderBrainPanel("ollama"));
-    } }, "Install Ollama"), logBox());
+    if (!state.prereqs.ollama.installed) box.append(installButton("ollama", "Install Ollama", "ollama"), logBox());
   } else {
-    const url = el("input", { placeholder: "Address, e.g. https://api.example.com/v1" });
-    const key = el("input", { placeholder: "Key", autocomplete: "off" });
-    const model = el("input", { placeholder: "Model name" });
-    box.append(url, key, model, el("p", {}),
-      el("button", { onclick: async () => { await api("brain", { main: "custom", base_url: url.value, key: key.value, models: { low: model.value, medium: model.value, high: model.value } }); } }, "Save"),
-      " ", ...testButton("custom"));
+    const url = el("input", { placeholder: "https://api.example.com/v1", spellcheck: "false" });
+    const key = el("input", { type: "password", placeholder: "Its API key", autocomplete: "off" });
+    const model = el("input", { placeholder: "e.g. llama-3.3-70b", spellcheck: "false" });
+    const out = el("p", { "aria-live": "polite" });
+    const go = el("button", { class: "primary", onclick: async () => {
+      if (!url.value.trim() || !model.value.trim()) { out.textContent = "Fill in the address and the model name first (the key too, if the service needs one)."; out.className = "bad"; return; }
+      go.disabled = true;
+      await api("brain", { main: "custom", base_url: url.value, key: key.value, models: { low: model.value, medium: model.value, high: model.value } });
+      await runTest("custom", out);
+      go.disabled = false;
+    } }, "Save and test");
+    box.append(el("p", {}, "Any OpenAI-compatible service: its help pages give these three."),
+      field("Address", url, "Usually ends in /v1."), field("Key", key), field("Model name", model), el("div", { class: "row" }, go), out);
   }
   panel.replaceChildren(box);
+  gloss(panel);
 }
 
 // ----------------------------------------------------------------------------------------- about you
@@ -229,7 +477,8 @@ async function renderAbout() {
     renderAbout();
   } }, p.exists ? "Build my profile again" : "Build my profile");
   panel.replaceChildren(el("div", { class: "box" },
-    el("p", {}, a.reports.length ? `${a.reports.length} report(s) so far.` : "No reports yet."),
+    el("p", {}, a.reports.length ? `${a.reports.length} report(s) so far. Add more, or build your profile from them.`
+      : "No reports yet. Copy a prompt above, paste it into a new chat in that AI, then paste its whole answer in the box above and press Add this report."),
     build,
     p.building ? el("p", {}, "Building your profile… (this page updates by itself)") : null,
     p.exists ? el("p", { class: "ok" }, `✓ Your profile: ${p.path} (updated ${p.updated}${p.edited ? ", with your changes" : ""}). Read it and fix anything that's off, right here:`) : null));
@@ -273,6 +522,8 @@ function renderFeatures() {
       m.id === keyCard() ? keyBox() : null);
   }));
   renderKeyBox();
+  navHint();
+  gloss($("#features"));
 }
 
 // The Gemini key box goes right under the first ticked card that needs it.
@@ -290,7 +541,7 @@ function callsBox(m) {
     out.replaceChildren(el("p", {}, "Setting up your call line on Cloudflare. A Cloudflare sign-in page opens (its link is in the log too): sign in or make a free account, then come back."), logBox());
     const r = await api("modules/setup", { id: "calls" });
     if (r.started === false) { out.replaceChildren(el("p", { class: "bad" }, r.message)); btn.disabled = false; return; }
-    await watchInstall();
+    await watchInstall(null, "Setting up your call line… a few minutes; keep this page open.");
     const c = state.modules.find((x) => x.id === "calls");
     if (c && c.ready) { renderFeatures(); return; }
     out.append(el("p", { class: "bad" }, `Not ready yet: ${c ? c.why : "it didn't finish"}. Press Set up now to try again.`));
@@ -412,16 +663,26 @@ async function pairBox() {
 // ------------------------------------------------------------------------------------------ telegram
 function renderTelegram() {
   const p = $("#tg-panel");
-  if (state.telegram.paired) p.replaceChildren(el("div", { class: "box" }, el("p", { class: "ok" }, "✓ Telegram is connected. Your bot only answers you.")));
+  if (state.telegram.paired) p.replaceChildren(el("div", { class: "box" }, el("p", { class: "ok" }, "✓ Telegram is connected. Your bot only answers you. Go on to the last step.")));
+  navHint();
 }
 
 async function checkToken() {
-  const p = $("#tg-panel");
-  p.replaceChildren(el("p", {}, "Checking…"));
+  const p = $("#tg-panel"), token = $("#tg-token").value.trim();
+  if (!token) { p.replaceChildren(el("p", { class: "bad" }, "Paste the token BotFather sent you first: it looks like 123456789:AAH… (step 3 above).")); return; }
+  if (!/^\d+:[\w-]{20,}$/.test(token)) {
+    p.replaceChildren(el("p", { class: "bad" }, "That doesn't look like a bot token: it's a number, a colon and a long code, like 123456789:AAH… Copy the whole line from BotFather's message (not the bot's name or link)."));
+    return;
+  }
+  p.replaceChildren(working("Asking Telegram about your bot…"));
   let r;
   try { r = await api("telegram/token", { token: $("#tg-token").value }); }
   catch { p.replaceChildren(el("p", { class: "bad" }, "Lost touch with Kurooto: is it still running? Try again in a moment.")); return; }
-  if (!r.ok) { p.replaceChildren(el("p", { class: "bad" }, r.error)); return; }
+  if (!r.ok) {
+    const fix = /accept/i.test(r.error) ? " Copy the token again from BotFather's message (all of it), or send /token to BotFather to get it again." : " Check this computer is online, then try again.";
+    p.replaceChildren(el("p", { class: "bad" }, r.error + fix));
+    return;
+  }
   showPairing(r);
 }
 
@@ -462,7 +723,7 @@ async function pollPairing(run, wait, fix) {
       continue;
     }
     if (run !== pairRun) return;
-    if (got.paired) { await refresh(); renderTelegram(); return; }
+    if (got.paired) { await refresh(); renderTelegram(); return; }  // the hint beside Next goes too
     if (!got.error) {
       if (!hinted) { wait.textContent = "Waiting for you to press Start…"; wait.className = ""; fix.replaceChildren(); }
       continue;
@@ -488,11 +749,15 @@ async function pollPairing(run, wait, fix) {
 function renderFinish() {
   const brain = state.brains.find((b) => b.id === state.brain.main);
   const titles = state.modules.filter((m) => chosen.has(m.id)).map((m) => m.title);
+  const row = (ok, label, text, back) => el("li", { class: ok ? "is-ok" : "is-todo" },
+    el("span", { class: "mark", "aria-hidden": "true" }, ok ? "✓" : "–"), el("b", {}, label + ": "), text,
+    back != null && !ok ? el("button", { type: "button", class: "link", onclick: () => go(back) }, "Go back to it") : null);
   $("#summary").replaceChildren(
-    el("li", {}, `AI: ${brain ? brain.label + (brain.ready ? "" : " (not working yet: you can finish it later)") : "none yet"}`),
-    el("li", {}, `Telegram: ${state.telegram.paired ? "connected" : "not connected yet"}`),
-    el("li", {}, `Features: ${titles.join(", ") || "none"}`),
-    el("li", {}, `Your notes folder: ${state.workspace}`));
+    row(brain && brain.ready, "Your AI", brain ? brain.label + (brain.ready ? ", working" : ", not working yet (you can finish it later)") : "none picked yet", STEPS.indexOf("brain")),
+    row(state.telegram.paired, "Telegram", state.telegram.paired ? "connected" : "not connected yet", STEPS.indexOf("telegram")),
+    row(true, "Features", titles.join(", ") || "none: you can turn some on later"),
+    row(true, "Your notes folder", el("code", {}, state.workspace)));
+  gloss($("#summary"));
 }
 
 async function finish() {
@@ -500,21 +765,33 @@ async function finish() {
   btn.disabled = true;
   // features that need installing first (e.g. the notes brain): set each up, showing its progress; every log stays
   out.replaceChildren();
-  for (const m of state.modules.filter((m) => chosen.has(m.id) && !m.ready && m.setup)) {
-    const box = el("div", { class: "box" }, el("p", {}, `Setting up ${m.title}…`), logBox());
+  const todo = state.modules.filter((m) => chosen.has(m.id) && !m.ready && m.setup);
+  for (const [i, m] of todo.entries()) {
+    const box = el("div", { class: "box" }, el("p", {}, el("b", {}, `Setting up ${m.title}`), todo.length > 1 ? ` (${i + 1} of ${todo.length})` : ""), logBox());
     out.append(box);
     const r = await api("modules/setup", { id: m.id });
     if (r.started === false) box.append(el("p", { class: "bad" }, r.message));
-    else await watchInstall();
+    else await watchInstall(null, `Setting up ${m.title}… this can take a few minutes; keep this page open.`);
     box.querySelector("#log").removeAttribute("id"); // the next feature's box gets the live log
   }
+  const turning = working("Turning your features on…");
+  out.append(turning);
   const res = await api("modules/enable", { ids: [...chosen] });
   const failed = Object.entries(res.results).filter(([, v]) => !v.ok);
   if ($("#autostart").checked) await api("autostart", { on: true });
   await api("setup/done", {});
-  out.append(el("div", { class: "box" },
-    el("p", { class: "ok" }, "✓ Set up. Send /help to your bot to see what it can do."),
-    failed.length ? el("p", { class: "bad" }, "Not turned on yet: " + failed.map(([k, v]) => `${k} (${v.message})`).join("; ")) : null));
+  turning.stop();
+  const title = (id) => (state.modules.find((m) => m.id === id) || {}).title || id;
+  out.append(el("div", { class: "box done" },
+    el("p", { class: "ok" }, "✓ Set up."),
+    failed.length ? el("p", { class: "bad" }, "Not turned on yet: " + failed.map(([k, v]) => `${title(k)} (${v.message})`).join("; ") +
+      ". Fix what it says, then turn it on in the dashboard's Features tab.") : null,
+    el("p", {}, "Next:"),
+    el("ol", { class: "next" },
+      state.telegram.paired ? el("li", {}, "Send /help to your bot in Telegram to see what it can do.")
+        : el("li", {}, "Connect Telegram (step 6), so you can talk to your assistant."),
+      el("li", {}, "Open the dashboard: what's happening, your features and settings, all in one place.")),
+    el("p", {}, el("a", { class: "button primary", href: "/" }, "Open the dashboard"))));
   if (chosen.has("calls") && !(res.results.calls && !res.results.calls.ok)) out.append(await pairBox());
   btn.disabled = false;
 }
@@ -525,6 +802,7 @@ async function finish() {
 let restored = null;
 function showRestore() {
   $$("section").forEach((s) => s.classList.toggle("on", s.dataset.step === "restore"));
+  gloss($('section[data-step="restore"]'));
   window.scrollTo(0, 0);
 }
 async function restore() {
@@ -533,7 +811,7 @@ async function restore() {
   panel.replaceChildren(el("div", { class: "box" }, msg, logBox()));
   const r = await api("profile/restore", { repo: $("#pr-repo").value, token: $("#pr-token").value, passphrase: $("#pr-pass").value });
   if (r.started === false) { msg.textContent = r.message; msg.className = "bad"; btn.disabled = false; return; }
-  await watchInstall();
+  await watchInstall(null, "Restoring your setup… keep this page open.");
   const st = await api("profile"), rep = st.report || {};
   btn.disabled = false;
   if (!rep.counts) { msg.textContent = rep.error || "It didn't work; the log below says why."; msg.className = "bad"; return; }
@@ -564,12 +842,8 @@ $("#pr-next").addEventListener("click", async () => { await refresh(); show(STEP
 
 // ---------------------------------------------------------------------------------------------- start
 document.addEventListener("click", async (e) => {
-  if (e.target.matches("[data-next]")) {
-    if (STEPS[step] === "you") await saveYou();
-    if (STEPS[step] === "brain" && state.brain.main) await api("brain", { main: state.brain.main });
-    await refresh();
-    show(step + 1);
-  } else if (e.target.matches("[data-back]")) show(step - 1);
+  if (e.target.matches("[data-next]")) await go(step + 1);
+  else if (e.target.matches("[data-back]")) await go(step - 1);
   else if (e.target.matches("[data-preset]")) {
     const p = e.target.dataset.preset;
     $$(".preset").forEach((b) => b.classList.toggle("on", b === e.target));
@@ -589,6 +863,7 @@ $("#ay-files").addEventListener("change", async (e) => {
 $("#finish").addEventListener("click", finish);
 
 (async () => {
+  $("#tz-list").replaceChildren(...ZONES.map((z) => el("option", { value: z })));
   await refresh();
   $("#name").value = state.you.name || "";
   $("#tz").value = state.you.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "";
