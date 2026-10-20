@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.2.1",
+  "notes": "The setup page uses your whole screen on a desktop; laptops whose charger the system names unusually no longer count as on battery while plugged in.",
+  "created": 1792488640.1402268,
+  "files": {
+   "kurooto-0.2.1.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.2.1/kurooto-0.2.1.tar.gz",
+    "sha256": "1def58805b0ee29ddc62075ed770efea714a0618f4708e05178034ecde110d54",
+    "size": 966328
+   }
+  }
+ },
+ "sig": "qeTmVsj/vmgHMlNPAeRFYoQN8/ilAHvS7WNvThjyPGM6EF9pxVC45fBGMnCs80CU5v3Pe225XKCVxHEN+ftFCQ=="
+}

@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.3.0",
+  "notes": "Kurooto Terminal; a dense dashboard with a btop-style monitor; your computer's own colours; a clearer setup page; going offline and back online messages; your own notes layout and files folder; check-ins, alarm and idle detection that fit real nights; skills as agy slash commands; and more for scripts.",
+  "created": 1792488646.6566303,
+  "files": {
+   "kurooto-0.3.0.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.3.0/kurooto-0.3.0.tar.gz",
+    "sha256": "b18d6d9b2b292a03030500d4ce888a558a33a0b986b87b30841438e5bdf44536",
+    "size": 1164866
+   }
+  }
+ },
+ "sig": "Cyors2sf1i2qS5UCuzfXSMV5y2YmpgT95OR9XFYKq8Py5lI9svqQkFYoTwwVQXXKZ7tN6xrWe0a+lYxkKYyJCQ=="
+}
