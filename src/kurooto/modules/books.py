@@ -103,6 +103,10 @@ def slug(text: str, n: int = 60) -> str:
     return re.sub(r"[^a-z0-9]+", "-", (text or "").lower()).strip("-")[:n].strip("-") or "book"
 
 
+def npages(n: int) -> str:
+    return f"{n} page" if n == 1 else f"{n} pages"
+
+
 def usable(text: str | None) -> bool:
     """Is this a real text layer? Enough letters, and few characters that didn't decode."""
     t = (text or "").strip()
@@ -499,6 +503,8 @@ class Books(Module):
         engines = sorted(self.engines())
         if meta.get("engines") != engines:  # a new reader since: try the pages that waited for one again
             meta["skipped"], meta["engines"] = {}, engines
+        else:  # pages a reader failed on (a busy model, a network error) get another go; those waiting for one don't
+            meta["skipped"] = {k: v for k, v in (meta.get("skipped") or {}).items() if v.startswith("needs")}
         pages = d / "pages"
         pages.mkdir(parents=True, exist_ok=True)
         read, last_save, stop = 0, time.monotonic(), None
@@ -551,7 +557,10 @@ class Books(Module):
         """The whole text with page markers, the index note in the notes, and the notes brain."""
         d = self.book_dir(b)
         pages = self.page_texts(b)
-        lines = [f"# {meta['title']}", f"<!-- {meta['file']} · {meta['pages']} pages · page numbers are the PDF's -->"]
+        lines = [
+            f"# {meta['title']}",
+            f"<!-- {meta['file']} · {npages(meta['pages'])} · page numbers are the PDF's -->",
+        ]
         for n in range(1, meta["pages"] + 1):
             body = pages.get(n)
             mark = "" if body is not None else f" (not read: {meta['skipped'].get(str(n), 'not yet')})"
@@ -575,7 +584,7 @@ class Books(Module):
         course = lay.path("course", subject=b["subject"])
         where = f"[[{lay.link('course', subject=b['subject'])}]]" if course.exists() else f"{b['subject']}"
         rows = [
-            f"A book for {where}: {meta['pages']} pages, read {(meta.get('finished') or now().isoformat())[:10]} "
+            f"A book for {where}: {npages(meta['pages'])}, read {(meta.get('finished') or now().isoformat())[:10]} "
             f"({how or 'nothing yet'}).",
             "Page numbers are the PDF's own (p. 1 is its first page, often the cover).",
             f"Original: {lay.file_link(b['path'], note)}",
@@ -619,7 +628,8 @@ class Books(Module):
         how = ", ".join(f"{v} by {SAID.get(k, k)}" for k, v in sorted(meta["routes"].items(), key=lambda kv: -kv[1]))
         waiting = f" {len(meta['skipped'])} page(s) wait for a reader: /books." if meta.get("skipped") else ""
         self.app.notify(
-            f"Read “{meta['title']}” ({meta['pages']} pages: {how}). Its chapters are in {meta.get('index')}.{waiting}",
+            f"Read “{meta['title']}” ({npages(meta['pages'])}: {how}). "
+            f"Its chapters are in {meta.get('index')}.{waiting}",
             kind="result",
             title="Books",
         )
@@ -636,10 +646,22 @@ class Books(Module):
                     if r["result"] in ("stopped", "turned off", "on battery", "morning"):
                         out["stopped"] = r["result"]
                         break
+                if out["stopped"] == "on battery":  # unplugged in the night: carry on when it's plugged in again
+                    self.app.scheduler.at(now(), "books.now", {"night": True}, key="books:resume", module=self.id)
                 self.app.events.emit("books_read", **out)
                 return out
         except Timeout:
             return {"skipped": "already reading"}
+
+    def night(self, t: dt.datetime | None = None) -> bool:
+        """Is it reading time (books.at to books.until)? A night's reading held for the charger doesn't start in the
+        middle of the day when you plug in."""
+        t = t or now()
+        m = re.search(r"(\d{1,2}):(\d{2})", self.setting("at") or "")
+        start = dt.time(int(m[1]), int(m[2])) if m else dt.time(1, 0)
+        end = dt.time.fromisoformat(self.setting("until") or "07:00")
+        cur = t.time()
+        return start <= cur < end if start < end else cur >= start or cur < end
 
     def _until(self) -> dt.datetime:
         t = dt.time.fromisoformat(self.setting("until") or "07:00")
@@ -673,6 +695,8 @@ class Books(Module):
                 if ok
                 else f" Scanned pages need Tesseract, which didn't install ({msg}); PDFs with text work without it."
             )
+        if not self.tools().get("pdftoppm"):
+            msg += " Encrypted PDFs also need Poppler's PDF tools (optional; the manual says where to get them)."
         jsave(self.app.paths.state / "books.json", {"set_up": True})
         return True, f"Books are set up. Drop PDFs into {self.roots()[0][0]}, one folder per subject.{msg}"
 
@@ -706,8 +730,10 @@ class Books(Module):
                 self.folder(s["slug"]).mkdir(parents=True, exist_ok=True)
 
     def start(self):
-        self.every("read", self.setting("at") or "daily 01:00", lambda p: self.spawn(self._until()))
-        self.app.scheduler.action("books.now", lambda p: self.spawn(self._until()))
+        self.every("read", self.setting("at") or "daily 01:00", lambda p: self.night() and self.spawn(self._until()))
+        self.app.scheduler.action(
+            "books.now", lambda p: (not (p or {}).get("night") or self.night()) and self.spawn(self._until())
+        )
 
     def stop(self):
         super().stop()
@@ -741,10 +767,14 @@ class Books(Module):
         (shutil.move if move else shutil.copy2)(str(p), str(dest))
         n = Doc(dest, self.tools(), self.app.paths.cache / "books").pages()
         self.app.events.emit("book_added", pages=n)
-        size = f"{n} pages" if n else "pages not counted yet"
+        size = npages(n) if n else "pages not counted yet"
+        subj = self.app.modules.get("subjects")
+        new = ""
+        if subj is not None and self.app.is_on("subjects") and s not in {x["slug"] for x in subj.subjects()}:
+            new = f" ({s} isn't one of your subjects yet: /subject add {subject.strip()})"
         return (
             True,
-            f"Added {dest.name} to {s}'s books ({size}). I'll read it tonight on the charger; "
+            f"Added {dest.name} to {s}'s books ({size}).{new} I'll read it tonight on the charger; "
             "/books read now starts now.",
         )
 
@@ -783,7 +813,7 @@ class Books(Module):
                 elif not total:
                     state = "not started"
                 elif m.get("finished") and done + len(m.get("skipped") or {}) >= total:
-                    state = f"read ({total} pages" + (
+                    state = f"read ({npages(total)}" + (
                         f", {len(m['skipped'])} waiting for a reader)" if m.get("skipped") else ")"
                     )
                 else:

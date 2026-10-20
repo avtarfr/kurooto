@@ -305,7 +305,16 @@ def test_reading_stops_in_the_morning_and_on_battery(books, pdfs, monkeypatch):
     assert books.read_book(b, until=past)["result"] == "morning"
     books.app.power.current = "saver"
     assert books.read_all()["stopped"] == "on battery"
+    assert books.app.scheduler.get("books:resume").action == "books.now"  # carries on when plugged in again
     assert not (books.book_dir(b) / "pages" / "00001.md").exists()
+
+
+def test_the_night_window(books):
+    day = dt.datetime(2026, 10, 20)
+    assert books.night(day.replace(hour=1, minute=30)) and not books.night(day.replace(hour=9))
+    books.app.settings.set("books.at", "daily 23:00")
+    assert books.night(day.replace(hour=23, minute=30)) and books.night(day.replace(hour=6))
+    assert not books.night(day.replace(hour=7)) and not books.night(day.replace(hour=15))
 
 
 def test_books_folder_follows_files_folder_outside_the_notes(books, tmp_path):

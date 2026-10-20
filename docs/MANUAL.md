@@ -29,8 +29,8 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Google: setting up your own sign-in](#google-setting-up-your-own-sign-in-step-by-step) ·
     [Classroom → notes](#classroom--notes) · [Mail digest](#mail-digest) ·
     [Email reply drafts](#email-reply-drafts) · [Agent plan calendar](#agent-plan-calendar)
-  - [Handwritten notes](#handwritten-notes) · [Study tracker](#study-tracker) · [Research](#research) ·
-    [Terminals](#terminals) · [Your add-ons](#your-add-ons) ·
+  - [Handwritten notes](#handwritten-notes) · [Books and PDFs](#books-and-pdfs) · [Study tracker](#study-tracker) ·
+    [Research](#research) · [Terminals](#terminals) · [Your add-ons](#your-add-ons) ·
     [From a terminal or a script](#from-a-terminal-or-a-script)
 - [Your phone](#your-phone)
 - [The dashboard](#the-dashboard)
@@ -1044,6 +1044,74 @@ a Markdown note with the maths in LaTeX, saved in `handwritten/` next to a copy 
 `/handwritten`. Uses Gemini (your key), or, on computers with 12 GB of graphics memory and Local models on, a model on
 your computer for photos.
 
+### Books and PDFs
+Your reference books and other PDFs, per subject, read at night into text your AI uses when it writes your course
+notes, and cites by page.
+
+**Add a book** in any of three ways:
+- **Telegram:** send the PDF with a caption like `book for linear algebra` (or `linear algebra textbook`). It's moved
+  out of your notes into that subject's books folder. Telegram lets bots fetch files up to 20 MB; bigger books go in
+  the folder.
+- **The dashboard:** Features → Books and PDFs: the PDF's place on this computer and its subject (a copy is made).
+- **The folder:** drop PDFs into the subject's books folder. `/books folder linear-algebra` says where (and makes it).
+  Books are never kept in your notes: with `files.folder` set they go in `<files.folder>/<subject>/books/`, otherwise
+  in Kurooto's data folder (`books/<subject>/`); `books.folder` picks your own place (a folder per subject in it).
+
+**Reading.** At 01:00, on the charger, Kurooto reads every new book page by page and picks the best way for each page:
+1. the PDF's own text, when the page has a real text layer (Poppler's `pdftotext` if it's installed, otherwise
+   Kurooto's built-in reader);
+2. a scanned page: **Tesseract** OCR, if it's installed. Tesseract writes plain text: equations come out garbled,
+   not as LaTeX;
+3. without Tesseract, or for pages full of maths: a **vision model** on this computer (Local models, on computers with a
+   big graphics card), which writes the maths in LaTeX (`books.latex`: `maths`, `all` or `never`);
+4. **Gemini** only if you turn on `books.gemini`: pictures of pages nothing on this computer could read go to Google
+   with your key. Books may be copyrighted, so this is off by default.
+
+It stops at 07:00 (`books.until`), when you unplug or with `/books stop`, and carries on the next night from the page
+where it stopped. Pages no reader could handle wait, and are read once one is there (`/books setup` installs
+Tesseract). Encrypted PDFs need Poppler's PDF tools: your package manager's `poppler-utils` on Linux, `brew install
+poppler` on a Mac, or poppler.freedesktop.org.
+
+**What it makes:**
+- the text with page markers (`## [p. 123]`), in Kurooto's data folder (`book-text/<subject>/<book>/text.md`), outside
+  your notes;
+- an index note in your notes, `<subject>/books/<book>.md`: the title, the chapters with their pages (from the PDF's
+  bookmarks, or "Chapter 3 …" headings), how each page was read and links to the original. Kurooto writes only between
+  its two markers; your own notes around them stay;
+- with the Notes brain on, the text in the brain too (`books/<subject>/<book>/…`), so `/notes` finds book pages.
+
+Page numbers are the PDF's own (p. 1 is the first page of the file, often the cover).
+
+**The source mix.** When the AI writes course notes (`/study-log`, Classroom → notes, `/exam-prep`, `/pack`,
+`/add-to-notes`), it asks for a subject's material with the `course_sources` tool: your **books** (the pages on the
+topic), **Classroom** materials (posts and the files Classroom → notes downloaded) and your **own** class notes (notes
+you wrote, the class log, and the "My notes" part of lecture notes). How much each counts is yours to choose:
+- `/books mix linear-algebra book 30 classroom 30 own 40` (shares, any numbers);
+- `/books mix linear-algebra prefer own book classroom` (an order: the first counts most);
+- `/books mix linear-algebra` shows it; `/books mix linear-algebra reset` goes back to the general mix.
+
+Only the sources a subject has are used, and their shares grow to fill the room the others leave. The notes cite each
+part: (book: Linear Algebra, p. 123), (Classroom: Problem set 3), (your notes: [[linear-algebra/2026-10-12-eigen]]).
+Your own words are quoted, never reworded; notes the AI writes carry its header (`made_by`, or `trust_tier:
+agent_written` in the zettelkasten layout).
+
+- `/books`: your books per subject and how far reading got; `/books read now` starts now (on the charger).
+- `/exam-prep linear-algebra`: brings that subject's exam prep up to date from all three sources (also without
+  Classroom).
+
+*Settings:* `books.at` (`daily 01:00`), `books.until` (`07:00`), `books.ocr` (`auto` | `tesseract` | `vision` |
+`off`), `books.ocr_lang` (`eng`; e.g. `eng+deu`), `books.latex` (`maths`), `books.gemini` (off), `books.dpi` (200),
+`books.brain` (on), `books.max_mb` (400), `books.folder`; `sources.mix`, `sources.prefer`, `sources.cap` (characters
+from each source at most), `sources.budget` (24000), `sources.subjects` (per subject; `/books mix` sets it).
+*Leaves:* nothing while reading, unless you turn on `books.gemini` (page pictures to Google). Excerpts of your books,
+Classroom materials and notes go to the AI you picked when it writes your notes.
+*Turn it off:* Features → Books and PDFs → Turn off: reading stops after the current page; books, their text and the
+index notes stay.
+*Undo:* delete a book's PDF from its folder; its index note (`<subject>/books/<book>.md`) and its text
+(`book-text/<subject>/<book>/` in the data folder) are then yours to delete, Kurooto never deletes them. `/books mix
+<subject> reset` undoes a subject's mix; Settings → `sources` resets the general one. Tesseract installed by
+`/books setup` is removed like any program (winget uninstall or Homebrew on a Mac).
+
 ### Study tracker
 How long you spend on each subject, counted from the window you're working in: a window whose title names a subject
 (its name or a short name, a PDF called `linear-algebra-week3.pdf`, a note in that subject's folder) counts while
@@ -1362,6 +1430,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The setup page says agy "can't use Kurooto's tools yet" | agy's settings file isn't plain JSON, or `agy mcp add` failed. Add `mcp(kurooto/*)` to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself, then Test again. |
 | The AI said it did something but nothing happened | Tell it so; check `/jobs`. With a small local model, tools may not be supported: it answers without them. |
 | An agent program says Kurooto's tools aren't running | Kurooto is off or restarting; `kurooto on`, then ask again. |
+| A book stays "not started" or "waiting for a reader" | Reading happens at night on the charger (`/books read now` starts it now). Scanned pages need Tesseract (`/books setup`) or a vision model (Local models); encrypted PDFs need Poppler. `/books` says which. |
+| A book from Telegram wasn't added | Telegram lets bots fetch files up to 20 MB: drop bigger books into the folder (`/books folder <subject>`). The caption must say it's a book: `book for <subject>`. |
 | The setup page won't open | `kurooto open`, or go to `http://127.0.0.1:8770`. If another program uses that port, Kurooto picks the next one (`kurooto paths` → `web.json` in the state folder says which). |
 | Not enough space | The wizard says what needs it. Free some space, or choose fewer features. |
 | "That question expired" | It waited longer than `ask.expire_hours` (or its asker stopped waiting); nothing was done. The asker asks again if it still matters. |

@@ -67,7 +67,6 @@ MODULE_ORDER = [
     "reply_drafts",
     "agent_plan",
     "handwritten",
-    "books",
     "study",
     "research",
     "terminals",
