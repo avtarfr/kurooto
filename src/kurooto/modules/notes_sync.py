@@ -345,19 +345,17 @@ class NotesSync(Module):
                 if line.strip() and len(line.split()) >= 3
             }
             target = ws / path
-            if "2" in stages:  # this computer's version: into a copy first
+            # deleted on one side and changed on the other, the changed one stays: a deletion can't lose anything
+            side = "--theirs" if "3" in stages else "--ours"
+            if {"2", "3"} <= stages:  # changed on both: this computer's version into a copy first
                 if self.git("checkout", "--ours", "--", path).ok and target.is_file():
                     copy = self._copy_name(target, stamp)
                     copy.write_bytes(target.read_bytes())
                     kept.append((path, str(copy.relative_to(ws)).replace("\\", "/")))
                     self.git("add", "--", str(copy.relative_to(ws)))
-            if "3" in stages:  # elsewhere's version stays in the note
-                if not self.git("checkout", "--theirs", "--", path).ok:
-                    self.git("merge", "--abort")
-                    return False, []
-            # deleted on one side, changed on the other: the changed one stays (a deletion can't lose anything)
-            if not target.exists() and "2" in stages:
-                self.git("checkout", "--ours", "--", path)
+            if not self.git("checkout", side, "--", path).ok:
+                self.git("merge", "--abort")
+                return False, []
             self.git("add", "--", path)
         if self.git("diff", "--name-only", "--diff-filter=U").out.strip():
             self.git("merge", "--abort")

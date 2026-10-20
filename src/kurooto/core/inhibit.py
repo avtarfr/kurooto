@@ -9,7 +9,7 @@ macOS    caffeinate (-i: no idle sleep; with ac_only, -s: only while plugged in)
 Windows  SetThreadExecutionState from a thread that holds it. The lid follows Power Options ("Choose what closing the
          lid does"); no app can change that without admin rights.
 
-A hold given a length ends by itself, even if Kurooto stops or crashes.
+A hold given a length ends by itself; one without a length ends when Kurooto stops, even if it crashes.
 """
 
 from __future__ import annotations
@@ -95,19 +95,23 @@ class Inhibitor:
             args = ["caffeinate", "-s" if ac_only else "-is", "-w", str(os.getpid())]
             if until is not None:
                 args += ["-t", str(int(until - self.clock()))]
-            return self._hold_proc(args, "darwin", until)
+            return self._hold_proc(args, f"caffeinate {args[1]}", until)
         self._notice_refusal()
         parts = ["sleep"] + (["idle"] if idle else []) + (["handle-lid-switch"] if lid and not self.lid_refused else [])
         what = ":".join(parts)
-        length = "infinity" if until is None else str(int(until - self.clock()))
+        if until is not None:
+            wait = ["sleep", str(int(until - self.clock()))]
+        elif self.which("tail"):  # until released, or until Kurooto stops (even if it crashes)
+            wait = ["tail", f"--pid={os.getpid()}", "-f", "/dev/null"]
+        else:
+            wait = ["sleep", "infinity"]
         args = [
             "systemd-inhibit",
             f"--what={what}",
             f"--who={self.who}",
             f"--why={self.why or 'Kurooto keeps this computer awake'}",
             "--mode=block",
-            "sleep",
-            length,
+            *wait,
         ]
         return self._hold_proc(args, what, until)
 

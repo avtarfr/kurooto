@@ -55,8 +55,12 @@ def study(env, monkeypatch):
     env.on("subjects", "study")
     titles = {"t": "linear-algebra-week3.pdf — PDF viewer"}
     monkeypatch.setattr(study_mod, "active_title", lambda: titles["t"])
-    monkeypatch.setattr(study_mod, "idle_seconds", lambda: 10.0)
-    return env, env.app.modules["study"], titles, monkeypatch
+    st = env.app.modules["study"]  # a fake idle probe: not locked, idle as titles["idle"] says
+    st.probe = __import__("types").SimpleNamespace(
+        locked=lambda: False, idle_seconds=lambda title=None: titles["idle"], how=""
+    )
+    titles["idle"] = 10.0
+    return env, st, titles, monkeypatch
 
 
 def test_study_counts_the_subject_in_the_window(study):
@@ -68,7 +72,7 @@ def test_study_counts_the_subject_in_the_window(study):
     assert st.sample(30) == "probability"
     titles["t"] = "YouTube - cats"
     assert st.sample(30) is None
-    mp.setattr(study_mod, "idle_seconds", lambda: 900.0)
+    titles["idle"] = 900.0
     titles["t"] = "Linear Algebra"
     assert st.sample(30) is None  # away from the keyboard
     assert st.totals() == {"linear-algebra": 30, "probability": 60}

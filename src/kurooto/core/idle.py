@@ -219,6 +219,8 @@ class IdleProbe:
         out = self.run(
             ["loginctl", "show-session", self._session, "-p", "IdleHint", "-p", "IdleSinceHint", "-p", "LockedHint"]
         )
+        if not out:
+            self._session = None  # that session ended (you logged out and in again): look it up next time
         return dict(line.split("=", 1) for line in out.splitlines() if "=" in line)
 
     def _logind(self) -> float | None:
