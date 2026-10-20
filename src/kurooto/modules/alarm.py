@@ -9,6 +9,11 @@ twice more. "Later" on the ringing call snoozes for 10 minutes.
 While it's set, the night runs from your bedtime until the alarm: no other calls then, and once you're up they can
 come. With Chat on, 20 minutes before the alarm the AI drafts the day's plan into today's daily note (the
 morning-prep skill); the call goes through it with you, and if this computer is awake it opens the morning page.
+
+Keep awake (alarm.keep_awake, off unless you turn it on): this computer doesn't sleep in the 12 hours before the
+alarm, until 15 minutes after it rings (or until you answer), so the plan is drafted in time even if it would have
+gone to sleep overnight. On Linux it keeps running with the lid closed too; a Mac sleeps when its lid is closed, and
+Windows follows its own lid setting. Plug it in: it stays awake all night.
 """
 
 from __future__ import annotations
@@ -20,6 +25,8 @@ import sys
 
 from kurooto.core.clock import now, parse_when
 from kurooto.core.config import register_defaults
+from kurooto.core.inhibit import Inhibitor
+from kurooto.core.power import on_ac
 from kurooto.core.state import jload, jsave
 from kurooto.modules import daily
 from kurooto.modules.base import Command, Incoming, Intent, Module
@@ -37,10 +44,13 @@ register_defaults(
         "prep_min": 20,  # with Chat on: the AI drafts the day's plan this long before the alarm; 0 = don't
         "open_page": True,  # at the alarm, open the morning page on this computer if it's awake
         "notes": True,  # after the wake-up call: today's plan (with Chat on) or what you said, in the daily note
+        "keep_awake": False,  # keep this computer awake until the alarm (Linux: lid closed too), so the plan is drafted
     },
 )
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 KEY = "alarm:next"
+AWAKE_AFTER_MIN = 15  # keep_awake holds until this long after the alarm (repeat rings, the plan)
+AWAKE_BEFORE_H = 12  # ... from this long before it (a daily alarm set in the morning doesn't hold all day)
 
 
 class Alarm(Module):
@@ -49,6 +59,11 @@ class Alarm(Module):
     description = "Kurooto wakes you with a call that rings like an alarm, even if this computer is asleep."
     requires = ("calls",)
     privacy = "The alarm time is kept on your call line so it can ring while this computer is off."
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.inhibitor = Inhibitor(why="Morning alarm: drafting your day before it rings")
+        self.on_ac = on_ac
 
     @property
     def file(self):
@@ -61,14 +76,43 @@ class Alarm(Module):
     def start(self):
         self.action("ring", self._ring)
         self.action("prep", self._prep)
+        self.action("awake", lambda p: self.keep_awake())
         self.every("plan", "daily 00:02", lambda p: self._plan())
         self.app.availability.sleep = self.sleep_windows
         self._plan()
+        self.keep_awake()
 
     def stop(self):
         super().stop()
+        self.inhibitor.release()
         if self.app.availability.sleep == self.sleep_windows:
             self.app.availability.sleep = None
+
+    def health(self):
+        ok, why = self.ready()
+        if not ok or not self.setting("keep_awake"):
+            return ok, why
+        can, msg = self.inhibitor.supported()
+        if not can:
+            return True, f"can't keep this computer awake until the alarm: {msg}"
+        held = self.inhibitor.describe()
+        return True, f"keeping this computer {held}" if held else ""
+
+    def keep_awake(self) -> bool:
+        """With alarm.keep_awake: hold this computer awake until the alarm (and a little after), else let it sleep.
+        The hold ends by itself, even if Kurooto stops. True while it's held."""
+        at = self.next()
+        secs = (at - now()).total_seconds() + AWAKE_AFTER_MIN * 60 if at else 0
+        self.app.scheduler.cancel(f"{self.id}:awake")
+        if not self.setting("keep_awake") or secs <= 0:
+            self.inhibitor.release()
+            return False
+        start = at - dt.timedelta(hours=AWAKE_BEFORE_H)
+        if start > now():  # not yet: from 12 hours before
+            self.inhibitor.release()
+            self.app.scheduler.at(start, "alarm.awake", key=f"{self.id}:awake", module=self.id, grace_s=86400)
+            return False
+        return self.inhibitor.hold(secs, lid=True)
 
     def next(self) -> dt.datetime | None:
         j = self.app.scheduler.get(f"{self.id}:ring")
@@ -112,6 +156,8 @@ class Alarm(Module):
             )
         self._poke()
         self.app.events.emit("alarm_set", at=at.isoformat())
+        if self.keep_awake() and first and not self.on_ac():
+            return f"Alarm set for {at:%a %d %b, %H:%M}. Plug this computer in: it stays awake until then."
         return f"Alarm set for {at:%a %d %b, %H:%M}."
 
     def clear(self) -> str:
@@ -119,6 +165,7 @@ class Alarm(Module):
         self.app.scheduler.cancel(f"{self.id}:prep")
         jsave(self.file, {})
         self._poke()
+        self.keep_awake()
         return "Alarm off." if had else "There was no alarm set."
 
     # ---------------------------------------------------------------------------------- the night
@@ -295,6 +342,7 @@ class Alarm(Module):
             return True
         if outcome in ("answered", "skip", "decline"):
             jsave(self.file, {})
+            self.keep_awake()  # you're up (or chose not to be): this computer may sleep again
         return False
 
     def call_tools(self):

@@ -1,14 +1,17 @@
 """Study tracker: how long you spend on each subject, counted from the window you're working in. A window whose title
 names one of your subjects (its name or a short name you gave it in Subjects, e.g. a PDF called "linear-algebra-
-week3.pdf", or a note in that subject's folder) counts for that subject, while you're active (not idle for 5
-minutes). Only the minutes per subject are kept, never window titles.
+week3.pdf", or a note in that subject's folder) counts for that subject, while you're at the computer: not idle for 5
+minutes (study.idle_min) and the screen not locked. Only the minutes per subject are kept, never window titles.
+Research: a window naming one of study.research_paths (a word, or a folder whose name is matched), or a project or
+repository of Research when that's on, counts as "Research".
 
 Time away from the computer (library, paper): start a session with "/study linear algebra 50" (or "starting
 linear algebra for 50 min") and end it with "/study stop" ("done studying"); or log it afterwards: "/studied 2h
 linear algebra", "studied stats for an hour", or tell it on a call. /study shows today, /study week the last 7 days
 ("how much did I study today?" works too). At 23:45 the day's hours go into your daily note ("## Study hours").
 Works on Windows, macOS (it asks once for permission to see window titles) and Linux on X11, Hyprland or Sway;
-other Linux desktops can only log by hand.
+other Linux desktops can only log by hand. How it tells you're away: core/idle.py (on Wayland desktops without an idle
+API, your idle tool can tell it: `kurooto idle away` / `kurooto idle back`).
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ import sys
 
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
+from kurooto.core.idle import IdleProbe
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
 from kurooto.modules import daily
@@ -38,8 +42,20 @@ register_defaults(
         "idle_min": 5,
         "keywords": {},  # {subject slug: [words]}
         "daily_note": "23:45",  # the day's hours go into your daily note at this time; None = don't
+        "research_paths": [],  # words or folders: a window naming one counts as Research
     },
 )
+RESEARCH = "research"  # the key research time is kept under (a subject called "research" shares it)
+HOW = {  # how the tracker tells you're away (core/idle.py), for the health line
+    "windows": "Windows' last input",
+    "ioreg": "macOS's last input",
+    "hook": "your idle tool (kurooto idle away/back)",
+    "x11": "xprintidle",
+    "gnome": "GNOME's idle monitor",
+    "screensaver": "the screensaver's idle time",
+    "logind": "logind's idle hint",
+    "watch": "input and window changes",
+}
 
 
 def _run(args: list[str], timeout: float = 5) -> str:
@@ -87,32 +103,22 @@ def active_title() -> str | None:
     return None
 
 
-def idle_seconds() -> float | None:
-    if sys.platform == "win32":
-
-        class LastInput(ctypes.Structure):
-            _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
-
-        li = LastInput()
-        li.cbSize = ctypes.sizeof(li)
-        if ctypes.windll.user32.GetLastInputInfo(ctypes.byref(li)):
-            return (ctypes.windll.kernel32.GetTickCount() - li.dwTime) / 1000
-        return None
-    if sys.platform == "darwin":
-        m = re.search(r'"HIDIdleTime" = (\d+)', _run(["ioreg", "-c", "IOHIDSystem"]))
-        return int(m.group(1)) / 1e9 if m else None
-    if shutil.which("xprintidle"):
-        v = _run(["xprintidle"])
-        return int(v) / 1000 if v.isdigit() else None
-    return None
-
-
 class Study(Module):
     id = "study"
     title = "Study tracker"
     description = "Minutes per subject from the window you're working in, plus what you log by hand; /study."
     requires = ("subjects",)
     privacy = "Window titles are read on this computer and thrown away; only minutes per subject are kept."
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.probe = IdleProbe(app.paths.state)
+
+    def health(self):
+        ok, why = self.ready()
+        if not ok or not self.probe.how:
+            return ok, why
+        return True, f"away time from: {HOW.get(self.probe.how, self.probe.how)}"
 
     def start(self):
         self.action("session_end", self._session_end)
@@ -136,6 +142,26 @@ class Study(Module):
             d[key] = round(d.get(key, 0) + seconds)
             jsave(self._file(day), d)
 
+    def name_of(self, slug: str) -> str:
+        if slug == RESEARCH and not any(s["slug"] == RESEARCH for s in self.app.modules["subjects"].subjects()):
+            return "Research"
+        return self.app.modules["subjects"].name_of(slug)
+
+    def research_words(self) -> list[str]:
+        """What marks a window as research: study.research_paths (a folder counts by its name), and Research's
+        projects and repository folders when it's on."""
+        words = []
+        for w in self.setting("research_paths") or []:
+            words.append(re.split(r"[/\\]", str(w).strip().rstrip("/\\"))[-1])
+        r = self.app.modules.get("research")
+        if r is not None and self.app.is_on("research"):
+            try:
+                for project, repos in r.projects().items():
+                    words += [project, *(re.split(r"[/\\]", x.rstrip("/\\"))[-1] for x in repos)]
+            except Exception:
+                pass
+        return sorted({w for w in words if len(w) >= 3}, key=len, reverse=True)
+
     def subject_of(self, title: str) -> str | None:
         subj = self.app.modules["subjects"]
         low = title.lower()
@@ -148,6 +174,9 @@ class Study(Module):
         for s in subj.subjects():  # a note or file inside that subject's folder
             if f"{s['slug']}/" in title.replace("\\", "/") or f"/{s['slug']}" in title.replace("\\", "/"):
                 return s["slug"]
+        for w in self.research_words():
+            if re.search(r"(?<![a-z0-9])" + re.escape(w.lower()) + r"(?![a-z0-9])", low):
+                return RESEARCH
         return None
 
     async def background(self, stop: asyncio.Event) -> None:
@@ -165,10 +194,12 @@ class Study(Module):
     def sample(self, seconds: float) -> str | None:
         if self.session().get("subject"):  # a session away from the computer is running: it counts, not the window
             return None
-        idle = idle_seconds()
-        if idle is not None and idle > (self.setting("idle_min") or 5) * 60:
+        if self.probe.locked():  # the lock screen: you're away
             return None
         title = active_title()
+        idle = self.probe.idle_seconds(title)
+        if idle is not None and idle > (self.setting("idle_min") or 5) * 60:
+            return None
         slug = self.subject_of(title) if title else None
         if slug:
             self.add(slug, seconds)
@@ -188,7 +219,7 @@ class Study(Module):
         t = self.totals(days)
         if not t:
             return "No study time counted yet." if days == 1 else "No study time counted this week."
-        name = self.app.modules["subjects"].name_of
+        name = self.name_of
         rows = [f"{name(k)}: {v / 3600:.1f} h" for k, v in sorted(t.items(), key=lambda kv: -kv[1])]
         head = "Today" if days == 1 else f"Last {days} days"
         return f"{head} ({sum(t.values()) / 3600:.1f} h):\n" + "\n".join(rows)
@@ -271,7 +302,7 @@ class Study(Module):
         t = self.totals(1, last=day)
         if not t or daily.has_section(self.app, "Study hours", day):
             return False
-        name = self.app.modules["subjects"].name_of
+        name = self.name_of
         manual = self.day(day)
         rows = []
         for k, v in sorted(t.items(), key=lambda kv: -kv[1]):

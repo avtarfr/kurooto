@@ -1,25 +1,23 @@
 """Stay awake on charger: while this computer is plugged in, it doesn't go to sleep by itself, so Kurooto keeps
 answering (Telegram, calls, your schedule). On battery it sleeps as usual. Your screen can still turn off.
 
-Closing a laptop's lid usually still puts it to sleep: if you want it to keep running with the lid closed, change
-the lid setting (Windows: Control Panel → Power Options → "Choose what closing the lid does" → "Do nothing" when
-plugged in; macOS: only with an external display; Linux: your desktop's power settings).
+Closing a laptop's lid usually still puts it to sleep. On Linux, turn on awake.lid (Settings) and it keeps running
+with the lid closed while plugged in. Elsewhere it's the system's own setting (Windows: Control Panel → Power Options
+→ "Choose what closing the lid does" → "Do nothing" when plugged in; macOS: only with an external display).
 """
 
 from __future__ import annotations
 
 import asyncio
-import os
-import shutil
-import subprocess
 import sys
 
 import psutil
 
-from kurooto.core import proc
+from kurooto.core.config import register_defaults
+from kurooto.core.inhibit import Inhibitor
 from kurooto.modules.base import Module
 
-ES_SYSTEM_REQUIRED = 0x00000001
+register_defaults("awake", {"lid": False})  # Linux: also keep running with the lid closed while plugged in
 
 
 def on_ac() -> bool:
@@ -38,19 +36,32 @@ class Awake(Module):
 
     def __init__(self, app):
         super().__init__(app)
-        self.holder: subprocess.Popen | None = None
+        self.inhibitor = Inhibitor(why="Stay awake on charger (turn it off in Kurooto's settings)")
         self.holding = False
 
+    @property
+    def holder(self):
+        """The process holding it (Linux, macOS), or None."""
+        return self.inhibitor.proc
+
     def ready(self):
-        if sys.platform.startswith("linux") and not shutil.which("systemd-inhibit"):
-            return False, "needs systemd-inhibit (systemd), which this computer doesn't have"
-        return True, ""
+        return self.inhibitor.supported()
 
     def health(self):
         ok, why = self.ready()
         if not ok:
             return ok, why
-        return True, ("keeping it awake (plugged in)" if self.holding else "on battery: sleeping as usual")
+        if not self.holding:
+            return True, "on battery: sleeping as usual"
+        lid = ""
+        if self.setting("lid"):
+            if not sys.platform.startswith("linux"):
+                lid = "; the lid follows your system's own setting"
+            elif self.inhibitor.lid_refused:
+                lid = "; this system doesn't let it hold the lid switch, so closing the lid still sleeps"
+            else:
+                lid = ", lid closed too"
+        return True, f"keeping it awake (plugged in{lid})"
 
     async def background(self, stop: asyncio.Event) -> None:
         try:
@@ -64,44 +75,10 @@ class Awake(Module):
             self.release()
 
     def tick(self) -> None:
-        plugged = on_ac()
-        if sys.platform == "win32":
-            if plugged:  # resets the sleep timer; doesn't keep the screen on
-                import ctypes
-
-                ctypes.windll.kernel32.SetThreadExecutionState(ES_SYSTEM_REQUIRED)
-            self._mark(plugged)
-        elif sys.platform == "darwin":
-            # caffeinate -s holds off sleep only while on AC by itself, and quits when Kurooto does
-            if self.holder is None or self.holder.poll() is not None:
-                self.holder = subprocess.Popen(
-                    ["caffeinate", "-s", "-w", str(os.getpid())],
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            self._mark(plugged)
+        if on_ac():  # idle too: some desktops put it to sleep by their own idle timer otherwise
+            self._mark(self.inhibitor.hold(lid=bool(self.setting("lid")), idle=True, ac_only=True))
         else:
-            alive = self.holder is not None and self.holder.poll() is None
-            if plugged and not alive and shutil.which("systemd-inhibit"):
-                self.holder = subprocess.Popen(
-                    [
-                        "systemd-inhibit",
-                        "--what=sleep:idle",
-                        "--who=Kurooto",
-                        "--mode=block",
-                        "--why=Stay awake on charger (turn it off in Kurooto's settings)",
-                        "sleep",
-                        "infinity",
-                    ],
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-            elif not plugged and alive:
-                self.release()
-            self._mark(plugged and self.holder is not None and self.holder.poll() is None)
+            self.release()
 
     def _mark(self, holding: bool) -> None:
         if holding != self.holding:
@@ -109,13 +86,7 @@ class Awake(Module):
             self.app.events.emit("awake_" + ("holding" if holding else "released"))
 
     def release(self) -> None:
-        if self.holder is not None and self.holder.poll() is None:
-            proc.kill_tree(self.holder.pid)
-            try:
-                self.holder.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                pass
-        self.holder = None
+        self.inhibitor.release()
         self._mark(False)
 
     def stop(self):

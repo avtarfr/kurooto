@@ -466,6 +466,9 @@ class Api:
         if path == "autostart":
             if os.environ.get("KUROOTO_NO_AUTOSTART") == "1":  # tests and rehearsals leave this computer alone
                 return 200, {"ok": True, "message": "Start at sign-in is left alone here (KUROOTO_NO_AUTOSTART)."}
+            if b.get("when") in ("boot", "login"):  # at boot (Linux: lingering) or at login
+                ok, msg = autostart.set_when(b["when"], s, self.app.secrets, self.app.paths.state)
+                return 200, {"ok": ok, "message": msg, "when": autostart.when(s)}
             msg = autostart.enable() if b.get("on", True) else autostart.disable()
             return 200, {"ok": True, "message": msg}
         if path == "setup/done":

@@ -8,8 +8,12 @@ Setup: make an empty PRIVATE repository on GitHub, then a fine-grained token for
 "Contents: Read and write" (github.com → Settings → Developer settings → Fine-grained tokens). Paste both. Kurooto
 refuses a public repository. Git is installed for you if it's missing (MinGit on Windows; Apple's tools on a Mac).
 
-If the same note was changed in two places at once, your computer's version wins for the clashing lines; the other
-version is still in the history.
+If the same note was changed in two places at once (say, on your phone and here), nothing is lost. By default
+(notes_sync.on_conflict = "keep both") the version from elsewhere stays in the note and this computer's goes next to it
+as "<note> (conflict, this computer, <date>).md"; you get a message naming both, and merge them when you like. With
+"stop", sync stops instead, changes nothing, and tells you (once) until you've sorted it out yourself; it never
+forces anything. A notes folder that's already a Git repository keeps its own remote ("origin") when that's the same
+repository, e.g. over SSH; another repository's origin is left alone and Kurooto uses a remote of its own.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from kurooto.core import proc
 from kurooto.core.clock import now
@@ -40,8 +45,10 @@ register_defaults(
         "api": "https://api.github.com",
         "remote": "",  # tests: a local repository instead of GitHub
         "after_jobs": 2,  # minutes after an AI request finishes, its notes are sent up (0: wait for the timer)
+        "on_conflict": "keep both",  # "keep both": a clashing note keeps both versions; "stop": sync waits for you
     },
 )
+OWN_REMOTE = "kurooto"  # the remote used when the folder's origin is another repository
 TOKEN = "notes_sync.token"  # noqa: S105 (the secret's name)
 IGNORE = """# made by Kurooto's Notes sync
 .DS_Store
@@ -75,6 +82,18 @@ class NotesSync(Module):
 
     def remote_url(self) -> str:
         return self.setting("remote") or f"https://github.com/{self.setting('repo')}.git"
+
+    def same_repo(self, url: str) -> bool:
+        """Is this remote URL your notes repository (https or SSH, with or without .git)?"""
+        url = (url or "").strip()
+        if self.setting("remote"):
+            return url == self.setting("remote")
+        m = re.search(r"github\.com[:/]+([^/\s]+/[^/\s]+?)(?:\.git)?/?$", url)
+        return bool(m) and m.group(1).lower() == (self.setting("repo") or "").lower()
+
+    def remote(self) -> str:
+        """The remote sync uses: origin, unless that's another repository (then a remote of Kurooto's own)."""
+        return OWN_REMOTE if OWN_REMOTE in self.git("remote").out.split() else "origin"
 
     def _env(self) -> dict:
         env = {
@@ -185,7 +204,12 @@ class NotesSync(Module):
         if not (ws / ".gitignore").exists():
             (ws / ".gitignore").write_text(IGNORE, encoding="utf-8")
         have = self.git("remote").out.split()
-        self.git("remote", "set-url" if "origin" in have else "add", "origin", self.remote_url())
+        if "origin" not in have:
+            self.git("remote", "add", "origin", self.remote_url())
+        elif not self.same_repo(self.git("remote", "get-url", "origin").out):  # theirs: leave it be
+            self.git("remote", "set-url" if OWN_REMOTE in have else "add", OWN_REMOTE, self.remote_url())
+        elif OWN_REMOTE in have:  # origin is ours again
+            self.git("remote", "remove", OWN_REMOTE)
         progress("First sync with your repository…")
         ok, msg = self.sync()
         return ok, ("Your notes are synced with your private repository." if ok else msg)
@@ -231,49 +255,130 @@ class NotesSync(Module):
         timeouts (at shutdown)."""
         branch = self.setting("branch") or "main"
         net = 45 if quick else 300
+        kept: list[tuple[str, str]] = []
         with Lock(self.app.paths.state, "notes-sync", timeout=20 if quick else 60):
             try:
+                busy = self._unfinished()
+                if busy:
+                    return self._fail(busy)
+                origin = self.remote()
                 self.git("add", "-A")
                 committed = False
                 if self.git("diff", "--cached", "--quiet").code == 1:
                     r = self.git("commit", "-q", "-m", f"notes: {now():%Y-%m-%d %H:%M}")
                     committed = r.ok
-                f = self.git("fetch", "-q", "origin", timeout=net)
+                f = self.git("fetch", "-q", origin, timeout=net)
                 if not f.ok:
                     return self._fail(f"couldn't reach your repository: {(f.err or f.out).strip()[-200:]}")
-                remote_has = self.git("rev-parse", "--verify", "-q", f"origin/{branch}").ok
+                theirs = f"{origin}/{branch}"
+                remote_has = self.git("rev-parse", "--verify", "-q", theirs).ok
                 if remote_has:
                     local_has = self.git("rev-parse", "--verify", "-q", "HEAD").ok
                     if not local_has:
-                        self.git("reset", "-q", f"origin/{branch}")
+                        self.git("reset", "-q", theirs)
                         self.git("checkout", "-q", "--", ".")
-                    elif self.git("merge-base", "--is-ancestor", f"origin/{branch}", "HEAD").code != 0:
-                        if not self.git("rebase", "-q", f"origin/{branch}").ok:
+                    elif self.git("merge-base", "--is-ancestor", theirs, "HEAD").code != 0:
+                        if not self.git("rebase", "-q", theirs).ok:
                             self.git("rebase", "--abort")
-                            m = self.git(
-                                "merge",
-                                "-q",
-                                "--no-edit",
-                                "--allow-unrelated-histories",
-                                "-X",
-                                "ours",
-                                f"origin/{branch}",
-                            )
-                            if not m.ok:
-                                self.git("merge", "--abort")
+                            if self.setting("on_conflict") == "stop":
                                 return self._fail(
-                                    "a change elsewhere clashes with yours and couldn't be merged; "
-                                    "nothing was lost (both are kept), but sync is paused until it's sorted"
+                                    "a note was changed here and elsewhere at once; nothing was changed. Merge it "
+                                    f"yourself (in the notes folder: git pull --rebase {origin} {branch}), or set "
+                                    'notes_sync.on_conflict to "keep both"; sync waits until then'
+                                )
+                            ok, kept = self._merge_keeping_both(theirs)
+                            if not ok:
+                                return self._fail(
+                                    "a change elsewhere clashes with yours and couldn't be merged; nothing was "
+                                    "changed, and sync is paused until it's sorted"
                                 )
                 if self.git("rev-parse", "--verify", "-q", "HEAD").ok:
-                    p = self.git("push", "-q", "origin", f"HEAD:refs/heads/{branch}", timeout=net)
+                    p = self.git("push", "-q", origin, f"HEAD:refs/heads/{branch}", timeout=net)
                     if not p.ok:
                         return self._fail(f"couldn't send to your repository: {(p.err or p.out).strip()[-200:]}")
             except RuntimeError as e:
                 return self._fail(str(e))
         jsave(self.state_file, {"ok": True, "at": time.time(), "error": ""})
-        self.app.events.emit("notes_synced", committed=committed)
-        return True, "Synced."
+        self.app.events.emit("notes_synced", committed=committed, conflicts=len(kept))
+        if kept:
+            rows = "\n".join(f"- {note}: this computer's version is in {copy}" for note, copy in kept)
+            self.app.notify(
+                f"Notes sync: {len(kept)} note(s) changed here and elsewhere at once. Both versions are kept; the "
+                f"note has the one from elsewhere:\n{rows}\nMerge them when you like, then delete the copy.",
+                kind="info",
+            )
+        return True, "Synced." if not kept else f"Synced; {len(kept)} clash(es) kept as copies."
+
+    def _unfinished(self) -> str:
+        """A merge or rebase someone left half done (perhaps you, sorting out a clash): sync keeps out of it."""
+        gd = self.git("rev-parse", "--git-dir")
+        if not gd.ok:
+            return ""
+        d = Path(gd.out.strip())
+        d = d if d.is_absolute() else self.app.workspace / d
+        if any((d / x).exists() for x in ("rebase-merge", "rebase-apply", "MERGE_HEAD")):
+            return (
+                "a merge or rebase is unfinished in your notes folder; finish it (git status says how) and sync "
+                "goes on by itself"
+            )
+        if self.git("rev-parse", "--verify", "-q", "HEAD").ok and not self.git("symbolic-ref", "-q", "HEAD").ok:
+            return "your notes folder isn't on a branch (a detached HEAD); check out your branch again"
+        return ""
+
+    def _merge_keeping_both(self, theirs: str) -> tuple[bool, list[tuple[str, str]]]:
+        """Merge, and for each clashing note keep both whole versions: elsewhere's in the note, this computer's in a
+        copy beside it. Notes changed on one side only merge as usual. False (and nothing changed): it couldn't."""
+        m = self.git("merge", "-q", "--no-edit", "--allow-unrelated-histories", theirs)
+        if m.ok:
+            return True, []
+        ws = self.app.workspace
+        kept: list[tuple[str, str]] = []
+        stamp = f"{now():%Y-%m-%d %H%M}"
+        clashing = [x for x in self.git("diff", "--name-only", "--diff-filter=U", "-z").out.split("\0") if x]
+        if not clashing:
+            self.git("merge", "--abort")
+            return False, []
+        for path in clashing:
+            stages = {
+                line.split()[2]
+                for line in self.git("ls-files", "-u", "-z", "--", path).out.split("\0")
+                if line.strip() and len(line.split()) >= 3
+            }
+            target = ws / path
+            if "2" in stages:  # this computer's version: into a copy first
+                if self.git("checkout", "--ours", "--", path).ok and target.is_file():
+                    copy = self._copy_name(target, stamp)
+                    copy.write_bytes(target.read_bytes())
+                    kept.append((path, str(copy.relative_to(ws)).replace("\\", "/")))
+                    self.git("add", "--", str(copy.relative_to(ws)))
+            if "3" in stages:  # elsewhere's version stays in the note
+                if not self.git("checkout", "--theirs", "--", path).ok:
+                    self.git("merge", "--abort")
+                    return False, []
+            # deleted on one side, changed on the other: the changed one stays (a deletion can't lose anything)
+            if not target.exists() and "2" in stages:
+                self.git("checkout", "--ours", "--", path)
+            self.git("add", "--", path)
+        if self.git("diff", "--name-only", "--diff-filter=U").out.strip():
+            self.git("merge", "--abort")
+            return False, []
+        c = self.git(
+            "commit", "-q", "--no-edit", "-m", f"notes: merged changes from elsewhere; {len(kept)} clash(es) kept"
+        )
+        if not c.ok:
+            self.git("merge", "--abort")
+            return False, []
+        return True, kept
+
+    @staticmethod
+    def _copy_name(target: Path, stamp: str) -> Path:
+        base = f"{target.stem} (conflict, this computer, {stamp})"
+        copy = target.with_name(base + target.suffix)
+        n = 2
+        while copy.exists():
+            copy = target.with_name(f"{base} {n}{target.suffix}")
+            n += 1
+        return copy
 
     def _fail(self, why: str) -> tuple[bool, str]:
         prev = jload(self.state_file, {}) or {}
