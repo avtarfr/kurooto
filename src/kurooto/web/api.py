@@ -237,6 +237,7 @@ class Api:
                 return 403, {"error": "Terminals is off"}
             return t.handle(name, action, b)
         if path == "power/stop":  # stop the normal way (`kurooto restore`): shutdown hooks run; it starts at sign-in
+            self.app.stop_reason = "stopped"  # for the "going offline" message (core/presence.py)
             threading.Timer(0.3, self.app.request_stop).start()  # answer first
             return 200, {"ok": True, "message": "Stopping."}
         if path == "sync/all":  # sync everything that's on, in the background (`kurooto sync`)

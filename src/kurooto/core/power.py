@@ -206,4 +206,5 @@ class Power:
             if os.environ.get("KUROOTO_NO_AUTOSTART") != "1":  # tests and rehearsals leave this computer alone
                 autostart.disable()  # under systemd or launchd this also stops us, which is the point
         finally:
+            app.stop_reason = "turned off"  # for the "going offline" message (core/presence.py)
             app.request_stop()

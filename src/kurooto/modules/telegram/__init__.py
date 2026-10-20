@@ -236,7 +236,9 @@ class Telegram(Module):
                     70,
                 )
                 backoff = 5
+                self._net_seen(None)
             except TelegramError as e:
+                self._net_seen(None)  # Telegram answered: the network is fine
                 self.app.events.emit("telegram_error", code=e.code, error=e.description[:200])
                 if e.code == 401:  # the token was revoked
                     self.app.notifier.channels.pop("telegram", None)
@@ -244,6 +246,7 @@ class Telegram(Module):
                 await asyncio.sleep(30 if e.code == 409 else backoff)  # 409: the bot runs somewhere else too
                 continue
             except Exception as e:
+                self._net_seen(e)
                 self.app.events.emit("telegram_error", error=f"{type(e).__name__}: {e}"[:200])
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 120)
@@ -254,6 +257,14 @@ class Telegram(Module):
                     await asyncio.to_thread(self._update, api, u, allowed)
                 except Exception as e:
                     self.app.events.emit("telegram_error", error=f"{type(e).__name__}: {e}"[:300])
+
+    def _net_seen(self, err: BaseException | None) -> None:
+        """Whether Telegram could be reached, for the "network down / back online" messages (core/presence.py)."""
+        pres = getattr(self.app, "presence", None)
+        if pres is not None and err is None:
+            pres.net_ok("telegram")
+        elif pres is not None:
+            pres.net_failed("telegram", err)
 
     def _update(self, api: TelegramAPI, u: dict, allowed: set) -> None:
         if "callback_query" in u:

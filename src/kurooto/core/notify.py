@@ -88,11 +88,16 @@ class Notifier:
     def _deliver(self, msg: Message) -> Any:
         s = self.app.settings
         ref = None
-        if "telegram" in self.channels:
+        pres = getattr(self.app, "presence", None)  # the network is down: Telegram gets it later (core/presence.py)
+        if "telegram" in self.channels and not (pres is not None and pres.hold(msg)):
             try:
                 ref = self.channels["telegram"](msg)
+                if pres is not None and ref is not None:
+                    pres.net_ok("telegram")
             except Exception as e:
                 self.app.events.emit("notify_failed", channel="telegram", error=str(e)[:200])
+                if pres is not None:
+                    pres.failed(msg, e)  # kept for later if it was the network
         if "app" in self.channels and msg.kind in (s.get("notify.app_kinds") or []):
             try:
                 self.channels["app"](msg)

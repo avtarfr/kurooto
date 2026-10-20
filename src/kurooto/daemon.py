@@ -45,7 +45,9 @@ async def serve(app: App, stop: asyncio.Event, web: bool = True) -> None:
         asyncio.create_task(app.scheduler.run_forever(stop), name="scheduler"),
         asyncio.create_task(app.jobs.worker(stop), name="jobs"),
         asyncio.create_task(app.power.watch(stop), name="power"),
+        asyncio.create_task(app.presence.watch(stop), name="presence"),
     ]
+    app.presence.listen_for_end_session()  # Windows: signing out or shutting down (core/endsession.py)
     server = None
     if web:
         from kurooto.web.server import start as start_web
@@ -54,6 +56,7 @@ async def serve(app: App, stop: asyncio.Event, web: bool = True) -> None:
         log.info("dashboard on %s", server.url)
     app.events.emit("started", pid=os.getpid())
     await stop.wait()
+    await app.presence.going_offline()  # "going offline" before anything stops, at most ~3 s (core/presence.py)
     tasks += list(app._background.values())
     for t in tasks:
         t.cancel()
@@ -88,7 +91,7 @@ def run(web: bool = True) -> int:
         async def main():
             stop = asyncio.Event()
             loop = asyncio.get_running_loop()
-            for sig in (signal.SIGINT, signal.SIGTERM):
+            for sig in (signal.SIGINT, signal.SIGTERM, *([signal.SIGHUP] if hasattr(signal, "SIGHUP") else [])):
                 try:
                     loop.add_signal_handler(sig, stop.set)
                 except (NotImplementedError, RuntimeError, ValueError):  # Windows: Ctrl+C raises KeyboardInterrupt
