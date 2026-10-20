@@ -3,16 +3,27 @@
 Windows  a value under HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run (runs pythonw: no window)
 macOS    a LaunchAgent in ~/Library/LaunchAgents (starts at login, restarted if it dies)
 Linux    a systemd user unit (restarted if it dies); an XDG autostart entry when systemd isn't there
+
+At boot or at login (autostart.when, `kurooto autostart boot|login`): on Linux with systemd, "boot" turns on lingering
+for your account (`loginctl enable-linger`), so Kurooto starts when the computer does, before anyone logs in: Telegram
+and calls work after a power cut or a remote reboot. The keychain stays locked until you log in, so Kurooto's keys
+are then kept in its owner-only settings file instead. Back to "login" turns lingering off again, only if Kurooto
+turned it on. Windows and macOS start it at sign-in only: before it would need admin rights.
 """
 
 from __future__ import annotations
 
+import getpass
 import os
 import shutil
 import sys
 from pathlib import Path
 
 from kurooto.core import proc
+from kurooto.core.config import register_defaults
+from kurooto.core.state import jload, jsave
+
+register_defaults("autostart", {"when": "login"})  # login | boot (Linux with systemd: before anyone logs in)
 
 NAME = "Kurooto"
 LABEL = "io.github.avtarfr.kurooto"
@@ -161,3 +172,88 @@ def status(home: Path | None = None) -> bool:
     return (home / ".config" / "systemd" / "user" / "kurooto.service").exists() or (
         home / ".config" / "autostart" / "kurooto.desktop"
     ).exists()
+
+
+# --------------------------------------------------------------------------------------- at boot or at login
+LINGER_DIR = Path("/var/lib/systemd/linger")  # systemd keeps one empty file per lingering account here
+
+
+def lingering(user: str | None = None) -> bool:
+    """Does this account's service manager start at boot (systemd's linger)?"""
+    return (LINGER_DIR / (user or getpass.getuser())).exists()
+
+
+def boot_possible(home: Path | None = None) -> tuple[bool, str]:
+    if sys.platform == "win32":
+        return False, (
+            "Windows starts Kurooto when you sign in. Starting it before would need admin rights and your password "
+            "kept in a scheduled task, so Kurooto doesn't."
+        )
+    if sys.platform == "darwin":
+        return False, (
+            "A Mac starts Kurooto when you log in; before that would need admin rights. If this Mac restarts on its "
+            "own, automatic login (System Settings → Users & Groups) brings Kurooto back."
+        )
+    if not shutil.which("loginctl") or managed(home) != "systemd":
+        return False, "Starting from boot needs systemd, with Kurooto as a user service (`kurooto autostart on`)."
+    return True, ""
+
+
+def when(settings) -> str:
+    """ "boot" or "login": what you chose, and what's in effect."""
+    return "boot" if settings.get("autostart.when") == "boot" else "login"
+
+
+def set_when(choice: str, settings, secrets, state_dir: Path, home: Path | None = None) -> tuple[bool, str]:
+    """Start at boot or at login. Turns lingering on (or off, if Kurooto turned it on) and moves Kurooto's keys to its
+    file (or back to the keychain)."""
+    from kurooto.modules.backups import known_secret_names
+
+    mark = Path(state_dir) / "autostart.json"
+    if choice == "boot":
+        ok, why = boot_possible(home)
+        if not ok:
+            return False, why
+        if not lingering():
+            r = proc.run(["loginctl", "enable-linger"], timeout=30)
+            if not r.ok or not lingering():
+                return False, (
+                    "Linux didn't allow that from here. In a terminal run `loginctl enable-linger` (it may ask for "
+                    "your password), then `kurooto autostart boot` again."
+                )
+            jsave(mark, {"linger_by_kurooto": True})
+        moved = secrets.keep_in_file(True, known_secret_names(secrets))
+        settings.set("autostart.when", "boot")
+        keys = (
+            f" Its keys ({moved}) are kept in its owner-only settings file now: the keychain is locked until you log "
+            "in."
+            if moved
+            else ""
+        )
+        return True, "Kurooto now starts when this computer starts, before anyone logs in." + keys
+    if choice != "login":
+        return False, "Say boot or login."
+    note = ""
+    if lingering():
+        if (jload(mark, {}) or {}).get("linger_by_kurooto"):
+            if proc.run(["loginctl", "disable-linger"], timeout=30).ok and not lingering():
+                mark.unlink(missing_ok=True)
+            else:
+                note = " Linux kept lingering on: run `loginctl disable-linger` in a terminal."
+        else:
+            note = (
+                " Your account's services were already set to start at boot (lingering, not by Kurooto), so it "
+                "still starts then."
+            )
+    moved = secrets.keep_in_file(False, known_secret_names(secrets))
+    settings.set("autostart.when", "login")
+    keys = f" Its keys ({moved}) are back in the keychain." if moved else ""
+    return True, "Kurooto starts when you log in." + keys + note
+
+
+def forget_boot(state_dir: Path) -> None:
+    """Uninstalling: turn lingering off again if Kurooto turned it on."""
+    mark = Path(state_dir) / "autostart.json"
+    if (jload(mark, {}) or {}).get("linger_by_kurooto") and shutil.which("loginctl"):
+        proc.run(["loginctl", "disable-linger"], timeout=30)
+        mark.unlink(missing_ok=True)

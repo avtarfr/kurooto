@@ -2,7 +2,8 @@
 
 Windows Credential Manager and the macOS Keychain are used through `keyring`. On Linux without a keyring
 service (common on servers and minimal desktops), and when KUROOTO_HOME is set (tests, portable installs), they
-go to config/secrets.json with owner-only permissions instead.
+go to config/secrets.json with owner-only permissions instead. Starting from boot on Linux (core/autostart.py) keeps
+them in that file too: the keychain stays locked until you log in.
 """
 
 from __future__ import annotations
@@ -33,7 +34,40 @@ def _keyring():
 class Secrets:
     def __init__(self, config_dir: Path):
         self.file = Path(config_dir) / "secrets.json"
-        self.kr = _keyring()
+        self.in_file_marker = Path(config_dir) / "secrets-in-file"  # there: the file, not the keychain
+        self._kr = _keyring()
+
+    @property
+    def kr(self):
+        """The keychain, or None (no keychain here, or Kurooto keeps its secrets in its file)."""
+        return None if self.in_file_marker.exists() else self._kr
+
+    def keep_in_file(self, on: bool, names: list[str]) -> int:
+        """on: copy these secrets from the keychain into the owner-only file and use the file from now on (the
+        keychain's copies stay). off: back to the keychain, when there is one. Returns how many moved."""
+        moved = 0
+        if on:
+            if self._kr is not None and not self.in_file_marker.exists():
+                data = jload(self.file, {}) or {}
+                for name in names:
+                    try:
+                        v = self._kr.get_password(SERVICE, name)
+                    except Exception:
+                        v = None
+                    if v is not None:
+                        data[name], moved = v, moved + 1
+                jsave(self.file, data, mode=0o600)
+            self.in_file_marker.write_text("Kurooto keeps its secrets in secrets.json (it starts from boot).\n")
+            return moved
+        if not self.in_file_marker.exists():
+            return 0
+        self.in_file_marker.unlink()
+        if self._kr is None:
+            return 0
+        for name, v in (jload(self.file, {}) or {}).items():
+            self.set(name, v)
+            moved += name not in (jload(self.file, {}) or {})
+        return moved
 
     def get(self, name: str) -> str | None:
         if self.kr:

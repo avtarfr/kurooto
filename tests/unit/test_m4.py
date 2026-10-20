@@ -195,16 +195,19 @@ def test_notes_sync_round_trip_and_clash(env, tmp_path):
     assert ns.sync() == (True, "Synced.")
     assert (ws / "b.md").read_text() == "from the phone\n"
     assert "c.md" in git(tmp_path, "--git-dir", str(remote), "ls-tree", "-r", "--name-only", "main")
-    # the same line changed in both places: this computer's version wins, the other stays in the history
+    # the same line changed in both places: both kept, the phone's in the note, this computer's in a copy
     git(other, "pull", "-q", "origin", "main")
     (other / "a.md").write_text("# A\n\nphone version\n")
     git(other, "commit", "-qam", "phone edit")
     git(other, "push", "-q", "origin", "main")
     (ws / "a.md").write_text("# A\n\nlaptop version\n")
     assert ns.sync()[0]
-    assert (ws / "a.md").read_text() == "# A\n\nlaptop version\n"
+    assert (ws / "a.md").read_text() == "# A\n\nphone version\n"
+    (copy,) = ws.glob("a (conflict, this computer, *).md")
+    assert copy.read_text() == "# A\n\nlaptop version\n"
     assert "phone edit" in git(tmp_path, "--git-dir", str(remote), "log", "--format=%s", "main")
-    assert git(tmp_path, "--git-dir", str(remote), "show", "main:a.md") == "# A\n\nlaptop version\n"
+    assert git(tmp_path, "--git-dir", str(remote), "show", "main:a.md") == "# A\n\nphone version\n"
+    assert copy.name in git(tmp_path, "--git-dir", str(remote), "ls-tree", "-r", "--name-only", "main")
 
 
 @needs_git

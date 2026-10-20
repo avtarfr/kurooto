@@ -12,6 +12,13 @@ when to wake you (it sets the alarm). Too tired? "Tomorrow morning" (on Telegram
 rest to the wake-up call. After a call, with Chat on, the AI writes your journal and study logs from what you said;
 without Chat your words go into the journal as they are. A call you don't answer, or decline, becomes a message with
 Call me now / Tomorrow morning / Skip.
+
+A check-in day runs from 05:00 to 05:00 (checkins.day_starts), so a night check-in at 00:30, or one pushed past
+midnight, still belongs to the evening before: its journal and study logs go to that day.
+
+Gone to bed: with the alarm set, a night check-in call that comes after your bedtime (or within a few hours of you
+setting the alarm yourself) doesn't ring; it moves to the wake-up call, and a message offers Call me now or Skip
+(checkins.asleep_defers).
 """
 
 from __future__ import annotations
@@ -40,11 +47,16 @@ register_defaults(
         "journal": True,
         "by_call": False,  # with Phone calls on: the check-in is a call (a missed call falls back to Telegram)
         "ai_notes": True,  # with Chat on: after a check-in call, the AI writes your journal and study logs
+        "day_starts": "05:00",  # a check-in day runs from here to here: a night check-in at 00:30 is the evening's
+        "asleep_defers": True,  # by call, alarm set and you've gone to bed: the night check-in waits for the morning
     },
 )
 NAMES = ("evening", "midday", "night")
 CALL_REASON = {"evening": "Evening debrief", "midday": "Midday check-in", "night": "Night check-in"}
 STUCK_MIN = 15  # a check-in call with no outcome after this long becomes a message
+GRACE_S = 2 * 3600  # a check-in this late still asks (past it: "I missed your check-in")
+ASLEEP_SET_H = 3  # an alarm you set yourself this recently means you've gone to bed
+DONE = ("answered", "skipped", "deferred")  # a check-in that's over for its day
 WORDS = re.compile(
     r"\b(evening|midday|night|bedtime|tonight'?s?|today'?s?|tomorrow'?s?|afternoon|lunch|(?:mon|tues|wednes|thurs|"
     r"fri|satur|sun)day'?s?)?\s*(check-?in|debrief|call)\b",
@@ -54,9 +66,12 @@ MOVE = re.compile(r"\b(move|push|postpone|shift|change|make|put|set|reschedule|i
 SKIP = re.compile(r"\b(skip|cancel|drop|no (?:\w+ )?(?:check-?in|debrief))\b", re.I)
 
 
-def _label(day: dt.date) -> str:
-    today = now().date()
-    return "today" if day == today else "tomorrow" if day == today + dt.timedelta(days=1) else f"on {day:%a %d %b}"
+def _label(day: dt.date, today: dt.date) -> str:
+    """How to say a day: `today` is the check-in day; after midnight the calendar's today is "today" too."""
+    days = {today, now().date()}
+    if day in days:
+        return "today"
+    return "tomorrow" if day == max(days) + dt.timedelta(days=1) else f"on {day:%a %d %b}"
 
 
 def _name_in(low: str) -> str:
@@ -77,18 +92,48 @@ class Checkins(Module):
         self.action("fire", self._fire)
         self.action("unstick", self._unstick)
         self.action("deferred", self._deferred_message)
-        self.every("plan", "daily 00:05", self._plan)
+        plan_at = dt.datetime.combine(dt.date(2000, 1, 1), self._day_start()) + dt.timedelta(minutes=5)
+        self.every("plan", f"daily {plan_at:%H:%M}", self._plan)
         self.app.jobs.then_actions["checkins.notes_done"] = self._notes_done
         self._plan({})
+
+    # ------------------------------------------------------------------------------- the check-in day
+    def _day_start(self) -> dt.time:
+        try:
+            return dt.time.fromisoformat(self.setting("day_starts") or "00:00")
+        except ValueError:
+            return dt.time(0, 0)
+
+    def _shift(self) -> dt.timedelta:
+        s = self._day_start()
+        return dt.timedelta(hours=s.hour, minutes=s.minute)
+
+    def _base(self) -> dt.datetime:
+        """Now, shifted so the check-in day reads as the date: "today", "tomorrow", "Friday" mean what you mean
+        when you're still up after midnight."""
+        return now() - self._shift()
+
+    def day_of(self, t: dt.datetime | None = None) -> dt.date:
+        """The check-in day a moment belongs to: one runs from checkins.day_starts (05:00) to the next."""
+        return ((t or now()) - self._shift()).date()
+
+    def at(self, day: dt.date, hhmm: str) -> dt.datetime:
+        """When a check-in at hh:mm on a check-in day is: a time before the day starts is after midnight."""
+        t = dt.time.fromisoformat(hhmm)
+        return dt.datetime.combine(day + dt.timedelta(days=1 if t < self._day_start() else 0), t)
+
+    def _after_midnight(self, today: dt.date) -> bool:
+        """Past midnight but before the check-in day ends (you're still up)."""
+        return now().date() != today
 
     def _file(self, day: dt.date) -> str:
         return str(self.app.paths.state / "checkins" / f"{day.isoformat()}.json")
 
     def today(self, day: dt.date | None = None) -> dict:
-        return jload(self._file(day or now().date()), {}) or {}
+        return jload(self._file(day or self.day_of()), {}) or {}
 
     def _save(self, plan: dict, day: dt.date | None = None) -> None:
-        jsave(self._file(day or now().date()), plan)
+        jsave(self._file(day or self.day_of()), plan)
 
     def _status(self, name: str, day: dt.date, status: str, **extra) -> None:
         plan = self.today(day)
@@ -98,11 +143,12 @@ class Checkins(Module):
     def _plan(self, p: dict) -> None:
         """Each day (and at startup): schedule today's check-ins from the settings, unless already planned (one moved
         or skipped ahead of time, e.g. "skip Friday's check-in", is already in that day's plan)."""
-        day = now().date()
+        day = self.day_of()
         plan = self.today(day)
         for name in NAMES:
             t = (self.setting("times") or {}).get(name)
-            if t and name not in plan:
+            # not one long over (Kurooto starting at 2 am doesn't say it missed last evening's)
+            if t and name not in plan and self.at(day, t) > now() - dt.timedelta(seconds=GRACE_S):
                 plan[name] = {"time": t, "status": "planned"}
         self._save(plan, day)
         for name, c in plan.items():
@@ -110,7 +156,7 @@ class Checkins(Module):
                 self._schedule(name, c["time"], day)
 
     def _schedule(self, name: str, hhmm: str, day: dt.date) -> dt.datetime:
-        at = dt.datetime.combine(day, dt.time.fromisoformat(hhmm))
+        at = self.at(day, hhmm)
         self.app.scheduler.action("checkins.fire", self._fire)
         self.app.scheduler.at(
             at,
@@ -118,13 +164,13 @@ class Checkins(Module):
             {"name": name, "day": day.isoformat()},
             key=f"checkins:{name}",
             module=self.id,
-            grace_s=2 * 3600,
+            grace_s=GRACE_S,
             respect="quiet",
         )
         return at
 
     def _fire(self, p: dict) -> None:
-        name, day = p["name"], p.get("day") or now().date().isoformat()
+        name, day = p["name"], p.get("day") or self.day_of().isoformat()
         plan = self.today(dt.date.fromisoformat(day))
         if plan.get(name, {}).get("status") != "planned":
             return
@@ -135,6 +181,9 @@ class Checkins(Module):
                 map_kind="checkin",
                 map_ref=f"{name}:{day}",
             )
+        elif self._by_call() and name == "night" and self._asleep(plan[name]):
+            self._asleep_defer(name, dt.date.fromisoformat(day))
+            return
         elif self._by_call() and (held := self._held(name, day)) != "message":
             if held == "later":
                 return
@@ -217,7 +266,7 @@ class Checkins(Module):
             when = until + dt.timedelta(minutes=1)
         else:
             when, _ = av.next_callable()
-        if when.date() != now().date() or (name != "night" and av.night(when)):
+        if self.day_of(when) != dt.date.fromisoformat(day) or (name != "night" and av.night(when)):
             return "message"  # too late for a call today
         self.app.scheduler.at(
             when,
@@ -232,12 +281,46 @@ class Checkins(Module):
         self.app.events.emit("checkin_held", name=name, reason=reason, to_time=f"{when:%H:%M}")
         return "later"
 
+    def _asleep(self, entry: dict) -> bool:
+        """Have you gone to bed? The alarm is set and it's past your bedtime, or you set it yourself in the last few
+        hours. A check-in you moved after setting the alarm still rings: you asked for it."""
+        alarm = self.app.modules.get("alarm")
+        if not self.setting("asleep_defers") or alarm is None or not self.app.is_on("alarm"):
+            return False
+        at = alarm.next()
+        if not at or at - now() > dt.timedelta(hours=18):
+            return False
+        info = jload(alarm.file, {}) or {}
+        try:
+            set_at = dt.datetime.fromisoformat(info["set_at"])
+        except (KeyError, ValueError, TypeError):
+            set_at = None
+        try:
+            if set_at and dt.datetime.fromisoformat(entry["moved"]) >= set_at:
+                return False
+        except (KeyError, ValueError, TypeError):
+            pass
+        reason = (self.app.availability.night(now()) or ("", None))[0]
+        if reason.startswith("you're asleep"):
+            return True
+        return bool(set_at and not info.get("daily") and now() - set_at < dt.timedelta(hours=ASLEEP_SET_H))
+
+    def _asleep_defer(self, name: str, day: dt.date) -> None:
+        """The night check-in found you asleep: it moves to the wake-up call, and a message says so."""
+        self.defer(name, day, via="asleep")
+        ref = f"{name}|{day.isoformat()}"
+        self.app.notify(
+            f"Your alarm is set, so I took it you're asleep: the {name} check-in moves to your wake-up call.",
+            kind="info",
+            buttons=[[("Call me now", f"chk:{ref}:now"), ("Skip", f"chk:{ref}:skip")]],
+        )
+
     def replies(self):
         return {"checkin": self._answer}
 
     def _answer(self, msg: Incoming, ref: str) -> str:
         name, _, day = ref.partition(":")
-        day = day or now().date().isoformat()
+        day = day or self.day_of().isoformat()
         plan = self.today(dt.date.fromisoformat(day))
         if name in plan:
             plan[name]["status"] = "answered"
@@ -251,11 +334,14 @@ class Checkins(Module):
     # ------------------------------------------------------------------------- moving and skipping
     def move(self, name: str, hhmm: str, day: dt.date | None = None, via: str = "telegram") -> str:
         """Set a check-in's time on a day (today unless given). Another day's goes into that day's plan and is
-        scheduled when the day comes."""
-        day = day or now().date()
+        scheduled when the day comes. No day given, after midnight: a time already past means the coming day's."""
+        today = self.day_of()
+        if day is None and self._after_midnight(today) and self.at(today, hhmm) < now():
+            day = today + dt.timedelta(days=1)
+        day = day or today
         plan = self.today(day)
         before = (plan.get(name) or {}).get("time") or (self.setting("times") or {}).get(name)
-        plan[name] = {"time": hhmm, "status": "planned"}
+        plan[name] = {"time": hhmm, "status": "planned", "moved": now().isoformat()}
         self._save(plan, day)
         self.app.scheduler.cancel(f"checkins:unstick:{name}")
         if before:
@@ -264,36 +350,42 @@ class Checkins(Module):
             )
         else:  # one that wasn't on (e.g. a midday check-in asked for on the morning call)
             self.app.events.emit("checkin_planned", name=name, time=hhmm, day=day.isoformat(), via=via)
-        if day != now().date():
-            return f"{name.title()} check-in {_label(day)} at {hhmm}."
+        if day != today:
+            return f"{name.title()} check-in {_label(day, today)} at {hhmm}."
         at = self._schedule(name, hhmm, day)
         return f"{name.title()} check-in at {at:%H:%M}."
 
     def postpone(self, name: str, minutes: int, day: dt.date | None = None, via: str = "telegram") -> str:
-        day = day or now().date()
+        today = self.day_of()
+        day = day or today
         t0 = (self.today(day).get(name) or {}).get("time") or (self.setting("times") or {}).get(name)
-        planned = dt.datetime.combine(day, dt.time.fromisoformat(t0)) if t0 else None
-        if day == now().date():
+        planned = self.at(day, t0) if t0 else None
+        if day == today:
             base = max(now(), planned) if planned else now()
         elif planned:
             base = planned
         else:
-            return f"There's no {name} check-in {_label(day)} to push back; give a time instead."
+            return f"There's no {name} check-in {_label(day, today)} to push back; give a time instead."
         t = base + dt.timedelta(minutes=minutes)
-        if t.date() != day:
+        if self.day_of(t) != day:
             if name == "night":
                 return self.defer(name, day, via)
-            return f"That would push the {name} check-in past midnight; skip it instead?"
+            return f"That would push the {name} check-in into the next day; skip it instead?"
         return self.move(name, f"{t:%H:%M}", day, via)
 
     def skip(self, name: str, day: dt.date | None = None, via: str = "telegram") -> str:
-        day = day or now().date()
+        today = self.day_of()
+        over = (self.today(today).get(name) or {"status": "answered"}).get("status") in DONE
+        if day is None and self._after_midnight(today) and over:
+            day = today + dt.timedelta(days=1)  # no day given, after midnight, tonight's is over: the coming one
+        day = day or today
         self._status(name, day, "skipped")
-        if day == now().date():
+        if day == today:
             self.app.scheduler.cancel(f"checkins:{name}")
         self.app.scheduler.cancel(f"checkins:unstick:{name}")
+        self._undefer(name, day)
         self.app.events.emit("checkin_skipped", name=name, day=day.isoformat(), via=via)
-        return f"No {name} check-in {_label(day)}."
+        return f"No {name} check-in {_label(day, today)}."
 
     # ----------------------------------------------------------------------------- tomorrow morning
     @property
@@ -303,9 +395,9 @@ class Checkins(Module):
     def defer(self, name: str, day: dt.date | None = None, via: str = "telegram") -> str:
         """Too tired: what's left of this check-in moves to the wake-up call (or, with no alarm set, a message in the
         morning)."""
-        day = day or now().date()
+        day = day or self.day_of()
         self._status(name, day, "deferred")
-        if day == now().date():
+        if day == self.day_of():
             self.app.scheduler.cancel(f"checkins:{name}")
         self.app.scheduler.cancel(f"checkins:unstick:{name}")
         jsave(
@@ -328,6 +420,13 @@ class Checkins(Module):
             morning = now() + dt.timedelta(minutes=1)
         self.app.scheduler.at(morning, "checkins.deferred", {}, key="checkins:deferred", module=self.id, grace_s=86400)
         return f"OK, sleep well. I'll ask you the rest tomorrow morning ({morning:%a %H:%M})."
+
+    def _undefer(self, name: str, day: dt.date) -> None:
+        """You took this check-in after all (Call me now) or skipped it: the morning doesn't carry it."""
+        d = self.deferred()
+        if d and d.get("name") == name and d.get("day") == day.isoformat():
+            self.deferred_file.unlink(missing_ok=True)
+            self.app.scheduler.cancel("checkins:deferred")
 
     def deferred(self) -> dict | None:
         """A check-in moved to the morning, if it's still fresh (a day and a half)."""
@@ -385,7 +484,7 @@ class Checkins(Module):
     def callbacks(self):
         def btn(ref: str, act: str) -> str:
             name, _, day = ref.partition("|")
-            d = dt.date.fromisoformat(day) if day else now().date()
+            d = dt.date.fromisoformat(day) if day else self.day_of()
             if act == "p30":
                 return self.postpone(name, 30, d, via="button")
             if act == "defer":
@@ -393,6 +492,7 @@ class Checkins(Module):
             if act == "now":
                 if not self._by_call():
                     return "Phone calls aren't on."
+                self._undefer(name, d)
                 self._call(name, d)
                 return "Calling you now."
             return self.skip(name, d, via="button")
@@ -441,7 +541,7 @@ class Checkins(Module):
             if not WORDS.search(text) or re.search(r"\b(?:call|ring) me\b", text, re.I):
                 return None
             low = text.lower()
-            day = a_day(text)
+            day = a_day(text, self._base())
             if day is None:  # a day it can't pin down ("yesterday", "next week"): the AI works it out
                 return None
             name = _name_in(low)
@@ -465,11 +565,12 @@ class Checkins(Module):
             return None
 
         def run(msg, s):
+            day = None if s["day"] == self.day_of() else s["day"]  # no other day named: today, as you mean it
             if s["act"] == "skip":
-                return self.skip(s["name"], s["day"], via="intent")
+                return self.skip(s["name"], day, via="intent")
             if s["act"] == "postpone":
-                return self.postpone(s["name"], s["mins"], s["day"], via="intent")
-            return self.move(s["name"], s["time"], s["day"], via="intent")
+                return self.postpone(s["name"], s["mins"], day, via="intent")
+            return self.move(s["name"], s["time"], day, via="intent")
 
         return [Intent("move_checkin", "move, postpone or skip a check-in", match, run)]
 
@@ -482,10 +583,10 @@ class Checkins(Module):
         """Today's check-in calls, so the call line can ring them if this computer is off then."""
         if not self._by_call():
             return []
-        day, out = now().date(), []
+        day, out = self.day_of(), []
         for name, c in self.today(day).items():
             if c.get("status") == "planned" and c.get("time"):
-                at = dt.datetime.combine(day, dt.time.fromisoformat(c["time"]))
+                at = self.at(day, c["time"])
                 if at.timestamp() > time.time() - 120:
                     out.append(
                         {
@@ -525,11 +626,11 @@ class Checkins(Module):
         if name not in NAMES or not day:
             return None
         d = dt.date.fromisoformat(day)
-        if at.date() == d:
+        if self.day_of(at) == d:
             return self.move(name, f"{at:%H:%M}", d, via="call")
-        if at.date() > d and (name == "night" or at.hour < 12):
+        if self.day_of(at) > d and (name == "night" or at.hour < 12):
             return self.defer(name, d, via="call")
-        return self.move(name, f"{at:%H:%M}", at.date(), via="call")
+        return self.move(name, f"{at:%H:%M}", self.day_of(at), via="call")
 
     def call_transcript(self, key: str, lines: list[dict]) -> None:
         """After a check-in call: with Chat on, the AI writes your journal (and study logs for the classes you talked
@@ -629,10 +730,11 @@ class Checkins(Module):
         name = str(a.get("name", "evening")).lower()
         if name not in NAMES:
             return f"There's no {name} check-in (evening, midday or night)."
-        day = a_day(str(a.get("day") or ""))
+        day = a_day(str(a.get("day") or ""), self._base())
         if day is None:
             return f"I couldn't tell which day {a.get('day')!r} is; say tomorrow or a weekday."
         act, when = a.get("action"), str(a.get("when", "")).strip()
+        day = None if day == self.day_of() else day  # no other day named: today, as they mean it
         if act == "skip":
             return self.skip(name, day, via="call")
         if act == "defer":
@@ -680,7 +782,7 @@ class Checkins(Module):
 
     def script(self, name: str) -> str:
         """What the call goes through, step by step, with today's details filled in."""
-        app, today = self.app, now().date()
+        app, today = self.app, self.day_of()
         plan = daily.plan(app, today, 1200)
         notes_by_ai = self.setting("ai_notes") and daily.ai_on(app)
         later = "If they want this call later, use change_checkin (postpone or move), never schedule_call."
@@ -730,8 +832,7 @@ class Checkins(Module):
         steps.append("If pending_items lists open questions, ask them (answer_question).")
         study = app.modules.get("study")
         if study is not None and app.is_on("study"):
-            name_of = app.modules["subjects"].name_of
-            counted = ", ".join(f"{name_of(k)} {v / 3600:.1f} h" for k, v in study.totals(1).items())
+            counted = ", ".join(f"{study.name_of(k)} {v / 3600:.1f} h" for k, v in study.totals(1, last=today).items())
             steps.append(
                 (f"Study counted today: {counted}. " if counted else "No study counted on the computer today. ")
                 + "Ask about study on paper or away from the computer and log it with log_study."

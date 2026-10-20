@@ -27,6 +27,8 @@ kurooto backup [--to F]  make a backup now · kurooto restore <zip>  put one bac
 kurooto profile save|restore|status   your setup, encrypted in your private repository; restore on a new computer
 kurooto runlog start|metric|note|end|ls   log experiment runs into your notes (research/<project>/runs/)
 kurooto watch -- CMD...  run a long job; you get a message when it ends (exit code, time, last lines)
+kurooto autostart on|off|status|boot|login   start at sign-in or not; boot: before anyone logs in (Linux)
+kurooto idle away|back   for your idle tool (hypridle, swayidle): you've stepped away / you're back
 """
 
 from __future__ import annotations
@@ -369,6 +371,7 @@ def uninstall(keep_data: bool) -> int:
         print(f"Couldn't remove Kurooto's skills from your agent programs: {e}")
     if os.environ.get("KUROOTO_NO_AUTOSTART") != "1":
         print(autostart.disable())
+        autostart.forget_boot(paths().state)  # lingering off again, if Kurooto turned it on
         from kurooto.core import shortcuts
 
         shortcuts.remove()
@@ -1259,6 +1262,44 @@ def utf8_output() -> None:
             pass
 
 
+# ------------------------------------- `kurooto idle away|back`, `kurooto autostart boot|login|status` (owner: ws3)
+def machine_parsers(sub) -> None:
+    idl = sub.add_parser("idle", help="for your idle tool (hypridle, swayidle): you've stepped away, or you're back")
+    idl.add_argument("state", choices=["away", "back"])
+
+
+def machine_run(a) -> int | None:
+    """Runs `kurooto idle …` and `kurooto autostart boot|login|status`; None for anything else."""
+    if a.cmd == "idle":
+        from kurooto.core.idle import set_away
+
+        print(set_away(paths().ensure().state, a.state == "away"))
+        return 0
+    if a.cmd != "autostart" or a.state not in ("boot", "login", "status"):
+        return None
+    from kurooto.core import autostart
+    from kurooto.core.config import Settings
+    from kurooto.core.secrets import Secrets
+
+    p = paths().ensure()
+    settings = Settings(p.config / "settings.json")
+    if a.state == "status":
+        print("on" if autostart.status() else "off")
+        if autostart.when(settings) == "boot":
+            print(
+                "from boot, before anyone logs in"
+                if autostart.lingering()
+                else "at login (boot is chosen, but lingering is off: `kurooto autostart boot` again)"
+            )
+        return 0
+    if os.environ.get("KUROOTO_NO_AUTOSTART") == "1":  # tests and rehearsals leave this computer alone
+        print("Start at boot or login is left alone here (KUROOTO_NO_AUTOSTART).")
+        return 0
+    ok, msg = autostart.set_when(a.state, settings, Secrets(p.config), p.state)
+    print(msg)
+    return 0 if ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     utf8_output()
     ap = argparse.ArgumentParser(prog="kurooto", description="Your assistant, on your own computer.")
@@ -1274,8 +1315,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("supervise", help="run it and restart it if it crashes")
     sub.add_parser("start", help="start it in the background now")
     sub.add_parser("open", help="open the setup page or dashboard")
-    au = sub.add_parser("autostart", help="start at sign-in, or not")
-    au.add_argument("state", choices=["on", "off", "status"])
+    au = sub.add_parser("autostart", help="start at sign-in, or not (boot: before anyone logs in, on Linux)")
+    au.add_argument("state", choices=["on", "off", "status", "boot", "login"])
     sub.add_parser("stop", help="stop it (it starts again at sign-in; `off` keeps it off)")
     off = sub.add_parser("off", help="turn it off completely: it doesn't start at sign-in until `kurooto on`")
     off.add_argument("--keep-calls", action="store_true", help="let your call line keep placing scheduled calls")
@@ -1327,11 +1368,13 @@ def main(argv: list[str] | None = None) -> int:
     profile_parsers(sub)
     term_parsers(sub)
     ws5_parsers(sub)
+    machine_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = ws5_run(a) if done is None else done
     done = profile_run(a) if done is None else done
     done = term_run(a) if done is None else done
+    done = machine_run(a) if done is None else done
     if done is not None:
         return done
 

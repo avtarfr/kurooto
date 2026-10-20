@@ -116,7 +116,7 @@ def test_skipping_fridays_check_in_leaves_todays_alone(env, monkeypatch):
     monkeypatch.undo()
     tomorrow = today + dt.timedelta(days=1)
     assert env.say("move tomorrow's check-in to 21:15") == "Evening check-in tomorrow at 21:15."
-    assert ck.today(tomorrow)["evening"] == {"time": "21:15", "status": "planned"}
+    assert ck.today(tomorrow)["evening"].items() >= {"time": "21:15", "status": "planned"}.items()
     assert ck.today()["evening"]["time"] == "22:00"
     ev = [e for e in env.app.events.tail(50) if e["kind"] == "checkin_moved"][-1]
     assert ev["to_time"] == "21:15" and ev["day"] == tomorrow.isoformat() and ev["via"] == "intent"
@@ -442,8 +442,9 @@ def study(env, monkeypatch):
     env.app.settings.set("subjects.list", SUBJECTS)
     env.on("subjects", "study")
     monkeypatch.setattr(study_mod, "active_title", lambda: "linear-algebra-week3.pdf")
-    monkeypatch.setattr(study_mod, "idle_seconds", lambda: 10.0)
-    return env, env.app.modules["study"]
+    st = env.app.modules["study"]  # a fake idle probe: active, not locked (core/idle.py has its own tests)
+    st.probe = __import__("types").SimpleNamespace(locked=lambda: False, idle_seconds=lambda title=None: 10.0, how="")
+    return env, st
 
 
 def test_paper_sessions_and_plain_english(study, monkeypatch):
@@ -702,7 +703,7 @@ def test_schedule_call_during_a_check_in_keeps_it_a_check_in(bycall):
     out = c.run_tool("schedule_call", {"when": "in 45 minutes", "reason": "call back to finish this"})
     assert out == f"Evening check-in at {later:%H:%M}."
     assert not app.scheduler.jobs("calls:ring:")  # no bare call without the check-in's steps
-    assert ck.today()["evening"] == {"time": f"{later:%H:%M}", "status": "planned"}
+    assert ck.today()["evening"].items() >= {"time": f"{later:%H:%M}", "status": "planned"}.items()
     assert len(app.scheduler.jobs("checkins:evening")) == 1
     # a new topic is a new call
     assert c.run_tool("schedule_call", {"when": "tomorrow 9:00", "reason": "dentist appointment"}).startswith(
