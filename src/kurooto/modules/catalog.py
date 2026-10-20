@@ -10,6 +10,7 @@ from kurooto.modules.capture import Capture
 from kurooto.modules.cases import Cases
 from kurooto.modules.chat import Chat
 from kurooto.modules.checkins import Checkins
+from kurooto.modules.classpacks import ClassPacks
 from kurooto.modules.deadlines import Deadlines
 from kurooto.modules.exam_season import ExamSeason
 from kurooto.modules.files import Files
@@ -50,6 +51,7 @@ CATALOG = [
     Deadlines,
     StartBy,
     Subjects,
+    ClassPacks,
     Quiz,
     ExamSeason,
     Weekly,

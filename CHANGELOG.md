@@ -99,6 +99,21 @@
   alarm), with one "Time to start" message on the day for the big ones.
 - The Sunday summary flags crunch weeks: "week of 9 Nov: about 14 h of work, about 9 h free". `/startby`, "when
   should I start the lab report?", "any crunch weeks coming?". An estimate, local arithmetic only, no AI.
+**Class packs** (new; off until you turn it on)
+- `/classpack export` turns your section's setup into one small `.kurooto-course` file: subjects, timetable (lab
+  batches and electives), term and exam dates, holidays, recurring quizzes, dated exams and each course's attendance
+  rule (75%, labs counted separately, unless it says otherwise). From your setup, or from one term note alone
+  (`/classpack export from terms/section-b`): the term note gains optional Type and Batch columns, and Recurring
+  quizzes and Attendance tables. The maker gives the day it was checked against the official timetable before the
+  file is made; it's stamped in the pack and the file comes to their Telegram to forward.
+- A strict format: names, keys, notes, skills, links, contact details and skips have no place in it, and a file with
+  any of them is refused whole, with the reason. `kurooto classpack check FILE` checks one.
+- Send a pack to your bot: a review (when it was checked, what it means for you), tick your electives and lab batch,
+  change any rule ("la 80", "la labs together", "la quiz off"), Import. It sits under your own setup (yours wins),
+  writes nothing into your notes, and its quizzes and exams reach Deadlines. Attendance rules are kept per course for
+  an attendance feature to read.
+- Importing again after a reshuffle lists what changes for you first and keeps your choices. `/classpack`,
+  `/classpack set`, `/classpack remove`, `/classpack undo`; `kurooto classpack export|import`.
 
 ## 0.4.0 (unreleased)
 

@@ -23,7 +23,8 @@ Weekly timetable: under a heading with "timetable" in it. Columns are found by t
 End, Subject or Course or Class, an optional Code), else by position (day, time, subject). An empty Day cell
 continues the day above; "Mon, Wed" means both days. The subject is plain text or a link to its notes
 ([[maps/courses/linear-algebra|...]], [[linear-algebra/course|...]], [Name](path)); a Code cell becomes a short name
-for it. Lunch and break rows are skipped.
+for it. Lunch and break rows are skipped. Optional Batch (a lab batch: "A", "B1") and Type (lecture, lab, tutorial,
+elective) columns are kept with each class, for class packs (coursepack.py).
 
 Key dates: under a heading with "dates" in it (Key dates, Important dates). Dates are YYYY-MM-DD; a range is "A – B"
 (or "A - B", "A to B"); a time can follow the date or sit in the text ("(10:00-11:00)", "5 pm"). An optional Kind
@@ -79,6 +80,7 @@ START_H = {"start", "starts", "from", "begins"}
 END_H = {"end", "ends", "to", "until", "till"}
 SUBJ_H = {"subject", "course", "class", "module", "paper", "lecture", "what", "title", "name"}
 CODE_H = {"code", "course code", "short", "short name", "alias", "aliases", "id"}
+BATCH_H = {"batch", "batches", "lab batch", "group", "lab group"}
 DATE_H = {"date", "dates", "when", "day", "from", "start"}
 TO_H = {"to", "until", "till", "end", "ends"}
 WHAT_H = {"what", "event", "description", "item", "title", "name", "details", "note", "notes"}
@@ -264,17 +266,18 @@ def empty() -> dict:
 
 def parse(text: str) -> dict:
     """Read a term note: {classes, subjects, holidays, exam_periods, term_ends, dates}.
-    classes: {day, start, end, name, slug, code}; subjects: {name, slug, aliases}; dates: {from, to, time, what,
-    text, kind, explicit} (kind as kind_of; explicit: a Kind column gave it)."""
+    classes: {day, start, end, name, slug, code, batch, kind}; subjects: {name, slug, aliases}; dates: {from, to,
+    time, what, text, kind, explicit} (kind as kind_of; explicit: a Kind column gave it)."""
     out = empty()
     seen_subjects: dict[str, dict] = {}
     for head, rows in tables(text, TIMETABLE):
         dc, tc = column(head, DAY_H), column(head, TIME_H)
         sc, ec = column(head, START_H), column(head, END_H)
         uc, cc = column(head, SUBJ_H), column(head, CODE_H)
+        bc, kc = column(head, BATCH_H), column(head, KIND_H)  # optional: a lab batch; lecture, lab, elective
         if head is None or dc is None and uc is None:
             dc, tc, uc = 0, 1, 2
-        taken = {dc, tc, sc, ec, cc}
+        taken = {dc, tc, sc, ec, cc, bc, kc}
         dc = dc if dc is not None else next(j for j in range(9) if j not in taken)
         uc = uc if uc is not None else next(j for j in range(9) if j not in taken | {dc})
         cur: list[str] = []
@@ -295,9 +298,10 @@ def parse(text: str) -> dict:
             if not when or not slug or BREAK.match(name):
                 continue
             code = plain(cell(row, cc)).strip()
+            more = {"batch": plain(cell(row, bc)), "kind": plain(cell(row, kc)).lower()}
             for day in dict.fromkeys(cur):
                 out["classes"].append(
-                    {"day": day, "start": when[0], "end": when[1], "name": name, "slug": slug, "code": code}
+                    {"day": day, "start": when[0], "end": when[1], "name": name, "slug": slug, "code": code, **more}
                 )
             s = seen_subjects.setdefault(slug, {"name": name, "slug": slug, "aliases": []})
             if code and code.lower() not in s["aliases"] and code.lower() != slug:

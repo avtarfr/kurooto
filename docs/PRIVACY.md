@@ -22,6 +22,7 @@ computer only.
 | Skills: revision packs | Tectonic (if you install it) downloads LaTeX packages; nothing of yours is sent | Tectonic's package server (public) |
 | Skills: packs before exams (`skills.auto_pack`) | the same as `/pack`: the subject's notes the AI reads to write the pack; with `ask` (the default) only after you tap Build it | the AI service you picked |
 | Sending files (`kurooto send`, the AI's send-file tool) | the file | Telegram (to your own bot) |
+| Class packs | a pack you make: the section's courses, timetable, term dates, quizzes, exams and attendance rules, never names, keys, notes or skills; you decide whom to forward it to. Importing one sends nothing | Telegram (to your own bot) |
 | Check-ins | nothing; with Check-ins by call and Chat on: what you said on the check-in call (after the evening debrief, both sides of it), for the AI to write your journal and study logs | the AI service you picked |
 | Quiz | nothing; with Chat on: the question from your notes and your answer, for the AI to grade | the AI service you picked |
 | Weekly summary | nothing; with the Sunday review call and Chat on: the call's transcript, to write the weekly review | the AI service you picked |

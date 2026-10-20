@@ -1467,6 +1467,92 @@ def cases_run(a) -> int | None:
     return cli(a.action, a.ref, a.out, a.all)
 
 
+# ------------------------------------------------- `kurooto classpack check|export|import` (modules/classpacks.py)
+def classpack_parsers(sub) -> None:
+    cp = sub.add_parser("classpack", help="your section's setup as a file to share, or a classmate's to import")
+    cps = cp.add_subparsers(dest="pack_cmd", required=True)
+    ch = cps.add_parser("check", help="is this a class pack Kurooto can use? what's in it")
+    ch.add_argument("file")
+    ex = cps.add_parser("export", help="make a class pack of your setup (or of one term note: --from)")
+    ex.add_argument("--checked", required=True, help="the day you checked it against the official timetable, or today")
+    ex.add_argument("--from", dest="note", default="", help="a term note (terms/2026-autumn, or a file)")
+    ex.add_argument("--title", default="", help='what the section calls itself, e.g. "Year 2 section B"')
+    ex.add_argument("--elective", default="", help="courses not everyone takes, by id: machine-learning,topology")
+    ex.add_argument("--out", default="", help="where to write it (a file or a folder); Kurooto's data folder if not")
+    im = cps.add_parser("import", help="review a class pack on Telegram (tick electives and batch there)")
+    im.add_argument("file")
+
+
+def classpack_run(a) -> int | None:
+    """Runs `kurooto classpack ...`; None for any other command."""
+    if a.cmd != "classpack":
+        return None
+    from kurooto.modules import coursepack
+
+    if a.pack_cmd == "check":
+        try:
+            pack = coursepack.read(Path(a.file).expanduser())
+        except coursepack.PackError as e:
+            print(f"Not a class pack Kurooto can use: {e}.", file=sys.stderr)
+            return 1
+        print(f"{pack['title'] or 'Class pack'}: checked against the official timetable on {pack['checked']}.")
+        print(f"{coursepack.overview(pack)}.")
+        return 0
+    if a.pack_cmd == "import":
+        f = Path(a.file).expanduser()
+        if not f.is_file():
+            print(f"There's no file {a.file}.", file=sys.stderr)
+            return 1
+        r = ask_running("classpack/import", {"path": str(f.resolve())})
+        if r is None:
+            print("Kurooto isn't running (`kurooto on` starts it); the review happens on Telegram.", file=sys.stderr)
+            return 2
+        print(r.get("message", ""))
+        return 0 if r.get("ok") else 1
+    from kurooto.app import App
+    from kurooto.core.clock import now
+
+    app = App()
+    try:
+        mod = app.modules["classpacks"]
+        if not app.is_on("classpacks"):
+            print("Class packs is off: dashboard → Features → Class packs.", file=sys.stderr)
+            return 1
+        checked = now().date().isoformat() if a.checked.lower() == "today" else a.checked
+        pack, left, why = mod.draft_pack(a.note, anywhere=True)
+        if pack is None:
+            print(why, file=sys.stderr)
+            return 1
+        wanted = [x.strip() for x in a.elective.split(",") if x.strip()]
+        unknown = [x for x in wanted if x not in {c["id"] for c in pack["courses"]}]
+        if unknown:
+            print(
+                f"Not a course in it: {', '.join(unknown)} ({', '.join(c['id'] for c in pack['courses'])}).",
+                file=sys.stderr,
+            )
+            return 1
+        for c in pack["courses"]:
+            c["elective"] = c["elective"] or c["id"] in wanted
+        if a.title:
+            try:
+                pack["title"] = coursepack.title(a.title)
+            except coursepack.PackError as e:
+                print(f"Not that title: {e}.", file=sys.stderr)
+                return 1
+        if checked > now().date().isoformat():
+            print("That day hasn't come yet: check it against the official timetable first.", file=sys.stderr)
+            return 1
+        ok, said, f = mod.write(pack, checked, Path(a.out).expanduser() if a.out else None)
+        print(said)
+        for x in left:
+            print(f"  left out: {x}")
+        if f is not None:
+            print(f)
+        return 0 if ok else 1
+    finally:
+        app.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     utf8_output()
     ap = argparse.ArgumentParser(prog="kurooto", description="Your assistant, on your own computer.")
@@ -1545,6 +1631,7 @@ def main(argv: list[str] | None = None) -> int:
     ws5_parsers(sub)
     machine_parsers(sub)
     cases_parsers(sub)
+    classpack_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = ws5_run(a) if done is None else done
@@ -1552,6 +1639,7 @@ def main(argv: list[str] | None = None) -> int:
     done = term_run(a) if done is None else done
     done = machine_run(a) if done is None else done
     done = cases_run(a) if done is None else done
+    done = classpack_run(a) if done is None else done
     if done is not None:
         return done
 

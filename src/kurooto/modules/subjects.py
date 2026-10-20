@@ -113,9 +113,12 @@ class Subjects(Module):
         return data
 
     def term(self) -> dict:
-        """What the term note says (termnote.parse), read again whenever the note changes."""
+        """What the term note says (termnote.parse), read again whenever the note changes, over an imported class
+        pack's term (Class packs, modules/classpacks.py: the note wins where both say something)."""
         p = self.term_path()
-        return self._read(p) if p else termnote.empty()
+        data = self._read(p) if p else termnote.empty()
+        packs = self.app.modules.get("classpacks")
+        return packs.under(data) if packs is not None and self.app.is_on("classpacks") else data
 
     @staticmethod
     def _match(items: list[dict], n: dict) -> dict | None:
@@ -355,7 +358,7 @@ class Subjects(Module):
         p = self.term_path()
         if p is None:
             return [f"Term note {raw}: not found."]
-        t = self.term()
+        t = self._read(p)  # the note's own (not a class pack's)
 
         def n(k: int, word: str) -> str:
             return f"{k} {word}" + ("" if k == 1 else "es" if word.endswith("s") else "s")

@@ -46,6 +46,7 @@ MODULE_ORDER = [
     "gbrain",
     "local_models",
     "subjects",
+    "classpacks",
     "capture",
     "quiz",
     "exam_season",
@@ -428,6 +429,16 @@ class Api:
             from kurooto.web.tools_api import notify_from_program  # (ws5) buttons, --click, --reply-to
 
             return notify_from_program(self.app, b)
+        if (
+            path == "classpack/import"
+        ):  # `kurooto classpack import FILE`: its review on Telegram (modules/classpacks.py)
+            from pathlib import Path
+
+            cp = self.app.modules.get("classpacks")
+            if cp is None or not self.app.is_on("classpacks"):
+                return 200, {"ok": False, "message": "Class packs is off: dashboard → Features → Class packs."}
+            ok, message = cp.start_import(Path(str(b.get("path") or "")))
+            return 200, {"ok": ok, "message": message}
         if path == "send-file":  # `kurooto send FILE`: a file from this computer to your Telegram
             from kurooto.modules.skills import send_file
 

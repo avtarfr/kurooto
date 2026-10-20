@@ -461,11 +461,15 @@ class Deadlines(Module):
         return self.app.paths.state / "deadlines-recurring.json"
 
     def recurring_rows(self) -> list[dict]:
-        """The table's rows, with what you told Kurooto about rows that left the day or week open."""
+        """The table's rows, with what you told Kurooto about rows that left the day or week open; then an imported
+        class pack's quizzes (from_pack, Class packs) that the table doesn't have."""
         try:
             rows = recurring.parse(self.recurring_note.read_text(encoding="utf-8", errors="replace"))
         except OSError:
-            return []
+            rows = []
+        packs = self.app.modules.get("classpacks")
+        if packs is not None and self.app.is_on("classpacks"):
+            rows += packs.quiz_rows()
         over = jload(self._over_file, {}) or {}
         for r in rows:
             r["slug"] = self._slug(r["subject"])
@@ -473,7 +477,8 @@ class Deadlines(Module):
             for k, v in (over.get(r["key"]) or {}).items():
                 if not r.get(k):
                     r[k] = v
-        return rows
+        mine = {r["key"] for r in rows if not r.get("from_pack")}
+        return [r for r in rows if not (r.get("from_pack") and r["key"] in mine)]
 
     def scan_recurring(self) -> int:
         if not self.setting("recurring"):
@@ -609,7 +614,7 @@ class Deadlines(Module):
         }
         if rule["next"] and not rule["day"]:
             rule["day"] = recurring.DAYS[dt.date.fromisoformat(rule["next"]).weekday()]
-        if any(r["key"] == rule["key"] for r in self.recurring_rows()):
+        if any(r["key"] == rule["key"] and not r.get("from_pack") for r in self.recurring_rows()):
             where = recurring.note_rel(self.app)
             return f"{self.subject_name(slug) or subject}: {what} is already in {where}; edit it there."
         return self._complete_rule(rule)
@@ -617,7 +622,7 @@ class Deadlines(Module):
     def remove_recurring(self, subject: str, what: str) -> bool:
         slug = self._slug(subject)
         for r in self.recurring_rows():
-            if r["slug"] == slug and r["what"].lower() == what.strip().lower():
+            if r["slug"] == slug and r["what"].lower() == what.strip().lower() and r["line"]:  # not a pack's
                 f = self.recurring_note
                 f.write_text(recurring.remove(f.read_text(encoding="utf-8"), r["line"]), encoding="utf-8")
                 self.scan_recurring()
@@ -954,7 +959,8 @@ class Deadlines(Module):
             for r in rows:
                 every = "every week" if r["every"] == 1 else f"every {r['every']} weeks"
                 when = f"{r['day'].title()} {r['time']}".strip() or "day not known yet"
-                out.append(f"{self.subject_name(r['slug']) or r['subject']}: {r['what']}, {every}, {when}")
+                pack = " (class pack: /classpack set to change it)" if r.get("from_pack") else ""
+                out.append(f"{self.subject_name(r['slug']) or r['subject']}: {r['what']}, {every}, {when}{pack}")
             return "\n".join(out) + f"\n\n(Edit them in {recurring.note_rel(self.app)}.)"
         m = re.match(r"(add|remove)\s+(\S+)\s*(.*)$", a, re.I)
         if not m:
