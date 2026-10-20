@@ -609,7 +609,12 @@ def test_fetch_url_public_pages_only(app, monkeypatch):
     base = f"http://127.0.0.1:{srv.server_address[1]}"
     try:
         assert "this computer or a private network" in ftool(app, "fetch_url", url=base + "/")
-        for bad in ("file:///etc/passwd", "ftp://example.com/x", "http://169.254.169.254/latest", "http://localhost:9/"):
+        for bad in (
+            "file:///etc/passwd",
+            "ftp://example.com/x",
+            "http://169.254.169.254/latest",
+            "http://localhost:9/",
+        ):
             assert "Only http" in ftool(app, "fetch_url", url=bad) or "private" in ftool(app, "fetch_url", url=bad)
         allowed = []  # the test server stands in for a public site; each answer is used once
         monkeypatch.setattr(T, "public_host", lambda host: bool(allowed and allowed.pop()))
