@@ -2,11 +2,15 @@
 
 Setup (the wizard does this): make a bot with @BotFather, paste its token, then tap the one-time link the
 wizard shows so Kurooto learns which chat is yours.
+
+The bot's "/" menu lists the commands of the features you have on (and your skills); Kurooto keeps it up to date as
+features go on and off (telegram.menu; turning that off takes the menu away again).
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import re
 import secrets as pysecrets
@@ -27,6 +31,9 @@ register_defaults(
     "telegram",
     {"chat_id": None, "allowed_users": [], "silent_kinds": ["call"], "api_base": "https://api.telegram.org"},
 )
+register_defaults("telegram", {"menu": True})  # the bot's "/" menu follows the features you have on
+MENU_MAX = 100  # Telegram's limit
+MENU_EVERY_S = 900  # skills can change without a feature going on or off: look again this often
 
 TOKEN = "telegram.token"  # noqa: S105 (the secret's name, not its value)
 PAIR_S = 3600  # a pairing link works for an hour
@@ -229,6 +236,10 @@ class Telegram(Module):
                 continue
             offset = (jload(self.dir / "offset.json", {}) or {}).get("offset", 0)
             try:
+                await asyncio.to_thread(self._menu_tick)
+            except Exception as e:  # the menu never stops messages
+                self.app.events.emit("telegram_menu_failed", error=f"{type(e).__name__}: {e}"[:200])
+            try:
                 updates = await asyncio.to_thread(
                     api.call,
                     "getUpdates",
@@ -358,6 +369,75 @@ class Telegram(Module):
             except Exception as e:
                 self.app.events.emit("telegram_error", error=f"replay: {type(e).__name__}: {e}"[:200])
         return n
+
+    # ----------------------------------------------------------------------------- the "/" menu
+    def menu(self) -> list[dict]:
+        """Telegram's "/" menu: /help, every enabled feature's commands, /q, /aboutme, /sync, then your skills (with
+        "_" for "-": /term_setup runs term-setup). Names Telegram can't show are left out; at most 100."""
+        out: dict[str, str] = {}
+
+        def add(name: str, text: str) -> None:
+            name = name.lower().replace("-", "_")
+            if re.fullmatch(r"[a-z0-9_]{1,32}", name) and name not in out:
+                short = re.split(r" \(|: |; ", text.strip(), maxsplit=1)[0].strip()
+                out[name] = (short if len(short) >= 3 else text.strip() or name)[:100]
+
+        add("help", "what I can do")
+        for m in self.app.enabled():
+            try:
+                for c in m.commands():
+                    add(c.name, c.help)
+            except Exception as e:  # one feature's mistake never hides the others' commands
+                self.app.events.emit("telegram_menu_failed", module=m.id, error=str(e)[:200])
+        add("q", "open questions I asked you")
+        add("aboutme", "what I know about you")
+        if not self.app.is_on("notes_sync"):
+            add("sync", "sync everything that's on")
+        sk = self.app.modules.get("skills")
+        if sk is not None and self.app.is_on("skills"):
+            taken = sk.reserved()
+            for name, skill in sorted(sk.all().items()):
+                if not skill.internal and name not in taken:
+                    add(name, skill.description)
+        return [{"command": k, "description": v} for k, v in list(out.items())[:MENU_MAX]]
+
+    def sync_menu(self) -> bool:
+        """Give Telegram the menu when it changed (telegram.menu off: take back the one Kurooto set). True if
+        Telegram was told something."""
+        api = self.api()
+        if not api or not self.setting("chat_id"):
+            return False
+        f = self.dir / "menu.json"
+        st = jload(f, {}) or {}
+        try:
+            if not self.setting("menu"):
+                if not st.get("set"):
+                    return False
+                api.call("deleteMyCommands", {})
+                jsave(f, {})
+                self.app.events.emit("telegram_menu_removed")
+                return True
+            cmds = self.menu()
+            sig = hashlib.sha1(json.dumps(cmds).encode(), usedforsecurity=False).hexdigest()
+            if st.get("sig") == sig:
+                return False
+            api.call("setMyCommands", {"commands": cmds})
+        except (TelegramError, OSError) as e:  # tried again on the next look
+            self.app.events.emit("telegram_menu_failed", error=str(e)[:200])
+            return False
+        jsave(f, {"set": True, "sig": sig, "n": len(cmds)})
+        self.app.events.emit("telegram_menu_set", n=len(cmds))
+        return True
+
+    def _menu_tick(self) -> bool:
+        """Before each wait for messages: the menu again when features went on or off (or the setting changed),
+        and every quarter of an hour for skills."""
+        key = (tuple(sorted(m.id for m in self.app.enabled())), bool(self.setting("menu")))
+        last = getattr(self, "_menu_last", None)
+        if last and last[0] == key and time.monotonic() - last[1] < MENU_EVERY_S:
+            return False
+        self._menu_last = (key, time.monotonic())
+        return self.sync_menu()
 
     # ----------------------------------------------------------------------------------- commands
     def commands(self):

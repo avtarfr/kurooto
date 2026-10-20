@@ -27,9 +27,12 @@ answer by replying to your message; their answers then arrive here together with
    Never ask about health or money. Stop asking when the answers wouldn't change the plan, or when they say
    "enough".
 4. **Write** (add to existing notes; never change what's there):
-   - **Term note** `terms/<term-slug>` (e.g. `terms/2026-autumn`): `## Key dates` (a table: date, what, source),
-     `## Weekly timetable`, `## Subjects` (a link and one line each), `## Setup notes (YYYY-MM-DD)` (a short summary
-     of their answers).
+   - **Term note** `terms/<term-slug>` (e.g. `terms/2026-autumn`): `## Key dates` (a table `| Date | What | Source |`;
+     dates as YYYY-MM-DD, a range as `2026-12-07 – 2026-12-18`, a time in the text like `(10:00-11:00)`; one row per
+     quiz or exam, naming its subject), `## Weekly timetable` (a table `| Day | Time | Subject | Code |`, one row per
+     class, times like `09:00-09:55`, the subject as a link to its course page), `## Subjects` (a link and one line
+     each), `## Setup notes (YYYY-MM-DD)` (a short summary of their answers). Keep these table shapes when you
+     update the note: Kurooto reads them.
    - **Each subject's course page** `<subject>/course` (create it with `# <Subject name>` if missing): `## About`
      (teacher, textbooks, assessment), `## Exams` (dates, or windows), `## Status (YYYY-MM-DD)` (confidence, hardest
      topic, behind on, goal).
@@ -39,6 +42,7 @@ answer by replying to your message; their answers then arrive here together with
    - **Exams and deadlines** as tasks under `## Tasks` on each course page, unless already there:
      `- [ ] <what> (YYYY-MM-DD HH:MM)`, so Deadlines tracks them.
 5. **Reply**: the key dates table, what you created or changed, the assumptions you made, then your numbered
-   questions for the next round (or "That's everything." when done). Mention that they can add their classes to
-   Kurooto with /subject and /class (so calls never interrupt a class), and run /term-setup again whenever dates or
-   plans change.
+   questions for the next round (or "That's everything." when done). Mention that `/term note terms/<term-slug>`
+   makes Kurooto read the timetable and key dates from that note from now on, live (calls never interrupt a class;
+   holidays, exam periods and the quizzes and exams in it reach Deadlines), and that they can run /term-setup again
+   whenever dates or plans change.

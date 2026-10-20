@@ -80,6 +80,28 @@
   default) reads the mail a Gmail search matches. Your never-read list, the not-interested list and the confidential
   check still come first, and personal mail among it is only counted, never summarised. `/mail query off` clears it.
 
+**Your term note, read live**
+- `/term note terms/2026-autumn` (`subjects.term_note`): Kurooto reads your timetable, holidays, exam periods, last day
+  of classes and a key-dates table from one note, again whenever it changes. Its classes and subjects join yours (a
+  code next to a subject becomes a short name), and its quizzes and exams, plus deadlines that name a subject, reach
+  Deadlines, kept once with the same thing from your notes, calendar or Classroom. A pattern (`maps/semester-*`)
+  follows the current term's note; `auto` is `terms/*`, or `maps/semester-*` in the zettelkasten layout. The format
+  is in the manual; `/term-setup` writes notes in it. `/term note off` undoes it; your note is never changed.
+
+**Smaller things**
+- The recurring-quizzes table skips any header row ("Course" instead of "Subject", or the row above `| :--- |`), so
+  a renamed header no longer asks "which day?".
+- With `quiz.by_call` and Phone calls on, `/quiz` and "quiz me" ring you straight away ("here" keeps it on Telegram).
+- The dashboard's notes map opens a note with your own program: `notes.open_with`, e.g. `kitty nvim {path}` (no
+  shell; the default app when it's empty or the program is missing).
+- `kurooto ask-me "…" --then "CMD {answer}"` runs a command with your answer once it comes ({answer}, {id}), in the
+  background or with `--wait`; never through a shell, and only from a terminal or script.
+- Telegram's "/" menu lists the commands of the features you have on and your skills, kept up to date
+  (`telegram.menu`); `/term_setup` style names run the skill with dashes.
+- Add-ons: `processes_intermittent = True` on a feature whose programs only run now and then (a backup run, a nightly
+  job): its dashboard cell and `kurooto top` line say "idle" instead of a grey "not running", and "running" with the
+  figures while one runs.
+
 ## 0.3.0 (unreleased)
 ## 0.3.0 (2026-10-20)
 The [manual](docs/MANUAL.md) has the detail.

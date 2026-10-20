@@ -277,6 +277,11 @@ features you have on.
 Your own bot, which only answers you. Commands: `/status` (what's going on: whether calls are held, focus, what's
 coming up, open questions, today's check-ins, what's due in the next 3 days, the alarm, your last AI requests and
 the features that are on), `/hold 2h` or `/hold 18:00` (no calls until then), `/calls` (allow calls again), `/focus 2h` (do-not-disturb: messages wait until it ends).
+
+**The "/" menu.** Typing `/` in the chat lists the commands of the features you have on, and your skills (a skill
+with a dash in its name shows with `_`: `/term_setup` runs term-setup). Kurooto updates the menu within a minute of a
+feature going on or off, and looks again every quarter of an hour for new skills. *Undo:* Settings → telegram →
+`menu` off: Kurooto takes the menu away and leaves the bot's menu alone from then on.
 *Leaves your computer:* your messages travel through Telegram to your bot.
 
 ### Questions and approvals
@@ -369,7 +374,10 @@ One list of what's due, from:
 - Google Classroom coursework (with Google on);
 - calendar events that look like deadlines or exams: "due", "deadline", "submit", "assignment", "homework",
   "report", "quiz", "exam", "midterm", "test", "viva"... (with Calendar on);
-- recurring quizzes and tests (below).
+- recurring quizzes and tests (below);
+- the key dates in your term note ([Subjects and timetable](#subjects-and-timetable): `/term note`): its quizzes and
+  exams, and deadlines that name one of your subjects. They're read again whenever you change the note; a row you
+  take out of the note leaves the list.
 
 The same thing from two places (say Classroom, your calendar and a task in your notes) is kept once; a known time
 beats "end of the day". Topics on your not-interested list are left out.
@@ -395,7 +403,7 @@ call's plan, the morning page, the call brief, `/status` ("Due in the next 3 day
 *Settings* (`deadlines.*`): `plan_h` (72), `ping_h` (24), `urgent_h` (6), `call` (on: the six-hour nudge is a call
 when Phone calls is on), `overdue_check` (on), `tick_notes` (on), `from_calendar` (on), `recurring` (on),
 `horizon_days` (30: how far ahead recurring quizzes become dated items), `exam_mode_days` (14; 0 turns exam mode off),
-`scan_notes` (on).
+`scan_notes` (on), `from_term_note` (on: the term note's key dates, when you have one).
 *Turn off:* the whole thing in Features; the call alone with `deadlines.call` off; the overdue question with
 `deadlines.overdue_check` off.
 *Undo:* set `deadlines.plan_h` back to `72` (or reset it in Settings).
@@ -410,7 +418,8 @@ thu 10:00`. They live in your notes as a table at `kurooto/recurring.md`, which 
 | linear-algebra | Quiz | 1 | Thu | 10:00 | | |
 
 "Every" is in weeks (or "weekly", "every other week"); "Next" is any date it happens on, needed for every two weeks;
-"Until" is optional. Each row becomes dated items on the deadline list, so the reminders, exam mode and quiz offers
+"Until" is optional. The header row can name the columns your own way ("Course" instead of "Subject"): the row above
+the `| :--- |` line, or one made only of column names, is never read as a quiz. Each row becomes dated items on the deadline list, so the reminders, exam mode and quiz offers
 follow. When the day or time is missing, Kurooto uses the subject's class from your timetable, and asks you when it
 can't tell (which day, or which week for every two weeks); for a row you wrote yourself, your answer is kept by
 Kurooto and your note is left as it is. Holidays from your subjects settings are skipped.
@@ -446,8 +455,48 @@ period; add as many as you need). On those days, after the term ends and on holi
 after-class questions, and the timetable doesn't hold calls. `/term` shows them, `/term clear` removes them.
 Holidays are a list of dates in Settings (`subjects.holidays`, e.g. `["2026-12-25"]`).
 
+**The term note: your timetable and key dates, read live.** Instead of typing classes and dates in, keep them in a
+note and point Kurooto at it: `/term note terms/2026-autumn` (`/term-setup` writes such a note). Kurooto reads it
+again whenever it changes: its classes, subjects (a code next to a subject becomes a short name for it), holidays,
+exam periods and last day of classes count from then on, together with the ones you set with `/class` and `/term`
+(yours win where both say something), and its quizzes and exams reach [Deadlines](#deadlines). `/term` shows what it
+read and the next key dates. The note needs two tables:
+
+```
+## Weekly timetable
+| Day | Time | Subject | Code |
+| :--- | :--- | :--- | :--- |
+| Mon | 09:00-09:55 | [[linear-algebra/course|Linear Algebra]] | MA101 |
+|     | 11:00-11:55 | Statistics | |
+| Tue, Thu | 2:00-2:50 pm | Topology | |
+
+## Key dates
+| Date | What | Source |
+| :--- | :--- | :--- |
+| 2026-10-02 | Holiday | calendar |
+| 2026-10-19 – 2026-10-23 | Mid-term break | calendar |
+| 2026-11-12 | Linear Algebra midterm (10:00-11:00) | me |
+| 2026-12-04 | Last day of classes | calendar |
+| 2026-12-07 – 2026-12-18 | End-term exams | calendar |
+```
+
+- **Weekly timetable** (a heading with "timetable" in it): columns by name (Day; Time, or Start and End; Subject,
+  Course or Class; an optional Code), else day, time, subject in that order. An empty Day continues the day above;
+  "Tue, Thu" is both. The subject is plain text or a link to its notes. Lunch and break rows are skipped.
+- **Key dates** (a heading with "dates" in it): dates as YYYY-MM-DD, a range as "A – B" or "A to B", a time after the
+  date or in the text. Holidays, breaks and vacations have no classes; "last day of classes" (or instruction,
+  teaching) ends the term; an exam period (a range, or "exams", "examinations") has no classes; a quiz, test, exam or
+  midterm becomes a dated exam; a deadline ("due", "submission", "assignment") counts when it names one of your
+  subjects. Anything else is just shown by `/term`. A **Kind** column (holiday, exams, last day, exam, due) says it
+  outright.
+- **Which note:** a path in your notes (`terms/2026-autumn`, with or without `.md` or `[[ ]]`), a pattern
+  (`maps/semester-*`: the current term's note among them, else the newest name, so semester-10 comes after
+  semester-9), or `auto` (`terms/*`, or `maps/semester-*` in the zettelkasten notes layout).
+
 *Settings:* `subjects.holidays`, `subjects.exam_periods`, `subjects.term_ends`, `subjects.no_calls_in_class`,
-`subjects.margin_min`.
+`subjects.margin_min`, `subjects.term_note` (empty: no term note).
+*Undo:* `/term note off` (or empty `subjects.term_note`): the note's classes and dates stop counting, and its dated
+items leave the deadline list. Your note itself is never changed.
 
 ### Quiz
 Practice questions from your notes, spaced out so you see each again just before you'd forget it. Put a note named
@@ -457,6 +506,8 @@ questions", "Definitions", "Theorems", "Formulas", "Key results"). Classroom →
   the AI gives the key idea and a grade; otherwise grade yourself with the buttons. The next question follows.
   With Phone calls on, `/quiz` asks **Here or by call?**; `/quiz la call` calls you straight away (it waits out
   classes and other no-call times). "quiz me on topology", "quiz me by call" and "call me for a quiz" work too.
+  With `quiz.by_call` on as well, `/quiz` and "quiz me" call you without asking; add "here" (`/quiz la here`,
+  "quiz me here") for the questions on Telegram. Without Phone calls they stay on Telegram.
 - **The evening before a quiz or exam** (from 19:00, `quiz.offer_at`): "Linear Algebra quiz is tomorrow at 10:00.
   Practise?" with **Quiz me now / Call me for a quiz / Not tonight**. If you haven't any material for it yet, it
   says where to put some.
@@ -466,7 +517,9 @@ questions", "Definitions", "Theorems", "Formulas", "Key results"). Classroom →
 - `/quizstatus`: items and what's due per subject, and exam mode.
 
 *Settings* (`quiz.*`): `per_session` (3), `exam_per_session` (6), `offer_at` (19:00; empty turns the evening offer
-off), `exam_daily` (off; a time like 18:00 turns on a daily exam-mode practice), `by_call` (off), `call_min` (10).
+off), `exam_daily` (off; a time like 18:00 turns on a daily exam-mode practice), `by_call` (off: `/quiz`, "quiz me"
+and quiz check-ins ring you when it's on), `call_min` (10).
+*Undo:* `quiz.by_call` off brings back **Here or by call?**.
 *Leaves:* with Chat on, the question and your answer go to the AI to grade it.
 
 ### Weekly summary
@@ -1539,6 +1592,9 @@ path. The folder may have:
 A feature can name programs that are its own work, including ones Kurooto didn't start: `processes = ("my-bot",
 "bots/reply.js")` on the class (a program's name, or a piece of its command line). Its cell on the dashboard and its
 line in `kurooto top` then show their cpu, memory, uptime and threads, and turn grey ("not running") when none runs.
+For programs that only run now and then (a backup run, a nightly job), add `processes_intermittent = True`: with none
+running the cell says "idle" (not grey), and "running" with the figures while one runs; the feature's own `health()`
+still says whether something is wrong.
 
 **This runs your own code:** the Python files run inside Kurooto with its access to this computer. Only use add-ons you
 wrote or trust. `overlay.code` off keeps the skills, prompts and settings and skips the Python. A broken add-on never
@@ -1581,6 +1637,15 @@ you set it up):
   `--timeout 30`, in minutes) to wait and print your answer. `--expires 6h` changes how long it stays open; `--title
   "Backup"` replaces the "Question" label. `kurooto ask-me --pending` lists the questions still open (`--json` for
   programs); `kurooto ask-me --id <id> --wait` waits for the answer to one asked earlier (a timeout leaves it open).
+- `kurooto ask-me "Log today's study?" --choices "yes|no" --then "my-logger --answer {answer} --question {id}"` runs
+  a command with your answer once it comes, like a hook. Without `--wait` a copy of the command waits in the
+  background (until the question expires; it outlives the terminal) and prints the question's id now; with `--wait` it
+  waits here, prints the answer, runs the command and exits with its exit code. The command runs as a program with
+  its arguments, never through a shell, so an answer like `a; rm -rf ~` is just text in one argument; quotes keep
+  spaces together, or give a JSON list (`--then '["my-logger", "{answer}"]'`). Only this command starts it: nothing
+  from Telegram, a call or the AI can attach a command to a question. A follow-up that fails messages you; its output
+  is in `ask-then.log` in the logs folder (`kurooto paths`). *Undo:* nothing to undo; a waiting copy ends when the
+  question is answered or expires.
 - `kurooto ask-approval "Delete last month's build folders?" --timeout 30` waits for Approve / Deny: it prints `yes`,
   `no` or `timeout` and exits with 0, 1 or 2. Use it in scripts before anything that needs your OK. If Kurooto isn't
   running, `ask-me` and `ask-approval` exit with 2 and nobody is asked.
@@ -1660,7 +1725,11 @@ board with thin borders and each pane's name set into its top line:
   crowded ring they move a little (with a hairline back to their cell) or say less, and never cover each other
   (on a very small screen a few may hide: hover over a cell for its card).
 - **NOTES** adds your folders with their note counts, whether anything was touched this hour, and the notes you
-  edited last.
+  edited last. Double-click a note on the map to open it: in your default app for Markdown, or in your own program
+  with Settings → notes → `open_with`, e.g. `kitty nvim {path}`, `code {path}` or `kurooto term -e nvim {path}` (on
+  every system; the program has to open its own window). It runs as a program with arguments, never through a shell;
+  `{path}` is the note (one argument even with spaces), `{folder}` your notes folder, and without `{path}` the note
+  goes at the end. If the program isn't there, the default app opens the note. *Undo:* empty `notes.open_with`.
 - **TERMINAL**, below, has its tabs in its border: your AI's program, a shell and the log (with Terminals on), and
   **kurooto**, plain English as on Telegram, right in the page (`help`, `check`, `jobs` and `clear` are its own
   words; ↑ and ↓ bring back what you typed). The other pages (activity, jobs, schedule, features, phone, research,
@@ -2047,6 +2116,9 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Research: "repository folder missing" | You moved or deleted it: `/repos remove <folder>`, then `/repos add <new folder>`. |
 | `kurooto watch` says "only shown on this computer" | Kurooto wasn't running: `kurooto start`. |
 | The Terminals tab says it's off, or a terminal won't type | Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose. |
+| `/term` says "Term note …: not found" | The path is relative to your notes folder (`terms/2026-autumn`, `maps/semester-*`); `/term note <path>` again, or `/term note off`. |
+| A class or date from the term note is missing | Check the table's heading ("Weekly timetable", "Key dates"), times like `09:00-09:55` and dates like `2026-11-12`; `/term` says how many classes and key dates it read. |
+| Telegram's "/" menu is out of date | It updates within a minute of a feature going on or off, and every quarter of an hour for skills; `telegram.menu` off and on again sets it within a minute. |
 | Your add-ons: a problem in `kurooto doctor` | `/addons` shows which file and the error. Fix it, then restart Kurooto (`kurooto stop`, `kurooto start`). |
 | Something else | `kurooto doctor --bundle` and send the zip to whoever is helping you (see below). |
 

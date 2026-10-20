@@ -717,6 +717,8 @@ def kurooto_column(k: dict, now: float, w: int, avail: int | None, st: Style) ->
             )
         elif f.get("proc"):
             lines.append(_service_line(st, mark, f["title"], f["proc"]))
+        elif f.get("idle"):  # programs that run now and then (Module.processes_intermittent), none right now
+            lines.append(st.dim("·") + " " + st.v(f"{f['title'][:13]:<14}") + st.dim("idle"))
     on = k["on"]
     wrapped = textwrap.wrap(", ".join(on), max(10, w - 21)) or ["none yet (open the dashboard: kurooto open)"]
     lines.append(st.dim(f"FEATURES ON ({len(on)}) ".ljust(17)) + st.v(wrapped[0]))

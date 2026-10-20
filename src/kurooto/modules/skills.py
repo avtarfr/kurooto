@@ -518,8 +518,9 @@ class Skills(Module):
         return jid
 
     def typed(self, msg: Incoming, name: str, args: str) -> str | None:
-        """/<name> args from you: runs the skill, or None if there's no such skill (the message goes on)."""
-        name = name.strip().lower()
+        """/<name> args from you: runs the skill, or None if there's no such skill (the message goes on). "_" works
+        for "-" (Telegram's menu can't show "-"): /term_setup runs term-setup."""
+        name = name.strip().lower().replace("_", "-")
         if not NAME.fullmatch(name) or name in self.reserved():
             return None
         if name == "revision-pack":

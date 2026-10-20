@@ -9,7 +9,8 @@ With Deadlines on, quizzes follow your quizzes and exams: the evening before one
 by call with Phone calls on); in exam mode (two weeks before) sessions are longer, items come back before the exam,
 and a short practice check-in comes every day.
 
-    /quiz [subject]            practise now (with Phone calls on it asks: here or by call?)
+    /quiz [subject]            practise now (with Phone calls on it asks: here or by call?; with quiz.by_call on
+                               too, it calls straight away: "/quiz [subject] here" keeps it on Telegram)
     /quiz [subject] call       a quiz call          /quiz at 21:00 [subject]   a quiz check-in later
     /quizstatus
 """
@@ -36,7 +37,7 @@ register_defaults(
         "exam_per_session": 6,  # in exam mode
         "offer_at": "19:00",  # the evening before a quiz or exam: offer practice from this time (empty: never)
         "exam_daily": "",  # in exam mode: a practice check-in every day at this time, e.g. "18:00" (empty: never)
-        "by_call": False,  # quiz check-ins ring you (with Phone calls on) instead of sending the first question
+        "by_call": False,  # /quiz, "quiz me" and quiz check-ins ring you (with Phone calls on); "here" keeps text
         "call_min": 10,  # how long a quiz call is meant to take
     },
 )
@@ -434,6 +435,10 @@ class Quiz(Module):
             Command("quizstatus", "what's due to practise", self._status),
         ]
 
+    def _by_call(self, p: dict) -> bool:
+        """quiz.by_call on, Phone calls ready, and they didn't say "here": a quiz request rings rather than texts."""
+        return bool(self.setting("by_call")) and not p.get("here") and self._calls_ok()
+
     def _parse(self, text: str) -> dict:
         """'linear algebra by call at 21:00' -> {subject, call, when}."""
         call = bool(BY_CALL.search(text))
@@ -450,7 +455,7 @@ class Quiz(Module):
         p = self._parse(arg)
         if p["when"]:
             return self.schedule_checkin(p["when"], p["subject"], by_call=p["call"] or None)
-        if p["call"]:
+        if p["call"] or self._by_call(p):
             return self.call_quiz(p["subject"])
         if self._calls_ok() and not p["here"]:
             ref = f"s-{(p['subject'] or '')[:50]}"
@@ -480,7 +485,7 @@ class Quiz(Module):
         def run(msg, p):
             if p["when"]:
                 return self.schedule_checkin(p["when"], p["subject"], by_call=p["call"] or None)
-            if p["call"]:
+            if p["call"] or self._by_call(p):
                 return self.call_quiz(p["subject"])
             out = self.start_session(p["subject"])
             return out + (' (Say "quiz me by call" for a call.)' if self._calls_ok() else "")

@@ -5,20 +5,32 @@ today", "not going to stats on Friday").
     /subject add Linear Algebra (la, linalg)
     /class mon 09:00-09:55 la        /classes        /skip la   /attend la
     /term ends 2026-12-04            /term exams 2026-12-07 to 2026-12-18
+    /term note terms/2026-autumn     read the timetable and key dates from a note, live (/term note off)
 
 Holidays, exam periods and the days after the term's last day have no classes: no after-class questions, and the
 timetable doesn't hold calls then. Events in calendars you mark as classes (Calendar: /cal classes Timetable) are
 classes too.
+
+The term note (subjects.term_note): a note with a "## Weekly timetable" and a "## Key dates" table (the format is in
+kurooto/modules/termnote.py; /term-setup writes one). Kurooto re-reads it whenever it changes: its classes, subjects,
+holidays, exam periods and last day of classes join the ones you set here (yours win where both say something), and
+its dated quizzes, exams and deadlines reach Deadlines. "maps/semester-*" picks the newest matching note; "auto" is
+terms/* (or maps/semester-* in the zettelkasten layout).
 """
 
 from __future__ import annotations
 
 import datetime as dt
+import glob
 import re
+import time
+from pathlib import Path
 
+from kurooto.core import layout
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
+from kurooto.modules import termnote
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
 from kurooto.modules.text import a_day
@@ -33,9 +45,13 @@ register_defaults(
         "term_ends": "",  # "2026-12-04": the last day of classes; none after it
         "no_calls_in_class": True,
         "margin_min": 5,
+        # a note with your timetable and key dates, read live: "terms/2026-autumn", "maps/semester-*" (the newest
+        # matching note), "auto" (terms/*, or maps/semester-* in the zettelkasten layout); empty: off
+        "term_note": "",
     },
 )
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+AUTO_NOTE = {"kurooto": "terms/*.md", "zettelkasten": "maps/semester-*.md"}
 
 
 def slugify(name: str) -> str:
@@ -47,16 +63,151 @@ class Subjects(Module):
     title = "Subjects and timetable"
     description = "Your courses with short names, and an optional timetable so calls never interrupt a class."
 
+    def __init__(self, app):
+        super().__init__(app)
+        self._term_cache: dict[str, tuple] = {}  # path -> ((mtime, size), what the note says)
+        self._glob_cache: tuple | None = None  # (pattern, when, the note it picked)
+
     def start(self):
         self.app.availability.blockers["subjects:class"] = self._block
+        self.every("term_note", "every 10m", self._term_watch)
 
     def stop(self):
         super().stop()
         self.app.availability.blockers.pop("subjects:class", None)
 
+    # -------------------------------------------------------------------------------- the term note
+    def term_path(self) -> Path | None:
+        """The term note to read (subjects.term_note), or None (not set, or not there)."""
+        raw = str(self.setting("term_note") or "").strip()
+        raw = re.sub(r"^\[\[|\]\]$", "", raw).split("|")[0].strip()
+        if not raw or raw.lower() in ("off", "none"):
+            return None
+        if raw.lower() == "auto":
+            raw = AUTO_NOTE.get(layout.of(self.app).preset, AUTO_NOTE["kurooto"])
+        raw = raw if raw.lower().endswith(".md") else raw + ".md"
+        p = Path(raw).expanduser()
+        p = p if p.is_absolute() else self.app.workspace / raw
+        if not any(ch in raw for ch in "*?["):
+            return p if p.is_file() else None
+        hit = self._glob_cache
+        if hit and hit[0] == str(p) and time.monotonic() - hit[1] < 60:
+            return hit[2]
+        found = [Path(f) for f in glob.glob(str(p)) if Path(f).is_file() and not Path(f).stem.endswith("-plan")]
+        name = termnote.pick([(str(f), self._read(f)) for f in found], now().date())
+        pick = Path(name) if name else None
+        self._glob_cache = (str(p), time.monotonic(), pick)
+        return pick
+
+    def _read(self, f: Path) -> dict:
+        try:
+            st = f.stat()
+            sig = (st.st_mtime_ns, st.st_size)
+            hit = self._term_cache.get(str(f))
+            if hit and hit[0] == sig:
+                return hit[1]
+            data = termnote.parse(f.read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            return termnote.empty()
+        self._term_cache[str(f)] = (sig, data)
+        return data
+
+    def term(self) -> dict:
+        """What the term note says (termnote.parse), read again whenever the note changes."""
+        p = self.term_path()
+        return self._read(p) if p else termnote.empty()
+
+    @staticmethod
+    def _match(items: list[dict], n: dict) -> dict | None:
+        names = {n["slug"], n["name"].lower(), *n.get("aliases", [])}
+        for s in items:
+            if s["slug"] in names or s["name"].lower() in names or names & {a.lower() for a in s.get("aliases", [])}:
+                return s
+        return None
+
+    def _term_slugs(self) -> dict[str, str]:
+        """The term note's subject slugs -> yours, where a note subject is one you added."""
+        own = self.setting("list") or []
+        return {n["slug"]: (self._match(own, n) or n)["slug"] for n in self.term()["subjects"]}
+
+    def _term_watch(self, p: dict | None = None) -> bool:
+        """Every few minutes: when the term note changed (or another one is picked), Deadlines reads its key dates
+        now rather than at its next hourly pass. True if it changed."""
+        path = self.term_path()
+        sig = None
+        if path is not None:
+            try:
+                st = path.stat()
+                sig = [str(path), st.st_mtime_ns, st.st_size]
+            except OSError:
+                sig = None
+        f = self.app.paths.state / "subjects" / "term-note.json"
+        if (jload(f, {}) or {}).get("sig") == sig:
+            return False
+        jsave(f, {"sig": sig})
+        data = self.term()
+        self.app.events.emit(
+            "term_note_read", found=path is not None, classes=len(data["classes"]), dates=len(data["dates"])
+        )
+        dl = self.app.modules.get("deadlines")
+        if dl is not None and self.app.is_on("deadlines") and hasattr(dl, "scan_term"):
+            try:
+                dl.scan_term()
+            except Exception as e:  # the next hourly pass tries again
+                self.app.events.emit("deadlines_source_failed", source="scan_term", error=str(e)[:200])
+        return True
+
+    def health(self) -> tuple[bool, str]:
+        raw = str(self.setting("term_note") or "").strip()
+        if raw and raw.lower() not in ("off", "none") and self.term_path() is None:
+            return False, f"the term note {raw} isn't in your notes (/term note <note>, or /term note off)"
+        return True, ""
+
     # ---------------------------------------------------------------------------------------- data
     def subjects(self) -> list[dict]:
-        return self.setting("list") or []
+        """Your subjects, then the term note's (a note subject that's one of yours adds its code as a short name)."""
+        out = [dict(s, aliases=list(s.get("aliases", []))) for s in self.setting("list") or []]
+        for n in self.term()["subjects"]:
+            mine = self._match(out, n)
+            if mine is not None:
+                mine["aliases"] += [a for a in n["aliases"] if a not in mine["aliases"]]
+            else:
+                out.append({**n, "aliases": list(n["aliases"]), "from_note": True})
+        return out
+
+    def timetable(self) -> list[dict]:
+        """Your classes (/class), then the term note's; yours win where both have a class at the same time."""
+        rows = list(self.setting("timetable") or [])
+        have = {(c["day"], c["start"]) for c in rows}
+        slugs = self._term_slugs()
+        for c in self.term()["classes"]:
+            if (c["day"], c["start"]) in have:
+                continue
+            have.add((c["day"], c["start"]))
+            rows.append(
+                {"day": c["day"], "start": c["start"], "end": c["end"], "subject": slugs.get(c["slug"], c["slug"])}
+            )
+        return rows
+
+    def holidays(self) -> list[str]:
+        return sorted({*(self.setting("holidays") or []), *self.term()["holidays"]})
+
+    def exam_periods(self) -> list[list[str]]:
+        out = [list(p) for p in self.setting("exam_periods") or [] if isinstance(p, (list, tuple)) and len(p) == 2]
+        return out + [p for p in self.term()["exam_periods"] if p not in out]
+
+    def term_ends(self) -> str:
+        """The last day of classes: yours (/term ends), else the term note's."""
+        return str(self.setting("term_ends") or "") or self.term()["term_ends"]
+
+    def key_dates(self) -> list[dict]:
+        """The term note's key dates, each with the subject it names (or None)."""
+        items = self.subjects()
+        out = []
+        for d in self.term()["dates"]:
+            found = self._find(d["text"], items)
+            out.append({**d, "subject": found[0] if len(found) == 1 else None})
+        return out
 
     def resolve(self, text: str) -> str | None:
         """'LA', 'linalg', 'Linear Algebra' -> the subject's slug."""
@@ -76,9 +227,13 @@ class Subjects(Module):
 
     def find_in(self, text: str) -> list[str]:
         """Every subject named in a sentence, in order."""
+        return self._find(text, self.subjects())
+
+    @staticmethod
+    def _find(text: str, items: list[dict]) -> list[str]:
         found = []
         low = f" {text.lower()} "
-        for s in self.subjects():
+        for s in items:
             for n in [s["name"], s["slug"], *s.get("aliases", [])]:
                 if n and re.search(r"(?<![a-z0-9])" + re.escape(n.lower()) + r"(?![a-z0-9])", low):
                     if s["slug"] not in found:
@@ -101,12 +256,12 @@ class Subjects(Module):
         """Why there are no classes on a day at all: "holiday", "exams" (an exam period), "term over" (after the
         term's last day), or None on a normal day."""
         d = (day or now().date()).isoformat()
-        if d in (self.setting("holidays") or []):
+        if d in self.holidays():
             return "holiday"
-        for period in self.setting("exam_periods") or []:
-            if isinstance(period, (list, tuple)) and len(period) == 2 and str(period[0]) <= d <= str(period[1]):
+        for period in self.exam_periods():
+            if str(period[0]) <= d <= str(period[1]):
                 return "exams"
-        end = str(self.setting("term_ends") or "")
+        end = self.term_ends()
         if end and d > end:
             return "term over"
         return None
@@ -117,7 +272,7 @@ class Subjects(Module):
             return []
         skip = set() if include_skipped else self.skipped(day)
         out = []
-        for c in self.setting("timetable") or []:
+        for c in self.timetable():
             if DAYS.index(c["day"]) != day.weekday() or c["subject"] in skip:
                 continue
             s = dt.datetime.combine(day, dt.time.fromisoformat(c["start"]))
@@ -158,10 +313,12 @@ class Subjects(Module):
             Command("classes", "your timetable (today: /classes today)", self._classes),
             Command("skip", "you're not attending a class today: /skip la", lambda m, a: self._skip(a, True)),
             Command("attend", "undo /skip", lambda m, a: self._skip(a, False)),
-            Command("term", "the term's last day and exam periods: /term ends 2026-12-04", self._term),
+            Command("term", "the term's dates, or a note to read them from: /term ends 2026-12-04", self._term),
         ]
 
     def _term(self, msg: Incoming, arg: str) -> str:
+        if arg.strip().lower().startswith("note"):
+            return self._term_note(arg.strip()[4:].strip())
         a = arg.strip().lower()
         dates = re.findall(r"\d{4}-\d{2}-\d{2}", a)
         try:
@@ -181,10 +338,56 @@ class Subjects(Module):
             self.app.settings.set("subjects.exam_periods", [])
             return "Term dates cleared."
         if a:
-            return "Usage: /term ends 2026-12-04, /term exams 2026-12-07 to 2026-12-18, /term clear"
-        end = self.setting("term_ends") or "not set"
-        exams = ", ".join(f"{p[0]} to {p[1]}" for p in self.setting("exam_periods") or []) or "none"
-        return f"Last day of classes: {end}. Exam periods: {exams}."
+            return (
+                "Usage: /term ends 2026-12-04, /term exams 2026-12-07 to 2026-12-18, /term clear, "
+                "/term note terms/2026-autumn (or off)"
+            )
+        end = self.term_ends() or "not set"
+        exams = ", ".join(f"{p[0]} to {p[1]}" for p in self.exam_periods()) or "none"
+        out = [f"Last day of classes: {end}. Exam periods: {exams}."]
+        out += self._term_summary()
+        return "\n".join(out)
+
+    def _term_summary(self) -> list[str]:
+        raw = str(self.setting("term_note") or "").strip()
+        if not raw or raw.lower() in ("off", "none"):
+            return []
+        p = self.term_path()
+        if p is None:
+            return [f"Term note {raw}: not found."]
+        t = self.term()
+
+        def n(k: int, word: str) -> str:
+            return f"{k} {word}" + ("" if k == 1 else "es" if word.endswith("s") else "s")
+
+        out = [
+            f"Term note {layout.shown(self.app, p)}: {n(len(t['classes']), 'class')}, "
+            f"{n(len(t['holidays']), 'holiday')}, {n(len(t['exam_periods']), 'exam period')}, "
+            f"{n(len(t['dates']), 'key date')}."
+        ]
+        today = now().date().isoformat()
+        soon = [d for d in t["dates"] if d["to"] >= today][:3]
+        if soon:
+            out.append("Next: " + "; ".join(f"{d['from']} {d['what']}" for d in soon))
+        return out
+
+    def _term_note(self, arg: str) -> str:
+        """/term note <note> | off: read the timetable and key dates from that note from now on."""
+        if not arg:
+            return "\n".join(self._term_summary()) or "No term note. /term note terms/2026-autumn reads one."
+        if arg.lower() in ("off", "none", "clear"):
+            self.app.settings.set("subjects.term_note", "")
+            self._term_watch()
+            return "Term note off: only the dates and classes you set here count now."
+        old = self.setting("term_note")
+        self.app.settings.set("subjects.term_note", arg)
+        self._glob_cache = None
+        if self.term_path() is None:
+            self.app.settings.set("subjects.term_note", old)
+            return f"I can't find {arg} in your notes (a path like terms/2026-autumn, or maps/semester-*)."
+        self._term_watch()
+        self.app.events.emit("term_note_set")
+        return "\n".join(self._term_summary()) + "\nI'll read it again whenever it changes."
 
     def _subject(self, msg: Incoming, arg: str) -> str:
         m = re.match(r"(?:add\s+)?(?P<name>[^()]+?)\s*(?:\((?P<aliases>[^)]*)\))?\s*$", arg)
@@ -193,11 +396,11 @@ class Subjects(Module):
             return names or "No subjects yet. /subject add Linear Algebra (la, linalg)"
         if arg.lower().startswith("remove "):
             slug = self.resolve(arg[7:])
-            self.app.settings.set("subjects.list", [s for s in self.subjects() if s["slug"] != slug])
+            self.app.settings.set("subjects.list", [s for s in self.setting("list") or [] if s["slug"] != slug])
             return f"Removed {arg[7:]}." if slug else "No such subject."
         name = m["name"].strip()
         aliases = [a.strip().lower() for a in (m["aliases"] or "").split(",") if a.strip()]
-        items = [s for s in self.subjects() if s["slug"] != slugify(name)]
+        items = [s for s in self.setting("list") or [] if s["slug"] != slugify(name)]
         items.append({"name": name, "slug": slugify(name), "aliases": aliases})
         self.app.settings.set("subjects.list", items)
         return f"Added {name}" + (f" (also: {', '.join(aliases)})" if aliases else "") + "."
@@ -231,7 +434,7 @@ class Subjects(Module):
                 )
                 or "No classes today."
             )
-        rows = sorted(self.setting("timetable") or [], key=lambda c: (DAYS.index(c["day"]), c["start"]))
+        rows = sorted(self.timetable(), key=lambda c: (DAYS.index(c["day"]), c["start"]))
         return "\n".join(f"{c['day'].title()} {c['start']}–{c['end']} {self.name_of(c['subject'])}" for c in rows) or (
             "No timetable yet. /class mon 09:00-09:55 la"
         )

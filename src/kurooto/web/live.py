@@ -446,6 +446,7 @@ class Vitals:
         for m in app.enabled():
             pids = own["cells"].get(m.id)
             p = self._sum(pids) if pids else None
+            now_and_then = m.id in own["watched"] and bool(getattr(m, "processes_intermittent", False))
             features.append(
                 {
                     "id": m.id,
@@ -454,7 +455,9 @@ class Vitals:
                     "last": nowts - last[m.id] if m.id in last else None,
                     "next": nxt.get(m.id),
                     "proc": p or None,
-                    "down": m.id in own["watched"] and not p,  # it names processes and none is running
+                    "down": m.id in own["watched"] and not p and not now_and_then,  # its programs should run
+                    "idle": now_and_then and not p,  # programs that run now and then (Module.processes_intermittent)
+                    "intermittent": now_and_then,
                 }
             )
         deadlines, open_n = [], 0
