@@ -10,6 +10,9 @@ Telegram: /call gives you a call link, /phone pairs a phone, /phones lists them,
 
 The paired phones are also a second channel for messages (questions and approvals by default; see phone.py), and
 while a call is live, nothing else rings: availability says "you're on a call" (updates wait for it too).
+
+When Gemini Live won't take a call (Google's "503 UNAVAILABLE"), the call goes on anyway (fallback.py): Live again with
+the next model (calls.live_models), then turn by turn with the phone's own speech, then as text on Telegram.
 """
 
 from __future__ import annotations
@@ -31,6 +34,7 @@ from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls import line
 from kurooto.modules.calls.connector import Connector
+from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns
 from kurooto.modules.calls.phone import PhoneApp
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
 
@@ -39,6 +43,15 @@ register_defaults(
     {
         "worker": {"url": "", "name": "", "version": ""},
         "live_model": "gemini-3.8-live",
+        "live_models": [],  # more Gemini Live models to try, in order, when live_model is unavailable (fallback.py)
+        # how calls listen and speak: "live" (Gemini Live), "phone" (the phone's own speech recognition and voice,
+        # turn by turn), "auto" (Live, and the phone's speech when Live fails). voice_by_kind: per kind of call, e.g.
+        # {"alarm": "phone", "checkins:evening": "live"}; kinds: a feature's id (alarm, checkins, weekly, quiz,
+        # deadlines, research), "<feature>:<name>" (checkins:night), "reminder", and "outgoing" (calls you start)
+        "voice_mode": "auto",
+        "voice_by_kind": {},
+        "turn_brain": "gemini",  # answers turn-by-turn calls here: "gemini" (your key) or "local" (Local AI models)
+        "text_model": "gemini-flash-latest",  # the Gemini model for turn-by-turn calls (here, or on your call line)
         "voice": "",  # a Gemini Live voice name (e.g. "Kore"); empty = Google's default
         "persona": "",  # extra words on how to talk on calls, e.g. "be brief and a bit cheeky"
         "ntfy_server": "https://ntfy.sh",
@@ -62,8 +75,9 @@ class Calls(Module):
         "line. Needs a free Gemini key and a free Cloudflare account."
     )
     privacy = (
-        "Call audio goes between your phone and Google (Gemini Live, your own key). Your call line runs on your own "
-        "Cloudflare account and keeps a short brief for when this computer is off. Transcripts stay here."
+        "Call audio goes between your phone and Google (Gemini Live, your own key); calls turn by turn use your "
+        "phone's own speech recognition instead. Your call line runs on your own Cloudflare account and keeps a short "
+        "brief for when this computer is off. Transcripts stay here."
     )
 
     def __init__(self, app):
@@ -72,6 +86,9 @@ class Calls(Module):
         self.connector = Connector(self)
         self.finished: dict[str, dict] = {}  # call tasks done but not yet told on the call
         self.phone = PhoneApp(self)  # messages to the phone app, and the answers that come back
+        self.live = LiveHealth(self)  # when Gemini Live won't take a call (fallback.py)
+        self.turns = VoiceTurns(self)
+        self.textcall = TextCall(self)
 
     # ------------------------------------------------------------------------------------------ setup
     def worker_url(self) -> str:
@@ -103,6 +120,8 @@ class Calls(Module):
         self.action("realert", self._realert)
         self.every("line_update", "daily 05:10", self._line_update)
         self.app.jobs.then_actions["calls.task_done"] = self._task_done
+        self.action("textcall_idle", self.textcall.idle)  # a call that went on as text (fallback.py)
+        self.app.jobs.then_actions["calls.textcall_said"] = self.textcall.said
         self.app.notifier.register("app", self.phone.send, self.phone.retract)  # questions etc. (phone.py)
 
     def stop(self):
@@ -392,10 +411,12 @@ class Calls(Module):
                     out += [c for c in m.call_schedule() if c["at"] <= horizon]
                 except Exception as e:
                     self.app.events.emit("calls_schedule_failed", module=m.id, error=str(e)[:200])
+        for c in out:  # how each call listens, for the call line to ring with (voice_mode, voice_by_kind)
+            c["voice"] = self.voice_for(c.get("key", ""))
         return sorted(out, key=lambda c: c["at"])[:30]
 
-    def link(self, reason: str = "", hours: float = 2, since: str = "") -> str:
-        q = urllib.parse.urlencode({k: v for k, v in (("p", reason), ("s", since)) if v})
+    def link(self, reason: str = "", hours: float = 2, since: str = "", voice: str = "") -> str:
+        q = urllib.parse.urlencode({k: v for k, v in (("p", reason), ("s", since), ("v", voice)) if v})
         t = line.ticket(self.app.secrets.get("calls.call_secret") or "", hours)
         return f"{self.worker_url()}/{'?' + q if q else ''}#{t}"
 
@@ -410,10 +431,13 @@ class Calls(Module):
         if buttons:
             rings[since]["buttons"] = [list(b) for b in buttons]
         jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
+        voice = self.voice_for(key)
         sent = self.connector.admin_later(
-            "ring", reason=reason, alarm=alarm, since=since, key=key, assistant=self.app.name
+            "ring", reason=reason, alarm=alarm, since=since, key=key, assistant=self.app.name, voice=voice
         )
-        answer = [[("Answer", {"url": self.link(reason, since=since)}), *[tuple(b) for b in buttons or []]]]
+        answer = [
+            [("Answer", {"url": self.link(reason, since=since, voice=voice)}), *[tuple(b) for b in buttons or []]]
+        ]
         if sent:  # the phone rings; Telegram just keeps a quiet record with a link
             self.app.notify(f"{'Wake-up call' if alarm else 'Calling you'}: {reason}", kind="call", buttons=answer)
         else:
@@ -456,7 +480,12 @@ class Calls(Module):
         self.app.notify(
             f"Missed call: {r['reason']}",
             kind="info",
-            buttons=[[("Call back", {"url": self.link(r["reason"])}), ("In 30 min", f"call:{since}:later")]],
+            buttons=[
+                [
+                    ("Call back", {"url": self.link(r["reason"], voice=self.voice_for(r.get("key", "")))}),
+                    ("In 30 min", f"call:{since}:later"),
+                ]
+            ],
         )
         self.app.events.emit("call_missed", key=r.get("key", ""))
         self._tell_owner_module(r, "missed")
@@ -510,7 +539,10 @@ class Calls(Module):
         return False
 
     def callbacks(self):
-        return {"call": self._button}
+        return {"call": self._button, "callchat": self.textcall.button}
+
+    def replies(self):
+        return {"callchat": self.textcall.reply}  # a call that went on as text messages (fallback.py)
 
     def _button(self, since: str, act: str) -> str:
         r = (jload(self.dir / "rings.json", {}) or {}).get(since)
@@ -527,7 +559,9 @@ class Calls(Module):
         name = m.get("name")
         if name == "call_started":
             self.on_call(m.get("at"))
-            self.app.events.emit("call_answered", via=m.get("via"), offline=bool(m.get("offline")))
+            self.app.events.emit(
+                "call_answered", via=m.get("via"), offline=bool(m.get("offline")), layer=m.get("layer") or "live"
+            )
             r = self._ring_state(m.get("since", ""), "answered") if m.get("since") else None
             jsave(
                 self.dir / "live.json", {"key": r.get("key", ""), "reason": r["reason"], "at": time.time()} if r else {}
@@ -560,6 +594,10 @@ class Calls(Module):
             ls = self.app.modules.get("lidsafe")
             if ls is not None and self.app.is_on("lidsafe"):
                 ls.on_line_event(m)
+        elif name in ("live_failed", "live_recovered", "call_fallback"):  # Gemini Live wouldn't (fallback.py)
+            self.live.record(name, m)
+        elif name == "text_call":  # a call handed to Telegram while this computer was off
+            self.textcall.start_late(m)
 
     def on_queue(self, items: list[dict]) -> None:
         """What you asked for on calls while this computer was off: do it now."""
@@ -610,6 +648,11 @@ class Calls(Module):
             }
         if url.path == "/transcript":
             return 200, self._transcript(json.loads(body or b"{}"))
+        if url.path == "/turn":  # a turn-by-turn call: Gemini Live is down (fallback.py)
+            self.on_call()
+            return self.turns.answer(json.loads(body or b"{}"))
+        if url.path == "/textcall":  # ...and the phone can't listen: the call goes on as text
+            return 200, self.textcall.start(json.loads(body or b"{}"))
         if url.path == "/upload":
             return self._upload(urllib.parse.parse_qs(url.query), body)
         return 404, {"error": "not found"}
@@ -617,15 +660,24 @@ class Calls(Module):
     def _transcript(self, b: dict) -> dict:
         self.app.availability.set_on_call(None)  # the call page sends this when the call ends
         (self.dir / "live.json").unlink(missing_ok=True)
+        return self.save_transcript(b)
+
+    def save_transcript(self, b: dict) -> dict:
+        """Keep a call's transcript, however it went (live voice, turn by turn, or text on Telegram: "layer"), and
+        hand it to the feature that placed the call (a check-in writes your journal and study logs from it)."""
         lines = [x for x in (b.get("lines") or []) if isinstance(x, dict)][:5000]
         if not lines:
             return {"ok": True}
         d = self.dir / "transcripts"
         d.mkdir(parents=True, exist_ok=True)
         f = d / f"{now():%Y-%m-%d-%H%M%S}.txt"
+        while f.exists():  # two calls ending in the same second (a text call and a voice one)
+            f = f.with_name(f.stem + "-1.txt")
         purpose = str(b.get("purpose") or "")
+        how = {"turns": "turn by turn", "telegram": "text on Telegram"}.get(str(b.get("layer") or ""), "")
+        head = " ".join(x for x in (purpose, f"({how})" if how else "") if x)
         text = "".join(f"{x.get('who', '?')}: {x.get('text', '')}\n" for x in lines)
-        f.write_text((f"# {purpose}\n" if purpose else "") + text, encoding="utf-8")
+        f.write_text((f"# {head}\n" if head else "") + text, encoding="utf-8")
         f.chmod(0o600)
         r = (jload(self.dir / "rings.json", {}) or {}).get(str(b.get("since") or ""))
         if r:
@@ -633,7 +685,7 @@ class Calls(Module):
             m = self.app.modules.get(mid)
             if m and self.app.is_on(mid) and hasattr(m, "call_transcript"):
                 m.call_transcript(r["key"], lines)
-        self.app.events.emit("call_transcript", lines=len(lines))
+        self.app.events.emit("call_transcript", lines=len(lines), layer=str(b.get("layer") or "live")[:10])
         return {"ok": True}
 
     def _upload(self, q: dict, body: bytes) -> tuple[int, dict]:
@@ -718,12 +770,51 @@ class Calls(Module):
             "purpose": "You placed this call yourself. Reason: %%REASON%%. When the call connects, speak first: greet "
             "them and get straight to the reason.",
             "queued": "Saved. Their computer is off; it will do this as soon as it's back on.",
+            # when Gemini Live is down (fallback.py): turn by turn with the phone's own speech, or text on Telegram
+            "turns": "This call goes turn by turn: their phone turns what they say into text and reads your answers "
+            "aloud. Keep each answer to one to three short spoken sentences: no lists, markdown, emojis or stage "
+            "directions.",
+            "text_call": "The voice service is down, so this call goes on as text messages on Telegram. Write like a "
+            "friend texting: short messages, no headings or tables. Keep to what the call is for.",
             "needs_computer": "That needs their computer, which is off right now.",
             "no_notes": "Their computer is off, so whole notes can't be read right now.",
         }
 
     def offline_notes(self) -> bool:
         return True
+
+    def live_models(self) -> list[str]:
+        """The Gemini Live models a call tries, in order: live_model, then live_models (fallback.py)."""
+        extra = self.setting("live_models") or []
+        extra = [extra] if isinstance(extra, str) else list(extra)
+        names = [str(m).strip() for m in [self.setting("live_model") or "gemini-3.8-live", *extra]]
+        return list(dict.fromkeys(m for m in names if re.fullmatch(r"[A-Za-z0-9][\w.-]{0,79}", m)))[:6]
+
+    def voice_for(self, key: str | None = None, outgoing: bool = False) -> str:
+        """How a call listens and speaks: "live", "phone" or "auto" (voice_mode), or what voice_by_kind says for its
+        kind: "<feature>:<name>" or "<feature>" from its key (checkins:evening, then checkins), "reminder" for a call
+        with no feature's key, "outgoing" for calls you start. key None: the default."""
+        modes = ("auto", "live", "phone")
+        by = self.setting("voice_by_kind") or {}
+        by = by if isinstance(by, dict) else {}
+        if outgoing:
+            kinds = ["outgoing"]
+        elif key is None:
+            kinds = []
+        elif ":" not in key:  # a reminder call (its key is random, or "held-..." while calls were blocked)
+            kinds = ["reminder"]
+        else:
+            parts = key.split(":")
+            kinds = list(dict.fromkeys([":".join(parts[:2]), parts[0]]))
+        for k in kinds:
+            if str(by.get(k) or "").lower() in modes:
+                return str(by[k]).lower()
+        mode = str(self.setting("voice_mode") or "auto").lower()
+        return mode if mode in modes else "auto"
+
+    def doctor_checks(self) -> list[tuple]:
+        """`kurooto doctor`: "Phone calls: voice service", how often Gemini Live failed and what calls did instead."""
+        return [("voice service", *self.live.line())]
 
     # ------------------------------------------------------------------------------ on a call right now
     def on_call(self, at: str | None = None) -> None:
@@ -760,6 +851,12 @@ class Calls(Module):
             },
             "brief": {t.name: self._brief_value(t) for t in tools if t.name in briefs},
             "presence": self._presence(),  # speaking for this computer while it's gone (core/presence.py)
+            "live": {  # Gemini Live's models in order, and how calls listen (fallback.py)
+                "models": self.live_models(),
+                "text_model": self.setting("text_model") or "gemini-flash-latest",
+                "voice": self.voice_for(),
+                "outgoing": self.voice_for(outgoing=True),
+            },
             "sealed_on": self.app.is_on("lidsafe"),  # off: the line drops the reminders it holds (lidsafe.py)
         }
 
@@ -824,6 +921,7 @@ class Calls(Module):
             "since": link.get("since"),
             "error": link.get("error", ""),
             "line_version": self.connector.version,
+            "live": self.live.summary(),  # Gemini Live's failures this week, and what calls did instead
         }
 
     # -------------------------------------------------------------------------------------- telegram
@@ -838,7 +936,8 @@ class Calls(Module):
     def _cmd_call(self, msg: Incoming, arg: str) -> str:
         if not self.worker_url():
             return "Phone calls aren't set up yet (Settings → Features → Phone calls)."
-        msg.reply("Tap to call (this link works for 2 hours):", buttons=[[("Call now", {"url": self.link()})]])
+        link = self.link(voice=self.voice_for(outgoing=True))
+        msg.reply("Tap to call (this link works for 2 hours):", buttons=[[("Call now", {"url": link})]])
         return None
 
     def _cmd_phone(self, msg: Incoming, arg: str) -> str:

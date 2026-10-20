@@ -1,9 +1,14 @@
 """Fake cloud services for the call line's local test: Gemini's token endpoint, ntfy, and a Web Push endpoint.
-They record what they're sent."""
+They record what they're sent.
+
+Gemini Live being down: models in `live_down` answer the token request 503 UNAVAILABLE, as Google did. Turn-by-turn
+calls answered on the call line: `gen_script` holds the next generateContent answers, each {"text": ...} or
+{"call": (name, args)}; when it's empty the answer is `transcript` (what voice notes expect)."""
 
 from __future__ import annotations
 
 import json
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -16,6 +21,8 @@ class FakeCloud:
         self.ntfy_down = False  # ntfy refuses messages (they aren't recorded)
         self.generate: list[dict] = []  # Gemini generateContent (voice notes)
         self.transcript = "remind me at nine to call home"
+        self.live_down: set[str] = set()
+        self.gen_script: list[dict] = []
         fake = self
 
         class H(BaseHTTPRequestHandler):
@@ -38,10 +45,20 @@ class FakeCloud:
                 hdrs = {k.lower(): v for k, v in self.headers.items()}
                 if self.path.endswith("/auth_tokens"):
                     fake.tokens.append({"headers": hdrs, "body": json.loads(raw or b"{}")})
+                    model = re.search(r'"models/([\w.-]+)"', raw.decode())
+                    if model and model.group(1) in fake.live_down:
+                        err = {"code": 503, "message": "The service is currently unavailable.", "status": "UNAVAILABLE"}
+                        return self._json({"error": err}, 503)
                     return self._json({"name": f"auth_tokens/fake-{len(fake.tokens)}"})
                 if ":generateContent" in self.path:
                     fake.generate.append({"path": self.path, "headers": hdrs, "body": json.loads(raw or b"{}")})
-                    return self._json({"candidates": [{"content": {"parts": [{"text": fake.transcript}]}}]})
+                    step = fake.gen_script.pop(0) if fake.gen_script else {"text": fake.transcript}
+                    if "call" in step:
+                        name, args = step["call"]
+                        part = {"functionCall": {"name": name, "args": args, "id": f"fc{len(fake.generate)}"}}
+                    else:
+                        part = {"text": step["text"]}
+                    return self._json({"candidates": [{"content": {"role": "model", "parts": [part]}}]})
                 if self.path.startswith("/push/"):
                     fake.pushes.append({"path": self.path, "headers": hdrs, "len": len(raw)})
                     self.send_response(201)
@@ -58,9 +75,9 @@ class FakeCloud:
                 self.end_headers()
                 return None
 
-            def _json(self, obj):
+            def _json(self, obj, code=200):
                 body = json.dumps(obj).encode()
-                self.send_response(200)
+                self.send_response(code)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
