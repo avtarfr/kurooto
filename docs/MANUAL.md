@@ -513,6 +513,11 @@ LaTeX engine: the first pack without it comes as a `.tex` file, and a message as
 of LaTeX packages into Kurooto's cache). After **Not now** it doesn't ask again for 30 days. If a pack doesn't
 compile, the AI gets one try to fix it; otherwise you get the `.tex`.
 
+**Packs before exams.** With Deadlines on, the evening before a quiz or exam that has a subject (12 to 36 hours ahead,
+from 16:00, `skills.auto_pack_after`) you're asked **A revision pack for it tonight?** with **Build it** / **No
+thanks**, once per quiz or exam. `skills.auto_pack` = `auto` builds it without asking (it comes like a `/pack`); `off`
+never offers. *Undo:* set `skills.auto_pack` to `off`; packs already made stay where they are.
+
 The rules every skill follows: it only creates notes or adds to them (never rewords or deletes your text), puts your
 own words in verbatim, gives every link a reason, keeps health, money and other people's private details out of your
 notes, and sends nothing to anyone but you.
@@ -551,7 +556,31 @@ Three more things, each with its own switch in Settings (`gbrain.*`):
   message only when something is a warning or worse, with **Ignore these** (adds them to `gbrain.checkup_ignore`) and,
   when the brain needs a schema update, **Update the brain**.
 
+**Which steps the upkeep runs** (`gbrain.upkeep_steps`): empty means the light ones above. List GBrain's own phase
+names to choose, e.g. `["lint", "backlinks", "sync", "extract", "extract_facts", "consolidate",
+"edge_contradictions", "embed", "orphans"]`. Know what you add: `lint` and the repair steps rewrite note files, and
+`consolidate`, `synthesize` or `edge_contradictions` call the AI model GBrain is set up with (on a paid key, they
+spend). Kurooto never runs `purge` (it deletes pages for good); unknown names are skipped. *Undo:* empty the list.
+
 Kurooto pins GBrain's version and turns off its own update check.
+
+**Your own GBrain.** Already run GBrain yourself (for example on Postgres, with your notes as one of its sources)?
+Kurooto can use that brain instead of making its own: set `gbrain.managed` to `false`, `gbrain.exe` to your gbrain
+program (empty: the one on your PATH) and `gbrain.home` to its `GBRAIN_HOME` (empty: GBrain's default), then Set up.
+Setting up only checks that your brain answers. From then on Kurooto searches it (`/notes`, your AI's notes search,
+calls), adds pages through gbrain's own commands (books, with Books on), runs the nightly steps you turned on, and,
+if you name the source that is your notes folder (`gbrain.source`), runs `gbrain sync --source <it>` and
+`gbrain embed --stale --source <it>` every 15 minutes. It never creates, migrates, upgrades or reconfigures your
+brain (no `init`, no `apply-migrations`, no embedding set-up; the checkup has no **Update the brain** button), and it
+doesn't back it up: that's yours. The embedding and AI models are whatever your brain is set up with.
+**agy and your brain's own tools:** with `gbrain.agy_mcp` on, the next agy run asks you (the same Approve / Deny as
+for Kurooto's own tools) to also give agy your brain's MCP server, registered as `gbrain` (`gbrain serve --surface
+full`, or `gbrain.mcp_surface`: `starter`, `verbs`) and allowed with `mcp(gbrain/*)`. That is all of its tools, also the
+ones that change or remove pages in that brain. If agy already has a `gbrain` server, it's kept; if you listed
+gbrain's tools in agy's allow-list yourself, your list is kept and `mcp(gbrain/*)` isn't added.
+*Undo:* set `gbrain.managed` back to `true` (Kurooto's own brain is still there; Set up again if it never was);
+`agy mcp remove gbrain` and take `mcp(gbrain/*)` out of `~/.gemini/antigravity-cli/settings.json` (Kurooto kept a
+backup in its state folder, `backups/`).
 
 ### Local AI models
 Small AI models on your computer (through [Ollama](https://ollama.com)), picked for its graphics card, for quick
@@ -1066,9 +1095,26 @@ reminder (`agent_plan.remind_min`; 0 for none).
 Drop a PDF or photo of handwritten pages into a folder (by default `handwritten-inbox` in your notes folder; set
 `handwritten.folder` to one your tablet syncs to through Google Drive, OneDrive or Dropbox). Kurooto writes it out as
 a Markdown note with the maths in LaTeX, saved in `handwritten/` next to a copy of the original (the copy goes to your
-files folder when you set one). Every 15 minutes, or
-`/handwritten`. Uses Gemini (your key), or, on computers with 12 GB of graphics memory and Local models on, a model on
-your computer for photos.
+files folder when you set one; `handwritten.keep_original` = `link` makes no copy and links to the file where it is).
+It looks every 15 minutes; `/handwritten` does it now, `/handwritten status` says how far it got, `/handwritten retry`
+tries files that failed again.
+
+**Who reads the pages.** With Local models on, a model on your computer: the vision model on 12 GB graphics cards, or
+on 8 GB cards the helper model (gemma4:e4b reads handwriting too); `handwritten.local_model` names another Ollama model
+that reads pictures. Nothing leaves your computer then. Photos are read right away. PDFs are read **page by page at
+night on the charger** (`handwritten.pdf_hours`, 23:00–07:00; empty: any time), each page kept as it's done, so
+unplugging or the morning only pauses it and it carries on from the next page; you get one message when a PDF waits
+for the night (`/handwritten` starts it now). It waits while the graphics card is busy with something else, and
+writes out up to 60 pages per PDF (`handwritten.max_pages`). Drawing a tablet's PDF pages as pictures needs Poppler's
+PDF tools (scanned PDFs don't). Without a model here, Gemini (your key) reads them; `handwritten.cloud` = `false` keeps
+them on your computer: they wait for a model here.
+
+**Your own notes in it.** Kurooto's part of the note sits between `<!-- kurooto:handwritten -->` markers. When you
+change the original on your tablet, the same note is written again between the markers; what you wrote around them
+stays. Machine transcriptions aren't checked: look at the original for anything that matters.
+
+*Undo:* Features → Handwritten notes off; the notes and copies stay. `handwritten.local` = `false` goes back to Gemini
+for everything.
 
 ### Books and PDFs
 Your reference books and other PDFs, per subject, read at night into text your AI uses when it writes your course
@@ -1173,6 +1219,14 @@ A digest of new papers in your fields, on Telegram, weekly by default. Set it up
 On Telegram: `/papers` (the digest now), `/feeds` (your sources), `/topics add …` (quick keywords searched across all of
 arXiv).
 
+**arXiv in its own words.** A source in `research.feeds` can be a search written the way arXiv's API takes it, with a
+name that heads its part of the digest: `{"type": "arxiv", "name": "Molecules", "query": "abs:\"graph neural
+network\" AND (abs:molecule OR abs:protein)"}` (`ti:` title, `abs:` abstract, `all:`, `cat:`, with `AND`,
+`OR`, `ANDNOT` and brackets; add `categories` to narrow it). Several arXiv sources are fetched three seconds apart, as
+arXiv asks. **A copy in your notes:** `research.save_note` = `true` also keeps each digest as a note in your inbox,
+`inbox/papers-<date>.md`, every new paper grouped by source with its first lines; keep what matters, delete the rest.
+*Undo:* `research.save_note` = `false`; take a search out of `research.feeds`.
+
 **Projects:** each project has a note in your notes, `research/<project>/index.md`, and `research/index.md` lists
 them all. Add your code repositories on the Research tab or with `/repos add ~/code/my-model`; a repository's project
 is its folder's name, or name it: `/repos add ~/code/model_v2 as Climate model` (several repositories can share a
@@ -1181,9 +1235,11 @@ day's new commits become one line under `## Log` in the project's note, e.g. `- 
 commits: …`. Kurooto only adds lines: your own text in these notes is never changed. (Logs from 0.1.0 in
 `research/<repository>-log.md` are left as they are.)
 
-**Quiet projects:** when a project has had no commits for 4 days (`research.idle_days`; 0 never asks), Kurooto asks
-once, at 18:00, what's up: **Busy**, **Working off-git**, **Remind me tomorrow** (a reminder comes the next day at
-18:00) or **Pausing it**. The answer goes into the project's log. It asks again only after the next quiet stretch.
+**Quiet projects:** when a project has had no commits or runs for 4 days (`research.idle_days`; 0 never asks),
+Kurooto asks once, at 18:00, what's up: **Busy**, **Working off-git**, **Remind me tomorrow** (with Phone calls on, a
+call the next day at 18:00, and a message if you miss it; otherwise a message then; `research.remind_by_call` =
+`false` always makes it a message) or **Pausing it**. The answer goes into the project's log. It asks again only after
+the next quiet stretch.
 
 **Experiment runs (`kurooto runlog`):** log a training or simulation run into the project's notes, with the code's
 exact state:
@@ -1199,6 +1255,24 @@ Each run is a folder `research/<project>/runs/<date>-<time>-<name>/` with `run.m
 so the exact code can be recovered), `metrics.jsonl` and `notes.md`; a row in `runs/index.csv`; and a line in the
 project's log when it ends. The commands find the run from `--run <id>`, else `$KUROOTO_RUN`, else the one you started
 last. It works without Kurooto running.
+
+**From Python:** a run is a `with` block, and it ends as `ok`, `failed` (an exception: its traceback goes into
+`meta.json` and `notes.md`, and the exception still stops your script) or `interrupted` (Ctrl+C):
+```python
+from kurooto.runlog import Run
+
+with Run("lr-sweep", config={"lr": 1e-3}, project="my-model") as run:
+    for step in range(n_steps):
+        run.log(step=step, loss=loss)
+    run.note("diverged after step 800")
+```
+With `project=` (or `$KUROOTO_PROJECT`) the run goes into your notes as above. Without one it stays in your code: a
+`runs/` folder where the script starts (`$RUNLOG_DIR` to put it elsewhere), with the same files plus the host, Python
+version and command line, and a row in `runs/index.csv`. **Runs kept in a repository** you added with `/repos add` are
+read every night: each new row of its `runs/index.csv` becomes a line in the project's log, e.g. `- **2026-10-20** |
+run:my-model/20261020-101500-lr-sweep — ok after 41m10s (step=900, loss=0.12)` (the first time, only the last 30
+days'). `research.repo_runs` is that folder's name (`runs`; empty: don't read them). *Undo:* empty
+`research.repo_runs`; the lines already in your notes stay.
 
 **Long jobs (`kurooto watch`):** `kurooto watch -- python train.py --epochs 50` runs the command (its output still shows
 in your terminal) and messages you when it ends: done, failed or stopped, the exit code, how long it took and its last
@@ -1717,6 +1791,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The look back never suggests anything | Most days that's right. `/lookback` shows when it last ran and what it noticed; on a laptop it waits for the charger. `/lookback now` runs one. |
 | A skill change says "nothing changed" | The AI's version was the same, or it broke the skill's header; it's never saved then. It may suggest it again another night. |
 | The nightly upkeep didn't finish | Search still works. Its log is in the state folder (`gbrain/upkeep-<date>.log`); it tries again the next night. Turn it off with `gbrain.upkeep`. |
+| Notes brain: "can't find your gbrain" or "your brain's folder isn't there" | Your own GBrain: set `gbrain.exe` to the full path of your gbrain program and `gbrain.home` to its `GBRAIN_HOME` (or set `gbrain.managed` back to `true`). |
+| A handwritten PDF isn't written out | PDFs read on this computer wait for the night on the charger (`/handwritten` starts it now; `/handwritten status` says where it is). It also waits while the graphics card is busy. "Can't be drawn": install Poppler's PDF tools. |
 | /notes or /timeline says the brain is busy | The nightly upkeep (or a sync) is using it; try again in a while. |
 | Phone calls: "not connected to your call line" | Is this computer online? It reconnects by itself within a minute. Still not: Features → Phone calls → Set up (redeploys). |
 | Cloudflare sign-in didn't finish | Press Set up again; the sign-in link is also shown in the progress log. |

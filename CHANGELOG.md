@@ -23,6 +23,37 @@
   (your notes: [[<note>]]). Your own words are quoted, never reworded.
 - `/exam-prep <subject>`: brings a subject's exam prep up to date from everything there is, also without Classroom.
 
+**Handwriting on an 8 GB graphics card**
+- Handwritten notes are read by a model on your computer whenever there is one: the 12 GB vision model, or now the
+  8 GB helper model (gemma4:e4b reads handwriting), or one you name (`handwritten.local_model`). PDFs too, not only
+  photos: page by page with the maths in LaTeX, at night on the charger (`handwritten.pdf_hours`), resuming from the
+  next page after an unplug or the morning, and waiting while the graphics card is busy. Gemini only when no model
+  here can read them; `handwritten.cloud` = `false` never sends them.
+- A changed original updates the same note between `kurooto:handwritten` markers and keeps what you wrote around it.
+  `handwritten.keep_original` = `link` links to the original where it is instead of copying it. `/handwritten status`,
+  `/handwritten retry`.
+
+**Research**
+- arXiv sources in arXiv's own search words (`{"type": "arxiv", "name": …, "query": "abs:… AND (…)"}`), each named
+  in the digest; arXiv requests three seconds apart. `research.save_note` keeps each digest as `inbox/papers-<date>.md`.
+- Runs a script keeps in its repository (`runs/index.csv`) get a line in the project's log every night
+  (`research.repo_runs`). `from kurooto.runlog import Run`: `with Run("name", config=…) as run: run.log(step=…, x=…)`,
+  into your notes with a project, else into the repository's `runs/`; failed and interrupted runs keep their error.
+- Run links in project notes follow your notes layout. "Remind me tomorrow" for a quiet project is a call at 18:00
+  when Phone calls is on (`research.remind_by_call`).
+
+**Revision packs before exams**
+- The evening before a quiz or exam with a subject, Kurooto offers a revision pack (**Build it** / **No thanks**), or
+  builds it by itself with `skills.auto_pack` = `auto` (`off`: never).
+
+**Your own GBrain**
+- `gbrain.managed` = `false` uses a GBrain you already run (Postgres or PGLite; `gbrain.exe`, `gbrain.home`) instead
+  of Kurooto's own: Kurooto only searches it, adds pages through gbrain's commands, keeps your notes' source in step
+  (`gbrain.source`) and runs the nightly steps you choose. It never inits, migrates or reconfigures that brain.
+- `gbrain.upkeep_steps`: choose the nightly upkeep's steps (GBrain's phase names; `purge` is never run).
+- `gbrain.agy_mcp`: after your approval, agy gets your brain's own MCP server ("gbrain", `mcp(gbrain/*)`), keeping an
+  existing registration and your own allow-list picks.
+
 ## 0.3.0 (unreleased)
 - **Kurooto Terminal** (`kurooto term`, off until you turn it on): your AI's program, your shell, Kurooto chat and its
   log in a terminal window of its own, with `kurooto top` beside them, in Kurooto's colours. kitty on Linux and macOS
