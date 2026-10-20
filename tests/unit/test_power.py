@@ -143,3 +143,30 @@ def test_power_through_the_api(env, plug):
     assert api.post("power/pause", {"when": "whenever"})[1]["ok"] is False
     r = api.post("power/resume", {})[1]
     assert r["message"] == "Back on." and r["power"]["mode"] == "normal"
+
+
+def test_unknown_charger_state_asks_the_system(tmp_path, monkeypatch):
+    """psutil says power_plugged=None on laptops whose charger is named ACAD: that's not "on battery"."""
+    import collections
+    import sys
+
+    from kurooto.core import power
+
+    for name, kind, online in (("ACAD", "Mains", "1"), ("BAT1", "Battery", "1")):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "type").write_text(kind + "\n")
+        (tmp_path / name / "online").write_text(online + "\n")
+    assert power.mains_online(tmp_path) is True
+    (tmp_path / "ACAD" / "online").write_text("0\n")
+    assert power.mains_online(tmp_path) is False
+    assert power.mains_online(tmp_path / "nothing") is None
+
+    Bat = collections.namedtuple("Bat", "percent secsleft power_plugged")
+    monkeypatch.setattr(power.psutil, "sensors_battery", lambda: Bat(90, -1, None))
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(power, "mains_online", lambda: False)
+    assert power.on_ac() is False
+    monkeypatch.setattr(power, "mains_online", lambda: None)
+    assert power.on_ac() is True  # can't tell at all: don't hold everything back
+    monkeypatch.setattr(power.psutil, "sensors_battery", lambda: Bat(90, -1, False))
+    assert power.on_ac() is False
