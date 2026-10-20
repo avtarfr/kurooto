@@ -29,6 +29,81 @@
   to it), progress for each feature being set up, and next steps with an **Open the dashboard** button.
 - If Kurooto stops answering, a bar at the top says how to start it again; it goes away by itself.
 
+**Going offline and coming back**
+- Going offline and coming back: Kurooto says "going offline (shutting down)" before a clean stop (stop, off, signing
+  out, shutting down; never for an update's restart) and "back online (offline since 22:10, 7 h)" after a start, a
+  wake from sleep or a network outage ("the network was down from 14:02 to 14:31"), with what it caught up on.
+  Telegram messages that couldn't go out while the network was down follow, marked as delayed. Nothing under 10
+  minutes; close-together sleeps give one message; at night it waits for the morning. Settings: `notify.presence`.
+- With Phone calls, your call line says "offline since ..." when the computer can't (sleep, a crash, a lost network):
+  on the phone app, and on Telegram if you approve giving it your bot's token (asked once). Without a call line there's
+  no message for those.
+
+**Check-ins, the alarm and this computer**
+- Check-ins: a check-in day runs from 05:00 to 05:00 (`checkins.day_starts`), so a night check-in after midnight, or
+  one pushed past it, stays the evening's (it used to move to the morning); its journal goes to the evening's day.
+- Check-ins by call: with the alarm set and past your bedtime (or the alarm just set by you), the night check-in
+  doesn't ring; it moves to the wake-up call, with Call me now and Skip on Telegram (`checkins.asleep_defers`).
+- Morning alarm: `alarm.keep_awake` keeps this computer awake from 12 hours before the alarm until it rings (Linux:
+  lid closed too; macOS caffeinate; Windows), so the morning plan is drafted on time. Off until you turn it on.
+- Stay awake on charger: `awake.lid` keeps a Linux laptop running with its lid closed while plugged in. Off until you
+  turn it on. The hold now ends when Kurooto stops, even after a crash.
+- Study tracker: idle time is detected on Wayland (GNOME, KDE, logind, and a watch for change on Hyprland and Sway),
+  locked screens never count, `kurooto idle away|back` for hypridle and swayidle, and a Research category
+  (`study.research_paths`, plus Research's projects).
+- Linux: `kurooto autostart boot` starts Kurooto when the computer starts, before anyone logs in (lingering; keys kept
+  in the owner-only settings file); `kurooto autostart login` goes back.
+- Notes sync: a note changed here and elsewhere at once keeps both versions (the other device's in the note, this
+  computer's as a "conflict" copy beside it) instead of this computer's winning; `notes_sync.on_conflict = stop`
+  stops and asks you instead. A half-finished merge is left alone, and an existing `origin` (e.g. over SSH) is kept.
+
+**Your notes**
+- Notes layout: `notes.layout` picks where Kurooto writes (the `kurooto` layout as before, or `zettelkasten`:
+  `dailies/`, `master/`, `sources/<subject>/`, `maps/`, `zettel/`, `projects/`, `digests/`), `notes.paths` puts any
+  kind of note where you like, and new notes get that layout's header. The AI and skills follow it.
+- Files folder: with `files.folder` set, photos, PDFs, revision packs, handwriting originals and Classroom files go to
+  a folder outside your notes, linked from them, so they stay out of your notes' history. Unset, nothing changes.
+- Revision packs are also linked from the subject's course page; `/observing` has a **+7 days** button.
+**From a terminal or a script**
+- `kurooto notify` takes buttons (`--button "Label=prefix:ref:action"` or a web address), a link to open (`--click`),
+  a reply to an earlier message (`--reply-to`, with `--print-id`), and the kinds `question` and `approval`.
+- `kurooto call --list` shows the calls booked for later; `kurooto call --cancel <key>` takes one off.
+- `kurooto sync --status` (works with Kurooto stopped) and `kurooto sync --no-wait`; sync everything ends with a
+  backup when Backups is on.
+- `kurooto ask-me --pending [--json]` and `kurooto ask-me --id <id> --wait`.
+- `kurooto usage [days]`: `/usage` in a terminal.
+
+**Skills in agy and other agent programs**
+- `kurooto export-skills on` makes your skills (Kurooto's, your add-ons', your own and prompts with `skill: true`)
+  slash commands in agy (`--to agy,agents` adds Codex and Copilot CLI). Only Kurooto's own copies are ever changed or
+  removed; one of yours with the same name stays, and Kurooto's goes in as `kurooto-<name>`. Kept up to date at start
+  and hourly; `kurooto export-skills off` and `kurooto uninstall` remove them.
+
+**Seeing what's going on**
+- `/status` also shows today's check-ins, what's due in the next 3 days, the alarm and your last AI requests.
+- `/usage` also counts agy itself from its own logs (every run, the ones you type too), with the days it hit its limit.
+- `kurooto doctor` asks Telegram whether your bot answers and your call line whether it's up and linked, and no longer
+  reports the call line as unlinked just because the check runs outside Kurooto.
+
+**Add-ons**
+- An add-on feature can pick which plain-English request a message is before Kurooto's own patterns
+  (`classify_intent`, with a 2-second limit and a fall-through), and add lines to `/status` (`status_lines`) and to
+  `kurooto doctor` (`doctor_checks`).
+
+**Dashboard and `kurooto top`**
+- The dashboard's new **dense** layout, the default on screens 1280 px wide or more: one full-screen board with each
+  pane's name in its border; STATUS is a btop-like monitor (history graphs, every core, memory breakdown, graphics
+  card, network, disks, processes with Kurooto's own marked, study today, projects); SYSTEMS has today, what's due,
+  the AI's corner and recent events round the cells, the hours on the ring, and each feature's own programs on its
+  cell; NOTES shows folders and recent edits; the terminal below has its tabs and every other page in its border, and
+  a **kurooto** tab for plain English without the Terminals feature. `look.layout = roomy` keeps the earlier layout,
+  which narrower windows get by themselves. `look.projects` lists the git folders the board follows.
+- `kurooto top` is laid out like btop, with the same figures as the dashboard: history graphs, every core, speed,
+  temperatures and fans where the computer has them, memory and swap, the graphics card, network, disks, battery,
+  processes (sort with `c` / `m`), and Kurooto's features, call line, today, what's due, study and projects.
+- Add-ons can name programs a feature watches (`processes` on the feature): their cpu, memory and uptime show on the
+  dashboard and in `kurooto top`, and the cell turns grey when none is running.
+
 ## 0.2.1 (2026-10-20)
 - Setup page: on a desktop it uses the whole window: the steps sit in a list on the left with what each one is for,
   and feature cards fill four columns instead of a narrow strip. On a phone the steps are numbered dots. Any step can
