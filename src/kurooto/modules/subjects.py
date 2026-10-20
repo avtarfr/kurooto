@@ -7,7 +7,8 @@ today", "not going to stats on Friday").
     /term ends 2026-12-04            /term exams 2026-12-07 to 2026-12-18
 
 Holidays, exam periods and the days after the term's last day have no classes: no after-class questions, and the
-timetable doesn't hold calls then.
+timetable doesn't hold calls then. Events in calendars you mark as classes (Calendar: /cal classes Timetable) are
+classes too.
 """
 
 from __future__ import annotations
@@ -122,7 +123,23 @@ class Subjects(Module):
             s = dt.datetime.combine(day, dt.time.fromisoformat(c["start"]))
             e = dt.datetime.combine(day, dt.time.fromisoformat(c["end"]))
             out.append({**c, "name": self.name_of(c["subject"]), "start_dt": s, "end_dt": e})
+        out += self._calendar_classes(day, skip, out)
         return sorted(out, key=lambda c: c["start_dt"])
+
+    def _calendar_classes(self, day: dt.date, skip: set[str], have: list[dict]) -> list[dict]:
+        """Events in your class calendars (Calendar: calendar.class_calendars) are classes too, unless the timetable
+        already has a class then."""
+        cal = self.app.modules.get("calendar")
+        if cal is None or not self.app.is_on("calendar") or not hasattr(cal, "classes"):
+            return []
+        out = []
+        for c in cal.classes(day):
+            if c["subject"] and c["subject"] in skip:
+                continue
+            if any(h["start_dt"] < c["end_dt"] and c["start_dt"] < h["end_dt"] for h in have):
+                continue
+            out.append(c)
+        return out
 
     def _block(self, t: dt.datetime):
         if not self.setting("no_calls_in_class"):

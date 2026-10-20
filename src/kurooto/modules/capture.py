@@ -70,6 +70,8 @@ class Capture(Module):
         subjects = self.app.modules["subjects"]
         delay = dt.timedelta(minutes=self.setting("delay_min") or 2)
         for c in subjects.classes_on():
+            if not c.get("subject"):
+                continue  # a class-calendar event that doesn't name one of your subjects: no log to write it into
             at = c["end_dt"] + delay
             if at > now():
                 self.app.scheduler.at(

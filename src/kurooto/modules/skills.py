@@ -267,8 +267,9 @@ def skill_prompt(app: App, name: str, args: str = "", files=()) -> str | None:
 
 
 # ------------------------------------------------------------------------------------ files to you
-def send_file(app: App, path, caption: str = "", inside: list[Path] | None = None) -> tuple[bool, str]:
-    """Send a file to your Telegram (up to 50 MB). `inside`: the folders it must be in (for the AI's tool)."""
+def send_file(app: App, path, caption: str = "", inside: list[Path] | None = None, to: str = "") -> tuple[bool, str]:
+    """Send a file to your Telegram (up to 50 MB). `inside`: the folders it must be in (for the AI's tool). to="drive",
+    or a bigger file with Drive upload on: into your Google Drive instead, and you get the link."""
     try:
         p = Path(os.path.expanduser(str(path))).resolve(strict=True)
     except (OSError, RuntimeError):
@@ -280,8 +281,15 @@ def send_file(app: App, path, caption: str = "", inside: list[Path] | None = Non
     size = p.stat().st_size
     if size == 0:
         return False, f"{p.name} is empty."
+    drive = app.modules.get("drive_upload")  # Google Drive (google_drive.py)
+    on = drive is not None and app.is_on("drive_upload")
+    if to == "drive" or (size > TELEGRAM_MAX and on and drive.setting("big_files")):
+        if not on:
+            return False, "Drive upload is off: on this computer, dashboard → Features → Drive upload → Set up."
+        return drive.send(p, caption)
     if size > TELEGRAM_MAX:
-        return False, f"{p.name} is {size / 1024 / 1024:.0f} MB; Telegram takes files up to 50 MB."
+        more = " Turn on Drive upload to get bigger files as a Drive link." if drive is not None else ""
+        return False, f"{p.name} is {size / 1024 / 1024:.0f} MB; Telegram takes files up to 50 MB.{more}"
     if "telegram" not in app.notifier.channels:
         return False, "Telegram isn't set up, so there's nowhere to send it."
     focus = app.availability.focus_until()
@@ -1028,11 +1036,13 @@ class Skills(Module):
         return [
             Tool(
                 "send_file",
-                "Send them a file from their notes folder on Telegram (up to 50 MB), e.g. a PDF you made.",
+                "Send them a file from their notes folder on Telegram (up to 50 MB), e.g. a PDF you made. With Drive "
+                "upload on, to=drive (or a bigger file) puts it in their Google Drive and sends the link.",
                 self._tool_send,
                 {
                     "path": arg("the file's path inside the notes folder, e.g. linear-algebra/revision-pack.pdf"),
                     "caption": arg("one line about it, optional"),
+                    "to": arg("telegram (the default) or drive"),
                 },
                 ("path",),
                 offline="queue",
@@ -1045,4 +1055,5 @@ class Skills(Module):
         if not p.is_absolute():
             p = self.app.workspace / p
         inside = [self.app.workspace, *([r] if (r := layout.files_root(self.app)) else [])]
-        return send_file(self.app, p, str(a.get("caption") or ""), inside=inside)[1]
+        to = "drive" if str(a.get("to") or "").strip().lower() == "drive" else ""
+        return send_file(self.app, p, str(a.get("caption") or ""), inside=inside, to=to)[1]

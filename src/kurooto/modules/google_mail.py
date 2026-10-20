@@ -20,6 +20,10 @@ your institution's email policy; these are only counted, never summarised, and g
 Email reply drafts (a feature of its own): when the digest finds mail that needs your reply, the AI drafts one into
 your Gmail Drafts and sends it to you with Send / Edit / Discard. Nothing is sent unless you tap Send. Edit: say what
 to change; the AI rewrites it and asks again.
+
+Mail digest by email (a feature of its own): each digest also comes to your own inbox, sent from the Google account
+you choose (a personal one, say, while the digest reads a school one) to that account's own address and nobody
+else's. A digest that mentions confidential material isn't emailed (it still comes on Telegram).
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ import datetime as dt
 import functools
 import html
 import re
+import time
 from collections import Counter
 from email.message import EmailMessage
 from email.utils import parseaddr
@@ -201,6 +206,8 @@ class MailDigest(GooglePart):
     # ------------------------------------------------------------------------------------------ sorting
     def me(self) -> str:
         st = jload(self.dir / "state.json", {}) or {}
+        if st.get("account", "main") != self.account:  # you moved the digest to another account: start afresh there
+            st = {"account": self.account}
         if not st.get("me"):
             st["me"] = (self.google.api("gmail", "/users/me/profile").get("emailAddress") or "").lower()
             jsave(self.dir / "state.json", st)
@@ -537,6 +544,9 @@ class MailDigest(GooglePart):
                 clip(result.text.strip(), 3800) or "Mail digest: nothing to report.", title="Mail digest", kind="result"
             )
             self.app.events.emit("mail_digest_done", messages=len(data.get("messages", [])))
+            de = self.app.modules.get("digest_email")
+            if de is not None and self.app.is_on("digest_email") and result.text.strip():
+                de.send_digest(result.text.strip(), dt.datetime.fromisoformat(data.get("at") or now().isoformat()))
             return
         data["tries"] = data.get("tries", 0) + 1
         jsave(b, data)
@@ -869,3 +879,76 @@ class ReplyDrafts(GooglePart):
                 ("message_id", "text"),
             )
         ]
+
+
+# ------------------------------------------------------------------------------------------ digest by email
+COUNTED = re.compile(r"(?i)\bconfidential\b\s*(?:\(\s*\d+\s*\)|:\s*\d+)|\b\d+\s+confidential\b")
+
+
+class DigestEmail(GooglePart):
+    id = "digest_email"
+    part = "digest_email"
+    title = "Mail digest by email"
+    requires = ("google", "mail_digest")
+    description = "Each mail digest also comes to your own inbox, sent from your Gmail to yourself."
+    privacy = (
+        "Sends each mail digest from the Google account you choose to that account's own address, and to no one "
+        "else (Google's permission to send email; it can't read your mail with it). A digest that mentions "
+        "confidential material isn't emailed."
+    )
+    permission = (
+        'Google will ask you to allow Kurooto to "send email on your behalf" and to see your email address. Kurooto '
+        "sends only your mail digests, only to that address (your own). It can't read your mail with this."
+    )
+    api_link = ("Turn on the Gmail API", "https://console.cloud.google.com/apis/library/gmail.googleapis.com")
+
+    def address(self) -> str:
+        """Your own address on the account that sends: the only one a digest ever goes to."""
+        return self.google.email()
+
+    def held(self, text: str) -> str | None:
+        """The confidential marking a digest mentions (its own counts like "Confidential: 2" aside), or None."""
+        md = self.app.modules.get("mail_digest")
+        return md.marked(COUNTED.sub(" ", text or "")) if md is not None else None
+
+    def send_digest(self, text: str, when: dt.datetime | None = None) -> str:
+        """Email a digest to yourself. There's no recipient to choose: it's always your own address."""
+        if not self.allowed():
+            return "not ready"
+        to = self.address()
+        if not to:
+            return self._say(
+                "Mail digest by email: Google didn't tell Kurooto your address. Save on its card and sign in again.",
+                "no-address",
+            )
+        if self.held(text):
+            self.app.events.emit("digest_email_held")
+            return self._say(
+                "This mail digest mentions confidential material, so it wasn't emailed (it's here only).", "held"
+            )
+        when = when or now()
+        msg = EmailMessage()
+        msg["To"] = msg["From"] = to
+        msg["Subject"] = f"Mail digest, {when:%a %d %b %H:%M}"
+        msg.set_content(text)
+        msg.add_alternative(
+            '<div style="font-family:sans-serif;max-width:720px;white-space:pre-wrap">' + html.escape(text) + "</div>",
+            subtype="html",
+        )
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        try:
+            self.google.api("gmail", "/users/me/messages/send", {"raw": raw})
+        except (NeedsSignIn, GoogleError) as e:
+            self.app.events.emit("digest_email_failed")
+            return self._say(f"Couldn't email the mail digest: {e}"[:300], "failed")
+        self.app.events.emit("digest_emailed")
+        return f"Emailed the digest to {to}."
+
+    def _say(self, text: str, why: str) -> str:
+        """Tell you once in a while (at most every 6 hours for the same reason)."""
+        flag = self.app.paths.state / f"digest-email-{why}"
+        if not flag.exists() or time.time() - flag.stat().st_mtime > 6 * 3600:
+            flag.parent.mkdir(parents=True, exist_ok=True)
+            flag.touch()
+            self.app.notify(text, kind="info")
+        return text

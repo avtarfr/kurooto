@@ -6,6 +6,17 @@ event (on by default; or only during events with #nocall in the title or descrip
 contains "no call"), focus time during events with #focus (calls held, messages wait until it ends), and optionally a
 reminder a few minutes before each event. Refreshed every 15 minutes.
 The link is kept in your keychain: anyone with it can read that calendar, so don't share it.
+
+Google calendars can also come through Google's Calendar API instead (the Google Calendar feature: no iCal link, and
+several accounts at once).
+
+Events marked private (Google's "Private" visibility, CLASS:PRIVATE in iCal, or #private in the title or description)
+show as "Busy (private)" wherever Kurooto shows or tells them: /today, the dashboard, calls, reminders, the AI. Their
+title, place and description aren't kept (calendar.mask_private).
+
+Class calendars (calendar.class_calendars, or /cal classes Timetable): events in calendars with those names count as
+classes: no calls during them, they're in your day's classes, and one whose title names a subject gets the
+after-class question.
 """
 
 from __future__ import annotations
@@ -31,8 +42,13 @@ register_defaults(
         "nocall_events": "all",  # "all": every timed event holds calls; "tagged": #nocall ones, "no call" calendars
         "remind_min": 0,
         "days": 14,
+        "mask_private": True,  # private events: "Busy (private)", nothing else kept
+        "private_keyword": "#private",  # in a title or description: private too
+        "class_calendars": [],  # names (any part, any case) of calendars whose events are classes, e.g. ["Timetable"]
     },
 )
+BUSY = "Busy (private)"
+DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 SECRET = "calendar.ics"  # noqa: S105 (the secret's name): a JSON list of iCal links
 
 
@@ -112,6 +128,8 @@ def parse_ics(text: str, local: dt.tzinfo) -> list[dict]:
                 cur["description"] = unescape(value)[:2000]
             elif name == "STATUS":
                 cur["cancelled"] = value.upper() == "CANCELLED"
+            elif name == "CLASS":
+                cur["private"] = value.strip().upper() in ("PRIVATE", "CONFIDENTIAL")
             elif name == "DTSTART":
                 cur["start"], cur["all_day"] = parse_dt(value, params, local)
             elif name == "DTEND":
@@ -186,8 +204,14 @@ def expand(events: list[dict], start: dt.datetime, end: dt.datetime) -> list[dic
 class Calendar(Module):
     id = "calendar"
     title = "Calendar"
-    description = "Your calendar's events (from its private iCal link): /today, no calls during events, reminders."
-    privacy = "Kurooto reads your calendar's private iCal link from Google (or wherever it lives); nothing is changed."
+    description = (
+        "Your calendar's events (from its private iCal link, or Google Calendar): /today, no calls during events, "
+        "reminders, class calendars."
+    )
+    privacy = (
+        "Kurooto reads your calendar (its private iCal link, or Google Calendar); nothing is changed. Events marked "
+        "private show only as Busy (private)."
+    )
 
     @property
     def file(self):
@@ -205,8 +229,15 @@ class Calendar(Module):
         except ValueError:
             return []
 
+    def google_source(self):
+        """The Google Calendar feature, when it's on and signed in; else None."""
+        gc = self.app.modules.get("google_calendar")
+        return gc if gc is not None and self.app.is_on("google_calendar") and gc.ready()[0] else None
+
     def ready(self):
-        return (True, "") if self.links() else (False, "paste your calendar's private iCal link (see the help)")
+        if self.links() or self.google_source():
+            return True, ""
+        return False, "paste your calendar's private iCal link (see the help), or set up Google Calendar"
 
     def add_link(self, url: str) -> tuple[bool, str]:
         url = url.strip().replace("webcal://", "https://", 1)
@@ -232,28 +263,31 @@ class Calendar(Module):
     def refresh(self, p: dict | None = None) -> int:
         start = self.now() - dt.timedelta(days=1)
         end = self.now() + dt.timedelta(days=self.setting("days") or 14)
-        found, failed = [], 0
+        found, failed, names = [], 0, []
         for url in self.links():
             try:
-                found += expand(self._fetch(url), start, end)
+                evs = self._fetch(url)
+                names += [e["calendar"] for e in evs[:1] if e.get("calendar")]
+                found += expand(evs, start, end)
             except Exception as e:
                 failed += 1
                 self.app.events.emit("calendar_failed", error=str(e)[:200])
+        gc = self.google_source()
+        if gc is not None:
+            evs, cals, bad = gc.fetch(start, end, self.tz())
+            found += [e for e in evs if e["start"] < end and e["end"] > start]
+            names += cals
+            failed += bad
+        elif self.app.is_on("google_calendar"):
+            failed += 1  # on, but its sign-in is missing: keep what was read last
         if failed and not found:
             return 0  # keep the last good copy
-        rows = [
-            {
-                "title": e.get("title") or "(no title)",
-                "start": e["start"].isoformat(),
-                "end": e["end"].isoformat(),
-                "all_day": bool(e.get("all_day")),
-                "location": e.get("location", ""),
-                **self._tags(e),
-            }
-            for e in found
-        ]
+        rows = sorted((self._row(e) for e in found), key=lambda r: r["start"])
         with Lock(self.app.paths.state, "calendar"):
-            jsave(self.file, {"events": rows, "at": self.now().isoformat()})
+            jsave(
+                self.file,
+                {"events": rows, "at": self.now().isoformat(), "calendars": list(dict.fromkeys(names))[:50]},
+            )
         self._plan_reminders(rows)
         self._plan_focus_ends(rows)
         self.app.events.emit("calendar_synced", events=len(rows))
@@ -287,18 +321,68 @@ class Calendar(Module):
         self.app.availability.blockers.pop("calendar:event", None)
         self.app.availability.blockers.pop("focus:calendar", None)
 
+    def _row(self, e: dict) -> dict:
+        """What's kept of an event. A private one keeps only its time and flags: "Busy (private)"."""
+        tags = self._tags(e)
+        hide = tags.get("private") and self.setting("mask_private")
+        return {
+            "title": BUSY if hide else e.get("title") or "(no title)",
+            "start": e["start"].isoformat(),
+            "end": e["end"].isoformat(),
+            "all_day": bool(e.get("all_day")),
+            "location": "" if hide else e.get("location", ""),
+            **tags,
+        }
+
     def _tags(self, e: dict) -> dict:
-        """What an event's title, description and calendar say about calls: {"nocall": True} and/or {"focus": True}.
-        Only these flags are kept, never the description."""
+        """What an event's title, description and calendar say: {"nocall", "focus", "private", "class": True}. Only
+        these flags are kept, never the description."""
         av = self.app.settings.get("availability") or {}
         text = f"{e.get('title', '')} {e.get('description', '')}".lower()
         kw, fk = (av.get("nocall_keyword") or "").lower(), (av.get("focus_keyword") or "").lower()
         cal = (av.get("nocall_calendar") or "").lower()
+        calname = str(e.get("calendar", "")).lower()
+        pk = str(self.setting("private_keyword") or "").lower()
         out = {}
-        if (kw and kw in text) or (cal and cal in str(e.get("calendar", "")).lower()):
+        if (kw and kw in text) or (cal and cal in calname):
             out["nocall"] = True
         if fk and fk in text:
             out["focus"] = True
+        if e.get("private") or (pk and pk in text):
+            out["private"] = True
+        if calname and any(c and c in calname for c in self.class_calendars()):
+            out["class"] = True
+        return out
+
+    def class_calendars(self) -> list[str]:
+        return [str(c).strip().lower() for c in self.setting("class_calendars") or [] if str(c).strip()]
+
+    def classes(self, day: dt.date) -> list[dict]:
+        """A day's events from your class calendars, shaped like timetable classes (Subjects counts them as
+        classes). One whose title names a subject is that subject's class; else its subject is ""."""
+        if not self.class_calendars():
+            return []
+        subj = self.app.modules.get("subjects")
+        out = []
+        for e in self.day(day):
+            if not e.get("class") or e["all_day"]:
+                continue
+            s, f = (x.astimezone().replace(tzinfo=None) for x in (e["start_dt"], e["end_dt"]))
+            slug = ""
+            if subj is not None and not e.get("private"):
+                slug = subj.resolve(e["title"]) or next(iter(subj.find_in(e["title"])), "")
+            out.append(
+                {
+                    "day": DAYS[s.weekday()],
+                    "start": f"{s:%H:%M}",
+                    "end": f"{f:%H:%M}",
+                    "subject": slug,
+                    "name": subj.name_of(slug) if slug else e["title"],
+                    "start_dt": s,
+                    "end_dt": f,
+                    "source": "calendar",
+                }
+            )
         return out
 
     def _block(self, t: dt.datetime):
@@ -310,6 +394,10 @@ class Calendar(Module):
             until = e["end_dt"].astimezone().replace(tzinfo=None)  # naive local time, like the rest of availability
             if e.get("nocall"):  # all-day ones too: "Exam day #nocall"
                 return f"no-call event: {e['title']}", until
+            if e.get("class") and not e["all_day"]:
+                if self.app.is_on("subjects"):
+                    continue  # a class: Subjects holds calls then (with its margin, and knows what you skip)
+                return f"class: {e['title']}", until
             if not tagged_only and not e["all_day"]:
                 return f"in {e['title']}", until
         return None
@@ -383,10 +471,32 @@ class Calendar(Module):
     def commands(self):
         return [
             Command("today", "today's calendar", lambda m, a: self.agenda(self.now().date())),
-            Command("cal", "the next 7 days of your calendar", self._week),
+            Command(
+                "cal",
+                "the next 7 days of your calendar; /cal classes Timetable: events in that calendar are classes",
+                self._week,
+                usage="/cal [classes <calendar names, comma-separated> | classes none]",
+            ),
         ]
 
+    def _classes_cmd(self, arg: str) -> str:
+        names = (jload(self.file, {}) or {}).get("calendars") or []
+        known = f"\nYour calendars: {', '.join(names)}." if names else ""
+        if not arg:
+            now_ = ", ".join(self.setting("class_calendars") or []) or "none"
+            return f"Class calendars: {now_}. Set them: /cal classes Timetable, Seminars (or /cal classes none).{known}"
+        chosen = [] if arg.lower() in ("none", "off", "-") else [x.strip() for x in arg.split(",") if x.strip()][:10]
+        self.app.settings.set("calendar.class_calendars", chosen)
+        self.app.events.emit("class_calendars_set", n=len(chosen))
+        self.refresh()
+        if not chosen:
+            return "No calendar counts as classes now."
+        return f"Events in {', '.join(chosen)} count as classes now (no calls then; in your day's classes).{known}"
+
     def _week(self, msg: Incoming, arg: str) -> str:
+        word, _, rest = arg.strip().partition(" ")
+        if word.lower() == "classes":
+            return self._classes_cmd(rest.strip())
         days = [self.now().date() + dt.timedelta(days=i) for i in range(7)]
         return "\n\n".join(self.agenda(d) for d in days if self.day(d)) or "Nothing in the next 7 days."
 
@@ -422,7 +532,8 @@ class Calendar(Module):
         return {
             "intro": "Paste your calendar's private iCal link. Google Calendar (on a computer): Settings → your "
             "calendar on the left → Integrate calendar → Secret address in iCal format → copy. Add more calendars "
-            "the same way.",
+            "the same way. No such link (some school accounts), or two Google accounts? Set up the Google Calendar "
+            "feature instead: it reads them through Google and turns this on.",
             "links": [["Google Calendar settings", "https://calendar.google.com/calendar/r/settings"]],
             "fields": [
                 {"name": "link", "label": "Private iCal link", "type": "password", "placeholder": "https://…/basic.ics"}
