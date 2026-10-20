@@ -9,6 +9,7 @@ import base64
 import datetime as dt
 import hashlib
 import json
+import re
 import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -289,6 +290,7 @@ class FakeGoogle:
                 if tail == ["messages"]:
                     fake.mail_queries.append(q.get("q", ""))
                     ids = sorted(fake.mail, key=lambda k: -fake.mail[k]["ms"])
+                    ids = [i for i in ids if _search(q.get("q", ""), fake.mail[i], fake.labels)]
                     return self._json(200, {"messages": [{"id": i, "threadId": fake.mail[i]["thread"]} for i in ids]})
                 if len(tail) == 2 and tail[0] == "messages":
                     m = fake.mail.get(tail[1])
@@ -384,6 +386,23 @@ class FakeGoogle:
     def close(self):
         self.server.shutdown()
         self.server.server_close()
+
+
+def _search(q: str, m: dict, labels: list[dict]) -> bool:
+    """A few of Gmail's search words, each may be negated with "-": category:, label:, from:. The others (after:,
+    in:) match everything, as before."""
+    names = {x["id"]: x["name"].lower() for x in labels}
+    have = {names.get(i, i.lower()) for i in m["labels"]} | {i.lower() for i in m["labels"]}
+    for neg, key, val in re.findall(r"(-?)(category|label|from):([^\s()]+)", q, re.I):
+        val = val.lower()
+        hit = {
+            "category": f"category_{val}" in have,
+            "label": val in have,
+            "from": val in m["from"].lower(),
+        }[key.lower()]
+        if hit == bool(neg):
+            return False
+    return True
 
 
 def _meta(f: dict) -> dict:

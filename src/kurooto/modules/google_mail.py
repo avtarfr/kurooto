@@ -7,6 +7,8 @@ computer (Kurooto looks only at its sender, subject and Gmail labels, here, to s
 - mail from senders or labels you choose:  /mail read @school.example   /mail read label:Courses
   /mail read sam@example.org   (/mail unread ... takes one off; /mail rules lists them)
 - on a school or work Google account, mail from your own organisation's domain (setting mail_digest.own_domain)
+- or, by Gmail's own search words, all mail that matches a query you set (mail_digest.query, empty by default), e.g.
+  "-category:promotions -category:social" for everything but Promotions and Social: /mail query ...
 Even then, personal mail (not about study or work) is only counted unless it comes from a sender or label you chose.
 Opt-in (mail_digest.confidential = "local"): mail marked confidential is summarised by a local model instead, on this
 computer only (google_confidential.py).
@@ -62,6 +64,8 @@ register_defaults(
         "at": "daily 08:00,18:00",
         "read": [],  # what the digest may read: "label:Courses", "sam@example.org", "@school.example"
         "own_domain": True,  # on a school or work account, mail from your own domain is read too
+        # a Gmail search: mail it matches is read too, e.g. "-category:promotions -category:social"; empty: none
+        "query": "",
         "first_days": 3,  # the first digest looks this far back
         "max_messages": 200,  # per check
         "save_note": True,  # a copy of each digest in your notes (mail/<date>-<time>.md, or your notes layout's place)
@@ -186,8 +190,8 @@ class MailDigest(GooglePart):
     )
     privacy = (
         "Reads Gmail (read-only: nothing is sent, deleted or marked read). Only mail from senders or labels you chose "
-        "(and, on a school or work account, your own domain) is read and goes to the AI you picked; the rest is only "
-        "counted, on this computer. Mail marked confidential is never read."
+        "(and, on a school or work account, your own domain, or what your mail query matches) is read and goes to the "
+        "AI you picked; the rest is only counted, on this computer. Mail marked confidential is never read."
     )
     permission = (
         "Google will ask you to allow Kurooto to read your email (read-only: it can't send, delete or change "
@@ -253,9 +257,15 @@ class MailDigest(GooglePart):
         d = domain_of(me)
         return d if d and d not in CONSUMER and self.setting("own_domain") else ""
 
-    def triage(self, frm: str, subject: str, label_ids: list[str], names: dict, me: str) -> tuple[str, str, bool]:
+    def query(self) -> str:
+        """Your Gmail search (mail_digest.query) on one line, or ""."""
+        return " ".join(str(self.setting("query") or "").split())[:500]
+
+    def triage(
+        self, frm: str, subject: str, label_ids: list[str], names: dict, me: str, matched: bool = False
+    ) -> tuple[str, str, bool]:
         """("read", why, chosen-by-you) or ("count", which pile, False). Only the sender, subject and labels are
-        looked at, on this computer."""
+        looked at, on this computer, and whether Gmail found it with your mail query (matched)."""
         name, addr = parseaddr(frm)
         addr = addr.lower()
         dom = domain_of(addr)
@@ -268,6 +278,8 @@ class MailDigest(GooglePart):
         for r in self.rules():
             if self.matches(r, addr, labels):
                 return "read", f"you chose {r}", True
+        if matched:  # your query names what it wants, Promotions included if you ask for them
+            return "read", "matches your mail query", False
         if "CATEGORY_PROMOTIONS" in label_ids:
             return "count", "promotions", False
         if "CATEGORY_SOCIAL" in label_ids:
@@ -290,6 +302,10 @@ class MailDigest(GooglePart):
             m["id"]
             for m in g.pages("gmail", "/users/me/messages", "messages", {"q": q, "maxResults": 100}, cap // 100 + 1)
         ]
+        matched: set[str] = set()  # what your mail query finds among them (Gmail searches; only ids come back)
+        if self.query():
+            mq = {"q": f"{q} ({self.query()})", "maxResults": 100}
+            matched = {m["id"] for m in g.pages("gmail", "/users/me/messages", "messages", mq, cap // 100 + 1)}
         seen = dict.fromkeys(st.get("seen", []))  # in order, so the oldest are dropped first
         names = {}  # your labels' names: for label: rules, and labels that mark mail confidential
         if self.setting("skip_confidential") or any(
@@ -314,7 +330,7 @@ class MailDigest(GooglePart):
             if parseaddr(h.get("from", ""))[1].lower() == me:
                 continue  # your own
             what, why, chosen = self.triage(
-                h.get("from", ""), h.get("subject", ""), meta.get("labelIds", []), names, me
+                h.get("from", ""), h.get("subject", ""), meta.get("labelIds", []), names, me, mid in matched
             )
             when = dt.datetime.fromtimestamp(int(meta.get("internalDate") or 0) / 1000)
             if what == "count":
@@ -444,7 +460,7 @@ class MailDigest(GooglePart):
         except Timeout:
             return {"skipped": "already running"}
         self.app.events.emit("mail_fetched", read=found["read"], counted=found["counted"])
-        if p is not None and not found["read"] and found["counted"] and not self.rules():
+        if p is not None and not found["read"] and found["counted"] and not self.rules() and not self.query():
             self._hint(found["counted"])
         return found
 
@@ -490,10 +506,13 @@ class MailDigest(GooglePart):
         if topics:
             lines.append("Not interested (only count mail about these): " + ", ".join(topics))
         for n, m in enumerate(b["messages"], 1):
+            how = (
+                "it matches their mail query" if m.get("why") == "matches your mail query" else "it's from your domain"
+            )
             whose = (
                 "you chose this sender or label: summarise it"
                 if m.get("chosen")
-                else ("read because it's from your domain: if it's personal (not study or work), only count it")
+                else f"read because {how}: if it's personal (not study or work), only count it"
             )
             lines += [
                 "",
@@ -565,7 +584,8 @@ class MailDigest(GooglePart):
                 "mail",
                 "your mail digest now; /mail read <@domain | sender | label:Name> chooses what it may read",
                 self._cmd,
-                usage="/mail [read <rule> | unread <rule> | never <rule> | unnever <rule> | rules | confidential]",
+                usage="/mail [read <rule> | unread <rule> | never <rule> | unnever <rule> | query <gmail search> | "
+                "query off | rules | confidential]",
             )
         ]
 
@@ -608,6 +628,23 @@ class MailDigest(GooglePart):
             }[word]
         if word == "confidential":
             return self._confidential(msg)
+        if word == "query":
+            if not rest:
+                cur = self.query()
+                return (
+                    f"Mail query: {cur}\nThe digest reads what it matches. /mail query off stops that."
+                    if cur
+                    else "No mail query. /mail query -category:promotions -category:social reads everything but "
+                    "Promotions and Social (mail marked confidential and your never-read list are still only counted)."
+                )
+            off = rest.lower() in ("off", "none", "clear")
+            self.app.settings.set("mail_digest.query", "" if off else " ".join(rest.split())[:500])
+            self.app.events.emit("mail_query", on=not off)
+            return (
+                "Mail query off: the digest reads what /mail rules lists, nothing more."
+                if off
+                else f"The digest reads mail matching: {self.query()} (personal mail among it is only counted)."
+            )
         if word == "rules":
             own = ""
             try:
@@ -615,6 +652,7 @@ class MailDigest(GooglePart):
             except Exception:
                 pass
             lines = [f"- {r}" for r in rules] + ([f"- mail from @{own} (your own domain)"] if own else [])
+            lines += [f"- mail matching your query: {self.query()}"] if self.query() else []
             out = "The digest reads:\n" + "\n".join(lines) if lines else "The digest reads nothing yet: /mail read ..."
             never = self.rules("never_read")
             if never:
@@ -628,7 +666,7 @@ class MailDigest(GooglePart):
         if r.get("skipped"):
             return f"Not now: {r['skipped']}."
         if not r["read"]:
-            extra = "" if rules or r["counted"] == 0 else " Choose what it may read: /mail read ..."
+            extra = "" if rules or self.query() or r["counted"] == 0 else " Choose what it may read: /mail read ..."
             return f"No new mail to digest ({r['counted']} only counted).{extra}"
         return f"Reading {r['read']} new message(s) ({r['counted']} only counted); the digest comes in a minute."
 

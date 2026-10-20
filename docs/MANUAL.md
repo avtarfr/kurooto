@@ -386,13 +386,19 @@ beats "end of the day". Topics on your not-interested list are left out.
 exams aren't "done": you get a reminder a day before or, with Quiz on, a practice offer the evening before.
 
 `/deadlines` shows two weeks; "what's due this week?" works too. On calls, the brief has what's due in the next
-72 hours, and you can say "the lab report is done", "it got moved to Friday", "add a deadline".
+72 hours (`deadlines.plan_h`), and you can say "the lab report is done", "it got moved to Friday", "add a deadline".
 
-*Settings* (`deadlines.*`): `ping_h` (24), `urgent_h` (6), `call` (on: the six-hour nudge is a call when Phone calls
-is on), `overdue_check` (on), `tick_notes` (on), `from_calendar` (on), `recurring` (on), `horizon_days` (30: how far
-ahead recurring quizzes become dated items), `exam_mode_days` (14; 0 turns exam mode off), `scan_notes` (on).
+**How far ahead "due soon" looks** (`deadlines.plan_h`, 72 hours): what's due in that window goes into the wake-up
+call's plan, the morning page, the call brief, `/status` ("Due in the next 3 days") and "what's due soon?". Set it to
+`168` to plan a week ahead, or `36` for just tomorrow. `/deadlines` and the reminders above don't change.
+
+*Settings* (`deadlines.*`): `plan_h` (72), `ping_h` (24), `urgent_h` (6), `call` (on: the six-hour nudge is a call
+when Phone calls is on), `overdue_check` (on), `tick_notes` (on), `from_calendar` (on), `recurring` (on),
+`horizon_days` (30: how far ahead recurring quizzes become dated items), `exam_mode_days` (14; 0 turns exam mode off),
+`scan_notes` (on).
 *Turn off:* the whole thing in Features; the call alone with `deadlines.call` off; the overdue question with
 `deadlines.overdue_check` off.
+*Undo:* set `deadlines.plan_h` back to `72` (or reset it in Settings).
 
 ### Recurring quizzes
 Part of Deadlines, for quizzes and tests that repeat ("Linear Algebra quiz every Thursday 10:00", "Statistics test
@@ -615,7 +621,14 @@ the day's note). **Nothing new** ends it; **Later** keeps the question for your 
 for classes you skip, on holidays, in exam periods or after the term ends (see `/term`). Needs Subjects with a
 timetable.
 
-*Settings:* `capture.delay_min`, `capture.study_log` (default on: with Chat on, the AI writes a study log).
+**Only some subjects:** Settings → After-class notes → `capture.subjects` lists the subjects to ask about (empty, the
+default: every subject), and `capture.skip_subjects` the ones never to ask about, e.g. `["pe"]`. A subject's short
+name, full name or alias works in both. A class left out gets no question; the evening debrief still goes through it
+like any class without a log (use `/skip` for a class you aren't going to).
+
+*Settings:* `capture.delay_min`, `capture.study_log` (default on: with Chat on, the AI writes a study log),
+`capture.subjects`, `capture.skip_subjects`.
+*Undo:* empty both lists (`[]`): every subject is asked about again from the next class.
 *Leaves:* nothing; with Chat on, your answer and the photos and files you sent with it go to the AI for the study log.
 
 ### Remember
@@ -729,6 +742,11 @@ Needs Phone calls.
 - **The night follows your alarm:** while it's set, no other calls from your bedtime (`alarm.bedtime`, default: the
   start of the night hours) until it rings; once you're up, calls can come even if the usual night hours aren't over.
   Without an alarm, the night is the fixed hours (`availability.night`, 23:30 to 07:00).
+- **Only nights with an alarm** (`availability.night.alarm_only`, off by default): if you set the alarm every night you
+  want quiet, turn this on and the fixed hours stop holding calls; only bedtime to the alarm does. With no alarm set,
+  nothing holds calls overnight (a reminder call you set for 02:00 rings at 02:00), and Kurooto's "back online" notice
+  doesn't wait for the morning. Off, the default, is the safe one: the fixed night hours hold calls whether or not you
+  set an alarm.
 - **Your day, drafted:** with Chat on, 20 minutes before the alarm the AI drafts today's plan into today's daily note
   ("## Plan for today (draft …)": classes, what's due, a top 3, suggested blocks, and questions for you).
 - **The wake-up call** goes through that plan, asks which classes you're skipping and when to call you today (the
@@ -745,8 +763,9 @@ Needs Phone calls.
 
 *Settings:* `alarm.daily`, `alarm.days`, `alarm.bedtime`, `alarm.prep_min` (default 20; 0 = no draft),
 `alarm.open_page` (default on), `alarm.notes` (default on: the wake-up call goes into the daily note),
-`alarm.keep_awake` (default off).
-*Undo:* `alarm.keep_awake` off; it lets go at once.
+`alarm.keep_awake` (default off), `availability.night.alarm_only` (default off).
+*Undo:* `alarm.keep_awake` off; it lets go at once. `availability.night.alarm_only` off: the fixed night hours hold
+calls again at once.
 *Leaves:* the alarm time goes to your call line; with Chat on, the AI reads your notes to draft the plan, and the
 wake-up call's transcript to settle it.
 
@@ -1124,6 +1143,13 @@ course news goes onto the course page.
   `mail_digest.own_domain`). Personal mail among it (not about study or work) is only counted.
 - Promotions, Social and topics on your not-interested list are only counted (Promotions and Social are read when a
   `/mail read` rule names them).
+- **Or by Gmail's own search** (`mail_digest.query`, empty by default): `/mail query -category:promotions
+  -category:social` reads all your mail except Promotions and Social (chats, sent mail, drafts, spam and trash are
+  never looked at). Any Gmail search works (`label:Courses OR from:school.example`, `-category:forums`); the query
+  decides on its own, so Promotions are read if it doesn't leave them out. Mail it brings in is treated like mail from
+  your own domain: personal mail among it (not about study or work) is only counted, never summarised. Your
+  never-read list, the not-interested list and the confidential check still come first. `/mail query` shows it,
+  `/mail query off` clears it; `/mail rules` lists it.
 - A personal Gmail account reads nothing until you choose something; the scheduled digest tells you how (once a day,
   until you do).
 
@@ -1154,11 +1180,12 @@ characters; `mail_digest.local_model` picks another Ollama model (default: Local
 
 `/mail` checks now (so does `/sync all`).
 *Settings:* `mail_digest.at`, `mail_digest.read`, `mail_digest.never_read`, `mail_digest.own_domain`,
-`mail_digest.skip_confidential`, `mail_digest.confidential_words`, `mail_digest.confidential` (`count` or `local`),
-`mail_digest.local_model`, `mail_digest.save_note` (the copy in your notes), `mail_digest.first_days` (how far back
-the first check looks: 3).
-*Leaves:* the text of the mail you chose goes to the AI you picked; for the rest, only counts. Nothing is ever sent,
-deleted, archived or marked read. *Turn it off:* Features → Mail digest → Turn off.
+`mail_digest.query`, `mail_digest.skip_confidential`, `mail_digest.confidential_words`, `mail_digest.confidential`
+(`count` or `local`), `mail_digest.local_model`, `mail_digest.save_note` (the copy in your notes),
+`mail_digest.first_days` (how far back the first check looks: 3).
+*Leaves:* the text of the mail you chose (and, with a query, the mail it matches) goes to the AI you picked; for the
+rest, only counts. Nothing is ever sent, deleted, archived or marked read. *Turn it off:* Features → Mail digest →
+Turn off. *Undo:* `/mail query off` goes back to only your `/mail read` rules (and your own domain).
 
 ### Email reply drafts
 When the mail digest finds mail that needs your reply (a question or request to you), the AI drafts a short reply in

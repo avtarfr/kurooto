@@ -182,7 +182,7 @@ def morning_view(app: App) -> dict:
             "due",
             lambda: [
                 {"title": d.get("title", ""), "when": d.get("when") or d.get("due", "")}
-                for d in dl.deadlines_soon(hours=72)
+                for d in dl.deadlines_soon()  # deadlines.plan_h ahead
             ],
         )
     if app.is_on("study"):

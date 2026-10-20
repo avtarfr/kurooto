@@ -35,6 +35,7 @@ register_defaults(
     "deadlines",
     {
         "scan_notes": True,
+        "plan_h": 72,  # "due soon": what's due this many hours ahead goes into the morning plan, /status and calls
         "ping_h": 24,
         "urgent_h": 6,
         "max_files": 3000,
@@ -109,6 +110,13 @@ def human(h: float) -> str:
     if h < 48:
         return f"in {h:.0f} h"
     return f"in {h / 24:.0f} days"
+
+
+def span(h: float) -> str:
+    """72 -> "3 days", 36 -> "36 hours", 24 -> "day" (for "in the next ...")."""
+    if h % 24 == 0:
+        return "day" if h == 24 else f"{h / 24:.0f} days"
+    return f"{h:g} hours"
 
 
 def when_text(due: str) -> str:
@@ -829,8 +837,17 @@ class Deadlines(Module):
             "hours": round(h, 1),
         }
 
-    def deadlines_soon(self, hours: float = 72) -> list[dict]:
-        """Open deadlines, quizzes and exams in the next `hours`, soonest first (for briefs and the morning page)."""
+    def plan_hours(self) -> float:
+        """How far ahead "due soon" looks (deadlines.plan_h, 72): the morning plan and page, /status, calls."""
+        try:
+            return max(1.0, float(self.setting("plan_h") or 72))
+        except (TypeError, ValueError):
+            return 72.0
+
+    def deadlines_soon(self, hours: float | None = None) -> list[dict]:
+        """Open deadlines, quizzes and exams in the next `hours` (default: plan_h), soonest first (for briefs and the
+        morning page)."""
+        hours = self.plan_hours() if hours is None else hours
         return [self._row(i, it, h) for i, it, h in self.upcoming(hours) if h > 0]
 
     def exams_soon(self, days: float = 14) -> list[dict]:
@@ -953,7 +970,9 @@ class Deadlines(Module):
     def intents(self):
         def show(text: str):
             if re.search(r"\b(what'?s|what is|anything|show)\b.*\b(due|deadlines?)\b", text, re.I):
-                return {"hours": 168 if "week" in text.lower() else 72 if "soon" in text.lower() else 336}
+                return {
+                    "hours": 168 if "week" in text.lower() else self.plan_hours() if "soon" in text.lower() else 336
+                }
             return None
 
         def add(text: str):
@@ -1011,7 +1030,8 @@ class Deadlines(Module):
     # -------------------------------------------------------------------------------------- on calls
     def call_brief(self) -> dict:
         due = [
-            {"id": i, "what": it["title"], "due": human(h), "kind": it["kind"]} for i, it, h in self.upcoming(72)[:10]
+            {"id": i, "what": it["title"], "due": human(h), "kind": it["kind"]}
+            for i, it, h in self.upcoming(self.plan_hours())[:10]
         ]
         out: dict = {"due_soon": due} if due else {}
         modes = self.exam_mode()

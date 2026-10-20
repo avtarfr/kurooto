@@ -69,6 +69,17 @@
   Drive and sends the link; files over Telegram's 50 MB go there by themselves. It sees only files it made.
 - The Agent plan calendar can live on another account (`/google use plan personal`).
 
+**Four settings for doing it your way** (defaults unchanged)
+- `availability.night.alarm_only`: only a night with the alarm set holds calls (bedtime to the alarm); with no alarm,
+  nothing holds them overnight. Off by default: the fixed night hours (23:30 to 07:00) still hold calls without one.
+- `deadlines.plan_h` (72): how far ahead "due soon" looks, for the wake-up call's plan, the morning page, the call
+  brief, `/status` and "what's due soon?".
+- After-class notes for some subjects only: `capture.subjects` (ask only after these; empty: all) and
+  `capture.skip_subjects` (never after these), by short name, full name or alias.
+- Mail digest by Gmail search: `/mail query -category:promotions -category:social` (`mail_digest.query`, empty by
+  default) reads the mail a Gmail search matches. Your never-read list, the not-interested list and the confidential
+  check still come first, and personal mail among it is only counted, never summarised. `/mail query off` clears it.
+
 ## 0.3.0 (unreleased)
 The [manual](docs/MANUAL.md) has the detail.
 

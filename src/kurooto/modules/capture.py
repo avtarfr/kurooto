@@ -6,6 +6,9 @@ the AI also writes a proper study log for the class (the study-log skill).
 
 "Nothing new" ends it; "Later" keeps the question for your evening check-in call. No questions for classes you skip
 (/skip), on holidays, in exam periods or after the term's last day (Subjects: /term).
+
+Only some subjects: capture.subjects lists the ones to ask about (empty: every subject), capture.skip_subjects the
+ones never to ask about (a subject's short name, full name or alias works in both).
 """
 
 from __future__ import annotations
@@ -21,7 +24,15 @@ from kurooto.core.state import jload, jsave
 from kurooto.modules import daily
 from kurooto.modules.base import Incoming, Module
 
-register_defaults("capture", {"delay_min": 2, "study_log": True})  # study_log: with Chat on, the AI writes one
+register_defaults(
+    "capture",
+    {
+        "delay_min": 2,
+        "study_log": True,  # with Chat on, the AI writes one
+        "subjects": [],  # ask only after these subjects' classes; empty: every subject
+        "skip_subjects": [],  # never ask after these
+    },
+)
 
 IMAGES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic")
 
@@ -66,12 +77,27 @@ class Capture(Module):
         return out
 
     # ------------------------------------------------------------------------------------ asking
+    def _chosen(self, key: str) -> set[str]:
+        """The subjects in capture.subjects or capture.skip_subjects, as slugs ("all" or nothing: none)."""
+        v = self.setting(key) or []
+        if isinstance(v, str):
+            v = [] if v.strip().lower() in ("", "all") else v.split(",")
+        subjects = self.app.modules["subjects"]
+        return {subjects.resolve(str(x)) or str(x).strip().lower() for x in v if str(x).strip()}
+
+    def wanted(self, slug: str) -> bool:
+        """Is the after-class question on for this subject? capture.subjects (if any) and not capture.skip_subjects."""
+        only = self._chosen("subjects")
+        return slug not in self._chosen("skip_subjects") and (not only or slug in only)
+
     def _plan(self) -> None:
         subjects = self.app.modules["subjects"]
         delay = dt.timedelta(minutes=self.setting("delay_min") or 2)
         for c in subjects.classes_on():
             if not c.get("subject"):
                 continue  # a class-calendar event that doesn't name one of your subjects: no log to write it into
+            if not self.wanted(c["subject"]):
+                continue
             at = c["end_dt"] + delay
             if at > now():
                 self.app.scheduler.at(
@@ -86,6 +112,9 @@ class Capture(Module):
     def _ask(self, p: dict) -> None:
         subjects = self.app.modules["subjects"]
         day = dt.date.fromisoformat(p["day"])
+        if not self.wanted(p["subject"]):  # taken off after the day was planned
+            self.app.events.emit("capture_skipped", subject=p["subject"], why="not_chosen")
+            return
         if p["subject"] in subjects.skipped(day):
             self._set(p["day"], p["subject"], status="skipped")
             self.app.events.emit("capture_skipped", subject=p["subject"], why="skipped")

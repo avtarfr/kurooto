@@ -3,7 +3,8 @@ event marked #focus), the night, and blockers that modules add (a class you atte
 marked #nocall if you prefer).
 
 The night: with the wake-up alarm set, it runs from your bedtime to the alarm (so once you're up, calls can come);
-otherwise it's the fixed night hours.
+otherwise it's the fixed night hours, or nothing at all with availability.night.alarm_only on (only a night with an
+alarm set holds calls: for people who set the alarm every night they want quiet).
 
     call_block(t)   -> (reason, until) or (None, None)
     next_callable(t)-> the earliest time a call is allowed
@@ -22,7 +23,8 @@ from kurooto.core.state import jload, jsave
 register_defaults(
     "availability",
     {
-        "night": {"enabled": True, "from": "23:30", "to": "07:00"},  # no calls overnight unless it's an alarm
+        # no calls overnight unless it's an alarm; alarm_only: only from bedtime to the alarm, none without one
+        "night": {"enabled": True, "from": "23:30", "to": "07:00", "alarm_only": False},
         "nocall_keyword": "#nocall",  # in a calendar event's title or description: no calls during it
         "nocall_calendar": "no call",  # every event in a calendar whose name contains this holds calls
         "focus_keyword": "#focus",  # in a calendar event: focus time (calls held, messages wait) while it runs
@@ -79,6 +81,8 @@ class Availability:
         for bed, alarm in windows:
             if bed <= t < alarm:
                 return "you're asleep (alarm set)", alarm
+        if n.get("alarm_only"):
+            return None  # no alarm set for this time: no night hours either
         start, end = dt.time.fromisoformat(n["from"]), dt.time.fromisoformat(n["to"])
         tt = t.time()
         inside = (start <= tt or tt < end) if start > end else (start <= tt < end)

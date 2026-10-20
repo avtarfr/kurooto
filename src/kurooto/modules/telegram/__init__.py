@@ -388,8 +388,8 @@ class Telegram(Module):
         return "\n".join(lines)
 
     def _status_more(self) -> list[str]:
-        """(ws5) Today's check-ins, what's due in 3 days, the alarm, the last AI requests, and add-ons' lines. Each
-        part is skipped when its feature is off or fails."""
+        """(ws5) Today's check-ins, what's due soon (deadlines.plan_h), the alarm, the last AI requests, and add-ons'
+        lines. Each part is skipped when its feature is off or fails."""
         app, out = self.app, []
 
         def part(fn) -> None:
@@ -408,12 +408,15 @@ class Telegram(Module):
         def due():
             if not app.is_on("deadlines"):
                 return []
-            soon = app.modules["deadlines"].deadlines_soon(72)
+            from kurooto.modules.deadlines import span
+
+            dl = app.modules["deadlines"]
+            soon, ahead = dl.deadlines_soon(), span(dl.plan_hours())  # deadlines.plan_h
             if not soon:
-                return "Nothing due in the next 3 days."
+                return f"Nothing due in the next {ahead}."
             rows = [f"  {r['title'][:70]} ({r['when']})" for r in soon[:6]]
             more = [f"  and {len(soon) - 6} more (/deadlines)"] if len(soon) > 6 else []
-            return "Due in the next 3 days:\n" + "\n".join(rows + more)
+            return f"Due in the next {ahead}:\n" + "\n".join(rows + more)
 
         def alarm():
             t = app.modules["alarm"].next() if app.is_on("alarm") else None

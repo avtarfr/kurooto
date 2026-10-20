@@ -264,7 +264,7 @@ class Alarm(Module):
         soon = getattr(dl, "deadlines_soon", None) if dl is not None and app.is_on("deadlines") else None
         if soon:
             try:
-                due = soon(hours=72) or []
+                due = soon() or []  # deadlines.plan_h ahead
             except Exception:
                 due = []
             if due:
