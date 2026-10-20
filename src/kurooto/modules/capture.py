@@ -1,6 +1,7 @@
 """After class: a couple of minutes after each class in your timetable ends, Kurooto asks what was worth keeping.
 Reply on Telegram (a line or two, photos of the board or slides, files, a voice note) and it goes into that subject's
-class log in your notes (<subject>/class-log.md), with the photos and files moved next to it and linked. With Chat on,
+class log in your notes (<subject>/class-log.md, or where your notes layout keeps it), with the photos and files moved
+to the subject's files folder (<subject>/files/, or under files.folder outside your notes) and linked. With Chat on,
 the AI also writes a proper study log for the class (the study-log skill).
 
 "Nothing new" ends it; "Later" keeps the question for your evening check-in call. No questions for classes you skip
@@ -10,10 +11,10 @@ the AI also writes a proper study log for the class (the study-log skill).
 from __future__ import annotations
 
 import datetime as dt
-import os
 import shutil
 from pathlib import Path
 
+from kurooto.core import layout
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
@@ -120,28 +121,24 @@ class Capture(Module):
         return self.save(slug, day, text, files, name=p.get("name"), start=p.get("start", ""))
 
     def save(self, slug: str, day: str, text: str, files: list[Path], name: str | None = None, start: str = "") -> str:
-        """Add what you said, and the files (moved next to the log and linked), to the subject's class log."""
+        """Add what you said, and the files (moved to the subject's files folder and linked), to its class log."""
         name = name or self.app.modules["subjects"].name_of(slug)
-        folder = self.app.workspace / slug
-        folder.mkdir(parents=True, exist_ok=True)
-        kept = [self._file_away(x, folder / "files", day) for x in files if x.is_file()]
-        links = []
-        for p in kept:
-            try:
-                where = os.path.relpath(p, folder).replace(os.sep, "/").replace(" ", "%20")
-            except ValueError:  # another drive (Windows)
-                where = p.as_uri()
-            links.append(f"![{p.name}]({where})" if p.suffix.lower() in IMAGES else f"[{p.name}]({where})")
-        f = folder / "class-log.md"
+        f = layout.path(self.app, "class_log", subject=slug)
+        f.parent.mkdir(parents=True, exist_ok=True)
+        kept = [
+            self._file_away(x, layout.file_dir(self.app, "subject", subject=slug), day) for x in files if x.is_file()
+        ]
+        links = [layout.file_link(self.app, p, f) for p in kept]
         new = not f.exists()
         with open(f, "a", encoding="utf-8") as out:
             if new:
-                out.write(f"# {name}: class log\n")
+                head = layout.frontmatter(self.app, "class_log", f, title=f"{name}: class log", bare=True, subject=slug)
+                out.write(f"{head}# {name}: class log\n")
             body = "\n\n".join(x for x in [text.strip(), "\n".join(links)] if x)
             out.write(f"\n## {day}\n\n{body}\n")
         self._set(day, slug, status="answered")
         self.app.events.emit("capture_answered", subject=slug, files=len(kept))
-        note = f"Saved to {slug}/class-log.md" + (f" with {len(kept)} file(s)" if kept else "") + "."
+        note = f"Saved to {layout.shown(self.app, f)}" + (f" with {len(kept)} file(s)" if kept else "") + "."
         if self.setting("study_log"):
             when = f" at {start}" if start else ""
             jid = daily.run_skill(
@@ -156,7 +153,7 @@ class Capture(Module):
         return note
 
     def _file_away(self, src: Path, folder: Path, day: str) -> Path:
-        """Move a file you sent (it arrived in inbox/) next to the class log; leave it where it is if that fails."""
+        """Move a file you sent (it arrived in the inbox) to the subject's files; leave it where it is if that fails."""
         stem = src.name if src.name.startswith(day) else f"{day}-{src.name}"
         dest, n = folder / stem, 1
         try:

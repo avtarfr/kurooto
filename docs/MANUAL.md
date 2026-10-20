@@ -38,6 +38,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Updates and going back](#updates-and-going-back)
 - [Moving to a new computer](#moving-to-a-new-computer)
 - [Your computer and Kurooto (hardware profiles)](#your-computer-and-kurooto-hardware-profiles)
+- [Your notes: layout and files](#your-notes-layout-and-files)
 - [Where things are](#where-things-are)
 - [Troubleshooting](#troubleshooting)
 - [Getting help (diagnostics)](#getting-help-diagnostics)
@@ -450,7 +451,8 @@ do differently, and next week's deadlines and your priorities. Afterwards it bec
 summary.
 
 ### Files into notes
-Send a photo or PDF to your bot: it's saved in your notes folder's `inbox/`. With Chat on, the AI files it properly
+Send a photo or PDF to your bot: it's saved in your notes folder's `inbox/` (or your files folder's, when you set one:
+[Your notes: layout and files](#your-notes-layout-and-files)). With Chat on, the AI files it properly
 (a note that describes and links it, in the right place). The caption tells it what it's for. With Skills on, a link
 sent on its own is filed the same way (the `/add-to-notes` skill).
 
@@ -590,7 +592,7 @@ next time) for 30 days. **Observe longer** watches it for a week first (reply "o
 watching ends, the next look back tells you what it found.
 
 **Steer it:** `/observe whether I study better before noon for 2 weeks` (or say "observe whether ..." / "keep an eye
-on ...", or ask on a call). `/observing` lists what's being watched, each with a **Stop** button. When a watch ends you
+on ...", or ask on a call). `/observing` lists what's being watched, each with **Stop** and **+7 days** (watch a week longer) buttons. When a watch ends you
 get a message with what it found. `/lookback` shows the last look back (and what it noticed); `/lookback now` runs one
 now.
 
@@ -1045,7 +1047,8 @@ reminder (`agent_plan.remind_min`; 0 for none).
 ### Handwritten notes
 Drop a PDF or photo of handwritten pages into a folder (by default `handwritten-inbox` in your notes folder; set
 `handwritten.folder` to one your tablet syncs to through Google Drive, OneDrive or Dropbox). Kurooto writes it out as
-a Markdown note with the maths in LaTeX, saved in `handwritten/` next to a copy of the original. Every 15 minutes, or
+a Markdown note with the maths in LaTeX, saved in `handwritten/` next to a copy of the original (the copy goes to your
+files folder when you set one). Every 15 minutes, or
 `/handwritten`. Uses Gemini (your key), or, on computers with 12 GB of graphics memory and Local models on, a model on
 your computer for photos.
 
@@ -1440,6 +1443,52 @@ repository and a passphrase). Without Profile sync, a backup zip works too (`kur
 The main answers always come from the AI you picked; local models only take quick decisions and make the notes
 index. Settings → **Your computer** shows what was found and lets you change it; `kurooto doctor` re-checks.
 
+## Your notes: layout and files
+
+Kurooto writes into your notes folder in one of two layouts, and can keep big files (photos, PDFs) out of it so they
+don't fill your notes or their history. Both are settings: dashboard → Settings → `notes` and `files`.
+
+**Layout** (`notes.layout`):
+
+| What | `kurooto` (the default) | `zettelkasten` |
+|---|---|---|
+| Daily note (journal, plans, check-ins, study hours) | `journal/<date>.md` | `dailies/<date>.md` |
+| Your profile, how to help you, not-interested topics | `about-me/` | `master/` |
+| Recurring quizzes, ideas, your own skills | `kurooto/recurring.md`, `kurooto/ideas.md`, `kurooto/skills/` | `master/recurring-assessments.md`, `master/ideas.md`, `master/skills/` |
+| A subject's course page | `<subject>/course.md` | `maps/courses/<subject>.md` |
+| Lecture notes, exam prep, class log | `<subject>/` | `sources/<subject>/` |
+| Concept notes (one idea each) | `<subject>/<idea>.md` | `zettel/<idea>.md` |
+| Research projects and their runs | `research/<project>/`, hub `research/index.md` | `projects/<project>/`, hub `maps/research.md` |
+| Mail digests | `mail/<date>-<time>.md` | `digests/mail-<date>-<time>.md` |
+| Quick notes and loose ideas, prompts, handwritten notes | `inbox/`, `prompts/`, `handwritten/` | the same |
+
+In the zettelkasten layout, notes Kurooto and the AI write start with `id` (the note's path), `aliases`, `tags` and
+`trust_tier: agent_written` (your daily note and your quick notes don't get `trust_tier`: they're your words). Links
+are `[[wikilinks]]` either way. The AI is told your layout, and skills written for the default one (`journal/<date>`,
+`<subject>/course`) are translated when they run, yours included.
+
+**Your own places** (`notes.paths`): any kind of note somewhere else, e.g. `{"daily": "diary/{date}.md", "ideas":
+"plans/ideas.md"}`. The kinds are `daily`, `profile`, `how_to_help`, `not_interested`, `recurring`, `ideas`, `skills`,
+`prompts`, `inbox`, `note`, `subject`, `course`, `class_log`, `lecture`, `concept`, `exam_prep`, `research`,
+`project`, `runs`, `handwritten`, `mail`; the parts in braces are `{date}`, `{time}`, `{subject}`, `{project}` and
+`{slug}`. A place that doesn't work (a part that doesn't exist, or `..`) falls back to the layout's own.
+
+**Files folder** (`files.folder`): a folder outside your notes, for example `Documents/Kurooto files` or a folder your
+cloud drive syncs. With it set, these go there instead of into your notes: photos and PDFs you send (`inbox/`),
+after-class photos and files (`<subject>/`), revision packs, LaTeX and PDF (`<subject>/`), the originals of handwritten
+pages (`handwritten/`) and new scans (`handwritten-inbox/`, unless you already have that folder in your notes or set
+`handwritten.folder`), and Classroom's downloaded files (`<subject>/`). Notes link to them: relative links in the
+kurooto layout, `file://` links in the zettelkasten one (`files.links`: `relative` or `file` to choose). Empty (the
+default): files stay where they always were, inside your notes (Classroom's in Kurooto's data folder).
+
+**Updating:** nothing changes until you set these; with the defaults everything stays where it was in 0.2. Changing
+them affects new notes and files only: nothing is moved, so move existing notes yourself if you want them in the new
+places (Kurooto then finds them there). Notes sync and Backups don't include the files folder: pick one your cloud
+drive syncs, or back it up yourself.
+
+**Undo:** set `notes.layout` back to `kurooto` and empty `notes.paths` and `files.folder`. New notes and files go to
+the old places again; what was written in the meantime stays where it was put (nothing is deleted).
+
 ## Where things are
 
 `kurooto paths` prints them. By default:
@@ -1455,7 +1504,7 @@ index. Settings → **Your computer** shows what was found and lets you change i
 | What | Where |
 |---|---|
 | Backups | the folder you picked (`backups.folder`); before a restore, a copy of how things were: `restore-safety/` in the data folder |
-| Experiment runs | `research/<project>/runs/` in your notes |
+| Experiment runs | `research/<project>/runs/` in your notes (paths here are the default notes layout's: [Your notes: layout and files](#your-notes-layout-and-files)) |
 | Watched jobs | `watch.log` in the state folder (time, exit code, duration, folder, command) |
 | Kurooto Terminal | its kitty settings and tabs: `terminal/` in the state folder (made again every time); the app-menu entry: `~/.local/share/applications/kurooto-terminal.desktop` (Linux), `~/Applications/Kurooto Terminal.app` (macOS), Start menu (Windows); Windows Terminal profiles: `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\Kurooto` |
 | Your own skills, ideas, recurring quizzes | `kurooto/` in your notes (`skills/`, `ideas.md`, `recurring.md`) |
@@ -1492,6 +1541,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Kurooto Terminal's tabs or colours look old in Windows Terminal | Close every Windows Terminal window and open it again: it reads Kurooto's profiles when it starts. |
 | The system palette doesn't use my colours | Settings → Look shows what Kurooto found. Changes show within half a minute. Your setup keeps its colours somewhere else? Point `look.theme_file` at a kitty theme or a matugen or pywal `colors.json`. |
 | The setup page says "Kurooto isn't answering" | It stopped or is restarting: start it from your apps menu (or `kurooto on`), then press the button again. What you typed stays. "Out of date": reload the page. |
+| Notes appear in the wrong folders | Check `notes.layout` and `notes.paths` (Settings → notes); a custom place that doesn't work falls back to the layout's own. Existing notes aren't moved when you change the layout. |
+| Photos and PDFs still land in my notes | Set `files.folder` to a folder outside your notes folder (one inside it changes nothing). |
 | The setup page won't open | `kurooto open`, or go to `http://127.0.0.1:8770`. If another program uses that port, Kurooto picks the next one (`kurooto paths` → `web.json` in the state folder says which). |
 | Not enough space | The wizard says what needs it. Free some space, or choose fewer features. |
 | "That question expired" | It waited longer than `ask.expire_hours` (or its asker stopped waiting); nothing was done. The asker asks again if it still matters. |

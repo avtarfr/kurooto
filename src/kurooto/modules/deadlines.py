@@ -21,6 +21,7 @@ import datetime as dt
 import hashlib
 import re
 
+from kurooto.core import layout
 from kurooto.core.clock import now, parse_when
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
@@ -419,7 +420,7 @@ class Deadlines(Module):
     # ----------------------------------------------------------------------------- recurring quizzes
     @property
     def recurring_note(self):
-        return self.app.workspace / recurring.NOTE
+        return recurring.note_file(self.app)
 
     @property
     def _over_file(self):
@@ -512,7 +513,8 @@ class Deadlines(Module):
             f = self.recurring_note
             f.parent.mkdir(parents=True, exist_ok=True)
             old = f.read_text(encoding="utf-8", errors="replace") if f.exists() else ""
-            old = old if old.strip() else recurring.new_note(self.app.name, now().date())
+            head = layout.frontmatter(self.app, "recurring", f, title="Recurring quizzes and tests")
+            old = old if old.strip() else recurring.new_note(self.app.name, now().date(), head)
             f.write_text(recurring.insert(old, recurring.line(row)), encoding="utf-8")
         else:
             over = jload(self._over_file, {}) or {}
@@ -574,7 +576,8 @@ class Deadlines(Module):
         if rule["next"] and not rule["day"]:
             rule["day"] = recurring.DAYS[dt.date.fromisoformat(rule["next"]).weekday()]
         if any(r["key"] == rule["key"] for r in self.recurring_rows()):
-            return f"{self.subject_name(slug) or subject}: {what} is already in {recurring.NOTE}; edit it there."
+            where = recurring.note_rel(self.app)
+            return f"{self.subject_name(slug) or subject}: {what} is already in {where}; edit it there."
         return self._complete_rule(rule)
 
     def remove_recurring(self, subject: str, what: str) -> bool:
@@ -901,14 +904,15 @@ class Deadlines(Module):
             if not rows:
                 return (
                     "No recurring quizzes yet. /recurring add la quiz every 2 weeks thu 10:00, or say "
-                    f'"linear algebra has a quiz every thursday". They live in your notes: {recurring.NOTE}.'
+                    '"linear algebra has a quiz every thursday". They live in your notes: '
+                    f"{recurring.note_rel(self.app)}."
                 )
             out = []
             for r in rows:
                 every = "every week" if r["every"] == 1 else f"every {r['every']} weeks"
                 when = f"{r['day'].title()} {r['time']}".strip() or "day not known yet"
                 out.append(f"{self.subject_name(r['slug']) or r['subject']}: {r['what']}, {every}, {when}")
-            return "\n".join(out) + f"\n\n(Edit them in {recurring.NOTE}.)"
+            return "\n".join(out) + f"\n\n(Edit them in {recurring.note_rel(self.app)}.)"
         m = re.match(r"(add|remove)\s+(\S+)\s*(.*)$", a, re.I)
         if not m:
             return "Usage: /recurring add la quiz every 2 weeks thu 10:00   ·   /recurring remove la quiz"

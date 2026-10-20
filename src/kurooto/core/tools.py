@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto.core import places
-from kurooto.core.clock import now
 from kurooto.core.state import jload
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search
 
@@ -312,7 +311,10 @@ class NoteTools:
         if not text.strip() or len(text) > MAX_NOTE:
             return "Nothing to write, or too long."
         if f.suffix == ".md" and not text.startswith("---\n") and f.is_relative_to(self.root.resolve()):
-            text = f"---\nmade_by: {self.app.name}\ndate: {now():%Y-%m-%d}\n---\n\n" + text
+            from kurooto.core import layout  # the header your notes layout uses for agent-written notes
+
+            m = re.match(r"#\s+(.+)", text.lstrip())
+            text = layout.frontmatter(self.app, None, f, title=m[1].strip() if m else "") + text
         try:
             write_note_file(f, text.rstrip("\n") + "\n", create=True)
         except FileExistsError:

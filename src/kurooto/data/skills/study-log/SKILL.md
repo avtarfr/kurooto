@@ -25,7 +25,7 @@ For each class:
      LaTeX (`$…$`, `$$…$$`). Nothing that isn't in what they gave you.
    - `## My notes`: their own notes, verbatim.
    - `## Unclear / to ask`: open questions from their notes, or gaps in the material.
-   - `## Files`: the files' paths in the notes folder.
+   - `## Files`: links to the files where they are (in the notes folder or outside it).
    - `## Related`: links with a reason each (the course page, the previous lecture, concept notes).
 3. **Concepts.** For up to 3 key ideas, search_notes for an existing note first. If there is one, add a line under
    its `## Links` pointing to the new lecture note, with the reason. If not, create a short concept note

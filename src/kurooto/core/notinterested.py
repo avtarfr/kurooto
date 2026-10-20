@@ -1,7 +1,7 @@
 """Not interested: topics you don't care about (a club, a kind of event, a course you dropped). They're kept in your
-notes at about-me/not-interested.md, one per line ("- drama club", or "- drama club — not this term"), so you can
-edit the list like any note. The deadline radar leaves matching deadlines out, and the mail and Classroom digests
-only count matching items instead of making tasks from them.
+notes at about-me/not-interested.md (or where your notes layout keeps it), one per line ("- drama club", or "- drama
+club — not this term"), so you can edit the list like any note. The deadline radar leaves matching deadlines out, and
+the mail and Classroom digests only count matching items instead of making tasks from them.
 
 Other features use it like this (it works whether or not Deadlines is on):
 
@@ -17,20 +17,20 @@ import re
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from kurooto.core.clock import now
+from kurooto.core import layout
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from kurooto.app import App
 
-NOTE = "about-me/not-interested.md"
+NOTE = "about-me/not-interested.md"  # in the default notes layout; note_file() is where it is
 LINE = re.compile(r"^\s*[-*]\s+(?!\[[ xX]\])(.+?)\s*$")
 WHY = re.compile(r"\s+(?:—|–|--|-)\s+.*$")
 
 
 def note_file(app: App) -> Path:
-    return app.workspace / NOTE
+    return layout.path(app, "not_interested")
 
 
 def _topic(line: str) -> str | None:
@@ -84,7 +84,7 @@ def add_topic(app: App, topic: str, why: str = "") -> bool:
         text = old.rstrip("\n") + "\n" + line + "\n"
     else:
         text = (
-            f"---\nmade_by: {app.name}\ndate: {now():%Y-%m-%d}\n---\n\n# Not interested\n\n"
+            layout.frontmatter(app, "not_interested", f, title="Not interested") + "# Not interested\n\n"
             f"Topics I don't care about. {app.name} leaves matching deadlines out, and the mail and Classroom digests "
             f"only count matching items. One per line; edit freely.\n\n{line}\n"
         )

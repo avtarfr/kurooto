@@ -698,14 +698,16 @@ class Api:
             subprocess.Popen(["open" if _sys.platform == "darwin" else "xdg-open", str(p)], start_new_session=True)
         return 200, {"ok": True}
 
-    EDITABLE = ("you", "notify", "availability", "updates", "brain", "ask", "look", "power")
+    EDITABLE = ("you", "notify", "availability", "updates", "brain", "ask", "look", "power", "notes", "files")
 
     def _settings(self) -> dict:
         """Every setting you can change: the core sections plus each enabled feature's own."""
         from kurooto.core.palette import settings_choices as look_choices
 
         allv = self.app.settings.all()
-        sections = [s for s in self.EDITABLE] + [m.id for m in self.app.enabled() if m.id in allv]
+        sections = [s for s in self.EDITABLE] + [
+            m.id for m in self.app.enabled() if m.id in allv and m.id not in self.EDITABLE
+        ]
         hidden = {
             "telegram": {"api_base", "allowed_users", "chat_id"},
             "brain": {"base_urls", "models"},

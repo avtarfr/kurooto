@@ -1,6 +1,7 @@
 """Handwritten notes: drop a PDF or a photo of handwritten pages into a folder (for example one your tablet's notes app
 syncs to through Google Drive, OneDrive or Dropbox) and Kurooto writes it out as a Markdown note with the maths in
-LaTeX, next to a copy of the original. Send /handwritten to process the folder now; otherwise it looks every 15
+LaTeX, linked to a copy of the original (next to the note, or in your files folder when you set one: files.folder).
+Send /handwritten to process the folder now; otherwise it looks every 15
 minutes.
 
 The writing-out uses Gemini (your free key), or, on computers with 12 GB of graphics memory and Local models on,
@@ -17,6 +18,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from kurooto.core import layout
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
@@ -27,8 +29,8 @@ from kurooto.modules.voice_notes import gemini_api
 register_defaults(
     "handwritten",
     {
-        "folder": "",  # where scans land; empty = <notes folder>/handwritten-inbox
-        "into": "handwritten",  # where the notes go, inside your notes folder
+        "folder": "",  # where scans land; empty = handwritten-inbox in your notes (or in your files folder)
+        "into": "",  # where the notes go, inside your notes folder; empty = your notes layout's (handwritten/)
         "every": "every 15m",
         "model": "gemini-flash-latest",
         "local": True,  # use the local vision model for photos when there is one
@@ -59,7 +61,8 @@ class Handwritten(Module):
 
     def folder(self) -> Path:
         f = self.setting("folder")
-        p = Path(f).expanduser() if f else self.app.workspace / "handwritten-inbox"
+        old = self.app.workspace / "handwritten-inbox"  # a scan folder already in your notes keeps being used
+        p = Path(f).expanduser() if f else old if old.is_dir() else layout.file_dir(self.app, "handwritten_inbox")
         p.mkdir(parents=True, exist_ok=True)
         return p
 
@@ -166,19 +169,25 @@ class Handwritten(Module):
         m = re.search(r"^# (.+)$", md, re.M)
         title = (m.group(1) if m else src.stem).strip()
         slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60] or "notes"
-        base = self.app.workspace / (self.setting("into") or "handwritten") / f"{now():%Y-%m-%d}-{slug}"
+        into = self.setting("into")
+        folder = self.app.workspace / into if into else layout.path(self.app, "handwritten")
+        base = folder / f"{now():%Y-%m-%d}-{slug}"
         base.parent.mkdir(parents=True, exist_ok=True)
+        files = layout.file_dir(self.app, "handwritten")
+        files = folder if files == layout.path(self.app, "handwritten") else files  # "next to the note"
         n = 1
-        while base.with_suffix(".md").exists():
+        while base.with_suffix(".md").exists() or (files / f"{base.name}{src.suffix.lower()}").exists():
             n += 1
             base = base.with_name(f"{base.name.rsplit('~', 1)[0]}~{n}")
-        original = base.with_suffix(src.suffix.lower())
+        original = files / f"{base.name}{src.suffix.lower()}"
+        original.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, original)
-        note = (
-            f"{md.rstrip()}\n\n---\nOriginal: [{original.name}]({original.name}) · written out {now():%Y-%m-%d %H:%M}\n"
-        )
-        base.with_suffix(".md").write_text(note, encoding="utf-8")
-        return base.with_suffix(".md").relative_to(self.app.workspace).as_posix()
+        f = base.with_suffix(".md")
+        head = layout.frontmatter(self.app, "handwritten", f, title=title, bare=True)
+        link = layout.file_link(self.app, original, f).removeprefix("!")
+        note = f"{head}{md.rstrip()}\n\n---\nOriginal: {link} · written out {now():%Y-%m-%d %H:%M}\n"
+        f.write_text(note, encoding="utf-8")
+        return layout.shown(self.app, f)
 
     def commands(self):
         return [Command("handwritten", "write out the handwritten pages waiting in the folder now", self._cmd)]

@@ -1,7 +1,8 @@
 """The day's note and the AI work around it, shared by check-ins, the alarm, the Sunday review, the study tracker and
 after-class notes.
 
-Your daily note is journal/<YYYY-MM-DD>.md in your notes folder. Kurooto only ever adds to it: a new section at the end
+Your daily note is journal/<YYYY-MM-DD>.md in your notes folder (or where your notes layout keeps it,
+core/layout.py). Kurooto only ever adds to it: a new section at the end
 ("## Study hours", "## Evening check-in"), never changing what's there. The plan for the day is the newest "## Plan…"
 section (the draft written before your alarm, or the one you settled on the morning call).
 
@@ -16,6 +17,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kurooto.core import layout
 from kurooto.core.clock import now
 
 if TYPE_CHECKING:
@@ -23,7 +25,7 @@ if TYPE_CHECKING:
 
 
 def note_path(app: App, day: dt.date | None = None) -> Path:
-    return app.workspace / "journal" / f"{(day or now().date()).isoformat()}.md"
+    return layout.path(app, "daily", date=(day or now().date()).isoformat())
 
 
 def append(app: App, heading: str, body: str, day: dt.date | None = None) -> Path:
@@ -34,7 +36,7 @@ def append(app: App, heading: str, body: str, day: dt.date | None = None) -> Pat
     new = not f.exists()
     with open(f, "a", encoding="utf-8") as out:
         if new:
-            out.write(f"# {day.isoformat()}\n")
+            out.write(layout.frontmatter(app, "daily", f, agent=False, bare=True) + f"# {day.isoformat()}\n")
         out.write(f"\n## {heading}\n\n{body.strip()}\n")
     return f
 
@@ -140,7 +142,7 @@ def morning_view(app: App) -> dict:
         "day": f"{today:%A %d %B}",
         "name": app.settings.get("you.name") or "",
         "plan": plan(app, today, 8000),
-        "note": f"journal/{today.isoformat()}",
+        "note": layout.link(app, "daily", date=today.isoformat()),
         "note_exists": note_path(app, today).is_file(),
     }
 

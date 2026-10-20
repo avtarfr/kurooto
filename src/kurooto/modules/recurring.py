@@ -1,4 +1,5 @@
-"""Recurring quizzes and tests: a small table in your notes (kurooto/recurring.md) that you can edit like any note.
+"""Recurring quizzes and tests: a small table in your notes (kurooto/recurring.md, or where your notes layout keeps
+it) that you can edit like any note.
 Each row is something that repeats: "Linear Algebra, Quiz, every week, Thursday 10:00". The deadline radar turns the
 rows into dated items, so exam mode, quiz offers and reminders follow from them.
 
@@ -17,8 +18,11 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+from pathlib import Path
 
-NOTE = "kurooto/recurring.md"
+from kurooto.core import layout
+
+NOTE = "kurooto/recurring.md"  # in the default notes layout; note_file() is where it is
 HEAD = "| Subject | What | Every (weeks) | Day | Time | Next | Until |"
 SEP = "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -120,9 +124,19 @@ def line(row: dict) -> str:
     )
 
 
-def new_note(made_by: str, today: dt.date) -> str:
+def note_file(app) -> Path:
+    return layout.path(app, "recurring")
+
+
+def note_rel(app) -> str:
+    return layout.rel(app, "recurring")
+
+
+def new_note(made_by: str, today: dt.date, header: str | None = None) -> str:
+    """A new table note; `header`: the layout's header for it (layout.frontmatter), else Kurooto's own."""
+    head = header if header is not None else f"---\nmade_by: {made_by}\ndate: {today.isoformat()}\n---\n\n"
     return (
-        f"---\nmade_by: {made_by}\ndate: {today.isoformat()}\n---\n\n# Recurring quizzes and tests\n\n"
+        f"{head}# Recurring quizzes and tests\n\n"
         f"Things that repeat. {made_by} turns each row into dated deadlines (exam mode, quiz offers and reminders "
         'follow). Edit freely: "Every" is in weeks; "Next" is any date it happens on (needed for every two weeks); '
         '"Until" is optional.\n\n' + HEAD + "\n" + SEP + "\n"

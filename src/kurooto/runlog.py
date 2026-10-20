@@ -6,7 +6,8 @@
     kurooto runlog end [--run ID] [--status ok|failed|interrupted]          finish it
     kurooto runlog ls [project]                                              the runs so far
 
-Each run is a folder research/<project>/runs/<YYYYmmdd-HHMMSS>-<name>/ in your notes:
+Each run is a folder research/<project>/runs/<YYYYmmdd-HHMMSS>-<name>/ in your notes (where your notes layout keeps a
+project's runs):
     run.md         what it was (command folder, git commit, config) and, at the end, how it went
     config.json    the config you gave
     meta.json      git commit, branch, uncommitted changes, start, end, duration, status
@@ -26,7 +27,7 @@ import re
 import time
 from pathlib import Path
 
-from kurooto.core import proc
+from kurooto.core import layout, proc
 from kurooto.core.state import jload, jsave
 
 DIFF_MAX = 2 * 1024 * 1024
@@ -73,11 +74,12 @@ def git_state(repo: Path, git: str | None) -> dict:
 
 
 class Runlog:
-    """Runs for one installation: `p` its paths, `workspace` the notes folder."""
+    """Runs for one installation: `p` its paths, `workspace` the notes folder (or its layout.Layout)."""
 
-    def __init__(self, p, workspace: Path, assistant: str = "Kurooto"):
+    def __init__(self, p, workspace, assistant: str = "Kurooto"):
         self.p = p
-        self.workspace = Path(workspace)
+        self.notes = layout.of(workspace)
+        self.workspace = self.notes.root
         self.assistant = assistant
         self.state_file = p.state / "runlog.json"
 
@@ -87,7 +89,7 @@ class Runlog:
     def runs_dir(self, project: str) -> Path:
         from kurooto.modules.research import slug
 
-        return self.workspace / "research" / slug(project) / "runs"
+        return self.notes.path("runs", project=slug(project))
 
     # --------------------------------------------------------------------------------------------- start
     def start(self, project: str, name: str = "", config: dict | None = None, repo: Path | None = None) -> str:
@@ -100,7 +102,7 @@ class Runlog:
         name = name or gs["repo"] or "run"
         safe = re.sub(r"[^A-Za-z0-9._-]+", "-", name).strip("-")[:60] or "run"
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-        ensure_project(self.workspace, project, self.assistant)
+        ensure_project(self.notes, project, self.assistant)
         base = self.runs_dir(project)
         d = base / f"{stamp}-{safe}"
         n = 2
@@ -230,7 +232,7 @@ class Runlog:
             + (f" ({shown})" if shown else "")
             + f" [[research/{d.parent.parent.name}/runs/{rid}/run|details]]"
         )
-        log_lines(self.workspace, project, [line], self.assistant)
+        log_lines(self.notes, project, [line], self.assistant)
         st = self._state()
         if rid in st["runs"]:
             st["runs"][rid]["status"] = status
@@ -294,7 +296,8 @@ def for_this_install() -> Runlog:
     p = paths().ensure()
     s = Settings(p.config / "settings.json")
     ws = s.get("you.workspace")
-    return Runlog(p, Path(ws) if ws else default_workspace(), s.get("you.assistant_name") or "Kurooto")
+    notes = layout.Layout(Path(ws) if ws else default_workspace(), s, s.get("you.assistant_name") or "Kurooto", p.data)
+    return Runlog(p, notes, notes.assistant)
 
 
 def main(args) -> int:

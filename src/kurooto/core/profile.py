@@ -75,7 +75,7 @@ SKIP = {"state/quiz/session.json", "state/quiz/offered.json"}  # a practice sess
 LOCAL_ONLY = ("data/mail/confidential/",)  # confidential mail summarised on this computer stays on this computer
 SECRET_FILES = (("config", "cloudflare/.wrangler/config/default.toml"),)  # the call line's Cloudflare sign-in
 SCHEDULED = ("reminders:", "calls:ring:", "alarm:ring")  # one-off jobs that are yours: reminders, calls, the alarm
-FOLDERS = ("you.workspace", "backups.folder", "overlay.path")  # kept only where that folder exists on this computer
+FOLDERS = ("you.workspace", "backups.folder", "overlay.path", "files.folder")  # kept only where it exists here
 LOCAL = ("brain.agy.io_mode",)  # how this computer runs a program: found out again here
 MAX_FILE = 4 * 1024**2
 README = """# Kurooto profile
@@ -681,7 +681,7 @@ def _folder_here(value, dotted: str) -> bool:
     p = Path(value).expanduser()
     if not p.is_absolute():
         return False
-    return p.is_dir() or (dotted == "you.workspace" and p.parent.is_dir())
+    return p.is_dir() or (dotted in ("you.workspace", "files.folder") and p.parent.is_dir())
 
 
 def _write(target: Path, text: str, mode: int | None = None) -> None:

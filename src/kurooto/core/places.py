@@ -1,10 +1,10 @@
 """Where the AI may look on this computer, the same for Kurooto's own tools and for agy's allow-list.
 
 Reading: your notes folder, Kurooto's copies of Classroom and mail (its data folders), your Documents and Downloads,
-and your Screenshots folder if there is one. Writing: your notes folder (all of it), the folder Classroom's course
-files go to, and your add-ons' skills/ when "Your add-ons" is on (never the skills Kurooto ships, which updates
-replace). Documents and Downloads stay read-only. Each is the real folder on this OS (Windows' known folders, which
-OneDrive may have moved; Linux's XDG user dirs), as an absolute path.
+and your Screenshots folder if there is one. Writing: your notes folder (all of it), your files folder (files.folder,
+if you set one), the folder Classroom's course files go to, and your add-ons' skills/ when "Your add-ons" is on (never
+the skills Kurooto ships, which updates replace). Documents and Downloads stay read-only. Each is the real folder on
+this OS (Windows' known folders, which OneDrive may have moved; Linux's XDG user dirs), as an absolute path.
 """
 
 from __future__ import annotations
@@ -90,14 +90,29 @@ def notes_root(app: App) -> Path:
 
 def course_files(app: App) -> Path:
     """Where Classroom's course files are saved (google_classroom.files_dir)."""
-    return Path(os.path.abspath(app.paths.data / "classroom"))
+    from kurooto.core import layout
+
+    return Path(os.path.abspath(layout.file_dir(app, "classroom", subject="x").parent))
+
+
+def files_folder(app: App) -> Path | None:
+    """Your files folder outside the notes (files.folder, core/layout.py), if you set one."""
+    from kurooto.core import layout
+
+    root = layout.files_root(app)
+    return Path(os.path.abspath(root)) if root else None
 
 
 def write_roots(app: App) -> list[Path]:
     """Every folder the AI may write in, absolute, without repeats."""
     from kurooto.core import overlay
 
-    roots = [notes_root(app), course_files(app), *overlay.dirs(app, "skills")]
+    roots = [
+        notes_root(app),
+        course_files(app),
+        *([f] if (f := files_folder(app)) else []),
+        *overlay.dirs(app, "skills"),
+    ]
     return list(dict.fromkeys(Path(os.path.abspath(p)) for p in roots))
 
 
@@ -106,6 +121,7 @@ def read_roots(app: App) -> list[Path]:
     roots = [
         notes_root(app),
         course_files(app),  # Classroom's course files (google_classroom)
+        app.paths.data / "classroom",  # older ones, from before files.folder was set
         app.paths.state / "classroom-notes",  # Classroom batches for the AI
         app.paths.state / "mail-digest",  # mail batches for the digest (google_mail)
         user_folder("documents"),
