@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.1 (unreleased)
+
+**A stuck AI request no longer holds up the queue**
+- Fixed: an automatic revision pack stayed "running" for 20+ minutes and everything you sent after it waited. agy
+  stopped (its tool permission was still being asked), your Gemini key took over, and its next request never came
+  back when the network dropped behind a login page: one request could wait the job's whole time (30 min for high
+  effort), and a connection cut mid-answer could stop the queue for good. A request to a service on the internet now
+  waits at most 3/5/10 minutes (low/medium/high), any failure there is a plain failure, and a mistake inside a job
+  fails that job instead of stopping the queue. Which AI is working on a request shows while it runs.
+- Two lanes: your own requests and background work (automatic packs, routines, the morning plan, digests) run side
+  by side, so your request never waits behind background work.
+- A watchdog ends a request with no AI at work and no program running for `jobs.stuck_min` minutes (10), or one still
+  going past its time limit plus a grace, as failed, with a plain message.
+- Cancel: `/jobs` shows what's running and waiting with Cancel buttons (and `/jobs cancel <id|all>`); `kurooto jobs`
+  and `kurooto jobs --cancel ID|all`; a Cancel button on the dashboard's AI jobs page. Cancelling a running request
+  stops its program and everything it started.
+
+**Google turns on when you sign in**
+- Signing in on the Google card turns Google on (and the Google features you set up that Google has OK'd), also when
+  an import left it off.
+
+**Commands of features that are off**
+- A /command of a feature that's off answers "Google is off: Features → Google → Turn on" (a skill while Skills is off
+  the same) instead of going to the AI. `/jobs`, `/status` and `/help` answer whichever features are on.
+
 ## 0.5.0 (2026-10-20)
 Includes everything planned for 0.4.0 (below), which wasn't released on its own.
 

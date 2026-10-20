@@ -89,7 +89,14 @@ class Codex(Brain):
             env = {**os.environ, **task.mcp_env} if task.mcp_env else None
             prompt = (task.context + "\n\n" + task.prompt).strip() if task.context else task.prompt
             t0 = time.monotonic()
-            r = proc.run([*args, "-"], input=prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd, env=env)
+            r = proc.run(
+                [*args, "-"],
+                input=prompt,
+                timeout=task.timeout_s + self.grace_s,
+                cwd=task.cwd,
+                env=env,
+                on_start=task.on_process,
+            )
             secs = time.monotonic() - t0
             text = last.read_text(encoding="utf-8", errors="replace").strip() if last.exists() else ""
         bad = _fail(r.code, f"{r.out}\n{r.err}", secs, minutes)
@@ -134,7 +141,9 @@ class ClaudeCode(Brain):
             if self.models.get(task.effort):
                 args += ["--model", self.models[task.effort]]
             t0 = time.monotonic()
-            r = proc.run(args, input=task.prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd)
+            r = proc.run(
+                args, input=task.prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd, on_start=task.on_process
+            )
             secs = time.monotonic() - t0
         data = None
         for line in reversed((r.out or "").strip().splitlines()):

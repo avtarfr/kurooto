@@ -81,6 +81,7 @@ def run_skill(
     then_payload: dict | None = None,
     background: bool = False,
     reply_to=None,
+    lane: str | None = None,
 ) -> str | None:
     """Hand work to the AI through a skill (your copy of it, or the shipped one). Returns the job id, or None when
     there's no AI (Chat is off) or no such skill."""
@@ -101,6 +102,7 @@ def run_skill(
                 background=background,
                 files=files,
                 title=title,
+                lane=lane,
             )
         except KeyError:
             return None
@@ -115,6 +117,7 @@ def run_skill(
         then=then,
         then_payload=then_payload,
         background=background,
+        lane=lane,
     )
 
 

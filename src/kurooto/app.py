@@ -14,7 +14,7 @@ from kurooto.core.paths import Paths, paths
 from kurooto.core.power import Power
 from kurooto.core.scheduler import Scheduler
 from kurooto.core.secrets import Secrets
-from kurooto.modules.base import Incoming, Module
+from kurooto.modules.base import Command, Incoming, Module
 from kurooto.modules.text import QUESTION, tidy, too_complex
 
 register_defaults(
@@ -28,6 +28,7 @@ register_defaults(
     },
 )
 register_defaults("modules", {"enabled": []})
+ALWAYS = ("status",)  # commands that answer even while their feature is off (/help and /jobs are Kurooto's own)
 
 
 def default_workspace(home: Path | None = None) -> Path:
@@ -271,6 +272,10 @@ class App:
                 text, buttons = self.health.command(arg)
                 msg.reply(text, buttons=buttons)
                 return
+            if name == "jobs":  # what the AI is working on and what waits, with Cancel buttons (core/jobs.py)
+                text, buttons = self.jobs.command(arg)
+                msg.reply(text, buttons=buttons)
+                return
             for m in mods:
                 for c in m.commands():
                     if c.name == name:
@@ -278,6 +283,17 @@ class App:
                         if out:
                             msg.reply(out)
                         return
+            found = self.off_command(name, mods)  # a feature that's off: how to turn it on, never the AI
+            if found is not None:
+                m, c = found
+                if c is not None and name in ALWAYS:  # /status answers with Telegram off too (from a terminal)
+                    out = c.handler(msg, arg.strip())
+                    if out:
+                        msg.reply(out)
+                    return
+                title = m.title.split(" (")[0]  # "Google (Classroom, Gmail drafts)": Google
+                msg.reply(f"{title} is off: Features → {title} → Turn on.")
+                return
             skills = self.modules.get("skills")  # not a command: a skill (/journal, /study-log, yours), if it's one
             if skills is not None and self.is_on("skills"):
                 out = skills.typed(msg, name, arg.strip())
@@ -346,6 +362,31 @@ class App:
             "what works now."
         )
 
+    def off_command(self, name: str, mods: list[Module]) -> tuple[Module, Command | None] | None:
+        """The feature that's off whose /command this is (with the command), or Skills for one of your skills while
+        Skills is off; None otherwise. /sync isn't one: it syncs everything while Notes sync is off."""
+        if not name or name in ("sync", "start", "help"):
+            return None
+        for m in self.modules.values():
+            if m in mods:
+                continue
+            try:
+                cmds = m.commands()
+            except Exception as e:  # one feature's mistake never hides the others' commands
+                self.events.emit("commands_failed", module=m.id, error=str(e)[:200])
+                cmds = []
+            for c in cmds:
+                if c.name == name:
+                    return m, c
+        sk = self.modules.get("skills")
+        if sk is not None and sk not in mods:
+            from kurooto.modules.skills import load_skill
+
+            s = load_skill(self, name.replace("_", "-"))
+            if s is not None and not s.internal:
+                return sk, None
+        return None
+
     def callback(self, data: str) -> str:
         """A button you tapped: "<prefix>:<ref>:<action>"."""
         prefix, ref, act = (data.split(":", 2) + ["", ""])[:3]
@@ -356,6 +397,8 @@ class App:
             return self.ask.button(ref, act)
         if prefix == "health":  # a Fix button (core/health.py)
             return self.health.button(ref, act)
+        if prefix == "job":  # a Cancel button under /jobs (core/jobs.py)
+            return self.jobs.button(ref, act)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:
@@ -372,6 +415,7 @@ class App:
         lines.append("/q  open questions I asked you (reply to one to answer it)")
         lines.append("/aboutme  what I know about you (your profile's In-brief part), and where to edit it")
         lines.append("/health  what isn't working, with Fix buttons (/health now checks online too)")
+        lines.append("/jobs  what the AI is working on and what waits, with Cancel buttons")
         if not self.is_on("notes_sync"):
             lines.append("/sync  sync everything that's on (Classroom, calendar, research, notes brain)")
         if not self.is_on("chat"):

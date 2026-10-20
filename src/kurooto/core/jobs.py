@@ -8,6 +8,15 @@ saved, and the Gemini key hands over to agy when agy has worked here before; the
 Free limits (core/quota.py): background work skips a limit that's kept for you (past quota.background_pct of the day,
 or used up) and waits in the queue for its reset (not_before) instead of being dropped; your own requests try a
 used-up limit last, and a used-up limit is told in one plain line.
+
+Two lanes, each running one request at a time: yours ("you": what you asked on Telegram, a call, the terminal or the
+dashboard) and work nobody is waiting for ("bg": background=True, automatic revision packs, routines, the morning
+plan). Your request never waits behind a background one.
+
+A watchdog ends a request that is stuck: no AI at work on it and no program running for jobs.stuck_min minutes
+(10), or still going past its time limit plus a grace. It ends as failed with a plain message. You can cancel what's
+running or waiting (/jobs, the dashboard's AI jobs page, `kurooto jobs --cancel ID`); a running agent program is
+stopped with everything it started.
 """
 
 from __future__ import annotations
@@ -27,6 +36,8 @@ from typing import TYPE_CHECKING
 import psutil
 
 from kurooto import providers
+from kurooto.core import proc
+from kurooto.core.config import register_defaults
 from kurooto.core.mcp import command, run_env
 from kurooto.core.state import owner_only
 from kurooto.core.tools import agent_tools, run_tool
@@ -47,7 +58,12 @@ create index if not exists jobs_status on jobs(status, created);
 create table if not exists attempts (job text, brain text, verdict text, at real, seconds real, tool_calls integer);
 create index if not exists attempts_at on attempts(at);
 """
+register_defaults("jobs", {"stuck_min": 10})  # the watchdog: minutes with no AI at work and no program running
+
 LONG = 7000  # longer answers are also sent as a document
+LANES = ("you", "bg")  # your own requests; work nobody is waiting for
+GRACE_S = 120  # the watchdog's grace past a try's time limit (and the brain's own grace)
+ACTIVE = ("queued", "running")
 RETRY = (Verdict.RATE_LIMITED, Verdict.AUTH, Verdict.ERROR, Verdict.DENIED, Verdict.EMPTY)  # the next brain tries
 GEMINI_KEY = "gemini.api_key"  # also what calls and voice notes use
 DENIED_HELP = (
@@ -65,6 +81,8 @@ FRIENDLY = {
     "(kurooto open) → AI → Sign in again.",
     Verdict.RATE_LIMITED: "{brain} has hit its usage limit for now.",
     Verdict.ERROR: "Something went wrong talking to {brain}.",
+    Verdict.CANCELLED: "Cancelled.",
+    Verdict.STUCK: "It got stuck (nothing was happening), so I stopped it. Send it again to try once more.",
 }
 
 
@@ -83,6 +101,10 @@ class Job:
     created: float
     seconds: float | None
     result: str | None
+    started: float | None = None
+    lane: str = "you"
+    not_before: float | None = None
+    background: bool = False
 
 
 def _process(pid: int) -> str:
@@ -117,7 +139,6 @@ class Jobs:
                 "coalesce(finished, created), seconds, 0 from jobs where brain is not null and verdict is not null"
             )
         self._lock = threading.Lock()
-        self._cli_lock = threading.Lock()  # CLI brains: one job at a time
         self._wake: asyncio.Event | None = None
         self._loop = None
         self.then_actions: dict = {}  # name -> fn(job, result)
@@ -129,6 +150,12 @@ class Jobs:
             self._db.execute("alter table jobs add column text_only integer default 0")
         if "not_before" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # waits for a reset
             self._db.execute("alter table jobs add column not_before real")
+        have = [r[1] for r in self._db.execute("pragma table_info(jobs)")]
+        for col, kind in (("lane", "text default 'you'"), ("proc", "text"), ("activity", "real"), ("deadline", "real")):
+            if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline
+                self._db.execute(f"alter table jobs add column {col} {kind}")
+        self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
+        self._lanes: dict[str, tuple[str, threading.Thread]] = {}  # lane -> (job, the thread running it)
 
     # ------------------------------------------------------------------------------------- the queue
     def submit(
@@ -142,15 +169,18 @@ class Jobs:
         then_payload: dict | None = None,
         background: bool = False,
         text_only: bool = False,
+        lane: str | None = None,
     ) -> str:
         """Queue an AI request. background=True: work nobody is waiting for, which waits for the charger when the
-        laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools)."""
+        laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools).
+        lane: "you" (your own request) or "bg" (automatic work); unset, background work goes in "bg"."""
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
+        lane = lane if lane in LANES else ("bg" if background else "you")
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"
-                "background,text_only) values(?,?,?,?, 'queued',?,?,?,?,?,?,?)",
+                "background,text_only,lane) values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?)",
                 (
                     jid,
                     (title or prompt_clean.split("\n")[0])[:80],
@@ -163,9 +193,10 @@ class Jobs:
                     json.dumps(then_payload or {}),
                     int(background),
                     int(text_only),
+                    lane,
                 ),
             )
-        self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean))
+        self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean), lane=lane)
         if self._wake is not None and self._loop is not None:
             self._loop.call_soon_threadsafe(self._wake.set)
         return jid
@@ -177,7 +208,9 @@ class Jobs:
             rows = self._db.execute("select id, runner from jobs where status='running'").fetchall()
             gone = [jid for jid, runner in rows if not _alive(runner)]
             for jid in gone:
-                self._db.execute("update jobs set status='queued' where id=? and status='running'", (jid,))
+                self._db.execute(
+                    "update jobs set status='queued', proc=null, deadline=null where id=? and status='running'", (jid,)
+                )
         return len(gone)
 
     def poke(self) -> None:
@@ -192,15 +225,30 @@ class Jobs:
             cur = self._db.execute(sql, args)
             return cur.fetchone() if one else cur.fetchall()
 
+    @staticmethod
+    def _job(r) -> Job:
+        return Job(*r[:9], bool(r[9]), *r[10:14], r[14] or "you", r[15], bool(r[16]))
+
     def get(self, jid: str) -> Job | None:
         row = self._read(f"select {self._cols} from jobs where id=?", (jid,))
-        return Job(*row[:9], bool(row[9]), *row[10:]) if row else None
+        return self._job(row) if row else None
 
     def recent(self, n: int = 10) -> list[Job]:
         rows = self._read(f"select {self._cols} from jobs order by created desc limit ?", (n,), one=False)
-        return [Job(*r[:9], bool(r[9]), *r[10:]) for r in rows]
+        return [self._job(r) for r in rows]
 
-    _cols = "id,title,prompt,effort_req,effort,status,verdict,brain,reply_to,quiet,created,seconds,result"
+    def active(self) -> list[Job]:
+        """What's running, then what's waiting, oldest first."""
+        rows = self._read(
+            f"select {self._cols} from jobs where status in ('running','queued') order by status='queued', created",
+            one=False,
+        )
+        return [self._job(r) for r in rows]
+
+    _cols = (
+        "id,title,prompt,effort_req,effort,status,verdict,brain,reply_to,quiet,created,seconds,result,started,lane,"
+        "not_before,background"
+    )
 
     # queued, allowed on this power, and not waiting for a free limit's reset (core/quota.py)
     _READY = "status='queued' and (background=0 or ?) and coalesce(not_before, 0) <= ?"
@@ -209,36 +257,67 @@ class Jobs:
         q = self.app.quota  # with the reserve turned off (quota.on = false), work that waited goes at once
         return int(self.app.power.current == "normal"), q.clock() if q.on() else 1e18
 
-    def _claim(self) -> str | None:
+    def _claim(self, lane: str | None = None) -> str | None:
+        """Mark the oldest ready job (of one lane, or of any) as running; its id, or None."""
         with self._lock:
+            which = " and coalesce(lane, 'you')=?" if lane else ""
             row = self._db.execute(
-                f"select id from jobs where {self._READY} order by created limit 1", self._ready_args()
+                f"select id from jobs where {self._READY}{which} order by created limit 1",
+                (*self._ready_args(), *((lane,) if lane else ())),
             ).fetchone()
             if not row:
                 return None
+            t = time.time()
             self._db.execute(
-                "update jobs set status='running', started=?, runner=? where id=?", (time.time(), RUNNER, row[0])
+                "update jobs set status='running', started=?, runner=?, activity=?, proc=null, deadline=null "
+                "where id=?",
+                (t, RUNNER, t, row[0]),
             )
+            self._stops[row[0]] = threading.Event()
             return row[0]
 
-    def run_next(self) -> str | None:
-        """Run the oldest queued job to completion. Returns its id, or None if the queue is empty."""
-        jid = self._claim()
+    def run_next(self, lane: str | None = None) -> str | None:
+        """Run the oldest queued job (of a lane, or of any) to completion here. Its id, or None if none is ready."""
+        jid = self._claim(lane)
         if jid:
-            self._run(jid)
+            self._run_safe(jid)
         return jid
+
+    def _busy(self, lane: str) -> bool:
+        """Is a job of this lane running? One ended by a cancel or the watchdog doesn't count, even while its thread
+        is still finishing (stuck in a request): the lane goes on without it."""
+        cur = self._lanes.get(lane)
+        if cur is None or not cur[1].is_alive():
+            return False
+        row = self._read("select status from jobs where id=?", (cur[0],))
+        return bool(row and row[0] == "running")
+
+    def _start(self, lane: str, jid: str) -> None:
+        t = threading.Thread(target=self._run_safe, args=(jid,), name=f"job-{lane}", daemon=True)
+        self._lanes[lane] = (jid, t)
+        t.start()
+
+    def _tick(self) -> None:
+        """One look at the queue: the watchdog, then a job for each lane that's free."""
+        self.watchdog()
+        if self.app.power.current == "paused":
+            return
+        for lane in LANES:
+            if not self._busy(lane):
+                jid = self._claim(lane)
+                if jid:
+                    self._start(lane, jid)
 
     async def worker(self, stop: asyncio.Event) -> None:
         self._loop = asyncio.get_running_loop()
         self._wake = asyncio.Event()
         self.recover()
         while not stop.is_set():
-            if self.app.power.current != "paused" and self._read(
-                f"select 1 from jobs where {self._READY} limit 1", self._ready_args()
-            ):
-                await asyncio.to_thread(self.run_next)
-                continue
             self._wake.clear()
+            try:
+                await asyncio.to_thread(self._tick)
+            except Exception as e:  # the queue never stops over one mistake
+                self.app.events.emit("jobs_failed", error=f"{type(e).__name__}: {e}"[:300])
             try:
                 await asyncio.wait_for(self._wake.wait(), timeout=5)
             except TimeoutError:
@@ -257,8 +336,20 @@ class Jobs:
             return None
         return lambda q: brain.complete(q, effort="low", timeout=30).text
 
+    def _run_safe(self, jid: str) -> None:
+        """Run a job; a mistake anywhere ends it as failed (and tells you) instead of leaving it "running"."""
+        try:
+            self._run(jid)
+        except Exception as e:
+            self.app.events.emit("job_crashed", job=jid, error=f"{type(e).__name__}: {e}"[:300])
+            self._end(jid, Verdict.ERROR, f"{type(e).__name__}: {e}")
+        finally:
+            self._stops.pop(jid, None)
+            self.poke()
+
     def _run(self, jid: str) -> None:
         job = self.get(jid)
+        stop = self._stops.get(jid) or threading.Event()
         s = self.app.settings
         main = providers.build(self.app, s.get("brain.main") or "")
         fallback = providers.build(self.app, s.get("brain.fallback") or "")
@@ -282,18 +373,21 @@ class Jobs:
             mcp=None if text_only else mcp_command(),
             mcp_env=run_env(self.app.paths),
             text_only=text_only,
+            on_process=lambda pid: self._mark(jid, proc=_process(pid)),
+            stop=stop,
         )
         chain = [b for b in (main, fallback) if b is not None]
         last = self._last_resort(main)
         if last is not None and last.id not in {b.id for b in chain}:
             chain.append(last)
-        background = bool(self._read("select background from jobs where id=?", (jid,))[0])
-        chain, wait = self.app.quota.arrange(chain, level, background)  # free limits kept for you (core/quota.py)
+        chain, wait = self.app.quota.arrange(chain, level, job.background)  # free limits kept for you (core/quota.py)
         if wait is not None and not chain:
             self._defer(jid, wait)
             return
         used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
         for i, brain in enumerate(chain):
+            if stop.is_set():  # cancelled, or ended by the watchdog: it was told already
+                return
             ok, why = brain.available()
             if not ok:
                 result, used = Result(Verdict.ERROR, detail=why), brain
@@ -304,11 +398,15 @@ class Jobs:
                 from kurooto.providers.agy import tools_once
 
                 tools_once(self.app, brain)
-            if brain.kind == "cli":
-                with self._cli_lock:
-                    result = brain.run(task)
-            else:
+            # which AI is at work, and until when (the watchdog's limit: its time plus the brain's grace and ours)
+            limit = task.timeout_s + getattr(brain, "grace_s", 0) + GRACE_S
+            self._mark(jid, brain=brain.id, deadline=time.time() + limit)
+            try:
                 result = brain.run(task)
+            finally:
+                self._mark(jid, proc=None, deadline=None)
+            if stop.is_set():
+                return
             self._attempt(jid, brain.id, result)
             if brain.id == "agy" and result.ok:
                 from kurooto.providers.agy import mark_worked
@@ -328,9 +426,9 @@ class Jobs:
             result.detail = DENIED_HELP
         ok = result.ok
         with self._lock:
-            self._db.execute(
-                "update jobs set status=?, verdict=?, brain=?, effort=?, finished=?, seconds=?, result=?, detail=? "
-                "where id=?",
+            done = self._db.execute(
+                "update jobs set status=?, verdict=?, brain=?, effort=?, finished=?, seconds=?, result=?, detail=?, "
+                "proc=null, deadline=null where id=? and status='running'",
                 (
                     "ok" if ok else "failed",
                     result.verdict.value,
@@ -342,7 +440,9 @@ class Jobs:
                     result.detail[:2000],
                     jid,
                 ),
-            )
+            ).rowcount
+        if not done:  # cancelled or ended by the watchdog while it ran: that was told already
+            return
         self.app.events.emit(
             "job_done",
             job=jid,
@@ -352,15 +452,91 @@ class Jobs:
             brain=used.id if used else None,
             seconds=round(result.seconds),
         )
-        job = self.get(jid)
-        if not job.quiet:
+        self._after(self.get(jid), result, used)
+
+    def _after(self, job: Job, result: Result, used=None, tell: bool = True) -> None:
+        """A finished job: the answer to you (unless it's quiet), then its follow-up (then_action)."""
+        if tell and not job.quiet:
             self._deliver(job, result, used)
-        then = self._read("select then_action, then_payload from jobs where id=?", (jid,))
+        then = self._read("select then_action, then_payload from jobs where id=?", (job.id,))
         if then and then[0] and then[0] in self.then_actions:
             try:
                 self.then_actions[then[0]](job, result, json.loads(then[1] or "{}"))
             except Exception as e:
-                self.app.events.emit("job_then_failed", job=jid, error=str(e)[:300])
+                self.app.events.emit("job_then_failed", job=job.id, error=str(e)[:300])
+
+    def _mark(self, jid: str, **cols) -> None:
+        """Note how a running job is doing (which AI, its program, its deadline); each note is a sign of life."""
+        cols["activity"] = time.time()
+        sets = ", ".join(f"{k}=?" for k in cols)  # constant column names only
+        with self._lock:
+            self._db.execute(f"update jobs set {sets} where id=? and status='running'", (*cols.values(), jid))
+
+    # ------------------------------------------------------------------------------------- ending early
+    def _end(self, jid: str, verdict: Verdict, detail: str, tell: bool = True) -> bool:
+        """End a queued or running job as failed now: its program (and what that started) is stopped, the thread
+        running it stops at its next step and its late answer is dropped. You're told unless tell=False or it's
+        quiet; its follow-up runs with the failure. False if it wasn't queued or running."""
+        t = time.time()
+        with self._lock:
+            row = self._db.execute("select status, proc from jobs where id=?", (jid,)).fetchone()
+            if not row or row[0] not in ACTIVE:
+                return False
+            self._db.execute(
+                "update jobs set status='failed', verdict=?, finished=?, detail=?, proc=null, deadline=null, "
+                "seconds=case when started is null then 0 else round(? - started, 1) end where id=?",
+                (verdict.value, t, detail[:2000], t, jid),
+            )
+        ev = self._stops.get(jid)
+        if ev is not None:
+            ev.set()
+        if row[1] and _alive(row[1]):
+            proc.kill_tree(int(str(row[1]).split(":")[0]))
+        self.app.events.emit("job_ended", job=jid, verdict=verdict.value, was=row[0])
+        self._after(self.get(jid), Result(verdict, detail=detail), tell=tell)
+        self.poke()
+        return True
+
+    def cancel(self, jid: str) -> Job | None:
+        """Cancel a queued or running request (a running agent program is stopped with everything it started). The
+        job, or None if it wasn't waiting or running."""
+        if not self._end(jid, Verdict.CANCELLED, "cancelled by you", tell=False):
+            return None
+        self.app.events.emit("job_cancelled", job=jid)
+        return self.get(jid)
+
+    def find(self, ref: str) -> Job | None:
+        """A running or waiting job by its id, or by the start of it when only one matches."""
+        ref = str(ref or "").strip().lower()
+        act = self.active()
+        hit = [j for j in act if j.id == ref] or [j for j in act if ref and j.id.startswith(ref)]
+        return hit[0] if len(hit) == 1 else None
+
+    def watchdog(self) -> list[str]:
+        """End this process's stuck jobs as failed: no AI at work on it and no program running for jobs.stuck_min
+        minutes, or a try still going past its time limit plus grace. Returns their ids."""
+        try:
+            stuck = max(1.0, float(self.app.settings.get("jobs.stuck_min") or 10)) * 60
+        except (TypeError, ValueError):
+            stuck = 600.0
+        t, out = time.time(), []
+        rows = self._read(
+            "select id, proc, activity, started, deadline from jobs where status='running' and runner=?",
+            (RUNNER,),
+            one=False,
+        )
+        for jid, pr, act, started, deadline in rows:
+            if deadline is not None:
+                if t > deadline and self._end(jid, Verdict.TIMEOUT, "still going past its time limit; stopped"):
+                    out.append(jid)
+                continue
+            if pr and _alive(pr):
+                continue
+            if t - float(act or started or t) > stuck:
+                why = f"nothing happened for {round(stuck / 60)} min, with no AI at work on it; stopped"
+                if self._end(jid, Verdict.STUCK, why):
+                    out.append(jid)
+        return out
 
     def _attempt(self, jid: str, brain: str, result: Result) -> None:
         tools = result.usage.get("tool_calls") if isinstance(result.usage, dict) else 0
@@ -462,7 +638,9 @@ class Jobs:
         until = max(float(until), self.app.quota.clock() + 60)
         with self._lock:
             self._db.execute(
-                "update jobs set status='queued', not_before=?, runner=null, started=null where id=?", (until, jid)
+                "update jobs set status='queued', not_before=?, runner=null, started=null, proc=null, deadline=null "
+                "where id=? and status='running'",
+                (until, jid),
             )
         self.app.events.emit("job_deferred", job=jid, until=datetime.datetime.fromtimestamp(until).isoformat())
 
@@ -483,8 +661,82 @@ class Jobs:
         )
         return int(row[0]) if row else 0
 
+    # ------------------------------------------------------------------------------------- /jobs
+    def line(self, j: Job) -> str:
+        """One running or waiting job, for /jobs and `kurooto jobs`."""
+        t = time.time()
+        if j.status == "running":
+            who = providers.CHOICES.get(j.brain or "", j.brain or "")
+            what = f"{SHORT.get(j.brain or '', who) or 'starting'} · {_mins(t - (j.started or t))}"
+        else:
+            what = f"waiting {_mins(t - j.created)}"
+            if j.not_before and j.not_before > t:
+                what += f", until a free limit resets ({datetime.datetime.fromtimestamp(j.not_before):%H:%M})"
+            elif j.background and self.app.power.current != "normal":
+                what += ", for the charger"
+        lane = "" if j.lane == "you" else " · background"
+        return f"- {j.title} · {what}{lane} ({j.id})"
+
+    def command(self, arg: str = "") -> tuple[str, list | None]:
+        """/jobs: what's running and waiting, each with a Cancel button, then the last few that finished.
+        /jobs cancel <id|all> does it from the keyboard."""
+        words = arg.split()
+        if words and words[0].lower() in ("cancel", "stop"):
+            return self.cancel_text(words[1] if len(words) > 1 else ""), None
+        act = self.active()
+        run = [self.line(j) for j in act if j.status == "running"]
+        wait = [self.line(j) for j in act if j.status == "queued"]
+        lines = (["Running:", *run] if run else []) + (["Waiting:", *wait] if wait else [])
+        if not act:
+            lines.append("Nothing running or waiting.")
+        done = [j for j in self.recent(12) if j.status not in ACTIVE][:5]
+        if done:
+            lines += ["", "Last finished:"] + [
+                f"{j.status:7} {j.effort or '-':6} {f'{j.seconds:.0f}s' if j.seconds else '':>5}  {j.title}"
+                + (f" ({j.verdict})" if j.status == "failed" and j.verdict else "")
+                for j in done
+            ]
+        if len(act) > 1:
+            lines.append("\n/jobs cancel <id> (or all) cancels from here too.")
+        buttons = [[(f"Cancel: {j.title[:40]}", f"job:{j.id}:cancel")] for j in act[:8]]
+        if len(act) > 1:
+            buttons.append([("Cancel all", "job:all:cancel")])
+        return "\n".join(lines), buttons or None
+
+    def cancel_text(self, ref: str) -> str:
+        """/jobs cancel <id|all>, a Cancel button, `kurooto jobs --cancel`: what happened, in one line."""
+        ref = str(ref or "").strip()
+        if not ref:
+            return "Which one? /jobs lists them with their ids: /jobs cancel <id>, or /jobs cancel all."
+        if ref.lower() == "all":
+            gone = [j for j in self.active() if self.cancel(j.id)]
+            if not gone:
+                return "Nothing was running or waiting."
+            return f"Cancelled {len(gone)}: " + "; ".join(j.title for j in gone)[:600] + "."
+        j = self.find(ref)
+        if j is None:
+            return f"No running or waiting request {ref} (it may have finished: /jobs)."
+        return f"Cancelled: {j.title}." if self.cancel(j.id) else f"{j.title} had finished already."
+
+    def button(self, ref: str, act: str) -> str:
+        """The Cancel buttons under /jobs ("job:<id>:cancel", "job:all:cancel")."""
+        if act != "cancel":
+            return "unknown button"
+        return self.cancel_text(ref)[:190]
+
     def close(self) -> None:
         self._db.close()
+
+
+def public(j: Job) -> dict:
+    """A job for the dashboard and `kurooto jobs`: what it is and how it's going (not what was asked or answered)."""
+    keys = ("id", "title", "status", "verdict", "effort", "seconds", "created", "started", "brain", "lane")
+    return {k: getattr(j, k) for k in keys}
+
+
+def _mins(secs: float) -> str:
+    m = int(max(0, secs) // 60)
+    return "under a minute" if m < 1 else f"{m} min" if m < 120 else f"{m // 60} h"
 
 
 def mcp_command() -> list[str]:

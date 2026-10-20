@@ -364,8 +364,10 @@ questions are part of the brief your call line keeps for calls while the compute
 
 ### Chat with your AI
 Anything that isn't a command or an instant request goes to your AI; the answer comes back as a reply. Long answers
-arrive as a file. `/brain` shows which AI answers and whether it works; `/jobs` the last few requests; `/usage` how
-many AI requests ran each day and the limits hit.
+arrive as a file. `/brain` shows which AI answers and whether it works; `/jobs` what's running and waiting (with
+Cancel buttons; `/jobs cancel <id|all>`, `kurooto jobs --cancel ID`) and the last few; `/usage` how many AI requests
+ran each day and the limits hit. Your requests never wait behind background work (it has its own lane), and a
+request that's stuck (no AI at work for `jobs.stuck_min` minutes, 10) is stopped with a message.
 *Leaves:* what you ask, and notes it reads, go to the AI you picked.
 
 ### Reminders

@@ -503,6 +503,8 @@ class Vitals:
         app = self.app
         recent = app.events.tail(400)
         jobs = app.jobs.recent(8)
+        seen = {j.id for j in jobs}  # what's running or waiting is always there (its Cancel button), however old
+        jobs = [j for j in app.jobs.active() if j.id not in seen] + jobs
         running = [j for j in jobs if j.status in ("queued", "running")]
         all_jobs = app.scheduler.jobs()
         b = self.board(recent, all_jobs)
@@ -531,6 +533,7 @@ class Vitals:
                     "effort": j.effort,
                     "seconds": j.seconds,
                     "created": j.created,
+                    "brain": j.brain,
                 }
                 for j in jobs
             ],

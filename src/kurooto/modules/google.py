@@ -423,6 +423,10 @@ class Google(Module):
         self._save_tokens(t, account)
         self.app.events.emit("google_signed_in", missing=len(missing), main=account == MAIN)
         turned_on = []
+        if not self.app.is_on(self.id) and self.ready()[0]:  # signing in is turning it on (an import left it off)
+            ok, _ = self.app.enable(self.id)
+            if ok:
+                turned_on.append(self.title)
         for part, mid in PARTS.items():  # a feature you just set up turns on once Google has OK'd it
             m = self.app.modules.get(mid)
             if m and self.setting(part) and not self.app.is_on(mid) and self.app.is_on(self.id) and m.ready()[0]:

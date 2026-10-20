@@ -335,6 +335,7 @@ class Alarm(Module):
             f"Today is {day.isoformat()}; the alarm is at {p.get('at', '')}.",
             title="Drafting today's plan",
             quiet=True,
+            lane="bg",  # nobody is waiting on it yet: it never holds up your own requests
         )
         self.app.events.emit("morning_prep", started=bool(jid))
 
