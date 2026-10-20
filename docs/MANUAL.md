@@ -17,7 +17,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Chat with your AI](#chat-with-your-ai) · [Reminders](#reminders) · [Check-ins](#check-ins) ·
     [Deadlines](#deadlines) · [Recurring quizzes](#recurring-quizzes) · [Not interested](#not-interested) ·
     [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Quiz](#quiz) ·
-    [Weekly summary](#weekly-summary)
+    [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back)
@@ -568,6 +568,24 @@ quiz, study hours, journal days), and what isn't working that could wait until t
 do differently, and next week's deadlines and your priorities. Afterwards it becomes a weekly review in your journal
 (written by the AI with Chat on, your own words without). If the computer was off all Sunday evening, you get only the
 summary.
+
+### First-week quests
+For your first week: one short message a day (at 18:00, `quests.when`) with one thing to try, each leaving something
+real behind. "Add tomorrow's classes: /class tue 09:00-09:55 la", "send me one real deadline", "set a reminder for
+something real", "a doubt from class?", "quiz me on la", "/study la 25", tonight's check-in, "remember that I ...",
+`/journal`. Turn it on in the setup page's Features step or the dashboard.
+- Only features that are on and pass their checks (what `kurooto doctor` looks at) get a quest, and one you've already
+  done (there's a timetable, you set a reminder this week) is left out. A day with nothing to suggest sends nothing.
+- A quest is done when the thing happens. Replying to the message with it works too ("remind me at 21:00 to pack my
+  bag" as a reply sets the reminder).
+- **Skip this one**: tomorrow brings another. **Stop these** (or reply "stop"): no more, for good. Leaving a day's
+  quest alone (not done, not skipped, not answered) also stops them for good: no nagging.
+- Seven days at most (`quests.days`). `/quests` shows how far they got; `/quests stop` ends them.
+
+**Undo:** turn First-week quests off (dashboard → Features), or `/quests stop`. What the quests had you add (classes,
+deadlines, reminders) is yours and stays.
+
+*Leaves:* nothing; no AI.
 
 ### Files into notes
 Send a photo or PDF to your bot: it's saved in your notes folder's `inbox/` (or your files folder's, when you set one:

@@ -41,6 +41,11 @@
 - `updates.staged` (off until you turn it on): a new version installs only once it has been out 48 hours
   (`updates.wait_hours`), and never in an exam period or within a day of a quiz or exam (`updates.exam_hold`). A
   release signed as critical (`tools/release.py sign --critical`) skips both.
+**First-week quests** (new; off until you turn it on)
+- For the first seven days, one short message a day with one thing to try, each leaving something real (tomorrow's
+  classes, a deadline, a reminder, a doubt, a quiz, a study session, a check-in answer, a journal entry). Only for
+  features that are on and pass their checks, and never one already done. Replying with the thing does it.
+- Skip this one moves on; Stop these, or a day's quest left alone, stops them for good. `/quests`, `/quests stop`.
 
 ## 0.4.0 (unreleased)
 

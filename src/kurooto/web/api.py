@@ -48,6 +48,7 @@ MODULE_ORDER = [
     "capture",
     "quiz",
     "weekly",
+    "quests",
     "files",
     "skills",
     "library",
