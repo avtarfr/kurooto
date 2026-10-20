@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.2",
+  "notes": "0.5.2: setup wizard restore retention, wake intent disambiguation, notification channel sound and banner fix, and CI test suite fixes.",
+  "created": 1792524124.43,
+  "files": {
+   "kurooto-0.5.2.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.2/kurooto-0.5.2.tar.gz",
+    "sha256": "8fee6d9cc31d5e24390b1d0368ccaf56e558f1a022bdbb9c4a3a8798a443d830",
+    "size": 1633116
+   }
+  }
+ },
+ "sig": "MSjvJSvr3zvpqmXXCHr9ubP3iBbrMrmFHVaUCTZ8xOs7y1gdXPEMCnR4hWl69gxDXGYEWfJ6UGbIodk1FjiHDA=="
+}
