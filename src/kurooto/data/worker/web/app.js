@@ -35,6 +35,7 @@ let live = false; // a call got through (its end is reported, even with nothing 
 let mode = '';
 let models = [], curModel = '', attempt = 0, announced = false, liveAt = 0, heard = false, midRetries = 0, goingAway = false;
 let callUp = false; // the Android app was told a call is on
+let nonBlocking = true; // this session's tools don't wait (some Live models don't take that)
 let micStream, inCtx, outCtx, worklet, muted = false, wakeLock = null, pollTimer = null;
 let playAt = 0; const playing = new Set();
 let lineMe = null, lineAi = null;
@@ -215,6 +216,7 @@ function openSession(t, resume) {
     }).then((x) => {
       if (!finish(true, x)) { try { x.close(); } catch { /* closed */ } return; } // too late: it timed out meanwhile
       s = x; session = x; liveAt = performance.now(); heard = false;
+      nonBlocking = ((t.config.tools || [])[0] || { functionDeclarations: [] }).functionDeclarations.some((d) => d.behavior === 'NON_BLOCKING');
       liveUp(resume);
     }).catch((e) => finish(false, { live: connectError(e) }));
   });
@@ -296,7 +298,7 @@ async function runTool(fc) {
   say(toolLabel(fc), 'sys');
   let result;
   try { result = (await api('/tool', { name: fc.name, args: fc.args || {} })).result; } catch (e) { result = `Tool failed: ${e.message}`; }
-  if (session) session.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: { result, scheduling: 'WHEN_IDLE' } }] });
+  if (session) session.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: nonBlocking ? { result, scheduling: 'WHEN_IDLE' } : { result } }] });
 }
 function toolLabel(fc) {
   const a = fc.args || {};

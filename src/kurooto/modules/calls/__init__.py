@@ -34,7 +34,7 @@ from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls import line
 from kurooto.modules.calls.connector import Connector
-from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns
+from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, live_profile
 from kurooto.modules.calls.phone import PhoneApp
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
 
@@ -43,7 +43,10 @@ register_defaults(
     {
         "worker": {"url": "", "name": "", "version": ""},
         "live_model": "gemini-3.8-live",
-        "live_models": [],  # more Gemini Live models to try, in order, when live_model is unavailable (fallback.py)
+        # more Gemini Live models to try, in order, when live_model is unavailable (fallback.py); they get a plainer
+        # session (tools that wait, a voice they know), and voice_by_model picks a voice per model
+        "live_models": ["gemini-3.1-flash-live-preview", "gemini-2.5-flash-native-audio-latest"],
+        "voice_by_model": {},
         # how calls listen and speak: "live" (Gemini Live), "phone" (the phone's own speech recognition and voice,
         # turn by turn), "auto" (Live, and the phone's speech when Live fails). voice_by_kind: per kind of call, e.g.
         # {"alarm": "phone", "checkins:evening": "live"}; kinds: a feature's id (alarm, checkins, weekly, quiz,
@@ -790,6 +793,14 @@ class Calls(Module):
         names = [str(m).strip() for m in [self.setting("live_model") or "gemini-3.8-live", *extra]]
         return list(dict.fromkeys(m for m in names if re.fullmatch(r"[A-Za-z0-9][\w.-]{0,79}", m)))[:6]
 
+    def live_profiles(self) -> dict:
+        """Per Live model, how its session differs from the call setup (fallback.live_profile)."""
+        models = self.live_models()
+        by = self.setting("voice_by_model") or {}
+        by = by if isinstance(by, dict) else {}
+        voice = str(self.setting("voice") or "")
+        return {m: live_profile(m, i == 0, voice, by) for i, m in enumerate(models)}
+
     def voice_for(self, key: str | None = None, outgoing: bool = False) -> str:
         """How a call listens and speaks: "live", "phone" or "auto" (voice_mode), or what voice_by_kind says for its
         kind: "<feature>:<name>" or "<feature>" from its key (checkins:evening, then checkins), "reminder" for a call
@@ -853,6 +864,7 @@ class Calls(Module):
             "presence": self._presence(),  # speaking for this computer while it's gone (core/presence.py)
             "live": {  # Gemini Live's models in order, and how calls listen (fallback.py)
                 "models": self.live_models(),
+                "profiles": self.live_profiles(),  # what each model's session drops or changes (fallback.py)
                 "text_model": self.setting("text_model") or "gemini-flash-latest",
                 "voice": self.voice_for(),
                 "outgoing": self.voice_for(outgoing=True),

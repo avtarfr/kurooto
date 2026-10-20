@@ -80,13 +80,33 @@ def calls_on(app):
 # ------------------------------------------------------------------------------- models and voice modes
 def test_live_models_in_order_and_what_the_line_is_told(env):
     calls = env.app.modules["calls"]
-    assert calls.live_models() == ["gemini-3.8-live"]
+    assert calls.live_models() == [
+        "gemini-3.8-live",
+        "gemini-3.1-flash-live-preview",
+        "gemini-2.5-flash-native-audio-latest",
+    ]
+    # the setup's model as set up; the others what any Live model takes: waiting tools, a voice they know
+    assert calls.live_profiles() == {
+        "gemini-3.8-live": {},
+        "gemini-3.1-flash-live-preview": {"non_blocking": False, "voice": ""},
+        "gemini-2.5-flash-native-audio-latest": {"non_blocking": False, "voice": ""},
+    }
+    env.app.settings.set("calls.voice", "Kore")
+    env.app.settings.set("calls.voice_by_model", {"gemini-2.5-flash-native-audio-latest": "Aoede", "x": 1})
+    p = calls.live_profiles()
+    assert p["gemini-3.1-flash-live-preview"]["voice"] == "Kore"
+    assert p["gemini-2.5-flash-native-audio-latest"] == {"non_blocking": False, "voice": "Aoede"}
+    env.app.settings.set("calls.voice", "SomeOldVoice")  # not one the other models know: Google's default there
+    assert calls.live_profiles()["gemini-3.1-flash-live-preview"]["voice"] == ""
+    env.app.settings.set("calls.voice_by_model", {"gemini-3.8-live": "Puck"})
+    assert calls.live_profiles()["gemini-3.8-live"] == {"voice": "Puck"}
     env.app.settings.set("calls.live_models", ["gemini-live-b", "gemini-3.8-live", "bad id; drop", "gemini-live-c"])
     assert calls.live_models() == ["gemini-3.8-live", "gemini-live-b", "gemini-live-c"]
     env.app.settings.set("calls.live_models", "gemini-live-b")  # typed as one name
     assert calls.live_models() == ["gemini-3.8-live", "gemini-live-b"]
     msg = calls.state_message()
     assert msg["live"]["models"] == ["gemini-3.8-live", "gemini-live-b"]
+    assert msg["live"]["profiles"]["gemini-live-b"]["non_blocking"] is False
     assert msg["live"]["text_model"] == "gemini-flash-latest" and msg["live"]["voice"] == "auto"
     assert "turn by turn" in msg["texts"]["turns"] and "Telegram" in msg["texts"]["text_call"]
     assert msg["config"]["_model"] == "gemini-3.8-live"  # the first, as before (older call lines read only this)
@@ -131,7 +151,7 @@ def test_live_failures_are_counted_for_doctor(env):
     (name, ok, detail) = calls.doctor_checks()[0]
     assert ok is None  # a note: Google's outage isn't yours to fix
     assert detail.startswith("Gemini Live failed 2 times in 7 days (last ") and "503" in detail
-    assert "gemini-live-b" in detail and "1 got through on a retry" in detail
+    assert "gemini-live-b" in detail and "1 got through on a retry" in detail and "no longer" not in detail
     assert "1 went on turn by turn" in detail and "1 went on text on Telegram" in detail
     assert calls.status()["live"]["failed"] == 2
     from kurooto import diagnostics
@@ -140,6 +160,16 @@ def test_live_failures_are_counted_for_doctor(env):
     assert rows["Phone calls: voice service"] == (None, detail)
     kinds = [json.loads(ln)["kind"] for ln in (app.paths.state / "events.jsonl").read_text().splitlines()]
     assert kinds.count("call_live_failed") == 3 and "call_fallback" in kinds and "call_live_recovered" in kinds
+    # a model in the list that Google says doesn't exist: told, until a call gets through on it
+    calls.on_event({"name": "live_failed", "model": "gemini-2.5-flash-native-audio-latest", "code": 404})
+    calls.on_event({"name": "live_failed", "model": "not-in-the-list", "code": 404, "status": "NOT_FOUND"})
+    gone = calls.doctor_checks()[0][2]
+    assert gone.endswith(
+        "; gemini-2.5-flash-native-audio-latest no longer exists (Google said not found): take it out of "
+        "calls.live_models"
+    )
+    calls.on_event({"name": "live_recovered", "model": "gemini-2.5-flash-native-audio-latest", "attempt": 2})
+    assert "no longer exist" not in calls.doctor_checks()[0][2]
 
 
 # ----------------------------------------------------------------------------------------- turn by turn

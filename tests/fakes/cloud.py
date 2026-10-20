@@ -1,7 +1,8 @@
 """Fake cloud services for the call line's local test: Gemini's token endpoint, ntfy, and a Web Push endpoint.
 They record what they're sent.
 
-Gemini Live being down: models in `live_down` answer the token request 503 UNAVAILABLE, as Google did. Turn-by-turn
+Gemini Live being down: models in `live_down` answer the token request 503 UNAVAILABLE, as Google did, and models in
+`live_errors` answer with that error (404 for one that's gone). Turn-by-turn
 calls answered on the call line: `gen_script` holds the next generateContent answers, each {"text": ...} or
 {"call": (name, args)}; when it's empty the answer is `transcript` (what voice notes expect)."""
 
@@ -22,6 +23,7 @@ class FakeCloud:
         self.generate: list[dict] = []  # Gemini generateContent (voice notes)
         self.transcript = "remind me at nine to call home"
         self.live_down: set[str] = set()
+        self.live_errors: dict[str, tuple] = {}  # model -> (code, status, message), e.g. a model that's gone (404)
         self.gen_script: list[dict] = []
         fake = self
 
@@ -46,9 +48,13 @@ class FakeCloud:
                 if self.path.endswith("/auth_tokens"):
                     fake.tokens.append({"headers": hdrs, "body": json.loads(raw or b"{}")})
                     model = re.search(r'"models/([\w.-]+)"', raw.decode())
-                    if model and model.group(1) in fake.live_down:
+                    model = model.group(1) if model else ""
+                    if model in fake.live_down:
                         err = {"code": 503, "message": "The service is currently unavailable.", "status": "UNAVAILABLE"}
                         return self._json({"error": err}, 503)
+                    if model in fake.live_errors:
+                        code, status, message = fake.live_errors[model]
+                        return self._json({"error": {"code": code, "message": message, "status": status}}, code)
                     return self._json({"name": f"auth_tokens/fake-{len(fake.tokens)}"})
                 if ":generateContent" in self.path:
                     fake.generate.append({"path": self.path, "headers": hdrs, "body": json.loads(raw or b"{}")})

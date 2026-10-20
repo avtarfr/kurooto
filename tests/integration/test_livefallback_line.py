@@ -24,23 +24,21 @@ def lf(world):  # noqa: F811
     app, calls, ln = world["app"], world["calls"], world["line"]
     calls.start()  # its then-actions and timers, as the daemon does
     app.settings.set("modules.enabled", [*(app.settings.get("modules.enabled") or []), "calls"])
-    app.settings.set("calls.live_models", ["gemini-test-live-b"])
+    app.settings.set("calls.live_models", ["gemini-test-live-b", "gemini-test-gone"])
+    app.settings.set("calls.voice", "Kore")
+    app.settings.set("calls.voice_by_model", {"gemini-test-live-b": "Puck"})
     p = calls.pair_start()
     code, got = ln.call("POST", "/pair/claim", {"code": p["code"], "kind": "android", "name": "Test phone"})
     assert code == 200, got
     world["key"] = got["device"]
     calls.connector.poke()  # push the new model list
-    wait(
-        lambda: (
-            len(
-                ln.call("POST", "/token", {"model": "nope", "announce": False}, key=got["device"])[1].get("models")
-                or []
-            )
-            == 2
-        ),
-        20,
-        "the model list on the line",
-    )
+    models = ["gemini-test-live", "gemini-test-live-b", "gemini-test-gone"]
+
+    def pushed():
+        t = ln.call("POST", "/token", {"model": "nope", "announce": False}, key=got["device"])[1]
+        return t.get("models") == models and "speechConfig" in (t.get("config") or {})
+
+    wait(pushed, 20, "the model list and voice on the line")
     brain = ScriptedOpenAI([{"content": "Hello from your computer."}])
     app.settings.set("brain.base_urls", {"gemini": brain.base})  # the quick AI for turns here (your Gemini key)
     world["brain"] = brain
@@ -55,7 +53,8 @@ def test_a_503_is_answered_as_retryable_and_the_next_model_works(lf):
         code, t = ln.call("POST", "/token", {"purpose": "Evening debrief", "since": ""}, key=key)
         assert code == 503
         assert t["live"] is True and t["retry"] is True and t["code"] == 503 and t["status"] == "UNAVAILABLE"
-        assert t["models"] == ["gemini-test-live", "gemini-test-live-b"] and t["model"] == "gemini-test-live"
+        assert t["models"] == ["gemini-test-live", "gemini-test-live-b", "gemini-test-gone"]
+        assert t["model"] == "gemini-test-live"
         assert "The service is currently unavailable." in t["error"]
         wait(lambda: calls.live.summary()["failed"] >= 1, 15, "the failure counted here")
         assert calls.live.summary()["last"]["stage"] == "token"
@@ -66,6 +65,41 @@ def test_a_503_is_answered_as_retryable_and_the_next_model_works(lf):
         assert code == 503 and t["model"] == "gemini-test-live"  # only models from the list
     finally:
         cloud.live_down = set()
+
+
+def test_each_model_gets_a_session_it_takes_and_a_gone_one_is_told(lf):
+    ln, cloud, calls, key = lf["line"], lf["cloud"], lf["calls"], lf["key"]
+
+    def setup(body):
+        return json.dumps(body["body"])
+
+    code, t = ln.call("POST", "/token", {"model": "gemini-test-live", "announce": False}, key=key)
+    assert code == 200
+    assert {d.get("behavior") for d in t["config"]["tools"][0]["functionDeclarations"]} == {"NON_BLOCKING"}
+    assert t["config"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] == "Kore"
+    assert "NON_BLOCKING" in setup(cloud.tokens[-1]) and '"Kore"' in setup(cloud.tokens[-1])
+    # another model: tools that wait (native-audio models refuse NON_BLOCKING), and the voice picked for it
+    code, t = ln.call("POST", "/token", {"model": "gemini-test-live-b", "announce": False}, key=key)
+    assert code == 200
+    assert not any("behavior" in d for d in t["config"]["tools"][0]["functionDeclarations"])
+    assert t["config"]["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"]["voiceName"] == "Puck"
+    assert "NON_BLOCKING" not in setup(cloud.tokens[-1]) and '"Puck"' in setup(cloud.tokens[-1])
+    cloud.live_errors = {
+        "gemini-test-gone": (404, "NOT_FOUND", "models/gemini-test-gone is not found for API version v1alpha"),
+        "gemini-test-live-b": (400, "INVALID_ARGUMENT", "Invalid value at 'setup.generation_config'"),
+    }
+    try:
+        code, t = ln.call("POST", "/token", {"model": "gemini-test-gone", "announce": False}, key=key)
+        assert code == 503 and t["code"] == 404 and t["bad_model"] is True and t["retry"] is False
+        code, t = ln.call("POST", "/token", {"model": "gemini-test-live-b", "announce": False}, key=key)
+        assert code == 503 and t["bad_model"] is True  # another model refusing the session: try the next
+        cloud.live_errors = {"gemini-test-live": (400, "INVALID_ARGUMENT", "bad")}
+        code, t = ln.call("POST", "/token", {"announce": False}, key=key)
+        assert code == 503 and t["bad_model"] is False  # the first one: that's the setup, not the model
+    finally:
+        cloud.live_errors = {}
+    wait(lambda: "gemini-test-gone no longer exists" in calls.doctor_checks()[0][2], 15, "the doctor note")
+    assert "take it out of calls.live_models" in calls.doctor_checks()[0][2]
 
 
 def test_the_call_page_reports_what_it_saw(lf):

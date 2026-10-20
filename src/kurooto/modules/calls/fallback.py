@@ -45,6 +45,24 @@ WHY = {
     "no_mic": "the microphone isn't available",
 }
 LAYER = {"live": "live voice", "turns": "turn by turn", "telegram": "text on Telegram", "text": "text on Telegram"}
+# the prebuilt voices Gemini's Live and speech models share (what a model other than live_model gets, if asked for)
+VOICES = (
+    "Zephyr Puck Charon Kore Fenrir Leda Orus Aoede Callirrhoe Autonoe Enceladus Iapetus Umbriel Algieba Despina "
+    "Erinome Algenib Rasalgethi Laomedeia Achernar Alnilam Schedar Gacrux Pulcherrima Achird Zubenelgenubi "
+    "Vindemiatrix Sadachbia Sadaltager Sulafat"
+).split()
+
+
+def live_profile(model: str, primary: bool, voice: str, by_model: dict) -> dict:
+    """How a Live model's session differs from the call setup (made for calls.live_model). The setup's model gets it
+    as it is (with voice_by_model's voice, if one is set). Every other model gets what any Live model takes: tools
+    that wait for their answer (native-audio models refuse NON_BLOCKING ones) and a voice from VOICES, else Google's
+    default. {"non_blocking": False, "voice": "" (none) or a name}; {} = as set up."""
+    want = str(by_model.get(model) or "")
+    if primary:
+        return {"voice": want} if want else {}
+    pick = want or voice
+    return {"non_blocking": False, "voice": pick if pick in VOICES else ""}
 
 
 def spoken(text: str, n: int = 1500) -> str:
@@ -75,6 +93,7 @@ class LiveHealth:
     """How often Gemini Live failed, a retry got through, and a call went on another way (state: live-health.json)."""
 
     def __init__(self, calls: Calls):
+        self.calls = calls
         self.app = calls.app
         self.file = calls.dir / "live-health.json"
 
@@ -111,11 +130,32 @@ class LiveHealth:
             "last": last,
         }
 
+    def gone(self) -> list[str]:
+        """Models in your list that Google says don't exist (404 / NOT_FOUND when a call asked for them), unless one
+        got a call through since."""
+        d = jload(self.file, {}) or {}
+        last_ok = {r.get("model"): r.get("at", 0) for r in d.get("recovered") or []}
+        out: dict[str, float] = {}
+        for r in d.get("failed") or []:
+            if str(r.get("code")) == "404" or r.get("status") == "NOT_FOUND":
+                out[str(r.get("model") or "")] = r.get("at", 0)
+        listed = self.calls.live_models()
+        return [m for m, at in out.items() if m in listed and at > last_ok.get(m, 0)]
+
     def line(self) -> tuple[bool | None, str]:
-        """For `kurooto doctor`: a note (not a problem: Google's outages aren't yours to fix) with the counts."""
+        """For `kurooto doctor`: a note (not a problem: Google's outages aren't yours to fix) with the counts, and the
+        models that no longer exist."""
         s = self.summary()
+        gone = self.gone()
+        tail = (
+            f"; {', '.join(gone)} no longer exist{'s' if len(gone) == 1 else ''} (Google said not found): take "
+            f"{'it' if len(gone) == 1 else 'them'} out of calls.live_models"
+            if gone
+            else ""
+        )
         if not s["failed"] and not s["fallbacks"]:
-            return True, f"Gemini Live: no failures in the last {s['days']} days"
+            ok = f"Gemini Live: no failures in the last {s['days']} days"
+            return (None, ok + tail) if gone else (True, ok)
         out = f"Gemini Live failed {s['failed']} time{'s' if s['failed'] != 1 else ''} in {s['days']} days"
         last = s["last"]
         if last:
@@ -128,7 +168,7 @@ class LiveHealth:
             parts.append(f"{n} went on {LAYER.get(layer, layer)}")
         if parts:
             out += "; calls: " + ", ".join(parts)
-        return None, out
+        return None, out + tail
 
 
 # --------------------------------------------------------------------------------------- the prompt

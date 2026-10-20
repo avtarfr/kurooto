@@ -4,8 +4,10 @@
 
 **Calls when Google's live voice is down** (Gemini Live answering "503 UNAVAILABLE" made calls fail to start, or hang up)
 - Live again first: a start Google refuses for now (503, 429, UNAVAILABLE) is tried after about 1 s and 3 s, each time
-  with the next model in `calls.live_models` (new; after `calls.live_model`). "Reconnecting…" shows meanwhile. A drop
-  in the middle of a call is tried again once.
+  with the next model in `calls.live_models` (new, after `calls.live_model`; by default
+  `gemini-3.1-flash-live-preview` and `gemini-2.5-flash-native-audio-latest`). Those models get a session any Live
+  model takes (tools that wait, a prebuilt voice or Google's default; `calls.voice_by_model` picks one per model).
+  "Reconnecting…" shows meanwhile. A drop in the middle of a call is tried again once.
 - Then turn by turn with the phone's own speech: the Android app uses Android's speech recognizer and voice, the call
   page the browser's (Chrome). Same call: its instructions, the check-in's or wake-up's script and the same tools.
   Each turn is answered by your computer (your Gemini key, or the model on your computer with `calls.turn_brain` =
@@ -15,7 +17,8 @@
   computer off, it starts when the computer is back.
 - Whichever way the call went, its transcript feeds your journal and study logs as before.
 - `kurooto doctor`: "Phone calls: voice service" counts Live's failures this week, the retries that worked and the
-  calls that went on another way (also in the call status the dashboard reads).
+  calls that went on another way (also in the call status the dashboard reads), and names a model in your list that
+  Google says no longer exists.
 
 **Calls by your phone's own speech, by choice** (`calls.voice_mode`: `auto`, the default, `live` or `phone`)
 - `phone`: calls go turn by turn with your phone's speech every time, not Live; on Android 13+ with your language

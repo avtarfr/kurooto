@@ -502,6 +502,13 @@ export class Line {
     const config = JSON.parse(JSON.stringify(tpl));
     for (const k of Object.keys(config)) if (k.startsWith('_')) delete config[k];
     config.systemInstruction = await this.instructions(tpl, resume ? '' : purpose, online);
+    // what this model's session drops or changes (your computer works it out: calls/fallback.py live_profile)
+    const prof = (((await this.store.get('live')) || {}).profiles || {})[model] || {};
+    if (prof.non_blocking === false) for (const t of config.tools || []) for (const d of t.functionDeclarations || []) delete d.behavior;
+    if (typeof prof.voice === 'string') {
+      if (prof.voice) config.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: prof.voice } } };
+      else delete config.speechConfig;
+    }
     let token;
     try {
       token = await this.ai().authTokens.create({ config: {
@@ -514,7 +521,9 @@ export class Line {
     } catch (e) {
       const g = googleError(e);
       await this.event({ name: 'live_failed', model, code: g.code, status: g.status, stage: 'token' });
-      return json({ error: `the voice service didn't start the call: ${g.text}`, live: true, retry: g.retry, bad_model: g.badModel, code: g.code, status: g.status, model, models }, 503);
+      // a model other than the first that refuses the session may just not take it: the next one is tried
+      const badModel = g.badModel || (!g.retry && g.code === 400 && model !== models[0]);
+      return json({ error: `the voice service didn't start the call: ${g.text}`, live: true, retry: g.retry, bad_model: badModel, code: g.code, status: g.status, model, models }, 503);
     }
     await this.store.put('oncall', Date.now());
     if (announce && !resume) await this.started(purpose, since, who, online, 'live');

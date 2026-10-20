@@ -1153,8 +1153,12 @@ computer is off), and updates wait too. Wake-up calls still ring.
 **When the voice service is down:** Google's live voice (Gemini Live) sometimes says "503: the service is currently
 unavailable". Your call still happens, one of three ways, tried in order:
 1. *Live again.* The call page says "Reconnecting…" and tries after about 1 second, then 3, each time with the next
-   Live model in `calls.live_models` (after `calls.live_model`; add more models there if you know some). A call that
-   drops in the middle is tried again once.
+   Live model: `calls.live_model` first, then `calls.live_models` (by default `gemini-3.1-flash-live-preview` and
+   `gemini-2.5-flash-native-audio-latest`). The other models get a plainer session that any Live model takes: tools
+   that wait for their answer, and your voice (`calls.voice`) only if it's one of Google's prebuilt voices, else
+   Google's default; `calls.voice_by_model` picks a voice per model, e.g.
+   `{"gemini-2.5-flash-native-audio-latest": "Kore"}`. A call that drops in the middle is tried again once. If Google
+   says a model in the list doesn't exist any more, `kurooto doctor` says so: take it out of `calls.live_models`.
 2. *Turn by turn*, with your phone's own speech recognition and voice: you talk, it listens until you stop, then reads
    the answer aloud. Tap **Talk** if it stopped listening, or tap while it speaks to skip the rest. It's the same call:
    the same instructions, the check-in's or wake-up's script, and the same tools (reminders, deadlines, notes). Each
@@ -1202,7 +1206,8 @@ recognised on the phone (above); each turn's text to Gemini (your key) or the mo
 Telegram: the conversation goes through your Telegram bot and your AI, like your other messages.
 
 *Turn off / undo:* `calls.voice_mode` = `live` stops turn by turn (failed calls go to Telegram); a call on Telegram
-ends with **End the call**. The Live retries can't be turned off; `calls.live_models` = `[]` keeps them to one model.
+ends with **End the call**. The Live retries can't be turned off; `calls.live_models` = `[]` keeps them to
+`calls.live_model`.
 
 ### Morning alarm
 Kurooto wakes you with a call. On the Android app it rings with your alarm sound on the alarm volume, so it rings even
