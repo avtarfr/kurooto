@@ -210,35 +210,46 @@ class Retro(Module):
         return self.answer(str((q.get("hook_payload") or {}).get("pid", "")), answer)
 
     def start(self):
-        self.every("nightly", self.setting("when") or "daily 23:50", lambda p: self.run_in_background())
+        self.every("nightly", self.setting("when") or "daily 23:50", lambda p: self.run_in_background(nightly=True))
+        # a nightly look back that waited for the AI's free limit to reset (core/quota.py), over the same days
+        self.action("after_reset", lambda p: self.run_in_background(since=p.get("since"), nightly=True))
 
-    def run_in_background(self) -> bool:
+    def run_in_background(self, since: str | None = None, nightly: bool = False) -> bool:
         """Start a look back unless one is running (it can take minutes; other jobs shouldn't wait for it)."""
         if self._running.locked():
             return False
-        threading.Thread(target=self.run, name="retro", daemon=True).start()
+        threading.Thread(target=self.run, args=(since, nightly), name="retro", daemon=True).start()
         return True
 
     # ------------------------------------------------------------------------------------ the look back
-    def run(self) -> int:
+    def run(self, since: str | None = None, nightly: bool = False) -> int:
         """Look back, report findings on observations that ended, and ask about each proposal. Returns how many
-        proposals were asked."""
+        proposals were asked. The nightly one is background work: while the AI's free limit is kept for you, it
+        waits for the reset (and then looks back over the same days)."""
         if not self._running.acquire(blocking=False):
             return 0
         try:
-            return self._run()
+            return self._run(since, nightly)
         finally:
             self._running.release()
 
-    def _run(self) -> int:
+    def _run(self, start: str | None = None, nightly: bool = False) -> int:
         brain = providers.build(self.app, self.app.settings.get("brain.main") or "")
         if not brain or not brain.available()[0]:
             return 0
         days = 7 if str(self.setting("when") or "").strip().lower().startswith("weekly") else 1
-        since = now() - dt.timedelta(days=days)
+        since = dt.datetime.fromisoformat(start) if start else now() - dt.timedelta(days=days)
+        instructions, effort = self.instructions()
+        wait = self.app.quota.wait_until(self.app.quota.pool(brain, effort)) if nightly else None
+        if wait is not None:
+            when = dt.datetime.fromtimestamp(wait + 60)
+            self.app.scheduler.at(
+                when, "retro.after_reset", {"since": since.isoformat()}, key="retro:after-reset", module=self.id
+            )
+            self.app.events.emit("retro_waits", until=when.isoformat(timespec="minutes"))
+            return 0
         active = [o for o in self.observations() if o["status"] == "active"]
         ended = [o for o in active if o["until"] <= now().isoformat()]
-        instructions, effort = self.instructions()
         ctx = self.context(since, [o for o in active if o not in ended], ended)
         prompt = instructions + "\n\nINPUT (JSON):\n" + json.dumps(ctx, ensure_ascii=False, indent=1, default=str)
         r = brain.complete(prompt[:120_000], effort=effort, timeout=600)

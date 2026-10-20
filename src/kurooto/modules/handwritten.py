@@ -182,6 +182,10 @@ class Handwritten(Module):
         key = self.app.secrets.get("gemini.api_key")
         if not key:
             raise RuntimeError("no Gemini key")
+        model = self.setting("model") or "gemini-flash-latest"
+        pool, quota = f"gemini:{model}", self.app.quota
+        if quota.wait_until(pool) is not None:  # background work: Google's free limit is kept for you until the reset
+            raise Waiting("Google's free limit is kept for your own requests until it resets")
         body = {
             "contents": [
                 {
@@ -194,7 +198,7 @@ class Handwritten(Module):
             "generationConfig": {"temperature": 0.1},
         }
         req = urllib.request.Request(  # noqa: S310 (Google's API, https)
-            f"{gemini_api(self.app)}/models/{self.setting('model') or 'gemini-flash-latest'}:generateContent",
+            f"{gemini_api(self.app)}/models/{model}:generateContent",
             data=json.dumps(body).encode(),
             headers={"Content-Type": "application/json", "x-goog-api-key": key},
         )
@@ -202,7 +206,11 @@ class Handwritten(Module):
             with urllib.request.urlopen(req, timeout=300) as r:  # noqa: S310
                 out = json.loads(r.read())
         except urllib.error.HTTPError as e:
+            if e.code == 429:  # a limit: it waits and is tried again later, not written off
+                quota.record(pool, "rate_limited", e.read().decode("utf-8", "replace"), e.headers.get("Retry-After"))
+                raise Waiting(f"Gemini said {e.code}") from None
             raise RuntimeError(f"Gemini said {e.code}") from None
+        quota.record(pool)
         parts = ((out.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
         return "".join(p.get("text", "") for p in parts).strip()
 

@@ -31,7 +31,9 @@ class Chat(Module):
         return [
             Command("brain", "which AI answers, and whether it's working", self._brain),
             Command("jobs", "the last few requests and how they went", self._jobs),
-            Command("usage", "AI requests per day over the last week, and usage limits hit", self._usage),
+            Command(
+                "usage", "AI requests per day over the last week, usage limits hit, and today's limits", self._usage
+            ),
         ]
 
     def _brain(self, msg: Incoming, arg: str) -> str:
@@ -57,7 +59,8 @@ class Chat(Module):
         days = int(arg) if arg.strip().isdigit() and 1 <= int(arg) <= 60 else 7
         from kurooto.providers.agy import log_usage, log_usage_text  # (ws5) agy's own count, interactive use too
 
-        return usage_text(self.app.jobs.usage(days), days) + log_usage_text(log_usage(days))
+        # today's free limits: used, learned, when they reset (core/quota.py)
+        return usage_text(self.app.jobs.usage(days), days) + log_usage_text(log_usage(days)) + self.app.quota.text()
 
 
 def usage_text(rows: list[dict], days: int) -> str:

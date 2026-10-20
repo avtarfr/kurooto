@@ -402,6 +402,10 @@ class Books(Module):
         key = self.app.secrets.get("gemini.api_key")
         if not key:
             raise RuntimeError("no Gemini key")
+        model = self.setting("gemini_model") or "gemini-flash-latest"
+        pool, quota = f"gemini:{model}", self.app.quota
+        if quota.wait_until(pool) is not None:  # Google's free limit is kept for you today: the page waits a night
+            raise RuntimeError("waits: Google's free limit is kept for your own requests today")
         body = {
             "contents": [
                 {
@@ -414,7 +418,7 @@ class Books(Module):
             "generationConfig": {"temperature": 0.1},
         }
         req = urllib.request.Request(  # noqa: S310 (Google's API, https)
-            f"{gemini_api(self.app)}/models/{self.setting('gemini_model') or 'gemini-flash-latest'}:generateContent",
+            f"{gemini_api(self.app)}/models/{model}:generateContent",
             data=json.dumps(body).encode(),
             headers={"Content-Type": "application/json", "x-goog-api-key": key},
         )
@@ -422,7 +426,10 @@ class Books(Module):
             with urllib.request.urlopen(req, timeout=300) as r:  # noqa: S310
                 out = json.loads(r.read())
         except urllib.error.HTTPError as e:
+            if e.code == 429:
+                quota.record(pool, "rate_limited", e.read().decode("utf-8", "replace"), e.headers.get("Retry-After"))
             raise RuntimeError(f"Gemini said {e.code}") from None
+        quota.record(pool)
         parts = ((out.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
         return "".join(p.get("text", "") for p in parts)
 

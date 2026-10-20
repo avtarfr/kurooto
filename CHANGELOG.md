@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+**Free-tier reserve** (on; nothing waits until a limit is known)
+- Kurooto counts AI requests per free limit (each model of your Gemini key, agy, another service) and learns each
+  limit and when it resets from Google's "limit reached" answers, instead of a table that goes stale. agy's count comes
+  from its own logs, so the runs you type count too.
+- Past 70% of a day's known limit (`quota.background_pct`), background work waits in the queue and runs after the
+  reset: the Classroom digest, the nightly look back, skill changes, research digests, book and handwritten pages read
+  by Gemini. The "how hard is this" question moves to the model on this computer, or the rules. Calls, voice notes,
+  the morning plan and your own requests keep the rest; nothing is dropped. `quota.local` = `background` moves
+  background work to the model on this computer instead of waiting.
+- A used-up limit is one plain line: "Google's free limit for today is used up, resets at 12:30; your calls and alarm
+  still work." Your own requests try it last, after the fallback brain.
+- `/usage`, `kurooto usage` and the usage API show today's limits, what's used of them, and the requests waiting.
+- A daily limit no longer waits a minute and asks again before the fallback; handwritten files that hit a limit are
+  tried again later instead of being written off.
+
 ## 0.4.0 (unreleased)
 
 **Books and PDFs** (new; off until you turn it on)

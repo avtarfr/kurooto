@@ -19,7 +19,7 @@ from kurooto.providers.openai_compat import PRESETS, OpenAICompat
 if TYPE_CHECKING:
     from kurooto.app import App
 
-__all__ = ["Brain", "Result", "Task", "Verdict", "build", "CHOICES"]
+__all__ = ["Brain", "Result", "Task", "Verdict", "build", "local", "CHOICES"]
 
 register_defaults(
     "brain",
@@ -43,6 +43,23 @@ CHOICES = {
 
 
 def build(app: App, which: str) -> Brain | None:
+    brain = _build(app, which)
+    quota = getattr(app, "quota", None)
+    if brain is not None and quota is not None:  # each request counts against its free limit (core/quota.py)
+        brain.meter = lambda model, result: quota.count(brain, model, result)
+    return brain
+
+
+def local(app: App) -> Brain | None:
+    """The model on this computer (Ollama, set up by Local AI models or as a brain), when there is one: quick decisions,
+    and background work while a free limit is kept for you (core/quota.py)."""
+    if not ((app.settings.get("brain.models") or {}).get("ollama") or {}).get("medium"):
+        return None
+    brain = build(app, "ollama")
+    return brain if brain is not None and brain.available()[0] else None
+
+
+def _build(app: App, which: str) -> Brain | None:
     if not which:
         return None
     s = app.settings

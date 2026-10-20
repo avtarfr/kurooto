@@ -55,6 +55,9 @@ class App:
 
         self.about = AboutYou(self)
         self.scheduler.hold = self.power.hold
+        from kurooto.core.quota import Quota  # free AI limits: counted, learned, kept for you (core/quota.py)
+
+        self.quota = Quota(self)
         from kurooto.core.jobs import Jobs
 
         self.jobs = Jobs(self)

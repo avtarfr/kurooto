@@ -12,6 +12,7 @@ class FakeOpenAI:
         self.key = key
         self.mode = "ok"  # ok | 429 | 401 | empty | 500
         self.answer = "Paris."
+        self.limit_body = None  # what a 429 says (Google's JSON error, say); default: a bare RESOURCE_EXHAUSTED
         self.requests: list[dict] = []
         fake = self
 
@@ -40,7 +41,8 @@ class FakeOpenAI:
                 if self.headers.get("Authorization") != f"Bearer {fake.key}" or fake.mode == "401":
                     return self._send(401, {"error": {"message": "invalid api key"}})
                 if fake.mode == "429":
-                    return self._send(429, {"error": {"message": "RESOURCE_EXHAUSTED"}}, {"Retry-After": "30"})
+                    body = fake.limit_body or {"error": {"message": "RESOURCE_EXHAUSTED"}}
+                    return self._send(429, body, {"Retry-After": "30"})
                 if fake.mode == "500":
                     return self._send(500, {"error": {"message": "boom"}})
                 text = "" if fake.mode == "empty" else fake.answer

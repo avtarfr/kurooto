@@ -105,7 +105,9 @@ class Agy(Brain):
         finally:
             if long:
                 long[0].unlink(missing_ok=True)
-        return verdict(code, out, err, time.monotonic() - t0, minutes)
+        result = verdict(code, out, err, time.monotonic() - t0, minutes)
+        self.metered(None, result)  # agy's day's limit (core/quota.py); its own logs count the model requests
+        return result
 
     def complete(self, prompt: str, system: str = "", effort: str = "low", timeout: int = 120) -> Result:
         return self.run(Task(prompt=prompt, context=system, effort=effort, timeout_s=timeout, text_only=True))
@@ -157,7 +159,9 @@ def verdict(code: int | None, out: str, err: str, secs: float, minutes: int) -> 
     if "no output produced" in both:
         return Result(Verdict.DENIED, "", secs, "agy stopped: it tried something unattended runs aren't allowed to do")
     if RATE_LIMIT.search(both) and (code != 0 or not out):
-        return Result(Verdict.RATE_LIMITED, "", secs, both[-500:])
+        from kurooto.core.quota import hints
+
+        return Result(Verdict.RATE_LIMITED, "", secs, both[-500:], usage={"limit": hints(both)})
     if AUTH_FAIL.search(both) and (code != 0 or not out):
         return Result(Verdict.AUTH, "", secs, both[-500:])
     if code != 0:
@@ -423,6 +427,37 @@ def log_usage(days: int = 7, folder: Path | None = None) -> list[dict]:
             limited += len(LIMIT_HIT.findall(data))
         out.append({"day": d.isoformat(), "runs": runs, "requests": reqs, "limited": limited})
     return out if any(r["runs"] for r in out) else []
+
+
+_counted: dict = {}  # (log file, size, mtime) -> model requests: a log is read again only when it changed
+
+
+def log_requests_since(since: float, folder: Path | None = None) -> int | None:
+    """Model requests in agy's logs written since `since` (a timestamp): every agy run on this computer, the ones you
+    typed too, for the free-tier reserve (core/quota.py). None when agy has no logs here. Only counted."""
+    folder = folder or log_dir()
+    if not folder.is_dir():
+        return None
+    n, seen = 0, {}
+    for f in folder.glob("cli-*.log"):
+        try:
+            st = f.stat()
+        except OSError:
+            continue
+        if st.st_mtime < since:
+            continue
+        key = (str(f), st.st_size, st.st_mtime)
+        if key not in _counted:
+            try:
+                with open(f, "rb") as fh:
+                    _counted[key] = fh.read(LOG_MAX).count(b"streamGenerateContent")
+            except OSError:
+                continue
+        seen[key] = _counted[key]
+        n += seen[key]
+    _counted.clear()
+    _counted.update(seen)
+    return n
 
 
 def log_usage_text(rows: list[dict]) -> str:

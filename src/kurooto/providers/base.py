@@ -64,6 +64,15 @@ class Brain:
     id = ""
     label = ""
     kind = "api"  # api: quick to call; cli: a program with a slow start, one job at a time
+    meter: Callable | None = None  # (model, Result or None for an answer) after each request: core/quota.py counts
+
+    def metered(self, model: str | None, result: Result | None) -> None:
+        """Count one request against its free limit (providers.build attaches the meter); never fails a request."""
+        if self.meter is not None:
+            try:
+                self.meter(model, result)
+            except Exception:
+                pass
 
     def available(self) -> tuple[bool, str]:
         return True, ""
