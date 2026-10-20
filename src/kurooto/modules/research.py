@@ -8,27 +8,34 @@ Sources (the dashboard's Research tab, or Settings → research.feeds):
     medRxiv   medical preprints by subject area (epidemiology, oncology, psychiatry, ...)
     PubMed    published biomedical papers for a search (PubMed's own search words work)
     a feed    any journal's or blog's RSS or Atom address
-Each source can be narrowed with keywords (any of them, in the title or abstract). With Chat on, the AI picks the most
-relevant papers using what you wrote under "What I work on" (and your notes), and says why each matters; otherwise you
-get the newest, as they are.
+Each source can be narrowed with keywords (any of them, in the title or abstract). An arXiv source can also be a search
+in arXiv's own words, with a name ({"type": "arxiv", "name": "Molecules", "query": "abs:\"graph neural network\" AND
+(abs:molecule OR abs:protein)"}: ti:, abs:, all:, cat:, AND, OR, ANDNOT, brackets). With Chat on, the AI
+picks the most relevant papers using what you wrote under "What I work on" (and your notes), and says why each
+matters; otherwise you get the newest, as they are. With research.save_note on, each digest is also kept as a note in
+your inbox (inbox/papers-<date>.md), every new paper grouped by source.
 
 Projects: each project has a note, research/<project>/index.md, and research/index.md lists them all (those are the
 default notes layout's places; core/layout.py has yours). For your code
 repositories on this computer, each day's new commits are written under "## Log" in their project's note, so your notes
 keep up with your code (a repository's project is its folder's name unless you map it: /repos add <folder> as
-<project>). Runs logged with `kurooto runlog` (or `kurooto watch --log <project>`) go to research/<project>/runs/ with
-the code's exact git state, and a line in the log. When a project has had no commits for a few days (4 by default),
-Kurooto asks what's up: Busy, Working off-git, Remind me tomorrow or Pausing. Your own text in these notes is never
+<project>). Runs logged with `kurooto runlog` (or `kurooto watch --log <project>`, or `kurooto.runlog.Run` in Python)
+go to research/<project>/runs/ with the code's exact git state, and a line in the log; runs a script keeps in its
+repository's own runs/ folder (runs/index.csv, research.repo_runs) get a line in the log too. When a project has had
+no commits or runs for a few days (4 by default), Kurooto asks what's up: Busy, Working off-git, Remind me tomorrow
+(a call the next day at 18:00 with Phone calls on, else a message) or Pausing. Your own text in these notes is never
 changed; Kurooto only adds lines.
 """
 
 from __future__ import annotations
 
+import csv
 import datetime as dt
 import email.utils
 import json
 import os
 import re
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET  # noqa: S405 (parsed only after refusing DTDs and entities)
@@ -56,6 +63,9 @@ register_defaults(
         "idle_days": 4,  # ask about a project after this many days without commits (0: never)
         "idle_when": "daily 18:00",  # when that's checked
         "topics": [],  # older setting: plain keywords searched across all of arXiv (still works)
+        "save_note": False,  # also keep each digest as a note in your inbox (inbox/papers-<date>.md)
+        "repo_runs": "runs",  # the folder in each repository where scripts keep their runs (its index.csv); "": none
+        "remind_by_call": True,  # "Remind me tomorrow" is a call at 18:00 when Phone calls is on
         "endpoints": {
             "arxiv": "https://export.arxiv.org/api/query",
             "biorxiv": "https://api.biorxiv.org/details",
@@ -64,6 +74,7 @@ register_defaults(
     },
 )
 TYPES = {"arxiv": "arXiv", "biorxiv": "bioRxiv", "medrxiv": "medRxiv", "pubmed": "PubMed", "rss": "Feed"}
+ARXIV_GAP = 3.0  # seconds between arXiv requests (arXiv asks for one every 3 seconds)
 ATOM = {"a": "http://www.w3.org/2005/Atom"}
 
 
@@ -101,16 +112,20 @@ def matches(paper: dict, keywords: list[str]) -> bool:
 def describe(feed: dict) -> str:
     t = feed.get("type")
     kw = f" · keywords: {', '.join(feed['keywords'])}" if feed.get("keywords") else ""
+    name = f"{feed['name']} — " if feed.get("name") else ""
     if t == "arxiv":
         names = {c: n for _, cs in catalog()["arxiv"] for c, n in cs}
-        what = ", ".join(f"{names.get(c, c)} ({c})" for c in feed.get("categories") or []) or "all of arXiv"
+        what = ", ".join(f"{names.get(c, c)} ({c})" for c in feed.get("categories") or [])
+        if feed.get("query"):
+            what = f"{feed['query']}" + (f" in {what}" if what else "")
+        what = what or "all of arXiv"
     elif t in ("biorxiv", "medrxiv"):
         what = ", ".join(feed.get("subjects") or []) or "all subjects"
     elif t == "pubmed":
         what = feed.get("query", "")
     else:
         what = feed.get("url", "")
-    return f"{TYPES.get(t, t)}: {what}{kw}"
+    return f"{name}{TYPES.get(t, t)}: {what}{kw}"
 
 
 def validate(feed: dict) -> dict:
@@ -118,27 +133,33 @@ def validate(feed: dict) -> dict:
     t = feed.get("type")
     kw = [k.strip()[:60] for k in (feed.get("keywords") or []) if str(k).strip()][:20]
     cat = catalog()
+    named = {"name": str(feed["name"]).strip()[:60]} if str(feed.get("name") or "").strip() else {}
     if t == "arxiv":
         known = {c for _, cs in cat["arxiv"] for c, _ in cs}
         cats = [c for c in feed.get("categories") or [] if c in known][:30]
+        query = re.sub(r"\s+", " ", str(feed.get("query") or "")).strip()[:500]
+        if query:  # a search in arXiv's own words: ti:, abs:, all:, cat:, AND, OR, ANDNOT, brackets
+            if query.count("(") != query.count(")") or query.count('"') % 2:
+                raise ValueError("that arXiv search has an unclosed bracket or quote")
+            return {"type": t, "query": query, "categories": cats, "keywords": kw, **named}
         if not cats and not kw:
             raise ValueError("pick at least one arXiv field, or give keywords to search all of arXiv")
-        return {"type": t, "categories": cats, "keywords": kw}
+        return {"type": t, "categories": cats, "keywords": kw, **named}
     if t in ("biorxiv", "medrxiv"):
         subs = [s for s in feed.get("subjects") or [] if s in cat[t]]
         if not subs and not kw:
             raise ValueError(f"pick at least one {TYPES[t]} subject, or give keywords")
-        return {"type": t, "subjects": subs, "keywords": kw}
+        return {"type": t, "subjects": subs, "keywords": kw, **named}
     if t == "pubmed":
         q = str(feed.get("query", "")).strip()[:300]
         if not q:
             raise ValueError("give PubMed something to search for")
-        return {"type": t, "query": q}
+        return {"type": t, "query": q, **named}
     if t == "rss":
         url = str(feed.get("url", "")).strip()
         if not url.startswith(("https://", "http://")):
             raise ValueError("a feed needs its web address (https://…)")
-        return {"type": t, "url": url[:500], "keywords": kw}
+        return {"type": t, "url": url[:500], "keywords": kw, **named}
     raise ValueError(f"unknown kind of source {t!r}")
 
 
@@ -270,9 +291,11 @@ class Research(Module):
 
     def _arxiv(self, feed: dict, since: dt.datetime) -> list[dict]:
         parts = []
+        if feed.get("query"):  # arXiv's own search words; keywords then only filter what it finds
+            parts.append(f"({feed['query']})")
         if feed.get("categories"):
             parts.append("(" + " OR ".join(f"cat:{c}" for c in feed["categories"]) + ")")
-        if feed.get("keywords"):
+        if feed.get("keywords") and not feed.get("query"):
             words = " OR ".join(f'abs:"{k}" OR ti:"{k}"' for k in feed["keywords"])
             parts.append(f"({words})")
         q = urllib.parse.urlencode(
@@ -419,13 +442,19 @@ class Research(Module):
         seen_file = self.app.paths.state / "research-papers.json"
         seen = jload(seen_file, {}) or {}
         new, failed, ids = [], [], set()
+        last_arxiv = 0.0
         for feed in self.feeds():
             try:
+                if feed.get("type") == "arxiv":  # one request every 3 seconds, as arXiv asks
+                    wait = last_arxiv + ARXIV_GAP - time.monotonic()
+                    if last_arxiv and wait > 0:
+                        time.sleep(wait)
+                    last_arxiv = time.monotonic()
                 for p in self.fetch(feed):
                     if p["id"] in seen or p["id"] in ids or not p["title"]:
                         continue
                     ids.add(p["id"])
-                    new.append(p)
+                    new.append({**p, "group": feed.get("name") or describe(feed)})
             except Exception as e:
                 failed.append(f"{describe(feed)} ({type(e).__name__})")
                 self.app.events.emit("research_failed", error=str(e)[:200])
@@ -444,6 +473,11 @@ class Research(Module):
             if failed:
                 self.app.notify("No new papers this time." + note, kind="result")
             return []
+        if self.setting("save_note"):
+            try:
+                note += f"\n\nAll {len(new)} are in {layout.shown(self.app, self.save_note(new))}."
+            except OSError as e:
+                note += f"\n\n(Couldn't keep them as a note: {e})"
         if self.setting("rank") and self.app.is_on("chat") and len(new) > n:
             listing = "\n\n".join(
                 f"[{i + 1}] {p['title']} ({', '.join(p['authors'][:3])}; {p['source']})\n"
@@ -464,6 +498,37 @@ class Research(Module):
             more = f"\n…and {len(new) - n} more." if len(new) > n else ""
             self.app.notify(f"New papers ({len(new)}):\n" + "\n".join(rows) + more + note, kind="result")
         return new
+
+    def save_note(self, papers: list[dict]) -> Path:
+        """Every new paper, grouped by source, in a note in the inbox (inbox/papers-<date>.md). A second digest on
+        the same day adds its sections to the end."""
+        lay = layout.of(self.app)
+        day = f"{now():%Y-%m-%d}"
+        f = lay.path("note", slug=f"papers-{day}")
+        groups: dict[str, list[dict]] = {}
+        for p in papers:
+            groups.setdefault(p.get("group") or p.get("source") or "Papers", []).append(p)
+        body = []
+        for group, ps in groups.items():
+            body.append(f"## {group}\n")
+            for p in ps:
+                authors = ", ".join(p["authors"][:3]) + (" et al." if len(p["authors"]) > 3 else "")
+                bits = " · ".join(x for x in (authors, p.get("date", "")) if x)
+                summary = f"\n  > {p['summary'][:300]}…" if p.get("summary") else ""
+                body.append(f"- [{p['title']}]({p['link']})" + (f" · {bits}" if bits else "") + summary)
+            body.append("")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        if f.exists():
+            with open(f, "a", encoding="utf-8") as fh:
+                fh.write("\n" + "\n".join(body))
+        else:
+            head = lay.frontmatter("note", f, title=f"New papers {day}", tags=["inbox", "papers"])
+            f.write_text(
+                head + f"# New papers {day}\n\n{len(papers)} new since the last digest. Keep what matters as a note "
+                "of its own; this one is yours to delete.\n\n" + "\n".join(body),
+                encoding="utf-8",
+            )
+        return f
 
     # -------------------------------------------------------------------------------------- project logs
     def git_exe(self) -> str | None:
@@ -509,6 +574,10 @@ class Research(Module):
                 rec["last_day"] = proc.run(
                     [git, "-C", str(path), "log", "-1", "--format=%cd", "--date=short"], timeout=30, env=env
                 ).out.strip()
+            runs = self.repo_runs(path, rec)
+            if runs:
+                log_lines(self.app, self.project_of(path), runs, self.app.name)
+                written += 1
             if rec.get("head") == head:
                 st[str(path)] = rec
                 continue
@@ -525,7 +594,7 @@ class Research(Module):
                     by_day.setdefault(day, []).append(subject.strip())
             rec["head"] = head
             if by_day:
-                rec["last_day"] = max(by_day)
+                rec["last_day"] = max([*by_day, rec.get("last_day") or ""])
                 lines = []
                 for day, subs in sorted(by_day.items()):
                     shown = "; ".join(subs[:3]) + (f"; +{len(subs) - 3} more" if len(subs) > 3 else "")
@@ -537,6 +606,51 @@ class Research(Module):
         jsave(state_file, st)
         self.app.events.emit("research_logs", repos=written)
         return written
+
+    def repo_runs(self, repo: Path, rec: dict) -> list[str]:
+        """Runs a script keeps in its repository (<repo>/runs/index.csv, as kurooto.runlog.Run writes it without a
+        project): a Log line for each one not logged yet. The first time, only the last 30 days'."""
+        folder = str(self.setting("repo_runs") or "").strip()
+        index = repo / folder / "index.csv" if folder else None
+        if index is None or not index.is_file():
+            return []
+        try:
+            with open(index, newline="", encoding="utf-8", errors="replace") as f:
+                rows = list(csv.DictReader(f))[-2000:]
+        except (OSError, csv.Error):
+            return []
+        first = "runs" not in rec
+        seen = set(rec.get("runs") or [])
+        cutoff = (now() - dt.timedelta(days=30)).date().isoformat()
+        lines = []
+        for r in rows:
+            rid = (r.get("run") or r.get("name") or "").strip()
+            if not rid or rid in seen:
+                continue
+            seen.add(rid)
+            day = (r.get("start") or r.get("time") or r.get("started") or "")[:10]
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+                day = f"{now():%Y-%m-%d}"
+            if first and day < cutoff:
+                continue
+            rec["last_day"] = max(rec.get("last_day") or "", day)
+            status = (r.get("status") or "").strip() or "logged"
+            try:
+                took = f" after {_took(float(r.get('duration_s') or ''))}"
+            except ValueError:
+                took = ""
+            last = ""
+            try:
+                vals = json.loads(r.get("last_metrics") or "{}")
+                if isinstance(vals, dict):
+                    last = ", ".join(f"{k}={_short(v)}" for k, v in list(vals.items())[:4] if k != "time")
+            except ValueError:
+                pass
+            extra = r.get("summary") or r.get("notes") or ""
+            what = f"{status}{took}" + (f" ({last})" if last else "") + (f": {extra[:200]}" if extra else "")
+            lines.append(f"- **{day}** | run:{repo.name}/{rid} — {what}")
+        rec["runs"] = sorted(seen)[-2000:]
+        return lines
 
     def sync_now(self) -> tuple[bool, str]:
         n = self.project_logs()
@@ -593,6 +707,15 @@ class Research(Module):
         self.app.events.emit("research_idle_answer", choice=answer.strip()[:40])
         if "remind" in answer.lower():
             when = dt.datetime.combine(now().date() + dt.timedelta(days=1), dt.time(18, 0))
+            calls = self.app.modules.get("calls")
+            if self.setting("remind_by_call") and calls and self.app.is_on("calls") and calls.ready()[0]:
+                calls.schedule(
+                    when,
+                    f"A reminder they asked for yesterday: their research project {project} has been quiet. Ask what "
+                    "the plan is, and help them pick one small next step.",
+                    key=f"research:{slug(project)}",
+                )
+                return f"I'll call you about {project} tomorrow at 18:00."
             self.app.scheduler.at(
                 when, "research.remind", {"project": project}, key=f"research:remind:{slug(project)}", module=self.id
             )
@@ -603,6 +726,13 @@ class Research(Module):
 
     def _remind(self, p: dict) -> None:
         self.app.notify(f"You asked me to remind you about {p.get('project', 'your project')} today.", kind="reminder")
+
+    def call_outcome(self, key: str, outcome: str) -> bool:
+        """The reminder call about a quiet project didn't happen: a message instead."""
+        if outcome in ("missed", "decline", "skip"):
+            project = key.partition(":")[2] or "your project"
+            self.app.notify(f"Missed my call: you asked me to remind you about {project} today.", kind="reminder")
+        return False
 
     def weekly_lines(self) -> list[str]:
         return []
@@ -749,3 +879,16 @@ class Research(Module):
         if out.startswith("•"):
             out = "\n".join(f"{ln} → {self.project_of(ln[2:])}" for ln in out.splitlines())
         return out
+
+
+def _took(secs: float) -> str:
+    secs = int(secs)
+    if secs < 60:
+        return f"{secs}s"
+    if secs < 3600:
+        return f"{secs // 60}m{secs % 60:02d}s"
+    return f"{secs // 3600}h{secs % 3600 // 60:02d}m"
+
+
+def _short(v) -> str:
+    return f"{v:.4g}" if isinstance(v, float) else str(v)[:30]
