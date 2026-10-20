@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+- Going offline and coming back: Kurooto says "going offline (shutting down)" before a clean stop (stop, off, signing
+  out, shutting down; never for an update's restart) and "back online (offline since 22:10, 7 h)" after a start, a
+  wake from sleep or a network outage ("the network was down from 14:02 to 14:31"), with what it caught up on.
+  Telegram messages that couldn't go out while the network was down follow, marked as delayed. Nothing under 10
+  minutes; close-together sleeps give one message; at night it waits for the morning. Settings: `notify.presence`.
+- With Phone calls, your call line says "offline since ..." when the computer can't (sleep, a crash, a lost network):
+  on the phone app, and on Telegram if you approve giving it your bot's token (asked once). Without a call line there's
+  no message for those.
+
 ## 0.2.0 (unreleased)
 Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) has the detail.
 

@@ -1259,6 +1259,52 @@ started), doesn't start when you sign in, and your call line stops placing sched
 menu, Applications, or your Linux app launcher) or run `kurooto on`; both also open the dashboard. Telegram doesn't
 answer while it's off; messages sent meanwhile (up to a day: Telegram keeps them that long) are handled when it's back.
 
+## Going offline and coming back
+
+Kurooto tells you when it goes away and when it's back, on Telegram (on by default; nothing ever rings for this).
+
+**What you'll see:**
+- **A clean stop** (`kurooto stop` or `off`, the dashboard, signing out or shutting down the computer): just before it
+  goes, "Kurooto is going offline (shutting down): calls and reminders will wait until it's back". With Phone calls
+  set up it says "reminders will wait until it's back; your call line still places scheduled calls" instead. It takes
+  at most a few seconds and never holds up a shutdown. An update's restart says nothing.
+- **Sleep, a crash, a lost network or the power going:** your computer can't speak then. If Phone calls is set up,
+  your call line notices the computer's link gone for 10 minutes and says it for it: "Kurooto has been offline since
+  22:10 (asleep, off or without internet): ..." (on the phone app, and on Telegram once you allow it; see below).
+  **Without Phone calls there's no message for sleep, a crash or a lost network**, only the "back" one afterwards.
+- **Back:** when Kurooto starts, when the computer wakes up, and when the network works again: "Kurooto is back online
+  (offline since 22:10, 7 h)", or "Back online: the network was down from 14:02 to 14:31 (29 min)", with what it
+  caught up on (reminders that went out late, calls your call line placed meanwhile).
+- **The network:** when Telegram (or your call line) can't be reached several times in a row while the computer is
+  on, Kurooto counts the network as down from the first failure. Messages meanwhile are kept, and once the network is
+  back they follow the "back online" message, in order, each marked "Delayed, from 14:05".
+
+**Not every blip:** nothing for less than 10 minutes away (except right after a goodbye: you were told it went, so
+you're told it's back). Several sleeps or drops close together give one message: it waits until the computer has
+been up for a minute. At night (your night hours, or bedtime to the alarm) and in focus time it waits for the
+morning; if nothing told you Kurooto had gone and it's back before then, it's dropped.
+
+**Telegram from your call line:** for the line to tell you on Telegram while your computer can't, it needs your
+bot's token. Kurooto asks once (Approve / Deny). Approve, and the token and your chat go to your call line on your
+Cloudflare account (where your Gemini key already is); Deny, and only the phone app hears from the line (add `"app"`
+to the channels).
+
+**Settings** (Settings → `notify.presence`):
+- `on`: `true` (default) or `false`.
+- `after_min`: how long away before it counts (default 10, at least 1).
+- `channels`: where the messages go: `["telegram"]` (default); add `"app"` for the phone app.
+- `line`: your call line speaks while the computer can't (default `true`).
+- `line_telegram`: may your call line keep your bot's token for that? `null` asks once; `true` or `false`.
+
+**Undo:** `notify.presence.on` = `false` turns the messages off (the call line then says nothing either; messages kept
+while the network was down are still delivered, marked as delayed, once it's back). To take the bot's
+token off your call line, set `line_telegram` to `false`: it's deleted there at the next sync (within 5 minutes,
+while your computer is connected). The dashboard's activity shows `presence_offline` and `presence_online`.
+
+*Leaves:* the messages (Telegram, your own bot; the phone app through your call line). With Phone calls: your night
+and focus hours for the next day and the message's wording go to your call line, and, only after you approve, your
+bot's token and chat id.
+
 ## Updates and going back
 
 Kurooto updates itself. Settings → `updates.mode`:
@@ -1349,6 +1395,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 |---|---|
 | The bot doesn't answer | `kurooto doctor`; is it running? Turned off? `kurooto on` (or Kurooto in your app menu). Is the computer asleep? See Stay awake on charger. |
 | The bot says it's paused | `/resume`; or it's on battery with `power.on_battery` set to `pause`: plug in, or choose `saver`. |
+| "Back online" every morning | Your laptop sleeps at night. Raise `notify.presence.after_min` past your night, or turn it off (`notify.presence.on` = `false`). |
+| No "going offline" when the laptop sleeps | That message comes from your call line: it needs Phone calls set up, and Telegram from the line needs your OK (`notify.presence.line_telegram`); or add `"app"` to `notify.presence.channels`. |
 | Building my profile failed | It's a big request: if your AI hit a limit, try again later or with a stronger AI (Settings → `brain.main`). |
 | Something only happens when I plug in | That's the battery saver (Taking your laptop with you); set `power.on_battery` to `normal` to keep it all running. |
 | "I can't answer free text yet" | Turn on **Chat** (Features). |

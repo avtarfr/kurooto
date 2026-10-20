@@ -27,6 +27,8 @@ Everything below goes to services you chose, under your own accounts.
 | Phone calls | call audio and what's said on calls; the call setup (your name, the assistant's name, which tools exist); for calls while the computer is off: a short brief (what's due, today's classes and check-ins, open questions, quiz questions, the alarm), the steps for check-in, wake-up and Sunday review calls with what they need (today's plan from your daily note, today's classes, study hours counted, the week's numbers), and your notes' titles, headings and first lines | Google (Gemini Live, your key); your own Cloudflare account (your call line) |
 | Phone calls: ringing and messages | "a call is ringing" messages, and the questions, approvals and messages you choose for the phone (`notify.app_kinds`), end-to-end encrypted (only your paired phones can read them) | ntfy.sh (Android) or Apple/Google push services (web app; the push itself is empty) |
 | Phone calls: what's waiting | the text of open questions, approvals and messages sent to your phones (at most 40; a message is gone after a day, a question or approval once it's answered or expires), so the iPhone app can list them | your own Cloudflare account (your call line) |
+| Going offline and coming back (on by default) | the "going offline", "back online" and "network was down" messages, and messages kept while the network was down | Telegram (your own bot); with Phone calls, the phone app through your call line |
+| Going offline + Phone calls | your night and focus hours for the next day and the message's wording, so your call line can say "offline since 22:10" while this computer can't; only after you approve (asked once): your Telegram bot's token and your chat id, kept in your call line's storage and deleted there when you set `notify.presence.line_telegram` to `false` or turn the feature off | your own Cloudflare account (your call line), which then sends to Telegram or your phones |
 | Morning alarm | the alarm time; with Chat on, the AI reads your notes before the alarm to draft the day's plan, and the wake-up call's transcript to settle it | your call line; the AI service you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
 | Calendar | nothing leaves; Kurooto reads your calendar's private link. Event descriptions are read only for `#nocall` and `#focus` and aren't kept | (read from Google/Outlook/Apple) |
@@ -152,6 +154,10 @@ logs. `kurooto doctor --bundle` blanks them out (and names, addresses and folder
 
 - **Backups:** with `backups.secrets` on, your keys are copied into each backup zip (`secrets.json`), in plain text;
   anyone who gets the zip can use them. Off by default.
+- **Your call line and Telegram:** if you approve "going offline" messages from your call line (asked once), your
+  Telegram bot's token and your chat id go to your call line on your own Cloudflare account, beside your Gemini key.
+  With them the line can send messages as your bot (it only sends "Kurooto has been offline since ..."). Set
+  `notify.presence.line_telegram` to `false` and they're deleted there at the next sync.
 - **Profile sync:** your keys also go to your repository, encrypted with your passphrase (AES-GCM, with a key from
   scrypt). The passphrase is never stored; this computer keeps the profile's data key in its keychain, like your other
   keys, so it can save on its own. Never in the profile: this computer's dashboard key, and the reports you added in
