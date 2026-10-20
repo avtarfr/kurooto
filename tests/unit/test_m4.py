@@ -284,7 +284,7 @@ def test_google_sign_in_with_pkce_and_single_use_state(google):
     assert "redirect_uri=http%3A%2F%2F127.0.0.1%3A8770%2Foauth%2Fgoogle" in url
     code, _ = fake.issue_code(url)
     assert gm.finish_signin(code, "forged")[0] is False
-    assert gm.finish_signin(code, "anything")[1].startswith("That sign-in link is stale")  # used up
+    assert gm.finish_signin(code, "anything")[1].startswith("This sign-in page is out of date")  # used up
     (ok, msg), _ = sign_in(gm, fake)
     assert ok, msg
     assert gm.ready() == (True, "")
@@ -369,3 +369,45 @@ def test_setup_forms_through_the_api(env, tmp_path):
     assert r["ok"] is False and "https" in r["message"]
     r = api.post("modules/configure", {"id": "google", "values": {"client": CLIENT}})[1]
     assert r["ok"] and r["open"].startswith("https://accounts.google.com/o/oauth2/v2/auth?")
+
+
+def test_google_sign_in_says_exactly_what_went_wrong(google):
+    from kurooto.modules import google as gmod
+
+    env, fake, gm = google
+    gm.set_client(CLIENT)
+    # a box left unticked on Google's consent page: signed in, but told which part and to tick every box
+    url = gm.start_signin()
+    code, state = fake.issue_code(url)
+    fake.scope = " ".join(s for s in fake.scope.split() if "gmail.compose" not in s)
+    ok, msg = gm.finish_signin(code, state)
+    assert not ok and "can't use: Gmail drafts" in msg and "tick every box" in msg
+    assert gm.ready() == (False, "sign in again: a newly chosen part needs Google's OK")
+    # the token endpoint's errors, in plain words
+    url = gm.start_signin()
+    code, state = fake.issue_code(url)
+    gm._token_call = lambda form: (_ for _ in ()).throw(
+        gmod.TokenError("invalid_client", "The OAuth client was not found.")
+    )
+    assert gm.finish_signin(code, state)[1].startswith("Google doesn't recognise this OAuth client")
+    url = gm.start_signin()
+    code, state = fake.issue_code(url)
+    gm._token_call = lambda form: {"access_token": "a", "expires_in": 3600}  # no refresh token
+    assert "myaccount.google.com/connections" in gm.finish_signin(code, state)[1]
+    # what Google's page sends back when you press Cancel, or an admin blocks the app
+    assert gmod.signin_error("access_denied").startswith("You pressed Cancel")
+    assert "admin" in gmod.signin_error("admin_policy_enforced")
+    assert gmod.signin_error("weird").startswith("Google's sign-in didn't finish (weird)")
+
+
+def test_sign_in_page_explains_a_cancel(google):
+    from kurooto.web.server import start as start_web
+
+    env, fake, gm = google
+    server = start_web(env.app)
+    try:
+        with pytest.raises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(f"{server.url}/oauth/google?error=access_denied", timeout=10)
+        assert e.value.code == 400 and "You pressed Cancel" in e.value.read().decode()
+    finally:
+        server.stop()

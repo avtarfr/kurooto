@@ -391,15 +391,37 @@ async function renderFeatures(body) {
     ${m.form.fields.map((f) => `<label>${esc(f.label)}${f.type === "textarea" ? `<textarea name="${esc(f.name)}" rows="3" placeholder="${esc(f.placeholder || "")}"></textarea>`
       : `<input name="${esc(f.name)}" type="${f.type === "password" ? "password" : "text"}" placeholder="${esc(f.placeholder || "")}" autocomplete="off">`}</label>`).join("")}
     <button class="primary" type="submit">Save</button></form>`;
+  // Phone calls: what it needs, in order; the Gemini key right here; Set up (Cloudflare) once the key is saved
+  const calls = (m) => m.id !== "calls" || m.on ? "" : `<ol class="d"><li>a free Gemini API key (needed even if agy or another AI answers your messages: calls talk through Gemini Live)${st.keys.gemini ? " ✓" : ""}</li>
+    <li>a free Cloudflare account: Set up makes your own call line on it${m.ready ? " ✓" : ""}</li><li>then pair your phone (Phone tab)</li></ol>
+    ${st.keys.gemini ? "" : `<form class="sf" data-gemini><label>Gemini API key (<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> → Create API key)<input name="key" autocomplete="off"></label><button class="primary" type="submit">Save key</button></form>`}`;
+  const action = (m) => m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>`
+    : m.setup ? `<button class="primary" data-setup="${m.id}" ${m.id === "calls" && !st.keys.gemini ? "disabled" : ""}>Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`;
   body.innerHTML = `<div class="feat">${st.modules.map((m) => `<div class="card2 ${m.on ? "on" : ""}"><b>${esc(m.title)}</b><p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>
-    ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${form(m)}</div>`).join("")}</div><div class="log" id="flog"></div>`;
+    ${action(m)}${calls(m)}${form(m)}</div>`).join("")}</div><div class="log" id="flog"></div>`;
   body.onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target, flog = $("#flog");
     const values = Object.fromEntries([...f.querySelectorAll("input, textarea")].map((i) => [i.name, i.value]));
+    if (f.dataset.gemini !== undefined) { // the Gemini key, for Phone calls
+      const r = await api("keys/gemini", { key: values.key });
+      flog.textContent = r.ok ? "Gemini key saved. Now Set up Phone calls." : r.error;
+      if (r.ok) renderFeatures(body);
+      return;
+    }
     const r = await api("modules/configure", { id: f.dataset.form, values });
     flog.textContent = r.message || "";
-    if (r.open) window.open(r.open, "_blank", "noopener");
+    if (r.open) { // popup blockers stop a tab opened after waiting for Kurooto: the link always works
+      try { window.open(r.open, "_blank", "noopener"); } catch { /* the link below */ }
+      flog.innerHTML = `<p><a class="button primary" href="${esc(r.open)}" target="_blank" rel="noopener">Open Google sign-in</a></p>
+        <p class="d">After you approve, Google brings you back to this computer (a 127.0.0.1 page) that says 'Signed in with Google'. This card then turns on by itself.</p>`;
+      const id = f.dataset.form, run = (renderFeatures.wait = (renderFeatures.wait || 0) + 1);
+      for (let i = 0; i < 300 && run === renderFeatures.wait && tab === "features"; i++) {
+        await new Promise((ok) => setTimeout(ok, 3000));
+        const m = (await api("state")).modules.find((x) => x.id === id);
+        if (m && m.ready) { renderFeatures(body); return; }
+      }
+    }
     if (r.ok && !r.open) renderFeatures(body);
   };
   body.onclick = async (e) => {
@@ -417,7 +439,7 @@ const linkify = (text) => text.split(/(https?:\/\/[^\s<>"]+)/g).map((part, i) =>
 
 async function renderPhone(body) {
   const ph = await api("phone");
-  if (!ph.on) { body.innerHTML = "Phone calls are off. Turn them on in the Features tab (you'll need a free Gemini key and a free Cloudflare account; setup does the rest)."; return; }
+  if (!ph.on) { body.innerHTML = "<p>Phone calls are off. Turn them on in the Features tab (you'll need a free Gemini key and a free Cloudflare account; setup does the rest).</p><p class=\"d\">The phone app comes from your own call line: set up Phone calls first.</p>"; return; }
   const devs = ph.devices;
   body.innerHTML = `<p>Your call line: <a href="${esc(ph.url)}" target="_blank" rel="noopener">${esc(ph.url)}</a> ·
     <span class="${ph.connected ? "ok2" : "bad2"}">${ph.connected ? "connected" : "not connected" + (ph.error ? " (" + esc(ph.error) + ")" : "")}</span></p>
@@ -434,7 +456,7 @@ async function renderPhone(body) {
       const r = await api("phone/pair", {});
       t.disabled = false;
       $("#pairbox").innerHTML = r.ok
-        ? `<div class="qr">${r.svg}</div><p>Scan with the phone's camera, or send /phone to your bot and tap the link on the phone. Works for 15 minutes. Code <code>${esc(r.code)}</code> · <a href="${esc(r.link)}" target="_blank" rel="noopener">link</a></p>`
+        ? `<div class="qr">${r.svg}</div><p>Scan this with your phone. The page that opens has 1) Download the app (Android) or Add to Home Screen (iPhone), then 2) pairing. Works for 15 minutes (or send /phone to your bot and tap the link on the phone). Code <code>${esc(r.code)}</code> · <a href="${esc(r.link)}" target="_blank" rel="noopener">link</a></p>`
         : `<p class="bad2">${esc(r.error)}</p>`;
     }
     if (t.dataset.ring !== undefined) { const r = await api("phone/test", {}); msg.textContent = r.ok ? "Ringing your paired phones…" : r.error; }
