@@ -472,7 +472,7 @@ def test_boot_refused_or_elsewhere(boot, monkeypatch):
 def test_secrets_move_to_the_file_and_back(tmp_path):
     class Keyring:
         def __init__(self):
-            self.vals = {"telegram.token": "t0ken-123456"}
+            self.vals = {"telegram.token": "not-a-real-value"}
 
         def get_password(self, service, name):
             return self.vals.get(name)
