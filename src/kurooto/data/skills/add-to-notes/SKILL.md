@@ -22,7 +22,7 @@ File this into their notes: $ARGUMENTS
      nothing that isn't in the material. For a paper or article: authors, year, title and link first.
    - `## My notes`: if it's their own notes, their content verbatim (a careful transcription for handwriting).
    - `## Unclear / to ask`.
-   - `## Files`: where the file is (its path in the notes folder), or the link.
+   - `## Files`: where the file is (its path, in the notes folder or outside it), or the link.
    - `## Related`: links with a one-line reason each.
 4. **Connect it.**
    - Up to 4 key ideas: link existing concept notes with a reason (search first), or create short concept notes in
@@ -34,6 +34,6 @@ File this into their notes: $ARGUMENTS
    - Deadlines in it: `- [ ] <what> (YYYY-MM-DD HH:MM)` under `## Tasks` on the course page.
    - Research material: a line under the project note's `## Log`: `- **YYYY-MM-DD** | <source> — <what it adds>`.
    - Today's daily note `journal/<YYYY-MM-DD>`: a line under `## Added` linking the new note.
-5. Files stay where they are (files sent on Telegram are already saved in `inbox/`); don't copy them.
+5. Files stay where they are (files sent on Telegram are already saved); link to them there, don't copy them.
 
 Reply in a few lines: what it was, where it went (notes created or added to), and anything they should check.

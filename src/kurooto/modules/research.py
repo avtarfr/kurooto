@@ -12,7 +12,8 @@ Each source can be narrowed with keywords (any of them, in the title or abstract
 relevant papers using what you wrote under "What I work on" (and your notes), and says why each matters; otherwise you
 get the newest, as they are.
 
-Projects: each project has a note, research/<project>/index.md, and research/index.md lists them all. For your code
+Projects: each project has a note, research/<project>/index.md, and research/index.md lists them all (those are the
+default notes layout's places; core/layout.py has yours). For your code
 repositories on this computer, each day's new commits are written under "## Log" in their project's note, so your notes
 keep up with your code (a repository's project is its folder's name unless you map it: /repos add <folder> as
 <project>). Runs logged with `kurooto runlog` (or `kurooto watch --log <project>`) go to research/<project>/runs/ with
@@ -34,7 +35,7 @@ import xml.etree.ElementTree as ET  # noqa: S405 (parsed only after refusing DTD
 from importlib import resources
 from pathlib import Path
 
-from kurooto.core import proc
+from kurooto.core import layout, proc
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
@@ -157,35 +158,40 @@ def slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(name).lower()).strip("-")[:60] or "project"
 
 
-def project_note(workspace: Path, project: str) -> Path:
-    return Path(workspace) / "research" / slug(project) / "index.md"
+def project_note(workspace, project: str) -> Path:
+    """`workspace`: the App, a layout.Layout, or a notes folder (the default layout)."""
+    return layout.of(workspace).path("project", project=slug(project))
 
 
-def ensure_project(workspace: Path, project: str, assistant: str = "Kurooto", repos: list[str] | None = None) -> Path:
+def ensure_project(workspace, project: str, assistant: str = "Kurooto", repos: list[str] | None = None) -> Path:
     """The project's note (made if missing), listed in the hub note research/index.md (made if missing)."""
     from kurooto.core.tools import add_to_section
 
-    note = project_note(workspace, project)
+    lay = layout.of(workspace)
+    note = project_note(lay, project)
     if not note.exists():
         note.parent.mkdir(parents=True, exist_ok=True)
         where = f"Code: {', '.join(repos)}.\n\n" if repos else ""
         note.write_text(
-            f"# {project}\n\n{where}Notes on this project go here. {assistant} adds dated lines to the Log below.\n\n"
+            lay.frontmatter("project", note, title=project, bare=True)
+            + f"# {project}\n\n{where}Notes on this project go here. {assistant} adds dated lines to the Log below.\n\n"
             "## Log\n",
             encoding="utf-8",
         )
-    hub = Path(workspace) / "research" / "index.md"
+    hub = lay.path("research")
     if not hub.exists():
         hub.parent.mkdir(parents=True, exist_ok=True)
-        hub.write_text(HUB.format(name=assistant), encoding="utf-8")
-    link = f"[[research/{slug(project)}/index|{project}]]"
+        hub.write_text(
+            lay.frontmatter("research", hub, title="Research", bare=True) + HUB.format(name=assistant), encoding="utf-8"
+        )
+    link = f"[[{lay.link('project', project=slug(project))}|{project}]]"
     text = hub.read_text(encoding="utf-8")
     if link not in text:
         hub.write_text(add_to_section(text, "Projects", f"- {link} (since {now():%Y-%m-%d})"), encoding="utf-8")
     return note
 
 
-def log_lines(workspace: Path, project: str, lines: list[str], assistant: str = "Kurooto") -> int:
+def log_lines(workspace, project: str, lines: list[str], assistant: str = "Kurooto") -> int:
     """Add lines to the end of the project note's "## Log" (each only once). Returns how many were added."""
     from kurooto.core.tools import add_to_section
 
@@ -525,7 +531,7 @@ class Research(Module):
                     shown = "; ".join(subs[:3]) + (f"; +{len(subs) - 3} more" if len(subs) > 3 else "")
                     n = f"{len(subs)} commit{'s' if len(subs) > 1 else ''}"
                     lines.append(f"- **{day}** | git:{path.name} — {n}: {shown}")
-                log_lines(self.app.workspace, self.project_of(path), lines, self.app.name)
+                log_lines(self.app, self.project_of(path), lines, self.app.name)
                 written += 1
             st[str(path)] = rec
         jsave(state_file, st)
@@ -583,9 +589,7 @@ class Research(Module):
 
     def _idle_answer(self, q: dict, answer: str) -> str:
         project = (q.get("hook_payload") or {}).get("project") or "the project"
-        log_lines(
-            self.app.workspace, project, [f"- **{now():%Y-%m-%d}** | you — {answer.strip()[:300]}"], self.app.name
-        )
+        log_lines(self.app, project, [f"- **{now():%Y-%m-%d}** | you — {answer.strip()[:300]}"], self.app.name)
         self.app.events.emit("research_idle_answer", choice=answer.strip()[:40])
         if "remind" in answer.lower():
             when = dt.datetime.combine(now().date() + dt.timedelta(days=1), dt.time(18, 0))

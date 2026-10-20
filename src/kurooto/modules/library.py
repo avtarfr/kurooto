@@ -1,4 +1,5 @@
-"""Quick notes and prompts: /note <text> saves a thought straight into your notes' inbox (inbox/<date>-<words>.md),
+"""Quick notes and prompts: /note <text> saves a thought straight into your notes' inbox (inbox/<date>-<words>.md; the
+inbox is where your notes layout keeps it),
 and `kurooto note "text"` does the same from a terminal. Your prompt library is <notes>/prompts/*.md: /prompts lists
 it, /prompt <name> sends one back so you can copy it, /prompt save <name> (the prompt on the next lines) adds one.
 A prompt with `skill: true` in its header also becomes a skill (with the Skills feature on).
@@ -7,23 +8,24 @@ No AI is involved: what you write is saved as you wrote it.
 
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
-from kurooto.core import overlay
+from kurooto.core import layout, overlay
 from kurooto.core.clock import now
 from kurooto.modules.base import Command, Incoming, Module
 from kurooto.modules.skills import parse, prompt_files, prompt_skill, slug
 
 
-def capture(workspace: Path, text: str, title: str = "", source: str = "telegram", files=()) -> Path:
-    """Save a quick note to inbox/<YYYY-MM-DD>-<first words>.md (never over an existing note). Returns its path."""
+def capture(workspace, text: str, title: str = "", source: str = "telegram", files=()) -> Path:
+    """Save a quick note to inbox/<YYYY-MM-DD>-<first words>.md (never over an existing note). Returns its path.
+    `workspace`: the App, a layout.Layout, or a notes folder (the default layout)."""
+    lay = layout.of(workspace)
     text = (text or "").strip()
     stamp = now()
     words = title.strip() or " ".join(text.split()[:6]) or (Path(files[0]).stem if files else "")
     name = f"{stamp:%Y-%m-%d}-{slug(words, 50) or 'note'}"
-    inbox = Path(workspace) / "inbox"
+    inbox = lay.path("inbox")
     inbox.mkdir(parents=True, exist_ok=True)
     f, n = inbox / f"{name}.md", 2
     while f.exists():
@@ -31,10 +33,14 @@ def capture(workspace: Path, text: str, title: str = "", source: str = "telegram
     head = ["---", f"created: {stamp.isoformat()}", f"source: {source}", "tags: [inbox]"]
     if title.strip():
         head.insert(1, f"title: {json_str(title.strip())}")
-    body = "\n".join([*head, "---", "", text]).rstrip() + "\n"
-    links = [Path(os.path.relpath(Path(x), inbox)).as_posix() for x in files]
+    if lay.preset == "zettelkasten":  # your words, so no trust_tier (core/layout.py)
+        fm = lay.frontmatter("note", f, title=title.strip(), agent=False, created=stamp.isoformat(), source=source)
+        body = (fm + text).rstrip() + "\n"
+    else:
+        body = "\n".join([*head, "---", "", text]).rstrip() + "\n"
+    links = [lay.file_link(Path(x), f).removeprefix("!") for x in files]
     if links:
-        body += "\n" + "\n".join(f"- [{Path(x).name}]({x})" for x in links) + "\n"
+        body += "\n" + "\n".join(f"- {x}" for x in links) + "\n"
     f.write_text(body, encoding="utf-8")
     return f
 
@@ -44,11 +50,11 @@ def json_str(s: str) -> str:
     return f'"{s.replace(chr(34), chr(39))}"' if re.search(r"[:#\[\]{}\"',&*!|>%@`]", s) else s
 
 
-def prompts(workspace: Path, extra: list[Path] = ()) -> list[dict]:
+def prompts(workspace, extra: list[Path] = ()) -> list[dict]:
     """Every prompt in <notes>/prompts: name (its path without .md), title, and whether it's also a skill. `extra`:
     more prompt folders (your add-ons'), listed after yours as add-ons/<name>."""
     out = []
-    for root, prefix in [(Path(workspace) / "prompts", ""), *((Path(d), "add-ons/") for d in extra)]:
+    for root, prefix in [(layout.of(workspace).path("prompts"), ""), *((Path(d), "add-ons/") for d in extra)]:
         out += _prompts_in(root, prefix)
     return out
 
@@ -101,12 +107,12 @@ class Library(Module):
     def _note(self, msg: Incoming, arg: str) -> str:
         if not arg.strip() and not msg.files:
             return "What should I save? /note <text> (a photo or file with /note as its caption works too)"
-        f = capture(self.app.workspace, arg, source=msg.via, files=msg.files)
+        f = capture(self.app, arg, source=msg.via, files=msg.files)
         self.app.events.emit("note_captured", via=msg.via, chars=len(arg), files=len(msg.files))
-        return f"Saved to {f.relative_to(self.app.workspace).as_posix()}."
+        return f"Saved to {layout.shown(self.app, f)}."
 
     def _prompts(self, msg: Incoming, arg: str) -> str:
-        items = prompts(self.app.workspace, overlay.dirs(self.app, "prompts"))
+        items = prompts(self.app, overlay.dirs(self.app, "prompts"))
         if not items:
             return (
                 "No prompts yet. Save one with /prompt save <name> and the prompt on the next lines, or put Markdown "
@@ -124,7 +130,7 @@ class Library(Module):
         first, _, rest = arg.partition("\n")
         if first.strip().lower().startswith("save"):
             return self._save(first.strip()[4:].strip(), rest)
-        items = prompts(self.app.workspace, overlay.dirs(self.app, "prompts"))
+        items = prompts(self.app, overlay.dirs(self.app, "prompts"))
         hit = find_prompt(items, first)
         if not first.strip():
             return "Which one? /prompt <name> (/prompts lists them)"
@@ -141,7 +147,7 @@ class Library(Module):
                 "Put the name after /prompt save and the prompt on the next lines:\n/prompt save summarise\n"
                 "Summarise this in 5 bullets: …"
             )
-        root = self.app.workspace / "prompts"
+        root = layout.path(self.app, "prompts")
         root.mkdir(parents=True, exist_ok=True)
         base = slug(title, 60) or "prompt"
         f, n = root / f"{base}.md", 2

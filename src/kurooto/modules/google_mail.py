@@ -34,6 +34,7 @@ from email.message import EmailMessage
 from email.utils import parseaddr
 from pathlib import Path
 
+from kurooto.core import layout
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock, Timeout
@@ -58,7 +59,7 @@ register_defaults(
         "own_domain": True,  # on a school or work account, mail from your own domain is read too
         "first_days": 3,  # the first digest looks this far back
         "max_messages": 200,  # per check
-        "save_note": True,  # a copy of each digest in your notes (mail/<date>-<time>.md)
+        "save_note": True,  # a copy of each digest in your notes (mail/<date>-<time>.md, or your notes layout's place)
         # mail marked confidential is only counted: never read by the AI, summarised or answered with a draft
         "skip_confidential": True,
         "confidential_words": [  # regular expressions, any case; a space matches any run of spaces or line breaks
@@ -473,7 +474,7 @@ class MailDigest(GooglePart):
             f"Mail to digest: {len(b['messages'])} message(s), checked {at:%a %d %b %H:%M}.",
             f"Not read, only counted (never describe these): {piles}.",
             "Their subjects (notes folders): " + (", ".join(self.subjects()) or "none set up"),
-            f"Save the digest note: yes, as mail/{at:%Y-%m-%d-%H%M}.md"
+            f"Save the digest note: yes, as {layout.rel(self.app, 'mail', date=f'{at:%Y-%m-%d}', time=f'{at:%H%M}')}"
             if self.setting("save_note")
             else "Save the digest note: no (answer only)",
             "Reply drafts: on (use the draft_reply tool)" if drafts else "Reply drafts: off (don't draft replies)",

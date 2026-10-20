@@ -25,7 +25,7 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
 
-from kurooto.core import proc
+from kurooto.core import layout, proc
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock, Timeout
@@ -126,15 +126,17 @@ def _xml_text(path: Path, members: list[str], para: str, sep: str = "") -> str:
     return "\n\n".join(out)
 
 
-def write_exam_prep(root: Path, folder: str, text: str, course: str, made_by: str) -> str:
-    """Put Kurooto's exam prep for a course between its markers in <folder>/exam-prep.md; nothing else changes."""
+def write_exam_prep(root, folder: str, text: str, course: str, made_by: str) -> str:
+    """Put Kurooto's exam prep for a course between its markers in <folder>/exam-prep.md (where your notes layout keeps
+    it; `root`: the App, a layout.Layout or a notes folder); nothing else changes."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", folder or ""):
         return "The subject must be a notes folder name like linear-algebra."
     text = re.sub(r"<!--\s*/?kurooto:exam-prep.*?-->", "", text or "").strip()
     if not text:
         return "Nothing to write."
     block = f"{START_LINE}\n{text}\n{END}"
-    f = root / folder / "exam-prep.md"
+    lay = layout.of(root)
+    f = lay.path("exam_prep", subject=folder)
     if f.exists():
         old = f.read_text(encoding="utf-8", errors="replace")
         i = old.find(START)
@@ -142,12 +144,11 @@ def write_exam_prep(root: Path, folder: str, text: str, course: str, made_by: st
         new = old[:i] + block + old[j + len(END) :] if i >= 0 and j > i else old.rstrip("\n") + "\n\n" + block + "\n"
     else:
         f.parent.mkdir(parents=True, exist_ok=True)
-        new = (
-            f"---\nmade_by: {made_by}\ndate: {now():%Y-%m-%d}\ntags: [exam-prep]\n---\n\n"
-            f"# Exam prep: {course or folder}\n\n{block}\n"
-        )
+        lay.assistant = made_by or lay.assistant
+        head = lay.frontmatter("exam_prep", f, title=f"Exam prep: {course or folder}", subject=folder)
+        new = f"{head}# Exam prep: {course or folder}\n\n{block}\n"
     f.write_text(new, encoding="utf-8")
-    return f"Updated {folder}/exam-prep.md."
+    return f"Updated {lay.shown(f)}."
 
 
 class ClassroomNotes(GooglePart):
@@ -176,7 +177,8 @@ class ClassroomNotes(GooglePart):
 
     @property
     def files_dir(self) -> Path:
-        return self.app.paths.data / "classroom"
+        """Kurooto's data folder, or your files folder when you set one (files.folder): <it>/<subject>/<file>."""
+        return layout.file_dir(self.app, "classroom", subject="x").parent
 
     def start(self):
         self.every("sync", self.setting("at") or "daily 07:00,13:00,19:00", self.sync)
@@ -378,15 +380,16 @@ class ClassroomNotes(GooglePart):
 
     # ------------------------------------------------------------------------------------- the AI's turn
     def file_text(self, rel: str) -> str | None:
-        base = self.files_dir.resolve()
-        f = (base / str(rel or "")).resolve()
-        try:
-            f.relative_to(base)
-        except ValueError:
-            return None
-        for cand in (f.with_name(f.name + ".txt"), f):
-            if cand.is_file() and (cand.suffix in TEXT_EXT or cand == f.with_name(f.name + ".txt")):
-                return cand.read_text(encoding="utf-8", errors="replace")
+        for root in dict.fromkeys([self.files_dir, self.app.paths.data / "classroom"]):  # older downloads stay put
+            base = root.resolve()
+            f = (base / str(rel or "")).resolve()
+            try:
+                f.relative_to(base)
+            except ValueError:
+                return None
+            for cand in (f.with_name(f.name + ".txt"), f):
+                if cand.is_file() and (cand.suffix in TEXT_EXT or cand == f.with_name(f.name + ".txt")):
+                    return cand.read_text(encoding="utf-8", errors="replace")
         return None
 
     def render(self, b: dict) -> str:
@@ -394,7 +397,8 @@ class ClassroomNotes(GooglePart):
         folder, budget = b["folder"], BUDGET
         lines = [
             f"Course: {b['course']}",
-            f"Notes folder: {folder}/ (course page {folder}/course.md, exam prep {folder}/exam-prep.md)",
+            f"Notes folder: {folder}/ (course page {layout.rel(self.app, 'course', subject=folder)}, exam prep "
+            f"{layout.rel(self.app, 'exam_prep', subject=folder)})",
             f"New or changed items: {len(b['items'])}",
         ]
         if b.get("not_interested"):
@@ -518,7 +522,7 @@ class ClassroomNotes(GooglePart):
     def _tool_exam_prep(self, a: dict):
         folder = str(a.get("subject", "")).strip().strip("/")
         course = next((c for c, f in (jload(self.dir / "folders.json", {}) or {}).items() if f == folder), folder)
-        out = write_exam_prep(self.app.workspace, folder, str(a.get("text", "")), course, self.app.name)
+        out = write_exam_prep(self.app, folder, str(a.get("text", "")), course, self.app.name)
         self.app.events.emit("exam_prep_updated")
         return out
 

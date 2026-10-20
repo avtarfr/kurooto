@@ -33,17 +33,23 @@ def headless_context(app: App, extra: str = "") -> str:
         "Never say you did something you didn't: if there was no tool for it or a tool failed, say so plainly.",
     ]
     brief = app.about.brief() if hasattr(app, "about") else ""
+    from kurooto.core import layout
+
     if brief:  # from about-me/profile.md, which they can edit; what they ask now wins over it
         lines.append(
-            f"Who they are (their profile, about-me/profile.md in their notes; their requests override it):\n{brief}"
+            f"Who they are (their profile, {layout.rel(app, 'profile')} in their notes; their requests override it):"
+            f"\n{brief}"
         )
-    from kurooto.modules.remember import HELP_NOTE, help_brief
+    from kurooto.modules.remember import help_brief, help_rel
 
     helps = help_brief(app)
     if helps:  # what they told Kurooto (and approved from the nightly look back); they edit it, so it wins
         lines.append(
-            f"How they like to be helped ({HELP_NOTE} in their notes; follow it, their requests win):\n{helps}"
+            f"How they like to be helped ({help_rel(app)} in their notes; follow it, their requests win):\n{helps}"
         )
+    where = layout.describe(app)  # their own notes layout and files folder, if they chose one (core/layout.py)
+    if where:
+        lines.append(where)
     if extra:
         lines.append(extra)
     return "\n".join(lines)

@@ -4,14 +4,15 @@ evidence behind it. You answer each one with Apply, Observe longer or No; nothin
 What it reads: the day's events (what you answered, moved, skipped or ignored, and how fast), your answers to
 Kurooto's questions, today's call transcripts and journal, and the settings it may change. What it can propose:
     setting   a new value for one of the settings in TUNABLE (times and thresholds; features can add their own)
-    profile   a line for about-me/how-to-help-me.md in your notes
+    profile   a line for about-me/how-to-help-me.md in your notes (paths here are the default notes layout's)
     observe   something to watch for a while before deciding anything
     skill     a change to your copy of a skill (you see the change and tap Save; the old version is kept)
     idea      something new Kurooto could do for you, added to kurooto/ideas.md in your notes
 "No" drops that idea for 30 days. "Observe longer" watches it for a week first ("observe 14" for 14 days).
 
 You can steer it: /observe whether I study better before noon for 2 weeks (or say it, or ask on a call), /observing
-lists what's being watched. When the watching ends, the next look back tells you what it found.
+lists what's being watched, each with Stop and +7 days (watch a week longer) buttons. When the watching ends, the
+next look back tells you what it found.
 """
 
 from __future__ import annotations
@@ -29,12 +30,13 @@ from importlib import resources
 from pathlib import Path
 
 from kurooto import providers
+from kurooto.core import layout
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
-from kurooto.modules.remember import HELP_NOTE, add_line, has_line, help_brief, help_file, sensitive
+from kurooto.modules.remember import add_line, has_line, help_brief, help_file, help_rel, sensitive
 
 register_defaults(
     "retro",
@@ -63,7 +65,7 @@ TUNABLE = {
 ALIASES = {"config": "setting", "settings": "setting", "build": "idea", "feature": "idea", "line": "profile"}
 CHOICES = ["Apply", "Observe longer", "No"]
 LEARNED = "Learned in the nightly look back"
-IDEAS_NOTE = "kurooto/ideas.md"
+IDEAS_NOTE = "kurooto/ideas.md"  # in the default notes layout; layout.path(app, "ideas") is where it is
 IDEAS_INTRO = (
     "# Ideas\n\nThings {name} could do for you, from the nightly look back (you approved each one). Tick one off, "
     "delete it, or ask for it.\n\n"
@@ -298,7 +300,7 @@ class Retro(Module):
                 return s.body.strip(), s.effort or "high"
         except Exception:  # the skills feature isn't there (or failed): read the files directly
             pass
-        mine = self.app.workspace / "kurooto" / "skills" / "retro" / "SKILL.md"
+        mine = layout.path(self.app, "skills") / "retro" / "SKILL.md"
         for read in (
             lambda: mine.read_text(encoding="utf-8"),
             lambda: resources.files("kurooto.data").joinpath("skills", "retro", "SKILL.md").read_text("utf-8"),
@@ -403,7 +405,7 @@ class Retro(Module):
     def _journal(self, since: dt.datetime, budget: int = 6000) -> str:
         parts, day = [], since.date()
         while day <= now().date():
-            f = self.app.workspace / "journal" / f"{day.isoformat()}.md"
+            f = layout.path(self.app, "daily", date=day.isoformat())
             if f.is_file():
                 parts.append(f"--- {day:%a %d %b} ---\n{f.read_text(encoding='utf-8', errors='replace')[:3000]}")
             day += dt.timedelta(days=1)
@@ -497,7 +499,7 @@ class Retro(Module):
         if p["type"] == "setting":
             text += f"\n({p['key']}: {json.dumps(self.app.settings.get(p['key']))} -> {json.dumps(p['value'])})"
         elif p["type"] == "profile":
-            text += f'\nThe line for {HELP_NOTE}: "{p["line"]}"'
+            text += f'\nThe line for {help_rel(self.app)}: "{p["line"]}"'
         elif p["type"] == "skill":
             text += f"\nThe change to your {p['skill']} skill: {p['change']}\n(You'll see it before it's saved.)"
         elif p["type"] == "idea":
@@ -607,16 +609,20 @@ class Retro(Module):
             done = f"Done: {key} = {json.dumps(value)}."
         elif kind == "profile":
             added = add_line(self.app, LEARNED, f"{p['line']} ({now():%Y-%m-%d})")
-            done = f"Added to {HELP_NOTE}." if added else f"{HELP_NOTE} says that already."
+            where = help_rel(self.app)
+            done = f"Added to {where}." if added else f"{where} says that already."
         elif kind == "observe":
             done = self.observe(p["observe"], int(p.get("days") or 7), source="retro")
         elif kind == "idea":
-            f = self.app.workspace / IDEAS_NOTE
+            f = layout.path(self.app, "ideas")
             have = f.read_text(encoding="utf-8", errors="replace") if f.exists() else ""
             f.parent.mkdir(parents=True, exist_ok=True)
-            text = have or IDEAS_INTRO.format(name=self.app.name)
+            head = layout.frontmatter(self.app, "ideas", f, title="Ideas", bare=True)
+            text = have or head + IDEAS_INTRO.format(name=self.app.name)
             f.write_text(text.rstrip("\n") + f"\n- [ ] {p['idea']} ({now():%Y-%m-%d})\n", encoding="utf-8")
-            done = f"Added to {IDEAS_NOTE} in your notes."
+            done = f"Added to {layout.shown(self.app, f)}" + (
+                " in your notes." if layout.of(self.app).inside_notes(f) else "."
+            )
         else:
             return "I don't know how to apply that."
         self._applied(p, done)
@@ -634,7 +640,7 @@ class Retro(Module):
     # ------------------------------------------------------------------------------------ skill changes
     def _skill_path(self, name: str) -> tuple[Path | None, Path]:
         """(the file the skill is read from now, or None; where your own copy lives)."""
-        mine = self.app.workspace / "kurooto" / "skills" / name / "SKILL.md"
+        mine = layout.path(self.app, "skills") / name / "SKILL.md"
         try:
             from kurooto.modules.skills import load_skill
 
@@ -795,14 +801,29 @@ class Retro(Module):
         )
         self.app.events.emit("observe_ended", id=o["id"], found=bool(finding))
 
+    def extend_observing(self, oid: str, days: int | None = None) -> str:
+        """Watch something longer: its end moves `days` (observe_days, 7 by default) later."""
+        days = max(1, min(int(days or self.setting("observe_days") or 7), 365))
+        items = self.observations()
+        for o in items:
+            if o["id"] == oid and o["status"] == "active":
+                until = max(dt.datetime.fromisoformat(o["until"]), now()) + dt.timedelta(days=days)
+                o["until"] = until.isoformat(timespec="seconds")
+                jsave(self.obs_file, items)
+                self.app.events.emit("observe_extended", id=oid, days=days)
+                return f"Watching until {until:%a %d %b}: {o['what']}"
+        return "That isn't being watched any more."
+
     def _obs_button(self, oid: str, act: str) -> str:
+        if act == "ext":
+            return self.extend_observing(oid)
         return self.stop_observing(oid) if act == "stop" else "ok"
 
     # ------------------------------------------------------------------------------- Telegram and calls
     def commands(self):
         return [
             Command("observe", "watch something first: /observe whether I sleep better for 2 weeks", self._cmd_observe),
-            Command("observing", "what's being watched (with Stop buttons)", self._cmd_observing),
+            Command("observing", "what's being watched (with Stop and +7 days buttons)", self._cmd_observing),
             Command("lookback", "the last nightly look back; /lookback now runs one now", self._cmd_lookback),
         ]
 
@@ -814,10 +835,11 @@ class Retro(Module):
         items = [o for o in self.observations() if o["status"] == "active"]
         if not items:
             return "Nothing is being watched. /observe <what> [for N days]"
+        more = int(self.setting("observe_days") or 7)
         for o in items[:15]:
             msg.reply(
                 f"Until {dt.datetime.fromisoformat(o['until']):%a %d %b}: {o['what']}",
-                buttons=[[("Stop", f"obs:{o['id']}:stop")]],
+                buttons=[[("Stop", f"obs:{o['id']}:stop"), (f"+{more} days", f"obs:{o['id']}:ext")]],
             )
         return None
 

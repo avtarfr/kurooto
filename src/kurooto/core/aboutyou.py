@@ -4,8 +4,9 @@
    accounts as you can (ChatGPT, Claude, Gemini, Copilot, Perplexity, ...; old and work accounts too): each one knows
    different things.
 2. Each report you bring back (pasted or uploaded) is kept privately in Kurooto's data folder, not in your notes.
-3. "Build my profile" asks your AI to merge them into one profile, saved in your notes as about-me/profile.md. Its
-   short "In brief" part goes along with every AI request Kurooto makes, so answers fit you.
+3. "Build my profile" asks your AI to merge them into one profile, saved in your notes as about-me/profile.md (or
+   where your notes layout keeps it). Its short "In brief" part goes along with every AI request Kurooto makes, so
+   answers fit you.
 4. Edit it right there (the setup page's About you step, or the dashboard's About you tab), or in your notes. Saving
    keeps the previous version beside it (profile-<date>.md). Building it again never replaces your edits silently: if
    you changed it since it was built, Kurooto asks first, and a profile you edit while a new one is being built stays
@@ -21,6 +22,7 @@ from importlib import resources
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kurooto.core import layout
 from kurooto.core.clock import now
 from kurooto.core.state import jload, jsave
 
@@ -124,7 +126,7 @@ class AboutYou:
 
     @property
     def profile_file(self):
-        return self.app.workspace / "about-me" / "profile.md"
+        return layout.path(self.app, "profile")
 
     @property
     def state_file(self):
@@ -211,7 +213,7 @@ class AboutYou:
         text = result.text[result.text.index("## In brief") :].strip()
         f = self.profile_file
         f.parent.mkdir(parents=True, exist_ok=True)
-        doc = (
+        doc = layout.frontmatter(self.app, "profile", f, title="About me", bare=True) + (
             f"# About me\n\nMade by {self.app.name} on {now():%Y-%m-%d} from {len(self.reports())} AI account "
             f'report(s). Edit it freely: Kurooto reads the "In brief" part before every request.\n\n{text}\n'
         )
@@ -223,7 +225,7 @@ class AboutYou:
             self.app.events.emit("aboutyou_profile", chars=len(text), kept_yours=True)
             self.app.notify(
                 "Your new profile is ready, but you changed yours while it was being built, so yours stays as it is. "
-                f"The new one is {new.relative_to(self.app.workspace).as_posix()} in your notes: copy over what you "
+                f"The new one is {layout.shown(self.app, new)} in your notes: copy over what you "
                 "want.",
                 kind="result",
             )
@@ -234,7 +236,7 @@ class AboutYou:
         jsave(self.state_file, {"built": _hash(doc), "at": time.time()})
         self.app.events.emit("aboutyou_profile", chars=len(text))
         self.app.notify(
-            f"Your profile is ready: {f.relative_to(self.app.workspace).as_posix()} in your notes. "
+            f"Your profile is ready: {layout.shown(self.app, f)} in your notes. "
             "Have a look and fix anything that's off." + (f"\n\n{note}" if (note := result.usage.get("note")) else ""),
             kind="result",
         )
@@ -295,7 +297,7 @@ class AboutYou:
         url = (jload(self.app.paths.state / "web.json", {}) or {}).get("url") or (
             f"http://127.0.0.1:{self.app.settings.get('web.port') or 8770}/"
         )
-        rel = "about-me/profile.md"
+        rel = layout.rel(self.app, "profile")
         if not self.profile_file.exists():
             return (
                 "No profile yet. Build one on your computer: the setup page's About you step "

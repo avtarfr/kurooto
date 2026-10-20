@@ -23,6 +23,7 @@ import time
 import urllib.parse
 import uuid
 
+from kurooto.core import layout
 from kurooto.core.clock import now, parse_when
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
@@ -636,7 +637,7 @@ class Calls(Module):
         note = (q.get("note") or [""])[0][:500]
         uid = re.sub(r"[^\w-]", "", (q.get("id") or [""])[0])[:40]
         part, parts = int((q.get("part") or ["0"])[0]), int((q.get("parts") or ["1"])[0])
-        inbox = self.app.workspace / "inbox"
+        inbox = layout.file_dir(self.app, "inbox")  # your notes' inbox, or your files folder's (core/layout.py)
         inbox.mkdir(parents=True, exist_ok=True)
         tmp = inbox / f".part-{uid}" if uid else None
         target = tmp or inbox / f"{now():%Y-%m-%d-%H%M%S}-{name}"
@@ -650,7 +651,7 @@ class Calls(Module):
         dest = inbox / f"{now():%Y-%m-%d-%H%M%S}-{name}"
         if tmp:
             tmp.replace(dest)
-        rel = dest.relative_to(self.app.workspace).as_posix()
+        rel = layout.shown(self.app, dest)
         self.app.events.emit("files_shared", via="phone", bytes=dest.stat().st_size)
         if self.app.is_on("chat"):
             self.app.jobs.submit(

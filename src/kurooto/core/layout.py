@@ -160,6 +160,7 @@ LINKS = {"kurooto": "relative", "zettelkasten": "file"}  # how notes link to fil
 
 # Agent-written note headers, per layout. "kurooto": made_by and date. "zettelkasten": id (the note's path without
 # .md), aliases, tags, trust_tier: agent_written (the daily note is yours, so it gets no trust_tier).
+KUROOTO_TAGS = {"exam_prep": ["exam-prep"]}
 ZETTEL_TAGS = {
     "daily": ["daily-notes"],
     "lecture": ["source", "{subject}", "lecture"],
@@ -394,6 +395,7 @@ class Layout:
             if bare:
                 return ""
             lines = [f"made_by: {_yaml(self.assistant)}", f"date: {now():%Y-%m-%d}"]
+            tags = KUROOTO_TAGS.get(kind or "", []) if tags is None else tags
             if tags:
                 lines.append(f"tags: [{', '.join(_yaml(t) for t in tags)}]")
         lines += [f"{k}: {v if isinstance(v, (int, float)) else _yaml(str(v))}" for k, v in rest.items()]
@@ -448,11 +450,17 @@ class Layout:
         about = s("profile").rpartition("/")[0]
         rules: list[tuple[str, str | None]] = [
             (r"journal/(?=<|\d{4}-\d\d-\d\d|YYYY)", prefix("daily", "date")),
-            (r"<subject>/course\b", s("course")),
-            (r"<subject>/exam-prep\b", s("exam_prep")),
-            (r"<subject>/class-log\b", s("class_log")),
-            (r"<subject>/<concept-slug>", s("concept", slug="<concept-slug>")),
-            (r"<subject>/", s("subject") + "/"),
+            *[
+                rule
+                for ph in ("<subject>", "<folder>")  # the subject's slug, as skills write it
+                for rule in (
+                    (ph + r"/course\b", s("course", subject=ph)),
+                    (ph + r"/exam-prep\b", s("exam_prep", subject=ph)),
+                    (ph + r"/class-log\b", s("class_log", subject=ph)),
+                    (ph + r"/<concept-slug>", s("concept", subject=ph, slug="<concept-slug>")),
+                    (ph + "/", s("subject", subject=ph) + "/"),
+                )
+            ],
             (r"about-me/how-to-help-me\b", s("how_to_help")),
             (r"about-me/profile\b", s("profile")),
             (r"about-me/not-interested\b", s("not_interested")),
@@ -482,7 +490,7 @@ class Layout:
             out.append(f'notes.layout "{raw}" isn\'t a layout; using "{DEFAULT}" (or "zettelkasten")')
         for kind, tmpl in self.custom().items():
             sample = {k: "x" for k in SHOWN}
-            if self._render(kind, tmpl, sample) is None:
+            if self._render(kind, tmpl, sample) is None or ".." in Path(tmpl).parts:
                 out.append(f"notes.paths.{kind} \"{tmpl}\" doesn't work; using the layout's own place")
         root = self.files_root()
         if root is not None:

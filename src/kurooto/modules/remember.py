@@ -1,9 +1,9 @@
 """Remember: tell Kurooto how you like to be helped ("remember that I hate calls before 8") and it keeps it.
 
-What you tell it goes into your notes, in about-me/how-to-help-me.md, which you can read and edit like any note: your
-edits win, and Kurooto never rewords or removes a line. A short version of that note goes along with every AI request
-Kurooto makes, next to the "In brief" part of your profile. The nightly look back adds lines there too, but only the
-ones you approve.
+What you tell it goes into your notes, in about-me/how-to-help-me.md (or where your notes layout keeps it), which you
+can read and edit like any note: your edits win, and Kurooto never rewords or removes a line. A short version of that
+note goes along with every AI request Kurooto makes, next to the "In brief" part of your profile. The nightly look
+back adds lines there too, but only the ones you approve.
 
 It won't keep health, money or password details: those would travel with every AI request. Reminders and your own
 notes are the place for them.
@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from kurooto.core import layout
 from kurooto.core.clock import now
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 
     from kurooto.app import App
 
-HELP_NOTE = "about-me/how-to-help-me.md"
+HELP_NOTE = "about-me/how-to-help-me.md"  # in the default notes layout; help_file() / help_rel() say where it is
 TOLD = "You told me"
 INTRO = (
     "# How to help me\n\n"
@@ -63,7 +64,12 @@ def sensitive(text: str) -> str | None:
 
 
 def help_file(app: App) -> Path:
-    return app.workspace / HELP_NOTE
+    return layout.path(app, "how_to_help")
+
+
+def help_rel(app: App) -> str:
+    """The note's place in your notes, for messages ("about-me/how-to-help-me.md")."""
+    return layout.rel(app, "how_to_help")
 
 
 def _norm(s: str) -> str:
@@ -82,7 +88,8 @@ def add_line(app: App, section: str, line: str) -> bool:
     from kurooto.core.tools import add_to_section
 
     f = help_file(app)
-    text = f.read_text(encoding="utf-8", errors="replace") if f.exists() else INTRO.format(name=app.name)
+    head = layout.frontmatter(app, "how_to_help", f, title="How to help me", bare=True)
+    text = f.read_text(encoding="utf-8", errors="replace") if f.exists() else head + INTRO.format(name=app.name)
     if has_line(text, line):
         return False
     f.parent.mkdir(parents=True, exist_ok=True)
@@ -103,7 +110,7 @@ def help_brief(app: App, limit: int = 1500) -> str:
     if not re.search(r"^\s*[-*]\s+\S|^[^#\s]", body, re.M):  # only headings left: nothing to tell
         return ""
     if len(body) > limit:
-        body = body[:limit].rsplit("\n", 1)[0] + f"\n(…the rest is in {HELP_NOTE})"
+        body = body[:limit].rsplit("\n", 1)[0] + f"\n(…the rest is in {help_rel(app)})"
     return body
 
 
@@ -134,7 +141,7 @@ class Remember(Module):
         if not add_line(self.app, TOLD, f"{fact} ({now():%Y-%m-%d})"):
             return "I know that already."
         self.app.events.emit("remembered", chars=len(fact), via=via)
-        return f"Noted in {HELP_NOTE}: {fact}."
+        return f"Noted in {help_rel(self.app)}: {fact}."
 
     # ------------------------------------------------------------------------------------------ Telegram
     def commands(self):
@@ -146,7 +153,7 @@ class Remember(Module):
         brief = help_brief(self.app, limit=3000)
         if not brief:
             return 'Nothing yet. /remember <how you like to be helped>, or say "remember that ...".'
-        return f"What I keep in mind ({HELP_NOTE}; edit it any time):\n\n{brief}"
+        return f"What I keep in mind ({help_rel(self.app)}; edit it any time):\n\n{brief}"
 
     def intents(self):
         def match(text: str):

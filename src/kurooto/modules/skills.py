@@ -9,6 +9,8 @@ Where skills live:
     shipped     inside Kurooto (data/skills/<name>/SKILL.md); updates bring new versions
     yours       <notes>/kurooto/skills/<name>/SKILL.md; one with a shipped skill's name replaces it for you
     prompts     <notes>/prompts/*.md with `skill: true` (or `skill: <name>`) in its header
+(those are the default notes layout's folders; core/layout.py says where yours are). A skill's instructions name the
+default layout's places (journal/<YYYY-MM-DD>, <subject>/course); they're swapped for your layout's when it runs.
 
 A SKILL.md is Markdown with a short header, then the instructions; $ARGUMENTS becomes what you typed after the
 command:
@@ -33,6 +35,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto import providers
+from kurooto.core import layout
 from kurooto.core.clock import now
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
@@ -154,7 +157,7 @@ def make(text: str, name: str, source: str, path: str = "") -> Skill | None:
 
 
 def user_dir(app: App) -> Path:
-    return app.workspace / "kurooto" / "skills"
+    return layout.path(app, "skills")
 
 
 def prompt_files(root: Path) -> list[Path]:
@@ -204,7 +207,7 @@ def all_skills(app: App) -> dict[str, Skill]:
         s = make(f.read_text(encoding="utf-8", errors="replace"), name, "add-on", str(f)) if name else None
         if s:
             out[s.name] = s
-    for f in prompt_files(app.workspace / "prompts"):
+    for f in prompt_files(layout.path(app, "prompts")):
         try:
             meta, _ = parse(f.read_text(encoding="utf-8", errors="replace"))
         except OSError:
@@ -245,13 +248,13 @@ def rel(app: App, f) -> str:
 def build(app: App, s: Skill, args: str = "", files=()) -> str:
     """The request the AI gets: the skill's instructions with the arguments filled in, the files, the rules."""
     args = (args or "").strip()
-    body = s.body
+    body = layout.translate(app, s.body)  # the default layout's places -> yours (core/layout.py)
     if "$ARGUMENTS" in body:
         body = body.replace("$ARGUMENTS", args or "(nothing given)")
     elif args:
         body = body.rstrip() + f"\n\nWhat they gave you: {args}\n"
     if files:
-        body = body.rstrip() + "\n\nFiles they sent with it (in their notes folder): "
+        body = body.rstrip() + "\n\nFiles they sent with it (paths in their notes folder unless given in full): "
         body += ", ".join(rel(app, f) for f in files) + "\n"
     return f"Skill: {s.name} ({s.description})\n\n{body.rstrip()}\n\n{RULES}\n"
 
@@ -476,7 +479,8 @@ class Skills(Module):
             payload = {"name": s.name}
             if s.output == "latex":
                 then = "skills.latex"
-                payload.update(tex=f"inbox/{now():%Y-%m-%d}-{s.name}.tex", label=s.name)
+                tex = layout.file_path(self.app, "latex", f"{now():%Y-%m-%d}-{s.name}.tex")
+                payload.update(tex=layout.shown(self.app, tex), label=s.name)
             else:
                 then = "skills.done"
         jid = self.app.jobs.submit(
@@ -823,20 +827,37 @@ class Skills(Module):
             sl = subjects.resolve(head) if subjects else None
             if sl:
                 return sl, subjects.name_of(sl), rest
-            if slug(head) and slug(head) not in SPECIAL and (self.app.workspace / slug(head)).is_dir():
+            sl = slug(head)
+            if (
+                sl
+                and sl not in SPECIAL
+                and not self._layout_folder(sl)
+                and layout.path(self.app, "subject", subject=sl).is_dir()
+            ):
                 return slug(head), head, rest
         head, _, rest = text.partition(":")
         return None, head.strip(), rest.strip()
+
+    def _layout_folder(self, name: str) -> bool:
+        """A top-level folder your notes layout uses for something else (not a subject)."""
+        return layout.of(self.app).kind_of_folder(name)
 
     def pack_for(self, text: str, reply_to=None, title_prefix: str = "") -> str:
         """Start a revision pack; returns the job id."""
         folder, name, what = self._subject(text)
         day = f"{now():%Y-%m-%d}"
-        tex = f"{folder}/revision-pack-{day}.tex" if folder else f"revision-packs/{day}-{slug(name, 50) or 'pack'}.tex"
+        out = (
+            layout.file_path(self.app, "pack", f"revision-pack-{day}.tex", subject=folder)
+            if folder
+            else layout.file_path(self.app, "pack", f"{day}-{slug(name, 50) or 'pack'}.tex", subject="revision-packs")
+        )
+        tex = layout.shown(self.app, out)
+        lay = layout.of(self.app)
         args = (
             f"Subject: {name}."
             + (
-                f" Its notes are in {folder}/ (course page {folder}/course, exam prep {folder}/exam-prep)."
+                f" Its notes are in {lay.link('subject', subject=folder)}/ (course page "
+                f"{lay.link('course', subject=folder)}, exam prep {lay.link('exam_prep', subject=folder)})."
                 if folder
                 else ""
             )
@@ -848,7 +869,7 @@ class Skills(Module):
             reply_to=reply_to,
             quiet=True,
             then="skills.latex",
-            then_payload={"name": "revision-pack", "tex": tex, "label": f"Revision pack: {name}"},
+            then_payload={"name": "revision-pack", "tex": tex, "label": f"Revision pack: {name}", "subject": folder},
             title=f"{title_prefix}Revision pack: {name}"[:80],
         )
 
@@ -870,10 +891,13 @@ class Skills(Module):
             return
         from kurooto.core.tools import note_path
 
-        target = (payload.get("tex") or f"inbox/{now():%Y-%m-%d}-pack.tex").removesuffix(".tex")
-        f = note_path(self.app.workspace, target, must_exist=False)
+        target = str(payload.get("tex") or "").removesuffix(".tex")
+        if target and Path(target).is_absolute():  # files outside the notes (files.folder, core/layout.py)
+            f = Path(target + ".tex")
+        else:
+            f = note_path(self.app.workspace, target, must_exist=False) if target else None
         if f is None:
-            f = self.app.workspace / "inbox" / f"{now():%Y-%m-%d}-pack.md"
+            f = layout.file_path(self.app, "latex", f"{now():%Y-%m-%d}-pack.md")
         f = f.with_suffix(".tex")
         if f.exists() and not payload.get("overwrite"):
             n = 2
@@ -894,7 +918,7 @@ class Skills(Module):
             send_file(
                 self.app,
                 f,
-                f"{label} (LaTeX; it's also in your notes: {rel(self.app, f)}). For a PDF next time, install "
+                f"{label} (LaTeX; it's also {self._kept_at(f)}). For a PDF next time, install "
                 "Tectonic, a small LaTeX engine (about 25 MB, plus about 50 MB of LaTeX packages it fetches the first "
                 "time).",
             )
@@ -910,7 +934,7 @@ class Skills(Module):
         if ok:
             pdf = f.with_suffix(".pdf")
             send_file(self.app, pdf, f"{label}. {payload.get('summary', '')}".strip()[:900])
-            self._link_in_daily(rel(self.app, pdf), label)
+            self._link_in_daily(pdf, label, payload.get("subject"))
             self.app.events.emit("pdf_built", name=payload.get("name"), bytes=pdf.stat().st_size)
             return
         self.app.events.emit("pdf_failed", name=payload.get("name"), attempt=payload.get("attempt", 1))
@@ -928,14 +952,24 @@ class Skills(Module):
             self.app,
             f,
             f"{label}: it didn't compile ({err.splitlines()[0][:200] if err else 'no message'}). "
-            "Here's the LaTeX; it's also in your notes.",
+            f"Here's the LaTeX; it's also {self._kept_at(f)}.",
         )
+
+    def _kept_at(self, f: Path) -> str:
+        """Where a pack is kept, for messages: "in your notes: x/y.tex" or "at /full/path.tex"."""
+        where = layout.shown(self.app, f)
+        return f"in your notes: {where}" if layout.of(self.app).inside_notes(f) else f"at {where}"
 
     def _remember_pack(self, f: Path, payload: dict) -> str:
         ref = uuid.uuid4().hex[:8]
         with Lock(self.app.paths.state, "skills-packs"):
             d = jload(self.dir / "packs.json", {}) or {}
-            d[ref] = {"tex": rel(self.app, f), "label": payload.get("label"), "name": payload.get("name")}
+            d[ref] = {
+                "tex": rel(self.app, f),
+                "label": payload.get("label"),
+                "name": payload.get("name"),
+                "subject": payload.get("subject"),
+            }
             jsave(self.dir / "packs.json", dict(list(d.items())[-50:]))
         return ref
 
@@ -971,14 +1005,23 @@ class Skills(Module):
             buttons=[[("Make that PDF now", f"skt:{ref}:pdf")]] if ref else None,
         )
 
-    def _link_in_daily(self, path: str, label: str) -> None:
+    def _link_in_daily(self, pdf: Path, label: str, subject: str | None = None) -> None:
+        """Link the PDF from today's daily note, and from the subject's course page if it has one."""
         from kurooto.core.tools import add_to_section
+        from kurooto.modules import daily
 
         day = f"{now():%Y-%m-%d}"
-        f = self.app.workspace / "journal" / f"{day}.md"
+        f = daily.note_path(self.app)
         f.parent.mkdir(parents=True, exist_ok=True)
-        old = f.read_text(encoding="utf-8", errors="replace") if f.exists() else f"# {day}\n"
-        f.write_text(add_to_section(old, "Added", f"- {label}: [{Path(path).name}](../{path})"), encoding="utf-8")
+        new = layout.frontmatter(self.app, "daily", f, agent=False, bare=True) + f"# {day}\n"
+        old = f.read_text(encoding="utf-8", errors="replace") if f.exists() else new
+        f.write_text(add_to_section(old, "Added", f"- {label}: {layout.file_link(self.app, pdf, f)}"), encoding="utf-8")
+        course = layout.path(self.app, "course", subject=subject) if subject else None
+        if course is not None and course.is_file():
+            text = course.read_text(encoding="utf-8", errors="replace")
+            line = f"- {day}: {layout.file_link(self.app, pdf, course)}"
+            if line not in text:
+                course.write_text(add_to_section(text, "Revision packs", line), encoding="utf-8")
 
     # ------------------------------------------------------------------------------------ tools
     def call_tools(self):
@@ -1001,4 +1044,5 @@ class Skills(Module):
         p = Path(str(a.get("path") or "").strip())
         if not p.is_absolute():
             p = self.app.workspace / p
-        return send_file(self.app, p, str(a.get("caption") or ""), inside=[self.app.workspace])[1]
+        inside = [self.app.workspace, *([r] if (r := layout.files_root(self.app)) else [])]
+        return send_file(self.app, p, str(a.get("caption") or ""), inside=inside)[1]

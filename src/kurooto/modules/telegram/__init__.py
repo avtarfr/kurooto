@@ -13,6 +13,7 @@ import secrets as pysecrets
 import time
 from pathlib import Path
 
+from kurooto.core import layout
 from kurooto.core.clock import now, parse_when
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
@@ -286,7 +287,7 @@ class Telegram(Module):
             return api.send(chat, text, buttons=buttons, reply_to=m["message_id"])
 
         files: list[Path] = []
-        inbox = self.app.workspace / "inbox"
+        inbox = layout.file_dir(self.app, "inbox")  # your notes' inbox, or your files folder's (core/layout.py)
         stamp = now().strftime("%Y-%m-%d-%H%M%S")
         voice = m.get("voice") or (m.get("audio") if not (m.get("audio") or {}).get("file_name") else None)
         try:
