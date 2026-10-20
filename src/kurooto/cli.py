@@ -1034,8 +1034,7 @@ def skills_command(a) -> int | None:
         print(r.get("message", ""))
         return 0 if r.get("ok") else 1
     if a.cmd == "note":
-        from kurooto.app import default_workspace
-        from kurooto.core.config import Settings
+        from kurooto.core import layout
         from kurooto.modules.library import capture
 
         text = " ".join(a.text)
@@ -1044,8 +1043,7 @@ def skills_command(a) -> int | None:
         if not text.strip():
             print('Nothing to save: kurooto note "your text" (or pipe text in).', file=sys.stderr)
             return 1
-        ws = Settings(paths().config / "settings.json").get("you.workspace")
-        f = capture(Path(ws) if ws else default_workspace(), text, title=a.title, source="terminal")
+        f = capture(layout.for_install(), text, title=a.title, source="terminal")  # your notes layout's inbox
         print(f)
         return 0
     return None

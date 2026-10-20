@@ -1017,12 +1017,16 @@ async function renderAboutTab(body) {
 
 async function renderSettings(body) {
   const { sections } = await api("settings");
-  // a section may offer choices for a setting (a list) and a line of help under it
+  // a section may offer choices for a setting (a list) and a line of help under it; "fixed" shows a value that can't
+  // change here, and "post" sends changes to the section's own request (Settings → Starting: /api/autostart)
   const LAYOUTS = [["dense", "dense: one full-screen board (screens 1280 px wide or more)"], ["roomy", "roomy: bigger panes and type"]];
+  const NOTES = [["kurooto", "kurooto: journal/, about-me/, a folder per subject"], ["zettelkasten", "zettelkasten: dailies/, master/, sources/, zettel/"]];
   const field = (key, v, sec) => {
-    const k = key.split(".").slice(1).join("."), help = ((sec && sec.help) || {})[k];
-    const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : null);
-    const html = choices ? `<label>${esc(key)}<select data-key="${key}">${choices.map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
+    const k = key.split(".").slice(1).join("."), help = ((sec && sec.help) || {})[k], fixed = ((sec && sec.fixed) || {})[k];
+    const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : null);
+    const post = sec && sec.post ? ` data-post="${esc(sec.post)}"` : "";
+    const html = fixed ? `<label>${esc(key)}<span class="fixed">${esc(fixed)}</span></label>`
+      : choices ? `<label>${esc(key)}<select data-key="${key}"${post}>${choices.map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
     return help ? html.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : html;
   };
   const plain = (key, v) => {
@@ -1035,6 +1039,18 @@ async function renderSettings(body) {
     const t = e.target; if (!t.dataset.key) return;
     let value = t.type === "checkbox" ? t.checked : t.dataset.num !== undefined ? Number(t.value) : t.value;
     if (t.dataset.json !== undefined) { try { value = JSON.parse(t.value); } catch { $("#saved").textContent = "That isn't valid; it wasn't saved."; return; } }
+    if (t.dataset.post) { // its own request, which says what it did (and what's in effect when it couldn't)
+      $("#saved").textContent = "…";
+      const r = await api(t.dataset.post, { [t.dataset.key.split(".").slice(1).join(".")]: value });
+      const said = r.message || r.error || (r.ok ? `Saved ${t.dataset.key}.` : "That didn't work.");
+      $("#saved").textContent = said;
+      const fs = t.closest("fieldset"); // and right under it, where you're looking
+      let line = fs.querySelector(".said");
+      if (!line) { line = document.createElement("div"); line.className = "help said"; fs.append(line); }
+      line.textContent = said;
+      if (r.when && r.when !== value) t.value = r.when;
+      return;
+    }
     const r = await api("settings", { key: t.dataset.key, value });
     $("#saved").textContent = r.ok ? `Saved ${t.dataset.key}.` : r.error;
     if (r.ok) settingChanged(t.dataset.key, value);
