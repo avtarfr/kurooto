@@ -1,6 +1,14 @@
 # Changelog
 
 ## 0.1.6 (2026-10-20)
+- **Phone calls couldn't be set up at all**: building the call page always failed. Fixed; setup now goes on to the
+  Cloudflare sign-in. The Phone calls card lists what's needed in order (a free Gemini key, needed even when agy
+  answers your messages; a free Cloudflare account; then pairing your phone, which is where the app comes from) and
+  has a **Set up now** button.
+- **Google sign-in could seem to do nothing**: the browser blocked the pop-up. There's now always an **Open Google
+  sign-in** button, the card notices when you're signed in, and each way it can fail says what to do (including
+  boxes left unticked on Google's consent page).
+- Setup logs no longer vanish when the page redraws, and a refused setup says why.
 - Setting up local AI models on Linux could get Kurooto killed for running out of memory: Ollama's download was
   unpacked in memory. It's now unpacked straight from disk, and the space check counts Ollama's real size.
 - Setup: click anywhere on a feature card to tick it, and the boxes are bigger.
