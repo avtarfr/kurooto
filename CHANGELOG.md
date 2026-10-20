@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0 (unreleased)
+**Google**
+- **Several Google accounts** (a personal one and a school one, say): each feature uses the account you choose on its
+  card (a new name signs that account in) or with `/google use <feature> <account>`; each account is asked only for
+  what its features need. `/google` lists them; `/google forget <name>` removes one.
+- **Google Calendar**: Calendar can read your Google calendars through Google's Calendar API, from one account or
+  several, for accounts without a secret iCal address. Other people's shared calendars are left out.
+- **Private events are "Busy (private)"** wherever Kurooto shows or tells them (Google's Private visibility,
+  `CLASS:PRIVATE` in iCal, or `#private`); their title and place aren't kept (`calendar.mask_private`).
+- **Class calendars**: `/cal classes Timetable` makes that calendar's events classes (no calls, in your day's classes,
+  the after-class question when the title names a subject).
+- **Mail digest by email**: each digest also comes to your own inbox, sent from the account you choose, only ever to
+  that account's own address; held back if it mentions confidential material.
+- **Drive upload**: `kurooto send FILE --to drive` (and the AI's send_file) puts a file in a Kurooto folder in your
+  Drive and sends the link; files over Telegram's 50 MB go there by themselves. It sees only files it made.
+- The Agent plan calendar can live on another account (`/google use plan personal`).
+
 ## 0.3.0 (unreleased)
 - **Kurooto Terminal** (`kurooto term`, off until you turn it on): your AI's program, your shell, Kurooto chat and its
   log in a terminal window of its own, with `kurooto top` beside them, in Kurooto's colours. kitty on Linux and macOS
