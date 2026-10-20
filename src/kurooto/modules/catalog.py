@@ -10,6 +10,7 @@ from kurooto.modules.capture import Capture
 from kurooto.modules.chat import Chat
 from kurooto.modules.checkins import Checkins
 from kurooto.modules.deadlines import Deadlines
+from kurooto.modules.doubts import Doubts
 from kurooto.modules.files import Files
 from kurooto.modules.gbrain import GBrain
 from kurooto.modules.google import Google
@@ -46,6 +47,7 @@ CATALOG = [
     Checkins,
     Deadlines,
     Subjects,
+    Doubts,
     Quiz,
     Weekly,
     Quests,

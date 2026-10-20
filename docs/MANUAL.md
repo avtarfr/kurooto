@@ -16,7 +16,8 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Telegram](#telegram) · [Questions and approvals](#questions-and-approvals) ·
     [Chat with your AI](#chat-with-your-ai) · [Reminders](#reminders) · [Check-ins](#check-ins) ·
     [Deadlines](#deadlines) · [Recurring quizzes](#recurring-quizzes) · [Not interested](#not-interested) ·
-    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Quiz](#quiz) ·
+    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Doubt queue](#doubt-queue) ·
+    [Quiz](#quiz) ·
     [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
@@ -533,6 +534,24 @@ read and the next key dates. The note needs two tables:
 `subjects.margin_min`, `subjects.term_note` (empty: no term note).
 *Undo:* `/term note off` (or empty `subjects.term_note`): the note's classes and dates stop counting, and its dated
 items leave the deadline list. Your note itself is never changed.
+
+### Doubt queue
+A doubt from class, kept for the next one (needs Subjects). `/doubt la why does the rank not change?`, or in plain
+words "I have a doubt about eigenvalues", adds a line to that subject's doubts note, `<subject>/doubts.md`
+(`sources/<subject>/doubts.md` in the zettelkasten layout; `notes.paths.doubts` for your own place):
+`- [ ] why does the rank not change? (2026-10-20)`. Half an hour before the subject's next class (`doubts.before_min`,
+30), its open doubts come to you as one message with a **Tick** button per doubt; a tap ticks it in the note
+(`[x]`). Tick them by hand in the note just as well. `/doubts` (or "show my doubts") lists the open ones, `/doubts la`
+one subject's.
+- **Which subject:** the one you name (its name or short name, anywhere in the doubt), else the class that's on now or
+  ended in the last 3 hours (`doubts.recent_h`), else buttons ask which subject.
+- Plain words work for a short, one-sentence doubt; a longer one, or several sentences, goes to the AI as a request
+  (with Chat on), so use `/doubt` for those.
+- No AI answers your doubts: they're for asking in class, a tutorial or office hours.
+
+**Undo:** turn Doubt queue off (dashboard → Features). The doubts notes are yours and stay; nothing is deleted.
+
+*Leaves:* nothing.
 
 ### Quiz
 Practice questions from your notes, spaced out so you see each again just before you'd forget it. Put a note named
@@ -2088,7 +2107,7 @@ don't fill your notes or their history. Both are settings: dashboard → Setting
 | Your profile, how to help you, not-interested topics | `about-me/` | `master/` |
 | Recurring quizzes, ideas, your own skills | `kurooto/recurring.md`, `kurooto/ideas.md`, `kurooto/skills/` | `master/recurring-assessments.md`, `master/ideas.md`, `master/skills/` |
 | A subject's course page | `<subject>/course.md` | `maps/courses/<subject>.md` |
-| Lecture notes, exam prep, class log | `<subject>/` | `sources/<subject>/` |
+| Lecture notes, exam prep, class log, doubts | `<subject>/` | `sources/<subject>/` |
 | Concept notes (one idea each) | `<subject>/<idea>.md` | `zettel/<idea>.md` |
 | Research projects and their runs | `research/<project>/`, hub `research/index.md` | `projects/<project>/`, hub `maps/research.md` |
 | Mail digests | `mail/<date>-<time>.md` | `digests/mail-<date>-<time>.md` |
@@ -2101,7 +2120,7 @@ are `[[wikilinks]]` either way. The AI is told your layout, and skills written f
 
 **Your own places** (`notes.paths`): any kind of note somewhere else, e.g. `{"daily": "diary/{date}.md", "ideas":
 "plans/ideas.md"}`. The kinds are `daily`, `profile`, `how_to_help`, `not_interested`, `recurring`, `ideas`, `skills`,
-`prompts`, `inbox`, `note`, `subject`, `course`, `class_log`, `lecture`, `concept`, `exam_prep`, `research`,
+`prompts`, `inbox`, `note`, `subject`, `course`, `class_log`, `lecture`, `concept`, `exam_prep`, `doubts`, `research`,
 `project`, `runs`, `handwritten`, `mail`; the parts in braces are `{date}`, `{time}`, `{subject}`, `{project}` and
 `{slug}`. A place that doesn't work (a part that doesn't exist, or `..`) falls back to the layout's own.
 

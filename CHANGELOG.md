@@ -46,6 +46,12 @@
   classes, a deadline, a reminder, a doubt, a quiz, a study session, a check-in answer, a journal entry). Only for
   features that are on and pass their checks, and never one already done. Replying with the thing does it.
 - Skip this one moves on; Stop these, or a day's quest left alone, stops them for good. `/quests`, `/quests stop`.
+**Doubt queue** (new; off until you turn it on; needs Subjects)
+- `/doubt la <the doubt>`, or "I have a doubt about eigenvalues", adds a line to the subject's doubts note
+  (`<subject>/doubts.md`, a new `doubts` kind in the notes layout). The subject is the one named, else the class on now
+  or just ended, else buttons ask.
+- Half an hour before the subject's next class (`doubts.before_min`), its open doubts arrive with a Tick button each
+  that ticks it in the note. `/doubts [subject]`. No AI answers.
 
 ## 0.4.0 (unreleased)
 
