@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+**Colours**
+- A third palette, **system**: Kurooto's pages take this computer's own accent colour and light or dark mode, and
+  follow them when they change. It reads Material You colours from matugen (end-4's Hyprland setup and others),
+  pywal, KDE, GNOME 47+ and GTK on Linux, the accent colour on Windows and macOS. The setup page recommends it when it
+  finds your colours (step 2, Colours); Settings → Look → `look.palette` changes it. Text is always made readable
+  (WCAG AA). Nothing found: it looks like kuro.
+- `look.theme_file`: a kitty theme or a matugen or pywal `colors.json` of your own, used instead of the desktop's.
+- The rose palette's light version: its pink and coloured text is darker, so it's readable on the light background.
+
+**Setup page**
+- Each step says what it's for and what happens if you skip it; a step you passed but haven't finished shows "!".
+- Words like API key, token, repository, iCal, Cloudflare, GBrain or agy have a one-line explanation: tap the dotted
+  word.
+- The time zone is picked from a list as you type; a name it doesn't know is caught before you go on.
+- AI step: one **Save and test** button for a key, progress while it tests, and what to do when a test fails (for
+  each kind of AI). Sign-in windows report back on the page instead of a pop-up.
+- Telegram step: an empty or wrong token says what to paste. Done step: what's ready and what isn't (with a link back
+  to it), progress for each feature being set up, and next steps with an **Open the dashboard** button.
+- If Kurooto stops answering, a bar at the top says how to start it again; it goes away by itself.
+
 ## 0.2.1 (unreleased)
 - Setup page: on a desktop it uses the whole window: the steps sit in a list on the left with what each one is for,
   and feature cards fill four columns instead of a narrow strip. On a phone the steps are numbered dots. Any step can
