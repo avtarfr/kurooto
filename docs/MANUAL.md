@@ -16,8 +16,8 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Telegram](#telegram) · [Questions and approvals](#questions-and-approvals) ·
     [Chat with your AI](#chat-with-your-ai) · [Reminders](#reminders) · [Check-ins](#check-ins) ·
     [Deadlines](#deadlines) · [Recurring quizzes](#recurring-quizzes) · [Not interested](#not-interested) ·
-    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Quiz](#quiz) ·
-    [Weekly summary](#weekly-summary)
+    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) ·
+    [Attendance and standing](#attendance-and-standing) · [Quiz](#quiz) · [Weekly summary](#weekly-summary)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back)
@@ -483,8 +483,9 @@ once when it starts. While it's on:
 Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable
 (`/class mon 09:00-09:55 la`). Kurooto never calls you during a class (or in the 5 minutes before it,
 `subjects.margin_min`). `/classes today`, `/skip la` or "skipping LA today" (not going), `/attend la` (undo). "not
-going to LA on Friday" and "skipping stats tomorrow" mark that day. Other features use the subjects: after-class
-notes, the quiz, the study tracker.
+going to LA on Friday" and "skipping stats tomorrow" mark that day (with [Attendance](#attendance-and-standing) on, a
+skip that would leave a course under its rule asks first). Other features use the subjects: after-class notes, the
+quiz, the study tracker.
 
 **Term dates:** `/term ends 2026-12-04` (the last day of classes) and `/term exams 2026-12-07 to 2026-12-18` (an exam
 period; add as many as you need). On those days, after the term ends and on holidays there are no classes: no
@@ -533,6 +534,54 @@ read and the next key dates. The note needs two tables:
 `subjects.margin_min`, `subjects.term_note` (empty: no term note).
 *Undo:* `/term note off` (or empty `subjects.term_note`): the note's classes and dates stop counting, and its dated
 items leave the deadline list. Your note itself is never changed.
+
+### Attendance and standing
+Off until you turn it on (it needs Subjects and timetable). How many classes you've been to in each course, checked
+against its rule, and how many more you can miss. **Everything here is an estimate**, and every reply says so.
+
+**How it counts.** Every class on your timetable (`/class`, and the term note's) counts as attended unless you `/skip`
+it. Holidays, exam periods and the days after the last day of classes don't count; calendar events don't either.
+Counting starts on the day you turn it on (`/attendance since 2026-08-03` counts from the term's first day, with the
+skips Kurooto heard about). Labs are counted on their own, with their own rule: a subject named like a lab ("Physics
+Lab", "Chemistry Practical") is one, and `/attendance lab thu 14:00` makes that timetable slot the lab of its subject.
+
+- `/attendance`: each course, closest to its line first: "Linear Algebra 82% (23/28), you can miss 3 more this term".
+  With the last day of classes set (`/term ends`), "you can miss" counts the rest of the term: miss that many and go to
+  every other class, and the term ends on the line. Without it, it's how many in a row you can miss from now. Under
+  the line, it says how many classes in a row bring you back, or that the term can't get there any more.
+- `/attendance la`: one course, with its rule and the classes left. "how's my attendance?" works too, and "can I skip
+  LA on Friday?" answers without marking anything.
+- `/attendance set la 23/30`: the official count as of now, when Kurooto's has drifted (a cancelled class, an extra
+  one, a skip you didn't tell it about). Classes from now on count on top of it; `/attendance set la clear` drops it.
+- `/attendance rule la 80`, `/attendance rule la lab 100`, `/attendance rule labs 100` (every lab),
+  `/attendance rule 75` (every course); `/attendance rule la clear` goes back to the usual rule.
+- **`/skip` asks first.** When skipping would leave a course under its line, `/skip la` doesn't mark it: you get the
+  numbers and **Skip anyway** / **Don't skip**. `/skip la anyway` (or "skipping LA today anyway") skips without
+  asking. A skip that's fine is marked as before, with the course's new numbers. On calls, the assistant tells you
+  before it marks such a skip.
+- **The Sunday summary** has one line: "Attendance (an estimate): PHL 100%, 0 to spare; LA 82%, 3 to spare".
+
+**Marks, second and optional.** `/standing` shows attendance and marks per course; the first time, it asks **Set up
+marks?** (**Not now** stops asking). Then:
+- `/marks la weights midsem 30, quizzes 20, endsem 50`: the course's weightage;
+- `/marks la midsem 21/30`: a score as it comes (`/marks la midsem clear` removes it);
+- `/marks grades A 85, B 70, C 55, D 40`: grade lines, as % of the total, for every course (`/marks la grades ...` for
+  one course's own).
+`/standing` then shows what you'd need on what's left (usually the end-sem) for each grade: "31.5 of the 50 so far; on
+what's left (endsem, worth 50): A out of reach, B 77%+, C 47-76%, D 17-46%". `/marks la` shows one course,
+`/marks la clear` forgets it.
+
+*Settings* (Settings → `attendance`): `min_pct` (75), `lab_min_pct` (75), `rules` (a course's own rule, e.g.
+`{"linear-algebra": 80, "linear-algebra:lab": 100}`), `lab_slots` (`["thu 14:00"]`), `since` (the first day counted;
+filled in when you turn it on), `weekly` (the Sunday line, `true`), `grades` (`{"A": 85, "B": 70}`).
+
+*Leaves:* nothing. Your corrections and marks stay in Kurooto's state folder (`attendance/`). On calls, and to your AI
+when it asks, the `attendance` and `skip_class` tools give the attendance numbers (never marks), like any of Kurooto's
+tools.
+
+*Undo:* turn the feature off (Features → Attendance and standing): `/skip` stops asking, and the Sunday line goes.
+Your corrections and marks stay; delete the `attendance` folder in Kurooto's state folder to forget them. Skips
+themselves belong to Subjects and are unchanged.
 
 ### Quiz
 Practice questions from your notes, spaced out so you see each again just before you'd forget it. Put a note named
@@ -2219,6 +2268,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | `kurooto watch` says "only shown on this computer" | Kurooto wasn't running: `kurooto start`. |
 | The Terminals tab says it's off, or a terminal won't type | Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose. |
 | `/term` says "Term note …: not found" | The path is relative to your notes folder (`terms/2026-autumn`, `maps/semester-*`); `/term note <path>` again, or `/term note off`. |
+| `/attendance` doesn't match the official register | It's an estimate from your timetable and skips: `/attendance set la 23/30` (attended/held as of now) puts it right, and classes from then on count on top. A class missing from your timetable isn't counted at all (`/class`, or the term note). |
 | A class or date from the term note is missing | Check the table's heading ("Weekly timetable", "Key dates"), times like `09:00-09:55` and dates like `2026-11-12`; `/term` says how many classes and key dates it read. |
 | Telegram's "/" menu is out of date | It updates within a minute of a feature going on or off, and every quarter of an hour for skills; `telegram.menu` off and on again sets it within a minute. |
 | Your add-ons: a problem in `kurooto doctor` | `/addons` shows which file and the error. Fix it, then restart Kurooto (`kurooto stop`, `kurooto start`). |

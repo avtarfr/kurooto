@@ -45,6 +45,7 @@ MODULE_ORDER = [
     "gbrain",
     "local_models",
     "subjects",
+    "attendance",
     "capture",
     "quiz",
     "weekly",
