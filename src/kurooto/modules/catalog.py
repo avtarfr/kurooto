@@ -9,6 +9,7 @@ from kurooto.modules.calls import Calls
 from kurooto.modules.capture import Capture
 from kurooto.modules.chat import Chat
 from kurooto.modules.checkins import Checkins
+from kurooto.modules.classpacks import ClassPacks
 from kurooto.modules.deadlines import Deadlines
 from kurooto.modules.files import Files
 from kurooto.modules.gbrain import GBrain
@@ -45,6 +46,7 @@ CATALOG = [
     Checkins,
     Deadlines,
     Subjects,
+    ClassPacks,
     Quiz,
     Weekly,
     Files,

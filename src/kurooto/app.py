@@ -289,6 +289,13 @@ class App:
             if out:
                 msg.reply(out)
                 return
+        packs = self.modules.get("classpacks")  # a .kurooto-course file: a class pack to review (modules/classpacks.py)
+        if msg.files and packs is not None:
+            out = packs.take_pack(msg)
+            if out is not None:
+                if out:
+                    msg.reply(out)
+                return
         if msg.files:
             for m in mods:
                 h = getattr(m, "take_files", None)
