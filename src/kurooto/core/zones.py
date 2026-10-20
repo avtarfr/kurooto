@@ -87,7 +87,7 @@ def canonical(name: str | None) -> str:
     links, current = _tables()
     if n in current:
         return n
-    if n not in links and not valid(n):
+    if n not in links:
         n = _known().get(n.lower(), n)  # a slip in the capitals
         if n in current:
             return n
