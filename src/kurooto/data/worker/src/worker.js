@@ -219,7 +219,19 @@ export class Line {
     if (!this.tell({ type: 'event', ...msg })) await this.queue({ kind: 'event', ...msg });
   }
 
+  // `kurooto rotate` (a lost phone, a backup that got out) deployed this line with a new CALL_SECRET: the phones
+  // paired before, the call links made here and open pairing codes stop working. The first run only notes it.
+  async fresh() {
+    const gen = (await sha256(`gen:${this.env.CALL_SECRET || ''}`)).slice(0, 16);
+    if (this.gen === gen) return;
+    const was = await this.store.get('gen');
+    if (was && was !== gen) await this.store.delete(['devices', 'tickets', 'paircodes', 'pairfail']);
+    if (was !== gen) await this.store.put('gen', gen);
+    this.gen = gen;
+  }
+
   async fetch(req) {
+    await this.fresh();
     const url = new URL(req.url);
     const p = url.pathname;
     if (p === '/connect') return this.connect(req);

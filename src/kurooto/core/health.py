@@ -300,6 +300,11 @@ class Health:
                 out.append(c)
         return out
 
+    def credentials(self) -> list[Check]:
+        """The credential list: the sign-ins and keys of the features that are on (their check's kind is
+        "credential"), for `kurooto rotate`'s "only you can replace these" (core/leave.py)."""
+        return [c for c in self.checks() if c.kind == "credential"]
+
     def evaluate(self, net: bool = False, only: str | None = None, save: bool = True) -> list[Result]:
         """Every check (or one). net: probes may use the internet (the daily pass, doctor); otherwise their last
         answer from it stands in. save: the daily pass and the fixes keep what they found; doctor, the dashboard and

@@ -197,7 +197,10 @@ logs. `kurooto doctor --bundle` blanks them out (and names, addresses and folder
 
 The Android app keeps its pairing (the call line's address, its device key, the ring messages' key) in its private
 storage. Nothing personal is built into the app. The iPhone web app keeps its device key in Safari's storage for the
-Home Screen app. Unpair a phone with `/phones` → `/unpair`, or on the dashboard's Phone tab.
+Home Screen app. Unpair a phone with `/phones` → `/unpair`, or on the dashboard's Phone tab. A lost phone holds that
+pairing and the ring messages' key: `kurooto rotate` gives your call line new keys (they go to your own Cloudflare
+account, as on every setup), and the line then forgets every phone paired before, so the lost one can't call, be
+called or read new messages.
 
 Answers from the Android app are sealed with the same key as the ring messages, so the call line passes them to your
 computer without being able to read them; the iPhone app's answers travel over HTTPS with its device key. Each answer
@@ -208,3 +211,10 @@ can be used once (it carries a random number and the time it was sent).
 `kurooto uninstall` removes Kurooto's settings and data from your computer (your notes folder is kept). Your call
 line, Google client, notes repository and the `kurooto-profile` branch are on your own accounts, and backup zips are
 in the folder you picked: delete them there (see the manual's Uninstall).
+
+`kurooto uninstall --revoke` first takes back Kurooto's access, which means asking each service: Cloudflare to delete
+your call line (with its keys and stored data, the Telegram token and chat id it may hold included) and then to sign
+Kurooto out; Google's revoke endpoint, sent each sign-in's token, which is how a token is revoked; Telegram to drop your
+bot's webhook, waiting messages and command menu. Nothing else is sent. It then removes Kurooto's keys from your
+system's keychain. The GitHub token, the Gemini key, the bot itself and the Google client are yours to delete; it
+prints where.
