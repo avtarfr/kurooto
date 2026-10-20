@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+- Notes layout: `notes.layout` picks where Kurooto writes (the `kurooto` layout as before, or `zettelkasten`:
+  `dailies/`, `master/`, `sources/<subject>/`, `maps/`, `zettel/`, `projects/`, `digests/`), `notes.paths` puts any
+  kind of note where you like, and new notes get that layout's header. The AI and skills follow it.
+- Files folder: with `files.folder` set, photos, PDFs, revision packs, handwriting originals and Classroom files go to
+  a folder outside your notes, linked from them, so they stay out of your notes' history. Unset, nothing changes.
+- Revision packs are also linked from the subject's course page; `/observing` has a **+7 days** button.
+
 ## 0.2.0 (unreleased)
 Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) has the detail.
 
