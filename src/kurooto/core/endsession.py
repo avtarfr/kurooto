@@ -5,6 +5,10 @@ just stopped. A hidden window does get one (WM_QUERYENDSESSION, then WM_ENDSESSI
 its own, and calls on_end("signing out" or "shutting down") from WM_ENDSESSION. Windows waits for that (a few seconds
 at most) before it ends the program.
 
+There's one window per process (a window class can be registered only once): watch() makes it the first time and,
+after that, only changes what it calls. handle() is what the window does with a message, kept apart so it can be
+tested anywhere.
+
 Elsewhere this does nothing: macOS and Linux send SIGTERM (or SIGHUP), which the daemon already treats as a stop.
 """
 
@@ -18,16 +22,50 @@ WM_QUERYENDSESSION, WM_ENDSESSION = 0x0011, 0x0016
 ENDSESSION_LOGOFF = 0x80000000
 CLASS = "KurootoEndSession"
 
+_on_end: Callable[[str], None] | None = None  # what the window calls (the latest watch())
+_thread: threading.Thread | None = None
+_lock = threading.Lock()
+
 
 def watch(on_end: Callable[[str], None]) -> threading.Thread | None:
+    """Call on_end when Windows ends the session. The window is made once per process; later calls change what it
+    calls. Returns its thread once the window exists (None elsewhere, or if it couldn't be made)."""
+    global _on_end, _thread
     if sys.platform != "win32":
         return None
-    t = threading.Thread(target=_run, args=(on_end,), name="end-session", daemon=True)
-    t.start()
-    return t
+    with _lock:
+        _on_end = on_end
+        if _thread is None or not _thread.is_alive():
+            ready = threading.Event()
+            _thread = threading.Thread(target=_run, args=(ready,), name="end-session", daemon=True)
+            _thread.start()
+            ready.wait(5)
+        return _thread if _thread.is_alive() else None
 
 
-def _run(on_end: Callable[[str], None]) -> None:  # pragma: no cover (Windows only; tests/unit/test_presence.py)
+def handle(msg: int, wparam: int, lparam: int) -> int | None:
+    """What the hidden window does with a message: its result, or None for Windows' default handling."""
+    if msg == WM_QUERYENDSESSION:
+        return 1  # fine to end; the goodbye comes with WM_ENDSESSION
+    if msg == WM_ENDSESSION:
+        fn = _on_end
+        if wparam and fn is not None:  # wparam 0: the session isn't ending after all
+            try:
+                fn("signing out" if (lparam or 0) & ENDSESSION_LOGOFF else "shutting down")
+            except Exception:
+                pass
+        return 0
+    return None
+
+
+def _run(ready: threading.Event) -> None:  # pragma: no cover (Windows only; tests/unit/test_presence.py)
+    try:
+        _window(ready)
+    finally:
+        ready.set()
+
+
+def _window(ready: threading.Event) -> None:  # pragma: no cover (Windows only)
     import ctypes
     from ctypes import wintypes
 
@@ -77,20 +115,9 @@ def _run(on_end: Callable[[str], None]) -> None:  # pragma: no cover (Windows on
     kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
     kernel32.GetModuleHandleW.restype = wintypes.HMODULE
 
-    said = []
-
     def proc(hwnd, msg, wparam, lparam):
-        if msg == WM_QUERYENDSESSION:
-            return 1  # fine to end; the goodbye comes with WM_ENDSESSION
-        if msg == WM_ENDSESSION:
-            if wparam and not said:
-                said.append(1)
-                try:
-                    on_end("signing out" if (lparam or 0) & ENDSESSION_LOGOFF else "shutting down")
-                except Exception:
-                    pass
-            return 0
-        return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+        out = handle(msg, wparam, lparam)
+        return user32.DefWindowProcW(hwnd, msg, wparam, lparam) if out is None else out
 
     callback = wndproc_t(proc)  # kept referenced for as long as the window lives
     hinst = kernel32.GetModuleHandleW(None)
@@ -103,6 +130,7 @@ def _run(on_end: Callable[[str], None]) -> None:  # pragma: no cover (Windows on
     hwnd = user32.CreateWindowExW(0, CLASS, "Kurooto", 0, 0, 0, 0, 0, None, None, hinst, None)  # never shown
     if not hwnd:
         return
+    ready.set()
     msg = wintypes.MSG()
     while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
         user32.TranslateMessage(ctypes.byref(msg))

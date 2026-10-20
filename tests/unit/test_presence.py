@@ -429,20 +429,43 @@ def test_end_session_listener_is_windows_only():
     assert endsession.watch(lambda why: None) is None
 
 
+def test_end_session_messages(monkeypatch):
+    """What the hidden window does with Windows' end-of-session messages (the same code on every system)."""
+    got = []
+    monkeypatch.setattr(endsession, "_on_end", got.append)
+    assert endsession.handle(endsession.WM_QUERYENDSESSION, 0, 0) == 1
+    assert endsession.handle(endsession.WM_ENDSESSION, 0, 0) == 0 and got == []  # the session goes on after all
+    assert endsession.handle(endsession.WM_ENDSESSION, 1, 0) == 0
+    assert endsession.handle(endsession.WM_ENDSESSION, 1, endsession.ENDSESSION_LOGOFF) == 0
+    assert got == ["shutting down", "signing out"]
+    assert endsession.handle(0x0001, 0, 0) is None  # anything else: Windows' default
+    monkeypatch.setattr(endsession, "_on_end", lambda why: 1 / 0)
+    assert endsession.handle(endsession.WM_ENDSESSION, 1, 0) == 0  # a failing goodbye never stops Windows
+
+
+def test_end_session_says_goodbye_then_stops(pres, monkeypatch):
+    stopped = []
+    monkeypatch.setattr(pres.app, "request_stop", lambda: stopped.append(pres.app.stop_reason))
+    pres.p.end_session("signing out")  # no running loop here: it still stops, with the reason
+    assert stopped == ["signing out"]
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows' end of session")
 def test_end_session_on_windows():  # pragma: no cover
     import ctypes
+    from ctypes import wintypes
 
-    got = []
-    endsession.watch(got.append)
-    user32 = ctypes.windll.user32
-    hwnd = 0
-    for _ in range(50):
-        hwnd = user32.FindWindowW(endsession.CLASS, None)
-        if hwnd:
-            break
-        time.sleep(0.1)
+    user32 = ctypes.WinDLL("user32")  # its own copy: typed here without changing ctypes.windll for anyone else
+    user32.FindWindowW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
+    user32.FindWindowW.restype = wintypes.HWND
+    user32.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user32.SendMessageW.restype = ctypes.c_ssize_t
+    first, got = [], []
+    assert endsession.watch(first.append)
+    assert endsession.watch(got.append)  # one window per process: a second watch changes what it calls
+    hwnd = user32.FindWindowW(endsession.CLASS, None)
     assert hwnd
     assert user32.SendMessageW(hwnd, endsession.WM_QUERYENDSESSION, 0, 0) == 1
     user32.SendMessageW(hwnd, endsession.WM_ENDSESSION, 1, 0)
-    assert got == ["shutting down"]
+    user32.SendMessageW(hwnd, endsession.WM_ENDSESSION, 1, endsession.ENDSESSION_LOGOFF)
+    assert got == ["shutting down", "signing out"] and first == []
