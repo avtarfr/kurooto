@@ -1,0 +1,6 @@
+# HKCU registry values (DWORDs, as decimal)
+# DWM AccentColor 0xffd77800 is ABGR: red 00, green 78, blue d7 -> #0078d7
+AccentColor	4292311040
+# DWM ColorizationColor 0xc40078d7 is ARGB -> #0078d7
+ColorizationColor	3288365271
+AppsUseLightTheme	0

@@ -25,7 +25,9 @@
     --lav: #3e6e66; --pink: #9a4e33; --peach: #8a6414; --sand: #6e5a2e; --rose: #6a5384;
     --ok: #2e6b3f; --warn: #8a5a00; --bad: #b23a26;
   }
-  :root[data-palette="rose"] { color-scheme: light; --bg: #fbf3f2; --fg: #2a1c1f; --dim: #7b6466; --line: #e2cfcf; --panel: #fff; }
+  :root[data-palette="rose"] { color-scheme: light; --bg: #fbf3f2; --fg: #2a1c1f; --dim: #7b6466; --line: #e2cfcf; --panel: #fff;
+    --accent-text: #d72059; --link: #a9536c; --lav: #766795; --pink: #a9536c; --peach: #9f613b; --sand: #896b43; --rose: #9c6058;
+    --ok: #447a4f; --warn: #9f613b; --bad: #d72059; }  /* the pinks darkened until text is readable (WCAG AA) */
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--sans); accent-color: var(--accent); }
@@ -144,7 +146,7 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
 .wizard input[type=checkbox] { width: 18px; height: 18px; margin: 0; flex: none; cursor: pointer; }
 .wizard button, .wizard a.button { min-height: 40px; padding: 8px 18px; border-radius: var(--rc); font-weight: 500; line-height: 1.2;
   transition: background-color .12s, border-color .12s, color .12s; }
-.wizard button:not(.card):hover:not(:disabled) { border-color: var(--hover); background: color-mix(in srgb, var(--fg) 7%, transparent); }
+.wizard button:not(.card, .term, .link):hover:not(:disabled) { border-color: var(--hover); background: color-mix(in srgb, var(--fg) 7%, transparent); }
 .wizard button.primary:hover:not(:disabled), .wizard a.button.primary:hover { background: var(--hover); border-color: var(--hover); }
 .wizard button.primary, .wizard a.button.primary { font-weight: 600; }
 .wizard button:disabled { opacity: .45; cursor: not-allowed; }
@@ -183,6 +185,36 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
 .wizard .check { gap: 10px; margin: 20px 0; font-weight: 400; font-size: 15px; }
 .wizard .nav { position: sticky; bottom: 0; z-index: 5; align-items: center; gap: 12px; margin: 36px 0 0; padding: 14px 0 18px;
   background: var(--bg); border-top: 1px solid var(--line); }
+.wizard .box label { max-width: 680px; }
+.steps li.todo button { color: var(--fg); border-color: var(--warn); }
+.steps li.todo .n { color: var(--warn); border-color: var(--warn); font-weight: 700; }
+.wizard .field-note { display: block; margin-top: 6px; font-size: 13px; font-weight: 400; color: var(--dim); }
+.wizard #you-msg:empty, .wizard .nav-hint:empty { display: none; }
+.wizard .nav-hint { flex: 1; text-align: right; font-size: 13px; color: var(--dim); }
+.wizard button.term { min-height: 0; padding: 0; font: inherit; color: inherit; background: none; border: 0; border-radius: 0;
+  text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.wizard button.term[aria-expanded="true"] { color: var(--accent-text); }
+.wizard .tip { display: block; margin: 6px 0; padding: 8px 12px; font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--fg);
+  background: var(--bg); border-left: 2px solid var(--accent-text); border-radius: 0 var(--rc) var(--rc) 0; }
+.wizard .tip[hidden] { display: none; }
+.wizard button.link { min-height: 0; padding: 0; margin-left: 8px; font: inherit; color: var(--link); background: none; border: 0;
+  text-decoration: underline; }
+.wizard .working { display: flex; align-items: center; gap: 10px; color: var(--dim); }
+.wizard .working .t { font: 12px var(--mono); }
+.wizard .spin { width: 14px; height: 14px; flex: none; border: 2px solid var(--line); border-top-color: var(--accent-text); border-radius: 50%;
+  animation: wizard-spin .8s linear infinite; }
+@keyframes wizard-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .wizard .spin { animation-duration: 3s; } }
+.wizard .fix { color: var(--fg); }
+.wizard .summary { list-style: none; padding: 0; }
+.wizard .summary li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; margin: 8px 0; }
+.wizard .summary .mark { width: 22px; flex: none; font-weight: 700; color: var(--dim); }
+.wizard .summary .is-ok .mark { color: var(--ok); }
+.wizard .box.done .next { margin: 4px 0 12px; padding-left: 22px; }
+.wizard .swatches { display: flex; gap: 6px; margin-bottom: 10px; }
+.wizard .swatches i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); }
+.trouble { position: sticky; top: 0; z-index: 20; padding: 10px 18px; font-size: 14px; color: var(--fg); background: var(--panel);
+  border-bottom: 3px solid var(--warn); }
 @media (max-width: 760px) {  /* phones: the steps as numbered dots, the current one with its name */
   .steps li:not(.on) .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .steps { align-items: center; }
@@ -205,7 +237,7 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
   .steps .n { min-width: 26px; height: 26px; font-size: 12px; color: var(--dim); border-color: var(--line); }
   .steps small { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--dim); }
   .steps button:hover { background: var(--panel); border-color: transparent; }
-  .steps li.done button { border-color: transparent; }
+  .steps li.done button, .steps li.todo button { border-color: transparent; }
   .steps li.on button { color: var(--fg); background: var(--panel); border-color: var(--line); }
   .steps li.on .n { color: var(--accent-contrast); background: var(--accent); border-color: var(--accent); }
   .wizard h1 { font-size: 32px; }

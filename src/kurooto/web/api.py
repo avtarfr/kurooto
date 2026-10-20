@@ -162,6 +162,10 @@ class Api:
             return self._note(q.get("id", ""))
         if path == "settings":
             return 200, self._settings()
+        if path == "look":  # the pages' colours (core/palette.py); static/palette.js asks every 30 seconds
+            from kurooto.core import palette
+
+            return 200, palette.describe(self.app)
         if path == "events":
             return 200, {"events": self.app.events.tail(80)}
         if path == "state":
@@ -696,6 +700,8 @@ class Api:
 
     def _settings(self) -> dict:
         """Every setting you can change: the core sections plus each enabled feature's own."""
+        from kurooto.core.palette import settings_choices as look_choices
+
         allv = self.app.settings.all()
         sections = [s for s in self.EDITABLE] + [m.id for m in self.app.enabled() if m.id in allv]
         hidden = {
@@ -708,11 +714,15 @@ class Api:
             vals = {k: v for k, v in (allv.get(sec) or {}).items() if k not in hidden.get(sec, set())}
             if vals:
                 title = self.app.modules[sec].title if sec in self.app.modules else sec.title()
-                out.append({"section": sec, "title": title, "values": vals})
+                out.append({"section": sec, "title": title, "values": vals, **look_choices(self.app, sec)})
         return {"sections": out}
 
     def _set(self, key: str, value) -> tuple[int, dict]:
+        from kurooto.core.palette import check as look_check
+
         sec = key.split(".")[0]
+        if key in ("look.palette", "look.theme_file") and (wrong := look_check(self.app, key, value)):  # palette.py
+            return 400, {"error": wrong}
         if sec not in self.EDITABLE and not self.app.is_on(sec):
             return 400, {"error": "not a setting you can change here"}
         old = self.app.settings.get(key)

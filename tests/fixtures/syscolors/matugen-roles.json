@@ -1,0 +1,7 @@
+{
+  "colors": {
+    "primary": {"dark": "#d0bcff", "light": "#6750a4", "default": "#6750a4"},
+    "background": {"dark": "#141218", "light": "#fef7ff", "default": "#fef7ff"},
+    "on_surface": {"dark": "#e6e0e9", "light": "#1d1b20", "default": "#1d1b20"}
+  }
+}

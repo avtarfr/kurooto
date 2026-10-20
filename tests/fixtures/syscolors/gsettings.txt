@@ -1,0 +1,4 @@
+# `gsettings get org.gnome.desktop.interface <key>` as GNOME 47 prints it
+accent-color	'teal'
+color-scheme	'prefer-dark'
+gtk-theme	'Adwaita'

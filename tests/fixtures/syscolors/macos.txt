@@ -1,0 +1,3 @@
+# `defaults read -g <key>`: AppleAccentColor prints a number (5 = purple); AppleInterfaceStyle prints Dark
+AppleAccentColor	5
+AppleInterfaceStyle	Dark

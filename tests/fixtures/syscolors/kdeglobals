@@ -1,0 +1,15 @@
+[ColorEffects:Disabled]
+Color=56,56,56
+
+[Colors:Selection]
+BackgroundNormal=61,174,233
+ForegroundNormal=252,252,252
+
+[Colors:Window]
+BackgroundNormal=32,35,38
+ForegroundNormal=252,252,252
+
+[General]
+AccentColor=233,100,61
+ColorScheme=BreezeDark
+Name[$i]=Breeze Dark
