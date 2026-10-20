@@ -28,6 +28,12 @@ class Reminders(Module):
     description = 'Plain English: "remind me at 9 to call mum". They arrive on Telegram, even after the laptop slept.'
     requires = ("telegram",)
 
+    def __init__(self, app):
+        super().__init__(app)
+        # registered at once: a reminder set in the setup page's try-it box (web/tryit.py), before this feature is
+        # on, still fires after a restart
+        app.scheduler.action("reminders.fire", self._fire)
+
     def start(self):
         self.action("fire", self._fire)
 

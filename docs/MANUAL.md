@@ -143,7 +143,7 @@ what it means.
    two minutes later, a question goes to your AI and its answer comes back in the box. Chat and Reminders answer there
    even though they're turned on later, with Telegram; other features answer once they're on. Nothing said in the box
    goes to Telegram or your phone. *Undo:* nothing to turn off; it's only there while you set up (a reminder set there
-   can be cancelled with `/reminders` once Telegram is connected).
+   still comes after a restart, and can be cancelled with `/reminders` once Telegram is connected).
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below.
 5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the

@@ -45,6 +45,11 @@ def test_a_reminder_works_before_telegram(fresh, monkeypatch):
     monkeypatch.setattr(notify.desktop, "notify", lambda title, text, urgent=False: shown.append(text))
     app.scheduler.actions["reminders.fire"](jobs[0].payload)
     assert shown == ["Reminder: stretch"]  # no Telegram yet: it pops up on this computer
+    app2 = App()  # Kurooto restarted before the reminder was due, Reminders still off: it still fires
+    try:
+        assert "reminders.fire" in app2.scheduler.actions and not app2.is_on("reminders")
+    finally:
+        app2.close()
 
 
 def test_a_question_goes_to_the_ai_and_comes_back_to_the_page(fresh):
