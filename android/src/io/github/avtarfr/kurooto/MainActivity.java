@@ -246,7 +246,7 @@ public class MainActivity extends Activity {
     private void pickTone(boolean alarm) {
         int type = alarm ? RingtoneManager.TYPE_ALARM : RingtoneManager.TYPE_RINGTONE;
         Intent i = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
-                .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, type | RingtoneManager.TYPE_NOTIFICATION)
+                .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, type)
                 .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, alarm ? "Wake-up alarm tone" : "Call ringtone")
                 .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
                 .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true);
