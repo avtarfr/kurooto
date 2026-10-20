@@ -6,6 +6,12 @@ Set it in plain English ("wake me at 6:45", "set my alarm for 7 tomorrow", "canc
 call ("set my alarm for 7"), or as a daily default in Settings. Not answered: it rings again 5 minutes later, up to
 twice more. "Later" on the ringing call snoozes for 10 minutes.
 
+The daily alarm: the next one is always with your call line well before the night (planned as soon as one has rung,
+and again at start and after this computer wakes), so it rings even if this computer sleeps all night. One alarm per
+morning: an alarm you set for a morning replaces the daily one. "No alarm tomorrow" (or "cancel tomorrow's alarm",
+"/alarm skip friday") skips one day and the daily alarm is back after it; "cancel my alarm" skips the one that's set;
+"turn my daily alarm off" (/alarm daily off) stops it, and "/alarm daily 7:00" sets it.
+
 While it's set, the night runs from your bedtime until the alarm: no other calls then, and once you're up they can
 come. With Chat on, 20 minutes before the alarm the AI drafts the day's plan into today's daily note (the
 morning-prep skill); the call goes through it with you, and if this computer is awake it opens the morning page.
@@ -31,6 +37,7 @@ from kurooto.core.state import jload, jsave
 from kurooto.modules import daily
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
+from kurooto.modules.text import a_day
 
 register_defaults(
     "alarm",
@@ -49,8 +56,20 @@ register_defaults(
 )
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 KEY = "alarm:next"
+PLAN_EVERY = "every 30m"  # the next daily alarm is checked this often too (and caught up after sleep)
 AWAKE_AFTER_MIN = 15  # keep_awake holds until this long after the alarm (repeat rings, the plan)
 AWAKE_BEFORE_H = 12  # ... from this long before it (a daily alarm set in the morning doesn't hold all day)
+
+
+def _clock_time(text: str) -> str | None:
+    """A time of day as written ("6:30", "7", "6:30am", "18:00") -> "HH:MM"; None if it isn't one."""
+    m = re.fullmatch(r"(?:at )?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", text.strip().lower())
+    if not m:
+        return None
+    h, mi = int(m.group(1)), int(m.group(2) or 0)
+    h += 12 if m.group(3) == "pm" and h < 12 else 0
+    h -= 12 if m.group(3) == "am" and h == 12 else 0
+    return f"{h:02d}:{mi:02d}" if h < 24 and mi < 60 else None
 
 
 class Alarm(Module):
@@ -73,11 +92,19 @@ class Alarm(Module):
     def last_file(self):
         return self.app.paths.state / "alarm-last.json"
 
+    @property
+    def ringing_file(self):  # the ring in progress: its repeat count (planning the next day doesn't touch it)
+        return self.app.paths.state / "alarm-ringing.json"
+
+    @property
+    def skip_file(self):  # days the daily alarm doesn't ring ("no alarm tomorrow")
+        return self.app.paths.state / "alarm-skip.json"
+
     def start(self):
         self.action("ring", self._ring)
         self.action("prep", self._prep)
         self.action("awake", lambda p: self.keep_awake())
-        self.every("plan", "daily 00:02", lambda p: self._plan())
+        self.every("plan", PLAN_EVERY, lambda p: self._plan())
         self.app.availability.sleep = self.sleep_windows
         self._plan()
         self.keep_awake()
@@ -101,35 +128,87 @@ class Alarm(Module):
     def keep_awake(self) -> bool:
         """With alarm.keep_awake: hold this computer awake until the alarm (and a little after), else let it sleep.
         The hold ends by itself, even if Kurooto stops. True while it's held."""
+        after = dt.timedelta(minutes=AWAKE_AFTER_MIN)
+        windows = []  # (from, until)
         at = self.next()
-        secs = (at - now()).total_seconds() + AWAKE_AFTER_MIN * 60 if at else 0
+        if at:
+            windows.append((at - dt.timedelta(hours=AWAKE_BEFORE_H), at + after))
+        last = jload(self.last_file, {}) or {}
+        try:
+            if not last.get("done"):  # the morning that just rang, until you answered
+                was = dt.datetime.fromisoformat(last["at"])
+                windows.append((was, was + after))
+        except (KeyError, ValueError, TypeError):
+            pass
         self.app.scheduler.cancel(f"{self.id}:awake")
-        if not self.setting("keep_awake") or secs <= 0:
+        t = now()
+        until = max((end for start, end in windows if start <= t < end), default=None)
+        later = min((start for start, end in windows if start > t), default=None)
+        if not self.setting("keep_awake") or not until:
             self.inhibitor.release()
+            if self.setting("keep_awake") and later:  # not yet: from 12 hours before
+                self.app.scheduler.at(later, "alarm.awake", key=f"{self.id}:awake", module=self.id, grace_s=86400)
             return False
-        start = at - dt.timedelta(hours=AWAKE_BEFORE_H)
-        if start > now():  # not yet: from 12 hours before
-            self.inhibitor.release()
-            self.app.scheduler.at(start, "alarm.awake", key=f"{self.id}:awake", module=self.id, grace_s=86400)
-            return False
-        return self.inhibitor.hold(secs, lid=True)
+        return self.inhibitor.hold((until - t).total_seconds(), lid=True)
 
     def next(self) -> dt.datetime | None:
         j = self.app.scheduler.get(f"{self.id}:ring")
         return dt.datetime.fromtimestamp(j.next_run) if j else None
 
-    def _plan(self) -> None:
-        """The daily default: schedule today's (or tomorrow's) alarm unless one is already set."""
-        t = self.setting("daily")
-        if not t or self.next():
+    # ------------------------------------------------------------------------------------ the daily alarm
+    def skips(self) -> set[dt.date]:
+        out = set()
+        for d in (jload(self.skip_file, {}) or {}).get("days", []):
+            try:
+                out.add(dt.date.fromisoformat(d))
+            except ValueError:
+                pass
+        return {d for d in out if d >= now().date()}
+
+    def _skip_add(self, day: dt.date) -> None:
+        jsave(self.skip_file, {"days": sorted(x.isoformat() for x in self.skips() | {day})})
+
+    def next_daily(self) -> dt.datetime | None:
+        """When the daily alarm rings next: on one of its days, not a day you skipped, not a morning that already
+        had an alarm (one in the 6 hours before it, or after; a nap after midnight doesn't count)."""
+        try:
+            tm = dt.time.fromisoformat(self.setting("daily") or "")
+        except ValueError:
+            return None
+        days, skip, t = self.setting("days") or DAYS, self.skips(), now()
+        try:
+            rang = dt.datetime.fromisoformat((jload(self.last_file, {}) or {})["at"])
+        except (KeyError, ValueError, TypeError):
+            rang = None
+        for add in range(9):
+            day = t.date() + dt.timedelta(days=add)
+            at = dt.datetime.combine(day, tm)
+            had = rang is not None and rang.date() == day and rang >= at - dt.timedelta(hours=6)
+            if at > t and DAYS[day.weekday()] in days and day not in skip and not had:
+                return at
+        return None
+
+    def _plan(self, ringing: bool = False) -> None:
+        """Keep the next daily alarm set (and on your call line). An alarm you set stays; a daily one follows the
+        settings (time, days, off). ringing: the alarm's own ring is running now, so it doesn't count as set."""
+        pending = None if ringing else self.next()
+        if pending and pending <= now():
+            return  # due: its ring runs (catching up after sleep) and plans the next one
+        info = jload(self.file, {}) or {}
+        if pending and not info.get("daily"):
             return
-        base = now()
-        for add in (0, 1):
-            day = base.date() + dt.timedelta(days=add)
-            at = dt.datetime.combine(day, dt.time.fromisoformat(t))
-            if DAYS[day.weekday()] in (self.setting("days") or DAYS) and at > base.replace(tzinfo=None):
-                self.set(at, daily=True)
-                return
+        want = self.next_daily()
+        if pending and want == pending:
+            return
+        if pending and not want:  # the daily alarm was turned off, or has no days left
+            self.app.scheduler.cancel(f"{self.id}:ring")
+            self.app.scheduler.cancel(f"{self.id}:prep")
+            jsave(self.file, {})
+            self._poke()
+            self.keep_awake()
+            return
+        if want:
+            self.set(want, daily=True)
 
     def set(self, at: dt.datetime, daily: bool = False, tries: int = 0, first: bool = True) -> str:
         """Set the alarm. first=False for a snooze or a repeat ring: no new plan, no morning page."""
@@ -161,12 +240,51 @@ class Alarm(Module):
         return f"Alarm set for {at:%a %d %b, %H:%M}."
 
     def clear(self) -> str:
+        """ "Cancel my alarm": the one that's set. With a daily alarm, that morning is skipped (it would come back)."""
+        at = self.next()
         had = self.app.scheduler.cancel(f"{self.id}:ring")
         self.app.scheduler.cancel(f"{self.id}:prep")
         jsave(self.file, {})
+        if at and at > now() and self.setting("daily"):
+            self._skip_add(at.date())
+        self._plan()
         self._poke()
         self.keep_awake()
-        return "Alarm off." if had else "There was no alarm set."
+        if not had:
+            return "There was no alarm set."
+        nxt = self.next()
+        if nxt and at:
+            return (
+                f'Alarm off for {at:%a %d %b}. Your daily alarm is back {nxt:%a %d %b, %H:%M} ("turn my daily '
+                'alarm off" stops it).'
+            )
+        return "Alarm off."
+
+    def skip(self, day: dt.date) -> str:
+        """No alarm on that day (the daily one comes back after it)."""
+        self._skip_add(day)
+        at = self.next()
+        if at and at.date() == day and at > now():
+            self.app.scheduler.cancel(f"{self.id}:ring")
+            self.app.scheduler.cancel(f"{self.id}:prep")
+            jsave(self.file, {})
+        self._plan()
+        self._poke()
+        self.keep_awake()
+        self.app.events.emit("alarm_skipped", day=day.isoformat())
+        nxt = self.next()
+        return f"No alarm on {day:%a %d %b}." + (f" Next: {nxt:%a %d %b, %H:%M}." if nxt else "")
+
+    def set_daily(self, hhmm: str | None) -> str:
+        """The daily alarm's time, or None to turn it off (a morning's alarm you set yourself stays)."""
+        self.app.settings.set("alarm.daily", hhmm)
+        self._plan()
+        self.app.events.emit("alarm_daily", at=hhmm or "off")
+        if not hhmm:
+            nxt = self.next()
+            return "Daily alarm off." + (f" The one you set stays: {nxt:%a %d %b, %H:%M}." if nxt else "")
+        nxt = self.next()
+        return f"Daily alarm at {hhmm}." + (f" Next: {nxt:%a %d %b, %H:%M}." if nxt else "")
 
     # ---------------------------------------------------------------------------------- the night
     def sleep_windows(self) -> list[tuple[dt.datetime, dt.datetime]]:
@@ -317,8 +435,11 @@ class Alarm(Module):
         if j.get("at") and first:  # the night this alarm ends (snoozes and repeat rings keep the first one's)
             jsave(self.last_file, {k: j.get(k) for k in ("at", "daily", "set_at")})
         if p.get("missed") or p.get("late_s"):  # this computer was asleep then; the call line rang it already
+            self._plan(ringing=True)  # the next one goes to the line now
             return
-        jsave(self.file, {**j, "tries": p.get("tries", 0)})
+        jsave(self.ringing_file, {"tries": p.get("tries", 0)})
+        if first:
+            self._plan(ringing=True)  # tomorrow's is with the line already (a repeat ring takes its place a while)
         self.app.modules["calls"].ring(self.setting("reason") or "Wake-up call", alarm=True, key=KEY)
         if first:
             self.app.events.emit("alarm_rang", page=self.open_morning_page())
@@ -333,16 +454,23 @@ class Alarm(Module):
         ]
 
     def call_outcome(self, key: str, outcome: str) -> bool:
-        tries = (jload(self.file, {}) or {}).get("tries", 0)
+        tries = (jload(self.ringing_file, {}) or {}).get("tries", 0)
         if outcome == "later":
             self.set(now().replace(tzinfo=None) + dt.timedelta(minutes=self.setting("snooze_min") or 10), first=False)
             return True
         if outcome == "missed" and tries < (self.setting("retries") or 0):
             self.set(now().replace(tzinfo=None) + dt.timedelta(minutes=5), tries=tries + 1, first=False)
             return True
+        self.ringing_file.unlink(missing_ok=True)  # this morning's alarm is over: the next one goes to the line
         if outcome in ("answered", "skip", "decline"):
+            last = jload(self.last_file, {}) or {}
+            if last:
+                jsave(self.last_file, {**last, "done": True})  # you're up (or chose not to be): it may sleep again
+        nxt = self.next()
+        if nxt is None or nxt <= now():
             jsave(self.file, {})
-            self.keep_awake()  # you're up (or chose not to be): this computer may sleep again
+            self._plan(ringing=True)
+        self.keep_awake()
         return False
 
     def call_tools(self):
@@ -350,7 +478,8 @@ class Alarm(Module):
             Tool(
                 "set_alarm",
                 'Set the wake-up alarm (a call that rings like an alarm), e.g. "7:30" or "tomorrow 6:45"; '
-                '"off" clears it.',
+                '"off" clears the one that\'s set; "skip tomorrow" or "skip friday": no alarm that day (the daily '
+                'one comes back after); "daily 7:00" or "daily off": the daily alarm.',
                 self._tool,
                 {"time": arg()},
                 ("time",),
@@ -374,6 +503,16 @@ class Alarm(Module):
         t = str(a.get("time", "")).strip()
         if re.fullmatch(r"(?i)off|none|cancel|clear", t):
             return self.clear()
+        m = re.fullmatch(r"(?i)daily\s+(.+)", t)
+        if m:
+            if re.fullmatch(r"(?i)off|none|stop|no", m.group(1).strip()):
+                return self.set_daily(None)
+            hhmm = _clock_time(m.group(1))
+            return self.set_daily(hhmm) if hhmm else f"I couldn't read {m.group(1)!r}."
+        m = re.fullmatch(r"(?i)(?:skip|no alarm|none|off)\s+(?:on\s+)?(.+)", t)
+        if m:
+            day = self._day(m.group(1))
+            return self.skip(day) if day else f"I couldn't tell which day {m.group(1)!r} is."
         try:
             return self.set(parse_when(t).replace(tzinfo=None))
         except ValueError:
@@ -381,12 +520,21 @@ class Alarm(Module):
 
     # -------------------------------------------------------------------------------------- telegram
     def commands(self):
-        return [Command("alarm", "the wake-up call: /alarm 6:45, /alarm tomorrow 7, /alarm off", self._cmd)]
+        return [
+            Command(
+                "alarm",
+                "the wake-up call: /alarm 6:45, /alarm tomorrow 7, /alarm off, /alarm skip friday, "
+                "/alarm daily 7:00 (or daily off)",
+                self._cmd,
+            )
+        ]
 
     def _cmd(self, msg: Incoming, arg: str) -> str:
         if not arg:
             at = self.next()
-            return f"Alarm: {at:%a %d %b, %H:%M}." if at else "No alarm set. /alarm 6:45 sets one."
+            daily = self.setting("daily")
+            tail = f" Daily: {daily}." if daily else ""
+            return (f"Alarm: {at:%a %d %b, %H:%M}." if at else "No alarm set. /alarm 6:45 sets one.") + tail
         return self._tool({"time": arg})
 
     def intents(self):
@@ -394,9 +542,27 @@ class Alarm(Module):
             r"^(?:please )?(?:wake me(?: up)?|set (?:an |my |the )?alarm(?: for)?) (?:at |for |in )?(.+)$", re.I
         )
         off_pat = re.compile(r"^(?:cancel|turn off|delete|remove|clear|no) (?:my |the )?alarm\b", re.I)
+        daily_off = re.compile(
+            r"^(?:please )?(?:(?:turn|switch) (?:off )?(?:my |the )?daily alarm(?: off)?|(?:stop|disable|cancel|remove|"
+            r"delete) (?:my |the )?daily alarm|no (?:more )?daily alarm)\b",
+            re.I,
+        )
+        skip_pat = re.compile(
+            r"^(?:please )?(?:(?:cancel|skip|turn off|delete|remove|clear|no) (?:my |the )?(?:(?P<a>[\w ]+?)'?s )?"
+            r"alarm(?: (?:on |for )(?P<d>.+))?|no alarm (?:on |for )?(?P<b>.+)|(?:don'?t|do not) wake me(?: up)? "
+            r"(?:on )?(?P<c>.+))$",
+            re.I,
+        )
 
         def match(text: str):
             t = text.strip().rstrip(".!")
+            if daily_off.match(t):
+                return {"daily_off": True}
+            m = skip_pat.match(t)
+            words = next((g for g in m.group("a", "b", "c", "d") if g), "") if m else ""
+            if m and words:
+                day = self._day(words)
+                return {"skip": day} if day else None
             if off_pat.match(t):
                 return {"off": True}
             m = set_pat.match(t)
@@ -407,8 +573,25 @@ class Alarm(Module):
             except ValueError:
                 return None
 
-        return [
-            Intent(
-                "alarm", "wake me at …", match, lambda msg, sl: self.clear() if sl.get("off") else self.set(sl["at"])
-            )
-        ]
+        def run(msg, sl):
+            if sl.get("daily_off"):
+                return self.set_daily(None)
+            if sl.get("skip"):
+                return self.skip(sl["skip"])
+            return self.clear() if sl.get("off") else self.set(sl["at"])
+
+        return [Intent("alarm", "wake me at …, no alarm tomorrow, turn my daily alarm off", match, run)]
+
+    def _day(self, words: str) -> dt.date | None:
+        """The morning a request names: "tomorrow" said at 2 am is the coming morning; "today", a weekday."""
+        w = words.strip().lower()
+        if re.fullmatch(r"(?:for )?today|(?:this )?morning", w):
+            return now().date()
+        if not re.search(r"\b(?:tomorrow|tmrw|tmr|mon|tue|wed|thu|fri|sat|sun)", w):
+            return None
+        try:
+            start = dt.time.fromisoformat(self.app.settings.get("checkins.day_starts") or "05:00")
+        except ValueError:
+            start = dt.time(5, 0)
+        base = now() - dt.timedelta(hours=start.hour, minutes=start.minute)  # still up after midnight
+        return a_day(w, base)
