@@ -303,6 +303,10 @@ class Api:
 
             ok, message = syncall.start(self.app, notify=bool(b.get("notify", True)))
             return 200, {"ok": ok, "message": message}
+        if path == "sync/status":  # `kurooto sync` waits on this (core/syncall.py)
+            from kurooto.core import syncall
+
+            return 200, syncall.status(self.app)
         if path.startswith("profile/"):  # save now; restore on a new computer (modules/profile.py)
             from kurooto.modules.profile import web
 

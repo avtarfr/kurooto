@@ -646,14 +646,18 @@ def sync_all(wait: bool = True) -> int:
     if not wait:
         print("It goes on in the background; the summary comes as a message (kurooto sync --status meanwhile).")
         return 0
-    url = wait_for_web(1)
+    wait_for_web(1)
     for _ in range(3600):  # Classroom can take a while
         time.sleep(1)
-        st = ask_running("sync/status") if url else None
+        st = ask_running("sync/status") if wait_for_web(1) else None
         if st is None:
+            from kurooto.core.state import jload
+
+            st = jload(paths().state / "sync-all.json", {}) or None
+        if st is None and not wait_for_web(1):
             print("Kurooto stopped before the sync finished.")
             return 1
-        if not st.get("running"):
+        if st and not st.get("running"):
             print(st.get("text", ""))
             return 1 if "failed" in (st.get("text") or "").split("\n", 1)[0] else 0
     return 1
