@@ -54,14 +54,14 @@ def test_a_feature_on_another_account_signs_that_account_in_with_only_its_permis
     env, g, ai = gw
     app, gm = env.app, env.app.modules["google"]
     first = g.last_auth
-    assert "openid" not in first["scope"] and "calendar.readonly" not in first["scope"]  # main: Classroom only
+    assert "openid" in first["scope"] and "calendar.readonly" not in first["scope"]  # main: Classroom, its address
     r = Api(app).post("modules/configure", {"id": "mail_digest", "values": {"account": "School"}})[1]
     asked = scopes_of(r["open"])
     assert asked == {*SCOPES["mail_digest"], "openid", "https://www.googleapis.com/auth/userinfo.email"}
     assert "select_account" in r["open"] and "(your school account)" in r["message"]
     code, state = g.issue_code(r["open"], who=SCHOOL)
     msg = gm.finish_signin(code, state)[1]
-    assert msg.startswith(f"Signed in with Google (school: {SCHOOL}). Turned on: Mail digest.")
+    assert msg.startswith(f"Signed in with Google as {SCHOOL} (school). Turned on: Mail digest.")
     assert gm.account_names() == ["main", "school"] and app.modules["mail_digest"].account == "school"
     assert "gmail.readonly" not in gm.tokens()["scope"]  # main never got the mail permission
     assert gm.email("school") == SCHOOL and app.secrets.get("google.tokens.school")
@@ -74,7 +74,7 @@ def test_a_feature_on_another_account_signs_that_account_in_with_only_its_permis
     assert ("classroom", SCHOOL) not in who
     # /google lists them
     out = env.say("/google")
-    assert f"- school ({SCHOOL}): Mail digest" in out and "- main (signed in): Classroom (deadlines and posts)" in out
+    assert f"- school ({SCHOOL}): Mail digest" in out and f"- main ({g.me}): Classroom (deadlines and posts)" in out
     # the reply drafts always answer the digest's mailbox
     assert gm.account_for("reply_drafts") == "school"
 
@@ -90,7 +90,7 @@ def test_google_use_and_forget(gw):
     assert "needs that account's OK once" in said and "Agent plan calendar → Save" in said
     assert app.modules["agent_plan"].ready()[0] is False
     assert "needs your personal Google account" in app.modules["agent_plan"].ready()[1]
-    assert setup(env, g, "agent_plan", who=HOME).startswith(f"Signed in with Google (personal: {HOME}).")
+    assert setup(env, g, "agent_plan", who=HOME).startswith(f"Signed in with Google as {HOME} (personal).")
     day = (dt.datetime.now() + dt.timedelta(days=1)).date()
     assert run_tool(app, "plan_block", {"start": f"{day} 14:00", "end": "15:00", "title": "Reading"}).startswith(
         "Planned"

@@ -9,6 +9,12 @@
   "repository folder missing", and the Research tab can keep or remove it again.
 - Reminders: "remind me at 6 pm: …" no longer keeps the colon ("at 18:00: : …"); a ":", "-", "to", "that" or "about"
   left at the start of the text goes, and `/remind 21:30 - …` too.
+- Google: a permission Google grants under its older name (Classroom coursework as
+  `classroom.student-submissions.me.readonly`) counts as the one asked for. Every sign-in said "Some boxes weren't
+  ticked: your Classroom coursework", and Classroom → notes never turned on.
+- Google: which account is which. Every account (main too) is asked for its address; `/google` and the Google card
+  list each account with it, the sign-in page names the account it saved ("Signed in with Google as … (main)"), and a
+  feature's account box shows the address of the account in use.
 - Installers: `KUROOTO_CHANNEL=beta` installs from the beta channel, and the install keeps following it
   (`updates.channel` is saved in its settings).
 

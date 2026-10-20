@@ -1458,8 +1458,11 @@ To withdraw a permission: your Google account → Security → Third-party acces
 A personal account and a school one, say: each feature can use the account you choose. The first account you sign in
 with is **main**; every feature uses main unless you say otherwise. Each account signs in separately (with the same
 Google Cloud project), and each is asked only for what the features using it need, when you set them up; Kurooto
-also asks other accounts for their address, so it can tell them apart.
-- **On a feature's card:** the **Which Google account** box. Empty keeps the account it uses; a new name (`school`)
+also asks every account for its address (main too, from 0.5.1), so it can tell them apart: the sign-in page says
+which account it just saved ("Signed in with Google as sam@school.example (school)"), and the Google card lists each
+account with its address.
+- **On a feature's card:** the **Which Google account** box (it names the account in use, with its address). Empty
+  keeps the account it uses; a new name (`school`)
   adds that account: Google's page opens with its account chooser, so pick the right one. Google Calendar can read
   several at once (`main, school`): press Save once for each account.
 - **On Telegram:** `/google` lists your accounts, their addresses and what uses each. `/google use mail school` moves

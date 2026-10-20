@@ -89,6 +89,23 @@ SCOPES = {
     "digest_email": ["https://www.googleapis.com/auth/gmail.send", *IDENTITY],
     "drive_upload": ["https://www.googleapis.com/auth/drive.file"],
 }
+AUTH = "https://www.googleapis.com/auth/"
+SCOPE_ALIASES = [  # Google grants some permissions under an older name: either name counts as both
+    (AUTH + "classroom.coursework.me.readonly", AUTH + "classroom.student-submissions.me.readonly"),
+    (AUTH + "classroom.coursework.students.readonly", AUTH + "classroom.student-submissions.students.readonly"),
+    (AUTH + "userinfo.email", "email"),
+]
+
+
+def granted_scopes(scope: str | None) -> set[str]:
+    """The permissions a token holds (Google's space-separated "scope"), each under its old and new name."""
+    got = set((scope or "").split())
+    for names in SCOPE_ALIASES:
+        if got.intersection(names):
+            got.update(names)
+    return got
+
+
 BASE = ("classroom", "gmail_drafts")  # what the Google feature itself needs; the rest belongs to its add-on features
 PARTS = {  # an add-on's setting -> the feature (module id) that uses it
     "classroom_notes": "classroom_notes",
@@ -222,17 +239,15 @@ class Google(Module):
         return (self.setting("endpoints") or {})[name].rstrip("/")
 
     def scopes(self, account: str = MAIN) -> list[str]:
-        """Every permission to ask this account for: those of the features you've set up that use it (and, for any
-        account but main, its address, so Kurooto can show which account is which)."""
-        out = [s for part in self.parts_of(account) for s in SCOPES[part]]
-        if account != MAIN or not out:
-            out += IDENTITY
+        """Every permission to ask this account for: those of the features you've set up that use it, and its
+        address, so Kurooto can show which account is which ("main: sam@home.example")."""
+        out = [s for part in self.parts_of(account) for s in SCOPES[part]] + IDENTITY
         return list(dict.fromkeys(out))
 
     def granted(self, part: str, account: str | None = None) -> bool:
-        """Has Google OK'd everything this part needs (on each account it uses)?"""
+        """Has Google OK'd everything this part needs (on each account it uses)? Old names count (granted_scopes)."""
         names = [account] if account else self.accounts_for(part)
-        return all(set(SCOPES[part]) <= set((self.tokens(a).get("scope") or "").split()) for a in names)
+        return all(set(SCOPES[part]) <= granted_scopes(self.tokens(a).get("scope")) for a in names)
 
     # --------------------------------------------------------------------------------- accounts
     def account_names(self) -> list[str]:
@@ -256,6 +271,11 @@ class Google(Module):
 
     def email(self, account: str = MAIN) -> str:
         return self.tokens(account).get("email") or ""
+
+    def named(self, account: str) -> str:
+        """An account by its name and, once known, its address: "main (sam@home.example)"."""
+        email = self.email(account)
+        return f"{account} ({email})" if email else account
 
     def choose(self, part: str, names: str | list[str]) -> tuple[bool, str]:
         """Which account(s) a feature uses: "school", or "main, school" for Google Calendar. A new name is added."""
@@ -418,7 +438,7 @@ class Google(Module):
                 "Kurooto's access at myaccount.google.com/connections, then start the sign-in again from Kurooto.",
             )
         account = pending.get("account") or MAIN
-        granted = set((t.get("scope") or "").split())
+        granted = granted_scopes(t.get("scope"))
         missing = [x for x in self.scopes(account) if x not in granted] if t.get("scope") else []
         self._save_tokens(t, account)
         self.app.events.emit("google_signed_in", missing=len(missing), main=account == MAIN)
@@ -434,7 +454,7 @@ class Google(Module):
                             turned_on.append(x.title)
         on = f" Turned on: {', '.join(turned_on)}." if turned_on else ""
         email = self.email(account)
-        who = f" ({account}: {email})" if account != MAIN and email else f" ({account})" if account != MAIN else ""
+        who = f" as {email} ({account})" if email else f" ({account})"  # which account was just saved, and as what
         same = [a for a in self.account_names() if a != account and email and self.email(a) == email]
         if same:  # the browser picked the account that's already signed in as another name
             on += f" Note: that's the same Google account as your {same[0]} one; sign in again and pick the other."
@@ -715,6 +735,10 @@ class Google(Module):
             state = self.email(a) or ("signed in" if self.signed_in(a) else "not signed in")
             lines.append(f"- {a} ({state}): {', '.join(uses) or 'nothing uses it yet'}")
         return "Your Google accounts:\n" + "\n".join(lines)
+
+    def card(self) -> dict:
+        """The dashboard's card: each account with its address and what uses it, as /google lists them."""
+        return {"lines": self.accounts_text().splitlines(), "toggles": []}
 
     def _google_cmd(self, msg: Incoming, arg_text: str) -> str:
         word, _, rest = arg_text.strip().partition(" ")
@@ -1000,6 +1024,7 @@ class GooglePart(Module):
     def setup_form(self) -> dict:
         g = self.app.modules.get("google")
         now = ", ".join(g.accounts_for(self.part)) if g is not None else MAIN
+        shown = ", ".join(g.named(a) for a in g.accounts_for(self.part)) if g is not None else MAIN  # with addresses
         several = " (or several: main, school)" if self.part in MULTI else ""
         return {
             "intro": f"{self.permission} Press Save and sign in with Google again to allow it. {UNVERIFIED}",
@@ -1010,7 +1035,7 @@ class GooglePart(Module):
             else [
                 {
                     "name": "account",
-                    "label": f"Which Google account{several}: empty keeps {now}; a new name, like school, signs in "
+                    "label": f"Which Google account{several}: empty keeps {shown}; a new name, like school, signs in "
                     "another account",
                     "type": "text",
                     "placeholder": now,

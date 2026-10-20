@@ -95,7 +95,10 @@ def test_each_add_on_asks_for_its_own_permission(gx):
     msg = allow(env, g, "mail_digest", drop="gmail.readonly")
     assert "Turned on" not in msg and not app.is_on("mail_digest") and gm.ready() == (True, "")
     msg = allow(env, g, "mail_digest")
-    assert msg == "Signed in with Google. Turned on: Mail digest. You can close this tab and go back to Kurooto."
+    assert msg == (
+        f"Signed in with Google as {g.me} (main). Turned on: Mail digest. "
+        "You can close this tab and go back to Kurooto."
+    )
     assert app.is_on("mail_digest") and md.ready() == (True, "")
     assert "gmail.readonly" in g.scope and "gmail.compose" not in g.scope  # nothing it didn't ask for
     assert set(SCOPES["agent_calendar"]) == {"https://www.googleapis.com/auth/calendar.app.created"}

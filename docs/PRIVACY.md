@@ -111,7 +111,7 @@ ever holds your Google access. Each Google feature asks for only the permission 
 | Google Calendar | see your calendars (read-only) | reads your own calendars and the ones you subscribed to, the next two weeks; calendars other people share with you are left out. Changes nothing |
 | Mail digest by email | send email on your behalf; see your email address | sends each mail digest to that account's own address and to no one else. Can't read your mail |
 | Drive upload | see, edit, create and delete only the Drive files it uses | makes one folder, "Kurooto", and uploads the files you send yourself there. Can't see your other files; shares nothing |
-| Any account but the first | see your email address | to show which account is which ("school: sam@school.example") |
+| Every account (from 0.5.1; before, any but the first) | see your email address | to show which account is which ("school: sam@school.example") |
 
 **Several accounts.** Each Google account you add signs in on its own and is asked only for the permissions of the
 features you give it (`/google` lists them). Its sign-in is kept in this computer's keychain like the first one's;
