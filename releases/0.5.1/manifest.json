@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.1",
+  "notes": "0.5.1: Phone ringing direct ntfy publish; disable Gemini rollover from agy; Telegram multi-turn memory (/new, /clear); recommended AGY brain; dynamic classroom paths.",
+  "created": 1792520210.1693664,
+  "files": {
+   "kurooto-0.5.1.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.1/kurooto-0.5.1.tar.gz",
+    "sha256": "d34b7510a20ec8de1dfcf3d579e7be4a627b4934c7dec25d6cbc5a05c23820b7",
+    "size": 1632337
+   }
+  }
+ },
+ "sig": "ncZzEVS+cR7Pus+1w9HqswibjhT5qyf5iyUHf5YqmNMZnVpYmlr973hUNzj0r40SdHtjMsF564vSi1LbnXZYAw=="
+}

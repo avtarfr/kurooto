@@ -4,11 +4,18 @@
 # It installs uv (a small Python manager), Python 3.12 and Kurooto for your user only (no sudo),
 # turns on start-at-login, starts Kurooto, and opens the setup page in your browser.
 # Run it again any time to repair or update. Uninstall: kurooto uninstall
+# Testers: KUROOTO_CHANNEL=beta installs from the beta channel, and the install keeps following it:
+#     curl -LsSf https://avtarfr.github.io/kurooto/install.sh | KUROOTO_CHANNEL=beta sh
 set -eu
 UV_VERSION=0.13.1
 say() { printf '  %s\n' "$*"; }
 printf '\n  \033[35mKUROOTO\033[0m\n'
 say "Setting up your assistant. This takes a few minutes the first time."
+channel="${KUROOTO_CHANNEL:-stable}"  # testers: beta
+case "$channel" in
+  *[!a-z0-9-]*) say "KUROOTO_CHANNEL is stable or beta, not \"$channel\". Nothing was installed."; exit 1 ;;
+esac
+[ "$channel" = stable ] || say "From the $channel channel (pre-releases, for testers)."
 
 # 1. room on the disk (in KB)
 free_kb=$(df -Pk "$HOME" | awk 'NR==2 {print $4}')
@@ -33,11 +40,11 @@ uv python install 3.12 >/dev/null
 tmp="${TMPDIR:-/tmp}/kurooto-bootstrap-$$.py"
 if [ -n "${KUROOTO_SOURCE:-}" ]; then
   cp "$KUROOTO_SOURCE/installer/bootstrap.py" "$tmp"
-  uv run --no-project --python 3.12 --with 'cryptography>=43' "$tmp" --source "$KUROOTO_SOURCE"
+  uv run --no-project --python 3.12 --with 'cryptography>=43' "$tmp" --source "$KUROOTO_SOURCE" --channel "$channel"
 else
   base="${KUROOTO_UPDATE_BASE:-https://avtarfr.github.io/kurooto}"
   if command -v curl >/dev/null 2>&1; then curl -fsSL "$base/bootstrap.py" -o "$tmp"; else wget -qO "$tmp" "$base/bootstrap.py"; fi
-  uv run --no-project --python 3.12 --with 'cryptography>=43' "$tmp"
+  uv run --no-project --python 3.12 --with 'cryptography>=43' "$tmp" --channel "$channel"
 fi
 rm -f "$tmp"
 printf '\n'
