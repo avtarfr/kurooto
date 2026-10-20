@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Kurooto for Android: rings like a phone call when Kurooto calls you (reminders, check-ins, the wake-up alarm),
-     runs the call itself (earpiece, screen off at your ear), shows its questions and approvals with a Reply box and
+     runs the call itself (earpiece, screen off at your ear; or turn by turn with the phone's own speech), shows its questions and approvals with a Reply box and
      answer buttons, and shares files to your notes. Works from Android 6.
      Paired with your own call line by a one-time link from your computer; nothing personal is built into the app. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -19,6 +19,13 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- turn-by-turn calls use the phone's own speech recognizer and voice: Android 11+ only lets the app see them
+         when it says so here -->
+    <queries>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+    </queries>
 
     <application
         android:name=".App"
