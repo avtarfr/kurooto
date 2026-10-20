@@ -5,6 +5,8 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const STEPS = ["you", "computer", "brain", "about", "features", "telegram", "finish"];
 const LABELS = ["You", "Computer", "AI", "About you", "Features", "Telegram", "Done"];
+const HINTS = ["Your name and time zone", "What it found here", "Who answers you", "Optional: what other AIs know",
+  "What it does for you", "Where you talk to it", "Install and turn on"];
 let state = null;
 let step = 0;
 let chosen = new Set();
@@ -33,13 +35,27 @@ function el(tag, attrs = {}, ...kids) {
 function show(i) {
   step = Math.max(0, Math.min(STEPS.length - 1, i));
   $$("section").forEach((s) => s.classList.toggle("on", s.dataset.step === STEPS[step]));
-  $("#steps").replaceChildren(...LABELS.map((l, j) => el("li", { class: j === step ? "on" : j < step ? "done" : "" }, l)));
+  // the steps: a row on phones, a rail with what each is for on wide screens; any of them can be opened
+  $("#steps").replaceChildren(...LABELS.map((l, j) => el("li", { class: j === step ? "on" : j < step ? "done" : "" },
+    el("button", { type: "button", title: `${l}: ${HINTS[j].toLowerCase()}`, "aria-current": j === step ? "step" : false, onclick: () => go(j) },
+      el("span", { class: "n" }, j < step ? "✓" : String(j + 1)), el("span", { class: "lbl" }, l, el("small", {}, HINTS[j]))))));
+  const sec = $(`section[data-step="${STEPS[step]}"]`);
+  if (!$(".eyebrow", sec)) sec.prepend(el("p", { class: "eyebrow" }));
+  $(".eyebrow", sec).textContent = `Step ${step + 1} of ${STEPS.length}`;
   try { localStorage.setItem("kurooto.setup.step", String(step)); } catch { /* private mode */ }
   ({ computer: renderComputer, brain: renderBrains, about: renderAbout, features: renderFeatures, telegram: renderTelegram, finish: renderFinish }[STEPS[step]] || (() => {}))();
   window.scrollTo(0, 0);
 }
 
 async function refresh() { state = await api("state"); }
+
+// Leaving a step saves what it holds (Next, Back or a step in the list alike).
+async function go(i) {
+  if (STEPS[step] === "you") await saveYou();
+  if (STEPS[step] === "brain" && state.brain.main) await api("brain", { main: state.brain.main });
+  await refresh();
+  show(i);
+}
 
 // ---------------------------------------------------------------------------------------------- you
 async function saveYou() {
@@ -564,12 +580,8 @@ $("#pr-next").addEventListener("click", async () => { await refresh(); show(STEP
 
 // ---------------------------------------------------------------------------------------------- start
 document.addEventListener("click", async (e) => {
-  if (e.target.matches("[data-next]")) {
-    if (STEPS[step] === "you") await saveYou();
-    if (STEPS[step] === "brain" && state.brain.main) await api("brain", { main: state.brain.main });
-    await refresh();
-    show(step + 1);
-  } else if (e.target.matches("[data-back]")) show(step - 1);
+  if (e.target.matches("[data-next]")) await go(step + 1);
+  else if (e.target.matches("[data-back]")) await go(step - 1);
   else if (e.target.matches("[data-preset]")) {
     const p = e.target.dataset.preset;
     $$(".preset").forEach((b) => b.classList.toggle("on", b === e.target));
