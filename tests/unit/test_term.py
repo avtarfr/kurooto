@@ -146,7 +146,7 @@ def test_kurooto_commands_go_through_the_launcher_when_installed(tmp_path):
     (app / "launcher.py").write_text("")
     (app / "install.json").write_text(json.dumps({"python": "/opt/py/bin/python3"}))
     assert kurooto_argv("logs", "-f", app_dir=app) == [
-        "/opt/py/bin/python3",
+        str(Path("/opt/py/bin/python3")),  # as this OS writes it
         str(app / "launcher.py"),
         "cli",
         "logs",
@@ -232,13 +232,13 @@ def test_kitty_command_reads_your_conf_first(tmp_path):
     found = kitty.user_conf(tmp_path / "home", {})
     assert found == mine
     cmd = kitty.command("/usr/bin/kitty", Path("/s/kitty.conf"), Path("/s/session.kitty"), found)
-    assert cmd[:5] == ["/usr/bin/kitty", "--config", str(mine), "--config", "/s/kitty.conf"]
-    assert cmd[-2:] == ["--session", "/s/session.kitty"] and "--class" in cmd
+    assert cmd[:5] == ["/usr/bin/kitty", "--config", str(mine), "--config", str(Path("/s/kitty.conf"))]
+    assert cmd[-2:] == ["--session", str(Path("/s/session.kitty"))] and "--class" in cmd
     one = kitty.one("/k", Path("/c"), ["vim", "x"], None, "edit", "/w", hold=True)
     assert one == [
         "/k",
         "--config",
-        "/c",
+        str(Path("/c")),
         "--class",
         "kurooto",
         "--title",
