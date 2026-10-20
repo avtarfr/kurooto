@@ -13,7 +13,9 @@ Build a revision pack: $ARGUMENTS
    scope is unclear, cover the material since the previous assessment and say so on page 1.
 2. **Gather** with search_notes and read_note: `<subject>/exam-prep` (must know, typical questions, gaps, key ideas),
    the lecture notes in scope and the concept notes they link, recent solutions notes (`*-solutions`), and weak
-   topics from quiz results if you have a quiz tool.
+   topics from quiz results if you have a quiz tool. With the course_sources tool, call it for the subject with
+   each main topic in scope (up to 4 calls): their own notes, Classroom materials and their books (by page), in the
+   shares they chose. Books are good for exact statements and practice problems; the course's own notation wins.
 3. **Write LaTeX**: one complete document.
    - Format: `\documentclass[10pt]{article}`, `geometry` with 1.6cm margins, `amsmath`, `amssymb`, `amsthm`,
      `enumitem`, compact spacing. Two columns only if it really helps. Standard packages only: no shell escape, no
@@ -28,7 +30,8 @@ Build a revision pack: $ARGUMENTS
      5. **Typical problems**: 3 to 6, each with the key step and a short worked solution.
      6. **Pitfalls**: the mistakes worth avoiding, and the weak topics.
      7. **Self-test**: 6 to 12 questions, with the answers on the last page.
-   - Cite the source note for each block in small text, e.g. `\textit{(from lecture 2026-10-12)}`.
+   - Cite the source of each block in small text, e.g. `\textit{(from lecture 2026-10-12)}`,
+     `\textit{(book: <title>, p. 123)}`, `\textit{(Classroom: <post>)}`.
    - Only material from their notes and standard facts of the subject; nothing invented.
 4. **Answer** with the whole document in one ```latex block (from `\documentclass` to `\end{document}`), then one
    line saying what it covers. Don't create files yourself: Kurooto saves the .tex in their notes, compiles the PDF

@@ -204,6 +204,15 @@ class Prereqs:
                 else:
                     webbrowser.open(p.step["fallback"])
                     return False, f"Opened the {p.title} download page; install it from there."
+            elif kind == "brew":  # Homebrew installs as you (no admin); without it, the project's page opens
+                brew = shutil.which("brew") or next(
+                    (b for b in ("/opt/homebrew/bin/brew", "/usr/local/bin/brew") if Path(b).is_file()), None
+                )
+                if not brew:
+                    webbrowser.open(p.step["fallback"])
+                    return False, f"Opened the {p.title} page; install it from there (or install Homebrew first)."
+                res = proc.run([brew, "install", p.step["formula"]], timeout=1800)
+                ok, msg = res.ok, (res.out + res.err)[-300:]
             elif kind == "url":
                 webbrowser.open(p.step["url"])
                 return False, f"Opened the {p.title} download page; install it from there."

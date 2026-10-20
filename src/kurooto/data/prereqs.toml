@@ -1,7 +1,8 @@
 # Everything Kurooto can install for you, where it comes from, and how much disk it needs.
 # Official sources only. Updated with Kurooto, so a moved download is fixed by an update, not by you.
 # kinds: script (the vendor's own installer script), download-run (an installer program), download-zip,
-#        download-tar (unpacked into Kurooto's own folder), winget, flatpak, url (we open the page for you)
+#        download-tar (unpacked into Kurooto's own folder), winget, flatpak, brew (Homebrew, macOS), url (we open the
+#        page for you)
 
 [agy]
 title = "Antigravity (agy)"
@@ -132,3 +133,29 @@ dirs.linux = ["{app}/tectonic"]
 install.windows = { kind = "download-zip", into = "{app}/tectonic", urls = { amd64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-pc-windows-msvc.zip", arm64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-pc-windows-msvc.zip" }, sha256s = { amd64 = "f61ce51f0b0ade1015b7de7ef368541c5424e9756ecbd0d7af97d6d48030845f", arm64 = "f61ce51f0b0ade1015b7de7ef368541c5424e9756ecbd0d7af97d6d48030845f" } }
 install.macos = { kind = "download-tar", into = "{app}/tectonic", urls = { amd64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-apple-darwin.tar.gz", arm64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-aarch64-apple-darwin.tar.gz" }, sha256s = { amd64 = "7c90ef5b6ddb1eb1937e4337add5237b79338e4b9676459fa91187d24d6cdf80", arm64 = "a3f1cac7c5678f01661a92212f58480ae3b0634115d880dbc59e2953ded45667" } }
 install.linux = { kind = "download-tar", into = "{app}/tectonic", urls = { amd64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-x86_64-unknown-linux-musl.tar.gz", arm64 = "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.17.0/tectonic-0.17.0-aarch64-unknown-linux-musl.tar.gz" }, sha256s = { amd64 = "8533d07f9ccbd7a65824b9e0459041bca34af1eb33daba48f59215593753a3b7", arm64 = "b10954a95404f3ab2328d2fa59a5ebab8e657f893fab096f98be8db7c0c979b8" } }
+
+[tesseract]
+title = "Tesseract OCR"
+why = "Optional: reads scanned pages of your books (Books and PDFs). Plain text: it can't write equations as LaTeX. About 150 MB with English."
+size_gb = 0.15
+programs = ["tesseract"]
+dirs.windows = ["%LOCALAPPDATA%/Programs/Tesseract-OCR", "%LOCALAPPDATA%/Tesseract-OCR"]
+dirs.macos = ["/opt/homebrew/bin", "/usr/local/bin"]
+dirs.linux = []
+# Windows: winget with --scope user (no admin). macOS: Homebrew, which installs as you, if you have it.
+# Linux: your system's package manager (e.g. tesseract-ocr); Kurooto never installs system packages, so it opens the page.
+install.windows = { kind = "winget", id = "UB-Mannheim.TesseractOCR" }
+install.macos = { kind = "brew", formula = "tesseract", fallback = "https://tesseract-ocr.github.io/tessdoc/Installation.html" }
+install.linux = { kind = "url", url = "https://tesseract-ocr.github.io/tessdoc/Installation.html" }
+
+[poppler]
+title = "Poppler (PDF tools)"
+why = "Optional: reads encrypted and unusual PDFs and draws book pages for OCR (Books and PDFs). Without it, Kurooto's own reader handles most PDFs."
+size_gb = 0.05
+programs = ["pdftoppm"]
+dirs.windows = []
+dirs.macos = ["/opt/homebrew/bin", "/usr/local/bin"]
+dirs.linux = []
+install.windows = { kind = "url", url = "https://poppler.freedesktop.org/" }
+install.macos = { kind = "brew", formula = "poppler", fallback = "https://poppler.freedesktop.org/" }
+install.linux = { kind = "url", url = "https://poppler.freedesktop.org/" }
