@@ -6,3 +6,7 @@ useDefault = true
 [[allowlists]]
 description = "made-up test vectors, not real keys"
 paths = ['''^tests/fixtures/call-vectors\.json$''']
+
+[[allowlists]]
+description = "third-party libraries vendored byte-for-byte (minified; their identifiers look like keys)"
+paths = ['''^src/kurooto/web/static/vendor/''']
