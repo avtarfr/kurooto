@@ -494,7 +494,8 @@ def test_a_deadline_in_48_h_makes_it_a_message_now_with_a_fix_button(env):
     text = env.fake.texts()[n]
     assert text.startswith("Before Lab report") and "Calendar: hasn't worked since" in text
     kb = [p for m, p in env.fake.sent if m == "sendMessage"][-1]["reply_markup"]["inline_keyboard"]
-    assert kb == [[{"text": "Sync now: Calendar", "callback_data": "health:calendar:fix"}]]
+    assert kb[0] == [{"text": "Sync now: Calendar", "callback_data": "health:calendar:fix"}]
+    assert [b["text"] for b in kb[1]] == ["Why?", "Less of this"] and len(kb) == 2  # core/calm.py
     h.daily()
     assert len(env.fake.texts()) == n + 1  # once per problem
     ev(app, time.time(), "calendar_synced")  # works again, then breaks again: news again

@@ -640,7 +640,13 @@ def test_night_check_in_is_its_own_goodnight(env, monkeypatch):
     assert ck.today()["night"] == {"time": "23:15", "status": "planned"}
     ck._fire({"name": "night", "day": day.isoformat()})
     texts, _ = buttons_of_last(env)
-    assert "Night check-in:" in env.fake.texts()[-1] and texts == ["In 30 min", "Tomorrow morning", "Skip today"]
+    assert "Night check-in:" in env.fake.texts()[-1] and texts == [
+        "In 30 min",
+        "Tomorrow morning",
+        "Skip today",
+        "Why?",
+        "Less of this",
+    ]
     has_class = add_class_now(env)
     jobs = Jobs(env.app, monkeypatch)
     lines = [{"who": "Kurooto", "text": "What did LA cover?"}, {"who": "Sam", "text": "Eigenvalues. Tired now."}]
@@ -743,7 +749,7 @@ def test_unanswered_or_declined_check_in_calls_fall_back(bycall):
     assert ck.today()["evening"]["status"] == "calling" and env.app.scheduler.get("checkins:unstick:evening")
     assert ck.call_outcome(key, "decline") is True
     texts, sent = buttons_of_last(env)
-    assert texts == ["Call me now", "Tomorrow morning", "Skip"] and "(declined)" in sent["text"]
+    assert texts == ["Call me now", "Tomorrow morning", "Skip", "Why?", "Less of this"] and "(declined)" in sent["text"]
     assert ck.today()["evening"]["status"] == "asked" and not env.app.scheduler.get("checkins:unstick:evening")
     assert env.press(f"chk:evening|{day}:now") == "Calling you now."
     assert ck.today()["evening"]["status"] == "calling"

@@ -125,7 +125,7 @@ class FakeCalls:
     def ready(self):
         return True, ""
 
-    def schedule(self, at, reason, key=None, alarm=False):
+    def schedule(self, at, reason, key=None, alarm=False, **kw):
         self.scheduled.append((at, reason, key))
         return "ok"
 

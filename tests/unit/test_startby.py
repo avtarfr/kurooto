@@ -174,7 +174,7 @@ def test_morning_pass_tells_big_ones_once_with_sizes_to_tap(sb, clock):
     text = sb.fake.texts()[-1]
     assert text.startswith("Start-by date\n\nTime to start: Project report, due Fri 13 Nov.")
     assert "about 12 h (2-3 days) of work (my guess for a report)" in text and "An estimate" in text
-    assert [b["text"] for b in last_buttons(sb)] == ["An hour", "An evening", "A day", "A week"]
+    assert [b["text"] for b in last_buttons(sb)] == ["An hour", "An evening", "A day", "A week", "Why?", "Less of this"]
     s._morning({})
     assert sb.fake.texts()[-1] == text  # once
     # one tap: a day of work (Fri's 4 usable hours and one on Thu) moves the start-by to Thu

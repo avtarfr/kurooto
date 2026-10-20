@@ -297,7 +297,7 @@ def test_monthly_look_back_shows_common_phrasings_and_makes_a_test_case(on, cloc
         '1. "what\'s due this week" (once; you tapped Wrong; it was taken as "what\'s due")',
         '2. "whats on my plate" (3 times; went to the AI)',
     ]
-    assert [b.split(":")[2] for b in buttons(p)] == ["test", "test"]
+    assert [b.split(":")[2] for b in buttons(p)] == ["test", "test", "why", "less"]  # + Why? / Less of this
     assert app.events.tail(5, {"cases_review"})[-1]["shown"] == 2
     assert cases.review() == 0  # told once a month
     ref = buttons(p)[1]
