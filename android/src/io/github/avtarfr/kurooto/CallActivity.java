@@ -325,7 +325,11 @@ public class CallActivity extends Activity {
         listenLang = lang == null ? "" : lang;
         if (rec == null) {
             recOnDevice = !noOnDevice && onDeviceAvailable();
-            rec = recOnDevice ? SpeechRecognizer.createOnDeviceSpeechRecognizer(this) : SpeechRecognizer.createSpeechRecognizer(this);
+            if (recOnDevice && SDK >= 31) {
+                rec = SpeechRecognizer.createOnDeviceSpeechRecognizer(this);
+            } else {
+                rec = SpeechRecognizer.createSpeechRecognizer(this);
+            }
             rec.setRecognitionListener(new Heard());
         }
         Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
