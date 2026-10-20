@@ -45,6 +45,12 @@ def test_launchers_per_os_in_a_fake_home(tmp_path):
     cmd = ["/py", "/app/launcher.py", "cli", "term"]
     f = launchers.install("linux", cmd, home, env)
     assert f == home / ".local" / "share" / "applications" / "kurooto-terminal.desktop" and f.is_file()
+    shell = launchers.shell_where(home, env)
+    assert (
+        "Name=Kurooto Shell\n" in shell.read_text()
+        and "Exec=/py /app/launcher.py cli term --shell\n" in shell.read_text()
+    )
+    assert "Categories=System;TerminalEmulator;" in shell.read_text()
     env2 = {"XDG_DATA_HOME": str(tmp_path / "data")}
     assert launchers.where("linux", home, env2) == tmp_path / "data" / "applications" / "kurooto-terminal.desktop"
     app = launchers.install("macos", cmd, home, env)
@@ -68,7 +74,7 @@ def test_launchers_per_os_in_a_fake_home(tmp_path):
         lambda a, **k: ran.append(k),
     )
     assert ran[0]["env"]["KUROOTO_TARGET"] == "C:/wt.exe" and ran[0]["env"]["KUROOTO_ARGS"] == "-w new"
-    assert launchers.remove("linux", home, env) == f and not f.exists()
+    assert launchers.remove("linux", home, env) == f and not f.exists() and not shell.exists()
     assert launchers.remove("macos", home, env) == app and not app.exists()
     assert launchers.remove("linux", home, env) is None
 
@@ -88,7 +94,8 @@ def test_linux_default_and_undo_when_there_was_no_list(tmp_path):
     home, state = tmp_path / "h", tmp_path / "state"
     ok, msg = defaults.apply("linux", state, home, {}, has_xdg_exec=False)
     f = home / ".config" / "xdg-terminals.list"
-    assert ok and f.read_text() == "kurooto-terminal.desktop\n" and "isn't installed" in msg and "kurooto term" in msg
+    assert ok and f.read_text() == "kurooto-shell.desktop\n" and "isn't installed" in msg and "kurooto term" in msg
+    assert msg.startswith("Kurooto Shell is now first")
     assert defaults.status(state)["existed"] is False
     assert defaults.apply("linux", state, home, {}, has_xdg_exec=True)[0]  # twice: no change, no second backup
     assert not (state / "backups").exists()
@@ -102,9 +109,12 @@ def test_linux_default_undo_puts_your_list_back_exactly(tmp_path):
     f.parent.mkdir(parents=True)
     f.write_text("# mine\nfoot.desktop\nkurooto-terminal.desktop\n")
     before = f.read_bytes()
-    defaults.apply("linux", state, home, {}, has_xdg_exec=True)
+    defaults.apply("linux", state, home, {}, has_xdg_exec=True, opens="layout")
     assert f.read_text() == "kurooto-terminal.desktop\n# mine\nfoot.desktop\n"
-    assert list((state / "backups").iterdir())[0].read_bytes() == before
+    defaults.apply("linux", state, home, {}, has_xdg_exec=True)  # default_opens back to shell: one of ours, first
+    assert f.read_text() == "kurooto-shell.desktop\n# mine\nfoot.desktop\n"
+    backups = list((state / "backups").iterdir())
+    assert len(backups) == 1 and backups[0].read_bytes() == before  # switching entries keeps the first backup
     defaults.undo(state, home, {})
     assert f.read_bytes() == before
 
@@ -218,6 +228,13 @@ def test_turning_it_on_and_off(app, tmp_path):
     assert defaults.status(app.paths.state / "terminal") is not None
     ok, msg = m.health()
     assert "default terminal" in msg or not ok
+    if os_name() == "linux":
+        listed = home / ".config" / "xdg-terminals.list"
+        assert listed.read_text() == "kurooto-shell.desktop\n"  # Super+Enter: one shell, not the whole window
+        app.settings.set("terminal.default_opens", "layout")
+        app.events.emit("setting_changed", key="terminal.default_opens")
+        settle()
+        assert listed.read_text() == "kurooto-terminal.desktop\n"
     app.disable("terminal")
     assert not launcher.exists() and defaults.status(app.paths.state / "terminal") is None
     if os_name() == "linux":
@@ -244,6 +261,9 @@ def test_kurooto_term_print_opens_and_writes_nothing(tmp_path, monkeypatch, caps
     assert not (tmp_path / "k" / "state" / "terminal").exists()
     assert cli.main(["term", "--print", "-e", "vim", "notes.md"]) == 0
     assert "one window: vim notes.md" in capsys.readouterr().out
+    assert cli.main(["term", "--print", "--shell"]) == 0
+    out = capsys.readouterr().out
+    assert "one window: " in out and "kurooto ask" not in out.split("one window: ")[1]
 
 
 def test_default_needs_the_feature_on(tmp_path, monkeypatch, capsys):
@@ -308,6 +328,11 @@ def test_kitty_and_fish_come_from_official_releases_with_checksums(tmp_path):
                 assert all(len(s) == 64 for s in step["sha256s"].values())
             if step["kind"] == "download-dmg":
                 assert len(step["sha256"]) == 64 and step["app"] == "kitty.app"
+    mac_fish = Prereqs(tmp_path, tmp_path, os="macos").items["fish"]
+    assert (
+        mac_fish.step["kind"] == "download-zip" and mac_fish.step["strip"] == 1 and len(mac_fish.step["sha256"]) == 64
+    )
+    assert mac_fish.dirs[0] == tmp_path / "fish.app" / "Contents" / "Resources" / "base" / "usr" / "local" / "bin"
     assert Prereqs(tmp_path, tmp_path, os="windows").items["kitty"].step["kind"] == "none"
     assert Prereqs(tmp_path, tmp_path, os="windows").status()["kitty"]["available"] is False
 
@@ -395,3 +420,31 @@ def test_without_kitty_each_tab_gets_a_window_of_the_usual_terminal(tmp_path):
         time.sleep(0.1)
     opened = sorted(f.read_text().strip() for f in log.iterdir())
     assert opened == sorted([f"1 {tmp_path} -e kurooto top", f"1 {tmp_path} -e /bin/zsh -l", "1 / -e kurooto logs"])
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="fish's app is for macOS; the unpacking is the same anywhere")
+def test_fish_app_unpacks_without_its_versioned_folder(tmp_path, monkeypatch):
+    """fish-<version>.app/ becomes fish.app/, so an update replaces it in place and the shell is found."""
+    import zipfile
+
+    z = tmp_path / "fish-9.9.app.zip"
+    with zipfile.ZipFile(z, "w") as w:
+        info = zipfile.ZipInfo("fish-9.9.app/Contents/Resources/base/usr/local/bin/fish")
+        info.external_attr = 0o100755 << 16
+        w.writestr(info, "#!/bin/sh\n")
+    step = {**Prereqs(tmp_path / "app", tmp_path, os="macos").items["fish"].step}
+    manifest = {
+        "fish": {
+            "title": "fish",
+            "programs": ["fish"],
+            "dirs": {"linux": ["{app}/fish.app/Contents/Resources/base/usr/local/bin"]},
+            "install": {"linux": step},
+        }
+    }
+    m = Prereqs(tmp_path / "app", tmp_path / "cache", os="linux", manifest=manifest)
+    monkeypatch.setattr(m, "_download", lambda url, progress, sha256=None: z)
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    ok, msg = m.install("fish", progress=lambda s: None, margin_gb=0)
+    fish = tmp_path / "app" / "fish.app" / "Contents" / "Resources" / "base" / "usr" / "local" / "bin" / "fish"
+    assert ok, msg
+    assert fish.is_file() and fish.stat().st_mode & 0o111 and m.items["fish"].find() == str(fish)

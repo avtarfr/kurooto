@@ -1136,36 +1136,39 @@ Everything is in Kurooto's colours (Settings → `look.palette`). The chat tab s
 a `kurooto ❯` prompt; type plain English as on Telegram.
 
 **Open it:** `kurooto term`, or **Kurooto Terminal** in your app menu (Start menu, Launchpad, your Linux app launcher)
-once the feature is on. `kurooto term --print` shows what it would open without opening anything.
+once the feature is on. `kurooto term --shell` opens just your shell in Kurooto's colours (also **Kurooto Shell** in
+the Linux app menu, and Windows Terminal's **Kurooto** profile). `kurooto term --print` shows what it would open
+without opening anything.
 
 | | What it uses |
 |---|---|
 | Linux, macOS | **kitty**: yours if you have it; otherwise `kurooto term` offers once to get the official kitty into Kurooto's own folder (about 45 MB to download; no admin; checksum checked). Alt+1 to Alt+9 switch tabs on Linux, Cmd+1 to Cmd+9 on a Mac. Your own `kitty.conf` is read first (your fonts and keys stay) and never changed. Without kitty, each tab opens in a window of your usual terminal. |
 | Windows | **Windows Terminal** (built into Windows 11; free in the Microsoft Store for Windows 10). Turning the feature on adds Kurooto's profiles and colour scheme to Windows Terminal (no admin): the **Kurooto** profile is PowerShell in Kurooto's colours, and Kurooto chat, top, logs and your AI are in Windows Terminal's new-tab menu too. Without Windows Terminal, each tab opens in a console window of its own. |
-| The shell | **fish** if you have it; on Linux, `kurooto term` also offers the official fish (3 MB, into Kurooto's folder). Otherwise your own shell (PowerShell on Windows). |
+| The shell | **fish** if you have it; otherwise `kurooto term` also offers once to get the official fish into Kurooto's folder (Linux: 3 MB; Mac: the 17 MB fish app, unpacked there, not installed system-wide). If you say no, your own shell (PowerShell on Windows). |
 
-`kurooto term --install` gets kitty (and fish on Linux) any time; so does **Set up** on the card when there's no
-terminal program at all. `kurooto term -e CMD` opens one window in Kurooto's colours running CMD.
+`kurooto term --install` gets kitty and fish any time; so does **Set up** on the card when there's no terminal
+program at all. `kurooto term -e CMD` opens one window in Kurooto's colours running CMD.
 
 **Settings** (Settings → Kurooto Terminal, once it's on): `tabs` (in order; any of `agent`, `shell`, `chat`, `logs`,
 `top`), `top` (`left`: a column beside the first tab; `tab`: a tab of its own; `off`), `shell` (`auto`, or a program
-such as `zsh` or `pwsh`), `font_size`, `kitty` (Linux and macOS; off: your usual terminal, a window per tab), and
-`default`.
+such as `zsh` or `pwsh`), `font_size`, `kitty` (Linux and macOS; off: your usual terminal, a window per tab),
+`default`, and `default_opens` (what opening "a terminal" gives you while Kurooto is your default: `shell`, just your
+shell in Kurooto's colours, or `layout`, the whole window; `kurooto term` always opens the whole window).
 
 **Make Kurooto my default terminal** (off unless you turn it on: Settings → Kurooto Terminal → `default`, or
 `kurooto term --default on`):
 
 | | What changes | Undo |
 |---|---|---|
-| Linux | Kurooto Terminal goes first in `~/.config/xdg-terminals.list`, the list `xdg-terminal-exec` reads (newer GNOME and many window managers' "open a terminal" use it). Your desktop's keys and window manager config aren't touched: bind a key to `kurooto term` yourself (GNOME: Settings → Keyboard → Custom Shortcuts; KDE: System Settings → Default Applications → Terminal Emulator → Kurooto Terminal; Hyprland, Sway, i3: your own config). | `default` off, or `kurooto term --default off`: the list goes back exactly as it was (or just Kurooto's line comes out, if you've changed the list since). |
-| Windows | Windows Terminal's default profile becomes **Kurooto**, after a backup of Windows Terminal's `settings.json`. | `default` off, or `kurooto term --default off`: `settings.json` goes back from the backup (or just the default profile, if you've changed other settings since; if you've picked another default yourself, it's left alone). |
+| Linux | **Kurooto Shell** (or Kurooto Terminal, with `default_opens` = `layout`) goes first in `~/.config/xdg-terminals.list`, the list `xdg-terminal-exec` reads (newer GNOME and many window managers' "open a terminal" use it). Your desktop's keys and window manager config aren't touched: bind a key to `kurooto term --shell` or `kurooto term` yourself (GNOME: Settings → Keyboard → Custom Shortcuts; KDE: System Settings → Default Applications → Terminal Emulator → Kurooto Shell; Hyprland, Sway, i3: your own config). | `default` off, or `kurooto term --default off`: the list goes back exactly as it was (or just Kurooto's line comes out, if you've changed the list since). |
+| Windows | Windows Terminal's default profile becomes **Kurooto** (your shell in Kurooto's colours: a profile is one tab, so `default_opens` doesn't apply), after a backup of Windows Terminal's `settings.json`. | `default` off, or `kurooto term --default off`: `settings.json` goes back from the backup (or just the default profile, if you've changed other settings since; if you've picked another default yourself, it's left alone). |
 | macOS | macOS has no default-terminal setting: Kurooto Terminal is in your Applications folder; keep it in the Dock. | nothing to undo |
 
 Backups of anything Kurooto changed are in the state folder, under `terminal/backups`. `kurooto term --default
 status` says whether it's your default.
 
-*Turn it off:* Features → Kurooto Terminal → Turn off. The app-menu entry and Kurooto's Windows Terminal profiles are
-removed and "default terminal" is undone. kitty or fish that Kurooto got stay in its folder (they go with `kurooto
+*Turn it off:* Features → Kurooto Terminal → Turn off. The app-menu entries and Kurooto's Windows Terminal profiles
+are removed and "default terminal" is undone. kitty or fish that Kurooto got stay in its folder (they go with `kurooto
 uninstall`). Nothing about this feature leaves your computer.
 
 ### Your add-ons
@@ -1375,7 +1378,7 @@ index. Settings → **Your computer** shows what was found and lets you change i
 | Backups | the folder you picked (`backups.folder`); before a restore, a copy of how things were: `restore-safety/` in the data folder |
 | Experiment runs | `research/<project>/runs/` in your notes |
 | Watched jobs | `watch.log` in the state folder (time, exit code, duration, folder, command) |
-| Kurooto Terminal | its kitty settings and tabs: `terminal/` in the state folder (made again every time); the app-menu entry: `~/.local/share/applications/kurooto-terminal.desktop` (Linux), `~/Applications/Kurooto Terminal.app` (macOS), Start menu (Windows); Windows Terminal profiles: `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\Kurooto` |
+| Kurooto Terminal | its kitty settings and tabs: `terminal/` in the state folder (made again every time); the app-menu entries: `~/.local/share/applications/kurooto-terminal.desktop` and `kurooto-shell.desktop` (Linux), `~/Applications/Kurooto Terminal.app` (macOS), Start menu (Windows); Windows Terminal profiles: `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\Kurooto` |
 | Your own skills, ideas, recurring quizzes | `kurooto/` in your notes (`skills/`, `ideas.md`, `recurring.md`) |
 | How you like to be helped, not-interested list | `about-me/how-to-help-me.md`, `about-me/not-interested.md` in your notes |
 

@@ -4,8 +4,10 @@
 - **Kurooto Terminal** (`kurooto term`, off until you turn it on): your AI's program, your shell, Kurooto chat and its
   log in a terminal window of its own, with `kurooto top` beside them, in Kurooto's colours. kitty on Linux and macOS
   (yours, or the official kitty in Kurooto's folder, no admin), Windows Terminal on Windows (Kurooto's profiles and
-  colour scheme as a fragment, no admin); fish when you have it. An app-menu entry, and an opt-in "make Kurooto my
-  default terminal" with a clear undo. `kurooto ask` gets the chat tab's look: the spaced name, examples and a
+  colour scheme as a fragment, no admin); fish when you have it (or the official fish in Kurooto's folder). An
+  app-menu entry, `kurooto term --shell` for just your shell in Kurooto's colours, and an opt-in "make Kurooto my
+  default terminal" with a clear undo: opening a terminal then gives you that themed shell
+  (`terminal.default_opens`: `layout` for the whole window). `kurooto ask` gets the chat tab's look: the spaced name, examples and a
   `kurooto ❯` prompt.
 
 ## 0.2.0 (unreleased)

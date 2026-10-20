@@ -3,8 +3,9 @@
     kurooto term                    open it: your AI's program, your shell, Kurooto chat and its log, one tab each,
                                     with `kurooto top` as a column beside the first (Alt+1 to Alt+9 switch tabs)
     kurooto term --print            what it would open, without opening anything
-    kurooto term --install          get what's missing into Kurooto's folder: kitty (and fish on Linux)
+    kurooto term --install          get what's missing into Kurooto's folder: kitty and fish
     kurooto term --default on|off|status    make Kurooto Terminal your default terminal, or undo it
+    kurooto term --shell            one window with just your shell, in Kurooto's colours (Kurooto Shell)
     kurooto term -e CMD [ARGS...]   one window in Kurooto's colours running CMD (also --title T, --dir D, --hold)
 
 Linux and macOS: kitty, with Kurooto's colours (your own kitty if you have one, or Kurooto's copy); without kitty,
@@ -30,8 +31,9 @@ from kurooto.modules.terminal.plan import LINUX_TERMINALS, Plan, Tab, build, des
 def parsers(sub) -> None:
     t = sub.add_parser("term", help="open Kurooto Terminal: your AI, your shell, Kurooto chat and its log")
     t.add_argument("--print", action="store_true", help="show what it would open, and open nothing")
-    t.add_argument("--install", action="store_true", help="get kitty (and fish on Linux) into Kurooto's folder")
+    t.add_argument("--install", action="store_true", help="get kitty and fish into Kurooto's folder")
     t.add_argument("--default", choices=["on", "off", "status"], help="make it your default terminal, or undo it")
+    t.add_argument("--shell", action="store_true", help="one window with just your shell, in Kurooto's colours")
     t.add_argument("--title", default="", help=argparse.SUPPRESS)
     t.add_argument("--dir", default="", help=argparse.SUPPRESS)
     t.add_argument("--hold", action="store_true", help=argparse.SUPPRESS)
@@ -177,11 +179,11 @@ def run_one(ctx: Context, plan: Plan, argv: list[str], title: str, cwd: str, hol
 
 # ------------------------------------------------------------------------------------------------ installing
 def missing(ctx: Context, plan: Plan) -> list[str]:
-    """What Kurooto could get for a better terminal: kitty (Linux, macOS) and fish (Linux)."""
+    """What Kurooto could get for a better terminal: kitty and fish (Linux, macOS)."""
     out = []
     if plan.os != "windows" and plan.terminal != "kitty" and bool(ctx.settings.get("terminal.kitty", True)):
         out.append("kitty")
-    if plan.os == "linux" and str(ctx.settings.get("terminal.shell") or "auto") in ("auto", "fish"):
+    if plan.os != "windows" and str(ctx.settings.get("terminal.shell") or "auto") in ("auto", "fish"):
         if Path(plan.shell[0]).name != "fish":
             out.append("fish")
     return out
@@ -207,7 +209,7 @@ def offer(ctx: Context, plan: Plan, ask=input) -> Plan:
     if not keys or not sys.stdin.isatty():
         return plan
     what = " and ".join(keys)
-    mb = {"kitty": 45, "fish": 3}
+    mb = {"kitty": 45 if plan.os == "linux" else 78, "fish": 3 if plan.os == "linux" else 17}
     print(
         f"Kurooto Terminal looks its best with {what}. Get the official {what} into Kurooto's own folder now "
         f"(about {sum(mb[k] for k in keys)} MB to download; no admin, nothing else on your system changes)?"
@@ -240,7 +242,8 @@ def default_command(ctx: Context, what: str) -> int:
             print("Turn on Kurooto Terminal first (the dashboard's Features tab), then run this again.")
             return 1
         KurootoTerminal.files(ctx.settings, ctx.paths, ctx.workspace)
-        ok, msg = defaults.apply(ctx.plan().os, ctx.dir, *outside())
+        opens = str(ctx.settings.get("terminal.default_opens") or "shell")
+        ok, msg = defaults.apply(ctx.plan().os, ctx.dir, *outside(), opens=opens)
         if ok:
             ctx.settings.set("terminal.default", True)
         print(msg)
@@ -269,7 +272,7 @@ def main(a, ctx: Context | None = None) -> int:
         ok, lines = install(ctx, keys)
         print("\n".join(lines))
         return 0 if ok else 1
-    one = a.command is not None or bool(a.dir)
+    one = a.command is not None or bool(a.dir) or a.shell
     if a.print:
         print("\n".join(describe(plan)))
         if one:

@@ -1,10 +1,12 @@
 """A "Kurooto Terminal" entry in your app menu, made when you turn Kurooto Terminal on and removed when you turn it
 off (or uninstall Kurooto):
 
-    Linux    ~/.local/share/applications/kurooto-terminal.desktop (a terminal emulator entry: desktops list it with
-             your terminals, and xdg-terminal-exec can pick it as the default)
+    Linux    ~/.local/share/applications/kurooto-terminal.desktop (the whole window) and kurooto-shell.desktop
+             ("Kurooto Shell": one window with your shell in Kurooto's colours). Both are terminal emulator entries,
+             so desktops list them with your terminals and xdg-terminal-exec can pick either as the default.
     macOS    ~/Applications/Kurooto Terminal.app (Launchpad, Spotlight, the Dock)
-    Windows  Start menu → Kurooto Terminal (opens Windows Terminal with Kurooto's tabs)
+    Windows  Start menu → Kurooto Terminal (opens Windows Terminal with Kurooto's tabs); the shell alone is Windows
+             Terminal's "Kurooto" profile
 """
 
 from __future__ import annotations
@@ -21,6 +23,9 @@ DESKTOP = f"{APP_ID}.desktop"
 NAME = "Kurooto Terminal"
 COMMENT = "Your AI, your shell, Kurooto chat and its log, in one window"
 BUNDLE = "io.github.avtarfr.kurooto.terminal"
+SHELL_DESKTOP = "kurooto-shell.desktop"
+SHELL_NAME = "Kurooto Shell"
+SHELL_COMMENT = "Your shell in Kurooto's colours"
 
 _PS = r"""
 $s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:KUROOTO_LNK)
@@ -66,6 +71,11 @@ def where(os_: str, home: Path | None = None, env: dict | None = None) -> Path:
     return data_home(home, env) / "applications" / DESKTOP
 
 
+def shell_where(home: Path | None = None, env: dict | None = None) -> Path:
+    """Linux: the Kurooto Shell entry."""
+    return data_home(home, env) / "applications" / SHELL_DESKTOP
+
+
 # ----------------------------------------------------------------------------------------------- Linux
 def exec_quote(arg: str) -> str:
     """One argument for a desktop entry's Exec line (the Desktop Entry spec's quoting, then its string escapes)."""
@@ -76,15 +86,15 @@ def exec_quote(arg: str) -> str:
     return quoted.replace("\\", "\\\\")
 
 
-def desktop_entry(cmd: list[str]) -> str:
+def desktop_entry(cmd: list[str], name: str = NAME, comment: str = COMMENT) -> str:
     """A terminal emulator entry. The X-TerminalArg keys tell xdg-terminal-exec how to hand it a command, a title
     and a folder (`kurooto term -e CMD`, --title, --dir)."""
     return (
         "[Desktop Entry]\n"
         "Type=Application\n"
-        f"Name={NAME}\n"
+        f"Name={name}\n"
         "GenericName=Terminal\n"
-        f"Comment={COMMENT}\n"
+        f"Comment={comment}\n"
         f"Exec={' '.join(exec_quote(c) for c in cmd)}\n"
         "Icon=utilities-terminal\n"
         "Terminal=false\n"
@@ -149,10 +159,13 @@ def install(
                 f.chmod(0o755)
     else:
         path.write_text(desktop_entry(cmd), encoding="utf-8")
+        shell_where(home, env).write_text(desktop_entry([*cmd, "--shell"], SHELL_NAME, SHELL_COMMENT), encoding="utf-8")
     return path
 
 
 def remove(os_: str, home: Path | None = None, env: dict | None = None) -> Path | None:
+    if os_ == "linux":
+        shell_where(home, env).unlink(missing_ok=True)
     path = where(os_, home, env)
     if path.is_dir():
         shutil.rmtree(path, ignore_errors=True)

@@ -148,12 +148,13 @@ install.linux = { kind = "download-tar", into = "{app}/kitty", urls = { amd64 = 
 
 [fish]
 title = "fish"
-why = "Optional: the shell in Kurooto Terminal on Linux (the official single-file build, in Kurooto's own folder; your own fish is used if you have one). About 3 MB to download."
-size_gb = 0.02
+why = "Optional: the shell in Kurooto Terminal on Linux and macOS (the official build, in Kurooto's own folder; your own fish is used if you have one). About 3 MB to download on Linux, 17 MB on a Mac."
+size_gb = 0.06
 programs = ["fish"]
 dirs.windows = []
-dirs.macos = ["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]
+dirs.macos = ["{app}/fish.app/Contents/Resources/base/usr/local/bin", "/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]
 dirs.linux = ["{app}/fish/bin"]
 install.windows = { kind = "none", why = "Kurooto Terminal uses PowerShell on Windows." }
-install.macos = { kind = "none", why = "On a Mac, Kurooto Terminal uses fish if you have it (Homebrew: brew install fish), otherwise your own shell." }
+# the official app, unpacked (not installed system-wide): its fish runs from inside it, as the app's own launcher does
+install.macos = { kind = "download-zip", into = "{app}/fish.app", strip = 1, url = "https://github.com/fish-shell/fish-shell/releases/download/4.9.3/fish-4.9.3.app.zip", sha256 = "3619fa92d540ed0dff4816594429290550d21b92226e0523457e5f0242c5e9a8" }
 install.linux = { kind = "download-tar", into = "{app}/fish/bin", urls = { amd64 = "https://github.com/fish-shell/fish-shell/releases/download/4.9.3/fish-4.9.3-linux-x86_64.tar.xz", arm64 = "https://github.com/fish-shell/fish-shell/releases/download/4.9.3/fish-4.9.3-linux-aarch64.tar.xz" }, sha256s = { amd64 = "8f643d10ad1abb0ef7072764c01ceb5cf61b2d373fda400cf60f0bad69b7e095", arm64 = "57349f0111728c64b703a84e611aa97ff4d1fa8466385d64e67bd5bc3ffa49fc" } }

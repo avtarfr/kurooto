@@ -1,9 +1,11 @@
 """Opt-in: Kurooto Terminal as your default terminal, and its undo. Off unless you turn it on (Settings → Kurooto
 Terminal → default, or `kurooto term --default on`).
 
-    Linux    puts Kurooto Terminal first in xdg-terminal-exec's list (~/.config/xdg-terminals.list), which desktops
-             and apps that follow it use to open "a terminal". Your desktop's or window manager's own keys and
-             settings aren't changed: `kurooto term --default on` says how to bind a key yourself.
+    Linux    puts Kurooto Shell (one window, your shell in Kurooto's colours), or Kurooto Terminal (the whole
+             window) when terminal.default_opens is "layout", first in xdg-terminal-exec's list
+             (~/.config/xdg-terminals.list), which desktops and apps that follow it use to open "a terminal". Your
+             desktop's or window manager's own keys and settings aren't changed: `kurooto term --default on` says
+             how to bind a key yourself.
     Windows  sets Windows Terminal's default profile to Kurooto's (your shell in Kurooto's colours), after a backup
              of Windows Terminal's settings.json.
     macOS    has no default-terminal setting: Kurooto Terminal is in your Applications folder.
@@ -25,6 +27,12 @@ from kurooto.modules.terminal import launchers, wt
 
 RECORD = "default.json"
 LIST = "xdg-terminals.list"
+OURS = (launchers.SHELL_DESKTOP, launchers.DESKTOP)
+
+
+def entry(opens: str) -> str:
+    """The desktop entry a default-terminal launch opens: Kurooto Shell, or the whole window ("layout")."""
+    return launchers.DESKTOP if opens == "layout" else launchers.SHELL_DESKTOP
 
 
 def _sha(text: str) -> str:
@@ -42,7 +50,11 @@ def _write(path: Path, text: str) -> None:
 def _backup(state_dir: Path, f: Path) -> Path:
     d = state_dir / "backups"
     d.mkdir(parents=True, exist_ok=True)
-    dest = d / f"{f.name}.{time.strftime('%Y%m%d-%H%M%S')}"
+    stamp, n = time.strftime("%Y%m%d-%H%M%S"), 1
+    dest = d / f"{f.name}.{stamp}"
+    while dest.exists():  # never over an earlier backup
+        n += 1
+        dest = d / f"{f.name}.{stamp}-{n}"
     shutil.copy2(f, dest)
     return dest
 
@@ -54,14 +66,19 @@ def status(state_dir: Path) -> dict | None:
 
 def bind_hint() -> str:
     return (
-        "To open it with a key, bind one to `kurooto term` in your desktop's keyboard settings (GNOME: Settings → "
-        "Keyboard → Custom Shortcuts; KDE: System Settings → Default Applications → Terminal Emulator → Kurooto "
-        "Terminal), or in your window manager's own config."
+        "To open it with a key, bind one to `kurooto term --shell` (your shell) or `kurooto term` (the whole window) "
+        "in your desktop's keyboard settings (GNOME: Settings → Keyboard → Custom Shortcuts; KDE: System Settings → "
+        "Default Applications → Terminal Emulator → Kurooto Shell), or in your window manager's own config."
     )
 
 
 def apply(
-    os_: str, state_dir: Path, home: Path | None = None, env: dict | None = None, has_xdg_exec: bool | None = None
+    os_: str,
+    state_dir: Path,
+    home: Path | None = None,
+    env: dict | None = None,
+    has_xdg_exec: bool | None = None,
+    opens: str = "shell",
 ) -> tuple[bool, str]:
     state_dir = Path(state_dir)
     if os_ == "macos":
@@ -72,7 +89,7 @@ def apply(
         )
     if os_ == "windows":
         return _apply_windows(state_dir, home, env)
-    return _apply_linux(state_dir, home, env, has_xdg_exec)
+    return _apply_linux(state_dir, home, env, has_xdg_exec, entry(opens))
 
 
 def undo(state_dir: Path, home: Path | None = None, env: dict | None = None) -> tuple[bool, str]:
@@ -91,24 +108,26 @@ def undo(state_dir: Path, home: Path | None = None, env: dict | None = None) -> 
 
 
 # ----------------------------------------------------------------------------------------------- Linux
-def _apply_linux(state_dir: Path, home, env, has_xdg_exec) -> tuple[bool, str]:
+def _apply_linux(state_dir: Path, home, env, has_xdg_exec, first: str) -> tuple[bool, str]:
     f = launchers.config_home(home, env) / LIST
     old = f.read_text(encoding="utf-8", errors="replace") if f.is_file() else None
     rec = status(state_dir) or {}
-    lines = [ln for ln in (old or "").splitlines() if ln.strip() != launchers.DESKTOP]
-    new = "\n".join([launchers.DESKTOP, *lines]).rstrip("\n") + "\n"
+    lines = [ln for ln in (old or "").splitlines() if ln.strip() not in OURS]
+    new = "\n".join([first, *lines]).rstrip("\n") + "\n"
     if old != new:
-        backup = _backup(state_dir, f) if old is not None else None
-        _write(f, new)
-        if rec.get("os") != "linux":  # the first time: remember how it was before Kurooto
+        if rec.get("os") != "linux":  # the first time: keep how it was before Kurooto
+            backup = _backup(state_dir, f) if old is not None else None
             rec = {"os": "linux", "file": str(f), "existed": old is not None, "backup": str(backup or "")}
-        rec.update(wrote=_sha(new), since=time.time())
+        _write(f, new)
+        rec.update(wrote=_sha(new), entry=first, since=time.time())
         jsave(state_dir / RECORD, rec)
     elif rec.get("os") != "linux":
-        jsave(state_dir / RECORD, {"os": "linux", "file": str(f), "existed": True, "backup": "", "wrote": _sha(new)})
+        rec = {"os": "linux", "file": str(f), "existed": True, "backup": "", "wrote": _sha(new), "entry": first}
+        jsave(state_dir / RECORD, rec)
     if has_xdg_exec is None:
         has_xdg_exec = bool(shutil.which("xdg-terminal-exec"))
-    msg = f"Kurooto Terminal is now first in {f}."
+    name = launchers.SHELL_NAME if first == launchers.SHELL_DESKTOP else launchers.NAME
+    msg = f"{name} is now first in {f}."
     if not has_xdg_exec:
         msg += " That list is read by xdg-terminal-exec, which isn't installed here, so it may not take effect."
     return True, f"{msg} {bind_hint()}"
@@ -127,7 +146,7 @@ def _undo_linux(rec: dict) -> str:
         if not rec.get("existed"):
             f.unlink()
             return f"Removed {f} (Kurooto had made it)."
-    lines = [ln for ln in text.splitlines() if ln.strip() != launchers.DESKTOP]
+    lines = [ln for ln in text.splitlines() if ln.strip() not in OURS]
     if not any(ln.strip() for ln in lines) and not rec.get("existed"):
         f.unlink()
     else:
