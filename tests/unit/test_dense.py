@@ -40,7 +40,7 @@ def test_what_a_mac_or_windows_computer_cant_tell_is_left_out(tmp_path, monkeypa
     monkeypatch.delattr(vitals.psutil, "sensors_temperatures", raising=False)
     monkeypatch.delattr(vitals.psutil, "sensors_fans", raising=False)
     monkeypatch.setattr(vitals.psutil, "sensors_battery", lambda: None)
-    monkeypatch.setattr(vitals.psutil, "cpu_freq", lambda: None)
+    monkeypatch.setattr(vitals.psutil, "cpu_freq", lambda: None, raising=False)  # macOS on Apple chips has none
     monkeypatch.setattr(vitals.proc, "which", lambda name, *a: None)  # no nvidia-smi
     monkeypatch.setattr(vitals, "amdgpu", lambda: None)
     r = Sampler(tmp_path / "hw.json").sample(force=True)
