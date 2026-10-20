@@ -78,30 +78,35 @@ public class ListenService extends Service {
 
     static void channels(Context c) {
         if (SDK < 26) return;
-        NotificationManager nm = c.getSystemService(NotificationManager.class);
-        try { nm.deleteNotificationChannel("calls"); } catch (Exception ignored) {}
-        NotificationChannel svc = new NotificationChannel(CH_SERVICE, "Listening for calls", NotificationManager.IMPORTANCE_MIN);
-        svc.setShowBadge(false);
-        NotificationChannel call = new NotificationChannel(CH_CALL, "Calls from Kurooto", NotificationManager.IMPORTANCE_HIGH);
-        Uri ringtoneUri = RingtoneManager.getActualDefaultRingtoneUri(c, RingtoneManager.TYPE_RINGTONE);
-        if (ringtoneUri == null) ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
-        if (ringtoneUri == null) ringtoneUri = android.provider.Settings.System.DEFAULT_RINGTONE_URI;
-        AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build();
-        call.setSound(ringtoneUri, audioAttributes);
-        call.enableVibration(true);
-        call.setVibrationPattern(new long[]{0, 800, 600, 800, 1600});
-        call.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-        call.setBypassDnd(true);
-        NotificationChannel msg = new NotificationChannel(CH_MSG, "Messages", NotificationManager.IMPORTANCE_HIGH);
-        NotificationChannel ask = new NotificationChannel(CH_ASK, "Questions and approvals", NotificationManager.IMPORTANCE_HIGH);
-        ask.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
-        nm.createNotificationChannel(svc);
-        nm.createNotificationChannel(call);
-        nm.createNotificationChannel(msg);
-        nm.createNotificationChannel(ask);
+        try {
+            NotificationManager nm = c.getSystemService(NotificationManager.class);
+            if (nm == null) return;
+            try { nm.deleteNotificationChannel("calls"); } catch (Throwable ignored) {}
+            NotificationChannel svc = new NotificationChannel(CH_SERVICE, "Listening for calls", NotificationManager.IMPORTANCE_MIN);
+            svc.setShowBadge(false);
+            NotificationChannel call = new NotificationChannel(CH_CALL, "Calls from Kurooto", NotificationManager.IMPORTANCE_HIGH);
+            Uri ringtoneUri = android.provider.Settings.System.DEFAULT_RINGTONE_URI;
+            try {
+                Uri u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                if (u != null) ringtoneUri = u;
+            } catch (Throwable ignored) {}
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build();
+            call.setSound(ringtoneUri, audioAttributes);
+            call.enableVibration(true);
+            call.setVibrationPattern(new long[]{0, 800, 600, 800, 1600});
+            call.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+            NotificationChannel msg = new NotificationChannel(CH_MSG, "Messages", NotificationManager.IMPORTANCE_HIGH);
+            NotificationChannel ask = new NotificationChannel(CH_ASK, "Questions and approvals", NotificationManager.IMPORTANCE_HIGH);
+            ask.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            nm.createNotificationChannel(svc);
+            nm.createNotificationChannel(call);
+            nm.createNotificationChannel(msg);
+            nm.createNotificationChannel(ask);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override public void onCreate() {
@@ -275,8 +280,16 @@ public class ListenService extends Service {
         try {
             String chosen = Prefs.tone(this, alarm);
             int type = alarm ? RingtoneManager.TYPE_ALARM : RingtoneManager.TYPE_RINGTONE;
-            Uri uri = chosen.isEmpty() ? RingtoneManager.getActualDefaultRingtoneUri(this, type) : Uri.parse(chosen);
-            if (uri == null) uri = RingtoneManager.getDefaultUri(type);
+            Uri uri = null;
+            try {
+                uri = chosen.isEmpty() ? RingtoneManager.getActualDefaultRingtoneUri(this, type) : Uri.parse(chosen);
+            } catch (Throwable ignored) {}
+            if (uri == null) {
+                try { uri = RingtoneManager.getDefaultUri(type); } catch (Throwable ignored) {}
+            }
+            if (uri == null) {
+                uri = alarm ? android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI : android.provider.Settings.System.DEFAULT_RINGTONE_URI;
+            }
             player = new MediaPlayer();
             player.setAudioAttributes(new AudioAttributes.Builder()
                     .setUsage(alarm ? AudioAttributes.USAGE_ALARM : AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
