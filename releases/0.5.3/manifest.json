@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.3",
+  "notes": "0.5.3: fix Android ringtone OEM crash, sync status API handler, setup wizard restore retention, wake intent disambiguation, notification channel sound and banner.",
+  "created": 1792525754.1873374,
+  "files": {
+   "kurooto-0.5.3.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.3/kurooto-0.5.3.tar.gz",
+    "sha256": "f763059a9af776529e45f3f83f234829dd627f23d8cb9c0881080bbfec57a144",
+    "size": 1633453
+   }
+  }
+ },
+ "sig": "A9rXgccGfoASsm+iwEcX01lAr2T1icOvYE8NfqXiBlr1oLTQZ8iqlJNSyIYb0G5RVSMJztOGhHW2KV50Mf1MBg=="
+}
