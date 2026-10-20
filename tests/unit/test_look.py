@@ -109,7 +109,15 @@ def nothing_runs(argv):
     raise AssertionError(f"ran {argv}")
 
 
-def test_linux_reads_best_source_first(tmp_path):
+@pytest.fixture
+def on_linux(monkeypatch):
+    """The Linux readers, run the same on any computer: Linux as the platform, nothing real to run or read."""
+    monkeypatch.setattr(syscolors.sys, "platform", "linux")
+    monkeypatch.setattr(syscolors, "_run", nothing_runs)
+    monkeypatch.setattr(syscolors, "_reg", lambda path, name: None)
+
+
+def test_linux_reads_best_source_first(tmp_path, on_linux):
     env = {"XDG_CURRENT_DESKTOP": "Hyprland"}
     assert syscolors.read("linux", tmp_path, env, run=lambda a: None) is None  # nothing set: the default palette
     place(tmp_path, ".config/gtk-4.0/gtk.css", "gtk.css")
@@ -120,10 +128,10 @@ def test_linux_reads_best_source_first(tmp_path):
     assert syscolors.read("linux", tmp_path, env, run=nothing_runs).source == "pywal"
     place(tmp_path, ".local/state/quickshell/user/generated/colors.json", "matugen-flat-dark.json")
     c = syscolors.read("linux", tmp_path, env, run=nothing_runs)
-    assert c.source == "matugen" and c.where.endswith("quickshell/user/generated/colors.json")
+    assert c.source == "matugen" and Path(c.where) == tmp_path / ".local/state/quickshell/user/generated/colors.json"
 
 
-def test_linux_xdg_dirs_and_end4_scss_mode(tmp_path):
+def test_linux_xdg_dirs_and_end4_scss_mode(tmp_path, on_linux):
     state = tmp_path / "state"
     place(state, "quickshell/user/generated/colors.json", "matugen-roles.json")
     place(state, "quickshell/user/generated/material_colors.scss", "material_colors.scss")  # says dark
@@ -131,7 +139,7 @@ def test_linux_xdg_dirs_and_end4_scss_mode(tmp_path):
     assert c.mode == "dark" and c.accent == "#d0bcff"
 
 
-def test_gnome_only_on_gnome_and_mode_from_gsettings(tmp_path):
+def test_gnome_only_on_gnome_and_mode_from_gsettings(tmp_path, on_linux):
     g = table("gsettings.txt")
     seen = []
 
@@ -157,7 +165,7 @@ def test_windows_and_macos_readers():
     assert (c.source, c.accent, c.mode) == ("macos", "#bf5af2", "dark")
 
 
-def test_a_broken_source_never_breaks_anything(tmp_path):
+def test_a_broken_source_never_breaks_anything(tmp_path, on_linux):
     place(tmp_path, ".local/state/quickshell/user/generated/colors.json", "kdeglobals")  # not JSON
     (tmp_path / ".cache" / "wal").mkdir(parents=True)
     (tmp_path / ".cache" / "wal" / "colors.json").write_text("[1, 2", encoding="utf-8")
