@@ -7,10 +7,17 @@ wakes you up in the morning. You choose the AI behind it, and every feature is o
 ## Showcase
 
 <p align="center">
-  <img src="docs/media/systems-loop.webp" width="720" alt="The dashboard's Systems view: each feature that's on is a cell around a beating core labelled KUROOTO, with a heartbeat trace behind it; pulses run along the lines between the core and the cells as messages, reminders and AI answers come and go.">
+  <img src="docs/media/systems-loop.webp" width="720" alt="The dashboard's Systems view: each feature that's on is a cell around a beating core labelled KUROOTO, with a heartbeat trace behind it; pulses run along the lines between the core and the cells as messages, reminders and AI answers come and go. Recent events, the AI's latest answers, today and what's due sit in the corners.">
 </p>
 
-![The dashboard: this computer's status on the left, the features as living cells in the middle, the notes and their links as a graph on the right, and a live activity feed below.](docs/media/dashboard.webp)
+![The dashboard on a full screen: this computer on the left (processor, memory, graphics card, network, disks, processes, study today, projects), Kurooto's features as cells around a beating core in the middle, the notes and their links on the right, and a terminal below where Sam asks what's due this week and gets an AI answer.](docs/media/dashboard.webp)
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/dashboard-system.webp" alt="The same dashboard in this computer's colours: blues taken from the desktop's wallpaper colours instead of Kurooto's own greens."></td>
+    <td width="50%"><img src="docs/media/top.webp" alt="kurooto top in a terminal: the processor, memory, graphics card, network, disks and processes on the left; on the right Kurooto running, today, what's due, AI requests, what's next, study today, projects and recent events."></td>
+  </tr>
+</table>
 
 <p align="center">
   <img src="docs/media/chat-example-1.webp" width="32%" alt="Example chat: Sam asks for a reminder in two minutes and what's due this week, then logs an hour of study; the reminder arrives with +10 min and +1 h buttons.">
@@ -20,17 +27,17 @@ wakes you up in the morning. You choose the AI behind it, and every feature is o
 
 <table>
   <tr>
-    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/media/setup-computer-light.webp"><img src="docs/media/setup-computer.webp" alt="The setup wizard's Your computer step: the graphics card, memory and free space it found, the local models it recommends, and what to do on battery."></picture></td>
-    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/media/morning-light.webp"><img src="docs/media/morning.webp" alt="The morning page: today's plan from the daily note, next to the day's classes, calendar, what's due soon, check-ins and an open question."></picture></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/media/setup-computer-light.webp"><img src="docs/media/setup-computer.webp" alt="The setup page's Your computer step, with the steps listed down the left: the graphics card, memory and free space it found, the local models it recommends, what to do on battery, and the colours to use."></picture></td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/media/morning-light.webp"><img src="docs/media/morning.webp" alt="The morning page: today's plan from the daily note, next to the day's classes, calendar, what's due soon and check-ins."></picture></td>
   </tr>
 </table>
 
 More: [setup: welcome](docs/media/setup-welcome.webp) · [setup: AI](docs/media/setup-ai.webp) ·
 [setup: about you](docs/media/setup-about-you.webp) · [setup: features](docs/media/setup-features.webp) ·
-[terminals](docs/media/dashboard-terminal.webp) · [research sources](docs/media/dashboard-research.webp) ·
-[features tab](docs/media/dashboard-features.webp) · [phone: call](docs/media/phone-call.webp) ·
-[phone: inbox](docs/media/phone-inbox.webp) · [phone: pairing](docs/media/phone-pair.webp) ·
-[the Systems view as video](docs/media/systems-loop.mp4). All of it is a demo with made-up data: Sam, a student taking
+[setup on a phone](docs/media/setup-phone.webp) · [the dashboard's terminal](docs/media/dashboard-terminal.webp) ·
+[features tab](docs/media/dashboard-features.webp) · [research sources](docs/media/dashboard-research.webp) ·
+[phone: call](docs/media/phone-call.webp) · [phone: inbox](docs/media/phone-inbox.webp) ·
+[phone: pairing](docs/media/phone-pair.webp) · [the Systems view as video](docs/media/systems-loop.mp4). All of it is a demo with made-up data: Sam, a student taking
 Linear Algebra, Organic Chemistry and Signals & Systems.
 
 ## Install
