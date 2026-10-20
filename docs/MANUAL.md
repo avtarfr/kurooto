@@ -1140,6 +1140,10 @@ path. The folder may have:
 | `prompts/*.md` | extra prompts; `/prompts` lists them as `add-ons/<name>` |
 | `settings.json` | default settings laid under yours, e.g. `{"checkins": {"evening": "21:30"}}`; what you set yourself still wins (it can't turn features on) |
 
+A feature can name programs that are its own work, including ones Kurooto didn't start: `processes = ("my-bot",
+"bots/reply.js")` on the class (a program's name, or a piece of its command line). Its cell on the dashboard and its
+line in `kurooto top` then show their cpu, memory, uptime and threads, and turn grey ("not running") when none runs.
+
 **This runs your own code:** the Python files run inside Kurooto with its access to this computer. Only use add-ons you
 wrote or trust. `overlay.code` off keeps the skills, prompts and settings and skips the Python. A broken add-on never
 stops Kurooto: a file that fails to load is skipped, and an add-on that fails while running is cut off from that one
@@ -1217,6 +1221,32 @@ that pulses when something happens; NOTES is a map of your notes and their links
 (your call line, pairing, a test ring), **About you** (your profile, to edit; `/#about` opens it), **Settings**
 (every setting, with what it means), and **Terminals** (when the [Terminals](#terminals) feature is on).
 
+**Two layouts** (Settings → `look.layout`). **dense**, the default on a screen 1280 px wide or more, is one full-screen
+board with thin borders and each pane's name set into its top line:
+- **STATUS**, down the left, is a monitor like btop, the same as `kurooto top`: the processor (a history graph, every
+  core with its own short graph, speed, load, temperatures, fans), memory (used, cached, available, swap), the
+  graphics card (use, its memory, temperature, power, a graph), the network (down above the line, up below, totals),
+  disks (how full; reads and writes per second), the battery, the busiest processes (click **cpu** or **mem** to
+  sort; Kurooto's own are marked ✦), **study today** (with the Study tracker on) and **projects**: your git folders
+  with each one's last commit, what's not pushed yet and what's changed (list them in `look.projects`; Research's
+  repositories otherwise). Its header has the time, how long the computer's been up, today's events, the battery,
+  and pause, off and setup.
+- **SYSTEMS** keeps the cells round the core, with the hours of the day on the ring and four corners: recent events,
+  your AI's latest requests (with the local models and what's scheduled next), **today** (classes, calendar,
+  check-ins, calls, focus and no-call holds) and **due** (overdue ones in red). A feature that runs programs of its
+  own shows their cpu, memory, uptime and threads on its cell (grey and dashed when none is running); the others
+  show what they did last and when they run next.
+- **NOTES** adds your folders with their note counts, whether anything was touched this hour, and the notes you
+  edited last.
+- **TERMINAL**, below, has its tabs in its border: your AI's program, a shell and the log (with Terminals on), and
+  **kurooto**, plain English as on Telegram, right in the page (`help`, `check`, `jobs` and `clear` are its own
+  words; ↑ and ↓ bring back what you typed). The other pages (activity, jobs, schedule, features, phone, research,
+  you, settings) are in the same border. **Alt+1**, **Alt+2**… switch the terminal tabs; **Alt+/** (or `/`) finds
+  a note.
+
+**roomy** is the earlier layout, with bigger panes and type; a narrower window gets it by itself. `look.layout =
+roomy` keeps it everywhere.
+
 The **morning page** (`http://127.0.0.1:8770/morning`) shows today's plan from your daily note, with your classes,
 calendar, what's due, check-ins and open questions. The alarm opens it.
 
@@ -1224,11 +1254,17 @@ Only your computer can open the dashboard; it needs a key that only this compute
 can be signed in to one computer at once, it also checks that the page and every request come from your own user
 account, and refuses them when it can't tell.
 
-**In a terminal:** `kurooto top` is a status board in any terminal (Windows 10 and later, macOS, Linux): this computer
-(processor and each core, memory, graphics card, disks, battery) and Kurooto (running or not, the battery mode, open
-questions, notes sync and backup age, the features on, AI requests, what's scheduled next, recent events). `q` quits,
-`r` refreshes. `kurooto top --once` prints one screen. It only reads, so it's safe while Kurooto works. `kurooto logs
--f` follows Kurooto's log.
+**In a terminal:** `kurooto top` is the same board in any terminal (Windows 10 and later, macOS, Linux), laid out like
+btop: this computer (a processor history graph and every core, speed, load, temperatures and fans, memory and swap,
+the graphics card, the network's down and up graphs, disks, the battery, the busiest processes) beside Kurooto
+(running or not, the battery mode, the call line and its heartbeat, Kurooto's own process and the features' programs,
+today, what's due, AI requests, what's next, study today, projects, recent events), with lights for Kurooto, Telegram
+and the call line, today's event count and a trace that beats with each event. `q` quits, `r` refreshes, `c` and `m`
+sort the processes by cpu or memory. `kurooto top --once` prints one screen. Its colours are your palette, in true
+colour where the terminal has it (`NO_COLOR=1` turns them off). What a computer can't tell is left out: most Windows
+and Mac computers give no temperatures or fans, and the graphics card's live figures need NVIDIA's `nvidia-smi` (or
+an AMD card on Linux); a laptop's sleeping NVIDIA card isn't woken to ask. It only reads, so it's safe while Kurooto
+works. `kurooto logs -f` follows Kurooto's log.
 
 ## Taking your laptop with you (battery, pause, off)
 

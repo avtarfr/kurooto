@@ -615,7 +615,7 @@ def disk_box(m: dict, w: int, st: Style, h: int | None = None) -> list[str]:
     for d in (m.get("disks") or [])[:4]:
         mount = d["mount"] if len(d["mount"]) <= 14 else st.ell + d["mount"][-(14 - len(st.ell)) :]
         lines.append(
-            f"{mount:<14} {st.bar(d['pct'], max(4, w - 34))} {st.pct(d['pct'])} "
+            f"{mount:<14} {st.bar(d['pct'], max(4, w - 36))} {st.pct(d['pct'])} "
             + st.dim(f"{_gb(d['total'] - d['used'])} free")
         )
     b = m.get("battery")

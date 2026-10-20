@@ -1,6 +1,9 @@
-"""What the dashboard shows, kept fresh: the machine (psutil), each feature's activity, the AI jobs, what's
-scheduled, and the notes graph (notes and their [[links]] in your notes folder). Pushed to open pages over a
-server-sent-events stream; nothing is computed while no page is open."""
+"""What the dashboard shows, kept fresh: the machine (core/vitals.py: processor, memory, graphics card, network,
+disks, battery, processes, each with a short history), each feature's activity, the AI jobs, what's scheduled, the
+notes graph (notes and their [[links]] in your notes folder), and Kurooto's side of the dense board (Vitals.board():
+each feature's own programs, the call line, today, what's due, the AI's corner, study today, projects, today's events;
+`kurooto top` reads it from GET /api/board). Pushed to open pages over a server-sent-events stream; nothing is
+computed while no page is open."""
 
 from __future__ import annotations
 

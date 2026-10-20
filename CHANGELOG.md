@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+- The dashboard's new **dense** layout, the default on screens 1280 px wide or more: one full-screen board with each
+  pane's name in its border; STATUS is a btop-like monitor (history graphs, every core, memory breakdown, graphics
+  card, network, disks, processes with Kurooto's own marked, study today, projects); SYSTEMS has today, what's due,
+  the AI's corner and recent events round the cells, the hours on the ring, and each feature's own programs on its
+  cell; NOTES shows folders and recent edits; the terminal below has its tabs and every other page in its border, and
+  a **kurooto** tab for plain English without the Terminals feature. `look.layout = roomy` keeps the earlier layout,
+  which narrower windows get by themselves. `look.projects` lists the git folders the board follows.
+- `kurooto top` is laid out like btop, with the same figures as the dashboard: history graphs, every core, speed,
+  temperatures and fans where the computer has them, memory and swap, the graphics card, network, disks, battery,
+  processes (sort with `c` / `m`), and Kurooto's features, call line, today, what's due, study and projects.
+- Add-ons can name programs a feature watches (`processes` on the feature): their cpu, memory and uptime show on the
+  dashboard and in `kurooto top`, and the cell turns grey when none is running.
+
 ## 0.2.0 (unreleased)
 Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) has the detail.
 

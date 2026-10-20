@@ -679,7 +679,7 @@ function renderBoard(m) {
   if (g && !g.asleep) {
     $("#gpu-meta").textContent = (g.name || "").replace(/^NVIDIA (GeForce )?/, "");
     $("#gpu-body").innerHTML = mrow("use", pct(g.util), g.util) + mrow("vram", `${bytes(g.mem_used)}/${bytes(g.mem_total)}`, g.mem_total ? g.mem_used / g.mem_total : 0) +
-      `<div class="row">${g.temp != null ? temp(g.temp) : ""}${g.watts != null ? ` <span class="v">${g.watts.toFixed(0)}W</span>${g.watts_max ? `<span class="k">/${g.watts_max.toFixed(0)}W</span>` : ""}` : ""}</div>`;
+      `<div class="row">${g.temp != null ? temp(g.temp) : ""}${g.watts != null ? `<span><span class="v">${g.watts.toFixed(0)}W</span>${g.watts_max ? `<span class="k">/${g.watts_max.toFixed(0)}W</span>` : ""}</span>` : ""}</div>`;
     $("#g-gpu").parentElement.classList.remove("hidden");
     dotGraph($("#g-gpu"), H.gpu || []);
   } else if (g || known) {
