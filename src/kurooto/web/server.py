@@ -36,8 +36,9 @@ register_defaults("web", {"port": 8770})
 register_defaults("look", {"palette": "kuro", "theme_file": ""})  # the pages' colours (core/palette.py)
 PALETTES = ("kuro", "rose", "system")
 # the dashboard's layout: dense (one full-screen board, on screens 1280 px wide or more; narrower ones get roomy) or
-# roomy; projects: folders of git repositories its PROJECTS box shows (empty: Research's repositories)
-register_defaults("look", {"layout": "dense", "projects": []})
+# roomy; projects: folders of git repositories its PROJECTS box shows (empty: Research's repositories); panes: the dense
+# board's hidden panes ("status", "systems", "notes", "terminal"); hidden_features: features off the Features page
+register_defaults("look", {"layout": "dense", "projects": [], "panes": [], "hidden_features": []})
 LAYOUTS = ("dense", "roomy")
 CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; "

@@ -2146,11 +2146,31 @@ board with thin borders and each pane's name set into its top line:
 - **TERMINAL**, below, has its tabs in its border: your AI's program, a shell and the log (with Terminals on), and
   **kurooto**, plain English as on Telegram, right in the page (`help`, `check`, `jobs` and `clear` are its own
   words; ↑ and ↓ bring back what you typed). The other pages (activity, jobs, schedule, features, phone, research,
-  you, settings) are in the same border. **Alt+1**, **Alt+2**… switch the terminal tabs; **Alt+/** (or `/`) finds
-  a note.
+  you, settings) are in the same border and open over the whole board: **Alt** and the page's underlined letter
+  (**Alt+F** features, **Alt+S** settings, **Alt+A** activity, **Alt+J** jobs, **Alt+C** schedule, **Alt+P** phone,
+  **Alt+R** research, **Alt+Y** you) opens one, and **Esc** goes back. Inside a terminal those keys stay the
+  terminal's (Alt+F is a word forward in a shell). **Alt+1**, **Alt+2**… switch the terminal tabs; **Alt+/** (or
+  `/`) finds a note.
+
+**Bigger panes.** Click a pane's name (⤢) or double-click its border and it fills the board; **Esc** or its name
+again brings the others back. **panes**, in the board's top-right corner, hides STATUS, SYSTEMS, NOTES or TERMINAL
+(one always stays) and the others take the room; it lists the pages and their keys too. What's hidden is the setting
+`look.panes` (e.g. `["status"]`), so every browser shows the same. *Undo:* panes → show them all, or empty
+`look.panes`.
+
+**Search.** Features and Settings have a search box at the top (`/` or **Ctrl+F** while the page is open; Ctrl+F
+again is the browser's own; **Esc** empties it). It filters as you type, in any case: a feature by its name, what it
+does, its privacy line and its settings (a card found only by a setting says which), a setting by its section, name,
+help and value. The words it found are marked, with a count, or it says nothing matches.
+
+**Hiding features.** A feature that's off has **hide** on its card: it leaves the Features page, and nothing else
+changes (Telegram, the setup page and the API still list it; a feature that's on always shows). **Show hidden (N)**,
+at the bottom, lists them with **Unhide**, and a search still finds them, marked *hidden*. The list is the setting
+`look.hidden_features`. *Undo:* Unhide, or empty `look.hidden_features`.
 
 **roomy** is the earlier layout, with bigger panes and type; a narrower window gets it by itself. `look.layout =
-roomy` keeps it everywhere.
+roomy` keeps it everywhere. It always shows every pane, with the pages in its tabs (the Alt keys, the search and
+hiding features work there too).
 
 The **morning page** (`http://127.0.0.1:8770/morning`) shows today's plan from your daily note, with your classes,
 calendar, what's due, check-ins and open questions. The alarm opens it.

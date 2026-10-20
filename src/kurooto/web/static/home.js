@@ -6,8 +6,9 @@
 // board: thin borders with each pane's name in its top line, STATUS down the left as a btop-like monitor (processor,
 // memory, graphics card, network, disks, processes, study today, projects), SYSTEMS with today, what's due, the AI's
 // corner and recent events round the cells, NOTES with its folders and latest edits, and a terminal below whose
-// border also holds the other tabs (Alt+1… switches terminals, Alt+/ finds a note). "roomy" is the earlier
-// layout with bigger type, used by itself on narrower screens.
+// border also holds the other tabs (Alt+1… switches terminals, Alt+/ finds a note). Any pane can fill the board,
+// the "panes" menu hides some, and the pages (features, settings…) open over the whole board (Alt+F, Alt+S…).
+// "roomy" is the earlier layout with bigger type, used by itself on narrower screens.
 "use strict";
 const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s) => document.querySelector(s);
@@ -47,6 +48,139 @@ let LIGHT = false; // lighter drawing on modest computers (hardware profile "lig
 const WANT = () => (document.body.dataset.layout === "roomy" ? "roomy" : "dense");
 let DENSE = false;
 const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && window.innerHeight >= 600;
+
+// ------------------------------------------------------------------------------------------------ panes (dense)
+// Any pane can fill the board: click its name or double-click its border (⤢); Esc or its name again brings the others
+// back (⤡). The "panes" menu in the board's top-right corner hides STATUS, SYSTEMS, NOTES or TERMINAL (one always
+// stays) and the grid reflows to use the room; what's hidden is the setting look.panes, so it follows you to other
+// browsers. The pages (activity … settings) open over the whole board, Alt and the underlined letter opens one, and
+// Esc goes back. Roomy (narrow windows) shows every pane, with the pages in its tabs.
+const PANES = { status: "#pane-status", systems: "#pane-systems", notes: "#pane-vault", terminal: "#pane-tabs" };
+const PKEY = { activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
+let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
+let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_features; only ones that are off)
+const inTerm = (el) => !!(el && el.closest && el.closest(".xterm")); // a terminal keeps its own keys
+const cleanHide = (v) => { const s = new Set((Array.isArray(v) ? v : []).filter((p) => PANES[p])); return s.size >= Object.keys(PANES).length ? new Set() : s; };
+const hideList = () => Object.keys(PANES).filter((p) => HIDE.has(p));
+const shownPanes = () => new Set(Object.keys(PANES).filter((p) => (MAX ? p === MAX : !HIDE.has(p))));
+const paneShown = (p) => !DENSE || (!PAGE && shownPanes().has(p)); // on screen (not hidden, filled over or under a page)
+// the grid for the panes that show: STATUS down the left; SYSTEMS and NOTES on top and TERMINAL below, on the right
+function paneGrid(vis) {
+  const st = vis.has("status"), top = ["systems", "notes"].filter((p) => vis.has(p)), rows = [];
+  if (top.length) rows.push(top.length === 2 ? top : [top[0], top[0]]);
+  if (vis.has("terminal")) rows.push(["tabs", "tabs"]);
+  if (!rows.length) return { areas: '"status"', cols: "minmax(0, 1fr)", rows: "minmax(0, 1fr)" };
+  return { areas: rows.map((r) => `"${st ? "status " : ""}${r.join(" ")}"`).join(" "),
+    cols: `${st ? "minmax(440px, 34%) " : ""}1fr 1fr`, rows: rows.length === 2 ? "55% minmax(0, 1fr)" : "minmax(0, 1fr)" };
+}
+function applyPanes() {
+  const grid = $(".grid"), vis = shownPanes();
+  for (const [p, sel] of Object.entries(PANES)) {
+    const el = $(sel);
+    el.classList.toggle("gone", DENSE && !vis.has(p)); el.classList.toggle("maxed", DENSE && MAX === p); el.classList.remove("tr");
+  }
+  $("#pane-page").classList.toggle("hidden", !(DENSE && PAGE)); grid.classList.toggle("paged", DENSE && !!PAGE);
+  if (!DENSE) { grid.style.gridTemplateAreas = grid.style.gridTemplateColumns = grid.style.gridTemplateRows = ""; closeMenu(); return; }
+  const g = paneGrid(vis);
+  Object.assign(grid.style, { gridTemplateAreas: g.areas, gridTemplateColumns: g.cols, gridTemplateRows: g.rows });
+  // the pane in the board's top-right corner leaves room in its border for the panes menu
+  $(PANES[["notes", "systems", "terminal", "status"].find((p) => vis.has(p))]).classList.add("tr");
+  grid.style.setProperty("--ctlw", `${$("#panes-ctl").offsetWidth}px`);
+  renderMenu(); renderNav();
+  requestAnimationFrame(refit);
+}
+function maxPane(p) { MAX = MAX === p || !PANES[p] ? null : p; applyPanes(); }
+function savePanes() {
+  try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ }
+  api("settings", { key: "look.panes", value: hideList() }).catch(() => {});
+}
+function setHidden(p, hide) {
+  const next = new Set(HIDE); if (hide) next.add(p); else next.delete(p);
+  if (next.size >= Object.keys(PANES).length) { renderMenu(); return; } // one pane always stays
+  HIDE = next; MAX = null; savePanes(); applyPanes();
+}
+// the page's name with its key underlined ("s<u>c</u>hedule"), for the borders and the menu
+const mnem = (k) => { const l = DLABEL[k], i = l.indexOf(PKEY[k]); return i < 0 ? esc(l) : `${esc(l.slice(0, i))}<u>${esc(l[i])}</u>${esc(l.slice(i + 1))}`; };
+const pageTabs = () => Object.keys(DLABEL).map((k) => `<button class="tab${PAGE === k ? " on" : ""}" data-dt="${k}" title="Alt+${PKEY[k].toUpperCase()}">${mnem(k)}</button>`).join("");
+function renderMenu() {
+  const m = $("#panes-menu"); if (m.classList.contains("hidden")) return;
+  const left = Object.keys(PANES).filter((p) => !HIDE.has(p)).length, NAMES = { status: "STATUS", systems: "SYSTEMS", notes: "NOTES", terminal: "TERMINAL" };
+  m.innerHTML = `<div class="mh">panes</div>${Object.entries(NAMES).map(([p, l]) => `<label><input type="checkbox" data-pane="${p}"${HIDE.has(p) ? "" : " checked"}${!HIDE.has(p) && left === 1 ? ' disabled title="one pane always stays"' : ""}> ${l}${MAX === p ? ' <span class="d">fills the board</span>' : ""}</label>`).join("")}
+    ${MAX || HIDE.size ? '<button data-all="1">show them all</button>' : ""}<p class="d">Click a pane's name or double-click its border and it fills the board; Esc brings the others back.</p>
+    <div class="mh">pages</div>${Object.keys(DLABEL).map((k) => `<button data-pg="${k}"><span>${mnem(k)}</span><span class="d">alt+${PKEY[k]}</span></button>`).join("")}`;
+}
+function openMenu(open) {
+  const m = $("#panes-menu"); m.classList.toggle("hidden", !open);
+  $("#panes-btn").setAttribute("aria-expanded", String(open));
+  if (open) renderMenu();
+}
+const closeMenu = () => openMenu(false);
+$("#panes-btn").onclick = () => openMenu($("#panes-menu").classList.contains("hidden"));
+$("#panes-menu").onchange = (e) => { if (e.target.dataset.pane) setHidden(e.target.dataset.pane, !e.target.checked); };
+$("#panes-menu").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.all) { HIDE = new Set(); MAX = null; savePanes(); applyPanes(); }
+  if (b.dataset.pg) openPage(b.dataset.pg);
+};
+document.addEventListener("click", (e) => { if (!e.target.closest("#panes-ctl")) closeMenu(); });
+for (const p of ["status", "systems", "notes"]) $(`${PANES[p]} > h3 .t`).addEventListener("click", () => { if (DENSE) maxPane(p); });
+// a double-click on (or right by) a pane's border: it fills the board, or comes back
+document.addEventListener("dblclick", (e) => {
+  if (!DENSE || inTerm(e.target) || e.target.closest("input, textarea, select, button, .page, .chat-log")) return;
+  const near = (el) => {
+    const r = el.getBoundingClientRect(), x = e.clientX, y = e.clientY;
+    if (x < r.left - 9 || x > r.right + 9 || y < r.top - 11 || y > r.bottom + 9) return Infinity;
+    return Math.min(Math.abs(x - r.left), Math.abs(x - r.right), Math.abs(y - r.top), Math.abs(y - r.bottom));
+  };
+  if (PAGE) { if (near($("#pane-page")) <= 8) closePage(); return; }
+  let best = null, bd = 8.01;
+  for (const p of shownPanes()) { const d = near($(PANES[p])); if (d < bd) { bd = d; best = p; } }
+  if (best) { getSelection().removeAllRanges(); maxPane(best); }
+});
+// the pages, over the whole board (roomy: its tabs)
+function openPage(name) {
+  if (!DLABEL[name]) return;
+  if (!DENSE) { showTab(name); return; }
+  closeMenu();
+  const host = $("#ov-body");
+  if (PAGE !== name) { host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = ""; host.scrollTop = 0; }
+  PAGE = name;
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); // not the terminal below
+  applyPanes(); renderPageNav(); renderPage(name, host);
+}
+function closePage() {
+  if (!PAGE) return;
+  PAGE = null;
+  const host = $("#ov-body"); host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = "";
+  applyPanes();
+  if (dtab === "kurooto" && paneShown("terminal") && $("#chat-input")) $("#chat-input").focus({ preventScroll: true });
+}
+function renderPageNav() {
+  const nav = $("#page-nav"), find = PAGE === "features" || PAGE === "settings";
+  nav.innerHTML = `<span class="t" title="back to the board (Esc)">${esc((TABS[PAGE] || PAGE).toUpperCase())}<i class="mx"></i></span><span class="rule">─</span><span class="pages">${pageTabs()}</span><span class="rule">─</span>` +
+    `<span class="meta">${find ? "/ or ctrl+f search · " : ""}alt+f features · alt+s settings</span><span class="rule">─</span><button class="tab" data-close="1">esc back</button>`;
+  nav.onclick = (e) => {
+    if (e.target.closest(".t, [data-close]")) { closePage(); return; }
+    const b = e.target.closest("[data-dt]"); if (b) openPage(b.dataset.dt);
+  };
+}
+// find a note (Alt+/ or /): the NOTES pane comes to the front first
+function findNote() {
+  if (DENSE) { if (PAGE) closePage(); if (!paneShown("notes")) { MAX = HIDE.has("notes") ? "notes" : null; applyPanes(); } }
+  mind.openSearch();
+}
+// what's hidden comes from Settings (look.panes), so it's the same in every browser; this browser remembers it too,
+// so the board doesn't flash every pane while the setting loads
+function loadLook() {
+  try { HIDE = cleanHide(JSON.parse(localStorage.getItem("kurooto.dash.panes") || "[]")); } catch { /* fine */ }
+  api("settings").then((r) => {
+    const look = ((r && r.sections) || []).find((s) => s.section === "look"); if (!look) return;
+    HIDDEN_F = new Set(Array.isArray(look.values.hidden_features) ? look.values.hidden_features : []);
+    const v = cleanHide(look.values.panes);
+    if (Object.keys(PANES).filter((p) => v.has(p)).join() !== hideList().join()) { HIDE = v; MAX = null; applyPanes(); }
+    try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ }
+  }).catch(() => {});
+}
 
 const SPRITES = new Map();
 function glow(color) {
@@ -299,7 +433,7 @@ class Body {
     this.ripples = this.ripples.filter((r) => now - r.t0 < 1.8);
     for (const r of this.ripples) { const k = (now - r.t0) / 1.8; ctx.strokeStyle = rgba(r.col, 0.45 * (1 - k)); ctx.lineWidth = 1.5 * (1 - k); ctx.beginPath(); ctx.arc(cx, cy, coreR * (1.1 + k * 3.2), 0, TAU); ctx.stroke(); }
     if (DENSE) this.panels(ctx, w, h, 12);
-    if (!cells.length) this.say(ctx, `No features on yet: turn some on in the ${DENSE ? "features tab (terminal's border)" : "Features tab below"}.`, cx, h - 16 - (DENSE ? 84 : 0), PAL.dim, "center", `11px ${FONT}`);
+    if (!cells.length) this.say(ctx, `No features on yet: turn some on in ${DENSE ? "features (Alt+F)" : "the Features tab below"}.`, cx, h - 16 - (DENSE ? 84 : 0), PAL.dim, "center", `11px ${FONT}`);
     this.hoverCard();
   }
   cell(ctx, o, t, ringR) {
@@ -587,14 +721,14 @@ class Mind {
         if (hit) { this.selected = hit; this.autofit = false; this.view.x = -hit.x; this.view.y = -hit.y; this.view.k = Math.max(this.view.k, 1.6); this.showCard(hit, true); }
       }
     });
-    window.addEventListener("keydown", (e) => { if (e.key === "/" && !e.altKey && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) { e.preventDefault(); this.openSearch(); } });
+    window.addEventListener("keydown", (e) => { if (e.key === "/" && !e.altKey && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) { e.preventDefault(); findNote(); } });
   }
 }
 
 // -------------------------------------------------------------------------------------- STATUS and tabs
 let last = null;
 function renderStatus(m) {
-  if (DENSE) { renderBoard(m); return; }
+  if (DENSE) { if (paneShown("status")) renderBoard(m); return; }
   const s = m.sys, pct = (v) => `${Math.round((v || 0) * 100)}%`;
   const meter = (v, col) => `<div class="meter"><i style="width:${clamp(v * 100, 0, 100)}%;background:var(--${col})"></i></div>`;
   const gpu = (s.gpus || []).map((g) => esc(g.name) + (g.vram_gb ? ` (${g.vram_gb} GB)` : "")).join(", ") || "none in use";
@@ -818,8 +952,8 @@ const SEEN = new WeakMap(); // when each live event arrived (fresh ones are brig
 const TABS = { activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
 const DLABEL = { activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
 let tab = "activity"; // roomy: the tab below the panes
-let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat), a terminal, or one of TABS
-const current = () => (DENSE ? dtab : tab);
+let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat) or a terminal; the pages open over the board
+const current = () => (DENSE ? PAGE || dtab : tab);
 function showTab(name) {
   if (DENSE) { showDense(name === "terminals" ? (TERM.list[0] || {}).name || "kurooto" : name); return; }
   tab = name;
@@ -838,21 +972,22 @@ function renderNav() {
   }
   // dense: TERMINAL and its tabs set into the pane's top border, then the other pages, then the keys
   const terms = denseTerms(), isTerm = TERM.list.some((t) => t.name === dtab);
-  let html = '<span class="t">TERMINAL</span><span class="rule">─</span>';
+  let html = '<span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">TERMINAL<i class="mx"></i></span><span class="rule">─</span>';
   terms.forEach((t, i) => { html += `<button class="tab${dtab === t.name ? " on" : ""}" data-dt="${esc(t.name)}" title="Alt+${i + 1}"><span class="k">${i + 1}</span>${esc(t.label)}<span class="dot${t.live ? " live" : ""}"></span></button><span class="rule">─</span>`; });
   if (!TERM.on) html += `<button class="tab off${dtab === "termsoff" ? " on" : ""}" data-dt="termsoff" title="a shell, your AI's program and the log, right here">+ terminals</button><span class="rule">─</span>`;
   if (isTerm) html += '<button class="tab" data-restart="1" title="end the program in this terminal and start it again">restart</button><span class="rule">─</span>';
-  html += `<span class="rule">┤</span><span class="pages">${Object.keys(DLABEL).map((k) => `<button class="tab${dtab === k ? " on" : ""}" data-dt="${k}">${DLABEL[k]}</button>`).join("")}</span><span class="rule">├</span>`;
-  html += `<span class="meta">alt+1..${terms.length} tabs · alt+/ find note</span>`;
+  html += `<span class="rule">┤</span><span class="pages">${pageTabs()}</span><span class="rule">├</span>`;
+  html += `<span class="meta">alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note</span>`;
   nav.innerHTML = html;
   nav.onclick = (e) => {
+    if (e.target.closest(".t")) { maxPane("terminal"); return; }
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.dt) showDense(b.dataset.dt);
     if (b.dataset.restart && TERM.shown) api(`term/${TERM.shown}/restart`, {}).then(() => termAttach(TERM.shown));
   };
 }
 function renderTab() {
-  if (DENSE) { if (DLABEL[dtab]) renderPage(dtab, $("#page-host")); return; }
+  if (DENSE) { if (PAGE) renderPage(PAGE, $("#ov-body")); return; }
   renderPage(tab, $("#tab-body"));
 }
 function renderPage(name, body) {
@@ -876,6 +1011,7 @@ function denseHosts() {
   chatInit($("#chat-host"));
 }
 function showDense(name) {
+  if (DLABEL[name]) { openPage(name); return; } // a page: over the board
   const isTerm = TERM.list.some((t) => t.name === name);
   if (!(name === "kurooto" || name === "termsoff" || isTerm || DLABEL[name])) name = "kurooto";
   dtab = name;
@@ -890,7 +1026,7 @@ function showDense(name) {
     const p = $("#page-host"); p.onclick = p.onchange = p.onsubmit = null;
     p.innerHTML = '<p>Terminals is off. With it on, this pane also has your AI\'s own program (agy, Codex or Claude Code), a shell and Kurooto\'s log, each a real terminal. Turn it on in <a href="#" data-goto="features">features</a>, only on a computer that\'s yours alone: anyone who can open this page can type into them.</p>';
     p.onclick = (e) => { if (e.target.dataset.goto) { e.preventDefault(); showDense(e.target.dataset.goto); } };
-  } else renderPage(name, $("#page-host"));
+  }
 }
 // the terminal tabs: your AI's program, a shell, the kurooto chat, the log (the chat works without Terminals)
 function agentLabel(title) {
@@ -909,11 +1045,106 @@ function denseTerms() {
   for (const t of TERM.list) if (!["agent", "shell", "ask", "logs"].includes(t.name)) add(t.name, String(t.title).toLowerCase());
   return out;
 }
+// ----------------------------------------------------------------------------- search (the Features and Settings pages)
+// A box at the top of each: it filters as you type (any case; every word has to be found somewhere), marks the words
+// it found and counts what's left. "/" or Ctrl+F goes to it while the page is open (Ctrl+F again: the browser's own);
+// Esc empties it. It only looks through what the page already has: nothing is asked of Kurooto.
+const FIND = { features: "", settings: "" };
+const findBar = (page, what) => `<div class="find"><input type="search" class="find-in" data-find="${page}" placeholder="search ${what}  (/ or ctrl+f · esc empties it)" spellcheck="false" autocomplete="off" aria-label="search ${what}"><span class="find-n d" aria-live="polite"></span></div><p class="find-none hidden"></p>`;
+const findWords = (q) => q.toLowerCase().split(/\s+/).filter(Boolean);
+function findWire(host, page, refocus) {
+  const inp = host.querySelector(".find-in"); if (!inp) return;
+  const apply = () => (page === "features" ? featuresFind : settingsFind)(host);
+  inp.value = FIND[page];
+  inp.oninput = () => { FIND[page] = inp.value; apply(); };
+  inp.onkeydown = (e) => { if (e.key === "Escape" && inp.value) { e.preventDefault(); inp.value = ""; FIND[page] = ""; apply(); } };
+  apply();
+  if (refocus) { inp.focus({ preventScroll: true }); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+const findInput = () => {
+  const page = DENSE ? PAGE : tab;
+  return page === "features" || page === "settings" ? (DENSE ? $("#ov-body") : $("#tab-body")).querySelector(".find-in") : null;
+};
+function unmark(root) {
+  for (const m of [...root.querySelectorAll("mark.hit")]) { const p = m.parentNode; p.replaceChild(document.createTextNode(m.textContent), m); p.normalize(); }
+}
+function mark(root, words) {
+  if (!words.length) return;
+  const re = new RegExp(words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort((a, b) => b.length - a.length).join("|"), "gi");
+  const skip = "button, select, option, textarea, script, style, mark, .find";
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest(skip) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+  const nodes = []; while (walk.nextNode()) nodes.push(walk.currentNode);
+  for (const n of nodes) {
+    const text = n.nodeValue, frag = document.createDocumentFragment(); let at = 0, m, hit = false;
+    re.lastIndex = 0;
+    while ((m = re.exec(text))) { hit = true; frag.append(text.slice(at, m.index)); const k = document.createElement("mark"); k.className = "hit"; k.textContent = m[0]; frag.append(k); at = m.index + m[0].length; }
+    if (hit) { frag.append(text.slice(at)); n.replaceWith(frag); }
+  }
+}
+function findSay(host, q, n, total, what, extra = "") {
+  host.querySelector(".find-n").textContent = q ? `${n} of ${total} ${what}` : `${total} ${what}${extra}`;
+  const none = host.querySelector(".find-none");
+  none.textContent = q && !n ? `nothing matches '${q}'` : ""; none.classList.toggle("hidden", !(q && !n));
+}
+function featuresFind(host) {
+  const q = FIND.features.trim(), words = findWords(q), cards = [...host.querySelectorAll(".card2[data-hay]")];
+  unmark(host);
+  let n = 0;
+  for (const c of cards) {
+    const ok = words.length ? words.every((w) => c.dataset.hay.includes(w)) : !c.classList.contains("hid"); // hidden ones only in a search
+    c.classList.toggle("hidden", !ok);
+    const why = c.querySelector(".find-why"); why.textContent = ""; why.classList.add("hidden");
+    if (!ok || !words.length) continue;
+    n++;
+    // found by its settings, not by what the card says: say which
+    const seen = c.textContent.toLowerCase(), more = words.filter((w) => !seen.includes(w));
+    const keys = (FSET[c.dataset.id] || []).filter((x) => more.some((w) => x.hay.includes(w))).map((x) => x.key);
+    if (keys.length) { why.textContent = `its settings: ${keys.slice(0, 4).join(", ")}${keys.length > 4 ? "…" : ""}`; why.classList.remove("hidden"); }
+    mark(c, words);
+  }
+  for (const g of host.querySelectorAll(".feat")) g.classList.toggle("hidden", ![...g.children].some((c) => !c.classList.contains("hidden")));
+  const ah = host.querySelector(".addons-h"); if (ah) ah.classList.toggle("hidden", !!ah.nextElementSibling && ah.nextElementSibling.classList.contains("hidden"));
+  const hb = host.querySelector(".hid-box"); if (hb) hb.classList.toggle("hidden", !!words.length);
+  const nh = cards.filter((c) => c.classList.contains("hid")).length;
+  findSay(host, q, n, cards.length, "features", nh ? ` · ${nh} hidden` : "");
+}
+function settingsFind(host) {
+  const q = FIND.settings.trim(), words = findWords(q), rows = [...host.querySelectorAll(".set[data-hay]")];
+  unmark(host);
+  let n = 0;
+  for (const r of rows) {
+    const ok = words.every((w) => r.dataset.hay.includes(w));
+    r.classList.toggle("hidden", !ok); if (ok) n++;
+    for (const i of r.querySelectorAll("input:not([type=checkbox]), select")) i.classList.toggle("hit", ok && words.some((w) => String(i.value).toLowerCase().includes(w)));
+  }
+  for (const fs of host.querySelectorAll(".form fieldset")) {
+    const any = [...fs.querySelectorAll(".set")].some((r) => !r.classList.contains("hidden"));
+    fs.classList.toggle("hidden", !any); if (any) mark(fs, words);
+  }
+  findSay(host, q, n, rows.length, "settings");
+}
+const stale = (host, name) => (host.id === "ov-body" ? PAGE !== name : host.id === "tab-body" && !DENSE && tab !== name);
+const saveHiddenF = () => api("settings", { key: "look.hidden_features", value: [...HIDDEN_F] }).catch(() => {});
+
 const said = {}; // a feature's last Set up result (✓ or ✗), shown on its card
+let SHOW_HIDDEN = false, FSET = {}; // the list of hidden features is open; each feature's own settings (for the search)
 async function renderFeatures(body) {
-  const st = await api("state");
+  const typing = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find === "features";
+  const [st, sets] = await Promise.all([api("state"), api("settings").catch(() => ({ sections: [] }))]);
   let health = {};
   try { health = await api("health"); } catch { /* an older Kurooto */ }
+  if (stale(body, "features")) return; // another page was opened meanwhile
+  const look = (sets.sections || []).find((x) => x.section === "look");
+  if (look && Array.isArray(look.values.hidden_features)) HIDDEN_F = new Set(look.values.hidden_features);
+  // a feature's settings (while it's on), so the search finds it by them too: keys and what they mean
+  FSET = {};
+  for (const x of sets.sections || []) FSET[x.section] = Object.keys(x.values).map((k) => ({ key: `${x.section}.${k}`, hay: `${x.section}.${k} ${k.replace(/_/g, " ")} ${((x.help || {})[k]) || ""}`.toLowerCase() }));
+  // what the search looks through: only what the card shows, and the feature's settings
+  const hay = (m) => [m.title, m.description, m.privacy, !m.on && !m.ready ? m.why : "", m.form && !m.ready ? [m.form.intro, ...(m.form.fields || []).map((f) => f.label)].join(" ") : "",
+    m.on && m.card ? [...(m.card.lines || []), ...(m.card.toggles || []).map((x) => x.label)].join(" ") : "", ...(FSET[m.id] || []).map((x) => x.hay)].join("\n").toLowerCase();
+  const hid = (m) => !m.on && HIDDEN_F.has(m.id); // a feature that's on is never hidden
+  const hideBtn = (m) => m.on ? "" : hid(m) ? `<button class="hide-f" data-unhide="${m.id}" title="back on this page">unhide</button>`
+    : `<button class="hide-f" data-hide="${m.id}" title="take it off this page (Show hidden, at the bottom, brings it back)">hide</button>`;
   const form = (m) => !m.form || m.ready ? "" : `<form class="sf" data-form="${m.id}"><p class="d">${esc(m.form.intro)}</p>
     ${m.form.steps ? `<ol class="d form-steps">${m.form.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
     ${m.form.guide ? `<p><a href="${esc(m.form.guide[1])}" target="_blank" rel="noopener">${esc(m.form.guide[0])}</a></p>` : ""}
@@ -928,12 +1159,16 @@ async function renderFeatures(body) {
     ${st.keys.gemini ? "" : `<form class="sf" data-gemini><label>Gemini API key (<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> → Create API key)<input name="key" autocomplete="off"></label><button class="primary" type="submit">Save key</button></form>`}`;
   // a feature's own card parts while it's on (Module.card(): lines and switches, e.g. Exam season's parts)
   const pieces = (m) => !m.on || !m.card ? "" : `<div class="pieces">${(m.card.lines || []).map((l) => `<p>${esc(l)}</p>`).join("")}${(m.card.toggles || []).map((x) => `<label><input type="checkbox" data-card="${esc(m.id)}" data-act="${esc(x.id)}"${x.on ? " checked" : ""}${x.disabled ? " disabled" : ""}> ${esc(x.label)}</label>`).join("")}</div>`;
-  const card = (m) => `<div class="card2 ${m.on ? "on" : ""}" data-id="${m.id}"><b>${esc(m.title)}</b><p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>${m.id === "mail_digest" && m.on ? `<p><a href="/confidential" target="_blank" rel="noopener">Confidential mail (summarised on this computer)</a></p>` : ""}
-    ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${calls(m)}${form(m)}${pieces(m)}${said[m.id] ? `<p class="${said[m.id].startsWith("✓") ? "ok2" : "bad2"}" style="font-weight:600">${esc(said[m.id])}</p>` : ""}</div>`;
+  const card = (m) => `<div class="card2 ${m.on ? "on" : ""}${hid(m) ? " hid hidden" : ""}" data-id="${m.id}" data-hay="${esc(hay(m))}">${hideBtn(m)}<b>${esc(m.title)}</b>${hid(m) ? ' <span class="tag-h">hidden</span>' : ""}<p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>${m.id === "mail_digest" && m.on ? `<p><a href="/confidential" target="_blank" rel="noopener">Confidential mail (summarised on this computer)</a></p>` : ""}
+    ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${calls(m)}${form(m)}${pieces(m)}${said[m.id] ? `<p class="${said[m.id].startsWith("✓") ? "ok2" : "bad2"}" style="font-weight:600">${esc(said[m.id])}</p>` : ""}<p class="find-why d hidden"></p></div>`;
   const addons = st.modules.filter((m) => m.addon); // features from your own add-ons folder (core/overlay.py)
   const kept = $("#flog") ? $("#flog").innerHTML : ""; // what the last step said survives the re-render
-  body.innerHTML = `${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon).map(card).join("")}</div>${addons.length
-    ? `<p class="d">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${addons.map(card).join("")}</div>` : ""}<div class="log" id="flog">${kept}</div>`;
+  const hidden = st.modules.filter(hid);
+  const hiddenBox = !hidden.length ? "" : `<div class="hid-box"><button class="linkish" data-showhidden="1">${SHOW_HIDDEN ? "close the hidden list" : `Show hidden (${hidden.length})`}</button>${SHOW_HIDDEN
+    ? `<ul class="hid-list">${hidden.map((m) => `<li><b>${esc(m.title)}</b><span class="d">${esc(m.description)}</span><button data-unhide="${m.id}">Unhide</button></li>`).join("")}</ul>` : ""}</div>`;
+  body.innerHTML = `${findBar("features", "features")}${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon).map(card).join("")}</div>${addons.length
+    ? `<p class="d addons-h">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${addons.map(card).join("")}</div>` : ""}<div class="log" id="flog">${kept}</div>${hiddenBox}`;
+  findWire(body, "features", typing);
   body.onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target, flog = $("#flog");
@@ -951,7 +1186,7 @@ async function renderFeatures(body) {
       flog.innerHTML = `<p><a class="button primary" href="${esc(r.open)}" target="_blank" rel="noopener">Open Google sign-in</a></p>
         <p class="d">After you approve, Google brings you back to this computer (a 127.0.0.1 page) that says 'Signed in with Google'. This card then turns on by itself.</p>`;
       const id = f.dataset.form, run = (renderFeatures.wait = (renderFeatures.wait || 0) + 1);
-      for (let i = 0; i < 300 && run === renderFeatures.wait && tab === "features"; i++) {
+      for (let i = 0; i < 300 && run === renderFeatures.wait && current() === "features"; i++) {
         await new Promise((ok) => setTimeout(ok, 3000));
         const m = (await api("state")).modules.find((x) => x.id === id);
         if (m && m.ready) { renderFeatures(body); return; }
@@ -970,8 +1205,14 @@ async function renderFeatures(body) {
       (navigator.clipboard ? navigator.clipboard.writeText(t.dataset.copy) : Promise.reject()).then(done).catch(() => { t.textContent = "Press Ctrl+C"; });
       return;
     }
+    if (t.dataset.hide || t.dataset.unhide) { // only this page changes: the feature itself stays as it is
+      if (t.dataset.hide) HIDDEN_F.add(t.dataset.hide); else HIDDEN_F.delete(t.dataset.unhide);
+      await saveHiddenF(); renderFeatures(body); return;
+    }
+    if (t.dataset.showhidden) { SHOW_HIDDEN = !SHOW_HIDDEN; renderFeatures(body); return; }
     if (t.dataset.card) { const r = await api("modules/card", { id: t.dataset.card, act: t.dataset.act, value: t.checked }); flog.textContent = r.message || r.error || ""; renderFeatures(body); return; }
     if (t.dataset.fix) { t.disabled = true; const r = await api("health/fix", { id: t.dataset.fix }); flog.textContent = r.message || ""; renderFeatures(body); return; }
+    if (t.dataset.on && HIDDEN_F.delete(t.dataset.on)) await saveHiddenF(); // turned on from the search: not hidden any more
     if (t.dataset.on) { const r = await api("modules/enable", { ids: [t.dataset.on] }); flog.textContent = Object.values(r.results).map((x) => x.message).join("\n"); renderFeatures(body); }
     if (t.dataset.off) { const r = await api("modules/disable", { id: t.dataset.off }); flog.textContent = r.message; renderFeatures(body); }
     if (t.dataset.setup) {
@@ -1107,7 +1348,9 @@ async function renderAboutTab(body) {
 }
 
 async function renderSettings(body) {
+  const typing = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find === "settings";
   const { sections } = await api("settings");
+  if (stale(body, "settings")) return;
   // a section may offer choices for a setting (a list) and a line of help under it; "fixed" shows a value that can't
   // change here, and "post" sends changes to the section's own request (Settings → Starting: /api/autostart)
   const LAYOUTS = [["dense", "dense: one full-screen board (screens 1280 px wide or more)"], ["roomy", "roomy: bigger panes and type"]];
@@ -1116,16 +1359,23 @@ async function renderSettings(body) {
     const k = key.split(".").slice(1).join("."), help = ((sec && sec.help) || {})[k], fixed = ((sec && sec.fixed) || {})[k];
     const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : null);
     const post = sec && sec.post ? ` data-post="${esc(sec.post)}"` : "";
-    const html = fixed ? `<label>${esc(key)}<span class="fixed">${esc(fixed)}</span></label>`
-      : choices ? `<label>${esc(key)}<select data-key="${key}"${post}>${choices.map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
+    const html = fixed ? `<label><span>${esc(key)}</span><span class="fixed">${esc(fixed)}</span></label>`
+      : choices ? `<label><span>${esc(key)}</span><select data-key="${key}"${post}>${choices.map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
     return help ? html.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : html;
   };
   const plain = (key, v) => {
-    if (typeof v === "boolean") return `<label>${esc(key)}<input type="checkbox" data-key="${key}" ${v ? "checked" : ""}></label>`;
-    if (Array.isArray(v) || (v && typeof v === "object")) return `<label>${esc(key)}<input data-key="${key}" data-json value="${esc(JSON.stringify(v))}"></label>`;
-    return `<label>${esc(key)}<input data-key="${key}" ${typeof v === "number" ? 'type="number" data-num' : ""} value="${esc(v ?? "")}"></label>`;
+    if (typeof v === "boolean") return `<label><span>${esc(key)}</span><input type="checkbox" data-key="${key}" ${v ? "checked" : ""}></label>`;
+    if (Array.isArray(v) || (v && typeof v === "object")) return `<label><span>${esc(key)}</span><input data-key="${key}" data-json value="${esc(JSON.stringify(v))}"></label>`;
+    return `<label><span>${esc(key)}</span><input data-key="${key}" ${typeof v === "number" ? 'type="number" data-num' : ""} value="${esc(v ?? "")}"></label>`;
   };
-  body.innerHTML = `<div class="form">${sections.map((s) => `<fieldset><legend>${esc(s.title)}</legend>${Object.entries(s.values).map(([k, v]) => field(`${s.section}.${k}`, v, s)).join("")}</fieldset>`).join("")}</div><p class="d" id="saved"></p>`;
+  // what the search looks through: the section, the key, what it's called and means, and its value
+  const shay = (key, v, sec) => {
+    const k = key.split(".").slice(1).join("."), choices = ((sec.choices || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : null) || []);
+    const chosen = choices.find(([id]) => id === v);
+    return [sec.section, sec.title, key, k.replace(/[._]/g, " "), (sec.help || {})[k] || "", (sec.fixed || {})[k] || "", chosen ? chosen[1] : "", typeof v === "string" ? v : JSON.stringify(v)].join("\n").toLowerCase();
+  };
+  body.innerHTML = `${findBar("settings", "settings")}<div class="form">${sections.map((s) => `<fieldset><legend>${esc(s.title)}</legend>${Object.entries(s.values).map(([k, v]) => `<div class="set" data-hay="${esc(shay(`${s.section}.${k}`, v, s))}">${field(`${s.section}.${k}`, v, s)}</div>`).join("")}</fieldset>`).join("")}</div><p class="d" id="saved"></p>`;
+  findWire(body, "settings", typing);
   body.onchange = async (e) => {
     const t = e.target; if (!t.dataset.key) return;
     let value = t.type === "checkbox" ? t.checked : t.dataset.num !== undefined ? Number(t.value) : t.value;
@@ -1186,7 +1436,8 @@ const CHAT_HELP = `Type what you'd send Kurooto on Telegram: a reminder, "what's
   jobs    your AI's latest requests
   clear   a clean screen (Ctrl+L)
   ↑ ↓     what you typed before
-Alt+1… switches the terminal pane's tabs; Alt+/ finds a note.`;
+Alt+1… switches the terminal pane's tabs; Alt+/ finds a note; Alt and a page's underlined letter opens it
+(Alt+F features, Alt+S settings), over the whole board; Esc goes back.`;
 async function chatSend(text) {
   CHAT.hist.push(text); CHAT.hi = -1;
   chatAdd(`<span class="p">${esc(promptText())}</span>${esc(text)}`, "q", true);
@@ -1246,10 +1497,16 @@ function connect() {
 function settingChanged(key, value) {
   if (key === "look.layout") { document.body.dataset.layout = value; applyLayout(); }
   if (key === "look.palette") setTimeout(() => location.reload(), 300); // the canvases take their colours at load
+  if (key === "look.panes") { HIDE = cleanHide(value); MAX = null; try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ } applyPanes(); }
+  if (key === "look.hidden_features") HIDDEN_F = new Set(Array.isArray(value) ? value : []);
 }
 function applyLayout(force = false) {
   const d = denseFits();
   if (d === DENSE && !force) return;
+  // a page stays open across the switch: in roomy's tabs, or (the roomier ones) over the dense board
+  const keep = force ? null : DENSE ? PAGE : ["features", "phone", "research", "about", "settings"].includes(tab) ? tab : null;
+  if (!force && DENSE && PAGE) tab = PAGE;
+  PAGE = null; closeMenu();
   DENSE = d;
   document.body.classList.toggle("dense", DENSE);
   $(".grid").classList.remove("tall");
@@ -1258,6 +1515,8 @@ function applyLayout(force = false) {
   if (last) renderStatus(last);
   if (mind) mind.meta();
   if (DENSE) showDense(dtab); else showTab(tab === "terminals" && !TERM.on ? "activity" : tab);
+  applyPanes();
+  if (DENSE && keep) openPage(keep);
 }
 // Pause, resume, or off completely (until Kurooto is opened again from the app menu or `kurooto on`)
 document.addEventListener("click", async (e) => {
@@ -1339,37 +1598,63 @@ async function renderTerminals(body) {
   TERM.shown = null;
   if (want) termShow(want);
 }
-// Alt+1… switches terminals (dense: the terminal pane's tabs), Alt+/ finds a note; caught before a terminal sees them
+// Alt+1… switches terminals (dense: the terminal pane's tabs), Alt+/ finds a note; caught before a terminal sees them.
+// Alt and a page's underlined letter (Alt+F features, Alt+S settings…) opens it, or closes it again; not from inside a
+// terminal, which keeps its own Alt keys (Alt+F is a word forward in a shell)
 window.addEventListener("keydown", (e) => {
   if (!e.altKey || e.ctrlKey || e.metaKey) return;
-  if (e.key === "/") { e.preventDefault(); e.stopPropagation(); mind.openSearch(); return; }
+  if (e.key === "/") { e.preventDefault(); e.stopPropagation(); findNote(); return; }
+  const pg = Object.keys(PKEY).find((k) => e.code === `Key${PKEY[k].toUpperCase()}`);
+  const types = /Mac/.test(navigator.platform) && ["INPUT", "TEXTAREA"].includes(e.target.tagName); // Option+letter types a character
+  if (pg && !e.shiftKey && !inTerm(e.target) && !types) { e.preventDefault(); e.stopPropagation(); if (DENSE && PAGE === pg) closePage(); else openPage(pg); return; }
   if (!/^[1-9]$/.test(e.key)) return;
   const t = DENSE ? denseTerms()[Number(e.key) - 1] : tab === "terminals" ? TERM.list[Number(e.key) - 1] : null;
   if (!t) return;
   e.preventDefault(); e.stopPropagation();
-  if (DENSE) showDense(t.name); else termShow(t.name);
+  if (DENSE) { closePage(); if (!paneShown("terminal")) { MAX = HIDE.has("terminal") ? "terminal" : null; applyPanes(); } showDense(t.name); } else termShow(t.name);
 }, true);
-window.addEventListener("resize", () => {
-  applyLayout();
-  if (DENSE && last) renderStatus(last); // the processes box shows as many as fit
-  const showing = DENSE ? TERM.list.some((t) => t.name === dtab) : tab === "terminals";
-  if (showing && TERM.shown && TERM.xs[TERM.shown]) try { TERM.xs[TERM.shown].fit.fit(); } catch { /* hidden */ }
+// "/" or Ctrl+F with the Features or Settings page open: its search box (before "/" finds a note)
+window.addEventListener("keydown", (e) => {
+  const inp = findInput(); if (!inp || inTerm(e.target)) return;
+  const ctrlF = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === "KeyF" && document.activeElement !== inp;
+  const slash = e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName);
+  if (!ctrlF && !slash) return;
+  e.preventDefault(); e.stopImmediatePropagation(); inp.focus(); inp.select();
+}, true);
+// Esc: the panes menu closes, then a page, then a pane that fills the board gives the others back
+window.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !DENSE || e.defaultPrevented || inTerm(e.target) || e.target.id === "mind-search") return;
+  if (!$("#panes-menu").classList.contains("hidden")) { closeMenu(); $("#panes-btn").focus(); return; }
+  if (PAGE) { closePage(); return; }
+  if (MAX && (!["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) || e.target.id === "chat-input")) maxPane(MAX);
 });
+// after the window or a pane changes size: STATUS shows as many processes as fit, the terminal fills its pane
+function refit() {
+  if (DENSE && last) renderStatus(last);
+  const showing = DENSE ? TERM.list.some((t) => t.name === dtab) && paneShown("terminal") : tab === "terminals";
+  if (showing && TERM.shown && TERM.xs[TERM.shown]) try { TERM.xs[TERM.shown].fit.fit(); } catch { /* hidden */ }
+}
+window.addEventListener("resize", () => { applyLayout(); refit(); });
 
 (function main() {
   body = new Body($("#body")); mind = new Mind($("#mind"));
   try { tab = localStorage.getItem("kurooto.dash.tab") || "activity"; dtab = localStorage.getItem("kurooto.dash.dtab") || "kurooto"; } catch { /* fine */ }
   if (!TABS[tab] && tab !== "terminals") tab = "activity";
+  if (DLABEL[dtab]) dtab = "kurooto"; // 0.5.0 kept the pages in the terminal pane: they open over the board now
   const asked = location.hash.slice(1); // e.g. /#about, the link /aboutme sends
-  if (TABS[asked]) { tab = asked; dtab = asked; }
+  if (TABS[asked]) tab = asked;
+  loadLook();
   api("events").then((r) => { for (const e of (r.events || []).reverse()) feed.push(e); if (current() === "activity") renderTab(); }).catch(() => {});
   applyLayout(true);
-  refreshTerms().then(() => { if (DENSE && TERM.list.some((t) => t.name === dtab)) showDense(dtab); else if (!DENSE && tab === "terminals") showTab("terminals"); });
+  if (DENSE && DLABEL[asked]) openPage(asked);
+  refreshTerms().then(() => { if (DENSE && !PAGE && TERM.list.some((t) => t.name === dtab)) showDense(dtab); else if (!DENSE && tab === "terminals") showTab("terminals"); });
   setInterval(refreshTerms, 20000);
   setInterval(() => { if (DENSE) clockTick(); }, 1000);
   connect();
   let lastT = 0;
   const frame = (ts) => { requestAnimationFrame(frame); if (document.hidden || ts - lastT < (LIGHT ? 33 : 16)) return; lastT = ts;
-    const t = ts / 1000; try { body.draw(t); } catch (e) { console.error(e); } try { mind.step(); mind.draw(); } catch (e) { console.error(e); } };
+    const t = ts / 1000; // only what's on screen is drawn (a hidden pane, or one under a page, waits)
+    if (paneShown("systems")) try { body.draw(t); } catch (e) { console.error(e); }
+    if (paneShown("notes")) try { mind.step(); mind.draw(); } catch (e) { console.error(e); } };
   requestAnimationFrame(frame);
 })();
