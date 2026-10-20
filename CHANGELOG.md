@@ -56,6 +56,12 @@
 - Once your AI passes its test, the setup page's AI step shows a chat box. What you type goes through the same handler
   as a Telegram message, before Telegram is set up: "remind me in 2 minutes to stretch" pops up on this computer, and
   questions go to your AI with the answer shown in the box. Nothing goes to Telegram or your phone.
+**Hint ladder** (new; off until you turn it on; needs Subjects)
+- A problem photo with `/hint la` (or the problem typed after it): the idea first, then the setup and the key step one
+  tap at a time; the full solution only when asked. Each step names the lecture note the problem belongs to.
+- The course's AI policy is asked the first time per subject and kept as an `AI policy: ...` line in its course note;
+  "no full solutions" ends at the key step, "no AI help" sends nothing to the AI. The shipped `hint` skill writes the
+  ladder (yours replaces it); an answer that isn't in steps is never passed on.
 
 ## 0.4.0 (unreleased)
 

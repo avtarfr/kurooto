@@ -52,6 +52,7 @@ MODULE_ORDER = [
     "quests",
     "files",
     "skills",
+    "hints",
     "library",
     "remember",
     "retro",

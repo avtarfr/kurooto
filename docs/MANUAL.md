@@ -20,6 +20,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Quiz](#quiz) ·
     [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
+    [Hint ladder](#hint-ladder) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back)
   - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) · [Voice notes](#voice-notes) ·
@@ -695,6 +696,30 @@ Your prompt library is the `prompts/` folder in your notes (Markdown files, subf
 
 *Needs:* Telegram. *Leaves your computer:* nothing (no AI involved). *Turn it off:* Features → Quick notes and
 prompts.
+
+### Hint ladder
+Stuck on a problem? Send a photo of it with `/hint la` as the caption (or type it: `/hint la show that the trace is
+basis-free`), and you get one step at a time: **the idea** first, then **Next hint** for **the setup**, then **the
+key step**. The full solution comes only when you ask: the **Show the solution** button after the key step, or a reply
+of "solution" to any hint. Reply "next" works like the button. Every step names the lecture note the problem belongs
+to (the AI's pick if that note exists, else the subject's note whose name fits the problem best).
+- **The course's AI policy.** The first time you use `/hint` for a subject, Kurooto asks what the course allows (Hints
+  and full solutions / Hints only, no full solutions / No AI help, or your own words) and keeps your answer as a line
+  in the subject's course note: `AI policy: Hints only, no full solutions (your answer to Kurooto, 2026-10-20)`. After
+  that it reads the line from the note, so change it there; a line you wrote yourself (`AI policy: ...`) counts too.
+  "No full solutions" (or "hints only") ends the ladder at the key step; "no AI help" (or "not allowed") means no hints
+  for that subject, and nothing is sent to the AI.
+- The AI works out the whole ladder once and Kurooto shows it a step at a time; an answer that doesn't come in steps
+  is never passed on (it could give the solution away). It's the shipped `hint` skill: copy it into your skills folder
+  to change how hints are written.
+- Needs Subjects (the subject's short name goes first). Photos need an AI that opens files itself (agy, Codex,
+  Claude Code); with a Gemini key or another service, type the problem instead.
+
+**Undo:** turn Hint ladder off (dashboard → Features). The "AI policy" lines stay in your course notes; delete them
+there if you like.
+
+*Leaves:* the problem (its photo or text), the subject's AI-policy line, and the notes the AI reads to find the lecture
+note go to the AI you picked.
 
 ### Notes brain (GBrain)
 Search your notes by meaning (`/notes what is a compact space`), and your AI gets a memory of them. Kurooto installs

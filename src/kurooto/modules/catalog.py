@@ -20,6 +20,7 @@ from kurooto.modules.google_drive import DriveUpload
 from kurooto.modules.google_mail import DigestEmail, MailDigest, ReplyDrafts
 from kurooto.modules.google_plan import AgentPlan
 from kurooto.modules.handwritten import Handwritten
+from kurooto.modules.hints import Hints
 from kurooto.modules.library import Library
 from kurooto.modules.local_models import LocalModels
 from kurooto.modules.notes_sync import NotesSync
@@ -53,6 +54,7 @@ CATALOG = [
     Quests,
     Files,
     Skills,
+    Hints,
     Library,
     GBrain,
     LocalModels,

@@ -21,6 +21,7 @@ computer only.
 | Files into notes | with Chat on, the files you send, for the AI to file them | the AI service you picked |
 | Setup page: Try it now | what you type in the box that isn't an instant request (a reminder, a command), like a Chat message; nothing goes to Telegram or your phone | the AI service you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI service you picked |
+| Hint ladder | the problem (its photo or text), the course's AI-policy line and the notes the AI reads to find the lecture note; with "no AI help" in that line, nothing | the AI service you picked |
 | Skills: revision packs | Tectonic (if you install it) downloads LaTeX packages; nothing of yours is sent | Tectonic's package server (public) |
 | Skills: packs before exams (`skills.auto_pack`) | the same as `/pack`: the subject's notes the AI reads to write the pack; with `ask` (the default) only after you tap Build it | the AI service you picked |
 | Sending files (`kurooto send`, the AI's send-file tool) | the file | Telegram (to your own bot) |
