@@ -372,7 +372,7 @@ class Attendance(Module):
         if ref == "marks":
             self.app.events.emit("marks_offer", answer=act)
             if act == "yes":
-                self.app.notify(HOW_MARKS, kind="result", title="Marks")
+                self.app.notify(HOW_MARKS, kind="result", title="Marks", why="asked")
                 return "How to set up marks is below."
             jsave(self._dir / "marks-offer.json", {"declined": now().isoformat()})
             return "No marks, then. /marks sets them up whenever you like."

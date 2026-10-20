@@ -33,10 +33,10 @@ class Weekly(Module):
         self.every("summary", self.setting("when") or "weekly sun 19:00", self._sunday)
 
     def _sunday(self, p: dict) -> None:
-        self.app.notify(self.summary())
+        self.app.notify(self.summary(), why="weekly.summary")
         calls = self.app.modules.get("calls")
         if self.setting("call") and calls and self.app.is_on("calls") and calls.ready()[0] and self._on_time():
-            calls.place(REASON, key=f"weekly:review:{now().date().isoformat()}")
+            calls.place(REASON, key=f"weekly:review:{now().date().isoformat()}", why="weekly.call")
             self.app.events.emit("weekly_review_called")
 
     def _on_time(self) -> bool:

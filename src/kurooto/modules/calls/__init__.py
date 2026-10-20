@@ -125,6 +125,7 @@ class Calls(Module):
                     f"Your call line couldn't be updated: {msg} (calls keep working on the old version; "
                     "Settings → Features → Phone calls → Set up tries again).",
                     kind="info",
+                    why="calls.line_update",
                 )
 
         threading.Thread(target=go, name="call-line-update", daemon=True).start()
@@ -135,17 +136,27 @@ class Calls(Module):
             return  # this computer was asleep when it was due, so the call line has placed it already
         if not p.get("alarm") and self._held_call(p):
             return
-        self.ring(p.get("reason", ""), alarm=bool(p.get("alarm")), key=p.get("key", ""))
+        why = {k: p[k] for k in ("why", "due") if p.get(k)}  # the envelope (core/calm.py), when it was booked with one
+        self.ring(p.get("reason", ""), alarm=bool(p.get("alarm")), key=p.get("key", ""), **why)
 
-    def place(self, reason: str, key: str = "", alarm: bool = False, force: bool = False) -> str:
+    def place(
+        self,
+        reason: str,
+        key: str = "",
+        alarm: bool = False,
+        force: bool = False,
+        why: str | None = None,
+        due: str | None = None,
+    ) -> str:
         """Call now; or, if a class, a hold, focus or the night blocks calls (and it isn't an alarm or forced), hold
         the call, place it by itself when the block ends, and tell you so. key "<module>:..." makes that module hear
-        how the call went (call_outcome, call_transcript)."""
+        how the call went (call_outcome, call_transcript). why/due: the envelope (core/calm.py): why it calls by
+        itself ("calls.own" when you asked), and a deadline's due time."""
         if not alarm and not force:
-            held = self._held_call({"reason": reason, "key": key})
+            held = self._held_call({"reason": reason, "key": key, "why": why, "due": due})
             if held:
                 return held
-        self.ring(reason, alarm=alarm, key=key)
+        self.ring(reason, alarm=alarm, key=key, why=why, due=due)
         return f"Calling you now: {reason}"
 
     def _held_call(self, p: dict) -> str | None:
@@ -156,10 +167,11 @@ class Calls(Module):
             return None
         when, _ = av.next_callable()
         key = p.get("key") or "held-" + hashlib.sha256(str(p.get("reason", "")).encode()).hexdigest()[:10]
-        self.schedule(when, p.get("reason", ""), key=key)  # the same call held twice is still one booking
+        # the same call held twice is still one booking
+        self.schedule(when, p.get("reason", ""), key=key, why=p.get("why"), due=p.get("due"))
         at = f"{when:%H:%M}" if when.date() == now().date() else f"{when:%a %H:%M}"
         text = f"Held a call until {at} ({why}): {p.get('reason', '')}"
-        self.app.notify(text, kind="info")
+        self.app.notify(text, kind="info", why=p.get("why") or "calls.held", due=p.get("due"))
         self.app.events.emit("call_held", reason=why, until=when.isoformat())
         return text
 
@@ -298,8 +310,8 @@ class Calls(Module):
                 out = m.call_reschedule(cur["key"], at)
                 if out:
                     return out
-            return self.schedule(at, cur["reason"], key=cur["key"])
-        return self.schedule(at, reason or "a reminder")
+            return self.schedule(at, cur["reason"], key=cur["key"], why="calls.own")
+        return self.schedule(at, reason or "a reminder", why="calls.own")
 
     def live_call(self) -> dict | None:
         """The call going on now, if Kurooto placed it: {"key", "reason"} (for at most two hours)."""
@@ -355,15 +367,24 @@ class Calls(Module):
         """No call picked the result up within a minute (the call ended): send it to Telegram instead."""
         t = self.finished.pop(p.get("job", ""), None)
         if t and not t["fetched"]:
-            self.app.notify(f"From your call: {t['request'][:80]}\n\n{t['full'][:3500]}", kind="result")
+            self.app.notify(f"From your call: {t['request'][:80]}\n\n{t['full'][:3500]}", kind="result", why="asked")
 
     # ---------------------------------------------------------------------------------------- ringing
-    def schedule(self, at: dt.datetime, reason: str, key: str | None = None, alarm: bool = False) -> str:
+    def schedule(
+        self,
+        at: dt.datetime,
+        reason: str,
+        key: str | None = None,
+        alarm: bool = False,
+        why: str | None = None,
+        due: str | None = None,
+    ) -> str:
+        """Book a call. why/due: the envelope (core/calm.py), kept with the booking for when it rings."""
         key = key or uuid.uuid4().hex[:8]
         self.app.scheduler.at(
             at,
             "calls.ring",
-            {"reason": reason, "alarm": alarm, "key": key},
+            {"reason": reason, "alarm": alarm, "key": key, **{k: v for k, v in (("why", why), ("due", due)) if v}},
             key=f"calls:ring:{key}",
             module=self.id,
             grace_s=900,
@@ -399,14 +420,38 @@ class Calls(Module):
         t = line.ticket(self.app.secrets.get("calls.call_secret") or "", hours)
         return f"{self.worker_url()}/{'?' + q if q else ''}#{t}"
 
-    def ring(self, reason: str, alarm: bool = False, key: str = "", buttons: list | None = None) -> str:
+    def ring(
+        self,
+        reason: str,
+        alarm: bool = False,
+        key: str = "",
+        buttons: list | None = None,
+        why: str | None = None,
+        due: str | None = None,
+    ) -> str:
         """Ring your paired phones now (and say so on Telegram, with a link to answer from anywhere). `buttons`: more
-        buttons for that Telegram message, e.g. [("Tomorrow morning", "chk:night:defer")]."""
+        buttons for that Telegram message, e.g. [("Tomorrow morning", "chk:night:defer")]. why/due: the envelope
+        (core/calm.py). Past the day's calls (notify.calm.calls) it doesn't ring: its feature hears "held", or it
+        waits in the evening bundle with a call link; then "" is returned."""
+        why = why or ("alarm.ring" if alarm else None)
+        calm = getattr(self.app, "calm", None)
+        if calm is not None and not calm.call_ok(why, key=key, alarm=alarm, due=due):
+            if not self._tell_owner_module({"key": key, "reason": reason}, "held"):
+                n = calm.limit("calls", 1)
+                calm.hold(
+                    f"A call that waited ({n} a day comes by itself): {reason}",
+                    why,
+                    kind="info",
+                    buttons=[[("Call now", {"url": self.link(reason, hours=26)})]],
+                )
+            self.app.events.emit("call_not_placed", key=key)
+            return ""
         since = str(int(time.time()))
         rings = jload(self.dir / "rings.json", {}) or {}
         while since in rings:  # two calls in the same second (a repeat ring right after another call)
             since = str(int(since) + 1)
         rings[since] = {"reason": reason, "alarm": alarm, "key": key, "at": time.time(), "state": "ringing"}
+        rings[since].update({k: v for k, v in (("why", why), ("due", due)) if v})
         if buttons:
             rings[since]["buttons"] = [list(b) for b in buttons]
         jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
@@ -415,13 +460,15 @@ class Calls(Module):
         )
         answer = [[("Answer", {"url": self.link(reason, since=since)}), *[tuple(b) for b in buttons or []]]]
         if sent:  # the phone rings; Telegram just keeps a quiet record with a link
-            self.app.notify(f"{'Wake-up call' if alarm else 'Calling you'}: {reason}", kind="call", buttons=answer)
+            text = f"{'Wake-up call' if alarm else 'Calling you'}: {reason}"
+            self.app.notify(text, kind="call", buttons=answer, why=why)
         else:
             self.app.notify(
                 f"I tried to call you, but your call line isn't connected. {reason}",
                 kind="reminder",
                 buttons=answer,
                 urgent=True,
+                why=why or "calls.no_line",
             )
         self.app.scheduler.at(
             time.time() + (self.setting("ring_s") or 60) + 30,
@@ -457,6 +504,8 @@ class Calls(Module):
             f"Missed call: {r['reason']}",
             kind="info",
             buttons=[[("Call back", {"url": self.link(r["reason"])}), ("In 30 min", f"call:{since}:later")]],
+            why=r.get("why"),
+            due=r.get("due"),
         )
         self.app.events.emit("call_missed", key=r.get("key", ""))
         self._tell_owner_module(r, "missed")
@@ -490,7 +539,9 @@ class Calls(Module):
         if self.app.availability.call_block()[0]:
             self._missed_for_good(since, r)
             return
-        new = self.ring(r["reason"], alarm=False, key=r.get("key", ""), buttons=r.get("buttons"))
+        new = self.ring(
+            r["reason"], alarm=False, key=r.get("key", ""), buttons=r.get("buttons"), why=r.get("why"), due=r.get("due")
+        )
         with Lock(self.app.paths.state, "calls-rings"):
             rings = jload(self.dir / "rings.json", {}) or {}
             if new in rings:
@@ -518,7 +569,14 @@ class Calls(Module):
             return "That call is gone."
         if act == "later":
             at = now() + dt.timedelta(minutes=self.setting("later_min") or 30)
-            self.schedule(at, r["reason"], key=r.get("key") or None, alarm=r.get("alarm", False))
+            self.schedule(
+                at,
+                r["reason"],
+                key=r.get("key") or None,
+                alarm=r.get("alarm", False),
+                why=r.get("why"),
+                due=r.get("due"),
+            )
             return f"I'll call again at {at:%H:%M}."
         return "OK."
 
@@ -549,12 +607,15 @@ class Calls(Module):
                 f"A device was paired with your call line: {m.get('device_name')} ({m.get('kind')}). If that wasn't "
                 "you, remove it with /phones.",
                 kind="info",
+                why="calls.device_paired",
             )
             self.app.events.emit("calls_device_paired", kind=m.get("kind"))
         elif name == "rang_offline":
             self.app.events.emit("call_rang_offline", key=m.get("key", ""))
             self.app.notify(
-                f"While this computer was off, your call line called you: {m.get('reason') or 'a call'}", kind="info"
+                f"While this computer was off, your call line called you: {m.get('reason') or 'a call'}",
+                kind="info",
+                why="calls.rang_offline",
             )
         elif name in ("sealed_sent", "sealed_failed", "device_key"):  # reminders with the lid shut (lidsafe.py)
             ls = self.app.modules.get("lidsafe")
@@ -576,12 +637,14 @@ class Calls(Module):
                 elif it.get("kind") == "answer":  # answered on a phone while this computer was off
                     status, out = self.phone.answer(it.get("body") or {})
                     if status == 200 and out.get("note"):
-                        self.app.notify(f"Your answer from the phone: {out['note']}", kind="info")
+                        self.app.notify(f"Your answer from the phone: {out['note']}", kind="info", why="asked")
             except Exception as e:
                 self.app.events.emit("calls_queue_failed", error=str(e)[:200])
         if done:
             self.app.notify(
-                f"Done what you asked for on a call while the computer was off ({done} item(s)).", kind="info"
+                f"Done what you asked for on a call while the computer was off ({done} item(s)).",
+                kind="info",
+                why="asked",
             )
 
     def handle_request(self, method: str, path: str, body: bytes) -> tuple[int, dict]:
@@ -665,7 +728,7 @@ class Calls(Module):
                 title=f"Shared: {name}",
             )
         else:
-            self.app.notify(f"Got {name} from your phone: saved to {rel}.", kind="info")
+            self.app.notify(f"Got {name} from your phone: saved to {rel}.", kind="info", why="asked")
         return 200, {"ok": True, "saved": rel}
 
     # ------------------------------------------------------------------------ what the line is told
@@ -908,7 +971,15 @@ class Calls(Module):
 
         return [
             Intent(
-                "call_me", "call me at/in … (about …)", match, lambda msg, sl: self.schedule(sl["at"], sl["reason"])
+                "call_me",
+                "call me at/in … (about …)",
+                match,
+                lambda msg, sl: self.schedule(sl["at"], sl["reason"], why="calls.own"),
             ),
-            Intent("call_now", "call me now", match_now, lambda msg, sl: self.place(sl["reason"], force=True)),
+            Intent(
+                "call_now",
+                "call me now",
+                match_now,
+                lambda msg, sl: self.place(sl["reason"], force=True, why="calls.own"),
+            ),
         ]

@@ -84,13 +84,17 @@ class Ask:
         source: str = "",
         title: str | None = None,
         deliver: bool = True,
+        why: str | None = None,
+        about: str | None = None,
+        item: str | None = None,
     ) -> str:
         """Ask now (Telegram, desktop, phone app; the next call) and return the question's id.
 
         kind "approval" gets the choices Approve / Deny unless you give others (e.g. Send / Edit / Discard). `hook`
         names a function in app.ask.hooks that runs once with the first answer (not on Later, not on expiry).
         `expires` is a datetime, a timedelta, or text like "2d", "6h", "tomorrow 9am"; None means the default (two
-        days). `title` replaces the "Question" label.
+        days). `title` replaces the "Question" label. `why`, `about`, `item`: the envelope (core/calm.py): why it's
+        asked (a reason id, or "asked" when it follows something you just did), what it's about, that item's id.
         """
         kind = kind if kind in KINDS else "question"
         text = str(text or "").strip()
@@ -121,6 +125,9 @@ class Ask:
             "answered": None,
             "files": [],
             "msg": None,
+            "why": why,
+            "about": about,
+            "item": item,
         }
         self._save(q)
         if deliver:
@@ -152,7 +159,7 @@ class Ask:
         rows = [cs] if q["kind"] == "approval" and len(cs) <= 3 else [[b] for b in cs]
         return [*rows, [("Later", f"ask:{q['id']}:L")]]
 
-    def _deliver(self, q: dict) -> Any:
+    def _deliver(self, q: dict, why: str | None = None) -> Any:
         hint = "Tap an answer, or reply to this message to type one." if q["choices"] else "Reply to this to answer."
         return self.app.notify(
             f"{q['text']}\n\n{hint}",
@@ -162,6 +169,9 @@ class Ask:
             map_kind="ask",
             map_ref=q["id"],
             urgent=q["kind"] == "approval",
+            why=why or q.get("why"),
+            about=q.get("about"),
+            item=q.get("item"),
         )
 
     def resend(self, qid: str) -> bool:
@@ -169,7 +179,7 @@ class Ask:
         q = self.get(qid)
         if not q or q["status"] not in OPEN:
             return False
-        mid = self._deliver(q)
+        mid = self._deliver(q, why="asked")  # you asked to see it again
         if mid is not None:
             self._edit(q, "(asked again below)", retract=False)
             self._set_msg(qid, mid)
@@ -294,6 +304,9 @@ class Ask:
             choice=idx,
             nothing=bool(q.get("nothing")),
         )
+        calm = getattr(self.app, "calm", None)
+        if calm is not None:  # (calm) answered, for the monthly look at what you rarely answer
+            calm.touched(map_kind="ask", map_ref=q["id"])
         shown = q["answer"] + (f" + {len(q['files'])} file(s)" if q["files"] else "")
         self._edit(q, f"Answered: {shown[:300]} (via {via})")
         note = self._run_hook(q) or (f"{q['answer']}." if q["kind"] == "approval" else f"Got it: {shown[:120]}")

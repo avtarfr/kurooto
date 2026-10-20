@@ -543,6 +543,7 @@ class Deadlines(Module):
                 source=self.id,
                 title="Recurring quiz",
                 expires="3d",
+                why="asked",
             )
             return f"One question first: {question[0]}"
         rule.pop("options", None)
@@ -681,6 +682,9 @@ class Deadlines(Module):
                 kind="deadline",
                 title="Overdue?",
                 buttons=[[("Done", f"dl:{i}:done"), ("New date", f"dl:{i}:date"), ("Drop", f"dl:{i}:drop")]],
+                why="deadlines.overdue",
+                about=it["title"],
+                item=i,
             )
             self.app.events.emit("deadline_overdue_asked")
             return
@@ -693,7 +697,16 @@ class Deadlines(Module):
         else:
             text = f"{prefix}Due {human(h)}: {it['title']} ({dt.datetime.fromisoformat(it['due']):%a %d %b %H:%M})"
             buttons = [[("Done", f"dl:{i}:done"), ("Not mine", f"dl:{i}:ignore"), ("Snooze 3 h", f"dl:{i}:snooze")]]
-        self.app.notify(text, kind="deadline", urgent=urgent, buttons=buttons)
+        self.app.notify(
+            text,
+            kind="deadline",
+            urgent=urgent,
+            buttons=buttons,
+            why="deadlines.reminder",
+            about=it["title"],
+            item=i,
+            due=it["due"],
+        )
         self.app.events.emit("deadline_told", urgent=urgent)
 
     def _call(self, i: str, it: dict, h: float) -> bool:
@@ -707,9 +720,9 @@ class Deadlines(Module):
         calls = self.app.modules["calls"]
         place = getattr(calls, "place", None)  # rings now, or waits out a block and says so
         if place is not None:
-            place(reason, key=f"deadlines:{i}")
+            place(reason, key=f"deadlines:{i}", why="deadlines.call", due=it["due"])
         else:
-            calls.schedule(max(when, now()), reason, key=f"deadlines:{i}")
+            calls.schedule(max(when, now()), reason, key=f"deadlines:{i}", why="deadlines.call", due=it["due"])
         self.app.events.emit("deadline_call", hours_left=round(h, 1))
         return True
 
@@ -742,6 +755,8 @@ class Deadlines(Module):
             self.app.notify(
                 f"Exam mode{whose}: {e['title']}, {when_text(e['due'])} ({e['when']}).{more} /exam shows it.",
                 kind="info",
+                why="deadlines.exam_mode",
+                about=e["title"],
             )
             self.app.events.emit("exam_mode_on", days=e["days"])
 
@@ -824,6 +839,7 @@ class Deadlines(Module):
                 hook_payload={"id": j},
                 source=self.id,
                 title="Deadline",
+                why="asked",
             )
             return "When is it due now? Answer the question."
         if act == "snooze":

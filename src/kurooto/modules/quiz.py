@@ -218,6 +218,7 @@ class Quiz(Module):
             kind="question",
             map_kind="quiz",
             map_ref=f"{subj}|{iid}",
+            why="asked",
         )
         return f"{len(items)} due in {subj}."
 
@@ -294,8 +295,9 @@ class Quiz(Module):
         c = self.app.modules.get("calls")
         return bool(c and self.app.is_on("calls") and c.ready()[0])
 
-    def call_quiz(self, subject: str | None = None, at: dt.datetime | None = None) -> str:
-        """A quiz call: now (it waits out classes and other no-call times), or at a time."""
+    def call_quiz(self, subject: str | None = None, at: dt.datetime | None = None, why: str = "calls.own") -> str:
+        """A quiz call: now (it waits out classes and other no-call times), or at a time. why: "quiz.call" when it
+        calls by itself (exam mode, exam season), else it's one you asked for (core/calm.py)."""
         if not self._calls_ok():
             return "Phone calls aren't on, so the quiz is here: /quiz"
         subject = subject or self.exam_subject()
@@ -305,20 +307,20 @@ class Quiz(Module):
         calls = self.app.modules["calls"]
         self.app.events.emit("quiz_call", later=at is not None)
         if at is not None:
-            return calls.schedule(at, reason, key=f"{key}:{at:%Y%m%d%H%M}")
+            return calls.schedule(at, reason, key=f"{key}:{at:%Y%m%d%H%M}", why=why)
         place = getattr(calls, "place", None)
         if place is not None:
-            return place(reason, key=key) or "Calling you."
+            return place(reason, key=key, why=why) or "Calling you."
         when, _ = self.app.availability.next_callable(now())
         reason_now, _ = self.app.availability.call_block(now())
-        calls.schedule(max(when, now()), reason, key=key)
+        calls.schedule(max(when, now()), reason, key=key, why=why)
         return "Calling you now." if not reason_now else f"I'll call you at {when:%H:%M} ({reason_now})."
 
     def call_outcome(self, key: str, outcome: str) -> bool:
         if outcome in ("missed", "decline", "skip"):
             subject = (key.split(":") + [""])[1]
             cmd = "/quiz" if subject in ("", "any") else f"/quiz {subject}"
-            self.app.notify(f"Missed the quiz call. {cmd} practises here instead.", kind="info")
+            self.app.notify(f"Missed the quiz call. {cmd} practises here instead.", kind="info", why="quiz.call")
         return False
 
     # ------------------------------------------------------------------------- offers and check-ins
@@ -353,13 +355,24 @@ class Quiz(Module):
         text = f"{e['title']} is {day} at {dt.datetime.fromisoformat(e['due']):%H:%M}."
         if not count:
             where = f"{subject}/exam-prep.md" if subject else "an exam-prep note"
-            self.app.notify(f"{text} Nothing to practise yet: a '## Must know' list in {where} works.", kind="info")
+            self.app.notify(
+                f"{text} Nothing to practise yet: a '## Must know' list in {where} works.",
+                kind="info",
+                why="quiz.offer",
+                about=e["title"],
+            )
             return
         row = [("Quiz me now", f"qo:{e['id']}:now")]
         if self._calls_ok():
             row.append(("Call me for a quiz", f"qo:{e['id']}:call"))
         row.append(("Not tonight" if day == "tomorrow" else "No thanks", f"qo:{e['id']}:no"))
-        self.app.notify(f"{text} Practise? {count} questions are due.", kind="question", buttons=[row])
+        self.app.notify(
+            f"{text} Practise? {count} questions are due.",
+            kind="question",
+            buttons=[row],
+            why="quiz.offer",
+            about=e["title"],
+        )
         self.app.events.emit("quiz_offered", day=day)
 
     def _exam_daily(self, p: dict | None = None) -> None:
@@ -375,14 +388,18 @@ class Quiz(Module):
         if not count:
             return
         if self.setting("by_call") and self._calls_ok() and self._season_call(e["id"]) is not False:
-            self.call_quiz(subject)
+            self.call_quiz(subject, why="quiz.call")
             return
         row = [("Quiz me now", f"qo:{e['id']}:now")]
         if self._calls_ok():
             row.append(("Call me", f"qo:{e['id']}:call"))
         row.append(("Skip today", f"qo:{e['id']}:skip"))
         self.app.notify(
-            f"Exam mode: {e['title']} {e['when']}. {count} questions to practise. Now?", kind="question", buttons=[row]
+            f"Exam mode: {e['title']} {e['when']}. {count} questions to practise. Now?",
+            kind="question",
+            buttons=[row],
+            why="quiz.exam_daily",
+            about=e["title"],
         )
         self.app.events.emit("quiz_checkin", via="message", exam=True)
 
@@ -428,10 +445,10 @@ class Quiz(Module):
             return
         subject = p.get("subject")
         if not self.due(subject or self.exam_subject())[1]:
-            self.app.notify("Quiz time, but nothing is due to practise right now.", kind="info")
+            self.app.notify("Quiz time, but nothing is due to practise right now.", kind="info", why="quiz.checkin")
             return
         self.app.events.emit("quiz_checkin", via="message", exam=False)
-        self.app.notify("Quiz time.", kind="info")
+        self.app.notify("Quiz time.", kind="info", why="quiz.checkin")
         self.start_session(subject)
 
     # ------------------------------------------------------------------------------------- commands

@@ -591,7 +591,7 @@ class Backups(Module):
         prev = jload(self.state_file, {}) or {}
         rec = {**prev, "ok": False, "failed_at": time.time(), "error": why}
         if nag and time.time() - prev.get("told", 0) > 20 * 3600:  # at most once a day
-            self.app.notify(f"Backup didn't work: {why}", kind="info")
+            self.app.notify(f"Backup didn't work: {why}", kind="info", why="backups.failed")
             rec["told"] = time.time()
         jsave(self.state_file, rec)
         self.app.events.emit("backup_failed", error=why[:200])
@@ -631,7 +631,7 @@ class Backups(Module):
     def _cmd_backup(self, msg: Incoming, arg: str) -> str:
         def work():
             ok, text = self.backup("now")
-            self.app.notify(text if ok else f"Backup didn't work: {text}", kind="result")
+            self.app.notify(text if ok else f"Backup didn't work: {text}", kind="result", why="asked")
 
         threading.Thread(target=work, name="backup", daemon=True).start()
         return "Backing up now; I'll tell you when it's done."

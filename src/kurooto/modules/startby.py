@@ -484,6 +484,7 @@ class StartBy(Module):
             "(they're estimates).",
             kind="info",
             title="Start-by dates",
+            why="startby.tell",
         )
 
     def _tell(self, r: dict) -> None:
@@ -505,6 +506,8 @@ class StartBy(Module):
             kind="deadline",
             title="Start-by date",
             buttons=self._buttons(r["id"], r["hours"], r["kind"]),
+            why="startby.tell",
+            about=what,
         )
         self.app.events.emit("startby_told", kind=r["kind"], short=bool(r["short"]))
 
@@ -532,6 +535,9 @@ class StartBy(Module):
             source=self.id,
             title="Exam preparation",
             expires="7d",
+            why="startby.ask_exams",
+            about=name,
+            item=r["subject"],
         )
         self.app.events.emit("startby_asked")
 

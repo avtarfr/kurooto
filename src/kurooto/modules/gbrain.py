@@ -352,6 +352,7 @@ class GBrain(Module):
                 f"The notes brain's nightly upkeep didn't finish{which}. Search still works, and it tries again "
                 f"tomorrow night. Details: {log}",
                 kind="info",
+                why="gbrain.upkeep",
             )
         jsave(self.app.paths.state / "gbrain.json", state)
         return ok, status
@@ -391,6 +392,7 @@ class GBrain(Module):
                 kind="info",
                 title="Notes brain checkup",
                 buttons=[buttons],
+                why="gbrain.checkup",
             )
         return found
 

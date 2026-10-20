@@ -478,7 +478,9 @@ class LidSafe(Module):
             self.app.events.emit("lidsafe_failed", what="send")
             text = ((self._held().get("ids") or {}).get(iid) or {}).get("text")
             if was == "line" and text:  # skipped here because the call line had it, which then couldn't send it
-                self.app.notify(f"Your call line couldn't get this to your phone: {text}", kind="reminder")
+                self.app.notify(
+                    f"Your call line couldn't get this to your phone: {text}", kind="reminder", why="lidsafe.failed"
+                )
 
     # ------------------------------------------------------------------------------------------- running
     async def step(self) -> None:

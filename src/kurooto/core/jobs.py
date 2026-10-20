@@ -129,6 +129,8 @@ class Jobs:
             self._db.execute("alter table jobs add column text_only integer default 0")
         if "not_before" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # waits for a reset
             self._db.execute("alter table jobs add column not_before real")
+        if "why" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # (calm) the answer's reason
+            self._db.execute("alter table jobs add column why text")
 
     # ------------------------------------------------------------------------------------- the queue
     def submit(
@@ -142,15 +144,18 @@ class Jobs:
         then_payload: dict | None = None,
         background: bool = False,
         text_only: bool = False,
+        why: str | None = None,
     ) -> str:
         """Queue an AI request. background=True: work nobody is waiting for, which waits for the charger when the
-        laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools)."""
+        laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools).
+        why: the answer's reason when it comes by itself (core/calm.py, e.g. "research.papers"); otherwise it's an
+        answer to something asked, never held."""
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"
-                "background,text_only) values(?,?,?,?, 'queued',?,?,?,?,?,?,?)",
+                "background,text_only,why) values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?)",
                 (
                     jid,
                     (title or prompt_clean.split("\n")[0])[:80],
@@ -163,6 +168,7 @@ class Jobs:
                     json.dumps(then_payload or {}),
                     int(background),
                     int(text_only),
+                    why,
                 ),
             )
         self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean))
@@ -426,10 +432,12 @@ class Jobs:
             title=f"{brain.label}: action needed" if result.verdict == Verdict.AUTH else None,
             kind="info",
             urgent=True,
+            why="ai.limit",
         )
 
     def _deliver(self, job: Job, result: Result, used) -> None:
         label = used.label if used else "AI"
+        why = (self._read("select why from jobs where id=?", (job.id,)) or [None])[0] or "asked"  # core/calm.py
         pool = self.app.quota.pool(used, job.effort or "medium")
         head = f"[{label} · {job.effort or '?'}{'' if result.ok else ' · failed'}] {job.title}"
         if result.ok:
@@ -452,10 +460,11 @@ class Jobs:
                 kind="result",
                 reply_to=reply_to,
                 buttons=buttons,
+                why=why,
             )
-            self.app.notify(job.title, kind="result", file=str(md))
+            self.app.notify(job.title, kind="result", file=str(md), why=why)
         else:
-            self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to, buttons=buttons)
+            self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to, buttons=buttons, why=why)
 
     def _defer(self, jid: str, until: float) -> None:
         """Background work whose free limits are kept for you: back in the queue until the reset, never dropped."""

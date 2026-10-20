@@ -404,6 +404,7 @@ class MailDigest(GooglePart):
                 self.app.notify(
                     f"Confidential ({n}): summarised on this computer; open the dashboard to read it.{more}",
                     kind="info",
+                    why="mail_digest.digest",
                 )
                 self.app.events.emit("mail_confidential_local", mails=n, dates=dates)
         elif counted.get("confidential") and self.setting("confidential") == "local" and not model:
@@ -430,6 +431,7 @@ class MailDigest(GooglePart):
             "Mail digest: confidential mail is only counted for now, because no local model is ready to summarise it "
             "on this computer (turn on Local AI models; they run on the charger). I'll summarise it again once one is.",
             kind="info",
+            why="mail_digest.setup",
         )
 
     @staticmethod
@@ -476,6 +478,7 @@ class MailDigest(GooglePart):
             "Choose what the digest may read: /mail read @your-school.example, /mail read label:Courses or "
             "/mail read someone@example.org.",
             kind="info",
+            why="mail_digest.setup",
         )
 
     # ------------------------------------------------------------------------------------- the AI's turn
@@ -560,7 +563,10 @@ class MailDigest(GooglePart):
         if result.ok:
             b.unlink(missing_ok=True)  # the mail itself stays in Gmail; this was only Kurooto's copy for the AI
             self.app.notify(
-                clip(result.text.strip(), 3800) or "Mail digest: nothing to report.", title="Mail digest", kind="result"
+                clip(result.text.strip(), 3800) or "Mail digest: nothing to report.",
+                title="Mail digest",
+                kind="result",
+                why="mail_digest.digest",
             )
             self.app.events.emit("mail_digest_done", messages=len(data.get("messages", [])))
             de = self.app.modules.get("digest_email")
@@ -575,6 +581,7 @@ class MailDigest(GooglePart):
                 f"The mail digest didn't come together ({result.detail[:120] or result.verdict}); I'll try again "
                 "at the next check.",
                 kind="info",
+                why="mail_digest.failed",
             )
 
     # ----------------------------------------------------------------------------------------- commands
@@ -798,6 +805,8 @@ class ReplyDrafts(GooglePart):
             expires=dt.timedelta(days=int(self.setting("ask_days") or 3)),
             source=self.id,
             title="Email reply",
+            why="reply_drafts.approval",
+            about=self.who(rec),
         )
 
     def answer(self, did: str, choice: str) -> str:
@@ -843,6 +852,7 @@ class ReplyDrafts(GooglePart):
             hook_payload={"draft": did},
             source=self.id,
             title="Email reply",
+            why="asked",
         )
 
     def _change_hook(self, q: dict, answer: str) -> str:
@@ -882,7 +892,7 @@ class ReplyDrafts(GooglePart):
             return
         body = clean_reply(result.text) if result.ok else ""
         if not body:
-            self.app.notify("Couldn't rewrite the reply; it's unchanged.", kind="info")
+            self.app.notify("Couldn't rewrite the reply; it's unchanged.", kind="info", why="asked")
             self._ask(did, rec)
             return
         rec["body"] = body
@@ -891,7 +901,7 @@ class ReplyDrafts(GooglePart):
             self.google.api("gmail", f"/users/me/drafts/{did}", {"id": did, "message": msg}, method="PUT")
         except GoogleError as e:
             if e.code != 404:
-                self.app.notify(f"Gmail didn't take the new version: {e}"[:300], kind="info")
+                self.app.notify(f"Gmail didn't take the new version: {e}"[:300], kind="info", why="asked")
                 return
             d = self.google.api("gmail", "/users/me/drafts", {"message": msg})  # deleted in Gmail meanwhile
             rec["status"] = "replaced"
@@ -988,5 +998,5 @@ class DigestEmail(GooglePart):
         if not flag.exists() or time.time() - flag.stat().st_mtime > 6 * 3600:
             flag.parent.mkdir(parents=True, exist_ok=True)
             flag.touch()
-            self.app.notify(text, kind="info")
+            self.app.notify(text, kind="info", why="digest_email.failed")
         return text

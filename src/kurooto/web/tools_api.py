@@ -161,19 +161,19 @@ def place_call(app: App, reason: str, at: str = "", alarm: bool = False, force: 
             when = parse_when(at)
         except ValueError:
             return False, f"I couldn't read the time {at!r} (try 17:30, 'in 20 min' or 'tomorrow 7:00')."
-        return True, calls.schedule(when, reason, alarm=alarm) + "."
+        return True, calls.schedule(when, reason, alarm=alarm, why="calls.own") + "."
     if not (force or alarm):
         why, until = app.availability.call_block()
         if not why and live_call(app):
             why, until = ON_A_CALL, now() + dt.timedelta(minutes=3)
         if why:
             t = until + dt.timedelta(minutes=2)
-            calls.schedule(t, reason)
+            calls.schedule(t, reason, why="calls.own")
             app.events.emit("call_held", why=why)
             return True, f"Held until {t:%H:%M} ({why}): {reason}"
     elif live_call(app):
         return False, "You're on a call right now, so I didn't ring. Try again when it's over."
-    calls.ring(reason, alarm=alarm)
+    calls.ring(reason, alarm=alarm, why="calls.own")
     return True, f"Calling your phone: {reason}"
 
 
@@ -254,7 +254,13 @@ def notify_from_program(app: App, b: dict) -> tuple[int, dict]:
     reply_to = b.get("reply_to")
     reply_to = int(reply_to) if isinstance(reply_to, (int, str)) and str(reply_to).strip().isdigit() else None
     ref = app.notify(
-        text, title=title, kind=kind, urgent=bool(b.get("urgent")), buttons=buttons or None, reply_to=reply_to
+        text,
+        title=title,
+        kind=kind,
+        urgent=bool(b.get("urgent")),
+        buttons=buttons or None,
+        reply_to=reply_to,
+        why="asked",
     )
     app.events.emit("notify_external", source=(title or "")[:40])
     return 200, {"ok": True, "id": ref}

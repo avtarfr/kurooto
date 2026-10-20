@@ -530,7 +530,7 @@ class Google(Module):
                 f"{', '.join(uses) or 'what uses it'} is paused. Open Kurooto's dashboard → Features → that feature → "
                 "Save, and sign in again."
             )
-        self.app.notify(text, kind="info", urgent=True)
+        self.app.notify(text, kind="info", urgent=True, why="google.signin", about=account)
         self.app.events.emit("google_signin_lost", main=account == MAIN)
 
     def api(
@@ -634,6 +634,8 @@ class Google(Module):
                             buttons=[[("Open", {"url": a.get("alternateLink", "https://classroom.google.com")})]]
                             if a.get("alternateLink")
                             else None,
+                            why="google.announcement",
+                            about=cname,
                         )
                         out["posts"] += 1
         except NeedsSignIn:
@@ -777,12 +779,12 @@ class Google(Module):
 
     def _draft_done(self, job, result, payload) -> None:
         if not result.ok:
-            self.app.notify(f"Couldn't write the draft: {result.detail or 'the AI failed'}", kind="result")
+            self.app.notify(f"Couldn't write the draft: {result.detail or 'the AI failed'}", kind="result", why="asked")
             return
         text = result.text.strip()
         m = re.match(r"(?is)\s*subject:\s*(.+?)\n(.*)", text)
         subject, body = (m.group(1).strip(), m.group(2).strip()) if m else ("(no subject)", text)
-        self.app.notify(self.make_draft(payload["to"], subject, body), kind="result")
+        self.app.notify(self.make_draft(payload["to"], subject, body), kind="result", why="asked")
 
     # ------------------------------------------------------------------------------------- setup
     def setup_form(self) -> dict:
@@ -993,6 +995,8 @@ class GooglePart(Module):
                 f"{self.title} is paused: {why}. On this computer: Kurooto's dashboard → Features → {self.title} → "
                 "Save, then sign in with Google.",
                 kind="info",
+                why="google.setup",
+                about=self.title,
             )
             self.app.events.emit("google_needs_ok", part=self.part)
         return False

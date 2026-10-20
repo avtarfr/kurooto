@@ -166,7 +166,7 @@ class DriveUpload(GooglePart):
         try:
             f = self.upload(path)
         except (NeedsSignIn, GoogleError, OSError) as e:
-            self.app.notify(f"Couldn't upload {path.name} to Drive: {e}"[:300], kind="result")
+            self.app.notify(f"Couldn't upload {path.name} to Drive: {e}"[:300], kind="result", why="asked")
             self.app.events.emit("drive_upload_failed")
             return
         link = f.get("webViewLink") or f"https://drive.google.com/file/d/{f.get('id', '')}/view"
@@ -176,5 +176,6 @@ class DriveUpload(GooglePart):
             f"{text}{path.name} is in your Google Drive ({folder} folder): {link}",
             kind="result",
             buttons=[[("Open in Drive", {"url": link})]],
+            why="asked",
         )
         self.app.events.emit("file_sent", via="drive", bytes=path.stat().st_size)

@@ -137,6 +137,7 @@ def supervise() -> int:
                     f"{app.name} crashed three times in a row and keeps restarting. Logs: {p.logs}",
                     kind="info",
                     urgent=True,
+                    why="kurooto.crash",
                 )
                 app.close()
             except Exception:

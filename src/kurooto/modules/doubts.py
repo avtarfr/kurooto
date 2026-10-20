@@ -195,7 +195,7 @@ class Doubts(Module):
         if reply is not None:
             reply(text, buttons=rows)
         else:
-            self.app.notify(text, kind="reminder", buttons=rows)
+            self.app.notify(text, kind="reminder", buttons=rows, why="doubts.before_class", about=head, item=slug)
 
     def callbacks(self):
         return {"doubt": self._button}

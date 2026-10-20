@@ -522,7 +522,9 @@ class Api:
         if path == "phone/test":
             if not self.app.is_on("calls"):
                 return 200, {"ok": False, "error": "Phone calls are off"}
-            self.app.modules["calls"].ring("This is a test call from your computer. Answer to check it works.")
+            self.app.modules["calls"].ring(
+                "This is a test call from your computer. Answer to check it works.", why="asked"
+            )
             return 200, {"ok": True}
         if path == "autostart":
             if os.environ.get("KUROOTO_NO_AUTOSTART") == "1":  # tests and rehearsals leave this computer alone
@@ -539,7 +541,7 @@ class Api:
         if path == "setup/done":
             s.set("setup.done", True)
             on = [m.title for m in self.app.enabled()]
-            self.app.notify(f"{self.app.name} is set up. On: {', '.join(on)}. Send /help any time.")
+            self.app.notify(f"{self.app.name} is set up. On: {', '.join(on)}. Send /help any time.", why="asked")
             return 200, {"ok": True}
         if path == "ask" or path.startswith("ask/"):
             return self._ask(path, b, post=True)
@@ -585,6 +587,7 @@ class Api:
                     expires=str(b.get("expires") or "") or None,
                     source=str(b.get("source") or "cli")[:40],
                     title=str(b.get("title") or "")[:60] or None,
+                    why="asked",
                 )
             except ValueError as e:
                 return 400, {"error": str(e)}

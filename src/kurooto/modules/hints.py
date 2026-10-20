@@ -170,6 +170,7 @@ class Hints(Module):
                 hook_payload={"subject": slug, "hint": hid},
                 source=self.id,
                 title="AI policy",
+                why="asked",
             )
             return "One question first (once per subject): the course's AI policy."
         return self._go(h)
@@ -218,19 +219,21 @@ class Hints(Module):
             label = providers.CHOICES.get(job.brain or "", job.brain or "the AI")
             h["status"] = "failed"
             self._save(h)
-            self.app.notify(FRIENDLY.get(result.verdict, "It failed.").format(brain=label), kind="result")
+            self.app.notify(FRIENDLY.get(result.verdict, "It failed.").format(brain=label), kind="result", why="asked")
             return
         ladder = parse_ladder(result.text)
         if "unreadable" in ladder:
             h["status"] = "failed"
             self._save(h)
-            self.app.notify(f"I couldn't read the problem ({ladder['unreadable']}). Send it again, sharper or typed.")
+            self.app.notify(
+                f"I couldn't read the problem ({ladder['unreadable']}). Send it again, sharper or typed.", why="asked"
+            )
             return
         if "refused" in ladder or not ladder:
             h["status"] = "failed"
             self._save(h)  # never pass on an answer that isn't in steps: it could give the whole solution away
             why = ladder.get("refused") or "the AI's answer didn't come in steps"
-            self.app.notify(f"No hints this time: {why}. /hint again to retry.", kind="result")
+            self.app.notify(f"No hints this time: {why}. /hint again to retry.", kind="result", why="asked")
             return
         h.update(ladder=ladder, note=self._lecture_note(h, ladder), status="ready", step=0)
         self._save(h)
@@ -266,7 +269,7 @@ class Hints(Module):
         else:
             buttons = None
             text += "\n\nThat's the last hint: the course's AI policy rules out full solutions."
-        self.app.notify(text, kind="result", buttons=buttons, map_kind="hint", map_ref=h["id"])
+        self.app.notify(text, kind="result", buttons=buttons, map_kind="hint", map_ref=h["id"], why="asked")
         self.app.events.emit("hint_step", step=i + 1)
 
     def advance(self, hid: str, act: str) -> str:
@@ -279,7 +282,7 @@ class Hints(Module):
             if not h["ladder"].get("solution"):
                 return "There's no solution in this ladder; /hint again."
             note = f"\n\nLecture note: {h['note']}" if h.get("note") else ""
-            self.app.notify(f"Solution: {h['ladder']['solution']}{note}", kind="result")
+            self.app.notify(f"Solution: {h['ladder']['solution']}{note}", kind="result", why="asked")
             h["status"] = "solved"
             self._save(h)
             self.app.events.emit("hint_solution", after_step=int(h.get("step", 0)) + 1)

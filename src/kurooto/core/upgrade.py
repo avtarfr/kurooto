@@ -79,4 +79,4 @@ def run(app: App) -> str:
 
 
 def whats_new(app: App) -> None:
-    app.notify(WHATS_NEW, kind="update")
+    app.notify(WHATS_NEW, kind="update", why="updates.whats_new")

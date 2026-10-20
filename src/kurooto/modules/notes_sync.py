@@ -306,6 +306,7 @@ class NotesSync(Module):
                 f"Notes sync: {len(kept)} note(s) changed here and elsewhere at once. Both versions are kept; the "
                 f"note has the one from elsewhere:\n{rows}\nMerge them when you like, then delete the copy.",
                 kind="info",
+                why="notes_sync.clash",
             )
         return True, "Synced." if not kept else f"Synced; {len(kept)} clash(es) kept as copies."
 
@@ -382,7 +383,7 @@ class NotesSync(Module):
         prev = jload(self.state_file, {}) or {}
         jsave(self.state_file, {"ok": False, "at": time.time(), "error": why, "told": prev.get("told", 0)})
         if time.time() - prev.get("told", 0) > 6 * 3600:  # at most every 6 hours
-            self.app.notify(f"Notes sync: {why}.", kind="info")
+            self.app.notify(f"Notes sync: {why}.", kind="info", why="notes_sync.failed")
             jsave(self.state_file, {"ok": False, "at": time.time(), "error": why, "told": time.time()})
         self.app.events.emit("notes_sync_failed", error=why[:200])
         return False, why
