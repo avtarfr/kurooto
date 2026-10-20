@@ -1,8 +1,14 @@
 # Changelog
 
-## 0.5.1 (unreleased)
+## 0.5.1 (2026-10-20)
 
-**Calls when Google's live voice is down** (Gemini Live answering "503 UNAVAILABLE" made calls fail to start, or hang up)
+- **Gemini free-tier key rollover disabled**: Requests using CLI brains (`agy`) no longer roll over to the free Gemini API key on error, preventing unintended rate-limit exhaustion.
+- **AGY recommended brain**: Recommended in settings/setup over raw Gemini API keys; includes warning on free-tier 20 req/day limits.
+- **Direct laptop ntfy ringing**: Calls and wake-ups publish sealed encrypted payloads directly to ntfy from the laptop as well, ensuring ringing works reliably even when Cloudflare Worker egress blocks ntfy.sh.
+- **Telegram multi-turn memory**: Chat maintains recent turns within 2 hours; supports `/new` and `/clear` to start fresh conversations.
+- **Classroom to Git migration & unhardcoded paths**: Classroom files organized cleanly under Vault; `send_file` tool supports classroom folder dynamically without hardcoding paths.
+- **Study pack generation**: `/studypack <subject>` bundles materials into a zip for external LLMs.
+- **Calls when Google's live voice is down** (Gemini Live answering "503 UNAVAILABLE" made calls fail to start, or hang up)
 - Live again first: a start Google refuses for now (503, 429, UNAVAILABLE) is tried after about 1 s and 3 s, each time
   with the next model in `calls.live_models` (new, after `calls.live_model`; by default
   `gemini-3.1-flash-live-preview` and `gemini-2.5-flash-native-audio-latest`). Those models get a session any Live

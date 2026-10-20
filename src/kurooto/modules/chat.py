@@ -3,7 +3,10 @@ comes back as a reply. Start a message with "high:" (or "low:") to choose how ha
 
 from __future__ import annotations
 
+import time
+
 from kurooto import providers
+from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
 
 
@@ -12,6 +15,14 @@ class Chat(Module):
     title = "Chat with your AI"
     description = "Ask anything in plain words; the AI you picked answers, with your notes at hand."
     privacy = "What you ask, and notes it needs to read, go to the AI service you picked."
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.dir = app.paths.state / "chat"
+
+    @property
+    def history_file(self):
+        return self.dir / "history.json"
 
     def ready(self):
         main = self.app.settings.get("brain.main")
@@ -22,19 +33,63 @@ class Chat(Module):
         return (True, "") if ok else (False, f"{providers.CHOICES.get(main, main)}: {why}")
 
     def ask(self, msg: Incoming) -> str:
-        # `kurooto ask` and the setup page's try-it box wait for the answer themselves; Telegram doesn't get it
+        text = msg.text.strip()
+        if text.lower() in ("/new", "/clear", "new", "clear"):
+            return self.clear_history()
+
         terminal = msg.via in ("terminal", "setup")
-        jid = self.app.jobs.submit(msg.text, reply_to=None if terminal else msg.message_id, quiet=terminal)
+        history = jload(self.history_file, []) or []
+        
+        # Only inject history if there is recent conversation within 2 hours
+        now_ts = time.time()
+        recent = [h for h in history if now_ts - h.get("at", 0) < 7200][-6:]
+
+        if recent and not terminal:
+            conv = ["Previous conversation:"]
+            for h in recent:
+                conv.append(f"User: {h['user']}")
+                conv.append(f"Assistant: {h['assistant']}")
+            conv.append(f"\nCurrent request:\n{text}")
+            prompt = "\n".join(conv)
+        else:
+            prompt = text
+
+        jid = self.app.jobs.submit(prompt, title=text[:80], reply_to=None if terminal else msg.message_id, quiet=terminal)
         msg.job = jid
         return "On it."
 
+    def record_turn(self, prompt: str, reply: str) -> None:
+        """Record a completed turn into chat history for context continuity."""
+        if not reply or reply.startswith("I couldn't "):
+            return
+        # Extract the user's actual prompt if wrapped in history
+        user_text = prompt
+        if "Current request:\n" in prompt:
+            user_text = prompt.split("Current request:\n", 1)[1].strip()
+        history = jload(self.history_file, []) or []
+        history.append({
+            "user": user_text,
+            "assistant": reply[:1200].strip(),
+            "at": time.time(),
+        })
+        jsave(self.history_file, history[-10:])
+
+    def clear_history(self) -> str:
+        jsave(self.history_file, [])
+        return "Started a new conversation. Previous context cleared."
+
     def commands(self):
         return [
+            Command("new", "start a fresh conversation, clearing previous chat context", self._cmd_new),
+            Command("clear", "clear conversation history", self._cmd_new),
             Command("brain", "which AI answers, and whether it's working", self._brain),
             Command(
                 "usage", "AI requests per day over the last week, usage limits hit, and today's limits", self._usage
             ),
         ]
+
+    def _cmd_new(self, msg: Incoming, arg: str) -> str:
+        return self.clear_history()
 
     def _brain(self, msg: Incoming, arg: str) -> str:
         s = self.app.settings

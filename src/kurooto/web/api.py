@@ -22,14 +22,12 @@ if TYPE_CHECKING:
 STARTER = ["telegram", "chat", "reminders", "checkins", "deadlines"]  # GBrain: a 0.5 GB download, so it's opt-in
 BRAIN_ORDER = [  # the first one is the ★ recommendation
     (
-        "gemini",
-        "A key from Google AI Studio: the simplest, and the way Google recommends for tools like this. Free "
-        "tier, or paid. Phone calls and voice notes use it too.",
+        "agy",
+        "Recommended: Google's agent program (Antigravity), run locally on this computer; full tool access and higher limits with a Google account.",
     ),
     (
-        "agy",
-        "Free with a Google account: Google's agent program, run on this computer as you; it can read your notes. "
-        "Some risk to the account (see its note).",
+        "gemini",
+        "A key from Google AI Studio. Warning: Free-tier keys have strict daily limits (20 requests/day) and exhaust quickly; best kept for Phone Calls and Voice Notes.",
     ),
     ("codex", "If you pay for ChatGPT: OpenAI's Codex, signed in with your ChatGPT account."),
     ("claude", "Advanced: if you pay for Claude, Anthropic's Claude Code, signed in with your Claude account."),

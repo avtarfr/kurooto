@@ -645,6 +645,12 @@ class Jobs:
             self.app.notify(job.title, kind="result", file=str(md), why=why)
         else:
             self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to, buttons=buttons, why=why)
+        chat = self.app.modules.get("chat")
+        if chat is not None and result.ok and result.text:
+            try:
+                chat.record_turn(job.prompt, result.text)
+            except Exception:
+                pass
 
     def _defer(self, jid: str, until: float) -> None:
         """Background work whose free limits are kept for you: back in the queue until the reset, never dropped."""

@@ -599,6 +599,11 @@ class Skills(Module):
             Command("every", "run something on a schedule: /every monday 9:00 /journal plan my week", self._every),
             Command("routines", "what runs on a schedule, with Cancel buttons", self._routines),
             Command("pack", "a revision PDF from your notes: /pack linear algebra midterm", self._pack),
+            Command(
+                "studypack",
+                "bundle course materials into a zip with an AI prompt: /studypack <subject>",
+                self._studypack,
+            ),
         ]
 
     def help(self):
@@ -977,6 +982,26 @@ class Skills(Module):
         self.pack_for(d["text"], title_prefix="Before your exam: ")
         self.app.events.emit("auto_pack_accepted")
         return "Building it; it comes here in a few minutes."
+
+    def _studypack(self, msg: Incoming, arg: str) -> str:
+        """Bundle notes and course files into a zip with a prompt for external AI."""
+        subject = arg.strip()
+        if not subject:
+            return "Which subject? /studypack <subject> (e.g. /studypack l96)"
+        try:
+            import io
+            import zipfile
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr("PROMPT.md", f"# Study Pack: {subject}\n\nMaterials for {subject}.\n")
+            zip_bytes = buf.getvalue()
+            dest = self.app.workspace / f"studypack-{subject}.zip"
+            dest.write_bytes(zip_bytes)
+            if msg.respond:
+                self.app.notify(f"Study pack for {subject}", file=str(dest), reply_to=msg.message_id)
+            return f"Created study pack: {dest.name}"
+        except Exception as e:
+            return f"Failed to create study pack: {e}"
 
     def _pack(self, msg: Incoming, arg: str) -> str:
         if not arg.strip():

@@ -24,6 +24,7 @@ import re
 import threading
 import time
 import urllib.parse
+import urllib.request
 import uuid
 
 from kurooto.core import layout
@@ -456,6 +457,27 @@ class Calls(Module):
         t = line.ticket(self.app.secrets.get("calls.call_secret") or "", hours)
         return f"{self.worker_url()}/{'?' + q if q else ''}#{t}"
 
+    def publish_ntfy(self, fields: dict) -> bool:
+        """Publish an encrypted k1 payload directly to ntfy from this computer."""
+        topic = self.app.secrets.get("calls.ntfy_topic")
+        key = self.app.secrets.get("calls.ntfy_key")
+        server = (self.setting("ntfy_server") or "https://ntfy.sh").rstrip("/")
+        if not topic or not key:
+            return False
+        try:
+            sealed = line.seal_k1(key, json.dumps(fields))
+            req = urllib.request.Request(
+                f"{server}/",
+                data=json.dumps({"topic": topic, "message": sealed, "priority": fields.get("priority", 3), "tags": ["k1"]}).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:  # noqa: S310
+                return r.status in (200, 201, 204)
+        except Exception as e:
+            self.app.events.emit("calls_ntfy_publish_failed", error=str(e)[:200])
+            return False
+
     def ring(
         self,
         reason: str,
@@ -495,6 +517,16 @@ class Calls(Module):
         sent = self.connector.admin_later(
             "ring", reason=reason, alarm=alarm, since=since, key=key, assistant=self.app.name, voice=voice
         )
+        # Direct ntfy publish from laptop to ensure the paired phone app rings even if Worker egress fails
+        self.publish_ntfy({
+            "title": "Wake-up call" if alarm else "Incoming call",
+            "message": str(reason)[:300],
+            "priority": 5,
+            "tags": ["call", f"since-{since}"] + (["alarm"] if alarm else []),
+            "click": self.link(reason, since=since, voice=voice),
+            "time": int(time.time()),
+            "assistant": self.app.name,
+        })
         answer = [
             [("Answer", {"url": self.link(reason, since=since, voice=voice)}), *[tuple(b) for b in buttons or []]]
         ]
@@ -535,6 +567,7 @@ class Calls(Module):
             return
         self._ring_state(p["since"], "missed")
         self.connector.admin_later("stop-ring", since=p["since"])
+        self.publish_ntfy({"title": "stop", "message": "", "tags": ["stop", f"since-{p['since']}"], "time": int(time.time())})
         if not self._realert_later(p["since"], r):
             self._missed_for_good(p["since"], r)
 
