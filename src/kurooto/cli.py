@@ -5,18 +5,24 @@ kurooto paths            where settings, data and logs live on this machine
 kurooto doctor [--json]  check that everything Kurooto needs is in place (exit code = number of problems)
 kurooto off / on         turn Kurooto off completely (no start at sign-in) / back on
 kurooto pause [2h|18:00] / resume   pause it (Telegram says "paused" and keeps what you send) / wake it
-kurooto notify [--title T] TEXT     send yourself a message through Kurooto (for scripts and other tools)
+kurooto notify [--title T] [--kind K] [--urgent] [--button "Label=prefix:ref:action"]... [--click URL]
+               [--reply-to ID] [--print-id] TEXT   send yourself a message through Kurooto (for scripts and tools)
 kurooto ask ["plain English"]       talk to Kurooto from a terminal; quick things at once, bigger ones print later
 kurooto call "reason" [--at TIME] [--alarm] [--force]   ring your phone now or later
+kurooto call --list | --cancel KEY  the calls booked for later, and taking one off
 kurooto mcp              Kurooto's tools for agent programs (an MCP server on stdin/stdout)
 kurooto ask-me "question" [--choices "a|b|c"] [--expires 2d] [--wait [--timeout MIN]]   ask yourself something
+kurooto ask-me --pending [--json] | --id ID [--wait]   the open questions; one asked earlier (wait for its answer)
 kurooto ask-approval "question" [--timeout MIN]   ask for a yes/no and wait (exit 0 yes, 1 no, 2 timeout)
 kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB)
 kurooto note [--title T] TEXT       save a quick note to your notes' inbox (or pipe text in)
 kurooto top [--once]     a status board: this computer and Kurooto (q quits)
 kurooto term [--print]   Kurooto Terminal: your AI, your shell, Kurooto chat and its log in one window
 kurooto logs [-f]        the end of Kurooto's log (-f: keep showing new lines)
-kurooto sync             sync everything that's on, now (notes, Classroom, calendar, research, notes brain)
+kurooto sync [--no-wait | --status]   sync everything that's on, now (notes, Classroom, calendar, research, notes
+                         brain, backup); --status: is one running, and how the last one went
+kurooto usage [DAYS]     AI requests per day, and agy's own count from its logs
+kurooto export-skills [on [--to agy,agents] | off | status]   your skills as /commands in agy, Codex, Copilot CLI
 kurooto backup [--to F]  make a backup now · kurooto restore <zip>  put one back (stops, restores, starts)
 kurooto profile save|restore|status   your setup, encrypted in your private repository; restore on a new computer
 kurooto runlog start|metric|note|end|ls   log experiment runs into your notes (research/<project>/runs/)
@@ -353,6 +359,14 @@ def uninstall(keep_data: bool) -> int:
     from kurooto.core import autostart
 
     stop()
+    try:  # (ws5) the copies of your skills Kurooto put in agy and other agent programs (core/agent_export.py)
+        from kurooto.core import agent_export
+
+        gone = agent_export.remove_all(paths().state, paths().config)
+        if gone:
+            print(f"Removed Kurooto's {len(gone)} skill copies from your agent programs; your own skills stay.")
+    except Exception as e:
+        print(f"Couldn't remove Kurooto's skills from your agent programs: {e}")
     if os.environ.get("KUROOTO_NO_AUTOSTART") != "1":
         print(autostart.disable())
         from kurooto.core import shortcuts
@@ -526,7 +540,8 @@ def home_parsers(sub) -> None:
     lg = sub.add_parser("logs", help="the end of Kurooto's log")
     lg.add_argument("-f", "--follow", action="store_true", help="keep showing new lines (Ctrl+C stops)")
     lg.add_argument("-n", type=int, default=60, help="how many lines (default 60)")
-    sub.add_parser("sync", help="sync everything that's on, now")
+    sy = sub.add_parser("sync", help="sync everything that's on, now")
+    sync_flags(sy)
     bk = sub.add_parser("backup", help="make a backup now (to the backup folder, or --to another folder)")
     bk.add_argument("--to", default="", help="a folder for this one backup")
     rs = sub.add_parser("restore", help="put a backup back: stops Kurooto, restores, starts it again")
@@ -578,7 +593,7 @@ def home_run(a) -> int | None:
 
         return runlog.main(a)
     if a.cmd == "sync":
-        return sync_all()
+        return sync_status() if a.status else sync_all(wait=not a.no_wait)
     if a.cmd == "backup":
         return backup_now(a.to)
     if a.cmd == "restore":
@@ -586,16 +601,19 @@ def home_run(a) -> int | None:
     return None
 
 
-def sync_all() -> int:
+def sync_all(wait: bool = True) -> int:
     import time
 
-    r = ask_running("sync/all", {"notify": False})
+    r = ask_running("sync/all", {"notify": not wait})
     if r is None:
         print("Kurooto isn't running (kurooto start), and the syncs run inside it.")
         return 1
     print(r.get("message", ""))
     if not r.get("ok"):
         return 0 if "already running" in r.get("message", "") else 1
+    if not wait:
+        print("It goes on in the background; the summary comes as a message (kurooto sync --status meanwhile).")
+        return 0
     url = wait_for_web(1)
     for _ in range(3600):  # Classroom can take a while
         time.sleep(1)
@@ -1046,6 +1064,189 @@ def term_run(a) -> int | None:
     return term_main(a)
 
 
+# ------------------------------------------------------------------- (ws5) flags for scripts, usage, skills in agents
+def notify_flags(no) -> None:
+    no.add_argument(
+        "--button",
+        action="append",
+        default=[],
+        metavar='"Label=WHAT"',
+        help="a button (one row each): WHAT is a feature's prefix:ref:action, or a web address",
+    )
+    no.add_argument("--click", default="", metavar="URL", help="a link to open, as an Open button")
+    no.add_argument("--reply-to", type=int, default=None, metavar="ID", help="answer an earlier Telegram message")
+    no.add_argument("--print-id", action="store_true", help="print the Telegram message's id (for --reply-to)")
+
+
+def notify_extra(a) -> dict:
+    buttons = [b.split("=", 1) for b in a.button if "=" in b]
+    return {"buttons": buttons, "click": a.click, "reply_to": a.reply_to}
+
+
+def call_flags(ca) -> None:
+    ca.add_argument("--list", action="store_true", help="the calls booked for later")
+    ca.add_argument("--cancel", default="", metavar="KEY", help="take a booked call off (its key from --list)")
+
+
+def booked_calls(cancel: str = "") -> int:
+    """`kurooto call --list` / `--cancel KEY`."""
+    r = ask_running("call/cancel", {"key": cancel}) if cancel else ask_running("call/list")
+    if r is None:
+        print("Kurooto isn't running (`kurooto on` starts it), so its booked calls can't be read.", file=sys.stderr)
+        return 1
+    if cancel:
+        print(r.get("message", ""))
+        return 0 if r.get("ok") else 1
+    calls = r.get("calls") or []
+    if not calls:
+        print("No calls booked. (Check-ins and the alarm: /checkins and /alarm on Telegram.)")
+        return 0
+    for c in calls:
+        print(f"{c['when']}  {c['key']:<18} {'(alarm) ' if c.get('alarm') else ''}{c['reason'][:80]}")
+    print("Take one off: kurooto call --cancel KEY")
+    return 0
+
+
+def ask_me_flags(am) -> None:
+    am.add_argument("--pending", action="store_true", help="the questions still open (--json for programs)")
+    am.add_argument("--json", action="store_true", help=argparse.SUPPRESS)
+    am.add_argument("--id", default="", help="with --wait: wait for the answer to a question asked before")
+
+
+def ask_me_more(a) -> int:
+    """`kurooto ask-me --pending [--json]` and `kurooto ask-me --id ID --wait`."""
+    if a.id:
+        if not a.wait:
+            q = (ask_running("ask/get", {"id": a.id}) or {}).get("question")
+            if not q:
+                print(f"There's no question {a.id} (or Kurooto isn't running).", file=sys.stderr)
+                return 2
+            print(json.dumps(q, ensure_ascii=False) if a.json else f"{q['status']}: {q.get('answer') or ''}".rstrip())
+            return 0
+        import time
+
+        end = time.monotonic() + a.timeout * 60
+        while time.monotonic() < end:  # unlike `ask-me --wait`, a timeout here leaves the question open
+            q = (ask_running("ask/get", {"id": a.id}) or {}).get("question") or {}
+            if q.get("status") == "answered":
+                print(q.get("answer") or "")
+                return 0
+            if q.get("status") == "expired":
+                break
+            time.sleep(max(0.0, min(3.0, end - time.monotonic())))
+        print("timeout")
+        return 2
+    r = ask_running("ask/pending")
+    if r is None:
+        print("Kurooto isn't running (`kurooto on` starts it).", file=sys.stderr)
+        return 2
+    qs = r.get("questions") or []
+    if a.json:
+        print(json.dumps(qs, ensure_ascii=False))
+    else:
+        for q in qs:
+            print(
+                f"{q['id']}  {q['text'][:100]}"
+                + (f"  [{' | '.join(q.get('choices') or [])}]" if q.get("choices") else "")
+            )
+        if not qs:
+            print("No open questions.")
+    return 0
+
+
+def sync_flags(sy) -> None:
+    sy.add_argument("--status", action="store_true", help="is a sync running, and how did the last one go")
+    sy.add_argument("--no-wait", action="store_true", help="start it and return; the summary comes as a message")
+
+
+def sync_status() -> int:
+    """`kurooto sync --status`: works with Kurooto stopped too (it reads what the last sync left)."""
+    import datetime as dt
+
+    from kurooto.core.state import jload
+
+    st = jload(paths().state / "sync-all.json", {}) or {}
+    if not st:
+        print("No sync has run yet (kurooto sync starts one).")
+        return 0
+    if st.get("running"):
+        since = dt.datetime.fromtimestamp(st.get("started") or 0)
+        print(f"Running since {since:%H:%M:%S}." + ("" if wait_for_web(1) else " (Kurooto isn't running now, though.)"))
+        return 0
+    done = dt.datetime.fromtimestamp(st.get("finished") or 0)
+    print(f"Last sync finished {done:%a %d %b %H:%M}:\n{st.get('text') or ''}".rstrip())
+    return 0
+
+
+def usage_cmd(days: int) -> int:
+    """`kurooto usage [DAYS]`: /usage in a terminal (Kurooto's own requests, and agy's count from its logs)."""
+    from kurooto.app import App
+    from kurooto.modules.chat import usage_text
+    from kurooto.providers.agy import log_usage, log_usage_text
+
+    days = days if 1 <= days <= 60 else 7
+    app = App()
+    try:
+        print(usage_text(app.jobs.usage(days), days) + log_usage_text(log_usage(days)))
+    finally:
+        app.close()
+    return 0
+
+
+def export_skills(state: str, to: str) -> int:
+    """`kurooto export-skills on|off|status`: your skills as slash commands in agy (and Codex, Copilot CLI)."""
+    from kurooto.app import App
+    from kurooto.core import agent_export
+
+    app = App()
+    try:
+        if state == "status":
+            st = agent_export.status(app)
+            if not st["targets"]:
+                print("Off. kurooto export-skills on puts your skills in agy as /commands (--to agy,agents adds Codex")
+                print("and Copilot CLI).")
+                return 0
+            for t, names in st["skills"].items():
+                folder = agent_export.target_dir(t)
+                print(f"{agent_export.LABELS[t]} ({folder}): {len(names)}: {', '.join('/' + n for n in names)}")
+            for p in st["problems"]:
+                print(f"  ! {p}")
+            return 0
+        if state == "on":
+            want = [t.strip() for t in (to or "agy").split(",") if t.strip()]
+            bad = [t for t in want if t not in agent_export.TARGETS]
+            if bad:
+                print(f"Not a place Kurooto knows: {', '.join(bad)} (agy, agents).", file=sys.stderr)
+                return 2
+            app.settings.set("agents.export", want)
+        else:
+            app.settings.set("agents.export", [])
+        rep = agent_export.sync(app)
+        print(agent_export.report(rep))
+        return 1 if rep["problems"] else 0
+    finally:
+        app.close()
+
+
+def ws5_parsers(sub) -> None:
+    us = sub.add_parser("usage", help="AI requests per day, and agy's own count from its logs")
+    us.add_argument("days", nargs="?", type=int, default=7)
+    ex = sub.add_parser("export-skills", help="your skills as /commands in agy (and Codex, Copilot CLI)")
+    ex.add_argument("state", nargs="?", choices=["on", "off", "status"], default="status")
+    ex.add_argument(
+        "--to", default="", help="where: agy (default), agents (Codex and Copilot CLI), or both: agy,agents"
+    )
+
+
+def ws5_run(a) -> int | None:
+    """Runs the commands ws5_parsers() added; None for any other command."""
+    if a.cmd == "usage":
+        return usage_cmd(a.days)
+    if a.cmd == "export-skills":
+        return export_skills(a.state, a.to)
+    return None
+
+
 def utf8_output() -> None:
     """(home) Windows: write UTF-8 even when the output goes to a pipe or a file (the code page would turn notes'
     text and symbols such as "—" into "?" or mojibake). Consoles are UTF-8 already."""
@@ -1085,15 +1286,19 @@ def main(argv: list[str] | None = None) -> int:
     no = sub.add_parser("notify", help="send yourself a message through Kurooto (for scripts and other programs)")
     no.add_argument("text", nargs="+")
     no.add_argument("--title", default="")
-    no.add_argument("--kind", default="info", choices=["info", "result", "reminder", "deadline"])
+    no.add_argument(
+        "--kind", default="info", choices=["info", "result", "reminder", "deadline", "question", "approval"]
+    )
     no.add_argument("--urgent", action="store_true")
+    notify_flags(no)
     am = sub.add_parser("ask-me", help="ask yourself something, answered anywhere (prints its id, or the answer)")
-    am.add_argument("text", nargs="+")
+    am.add_argument("text", nargs="*")
     am.add_argument("--choices", default="", help='answers to offer as buttons, e.g. "yes|no|later today"')
     am.add_argument("--expires", default="", help="how long it stays open: 2d, 6h, 30m (default 2 days)")
     am.add_argument("--title", default="", help='a label instead of "Question"')
     am.add_argument("--wait", action="store_true", help="wait for the answer and print it")
     am.add_argument("--timeout", type=float, default=30, help="minutes to wait (default 30)")
+    ask_me_flags(am)
     aa = sub.add_parser("ask-approval", help="ask for a yes/no and wait: exit 0 approved, 1 denied, 2 timeout")
     aa.add_argument("text", nargs="+")
     aa.add_argument("--timeout", type=float, default=30, help="minutes to wait (default 30)")
@@ -1106,10 +1311,11 @@ def main(argv: list[str] | None = None) -> int:
     ak.add_argument("--job", default="", help="wait for the answer to a request started with --no-wait")
     ak.add_argument("--timeout", type=int, default=60, help="minutes to wait for an answer (default 60)")
     ca = sub.add_parser("call", help="ring your phone now or later (for scripts and agent programs)")
-    ca.add_argument("reason", nargs="+")
+    ca.add_argument("reason", nargs="*")
     ca.add_argument("--at", default="", help='when: 17:30, "in 20 min", "tomorrow 7:00" (default: now)')
     ca.add_argument("--alarm", action="store_true", help="ring as a wake-up alarm (no-call rules don't apply)")
     ca.add_argument("--force", action="store_true", help="ring now despite no-call rules (never during a call)")
+    call_flags(ca)
     sub.add_parser("mcp", help="Kurooto's tools for agent programs: an MCP server on stdin/stdout")
     skills_parsers(sub)
     fin = sub.add_parser("install-finish", help=argparse.SUPPRESS)
@@ -1120,8 +1326,10 @@ def main(argv: list[str] | None = None) -> int:
     home_parsers(sub)
     profile_parsers(sub)
     term_parsers(sub)
+    ws5_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
+    done = ws5_run(a) if done is None else done
     done = profile_run(a) if done is None else done
     done = term_run(a) if done is None else done
     if done is not None:
@@ -1163,15 +1371,24 @@ def main(argv: list[str] | None = None) -> int:
         return turn_on()
     if a.cmd == "notify":
         text = " ".join(a.text)
-        r = ask_running("notify", {"text": text, "title": a.title, "kind": a.kind, "urgent": a.urgent})
+        r = ask_running(
+            "notify", {"text": text, "title": a.title, "kind": a.kind, "urgent": a.urgent, **notify_extra(a)}
+        )
         if r and r.get("ok"):
+            if a.print_id:
+                print(r.get("id") or "")
             return 0
+        if r and r.get("error"):
+            print(r["error"], file=sys.stderr)
+            return 1
         from kurooto.core import desktop  # not running: at least show it on this computer
 
         desktop.notify(a.title or "Kurooto", text, urgent=a.urgent)
         print("Kurooto isn't running, so this was only shown on this computer.", file=sys.stderr)
         return 2
     if a.cmd == "ask-me":
+        if a.pending or a.id:
+            return ask_me_more(a)
         return ask_me(" ".join(a.text), a.choices, a.expires, a.title, a.wait, a.timeout, approval=False)
     if a.cmd == "ask-approval":
         return ask_me(" ".join(a.text), "", "", "", True, a.timeout, approval=True)
@@ -1182,6 +1399,8 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "ask":
         return plain(" ".join(a.text).strip(), not a.no_wait, a.timeout, a.job)
     if a.cmd == "call":
+        if a.list or a.cancel:
+            return booked_calls(a.cancel)
         return call(" ".join(a.reason), a.at, a.alarm, a.force)
     if a.cmd == "mcp":
         from kurooto.core.mcp import serve

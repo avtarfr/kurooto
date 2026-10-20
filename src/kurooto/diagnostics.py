@@ -122,10 +122,13 @@ def checks(app) -> list[tuple[str, bool, str]]:
         out.append(("AI", None, "none picked yet (open the setup page)"))
     for m in app.enabled():
         try:
-            ok, why = m.health()
+            ok, why = (
+                call_line(app, m, running) if m.id == "calls" and getattr(app, "_loop", None) is None else m.health()
+            )
         except Exception as e:
             ok, why = False, f"{type(e).__name__}: {e}"
         out.append((m.title, ok, why or "ok"))
+    out += more_checks(app)
     if "backups" in app.modules and not app.is_on("backups"):  # say when nothing is backed up (a note)
         from kurooto.modules.backups import age_line
 
@@ -134,6 +137,62 @@ def checks(app) -> list[tuple[str, bool, str]]:
     for st in pre.status().values():
         if st["installed"]:
             out.append((f"installed: {st['title']}", True, "yes"))
+    return out
+
+
+# ----------------------------------------------------------------------- (ws5) live checks, and add-ons' own lines
+def call_line(app, calls, running: bool) -> tuple[bool | None, str]:
+    """`kurooto doctor` runs beside Kurooto, not inside it, so the link to your call line is judged from what the
+    running Kurooto recorded, after asking the call line itself whether it's up."""
+    from kurooto.core.state import jload
+    from kurooto.modules.calls import deploy
+
+    ok, why = calls.ready()
+    if not ok:
+        return ok, why
+    h = deploy.health(calls.worker_url(), timeout=8)
+    if not h or not h.get("ok"):
+        return False, "your call line doesn't answer (no internet? Settings → Phone calls → Set up redeploys it)"
+    if not running:
+        return None, "your call line answers; Kurooto isn't running, so this computer isn't linked to it"
+    link = jload(app.paths.state / "calls" / "link.json", {}) or {}
+    if link.get("connected"):
+        return True, "your call line answers, and this computer is linked to it"
+    return False, "your call line answers, but this computer isn't linked to it" + (
+        f" ({link['error']})" if link.get("error") else " (kurooto logs shows why)"
+    )
+
+
+def more_checks(app) -> list[tuple[str, bool | None, str]]:
+    """Telegram answers (not only set up), your skills in agent programs, and what add-ons check themselves."""
+    out: list[tuple[str, bool | None, str]] = []
+    tg = app.modules.get("telegram")
+    if tg is not None and app.is_on("telegram") and tg.ready()[0]:
+        try:
+            me = tg.api().call("getMe", None, None, 8)
+            out.append(("Telegram bot", True, f"@{me.get('username') or '?'} answers"))
+        except Exception as e:
+            out.append(("Telegram bot", False, f"Telegram didn't answer: {getattr(e, 'description', e)}"[:200]))
+    try:
+        from kurooto.core import agent_export
+
+        line = agent_export.doctor_check(app)
+        if line:
+            out.append(line)
+    except Exception as e:
+        out.append(("skills in agents", False, f"{type(e).__name__}: {e}"[:200]))
+    for m in app.enabled():  # an add-on's own checks (core/overlay.py: doctor_checks)
+        fn = getattr(m, "doctor_checks", None)
+        if not callable(fn):
+            continue
+        try:
+            rows = fn() or []
+        except Exception as e:
+            rows = [(m.title, False, f"its checks failed: {type(e).__name__}: {e}")]
+        for r in list(rows)[:20]:
+            if isinstance(r, (list, tuple)) and len(r) == 3:
+                ok = r[1] if r[1] in (True, False, None) else bool(r[1])
+                out.append((f"{m.title}: {r[0]}"[:60], ok, str(r[2])[:300]))
     return out
 
 

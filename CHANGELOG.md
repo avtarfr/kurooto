@@ -46,6 +46,31 @@
 - Files folder: with `files.folder` set, photos, PDFs, revision packs, handwriting originals and Classroom files go to
   a folder outside your notes, linked from them, so they stay out of your notes' history. Unset, nothing changes.
 - Revision packs are also linked from the subject's course page; `/observing` has a **+7 days** button.
+**From a terminal or a script**
+- `kurooto notify` takes buttons (`--button "Label=prefix:ref:action"` or a web address), a link to open (`--click`),
+  a reply to an earlier message (`--reply-to`, with `--print-id`), and the kinds `question` and `approval`.
+- `kurooto call --list` shows the calls booked for later; `kurooto call --cancel <key>` takes one off.
+- `kurooto sync --status` (works with Kurooto stopped) and `kurooto sync --no-wait`; sync everything ends with a
+  backup when Backups is on.
+- `kurooto ask-me --pending [--json]` and `kurooto ask-me --id <id> --wait`.
+- `kurooto usage [days]`: `/usage` in a terminal.
+
+**Skills in agy and other agent programs**
+- `kurooto export-skills on` makes your skills (Kurooto's, your add-ons', your own and prompts with `skill: true`)
+  slash commands in agy (`--to agy,agents` adds Codex and Copilot CLI). Only Kurooto's own copies are ever changed or
+  removed; one of yours with the same name stays, and Kurooto's goes in as `kurooto-<name>`. Kept up to date at start
+  and hourly; `kurooto export-skills off` and `kurooto uninstall` remove them.
+
+**Seeing what's going on**
+- `/status` also shows today's check-ins, what's due in the next 3 days, the alarm and your last AI requests.
+- `/usage` also counts agy itself from its own logs (every run, the ones you type too), with the days it hit its limit.
+- `kurooto doctor` asks Telegram whether your bot answers and your call line whether it's up and linked, and no longer
+  reports the call line as unlinked just because the check runs outside Kurooto.
+
+**Add-ons**
+- An add-on feature can pick which plain-English request a message is before Kurooto's own patterns
+  (`classify_intent`, with a 2-second limit and a fall-through), and add lines to `/status` (`status_lines`) and to
+  `kurooto doctor` (`doctor_checks`).
 
 ## 0.2.0 (unreleased)
 Many new features, each off until you turn it on. The [manual](docs/MANUAL.md) has the detail.

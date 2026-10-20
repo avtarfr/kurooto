@@ -12,6 +12,19 @@ modules/ is Python code that runs inside Kurooto with its access to this compute
 turn the feature on, and only from the folder you name (overlay.code turns the Python part off and keeps the rest).
 A broken add-on never stops Kurooto: a file that fails to load is skipped, and an add-on that fails while running
 is cut off from that one call; both are logged and shown in `kurooto doctor`. Updates never touch this folder.
+
+Extension points an add-on feature (a Module in modules/) may define, besides what every feature can:
+
+    classify_intent(text, intents) -> None | "name" | {"intent": name, "slots": {...}, "confidence": 0.0-1.0}
+        Picks the plain-English request a message is, before Kurooto's own patterns try (a local model, say).
+        `intents` lists what's on: [{"name", "description", "questions"}]. Without "slots", the request's own
+        pattern fills them in (and when it can't, the message goes on as usual). None, an unknown name, "other",
+        a confidence under 0.6, an error, or no answer within `classify_timeout` seconds (default 2, at most 10)
+        all fall through to Kurooto's own patterns. Long messages and several requests in one never reach it, and
+        questions only go to requests that answer questions.
+    status_lines() -> [str]     extra lines for /status on Telegram
+    doctor_checks() -> [(name, ok True|False|None, detail)]   extra lines for `kurooto doctor` (False counts as a
+                                problem; None is a note)
 """
 
 from __future__ import annotations
@@ -29,8 +42,22 @@ from kurooto.core.state import jload
 
 log = logging.getLogger("kurooto.overlay")
 PACKAGE = "kurooto_addons"
-GUARDED = ("commands", "callbacks", "replies", "intents", "help", "call_tools", "agent_tools", "call_brief")
-SAFE = {"callbacks": dict, "replies": dict, "help": list, "call_brief": str}  # what a failing one gives
+GUARDED = (
+    "commands",
+    "callbacks",
+    "replies",
+    "intents",
+    "help",
+    "call_tools",
+    "agent_tools",
+    "call_brief",
+    "classify_intent",
+    "status_lines",
+    "doctor_checks",
+)
+SAFE = {"callbacks": dict, "replies": dict, "help": list, "call_brief": str, "classify_intent": None}  # if one fails
+CLASSIFY_TIMEOUT = 2.0  # seconds an intent classifier gets (an add-on's classify_timeout may change it, up to 10)
+MIN_CONFIDENCE = 0.6
 NO_DEFAULTS = ("modules", "overlay", "profile")  # an add-on folder can't turn features on or move itself
 
 
@@ -279,3 +306,65 @@ def _handlers(app, mid, what, fn):
         return out
 
     return handlers
+
+
+# ------------------------------------------------------------------------------------------- intent classifiers
+def classify(app, text: str, mods: list, asks: bool = False):
+    """An add-on's classifier picks the request first (see the docstring at the top): (intent, slots), or None to let
+    Kurooto's own patterns try. Any failure, a slow answer or an unsure one is a None."""
+    import threading
+
+    pickers = [m for m in mods if callable(getattr(m, "classify_intent", None))]
+    if not pickers:
+        return None
+    intents = {}
+    for m in mods:
+        for it in m.intents():
+            if it.name not in intents and (it.questions or not asks):
+                intents[it.name] = it
+    if not intents:
+        return None
+    offered = [{"name": n, "description": it.description, "questions": it.questions} for n, it in intents.items()]
+    for m in pickers:
+        try:
+            wait = min(max(float(getattr(m, "classify_timeout", CLASSIFY_TIMEOUT) or CLASSIFY_TIMEOUT), 0.05), 10.0)
+        except (TypeError, ValueError):
+            wait = CLASSIFY_TIMEOUT
+        box: list = []
+
+        def ask(m=m, box=box):
+            try:
+                box.append(("ok", m.classify_intent(text, [dict(o) for o in offered])))
+            except Exception as e:  # a built-in feature's classifier; add-ons' are guarded already
+                box.append(("error", e))
+
+        t = threading.Thread(target=ask, name=f"classify-{m.id}", daemon=True)
+        t.start()
+        t.join(wait)
+        if not box:
+            app.events.emit("classifier_slow", module=m.id, seconds=wait)
+            continue
+        kind, got = box[0]
+        if kind == "error":
+            _fail(app, f"{m.id}.classify_intent", got)
+            continue
+        if isinstance(got, str):
+            got = {"intent": got}
+        if not isinstance(got, dict):
+            continue
+        it = intents.get(str(got.get("intent") or ""))
+        if it is None:
+            continue
+        conf = got.get("confidence")
+        if isinstance(conf, (int, float)) and conf < MIN_CONFIDENCE:
+            continue
+        slots = got.get("slots")
+        if not isinstance(slots, dict):
+            try:
+                slots = it.match(text)
+            except Exception:
+                slots = None
+        if slots is None:
+            continue
+        return it, slots
+    return None

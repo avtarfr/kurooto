@@ -6,7 +6,8 @@ POST say {text}                plain English, as if typed on Telegram (`kurooto 
                                a job whose answer comes back here instead of to Telegram
 GET  job?id= / POST job {id}   how that job is going, and its answer
 POST call {reason, at, alarm, force}   ring your phone now or later (`kurooto call`)
-GET  usage?days=7              AI requests per day per brain, and usage-limit hits
+POST call/list · call/cancel {key}      the calls booked for later, and taking one off (`kurooto call --list/--cancel`)
+GET  usage?days=7              AI requests per day per brain, and usage-limit hits; agy's own count from its logs
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 GETS = ("tools", "job", "usage")
-POSTS = ("tools/call", "say", "job", "call")
+POSTS = ("tools/call", "say", "job", "call", "call/list", "call/cancel")
 ON_A_CALL = "you're on a call"  # the reason a no-call rule gives while a call is live (see update/service.py)
 
 
@@ -46,7 +47,9 @@ def get(app: App, path: str, q: dict) -> tuple[int, dict]:
             days = max(1, min(int(q.get("days") or 7), 60))
         except ValueError:
             days = 7
-        return 200, {"days": days, "rows": app.jobs.usage(days)}
+        from kurooto.providers.agy import log_usage
+
+        return 200, {"days": days, "rows": app.jobs.usage(days), "agy": log_usage(days)}
     return 404, {"error": "not found"}
 
 
@@ -68,6 +71,11 @@ def post(app: App, path: str, b: dict) -> tuple[int, dict]:
         ok, msg = place_call(
             app, str(b.get("reason") or ""), str(b.get("at") or ""), bool(b.get("alarm")), bool(b.get("force"))
         )
+        return 200, {"ok": ok, "message": msg}
+    if path == "call/list":
+        return 200, {"ok": True, "calls": booked_calls(app)}
+    if path == "call/cancel":
+        ok, msg = cancel_call(app, str(b.get("key") or ""))
         return 200, {"ok": ok, "message": msg}
     return 404, {"error": "not found"}
 
@@ -160,3 +168,86 @@ def place_call(app: App, reason: str, at: str = "", alarm: bool = False, force: 
         return False, "You're on a call right now, so I didn't ring. Try again when it's over."
     calls.ring(reason, alarm=alarm)
     return True, f"Calling your phone: {reason}"
+
+
+# ------------------------------------------------------------------- (ws5) scripts: calls booked, notify with buttons
+def booked_calls(app: App) -> list[dict]:
+    """The calls booked for later (`kurooto call --at`, held calls, ones the AI booked), soonest first. Check-ins and
+    the alarm have their own commands, so they aren't listed here."""
+    out = []
+    for j in app.scheduler.jobs("calls:ring:"):
+        at = dt.datetime.fromtimestamp(j.next_run).astimezone()
+        out.append(
+            {
+                "key": j.key.removeprefix("calls:ring:"),
+                "at": at.isoformat(timespec="minutes"),
+                "when": f"{at:%a %d %b %H:%M}",
+                "reason": str(j.payload.get("reason") or ""),
+                "alarm": bool(j.payload.get("alarm")),
+            }
+        )
+    return out
+
+
+def cancel_call(app: App, key: str) -> tuple[bool, str]:
+    key = key.strip().removeprefix("calls:ring:")
+    if not key:
+        return False, "Which call? `kurooto call --list` shows their keys."
+    if not app.scheduler.cancel(f"calls:ring:{key}"):
+        return False, f"There's no booked call {key} (`kurooto call --list` shows them)."
+    calls = app.modules.get("calls")
+    if calls is not None and app.is_on("calls"):
+        try:
+            calls.connector.poke()  # the call line forgets it too, so it doesn't ring while this computer is off
+        except Exception:
+            pass
+    app.events.emit("call_cancelled", via="terminal")
+    return True, f"Cancelled the call {key}."
+
+
+NOTIFY_KINDS = ("info", "result", "reminder", "deadline", "question", "approval")
+
+
+def notify_buttons(raw, click: str = "") -> tuple[list, str]:
+    """Buttons for a message from a script: [["Label", "prefix:ref:action" or "https://..."], ...], one row each, and
+    a link to open (--click). ([], "") when there are none; (_, why) when one isn't usable."""
+    rows: list = []
+    for item in raw or []:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            return [], "each button is a label and what it does"
+        label, target = str(item[0]).strip()[:40], str(item[1]).strip()
+        if not label or not target:
+            return [], "a button needs a label and what it does: Label=prefix:ref:action, or Label=https://..."
+        if target.startswith(("https://", "http://")):
+            rows.append([(label, {"url": target})])
+        elif len(target.encode("utf-8")) > 64:
+            return [], f"the button {label!r} does too much: at most 64 bytes (Telegram's limit)"
+        else:
+            rows.append([(label, target)])
+    if click:
+        if not click.startswith(("https://", "http://")):
+            return [], "--click takes a web address (https://...)"
+        rows.append([("Open", {"url": click})])
+    if len(rows) > 8:
+        return [], "at most 8 buttons"
+    return rows, ""
+
+
+def notify_from_program(app: App, b: dict) -> tuple[int, dict]:
+    """POST notify (`kurooto notify`): other programs on this computer message you through Kurooto, with buttons, a
+    link to open and a reply to an earlier message if they like. The answer carries the Telegram message's id."""
+    text = str(b.get("text", "")).strip()[:3500]
+    if not text:
+        return 400, {"error": "nothing to say"}
+    kind = b.get("kind") if b.get("kind") in NOTIFY_KINDS else "info"
+    title = str(b.get("title") or "").strip()[:80] or None
+    buttons, why = notify_buttons(b.get("buttons"), str(b.get("click") or "").strip())
+    if why:
+        return 400, {"error": why}
+    reply_to = b.get("reply_to")
+    reply_to = int(reply_to) if isinstance(reply_to, (int, str)) and str(reply_to).strip().isdigit() else None
+    ref = app.notify(
+        text, title=title, kind=kind, urgent=bool(b.get("urgent")), buttons=buttons or None, reply_to=reply_to
+    )
+    app.events.emit("notify_external", source=(title or "")[:40])
+    return 200, {"ok": True, "id": ref}

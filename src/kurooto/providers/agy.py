@@ -340,3 +340,54 @@ def consent_answer(app: App, q: dict, answer: str) -> str:
         f"OK, agy works without Kurooto's tools; I won't ask again for {DENY_DAYS} days. "
         "(The agy test on the setup page connects them any time.)"
     )
+
+
+# ------------------------------------------------------------------------------- (ws5) agy's own count, for /usage
+LIMIT_HIT = re.compile(rb"RESOURCE_EXHAUSTED|quota exceeded|rate limit exceeded|429 Too Many", re.I)
+LOG_MAX = 64 * 1024 * 1024  # a log bigger than this is only read this far
+
+
+def log_dir() -> Path:
+    return settings_file().parent / "log"
+
+
+def log_usage(days: int = 7, folder: Path | None = None) -> list[dict]:
+    """agy's own count, from its logs: every agy run on this computer (the ones you typed too, not only Kurooto's),
+    its model requests and usage-limit hits, per day. [] when agy has no logs here. Only counted: nothing in the
+    logs is read out or kept."""
+    import datetime as dt
+
+    folder = folder or log_dir()
+    if not folder.is_dir():
+        return []
+    out = []
+    for i in range(days - 1, -1, -1):
+        d = dt.date.today() - dt.timedelta(days=i)
+        runs = reqs = limited = 0
+        for f in folder.glob(f"cli-{d:%Y%m%d}_*.log"):
+            try:
+                with open(f, "rb") as fh:
+                    data = fh.read(LOG_MAX)
+            except OSError:
+                continue
+            runs += 1
+            reqs += data.count(b"streamGenerateContent")
+            limited += len(LIMIT_HIT.findall(data))
+        out.append({"day": d.isoformat(), "runs": runs, "requests": reqs, "limited": limited})
+    return out if any(r["runs"] for r in out) else []
+
+
+def log_usage_text(rows: list[dict]) -> str:
+    """The lines /usage adds for agy's own count."""
+    if not rows:
+        return ""
+    lines = ["\nagy itself (every run on this computer, also the ones you typed), from its logs:"]
+    for r in rows:
+        d = time.strptime(r["day"], "%Y-%m-%d")
+        hit = f", limit hit {r['limited']}" if r["limited"] else ""
+        lines.append(f"{time.strftime('%a %d %b', d)}  {r['runs']} runs, {r['requests']} model requests{hit}")
+    reqs = sum(r["requests"] for r in rows)
+    lines.append(f"{len(rows)}-day total: {reqs} model requests, {sum(r['runs'] for r in rows)} runs.")
+    if any(r["limited"] for r in rows):
+        lines.append("agy hit its usage limit on those days (Google doesn't publish the exact limits).")
+    return "\n".join(lines)

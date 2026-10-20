@@ -55,7 +55,9 @@ class Chat(Module):
 
     def _usage(self, msg: Incoming, arg: str) -> str:
         days = int(arg) if arg.strip().isdigit() and 1 <= int(arg) <= 60 else 7
-        return usage_text(self.app.jobs.usage(days), days)
+        from kurooto.providers.agy import log_usage, log_usage_text  # (ws5) agy's own count, interactive use too
+
+        return usage_text(self.app.jobs.usage(days), days) + log_usage_text(log_usage(days))
 
 
 def usage_text(rows: list[dict], days: int) -> str:

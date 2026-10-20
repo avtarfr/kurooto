@@ -381,14 +381,9 @@ class Api:
             threading.Thread(target=r.papers, name="papers", daemon=True).start()
             return 200, {"ok": True, "message": "Looking now; the digest comes on Telegram in a minute or two."}
         if path == "notify":  # other programs on this computer message you through Kurooto (`kurooto notify`)
-            text = str(b.get("text", "")).strip()[:3500]
-            if not text:
-                return 400, {"error": "nothing to say"}
-            kind = b.get("kind") if b.get("kind") in ("info", "result", "reminder", "deadline") else "info"
-            title = str(b.get("title") or "").strip()[:80] or None
-            self.app.notify(text, title=title, kind=kind, urgent=bool(b.get("urgent")))
-            self.app.events.emit("notify_external", source=(title or "")[:40])
-            return 200, {"ok": True}
+            from kurooto.web.tools_api import notify_from_program  # (ws5) buttons, --click, --reply-to
+
+            return notify_from_program(self.app, b)
         if path == "send-file":  # `kurooto send FILE`: a file from this computer to your Telegram
             from kurooto.modules.skills import send_file
 
@@ -497,8 +492,8 @@ class Api:
         """
         ask = self.app.ask
         sub = path.partition("/")[2]
-        if not post or sub == "get":
-            if not sub:
+        if not post or sub in ("get", "pending"):
+            if not sub or sub == "pending":  # POST ask/pending: `kurooto ask-me --pending`
                 return 200, {"questions": [ask.public(q) for q in ask.pending()]}
             q = ask.get(str(b.get("id") or "") if sub == "get" else sub)
             return (200, {"question": ask.public(q)}) if q else (404, {"error": "no such question"})
