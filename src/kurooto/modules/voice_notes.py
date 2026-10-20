@@ -71,16 +71,22 @@ class VoiceNotes(Module):
             data=json.dumps(body).encode(),
             headers={"Content-Type": "application/json", "x-goog-api-key": key},
         )
+        pool = f"gemini:{model}"  # voice notes count against your key's free limit too (core/quota.py)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
                 out = json.loads(r.read())
         except urllib.error.HTTPError as e:
-            detail = ""
+            body, detail = e.read().decode("utf-8", "replace"), ""
             try:
-                detail = json.loads(e.read()).get("error", {}).get("message", "")
-            except ValueError:
+                detail = json.loads(body).get("error", {}).get("message", "")
+            except (ValueError, AttributeError):
                 pass
+            if e.code == 429:
+                self.app.quota.record(pool, "rate_limited", body, e.headers.get("Retry-After"))
+                if self.app.quota.used_up(pool):
+                    raise RuntimeError(self.app.quota.line(pool)) from None
             raise RuntimeError(f"Gemini said {e.code}: {detail or e.reason}"[:300]) from None
+        self.app.quota.record(pool)
         parts = ((out.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
         text = " ".join(p.get("text", "") for p in parts).strip()
         self.app.events.emit("voice_note", seconds=None, chars=len(text))

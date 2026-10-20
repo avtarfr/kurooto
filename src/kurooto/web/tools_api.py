@@ -7,7 +7,8 @@ POST say {text}                plain English, as if typed on Telegram (`kurooto 
 GET  job?id= / POST job {id}   how that job is going, and its answer
 POST call {reason, at, alarm, force}   ring your phone now or later (`kurooto call`)
 POST call/list · call/cancel {key}      the calls booked for later, and taking one off (`kurooto call --list/--cancel`)
-GET  usage?days=7              AI requests per day per brain, and usage-limit hits; agy's own count from its logs
+GET  usage?days=7              AI requests per day per brain, and usage-limit hits; agy's own count from its logs;
+                               today's free limits (quota: used, learned limit, when it resets; core/quota.py)
 """
 
 from __future__ import annotations
@@ -49,7 +50,13 @@ def get(app: App, path: str, q: dict) -> tuple[int, dict]:
             days = 7
         from kurooto.providers.agy import log_usage
 
-        return 200, {"days": days, "rows": app.jobs.usage(days), "agy": log_usage(days)}
+        return 200, {
+            "days": days,
+            "rows": app.jobs.usage(days),
+            "agy": log_usage(days),
+            "quota": app.quota.report(),
+            "waiting": app.jobs.waiting(),
+        }
     return 404, {"error": "not found"}
 
 

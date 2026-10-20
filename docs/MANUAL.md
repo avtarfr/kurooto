@@ -217,6 +217,41 @@ own logs: every agy run, including the ones you type yourself, its model request
 counted; nothing in the logs is read out). `kurooto usage [days]` shows the same in a terminal. **How hard it thinks:** Kurooto picks low, medium or high effort per
 request; start a message with `high:` or `low:` to choose.
 
+### Free limits: the reserve
+
+Free AI has a daily limit, and Google doesn't say how much of it is left. Kurooto counts each request itself and keeps
+the end of the day's limit for what you're waiting on: calls, voice notes, the morning plan and your own requests.
+
+- **It learns the limits.** The first time Google answers "limit reached" (a 429 error), Kurooto keeps the number
+  Google names or, when it names none, how many requests the day had. It learns when the limit comes back the same
+  way: from Google's own hint, else Google's day, which ends at midnight Pacific time (`/usage` shows it in your time).
+  Each model of your Gemini key has its own limit and agy has one; agy's count comes from agy's own logs, so the runs
+  you type yourself count too. Until a limit has been reached once, it isn't known and nothing waits.
+- **Background work waits past 70%.** Once a day's count passes 70% of a known limit, background work waits: the
+  Classroom digest, the nightly look back, skill changes it proposes, research digests, and book and handwritten pages
+  read by Gemini. The "how hard is this" question moves to the model on this computer (Local AI models), or to the
+  rules. Nothing is dropped: waiting work stays in the queue and runs after the reset, or as soon as that limit
+  answers again. Your own requests never wait; a used-up limit is tried last, after your fallback brain.
+- **One plain line instead of an error:** "Google's free limit for today is used up, resets at 12:30; your calls and
+  alarm still work." Calls use another Gemini model, which has its own limit.
+- **`/usage`** (and `kurooto usage`) ends with today's limits, for example "Gemini key, gemini-flash-latest: 143 of 250
+  requests (57%, Google's number); background work waits from 175. Resets at 12:30.", and how many background
+  requests wait for a reset.
+
+**Settings** (Settings → `quota`):
+- `on`: `true` (default); `false`: background work never waits (the counting and the plain line stay).
+- `background_pct`: `70`, the share of a known limit after which background work waits.
+- `limits`: your own numbers, which win over learned ones: `{"gemini:gemini-flash-latest": 250, "agy": 900}`
+  (`gemini:<model>` for your Gemini key's models, `agy`, `<brain>:<model>` for another service).
+- `local`: `quick` (default): only the "how hard is this" question moves to the model on this computer; `background`:
+  background work moves there too instead of waiting (a small model writes weaker digests); `off`: nothing moves.
+
+*Leaves:* nothing; only counts and times are kept, in Kurooto's state folder (`quota.json`).
+
+**Undo:** `quota.on` = `false`: background work runs whatever the count, as before 0.5.0 (work already waiting runs at
+once). To forget what was learned, delete `quota.json` in Kurooto's state folder; it's learned again at the next
+"limit reached".
+
 ### What the AI can do (its tools)
 
 Your AI doesn't only answer: it can act, the same way on a phone call, in Chat, and in background requests. It adds a
@@ -2094,6 +2129,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | "I can't answer free text yet" | Turn on **Chat** (Features). |
 | The AI says it isn't signed in | Setup page → AI → Install / sign in again → Test. |
 | "It's at its usage limit" | Free tiers have daily limits: wait, or set a fallback brain (Settings → `brain.fallback`). `/usage` shows how often it happens. |
+| "Google's free limit for today is used up" | It comes back at the time the message says. Meanwhile set a fallback brain (Settings → `brain.fallback`); calls and reminders still work. `/usage` shows each limit and when it resets. |
+| The Classroom digest or the look back didn't come | Past 70% of a free limit, background work waits for the reset ([Free limits: the reserve](#free-limits-the-reserve)); `/usage` says how many requests wait. Raise `quota.background_pct`, or set `quota.on` to `false`. |
 | The setup page says agy "can't use Kurooto's tools yet" | agy's settings file isn't plain JSON, or `agy mcp add` failed. Add `mcp(kurooto/*)` to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself, then Test again. |
 | The AI said it did something but nothing happened | Tell it so; check `/jobs`. With a small local model, tools may not be supported: it answers without them. |
 | An agent program says Kurooto's tools aren't running | Kurooto is off or restarting; `kurooto on`, then ask again. |

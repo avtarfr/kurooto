@@ -4,6 +4,10 @@ CLI brains (agy) run one job at a time; API brains may run a few at once. If the
 (rate-limited, signed out, refused, failed, or no answer) and a fallback brain is set, the job is retried on the
 fallback. As a last resort, an agent program (agy, Codex, Claude Code) hands over to your Gemini key when one is
 saved, and the Gemini key hands over to agy when agy has worked here before; the answer then says so in one line.
+
+Free limits (core/quota.py): background work skips a limit that's kept for you (past quota.background_pct of the day,
+or used up) and waits in the queue for its reset (not_before) instead of being dropped; your own requests try a
+used-up limit last, and a used-up limit is told in one plain line.
 """
 
 from __future__ import annotations
@@ -123,6 +127,8 @@ class Jobs:
             self._db.execute("alter table jobs add column runner text")
         if "text_only" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:
             self._db.execute("alter table jobs add column text_only integer default 0")
+        if "not_before" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # waits for a reset
+            self._db.execute("alter table jobs add column not_before real")
 
     # ------------------------------------------------------------------------------------- the queue
     def submit(
@@ -196,11 +202,17 @@ class Jobs:
 
     _cols = "id,title,prompt,effort_req,effort,status,verdict,brain,reply_to,quiet,created,seconds,result"
 
+    # queued, allowed on this power, and not waiting for a free limit's reset (core/quota.py)
+    _READY = "status='queued' and (background=0 or ?) and coalesce(not_before, 0) <= ?"
+
+    def _ready_args(self) -> tuple:
+        q = self.app.quota  # with the reserve turned off (quota.on = false), work that waited goes at once
+        return int(self.app.power.current == "normal"), q.clock() if q.on() else 1e18
+
     def _claim(self) -> str | None:
         with self._lock:
             row = self._db.execute(
-                "select id from jobs where status='queued' and (background=0 or ?) order by created limit 1",
-                (int(self.app.power.current == "normal"),),
+                f"select id from jobs where {self._READY} order by created limit 1", self._ready_args()
             ).fetchone()
             if not row:
                 return None
@@ -222,8 +234,7 @@ class Jobs:
         self.recover()
         while not stop.is_set():
             if self.app.power.current != "paused" and self._read(
-                "select 1 from jobs where status='queued' and (background=0 or ?) limit 1",
-                (int(self.app.power.current == "normal"),),
+                f"select 1 from jobs where {self._READY} limit 1", self._ready_args()
             ):
                 await asyncio.to_thread(self.run_next)
                 continue
@@ -239,6 +250,9 @@ class Jobs:
         if how == "rules" or main is None:
             return None
         brain = main if how == "main" else providers.build(self.app, how)
+        quota = self.app.quota
+        if brain is not None and quota.wait_until(quota.pool(brain, "low")) is not None:  # its limit is kept for you
+            brain = providers.local(self.app) if quota.setting("local") != "off" else None  # else the rules
         if brain is None or not brain.available()[0]:
             return None
         return lambda q: brain.complete(q, effort="low", timeout=30).text
@@ -273,6 +287,11 @@ class Jobs:
         last = self._last_resort(main)
         if last is not None and last.id not in {b.id for b in chain}:
             chain.append(last)
+        background = bool(self._read("select background from jobs where id=?", (jid,))[0])
+        chain, wait = self.app.quota.arrange(chain, level, background)  # free limits kept for you (core/quota.py)
+        if wait is not None and not chain:
+            self._defer(jid, wait)
+            return
         used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
         for i, brain in enumerate(chain):
             ok, why = brain.available()
@@ -298,7 +317,10 @@ class Jobs:
             if result.verdict not in RETRY:
                 break
             first = first or (brain, result)
-            self._problem(brain, result, chain[i + 1] if i + 1 < len(chain) else None)
+            self._problem(brain, result, chain[i + 1] if i + 1 < len(chain) else None, level)
+        if wait is not None and not result.ok:  # moved to the model here, which couldn't: it waits for the reset
+            self._defer(jid, wait)
+            return
         if last is not None and used is last and result.ok and first:
             note = f"(Answered with {SHORT.get(last.id, last.label)}: {_why(*first)}.)"
             result.usage = {**result.usage, "note": note}
@@ -379,7 +401,7 @@ class Jobs:
                 return agy
         return None
 
-    def _problem(self, brain, result: Result, nxt=None) -> None:
+    def _problem(self, brain, result: Result, nxt=None, level: str = "medium") -> None:
         """Tell the user about a usage limit or a sign-out, at most once an hour per brain."""
         if result.verdict not in (Verdict.RATE_LIMITED, Verdict.AUTH):
             return
@@ -388,7 +410,12 @@ class Jobs:
             return
         flag.touch()
         text = FRIENDLY[result.verdict].format(brain=brain.label)
-        if result.verdict == Verdict.RATE_LIMITED:
+        pool = self.app.quota.pool(brain, level)
+        if result.verdict == Verdict.RATE_LIMITED and self.app.quota.used_up(pool):  # the day's limit: one plain line
+            text = self.app.quota.line(pool, brain.label) + (
+                f" Requests go to the fallback ({nxt.label}) meanwhile." if nxt is not None else ""
+            )
+        elif result.verdict == Verdict.RATE_LIMITED:
             text += (
                 f" Requests go to the fallback ({nxt.label}) meanwhile."
                 if nxt is not None
@@ -403,12 +430,15 @@ class Jobs:
 
     def _deliver(self, job: Job, result: Result, used) -> None:
         label = used.label if used else "AI"
+        pool = self.app.quota.pool(used, job.effort or "medium")
         head = f"[{label} · {job.effort or '?'}{'' if result.ok else ' · failed'}] {job.title}"
         if result.ok:
             note = (result.usage or {}).get("note")
             body = f"{result.text}\n\n{note}" if note else result.text
         elif result.detail == DENIED_HELP:
             body = DENIED_HELP
+        elif result.verdict == Verdict.RATE_LIMITED and self.app.quota.used_up(pool):
+            body = self.app.quota.line(pool, label)  # "Google's free limit for today is used up, resets at 12:30; ..."
         else:
             body = FRIENDLY.get(result.verdict, "It failed.").format(brain=label)
         reply_to = int(job.reply_to) if job.reply_to and job.reply_to.isdigit() else job.reply_to
@@ -421,6 +451,32 @@ class Jobs:
             self.app.notify(job.title, kind="result", file=str(md))
         else:
             self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to)
+
+    def _defer(self, jid: str, until: float) -> None:
+        """Background work whose free limits are kept for you: back in the queue until the reset, never dropped."""
+        until = max(float(until), self.app.quota.clock() + 60)
+        with self._lock:
+            self._db.execute(
+                "update jobs set status='queued', not_before=?, runner=null, started=null where id=?", (until, jid)
+            )
+        self.app.events.emit("job_deferred", job=jid, until=datetime.datetime.fromtimestamp(until).isoformat())
+
+    def resume(self) -> int:
+        """A free limit answers again before its reset: waiting work gets another look now (core/quota.py)."""
+        with self._lock:
+            n = self._db.execute(
+                "update jobs set not_before=null where status='queued' and not_before is not null"
+            ).rowcount
+        if n:
+            self.poke()
+        return n
+
+    def waiting(self) -> int:
+        """Background requests waiting for a free limit's reset."""
+        row = self._read(
+            "select count(*) from jobs where status='queued' and not_before > ?", (self.app.quota.clock(),)
+        )
+        return int(row[0]) if row else 0
 
     def close(self) -> None:
         self._db.close()

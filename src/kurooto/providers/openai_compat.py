@@ -83,7 +83,13 @@ class OpenAICompat(Brain):
         return Result(Verdict.OK if text else Verdict.EMPTY, text, msg["_secs"], usage=usage)
 
     def _turn(self, messages: list[dict], effort: str, timeout: float, tools: list | None = None, choice: str = ""):
-        """One request. Returns (Result on failure, else None; the reply message; usage)."""
+        """One request, counted against its model's free limit. Returns (Result on failure, else None; the reply
+        message; usage)."""
+        res, msg, usage = self._request(messages, effort, timeout, tools, choice)
+        self.metered(self.models.get(effort) or self.models.get("medium"), res)
+        return res, msg, usage
+
+    def _request(self, messages: list[dict], effort: str, timeout: float, tools: list | None, choice: str):
         model = self.models.get(effort) or self.models.get("medium")
         body: dict = {"model": model, "messages": messages}
         if tools:
@@ -96,11 +102,15 @@ class OpenAICompat(Brain):
         try:
             data = self._post("/chat/completions", body, timeout)
         except urllib.error.HTTPError as e:
-            detail = e.read().decode("utf-8", "replace")[:500]
+            body = e.read().decode("utf-8", "replace")
+            detail = body[:500]
             secs = time.monotonic() - t0
             if e.code == 429 or RATE_LIMIT.search(detail):
+                from kurooto.core.quota import hints
+
                 retry = e.headers.get("Retry-After")
                 res = Result(Verdict.RATE_LIMITED, "", secs, detail, int(retry) if retry and retry.isdigit() else None)
+                res.usage = {"limit": hints(body, res.retry_after_s)}  # which limit, its number, when it's back
                 return res, {}, {}
             if e.code in (401, 403) or AUTH_FAIL.search(detail):
                 return Result(Verdict.AUTH, "", secs, detail), {}, {}
@@ -142,7 +152,12 @@ class OpenAICompat(Brain):
             if final:  # enough: an answer from what it has, with tools still declared but not allowed
                 msgs.append({"role": "user", "content": ENOUGH})
             res, msg, u = self._turn(msgs, task.effort, left(), decl, "none" if final else "")
-            if res is not None and res.verdict == Verdict.RATE_LIMITED and (res.retry_after_s or 30) <= 60 < left():
+            if (
+                res is not None
+                and res.verdict == Verdict.RATE_LIMITED
+                and (res.retry_after_s or 30) <= 60 < left()
+                and (res.usage.get("limit") or {}).get("per") != "day"  # the day's limit doesn't come back in a minute
+            ):
                 time.sleep(res.retry_after_s or 30)  # free tiers allow a few requests a minute; one wait, then retry
                 res, msg, u = self._turn(msgs, task.effort, left(), decl, "none" if final else "")
             if res is not None and rnd == 0 and res.verdict == Verdict.ERROR and NO_TOOLS.search(res.detail):
