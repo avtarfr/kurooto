@@ -124,20 +124,37 @@ def test_profiles(env, monkeypatch):
     assert "shell" in names and "logs" in names
     assert ("ask" in names) == _cli_has("ask")  # only once `kurooto ask` exists
     assert tm.profiles()["logs"]["argv"][-3:] == ["kurooto", "logs", "-f"]
-    assert "agent" not in names  # no AI program picked yet
     monkeypatch.setattr("kurooto.modules.terminals._cli_has", lambda c: True)
-    app.settings.set("brain.main", "agy")
     from kurooto import providers
 
-    class FakeAgy:
-        kind, label, exe = "cli", "Antigravity", "/opt/agy/agy"
+    class Fake:
+        kind = "cli"
 
-    monkeypatch.setattr(providers, "build", lambda a, which: FakeAgy())
+        def __init__(self, label, exe):
+            self.label, self.exe = label, exe
+
+    have = {"agy": Fake("Antigravity", "/opt/agy/agy"), "claude": Fake("Claude Code", "/usr/bin/claude")}
+    monkeypatch.setattr(providers, "AGENT_PROGRAMS", ("agy", "claude"))
+    monkeypatch.setattr(providers, "build", lambda a, which: have.get(which))
+    app.settings.set("brain.main", "claude")
     tm.refresh()
     prof = tm.profiles()
-    assert list(prof)[:2] == ["agent", "shell"] and prof["agent"]["argv"] == ["/opt/agy/agy"]
+    # your AI program first, the other one next to it
+    assert list(prof)[:3] == ["agent", "agent-agy", "shell"] and prof["agent"]["argv"] == ["/usr/bin/claude"]
+    assert prof["agent-agy"]["argv"] == ["/opt/agy/agy"]
     assert prof["agent"]["cwd"] == str(app.workspace) and "ask" in prof
     assert prof["shell"]["env"]["TERM"] == "xterm-256color"
+    app.settings.set("brain.main", "gemini")  # an API key: the programs are still there to open
+    tm.refresh()
+    assert list(tm.profiles())[:2] == ["agent", "agent-claude"]
+    del have["claude"], have["agy"]
+    tm.refresh()
+    assert "agent" not in tm.profiles()  # none installed: no tab
+    tm.start()
+    tm.profiles()
+    app.events.emit("setting_changed", key="brain.main")  # a change of AI works the tabs out again
+    assert tm._profiles is None
+    tm.stop()
 
 
 PROGRAM = """import os, sys

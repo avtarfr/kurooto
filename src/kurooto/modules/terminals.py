@@ -351,7 +351,20 @@ class Terminals(Module):
         running = [n for n, t in self.terms.items() if t.alive]
         return True, f"{len(self.profiles())} terminals" + (f", {len(running)} running" if running else "")
 
+    def start(self):
+        from kurooto.core.events import subscribe
+
+        self._unsub = subscribe(self._on_event)
+
+    def _on_event(self, rec: dict) -> None:
+        """Your AI changed (Settings, or a file edit noticed by the settings page): the tabs are worked out again."""
+        if rec.get("kind") == "setting_changed" and str(rec.get("key", "")).startswith(("brain", "you.workspace")):
+            self.refresh()
+
     def stop(self):
+        unsub = getattr(self, "_unsub", None)
+        if unsub:
+            unsub()
         self.shutdown()
         super().stop()
 
@@ -386,12 +399,19 @@ class Terminals(Module):
 
             env, home = self._env(), str(Path.home())
             out: dict[str, dict] = {}
+            # a tab for each AI program that's installed (Claude Code, agy), the one you use first: with an AI that's a
+            # key or a service, the programs are still there to open
             main = self.app.settings.get("brain.main") or ""
-            brain = providers.build(self.app, main) if main else None
-            exe = getattr(brain, "exe", None) if brain is not None and getattr(brain, "kind", "") == "cli" else None
-            if exe:
+            keys = [main] if main in providers.AGENT_PROGRAMS else []
+            keys += [k for k in providers.AGENT_PROGRAMS if k not in keys]
+            for key in keys:
+                brain = providers.build(self.app, key)
+                exe = getattr(brain, "exe", None) if brain is not None and getattr(brain, "kind", "") == "cli" else None
+                if not exe:
+                    continue
                 argv = list(exe) if isinstance(exe, list) else proc.resolve_cmd_shim(str(exe))
-                out["agent"] = {"title": brain.label, "argv": argv, "cwd": str(self.app.workspace), "env": env}
+                name = "agent" if not any(k == "agent" for k in out) else f"agent-{key}"
+                out[name] = {"title": brain.label, "argv": argv, "cwd": str(self.app.workspace), "env": env}
             out["shell"] = {"title": "Shell", "argv": self._shell(), "cwd": home, "env": env}
             if _cli_has("ask"):
                 out["ask"] = {"title": "Ask", "argv": [sys.executable, "-m", "kurooto", "ask"], "cwd": home, "env": env}

@@ -30,11 +30,11 @@ def test_the_board_has_a_panes_menu_and_a_page_over_it(page):
 def test_alt_keys_open_the_pages_but_a_terminal_keeps_its_own(page):
     _, js, _ = page
     keys = js.split("const PKEY = ")[1].split(";")[0]
-    for tab in ("activity", "jobs", "schedule", "features", "phone", "research", "about", "settings"):
+    for tab in ("today", "activity", "jobs", "schedule", "features", "phone", "research", "about", "settings"):
         assert f"{tab}:" in keys, tab
     assert 'features: "f"' in keys and 'settings: "s"' in keys
     letters = [part.split('"')[1] for part in keys.split(",")]
-    assert len(letters) == len(set(letters)) == 8  # one key each
+    assert len(letters) == len(set(letters)) == 9  # one key each
     assert "!inTerm(e.target)" in js  # Alt+F is a word forward in a shell
     assert "alt+f features · alt+s settings" in js  # the keys are in the borders
 

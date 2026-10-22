@@ -1349,7 +1349,8 @@ function denseTerms() {
   add("shell", "shell");
   out.push({ name: "kurooto", label: ((last && last.name) || "Kurooto").toLowerCase(), live: true });
   add("logs", "logs");
-  for (const t of TERM.list) if (!["agent", "shell", "ask", "logs"].includes(t.name)) add(t.name, String(t.title).toLowerCase());
+  for (const t of TERM.list) if (t.name.startsWith("agent-")) add(t.name, t.name.slice(6)); // your other AI programs
+  for (const t of TERM.list) if (!["agent", "shell", "ask", "logs"].includes(t.name) && !t.name.startsWith("agent-")) add(t.name, String(t.title).toLowerCase());
   return out;
 }
 // ----------------------------------------------------------------------------- search (the Features and Settings pages)
