@@ -2,6 +2,7 @@
 the answer, and the command it's started with. No real Claude Code: fakes."""
 
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -21,13 +22,18 @@ def app(tmp_path, monkeypatch):
     a.close()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="a POSIX path means another drive's folder on Windows")
 def test_rule_paths_are_the_form_claude_code_reads():
     assert rule_path("/home/me/notes") == "//home/me/notes"
     assert rule_path("/home/me/notes/") == "//home/me/notes"
-    # Windows: the drive is the first part of the path (a rule can't carry a backslash)
-    assert rule_path("C:\\Users\\me\\Notes") == "//c/Users/me/Notes" or rule_path("C:\\Users\\me\\Notes").endswith(
-        "Users/me/Notes"
-    )
+
+
+def test_rule_paths_on_windows_name_the_drive_first(monkeypatch):
+    from kurooto.providers import claude
+
+    monkeypatch.setattr(claude.os.path, "abspath", lambda p: str(p))  # the path as given, as on Windows
+    assert claude.rule_path("C:\\Users\\me\\Notes") == "//c/Users/me/Notes"
+    assert claude.rule_path("D:\\") == "//d"
 
 
 def test_a_run_may_write_in_notes_and_read_documents_but_not_write_there(app, tmp_path):
