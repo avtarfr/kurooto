@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.5",
+  "notes": "PDFs without Tectonic, files instead of paths, alarm answers, Classroom window fix, hubs, settings guide",
+  "created": 1792698863.3021874,
+  "files": {
+   "kurooto-0.5.5.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.5/kurooto-0.5.5.tar.gz",
+    "sha256": "d37e2504898d9dd6ddaf5e6a8cdfd28154b8d3d473a0947a9e7f8909ab76c453",
+    "size": 1614804
+   }
+  }
+ },
+ "sig": "U/E1aV4MkI8NSEF71FD+GhYu4Df6LoUhLWcnRpUbwad7RnG1T80mMiddLOiun9YmKnwIjfI4ycA0+UwoeGHnDg=="
+}
