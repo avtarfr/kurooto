@@ -112,3 +112,13 @@ def test_focus_holds_messages_until_it_ends(env):
 def test_long_text_splits_at_lines():
     parts = split_text(("line\n" * 2000).strip(), limit=3900)
     assert len(parts) == 3 and all(len(p) <= 3900 for p in parts) and not parts[1].startswith("\n")
+
+
+def test_renaming_the_assistant_renames_the_bot_and_says_so_once(env):
+    app, tg, fake = env
+    pair(app, tg, fake)
+    assert tg.name_changed() is False  # the first time it only remembers the name
+    app.settings.set("you.assistant_name", "Jarvis")
+    assert tg.name_changed() is True
+    assert any(m == "setMyName" and p.get("name") == "Jarvis" for m, p in fake.sent)
+    assert tg.name_changed() is False  # nothing new

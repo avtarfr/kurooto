@@ -9,15 +9,12 @@ To ask for something: open an issue on GitHub, or tell your own Kurooto on Teleg
 - **Common features directly usable from the dashboard and the phone app**, not only through chat: write a journal
   entry, set or skip an alarm, add a reminder or deadline, tick what's done, start a check-in, ask something. Being
   ideated now (dashboard and Android app together).
-- **Goodnight sets the wake-up alarm**, and the morning request opens in the dashboard's own terminal only.
 - **Mail about exams is read at once and turned into a schedule** (dates, rooms, what to prepare), not only digested.
 - **PDF, Word and PowerPoint to Markdown** with Microsoft's MarkItDown for books and Classroom files (needs a pip
   install, so it asks first).
 - **Mail digest formatting**: shorter, grouped by what needs you.
-- **A fallback from a free Gemini key to other models** inside the key's own limits (the Flash family) before giving up.
 - **Preview the organic blobs in the phone app**, as in the dashboard.
 - **Make the UI more intuitive**, and keep improving the setup wizard's elements.
-- **Tell your devices when the assistant is renamed** (the name changes in Settings; nothing says so yet).
 - **Wiki-level documentation**: one full read equips someone to develop Kurooto and fix bugs without an agent
   (the manual covers use; the developer side is thin).
 - **Use GBrain more**: weekly checkup and contradiction reports in chat, entity and timeline pages for courses,
@@ -28,6 +25,9 @@ To ask for something: open an issue on GitHub, or tell your own Kurooto on Teleg
 - **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~A free Gemini key tries the next model of the family when one's daily limit is used up~~ (0.5.7)
+- ~~Goodnight sets the wake-up alarm (it already did: /goodnight)~~ (0.5.4)
+- ~~Renaming the assistant renames the Telegram bot and says so~~ (0.5.7)
 - ~~A guide for AI agents to everything Kurooto, generated from the code (agent-guide.md in the reserve, and the settings guide)~~ (0.5.7)
 - ~~Tools installed in ~/.local/bin are found after a reboot ("restic couldn't start")~~ (0.5.7)
 - ~~The phone-app QR code always serves the latest app~~ (0.5.7)

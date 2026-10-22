@@ -331,7 +331,9 @@ class Api:
 
             for k in ("name", "timezone", "assistant_name"):
                 if k in b and isinstance(b[k], str):
-                    s.set(f"you.{k}", (zones.canonical(b[k]) if k == "timezone" else b[k].strip())[:80])
+                    old = s.set(f"you.{k}", (zones.canonical(b[k]) if k == "timezone" else b[k].strip())[:80])
+                    if old != s.get(f"you.{k}"):
+                        self.app.events.emit("setting_changed", key=f"you.{k}")
             return 200, {"ok": True, "timezone": s.get("you.timezone") or ""}
         if path == "hardware/refresh":
             return 200, self._hardware(refresh=True)

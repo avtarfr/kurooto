@@ -14,6 +14,7 @@ import hashlib
 import json
 import re
 import secrets as pysecrets
+import threading
 import time
 from pathlib import Path
 
@@ -189,8 +190,52 @@ class Telegram(Module):
     # ------------------------------------------------------------------------------------ the channel
     def start(self):
         self.app.notifier.register("telegram", self._send)
+        from kurooto.core.events import subscribe
+
+        self._unsub_name = subscribe(self._on_setting)
+        threading.Thread(target=self.name_changed, name="telegram-name", daemon=True).start()  # changed while off?
+
+    def _on_setting(self, rec: dict) -> None:
+        if rec.get("kind") == "setting_changed" and rec.get("key") in ("you.assistant_name", "you"):
+            threading.Thread(target=self.name_changed, name="telegram-name", daemon=True).start()
+
+    def name_changed(self) -> bool:
+        """When you rename your assistant (you.assistant_name), the bot takes the new name in Telegram too
+        (setMyName) and says so once. Returns True if it acted."""
+        name = self.app.name
+        f = self.dir / "name.json"
+        last = (jload(f, {}) or {}).get("name")
+        if last == name:
+            return False
+        self.dir.mkdir(parents=True, exist_ok=True)
+        jsave(f, {"name": name})
+        if last is None:  # first start: remember the name, nothing changed
+            return False
+        api = self.api()
+        renamed = False
+        if api is not None:
+            try:
+                api.call("setMyName", {"name": name[:64]})
+                renamed = True
+            except Exception as e:  # Telegram limits renames; the name is still used everywhere else
+                self.app.events.emit("telegram_rename_failed", error=str(e)[:200])
+        self.app.notify(
+            f"I'm {name} now."
+            + (
+                ""
+                if renamed
+                else " (Telegram didn't take the new bot name yet; it will show in "
+                "my messages, the app and the dashboard.)"
+            ),
+            kind="info",
+            why="asked",
+        )
+        return True
 
     def stop(self):
+        unsub = getattr(self, "_unsub_name", None)
+        if unsub:
+            unsub()
         super().stop()
         self.app.notifier.unregister("telegram")
 

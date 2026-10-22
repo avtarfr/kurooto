@@ -11,6 +11,9 @@
 - **The phone app's QR page always offers the newest app** (it read the copy it was set up with, which only got older).
 - **Tools you installed yourself are found at boot** (`~/.local/bin`, `~/.cargo/bin`, Homebrew are put on PATH when
   the service starts with a short one): "restic couldn't start: No such file" after a reboot.
+- **A free Gemini key goes further**: when one model's daily free limit is used up, the next of the Flash family
+  answers (the answer says which).
+- **Renaming your assistant** renames the Telegram bot too and says so once.
 - **Concept graph**: cost and request counts (`/graph`), effort goes up for books that need many second looks.
 
 - **GPU reranker for the concept graph**: on a computer with a helper model (an 8 GB card, an Apple Silicon Mac, a
