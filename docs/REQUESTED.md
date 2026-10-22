@@ -38,6 +38,8 @@ To ask for something: open an issue on GitHub, or tell your own Kurooto on Teleg
 - **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~Every concept of a book integrated with the others in your notes, with good Obsidian links: reasons, relations, no vague links~~ (0.5.6)
+- ~~Weaker model for bulk, stronger second look; agy and Claude Code together~~ (0.5.6)
 - ~~Messages when Kurooto goes offline and comes back online~~ (0.3.0)
 - ~~The setup wizard fills the whole window on desktops~~ (0.3.0)
 - ~~Bring every feature of the earlier private version into the public app~~ (0.5.0)

@@ -138,7 +138,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `books.folder` | `""` | your own folder for books, a subfolder per subject; empty: files.folder, else Kurooto's |
 | `books.gemini` | `false` | True: pages nothing on this computer can read go to Gemini (your key) as pictures |
 | `books.gemini_model` | `"gemini-flash-latest"` | the Gemini model that reads scanned book pages when it's chosen |
-| `books.latex` | `"maths"` | pages the vision model reads for LaTeX: maths (pages full of it) \| all \| never |
+| `books.latex` | `"maths"` | vision reads for LaTeX: maths (pages whose maths came out in pieces) \| all \| never |
 | `books.max_mb` | `400` | bigger files are left alone |
 | `books.ocr` | `"auto"` | who reads scanned pages: auto (Tesseract, else the vision model) \| tesseract \| vision \| off |
 | `books.ocr_lang` | `"eng"` | Tesseract's languages, e.g. "eng+deu" (each needs its language data installed) |
@@ -378,6 +378,22 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `health.auto_fix` | `true` | try a safe fix before telling you (never sync: that one waits for your tap) |
 | `health.on` | `true` | the daily pass (doctor, the dashboard and /health always check) |
 | `health.when` | `"daily 21:00"` | before bedtime: tonight's alarm is checked then |
+
+### `integrate`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `integrate.at` | `"daily 01:30"` | when the night's integration starts (it carries on batch after batch) |
+| `integrate.batch_pages` | `12` | about this many pages per request |
+| `integrate.commit` | `true` | one git commit per batch, when your notes are a repository |
+| `integrate.embeddings` | `"auto"` | where meaning-based matching comes from: auto \| ollama \| gemini \| off |
+| `integrate.first` | `[]` | subjects to do first, e.g. ["deep-learning"] |
+| `integrate.garden` | `true` | each day, a second pass over the notes the reading touched and notes nothing links to |
+| `integrate.garden_per_day` | `40` | the most notes in that pass |
+| `integrate.per_night` | `300` | the most batches in a night (a limit on how much of your AI's day it may use) |
+| `integrate.roles.bulk` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
+| `integrate.roles.check` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
+| `integrate.summary` | `true` | one line each morning about what changed |
 
 ### `jobs`
 

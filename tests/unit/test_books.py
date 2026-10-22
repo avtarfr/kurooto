@@ -159,12 +159,22 @@ def test_not_a_pdf_is_refused(tmp_path):
         ("Chapter 2", False, {"text", "tesseract"}, "auto", "maths", ["text"]),  # a title page
         ("x", None, {"text", "tesseract"}, "auto", "maths", ["tesseract", "text"]),  # unknown: OCR, else the text
         (
-            "$" * 3 + " a=b+c, x^2 = y_1 ∑ ∫ α β γ ≤ ≥ = = " * 6,
+            "a=b+c, x^2 = y_1 ∑ ∫ α β γ ≤ ≥ " * 6,  # maths the text layer carried well: no second reading
             False,
             {"text", "vision"},
             "auto",
             "maths",
-            ["vision", "text"],
+            ["text"],
+        ),
+        (
+            "\n".join(
+                ["Let the loss be", "E", "=", "∑", "n", "(", "y", "−", "t", "n", ")", "2", "and x^2 ≤ ∫ α β γ"] * 2
+            ),
+            False,
+            {"text", "vision"},
+            "auto",
+            "maths",
+            ["vision", "text"],  # maths in pieces: worth reading as a picture
         ),
         ("a=b+c, x^2 = y_1 ∑ ∫ α β γ ≤ ≥ " * 6, False, {"text", "vision"}, "auto", "never", ["text"]),
         (LOREM, False, {"text", "vision"}, "auto", "all", ["vision", "text"]),

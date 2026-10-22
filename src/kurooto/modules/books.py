@@ -60,7 +60,7 @@ register_defaults(
         "until": "07:00",  # when it stops (it carries on the next night)
         "ocr": "auto",  # who reads scanned pages: auto (Tesseract, else the vision model) | tesseract | vision | off
         "ocr_lang": "eng",  # Tesseract's languages, e.g. "eng+deu" (each needs its language data installed)
-        "latex": "maths",  # pages the vision model reads for LaTeX: maths (pages full of it) | all | never
+        "latex": "maths",  # vision reads for LaTeX: maths (pages whose maths came out in pieces) | all | never
         "gemini": False,  # True: pages nothing on this computer can read go to Gemini (your key) as pictures
         "gemini_model": "gemini-flash-latest",
         "dpi": 200,  # how sharp the page pictures are for OCR
@@ -126,12 +126,23 @@ def mathy(text: str | None) -> bool:
     return hits >= 8 and hits >= 0.04 * max(1, len(t.split()))
 
 
+def garbled(text: str | None) -> bool:
+    """Has the page's maths come out of the text layer in pieces (equations as scattered one- and two-character
+    lines, lone symbols)? Only those pages are worth a vision model's time: when the text layer carries the maths
+    well, reading the page again as a picture changes little and costs seconds per page."""
+    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+    if len(lines) < 8:
+        return False
+    tiny = sum(1 for ln in lines if len(ln) <= 3)
+    return tiny >= 0.3 * len(lines)
+
+
 def route(text: str | None, images: bool | None, engines: set[str], ocr: str = "auto", latex: str = "maths"):
     """How to read one page, best first: "text" (its text layer), "blank", or a reader of page pictures
     ("tesseract", "vision", "gemini"). `images`: whether the page has pictures (None: unknown)."""
     readers = [e for e in ORDER.get(ocr, ORDER["auto"]) if e in engines]
     if usable(text):
-        if "vision" in readers and (latex == "all" or (latex == "maths" and mathy(text))):
+        if "vision" in readers and (latex == "all" or (latex == "maths" and mathy(text) and garbled(text))):
             return ["vision", "text"]
         return ["text"]
     has_text = bool((text or "").strip())

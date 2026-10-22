@@ -642,6 +642,55 @@ exam periods and last day of classes count from then on, together with the ones 
 read and the next key dates. The note needs two tables:
 
 ```
+## Concept graph (books into linked notes)
+
+**What it does.** When a book has been read (Books and PDFs), its concepts are woven into your notes: a note for each
+new concept, links to the notes you already have (each with the relation and a one-sentence reason), a "Seen in"
+list on each concept with the book and pages, and, in the book's own note, which concepts each stretch of pages
+introduces. Your own text is never changed: Kurooto adds lines and keeps its parts inside `<!-- kurooto:... -->`
+markers, and a write that would touch anything else is refused.
+
+**How a batch goes.**
+1. The book is cut into batches of about 12 pages that follow its sections (numbered headings and the running headers
+   at the top of pages; a margin note such as "Section 9.1" is never taken for a heading).
+2. For each batch Kurooto finds, on this computer and without an AI, the few existing notes that may be related:
+   names and aliases, keywords and, where there's a model for them, meaning (Ollama's nomic-embed-text, or your Gemini
+   key). It shows the AI the pages and those notes only, in one request.
+3. The AI answers with the concepts the pages develop, how each relates to your notes and what an existing note lacks.
+4. Plain checks run on the answer: the quote it gives must be in those pages, a link's reason must say something
+   specific ("related to…" is refused), a link must point at a note that exists, a concept with the same name as an
+   existing note is never made a second time.
+5. Anything doubtful goes to a second look by the other AI program (or the same one, told to be strict) and is
+   dropped unless that confirms it. There is no queue for you to review.
+6. What's left is written, and, if your notes are a git repository, committed: one commit per batch, so
+   `git revert <commit>` undoes exactly that batch.
+
+**Every day** (`integrate.garden`), the notes the reading touched and notes nothing links to are checked once more
+against everything that's there now, and one line says what changed. `/graph` shows the state and the numbers that
+say how good the graph is: broken links, notes with no links in, vague reasons, and how many links go to the three
+busiest notes.
+
+**Which AI.** `integrate.roles` = `{"bulk": "agy", "check": "claude"}`. With both agy and Claude Code installed they
+split the work and run side by side; with one, it does both; with none, your main AI does (a Gemini key's daily
+limit makes that slow: set `integrate.per_night` low and `integrate.first` to your current subjects). Without a
+graphics card nothing changes except that embeddings come from the CPU or your Gemini key.
+
+| Setting | Does |
+|---|---|
+| `integrate.at` | when the night's work starts (it carries on batch after batch, and after each book is read) |
+| `integrate.roles` | the AI for the bulk work and for the second look |
+| `integrate.per_night` | the most batches a night |
+| `integrate.first` | subjects to do first |
+| `integrate.garden`, `integrate.garden_per_day` | the daily second pass |
+| `integrate.embeddings` | auto, ollama, gemini or off |
+| `integrate.commit` | one git commit per batch |
+
+**Undo.** `git revert` a batch's commit; each batch also keeps a before-copy of every file it changed in
+`<state>/integrate/undo/`. To stop it, turn the feature off in Features.
+
+**Reading cost.** The vision model now reads a maths page again only when its text layer broke the equations into
+pieces (`books.latex` = `maths`); `all` reads every maths page, `never` none.
+
 ## Weekly timetable
 | Day | Time | Subject | Code |
 | :--- | :--- | :--- | :--- |

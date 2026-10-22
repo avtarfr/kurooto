@@ -564,8 +564,7 @@ class Integrate(Module):
         lines = ["## Seen in"]
         for r in rows:
             a, z = r["pages"]
-            what = f": {r['def']}" if r.get("def") else ""
-            lines.append(f"- [[{r['note']}|{r['title']}]] pp. {a}–{z}{what}")
+            lines.append(f"- [[{r['note']}|{r['title']}]] pp. {a}–{z}")
         ups = [r for r in rows if r.get("update")]
         if ups:
             lines += ["", "### Added from the books"]

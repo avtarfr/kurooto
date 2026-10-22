@@ -2,6 +2,18 @@
 
 ## 0.5.6 (unreleased)
 
+- **Concept graph** (Features → Concept graph): when a book has been read, its concepts are woven into your notes: new
+  concept notes, links with the relation and a specific reason, "Seen in" lists with pages, and a list of what each
+  stretch of a book introduces. Checks that don't trust the AI's own opinion (the quote must be in the pages, no vague
+  reasons, no links to nothing, no second note for a name you have) decide what's written; doubtful items get a second
+  look by the other AI program or are dropped; nothing is queued for you. Your own text is never changed, one git commit
+  per batch. agy and Claude Code can split the work and run side by side (`integrate.roles`). Daily second pass over
+  what the reading touched. `/graph` for the state and quality numbers.
+- **Book sections found properly**: a margin note like "Section 9.1" is no longer taken for a chapter heading (it made
+  every chapter a list of other chapters' sections); batches follow numbered headings and running headers.
+- **Less vision work when reading books**: a maths page is read again as a picture only when its text layer broke the
+  equations into pieces (`books.latex`).
+
 - **Claude Code as a full brain**: a request run by Claude Code gets the same reach as one run by agy: Kurooto's tools
   and your own GBrain's, writing in your notes, course files and add-ons' skills, reading your Documents and
   Downloads, web pages, and harmless commands, all given for that request only (nothing saved in Claude Code's own
