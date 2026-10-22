@@ -62,7 +62,8 @@ create index if not exists attempts_at on attempts(at);
 register_defaults("jobs", {"stuck_min": 10})  # the watchdog: minutes with no AI at work and no program running
 
 LONG = 7000  # longer answers are also sent as a document
-LANES = ("you", "bg")  # your own requests; work nobody is waiting for
+LANES = ("you", "bg", "chk")  # your own requests; work nobody is waiting for; a second kind of that work, so two
+# AI programs (agy and Claude Code) can each have a job running at once
 GRACE_S = 120  # the watchdog's grace past a try's time limit (and the brain's own grace)
 ACTIVE = ("queued", "running")
 RETRY = (Verdict.RATE_LIMITED, Verdict.AUTH, Verdict.ERROR, Verdict.DENIED, Verdict.EMPTY)  # the next brain tries
@@ -151,7 +152,13 @@ class Jobs:
         if "why" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # (calm) the answer's reason
             self._db.execute("alter table jobs add column why text")
         have = [r[1] for r in self._db.execute("pragma table_info(jobs)")]
-        for col, kind in (("lane", "text default 'you'"), ("proc", "text"), ("activity", "real"), ("deadline", "real")):
+        for col, kind in (
+            ("lane", "text default 'you'"),
+            ("proc", "text"),
+            ("activity", "real"),
+            ("deadline", "real"),
+            ("brain_req", "text"),
+        ):
             if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline
                 self._db.execute(f"alter table jobs add column {col} {kind}")
         self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
@@ -171,19 +178,22 @@ class Jobs:
         text_only: bool = False,
         why: str | None = None,
         lane: str | None = None,
+        brain: str | None = None,
     ) -> str:
         """Queue an AI request. background=True: work nobody is waiting for, which waits for the charger when the
         laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools).
         why: the answer's reason when it comes by itself (core/calm.py, e.g. "research.papers"); otherwise it's an
         answer to something asked, never held.
-        lane: "you" (your own request) or "bg" (automatic work); unset, background work goes in "bg"."""
+        lane: "you" (your own request) or "bg" / "chk" (automatic work); unset, background work goes in "bg".
+        brain: run it on this AI (agy, claude, gemini, ...) instead of the main one; another AI program takes over if
+        it can't."""
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
         lane = lane if lane in LANES else ("bg" if background else "you")
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"
-                "background,text_only,why,lane) values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?)",
+                "background,text_only,why,lane,brain_req) values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?)",
                 (
                     jid,
                     (title or prompt_clean.split("\n")[0])[:80],
@@ -198,6 +208,7 @@ class Jobs:
                     int(text_only),
                     why,
                     lane,
+                    brain,
                 ),
             )
         self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean), lane=lane)
@@ -357,6 +368,19 @@ class Jobs:
         s = self.app.settings
         main = providers.build(self.app, s.get("brain.main") or "")
         fallback = providers.build(self.app, s.get("brain.fallback") or "")
+        want = (self._read("select brain_req from jobs where id=?", (jid,)) or [None])[0]
+        if want:  # pinned to an AI (a role in the concept graph): another AI program stands in if it can't
+            pinned = providers.build(self.app, want)
+            if pinned is not None:
+                other = next(
+                    (
+                        b
+                        for k in providers.AGENT_PROGRAMS
+                        if k != want and (b := providers.build(self.app, k)) is not None and b.available()[0]
+                    ),
+                    None,
+                )
+                main, fallback = pinned, other or fallback
         level = (
             job.effort_req
             if job.effort_req in ("low", "medium", "high")
