@@ -14,6 +14,10 @@ To ask for something: open an issue on GitHub, or tell your own Kurooto on Teleg
   install, so it asks first).
 - **Mail digest formatting**: shorter, grouped by what needs you.
 - **Preview the organic blobs in the phone app**, as in the dashboard.
+- **A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
+  Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.
+- **A legend for the dashboard's organic view**: what each blob, line, pulse and ring means, on the page itself (a
+  hover card already explains a cell; a "?" key should explain the whole picture).
 - **Make the UI more intuitive**, and keep improving the setup wizard's elements.
 - **Wiki-level documentation**: one full read equips someone to develop Kurooto and fix bugs without an agent
   (the manual covers use; the developer side is thin).
