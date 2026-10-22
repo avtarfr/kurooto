@@ -6,9 +6,12 @@ the rest are open. (Ideas nobody has asked for yet are in [ROADMAP.md](ROADMAP.m
 To ask for something: open an issue on GitHub, or tell your own Kurooto on Telegram: "add to the requested list: …".
 
 ## Open
-- **Common features directly usable from the dashboard and the phone app**, not only through chat: write a journal
-  entry, set or skip an alarm, add a reminder or deadline, tick what's done, start a check-in, ask something. Being
-  ideated now (dashboard and Android app together).
+- **The whole dashboard as a terminal app** (`kurooto tui`): the same panes, Today page and actions, with the organic
+  view drawn with kitty's graphics where the terminal has them and braille elsewhere; far less memory than a browser
+  tab. The web page stays for everyone who doesn't live in a terminal.
+- **Common features directly usable from the phone app** (and the rest of the dashboard plan: Ctrl+K palette,
+  check-in and quiz cards): the dashboard's Today page is done (0.5.7); the app's Today screen, local alarm and
+  notification buttons are planned for 0.6.0.
 - **Mail about exams is read at once and turned into a schedule** (dates, rooms, what to prepare), not only digested.
 - **PDF, Word and PowerPoint to Markdown** with Microsoft's MarkItDown for books and Classroom files (needs a pip
   install, so it asks first).
@@ -29,6 +32,7 @@ To ask for something: open an issue on GitHub, or tell your own Kurooto on Teleg
 - **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~A Today page in the dashboard: alarm, due, reminders, check-ins, questions and journal with buttons, and one box for anything~~ (0.5.7)
 - ~~A free Gemini key tries the next model of the family when one's daily limit is used up~~ (0.5.7)
 - ~~Goodnight sets the wake-up alarm (it already did: /goodnight)~~ (0.5.4)
 - ~~Renaming the assistant renames the Telegram bot and says so~~ (0.5.7)
