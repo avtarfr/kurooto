@@ -56,7 +56,7 @@ const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && windo
 // browsers. The pages (activity … settings) open over the whole board, Alt and the underlined letter opens one, and
 // Esc goes back. Roomy (narrow windows) shows every pane, with the pages in its tabs.
 const PANES = { status: "#pane-status", systems: "#pane-systems", notes: "#pane-vault", terminal: "#pane-tabs" };
-const PKEY = { activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
+const PKEY = { today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
 let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
 let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_features; only ones that are off)
 const inTerm = (el) => !!(el && el.closest && el.closest(".xterm")); // a terminal keeps its own keys
@@ -1126,8 +1126,8 @@ function renderBoard(m) {
 
 const feed = [];
 const SEEN = new WeakMap(); // when each live event arrived (fresh ones are bright in SYSTEMS)
-const TABS = { activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
-const DLABEL = { activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
+const TABS = { today: "Today", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
+const DLABEL = { today: "today", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
 let tab = "activity"; // roomy: the tab below the panes
 let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat) or a terminal; the pages open over the board
 const current = () => (DENSE ? PAGE || dtab : tab);
@@ -1181,12 +1181,133 @@ function renderPage(name, body) {
     };
   }
   else if (name === "schedule" && last) body.innerHTML = last.schedule.length ? `<table><tr><th>when</th><th>what</th></tr>${last.schedule.map((s) => `<tr><td>${new Date(s.when * 1000).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</td><td>${esc(s.what)}</td></tr>`).join("")}</table>` : "Nothing scheduled.";
+  else if (name === "today") renderToday(body);
   else if (name === "features") renderFeatures(body);
   else if (name === "phone") renderPhone(body);
   else if (name === "research") renderResearch(body);
   else if (name === "about") renderAboutTab(body);
   else if (name === "settings") renderSettings(body);
   else if (name === "terminals") renderTerminals(body);
+}
+// Today (Alt+T): the day, and the everyday things done right here (core/actions.py: the same as the commands).
+// One box takes anything: plain words go to Kurooto as if typed on Telegram; "j …" is a journal line, ". …" a note
+// in the inbox, "! …" a reminder ("! 18:30 call mum").
+let TODAY = null;
+async function renderToday(body) {
+  if (!body.querySelector("#td-box")) {
+    body.innerHTML = `<div class="today">
+      <div class="td-cap"><input id="td-box" placeholder="type anything · j journal line · . note · ! 18:30 reminder" spellcheck="true" autocomplete="off"><button id="td-go">↵</button></div>
+      <p class="td-said" id="td-said" aria-live="polite"></p>
+      <div id="td-body">loading…</div></div>`;
+    const box = body.querySelector("#td-box");
+    const go = async () => {
+      const v = box.value.trim(); if (!v) return;
+      let action = "ask", args = { text: v };
+      if (/^j\s+/i.test(v)) { action = "journal.add"; args = { text: v.replace(/^j\s+/i, "") }; }
+      else if (/^\.\s*/.test(v)) { action = "note.capture"; args = { text: v.replace(/^\.\s*/, "") }; }
+      else if (/^!\s*/.test(v)) {
+        const m = v.replace(/^!\s*/, "").match(/^(in \d+\s*\w+|tomorrow(?: \d{1,2}(?::\d\d)?\s*(?:am|pm)?)?|\d{1,2}(?::\d\d)?\s*(?:am|pm)?|\w{3,9}day \d{1,2}(?::\d\d)?)\s+(.+)$/i);
+        if (!m) { tdSay("Write the time first: ! 18:30 call mum, ! in 20m tea, ! tomorrow 9am gym", true); return; }
+        action = "reminder.add"; args = { when: m[1], what: m[2] };
+      }
+      box.value = "";
+      await tdAct(action, args);
+    };
+    box.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+    body.querySelector("#td-go").onclick = go;
+    body.onclick = async (e) => {
+      const pg = e.target.closest("[data-page]"); if (pg) { e.preventDefault(); openPage(pg.dataset.page); return; }
+      const b = e.target.closest("button[data-act]"); if (!b) return;
+      let args = JSON.parse(b.dataset.args || "{}");
+      if (b.dataset.ask) { const v = prompt(b.dataset.ask, b.dataset.def || ""); if (v === null || !v.trim()) return; args = { ...args, [b.dataset.field]: v.trim() }; }
+      b.disabled = true;
+      await tdAct(b.dataset.act, args);
+    };
+    body.onsubmit = async (e) => {
+      e.preventDefault();
+      const f = e.target, ta = f.querySelector("textarea, input[name]");
+      if (!f.dataset.act || !ta || !ta.value.trim()) return;
+      await tdAct(f.dataset.act, { [ta.name]: ta.value.trim() });
+      ta.value = "";
+    };
+    setTimeout(() => box.focus({ preventScroll: true }), 30);
+  }
+  try { TODAY = await api("today"); } catch { body.querySelector("#td-body").textContent = "Kurooto didn't answer (is it running?)."; return; }
+  tdDraw(body.querySelector("#td-body"));
+}
+function tdSay(text, bad) { const el = $("#td-said"); if (el) { el.textContent = text; el.className = "td-said" + (bad ? " bad" : ""); } }
+async function tdAct(action, args) {
+  let r; try { r = await api("act", { action, args }); } catch { tdSay("Kurooto didn't answer (is it running?).", true); return; }
+  tdSay(r.message || (r.ok ? "Done." : "That didn't work."), !r.ok);
+  if (r.job) tdWait(r.job);
+  const body = $("#ov-body").querySelector(".today") ? $("#ov-body") : $("#tab-body");
+  try { TODAY = await api("today"); tdDraw(body.querySelector("#td-body")); } catch { /* the next refresh */ }
+}
+async function tdWait(job) {
+  for (let i = 0; i < 450; i++) {
+    await sleep(i < 10 ? 1000 : 3000);
+    let j; try { j = await api(`job?id=${encodeURIComponent(job)}`); } catch { continue; }
+    if (j.ok === false) return;
+    if (j.status === "ok" || j.status === "failed") {
+      const who = [j.label || j.brain, j.effort, j.seconds ? `${Math.round(j.seconds)} s` : ""].filter(Boolean).join(" · ");
+      tdSay(`${who ? who + "\n" : ""}${String(j.answer || "").trim() || "(no answer)"}`, j.status !== "ok");
+      return;
+    }
+    tdSay(`working${j.brain ? " · " + j.brain : ""} · ${Math.round((Date.now() / 1000) - (j.created || Date.now() / 1000))} s`);
+  }
+}
+function tdDraw(el) {
+  if (!el || !TODAY) return;
+  const t = TODAY, on = new Set(t.features || []), btn = (label, action, args, ask) =>
+    `<button class="mini" data-act="${action}" data-args="${esc(JSON.stringify(args || {}))}"${ask ? ` data-ask="${esc(ask[0])}" data-field="${ask[1]}" data-def="${esc(ask[2] || "")}"` : ""}>${esc(label)}</button>`;
+  const off = (what, id) => `<p class="d">${what} is off. <a href="#" data-page="features">Turn it on in Features</a>.</p>`;
+  const sec = [];
+  sec.push(`<h2>${esc(t.day || "")}</h2>`);
+  // alarm
+  if (on.has("alarm") && t.alarm_state) {
+    const a = t.alarm_state;
+    sec.push(`<section class="td-sec"><h4>Alarm</h4><p>${esc(a.status)}</p>
+      <form data-act="alarm.set"><input name="when" placeholder="7:30, tomorrow 6:45" autocomplete="off"><button>set</button></form>
+      <p>${btn("skip tomorrow", "alarm.skip", { day: "tomorrow" })} ${a.next ? btn("turn this one off", "alarm.clear") : ""} ${btn(a.daily ? "change daily" : "daily alarm…", "alarm.daily", {}, ["Daily alarm time (or off):", "time", a.daily || "07:00"])}</p></section>`);
+  } else sec.push(`<section class="td-sec"><h4>Alarm</h4>${off("The alarm (it needs Phone calls)")}</section>`);
+  // classes
+  if ((t.classes || []).length) sec.push(`<section class="td-sec"><h4>Classes</h4>${t.classes.map((c) => `<p>${esc(c.time)} ${esc(c.name)}${c.skipping ? ' <span class="d">(skipping)</span>' : ""}</p>`).join("")}</section>`);
+  // deadlines
+  if (on.has("deadlines")) {
+    const ds = t.deadlines || [];
+    sec.push(`<section class="td-sec"><h4>Due</h4>${ds.length ? ds.map((d) => `<p class="${d.hours < 0 ? "bad" : d.hours < 24 ? "warn" : ""}">${esc(d.due.replace("T", " "))} ${esc(d.title)}${d.subject ? ` <span class="d">${esc(d.subject)}</span>` : ""}
+      ${btn("done", "deadline.done", { id: d.id })} ${btn("new date", "deadline.move", { id: d.id }, ["New date:", "when", "tomorrow 23:59"])}</p>`).join("") : "<p class=\"d\">Nothing due in the next three weeks.</p>"}
+      <form class="td-add"><input name="title" placeholder="add: essay draft fri 17:00"><button>add</button></form></section>`);
+  }
+  // reminders
+  if (on.has("reminders")) {
+    const rs = t.reminders || [];
+    sec.push(`<section class="td-sec"><h4>Reminders</h4>${rs.length ? rs.map((r) => `<p>${esc(r.when)} ${esc(r.what)} ${btn("+10 min", "reminder.snooze", { key: r.key, minutes: 10 })} ${btn("cancel", "reminder.cancel", { key: r.key })}</p>`).join("") : '<p class="d">None set. In the box above: ! 18:30 call mum</p>'}</section>`);
+  }
+  // check-ins
+  if (on.has("checkins") && (t.checkin_names || []).length) {
+    sec.push(`<section class="td-sec"><h4>Check-ins</h4>${t.checkin_names.map((c) => `<p>${esc(c.time)} ${esc(c.name)} <span class="d">${esc(c.status || "")}</span>${["planned", "waiting", ""].includes(c.status || "") ? ` ${btn("+30 min", "checkin.defer", { name: c.name })} ${btn("skip", "checkin.skip", { name: c.name })}` : ""}</p>`).join("")}</section>`);
+  }
+  // open questions
+  if ((t.questions_full || []).length) {
+    sec.push(`<section class="td-sec"><h4>Waiting for you</h4>${t.questions_full.map((q) => `<p>${esc(q.text)}<br>${(q.choices || []).map((c) => btn(c, "question.answer", { id: q.id, answer: c })).join(" ")} ${btn("answer…", "question.answer", { id: q.id }, ["Your answer:", "answer", ""])}</p>`).join("")}</section>`);
+  }
+  // journal
+  const js = t.journal || [];
+  sec.push(`<section class="td-sec td-journal"><h4>Journal</h4>${js.length ? js.map((j) => `<p class="d">${esc(j).replace(/\n/g, "<br>")}</p>`).join("") : '<p class="d">Nothing yet today. One line is enough.</p>'}
+    <form data-act="journal.add"><textarea name="text" rows="3" placeholder="How did today go? (Ctrl+Enter saves)"></textarea><button>save</button></form>
+    <p class="d">${t.inbox_today ? `${t.inbox_today} note${t.inbox_today === 1 ? "" : "s"} in the inbox today. ` : ""}Saved in your notes, nowhere else.</p></section>`);
+  el.innerHTML = sec.join("");
+  // the deadline box: "essay draft fri 17:00" -> title and when (the server reads the time; we only split it off)
+  const add = el.querySelector(".td-add");
+  if (add) add.onsubmit = async (e) => {
+    e.preventDefault(); const v = add.querySelector("input").value.trim(); if (!v) return;
+    const m = v.match(/^(.*?)\s+((?:mon|tue|wed|thu|fri|sat|sun)\w*\s+\d{1,2}(?::\d\d)?|tomorrow(?:\s+\d{1,2}(?::\d\d)?)?|\d{4}-\d\d-\d\d(?:\s+\d\d:\d\d)?|in \d+\s*\w+)$/i);
+    if (!m) { tdSay("End with when it's due: essay draft fri 17:00", true); return; }
+    await tdAct("deadline.add", { title: m[1], when: m[2] });
+  };
+  const ta = el.querySelector(".td-journal textarea");
+  if (ta) ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ta.form.requestSubmit(); } });
 }
 // dense: the terminal pane's three hosts (the chat, a terminal, a page) stay; switching shows one
 function denseHosts() {

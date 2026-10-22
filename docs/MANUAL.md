@@ -2370,6 +2370,21 @@ and Mac computers give no temperatures or fans, and the graphics card's live fig
 an AMD card on Linux); a laptop's sleeping NVIDIA card isn't woken to ask. It only reads, so it's safe while Kurooto
 works. `kurooto logs -f` follows Kurooto's log.
 
+### Today (Alt+T)
+The first page of the dashboard's pages: the day, and the everyday things done right there.
+- **One box for anything.** Plain words go to Kurooto as if typed on Telegram (the answer shows which AI gave it and
+  how long it took). `j …` adds a journal line, `. …` a note to today's inbox note, `! 18:30 call mum` a reminder
+  (`! in 20m tea`, `! tomorrow 9am gym`).
+- **Alarm:** what's set, a box to set one ("7:30", "tomorrow 6:45"), skip tomorrow, turn one off, the daily alarm.
+- **Due:** the next three weeks, with done and new date; an add box ("essay draft fri 17:00").
+- **Reminders:** each with +10 min and cancel.
+- **Check-ins:** today's, with +30 min and skip.
+- **Waiting for you:** open questions, with their answer buttons.
+- **Journal:** today's entries and a box (Ctrl+Enter saves) that adds a "Journal HH:MM" section to today's daily note.
+
+Every button does exactly what the command or the AI's tool does (`/api/act`, core/actions.py), so the page, Telegram
+and the AI never disagree. A feature that's off says so with a link to Features.
+
 ## Colours (Look)
 
 Kurooto's pages (the setup page, the dashboard and the morning page) come in three palettes. Pick one on the setup

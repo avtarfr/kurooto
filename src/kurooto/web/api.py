@@ -253,6 +253,10 @@ class Api:
                 return 200, {"installing": self._installing, "lines": self.progress[-30:]}
         if path == "ask" or path.startswith("ask/"):
             return self._ask(path, dict(q))
+        if path == "today":  # the Today page: the day, with ids to act on (core/actions.py)
+            from kurooto.core import actions
+
+            return 200, actions.today(self.app)
         if path == "morning":  # the morning page (rhythm)
             from kurooto.modules.daily import morning_view
 
@@ -335,6 +339,10 @@ class Api:
                     if old != s.get(f"you.{k}"):
                         self.app.events.emit("setting_changed", key=f"you.{k}")
             return 200, {"ok": True, "timezone": s.get("you.timezone") or ""}
+        if path == "act":  # one everyday action, the same as the command and the AI's tool (core/actions.py)
+            from kurooto.core import actions
+
+            return 200, actions.act(self.app, str(b.get("action") or ""), b.get("args") or {}, via="dashboard")
         if path == "hardware/refresh":
             return 200, self._hardware(refresh=True)
         if path == "hardware/override":  # go past what the detection suggests: another setup, models of your own

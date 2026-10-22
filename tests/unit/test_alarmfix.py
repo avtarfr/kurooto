@@ -215,3 +215,16 @@ def test_alarm_status_has_a_tool_and_a_markdown_file(world):
     a.skip(THU)
     text = a.mirror_file.read_text(encoding="utf-8")
     assert text.startswith("# Alarm") and "Daily alarm: 07:00" in text and "No alarm on Thu 22 Oct" in text
+
+
+def test_the_today_page_sets_skips_and_shows_the_alarm(world):
+    from kurooto.core import actions
+
+    env, a, w = world
+    st = actions.today(env.app)["alarm_state"]
+    assert st["daily"] == "07:00" and "Daily alarm: 07:00" in st["status"]
+    assert actions.act(env.app, "alarm.skip", {"day": "tomorrow"})["ok"]
+    assert "No alarm on Thu 22 Oct" in actions.today(env.app)["alarm_state"]["status"]
+    r = actions.act(env.app, "alarm.set", {"when": "tomorrow 6:15"})
+    assert r["ok"] and "Alarm set for" in r["message"]
+    assert actions.act(env.app, "alarm.daily", {"time": "off"})["message"].startswith("Daily alarm off")

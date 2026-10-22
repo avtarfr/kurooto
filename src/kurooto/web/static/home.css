@@ -278,3 +278,21 @@ body .hid-box button.linkish { padding: 0; border: 0; background: none; color: v
 .hid-list li b { flex: none; font-family: var(--sans); font-size: 13px; }
 .hid-list li .d { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--sans); font-size: 12.5px; }
 body .hid-list li button { flex: none; padding: 1px 10px; font: 11.5px var(--mono); }
+
+/* Today (Alt+T) */
+.today { max-width: 860px; }
+.today .td-cap { display: flex; gap: 6px; margin: 2px 0 6px; }
+.today .td-cap input { flex: 1; min-width: 0; font: inherit; padding: 7px 9px; background: var(--panel); color: var(--fg); border: 1px solid var(--line, #3a4434); border-radius: 6px; }
+.today .td-cap input:focus-visible, .today textarea:focus-visible, .today input:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+.today .td-said { white-space: pre-wrap; min-height: 1.2em; margin: 0 0 8px; color: var(--accent-text); }
+.today .td-said.bad { color: var(--bad); }
+.today h2 { margin: 6px 0 10px; font-size: 15px; }
+.today .td-sec { margin: 0 0 14px; }
+.today .td-sec h4 { margin: 0 0 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim, #8a8f84); }
+.today .td-sec p { margin: 3px 0; }
+.today .td-sec p.bad { color: var(--bad); }
+.today .td-sec p.warn { color: var(--peach); }
+.today .td-sec form { display: flex; gap: 6px; margin: 4px 0; }
+.today .td-sec form input, .today .td-sec form textarea { flex: 1; min-width: 0; font: inherit; padding: 5px 7px; background: var(--panel); color: var(--fg); border: 1px solid var(--line, #3a4434); border-radius: 5px; }
+.today button.mini { padding: 1px 7px; font-size: 11px; margin-left: 4px; }
+.today .d { color: var(--dim, #8a8f84); }

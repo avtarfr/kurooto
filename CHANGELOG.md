@@ -2,6 +2,11 @@
 
 ## 0.5.7 (unreleased)
 
+- **Today page in the dashboard (Alt+T)**: one box for anything (plain words to Kurooto, `j` journal, `.` note, `!` a
+  reminder), and the day with buttons: set or skip the alarm, tick or move what's due, snooze or cancel reminders,
+  move or skip check-ins, answer open questions, write the journal. Every button is the same action as the command
+  and the AI's tool (`/api/act`).
+
 - **Space keeper**: cleans off Kurooto's own old backups (past a total size or age, never the newest), downloads and made
   zips, big logs, old finished AI requests and the concept graph's old before-copies, weekly and on request (`/space`,
   `kurooto space [--clean]`). Only Kurooto's own leftovers are touched.
