@@ -527,3 +527,23 @@ def test_a_rate_limit_waits_and_is_not_a_failed_try(world):
     env.fake_ai.mode = "ok"
     env.fake_ai.answer = answer(c_ad())
     assert env.integrate.tick()["submitted"] == 1  # asked again later
+
+
+def test_effort_goes_up_for_a_book_that_needs_many_second_looks_or_a_retry(world):
+    env = world
+    bt = env.integrate.plan(env.book)[0]
+    assert env.integrate.effort_for(env.book, bt) == "low"
+    env.integrate.record(env.book, "x1", state="done", concepts=5, flagged=3)
+    assert env.integrate.effort_for(env.book, bt) == "medium"
+    env.integrate.record(env.book, bt.id, state="pending", tries=1)
+    assert env.integrate.effort_for(env.book, bt) == "medium"
+
+
+def test_cost_and_requests_are_counted_and_shown(world):
+    from kurooto.providers.base import Result, Verdict
+
+    env = world
+    env.integrate.spend(Result(Verdict.OK, "x", usage={"cost": 0.0123}))
+    env.integrate.spend(Result(Verdict.OK, "x", usage={}))
+    out = env.say("/graph")
+    assert "2 AI requests" in out and "$0.01" in out

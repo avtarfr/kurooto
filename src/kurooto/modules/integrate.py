@@ -199,6 +199,12 @@ class Integrate(Module):
             self.save("ledger.json", led)
             return rec
 
+    def spend(self, result) -> None:
+        """Count a request's cost as the AI program reports it (Claude Code gives it in dollars at API prices: on a
+        plan nothing is billed, but it says how big the request was) and the request itself."""
+        cost = float((getattr(result, "usage", None) or {}).get("cost") or 0)
+        self.bump_night(requests=1, cost=round(cost, 5))
+
     def bump_night(self, **inc) -> None:
         with self.lock:
             led = self.load("ledger.json", {})
@@ -282,7 +288,7 @@ class Integrate(Module):
         jid = self.app.jobs.submit(
             prompt,
             title=f"Concepts: {short(meta.get('title') or b['id'], 40)} pp. {bt.first}-{bt.last}",
-            effort="low",
+            effort=self.effort_for(b, bt),
             background=True,
             text_only=True,
             quiet=True,
@@ -293,6 +299,21 @@ class Integrate(Module):
         )
         self.record(b, bt.id, state="queued", job=jid, tries=self.tries(b, bt.id))
         return jid
+
+    def effort_for(self, b: dict, bt: segment.Batch) -> str:
+        """The effort (so the model size) for a batch: the small, quick one by default; the next one up for a batch
+        that failed before, and for a book whose recent batches needed many second looks (its text is hard)."""
+        if self.tries(b, bt.id):
+            return "medium"
+        recs = list(
+            ((self.load("ledger.json", {}).get("books", {}) or {}).get(self.key(b), {}) or {})
+            .get("batches", {})
+            .values()
+        )
+        recent = [r for r in recs if r.get("state") == "done"][-3:]
+        concepts = sum(int(r.get("concepts") or 0) for r in recent)
+        flagged = sum(int(r.get("flagged") or 0) for r in recent)
+        return "medium" if concepts >= 4 and flagged / concepts > 0.3 else "low"
 
     def tries(self, b: dict, bid: str) -> int:
         led = self.load("ledger.json", {})
@@ -307,6 +328,7 @@ class Integrate(Module):
         if b is None:
             return
         bid = payload["batch"]
+        self.spend(result)
         data = ai.parse_json(result.text) if result.ok else None
         if data is None and getattr(result, "verdict", None) in (Verdict.RATE_LIMITED, Verdict.AUTH):
             # the AI's limit (or its sign-in): nothing is wrong with the batch; it's asked again later (every few
@@ -418,6 +440,7 @@ class Integrate(Module):
             )
             for s in saved["items"]
         ]
+        self.spend(result)
         answer = ai.parse_json(result.text) if result.ok else None
         kept, dropped = ai.apply_second_look(items, answer)
         pend.unlink(missing_ok=True)
@@ -687,6 +710,7 @@ class Integrate(Module):
         return {"asked": sent}
 
     def _linked(self, job, result, payload: dict) -> None:
+        self.spend(result)
         data = ai.parse_json(result.text) if result.ok else None
         s = payload["note"]
         path = Path(self.app.workspace) / f"{s}.md"
@@ -768,6 +792,8 @@ class Integrate(Module):
             f"Concept graph: {n.get('batches', 0)} batches, +{n.get('new', 0)} concept notes, "
             f"+{n.get('links', 0)} links, {n.get('updated', 0)} notes updated"
         )
+        if n.get("requests"):
+            line += f"; {n['requests']} AI requests (about ${n.get('cost', 0):.2f} at API prices)"
         if n.get("flagged"):
             line += f"; {n['flagged']} doubtful, {n.get('dropped', 0)} dropped after a second look"
         if n.get("failed"):
@@ -795,9 +821,16 @@ class Integrate(Module):
             return "Stopped for tonight; it starts again at its usual time."
         c, m = self.counts(), self.metrics()
         bulk, chk = self.roles()
+        today = (self.load("ledger.json", {}).get("nights", {}) or {}).get(day(), {})
+        spent = (
+            f" Today: {today.get('requests', 0)} AI requests, about ${today.get('cost', 0):.2f} at API prices "
+            "(a plan isn't billed per request; the plan's own limit is what runs out)."
+            if today.get("requests")
+            else ""
+        )
         return (
             f"Concept graph: {c['done']} batches done, {c['todo']} waiting, {c['failed']} failed. "
-            f"AI: {bulk or 'none'} (bulk), {chk or 'none'} (second look).\n"
+            f"AI: {bulk or 'none'} (bulk), {chk or 'none'} (second look).{spent}\n"
             f"{m['concepts']} concepts, {m['links']} links; {m['broken']} broken, {m['no_links_in']} with no links in, "
             f"{m['boilerplate_reasons']} with a vague reason, the top three notes get {m['top3_share']:.0%} of links."
         )
