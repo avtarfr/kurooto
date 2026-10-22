@@ -31,7 +31,6 @@ BRAIN_ORDER = [  # the first one is the ★ recommendation
         "A key from Google AI Studio. Warning: Free-tier keys have strict daily limits (20 requests/day) "
         "and exhaust quickly; best kept for Phone Calls and Voice Notes.",
     ),
-    ("codex", "If you pay for ChatGPT: OpenAI's Codex, signed in with your ChatGPT account."),
     ("claude", "Advanced: if you pay for Claude, Anthropic's Claude Code, signed in with your Claude account."),
     ("ollama", "Small models on this computer: private and offline, but much weaker than the others."),
     ("custom", "Any other OpenAI-compatible service, with its address and key."),
@@ -698,17 +697,9 @@ class Api:
         secs = time.monotonic() - t0
         if nonce in r.text:
             msg = f"Working: it answered in {secs:.0f} s."
-            if which == "agy":  # setting agy up: give it Kurooto's tools (`kurooto mcp`) now; and it may stand in
-                from kurooto.providers.agy import connect_tools, mark_worked  # for the Gemini key later
-
-                mark_worked(self.app.paths.state)
-                ok_t, why = connect_tools(self.app, brain.exe)
-                msg += (
-                    " It can now use Kurooto's tools, read your notes, Documents and Downloads, and write in your "
-                    "notes folder."
-                    if ok_t
-                    else f" (It can't use Kurooto's tools yet: {why}.)"
-                )
+            if brain.kind == "cli":  # an agent program: it may stand in for the Gemini key later, and gets set up
+                brain.mark_worked(self.app)
+                msg += brain.after_test(self.app)
             return {"ok": True, "message": msg}
         msgs = {
             Verdict.AUTH: "It isn't signed in (or the key is wrong).",

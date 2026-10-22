@@ -1,5 +1,5 @@
 """Kurooto Terminal: Kurooto in a real terminal window of its own, laid out like the dashboard's terminals. One tab
-each for your AI's own program (agy, Codex or Claude Code, started in your notes folder), your shell, Kurooto chat
+each for your AI's own program (agy or Claude Code, started in your notes folder), your shell, Kurooto chat
 (`kurooto ask`) and Kurooto's log, with `kurooto top` as a column beside the first tab; all in Kurooto's colours.
 `kurooto term` opens it; turning this feature on adds "Kurooto Terminal" to your app menu.
 

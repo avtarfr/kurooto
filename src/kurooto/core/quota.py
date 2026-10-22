@@ -128,7 +128,7 @@ def daily(h: dict) -> bool | None:
 # ------------------------------------------------------------------------------------- limits and days
 def pool_id(brain: str, model: str | None = None, kind: str = "api") -> str | None:
     """Which limit a request counts against: each model of an API key has its own ("gemini:gemini-flash-latest");
-    an agent program (agy, Codex) has one; a model on this computer has none (None)."""
+    an agent program (agy, Claude Code) has one; a model on this computer has none (None)."""
     if not brain or brain in LOCAL:
         return None
     return f"{brain}:{model}" if kind == "api" and model else brain

@@ -1,4 +1,4 @@
-"""`kurooto mcp`: Kurooto's tools for agent programs (agy, Codex, Claude Code, or any other MCP client), over the
+"""`kurooto mcp`: Kurooto's tools for agent programs (agy, Claude Code, or any other MCP client), over the
 Model Context Protocol: JSON-RPC 2.0 messages, one per line, on stdin and stdout.
 
 It is only a bridge. Every tool call goes to the Kurooto running on this computer, through its local page

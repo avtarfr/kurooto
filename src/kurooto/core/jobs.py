@@ -1,9 +1,9 @@
 """The AI job queue: requests that may take minutes run in the background and the answer comes back to you.
 
-CLI brains (agy) run one job at a time; API brains may run a few at once. If the main brain can't do a request
-(rate-limited, signed out, refused, failed, or no answer) and a fallback brain is set, the job is retried on the
-fallback. As a last resort, an agent program (agy, Codex, Claude Code) hands over to your Gemini key when one is
-saved, and the Gemini key hands over to agy when agy has worked here before; the answer then says so in one line.
+CLI brains (agy, Claude Code) run one job at a time; API brains may run a few at once. If the main brain can't do a
+request (rate-limited, signed out, refused, failed, or no answer) and a fallback brain is set, the job is retried on
+the fallback. As a last resort the Gemini key hands over to an agent program that has worked here before; an agent
+program doesn't roll over to the Gemini key (its free limit is small). The answer then says so in one line.
 
 Free limits (core/quota.py): background work skips a limit that's kept for you (past quota.background_pct of the day,
 or used up) and waits in the queue for its reset (not_before) instead of being dropped; your own requests try a
@@ -42,6 +42,7 @@ from kurooto.core.mcp import command, run_env
 from kurooto.core.state import owner_only
 from kurooto.core.tools import agent_tools, run_tool
 from kurooto.providers import effort as effort_mod
+from kurooto.providers.agy import Agy
 from kurooto.providers.base import Result, Task, Verdict
 from kurooto.providers.context import headless_context
 
@@ -66,11 +67,8 @@ GRACE_S = 120  # the watchdog's grace past a try's time limit (and the brain's o
 ACTIVE = ("queued", "running")
 RETRY = (Verdict.RATE_LIMITED, Verdict.AUTH, Verdict.ERROR, Verdict.DENIED, Verdict.EMPTY)  # the next brain tries
 GEMINI_KEY = "gemini.api_key"  # also what calls and voice notes use
-DENIED_HELP = (
-    "agy refused to run this without you watching. Add a free Gemini key in Settings → AI "
-    "(aistudio.google.com/apikey), then try again."
-)
-SHORT = {"agy": "agy", "gemini": "your Gemini key", "codex": "Codex", "claude": "Claude Code"}
+DENIED_HELP = Agy.denied_help  # what an AI that was refused says (providers/agy.py); a brain's own is `denied_help`
+SHORT = {"agy": "agy", "gemini": "your Gemini key", "claude": "Claude Code"}
 
 FRIENDLY = {
     Verdict.DENIED: "The AI stopped without an answer: it tried something unattended runs aren't allowed to do. "
@@ -400,10 +398,8 @@ class Jobs:
                 first = first or (brain, result)
                 continue
             used = brain
-            if brain.id == "agy":
-                from kurooto.providers.agy import tools_once
-
-                tools_once(self.app, brain)
+            if brain.kind == "cli":
+                brain.prepare(self.app)
             # which AI is at work, and until when (the watchdog's limit: its time plus the brain's grace and ours)
             limit = task.timeout_s + getattr(brain, "grace_s", 0) + GRACE_S
             self._mark(jid, brain=brain.id, deadline=time.time() + limit)
@@ -414,10 +410,8 @@ class Jobs:
             if stop.is_set():
                 return
             self._attempt(jid, brain.id, result)
-            if brain.id == "agy" and result.ok:
-                from kurooto.providers.agy import mark_worked
-
-                mark_worked(self.app.paths.state)
+            if brain.kind == "cli" and result.ok:
+                brain.mark_worked(self.app)
             if result.verdict not in RETRY:
                 break
             first = first or (brain, result)
@@ -428,8 +422,12 @@ class Jobs:
         if last is not None and used is last and result.ok and first:
             note = f"(Answered with {SHORT.get(last.id, last.label)}: {_why(*first)}.)"
             result.usage = {**result.usage, "note": note}
-        if result.verdict == Verdict.DENIED and used.id == "agy" and not self.app.secrets.get(GEMINI_KEY):
-            result.detail = DENIED_HELP
+        if (
+            result.verdict == Verdict.DENIED
+            and getattr(used, "denied_help", "")
+            and not self.app.secrets.get(GEMINI_KEY)
+        ):
+            result.detail = used.denied_help
         ok = result.ok
         with self._lock:
             done = self._db.execute(
@@ -575,16 +573,19 @@ class Jobs:
         ]
 
     def _last_resort(self, main):
-        """When the main AI can't do a request: Gemini hands over to agy if agy is installed and has worked here
-        before. CLI agent programs (agy) do NOT roll over to the free Gemini key to avoid rate-limit exhaustion."""
+        """When the main AI can't do a request: Gemini hands over to an agent program (agy, Claude Code) that is
+        installed and has worked here before. Agent programs do NOT roll over to the free Gemini key (its limit)."""
         if main is None:
             return None
         if main.id == "gemini":
-            from kurooto.providers.agy import has_worked
-
-            agy = providers.build(self.app, "agy")
-            if agy is not None and agy.available()[0] and has_worked(self.app.paths.state):
-                return agy
+            for key in providers.AGENT_PROGRAMS:
+                brain = providers.build(self.app, key)
+                if (
+                    brain is not None
+                    and brain.available()[0]
+                    and getattr(brain, "has_worked", lambda a: False)(self.app)
+                ):
+                    return brain
         return None
 
     def _problem(self, brain, result: Result, nxt=None, level: str = "medium") -> None:

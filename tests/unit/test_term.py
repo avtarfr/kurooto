@@ -86,11 +86,13 @@ def test_tabs_top_and_name_follow_the_settings(tmp_path):
     assert any("No AI program" in n for n in p.notes)
 
 
-def test_agent_is_your_ai_program_else_agy(tmp_path):
-    p = plan_for(tmp_path, settings=S(brain__main="codex"), codex="/x/codex")
-    assert p.tabs[0].title == "codex" and p.tabs[0].argv == ["/x/codex"]
-    p = plan_for(tmp_path, settings=S(brain__main="gemini"))  # an API brain: agy's tab if it's installed
+def test_agent_is_your_ai_program_else_whichever_is_installed(tmp_path):
+    p = plan_for(tmp_path, settings=S(brain__main="claude"), claude="/x/claude")
+    assert p.tabs[0].title == "claude" and p.tabs[0].argv == ["/x/claude"]
+    p = plan_for(tmp_path, settings=S(brain__main="gemini"))  # an API brain: an installed AI program's tab
     assert p.tabs[0].title == "agy"
+    p = plan_for(tmp_path, settings=S(brain__main="gemini"), agy=None, claude="/x/claude")
+    assert p.tabs[0].title == "claude"
 
 
 def test_shell_choice(tmp_path):

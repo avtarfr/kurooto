@@ -77,8 +77,27 @@ class Agy(Brain):
         self.levels = {**LEVELS, **(models or {})}
         self.exe = exe or proc.which("agy", install_dirs())
 
+    denied_help = (
+        "agy refused to run this without you watching. Add a free Gemini key in Settings → AI "
+        "(aistudio.google.com/apikey), then try again."
+    )
+
     def available(self):
         return (True, "") if self.exe else (False, "agy isn't installed")
+
+    def prepare(self, app):
+        tools_once(app, self)
+
+    def after_test(self, app) -> str:
+        """Setting agy up: give it Kurooto's tools (`kurooto mcp`) now."""
+        self.mark_worked(app)
+        ok, why = connect_tools(app, self.exe)
+        if ok:
+            return (
+                " It can now use Kurooto's tools, read your notes, Documents and Downloads, and write in your notes "
+                "folder."
+            )
+        return f" (It can't use Kurooto's tools yet: {why}.)"
 
     def _args(self, prompt: str, effort: str, minutes: int) -> list[str]:
         model, eff = self.levels.get(effort, self.levels["medium"])

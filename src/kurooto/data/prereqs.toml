@@ -80,20 +80,6 @@ install.windows = { kind = "bun-global", spec = "github:garrytan/gbrain#v0.60.29
 install.macos = { kind = "bun-global", spec = "github:garrytan/gbrain#v0.60.299.0" }
 install.linux = { kind = "bun-global", spec = "github:garrytan/gbrain#v0.60.299.0" }
 
-[codex]
-title = "Codex CLI"
-why = "The AI brain 'ChatGPT / Codex', for people with a ChatGPT plan."
-size_gb = 0.2
-programs = ["codex"]
-dirs.windows = ["{app}/npm"]
-dirs.macos = ["{app}/npm/bin"]
-dirs.linux = ["{app}/npm/bin"]
-install.windows = { kind = "npm-global", spec = "@openai/codex" }
-install.macos = { kind = "npm-global", spec = "@openai/codex" }
-install.linux = { kind = "npm-global", spec = "@openai/codex" }
-signin = ["codex", "login"]
-signin_hint = "A window opens: sign in with your ChatGPT account, then close it."
-
 [claude]
 title = "Claude Code"
 why = "The AI brain 'Claude Code', for people with a Claude plan (Advanced)."

@@ -19,7 +19,7 @@ from kurooto.core.state import jload
 
 TABS = ("agent", "shell", "chat", "logs", "top")
 DEFAULT_TABS = ["agent", "shell", "chat", "logs"]
-AGENTS = ("agy", "codex", "claude")  # AI programs with a terminal of their own
+AGENTS = ("claude", "agy")  # AI programs with a terminal of their own
 LOGIN_SHELLS = ("bash", "zsh", "fish", "ksh", "sh", "dash", "tcsh", "csh")
 KITTY_GOOD = (0, 36)  # kitty from 0.36 sizes the column (launch --bias); older ones still work, half and half
 # Linux terminals Kurooto can use without kitty (one window per tab), and how each takes a command to run
@@ -147,16 +147,15 @@ def find_shell(
 
 
 def find_agent(settings, app_dir: Path, os_: str, which: Which = proc.which) -> tuple[str, list[str]] | None:
-    """Your AI's own program: the one Kurooto uses if it's agy, Codex or Claude Code, else agy if it's installed."""
+    """Your AI's own program: the one Kurooto uses if it's Claude Code or agy, else whichever of them is installed."""
     from kurooto.providers.agy import install_dirs
 
     main = settings.get("brain.main") or ""
     dirs = {
         "agy": install_dirs(),
-        "codex": [Path.home() / ".local" / "bin", app_dir / "npm", app_dir / "npm" / "bin"],
         "claude": [Path.home() / ".local" / "bin"],
     }
-    for key in [main] if main in AGENTS else ["agy"]:
+    for key in [main] if main in AGENTS else AGENTS:
         exe = which(key, dirs[key])
         if exe:
             return key, (proc.resolve_cmd_shim(exe) if os_ == "windows" else [exe])
@@ -297,7 +296,7 @@ def build(
         if key == "agent":
             found = find_agent(settings, app_dir, os_, which)
             if not found:
-                plan.notes.append("No AI program (agy, Codex or Claude Code) is installed, so there's no tab for it.")
+                plan.notes.append("No AI program (agy or Claude Code) is installed, so there's no tab for it.")
                 return None
             return Tab("agent", found[0], found[1], str(workspace), hold=True)
         if key == "shell":

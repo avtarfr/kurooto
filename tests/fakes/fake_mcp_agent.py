@@ -1,10 +1,9 @@
-"""Stands in for an agent program (codex, claude or agy) in tests of Kurooto's MCP wiring.
+"""Stands in for an agent program (claude or agy) in tests of Kurooto's MCP wiring.
 
 It records how it was started (FAKE_AGENT_LOG: argv, its MCP server settings, the tools environment), then does
 what the real program would: starts the MCP server it was given, initializes it and calls one tool
 (FAKE_AGENT_TOOL with the JSON arguments FAKE_AGENT_ARGS), and answers with the tool's text.
 
-    codex exec ... -c mcp_servers.kurooto.command=... --output-last-message FILE -   (prompt on stdin)
     claude -p --output-format json --mcp-config FILE ...                          (prompt on stdin)
     agy mcp add [--env K=V] kurooto -- COMMAND...                                 (setup: just recorded)
 """
@@ -48,15 +47,7 @@ if argv[:2] == ["mcp", "add"]:  # agy at setup
     sys.exit(int(os.environ.get("FAKE_AGENT_EXIT", "0")))
 
 prompt = sys.stdin.read() if not sys.stdin.isatty() else ""
-if "exec" in argv:  # codex
-    over = dict(argv[i + 1].split("=", 1) for i, a in enumerate(argv) if a == "-c")
-    log["config"] = over
-    server = {k.split(".")[-1]: json.loads(v) for k, v in over.items() if k.startswith("mcp_servers.kurooto.")}
-    save()
-    text = use_tool([server["command"], *server["args"]], {k: os.environ[k] for k in server.get("env_vars", [])})
-    with open(argv[argv.index("--output-last-message") + 1], "w", encoding="utf-8") as f:
-        f.write(text)
-elif "--mcp-config" in argv:  # claude
+if "--mcp-config" in argv:  # claude
     with open(argv[argv.index("--mcp-config") + 1], encoding="utf-8") as f:
         cfg = json.load(f)
     log["config"] = cfg

@@ -1,6 +1,6 @@
 # Helping someone with Kurooto (a guide for AI agents)
 
-You're an AI agent (Antigravity, Codex, Claude Code, or any other) helping a person install, set up, use or fix
+You're an AI agent (Antigravity, Claude Code, or any other) helping a person install, set up, use or fix
 Kurooto on their own computer. Kurooto is a personal assistant: a background program plus a local web page, talking
 to its owner on Telegram and, optionally, by phone. The person may know very little about computers: explain in plain
 words, one step at a time, and let them do the clicking in their browser.

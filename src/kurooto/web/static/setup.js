@@ -51,10 +51,9 @@ const GLOSSARY = [
   ["Ollama", "A free program that runs AI models on this computer, without the internet."],
   ["GBrain", "An open-source index of your notes: it lets the AI find notes by what they mean, not only by exact words."],
   ["embeddings", "Numbers that capture what a piece of text means, so notes can be found by meaning."],
-  ["MCP", "A standard way for AI programs (agy, Codex, Claude Code) to use another program's tools; here, Kurooto's."],
+  ["MCP", "A standard way for AI programs (agy, Claude Code) to use another program's tools; here, Kurooto's."],
   ["OAuth", "Signing in on Google's own page and approving access there, so Kurooto never sees your password."],
   ["agy", "Antigravity, Google's agent program: it can read and write files and run commands on this computer for you."],
-  ["Codex", "OpenAI's agent program, signed in with your ChatGPT account."],
   ["passphrase", "A long password you choose. Only you know it: without it, the saved setup can't be opened."],
   ["keychain", "Your computer's safe place for passwords (Credential Manager on Windows, Keychain on macOS, the Secret Service on Linux)."],
   ["webhook", "A setting that sends your bot's messages to another program instead of Kurooto."],
@@ -310,7 +309,6 @@ async function watchInstall(done, label = "Installing… this can take a few min
 const FIX = {
   gemini: "Copy the key again from Google AI Studio (all of it; it starts with AIza) and press Save and test. If it says it's at its limit, wait a minute or use a paid key.",
   agy: "Press Open the sign-in window, finish signing in with your Google account, close the window, then test again.",
-  codex: "Press Open the sign-in window, finish signing in with your ChatGPT account, close the window, then test again.",
   claude: "Press Open the sign-in window, finish signing in with your Claude account, close the window, then test again.",
   ollama: "Make sure Ollama is running (open the Ollama app, or run ollama serve in a terminal), then test again.",
   custom: "Check the address (it usually ends in /v1), the key and the model name: the service's own help pages list them.",
@@ -395,8 +393,8 @@ function renderBrainPanel(which) {
         "notes folder and course files (Documents and Downloads stay read-only); read web pages; run harmless " +
         "commands such as ls, grep and git, and latexmk for PDFs."), ...testButton("agy"));
     box.append(el("p", { class: "note" }, AGY_NOTE));
-  } else if (which === "codex" || which === "claude") {
-    const key = which, label = which === "codex" ? "Codex" : "Claude Code", account = which === "codex" ? "ChatGPT" : "Claude";
+  } else if (which === "claude") {
+    const key = which, label = "Claude Code", account = "Claude";
     const installed = state.prereqs[key].installed;
     box.append(el("p", {}, installed ? `1. ${label} is installed.` : `1. ${label} isn't installed yet. Kurooto installs it from the official source.`));
     if (!installed) box.append(installButton(key, `Install ${label}`, which), logBox());

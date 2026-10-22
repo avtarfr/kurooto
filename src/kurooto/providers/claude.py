@@ -22,8 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto.core import proc
-from kurooto.providers.base import Brain, Result, Task, Verdict
-from kurooto.providers.cli_agents import _fail, _which
+from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -31,6 +30,23 @@ if TYPE_CHECKING:
 MODELS = {"low": "haiku", "medium": "sonnet", "high": "sonnet"}  # names Claude Code keeps pointed at the latest
 LIMIT_RESET = re.compile(r"usage limit reached\|(\d{9,11})", re.I)  # "Claude AI usage limit reached|<epoch>"
 DENIAL_NAMES = 5  # how many refused tools the log line names
+
+
+def _which(name: str, app_dir: Path | None = None) -> str | None:
+    dirs = [Path.home() / ".local" / "bin"]
+    if app_dir:
+        dirs += [app_dir / "npm", app_dir / "npm" / "bin"]
+    return proc.which(name, dirs)
+
+
+def _fail(code: int | None, text: str, secs: float, minutes: int) -> Result | None:
+    if code is None:
+        return Result(Verdict.TIMEOUT, "", secs, f"timed out after {minutes} min")
+    if RATE_LIMIT.search(text):
+        return Result(Verdict.RATE_LIMITED, "", secs, text[-500:])
+    if AUTH_FAIL.search(text) or "/login" in text:
+        return Result(Verdict.AUTH, "", secs, text[-500:])
+    return None
 
 
 def rule_path(p: Path | str) -> str:
@@ -112,6 +128,13 @@ class ClaudeCode(Brain):
     def available(self):
         return (True, "") if self.exe else (False, "Claude Code isn't installed")
 
+    def after_test(self, app) -> str:
+        """Nothing to set up: everything is given for each request. Say what it can do."""
+        return (
+            " It can use Kurooto's tools, read your notes, Documents and Downloads, and write in your notes folder, "
+            "for each request."
+        )
+
     def args(self, task: Task, tmp: Path) -> list[str]:
         """The command for one run: its permissions, tools and prompt are files in `tmp`, gone after the run."""
         base = list(self.exe) if isinstance(self.exe, list) else [self.exe]
@@ -161,7 +184,9 @@ class ClaudeCode(Brain):
                 args, input=task.prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd, on_start=task.on_process
             )
             secs = time.monotonic() - t0
-        return self.verdict(r, secs, minutes)
+        result = self.verdict(r, secs, minutes)
+        self.metered(None, result)  # counted against its own limit (core/quota.py)
+        return result
 
     def verdict(self, r, secs: float, minutes: int) -> Result:
         data = None

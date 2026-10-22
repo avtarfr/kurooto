@@ -1,7 +1,7 @@
 """The AI brains Kurooto can use, and which one handles what.
 
 Settings:
-    brain.main       agy | codex | gemini | ollama | custom | claude   (freellmapi: set up earlier, works as custom)
+    brain.main       agy | claude | gemini | ollama | custom   (freellmapi: set up earlier, works as custom)
     brain.fallback   another of those, used when the main one is rate-limited or signed out ("" = none)
     brain.classify   rules | main | ollama   (the quick "how hard is this" question)
 """
@@ -14,13 +14,12 @@ from kurooto.core.config import register_defaults
 from kurooto.providers.agy import Agy
 from kurooto.providers.base import Brain, Result, Task, Verdict
 from kurooto.providers.claude import ClaudeCode
-from kurooto.providers.cli_agents import Codex
 from kurooto.providers.openai_compat import PRESETS, OpenAICompat
 
 if TYPE_CHECKING:
     from kurooto.app import App
 
-__all__ = ["Brain", "Result", "Task", "Verdict", "build", "local", "CHOICES"]
+__all__ = ["Brain", "Result", "Task", "Verdict", "build", "local", "CHOICES", "drop_retired"]
 
 register_defaults(
     "brain",
@@ -37,10 +36,26 @@ register_defaults(
 
 CHOICES = {
     "agy": Agy.label,
-    "codex": Codex.label,
     **{k: v["label"] for k, v in PRESETS.items()},
     "claude": ClaudeCode.label,
 }
+
+
+AGENT_PROGRAMS = ("agy", "claude")  # the AI programs that run a request with tools of their own, in order of preference
+RETIRED = {"codex": "Codex"}  # AIs Kurooto no longer offers: a setting that names one is cleared (drop_retired)
+
+
+def drop_retired(app: App) -> list[str]:
+    """Clear brain.main / brain.fallback if they name an AI Kurooto no longer offers; the next request then says to
+    choose another in Settings → AI. Returns what it cleared."""
+    cleared = []
+    for key in ("brain.main", "brain.fallback"):
+        old = app.settings.get(key) or ""
+        if old in RETIRED:
+            app.settings.set(key, "")
+            cleared.append(old)
+            app.events.emit("brain_retired", brain=old, setting=key)
+    return cleared
 
 
 def build(app: App, which: str) -> Brain | None:
@@ -66,8 +81,6 @@ def _build(app: App, which: str) -> Brain | None:
     s = app.settings
     if which == "agy":
         return Agy(io_mode=s.get("brain.agy.io_mode") or "pipe", models=s.get("brain.models.agy") or None)
-    if which == "codex":
-        return Codex(app.paths.app, models=(s.get("brain.models") or {}).get("codex"))
     if which == "claude":
         return ClaudeCode(models=(s.get("brain.models") or {}).get("claude"), app=app)
     if which in PRESETS:

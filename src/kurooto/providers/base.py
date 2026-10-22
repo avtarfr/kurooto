@@ -79,8 +79,36 @@ class Brain:
             except Exception:
                 pass
 
+    denied_help = (
+        ""  # what to tell you when a run stopped at something unattended runs may not do ("" = the usual line)
+    )
+
     def available(self) -> tuple[bool, str]:
         return True, ""
+
+    # What an agent program (kind "cli") does around a run; an API brain has nothing to do here.
+    def prepare(self, app) -> None:
+        """Before a run: whatever this program needs from Kurooto first (agy: its tools and permissions, asked once)."""
+
+    def worked_file(self, app):
+        return app.paths.state / f"{self.id}-worked.json"
+
+    def has_worked(self, app) -> bool:
+        """Has it answered on this computer before (a request, or the setup page's test)? Then it may stand in for
+        the Gemini key."""
+        return self.worked_file(app).exists()
+
+    def mark_worked(self, app) -> None:
+        f = self.worked_file(app)
+        try:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("{}", encoding="utf-8")
+        except OSError:
+            pass
+
+    def after_test(self, app) -> str:
+        """After the setup page's test passed: set up what it needs and say what it can do (a sentence to add)."""
+        return ""
 
     def complete(self, prompt: str, system: str = "", effort: str = "low", timeout: int = 60) -> Result:
         """A short answer: classify something, grade a quiz answer, summarise a paragraph."""

@@ -28,4 +28,4 @@ signed updates when it's ready.
 - **Location reminders on Android.** "When I reach the library", without draining the battery.
 - **Course notes to PDF.** A LaTeX template for course notes.
 
-Have an idea? Open an issue on GitHub.
+What people have asked for, open and done, is in [REQUESTED.md](REQUESTED.md). Have an idea? Open an issue on GitHub.

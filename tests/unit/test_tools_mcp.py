@@ -1,5 +1,5 @@
 """`kurooto mcp` end to end (a real subprocess against a running test Kurooto), the agent programs' MCP wiring
-(fake codex, claude and agy that really start the server), `kurooto call`, `kurooto ask` and /usage."""
+(fake claude and agy that really start the server), `kurooto call`, `kurooto ask` and /usage."""
 
 import json
 import os
@@ -31,7 +31,6 @@ from kurooto.providers.agy import (
 )
 from kurooto.providers.base import Task, Verdict
 from kurooto.providers.claude import ClaudeCode
-from kurooto.providers.cli_agents import Codex
 from kurooto.web import tools_api
 from kurooto.web.api import Api
 from kurooto.web.server import start
@@ -226,29 +225,6 @@ def test_claude_code_gets_the_tools_for_one_run(live, monkeypatch, tmp_path):
     assert server["command"] == sys.executable and server["args"] == ["-m", "kurooto", "mcp"]
     assert server["env"][mcp.ENV_TOKEN] == srv.tools_token and server["env"]["KUROOTO_HOME"]
     assert not Path(a[a.index("--mcp-config") + 1]).exists()  # the key's file is gone after the run
-
-
-def test_codex_gets_the_tools_for_one_run(live, monkeypatch, tmp_path):
-    app, srv = live
-    task, env = agent_task(app, "write_note", {"slug": "inbox/codex", "text": "From Codex."})
-    for k, v in {**env, "FAKE_AGENT_LOG": str(tmp_path / "codex.log")}.items():
-        monkeypatch.setenv(k, v)
-    r = Codex(exe=AGENT).run(task)
-    assert r.verdict == Verdict.OK and r.text == "Created inbox/codex."
-    rec = log_of(tmp_path / "codex.log")[0]
-    c = rec["config"]
-    assert json.loads(c["mcp_servers.kurooto.command"]) == sys.executable
-    assert json.loads(c["mcp_servers.kurooto.args"]) == ["-m", "kurooto", "mcp"]
-    assert c["mcp_servers.kurooto.default_tools_approval_mode"] == '"approve"'
-    assert set(json.loads(c["mcp_servers.kurooto.env_vars"])) >= {mcp.ENV_URL, mcp.ENV_TOKEN, "KUROOTO_HOME"}
-    assert "--sandbox" in rec["argv"] and rec["tools_env"][mcp.ENV_TOKEN] == srv.tools_token
-    assert srv.tools_token not in str(rec["argv"])  # the key itself is never on the command line
-
-
-def test_no_mcp_no_overrides(home):
-    from kurooto.providers.cli_agents import codex_mcp
-
-    assert codex_mcp(Task(prompt="x")) == []
 
 
 def test_jobs_give_agent_programs_the_server(live):

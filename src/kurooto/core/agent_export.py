@@ -6,7 +6,7 @@ Off until you turn it on: `kurooto export-skills on` (agy), `kurooto export-skil
 setting agents.export. Where they go:
 
     agy       ~/.gemini/antigravity-cli/skills/<name>/SKILL.md   Antigravity: /name
-    agents    ~/.agents/skills/<name>/SKILL.md                   Codex ($name) and GitHub Copilot CLI (/name)
+    agents    ~/.agents/skills/<name>/SKILL.md                   Copilot CLI (/name), others that read it
     claude    ~/.claude/skills/<name>/SKILL.md                   Claude Code: /name (only when you ask for it)
 
 Each folder Kurooto writes carries a .kurooto-skill marker, and only those folders are ever changed or removed:
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 register_defaults(
     "agents",
     {
-        "export": [],  # where your skills go as slash commands: "agy", "agents" (Codex and Copilot CLI), "claude"
+        "export": [],  # where your skills go as slash commands: "agy", "agents" (Copilot CLI and others), "claude"
         "prefix": "",  # put before every exported skill's name, e.g. "k-" for /k-journal
     },
 )
@@ -48,7 +48,7 @@ TARGETS = {
     "agents": (".agents", "skills"),
     "claude": (".claude", "skills"),
 }
-LABELS = {"agy": "agy", "agents": "Codex and Copilot CLI", "claude": "Claude Code"}
+LABELS = {"agy": "agy", "agents": "Copilot CLI and other agents", "claude": "Claude Code"}
 MARK = ".kurooto-skill"
 STATE = "agent-skills.json"
 NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")

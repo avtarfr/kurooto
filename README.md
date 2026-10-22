@@ -75,8 +75,9 @@ recommends settings for it (★), installs whatever the features you pick need, 
 | **Your setup** | daily backups to a folder you pick; your setup encrypted in your private repository, so a new computer is ready in a minute |
 | **See it all** | a local dashboard (with terminals, if you like), a status board in any terminal, and a look back each night that suggests small improvements |
 
-**AI, your choice:** a Gemini API key ★ (recommended), Antigravity (agy), ChatGPT/Codex, Claude Code, local models
-through Ollama on computers that can run them, or any OpenAI-compatible service.
+**AI, your choice:** a Gemini API key ★ (recommended), Antigravity (agy) or Claude Code (both get the same reach: your
+notes, your tools, harmless commands, nothing else), local models through Ollama on computers that can run them, or any
+OpenAI-compatible service.
 
 **Updates:** automatic at night, signed, and rolled back if a new version misbehaves.
 
@@ -87,6 +88,7 @@ through Ollama on computers that can run them, or any OpenAI-compatible service.
 - [docs/MANUAL.md](docs/MANUAL.md): everything, from install to uninstall, every feature, troubleshooting.
 - [docs/PRIVACY.md](docs/PRIVACY.md): what leaves your computer, per feature.
 - [AGENTS.md](AGENTS.md): for your own AI agent, if you ask one to help you set it up or fix it.
+- [docs/REQUESTED.md](docs/REQUESTED.md): what people asked for, open and done.
 - [docs/ROADMAP.md](docs/ROADMAP.md): ideas that aren't built yet.
 - [CHANGELOG.md](CHANGELOG.md) · [docs/RELEASING.md](docs/RELEASING.md) (for the maintainer)
 

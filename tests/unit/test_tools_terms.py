@@ -77,5 +77,5 @@ def test_gemini_is_recommended_and_agy_keeps_its_honest_note(app):
     assert SETUP.count("AGY_NOTE") == 2
     rows = Api(app)._brains()
     assert [(r["id"], r["recommended"]) for r in rows[:2]] == [("agy", True), ("gemini", False)]
-    assert [r["id"] for r in rows] == ["agy", "gemini", "codex", "claude", "ollama", "custom"]
+    assert [r["id"] for r in rows] == ["agy", "gemini", "claude", "ollama", "custom"]
     assert sum(r["recommended"] for r in rows) == 1

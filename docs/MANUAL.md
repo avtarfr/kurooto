@@ -234,7 +234,6 @@ the setup page), and set a **fallback** that takes over when the first one hits 
 |---|---|---|---|
 | **Gemini API key** ★ | free tier, or paid | the simplest, and the way Google recommends for tools like this; also used for calls and voice notes. Free tier: Google may use what you send to improve its products and human reviewers may read it; 18+; a paid key is required in the EEA, UK and Switzerland | [Google AI Studio](https://aistudio.google.com/apikey) → Create API key → paste |
 | **Antigravity (agy)** | free with a Google account | Google's agent program on your computer; can read your notes. Some risk to the Google account (see the note below) | Install → a window opens → sign in with Google |
-| **ChatGPT / Codex** | needs a paid ChatGPT plan | if you already pay for ChatGPT | Install → sign in with your ChatGPT account |
 | **Claude Code** (Advanced) | needs a paid Claude plan | if you already pay for Claude; it can do everything agy does here (below) | Install → sign in with your Claude account |
 | **Ollama on this computer** | free | private and offline, but much weaker, and needs a good graphics card; best as a helper next to another AI | Install Ollama → Test |
 | **Another OpenAI-compatible service** | depends | any service that speaks OpenAI's API | its address, key and model names |
@@ -313,8 +312,8 @@ feature that's off has none. Nothing is sent to anyone but you.
 
 - **API brains** (a Gemini key, Ollama, another OpenAI-compatible service) call the tools directly. A model that can't
   use tools (some small Ollama models) just answers without them.
-- **Agent programs** (agy, Codex, Claude Code) get them through `kurooto mcp`, a small MCP server that passes each call
-  to the running Kurooto. Codex and Claude Code get it for each request only; nothing is saved in their own settings.
+- **Agent programs** (agy, Claude Code) get them through `kurooto mcp`, a small MCP server that passes each call
+  to the running Kurooto. Claude Code gets it for each request only; nothing is saved in its own settings.
   Claude Code gets the same reach as agy, for that request only: it may read your notes, course files, Documents,
   Downloads and Screenshots, write in your notes folder, course files folder and your add-ons' skills, read web pages,
   run harmless commands (ls, cat, grep, find, git, latexmk, pdftotext…), and use Kurooto's tools and, with your own
@@ -904,7 +903,7 @@ To change a skill that comes with Kurooto, `/skills copy journal` makes your own
 **In agy and other agent programs.** `kurooto export-skills on` puts every skill you can run here (Kurooto's, your
 add-ons', your own, and prompts with `skill: true`) into agy's skills folder, so `/journal my day` typed in agy runs
 the same instructions; each copy says where your notes folder is and carries the same rules. `--to agy,agents` also
-puts them in `~/.agents/skills` (Codex as `$journal`, GitHub Copilot CLI as `/journal`); `--to claude` puts them in `~/.claude/skills` (Claude Code
+puts them in `~/.agents/skills` (GitHub Copilot CLI as `/journal`, and other programs that read that folder); `--to claude` puts them in `~/.claude/skills` (Claude Code
 as `/journal`), only when you ask for it. Kurooto only ever changes or removes the copies it made (they carry a `.kurooto-skill` marker): if you have a
 skill of your own with the same name, yours stays and Kurooto's goes in as `kurooto-<name>`; a copy you edit by hand is
 yours from then on. They're kept up to date when Kurooto starts (so after every update) and every hour, and ones whose
@@ -966,7 +965,7 @@ to (the AI's pick if that note exists, else the subject's note whose name fits t
 - The AI works out the whole ladder once and Kurooto shows it a step at a time; an answer that doesn't come in steps
   is never passed on (it could give the solution away). It's the shipped `hint` skill: copy it into your skills folder
   to change how hints are written.
-- Needs Subjects (the subject's short name goes first). Photos need an AI that opens files itself (agy, Codex,
+- Needs Subjects (the subject's short name goes first). Photos need an AI that opens files itself (agy,
   Claude Code); with a Gemini key or another service, type the problem instead.
 
 **Undo:** turn Hint ladder off (dashboard → Features). The "AI policy" lines stay in your course notes; delete them
@@ -2023,7 +2022,7 @@ so it can add metrics). If Kurooto isn't running, it shows on this computer only
 message through Telegram, like any message.
 
 ### Terminals
-Real terminals in the dashboard's **Terminals** tab: the AI program you use (when your AI is agy, Codex or Claude
+Real terminals in the dashboard's **Terminals** tab: the AI program you use (when your AI is agy or Claude
 Code), started in your notes folder as you'd run it yourself; your usual shell (PowerShell on Windows); `kurooto ask`
 (plain English, like Telegram); and Kurooto's log. Alt+1, Alt+2 and so on switch between them. They keep running when
 you close the page and show where they were when you open it again; one that ended starts again when you press a key
@@ -2038,7 +2037,7 @@ websites; on Linux it also checks that every request comes from your own user ac
 
 ### Kurooto Terminal
 Kurooto in a real terminal window of its own, laid out like the dashboard's terminals: one tab each for your AI's own
-program (agy, Codex or Claude Code, started in your notes folder; agy if you have it and your AI is an API key), your
+program (agy or Claude Code, started in your notes folder; whichever of them is installed if your AI is an API key), your
 shell, Kurooto chat (`kurooto ask`) and Kurooto's log, with `kurooto top` as a column on the left of the first tab.
 Everything is in Kurooto's colours (Settings → `look.palette`). The chat tab shows Kurooto's name, a few examples and
 a `kurooto ❯` prompt; type plain English as on Telegram.
@@ -2579,7 +2578,7 @@ With [Profile sync](#profile-sync) on (on the old computer):
    Contents: Read and write), and your passphrase.
 3. Kurooto restores your settings, keys and saved items, turns on every feature that's ready, and, with Notes sync,
    brings your notes back. It lists what's left to do here, then **Continue** walks you through it: sign your AI in
-   again (agy, Codex and Claude Code keep their sign-ins on the computer they ran on), install what features need
+   again (agy and Claude Code keep their sign-ins on the computer they ran on), install what features need
    (Git, the notes brain, local AI models: Done installs them), and pick folders that were on the old computer
    (backup folder, add-ons folder).
 

@@ -219,7 +219,7 @@ def _history_lines(calls: Calls, history: list) -> tuple[list[dict], str]:
 # ------------------------------------------------------------------------------------ turn by turn
 class VoiceTurns:
     """One turn of a turn-by-turn call, answered here while the call line waits. It has to be quick, so it's never an
-    agent program (agy, Codex, Claude Code: seconds just to start): your Gemini key's text model (calls.text_model),
+    agent program (agy, Claude Code: seconds just to start): your Gemini key's text model (calls.text_model),
     or the model on this computer when calls.turn_brain is "local" and Local AI models set one up. Same tools as any
     request (core/tools.py). Nothing quick, or no answer in TURN_S: the call line answers with Gemini instead."""
 

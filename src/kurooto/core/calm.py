@@ -86,6 +86,7 @@ TITLES = {  # features that aren't modules
     "updates": "Updates",
     "calm": "Calm",
     "agy": "agy",
+    "claude": "Claude Code",
     "presence": "Online and offline messages",
     "reply_drafts": "Reply drafts",
 }

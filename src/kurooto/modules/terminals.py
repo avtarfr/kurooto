@@ -1,5 +1,5 @@
 """Terminals: real terminals in the dashboard's Terminals tab (Alt+1 to Alt+4 switch between them):
-    agent   the AI program you use (agy, Codex or Claude Code), started in your notes folder, as you'd run it yourself
+    agent   the AI program you use (agy or Claude Code), started in your notes folder, as you'd run it yourself
     shell   your usual shell (PowerShell on Windows)
     ask     `kurooto ask`: plain English, like Telegram, in a terminal
     logs    Kurooto's log as it's written

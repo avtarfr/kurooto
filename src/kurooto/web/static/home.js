@@ -215,8 +215,8 @@ const SHORT = { telegram: "telegram", chat: "chat", reminders: "reminders", chec
   handwritten: "handwritten", study: "study", research: "research", calendar: "calendar", alarm: "alarm", calls: "calls",
   skills: "skills", remember: "remember", terminals: "terminals", backups: "backups", google: "google" };
 const OUTBOUND = /fired|asked|told|notified|done|reply/;
-const BRAIN = { agy: "agy", codex: "codex", claude: "claude", gemini: "gemini", ollama: "local AI" };
-const brainName = (b) => (b && BRAIN[b.id]) || "AI"; // agy, codex…; any other brain is "your AI"
+const BRAIN = { agy: "agy", claude: "claude", gemini: "gemini", ollama: "local AI" };
+const brainName = (b) => (b && BRAIN[b.id]) || "AI"; // agy, claude…; any other brain is "your AI"
 
 class Body {
   constructor(cv) {
@@ -1033,7 +1033,7 @@ function showDense(name) {
   else if (isTerm) loadXterm().then(() => termShow(name)).catch(() => { $("#page-host").classList.remove("hidden"); $("#page-host").textContent = "The terminal display couldn't load."; });
   else if (name === "termsoff") {
     const p = $("#page-host"); p.onclick = p.onchange = p.onsubmit = null;
-    p.innerHTML = '<p>Terminals is off. With it on, this pane also has your AI\'s own program (agy, Codex or Claude Code), a shell and Kurooto\'s log, each a real terminal. Turn it on in <a href="#" data-goto="features">features</a>, only on a computer that\'s yours alone: anyone who can open this page can type into them.</p>';
+    p.innerHTML = '<p>Terminals is off. With it on, this pane also has your AI\'s own program (agy or Claude Code), a shell and Kurooto\'s log, each a real terminal. Turn it on in <a href="#" data-goto="features">features</a>, only on a computer that\'s yours alone: anyone who can open this page can type into them.</p>';
     p.onclick = (e) => { if (e.target.dataset.goto) { e.preventDefault(); showDense(e.target.dataset.goto); } };
   }
 }
@@ -1041,7 +1041,7 @@ function showDense(name) {
 function agentLabel(title) {
   const b = last && last.agent && last.agent.brain;
   if (b && BRAIN[b.id]) return BRAIN[b.id];
-  const known = { "Antigravity (agy)": "agy", "ChatGPT / Codex": "codex", "Claude Code (Advanced)": "claude" };
+  const known = { "Antigravity (agy)": "agy", "Claude Code (Advanced)": "claude" };
   return known[title] || String(title || "agent").toLowerCase().split(/[ (/]/)[0];
 }
 function denseTerms() {

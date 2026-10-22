@@ -947,7 +947,7 @@ def say(text: str) -> dict | None:
 # as a shell command without the ! ("call-me --cancel …", "systemctl …", "kurooto status") is never sent to Kurooto
 # or its AI, where it would be read as English.
 SHELL_CMDS = frozenset(
-    "kurooto call-me ask-me ask-approval systemctl journalctl launchctl sudo git agy gemini codex ls dir cd cat rm mv "
+    "kurooto call-me ask-me ask-approval systemctl journalctl launchctl sudo git agy gemini claude ls dir cd cat rm mv "
     "cp mkdir grep rg python python3 py pip uv bash sh zsh fish pwsh powershell nvim vim nano npm npx node bun brew "
     "apt pacman yay winget docker podman ssh curl wget chmod tail htop btop pkill killall taskkill".split()
 )
@@ -1407,7 +1407,7 @@ def usage_cmd(days: int) -> int:
 
 
 def export_skills(state: str, to: str) -> int:
-    """`kurooto export-skills on|off|status`: your skills as slash commands in agy, Codex, Copilot CLI, Claude Code."""
+    """`kurooto export-skills on|off|status`: your skills as slash commands in agy, Claude Code, Copilot CLI."""
     from kurooto.app import App
     from kurooto.core import agent_export
 
@@ -1417,7 +1417,7 @@ def export_skills(state: str, to: str) -> int:
             st = agent_export.status(app)
             if not st["targets"]:
                 print("Off. kurooto export-skills on puts your skills in agy as /commands (--to agy,agents,claude adds")
-                print("Codex, Copilot CLI and Claude Code).")
+                print("Claude Code and Copilot CLI).")
                 return 0
             for t, names in st["skills"].items():
                 folder = agent_export.target_dir(t)
@@ -1444,12 +1444,12 @@ def export_skills(state: str, to: str) -> int:
 def ws5_parsers(sub) -> None:
     us = sub.add_parser("usage", help="AI requests per day, and agy's own count from its logs")
     us.add_argument("days", nargs="?", type=int, default=7)
-    ex = sub.add_parser("export-skills", help="your skills as /commands in agy (and Codex, Copilot CLI, Claude Code)")
+    ex = sub.add_parser("export-skills", help="your skills as /commands in agy (and Claude Code, Copilot CLI)")
     ex.add_argument("state", nargs="?", choices=["on", "off", "status"], default="status")
     ex.add_argument(
         "--to",
         default="",
-        help="where: agy (default), agents (Codex, Copilot CLI), claude (Claude Code); several: agy,claude",
+        help="where: agy (default), agents (Copilot CLI, others), claude (Claude Code); several: agy,claude",
     )
 
 

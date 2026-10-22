@@ -122,17 +122,6 @@ FAKE_CLI = [sys.executable, str(Path(__file__).parents[1] / "fakes" / "fake_cli.
 
 
 @pytest.mark.parametrize("mode,verdict", [("ok", Verdict.OK), ("limit", Verdict.RATE_LIMITED), ("auth", Verdict.AUTH)])
-def test_codex(mode, verdict, monkeypatch, tmp_path):
-    from kurooto.providers.cli_agents import Codex
-
-    monkeypatch.setenv("FAKE_CLI_MODE", mode)
-    r = Codex(exe=FAKE_CLI).run(Task(prompt="say hi", effort="medium", cwd=tmp_path, timeout_s=60))
-    assert r.verdict == verdict
-    if mode == "ok":
-        assert r.text == "codex says: say hi"
-
-
-@pytest.mark.parametrize("mode,verdict", [("ok", Verdict.OK), ("limit", Verdict.RATE_LIMITED), ("auth", Verdict.AUTH)])
 def test_claude_code(mode, verdict, monkeypatch, tmp_path):
     from kurooto.providers.claude import ClaudeCode
 
@@ -141,3 +130,19 @@ def test_claude_code(mode, verdict, monkeypatch, tmp_path):
     assert r.verdict == verdict
     if mode == "ok":
         assert r.text == "claude says: say hi"
+
+
+def test_a_retired_ai_is_cleared_from_the_settings_not_left_as_the_main_one(tmp_path, monkeypatch):
+    from kurooto import providers
+    from kurooto.app import App
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    app = App()
+    try:
+        app.settings.set("brain.main", "codex")
+        app.settings.set("brain.fallback", "agy")
+        assert providers.drop_retired(app) == ["codex"]
+        assert app.settings.get("brain.main") == "" and app.settings.get("brain.fallback") == "agy"
+        assert providers.build(app, "codex") is None and "codex" not in providers.CHOICES
+    finally:
+        app.close()

@@ -72,6 +72,9 @@ class App:
         from kurooto.providers.agy import consent_answer  # may agy use Kurooto's tools? (asked once, providers/agy.py)
 
         self.ask.hooks["agy.tools"] = lambda q, answer: consent_answer(self, q, answer)
+        from kurooto import providers
+
+        providers.drop_retired(self)  # an AI that's no longer offered (Codex) isn't left as the main one
         from kurooto.core.presence import Presence  # "going offline" / "back online" messages (core/presence.py)
 
         self.presence = Presence(self)

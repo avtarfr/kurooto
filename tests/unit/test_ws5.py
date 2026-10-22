@@ -374,7 +374,7 @@ def test_export_skills_cli_prefix_agents_and_uninstall(env, home, capsys):
     assert (agents_dir / "study-log" / "SKILL.md").exists()
     assert cli.main(["export-skills", "status"]) == 0
     out = capsys.readouterr().out
-    assert "/study-log" in out and "Codex and Copilot CLI" in out
+    assert "/study-log" in out and "Copilot CLI and other agents" in out
     app.settings.set("agents.prefix", "k-")
     agent_export.sync(app)
     assert (agents_dir / "k-study-log").exists() and not (agents_dir / "study-log").exists()
