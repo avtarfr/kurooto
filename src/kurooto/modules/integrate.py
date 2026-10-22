@@ -40,6 +40,7 @@ from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.core.tools import write_note_file
 from kurooto.modules.base import Command, Incoming, Module
+from kurooto.providers.base import Verdict
 
 register_defaults(
     "integrate",
@@ -52,6 +53,7 @@ register_defaults(
         "garden_per_day": 40,  # the most notes in that pass
         "embeddings": "auto",  # where meaning-based matching comes from: auto | ollama | gemini | off
         "first": [],  # subjects to do first, e.g. ["deep-learning"]
+        "order": "smallest",  # which books first: smallest (fewest pages: most books done soonest) | name
         "commit": True,  # one git commit per batch, when your notes are a repository
         "summary": True,  # one line each morning about what changed
     },
@@ -108,6 +110,7 @@ class Integrate(Module):
 
     def start(self):
         self.every("night", self.setting("at") or "daily 01:30", self.tick)
+        self.every("retry", "every 3h", self.tick)  # carries on after a limit has reset
         if self.setting("garden"):
             self.every("garden", "daily 06:20", self.garden)
         if self.setting("summary"):
@@ -160,10 +163,16 @@ class Integrate(Module):
         self.inflight()  # forget requests that never came back, so they're asked again
         led = self.load("ledger.json", {})
         first = [str(x) for x in self.setting("first") or []]
-        books = sorted(self.books.library(), key=lambda b: (b["subject"] not in first, b["subject"], b["id"]))
+        metas = {self.key(b): self.books.meta(b) for b in self.books.library()}
+        smallest = str(self.setting("order") or "smallest") == "smallest"
+
+        def rank(b: dict):
+            pages = int(metas[self.key(b)].get("pages") or 0) if smallest else 0
+            return (b["subject"] not in first, pages, b["subject"], b["id"])
+
         out = []
-        for b in books:
-            meta = self.books.meta(b)
+        for b in sorted(self.books.library(), key=rank):
+            meta = metas[self.key(b)]
             done = int(meta.get("done") or 0)
             if not meta.get("pages") or not done:
                 continue
@@ -295,6 +304,12 @@ class Integrate(Module):
             return
         bid = payload["batch"]
         data = ai.parse_json(result.text) if result.ok else None
+        if data is None and getattr(result, "verdict", None) in (Verdict.RATE_LIMITED, Verdict.AUTH):
+            # the AI's limit (or its sign-in): nothing is wrong with the batch; it's asked again later (every few
+            # hours, and at night), without counting as a failed try
+            self.record(b, bid, state="pending", why=short(result.detail or result.verdict.value, 120))
+            self.app.events.emit("integrate_waiting", why=result.verdict.value)
+            return
         if data is None:
             tries = self.tries(b, bid) + 1
             self.record(

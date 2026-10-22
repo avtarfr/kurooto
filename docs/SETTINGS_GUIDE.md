@@ -390,6 +390,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `integrate.first` | `[]` | subjects to do first, e.g. ["deep-learning"] |
 | `integrate.garden` | `true` | each day, a second pass over the notes the reading touched and notes nothing links to |
 | `integrate.garden_per_day` | `40` | the most notes in that pass |
+| `integrate.order` | `"smallest"` | which books first: smallest (fewest pages: most books done soonest) \| name |
 | `integrate.per_night` | `300` | the most batches in a night (a limit on how much of your AI's day it may use) |
 | `integrate.roles.bulk` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
 | `integrate.roles.check` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |

@@ -491,3 +491,39 @@ def test_a_job_can_be_pinned_to_an_ai_and_another_program_stands_in(world, monke
     env.app.jobs.submit("pinned", background=True, text_only=True, quiet=True, lane="chk", brain="claude")
     run_all(env)
     assert ran[:2] == ["claude", "agy"]  # pinned to Claude; it was at its limit, so agy took over
+
+
+def test_smallest_books_go_first_unless_you_name_a_subject(world, tmp_path):
+    env = world
+    books = env.app.modules["books"]
+    for name, pages in (("tiny", 3), ("huge", 9)):
+        shelf = tmp_path / "shelf" / f"{name}-subject"
+        shelf.mkdir()
+        (shelf / f"{name}.pdf").write_bytes(b"%PDF-1.4 fake")
+        bk = next(x for x in books.library() if x["id"] == name)
+        d = books.book_dir(bk)
+        d.mkdir(parents=True)
+        (d / "text.md").write_text(
+            "".join(f'<a id="p-{n}"></a>\n## [p. {n}]\n\nText {n}\n' for n in range(1, pages + 1)), encoding="utf-8"
+        )
+        jsave(d / "meta.json", {"pages": pages, "done": pages, "title": name})
+    order = [b["id"] for b, _ in env.integrate.ready_batches()]
+    assert order.index("tiny") < order.index("huge") and order.index("tiny") < order.index("bishop")
+    env.app.settings.set("integrate.first", ["deep-learning"])
+    assert [b["id"] for b, _ in env.integrate.ready_batches()][0] == "bishop"
+    env.app.settings.set("integrate.order", "name")
+    env.app.settings.set("integrate.first", [])
+    assert [b["id"] for b, _ in env.integrate.ready_batches()][0] == "bishop"
+
+
+def test_a_rate_limit_waits_and_is_not_a_failed_try(world):
+    env = world
+    env.fake_ai.mode = "429"
+    env.integrate.tick()
+    while env.app.jobs.run_next():
+        pass
+    rec = env.integrate.load("ledger.json", {})["books"]["deep-learning/bishop"]["batches"]["1-6"]
+    assert rec["state"] == "pending" and rec.get("tries", 0) == 0
+    env.fake_ai.mode = "ok"
+    env.fake_ai.answer = answer(c_ad())
+    assert env.integrate.tick()["submitted"] == 1  # asked again later
