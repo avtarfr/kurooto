@@ -7,6 +7,7 @@ setting agents.export. Where they go:
 
     agy       ~/.gemini/antigravity-cli/skills/<name>/SKILL.md   Antigravity: /name
     agents    ~/.agents/skills/<name>/SKILL.md                   Codex ($name) and GitHub Copilot CLI (/name)
+    claude    ~/.claude/skills/<name>/SKILL.md                   Claude Code: /name (only when you ask for it)
 
 Each folder Kurooto writes carries a .kurooto-skill marker, and only those folders are ever changed or removed:
 a skill you made yourself in that program is never touched. If one of yours has the same name, Kurooto's goes in as
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
 register_defaults(
     "agents",
     {
-        "export": [],  # where your skills go as slash commands: "agy", "agents" (Codex and Copilot CLI)
+        "export": [],  # where your skills go as slash commands: "agy", "agents" (Codex and Copilot CLI), "claude"
         "prefix": "",  # put before every exported skill's name, e.g. "k-" for /k-journal
     },
 )
@@ -45,8 +46,9 @@ register_defaults(
 TARGETS = {
     "agy": (".gemini", "antigravity-cli", "skills"),
     "agents": (".agents", "skills"),
+    "claude": (".claude", "skills"),
 }
-LABELS = {"agy": "agy", "agents": "Codex and Copilot CLI"}
+LABELS = {"agy": "agy", "agents": "Codex and Copilot CLI", "claude": "Claude Code"}
 MARK = ".kurooto-skill"
 STATE = "agent-skills.json"
 NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")

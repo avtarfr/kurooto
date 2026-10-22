@@ -403,7 +403,10 @@ function renderBrainPanel(which) {
     else box.append(
       el("p", {}, `2. Sign in once with your ${account} account: a window opens, follow it, then close it.`),
       signinButton(key, account),
-      el("p", {}, "3. Check it works:"), ...testButton(which));
+      el("p", {}, "3. Check it works:" + (which === "claude" ? " Each request then gets only what Kurooto gives it, for that " +
+        "request and nothing saved in Claude Code's own settings: Kurooto's tools, your notes and course files " +
+        "(it may write only in your notes and course folders; Documents and Downloads are read-only), web pages and " +
+        "harmless commands such as ls, grep and git. Nothing else, and never the kurooto command itself." : "")), ...testButton(which));
   } else if (which === "gemini") {
     const key = el("input", { placeholder: "AIza…", autocomplete: "off", spellcheck: "false" });
     const out = el("p", { "aria-live": "polite" });

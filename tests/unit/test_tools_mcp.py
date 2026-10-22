@@ -30,7 +30,8 @@ from kurooto.providers.agy import (
     wanted_rules,
 )
 from kurooto.providers.base import Task, Verdict
-from kurooto.providers.cli_agents import ClaudeCode, Codex
+from kurooto.providers.claude import ClaudeCode
+from kurooto.providers.cli_agents import Codex
 from kurooto.web import tools_api
 from kurooto.web.api import Api
 from kurooto.web.server import start
@@ -219,7 +220,8 @@ def test_claude_code_gets_the_tools_for_one_run(live, monkeypatch, tmp_path):
     assert (app.workspace / "journal" / "today.md").read_text(encoding="utf-8") == "## Log\nRan 5 km.\n"
     rec = log_of(tmp_path / "claude.log")[0]
     a = rec["argv"]
-    assert a[a.index("--allowedTools") + 1] == "Read,Grep,Glob,mcp__kurooto" and "--strict-mcp-config" in a
+    assert "--strict-mcp-config" in a and a[a.index("--permission-mode") + 1] == "dontAsk"
+    assert "mcp__kurooto" in rec["settings"]["permissions"]["allow"]
     server = rec["config"]["mcpServers"]["kurooto"]
     assert server["command"] == sys.executable and server["args"] == ["-m", "kurooto", "mcp"]
     assert server["env"][mcp.ENV_TOKEN] == srv.tools_token and server["env"]["KUROOTO_HOME"]

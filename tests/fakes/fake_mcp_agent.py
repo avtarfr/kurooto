@@ -60,6 +60,9 @@ elif "--mcp-config" in argv:  # claude
     with open(argv[argv.index("--mcp-config") + 1], encoding="utf-8") as f:
         cfg = json.load(f)
     log["config"] = cfg
+    if "--settings" in argv:
+        with open(argv[argv.index("--settings") + 1], encoding="utf-8") as f:
+            log["settings"] = json.load(f)
     save()
     s = cfg["mcpServers"]["kurooto"]
     text = use_tool([s["command"], *s["args"]], s.get("env") or {})

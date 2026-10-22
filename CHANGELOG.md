@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.6 (unreleased)
+
+- **Claude Code as a full brain**: a request run by Claude Code gets the same reach as one run by agy: Kurooto's tools
+  and your own GBrain's, writing in your notes, course files and add-ons' skills, reading your Documents and
+  Downloads, web pages, and harmless commands, all given for that request only (nothing saved in Claude Code's own
+  settings, and none of its hooks, project files or history used). Anything else is refused, so a request can't hang
+  on a prompt; a refusal says what was refused. Usage limits say when they reset.
+- **`kurooto export-skills on --to claude`**: your skills as /commands in Claude Code (only when you ask).
+
 ## 0.5.4 (2026-10-21)
 
 - **Android ringtone & heads-up banner fix**: Replaced old `calls` channel with `calls_v2` using system default ringtone and `PRIORITY_MAX` heads-up notification priority; guarded against OEM `SecurityException` on ringtone queries.

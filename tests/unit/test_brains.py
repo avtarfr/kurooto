@@ -134,7 +134,7 @@ def test_codex(mode, verdict, monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("mode,verdict", [("ok", Verdict.OK), ("limit", Verdict.RATE_LIMITED), ("auth", Verdict.AUTH)])
 def test_claude_code(mode, verdict, monkeypatch, tmp_path):
-    from kurooto.providers.cli_agents import ClaudeCode
+    from kurooto.providers.claude import ClaudeCode
 
     monkeypatch.setenv("FAKE_CLI_MODE", mode)
     r = ClaudeCode(exe=FAKE_CLI).run(Task(prompt="say hi", cwd=tmp_path, timeout_s=60))

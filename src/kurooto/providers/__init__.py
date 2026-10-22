@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING
 from kurooto.core.config import register_defaults
 from kurooto.providers.agy import Agy
 from kurooto.providers.base import Brain, Result, Task, Verdict
-from kurooto.providers.cli_agents import ClaudeCode, Codex
+from kurooto.providers.claude import ClaudeCode
+from kurooto.providers.cli_agents import Codex
 from kurooto.providers.openai_compat import PRESETS, OpenAICompat
 
 if TYPE_CHECKING:
@@ -68,7 +69,7 @@ def _build(app: App, which: str) -> Brain | None:
     if which == "codex":
         return Codex(app.paths.app, models=(s.get("brain.models") or {}).get("codex"))
     if which == "claude":
-        return ClaudeCode(models=(s.get("brain.models") or {}).get("claude"))
+        return ClaudeCode(models=(s.get("brain.models") or {}).get("claude"), app=app)
     if which in PRESETS:
         return OpenAICompat(
             which,

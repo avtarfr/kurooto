@@ -23,7 +23,7 @@ kurooto logs [-f]        the end of Kurooto's log (-f: keep showing new lines)
 kurooto sync [--no-wait | --status]   sync everything that's on, now (notes, Classroom, calendar, research, notes
                          brain, backup); --status: is one running, and how the last one went
 kurooto usage [DAYS]     AI requests per day, and agy's own count from its logs
-kurooto export-skills [on [--to agy,agents] | off | status]   your skills as /commands in agy, Codex, Copilot CLI
+kurooto export-skills [on [--to agy,agents,claude] | off | status]   your skills as /commands in your agent programs
 kurooto backup [--to F]  make a backup now · kurooto restore <zip>  put one back (stops, restores, starts)
 kurooto profile save|restore|status   your setup, encrypted in your private repository; restore on a new computer
 kurooto runlog start|metric|note|end|ls   log experiment runs into your notes (research/<project>/runs/)
@@ -1407,7 +1407,7 @@ def usage_cmd(days: int) -> int:
 
 
 def export_skills(state: str, to: str) -> int:
-    """`kurooto export-skills on|off|status`: your skills as slash commands in agy (and Codex, Copilot CLI)."""
+    """`kurooto export-skills on|off|status`: your skills as slash commands in agy, Codex, Copilot CLI, Claude Code."""
     from kurooto.app import App
     from kurooto.core import agent_export
 
@@ -1416,8 +1416,8 @@ def export_skills(state: str, to: str) -> int:
         if state == "status":
             st = agent_export.status(app)
             if not st["targets"]:
-                print("Off. kurooto export-skills on puts your skills in agy as /commands (--to agy,agents adds Codex")
-                print("and Copilot CLI).")
+                print("Off. kurooto export-skills on puts your skills in agy as /commands (--to agy,agents,claude adds")
+                print("Codex, Copilot CLI and Claude Code).")
                 return 0
             for t, names in st["skills"].items():
                 folder = agent_export.target_dir(t)
@@ -1429,7 +1429,7 @@ def export_skills(state: str, to: str) -> int:
             want = [t.strip() for t in (to or "agy").split(",") if t.strip()]
             bad = [t for t in want if t not in agent_export.TARGETS]
             if bad:
-                print(f"Not a place Kurooto knows: {', '.join(bad)} (agy, agents).", file=sys.stderr)
+                print(f"Not a place Kurooto knows: {', '.join(bad)} (agy, agents, claude).", file=sys.stderr)
                 return 2
             app.settings.set("agents.export", want)
         else:
@@ -1444,10 +1444,12 @@ def export_skills(state: str, to: str) -> int:
 def ws5_parsers(sub) -> None:
     us = sub.add_parser("usage", help="AI requests per day, and agy's own count from its logs")
     us.add_argument("days", nargs="?", type=int, default=7)
-    ex = sub.add_parser("export-skills", help="your skills as /commands in agy (and Codex, Copilot CLI)")
+    ex = sub.add_parser("export-skills", help="your skills as /commands in agy (and Codex, Copilot CLI, Claude Code)")
     ex.add_argument("state", nargs="?", choices=["on", "off", "status"], default="status")
     ex.add_argument(
-        "--to", default="", help="where: agy (default), agents (Codex and Copilot CLI), or both: agy,agents"
+        "--to",
+        default="",
+        help="where: agy (default), agents (Codex, Copilot CLI), claude (Claude Code); several: agy,claude",
     )
 
 

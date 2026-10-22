@@ -235,7 +235,7 @@ the setup page), and set a **fallback** that takes over when the first one hits 
 | **Gemini API key** ★ | free tier, or paid | the simplest, and the way Google recommends for tools like this; also used for calls and voice notes. Free tier: Google may use what you send to improve its products and human reviewers may read it; 18+; a paid key is required in the EEA, UK and Switzerland | [Google AI Studio](https://aistudio.google.com/apikey) → Create API key → paste |
 | **Antigravity (agy)** | free with a Google account | Google's agent program on your computer; can read your notes. Some risk to the Google account (see the note below) | Install → a window opens → sign in with Google |
 | **ChatGPT / Codex** | needs a paid ChatGPT plan | if you already pay for ChatGPT | Install → sign in with your ChatGPT account |
-| **Claude Code** (Advanced) | needs a paid Claude plan | if you already pay for Claude | Install → sign in with your Claude account |
+| **Claude Code** (Advanced) | needs a paid Claude plan | if you already pay for Claude; it can do everything agy does here (below) | Install → sign in with your Claude account |
 | **Ollama on this computer** | free | private and offline, but much weaker, and needs a good graphics card; best as a helper next to another AI | Install Ollama → Test |
 | **Another OpenAI-compatible service** | depends | any service that speaks OpenAI's API | its address, key and model names |
 
@@ -315,6 +315,12 @@ feature that's off has none. Nothing is sent to anyone but you.
   use tools (some small Ollama models) just answers without them.
 - **Agent programs** (agy, Codex, Claude Code) get them through `kurooto mcp`, a small MCP server that passes each call
   to the running Kurooto. Codex and Claude Code get it for each request only; nothing is saved in their own settings.
+  Claude Code gets the same reach as agy, for that request only: it may read your notes, course files, Documents,
+  Downloads and Screenshots, write in your notes folder, course files folder and your add-ons' skills, read web pages,
+  run harmless commands (ls, cat, grep, find, git, latexmk, pdftotext…), and use Kurooto's tools and, with your own
+  GBrain, its tools. Anything else is refused (`--permission-mode dontAsk`), `kurooto` itself never runs from a request,
+  and your own Claude Code settings, hooks and history aren't used or changed. Models: `brain.models.claude`
+  (default haiku for quick, sonnet for the rest; any name Claude Code takes).
   agy gets it once, when you test agy on the setup page (the page says what it allows), or, if you set agy up
   before, when you tap Approve on the question Kurooto asks (Deny: it asks again in 30 days at the earliest; it also
   asks before adding more later, e.g. when you turn on add-ons). Kurooto runs `agy mcp add kurooto ...` and adds to
@@ -898,8 +904,8 @@ To change a skill that comes with Kurooto, `/skills copy journal` makes your own
 **In agy and other agent programs.** `kurooto export-skills on` puts every skill you can run here (Kurooto's, your
 add-ons', your own, and prompts with `skill: true`) into agy's skills folder, so `/journal my day` typed in agy runs
 the same instructions; each copy says where your notes folder is and carries the same rules. `--to agy,agents` also
-puts them in `~/.agents/skills` (Codex as `$journal`, GitHub Copilot CLI as `/journal`); Claude Code's folder is never
-used. Kurooto only ever changes or removes the copies it made (they carry a `.kurooto-skill` marker): if you have a
+puts them in `~/.agents/skills` (Codex as `$journal`, GitHub Copilot CLI as `/journal`); `--to claude` puts them in `~/.claude/skills` (Claude Code
+as `/journal`), only when you ask for it. Kurooto only ever changes or removes the copies it made (they carry a `.kurooto-skill` marker): if you have a
 skill of your own with the same name, yours stays and Kurooto's goes in as `kurooto-<name>`; a copy you edit by hand is
 yours from then on. They're kept up to date when Kurooto starts (so after every update) and every hour, and ones whose
 skill is gone are removed. `kurooto export-skills status` lists them; `agents.prefix` (e.g. `k-`) puts a prefix on

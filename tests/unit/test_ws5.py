@@ -378,8 +378,8 @@ def test_export_skills_cli_prefix_agents_and_uninstall(env, home, capsys):
     app.settings.set("agents.prefix", "k-")
     agent_export.sync(app)
     assert (agents_dir / "k-study-log").exists() and not (agents_dir / "study-log").exists()
-    assert cli.main(["export-skills", "on", "--to", "claude"]) == 2  # never Claude Code's folder, nor unknown ones
-    assert not (home / ".claude").exists()
+    assert cli.main(["export-skills", "on", "--to", "nowhere"]) == 2  # unknown places are refused
+    assert not (home / ".claude").exists()  # Claude Code's folder only when asked for
     (agents_dir / "k-study-log" / "notes.txt").write_text("mine")  # something you put in one of its folders
     gone = agent_export.remove_all(app.paths.state, app.paths.config)
     assert gone and not (agents_dir / "k-journal").exists()
