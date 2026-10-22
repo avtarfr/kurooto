@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.7",
+  "notes": "Today page in the dashboard, Space keeper, GPU reranker, hardware override, Markdown state for AIs, Gemini model fallback, rename reaches the bot, tabs for every AI program, concept graph fixes",
+  "created": 1792712767.122659,
+  "files": {
+   "kurooto-0.5.7.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.7/kurooto-0.5.7.tar.gz",
+    "sha256": "91b92ae434c211b7e39b9828b937c53cd085ae65e5d0dfb1bce75bd5d089ef36",
+    "size": 1693631
+   }
+  }
+ },
+ "sig": "u1IJXzdVvVv5rOQzBT/TnErn6pjjHn7QViO9z+tHIPbnrJBk3kJx0n0n37l/eVQwMYALSLw9qwma+IoQ49QeAg=="
+}
