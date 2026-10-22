@@ -75,7 +75,11 @@ def put_block(text: str, key: str, body: str, attrs: str = "") -> str:
 def outside(text: str) -> str:
     """The text with every Kurooto block (and the lines it added to a `## Links` section) taken out: what's yours."""
     t = BLOCK_ANY.sub("", text)
-    kept = (ln for ln in t.splitlines() if not LINK_LINE.match(ln) and not re.match(r"^##\s+Links\s*$", ln))
+    kept = (
+        ln
+        for ln in t.splitlines()
+        if not LINK_LINE.match(ln) and not re.match(r"^##\s+Links\s*$", ln) and not ln.startswith("aliases:")
+    )
     return "\n".join(kept)
 
 

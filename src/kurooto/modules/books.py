@@ -620,6 +620,9 @@ class Books(Module):
         jsave(d / "meta.json", meta)
         self._hubs()
         self._after_read(b)
+        integrate = self.app.modules.get("integrate")  # the concepts of what was just read go into your notes
+        if integrate is not None and self.app.is_on("integrate"):
+            integrate.poke()
         self.app.events.emit("book_read", pages=meta["pages"], **{k: v for k, v in meta["routes"].items()})
 
     def _hubs(self) -> None:
