@@ -154,6 +154,7 @@ def test_a_job_stuck_before_any_ai_ran_is_ended_and_the_lane_goes_on(q):
     nxt = app.jobs.submit("quick: next", reply_to=3)
     app.jobs._tick()
     assert until(lambda: app.jobs.get(nxt).status == "ok")
+    assert until(lambda: "It got stuck" not in env.fake.texts()[-1])  # its answer is sent just after it's saved
     n = len(env.fake.texts())
     gate.go.set()  # the stuck one comes back late: nothing more is said, nothing changes
     gate.entered.clear()
