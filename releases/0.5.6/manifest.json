@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.6",
+  "notes": "Claude Code as a full brain, concept graph, book sections found properly, Codex removed",
+  "created": 1792707341.5875173,
+  "files": {
+   "kurooto-0.5.6.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.6/kurooto-0.5.6.tar.gz",
+    "sha256": "80b2eb07c2a7eafce077bf8118d5c12f4ae4eea41218e5aed05f7b338f607497",
+    "size": 1656497
+   }
+  }
+ },
+ "sig": "w1yrs2HtGpHM2vQaIYhPWi/MoxVj97cziXBmc2V1KlRk1Pd2Skx+yp520tB5B4SBihhKOdhZDMDCH1WjVNgSCA=="
+}
