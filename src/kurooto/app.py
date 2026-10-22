@@ -231,6 +231,9 @@ class App:
             from kurooto.core import agent_export
 
             agent_export.start(self)
+            from kurooto.core import reserve
+
+            reserve.start(self)  # Markdown copies of alarms, deadlines, settings... an AI program can just open
         except Exception as e:
             self.events.emit("module_failed", module="agent_export", error=str(e)[:300])
         for m in self.enabled():

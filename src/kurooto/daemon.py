@@ -80,6 +80,9 @@ def end_children() -> None:
 
 
 def run(web: bool = True) -> int:
+    from kurooto.core import proc
+
+    proc.ensure_user_path()  # a service started at boot has a short PATH: tools you installed yourself weren't found
     p = paths().ensure()
     setup_logging(p.logs)
     lock = Lock(p.state, "daemon", timeout=0)

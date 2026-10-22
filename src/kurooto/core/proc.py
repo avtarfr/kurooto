@@ -34,6 +34,29 @@ class Result:
         return self.code == 0
 
 
+USER_BIN = (".local/bin", ".cargo/bin")
+SYSTEM_BIN = ("/usr/local/bin", "/opt/homebrew/bin", "/opt/homebrew/sbin")
+
+
+def ensure_user_path(home: Path | None = None) -> list[str]:
+    """Put the folders programs are usually installed to on PATH when they aren't: a service started at boot has a
+    short PATH (no ~/.local/bin, no Homebrew), so tools you installed yourself (restic, rclone, git, an AI program)
+    were "not found" until the desktop session handed its own PATH over. Only folders that exist are added, at the
+    end, so nothing already on PATH is shadowed. Returns what it added."""
+    if WINDOWS:
+        return []
+    home = Path(home) if home else Path.home()
+    have = [p for p in os.environ.get("PATH", "").split(os.pathsep) if p]
+    added = []
+    for d in [str(home / x) for x in USER_BIN] + list(SYSTEM_BIN):
+        if d not in have and Path(d).is_dir():
+            have.append(d)
+            added.append(d)
+    if added:
+        os.environ["PATH"] = os.pathsep.join(have)
+    return added
+
+
 def which(name: str, extra_dirs: list[Path] | None = None) -> str | None:
     """Find a program on PATH (with Windows' PATHEXT) or in extra folders such as an installer's default."""
     found = shutil.which(name)

@@ -691,6 +691,34 @@ graphics card nothing changes except that embeddings come from the CPU or your G
 **Reading cost.** The vision model now reads a maths page again only when its text layer broke the equations into
 pieces (`books.latex` = `maths`); `all` reads every maths page, `never` none.
 
+## Space keeper (cleaning off old backups and leftovers)
+
+Kurooto keeps the last `backups.keep` backup zips and, with Space keeper on, also cleans what else piles up, weekly
+(`space.when`) and on request. **Only Kurooto's own leftovers ever go**, never your notes, files or books:
+
+| What | When it goes | Setting |
+|---|---|---|
+| Backup zips | more than `backups.keep`; together over `space.backups_max_gb` (default 3); older than `space.backups_max_age_days` (default off). The oldest go first and the newest is never removed | `space.backups_max_gb`, `space.backups_max_age_days` |
+| Installer downloads, study-pack zips, zips made to send you files, cut-off downloads | older than `space.cache_days` (14) | `space.cache_days` |
+| Log files | a log bigger than `space.log_mb` (20 MB) is cut to its newest part | `space.log_mb` |
+| Finished AI requests | older than `space.jobs_days` (60) | `space.jobs_days` |
+| The concept graph's before-copies and unfinished work files | older than `space.undo_days` (30) | `space.undo_days` |
+| Help bundles and restore leftovers | older than `space.cache_days` | |
+
+`/space` (or `kurooto space`) says what Kurooto takes and what would go; `/space clean` (`kurooto space --clean`) does it.
+A weekly clean that frees 50 MB or more sends one line. The feature's status line warns when the disk Kurooto uses has
+under 2 GB free. Undo: a removed backup or download isn't recoverable (they're made again, or the next backup replaces
+them); turn the feature off to stop it.
+
+## The reserve (Markdown copies of Kurooto's state for AI programs)
+
+An AI program that only has to read a file can't fail on a permission it doesn't have, so Kurooto keeps plain Markdown
+copies of its own state in `<state>/reserve/`: `alarm.md`, `deadlines.md`, `calendar.md`, `settings.md` (what differs
+from the defaults and which features are on; never a secret), `addons.md`, and `agent-guide.md` (what an AI program may
+read, write and run, its tools by name, the chat commands). They're rewritten every 10 minutes and when an alarm
+changes, only when their text changed. `kurooto reserve` writes them now. An AI program may read this folder, never
+write to it, and Kurooto never reads it back.
+
 ## Weekly timetable
 | Day | Time | Subject | Code |
 | :--- | :--- | :--- | :--- |

@@ -79,7 +79,18 @@
     var back = location.origin + '/pair#c=' + code;
     $('openapp').href = 'intent://pair?c=' + code + '&u=' + encodeURIComponent(location.origin) +
       '#Intent;scheme=kurooto;package=io.github.avtarfr.kurooto;S.browser_fallback_url=' + encodeURIComponent(back) + ';end';
-    fetch('/kurooto.apk', { method: 'HEAD' }).then(function (r) { if (!r.ok) { $('apk').hidden = true; } }).catch(function () {});
+    // The newest app comes from the Kurooto site (android.json names it), not from the copy this page was set up with,
+    // which only gets older. If the site can't be reached, the copy here is used.
+    fetch('https://avtarfr.github.io/kurooto/android.json', { cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (a) {
+        if (a && /^https:\/\/avtarfr\.github\.io\/kurooto\//.test(a.url || '')) {
+          $('apk').href = a.url;
+          $('apk').textContent = '1. Download the app' + (a.versionName ? ' (' + a.versionName + ')' : '');
+        } else { throw new Error('no url'); }
+      })
+      .catch(function () {
+        fetch('/kurooto.apk', { method: 'HEAD' }).then(function (r) { if (!r.ok) { $('apk').hidden = true; } }).catch(function () {});
+      });
     show('android');
   } else if (ios && !standalone) {
     // When added to the Home Screen, the app opens /pair?c=… (from this manifest) and pairs itself there.

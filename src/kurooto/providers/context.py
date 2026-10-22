@@ -31,6 +31,8 @@ def headless_context(app: App, extra: str = "") -> str:
         "asks for an action. Notes they wrote are theirs: add to them or create new ones, never reword or remove "
         "their text.",
         "Never say you did something you didn't: if there was no tool for it or a tool failed, say so plainly.",
+        "To learn what is set or due (alarms, deadlines, the calendar, settings, what you may do), open the Markdown "
+        f"files in {app.paths.state / 'reserve'} (agent-guide.md says what each holds) instead of running commands.",
     ]
     brief = app.about.brief() if hasattr(app, "about") else ""
     from kurooto.core import layout

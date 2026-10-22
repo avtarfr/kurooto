@@ -6,24 +6,11 @@ the rest are open. (Ideas nobody has asked for yet are in [ROADMAP.md](ROADMAP.m
 To ask for something: open an issue on GitHub, or tell your own Kurooto on Telegram: "add to the requested list: …".
 
 ## Open
-- **Space keeper: clean off old backups and leftovers** so Kurooto never starts taking too much space. Today a backup
-  folder keeps the last 7 zips (`backups.keep`) and nothing else is pruned. It should also: let you cap the backup
-  folder by size (`backups.max_gb`) and by age, delete oldest first, never the newest; clear Kurooto's own leftovers
-  (made study packs and send zips, old logs, finished job records, Classroom batches already filed, the LaTeX package
-  cache's unused parts, old version folders beyond the two kept for rollback); show what it would remove and how much
-  it frees before it does (`kurooto space`, and a card on the dashboard); run weekly and say what it did in one line.
-- **Notes as Markdown for everything**, so any AI can read the state by opening files: alarms (an `alarm.md` copy
-  exists), deadlines, calendar, settings (never secrets), the add-ons list and what an AI may do, in a `reserve/`
-  folder of your notes, written whenever something changes.
-- **A guide for AI agents to everything Kurooto**, generated from the code (tools, commands, settings, permissions),
-  so an agent can use and fix Kurooto without asking a person.
 - **Goodnight sets the wake-up alarm**, and the morning request opens in the dashboard's own terminal only.
 - **Mail about exams is read at once and turned into a schedule** (dates, rooms, what to prepare), not only digested.
 - **PDF, Word and PowerPoint to Markdown** with Microsoft's MarkItDown for books and Classroom files (needs a pip
   install, so it asks first).
 - **Mail digest formatting**: shorter, grouped by what needs you.
-- **The phone-app QR code always serves the latest app**: the call line keeps the copy it was deployed with; the pair
-  page should read the current one from the site.
 - **A fallback from a free Gemini key to other models** inside the key's own limits (the Flash family) before giving up.
 - **Preview the organic blobs in the phone app**, as in the dashboard.
 - **Make the UI more intuitive**, and keep improving the setup wizard's elements.
@@ -38,6 +25,11 @@ To ask for something: open an issue on GitHub, or tell your own Kurooto on Teleg
 - **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~A guide for AI agents to everything Kurooto, generated from the code (agent-guide.md in the reserve, and the settings guide)~~ (0.5.7)
+- ~~Tools installed in ~/.local/bin are found after a reboot ("restic couldn't start")~~ (0.5.7)
+- ~~The phone-app QR code always serves the latest app~~ (0.5.7)
+- ~~State as Markdown an AI can open: alarms, deadlines, calendar, settings, add-ons and a guide to what it may do~~ (0.5.7)
+- ~~Space keeper: old backups and leftovers cleaned off, so Kurooto never takes too much space (`/space`)~~ (0.5.7)
 - ~~Every concept of a book integrated with the others in your notes, with good Obsidian links: reasons, relations, no vague links~~ (0.5.6)
 - ~~Weaker model for bulk, stronger second look; agy and Claude Code together~~ (0.5.6)
 - ~~Messages when Kurooto goes offline and comes back online~~ (0.3.0)

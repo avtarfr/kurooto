@@ -24,6 +24,7 @@ kurooto sync [--no-wait | --status]   sync everything that's on, now (notes, Cla
                          brain, backup); --status: is one running, and how the last one went
 kurooto usage [DAYS]     AI requests per day, and agy's own count from its logs
 kurooto export-skills [on [--to agy,agents,claude] | off | status]   your skills as /commands in your agent programs
+kurooto space [--clean]   what Kurooto takes, and cleaning off its own old backups and leftovers
 kurooto hardware [--profile P] [--add MODEL] [--install]   what this computer suits; go past it and have it installed
 kurooto backup [--to F]  make a backup now · kurooto restore <zip>  put one back (stops, restores, starts)
 kurooto profile save|restore|status   your setup, encrypted in your private repository; restore on a new computer
@@ -1442,6 +1443,45 @@ def export_skills(state: str, to: str) -> int:
         app.close()
 
 
+def reserve_cmd(a) -> int:
+    """`kurooto reserve`: write the Markdown copies of alarms, deadlines, calendar, settings and what an AI may do."""
+    from kurooto.app import App
+    from kurooto.core import reserve
+
+    app = App()
+    try:
+        changed = reserve.refresh(app)
+        print(f"{reserve.folder(app)}: " + (", ".join(changed) if changed else "already up to date"))
+        return 0
+    finally:
+        app.close()
+
+
+def space_cmd(a) -> int:
+    """`kurooto space [--clean]`: what Kurooto takes, and what can go (only its own leftovers; --clean does it)."""
+    from kurooto.app import App
+    from kurooto.core import space
+
+    app = App()
+    try:
+        for k, v in space.footprint(app).items():
+            print(f"{k}: {space.human(v)}")
+        items = space.plan(app)
+        print(space.report(items))
+        if a.clean and items:
+            out = space.clean(app, items)
+            print(
+                f"Cleaned off {space.human(out['freed'])}"
+                + (f"; {out['failed']} couldn't be removed" if out["failed"] else "")
+                + "."
+            )
+        elif items:
+            print("kurooto space --clean does it.")
+        return 0
+    finally:
+        app.close()
+
+
 def hardware_cmd(a) -> int:
     """`kurooto hardware`: see what this computer suits, and go past it if you want: `--profile big-gpu`,
     `--add gemma4:12b`, `--add-prereq tesseract`, `--install` (Kurooto installs Ollama, the models and the programs,
@@ -1508,6 +1548,9 @@ def ws5_parsers(sub) -> None:
         default="",
         help="where: agy (default), agents (Copilot CLI, others), claude (Claude Code); several: agy,claude",
     )
+    sub.add_parser("reserve", help="write Markdown copies of alarms, deadlines, calendar and settings for AI programs")
+    sp = sub.add_parser("space", help="what Kurooto takes and what can go (only its own leftovers)")
+    sp.add_argument("--clean", action="store_true", help="remove them now")
     hw = sub.add_parser("hardware", help="what this computer suits; go past it with --profile, --add, --install")
     hw.add_argument(
         "--profile", default="", help="use another setup: auto, light, apple-8, apple, small-gpu, big-gpu, big-gpu-12"
@@ -1531,6 +1574,10 @@ def ws5_run(a) -> int | None:
         return export_skills(a.state, a.to)
     if a.cmd == "hardware":
         return hardware_cmd(a)
+    if a.cmd == "space":
+        return space_cmd(a)
+    if a.cmd == "reserve":
+        return reserve_cmd(a)
     return None
 
 

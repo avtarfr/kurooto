@@ -608,6 +608,18 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `sources.prefer` | `[]` | an order instead of the mix: ["own", "book", "classroom"] |
 | `sources.subjects` | `{}` | per subject: {"<slug>": {"mix": {...}} or {"prefer": [...]}, optionally "cap"} |
 
+### `space`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `space.backups_max_age_days` | `0` | zips older than this go (0: no limit; backups.keep still applies) |
+| `space.backups_max_gb` | `3.0` | the most the backup zips may take in total (0: no limit) |
+| `space.cache_days` | `14` | downloads, made zips and cut-off downloads older than this go |
+| `space.jobs_days` | `60` | finished AI requests older than this are forgotten |
+| `space.log_mb` | `20` | a log file bigger than this is cut to its newest part |
+| `space.undo_days` | `30` | the concept graph's before-copies and unfinished work files older than this go |
+| `space.when` | `"weekly sun 04:30"` | when the Space keeper cleans by itself |
+
 ### `startby`
 
 | Setting | Default | What it does |

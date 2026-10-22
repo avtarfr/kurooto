@@ -79,6 +79,7 @@ MODULE_ORDER = [
     "handwritten",
     "books",
     "integrate",
+    "space",
     "study",
     "research",
     "terminals",

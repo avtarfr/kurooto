@@ -2,6 +2,17 @@
 
 ## 0.5.7 (unreleased)
 
+- **Space keeper**: cleans off Kurooto's own old backups (past a total size or age, never the newest), downloads and made
+  zips, big logs, old finished AI requests and the concept graph's old before-copies, weekly and on request (`/space`,
+  `kurooto space [--clean]`). Only Kurooto's own leftovers are touched.
+- **The reserve**: Markdown copies of alarms, deadlines, the calendar, settings (never secrets), add-ons and one guide to
+  what an AI program may do, in `<state>/reserve/`, so a request can just open a file (`kurooto reserve`). The AI is told
+  to read them instead of running commands.
+- **The phone app's QR page always offers the newest app** (it read the copy it was set up with, which only got older).
+- **Tools you installed yourself are found at boot** (`~/.local/bin`, `~/.cargo/bin`, Homebrew are put on PATH when
+  the service starts with a short one): "restic couldn't start: No such file" after a reboot.
+- **Concept graph**: cost and request counts (`/graph`), effort goes up for books that need many second looks.
+
 - **GPU reranker for the concept graph**: on a computer with a helper model (an 8 GB card, an Apple Silicon Mac, a
   4 GB card's small helper), the local model judges which of your notes belong with a new concept, from its own
   yes/no probabilities, instead of relying on words and vectors alone. No extra download, no AI requests; where there

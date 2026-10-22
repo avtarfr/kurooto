@@ -39,6 +39,7 @@ from kurooto.modules.reminders import Reminders
 from kurooto.modules.research import Research
 from kurooto.modules.retro import Retro
 from kurooto.modules.skills import Skills
+from kurooto.modules.space import Space
 from kurooto.modules.startby import StartBy
 from kurooto.modules.study import Study
 from kurooto.modules.subjects import Subjects
@@ -93,6 +94,7 @@ CATALOG = [
     Handwritten,
     Books,
     Integrate,
+    Space,
     Study,
     Research,
     Terminals,

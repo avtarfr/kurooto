@@ -429,6 +429,7 @@ REASONS: dict[str, Reason] = {
         R("handwritten.done", "handwritten pages written out into notes", fewer=DAILY),
         R("handwritten.failed", "a handwritten file that couldn't be written out"),
         R("books.read", "a book that was read", setting="books.at"),
+        R("space.cleaned", "the Space keeper cleaned off old files", setting="space.when"),
         R("integrate.summary", "what the concept graph did overnight", setting="integrate.at"),
         R("gbrain.upkeep", "the notes brain's nightly upkeep didn't finish", setting="gbrain.upkeep"),
         R(

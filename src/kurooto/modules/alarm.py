@@ -479,12 +479,13 @@ class Alarm(Module):
 
     @property
     def mirror_file(self):
-        return self.app.paths.state / "alarm.md"
+        return self.app.paths.state / "reserve" / "alarm.md"
 
     def _mirror(self) -> None:
         """The same as a Markdown file (alarm.md in the state folder), for programs that read files rather than call
         tools. Never fails what changed the alarm."""
         try:
+            self.mirror_file.parent.mkdir(parents=True, exist_ok=True)
             self.mirror_file.write_text(f"# Alarm\n\n{self.status()}\n\n(Updated {now():%Y-%m-%d %H:%M}.)\n", "utf-8")
         except OSError:
             pass

@@ -124,6 +124,8 @@ def read_roots(app: App) -> list[Path]:
         app.paths.data / "classroom",  # older ones, from before files.folder was set
         app.paths.state / "classroom-notes",  # Classroom batches for the AI
         app.paths.state / "mail-digest",  # mail batches for the digest (google_mail)
+        app.paths.state
+        / "reserve",  # Markdown copies of alarms, deadlines, settings, what an AI may do (core/reserve.py)
         user_folder("documents"),
         user_folder("downloads"),
         screenshots(),
