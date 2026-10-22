@@ -133,7 +133,8 @@ def test_other_days_for_classes_and_holds(env):
     subj = env.app.modules["subjects"]
     assert "linear-algebra" in subj.skipped(later) and not subj.skipped()
     assert "turn on Chat" in env.say("skipping LA next week")
-    assert "turn on Chat" in env.say("no calls on friday till 6")
+    other = DAYS[(now().date() + dt.timedelta(days=1)).weekday()]  # a named day that isn't today goes to the AI
+    assert "turn on Chat" in env.say(f"no calls on {other} till 6")
     assert env.say("no calls till 6").startswith("No calls until")
 
 
