@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.7 (unreleased)
+## 0.5.7 (2026-10-23)
 
 - **Today page in the dashboard (Alt+T)**: one box for anything (plain words to Kurooto, `j` journal, `.` note, `!` a
   reminder), and the day with buttons: set or skip the alarm, tick or move what's due, snooze or cancel reminders,
@@ -34,7 +34,7 @@
   bigger than your graphics memory: part of it runs on the processor"), never refuses, checks the disk, then installs
   Ollama, the models and the programs you asked for.
 
-## 0.5.6 (unreleased)
+## 0.5.6 (2026-10-23)
 
 - **Concept graph** (Features → Concept graph): when a book has been read, its concepts are woven into your notes: new
   concept notes, links with the relation and a specific reason, "Seen in" lists with pages, and a list of what each

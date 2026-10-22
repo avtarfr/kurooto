@@ -18,6 +18,7 @@ on the site, with android.json for the app's update check. See docs/RELEASING.md
 SITE is a folder laid out like the GitHub Pages site:
     SITE/install.ps1, install.sh, bootstrap.py, index.html (the landing page)
     SITE/privacy.html                           docs/PRIVACY.md as a page (Google's sign-in setup links to it)
+    SITE/changelog.html                         CHANGELOG.md as a page (the landing page links to it)
     SITE/media/                                 its screenshots and animation (from docs/media)
     SITE/stable.json, beta.json                 signed channel pointers
     SITE/yank.json                              signed list of withdrawn versions, with reasons (yank)
@@ -184,6 +185,7 @@ def site_pages(site: Path) -> None:
     for f in ("install.ps1", "install.sh", "bootstrap.py", "index.html"):
         shutil.copy(ROOT / "installer" / f, site / f)
     (site / "privacy.html").write_text(privacy_page(), encoding="utf-8")
+    (site / "changelog.html").write_text(changelog_page(), encoding="utf-8")
     if (ROOT / "docs" / "media").is_dir():  # the landing page's screenshots and animation
         shutil.copytree(ROOT / "docs" / "media", site / "media", dirs_exist_ok=True)
 
@@ -194,6 +196,28 @@ def privacy_page() -> str:
     body = md_html((ROOT / "docs" / "PRIVACY.md").read_text(encoding="utf-8"))
     a, b = page.index("<!-- PRIVACY:START"), page.index("<!-- PRIVACY:END -->") + len("<!-- PRIVACY:END -->")
     return page[:a] + body + page[b:]
+
+
+def changelog_page() -> str:
+    """CHANGELOG.md as a page of the site, in the privacy page's frame (so it looks like the rest of the site)."""
+    page = (ROOT / "installer" / "privacy.html").read_text(encoding="utf-8")
+    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    text = re.sub(r"^# Changelog\s*\n", "", text)
+    intro = (
+        "<h1>What's new</h1>\n<p>Every version of Kurooto, newest first. A new version arrives by itself at night "
+        "(on the beta channel first, then stable); <code>kurooto update --now</code> gets it at once.</p>\n"
+    )
+    a, b = page.index("<!-- PRIVACY:START"), page.index("<!-- PRIVACY:END -->") + len("<!-- PRIVACY:END -->")
+    page = page[:a] + intro + md_html(text) + page[b:]
+    page = page.replace("<title>Privacy · Kurooto</title>", "<title>Changelog · Kurooto</title>")
+    return re.sub(
+        r'<p class="updated">.*?</p>',
+        '<p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/CHANGELOG.md">'
+        "CHANGELOG.md</a> when the site is built.</p>",
+        page,
+        count=1,
+        flags=re.S,
+    )
 
 
 def _inline(text: str) -> str:

@@ -884,3 +884,20 @@ def test_the_site_has_a_privacy_page_made_from_privacy_md(tmp_path):
     out = release.md_html("Hi <b> & **you** `a|b` [x](https://example.org)\n\n- one\n  two\n- three\n")
     assert '<p>Hi &lt;b&gt; &amp; <strong>you</strong> <code>a|b</code> <a href="https://example.org">x</a></p>' in out
     assert "<ul><li>one two</li><li>three</li></ul>" in out
+
+
+def test_the_site_has_a_changelog_page_made_from_the_changelog(tmp_path):
+    import importlib.util
+    import re
+
+    root = Path(__file__).resolve().parents[2]
+    spec = importlib.util.spec_from_file_location("kurooto_release", root / "tools" / "release.py")
+    release = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(release)
+    release.site_pages(tmp_path)
+    page = (tmp_path / "changelog.html").read_text(encoding="utf-8")
+    assert "<title>Changelog · Kurooto</title>" in page and "PRIVACY:START" not in page and "toggleTheme" in page
+    versions = re.findall(r"^## (\d+\.\d+\.\d+)", (root / "CHANGELOG.md").read_text(encoding="utf-8"), re.M)
+    assert versions and all(v in page for v in versions[:5])  # every version, newest first
+    assert page.index(versions[0]) < page.index(versions[1])
+    assert 'href="changelog.html"' in (tmp_path / "index.html").read_text(encoding="utf-8")
