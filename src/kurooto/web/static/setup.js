@@ -217,9 +217,38 @@ function renderComputer() {
   notes.push(room.ok ? `Disk: ${room.free_gb} GB free; the recommended setup needs about ${room.need_gb} GB.`
     : `Disk: only ${room.free_gb} GB free. Kurooto keeps ${room.margin_gb} GB spare, so it will skip local models unless you free some space.`);
   $("#hw-notes").textContent = notes.join(" ");
+  renderOverride();
   renderPower();
   renderLook();
   gloss($('section[data-step="computer"]'));
+}
+
+// Going past what the detection suggests (core/hardware.py): another setup, models of your own, then Kurooto installs.
+function renderOverride() {
+  const box = $("#hw-override-box"), r = state.hardware.recommendation;
+  if (!box) return;
+  const forced = state.settings_hardware || {};
+  const profile = el("select", {}, ...[["auto", "As detected"], ...Object.entries(PROFILES)].map(([k, v]) => el("option", { value: k }, v)));
+  profile.value = forced.force_profile || "auto";
+  const models = el("input", { placeholder: "Your own models, e.g. gemma4:12b (comma-separated)", autocomplete: "off", spellcheck: "false", value: (forced.extra_models || []).join(", ") });
+  const progs = el("input", { placeholder: "Other programs to install, e.g. tesseract (comma-separated)", autocomplete: "off", spellcheck: "false", value: (forced.extra_prereqs || []).join(", ") });
+  const out = el("p", { "aria-live": "polite" });
+  const split = (v) => v.value.split(",").map((x) => x.trim()).filter(Boolean);
+  const send = async (install) => {
+    const body = { profile: profile.value, models: split(models), prereqs: split(progs), install };
+    const res = await api("hardware/override", body);
+    if (res.error) { out.textContent = res.error; return; }
+    state.hardware = res.hardware;
+    renderComputer();
+    if (install) {
+      if (res.started === false) { out.textContent = res.message || "Something else is being set up."; return; }
+      watchInstall(() => { out.textContent = "Done."; });
+    } else out.textContent = "Saved. Press Install to set it up now, or leave it: the features that use these models set them up when you turn them on.";
+  };
+  box.replaceChildren(
+    el("label", {}, "Setup ", profile), models, progs,
+    el("div", { class: "row" }, el("button", { onclick: () => send(false) }, "Save"), el("button", { class: "primary", onclick: () => send(true) }, "Save and install now")),
+    logBox(), out);
 }
 
 // The pages' colours (core/palette.py): this computer's own colours are recommended when they're found.

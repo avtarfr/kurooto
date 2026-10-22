@@ -24,8 +24,18 @@ from pathlib import Path
 import psutil
 
 from kurooto.core import proc
+from kurooto.core.config import register_defaults
 
 GB = 1024**3
+
+register_defaults(
+    "hardware",
+    {
+        "force_profile": "",  # another setup than detected: light, apple-8, apple, small-gpu, big-gpu, big-gpu-12
+        "extra_models": [],  # Ollama models of your own to install, e.g. ["gemma4:12b"], past what suits this computer
+        "extra_prereqs": [],  # other programs Kurooto should install for you (their ids, e.g. "tesseract")
+    },
+)
 
 
 @dataclass
@@ -64,6 +74,13 @@ class Machine:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> Machine:
+        d = dict(d)
+        d["gpus"] = [GPU(**g) for g in d.get("gpus") or []]
+        keep = {f for f in cls.__dataclass_fields__}
+        return cls(**{k: v for k, v in d.items() if k in keep})
 
 
 # ------------------------------------------------------------------------------------------- detection
@@ -229,10 +246,76 @@ class Recommendation:
     notes: list[str]
 
 
-def recommend(m: Machine) -> Recommendation:
-    p = profile(m)
+PROFILES = ("light", "apple-8", "apple", "small-gpu", "big-gpu", "big-gpu-12")
+
+
+def registry_size_gb(tag: str, timeout: float = 15.0) -> float | None:
+    """The download size of an Ollama model from the registry's manifest (None if it can't be told)."""
+    import urllib.request
+
+    name, _, ver = tag.partition(":")
+    path = name if "/" in name else f"library/{name}"
+    url = f"https://registry.ollama.ai/v2/{path}/manifests/{ver or 'latest'}"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:  # noqa: S310 (Ollama's registry)
+            data = json.loads(r.read().decode("utf-8"))
+        return round(sum(int(layer.get("size", 0)) for layer in data.get("layers", [])) / 1e9, 2) or None
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def extra_models(extra, sizes: dict | None = None) -> list[dict]:
+    """Models you added yourself (hardware.extra_models: tags, or {"tag", "size_gb"}), as recommendation rows."""
+    out = []
+    for e in extra or []:
+        tag = str(e.get("tag") if isinstance(e, dict) else e).strip()
+        if not tag:
+            continue
+        size = (e.get("size_gb") if isinstance(e, dict) else None) or (sizes or {}).get(tag)
+        out.append(
+            {"key": f"extra:{tag}", "tag": tag, "size_gb": float(size or 0), "use": "added by you", "extra": True}
+        )
+    return out
+
+
+def limits(m: Machine, models: list[dict], p: str) -> list[str]:
+    """What you'd be going past by using these models here, in plain words (never a refusal: it's your computer)."""
+    table = _models().get("models") or {}
+    warn = []
+    v = m.nvidia_vram
+    for mod in models:
+        need = mod.get("min_vram_gb") or (table.get(mod.get("key")) or {}).get("min_vram_gb") or 0
+        if mod.get("extra"):
+            size = mod.get("size_gb") or 0
+            if m.apple_silicon:
+                if size and size > m.ram_gb * 0.6:
+                    warn.append(f"{mod['tag']} ({size:g} GB) is large for {m.ram_gb:g} GB of memory.")
+            elif size and v and size > v * 0.95:
+                warn.append(
+                    f"{mod['tag']} ({size:g} GB) is bigger than your {v:g} GB of graphics memory: "
+                    "part of it runs on the processor, much slower."
+                )
+            elif size and not v:
+                warn.append(f"{mod['tag']} has no graphics card to run on: it will run on the processor, slowly.")
+        elif need and not m.apple_silicon and v < need - 0.5:
+            warn.append(
+                f"{mod['tag']} wants about {need:g} GB of graphics memory; this computer has {v:g} GB, "
+                "so it may run slowly or not fit."
+            )
+    if p == "light" and any(not x.get("extra") for x in models):
+        warn.append("Local models on a computer without a usable graphics card run on the processor: slow, and loud.")
+    return warn
+
+
+def recommend(m: Machine, force: str = "", extra=None, sizes: dict | None = None) -> Recommendation:
+    """What suits this machine. `force` (hardware.force_profile) uses another profile's models instead (you know your
+    computer better than the detection does), and `extra` adds models of your own; both come with plain warnings
+    about what they go past, never a refusal."""
+    detected = profile(m)
+    p = force if force in PROFILES else detected
     table = _models()
     models = [{"key": k, **table["models"][k]} for k in table["profiles"].get(p, [])]
+    models += extra_models(extra, sizes)
     gpu = next((g.name for g in m.gpus if g.vendor == "nvidia"), None) or (m.gpus[0].name if m.gpus else None)
     notes = []
     if p == "light":
@@ -251,6 +334,9 @@ def recommend(m: Machine) -> Recommendation:
             notes.append("Models of 7B and up don't fit in 4 GB; they would run slowly and heat the laptop.")
     if m.battery and m.on_ac is False:
         notes.append("You're on battery: heavy work waits for the charger.")
+    if p != detected:
+        notes.insert(0, f'You chose the "{p}" setup (this computer was detected as "{detected}").')
+    notes += limits(m, models, p)
     return Recommendation(
         profile=p,
         summary=summary,
@@ -261,6 +347,37 @@ def recommend(m: Machine) -> Recommendation:
         parallel_jobs=1 if p in ("light", "apple-8") else 2,
         notes=notes,
     )
+
+
+def current(app) -> dict:
+    """{"machine", "recommendation", "at"} for this computer with your overrides (hardware.force_profile and
+    hardware.extra_models) applied; the machine is read once and kept (state/hardware.json), the recommendation is
+    worked out again each time, so a change takes effect at once."""
+    import time
+
+    from kurooto.core.state import jload, jsave
+
+    f = app.paths.state / "hardware.json"
+    cached = jload(f, None)
+    if cached and cached.get("machine"):
+        m = Machine.from_dict(cached["machine"])
+        at = cached.get("at", time.time())
+    else:
+        m, at = detect(app.paths.app), time.time()
+    extra = app.settings.get("hardware.extra_models") or []
+    sizes = dict(jload(app.paths.state / "model-sizes.json", {}) or {})
+    for e in extra:
+        tag = str(e.get("tag") if isinstance(e, dict) else e)
+        if tag and tag not in sizes and not (isinstance(e, dict) and e.get("size_gb")):
+            got = registry_size_gb(tag)
+            if got:
+                sizes[tag] = got
+    if sizes:
+        jsave(app.paths.state / "model-sizes.json", sizes)
+    rec = asdict(recommend(m, str(app.settings.get("hardware.force_profile") or ""), extra, sizes))
+    out = {"machine": m.to_dict(), "recommendation": rec, "at": at}
+    jsave(f, out)
+    return out
 
 
 if __name__ == "__main__":  # python -m kurooto.core.hardware

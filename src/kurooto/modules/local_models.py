@@ -30,7 +30,14 @@ class LocalModels(Module):
         self.prereqs = Prereqs(app.paths.app, app.paths.cache)
 
     def wanted(self) -> list[dict]:
-        rec = (jload(self.app.paths.state / "hardware.json", {}) or {}).get("recommendation") or {}
+        """The models for this computer: what suits it (or the setup you chose: hardware.force_profile), plus the
+        models you added (hardware.extra_models)."""
+        from kurooto.core import hardware
+
+        try:
+            rec = hardware.current(self.app).get("recommendation") or {}
+        except (OSError, ValueError, KeyError, TypeError):
+            rec = (jload(self.app.paths.state / "hardware.json", {}) or {}).get("recommendation") or {}
         return rec.get("local_models") or []
 
     def vision_model(self) -> dict | None:
@@ -115,8 +122,17 @@ class LocalModels(Module):
 
     def setup(self, progress=print) -> tuple[bool, str]:
         models = self.wanted()
+        extras = [p for p in (self.app.settings.get("hardware.extra_prereqs") or []) if p in self.prereqs.items]
+        for key in extras:  # programs you asked for, installed like any other
+            if not self.prereqs.items[key].find():
+                ok, msg = self.prereqs.install(key, progress)
+                progress(("✓ " if ok else "✗ ") + msg)
         if not models:
-            return False, "This computer is better off without local models."
+            return (
+                (True, "Installed what you asked for.")
+                if extras
+                else (False, "This computer is better off without local models.")
+            )
         if not self.prereqs.items["ollama"].find():
             ok, msg = self.prereqs.install("ollama", progress)
             if not ok:

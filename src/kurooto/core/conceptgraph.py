@@ -196,6 +196,7 @@ class Candidate:
     score: float
     evidence: list[str] = field(default_factory=list)  # alias, title, keyword, embedding, neighbour
     cosine: float | None = None
+    rerank: float | None = None  # P(yes) from the reranker (core/rerank.py), when there is one
 
     @property
     def exists(self) -> bool:
@@ -205,9 +206,12 @@ class Candidate:
 class Index:
     """Keyword ranking and (when there's an embedder) vectors over the concept notes."""
 
-    def __init__(self, notes: dict[str, Note], embedder: Embedder | None = None, store: VectorStore | None = None):
+    def __init__(
+        self, notes: dict[str, Note], embedder: Embedder | None = None, store: VectorStore | None = None, reranker=None
+    ):
         self.notes = notes
         self.embedder, self.store = embedder, store
+        self.reranker = reranker  # core/rerank.py: a local model that judges pairs, where this computer can run one
         self.tf: dict[str, Counter] = {}
         self.df: Counter = Counter()
         self.len: dict[str, int] = {}
@@ -279,7 +283,13 @@ class Index:
         return None, ""
 
     def candidates(
-        self, text: str, name: str = "", aliases: list[str] | None = None, limit: int = 8, query_vec=None
+        self,
+        text: str,
+        name: str = "",
+        aliases: list[str] | None = None,
+        limit: int = 8,
+        query_vec=None,
+        rerank: bool = True,
     ) -> list[Candidate]:
         found: dict[str, Candidate] = {}
 
@@ -312,7 +322,34 @@ class Index:
             for t in self.notes[c.slug].links:
                 if t in self.notes and t not in found:
                     add(t, 0.15, "neighbour")
-        return sorted(found.values(), key=lambda c: (-c.score, c.slug))[:limit]
+        ranked = sorted(found.values(), key=lambda c: (-c.score, c.slug))
+        if rerank and self.reranker is not None and not self.reranker.dead and (name or text):
+            head = ranked[: max(limit * 2, limit)]
+            judged = self.rerank(head, f"{name}: {text}"[:900])
+            if judged is not head:  # the model answered: what it dropped stays dropped (no leftovers fill the gaps)
+                return judged[:limit]
+        return ranked[:limit]
+
+    def rerank(self, cands: list[Candidate], query: str) -> list[Candidate]:
+        """Reorder candidates with the reranker: a name match always stays (that's what "already exists" means); the
+        rest are ordered by a blend of the earlier score and the model's odds, and ones it is sure about (< 0.08) are
+        dropped. If the model can't be reached the order is left as it was."""
+        rest = [c for c in cands if not c.exists]
+        if not rest:
+            return cands
+        docs = [f"{self.notes[c.slug].title}. {self.notes[c.slug].summary}" for c in rest]
+        got = self.reranker.scores(query, docs)
+        if all(g is None for g in got):
+            return cands
+        top = max((c.score for c in rest), default=1.0) or 1.0
+        for c, g in zip(rest, got, strict=False):
+            if g is not None:
+                c.rerank = g
+                if "rerank" not in c.evidence:
+                    c.evidence.append("rerank")
+                c.score = 0.4 * (c.score / top) + 0.6 * g
+        keep = [c for c in rest if c.rerank is None or c.rerank >= 0.08]
+        return sorted([c for c in cands if c.exists] + keep, key=lambda c: (not c.exists, -c.score, c.slug))
 
     def card(self, slug: str) -> dict:
         n = self.notes[slug]

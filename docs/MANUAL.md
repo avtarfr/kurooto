@@ -2655,6 +2655,27 @@ repository and a passphrase). Without Profile sync, a backup zip works too (`kur
 The main answers always come from the AI you picked; local models only take quick decisions and make the notes
 index. Settings → **Your computer** shows what was found and lets you change it; `kurooto doctor` re-checks.
 
+
+### Going past what this computer suits
+Kurooto picks local models by what it detects (graphics memory, Apple Silicon, memory). You know your computer better:
+- `kurooto hardware` shows what it detected and what it recommends, with any warnings.
+- `kurooto hardware --profile big-gpu-12` uses another setup's models (`auto` goes back; `light`, `apple-8`, `apple`,
+  `small-gpu`, `big-gpu`, `big-gpu-12`).
+- `kurooto hardware --add gemma4:12b` adds an Ollama model of your own (`--remove` takes it off); its size is looked up
+  in Ollama's registry. `--add-prereq tesseract` adds another program to install.
+- `kurooto hardware --install` (or the button on the setup page's computer step) installs Ollama, every model on the
+  list and those programs, after checking there's room on the disk.
+
+Kurooto never refuses: if a model is bigger than your graphics memory, it says part of it will run on the processor,
+slowly, and goes ahead. The same settings are `hardware.force_profile`, `hardware.extra_models` and
+`hardware.extra_prereqs`.
+
+### The reranker (concept graph)
+With a helper model on the list (and `integrate.rerank` on), the concept graph asks it, for each candidate note,
+whether the note belongs with a new concept, and orders them by the model's own odds. It uses the helper model already
+installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
+embedding order.
+
 ## Your notes: layout and files
 
 Kurooto writes into your notes folder in one of two layouts, and can keep big files (photos, PDFs) out of it so they

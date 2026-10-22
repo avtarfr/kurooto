@@ -52,6 +52,8 @@ register_defaults(
         "garden": True,  # each day, a second pass over the notes the reading touched and notes nothing links to
         "garden_per_day": 40,  # the most notes in that pass
         "embeddings": "auto",  # where meaning-based matching comes from: auto | ollama | gemini | off
+        "rerank": "auto",  # a local model judges which notes belong together (a graphics card helps): auto | off
+        "rerank_model": "",  # which one ("": the helper model of this computer's setup)
         "first": [],  # subjects to do first, e.g. ["deep-learning"]
         "order": "smallest",  # which books first: smallest (fewest pages: most books done soonest) | name
         "commit": True,  # one git commit per batch, when your notes are a repository
@@ -232,7 +234,9 @@ class Integrate(Module):
         if self._store is None:
             self._store = cg.VectorStore(self.dir / "vectors.db")
         emb = cg.make_embedder(self.app) if str(self.setting("embeddings") or "auto") != "off" else None
-        return cg.Index(cg.scan(self.app), emb, self._store if emb else None)
+        from kurooto.core.rerank import make_reranker
+
+        return cg.Index(cg.scan(self.app), emb, self._store if emb else None, make_reranker(self.app))
 
     def tick(self) -> dict:
         """Ask for the next batch (one bulk request at a time per AI; second looks run beside it)."""
@@ -264,7 +268,7 @@ class Integrate(Module):
         meta = self.books.meta(b)
         index = self.index()
         text = ai.page_text(pages, bt.first, bt.last)
-        near = index.candidates(f"{bt.title}. {text[:3000]}", "", None, limit=30)
+        near = index.candidates(f"{bt.title}. {text[:3000]}", "", None, limit=30, rerank=False)
         prompt = ai.batch_prompt(
             meta.get("title") or b["id"],
             b["subject"],

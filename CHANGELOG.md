@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.7 (unreleased)
+
+- **GPU reranker for the concept graph**: on a computer with a helper model (an 8 GB card, an Apple Silicon Mac, a
+  4 GB card's small helper), the local model judges which of your notes belong with a new concept, from its own
+  yes/no probabilities, instead of relying on words and vectors alone. No extra download, no AI requests; where there
+  is no helper model nothing changes (`integrate.rerank`, `integrate.rerank_model`).
+- **Go past what your hardware suggests, and have Kurooto install it** (`hardware.force_profile`,
+  `hardware.extra_models`, `hardware.extra_prereqs`; `kurooto hardware --profile big-gpu-12 --add gemma4:12b
+  --install`; the same on the setup page's computer step): Kurooto says plainly what you're going past ("this model is
+  bigger than your graphics memory: part of it runs on the processor"), never refuses, checks the disk, then installs
+  Ollama, the models and the programs you asked for.
+
 ## 0.5.6 (unreleased)
 
 - **Concept graph** (Features → Concept graph): when a book has been read, its concepts are woven into your notes: new

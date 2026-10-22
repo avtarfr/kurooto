@@ -290,7 +290,7 @@ def check(
                     cg.normalise(a) in {cg.normalise(n) for n in note.names} for a in c.aliases
                 )
                 got = {x.slug: x for x in index.candidates(c.definition, c.name, c.aliases, limit=6)}.get(c.same_as)
-                strong = near or (got is not None and (got.cosine or 0) >= 0.7)
+                strong = near or (got is not None and ((got.cosine or 0) >= 0.7 or (got.rerank or 0) >= 0.6))
                 if not strong:
                     nid += 1
                     items.append(Item(nid, "same", c, None, c.same_as, "the names differ and the meaning isn't close"))

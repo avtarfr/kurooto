@@ -24,6 +24,7 @@ kurooto sync [--no-wait | --status]   sync everything that's on, now (notes, Cla
                          brain, backup); --status: is one running, and how the last one went
 kurooto usage [DAYS]     AI requests per day, and agy's own count from its logs
 kurooto export-skills [on [--to agy,agents,claude] | off | status]   your skills as /commands in your agent programs
+kurooto hardware [--profile P] [--add MODEL] [--install]   what this computer suits; go past it and have it installed
 kurooto backup [--to F]  make a backup now · kurooto restore <zip>  put one back (stops, restores, starts)
 kurooto profile save|restore|status   your setup, encrypted in your private repository; restore on a new computer
 kurooto runlog start|metric|note|end|ls   log experiment runs into your notes (research/<project>/runs/)
@@ -1441,6 +1442,62 @@ def export_skills(state: str, to: str) -> int:
         app.close()
 
 
+def hardware_cmd(a) -> int:
+    """`kurooto hardware`: see what this computer suits, and go past it if you want: `--profile big-gpu`,
+    `--add gemma4:12b`, `--add-prereq tesseract`, `--install` (Kurooto installs Ollama, the models and the programs,
+    here and now)."""
+    from kurooto.app import App
+    from kurooto.core import hardware
+
+    app = App()
+    try:
+        s = app.settings
+        if a.profile:
+            if a.profile == "auto":
+                s.set("hardware.force_profile", "")
+            elif a.profile in hardware.PROFILES:
+                s.set("hardware.force_profile", a.profile)
+            else:
+                print(f"Not a setup: {a.profile} (auto, {', '.join(hardware.PROFILES)}).", file=sys.stderr)
+                return 2
+        for key, items, add in (
+            ("hardware.extra_models", a.add, True),
+            ("hardware.extra_models", a.remove, False),
+            ("hardware.extra_prereqs", a.add_prereq, True),
+            ("hardware.extra_prereqs", a.remove_prereq, False),
+        ):
+            if items:
+                have = list(s.get(key) or [])
+                for it in items:
+                    if add and it not in have:
+                        have.append(it)
+                    if not add and it in have:
+                        have.remove(it)
+                s.set(key, have)
+        cur = hardware.current(app)
+        rec = cur["recommendation"]
+        m = cur["machine"]
+        gpus = ", ".join(g["name"] + (f" ({g['vram_gb']} GB)" if g.get("vram_gb") else "") for g in m["gpus"]) or "none"
+        print(f"{m['cpu']}, {m['ram_gb']} GB memory, graphics: {gpus}")
+        forced = s.get("hardware.force_profile")
+        print(f"Setup: {rec['profile']}" + (" (chosen by you)" if forced else " (detected)"))
+        for mod in rec["local_models"]:
+            size = f"{mod['size_gb']:g} GB" if mod.get("size_gb") else "size unknown"
+            print(f"  {mod['tag']} ({size}): {mod['use']}")
+        for n in rec["notes"]:
+            print(f"  ! {n}")
+        if s.get("hardware.extra_prereqs"):
+            print("  programs: " + ", ".join(s.get("hardware.extra_prereqs")))
+        if a.install:
+            lm = app.modules["local_models"]
+            ok, msg = lm.setup(progress=lambda line: print("  " + line))
+            print(("Done: " if ok else "Not done: ") + msg)
+            return 0 if ok else 1
+        return 0
+    finally:
+        app.close()
+
+
 def ws5_parsers(sub) -> None:
     us = sub.add_parser("usage", help="AI requests per day, and agy's own count from its logs")
     us.add_argument("days", nargs="?", type=int, default=7)
@@ -1451,6 +1508,19 @@ def ws5_parsers(sub) -> None:
         default="",
         help="where: agy (default), agents (Copilot CLI, others), claude (Claude Code); several: agy,claude",
     )
+    hw = sub.add_parser("hardware", help="what this computer suits; go past it with --profile, --add, --install")
+    hw.add_argument(
+        "--profile", default="", help="use another setup: auto, light, apple-8, apple, small-gpu, big-gpu, big-gpu-12"
+    )
+    hw.add_argument(
+        "--add", action="append", default=[], metavar="MODEL", help="an Ollama model of your own (repeatable)"
+    )
+    hw.add_argument("--remove", action="append", default=[], metavar="MODEL", help="take one of yours off the list")
+    hw.add_argument(
+        "--add-prereq", action="append", default=[], metavar="ID", help="another program to install (repeatable)"
+    )
+    hw.add_argument("--remove-prereq", action="append", default=[], metavar="ID")
+    hw.add_argument("--install", action="store_true", help="install Ollama, the models and the programs now")
 
 
 def ws5_run(a) -> int | None:
@@ -1459,6 +1529,8 @@ def ws5_run(a) -> int | None:
         return usage_cmd(a.days)
     if a.cmd == "export-skills":
         return export_skills(a.state, a.to)
+    if a.cmd == "hardware":
+        return hardware_cmd(a)
     return None
 
 

@@ -371,6 +371,14 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `handwritten.model` | `"gemini-flash-latest"` | the Gemini model that reads handwriting when it's chosen |
 | `handwritten.pdf_hours` | `"23:00-07:00"` | when the model here reads PDFs (on the charger); "" any time |
 
+### `hardware`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `hardware.extra_models` | `[]` | Ollama models of your own to install, e.g. ["gemma4:12b"], past what suits this computer |
+| `hardware.extra_prereqs` | `[]` | other programs Kurooto should install for you (their ids, e.g. "tesseract") |
+| `hardware.force_profile` | `""` | another setup than detected: light, apple-8, apple, small-gpu, big-gpu, big-gpu-12 |
+
 ### `health`
 
 | Setting | Default | What it does |
@@ -392,6 +400,8 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `integrate.garden_per_day` | `40` | the most notes in that pass |
 | `integrate.order` | `"smallest"` | which books first: smallest (fewest pages: most books done soonest) \| name |
 | `integrate.per_night` | `300` | the most batches in a night (a limit on how much of your AI's day it may use) |
+| `integrate.rerank` | `"auto"` | a local model judges which notes belong together (a graphics card helps): auto \| off |
+| `integrate.rerank_model` | `""` | which one ("": the helper model of this computer's setup) |
 | `integrate.roles.bulk` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
 | `integrate.roles.check` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
 | `integrate.summary` | `true` | one line each morning about what changed |

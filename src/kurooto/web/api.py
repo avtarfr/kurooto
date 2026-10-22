@@ -6,13 +6,12 @@ import os
 import secrets
 import threading
 import time
-from dataclasses import asdict
 from typing import TYPE_CHECKING
 
 from kurooto import __version__, providers
 from kurooto.core import autostart, hardware, opener
 from kurooto.core.prereqs import Prereqs
-from kurooto.core.state import jload, jsave
+from kurooto.core.state import jload
 from kurooto.modules.telegram.api import TelegramError
 from kurooto.providers.base import Verdict
 
@@ -99,13 +98,9 @@ class Api:
     # ------------------------------------------------------------------------------------------ helpers
     def _hardware(self, refresh: bool = False) -> dict:
         f = self.app.paths.state / "hardware.json"
-        cached = jload(f, None)
-        if cached and not refresh:
-            return cached
-        m = hardware.detect(self.app.paths.app)
-        out = {"machine": m.to_dict(), "recommendation": asdict(hardware.recommend(m)), "at": time.time()}
-        jsave(f, out)
-        return out
+        if refresh:  # read the machine again
+            f.unlink(missing_ok=True)
+        return hardware.current(self.app)
 
     def _brains(self) -> list[dict]:
         rows, order = [], list(BRAIN_ORDER)
@@ -218,6 +213,9 @@ class Api:
                 "you": s.get("you"),
                 "setup_done": bool(s.get("setup.done")),
                 "hardware": hw,
+                "settings_hardware": {
+                    k: s.get(f"hardware.{k}") for k in ("force_profile", "extra_models", "extra_prereqs")
+                },
                 "brains": self._brains(),
                 "brain": {"main": s.get("brain.main"), "fallback": s.get("brain.fallback")},
                 "modules": self._modules(),
@@ -336,6 +334,20 @@ class Api:
             return 200, {"ok": True, "timezone": s.get("you.timezone") or ""}
         if path == "hardware/refresh":
             return 200, self._hardware(refresh=True)
+        if path == "hardware/override":  # go past what the detection suggests: another setup, models of your own
+            prof = str(b.get("profile") or "")
+            if prof and prof != "auto" and prof not in hardware.PROFILES:
+                return 400, {"error": f"not a setup: {prof}"}
+            if "profile" in b:
+                s.set("hardware.force_profile", "" if prof == "auto" else prof)
+            for key, field in (("hardware.extra_models", "models"), ("hardware.extra_prereqs", "prereqs")):
+                if isinstance(b.get(field), list):
+                    s.set(key, [str(x).strip() for x in b[field] if str(x).strip()][:20])
+            out = {"hardware": self._hardware(), "installing": False}
+            if b.get("install"):  # Kurooto installs Ollama, the models and the programs, with progress on the page
+                lm = self.app.modules["local_models"]
+                out.update(self._background(lambda note: lm.setup(note), then_enable="local_models"), installing=True)
+            return 200, out
         if path == "brain":
             which = b.get("main", "")
             if which and which not in providers.CHOICES:
