@@ -50,7 +50,7 @@ register_defaults(
         "folders": {},  # a course's exact name -> the notes folder you want it in (otherwise Kurooto picks one)
         "files": True,  # download the Drive files attached to posts and read their text
         "max_file_mb": 30,
-        "backfill_days": 60,  # the first run files posts from this many days back
+        "backfill_days": 60,  # posts older than this (and not edited since) are left alone; a longer window finds them
     },
 )
 KINDS = (  # what Classroom calls them: (our name, the collection, the list's key)
@@ -235,8 +235,7 @@ class ClassroomNotes(GooglePart):
         g = self.google
         seen_file = self.dir / "seen.json"
         seen = jload(seen_file, {}) or {}
-        first = not seen
-        cutoff = (now() - dt.timedelta(days=self.setting("backfill_days") or 60)).date().isoformat() if first else ""
+        cutoff = (now() - dt.timedelta(days=self.setting("backfill_days") or 60)).date().isoformat()
         out = {"items": 0, "courses": 0, "not_interested": 0}
         courses = list(g.pages("classroom", "/courses", "courses", {"studentId": "me", "courseStates": "ACTIVE"}))
         for c in courses:
@@ -255,10 +254,13 @@ class ClassroomNotes(GooglePart):
                     stamp = it.get("updateTime") or it.get("creationTime") or "?"
                     if seen.get(iid) == stamp:
                         continue
+                    latest = (it.get("updateTime") or it.get("creationTime") or now().isoformat())[:10]
+                    if (
+                        latest < cutoff
+                    ):  # older than the window: left alone, and not marked seen, so a longer window finds it
+                        continue
                     seen[iid] = stamp
                     date = (it.get("creationTime") or it.get("updateTime") or now().isoformat())[:10]
-                    if date < cutoff:  # the first run only goes back so far
-                        continue
                     text = it.get("description") or it.get("text") or ""
                     if not_interested(self.app, f"{it.get('title', '')} {text[:400]}"):
                         ignored += 1
@@ -461,6 +463,15 @@ class ClassroomNotes(GooglePart):
             jsave(self.dir / "queued.json", {k: v for k, v in pend.items() if (self.dir / "batches" / k).exists()})
         return n
 
+    def _hubs(self) -> None:
+        """Keep the home and research hubs linked to the courses (core/hubs.py); never fails the filing."""
+        from kurooto.core import hubs
+
+        try:
+            hubs.ensure(self.app)
+        except Exception as e:
+            self.app.events.emit("hubs_failed", error=str(e)[:200])
+
     def _filed(self, job, result, payload) -> None:
         b = self.dir / "batches" / str(payload.get("batch", "x")).replace("/", "")
         data = jload(b, {}) or {}
@@ -476,6 +487,7 @@ class ClassroomNotes(GooglePart):
                 about=data["course"],
             )
             self.app.events.emit("classroom_notes_filed", items=n)
+            self._hubs()
             return
         data["tries"] = data.get("tries", 0) + 1
         jsave(b, data)

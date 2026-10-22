@@ -601,12 +601,46 @@ const detailOf = (e) => Object.entries(e).filter(([k]) => !["ts", "kind", "t", "
   .map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`).join(" ").slice(0, 60);
 
 // -------------------------------------------------------------------------------------------------- NOTES
-const GROUP_COL = { inbox: "fg", journal: "sand", root: "fg" };
-const EXTRA = ["lav", "pink", "peach", "rose", "sand", "accent"];
+// Neighborhoods come from your own notes: each course or subject folder (sources/<name>/) is one, maps/ and projects/ are
+// the hub, and any other note joins the neighborhood most of its links go to.
+const HOOD_COLORS = ["peach", "lav", "rose", "accent", "pink", "sand"], MAX_HOODS = 8;
+const HUB = { label: "Maps & Projects", get color() { return PAL.fg; }, anchor: { x: 0, y: -40 } };
+const OTHER = { label: "Other Notes", get color() { return PAL.dim; }, anchor: { x: 0, y: 380 } };
+const prettyHood = (s) => s.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function hoodOf(id) {
+  const m = /^sources\/([^/]+)\//.exec(id || "");
+  return m ? m[1] : /^(maps|projects)\//.test(id || "") ? "hub" : null;
+}
+// n.neighborhood for every node (n.nb already holds its links); returns {key: {label, color, anchor}}
+function assignHoods(nodes) {
+  const base = new Map(), size = new Map();
+  for (const n of nodes.values()) { const k = hoodOf(n.id); base.set(n.id, k); if (k && k !== "hub") size.set(k, (size.get(k) || 0) + 1); }
+  const keys = [...size].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, MAX_HOODS).map(([k]) => k);
+  const known = new Set(keys), hoods = new Map([["hub", HUB], ["other", OTHER]]);
+  keys.forEach((k, i) => {
+    const ang = (i / keys.length) * 2 * Math.PI - Math.PI / 2;
+    hoods.set(k, { label: prettyHood(k), get color() { return PAL[HOOD_COLORS[i % HOOD_COLORS.length]]; },
+      anchor: { x: Math.cos(ang) * 420, y: Math.sin(ang) * 300 } });
+  });
+  for (const n of nodes.values()) {
+    let k = base.get(n.id);
+    if (k !== "hub" && !known.has(k)) {
+      const votes = new Map();
+      for (const id of n.nb || []) { const b = base.get(id); if (known.has(b)) votes.set(b, (votes.get(b) || 0) + 1); }
+      k = [...votes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || "other";
+    }
+    n.neighborhood = k;
+  }
+  return hoods;
+}
+
 class Mind {
   constructor(cv) { this.cv = cv; this.nodes = new Map(); this.links = []; this.alpha = 1; this.view = { x: 0, y: 0, k: 1 }; this.autofit = true;
-    this.flares = []; this.groupIdx = new Map(); this.hover = null; this.selected = null; this.query = ""; this.version = -1; this.wire(); }
-  colorOf(g) { if (GROUP_COL[g]) return PAL[GROUP_COL[g]]; if (!this.groupIdx.has(g)) this.groupIdx.set(g, this.groupIdx.size); return PAL[EXTRA[this.groupIdx.get(g) % EXTRA.length]]; }
+    this.flares = []; this.groupIdx = new Map(); this.hover = null; this.selected = null; this.query = ""; this.showRecent = false; this.version = -1; this.wire(); }
+  colorOf(n) {
+    const key = typeof n === "object" && n ? n.neighborhood : n;
+    return this.hoods?.get(key)?.color || PAL.dim;
+  }
   update(g) {
     const first = this.version < 0; this.version = g.version; const seen = new Set();
     for (const n of g.nodes) { seen.add(n.id); let node = this.nodes.get(n.id);
@@ -615,26 +649,59 @@ class Mind {
     this.links = g.links.map(([a, b]) => [this.nodes.get(a), this.nodes.get(b)]).filter(([a, b]) => a && b);
     for (const n of this.nodes.values()) { n.deg = 0; n.nb = new Set(); }
     for (const [a, b] of this.links) { a.deg++; b.deg++; a.nb.add(b.id); b.nb.add(a.id); }
-    const groups = [...new Set([...this.nodes.values()].map((n) => n.group))].sort();
-    this.groups = groups.length;
-    this.anchor = new Map(groups.map((gname, i) => [gname, { x: Math.cos((i / groups.length) * TAU) * 210, y: Math.sin((i / groups.length) * TAU) * 190 }]));
-    if (first) for (const n of this.nodes.values()) { const a = this.anchor.get(n.group); n.x = a.x + (Math.random() - 0.5) * 120; n.y = a.y + (Math.random() - 0.5) * 120; }
-    else for (const id of g.changed || []) { const n = this.nodes.get(id); if (n) this.flares.push({ n, t0: performance.now() / 1000 }); this.alpha = Math.max(this.alpha, 0.35); }
+    this.hoods = assignHoods(this.nodes);
+    this.anchor = new Map([...this.hoods].map(([k, v]) => [k, v.anchor]));
+    if (first) for (const n of this.nodes.values()) { const a = this.anchor.get(n.neighborhood) || { x: 0, y: 0 }; n.x = a.x + (Math.random() - 0.5) * 140; n.y = a.y + (Math.random() - 0.5) * 140; }
+    else for (const id of g.changed || []) { const n = this.nodes.get(id); if (n) this.flares.push({ n, t0: performance.now() / 1000 }); this.alpha = Math.max(this.alpha, 0.45); }
     this.meta();
   }
-  meta() { $("#mind-meta").textContent = `${this.nodes.size} notes · ${this.links.length} links` + (DENSE ? ` · ${this.groups || 0} folders` : ""); }
+  meta() {
+    $("#mind-meta").textContent = `${this.nodes.size} notes · ${this.links.length} links · ${new Set([...this.nodes.values()].map((n) => n.neighborhood)).size} neighborhoods`;
+    const btn = $("#mind-recent-btn");
+    if (btn) {
+      btn.textContent = this.showRecent ? "Recent: On" : "Recent: Off";
+      btn.classList.toggle("on", this.showRecent);
+    }
+  }
+  toggleRecent() {
+    this.showRecent = !this.showRecent;
+    this.meta();
+  }
   step() {
     const nodes = [...this.nodes.values()]; if (!nodes.length) return; const a = this.alpha;
-    for (let i = 0; i < nodes.length; i++) { const p = nodes[i];
-      for (let j = i + 1; j < nodes.length; j++) { const q = nodes[j]; let dx = q.x - p.x, dy = q.y - p.y, d2 = dx * dx + dy * dy;
-        if (d2 > 90000) continue; if (d2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 1; }
-        const f = (380 * a) / d2; p.vx -= dx * f; p.vy -= dy * f; q.vx += dx * f; q.vy += dy * f; } }
-    for (const [p, q] of this.links) { const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1, L = 40 + Math.min(44, (p.deg + q.deg) * 0.8), f = ((d - L) / d) * 0.035 * a;
-      p.vx += dx * f; p.vy += dy * f; q.vx -= dx * f; q.vy -= dy * f; }
-    for (const n of nodes) { const an = this.anchor.get(n.group) || { x: 0, y: 0 }, pull = n.deg ? 0.0022 : 0.012;
-      n.vx += (an.x - n.x) * pull * a - n.x * 0.0006 * a; n.vy += (an.y - n.y) * pull * a - n.y * 0.0006 * a;
-      if (n === this.dragging) { n.vx = n.vy = 0; continue; } n.vx *= 0.82; n.vy *= 0.82; n.x += n.vx; n.y += n.vy; }
-    this.alpha = Math.max(0.05, this.alpha * 0.985);
+    for (let i = 0; i < nodes.length; i++) {
+      const p = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const q = nodes[j];
+        let dx = q.x - p.x, dy = q.y - p.y;
+        let d2 = dx * dx + dy * dy;
+        if (d2 > 360000) continue;
+        const d = Math.sqrt(Math.max(1, d2));
+        const minDist = 26;
+        let rep = (42 * a) / (d + 18);
+        if (d < minDist) rep += ((minDist - d) / minDist) * 2.0 * a;
+        const fx = (dx / d) * rep, fy = (dy / d) * rep;
+        p.vx -= fx; p.vy -= fy; q.vx += fx; q.vy += fy;
+      }
+    }
+    for (const [p, q] of this.links) {
+      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
+      const sameHood = p.neighborhood === q.neighborhood;
+      const targetL = sameHood ? (70 + Math.min(50, (p.deg + q.deg) * 0.7)) : (120 + Math.min(60, (p.deg + q.deg) * 0.8));
+      const f = ((d - targetL) / d) * 0.022 * a;
+      p.vx += dx * f; p.vy += dy * f;
+      q.vx -= dx * f; q.vy -= dy * f;
+    }
+    for (const n of nodes) {
+      const an = this.anchor.get(n.neighborhood) || { x: 0, y: 0 };
+      const pull = n.deg ? 0.0007 : 0.0025;
+      n.vx += (an.x - n.x) * pull * a - n.x * 0.0001 * a;
+      n.vy += (an.y - n.y) * pull * a - n.y * 0.0001 * a;
+      if (n === this.dragging) { n.vx = n.vy = 0; continue; }
+      n.vx *= 0.80; n.vy *= 0.80;
+      n.x += n.vx; n.y += n.vy;
+    }
+    this.alpha = Math.max(0.04, this.alpha * 0.988);
   }
   fit(w, h) {
     const nodes = [...this.nodes.values()]; if (!nodes.length) return;
@@ -652,39 +719,135 @@ class Mind {
     if (this.autofit) this.fit(w, h);
     const nowS = Date.now() / 1000, focus = this.hover || this.selected;
     const match = this.query ? new Set([...this.nodes.values()].filter((n) => (n.title + " " + n.id).toLowerCase().includes(this.query)).map((n) => n.id)) : null;
-    const lit = (n) => (match ? match.has(n.id) : focus ? n === focus || focus.nb.has(n.id) : true);
-    ctx.lineWidth = 0.8;
-    for (const [p, q] of this.links) { const A = this.toScreen(p, w, h), B = this.toScreen(q, w, h), on = focus && (p === focus || q === focus);
-      ctx.strokeStyle = rgba(this.colorOf(p.group), on ? 0.75 : (match || focus) ? 0.04 : 0.16); ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke(); }
-    for (const n of this.nodes.values()) { const S = this.toScreen(n, w, h); if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
-      const r = (1.6 + Math.sqrt(n.deg) * 0.9) * Math.sqrt(this.view.k), col = this.colorOf(n.group);
-      ctx.fillStyle = rgba(col, lit(n) ? 0.92 : 0.18); ctx.beginPath(); ctx.arc(S.x, S.y, r, 0, TAU); ctx.fill();
-      if (nowS - (n.mtime || 0) < 3600 && lit(n)) { ctx.strokeStyle = rgba(col, 0.9); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(S.x, S.y, r + 3.5, 0, TAU); ctx.stroke(); }
-      if (n === focus) { ctx.strokeStyle = PAL.fg; ctx.beginPath(); ctx.arc(S.x, S.y, r + 8, 0, TAU); ctx.stroke(); } }
+    const isRecent = (n) => (nowS - (n.mtime || 0) < 86400);
+    const lit = (n) => (match ? match.has(n.id) : focus ? n === focus || focus.nb.has(n.id) : this.showRecent ? isRecent(n) : true);
+    
+    // Links with neighborhood color
+    for (const [p, q] of this.links) {
+      const A = this.toScreen(p, w, h), B = this.toScreen(q, w, h), on = focus && (p === focus || q === focus);
+      const col = this.colorOf(p);
+      const linkLit = (!focus && !match && !this.showRecent) || (focus && on) || (match && match.has(p.id) && match.has(q.id)) || (this.showRecent && isRecent(p) && isRecent(q));
+      ctx.strokeStyle = rgba(col, on ? 0.85 : linkLit ? 0.08 : 0.015);
+      ctx.lineWidth = on ? 1.4 : 0.7;
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+    }
+
+    // Nodes
+    for (const n of this.nodes.values()) {
+      const S = this.toScreen(n, w, h); if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
+      const isFocused = (n === focus), isNeighbor = focus && focus.nb.has(n.id);
+      const isNodeRecent = isRecent(n);
+      const isHourRecent = (nowS - (n.mtime || 0) < 3600);
+      const isLit = lit(n);
+      const r = (2.0 + Math.sqrt(n.deg) * 0.95) * Math.sqrt(this.view.k), col = this.colorOf(n);
+      ctx.fillStyle = rgba(col, isLit ? (isFocused || isNeighbor ? 1.0 : 0.88) : 0.08);
+      ctx.beginPath(); ctx.arc(S.x, S.y, r, 0, TAU); ctx.fill();
+      if (isFocused) { ctx.strokeStyle = PAL.fg; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(S.x, S.y, r + 4.5, 0, TAU); ctx.stroke(); }
+      if (this.showRecent && isNodeRecent) {
+        ctx.strokeStyle = isHourRecent ? PAL.peach : rgba(col, 0.70);
+        ctx.lineWidth = isHourRecent ? 1.4 : 0.9;
+        ctx.beginPath(); ctx.arc(S.x, S.y, r + (isHourRecent ? 4 : 3), 0, TAU); ctx.stroke();
+      }
+    }
+
     const now = performance.now() / 1000; this.flares = this.flares.filter((f) => now - f.t0 < 4);
     for (const f of this.flares) { const k = (now - f.t0) / 4, S = this.toScreen(f.n, w, h); ctx.strokeStyle = rgba(PAL.sand, 0.8 * (1 - k)); ctx.lineWidth = 2 * (1 - k); ctx.beginPath(); ctx.arc(S.x, S.y, 4 + 46 * Math.sqrt(k), 0, TAU); ctx.stroke(); }
-    ctx.font = `10.5px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    const hubs = new Set([...this.nodes.values()].sort((a, b) => b.deg - a.deg).slice(0, 7).map((n) => n.id));
-    for (const n of this.nodes.values()) { const show = n === focus || (match && match.has(n.id) && match.size < 25) || (!focus && !match && hubs.has(n.id)); if (!show) continue;
-      const S = this.toScreen(n, w, h), txt = n.title.length > 30 ? n.title.slice(0, 29) + "…" : n.title, tw = ctx.measureText(txt).width;
-      ctx.fillStyle = rgba(PAL.bg, 0.75); ctx.fillRect(S.x - tw / 2 - 3, S.y - 21, tw + 6, 13); ctx.fillStyle = rgba(n === focus ? PAL.fg : this.colorOf(n.group), 0.9); ctx.fillText(txt, S.x, S.y - 8); }
+    
+    // Hub and Hover Labels with collision avoidance
+    ctx.font = `600 10.5px ${FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const hubs = [...this.nodes.values()].sort((a, b) => b.deg - a.deg).slice(0, 8);
+    const recentTop = this.showRecent ? [...this.nodes.values()].filter(isRecent).sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 8) : [];
+
+    const candidates = [];
+    if (focus) candidates.push({ node: focus, isFocused: true, priority: 1 });
+    if (match && match.size < 25) {
+      for (const id of match) {
+        const n = this.nodes.get(id);
+        if (n && n !== focus) candidates.push({ node: n, isMatched: true, priority: 2 });
+      }
+    }
+    if (!focus && !match) {
+      const list = this.showRecent ? recentTop : hubs;
+      for (const n of list) candidates.push({ node: n, isHub: true, priority: 3 });
+    }
+
+    const placed = [];
+    const collides = (b) => {
+      if (b.x < 6 || b.y < 22 || b.x + b.w > w - 6 || b.y + b.h > h - 6) return true;
+      for (const p of placed) {
+        if (!(b.x + b.w + 4 < p.x || b.x > p.x + p.w + 4 || b.y + b.h + 3 < p.y || b.y > p.y + p.h + 3)) return true;
+      }
+      return false;
+    };
+
+    for (const item of candidates) {
+      const n = item.node;
+      const S = this.toScreen(n, w, h);
+      if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
+      const r = (2.0 + Math.sqrt(n.deg) * 0.95) * Math.sqrt(this.view.k);
+      const txt = n.title.length > 28 ? n.title.slice(0, 27) + "…" : n.title;
+      const tw = ctx.measureText(txt).width;
+      const pillW = tw + 18, pillH = 18;
+
+      const slots = [
+        { x: S.x - pillW / 2, y: S.y - r - pillH - 4 },
+        { x: S.x - pillW / 2, y: S.y + r + 4 },
+        { x: S.x + r + 6, y: S.y - pillH / 2 },
+        { x: S.x - r - pillW - 6, y: S.y - pillH / 2 }
+      ];
+
+      let chosen = null;
+      for (const s of slots) {
+        const box = { x: s.x, y: s.y, w: pillW, h: pillH };
+        if (!collides(box)) { chosen = box; break; }
+      }
+
+      if (!chosen && item.isFocused) {
+        chosen = { x: S.x - pillW / 2, y: S.y - r - pillH - 4, w: pillW, h: pillH };
+      }
+      if (!chosen) continue;
+
+      placed.push(chosen);
+      const col = this.colorOf(n);
+
+      ctx.fillStyle = rgba(PAL.bg, item.isFocused ? 0.95 : 0.88);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(chosen.x, chosen.y, pillW, pillH, 4);
+      else ctx.rect(chosen.x, chosen.y, pillW, pillH);
+      ctx.fill();
+
+      ctx.strokeStyle = item.isFocused ? PAL.fg : rgba(col, item.isHub ? 0.6 : 0.35);
+      ctx.lineWidth = item.isFocused ? 1.2 : 0.8;
+      ctx.stroke();
+
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(chosen.x + 8, chosen.y + pillH / 2, 2.5, 0, TAU); ctx.fill();
+
+      ctx.fillStyle = item.isFocused ? PAL.fg : rgba(PAL.fg, 0.92);
+      ctx.fillText(txt, chosen.x + pillW / 2 + 4, chosen.y + pillH / 2);
+    }
     if (DENSE) this.hud(ctx, w, h, nowS);
   }
-  // dense: the folders and their counts, whether anything was touched this hour, and the notes edited last
+  // dense: semantic neighborhoods and their counts
   hud(ctx, w, h, nowS) {
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.font = `11px ${FONT}`;
     const counts = new Map();
-    for (const n of this.nodes.values()) counts.set(n.group, (counts.get(n.group) || 0) + 1);
-    const legend = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const lw = Math.max(...legend.map(([g, c]) => ctx.measureText(`${g.slice(0, 14)} ${c}`).width)) + 26;
-    ctx.fillStyle = rgba(PAL.bg, 0.72); ctx.fillRect(w - lw - 10, 14, lw, legend.length * 14 + 6);
+    for (const n of this.nodes.values()) counts.set(n.neighborhood, (counts.get(n.neighborhood) || 0) + 1);
+    const legend = [...(this.hoods || [])]
+      .map(([k, v]) => [v.label, counts.get(k) || 0, v.color])
+      .filter(([_, count]) => count > 0);
+    const lw = Math.max(...legend.map(([l, c]) => ctx.measureText(`${l} ${c}`).width)) + 26;
+    ctx.fillStyle = rgba(PAL.bg, 0.75); ctx.fillRect(w - lw - 10, 14, lw, legend.length * 15 + 6);
     let y = 26;
-    for (const [gname, c] of legend) {
-      ctx.fillStyle = this.colorOf(gname); ctx.beginPath(); ctx.arc(w - lw - 1, y - 4, 3, 0, TAU); ctx.fill();
-      ctx.fillStyle = rgba(PAL.fg, 0.58); ctx.fillText(`${gname.slice(0, 14)} ${c}`, w - lw + 8, y); y += 14;
+    for (const [label, count, col] of legend) {
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(w - lw - 1, y - 4, 3.5, 0, TAU); ctx.fill();
+      ctx.fillStyle = rgba(PAL.fg, 0.75); ctx.fillText(`${label} ${count}`, w - lw + 8, y); y += 15;
     }
-    const hot = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 3600).length;
-    say(ctx, hot ? `${hot} note${hot > 1 ? "s" : ""} touched this hour` : "quiet: nothing touched this hour", 14, 26, rgba(PAL.fg, 0.5), "left", `11px ${FONT}`);
+    const hotHour = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 3600).length;
+    const hotDay = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 86400).length;
+    say(ctx, `Recent: ${this.showRecent ? "ON" : "OFF"} · [R] toggle (${hotHour}h / ${hotDay}d)`, 14, 26, this.showRecent ? PAL.peach : rgba(PAL.fg, 0.55), "left", `11px ${FONT}`);
     const recent = [...this.nodes.values()].sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 5);
     recent.forEach((n, i) => say(ctx, `~ ${n.id.slice(-40)} · ${ago(nowS - (n.mtime || 0))} ago`, 14, h - 14 - i * 15,
       rgba(i === 0 ? PAL.sand : PAL.fg, 0.72 - i * 0.11), "left", `11px ${FONT}`));
@@ -699,10 +862,19 @@ class Mind {
   openSearch() { const s = $("#mind-search"); s.classList.remove("hidden"); s.value = this.query; s.focus(); }
   wire() {
     const cv = this.cv; let down = null;
+    const recentBtn = $("#mind-recent-btn");
+    if (recentBtn) {
+      recentBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.toggleRecent();
+      });
+    }
     cv.addEventListener("wheel", (e) => { e.preventDefault(); this.autofit = false; const r = cv.getBoundingClientRect(), before = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
       this.view.k = clamp(this.view.k * Math.exp(-e.deltaY * 0.0015), 0.15, 6); const after = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
       this.view.x += after.x - before.x; this.view.y += after.y - before.y; }, { passive: false });
-    cv.addEventListener("mousedown", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, n = this.pick(x, y);
+    cv.addEventListener("mousedown", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      if (x < 240 && y < 40) { this.toggleRecent(); return; }
+      const n = this.pick(x, y);
       down = { x, y, n, vx: this.view.x, vy: this.view.y, moved: false }; if (n) this.dragging = n; });
     window.addEventListener("mousemove", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       if (down) { if (Math.hypot(x - down.x, y - down.y) > 3) down.moved = true;
@@ -721,7 +893,12 @@ class Mind {
         if (hit) { this.selected = hit; this.autofit = false; this.view.x = -hit.x; this.view.y = -hit.y; this.view.k = Math.max(this.view.k, 1.6); this.showCard(hit, true); }
       }
     });
-    window.addEventListener("keydown", (e) => { if (e.key === "/" && !e.altKey && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) { e.preventDefault(); findNote(); } });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "/" && !e.altKey && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) { e.preventDefault(); findNote(); }
+      if ((e.key === "r" || e.key === "R") && !e.altKey && !e.ctrlKey && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) {
+        this.toggleRecent();
+      }
+    });
   }
 }
 

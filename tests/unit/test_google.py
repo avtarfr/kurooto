@@ -197,6 +197,19 @@ def test_classroom_notes_fetches_posts_files_and_hands_them_to_the_ai(classroom,
     assert cn.sync()["items"] == 1
 
 
+def test_posts_older_than_the_window_wait_for_a_longer_one_and_edited_ones_count_as_new(classroom):
+    env, g, ai, cn = classroom
+    g.materials["c1"].append(
+        {"id": "m2", "title": "Old but edited", "creationTime": "2020-01-01T00:00:00Z", "updateTime": RECENT}
+    )
+    assert cn.sync()["items"] == 7  # the six of the test above, and the old post that was edited lately
+    run_jobs(env.app)
+    assert cn.sync()["items"] == 0
+    env.app.settings.set("classroom_notes.backfill_days", 99999)
+    assert cn.sync()["items"] == 1  # "Old slides" wasn't marked seen, so the longer window finds it now
+    assert cn.sync()["items"] == 0
+
+
 def test_classroom_batches_are_retried_until_filed(classroom):
     env, g, ai, cn = classroom
     ai.mode = "500"

@@ -462,6 +462,32 @@ class Alarm(Module):
         calls = self.app.modules.get("calls")
         if calls:
             calls.connector.poke()
+        self._mirror()
+
+    def status(self) -> str:
+        """What's set, in a sentence or two: the next alarm, the daily one, the days that are skipped."""
+        at, daily = self.next(), self.setting("daily")
+        lines = [f"Alarm: {at:%a %d %b, %H:%M}." if at else "No alarm set. /alarm 6:45 sets one."]
+        if daily:
+            days = self.setting("days") or DAYS
+            every = "every day" if len(days) == 7 else ", ".join(days)
+            lines.append(f"Daily alarm: {daily} ({every}).")
+        skips = sorted(self.skips())
+        if skips:
+            lines.append("No alarm on " + ", ".join(f"{d:%a %d %b}" for d in skips) + ".")
+        return " ".join(lines)
+
+    @property
+    def mirror_file(self):
+        return self.app.paths.state / "alarm.md"
+
+    def _mirror(self) -> None:
+        """The same as a Markdown file (alarm.md in the state folder), for programs that read files rather than call
+        tools. Never fails what changed the alarm."""
+        try:
+            self.mirror_file.write_text(f"# Alarm\n\n{self.status()}\n\n(Updated {now():%Y-%m-%d %H:%M}.)\n", "utf-8")
+        except OSError:
+            pass
 
     def _ring(self, p: dict) -> None:
         j = jload(self.file, {}) or {}
@@ -523,6 +549,13 @@ class Alarm(Module):
                 hint="set_alarm sets the wake-up call; in an evening call, ask when to wake them and set it.",
             ),
             Tool(
+                "get_alarm",
+                "Read the alarm: when the next wake-up call rings, the daily alarm, and the days skipped. Use it for "
+                '"do I have any alarms?", "when is my alarm?".',
+                lambda a: self.status(),
+                offline="brief",
+            ),
+            Tool(
                 "morning_plan",
                 "The steps for the wake-up call: today's drafted plan, classes, what's due, when to call later.",
                 lambda a: self.script(),
@@ -567,10 +600,7 @@ class Alarm(Module):
 
     def _cmd(self, msg: Incoming, arg: str) -> str:
         if not arg:
-            at = self.next()
-            daily = self.setting("daily")
-            tail = f" Daily: {daily}." if daily else ""
-            return (f"Alarm: {at:%a %d %b, %H:%M}." if at else "No alarm set. /alarm 6:45 sets one.") + tail
+            return self.status()
         return self._tool({"time": arg})
 
     def intents(self):
@@ -589,6 +619,22 @@ class Alarm(Module):
             r"(?:on )?(?P<c>.+))$",
             re.I,
         )
+
+        ask_open = re.compile(
+            r"^(?:please |hey |so )?(?:do i have|have i got|have i set|did i set|is there|are there|is my|are my|any|"
+            r"got any|what'?s?|which|when'?s?|what time|show|list|check|tell me|how many)\b",
+            re.I,
+        )
+        ask_not = re.compile(
+            r"\b(?:cancel|turn off|delete|remove|clear|skip|stop|disable|wake me|don'?t|snooze)\b", re.I
+        )
+
+        def asking(t: str) -> bool:
+            """A question about the alarm ("do I have any alarms?", "when is my alarm?"), not an order."""
+            t = t.rstrip("?! .").strip()
+            return bool(
+                len(t) <= 70 and re.search(r"\balarms?\b", t, re.I) and ask_open.match(t) and not ask_not.search(t)
+            )
 
         def match(text: str):
             t = text.strip().rstrip(".!")
@@ -618,6 +664,13 @@ class Alarm(Module):
 
         return [
             Intent("alarm", "wake me at …, no alarm tomorrow, turn my daily alarm off", match, run),
+            Intent(
+                "alarm_status",
+                "do I have any alarms? when is my alarm?",
+                lambda text: {"ask": True} if asking(text) else None,
+                lambda msg, sl: self.status(),
+                questions=True,
+            ),
             Intent(
                 "up_now",
                 "I'm awake, I just woke up (the morning call now)",
