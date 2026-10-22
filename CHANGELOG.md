@@ -19,6 +19,9 @@
 - **A free Gemini key goes further**: when one model's daily free limit is used up, the next of the Flash family
   answers (the answer says which).
 - **Renaming your assistant** renames the Telegram bot too and says so once.
+- **Concept graph fixes**: a concept dropped after a second look is no longer linked from the notes of the same
+  batch (it left broken links); the daily pass takes out Kurooto's own links to notes that don't exist; a run paused
+  by a signed-out or limited AI tries again in 20 minutes instead of 3 hours.
 - **Concept graph**: cost and request counts (`/graph`), effort goes up for books that need many second looks.
 
 - **GPU reranker for the concept graph**: on a computer with a helper model (an 8 GB card, an Apple Silicon Mac, a

@@ -547,3 +547,50 @@ def test_cost_and_requests_are_counted_and_shown(world):
     env.integrate.spend(Result(Verdict.OK, "x", usage={}))
     out = env.say("/graph")
     assert "2 AI requests" in out and "$0.01" in out
+
+
+def test_a_concept_dropped_after_a_second_look_is_linked_by_nobody(world):
+    env = world
+    ad = c_ad(quote="this quote is not anywhere in the pages at all, not one bit")
+    bp = c_bp(same_as=None, name="Error backpropagation in layers", aliases=[], update="")
+    bp["quote"] = QUOTE_BP
+    bp["links"] = [
+        {
+            "target": "Automatic differentiation",
+            "relation": "special-case-of",
+            "reason": "the deltas are the adjoints of reverse-mode differentiation on a layered graph",
+            "confidence": 0.9,
+        }
+    ]
+    env.fake_ai.answer = answer(ad, bp)
+    env.integrate.tick()
+    env.app.jobs.run_next()
+    env.fake_ai.answer = json.dumps({"items": [{"id": 1, "keep": False}]})  # the quote check fails: AD is dropped
+    run_all(env)
+    ws = env.app.workspace
+    assert not (ws / "zettel" / "automatic-differentiation.md").exists()
+    for p in (ws / "zettel").glob("*.md"):
+        assert "[[zettel/automatic-differentiation]]" not in p.read_text(encoding="utf-8"), p.name
+
+
+def test_the_daily_pass_takes_out_kuroots_links_to_notes_that_do_not_exist(world):
+    env = world
+    p = env.app.workspace / "zettel" / "gradient-descent.md"
+    p.write_text(
+        p.read_text(encoding="utf-8")
+        + "\n## Links\n- needs:: [[zettel/gone-forever]] — a reason that is long enough to pass the check\n"
+        + "- [[zettel/also-gone]]: your own link, kept as you wrote it\n",
+        encoding="utf-8",
+    )
+    assert env.integrate.prune_dangling(env.integrate.index()) == 1
+    text = p.read_text(encoding="utf-8")
+    assert "gone-forever" not in text and "also-gone" in text
+
+
+def test_a_signed_out_stand_in_retries_soon_instead_of_in_hours(world):
+    env = world
+    env.fake_ai.mode = "401"
+    env.integrate.tick()
+    while env.app.jobs.run_next():
+        pass
+    assert env.app.scheduler.get("integrate:soon") is not None

@@ -111,6 +111,7 @@ class Integrate(Module):
         return self.app.modules["books"]
 
     def start(self):
+        self.action("soon", lambda p=None: self.tick())
         self.every("night", self.setting("at") or "daily 01:30", self.tick)
         self.every("retry", "every 3h", self.tick)  # carries on after a limit has reset
         if self.setting("garden"):
@@ -335,6 +336,11 @@ class Integrate(Module):
             # hours, and at night), without counting as a failed try
             self.record(b, bid, state="pending", why=short(result.detail or result.verdict.value, 120))
             self.app.events.emit("integrate_waiting", why=result.verdict.value)
+            # try again in 20 minutes: often only the stand-in AI was signed out or at its limit, and the main one is
+            # fine again by then (the 3-hourly retry is the fallback)
+            self.app.scheduler.at(
+                now() + dt.timedelta(minutes=20), "integrate.soon", key=f"{self.id}:soon", module=self.id
+            )
             return
         if data is None:
             tries = self.tries(b, bid) + 1
@@ -466,8 +472,8 @@ class Integrate(Module):
         journal: dict[str, str | None] = {}
         counts = {"new": 0, "same": 0, "links": 0, "skipped": 0}
         seen = self.load("seen.json", {})
-        names_by_slug = {c.slug: c for c in concepts if c.slug}
         core = [c for c in concepts if c.role == "core" and c.slug]
+        names_by_slug = {c.slug: c for c in core}  # only what gets a note: a dropped concept is linked by nobody
 
         def put(path: Path, old: str | None, new: str) -> bool:
             if old is not None:
@@ -671,6 +677,7 @@ class Integrate(Module):
         index = self.index()
         if not index.notes:
             return {}
+        self.prune_dangling(index)
         g = self.load("garden.json", {"queue": [], "last": {}})
         limit = int(self.setting("garden_per_day") or 40)
         pick: list[str] = []
@@ -708,6 +715,35 @@ class Integrate(Module):
             sent += 1
         self.save("garden.json", g)
         return {"asked": sent}
+
+    def prune_dangling(self, index: cg.Index) -> int:
+        """Take out the typed link lines Kurooto wrote (`- relation:: [[x]] — …`) whose note doesn't exist: a concept
+        that was dropped after a second look, or a note you deleted. Your own links are never touched."""
+        root = Path(self.app.workspace)
+        every = {p.relative_to(root).with_suffix("").as_posix() for p in root.rglob("*.md") if ".git" not in p.parts}
+        names = {Path(x).name for x in every}
+        fixed, paths = 0, []
+        for n in index.notes.values():
+            try:
+                old = n.path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            keep = []
+            for ln in old.split("\n"):
+                m = gw.LINK_LINE.match(ln) and gw.WIKILINK.search(ln)
+                t = m[1].strip().removesuffix(".md") if m else ""
+                if m and t not in every and Path(t).name not in names:
+                    fixed += 1
+                    continue
+                keep.append(ln)
+            new = "\n".join(keep)
+            if new != old and gw.guarded(old, new).ok:
+                write_note_file(n.path, new)
+                paths.append(str(n.path))
+        if paths:
+            self.commit(paths, f"graph: {fixed} link{'s' if fixed != 1 else ''} to notes that don't exist taken out")
+            self.app.events.emit("integrate_pruned", links=fixed)
+        return fixed
 
     def _linked(self, job, result, payload: dict) -> None:
         self.spend(result)
