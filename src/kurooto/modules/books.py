@@ -226,21 +226,21 @@ class Doc:
 
 
 def chapters(outline: list[tuple[int, str, int | None]], pages: dict[int, str], total: int, depth: int = 2):
-    """[(level, title, first page, last page)]: from the bookmarks, else from "Chapter 3 ..." lines at the top of
-    pages."""
-    marks = [(lv, t, p) for lv, t, p in outline if p and lv <= depth]
-    if not marks:
-        for n in sorted(pages):
-            head = [ln for ln in pages[n].splitlines() if ln.strip()][:4]
-            for ln in head:
-                m = CHAPTER.match(ln)
-                if m:
-                    marks.append((1, re.sub(r"\s+", " ", ln).strip()[:100], n))
-                    break
-    out = []
-    for i, (lv, title, first) in enumerate(marks):
-        nxt = next((p for lv2, _, p in marks[i + 1 :] if lv2 <= lv), total + 1)
-        out.append((lv, title, first, max(first, nxt - 1)))
+    """[(level, title, first page, last page)]: from the bookmarks, else from numbered headings and running headers,
+    else from "Chapter 3 ..." lines (core/segment.py: a margin note like "Section 9.1" is never a heading)."""
+    from kurooto.core import segment
+
+    secs = segment.sections(pages, outline, total)
+    out = [
+        (
+            s.level,
+            f"{s.number} {s.title}".strip() if s.number and not s.title.startswith(s.number) else s.title,
+            s.first,
+            s.last,
+        )
+        for s in secs
+        if s.level <= depth
+    ]
     return out[:300]
 
 
