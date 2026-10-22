@@ -79,6 +79,7 @@ MODULE_ORDER = [
     "drive_upload",
     "handwritten",
     "books",
+    "integrate",
     "study",
     "research",
     "terminals",
