@@ -65,6 +65,8 @@ register_defaults(
         "gemini_model": "gemini-flash-latest",
         "dpi": 200,  # how sharp the page pictures are for OCR
         "brain": True,  # index the text into the notes brain when it's on
+        "brain_source": "",  # an existing gbrain source (`gbrain sources list`) for the chunks; "" = the default one
+        "after_read": [],  # your command, run after each book is read, with its subject and id added: ["prog", "-x"]
         "max_mb": 400,  # bigger files are left alone
     },
 )
@@ -273,6 +275,7 @@ class Books(Module):
         self.prereqs = Prereqs(app.paths.app, app.paths.cache)
         self._thread: threading.Thread | None = None
         self._halt = threading.Event()
+        self._force = False
         self.status = ""  # what the reader is doing now, for /books
 
     # ------------------------------------------------------------------------------------------- places
@@ -300,10 +303,17 @@ class Books(Module):
     def folder(self, subject: str) -> Path:
         root, pattern = self.roots()[0]
         s = slug(subject, 80)
-        return root / s / "books" if pattern == "*/books" else root / s
+        if pattern == "*/books":
+            return root / s / "books"
+        if root.is_dir():
+            for p in root.iterdir():
+                if p.is_dir() and not p.name.startswith("."):
+                    if self.subject_of(p.name) == s or slug(p.name, 80) == s:
+                        return p
+        return root / s
 
     def library(self) -> list[dict]:
-        """Every book: {"subject", "path", "id"}."""
+        """Every book: {"subject", "path", "id"} across all subdirectories."""
         out = []
         for root, pattern in self.roots():
             if not root.is_dir():
@@ -312,9 +322,34 @@ class Books(Module):
                 d = sub / "books" if pattern == "*/books" else sub
                 if not d.is_dir():
                     continue
-                for f in sorted(d.iterdir()):
-                    if f.is_file() and f.suffix.lower() == ".pdf" and not f.name.startswith("."):
-                        out.append({"subject": slug(sub.name, 80), "path": f, "id": slug(f.stem)})
+                default_subj = self.subject_of(sub.name) or slug(sub.name, 80)
+                for f in sorted(x for x in d.rglob("*") if x.suffix.lower() == ".pdf"):
+                    if f.is_file() and not any(part.startswith(".") for part in f.relative_to(d).parts):
+                        rel_parts = f.relative_to(d).parts[:-1]
+                        subj = default_subj
+                        sub_matched = False
+                        if rel_parts:
+                            for idx, part in enumerate(rel_parts):
+                                s = self.subject_of(part)
+                                if s and s != slug(part, 80):
+                                    subj = s
+                                    rem = rel_parts[idx + 1 :]
+                                    stem = f.stem
+                                    bid = (
+                                        "-".join([slug(p, 80) for p in rem] + [slug(stem, 80)])
+                                        if rem
+                                        else slug(stem, 80)
+                                    )
+                                    sub_matched = True
+                                    break
+                        if not sub_matched:
+                            rel = f.relative_to(d).with_suffix("")
+                            bid = slug(str(rel)) if rel.parent != Path(".") else slug(f.stem)
+                        out.append({"subject": subj, "path": f, "id": bid})
+            for f in sorted(x for x in root.glob("*") if x.suffix.lower() == ".pdf"):
+                if f.is_file() and not f.name.startswith("."):
+                    subj = self.subject_of(f.stem) or "books"
+                    out.append({"subject": subj, "path": f, "id": slug(f.stem)})
         return out
 
     def subject_of(self, text: str) -> str | None:
@@ -479,7 +514,7 @@ class Books(Module):
             return "stopped"
         if not self.app.is_on(self.id) and self.app.modules.get(self.id) is self:
             return "turned off"
-        if not self.app.power.may_run(self):
+        if not self._force and not self.app.power.may_run(self):
             return "on battery"
         if until is not None and now() >= until:
             return "morning"
@@ -583,7 +618,29 @@ class Books(Module):
         meta["finished"] = meta.get("finished") or now().isoformat(timespec="seconds")
         meta["indexed"] = self.to_brain(b, meta, pages)
         jsave(d / "meta.json", meta)
+        self._hubs()
+        self._after_read(b)
         self.app.events.emit("book_read", pages=meta["pages"], **{k: v for k, v in meta["routes"].items()})
+
+    def _hubs(self) -> None:
+        """Keep the home and research hubs linked (core/hubs.py), so a book's page isn't an island; never fails."""
+        from kurooto.core import hubs
+
+        try:
+            hubs.ensure(self.app)
+        except Exception as e:
+            self.app.events.emit("hubs_failed", error=str(e)[:200])
+
+    def _after_read(self, b: dict) -> None:
+        """books.after_read: your own command (a list: the program, then its arguments) runs once a book is read, with
+        its subject and id on the end, e.g. to link its concepts into your notes. Never through a shell; what it does
+        is yours, and a failure is only logged."""
+        cmd = self.setting("after_read")
+        if not isinstance(cmd, list) or not cmd or not all(isinstance(x, str) for x in cmd):
+            return
+        r = proc.run([*cmd, b["subject"], b["id"]], timeout=300, cwd=self.app.workspace)
+        if r.code != 0:
+            self.app.events.emit("book_after_read_failed", book=b.get("id"), error=(r.err or r.out or "")[-200:])
 
     def write_index(self, b: dict, meta: dict) -> str:
         """<subject>/books/<book>.md in the notes: Kurooto's part between markers, yours around it."""
@@ -591,7 +648,26 @@ class Books(Module):
         note = lay.path("subject", subject=b["subject"]) / "books" / f"{b['id']}.md"
         how = ", ".join(f"{SAID.get(k, k)} {v}" for k, v in sorted(meta["routes"].items(), key=lambda kv: -kv[1]))
         course = lay.path("course", subject=b["subject"])
-        where = f"[[{lay.link('course', subject=b['subject'])}]]" if course.exists() else f"{b['subject']}"
+        if course.exists():
+            where = f"[[{lay.link('course', subject=b['subject'])}]]"
+        else:
+            # Check for project hubs or research maps (e.g. projects/<subfolder>/index, maps/research)
+            s = b["subject"].lower().strip()
+            ws = self.app.workspace
+            hub = None
+            for cand in [
+                ws / "projects" / s / "index.md",
+                ws / "projects" / f"{s}.md",
+                ws / "books" / s / "index.md",
+                ws / "maps" / f"{s}.md",
+            ]:
+                if cand.is_file():
+                    hub = f"[[{cand.relative_to(ws).with_suffix('')}]]"
+                    break
+            if hub:
+                where = f"{hub} · [[maps/research]]" if (ws / "maps" / "research.md").is_file() else hub
+            else:
+                where = f"{b['subject']}"
         rows = [
             f"A book for {where}: {npages(meta['pages'])}, read {(meta.get('finished') or now().isoformat())[:10]} "
             f"({how or 'nothing yet'}).",
@@ -627,10 +703,15 @@ class Books(Module):
                     f"---\ntitle: {json.dumps(name)}\ntags: [book, {b['subject']}]\n---\n\n# {name}\n\n{body}\n",
                     encoding="utf-8",
                 )
-        args = ["import", str(self.brain_dir)]
+        args = ["import", str(self.brain_dir.resolve())]
+        src = str(self.setting("brain_source") or "").strip()
+        if src:
+            args.extend(["--source-id", src])
         if (jload(self.app.paths.state / "gbrain.json", {}) or {}).get("embeddings", "off") == "off":
             args.append("--no-embed")
         r = gb.run(*args, timeout=3600, wait=0)
+        if not r.ok and src and "exist" in f"{r.out}{r.err}".lower():  # a source GBrain doesn't have (yet)
+            self.app.events.emit("book_source_missing", source=src, hint=f"gbrain sources add {src} --path <folder>")
         return bool(r.ok)
 
     def _tell(self, meta: dict) -> None:
@@ -680,11 +761,12 @@ class Books(Module):
         end = cur.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
         return end if end > cur else end + dt.timedelta(days=1)
 
-    def spawn(self, until: dt.datetime | None = None) -> bool:
+    def spawn(self, until: dt.datetime | None = None, force: bool = False) -> bool:
         """Read in the background (books take hours); once at a time."""
         if self._thread is not None and self._thread.is_alive():
             return False
         self._halt.clear()
+        self._force = force
         self._thread = threading.Thread(target=self.read_all, args=(until,), name="books", daemon=True)
         self._thread.start()
         return True
@@ -853,18 +935,26 @@ class Books(Module):
         word, rest = word.lower(), rest.strip()
         if not a:
             return self.overview()
-        if word in ("read", "now") or a.lower() in ("read now", "read"):
+        if word in ("read", "now"):
+            force = any(x in ("force", "--force") for x in rest.lower().split())
             left = sum(
                 max(0, (self.meta(b).get("pages") or 1) - (self.meta(b).get("done") or 0)) for b in self.library()
             )
             if not self.library():
                 return self.overview()
-            if not self.app.power.may_run(self):
+            on_battery = not self.app.power.may_run(self)
+            if on_battery and not force:
                 self.app.scheduler.at(now(), "books.now", key="books:now", module=self.id)
-                return "This laptop is on battery: I'll start reading the moment it's plugged in."
-            if not self.spawn(self._until()):
+                return (
+                    "This laptop is on battery: I'll start reading the moment it's plugged in "
+                    "(or run /books read force)."
+                )
+            if not self.spawn(self._until(), force=force):
                 return f"Already reading: {self.status or 'between pages'}."
-            return f"Reading now ({left} page(s) left, until {self.setting('until') or '07:00'} or you unplug)."
+            until = self.setting("until") or "07:00"
+            how = " (forced on battery)" if on_battery else ""
+            end = "or you stop it" if force else "or you unplug"
+            return f"Reading now{how} ({left} page(s) left, until {until} {end})."
         if word == "stop":
             self._halt.set()
             return "Stopping after this page; it carries on tonight."

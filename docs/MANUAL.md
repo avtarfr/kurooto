@@ -2649,6 +2649,8 @@ the old places again; what was written in the meantime stays where it was put (n
 
 ## Where things are
 
+Every setting, its default and what it does: [SETTINGS_GUIDE.md](SETTINGS_GUIDE.md).
+
 `kurooto paths` prints them. By default:
 
 | | Windows | macOS | Linux |

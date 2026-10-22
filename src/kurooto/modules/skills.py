@@ -314,6 +314,48 @@ def send_file(app: App, path, caption: str = "", inside: list[Path] | None = Non
     return True, f"Sent {p.name} to your Telegram."
 
 
+def send_files(
+    app: App, paths, caption: str = "", inside: list[Path] | None = None, zip_name: str = ""
+) -> tuple[bool, str]:
+    """Send several files: one or two as they are, more as one zip (so Telegram isn't flooded and nothing is lost
+    to its rate limit). Every file must be inside `inside` (when given); the zip is kept under Telegram's limit."""
+    import zipfile
+
+    files: list[Path] = []
+    for raw in paths:
+        try:
+            p = Path(os.path.expanduser(str(raw))).resolve(strict=True)
+        except (OSError, RuntimeError):
+            return False, f"There's no file {raw}."
+        if not p.is_file():
+            return False, f"{p.name} isn't a file."
+        if inside is not None and not any(p.is_relative_to(Path(d).resolve()) for d in inside):
+            return False, "I can only send files from the notes folder."
+        if p not in files:
+            files.append(p)
+    if not files:
+        return False, "No files to send."
+    if len(files) <= 2:
+        said = [send_file(app, f, caption if i == 0 else "", inside=inside)[1] for i, f in enumerate(files)]
+        return True, " ".join(said)
+    total = sum(f.stat().st_size for f in files)
+    if total > TELEGRAM_MAX:
+        return False, f"Those files are {total / 1024 / 1024:.0f} MB together; Telegram takes up to 50 MB. Send fewer."
+    name = re.sub(r"[^A-Za-z0-9._-]+", "-", zip_name or "files").strip("-") or "files"
+    dest = Path(app.paths.cache) / "send" / (name if name.endswith(".zip") else name + ".zip")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    seen: set[str] = set()
+    with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as z:
+        for f in files:
+            arc, n = f.name, 2
+            while arc.lower() in seen:
+                arc, n = f"{f.stem}-{n}{f.suffix}", n + 1
+            seen.add(arc.lower())
+            z.write(f, arc)
+    ok, msg = send_file(app, dest, caption or f"{len(files)} files")
+    return ok, (f"{len(files)} files in one zip: " if ok else "") + msg
+
+
 # ------------------------------------------------------------------------------------------ routines
 WHEN = re.compile(
     r"^\s*(?:every\s+)?(?P<days>day|daily|weekdays?|weekends?|"
@@ -403,29 +445,80 @@ def tectonic(app: App) -> str | None:
     return p.find() if p else None
 
 
+def system_tex(app: App) -> str | None:
+    """A LaTeX engine already on this computer (TeX Live, MiKTeX, MacTeX): latexmk, else pdflatex."""
+    from kurooto.core import proc
+
+    for name in ("latexmk", "pdflatex"):
+        exe = proc.which(name, [])
+        if exe:
+            return exe
+    return None
+
+
+def pdf_engine(app: App) -> str | None:
+    """What makes a PDF from LaTeX here: Tectonic if it's installed, else the computer's own LaTeX."""
+    return tectonic(app) or system_tex(app)
+
+
+def _tex_errors(res) -> str:
+    lines = (res.out + "\n" + res.err).splitlines()
+    errs = [ln for ln in lines if re.search(r"\berror\b|^!", ln, re.I) and "fontconfig" not in ln.lower()]
+    return "\n".join(errs[:12])[:1500] or ("it took too long" if res.code is None else "it failed")
+
+
 def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
-    """Compile with Tectonic (untrusted mode: no shell escape). The first run downloads the LaTeX packages it needs
-    into Kurooto's cache folder, which takes a few minutes."""
+    """Make the PDF next to the .tex: with Tectonic (untrusted mode: no shell escape; the first run downloads the LaTeX
+    packages it needs into Kurooto's cache folder, which takes a few minutes), else with the computer's own LaTeX."""
     from kurooto.core import proc
 
     exe = tectonic(app)
-    if not exe:
-        return False, "Tectonic isn't installed"
-    env = {**os.environ, "TECTONIC_CACHE_DIR": str(app.paths.cache / "tectonic")}
+    own = None if exe else system_tex(app)
+    if not exe and not own:
+        return False, "There's no LaTeX engine (Tectonic isn't installed, and neither is LaTeX)"
+    kept = {e for e in (".aux", ".log", ".out", ".toc", ".fls", ".fdb_latexmk") if tex.with_suffix(e).exists()}
     try:
-        res = proc.run(
-            [exe, "--untrusted", "--chatter", "minimal", "--outdir", str(tex.parent), str(tex)],
-            timeout=timeout,
-            env=env,
-            cwd=tex.parent,
-        )
+        if exe:
+            env = {**os.environ, "TECTONIC_CACHE_DIR": str(app.paths.cache / "tectonic")}
+            res = proc.run(
+                [exe, "--untrusted", "--chatter", "minimal", "--outdir", str(tex.parent), str(tex)],
+                timeout=timeout,
+                env=env,
+                cwd=tex.parent,
+            )
+        elif Path(own).stem.lower() == "latexmk":
+            res = proc.run(
+                [
+                    own,
+                    "-pdf",
+                    "-interaction=nonstopmode",
+                    "-halt-on-error",
+                    "-silent",
+                    f"-outdir={tex.parent}",
+                    str(tex),
+                ],
+                timeout=timeout,
+                cwd=tex.parent,
+            )
+        else:  # twice, for the references and the table of contents
+            for _ in range(2):
+                res = proc.run(
+                    [own, "-interaction=nonstopmode", "-halt-on-error", "-no-shell-escape",
+                     f"-output-directory={tex.parent}", str(tex)],
+                    timeout=timeout,
+                    cwd=tex.parent,
+                )  # fmt: skip
+                if not res.ok:
+                    break
     except OSError as e:
         return False, str(e)
+    finally:
+        for e in (".aux", ".log", ".out", ".toc", ".fls", ".fdb_latexmk"):
+            if e not in kept:
+                tex.with_suffix(e).unlink(missing_ok=True)  # what the engine leaves beside the PDF
     if res.ok and tex.with_suffix(".pdf").is_file():
         return True, ""
-    lines = (res.out + "\n" + res.err).splitlines()
-    errs = [ln for ln in lines if re.search(r"\berror\b|^!", ln, re.I) and "fontconfig" not in ln.lower()]
-    return False, "\n".join(errs[:12])[:1500] or ("it took too long" if res.code is None else "it failed")
+    return False, _tex_errors(res)
 
 
 # ------------------------------------------------------------------------------------------- module
@@ -984,25 +1077,34 @@ class Skills(Module):
         return "Building it; it comes here in a few minutes."
 
     def _studypack(self, msg: Incoming, arg: str) -> str:
-        """Bundle notes and course files into a zip with a prompt for external AI."""
-        subject = arg.strip()
-        if not subject:
-            return "Which subject? /studypack <subject> (e.g. /studypack l96)"
-        try:
-            import io
-            import zipfile
+        """/studypack <subject> [what it's for]: the subject's notes and course files in a zip with a prompt for another
+        AI (core/studypack.py), sent here."""
+        text = arg.strip()
+        if not text:
+            return "Which subject? /studypack deep learning quiz on thursday (the rest says what it's for)"
+        subj = self.app.modules.get("subjects")
+        found = subj.find_in(text) if subj is not None and self.app.is_on("subjects") else []
+        if found:
+            sid, name = found[0], subj.name_of(found[0])
+            aim = re.sub(re.escape(name), "", text, count=1, flags=re.I).strip(" ,:-")
+            for alias in [sid, *next((x.get("aliases", []) for x in subj.subjects() if x["slug"] == sid), [])]:
+                aim = re.sub(r"(?<![A-Za-z0-9])" + re.escape(alias) + r"(?![A-Za-z0-9])", "", aim, count=1, flags=re.I)
+            aim = aim.strip(" ,:-")
+        else:
+            sid, _, aim = text.partition(" ")
+            name = ""
+        return self._send_study_pack(sid, name, aim, msg.message_id)
 
-            buf = io.BytesIO()
-            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-                zf.writestr("PROMPT.md", f"# Study Pack: {subject}\n\nMaterials for {subject}.\n")
-            zip_bytes = buf.getvalue()
-            dest = self.app.workspace / f"studypack-{subject}.zip"
-            dest.write_bytes(zip_bytes)
-            if msg.respond:
-                self.app.notify(f"Study pack for {subject}", file=str(dest), reply_to=msg.message_id)
-            return f"Created study pack: {dest.name}"
-        except Exception as e:
-            return f"Failed to create study pack: {e}"
+    def _send_study_pack(self, subject: str, name: str, aim: str, reply_to=None) -> str:
+        from kurooto.core import studypack
+
+        try:
+            zip_path, info = studypack.build(self.app, subject, name, aim)
+        except ValueError as e:
+            return str(e)
+        ok, said = send_file(self.app, zip_path, f"Study pack: {name or subject}. Give it to your AI with PROMPT.md.")
+        left = f" {len(info['left_out'])} file(s) didn't fit; INDEX.md lists them." if info["left_out"] else ""
+        return f"{info['notes']} notes and {info['files']} course files in one zip.{left} {said}"
 
     def _pack(self, msg: Incoming, arg: str) -> str:
         if not arg.strip():
@@ -1010,7 +1112,7 @@ class Skills(Module):
         if not load_skill(self.app, "revision-pack"):
             return "The revision-pack skill is missing."
         self.pack_for(arg.strip(), reply_to=msg.message_id)
-        pdf = "" if tectonic(self.app) else " (as LaTeX: PDFs need Tectonic, which I'll offer to install)"
+        pdf = "" if pdf_engine(self.app) else " (as LaTeX: PDFs need Tectonic, which I'll offer to install)"
         return f"Building a revision pack{pdf}; it comes here in a few minutes."
 
     def _latex(self, job, result, payload: dict) -> None:
@@ -1044,7 +1146,7 @@ class Skills(Module):
 
     def _finish_pack(self, f: Path, payload: dict) -> None:
         label = payload.get("label") or "Your PDF"
-        if not tectonic(self.app):
+        if not pdf_engine(self.app):
             ref = self._remember_pack(f, payload)
             send_file(
                 self.app,
@@ -1131,11 +1233,21 @@ class Skills(Module):
         if not ok:
             self.app.notify(msg, kind="result", why="asked")
             return
+        d = (jload(self.dir / "packs.json", {}) or {}).get(ref) if ref else None
+        f = self.app.workspace / d["tex"] if d else None
+        if f is not None and f.is_file():  # the pack that was waiting: no second tap
+            self.app.notify(
+                "Tectonic is installed. Making that PDF now; the first one takes a few minutes while it fetches the "
+                "LaTeX packages.",
+                kind="result",
+                why="asked",
+            )
+            self._finish_pack(f, {**d, "attempt": 2})
+            return
         self.app.notify(
             "Tectonic is installed: revision packs come as PDFs now. The first PDF takes a few minutes while it "
             "fetches the LaTeX packages.",
             kind="result",
-            buttons=[[("Make that PDF now", f"skt:{ref}:pdf")]] if ref else None,
             why="asked",
         )
 
@@ -1172,22 +1284,68 @@ class Skills(Module):
                 },
                 ("path",),
                 offline="queue",
-                hint="send_file sends them a file from their notes on Telegram.",
-            )
+                hint="send_file sends them a file from their notes on Telegram. When they ask for files, send them "
+                "(send_file, send_files, study_pack): never answer with file paths or file:// links.",
+            ),
+            Tool(
+                "send_files",
+                "Send them several files on Telegram: up to two as they are, more as one zip. When they ask for "
+                "'the files' or 'everything about X', find them (list_files, search_notes) and send them with this.",
+                self._tool_send_many,
+                {
+                    "paths": arg("the files' paths, one per line (inside the notes folder or the course files folder)"),
+                    "zip_name": arg("a name for the zip when there are more than two, optional"),
+                    "caption": arg("one line about them, optional"),
+                },
+                ("paths",),
+                offline="queue",
+            ),
+            Tool(
+                "study_pack",
+                "Send them a zip with one subject's notes and course files and a prompt they can give another AI "
+                "(Claude, ChatGPT) to write deeper notes. Use it for 'send me everything for my X quiz'.",
+                self._tool_study_pack,
+                {
+                    "subject": arg("the subject, e.g. deep learning or its short name"),
+                    "aim": arg("what it's for, e.g. quiz on Thursday, optional"),
+                },
+                ("subject",),
+                offline="queue",
+            ),
         ]
+
+    def _sendable(self) -> list[Path]:
+        """Where a tool may send files from: your notes, files and course files, Kurooto's Classroom copies."""
+        from kurooto.core.places import write_roots
+
+        return [*write_roots(self.app), self.app.paths.data / "classroom", Path(self.app.paths.cache) / "study-packs"]
 
     def _tool_send(self, a: dict) -> str:
         p = Path(str(a.get("path") or "").strip())
         if not p.is_absolute():
             p = self.app.workspace / p
-        classroom_dir = self.app.workspace.parent / "classroom"
-        inside = [
-            self.app.workspace,
-            *([r] if (r := layout.files_root(self.app)) else []),
-            *([classroom_dir] if classroom_dir.exists() else []),
-        ]
         to = "drive" if str(a.get("to") or "").strip().lower() == "drive" else ""
-        return send_file(self.app, p, str(a.get("caption") or ""), inside=inside, to=to)[1]
+        return send_file(self.app, p, str(a.get("caption") or ""), inside=self._sendable(), to=to)[1]
+
+    def _tool_send_many(self, a: dict) -> str:
+        raw = a.get("paths") or ""
+        items = raw if isinstance(raw, list) else re.split(r"[\n;]+", str(raw))
+        paths = []
+        for x in items:
+            x = str(x).strip().removeprefix("file://").strip()
+            if not x:
+                continue
+            q = Path(x)
+            paths.append(q if q.is_absolute() else self.app.workspace / q)
+        return send_files(
+            self.app, paths, str(a.get("caption") or ""), inside=self._sendable(), zip_name=str(a.get("zip_name") or "")
+        )[1]
+
+    def _tool_study_pack(self, a: dict) -> str:
+        text = str(a.get("subject") or "").strip()
+        subj = self.app.modules.get("subjects")
+        sid = subj.resolve(text) if subj is not None and self.app.is_on("subjects") else None
+        return self._send_study_pack(sid or text, subj.name_of(sid) if sid else "", str(a.get("aim") or ""))
 
 
 def dt_time(text: str) -> dt.time:

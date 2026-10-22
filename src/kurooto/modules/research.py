@@ -171,6 +171,7 @@ there are new commits or runs; write your own text anywhere, it's never changed.
 
 ## Projects
 """
+HUB_ABOUT = "What I work on: {about}\n\n"
 IDLE_CHOICES = ["Busy", "Working off-git", "Remind me tomorrow", "Pausing it"]
 
 
@@ -182,6 +183,20 @@ def slug(name: str) -> str:
 def project_note(workspace, project: str) -> Path:
     """`workspace`: the App, a layout.Layout, or a notes folder (the default layout)."""
     return layout.of(workspace).path("project", project=slug(project))
+
+
+def ensure_hub(lay, assistant: str = "Kurooto", about: str = "") -> Path:
+    """The research hub note (made if missing, with what you work on when you've said), where projects, books and
+    courses link to."""
+    hub = lay.path("research")
+    if not hub.exists():
+        hub.parent.mkdir(parents=True, exist_ok=True)
+        text = HUB.format(name=assistant)
+        if about.strip():
+            head, sep, tail = text.partition("\n\n")
+            text = head + "\n\n" + HUB_ABOUT.format(about=about.strip()) + tail
+        hub.write_text(lay.frontmatter("research", hub, title="Research", bare=True) + text, encoding="utf-8")
+    return hub
 
 
 def ensure_project(workspace, project: str, assistant: str = "Kurooto", repos: list[str] | None = None) -> Path:
@@ -199,12 +214,7 @@ def ensure_project(workspace, project: str, assistant: str = "Kurooto", repos: l
             "## Log\n",
             encoding="utf-8",
         )
-    hub = lay.path("research")
-    if not hub.exists():
-        hub.parent.mkdir(parents=True, exist_ok=True)
-        hub.write_text(
-            lay.frontmatter("research", hub, title="Research", bare=True) + HUB.format(name=assistant), encoding="utf-8"
-        )
+    hub = ensure_hub(lay, assistant)
     link = f"[[{lay.link('project', project=slug(project))}|{project}]]"
     text = hub.read_text(encoding="utf-8")
     if link not in text:

@@ -457,6 +457,21 @@ def test_gather_mixes_the_sources_and_labels_citations(books, pdfs):
     assert "Sources for linear-algebra" in tool.run({"subject": "Linear Algebra", "topic": "eigenvalue"})
 
 
+def test_library_finds_books_in_nested_subdirectories(books, pdfs):
+    d = books.folder("linear-algebra")
+    nested = d / "chapterwise" / "part1"
+    nested.mkdir(parents=True)
+    (nested / "vectors.pdf").write_bytes(pdfs["text"].read_bytes())
+    (d / "root_book.pdf").write_bytes(pdfs["text"].read_bytes())
+
+    lib = books.library()
+    ids = {b["id"]: b for b in lib}
+    assert "root-book" in ids
+    assert "chapterwise-part1-vectors" in ids
+    assert ids["chapterwise-part1-vectors"]["subject"] == "linear-algebra"
+    assert ids["chapterwise-part1-vectors"]["path"] == nested / "vectors.pdf"
+
+
 # ------------------------------------------------------------------------------------------- the skills
 def test_notes_skills_draw_on_the_source_mix_and_cite(env):
     from pathlib import Path
@@ -470,3 +485,44 @@ def test_notes_skills_draw_on_the_source_mix_and_cite(env):
         text = Path(found[name].path).read_text(encoding="utf-8")
         assert "course_sources" in text and "p. 123" in text, name
         assert "shell command" not in text and "python" not in text.lower(), name
+
+
+def test_library_finds_pdfs_whatever_the_case_of_the_extension(books, pdfs):
+    d = books.folder("linear-algebra")
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "Upper.PDF").write_bytes(pdfs["text"].read_bytes())
+    (d / "deep" / "er").mkdir(parents=True)
+    (d / "deep" / "er" / "Mixed.Pdf").write_bytes(pdfs["text"].read_bytes())
+    ids = {b["id"] for b in books.library()}
+    assert {"upper", "deep-er-mixed"} <= ids
+
+
+def test_a_book_read_runs_your_after_read_command_with_its_subject_and_id(books, tmp_path):
+    out = tmp_path / "seen.txt"
+    script = tmp_path / "hook.py"
+    script.write_text(f"import sys\nopen({str(out)!r}, 'w').write(' '.join(sys.argv[1:]))\n", encoding="utf-8")
+    import sys
+
+    books.app.settings.set("books.after_read", [sys.executable, str(script)])
+    books._after_read({"subject": "linear-algebra", "id": "vectors"})
+    assert out.read_text() == "linear-algebra vectors"
+    books.app.settings.set("books.after_read", [])
+    out.unlink()
+    books._after_read({"subject": "x", "id": "y"})
+    assert not out.exists()
+
+
+def test_no_personal_paths_in_the_shipped_code():
+    from pathlib import Path
+
+    import kurooto
+
+    bad = ("ultimate-ai-" + "automation", "/mnt/" + "data", str(Path.home()))  # this author's, and any author's, home
+    hits = [
+        f"{f.name}: {b}"
+        for f in Path(kurooto.__file__).parent.rglob("*")
+        if f.suffix in (".py", ".js", ".html", ".css", ".md") and f.is_file()
+        for b in bad
+        if b in f.read_text(encoding="utf-8", errors="ignore")
+    ]
+    assert not hits

@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -288,6 +289,7 @@ def wait_for(cond, secs=5.0):
 
 def test_pack_without_tectonic_sends_the_tex_and_offers_the_install(env, ai, monkeypatch):
     monkeypatch.setattr(sk, "tectonic", lambda app: None)
+    monkeypatch.setattr(sk, "system_tex", lambda app: None)  # nor LaTeX of the computer's own
     env.on("subjects")
     env.say("/subject add Linear Algebra (la)")
     assert "as LaTeX" in env.say("/pack la midterm friday")
@@ -352,6 +354,38 @@ def test_an_answer_without_latex_is_delivered_as_is(env, ai, monkeypatch):
     ai.answer = "I couldn't find any biology notes."
     env.app.jobs.run_next()
     assert "couldn't find any biology notes" in env.fake.texts()[-1] and "no PDF" in env.fake.texts()[-1]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="a script stands in for latexmk")
+def test_the_computers_own_latex_makes_the_pdf_when_tectonic_isnt_there(tmp_path, env, monkeypatch):
+    fake = tmp_path / "latexmk"
+    fake.write_text(
+        f"#!{sys.executable}\nimport sys, pathlib\n"
+        "tex = pathlib.Path(sys.argv[-1])\n"
+        "tex.with_suffix('.pdf').write_bytes(b'%PDF-1.4 fake')\n"
+        "tex.with_suffix('.aux').write_text('x')\n"
+        "tex.with_suffix('.log').write_text('x')\n",
+        encoding="utf-8",
+    )
+    fake.chmod(0o755)
+    monkeypatch.setattr(sk, "tectonic", lambda app: None)
+    monkeypatch.setattr(sk, "system_tex", lambda app: str(fake))
+    assert sk.pdf_engine(env.app) == str(fake)
+    f = tmp_path / "t.tex"
+    f.write_text(TEX)
+    ok, err = sk.compile_tex(env.app, f)
+    assert ok, err
+    assert f.with_suffix(".pdf").is_file()
+    assert not f.with_suffix(".aux").exists() and not f.with_suffix(".log").exists()  # no litter next to the pdf
+
+
+def test_no_engine_at_all_says_so(tmp_path, env, monkeypatch):
+    monkeypatch.setattr(sk, "tectonic", lambda app: None)
+    monkeypatch.setattr(sk, "system_tex", lambda app: None)
+    f = tmp_path / "t.tex"
+    f.write_text(TEX)
+    ok, err = sk.compile_tex(env.app, f)
+    assert not ok and "no LaTeX engine" in err
 
 
 def test_real_tectonic_compile(tmp_path, env):
@@ -524,3 +558,34 @@ def test_a_link_on_its_own_is_filed(env, ai):
     assert "Skill: add-to-notes" in p and "https://example.com/notes/fourier.pdf for signals" in p
     env.say("can you summarise https://example.com/a")  # a request about a link goes to Chat
     assert env.app.jobs.recent(1)[0].prompt.startswith("can you summarise")
+
+
+def test_install_tectonic_button_installs_it_then_makes_the_waiting_pdf(env, ai, monkeypatch):
+    from kurooto.core.prereqs import Prereqs
+
+    have = {"tectonic": None}
+    monkeypatch.setattr(sk, "tectonic", lambda app: have["tectonic"])
+    monkeypatch.setattr(sk, "system_tex", lambda app: None)
+
+    def fake_install(self, name, progress=None):
+        have["tectonic"] = "/fake/tectonic"
+        return True, "installed"
+
+    def fake_compile(app, tex, timeout=900):
+        tex.with_suffix(".pdf").write_bytes(b"%PDF-1.7 fake")
+        return True, ""
+
+    monkeypatch.setattr(Prereqs, "install", fake_install)
+    monkeypatch.setattr(sk, "compile_tex", fake_compile)
+    env.on("subjects")
+    env.say("/subject add Linear Algebra (la)")
+    env.say("/pack la midterm")
+    ai.answer = pack_answer()
+    env.app.jobs.run_next()
+    assert wait_for(lambda: len(docs(env)) == 1 and "Install Tectonic" in str(env.fake.sent[-1]))
+    q = [p for m, p in env.fake.sent if m == "sendMessage"][-1]
+    yes = q["reply_markup"]["inline_keyboard"][0][0]["callback_data"]
+    assert env.press(yes).startswith("Installing Tectonic")
+    assert wait_for(lambda: len(docs(env)) == 2)  # the .tex came first, then the PDF, without another tap
+    assert list(env.app.workspace.rglob("*.pdf"))
+    assert any("Making that PDF now" in (t or "") for t in env.fake.texts())

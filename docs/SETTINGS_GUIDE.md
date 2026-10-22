@@ -1,0 +1,687 @@
+# Settings guide
+
+Every setting Kurooto has, what it does and its default. This file is written by `tools/gen_settings_guide.py` from the
+code, so it is complete; the notes on the left come from the comment beside each setting in the source.
+
+## Where settings live, and how to change one
+
+- **The dashboard:** Settings (Alt+S), grouped by feature, with a search box. Changes apply at once; most are read
+  again the next time they're used, a few (marked in the dashboard) need `kurooto restart`.
+- **The file:** `settings.json` in Kurooto's config folder (Linux `~/.config/kurooto`, macOS
+  `~/Library/Application Support/Kurooto/config`, Windows `%LOCALAPPDATA%\Kurooto\config`). It holds only what you changed; delete a
+  line to go back to the default. A dotted name such as `brain.main` is the key `main` inside `brain`:
+  `{"brain": {"main": "agy"}}`.
+- **The terminal:** `kurooto doctor` says what's wrong with the settings that matter.
+- Secrets (keys, tokens) are never in `settings.json`: they're in the system keyring or `secrets.json` beside it.
+
+## How an AI is allowed to act (permissions)
+
+Requests run by an agent program (agy, Codex, Claude Code) are unattended, so what they may do is decided in advance:
+
+| | agy | Claude Code (from 0.5.6) | Codex |
+|---|---|---|---|
+| Kurooto's tools (reminders, notes, calls, files) | allowed in agy's own settings, once | given for each request | given for each request |
+| Your own GBrain's tools (`gbrain.agy_mcp` on) | allowed in agy's own settings | given for each request | no |
+| Read | notes, course files, Classroom and mail copies, Documents, Downloads, Screenshots | the same | notes folder |
+| Write | notes folder, course files folder, your add-ons' skills | the same | none |
+| Harmless commands | `cat date echo file find git grep head jq latexmk ls mkdir pdftotext pwd rg sort stat tail tree uniq wc which` | the same | none |
+| Web pages | yes | yes | no |
+| `kurooto` itself | never | never | never |
+| Where it's kept | agy's `settings.json` (a backup is taken; your own rules stay) | nowhere: nothing is saved in Claude Code's settings | nowhere |
+
+A request that tries anything else is refused, and the answer says what was refused. To widen what agy may do, add a
+rule to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself; Kurooto never removes rules it
+didn't write. Add-ons run as you, with your own permissions; turn on only ones you wrote or read.
+
+## Add-ons
+
+A Python file in the add-ons folder (`overlay.path`, shown in Settings → Add-ons) that defines a `Module` subclass is loaded
+when Kurooto starts, once "Your add-ons" is on. It gets the same settings, features and dashboard cell as a built-in
+feature. Add-ons are yours: they aren't part of updates and aren't published.
+
+## Every setting
+
+
+### `agent_plan`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `agent_plan.name` | `"Agent plan"` | the name of the plan your AI subscription is on, shown in usage lines |
+| `agent_plan.remind_min` | `5` | minutes before a plan's usage window ends to remind you |
+
+### `agents`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `agents.export` | `[]` | where your skills go as slash commands: "agy", "agents" (Codex and Copilot CLI) |
+| `agents.prefix` | `""` | put before every exported skill's name, e.g. "k-" for /k-journal |
+
+### `alarm`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `alarm.bedtime` | `null` | "23:00": with the alarm set, no calls from then until it rings; None = the night's start |
+| `alarm.daily` | `null` | "07:00" rings every day (on the days below) unless you set another time; None = off |
+| `alarm.days` | `["mon", "tue", "wed", "thu", "fri", "sat", "sun"]` | the days the daily alarm rings |
+| `alarm.keep_awake` | `false` | keep this computer awake until the alarm (Linux: lid closed too), so the plan is drafted |
+| `alarm.notes` | `true` | after the wake-up call: today's plan (with Chat on) or what you said, in the daily note |
+| `alarm.open_page` | `true` | at the alarm, open the morning page on this computer if it's awake |
+| `alarm.prep_min` | `20` | with Chat on: the AI drafts the day's plan this long before the alarm; 0 = don't |
+| `alarm.reason` | `"Wake-up call"` | what the wake-up call says it's for |
+| `alarm.retries` | `2` | how many more times it rings if you don't answer |
+| `alarm.snooze_min` | `10` | minutes a snoozed alarm waits |
+
+### `ask`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `ask.expire_hours` | `48` | an unanswered question expires after this long, unless its asker said otherwise |
+| `ask.keep_days` | `30` | answered and expired questions are forgotten after this long |
+
+### `attendance`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `attendance.grades` | `{}` | grade lines for /standing, % of a course's total: {"A": 85, "B": 70, "C": 55, "D": 40} |
+| `attendance.lab_min_pct` | `75` | the rule for labs, which are counted on their own |
+| `attendance.lab_slots` | `[]` | timetable slots that are the lab of their subject: ["thu 14:00"] |
+| `attendance.min_pct` | `75` | a course's rule: the share of its classes you must attend, unless `rules` says otherwise |
+| `attendance.rules` | `{}` | a course's own rule: {"la": 80, "la:lab": 100} |
+| `attendance.since` | `""` | count classes from this day ("2026-08-03"); filled in with the day you turn it on |
+| `attendance.weekly` | `true` | one line in the Sunday summary |
+
+### `autostart`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `autostart.when` | `"login"` | login \| boot (Linux with systemd: before anyone logs in) |
+
+### `availability`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `availability.focus_keyword` | `"#focus"` | a calendar event with this in its title holds messages and calls (focus) |
+| `availability.night.alarm_only` | `false` | hold calls at night only when a wake-up alarm is set |
+| `availability.night.enabled` | `true` | no calls during the night hours |
+| `availability.night.from` | `"23:30"` | when the night hours start |
+| `availability.night.to` | `"07:00"` | when the night hours end |
+| `availability.nocall_calendar` | `"no call"` | every event in a calendar whose name contains this holds calls |
+| `availability.nocall_keyword` | `"#nocall"` | a calendar event with this in its title means no calls during it |
+
+### `awake`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `awake.lid` | `false` | Linux: also keep running with the lid closed while plugged in |
+
+### `backups`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `backups.confidential_mail` | `false` | also confidential mail summarised on this computer (Mail digest's local mode) |
+| `backups.folder` | `""` | where the zips go: an external drive or a cloud-synced folder |
+| `backups.index` | `true` | also the notes brain's index (big, but slow to rebuild) |
+| `backups.keep` | `7` | how many zips to keep |
+| `backups.notes` | `false` | also your notes folder |
+| `backups.secrets` | `false` | also passwords and keys (bot token, API keys, sign-ins): anyone with the zip can use them |
+| `backups.when` | `"daily 03:30"` | when the automatic backup runs |
+
+### `books`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `books.after_read` | `[]` | your command, run after each book is read, with its subject and id added: ["prog", "-x"] |
+| `books.at` | `"daily 01:00"` | when the night's reading starts |
+| `books.brain` | `true` | index the text into the notes brain when it's on |
+| `books.brain_source` | `""` | an existing gbrain source (`gbrain sources list`) for the chunks; "" = the default one |
+| `books.dpi` | `200` | how sharp the page pictures are for OCR |
+| `books.folder` | `""` | your own folder for books, a subfolder per subject; empty: files.folder, else Kurooto's |
+| `books.gemini` | `false` | True: pages nothing on this computer can read go to Gemini (your key) as pictures |
+| `books.gemini_model` | `"gemini-flash-latest"` | the Gemini model that reads scanned book pages when it's chosen |
+| `books.latex` | `"maths"` | pages the vision model reads for LaTeX: maths (pages full of it) \| all \| never |
+| `books.max_mb` | `400` | bigger files are left alone |
+| `books.ocr` | `"auto"` | who reads scanned pages: auto (Tesseract, else the vision model) \| tesseract \| vision \| off |
+| `books.ocr_lang` | `"eng"` | Tesseract's languages, e.g. "eng+deu" (each needs its language data installed) |
+| `books.until` | `"07:00"` | when it stops (it carries on the next night) |
+
+### `brain`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `brain.agy.io_mode` | `"pipe"` | how Kurooto talks to agy: pipe, or a pseudo-terminal where pipes give no output |
+| `brain.base_urls` | `{}` | per brain, to override a preset's address |
+| `brain.classify` | `"rules"` | who judges how hard a request is: rules, main (your AI) or ollama |
+| `brain.fallback` | `""` | the AI that takes over when the main one is rate-limited or signed out (empty: none) |
+| `brain.main` | `""` | the AI that handles requests: agy, codex, claude, gemini, ollama or custom |
+| `brain.models` | `{}` | per brain: {"custom": {"low": ..., "medium": ..., "high": ...}} |
+| `brain.timeout_min.high` | `30` | minutes a hard request may run before it's stopped |
+| `brain.timeout_min.low` | `10` | minutes a quick request may run before it's stopped |
+| `brain.timeout_min.medium` | `15` | minutes a normal request may run before it's stopped |
+
+### `calendar`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `calendar.class_calendars` | `[]` | names (any part, any case) of calendars whose events are classes, e.g. ["Timetable"] |
+| `calendar.days` | `14` | how many days ahead Kurooto reads your calendar |
+| `calendar.mask_private` | `true` | private events: "Busy (private)", nothing else kept |
+| `calendar.no_calls_in_events` | `true` | no calls while a calendar event is on |
+| `calendar.nocall_events` | `"all"` | "all": every timed event holds calls; "tagged": #nocall ones, "no call" calendars |
+| `calendar.private_keyword` | `"#private"` | an event with this in its title is never shown or read aloud |
+| `calendar.refresh` | `"every 15m"` | how often the calendar is read again |
+| `calendar.remind_min` | `0` | minutes before an event to remind you (0: off) |
+
+### `calls`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `calls.later_min` | `30` | "Later" on a ringing call calls back after this long |
+| `calls.live_model` | `"gemini-3.8-live"` | the Gemini Live voice model for calls |
+| `calls.live_models` | `["gemini-3.1-flash-live-preview", "gemini-2.5-flash-nativ…` | other Live models to try, in order, when the first one is down |
+| `calls.notes_repo` | `""` | owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off |
+| `calls.ntfy_server` | `"https://ntfy.sh"` | the push server the phone app listens to (change only if you run your own) |
+| `calls.persona` | `""` | extra words on how to talk on calls, e.g. "be brief and a bit cheeky" |
+| `calls.realert_min` | `[3, 6]` | a call you didn't answer rings again this many minutes after the first; [] = once |
+| `calls.ring_s` | `60` | how long a call rings before it counts as missed |
+| `calls.text_model` | `"gemini-flash-latest"` | the Gemini model for turn-by-turn calls (here, or on your call line) |
+| `calls.turn_brain` | `"gemini"` | answers turn-by-turn calls here: "gemini" (your key) or "local" (Local AI models) |
+| `calls.voice` | `""` | a Gemini Live voice name (e.g. "Kore"); empty = Google's default |
+| `calls.voice_by_kind` | `{}` | a voice per kind of call, e.g. {"alarm": "Puck"} |
+| `calls.voice_by_model` | `{}` | a voice per Live model |
+| `calls.voice_mode` | `"auto"` | how calls talk: auto uses Gemini Live and your phone's own speech if Live is down |
+| `calls.worker.name` | `""` | your call line's name on Cloudflare (set when it's deployed) |
+| `calls.worker.url` | `""` | your call line's address (set when it's deployed) |
+| `calls.worker.version` | `""` | the version of the call line that's deployed (set by Kurooto) |
+
+### `capture`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `capture.delay_min` | `2` | minutes after a class ends before it asks what happened |
+| `capture.skip_subjects` | `[]` | never ask after these |
+| `capture.study_log` | `true` | with Chat on, the AI writes one |
+| `capture.subjects` | `[]` | ask only after these subjects' classes; empty: every subject |
+
+### `cases`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `cases.button` | `true` | a Wrong button under replies to plain-English requests (/wrong works either way) |
+| `cases.fallthroughs` | `true` | keep short requests no instant request understood (they went to the AI) |
+| `cases.keep_days` | `30` | cases you didn't make test cases are forgotten after this long |
+| `cases.learn` | `true` | a test case may teach its phrasing (only if every test case that passed still passes) |
+| `cases.review` | `"weekly sun 19:00"` | when the look back may show the phrasings that came up most... |
+| `cases.review_days` | `28` | ...at most this often (about once a month) |
+| `cases.review_max` | `5` | phrasings in one look back |
+
+### `checkins`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `checkins.ai_notes` | `true` | with Chat on: after a check-in call, the AI writes your journal and study logs |
+| `checkins.asleep_defers` | `true` | by call, alarm set and you've gone to bed: the night check-in waits for the morning |
+| `checkins.by_call` | `false` | with Phone calls on: the check-in is a call (a missed call falls back to Telegram) |
+| `checkins.day_starts` | `"05:00"` | a check-in day runs from here to here: a night check-in at 00:30 is the evening's |
+| `checkins.journal` | `true` | add each check-in's answer to your journal |
+| `checkins.questions.evening` | `"How did today go? What got done, and what slipped?"` | the evening check-in's question |
+| `checkins.questions.midday` | `"How's the morning been? Anything to re-plan for the afte…` | the midday check-in's question |
+| `checkins.questions.night` | `"Before bed: anything else for your journal? What's first…` | the night check-in's question |
+| `checkins.times.evening` | `"22:00"` | None = off (night: e.g. "23:15") |
+| `checkins.times.midday` | `null` | None = off (night: e.g. "23:15") |
+| `checkins.times.night` | `null` | None = off (night: e.g. "23:15") |
+
+### `classpacks`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `classpacks.labs` | `"separate"` | with labs counted on their own ("separate") or together with the lectures ("together") |
+| `classpacks.min_pct` | `75` | the section's attendance rule in packs you make: at least this many percent of classes, |
+
+### `classroom_notes`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `classroom_notes.at` | `"daily 07:00,13:00,19:00"` | when new Classroom posts are fetched |
+| `classroom_notes.backfill_days` | `60` | posts older than this (and not edited since) are left alone; a longer window finds them |
+| `classroom_notes.files` | `true` | download the Drive files attached to posts and read their text |
+| `classroom_notes.folders` | `{}` | a course's exact name -> the notes folder you want it in (otherwise Kurooto picks one) |
+| `classroom_notes.max_file_mb` | `30` | Classroom files bigger than this (MB) aren't downloaded |
+| `classroom_notes.skip` | `[]` | courses to leave out: words from their names |
+
+### `deadlines`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `deadlines.call` | `true` | with Phone calls on, the six-hour nudge is a call (a message when no call fits before it) |
+| `deadlines.exam_mode_days` | `14` | exam mode starts this many days before a quiz or exam (0: never) |
+| `deadlines.from_calendar` | `true` | calendar events that look like deadlines or exams (with Calendar on) |
+| `deadlines.from_term_note` | `true` | quizzes, exams and deadlines from the term note's key dates (Subjects: /term note) |
+| `deadlines.horizon_days` | `30` | recurring quizzes become dated deadlines this far ahead |
+| `deadlines.max_files` | `3000` | the most notes read when looking for deadlines |
+| `deadlines.overdue_check` | `true` | after the due time: "Overdue?" with Done / New date / Drop |
+| `deadlines.ping_h` | `24` | hours between reminders for a deadline that's close |
+| `deadlines.plan_h` | `72` | "due soon": what's due this many hours ahead goes into the morning plan, /status and calls |
+| `deadlines.recurring` | `true` | recurring quizzes from kurooto/recurring.md |
+| `deadlines.scan_notes` | `true` | also find deadlines written in your notes |
+| `deadlines.tick_notes` | `true` | Done ticks the "- [ ]" line in your notes when the deadline came from one |
+| `deadlines.urgent_h` | `6` | a deadline closer than this many hours is urgent |
+
+### `doubts`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `doubts.before_min` | `30` | open doubts come this long before the subject's next class |
+| `doubts.recent_h` | `3` | a doubt naming no subject is for the class that's on, or ended this many hours ago |
+
+### `drive_upload`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `drive_upload.big_files` | `true` | files over Telegram's 50 MB go to your Google Drive and you get a link |
+| `drive_upload.folder` | `"Kurooto"` | the Google Drive folder files go to |
+
+### `exam_season`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `exam_season.alarm_check` | `true` | every night of the period: will tomorrow's alarm ring? |
+| `exam_season.budget` | `true` | only deadlines, quizzes and the alarm during the day; the rest waits for the evening bundle |
+| `exam_season.debrief` | `true` | after each exam: a two-minute debrief, into the subject's course note |
+| `exam_season.eve` | `true` | the evening before each exam: where is it, which seat, calculator, ID card? |
+| `exam_season.eve_at` | `"18:00"` | ...asked from this time |
+| `exam_season.exam_min` | `180` | how long an exam takes (no calls then; the debrief comes half an hour after) |
+| `exam_season.hold_updates` | `true` | non-critical updates wait until the exams are over |
+| `exam_season.leave_alarm` | `true` | on the exam day, an alarm to leave (a call with Phone calls on, else a message) |
+| `exam_season.leave_min` | `45` | ...this long before the exam starts, unless you say a time ("leave 8:10") |
+| `exam_season.night_at` | `"21:30"` | ...checked at this time |
+| `exam_season.no_calls` | `true` | no calls during an exam |
+| `exam_season.quiz_call_at` | `"19:00"` | the evening before an exam you picked a quiz call for |
+| `exam_season.quizzes` | `false` | quizzes and tests outside an exam period count as exams too |
+
+### `files`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `files.folder` | `""` | a folder for files outside your notes (course files, PDFs); empty: inside the notes |
+| `files.links` | `""` | how notes link to files: empty is automatic |
+
+### `gbrain`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `gbrain.agy_mcp` | `false` | your own GBrain: agy gets its MCP tools too (asked first) |
+| `gbrain.checkup` | `false` | weekly checkup; a message only when something needs a look |
+| `gbrain.checkup_ignore` | `["backup_", "mcp_", "chronicle", "auto_chronicle", "unins…` | checkup findings starting with these words aren't reported |
+| `gbrain.checkup_when` | `"weekly sun 19:30"` | when the weekly notes-brain checkup runs |
+| `gbrain.embeddings` | `"auto"` | where the notes brain gets its embeddings: auto, ollama, gemini or off |
+| `gbrain.exe` | `""` | your own GBrain: your gbrain program; empty: the one on your PATH |
+| `gbrain.home` | `""` | your own GBrain: its GBRAIN_HOME; empty: GBrain's default |
+| `gbrain.managed` | `true` | Kurooto runs its own brain; False: your own GBrain (gbrain.exe, gbrain.home) |
+| `gbrain.mcp_surface` | `"full"` | what that MCP server offers agy: full \| starter \| verbs |
+| `gbrain.nightly` | `"daily 03:00"` | when the notes brain's nightly upkeep runs |
+| `gbrain.source` | `""` | your own GBrain: the source that is your notes folder, kept in step (empty: you do that) |
+| `gbrain.sync` | `"every 15m"` | how often notes are indexed |
+| `gbrain.timelines` | `true` | nightly: dated log lines become timelines (no AI, nothing leaves the computer) |
+| `gbrain.upkeep` | `false` | nightly upkeep, light steps only (heavy: waits for the charger) |
+| `gbrain.upkeep_steps` | `[]` | the upkeep's steps (GBrain's phase names); empty: the light ones (UPKEEP_STEPS) |
+
+### `google`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `google.accounts` | `["main"]` | your Google accounts by name; "main" is the first one you signed in with |
+| `google.agent_calendar` | `false` | Kurooto's own "Agent plan" calendar |
+| `google.calendar_read` | `false` | your calendars, read-only (Google Calendar) |
+| `google.classroom` | `true` | read Classroom (courses, assignments, announcements) |
+| `google.classroom_every` | `"every 3h"` | how often Classroom is checked for deadlines |
+| `google.classroom_notes` | `false` | Classroom materials and attached Drive files (read-only) |
+| `google.digest_email` | `false` | the mail digest emailed to yourself (send only) |
+| `google.drive_upload` | `false` | files you send yourself, into a Kurooto folder in Drive (its own files only) |
+| `google.endpoints.auth` | `"https://accounts.google.com/o/oauth2/v2/auth"` | Google's sign-in address (for tests and proxies; leave alone) |
+| `google.endpoints.calendar` | `"https://www.googleapis.com/calendar/v3"` | Google Calendar's API address (leave alone) |
+| `google.endpoints.classroom` | `"https://classroom.googleapis.com/v1"` | Google Classroom's API address (leave alone) |
+| `google.endpoints.drive` | `"https://www.googleapis.com/drive/v3"` | Google Drive's API address (leave alone) |
+| `google.endpoints.drive_upload` | `"https://www.googleapis.com/upload/drive/v3"` | Google Drive's upload address (leave alone) |
+| `google.endpoints.gmail` | `"https://gmail.googleapis.com/gmail/v1"` | Gmail's API address (leave alone) |
+| `google.endpoints.token` | `"https://oauth2.googleapis.com/token"` | noqa: S105 (an address) |
+| `google.gmail_drafts` | `false` | save drafts in Gmail (asked for separately: Google calls it a restricted permission) |
+| `google.mail_digest` | `false` | read Gmail (read-only) |
+| `google.reply_drafts` | `false` | reply drafts in Gmail, sent only when you tap Send |
+| `google.use` | `{}` | which signed-in Google account each feature uses (Settings → Google) |
+
+### `google_calendar`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `google_calendar.skip` | `[]` | calendar names (any part of them, any case) to leave out |
+
+### `handwritten`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `handwritten.cloud` | `true` | with no model here, Gemini (your key) reads them; False: they wait for a model here |
+| `handwritten.dpi` | `110` | how sharp the page pictures are |
+| `handwritten.every` | `"every 15m"` | how often the handwritten-notes folder is checked |
+| `handwritten.folder` | `""` | where scans land; empty = handwritten-inbox in your notes (or in your files folder) |
+| `handwritten.into` | `""` | where the notes go, inside your notes folder; empty = your notes layout's (handwritten/) |
+| `handwritten.keep_original` | `"copy"` | copy (next to the note, or in files.folder) \| link (leave it where it is) |
+| `handwritten.local` | `true` | a model on this computer reads the pages when there is one (photos and PDFs) |
+| `handwritten.local_model` | `""` | an Ollama model of your choice that reads pictures; empty: Local models' pick |
+| `handwritten.max_pages` | `60` | pages written out per PDF |
+| `handwritten.model` | `"gemini-flash-latest"` | the Gemini model that reads handwriting when it's chosen |
+| `handwritten.pdf_hours` | `"23:00-07:00"` | when the model here reads PDFs (on the charger); "" any time |
+
+### `health`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `health.auto_fix` | `true` | try a safe fix before telling you (never sync: that one waits for your tap) |
+| `health.on` | `true` | the daily pass (doctor, the dashboard and /health always check) |
+| `health.when` | `"daily 21:00"` | before bedtime: tonight's alarm is checked then |
+
+### `jobs`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `jobs.stuck_min` | `10` | the watchdog: minutes with no AI at work and no program running |
+
+### `lidsafe`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `lidsafe.hours` | `24` | how far ahead your call line holds things (12 to 24) |
+| `lidsafe.morning` | `"07:30"` | the time the lid-shut safeguard looks for in the morning |
+| `lidsafe.reminders` | `true` | your reminders |
+| `lidsafe.today` | `true` | a morning line on your phone: the day's first class and what's due that day |
+
+### `look`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `look.hidden_features` | `[]` | features hidden from the Features list (they still run if on) |
+| `look.layout` | `"dense"` | dense (everything on one board) or roomy |
+| `look.links_in` | `"default"` | where links open: default is your default browser |
+| `look.palette` | `"kuro"` | the pages' colours (core/palette.py) |
+| `look.panes` | `[]` | which dashboard panes are shown (empty: all) |
+| `look.projects` | `[]` | projects pinned on the dashboard |
+| `look.theme_file` | `""` | the pages' colours (core/palette.py) |
+
+### `mail_digest`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `mail_digest.at` | `"daily 08:00,18:00"` | when mail digests run |
+| `mail_digest.confidential` | `"count"` | what to do with confidential mail: count, hide or skip |
+| `mail_digest.confidential_words` | `["confidential", "do not forward", "restricted", "private…` | regular expressions, any case; a space matches any run of spaces or line breaks |
+| `mail_digest.first_days` | `3` | the first digest looks this far back |
+| `mail_digest.local_model` | `""` | which Ollama model reads it; empty: Local AI models' helper model |
+| `mail_digest.max_messages` | `200` | per check |
+| `mail_digest.never_read` | `[]` | senders, @domains or label:Name the digest never reads, even if chosen above |
+| `mail_digest.own_domain` | `true` | on a school or work account, mail from your own domain is read too |
+| `mail_digest.query` | `""` | an extra Gmail search the digest is limited to |
+| `mail_digest.read` | `[]` | what the digest may read: "label:Courses", "sam@example.org", "@school.example" |
+| `mail_digest.save_note` | `true` | a copy of each digest in your notes (mail/<date>-<time>.md, or your notes layout's place) |
+| `mail_digest.skip_confidential` | `true` | don't summarise mail marked confidential |
+
+### `modules`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `modules.enabled` | `[]` | the features that are on (the Features list changes it) |
+
+### `notes`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `notes.layout` | `"kurooto"` | how your notes are laid out: kurooto or zettelkasten |
+| `notes.open_with` | `""` | the program that opens a note from the dashboard; empty: the system's |
+| `notes.paths` | `{}` | your own folder for a kind of note, e.g. {"daily": "journal/{date}.md"} |
+
+### `notes_sync`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `notes_sync.after_jobs` | `2` | minutes after an AI request finishes, its notes are sent up (0: wait for the timer) |
+| `notes_sync.api` | `"https://api.github.com"` | the Git host's API address (leave alone) |
+| `notes_sync.branch` | `"main"` | the branch your notes sync to |
+| `notes_sync.every` | `"every 10m"` | how often notes sync |
+| `notes_sync.on_conflict` | `"keep both"` | "keep both": a clashing note keeps both versions; "stop": sync waits for you |
+| `notes_sync.remote` | `""` | tests: a local repository instead of GitHub |
+| `notes_sync.repo` | `""` | owner/name |
+| `notes_sync.share_with_calls` | `true` | your call line may read notes from the repository while this computer is off |
+
+### `notify`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `notify.app_kinds` | `["call", "question", "approval"]` | which messages also reach your phone app |
+| `notify.calm.calls` | `1` | calls a day that come by themselves (the alarm and calls you asked for don't count) |
+| `notify.calm.evening` | `[]` | kinds that always wait for the evening bundle (Less of this → Another time) |
+| `notify.calm.evening_at` | `"20:00"` | the evening bundle: what waited today |
+| `notify.calm.fewer` | `{}` | kind -> at most this many a day; more wait for the evening (Less of this → Fewer) |
+| `notify.calm.messages` | `6` | messages a day that come by themselves; more wait for the evening bundle |
+| `notify.calm.monthly` | `true` | once a month: a kind of question you rarely answer, and whether to turn it off |
+| `notify.calm.on` | `true` | reasons, Why? and Less of this, the daily limit; off: everything comes as it always did |
+| `notify.calm.stopped` | `[]` | kinds stopped with Less of this (when their feature has no setting of its own) |
+| `notify.desktop` | `true` | show notifications on this computer |
+| `notify.desktop_kinds` | `["call", "question", "approval", "deadline", "update"]` | which messages show on this computer |
+| `notify.presence.after_min` | `10` | away for less than this: nothing is said |
+| `notify.presence.channels` | `["telegram"]` | where: "telegram", "app" (the phone app) |
+| `notify.presence.line` | `true` | your call line says so when this computer can't (sleep, a crash, a lost network) |
+| `notify.presence.line_telegram` | `null` | may your call line keep your bot's token for that? None: asked once |
+| `notify.presence.on` | `true` | say when Kurooto goes offline and when it's back |
+
+### `overlay`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `overlay.code` | `true` | also run the Python add-ons in its modules/ (False: only skills, prompts and settings) |
+| `overlay.path` | `""` | your add-ons folder (full path) |
+
+### `power`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `power.on_battery` | `"saver"` | saver \| normal \| pause |
+
+### `profile`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `profile.after_changes` | `10` | minutes after you change a setting (or turn a feature on or off), it's saved |
+| `profile.branch` | `"(computed)"` | the branch your saved profile lives on (set by Kurooto) |
+| `profile.remote` | `""` | tests: a local repository instead of GitHub |
+| `profile.repo` | `""` | owner/name of a private GitHub repository; empty: the one Notes sync uses |
+| `profile.when` | `"daily 04:40"` | when your profile is saved |
+
+### `quests`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `quests.days` | `7` | how long the first week lasts |
+| `quests.when` | `"daily 18:00"` | the day's quest |
+
+### `quiz`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `quiz.by_call` | `false` | /quiz, "quiz me" and quiz check-ins ring you (with Phone calls on); "here" keeps text |
+| `quiz.call_min` | `10` | how long a quiz call is meant to take |
+| `quiz.exam_daily` | `""` | in exam mode: a practice check-in every day at this time, e.g. "18:00" (empty: never) |
+| `quiz.exam_per_session` | `6` | in exam mode |
+| `quiz.offer_at` | `"19:00"` | the evening before a quiz or exam: offer practice from this time (empty: never) |
+| `quiz.per_session` | `3` | questions per quiz |
+
+### `quota`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `quota.background_pct` | `70` | the share of an AI's daily free limit background work may use |
+| `quota.limits` | `{}` | your own limits per AI, e.g. {"agy": 200} |
+| `quota.local` | `"quick"` | what the model on this computer does for the free limit: quick, background or off |
+| `quota.on` | `true` | keep part of the free AI limit for what you're waiting on |
+
+### `reply_drafts`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `reply_drafts.ask_days` | `3` | days between asking whether drafted replies were useful |
+| `reply_drafts.per_day` | `5` | the most reply drafts per day |
+
+### `research`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `research.about` | `""` | what you work on, in a sentence or two: the AI uses it to pick |
+| `research.endpoints.arxiv` | `"https://export.arxiv.org/api/query"` | arXiv's API address (leave alone) |
+| `research.endpoints.biorxiv` | `"https://api.biorxiv.org/details"` | bioRxiv's API address (leave alone) |
+| `research.endpoints.pubmed` | `"https://eutils.ncbi.nlm.nih.gov/entrez/eutils"` | PubMed's API address (leave alone) |
+| `research.feeds` | `[]` | [{"type": "arxiv", "categories": ["cs.LG"], "keywords": []}, {"type": "rss", "url": ...}, ...] |
+| `research.idle_days` | `4` | ask about a project after this many days without commits (0: never) |
+| `research.idle_when` | `"daily 18:00"` | when that's checked |
+| `research.log_when` | `"daily 23:30"` | when commits are written into your project logs |
+| `research.max_papers` | `8` | the most papers in a digest |
+| `research.papers` | `"weekly mon 08:00"` | when the digest comes, e.g. "daily 08:00" or "weekly fri 17:00" |
+| `research.projects` | `{}` | repository folder -> project name (its notes: research/<project>/); unset: the folder's name |
+| `research.rank` | `true` | with Chat on, the AI picks and says why; off: the newest, as they are |
+| `research.remind_by_call` | `true` | "Remind me tomorrow" is a call at 18:00 when Phone calls is on |
+| `research.repo_runs` | `"runs"` | the folder in each repository where scripts keep their runs (its index.csv); "": none |
+| `research.repos` | `[]` | folders of git repositories on this computer |
+| `research.save_note` | `false` | also keep each digest as a note in your inbox (inbox/papers-<date>.md) |
+| `research.topics` | `[]` | older setting: plain keywords searched across all of arXiv (still works) |
+| `research.window_days` | `7` | how far back each digest looks |
+
+### `retro`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `retro.journal` | `true` | read today's journal note |
+| `retro.max_proposals` | `3` | the most changes proposed in a weekly review |
+| `retro.no_days` | `30` | how long a "No" keeps that idea away |
+| `retro.observe_days` | `7` | how long "Observe longer" (and /observe without a length) watches |
+| `retro.transcripts` | `true` | read today's call transcripts |
+| `retro.when` | `"daily 23:50"` | "weekly sun 21:00" looks back over the whole week instead |
+
+### `skills`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `skills.auto_pack` | `"ask"` | the evening before a quiz or exam: ask (a button) \| auto (build it) \| off |
+| `skills.auto_pack_after` | `"16:00"` | not before this time of day, 12 to 36 hours before it |
+
+### `sources`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `sources.budget` | `24000` | characters in all |
+| `sources.cap.book` | `12000` | characters at most from each source |
+| `sources.cap.classroom` | `10000` | characters at most from each source |
+| `sources.cap.own` | `12000` | characters at most from each source |
+| `sources.mix` | `"(computed)"` | the source mix for books and notes: how much each kind counts in answers |
+| `sources.prefer` | `[]` | an order instead of the mix: ["own", "book", "classroom"] |
+| `sources.subjects` | `{}` | per subject: {"<slug>": {"mix": {...}} or {"prefer": [...]}, optionally "cap"} |
+
+### `startby`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `startby.ask_exams` | `true` | ask once per subject how long its exams take to prepare for |
+| `startby.crunch_weeks` | `4` | the Sunday summary looks this many weeks ahead (0: no crunch weeks) |
+| `startby.exam_by_subject` | `{}` | {"linear-algebra": 25}: hours to prepare for that subject's exams (else sizes.exam) |
+| `startby.horizon_days` | `35` | deadlines due this far ahead get a start-by date |
+| `startby.min_gap_min` | `30` | shorter gaps between classes and events don't count |
+| `startby.share` | `40` | % of the free time in that window that goes to deadlines |
+| `startby.sizes.exam` | `10` | days an exam takes to prepare for |
+| `startby.sizes.other` | `2` | days other work takes |
+| `startby.sizes.problem_set` | `3` | days a problem set takes |
+| `startby.sizes.quiz` | `2` | days a quiz takes to prepare for |
+| `startby.sizes.report` | `12` | days a report takes |
+| `startby.tell` | `true` | a message on a start-by day (only two days or more before the due date) |
+| `startby.when` | `"daily 08:00"` | the day's "Time to start" messages (they wait out quiet hours) |
+| `startby.window` | `"09:00-22:00"` | the part of each day free time is counted in |
+
+### `study`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `study.daily_note` | `"23:45"` | the day's hours go into your daily note at this time; None = don't |
+| `study.idle_min` | `5` | minutes without activity before study time stops counting |
+| `study.keywords` | `{}` | {subject slug: [words]} |
+| `study.research_paths` | `[]` | words or folders: a window naming one counts as Research |
+| `study.sample_s` | `30` | seconds between looks at the active window |
+
+### `subjects`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `subjects.exam_periods` | `[]` | [["2026-12-07", "2026-12-18"], ...]: no classes then (exams instead) |
+| `subjects.holidays` | `[]` | ["2026-12-25", ...]: no classes those days |
+| `subjects.list` | `[]` | your subjects: name, short names, folder |
+| `subjects.margin_min` | `5` | minutes around a class when calls are held |
+| `subjects.no_calls_in_class` | `true` | no calls during a class |
+| `subjects.term_ends` | `""` | "2026-12-04": the last day of classes; none after it |
+| `subjects.term_note` | `""` | the note that holds your term's dates and timetable |
+| `subjects.timetable` | `[]` | your weekly classes |
+
+### `telegram`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `telegram.allowed_users` | `[]` | Telegram accounts that may use the bot (set when you pair) |
+| `telegram.api_base` | `"https://api.telegram.org"` | Telegram's API address (leave alone) |
+| `telegram.chat_id` | `null` | your chat with the bot (set when you pair) |
+| `telegram.menu` | `true` | the bot's "/" menu follows the features you have on |
+| `telegram.silent_kinds` | `["call"]` | message kinds sent without a sound |
+
+### `terminal`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `terminal.default` | `false` | Kurooto Terminal as your default terminal (opt-in; turning it off undoes it) |
+| `terminal.default_opens` | `"shell"` | as the default terminal, a launch opens: "shell" (one tab) or "layout" (all) |
+| `terminal.font_size` | `11` | the Kurooto Terminal's font size |
+| `terminal.kitty` | `true` | Linux and macOS: kitty (yours, or Kurooto's copy); off: your usual terminal, a window a tab |
+| `terminal.shell` | `"auto"` | auto: fish if you have it, otherwise your own shell (PowerShell on Windows); or a name |
+| `terminal.tabs` | `["agent", "shell", "chat", "logs"]` | in order; agent = your AI's own program, when it's installed |
+| `terminal.top` | `"left"` | kurooto top: "left" (a column beside the first tab), "tab" (a tab of its own) or "off" |
+
+### `updates`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `updates.channel` | `"stable"` | stable, or beta for earlier versions |
+| `updates.exam_hold` | `true` | with staged on: nothing installs in an exam period or within a day of a quiz or exam |
+| `updates.mode` | `"night"` | night (update by itself), ask (Telegram question) or off |
+| `updates.staged` | `false` | wait until a release has been out wait_hours, and not during exams (critical ones don't) |
+| `updates.wait_hours` | `48` | hours a new version waits before it's installed |
+| `updates.window` | `["03:00", "05:00"]` | the hours the automatic update may run |
+
+### `voice_notes`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `voice_notes.api_base` | `""` | a different address for the voice-note model (empty: Google's) |
+| `voice_notes.model` | `"gemini-flash-latest"` | the Gemini model that turns voice notes into text |
+
+### `web`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `web.port` | `8770` | the dashboard's port on this computer |
+
+### `weekly`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `weekly.call` | `false` | call: also a Sunday review call |
+| `weekly.when` | `"weekly sun 19:00"` | call: also a Sunday review call |
+
+### `you`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `you.assistant_name` | `"Kurooto"` | the name your assistant goes by in messages |
+| `you.language` | `"follow"` | answer in the language you write in |
+| `you.name` | `""` | what Kurooto calls you |
+| `you.timezone` | `""` | IANA name, e.g. Europe/Berlin; empty = this computer's |
+| `you.workspace` | `""` | your notes folder; empty = Documents/Kurooto |

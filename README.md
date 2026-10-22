@@ -85,6 +85,7 @@ through Ollama on computers that can run them, or any OpenAI-compatible service.
 
 ## Docs
 - [docs/MANUAL.md](docs/MANUAL.md): everything, from install to uninstall, every feature, troubleshooting.
+- [docs/SETTINGS_GUIDE.md](docs/SETTINGS_GUIDE.md): every setting with its default and what it does, and what an AI is allowed to do.
 - [docs/PRIVACY.md](docs/PRIVACY.md): what leaves your computer, per feature.
 - [AGENTS.md](AGENTS.md): for your own AI agent, if you ask one to help you set it up or fix it.
 - [docs/ROADMAP.md](docs/ROADMAP.md): ideas that aren't built yet.

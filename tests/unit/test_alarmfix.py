@@ -146,7 +146,7 @@ def test_start_plans_it_and_phrases(world):
     w.t = at(THU, 12, 0)
     a.start()  # Kurooto starting (or the half-hourly check after a wake)
     assert a.next() == at(FRI, 7)
-    assert env.say("/alarm") == "Alarm: Fri 23 Oct, 07:00. Daily: 07:00."
+    assert env.say("/alarm") == "Alarm: Fri 23 Oct, 07:00. Daily alarm: 07:00 (every day)."
     m = a.intents()[0].match
     assert m("turn off the daily alarm") == {"daily_off": True} and m("stop my daily alarm") == {"daily_off": True}
     assert m("turn off my alarm") == {"off": True} and m("no alarm") == {"off": True}
@@ -183,3 +183,35 @@ def test_keep_awake_lasts_through_the_morning_that_rang(world, monkeypatch):
     a.call_outcome("alarm:next", "answered")
     assert not a.inhibitor.held()  # you're up
     assert dt.datetime.fromtimestamp(env.app.scheduler.get("alarm:awake").next_run) == at(WED, 19, 0)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Any morning alarms set for me?",
+        "Do I have any alarms?",
+        "do i have an alarm set",
+        "is my alarm set",
+        "what alarms do I have",
+        "When is my alarm?",
+        "what time does my alarm ring",
+        "show my alarms",
+    ],
+)
+def test_alarm_questions_are_answered_at_once_without_the_ai(world, text):
+    env, a, w = world
+    out = env.say(text)
+    assert out == a.status() and "Alarm:" in out and "Daily alarm: 07:00" in out
+
+
+def test_setting_an_alarm_is_not_mistaken_for_asking(world):
+    env, a, w = world
+    assert env.say("wake me at 6:30").startswith("Alarm set for")
+
+
+def test_alarm_status_has_a_tool_and_a_markdown_file(world):
+    env, a, w = world
+    assert "get_alarm" in {t.name for t in a.call_tools()}
+    a.skip(THU)
+    text = a.mirror_file.read_text(encoding="utf-8")
+    assert text.startswith("# Alarm") and "Daily alarm: 07:00" in text and "No alarm on Thu 22 Oct" in text

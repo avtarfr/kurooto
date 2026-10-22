@@ -18,7 +18,7 @@
   <div class="panes-ctl" id="panes-ctl"><button id="panes-btn" aria-haspopup="true" aria-expanded="false" title="show, hide or enlarge the panes; the pages">panes ▾</button><div class="panes-menu hidden" id="panes-menu"></div></div>
   <section class="pane" id="pane-status" data-pane="status"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">STATUS<i class="mx"></i></span><span class="meta" id="status-meta"></span></h3><div id="status"></div></section>
   <section class="pane" id="pane-systems" data-pane="systems"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">SYSTEMS<i class="mx"></i></span><span class="meta" id="sys-meta"></span></h3><canvas id="body"></canvas><div id="body-card" class="card hidden"></div></section>
-  <section class="pane" id="pane-vault" data-pane="notes"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">NOTES<i class="mx"></i></span><span class="meta" id="mind-meta"></span></h3><canvas id="mind"></canvas>
+  <section class="pane" id="pane-vault" data-pane="notes"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">NOTES<i class="mx"></i></span><span class="meta" id="mind-meta"></span></h3><button id="mind-recent-btn" title="Toggle highlighting recent notes (Shortcut: R)">Recent: Off</button><canvas id="mind"></canvas>
     <input id="mind-search" class="hidden" placeholder="find a note…  (Enter: go · Esc: close)" spellcheck="false"><div id="mind-card" class="card hidden"></div></section>
   <section class="pane wide" id="pane-tabs" data-pane="terminal">
     <nav class="tabs" id="tabs"></nav>
@@ -27,6 +27,6 @@
   <section class="pane ov hidden" id="pane-page" aria-label="page"><nav class="tabs" id="page-nav"></nav><div class="page" id="ov-body"></div></section>
 </main>
 <script src="/static/aboutme.js"></script>
-<script src="/static/home.js"></script>
+<script src="/static/home.js?v=clean6"></script>
 </body>
 </html>

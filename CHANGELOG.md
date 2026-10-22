@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.5.5 (2026-10-23)
+
+- **PDFs without Tectonic**: a revision pack is built with the computer's own LaTeX (latexmk or pdflatex) when Tectonic
+  isn't installed; the LaTeX file is only sent when there's no engine at all.
+- **Files, not paths**: `send_files` sends several files (more than two as one zip), `study_pack` sends a subject's notes
+  and course files with a prompt for another AI, and `/studypack <subject> <what it's for>` does the same from chat.
+  The AI is told to send files, never answer with `file://` paths.
+- **Alarm questions** ("do I have any alarms?", "when is my alarm?") are answered at once from local state, with a
+  `get_alarm` tool and an `alarm.md` copy for programs that read files.
+- **Classroom**: the backfill window always applies and counts edits; posts it left out aren't marked as seen, so a
+  longer window finds them (no more syncing again and again).
+- **Hubs**: a home note and a research hub exist from the start, list your courses, and course pages link back, so notes
+  aren't separate islands; kept current after Classroom filing and book reading.
+- **Books**: found in folders at any depth (`.pdf` in any case), `/books read force` on battery, `books.after_read` runs
+  your own command after each book, `books.brain_source` indexes chunks in a GBrain source you name.
+- **Dashboard notes graph**: neighborhoods come from your own folders; the graph has a Recent toggle.
+- **docs/SETTINGS_GUIDE.md**: every setting, written from the code and checked by CI.
+
 ## 0.5.4 (2026-10-21)
 
 - **Android ringtone & heads-up banner fix**: Replaced old `calls` channel with `calls_v2` using system default ringtone and `PRIORITY_MAX` heads-up notification priority; guarded against OEM `SecurityException` on ringtone queries.
