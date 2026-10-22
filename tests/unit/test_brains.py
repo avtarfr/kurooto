@@ -146,3 +146,35 @@ def test_a_retired_ai_is_cleared_from_the_settings_not_left_as_the_main_one(tmp_
         assert providers.build(app, "codex") is None and "codex" not in providers.CHOICES
     finally:
         app.close()
+
+
+def test_a_gemini_key_tries_the_next_model_of_the_family_when_one_is_used_up():
+    from kurooto.providers.openai_compat import OpenAICompat
+    from tests.fakes.openai import FakeOpenAI
+
+    fake = FakeOpenAI()
+    try:
+        fake.mode_by_model = {"gemini-flash-latest": "429", "gemini-flash-lite-latest": "429"}
+        fake.answer = "from the third model"
+        b = OpenAICompat("gemini", fake.key, base_url=fake.base)
+        r = b.complete("hello", effort="medium", timeout=20)
+        assert r.ok and r.text == "from the third model"
+        assert [q["model"] for q in fake.requests] == [
+            "gemini-flash-latest",
+            "gemini-flash-lite-latest",
+            "gemini-2.5-flash",
+        ]
+        assert "gemini-2.5-flash" in r.usage["note"] and "gemini-flash-latest" in r.usage["note"]
+        b.alternatives = ["gemini-flash-latest"]  # nothing left to try: the first model's limit message stays
+        fake.mode_by_model = {}
+        fake.mode = "429"
+        assert b.complete("hi", effort="medium", timeout=20).verdict == Verdict.RATE_LIMITED
+    finally:
+        fake.close()
+
+
+def test_other_brains_do_not_switch_models_on_a_limit():
+    from kurooto.providers.openai_compat import OpenAICompat
+
+    assert OpenAICompat("custom", "k", base_url="http://x/v1").alternatives == []
+    assert OpenAICompat("ollama", "k").alternatives == []

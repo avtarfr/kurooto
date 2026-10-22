@@ -6,6 +6,9 @@ the rest are open. (Ideas nobody has asked for yet are in [ROADMAP.md](ROADMAP.m
 To ask for something: open an issue on GitHub, or tell your own Kurooto on Telegram: "add to the requested list: …".
 
 ## Open
+- **Common features directly usable from the dashboard and the phone app**, not only through chat: write a journal
+  entry, set or skip an alarm, add a reminder or deadline, tick what's done, start a check-in, ask something. Being
+  ideated now (dashboard and Android app together).
 - **Goodnight sets the wake-up alarm**, and the morning request opens in the dashboard's own terminal only.
 - **Mail about exams is read at once and turned into a schedule** (dates, rooms, what to prepare), not only digested.
 - **PDF, Word and PowerPoint to Markdown** with Microsoft's MarkItDown for books and Classroom files (needs a pip

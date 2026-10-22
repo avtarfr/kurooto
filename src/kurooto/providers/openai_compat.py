@@ -30,6 +30,14 @@ PRESETS = {
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
         "models": {"low": "gemini-flash-lite-latest", "medium": "gemini-flash-latest", "high": "gemini-flash-latest"},
         "reasoning": True,
+        # each model has its own free daily limit: when one is used up, the next of the family is tried (smaller or
+        # older ones answer worse, so the answer says which one it was)
+        "alternatives": [
+            "gemini-flash-latest",
+            "gemini-flash-lite-latest",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+        ],
     },
     "freellmapi": {  # no longer offered (it pools other providers' free tiers); one set up earlier keeps working
         "label": "Another OpenAI-compatible service",
@@ -58,6 +66,7 @@ class OpenAICompat(Brain):
         self.api_key = api_key or ("ollama" if preset == "ollama" else "")
         self.models = {**p["models"], **(models or {})}
         self.reasoning = p["reasoning"]
+        self.alternatives = list(p.get("alternatives") or [])
 
     def available(self):
         if not self.base_url:
@@ -92,17 +101,30 @@ class OpenAICompat(Brain):
         if res is not None:
             return res
         text = (msg.get("content") or "").strip()
-        return Result(Verdict.OK if text else Verdict.EMPTY, text, msg["_secs"], usage=usage)
+        out = Result(Verdict.OK if text else Verdict.EMPTY, text, msg["_secs"], usage=usage)
+        return out
 
     def _turn(self, messages: list[dict], effort: str, timeout: float, tools: list | None = None, choice: str = ""):
         """One request, counted against its model's free limit. Returns (Result on failure, else None; the reply
         message; usage)."""
+        model = self.models.get(effort) or self.models.get("medium")
         res, msg, usage = self._request(messages, effort, timeout, tools, choice)
-        self.metered(self.models.get(effort) or self.models.get("medium"), res)
+        self.metered(model, res)
+        if res is not None and res.verdict == Verdict.RATE_LIMITED and self.alternatives:
+            for alt in [m for m in self.alternatives if m != model]:  # this model's day is used up: try its family
+                res2, msg2, usage2 = self._request(messages, effort, timeout, tools, choice, alt)
+                self.metered(alt, res2)
+                if res2 is None:
+                    note = f"(Answered with {alt}: {model}'s free limit for today was used up.)"
+                    return res2, msg2, {**usage2, "note": note}
+                if res2.verdict not in (Verdict.RATE_LIMITED, Verdict.ERROR):  # a real problem (key, timeout): stop
+                    break
         return res, msg, usage
 
-    def _request(self, messages: list[dict], effort: str, timeout: float, tools: list | None, choice: str):
-        model = self.models.get(effort) or self.models.get("medium")
+    def _request(
+        self, messages: list[dict], effort: str, timeout: float, tools: list | None, choice: str, model: str = ""
+    ):
+        model = model or self.models.get(effort) or self.models.get("medium")
         body: dict = {"model": model, "messages": messages}
         if tools:
             body["tools"] = tools
@@ -192,6 +214,8 @@ class OpenAICompat(Brain):
             for k, v in u.items():
                 if isinstance(v, int):
                     usage[k] = usage.get(k, 0) + v
+            if u.get("note"):  # answered by another model of the family (its own limit): the answer says so
+                usage["note"] = u["note"]
             calls = [dict(c) for c in (msg.get("tool_calls") or []) if isinstance(c, dict)]
             if not calls or final:
                 text = (msg.get("content") or "").strip()

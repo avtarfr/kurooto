@@ -34,10 +34,16 @@ class LocalModels(Module):
         models you added (hardware.extra_models)."""
         from kurooto.core import hardware
 
-        try:
-            rec = hardware.current(self.app).get("recommendation") or {}
-        except (OSError, ValueError, KeyError, TypeError):
-            rec = (jload(self.app.paths.state / "hardware.json", {}) or {}).get("recommendation") or {}
+        cached = (jload(self.app.paths.state / "hardware.json", {}) or {}).get("recommendation") or {}
+        overridden = bool(
+            self.app.settings.get("hardware.force_profile") or self.app.settings.get("hardware.extra_models")
+        )
+        rec = cached
+        if overridden or not cached:  # your own setup (or nothing known yet): worked out from the machine
+            try:
+                rec = hardware.current(self.app).get("recommendation") or {}
+            except (OSError, ValueError, KeyError, TypeError):
+                rec = cached
         return rec.get("local_models") or []
 
     def vision_model(self) -> dict | None:

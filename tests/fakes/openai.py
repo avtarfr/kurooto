@@ -11,6 +11,7 @@ class FakeOpenAI:
     def __init__(self, key="sk-fake"):  # noqa: S107 (a fake)
         self.key = key
         self.mode = "ok"  # ok | 429 | 401 | empty | 500
+        self.mode_by_model: dict = {}  # a model name -> its own mode (each model has its own limit)
         self.answer = "Paris."
         self.limit_body = None  # what a 429 says (Google's JSON error, say); default: a bare RESOURCE_EXHAUSTED
         self.requests: list[dict] = []
@@ -38,14 +39,15 @@ class FakeOpenAI:
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
                 fake.requests.append(body)
-                if self.headers.get("Authorization") != f"Bearer {fake.key}" or fake.mode == "401":
+                mode = fake.mode_by_model.get(body.get("model"), fake.mode)
+                if self.headers.get("Authorization") != f"Bearer {fake.key}" or mode == "401":
                     return self._send(401, {"error": {"message": "invalid api key"}})
-                if fake.mode == "429":
+                if mode == "429":
                     body = fake.limit_body or {"error": {"message": "RESOURCE_EXHAUSTED"}}
                     return self._send(429, body, {"Retry-After": "30"})
-                if fake.mode == "500":
+                if mode == "500":
                     return self._send(500, {"error": {"message": "boom"}})
-                text = "" if fake.mode == "empty" else fake.answer
+                text = "" if mode == "empty" else fake.answer
                 self._send(
                     200,
                     {"choices": [{"message": {"role": "assistant", "content": text}}], "usage": {"total_tokens": 9}},
