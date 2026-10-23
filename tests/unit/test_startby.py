@@ -132,7 +132,10 @@ def test_start_by_dates_work_back_from_classes_and_calendar(sb):
     # the morning page and the wake-up call
     view = daily.morning_view(app)
     assert view["start"] == [{"title": "Problem set 4", "when": "start today · due Thu 05 Nov"}]
-    assert "Time to start (an estimate): Problem set 4 (due Thu 05 Nov): start working on it today" in app.modules["alarm"].script()
+    assert (
+        "Time to start (an estimate): Problem set 4 (due Thu 05 Nov): start working on it today"
+        in app.modules["alarm"].script()
+    )
     # a skipped class frees its time
     app.modules["subjects"].set_skip(["linear-algebra"], day=dt.date(2026, 11, 3))
     assert plan(sb)["Lab report: pendulum"]["start"] == dt.date(2026, 11, 3)
@@ -281,7 +284,10 @@ def test_startby_command_intent_and_tools(sb):
     )
     tools = {t.name: t for t in app.modules["startby"].call_tools()}
     out = tools["start_by"].run({})
-    assert f"[{i}] Lab report: pendulum (due Fri 06 Nov): start working on it by Thu 05 Nov" in out and tools["start_by"].writes is False
+    assert (
+        f"[{i}] Lab report: pendulum (due Fri 06 Nov): start working on it by Thu 05 Nov" in out
+        and tools["start_by"].writes is False
+    )
     assert tools["set_work_size"].run({"id": i, "size": "a week"}).startswith("Lab report: pendulum: about 25 h")
     assert "couldn't read" in tools["set_work_size"].run({"id": i, "size": "soonish"})
     assert app.modules["startby"].call_brief()["time_to_start"] == [  # a week of work: from today
