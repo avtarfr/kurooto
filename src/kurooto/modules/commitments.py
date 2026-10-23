@@ -8,6 +8,14 @@ with Undo (core/infer.py). (Not the same as Skills' routines: /every runs a skil
     /busy remove gym
     /busy skip gym                            not today (calls are allowed then); /busy unskip gym
     /busy calls gym off                       it doesn't hold calls (on to undo)
+
+Hooks: a word of yours that starts a hold. "when I say gym, hold calls 90 min" (or "when I say lab, hold everything
+2 h") keeps the word; later, "gym" on its own holds calls for 90 minutes (as /hold does; "everything" is focus, as
+/focus does: calls and messages that aren't urgent wait). Only the word alone does it: "I'm off to the gym" is an
+ordinary message. Each step has Undo. A hook never sets or moves an alarm and never sends anything to anyone.
+
+    /hooks                                    your hooks
+    /hooks drop gym                           forget one (with Undo)
 """
 
 from __future__ import annotations
@@ -18,15 +26,16 @@ import re
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
-from kurooto.modules.base import Command, Incoming, Intent, Module
+from kurooto.modules.base import Answer, Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
-from kurooto.modules.text import a_day
+from kurooto.modules.text import a_day, a_minutes
 
 register_defaults(
     "commitments",
     {
         "items": [],  # {"name": "gym", "days": ["mon", "wed"], "start": "18:00", "end": "19:00", "calls": true}
         "no_calls": True,  # no calls during a commitment (each one can opt out: /busy calls gym off)
+        "hooks": [],  # {"word": "gym", "hold": "calls" or "all", "minutes": 90}: "gym" alone starts that hold
     },
 )
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
@@ -36,6 +45,17 @@ GROUPS = {
     "weekend": DAYS[5:], "weekends": DAYS[5:],
 }  # fmt: skip
 HM = re.compile(r"(\d{1,2}):(\d{2})")
+# "when I say gym, hold calls 90 min", "whenever I say 'lab' hold everything for 2 hours"
+HOOK = re.compile(
+    r"^\s*(?:when(?:ever)?|if)\s+i\s+(?:say|type|send|write)\s+[\"'‘“]?(?P<word>[a-z][a-z0-9-]*(?:\s+[a-z0-9-]+){0,2}?)"
+    r"[\"'’”]?\s*[,:;–-]?\s*(?:then\s+)?(?P<what>(?:please\s+)?(?:hold|no|mute|silence|block|focus|do not disturb|dnd|"
+    r"don'?t)\b.*)$",
+    re.I,
+)
+HOLD_ALL = re.compile(r"\b(?:everything|all of it|messages|notifications|focus|do not disturb|dnd)\b", re.I)
+HOLD_CALLS = re.compile(r"\b(?:calls?|ringing|ring)\b", re.I)
+NOT_HOOK = {"yes", "no", "ok", "okay", "done", "stop", "help", "thanks", "hi", "hello", "undo", "skip", "later"}
+HOLDS = {"calls": "calls", "all": "everything (focus)"}
 
 
 def parse_days(text: str) -> list[str]:
@@ -63,6 +83,10 @@ def days_text(days: list[str]) -> str:
         if tuple(days) == group:
             return word
     return ", ".join(d.title() for d in days)
+
+
+def _mins(m: int) -> str:
+    return f"{m // 60} h" if m % 60 == 0 else f"{m} min" if m < 120 else f"{m // 60} h {m % 60} min"
 
 
 def _hm(s: str) -> str | None:
@@ -149,7 +173,8 @@ class Commitments(Module):
                 "busy",
                 "your gym, shifts, standups (they hold calls): /busy add gym mon,wed,fri 18:00-19:00 (skip, remove)",
                 self._cmd,
-            )
+            ),
+            Command("hooks", 'your hook words ("when I say gym, hold calls 90 min"); /hooks drop gym', self._hooks_cmd),
         ]
 
     def _cmd(self, msg: Incoming, arg: str) -> str:
@@ -225,8 +250,154 @@ class Commitments(Module):
                 match,
                 lambda m, s: self._skip(self.find(s["name"]), True, s["day"]),
                 examples=("skipping the gym today",),
-            )
+            ),
+            Intent(
+                "hook",
+                'a hook: a word that starts a hold ("gym" alone, once set)',
+                self._hook_match,
+                self._hook_run,
+                questions=True,  # "when I say ..." reads like a question to the rules; "gym?" never matches
+                examples=("when I say gym, hold calls 90 min", "when I say lab, hold everything 2 h"),
+            ),
         ]
+
+    # ------------------------------------------------------------------------------------------ hooks
+    def hooks(self) -> list[dict]:
+        return [h for h in self.setting("hooks") or [] if h.get("word") and h.get("minutes")]
+
+    def _hook(self, word: str) -> dict | None:
+        return next((h for h in self.hooks() if h["word"] == word), None)
+
+    def _put_hook(self, word: str, row: dict | None) -> None:
+        """Set (or, with None, remove) the hook for a word, keeping the others in their order."""
+        keep = [h for h in self.setting("hooks") or [] if h.get("word") != word]
+        self.app.settings.set("commitments.hooks", keep + ([row] if row else []))
+
+    @property
+    def _undo_file(self):
+        return self.app.paths.state / "commitments" / "hooks-undo.json"
+
+    def _remember(self, word: str, act: str, data) -> None:
+        """What Undo puts back, per word and step (add: the hook it replaced; drop: the hook; hold: the hold before)."""
+        undo = jload(self._undo_file, {}) or {}
+        undo.setdefault(word, {})[act] = data
+        jsave(self._undo_file, undo)
+
+    def _hook_match(self, text: str):
+        m = HOOK.match(text)
+        if m:
+            word = " ".join(m["word"].lower().strip("'\"‘’“” -").split())
+            what, mins = m["what"], a_minutes(m["what"])
+            kind = "all" if HOLD_ALL.search(what) else "calls" if HOLD_CALLS.search(what) else ""
+            usage = 'Say it like "when I say gym, hold calls 90 min" (or "hold everything 2 h").'
+            if not word or word in NOT_HOOK or len(word) > 30:
+                return {"bad": f'"{word}" is too common a word for a hook. {usage}'}
+            if not kind:
+                return {"bad": f"Hold calls, or everything? {usage}"}
+            if not mins:
+                return {"bad": f"For how long? {usage}"}
+            return {"word": word, "hold": kind, "minutes": max(1, min(24 * 60, mins))}
+        said = " ".join(text.strip().rstrip(".!").lower().split())  # the word on its own, nothing more
+        return {"fire": said} if said and self._hook(said) else None
+
+    def _hook_run(self, msg: Incoming | None, s: dict) -> str:
+        if s.get("bad"):
+            return s["bad"]
+        if s.get("fire"):
+            return self.fire_hook(s["fire"])
+        return self.add_hook(s["word"], s["hold"], s["minutes"])
+
+    def add_hook(self, word: str, hold: str, minutes: int) -> Answer:
+        before = self._hook(word)
+        self._put_hook(word, {"word": word, "hold": hold, "minutes": minutes})
+        self._remember(word, "add", before)
+        self.app.events.emit("hook_added", hold=hold, minutes=minutes, replaced=bool(before))
+        return Answer(
+            f'Hook set: "{word}" on its own holds {HOLDS[hold]} for {_mins(minutes)}. /hooks lists them.',
+            [[("Undo", f"hook:{word}:unadd")]],
+        )
+
+    def drop_hook(self, word: str) -> Answer | str:
+        h = self._hook(" ".join(word.lower().split()))
+        if not h:
+            return f'No hook "{word}". /hooks lists them.'
+        self._put_hook(h["word"], None)
+        self._remember(h["word"], "drop", h)
+        self.app.events.emit("hook_dropped")
+        return Answer(f'Hook "{h["word"]}" dropped.', [[("Undo", f"hook:{h['word']}:undrop")]])
+
+    def fire_hook(self, word: str) -> Answer | str:
+        """The word said on its own: the hold starts now (a longer hold already on is kept). Undo puts back what was
+        there before."""
+        h = self._hook(word)
+        if not h:
+            return f'No hook "{word}".'
+        a, until = self.app.availability, now() + dt.timedelta(minutes=h["minutes"])
+        file = "focus.json" if h["hold"] == "all" else "quiet.json"
+        before = a._until(file, None)
+        until = max(until, before) if before else until
+        if h["hold"] == "all":
+            a.set_focus(until)
+            if self.app.is_on("telegram"):  # what waited comes when it ends, as after /focus
+                self.app.scheduler.at(until, "telegram.focus_end", key="telegram:focus-end", module="telegram")
+            text = f"{word}: focus until {until:%H:%M}; calls and messages that aren't urgent wait. /focus off ends it."
+        else:
+            a.set_quiet(until, reason=f"hook: {word}")
+            text = f"{word}: no calls until {until:%H:%M}. Messages still come. /calls lifts it."
+        self._remember(
+            word, "hold", {"file": file, "until": until.isoformat(), "before": before.isoformat() if before else None}
+        )
+        self.app.events.emit("hook_fired", hold=h["hold"], minutes=h["minutes"])
+        return Answer(text, [[("Undo", f"hook:{word}:unhold")]])
+
+    def _hook_button(self, word: str, act: str) -> str:
+        last = (jload(self._undo_file, {}) or {}).get(word) or {}
+        if act == "unadd" and "add" in last:
+            self._put_hook(word, last.pop("add"))
+            out = "Hook undone." if not self._hook(word) else f'"{word}" is back to what it was.'
+        elif act == "undrop" and last.get("drop"):
+            self._put_hook(word, last.pop("drop"))
+            out = f'Hook "{word}" is back.'
+        elif act == "unhold" and last.get("hold"):
+            out = self._unhold(last.pop("hold"))
+        else:
+            return "Nothing to undo."
+        undo = jload(self._undo_file, {}) or {}
+        undo[word] = last
+        jsave(self._undo_file, undo)
+        self.app.events.emit("hook_undone", step=act)
+        return out
+
+    def _unhold(self, h: dict) -> str:
+        a = self.app.availability
+        now_until = a._until(h["file"], None)
+        if now_until is None or now_until.isoformat() != h["until"]:
+            return "That hold has already changed or ended."
+        before = dt.datetime.fromisoformat(h["before"]) if h.get("before") else None
+        if h["file"] == "focus.json":
+            a.set_focus(before)
+            if before is None:
+                self.app.notifier.flush_queue()
+            elif self.app.is_on("telegram"):
+                self.app.scheduler.at(before, "telegram.focus_end", key="telegram:focus-end", module="telegram")
+            return "Focus is back to what it was." if before else "Focus off."
+        a.set_quiet(before)
+        return f"Calls held until {before:%H:%M} again." if before else "Calls are allowed again."
+
+    def _hooks_cmd(self, msg: Incoming, arg: str) -> str:
+        m = re.fullmatch(r"(?i)(?:drop|remove|delete|rm|forget)\s+(.+)", arg.strip())
+        if m:
+            return self.drop_hook(m[1].strip().strip("\"'"))  # an Answer: its Undo goes with it
+        if arg.strip():
+            return 'Usage: /hooks, /hooks drop gym. To add one, say "when I say gym, hold calls 90 min".'
+        hooks = self.hooks()
+        if not hooks:
+            return 'No hooks yet. Say "when I say gym, hold calls 90 min" and "gym" alone will hold calls.'
+        rows = [f'"{h["word"]}": holds {HOLDS.get(h.get("hold"), "calls")} for {_mins(h["minutes"])}' for h in hooks]
+        return "Your hooks (say the word on its own):\n" + "\n".join(rows) + "\n/hooks drop <word> forgets one."
+
+    def callbacks(self):
+        return {"hook": self._hook_button}
 
     # ------------------------------------------------------------------------------------- on calls
     def call_brief(self) -> dict:

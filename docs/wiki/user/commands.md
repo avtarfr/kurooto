@@ -104,6 +104,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/class mon 09:00-09:55 la` · `/class remove mon 09:00` | add a class to your timetable, or remove one | Subjects and timetable |
 | `/classes`, `/classes today` | your timetable | Subjects and timetable |
 | `/busy add gym mon,wed,fri 18:00-19:00`, `/busy`, `/busy skip gym`, `/busy unskip gym`, `/busy calls gym off`, `/busy remove gym` | the regular things that aren't classes (gym, shifts, standups); calls wait for them | Commitments |
+| `/hooks`, `/hooks drop gym` | your hook words ("when I say gym, hold calls 90 min"); forget one, with Undo | Commitments |
 | `/skip la` (or `/skip la, stats`), `/attend la` | you're not going to a class today (no after-class question, calls allowed then); `/attend` undoes it | Subjects and timetable |
 | `/term`, `/term ends 2026-12-04`, `/term exams 2026-12-07 to 2026-12-18`, `/term note terms/2026-autumn`, `/term note off`, `/term clear` | term dates, or a term note to read them from | Subjects and timetable |
 | `/classpack`, `/classpack export`, `/classpack export from terms/section-b`, `/classpack set electives ml, topology`, `/classpack set batch B`, `/classpack set la quiz off`, `/classpack set la reset`, `/classpack remove`, `/classpack undo` | share your section's setup, or change or remove an imported one | Class packs |
@@ -252,6 +253,7 @@ the AI. A request that asks a question only matches the requests below that answ
 | "I'm awake", "I just woke up", "I'm up" | the morning call now, planned from the current time (with Morning alarm on) | Morning alarm |
 | "no calls for 2 hours", "don't call me until 6", "hold calls until 18:00" | no calls until then (a named other day goes to the AI) | Telegram |
 | "calls are fine again" | allow calls again | Telegram |
+| "when I say gym, hold calls 90 min", "when I say lab, hold everything 2 h"; later "gym" on its own | a hook: the word alone starts that hold (everything is focus), with Undo; the word in a sentence does nothing | Commitments |
 | "focus for 2 hours", "do not disturb until 18:00", "focus off" | do-not-disturb on or off | Telegram |
 | "remember that I like a plan before 9", "keep in mind that …" | a line for your how-to-help-me note | Remember |
 | "observe whether I study better before noon", "keep an eye on ..." | something for the look back to watch | Nightly look back |

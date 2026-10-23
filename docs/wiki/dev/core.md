@@ -766,7 +766,8 @@ Three pieces (0.5.18), all rules, no AI.
   One: `_answer` (read only; buttons only change the thread); several: one reply with a button each
   (`thr:<id|job>:show`, or `:done` for "that thing is done"). Nothing outside the thread is ever changed.
 - `forget(app, lo, hi)` is retention's `threads` kind. Events `thread_opened`, `thread_closed`, `thread_reopened`,
-  `threads_failed`.
+  `threads_failed`. `closed_between(app, lo, hi, how="done")` gives the threads closed in a time range (the evening
+  check-in's reflection).
 
 **The assembler** (`core/assembler.py`), the memory budget.
 
