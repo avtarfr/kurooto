@@ -426,6 +426,11 @@ class App:
                 text, buttons = threads.command(self, arg)
                 msg.reply(text, buttons=buttons)
                 return
+            if name == "notes" and arg.strip().lower().split(" ", 1)[0] == "pdf":  # a course's notes as one PDF
+                from kurooto.core import coursepdf  # (core/coursepdf.py; /notes <words> is the notes brain's)
+
+                msg.reply(coursepdf.command(self, arg.strip()[3:]))
+                return
             for m in mods:
                 for c in m.commands():
                     if c.name == name:
@@ -464,6 +469,12 @@ class App:
             from kurooto.core import meetings  # "about the meeting with X: ...": minutes in its project note
 
             if meetings.take(self, msg, text):
+                return
+        drafts = self.modules.get("drafts")  # "check this" with a file, or just after one (modules/drafts.py)
+        if drafts is not None and self.is_on("drafts"):
+            out = drafts.take(msg)
+            if out:
+                msg.reply(out)
                 return
         books = self.modules.get("books")  # a PDF sent as "book for <subject>" goes to that subject's books
         if msg.files and books is not None and self.is_on("books"):

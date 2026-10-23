@@ -72,6 +72,7 @@ HOSTS = {  # host (".domain": any host under it) -> what reaches it; docs/PRIVAC
     "export.arxiv.org": "Research",
     "api.biorxiv.org": "Research",
     "eutils.ncbi.nlm.nih.gov": "Research",
+    "api.zotero.org": "Research: Zotero, with your key",
     "avtarfr.github.io": "Updates",
 }
 

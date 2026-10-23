@@ -87,6 +87,8 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Class packs | a pack you make: the section's courses, timetable, term dates, recurring quizzes and exams; never names, keys, notes or skills. Importing sends nothing | Telegram, to your own bot; you choose whom to forward it to |
 | Exam season | nothing; with Phone calls on, the leave-by alarm (its time, the exam and what you said about the venue), and the exam in calls' brief that day and the day before | your call line; Google (Gemini Live) on the call |
 | Research | your fields, keywords and searches (never your notes) | the sources you pick: arXiv, bioRxiv, medRxiv, PubMed, feeds (all public) |
+| Research: Zotero | a paper you tap into Zotero: its public details (title, authors, abstract, link) | the Zotero app on this computer, or Zotero's web API (`api.zotero.org`) with your key |
+| Check my draft | the draft you send, and the course notes the AI reads | the AI you picked |
 | Research: "Remind me tomorrow" by call | the project's name, as the call's reason | your call line, like any call |
 | Research: `kurooto watch` | the command's name, exit code, run time and last lines (`--lines 0`: none) | Telegram, like any message |
 

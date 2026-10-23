@@ -71,8 +71,11 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   curves side by side, written to the project's notes.
 - **LaTeX writing tracker.** Nightly build of your `.tex` repos: errors, undefined references, missing citations
   (BibTeX suggested, you approve), words added.
-- **Check my attempt.** A photo of a proof (or a `.tex` derivation) before you submit: gaps marked, nothing
-  rewritten; a course's AI policy can turn it off.
+- ~~**Check my attempt.** A photo of a proof (or a `.tex` derivation) before you submit: gaps marked, nothing
+  rewritten; a course's AI policy can turn it off.~~ (0.5.22: Check my draft, in the Research add-on: a photo, PDF,
+  `.tex`, essay or code with "check this" or `/check`; gaps, unclear steps, errors and missing reasons marked at lines
+  or places, a comment that gives the fix away left out; `/subject policy la allowed|hints|off`; notes get the comments
+  in a Kurooto block in the matching lecture note)
 - ~~**Missed-class catch-up.** Skipping a class makes a catch-up item with that day's Classroom posts and a note stub.~~
   (0.5.14: a task due before the next class and a lecture note stub, also for classes you slept through; 0.5.15:
   that day's Classroom posts in the message and the stub, and without Classroom it works the same)
@@ -84,8 +87,8 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 - **Make the panel's ideas general**: link recall cards and ~~the revision plan~~ (0.5.16) also draw on course notes
   and Classroom files, not only books; ~~the meeting brief is for any recurring meeting ("With: X", their role in your
   own word: guide, manager, coach)~~ (0.5.20, with "Meets:", "Last met" and Next steps kept in Kurooto's block);
-  "check my attempt" becomes "check my draft" (essays, accounts working, code, proofs); missed-class catch-up works
-  without Classroom.
+  ~~"check my attempt" becomes "check my draft" (essays, accounts working, code, proofs)~~ (0.5.22); missed-class
+  catch-up works without Classroom.
 - **A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking. Bedside
   mode is an Android add-on.
 - ~~**No college-term defaults**: the check-in times and Start-by's day window are learned from when you actually
@@ -143,13 +146,17 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   rest.
 - **An email-in address.** Forward a notice or a receipt to your own call line, and it's filed in your notes or
   becomes a deadline.
-- **Zotero.** A paper from the research digest goes into Zotero with one tap, and reading notes link to it.
+- ~~**Zotero.** A paper from the research digest goes into Zotero with one tap, and reading notes link to it.~~
+  (0.5.22: a Zotero button under each digest paper, through the Zotero app's connector or the web API with your key;
+  notes that link the paper get a `zotero://select` link in a Kurooto block; `/zotero`)
 - **Photo → dates.** Share a photo of a notice or a timetable from your phone, and the events and deadlines are
   pulled out.
 - **Shared class lists.** Friends in the same course can opt in to share deadlines and exam dates.
 - **Quick-ask hotkey.** A small prompt window on the desktop, on every system.
 - **Location reminders on Android.** "When I reach the library", without draining the battery.
-- **Course notes to PDF.** A LaTeX template for course notes.
+- ~~**Course notes to PDF.** A LaTeX template for course notes.~~ (0.5.22: `/notes pdf <course>`, the course page,
+  lecture notes and the concept notes they link through a LaTeX template and Tectonic; `/notes pdf template` for your
+  own copy)
 
 ## More human (2026-10-23)
 - ~~**Open threads and "that thing".** A small list of what you're in the middle of, opened from what you say you'll

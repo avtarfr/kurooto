@@ -90,6 +90,7 @@ MODULE_ORDER = [
     "space",
     "study",
     "research",
+    "drafts",  # Check my draft: in the Research add-on bundle
     "terminals",
     "terminal",
     "overlay",

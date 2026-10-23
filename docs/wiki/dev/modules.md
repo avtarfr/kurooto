@@ -576,7 +576,32 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   call, the night, any non-focus availability blocker such as a class) is clear. `quiz.links_check`: one sentence from
   the profile's helper model through `LocalModels.api("/api/generate")`, only with Local AI models on. `/card`
   (doesn't count toward the day), `/cards [on|off]`. Tests: `tests/unit/test_link_cards.py`.
-- **hints** (`modules/hints.py`): a hint ladder for a problem, respecting a course's AI policy line.
+- **hints** (`modules/hints.py`): a hint ladder for a problem, respecting a course's AI policy line. Since 0.5.22
+  `Hints.policy(slug)` reads the subject's `ai_policy` first (mapped to `CHOICES`), so a course set to `off` refuses
+  without asking.
+- **subjects** AI policy (0.5.22): a subject row in `subjects.list` may carry `ai_policy` (`POLICIES`: `allowed`,
+  `hints`, `off`). `Subjects.ai_policy(slug)` returns it, else Hint ladder's course-note line mapped through
+  `hints.policy_kind`, else `None` (treated as allowed); `set_ai_policy(slug, value)` validates through `POLICY_WORDS`
+  and gives a term-note subject a row of its own. `/subject policy <s> [allowed|hints|off|clear]`; `/subject add` again
+  keeps the policy. The dashboard's Study pane shows it (`study_view()["ai_policy"]`, action `subject.policy`).
+- **drafts** (`modules/drafts.py`, Check my draft; `extra`, `bundle = "research_addon"`): `App.handle` calls
+  `Drafts.take(msg)` before Books/Class packs/`take_files`: a message with files whose text isn't a request is
+  remembered (`_recent`, in memory) and goes on; `CHECK` (`wants()`) with files, or with a file from the last
+  `drafts.recent_minutes` (Telegram's `_recent`, the phone app's `calls/shared.json`), starts `check()`. `/check` does
+  the same, and from `terminal`/`dashboard` takes a file path in the text (`_path_in`). A phone share whose note is a
+  request goes straight to `check()` (`calls/__init__.py:_upload`). The course: `_course()` (named first, named once,
+  the file's name, its subject folder, the class now or ended within 30 min, the only subject), else
+  `app.ask.ask(..., hook="drafts.course")` (not from `terminal`). `_go()` refuses for `ai_policy == "off"`, then sends
+  the shipped `check-draft` skill (`data/skills/check-draft/SKILL.md`) with the course, its policy (`POLICY_WORDS`),
+  the course's lecture notes, and each text draft (`TEXT_TYPES`, up to `MAX_TEXT`) numbered (`numbered()`); other
+  files go as paths. The quiet job's then-action `drafts.ready` (registered in `__init__`) parses `KIND`/`NOTE`/
+  `SUMMARY` and `- where | cat | what` lines (`parse_check`), drops comments matching `REWRITE` (`tidy_comments`, which
+  also cuts to the policy's length: `hints` keeps one sentence), and never passes on an answer in another form. Notes
+  (a `.md` inside the notes, or `KIND: notes` with a course) get `graphwrite.put_block(..., "draft-check", ...)` in the
+  sent note or the matching lecture note (the AI's `NOTE` if it's one of the course's lectures, else the best word
+  match), checked by `guarded`. `via == "terminal"` sets `msg.job` and sends nothing (the dashboard's chat prints the
+  answer). State `<state>/drafts/<id>.json` (last 100). Events `draft_check_started`, `draft_checked`,
+  `draft_refused`. Tests: `tests/unit/test_drafts.py`.
 - **study** (`modules/study.py`): minutes per subject from the focused window title (read and discarded), idle and lock
   aware (`core/idle.py`); Windows `GetForegroundWindow`, macOS System Events, Linux `hyprctl` / `swaymsg` / `xdotool`.
   Paper sessions (`/study la 50`), and Study mode's focus and break timer (`timer_start`, `timer_pause`, `timer_reset`,
@@ -659,6 +684,20 @@ arrives.
   project logs from git and `runs/`, and questions about idle projects. `papers()` collects with `mark_seen=False` and
   marks them in `research-papers.json` once delivered: right after the plain digest, or in the `research.digest`
   then-action when the AI-picked one succeeded.
+- **research** Zotero (0.5.22, `modules/zotero.py`, `Research.zotero`): `Zotero.way()` is `app` (the connector at
+  `LOCAL` answers `/connector/ping`), `web` (a key in `research.zotero_key`, the secret named by `KEY_NAME`) or `""`, by
+  `research.zotero`. The digest keeps its papers by `ref_of(id)` in `<state>/research/digest-papers.json` (last 400) and
+  the numbered ones in `digest-last.json`; `zotero_buttons()` adds `zot:<ref>:add` rows (at most 8) when `way()` isn't
+  empty. The AI-picked digest is then submitted `quiet` and `_digested` sends it itself with buttons for the papers
+  whose links it names (and its receipt); a failure says so with `why="research.papers"`. A tap runs `add_later` (a
+  thread): `_web_add` (`/keys/current` for the user id, cached in `research/zotero.json`; `POST /users/<id>/items` with
+  a `Zotero-Write-Token`) or `_local_add` (`/connector/saveItems`, then the item key from the local API
+  `/api/users/0/items?q=`, else none). `items` in `research/zotero.json` stops a second add. `link_notes()` (after an
+  add, and job `research:zotero_links` daily 04:40 in a thread) puts a `zotero` block with `zotero://select` links in
+  every note (up to `MAX_NOTES`) whose own text has a paper's link, arXiv id or DOI (`_needles`). `/zotero`,
+  `/zotero key <key>|off` (checked: write access), `/zotero <n>`, `/zotero links`; Research's setup form takes the key.
+  Host `api.zotero.org` is in `core/egress.py:HOSTS`. Tests: `tests/unit/test_zotero.py` (a fake web API and
+  connector; `tests/conftest.py:no_real_zotero` points both at nothing for every other test).
 - **retro** (`modules/retro.py`, requires `chat`): the nightly look back proposes setting, profile, skill and idea
   changes, each confirmed through `app.ask`; only settings in `TUNABLE` (and modules' `tunable`) may be proposed. With
   Learns from its own work's `remember` part on (`Learning.picks_facts()`), `_run` appends `learning.REMEMBER_ASK` to

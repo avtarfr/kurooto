@@ -23,6 +23,8 @@ computer only.
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI service you picked |
 | Hint ladder | the problem (its photo or text), the course's AI-policy line and the notes the AI reads to find the lecture note; with "no AI help" in that line, nothing | the AI service you picked |
 | Skills: revision packs | Tectonic (if you install it) downloads LaTeX packages; nothing of yours is sent | Tectonic's package server (public) |
+| Check my draft (Research add-on) | the draft you send (a photo, PDF, `.tex`, essay or code, a text file numbered line by line) and the course notes the AI reads; with the course's AI policy `off`, nothing | the AI service you picked |
+| Course notes to PDF (`/notes pdf`) | nothing: your notes become LaTeX and a PDF on this computer; Tectonic may download LaTeX packages it lacks | Tectonic's package server (public), only for packages |
 | Study packs (`/studypack`) | nothing to your AI: Kurooto collects the files on this computer and fills in a prompt. With a topic, it finds each book's pages on it in the text Books extracted, on this computer. The zip and the prompt come to your own Telegram; you decide which other AI to give them to | Telegram (your own bot); with Drive upload on, a pack over 50 MB goes to your own Drive, deleted after `drive_upload.temp_days` |
 | Skills: packs before exams (`skills.auto_pack`) | the same as `/pack`: the subject's notes the AI reads to write the pack; with `ask` (the default) only after you tap Build it | the AI service you picked |
 | Sending files (`kurooto send`, the AI's send-file tool) | the file | Telegram (to your own bot) |
@@ -75,6 +77,7 @@ computer only.
 | Drive upload | the files you send yourself, into a Kurooto folder in your Drive; nothing is shared | Google (your Drive) |
 | About you | the reports you add stay on this computer (Kurooto's data folder, not synced); building the profile sends them to the AI you picked, and its short "In brief" part goes along with every AI request | the AI service you picked |
 | Research | your fields, keywords and searches, arXiv searches you wrote in arXiv's own words included (never your notes). Runs kept in your repositories (`runs/index.csv`) and `research.save_note` stay on your computer | the sources you pick: arXiv, bioRxiv/medRxiv, PubMed, feeds (all public) |
+| Research: Zotero (a paper you tap) | the paper's public details: title, authors, abstract, date, link, arXiv id or DOI | the Zotero app on this computer (its connector, `127.0.0.1:23119`), or Zotero's web API (`api.zotero.org`) with your key |
 | Research: "Remind me tomorrow" by call (Phone calls on) | the project's name, as the call's reason | your call line (Cloudflare, Gemini Live), like any call |
 | Research: `kurooto watch` | the command's name, exit code, duration and last lines (`--lines 0`: none) | Telegram (your own bot), like any message |
 | Terminals | nothing by themselves (see [Your own code and terminals](#your-own-code-and-terminals)) | stays on your computer |
@@ -111,6 +114,7 @@ requests and bytes, per day) and checks it against this list. `/egress` shows th
 | `export.arxiv.org` | Research (arXiv) |
 | `api.biorxiv.org` | Research (bioRxiv, medRxiv) |
 | `eutils.ncbi.nlm.nih.gov` | Research (PubMed) |
+| `api.zotero.org` | Research: a paper you tap into Zotero (its public details: title, authors, abstract, link), with your Zotero key; not used when the Zotero app on this computer takes it |
 | `avtarfr.github.io` | Updates and the list of withdrawn versions |
 
 **Addresses you gave are yours** and always allowed: your calendar's private link, the feeds you added to Research,

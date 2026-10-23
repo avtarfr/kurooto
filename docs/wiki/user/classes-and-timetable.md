@@ -32,6 +32,7 @@ minutes before one.
 | `/subject add Linear Algebra (la, linalg)` | adds a subject; the words in brackets are its short names. `add` is optional: `/subject Statistics (stats)` works too. Adding a subject with the same name again replaces its short names. |
 | `/subject` | lists your subjects and their short names |
 | `/subject remove la` | removes a subject you added (by name or short name) |
+| `/subject policy la hints` | the course's AI policy: `allowed`, `hints` or `off` (`/subject policy la` shows it, `clear` unsets it). [Check my draft](books-and-study.md#check-my-draft) and the [Hint ladder](quiz-and-exams.md) go by it; it's also the AI help box in the dashboard's Study pane |
 | `/class mon 09:00-09:55 la` | adds a class: a day (`mon`…`sun`, longer names work), a start and end time, and the subject. A class at the same day and start time replaces the old one. The subject must exist first (Kurooto says so if not). |
 | `/classes` | your whole week's timetable |
 | `/classes today` | today's classes, marked "(skipping)" where you skip one |

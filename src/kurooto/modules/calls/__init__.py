@@ -41,6 +41,7 @@ from kurooto.modules.calls.connector import Connector
 from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, live_profile
 from kurooto.modules.calls.phone import PhoneApp
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
+from kurooto.modules.drafts import wants as wants_check
 from kurooto.modules.text import a_time, stale_time
 
 register_defaults(
@@ -1157,6 +1158,10 @@ class Calls(Module):
         rel = layout.shown(self.app, dest)
         self.app.events.emit("files_shared", via="phone", bytes=dest.stat().st_size)
         self.chat.shared(dest, note)  # "summarise the PDF I just sent" finds it (chat.py, modules/chat.py)
+        drafts = self.app.modules.get("drafts")  # shared with "check this": Check my draft (modules/drafts.py)
+        if drafts is not None and self.app.is_on("drafts") and note and wants_check(note):
+            self.app.notify(drafts.check([dest], note, via="app"), kind="info", why="asked")
+            return 200, {"ok": True, "saved": rel}
         if self.app.is_on("chat"):
             jid = self.app.jobs.submit(
                 f"A file was shared from my phone: {rel}"

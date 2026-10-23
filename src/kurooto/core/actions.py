@@ -193,6 +193,7 @@ def study_view(app: App, subject: str | None = None) -> dict:
     slug = slug or next((r["slug"] for r in out["today"] if r["slug"] in slugs), None) or (slugs[0] if slugs else "")
     out["subject"] = slug
     out["name"] = subj.name_of(slug) if subj and slug else ""
+    out["ai_policy"] = (subj.ai_policy(slug) or "") if subj and slug else ""  # allowed, hints, off; "": not set
     focus = app.availability.focus_until()
     out["focus"] = f"{focus:%H:%M}" if focus else None
     dl = app.modules.get("deadlines") if "deadlines" in on else None
@@ -236,6 +237,37 @@ def study_timer(app: App, args: dict) -> dict:
     else:
         raise Problem("Start, pause or reset?")
     return {"message": said, "timer": st.timer_view()}
+
+
+# ------------------------------------------------------------------------------------------- one course
+def subject_policy(app: App, args: dict) -> dict:
+    """A course's AI policy from the Study pane: {"subject", "policy": allowed|hints|off|""}."""
+    subj = _on(app, "subjects", "Subjects")
+    slug = subj.resolve(str(args.get("subject") or ""))
+    if not slug:
+        raise Problem("Which subject?")
+    said = subj.set_ai_policy(slug, str(args.get("policy") or ""))
+    return {"message": said, "policy": subj.ai_policy(slug) or ""}
+
+
+def notes_pdf(app: App, args: dict) -> dict:
+    """A course's notes as one PDF (core/coursepdf.py), sent like /notes pdf: {"subject"}."""
+    from kurooto.core import coursepdf
+
+    return {"message": coursepdf.command(app, str(args.get("subject") or ""))}
+
+
+def draft_check(app: App, args: dict) -> dict:
+    """Check my draft for a file on this computer: {"path", "subject"?, "text"?}; the comments come as a message."""
+    dr = _on(app, "drafts", "Check my draft")
+    raw = str(args.get("path") or "").strip().strip("\"'")
+    p = Path(raw).expanduser() if raw else None
+    if p is None or not p.is_file():
+        raise Problem("There's no file at that path.")
+    subj = app.modules.get("subjects") if app.is_on("subjects") else None
+    slug = subj.resolve(str(args.get("subject") or "")) if subj else None
+    said = dr.check([p.resolve()], str(args.get("text") or ""), via="dashboard", subject=slug)
+    return {"message": said + (" The comments come to your chat." if said.startswith("Checking") else "")}
 
 
 # ------------------------------------------------------------------------------------------------ actions
@@ -406,6 +438,9 @@ ACTIONS = {
     "question.answer": question_answer,
     "study.mode": study_mode_act,
     "study.timer": study_timer,
+    "subject.policy": subject_policy,
+    "notes.pdf": notes_pdf,
+    "draft.check": draft_check,
 }
 
 

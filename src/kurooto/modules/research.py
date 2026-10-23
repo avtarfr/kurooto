@@ -25,6 +25,10 @@ repository's own runs/ folder (runs/index.csv, research.repo_runs) get a line in
 no commits or runs for a few days (4 by default), Kurooto asks what's up: Busy, Working off-git, Remind me tomorrow
 (a call the next day at 18:00 with Phone calls on, else a message) or Pausing. Your own text in these notes is never
 changed; Kurooto only adds lines.
+
+Zotero (modules/zotero.py, research.zotero): with the Zotero app running on this computer, or a Zotero web API key
+(/zotero key <key>), each paper in the digest comes with a Zotero button: one tap puts it in your library, and reading
+notes that link the paper get a link to its Zotero item.
 """
 
 from __future__ import annotations
@@ -47,6 +51,7 @@ from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
+from kurooto.modules.zotero import Zotero, ref_of
 
 register_defaults(
     "research",
@@ -66,6 +71,10 @@ register_defaults(
         "save_note": False,  # also keep each digest as a note in your inbox (inbox/papers-<date>.md)
         "repo_runs": "runs",  # the folder in each repository where scripts keep their runs (its index.csv); "": none
         "remind_by_call": True,  # "Remind me tomorrow" is a call at 18:00 when Phone calls is on
+        # papers into Zotero with one tap: auto (the Zotero app when it's running, else the web API with your key,
+        # /zotero key), app, web, off (no Zotero buttons)
+        "zotero": "auto",
+        "zotero_links": True,  # your notes that link a paper you put in Zotero get a link to its Zotero item
         "endpoints": {
             "arxiv": "https://export.arxiv.org/api/query",
             "biorxiv": "https://api.biorxiv.org/details",
@@ -239,7 +248,14 @@ class Research(Module):
     title = "Research"
     heavy = True  # waits for the charger on battery (saver mode, core/power.py)
     description = "A digest of new papers in your fields (arXiv, bioRxiv, medRxiv, PubMed, any feed), and project logs."
-    privacy = "Your fields and keywords go to the sources you pick (all public). Commit messages stay on this computer."
+    privacy = (
+        "Your fields and keywords go to the sources you pick (all public). Commit messages stay on this computer. A "
+        "paper you tap into Zotero goes to the Zotero app here, or to Zotero's web API (api.zotero.org) with your key."
+    )
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.zotero = Zotero(self)
 
     def feeds(self) -> list[dict]:
         out = list(self.setting("feeds") or [])
@@ -278,6 +294,10 @@ class Research(Module):
         self.every("idle", self.setting("idle_when") or "daily 18:00", lambda p: self.idle_check(), respect="quiet")
         self.action("remind", self._remind)
         self.app.jobs.then_actions["research.digest"] = self._digested
+        if self.setting("zotero_links") and str(self.setting("zotero") or "auto") != "off":
+            self.every("zotero_links", "daily 04:40", lambda p: self._link_later())
+        else:
+            self.app.scheduler.cancel(f"{self.id}:zotero_links")
         ask = getattr(self.app, "ask", None)
         if ask is not None:
             ask.hooks["research.idle"] = self._idle_answer
@@ -488,9 +508,107 @@ class Research(Module):
         jsave(seen_file, dict(list(seen.items())[-20000:]))
 
     def _digested(self, job, result, payload: dict) -> None:
-        """The AI-picked digest came: its papers count as sent. If it failed, they come again in the next digest."""
+        """The AI-picked digest came: its papers count as sent. If it failed, they come again in the next digest.
+        With Zotero, the digest was asked for quietly and comes here, with a Zotero button for each paper it names."""
         if result.ok:
             self.mark_seen([str(i) for i in payload.get("ids") or []])
+        if not payload.get("zotero"):
+            return
+        tail = self.app.jobs.receipt(job.id) or None
+        if not result.ok:
+            from kurooto.core.jobs import FRIENDLY
+            from kurooto.providers import CHOICES
+
+            label = CHOICES.get(job.brain or "", job.brain or "the AI")
+            failed = FRIENDLY.get(result.verdict, "it failed.").format(brain=label)
+            text = f"New papers: {failed} They come again next time."
+            self.app.notify(text, kind="result", why="research.papers")
+            return
+        papers = [p for p in (self._digest_papers().get(r) for r in payload.get("refs") or []) if p]
+        named = sorted(
+            ((result.text.find(p["link"]), p) for p in papers if p.get("link") and p["link"] in result.text),
+            key=lambda x: x[0],
+        )
+        buttons = self.zotero_buttons([p for _, p in named])
+        jsave(self.app.paths.state / "research" / "digest-last.json", [ref_of(p["id"]) for _, p in named][:8])
+        self.app.notify(
+            f"{result.text}" + (f"\n\n{tail}" if tail else ""),
+            kind="result",
+            buttons=buttons,
+            why="research.papers",
+            tail=tail,
+        )
+
+    # ------------------------------------------------------------------------------------------ zotero
+    def _digest_papers(self) -> dict:
+        return jload(self.app.paths.state / "research" / "digest-papers.json", {}) or {}
+
+    def _keep_papers(self, papers: list[dict]) -> list[str]:
+        """The digest's papers by short reference (for the Zotero buttons); the last 400 are kept."""
+        f = self.app.paths.state / "research" / "digest-papers.json"
+        d = self._digest_papers()
+        refs = []
+        for p in papers:
+            r = ref_of(p["id"])
+            d[r] = {k: p.get(k) for k in ("id", "title", "authors", "summary", "link", "date", "source")}
+            refs.append(r)
+        jsave(f, dict(list(d.items())[-400:]))
+        return refs
+
+    def zotero_buttons(self, papers: list[dict]) -> list | None:
+        """One "Zotero" button per paper (at most 8), or None when Zotero is off or out of reach."""
+        if not papers or not self.zotero.way():
+            return None
+        rows = []
+        for i, p in enumerate(papers[:8], 1):
+            short = re.sub(r"\s+", " ", p.get("title") or "")[:34].rstrip()
+            rows.append([(f"Zotero {i}: {short}", f"zot:{ref_of(p['id'])}:add")])
+        return rows
+
+    def _zotero_button(self, ref: str, act: str) -> str:
+        p = self._digest_papers().get(re.sub(r"[^a-f0-9]", "", ref))
+        if act != "add":
+            return "unknown button"
+        if not p:
+            return "That paper isn't in a recent digest any more."
+        self.zotero.add_later(p)
+        return "Adding it to Zotero…"
+
+    def _link_later(self) -> None:
+        import threading
+
+        threading.Thread(target=self.zotero.link_notes, name="zotero-links", daemon=True).start()
+
+    def callbacks(self):
+        return {"zot": self._zotero_button}
+
+    def _zotero_cmd(self, msg: Incoming, arg: str) -> str:
+        a = arg.strip()
+        if a.lower().startswith("key"):
+            k = a[3:].strip()
+            if not k:
+                return "/zotero key <your key> (make one at zotero.org/settings/keys: library and write access)."
+            return self.zotero.set_key(k)
+        if a.lower() == "links":
+            n = self.zotero.link_notes()
+            return f"{n} note{'s' if n != 1 else ''} got a link to the Zotero item of a paper they cite."
+        if a.isdigit():  # /zotero 3: the third paper of the last digest (its button's number)
+            last = jload(self.app.paths.state / "research" / "digest-last.json", []) or []
+            pick = last[int(a) - 1] if 0 < int(a) <= len(last) else None
+            p = self._digest_papers().get(pick) if pick else None
+            if not p:
+                return "There's no such paper in the last digest."
+            return self.zotero.add(p)[1]
+        if a:
+            return "/zotero, /zotero key <key>, /zotero key off, /zotero links, /zotero <number in the last digest>"
+        way = self.zotero.way()
+        mode = self.zotero.mode()
+        n = len(self.zotero.items())
+        if mode == "off":
+            return "Zotero is off (research.zotero in Settings)."
+        how = {"app": "through the Zotero app on this computer", "web": "through Zotero's web API with your key"}
+        now_ = how.get(way) or ("not reachable now: open the Zotero app, or add a web API key with /zotero key <key>")
+        return f"Zotero: {now_}. {n} paper{'s' if n != 1 else ''} put in from the digest so far."
 
     def papers(self) -> list[dict]:
         new, failed = self.collect(mark_seen=False)  # seen once the digest is delivered, not before
@@ -513,6 +631,10 @@ class Research(Module):
                 for i, p in enumerate(new[:120])
             )
             about = self.setting("about") or "(not given: use my notes to tell)"
+            refs = self._keep_papers(new[:120])
+            zot = bool(self.zotero.way())  # with Zotero, the digest comes back here to get its buttons
+            if zot:
+                jsave(self.app.paths.state / "research" / "digest-last.json", [])
             self.app.jobs.submit(
                 f"These are new papers from my research sources. What I work on: {about}\n\nPick the {n} most relevant "
                 f"to me, each as: the title, the link, and one line on why it matters to me. Then one line listing any "
@@ -521,14 +643,23 @@ class Research(Module):
                 effort="medium",
                 background=True,
                 why="research.papers",
+                quiet=zot,
                 then="research.digest",
-                then_payload={"ids": [p["id"] for p in new]},
+                then_payload={"ids": [p["id"] for p in new], "zotero": zot, "refs": refs if zot else []},
             )
         else:
-            rows = [f"• {p['title']} ({', '.join(p['authors'][:2]) or p['source']})\n  {p['link']}" for p in new[:n]]
+            rows = [
+                f"{i}. {p['title']} ({', '.join(p['authors'][:2]) or p['source']})\n  {p['link']}"
+                for i, p in enumerate(new[:n], 1)
+            ]
             more = f"\n…and {len(new) - n} more." if len(new) > n else ""
+            refs = self._keep_papers(new[:n])
+            jsave(self.app.paths.state / "research" / "digest-last.json", refs)
             self.app.notify(
-                f"New papers ({len(new)}):\n" + "\n".join(rows) + more + note, kind="result", why="research.papers"
+                f"New papers ({len(new)}):\n" + "\n".join(rows) + more + note,
+                kind="result",
+                buttons=self.zotero_buttons(new[:n]),
+                why="research.papers",
             )
             self.mark_seen([p["id"] for p in new])
         return new
@@ -836,7 +967,10 @@ class Research(Module):
         return {
             "intro": "What you work on, in a sentence or two, and some keywords to start with. Afterwards, pick your "
             "fields and sources (arXiv, bioRxiv, medRxiv, PubMed, any journal's feed) on the dashboard's Research tab.",
-            "links": [["arXiv's fields", "https://arxiv.org/category_taxonomy"]],
+            "links": [
+                ["arXiv's fields", "https://arxiv.org/category_taxonomy"],
+                ["a Zotero key", "https://www.zotero.org/settings/keys/new"],
+            ],
             "fields": [
                 {
                     "name": "about",
@@ -849,6 +983,13 @@ class Research(Module):
                     "label": "Keywords (comma-separated)",
                     "type": "text",
                     "placeholder": "e.g. message passing, molecular property prediction",
+                },
+                {
+                    "name": "zotero_key",
+                    "label": "Zotero web API key (optional: papers into Zotero with one tap; the Zotero app works "
+                    "without one)",
+                    "type": "password",
+                    "placeholder": "from zotero.org/settings/keys (library and write access)",
                 },
             ],
         }
@@ -864,13 +1005,21 @@ class Research(Module):
             return {"ok": False, "message": str(e)}
         if not self.feeds():
             return {"ok": False, "message": "Give at least one keyword (or pick fields on the Research tab later)."}
-        return {"ok": True, "message": "Saved. Pick more fields and sources on the dashboard's Research tab."}
+        zot = ""
+        if str(values.get("zotero_key") or "").strip():
+            zot = " " + self.zotero.set_key(str(values["zotero_key"]))
+        return {"ok": True, "message": "Saved. Pick more fields and sources on the dashboard's Research tab." + zot}
 
     # ------------------------------------------------------------------------------------------ telegram
     def commands(self):
         return [
             Command("papers", "the new-papers digest now", lambda m, a: f"{len(self.papers())} new papers found."),
             Command("feeds", "your research sources (change them on the dashboard's Research tab)", self._feeds),
+            Command(
+                "zotero",
+                "papers into Zotero with one tap: /zotero (how), /zotero key <key> (web API), /zotero links",
+                self._zotero_cmd,
+            ),
             Command("topics", "quick keywords searched across arXiv: /topics add …, /topics remove …", self._topics),
             Command(
                 "repos",

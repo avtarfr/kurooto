@@ -282,6 +282,14 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `doubts.before_min` | `30` | open doubts come this long before the subject's next class |
 | `doubts.recent_h` | `3` | a doubt naming no subject is for the class that's on, or ended this many hours ago |
 
+### `drafts`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `drafts.max_comments` | `15` | at most this many comments on one draft |
+| `drafts.note_block` | `true` | notes that are checked: the comments also go in a block in the matching lecture note |
+| `drafts.recent_minutes` | `15` | "check this" after you sent a file checks that file if it came this recently |
+
 ### `dreaming`
 
 | Setting | Default | What it does |
@@ -703,6 +711,8 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `research.save_note` | `false` | also keep each digest as a note in your inbox (inbox/papers-<date>.md) |
 | `research.topics` | `[]` | older setting: plain keywords searched across all of arXiv (still works) |
 | `research.window_days` | `7` | how far back each digest looks |
+| `research.zotero` | `"auto"` |  |
+| `research.zotero_links` | `true` | your notes that link a paper you put in Zotero get a link to its Zotero item |
 
 ### `retro`
 

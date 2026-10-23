@@ -101,6 +101,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | Command | What it does | Feature |
 |---|---|---|
 | `/subject add Linear Algebra (la, linalg)`, `/subject`, `/subject remove la` | add, list or remove subjects | Subjects and timetable |
+| `/subject policy la hints` (`allowed`, `hints`, `off`; `clear`) | a course's AI policy, for Check my draft and the Hint ladder | Subjects and timetable |
 | `/class mon 09:00-09:55 la` · `/class remove mon 09:00` | add a class to your timetable, or remove one | Subjects and timetable |
 | `/classes`, `/classes today` | your timetable | Subjects and timetable |
 | `/busy add gym mon,wed,fri 18:00-19:00`, `/busy`, `/busy skip gym`, `/busy unskip gym`, `/busy calls gym off`, `/busy remove gym` | the regular things that aren't classes (gym, shifts, standups); calls wait for them | Commitments |
@@ -115,6 +116,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/examseason` | exam season: dates, exams and parts (tap a part to switch it) | Exam season (optional) |
 | `/revise`, `/revise la`, `/revise undo` | the revision plan: today's blocks and the next days'; one course's topics, ranked; take back the last Yes / Partly / No | Exam season (optional) |
 | `/hint la` (with a photo, or the problem typed after it) | one hint at a time | Hint ladder |
+| `/check la` (with a file or photo; or "check this" as its caption) | gaps, unclear steps, errors and missing reasons marked, nothing rewritten | Check my draft (Research add-on) |
 | `/pack linear algebra midterm` | a revision PDF from your notes | Skills |
 | `/studypack <subject> [what it's for]`, e.g. `/studypack la quiz on eigenvalues`; `/studypack prompt` (edit the prompt), `/studypack prompt reset` | a zip of a subject's materials, with a prompt for another AI sent as its own message; a topic narrows it, class material first; over 50 MB comes as a temporary Drive link | Skills |
 | `/study`, `/study week`, `/study la 50`, `/study stop` | study time; start or stop a session away from the computer | Study tracker |
@@ -134,6 +136,7 @@ More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-a
 | `/note buy graph paper` | save a quick note to your inbox (a photo with `/note` as caption is linked) | Quick notes and prompts |
 | `/prompts`, `/prompt <name>`, `/prompt save <name>` | your prompt library | Quick notes and prompts |
 | `/notes what is a compact space` | search your notes by meaning | Notes brain |
+| `/notes pdf la`, `/notes pdf template` | a course's notes (course page, lectures, the concept notes they link) as one PDF; your own copy of its LaTeX template | Kurooto (with Subjects) |
 | `/timeline research/reading-group` | a note's dated log | Notes brain |
 | `/sync`, `/sync all` | sync your notes now; `all`: everything that syncs | Notes sync |
 | `/graph`, `/graph now`, `/graph stop` | the concept graph's state; start or stop its work | Concept graph |
@@ -145,6 +148,7 @@ More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-a
 | `/every monday 9:00 /journal plan my week`, `/every weekdays 7:30 /morning-prep`, `/every daily 21:00 how did today go?` | run a skill, a command or a request on a schedule (days: daily, weekdays, weekends, a day, or several like `mon,thu`; at most 30) | Skills |
 | `/routines` | what runs on a schedule, with Cancel buttons | Skills |
 | `/papers` | the new-papers digest now | Research |
+| `/zotero`, `/zotero key <key>`, `/zotero 3`, `/zotero links` | papers into Zotero with one tap (the app, or the web API with your key) | Research |
 | `/feeds` | your research sources | Research |
 | `/topics add …`, `/topics remove …` | quick keywords searched across arXiv | Research |
 | `/repos`, `/repos add ~/code/my-model`, `/repos add ~/code/model_v2 as Climate model`, `/repos remove …` | repositories for project logs | Research |

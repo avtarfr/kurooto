@@ -2,13 +2,15 @@
 
 Your textbooks read into text your AI can cite by page, a say in how much books, class material and your own notes
 count when the AI writes notes, a study-time tracker, study packs to take a subject to another AI, and handwritten
-pages written out as notes.
+pages written out as notes; your drafts checked before you hand them in, and a course's notes as one PDF.
 
 - [Books and PDFs](#books-and-pdfs)
 - [The source mix](#the-source-mix)
 - [Study tracker](#study-tracker)
 - [Study packs](#study-packs)
 - [Handwritten notes](#handwritten-notes)
+- [Check my draft](#check-my-draft)
+- [Course notes as one PDF](#course-notes-as-one-pdf)
 
 ---
 
@@ -358,3 +360,79 @@ and opening lines of the notes it may relate to, and your subjects' names go to 
 **Turn it off / undo.** Features → Handwritten notes → Turn off; the notes and copies stay. `handwritten.local` =
 `false` sends everything to Gemini instead. `/handwritten undo` takes back the last linking; `handwritten.link` =
 `false` stops linking.
+
+## Check my draft
+
+**What it does.** Before you hand something in, send it with "check this": a photo of a proof, a PDF, a `.tex`
+derivation, an essay (`.md`, `.txt`, `.docx`), accounts working or a code file. Your AI marks what to look at, each
+comment pointing at a line (`L12-14`) or a place on the page (`p2, the second displayed equation`):
+
+- **gap**: a step is missing;
+- **unclear**: a step can't be followed as written;
+- **error**: something is false, miscalculated, or doesn't compile or run;
+- **needs a reason**: a true claim that needs a justification it doesn't give.
+
+It **never rewrites your work or gives a solution**: a comment that would hand over the fix ("replace it with...",
+"the correct answer is...") is left out, and the message says how many were. An answer that doesn't come as comments is
+never passed on.
+
+**Turn it on.** It's part of the Research add-on: Features → Research add-on (it's on only when you turn it on).
+
+**How to send it.**
+
+| Where | How |
+|---|---|
+| Telegram | the file or photo with `check this` as its caption (or `check my proof for la`, `/check la the induction step`); or `check this` within 15 minutes of sending the file (`drafts.recent_minutes`) |
+| The phone app | share the file with the note `check this`; or type `check this` in the chat just after sharing it |
+| The dashboard | Study pane → COURSE → paste the file's path and **check**; or in the dashboard's chat `/check la ~/proof.tex` |
+
+**Which course.** Named in the message ("for la", `/check la`), in the file's name or its folder, the class going on or
+just over, or your only subject. When it can't tell, it asks once with your courses as buttons (and "Not for a
+course").
+
+**The course's AI policy.** Each course has one: **allowed**, **hints** or **off** (`/subject policy la hints`, or the
+AI help box in the dashboard's Study pane). With **hints**, a comment only says where the problem is and what kind it
+is, never how to fix it. With **off**, nothing is checked for that course and nothing goes to the AI. Not set counts
+as allowed (the message reminds you to set it). The [Hint ladder](quiz-and-exams.md) goes by the same setting.
+
+**Notes.** When the draft is lecture or class notes (a note of yours, or what the AI says are notes), the comments also
+go into the matching lecture note, in a Kurooto block (`<!-- kurooto:draft-check -->`); your own text there never
+changes, and checking again replaces the block (`drafts.note_block`).
+
+**Limits.** A text file (up to 60,000 characters) goes in numbered line by line, so any AI can name lines. Photos and
+PDFs need an AI that opens files itself (agy or Claude Code). At most 15 comments (`drafts.max_comments`).
+
+| Setting | Default | Effect |
+|---|---|---|
+| `drafts.max_comments` | 15 | comments on one draft at most |
+| `drafts.note_block` | on | notes that were checked: the comments also go in the matching lecture note |
+| `drafts.recent_minutes` | 15 | "check this" after sending a file checks that file if it came this recently |
+
+**What leaves your computer.** The draft and the course notes the AI reads go to the AI you picked.
+
+**Turn it off / undo.** Features → Research add-on → Turn off. Delete a `kurooto:draft-check` block from a note if
+you don't want it there.
+
+## Course notes as one PDF
+
+**What it does.** `/notes pdf la` makes one PDF of a course's notes: its course page, its lecture notes in date order,
+and the concept notes they link (by `[[link]]`), each a section, with a table of contents. Your Markdown becomes LaTeX
+(headings, lists, tables, code, links, and your maths as you wrote it) through a template, and Tectonic (or the LaTeX
+already on your computer) makes the PDF. No AI is used and nothing in your notes changes.
+
+**Where it comes.** Like other files: on Telegram, or a link in the phone app's chat. The `.tex` and the PDF are kept
+where revision packs go (`<course>/course-notes-<course>.tex` in your notes); a file of yours with that name is never
+written over. From the dashboard: Study pane → COURSE → **notes → pdf**.
+
+**When the maths doesn't compile** (a macro of your own, say), the PDF is made again with the maths shown as written,
+and the message says so. Images are named, not drawn.
+
+**Your own template.** `/notes pdf template` puts a copy of the LaTeX template beside your study pack prompt
+(`kurooto/course-notes-template.tex`) to edit; `%%COURSE%%`, `%%DATE%%` and `%%BODY%%` are filled in. Delete it to
+go back to Kurooto's.
+
+**No LaTeX here.** You get the `.tex`, and (with Skills on) a button to install Tectonic, a small LaTeX engine (about
+25 MB, plus about 50 MB of LaTeX packages fetched the first time); the PDF follows once it's installed.
+
+**What leaves your computer.** Nothing from Kurooto. Tectonic downloads the LaTeX packages it lacks (from github.com and
+its own servers) the first time.
