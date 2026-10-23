@@ -94,6 +94,8 @@ When your code does one of these, tag it:
   waits for the tap). The action must allow `call` (or `approval` with `asks`).
 - a plain-English request: `Intent(..., guarded="call.place")`; its action must allow `said`.
 - a command: nothing to tag (typing it is the request), but add it to `GUARDED[...].where`.
+- a request that would do it: don't do it from the words; offer a button (`button` way) and act on the tap, as
+  "set up my project from <repository>" does (`core/repoproject.py:intent` → `rpo:<token>:go`).
 - anything that does it by itself (a schedule, `core/infer.py`, the look back): don't. Ask with
   `app.ask.approval(...)` and act in the hook.
 
@@ -809,6 +811,11 @@ arrives.
   project logs from git and `runs/`, and questions about idle projects. `papers()` collects with `mark_seen=False` and
   marks them in `research-papers.json` once delivered: right after the plain digest, or in the `research.digest`
   then-action when the AI-picked one succeeded.
+  Since 0.7.0 `start()` also schedules `research:repo_refresh` (`repo_projects.refresh_at`, when
+  `repo_projects.refresh`) → `core/repoproject.py:refresh`; `setup_form`/`configure` take an optional `repo` (started
+  with `repoproject.start`), and `view()` lists `repo_projects` for the Research tab, whose **Add a project from a
+  repository** posts `/api/research/project`. Projects from repositories themselves are core:
+  [core.md](core.md#projects-from-repositories-corerepoprojectpy).
 - **research_addon** (`modules/research_addon.py`, `extra`, `heavy`): the Research add-on bundle (see "How
   features are listed and turned on"). Run compare is `kurooto/runcompare.py` (no App needed, so `kurooto runlog
   diff` runs it from `runlog.main` with `for_this_install()`; it refuses unless `research_addon` is on and its

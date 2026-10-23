@@ -186,6 +186,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `rhythm.json` | usual quiet hours, the last learned change and its Undo, lighter-day and absence marks, quiet week | `core/rhythm.py:Rhythm` |
 | `repair.json` | two-readings questions waiting for a tap (20, for 24 h) | `core/repair.py` |
 | `meetings.json` | minutes requests and their action-item offers (60; your words kept 2 days, for Not about the meeting), weekly briefs sent | `core/meetings.py` |
+| `repo-projects.json` | projects set up from repositories: `repos` by key (address or folder, the copy's folder, commit, tags, the rules' and the AI's summary, `pieces` = inferred ids, files' text hashes, graph item keys, milestones offered), `offers` (Set it up / Not now, 3 days) | `core/repoproject.py` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
 | `net-outbox.jsonl` | JSON lines: Telegram messages held while offline (rewritten with `write_text`) | `core/presence.py` |
@@ -357,6 +358,7 @@ Recurring (key → when; setting that controls it):
 | `quests:daily` | daily 18:00, respect quiet | `quests.when` | `modules/quests.py` |
 | `quiz:offers`, `quiz:exam_daily`, `quiz:links` | hourly; `daily <quiz.exam_daily>` if set; `quiz.links_at` if `quiz.links` is on | `quiz.exam_daily`, `quiz.links` | `modules/quiz.py`, `modules/quiz_links.py` |
 | `research:papers`, `research:logs`, `research:idle` | weekly mon 08:00; daily 23:30; daily 18:00 (quiet) | `research.papers`, `research.log_when`, `research.idle_when` | `modules/research.py` |
+| `research:repo_refresh` | daily 04:20 (heavy: waits for the charger) | `repo_projects.refresh_at`, `repo_projects.refresh` | `modules/research.py` → `core/repoproject.py:refresh` |
 | `research:zotero_links` | daily 04:40 | `research.zotero_links`, `research.zotero` | `modules/research.py` → `modules/zotero.py:link_notes` (a thread) |
 | `retro:nightly` | daily 23:50 | `retro.when` | `modules/retro.py` |
 | `skills:autopack`, `skills:routine:<id>` | every 30m; the user's `/every` spec | | `modules/skills.py` |
@@ -1071,6 +1073,61 @@ their `undo` data, `seen`); `undo()` reverses one (a note it made and nobody tou
 line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `core/commands.py:CORE`. Calm reason
 `infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`, `aliases`, `commitments`, `quizzes`,
 `short_names`. Tests: `tests/unit/test_infer.py`.
+
+## Projects from repositories (`core/repoproject.py`)
+
+0.7.0. `/project add <target> [as <name>]` (`App.handle` → `command`), `kurooto project add` (`cli.project_run`, which
+types the command to the running Kurooto through `/api/say`), the Research tab (`POST /api/research/project`), the
+setup form's `repo` field and the plain-English `intent()` all end in `start(app, target, name, via)`: `parse()`
+checks the target (`GITHUB`: https, bare, `git@` and `ssh://` forms, `/tree/...` ignored; another host is refused;
+a local folder must be an absolute, existing path) and `_spawn` runs `add()` in a thread (tests make it inline).
+`intent()` (`asked()`: `INTENT` / `INTENT2`, and the target must look like a repository) never fetches: it keeps an
+offer and answers with `rpo:<token>:go|no`; `App.callback` routes `rpo` to `button()`. The `repo.attach` guard
+allows `typed` and `button` (core/tap.py).
+
+- **Fetch** (`clone()`): git through `core/addons.py:_run_git` (no prompts, no `ext::`/`fd::`, `core.symlinks=false`,
+  no submodules; the user's own credential helper and ssh keys), `clone --depth=50 --single-branch --no-checkout
+  --filter=blob:none` into `<data>/repos/.staging/<id>`, refused over `CLONE_MAX`; `ls_tree()` lists HEAD's blobs with
+  sizes (no links, no gitlinks); `choose()` keeps docs and manifests first, then a PDF (≤ `PDF_MAX`), notebooks
+  (≤ `NB_MAX`), other text (≤ `FILE_MAX`), up to `repo_projects.max_mb`, never `secret()` names (`SECRET_NAMES`,
+  `SECRET_DIRS`) or `BINARY` extensions; `checkout HEAD --pathspec-from-file` with `:(literal)` paths fetches only
+  those blobs. The full tree (secrets left out) goes to `.git/kurooto-tree.json`; the staging folder replaces
+  `<data>/repos/<owner>__<repo>` (the old copy is removed after). `remote_url(t)` is the one place the GitHub address
+  is made (tests point it at a `file://` bare repository). `egress.handed("git", FEATURE)`. A local folder is read in
+  place (`walk()` skips `SKIP_DIRS`, links and secret folders) and never written. Backups leave `<data>/repos` out.
+- **Read** (`gather()`): README, docs, manifests (`_deps`: pyproject, package.json, Cargo, requirements,
+  environment.yml), licence (`_licence`), CITATION, notebooks' markdown cells, a paper PDF's text (`pdf_text`:
+  pdftotext, else `core/pdfread.py`), `git log -n 40` (date, author name, subject), `git tag`, the user's own
+  `git config user.name` (left out of collaborators, never sent), and `gh_extras()` when `gh auth status` passes
+  (`gh api -X GET` for the repository, open milestones, open issues; `egress.handed("gh", ...)`). Every text goes
+  through `redact()` (the secret patterns of `diagnostics.PATTERNS`, PEM blocks, `password = ...` assignments).
+- **Understand**: `rules_info()` always (README title and first paragraph, install-section commands, roadmap bullets
+  or open issues, languages and dependencies, commit authors, `SUP_RULE` for a supervisor the README names, subjects
+  and projects named in the text). With Chat on, one `jobs.submit(prompt(), quiet=True, text_only=True,
+  then="repoproject.understood")` (registered in `App.__init__`): `PROMPT` + `material()` (≤ `SEND` characters; the
+  material is said to be data). `understood()` → `parse_json` → `validate()` (sizes; a person must be in `rec["seen"]`,
+  the README, CITATION and authors; "supervisor" only when `said_supervisor()` finds the word near the name; subjects
+  only `subjects.list` slugs or names; projects only existing project notes) → `merge()` over the rules. A failed or
+  unusable answer falls back to the rules and says so.
+- **Set up** (`finish()`): pieces recorded in `inferred.json` with `record_item()` (`kind` `repo-project`,
+  `repo-watch`, `repo-graph`; `undo` = `{"repo": key, "piece": ...}`; `infer.undo` hands them to `undo_piece()`).
+  `write_project()`: `research.ensure_project` (+ the hub line), a supervisor via `meetings.set_fields` and
+  `infer.add_section("Meetings")`, then `graphwrite.put_block_top(text, "repo", block_body())`; `write_block()`
+  rewrites only that block (refused by `graphwrite.guarded` if anything outside would change). `watch()`: the folder
+  into `research.repos` and `research.projects`, Research enabled if off (`enabled` kept for Undo). `queue_graph()`:
+  see [concept-graph.md](concept-graph.md#sources-beyond-books-0519). `offer_milestones()`: dated milestones not
+  offered before → `dateoffers.make(app, "repo", ...)` (deadline source `repository`). One `notify(why="asked")` with
+  an Undo row and the date buttons. A piece already active is kept (update mode); an undone one is made again.
+- **Refresh** (`refresh()`, from Research's `research:repo_refresh`): for each record whose folder is in
+  `research.repos` and whose note exists, `_refresh_one()`: a clone asks `remote_state()` (`git ls-remote origin
+  refs/heads/<branch> refs/tags/*`) and is cloned again only on a new commit; README/docs whose text hash changed →
+  `rules_info` (keeping the AI's last fields), `write_block`, `queue_graph(only_changed=True)`, and an AI pass in the
+  background lane (`mode: refresh`); new tags ("new release") and new milestones go in one Calm message
+  (`repo_projects.refresh`).
+
+Settings `repo_projects.on`, `refresh`, `refresh_at`, `max_mb`, `github_extras`. Tests:
+`tests/unit/test_repo_projects.py` (a real git repository in tmp, a bare one standing in for GitHub over `file://`,
+fake AI answers, gh stubbed).
 
 ## Meetings: minutes and action items (`core/meetings.py`)
 

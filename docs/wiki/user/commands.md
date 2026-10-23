@@ -155,6 +155,7 @@ More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-a
 | `/feeds` | your research sources | Research |
 | `/topics add …`, `/topics remove …` | quick keywords searched across arXiv | Research |
 | `/repos`, `/repos add ~/code/my-model`, `/repos add ~/code/model_v2 as Climate model`, `/repos remove …` | repositories for project logs | Research |
+| `/project add github.com/ana-ruiz/glacier-flow`, `/project add ~/code/glacier as Glacier Flow`, `/project update <name>`, `/project` | a project set up from its repository: the note, its commit log, its docs in the concept graph, its milestones as buttons; also "set up my project from github.com/…" | [Research](research.md#set-up-a-project-from-a-repository) |
 | `/runs`, `/runs compare 2 1`, `/runs compare` | recent experiment runs; two side by side in the project's notes (alone: the last two) | Research add-on |
 | `/latex`, `/latex add ~/papers/thesis [main.tex]`, `/latex build`, `/latex remove …`, `/latex install` | the LaTeX tracker: your documents' last build, attaching one, building now | Research add-on |
 

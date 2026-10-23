@@ -132,7 +132,7 @@ def sources(
         p.data,
         "data",
         keep_dir=lambda parts: (
-            parts[0] != SAFETY
+            parts[0] not in (SAFETY, "repos")  # repos: copies of your projects' repositories, cloned again if gone
             and (index or parts[0] != "gbrain")
             and (confidential or tuple(parts[:2]) != CONFIDENTIAL)
         ),

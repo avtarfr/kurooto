@@ -49,6 +49,11 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (("calm",), "messages that come by themselves: today's count, the limit and what waits"),
     (("why",), "why the last message that came by itself came"),
     (("notes",), "pdf <course>: a course's notes as one PDF; /notes pdf template: a copy of the template to edit"),
+    (
+        ("project",),
+        "a project set up from its repository: /project add <github address | folder> [as <name>], /project update "
+        '<name>, /project lists them; also "set up my project from github.com/owner/name"',
+    ),
 )
 SYNC = (("sync",), "sync everything that's on (Classroom, calendar, research, notes brain)")  # while Notes sync is off
 
@@ -90,7 +95,7 @@ GROUPS: tuple[Group, ...] = (
         ("sync", "notes"),
     ),
     Group("skills", "Skills and routines", "skills-and-routines", ("skills",)),
-    Group("research", "Research", "research", ("research", "research_addon")),
+    Group("research", "Research", "research", ("research", "research_addon"), ("project",)),
     Group(
         "google",
         "Google",

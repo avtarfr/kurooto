@@ -84,6 +84,11 @@ class App:
         self.jobs.then_actions["meetings.minutes"] = lambda job, result, p: meetings.minutes_written(
             self, job, result, p
         )
+        from kurooto.core import repoproject  # a project set up from its repository (core/repoproject.py)
+
+        self.jobs.then_actions["repoproject.understood"] = lambda job, result, p: repoproject.understood(
+            self, job, result, p
+        )
         from kurooto.core.ask import Ask  # questions and approvals for you, from any feature (app.ask)
 
         self.ask = Ask(self)
@@ -410,6 +415,11 @@ class App:
 
                 msg.reply(infer.command(self, arg))
                 return
+            if name == "project":  # a project set up from its repository: /project add <address> (core/repoproject.py)
+                from kurooto.core import repoproject
+
+                msg.reply(repoproject.command(self, arg))
+                return
             if name == "jobs":  # what the AI is working on and what waits, with Cancel buttons (core/jobs.py)
                 text, buttons = self.jobs.command(arg)
                 msg.reply(text, buttons=buttons)
@@ -491,6 +501,13 @@ class App:
             from kurooto.core import meetings  # "about the meeting with X: ...": minutes in its project note
 
             if meetings.take(self, msg, text):
+                return
+            from kurooto.core import repoproject  # "set up my project from github.com/x/y": Set it up / Not now
+
+            got = repoproject.intent(self, text)
+            if got:
+                self.events.emit("intent", name="repo_project")
+                msg.reply(got[0], buttons=got[1] or None)
                 return
         if msg.files and self.modules.get("deadlines") in mods:  # a photo with "dates" as its caption: its dates
             from kurooto.modules import photodates  # come back as buttons (modules/photodates.py)
@@ -668,6 +685,10 @@ class App:
             from kurooto.core import infer
 
             return infer.undo(self, ref)
+        if prefix == "rpo":  # Set it up / Not now under "set up my project from <repository>" (core/repoproject.py)
+            from kurooto.core import repoproject
+
+            return repoproject.button(self, ref, act)
         if prefix == "mtg":  # a meeting's action items, None, Later, Not about the meeting (core/meetings.py)
             from kurooto.core import meetings
 

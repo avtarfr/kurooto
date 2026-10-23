@@ -92,6 +92,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Class packs | a pack you make: the section's courses, timetable, term dates, recurring quizzes and exams; never names, keys, notes or skills. Importing sends nothing | Telegram, to your own bot; you choose whom to forward it to |
 | Exam season | nothing; with Phone calls on, the leave-by alarm (its time, the exam and what you said about the venue), and the exam in calls' brief that day and the day before | your call line; Google (Gemini Live) on the call |
 | Research | your fields, keywords and searches (never your notes) | the sources you pick: arXiv, bioRxiv, medRxiv, PubMed, feeds (all public) |
+| Research: a project from a repository | a GitHub repository is fetched by git (your own sign-in for a private one; nothing of yours is sent); with `gh` signed in, its issues and milestones are read. With Chat on: its README, docs, file list, manifests, licence, recent commit messages and authors' names, issues and milestones, and the names of your courses and projects, with anything that looks like a key taken out (files like `.env`, keys and `credentials` are never read). Without Chat, nothing | `github.com` (git), `api.github.com` (gh); the AI you picked |
 | Research: Zotero | a paper you tap into Zotero: its public details (title, authors, abstract, link) | the Zotero app on this computer, or Zotero's web API (`api.zotero.org`) with your key |
 | Check my draft | the draft you send, and the course notes the AI reads | the AI you picked |
 | Research: "Remind me tomorrow" by call | the project's name, as the call's reason | your call line, like any call |
@@ -183,7 +184,8 @@ Google's APIs (Gemini, sign-in, Classroom, Gmail, Drive and Calendar), GitHub, C
 Addresses you gave are yours and always allowed: your calendar's link, class calendars you subscribed to, your Research feeds, your own AI service, your
 call line, your ntfy server, and pages your AI reads for a request. This computer (`127.0.0.1`) is never counted.
 
-Programs that go online by themselves show as **handed to** them, with the feature: git (Notes sync, Profile sync, add-ons by link),
+Programs that go online by themselves show as **handed to** them, with the feature: git (Notes sync, Profile sync, add-ons by link,
+projects from repositories), gh (a project's issues and milestones),
 npm and wrangler (setting up the call line), agy and Claude Code, Ollama (a model download), GBrain, Tectonic and
 installers. Kurooto doesn't see what they send; the tables above say where it goes.
 

@@ -66,6 +66,7 @@ SAFE = [
     r"^[0-9]+\+[A-Za-z0-9-]+@users\.noreply\.github\.com$",
     r"@(?:example\.(?:com|org|net)|users\.noreply\.github\.com)$",
     r"^noreply@anthropic\.com$",
+    r"^git@github\.com$",  # GitHub's ssh address for every repository (git@github.com:owner/name), nobody's mail
     r"^(?:/home/|/Users/|[A-Za-z]:\\+Users\\+)(?:runner|runneradmin|user|you|someone|example|me)$",
     r"(?:example|xxxx|your-subdomain|<[^>]*>)",
 ]

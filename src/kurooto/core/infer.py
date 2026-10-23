@@ -708,7 +708,13 @@ def undo(app: App, iid: str) -> str:
         if it.get("undone"):
             return "Undone already."
         u = it["undo"]
-        if "note_before" in u:  # a weekly meeting: the note as it was, unless it changed since
+        if "repo" in u:  # a piece set up from a repository (core/repoproject.py)
+            from kurooto.core import repoproject
+
+            said = repoproject.undo_piece(app, u)
+            if said:
+                return said
+        elif "note_before" in u:  # a weekly meeting: the note as it was, unless it changed since
             f = Path(u["file"])
             if f.is_file():
                 if _key(f.read_text(encoding="utf-8")) != u["hash"]:

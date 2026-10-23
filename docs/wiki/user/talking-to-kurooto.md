@@ -197,7 +197,7 @@ something you said in passing, and Kurooto's own schedule never do them by thems
 | Placing a call, or booking one for later | you say "call me at 5", "call me now", "I'm awake" or "quiz me by call", type `/quiz <subject> call` or `kurooto call`, or ask on a call. Calls of features you turned on (check-ins, the alarm, deadline calls) ring at the times you set |
 | Reading mail from a new sender, domain, label or search | only `/mail read`, `/mail query`, or Features → Mail digest |
 | Sending anything to someone else (mail, a message, publishing) | only your **Send** under a reply draft; nothing else sends to anyone but you |
-| Attaching a code repository to a project | only `/repos add <folder>`; repositories are never searched for on the disk |
+| Attaching a code repository to a project | only `/repos add <folder>`, `/project add <address or folder>` (or `kurooto project add`), and **Set it up** under "set up my project from …" or the Research tab's button; repositories are never searched for on the disk |
 | Deleting your data | `/forget` (`/forget all` after a confirm button), `/memory forget`, `/gists forget`, Undo and Drop buttons, Keep A / Keep B under the morning message's "Worth a look"; the AI never deletes (a note it changes keeps its earlier version) |
 
 **When your AI wants to.** On a call you're on the line, so the AI does what you asked and says so. Anywhere else (an

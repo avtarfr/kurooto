@@ -461,7 +461,9 @@ nothing up, and a line is looked at once even when it reaches both the chat and 
 nothing, with or without its question mark: "do I have lab every Thursday", "is there a quiz every Monday". It works by rules on this
 computer, with no AI. It never sets alarms, places calls, sends anything or attaches code (`/repos add` does that).
 
-`/inferred` lists what was set up, newest first; `/inferred undo <id>` (or the Undo button) takes one back. Turn it off
+`/inferred` lists what was set up, newest first, including the pieces of a project you set up from its repository
+([`/project add`](research.md#set-up-a-project-from-a-repository)); `/inferred undo <id>` (or the Undo button) takes
+one back. Turn it off
 with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`, `infer.commitments`,
 `infer.quizzes`, `infer.short_names`.
 

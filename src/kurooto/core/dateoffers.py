@@ -1,5 +1,6 @@
-"""Dates offered with a button each: what Photo to dates (modules/photodates.py), Email in (modules/google_mail.py)
-and a shared class calendar (modules/calendar.py) found. Nothing is added until you tap:
+"""Dates offered with a button each: what Photo to dates (modules/photodates.py), Email in (modules/google_mail.py),
+a shared class calendar (modules/calendar.py) and a project's repository (core/repoproject.py, its dated milestones)
+found. Nothing is added until you tap:
 
 - a deadline or an exam goes into Deadlines (its source: photo, mail or shared-calendar);
 - an event becomes a reminder, date_offers.remind_min before it (08:00 that day when it has no time);
@@ -36,7 +37,7 @@ TYPES = ("deadline", "exam", "event")
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 KEEP = 100  # batches kept (the newest)
 SHOWN = 10  # items with a button each, at most
-SOURCES = {"photo": "photo", "mail": "mail", "calendar": "shared-calendar"}
+SOURCES = {"photo": "photo", "mail": "mail", "calendar": "shared-calendar", "repo": "repository"}  # repo: milestones
 
 
 def _dir(app: App):

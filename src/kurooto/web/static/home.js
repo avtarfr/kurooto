@@ -2320,6 +2320,9 @@ async function renderResearch(body) {
     <section><div><b>Projects</b> <span class="d">(each day's commits in these repositories go into the Log of research/&lt;project&gt;/index.md; on Telegram, /repos add &lt;folder&gt; as &lt;project&gt; names the project)</span></div>
       <ul class="rs-feeds">${r.repos.map((p, i) => `<li>${esc(p)} <span class="d">→ ${esc((r.projects || {})[p] || "")}</span> <button data-rs-repo-del="${i}">remove</button></li>`).join("")}</ul>
       <div class="rs-row"><input id="rs-repo" placeholder="a folder with a git repository, e.g. ~/code/my-project"> <button data-rs-repo-add>Add</button></div></section>
+    <section><div><b>Add a project from a repository</b> <span class="d">(a GitHub address or a folder: it's read, never run; your AI writes its project note, its commits go into the Log, its README and docs go into the concept graph, each with Undo)</span></div>
+      ${(r.repo_projects || []).length ? `<ul class="rs-feeds">${r.repo_projects.map((p) => `<li>${esc(p.project || p.label)} <span class="d">← ${esc(p.label)}, updated ${esc(p.updated)}</span></li>`).join("")}</ul>` : ""}
+      <div class="rs-row"><input id="rs-proj" placeholder="github.com/owner/name or ~/code/my-project"> <input id="rs-proj-name" placeholder="name (optional)"> <button class="primary" data-rs-proj>Add a project from a repository</button></div></section>
     <p class="d" id="rs-msg"></p></div>`;
   const msg = (t, bad) => { const m = $("#rs-msg"); m.textContent = t; m.className = bad ? "bad2" : "d"; };
   const save = async (b) => { const x = await api("research/save", b); if (!x.ok) { msg(x.error, true); return false; } renderResearch(body); return true; };
@@ -2358,6 +2361,7 @@ async function renderResearch(body) {
     else if (d.rsRun !== undefined) { const x = await api("research/run", {}); msg(x.message); }
     else if (d.rsRepoAdd !== undefined) await save({ repos: [...r.repos, $("#rs-repo").value] });
     else if (d.rsRepoDel !== undefined) await save({ repos: r.repos.filter((_, i) => i !== Number(d.rsRepoDel)) });
+    else if (d.rsProj !== undefined) { const x = await api("research/project", { target: $("#rs-proj").value, name: $("#rs-proj-name").value }); msg(x.ok ? x.message : (x.error || x.message), !x.ok); }
   };
 }
 
