@@ -504,8 +504,10 @@ def make_stub(app: App, it: dict) -> str:
     course = lay.path("course", subject=subj) if subj else None
     if course is not None and course.is_file():
         text = course.read_text(encoding="utf-8")
-        if f"[[{target}" not in text:
-            write_note_file(course, add_to_section(text, "Concepts", f"- [[{target}|{name}]]"))
+        if target not in lay.note_targets(text, course):  # in either link style
+            write_note_file(
+                course, add_to_section(text, "Concepts", f"- {lay.note_link(target, name, from_note=course)}")
+            )
     app.events.emit("dreaming_stub", kind=kind, linked=bool(course and course.is_file()))
     return f"Made a stub: {target}."
 

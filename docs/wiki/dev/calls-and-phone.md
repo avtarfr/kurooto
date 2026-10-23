@@ -384,14 +384,36 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `KUROOTO_KEYSTORE_PASS` on the maintainer's machine (`tools/release.py sign --apk` sets them and builds from the
   release's tarball; see [release-and-updates.md](release-and-updates.md#the-phone-app-sign---apk)); otherwise a
   throwaway debug key. `build.sh --test` runs
-  `test/CryptoTest.java` and `test/SpeechTest.java` on a plain JVM.
+  `test/CryptoTest.java`, `test/SpeechTest.java` and `test/CardsPlacesTest.java` (`CardRules`, `PlaceRules`) on a plain
+  JVM.
 - Components: `MainActivity` (the checklist: battery, notifications, full-screen calls), `PairActivity`,
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
   the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
   device key so it can wait on the line),
-  `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`.
+  `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`,
+  `PlacesActivity` + `PlaceReceiver` (location reminders).
   Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Chat`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25),
-  `B64`, `Ui` (the look).
+  `B64`, `Ui` (the look), `Cards` + `CardRules` (check-in and quiz cards), `Places` + `PlaceRules`.
+- Check-in and quiz cards (0.5.22): `PhoneApp.item` adds `card` ("checkin" / "quiz", `phone.py:card_of`, from the
+  map kind or the buttons' `chk:` / `qz:` / `ql:` data) to the item; the Worker stores items as they are, so `/pending`
+  has it (the ntfy push doesn't need it). `MainActivity.loadWaiting` hands such an item to `Cards.view` (answer box,
+  choices and buttons in rows by `CardRules.perRow`, drafts kept by item id while the process lives), which answers
+  through `Line.answer` like `AnswerActivity` (sealed, single use, the outbox with the computer off) and re-reads the
+  list 2.5 s after a delivered answer. Without a `card` field (an older computer) `CardRules.kind` goes by the text.
+  `PhoneApp.answer` turns a reply's buttons (the quiz's self-grading) into the next phone item instead of dropping
+  them, so the grading is the next card.
+- Location reminders (0.5.22): `modules/reminders.py` `PLACE` + `at_place` (setting `reminders.places`, off) send a
+  phone item of kind `place` / `place_every` straight through `PhoneApp.send` (not `notify`: it isn't for Telegram),
+  title = the place's name, text = the reminder. On the phone `Inbox.show` and `MainActivity.loadWaiting` give it to
+  `Places.adopt`, which keeps it (SharedPreferences `places`: places with lat/lon/radius/inside/last, reminders by the
+  place's `PlaceRules.key`) and dismisses the item on the line. `PlacesActivity` turns it on (the battery text first,
+  then `ACCESS_FINE_LOCATION`, and `ACCESS_BACKGROUND_LOCATION` on 10+), saves the current fix under a name
+  (`Places.here`: GPS and network, 50 m or the best in 30 s) and edits reminders. Each place is one
+  `LocationManager.addProximityAlert` (150 m, no expiry, a mutable explicit `PendingIntent` to `PlaceReceiver`, keyed
+  by a `kurooto-place:<id>` data URI); `App.onCreate` sets them again (they don't survive a restart or an update).
+  `PlaceRules.fire`: only entering from outside (a place saved where you stand starts as inside; Android also says
+  "entering" when an alert is set while you're there), at most once in 20 minutes; once-reminders are removed when
+  said. No Play services; nothing about where the places are leaves the phone.
 - Counting buttons (0.5.20, a deadline's **+1**): `Inbox.counts(button)` is a label `+<n>` (the Worker passes only
   labels). `Inbox.send` shows such an item again after a tap that went through or waits on the line (`setOnlyAlertOnce`,
   the answer's note as its text) instead of `done()`; the computer keeps the item open for it (`PhoneApp._button`).
@@ -439,7 +461,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox),
   `test_presence_line.py`, `test_rotate_line.py`. `test_phone_chat_line.py` also covers a sealed file put and fetched. They need Node;
   CI's `call-line` job installs the Worker's packages and bundles the page first.
-- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_app_first.py` (no Telegram: routing,
+- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_phone_cards.py`,
+  `test_place_reminders.py`, `test_app_first.py` (no Telegram: routing,
   files as links, shared files, setup, doctor), `test_livefallback.py` (runs `tests/js/fallback.mjs` and
   `tests/js/callpage.mjs`).
 

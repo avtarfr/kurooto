@@ -545,6 +545,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `notes.layout` | `"kurooto"` | how your notes are laid out: kurooto or zettelkasten |
+| `notes.links` | `"wiki"` | how Kurooto links notes: "wiki" ([[path\|Name]]) or "markdown" ([Name](path.md), relative) |
 | `notes.open_with` | `""` | the program that opens a note from the dashboard; empty: the system's |
 | `notes.paths` | `{}` | your own folder for a kind of note, e.g. {"daily": "journal/{date}.md"} |
 
@@ -667,6 +668,12 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `remember.recheck_days` | `90` | a kept line that hasn't come up in this many days gets one "Still true?" (0: never) |
+
+### `reminders`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `reminders.places` | `false` | location reminders: "remind me when I reach the library to …" (needs the Android app) |
 
 ### `repair`
 

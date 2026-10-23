@@ -107,6 +107,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Files you shared, for the chat's AI | the names and paths of files shared from the phone in the last two hours, when your request talks of a file | the AI you picked |
 | The phone outbox (computer off) | chat messages, button taps, answers and shared files (up to 20 MB) you send from a phone while the computer is off, held until the computer takes them, then deleted; for a day after, the ids of what went through and the computer's short note | your call line |
 | Morning alarm | the alarm time; with Chat on, the AI reads your notes to draft the day's plan, and the wake-up call's transcript to settle it | your call line; the AI you picked |
+| Location reminders (`reminders.places`, off by default) | the place's name and the reminder's text, to your Android app; where your places are and when you arrive stay on the phone | your call line; ntfy.sh (encrypted, as phone messages are) |
 | Reminders with the lid shut | the next day's reminders and a morning line, each sealed with a key only your Android phone has (your call line sees only times and ids); each phone's public key. When the computer sleeps, the sealed copy goes out through ntfy.sh | your call line; ntfy.sh, still sealed |
 
 ### Notes, sync and backups

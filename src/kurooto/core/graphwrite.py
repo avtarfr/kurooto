@@ -9,6 +9,9 @@ Links are typed and carry their reason, one line each, in a `## Links` section:
 
     - special-case-of:: [[zettel/reverse-mode-ad]] — the deltas are the adjoints on a layered graph
 
+or, with notes.links "markdown", `- special-case-of:: [reverse mode ad](../zettel/reverse-mode-ad.md) — ...` (the path
+relative to the note). Both styles are read back, so switching never breaks the graph.
+
 The relation words: needs, generalises, special-case-of, example-of, contrasts-with, equivalent-to, part-of, used-in.
 A reason that would be true of any pair of notes ("related to", "connected formulation", "alignment") is refused.
 """
@@ -18,6 +21,8 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
+
+from kurooto.core.layout import link_targets, render_link
 
 RELATIONS = (
     "needs",
@@ -39,7 +44,7 @@ BLOCK = "<!-- kurooto:{key} -->"
 BLOCK_END = "<!-- /kurooto:{key} -->"
 BLOCK_ANY = re.compile(r"<!-- kurooto:(?P<k>[\w.-]+)[^>]*-->.*?<!-- /kurooto:(?P=k) -->", re.S)
 OLD_BOOK_BLOCK = re.compile(r"<!-- kurooto:book\b.*?<!-- /kurooto:book -->", re.S)
-LINK_LINE = re.compile(r"^- (?:" + "|".join(RELATIONS) + r"):: \[\[")
+LINK_LINE = re.compile(r"^- (?:" + "|".join(RELATIONS) + r"):: \[")  # [[wikilink]] or [markdown](link.md)
 WIKILINK = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
 
 
@@ -53,9 +58,19 @@ def lint_reason(reason: str) -> str | None:
     return None
 
 
-def link_line(relation: str, target: str, reason: str) -> str:
+def link_line(relation: str, target: str, reason: str, style: str = "wiki", from_rel: str = "") -> str:
+    """One typed link line, in the link style (notes.links); `from_rel` is the note it goes in (inside the notes
+    folder), for a markdown link's relative path."""
     reason = re.sub(r"\s+", " ", reason).strip().rstrip(".")
-    return f"- {relation}:: [[{target}]] — {reason}"
+    return f"- {relation}:: {render_link(style, target, None, from_rel)} — {reason}"
+
+
+def line_target(line: str, from_rel: str = "") -> str:
+    """The note a typed link line points at (path without .md), or "" if it isn't one."""
+    if not LINK_LINE.match(line):
+        return ""
+    t = link_targets(line, from_rel)
+    return t[0] if t else ""
 
 
 def block(key: str, body: str, attrs: str = "") -> str:
@@ -87,16 +102,18 @@ def outside_hash(text: str) -> str:
     return hashlib.sha256(re.sub(r"\s+", " ", outside(text)).strip().encode("utf-8")).hexdigest()
 
 
-def targets(text: str) -> set[str]:
-    return {m[1].strip().removesuffix(".md") for m in WIKILINK.finditer(text)}
+def targets(text: str, from_rel: str = "") -> set[str]:
+    """Every note the text links to, [[wikilinks]] and markdown links alike (`from_rel`: the note, for relative
+    markdown links)."""
+    return set(link_targets(text, from_rel))
 
 
-def add_links(text: str, lines: list[tuple[str, str]]) -> tuple[str, int]:
+def add_links(text: str, lines: list[tuple[str, str]], from_rel: str = "") -> tuple[str, int]:
     """Add [(target, line)] to the `## Links` section, skipping targets the note already links. Returns the text and
     how many lines went in."""
     from kurooto.core.tools import add_to_section
 
-    have = targets(text)
+    have = targets(text, from_rel)
     fresh = []
     for target, line in lines:
         if target not in have:

@@ -168,7 +168,7 @@ reply and tells you whether it worked, and if not, what to do.
 |---|---|
 | Antigravity (agy) | **Install agy** (Google's official installer), **Open the sign-in window**, sign in with Google, close the window, **Test it**. |
 | Gemini API key | Open Google AI Studio → Create API key, paste the key (it starts with `AIza`), **Save and test**. |
-| Claude Code (Advanced) | **Install Claude Code**, **Open the sign-in window**, sign in with your Claude account, **Test it**. Needs a paid Claude plan. |
+| Claude Code (under Advanced) | **Install Claude Code**, **Open the sign-in window**, sign in with your Claude account, **Test it**. Needs a paid Claude plan. |
 | Ollama on this computer | **Install Ollama**. Private and offline, much weaker; best as a helper next to another AI. |
 | Another OpenAI-compatible service | Its address (usually ending in `/v1`), key and model name, then **Save and test**. |
 
@@ -223,7 +223,9 @@ Then three buttons pick a set:
 | **Everything** | every feature offered (Exam season is not in any set: turn it on by hand later) |
 | **Pick myself** | only what you tick |
 
-Each card says what the feature does and what leaves your computer. Some ask for a detail right on the card once
+The cards for you come first: Starter's, what suits your answer, and what you've ticked. The rest (about 45) wait
+under **More features**: open it to pick from all of them. Each card says what the feature does and what leaves your
+computer. Some ask for a detail right on the card once
 ticked: a calendar link, a repository and token, a Google client file, a backup folder. Phone calls shows what it
 needs in order (a Gemini key, then a free Cloudflare account) and a **Set up now** button that makes your call line
 right there; a Cloudflare sign-in page opens in your browser. Phone calls, Voice notes and the Morning alarm need a

@@ -223,6 +223,7 @@ the AI. A request that asks a question only matches the requests below that answ
 | "when did I last talk to Prof Ortiz?", "when did I last meet Lena?" | the newest meetings, daily-note lines, gists and threads that name them | Kurooto itself ([memory](privacy.md#the-memory-ledger)) |
 | "what was I doing last Thursday?", "what did I do yesterday?", "what was I doing on 20 Oct?" | that day's daily note, meetings, calls, requests and threads | Kurooto itself ([memory](privacy.md#the-memory-ledger)) |
 | "remind me at 9 to call mum", "remind me in 20 minutes to take the pasta off", "remind me tomorrow at 7am to go to the gym", "remind me tonight to pack" (21:00), "remind me tomorrow to …" (09:00) | a reminder for today or tomorrow; for another day use `/remind fri 17:00 …` | Reminders |
+| "remind me when I reach the library to return the book", "remind me whenever I'm at the gym to stretch" | a location reminder: the Android app says it when you arrive at a place saved there (`reminders.places`, off by default) | Reminders |
 | "what's due?", "anything due?", "show my deadlines" (two weeks), "what's due this week?" (7 days), "what's due soon?" (`deadlines.plan_h`, 3 days) | the deadline list | Deadlines |
 | "add a deadline: essay draft due friday 5pm", "I have a lab report due fri 17:00" | a new deadline | Deadlines |
 | "I don't care about the drama club", "stop telling me about …" | a topic on your not-interested list | Deadlines |

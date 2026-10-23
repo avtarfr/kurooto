@@ -1560,7 +1560,7 @@ function showDense(name) {
 function agentLabel(title) {
   const b = last && last.agent && last.agent.brain;
   if (b && BRAIN[b.id]) return BRAIN[b.id];
-  const known = { "Antigravity (agy)": "agy", "Claude Code (Advanced)": "claude" };
+  const known = { "Antigravity (agy)": "agy", "Claude Code": "claude", "Claude Code (Advanced)": "claude" }; // the last: a terminal opened before 0.5.22
   return known[title] || String(title || "agent").toLowerCase().split(/[ (/]/)[0];
 }
 function denseTerms() {
@@ -1635,7 +1635,8 @@ function featuresFind(host) {
   host.querySelectorAll(".addons-h").forEach((ah) => ah.classList.toggle("hidden", !!ah.nextElementSibling && ah.nextElementSibling.classList.contains("hidden")));
   const hb = host.querySelector(".hid-box"); if (hb) hb.classList.toggle("hidden", !!words.length);
   const nh = cards.filter((c) => c.classList.contains("hid")).length;
-  findSay(host, q, n, cards.length, "features", nh ? ` · ${nh} hidden` : "");
+  const on = cards.filter((c) => c.classList.contains("on")).length;
+  findSay(host, q, n, cards.length, "features", ` · ${on} on${nh ? ` · ${nh} hidden` : ""}`);
 }
 function settingsFind(host) {
   const q = FIND.settings.trim(), words = findWords(q), rows = [...host.querySelectorAll(".set[data-hay]")];
@@ -1644,7 +1645,7 @@ function settingsFind(host) {
   for (const r of rows) {
     const ok = words.every((w) => r.dataset.hay.includes(w));
     r.classList.toggle("hidden", !ok); if (ok) n++;
-    for (const i of r.querySelectorAll("input:not([type=checkbox]), select")) i.classList.toggle("hit", ok && words.some((w) => String(i.value).toLowerCase().includes(w)));
+    for (const i of r.querySelectorAll("input:not([type=checkbox]), select, textarea")) i.classList.toggle("hit", ok && words.some((w) => String(i.value).toLowerCase().includes(w)));
   }
   for (const fs of host.querySelectorAll(".form fieldset")) {
     const any = [...fs.querySelectorAll(".set")].some((r) => !r.classList.contains("hidden"));
@@ -1689,17 +1690,18 @@ async function renderFeatures(body) {
   // a feature's own card parts while it's on (Module.card(): lines and switches, e.g. Exam season's parts)
   const pieces = (m) => !m.on || !m.card ? "" : `<div class="pieces">${(m.card.lines || []).map((l) => `<p>${esc(l)}</p>`).join("")}${(m.card.toggles || []).map((x) => `<label><input type="checkbox" data-card="${esc(m.id)}" data-act="${esc(x.id)}"${x.on ? " checked" : ""}${x.disabled ? " disabled" : ""}> ${esc(x.label)}</label>`).join("")}</div>`;
   const card = (m) => `<div class="card2 ${m.on ? "on" : ""}${hid(m) ? " hid hidden" : ""}" data-id="${m.id}" data-hay="${esc(hay(m))}">${hideBtn(m)}<b>${esc(m.title)}</b>${hid(m) ? ' <span class="tag-h">hidden</span>' : ""}<p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>${m.id === "mail_digest" && m.on ? `<p><a href="/confidential" target="_blank" rel="noopener">Confidential mail (summarised on this computer)</a></p>` : ""}
-    ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${calls(m)}${form(m)}${pieces(m)}${said[m.id] ? `<p class="${said[m.id].startsWith("✓") ? "ok2" : "bad2"}" style="font-weight:600">${esc(said[m.id])}</p>` : ""}<p class="find-why d hidden"></p></div>`;
+    ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : m.id === "telegram" ? `<button class="primary" data-goto-setup="telegram">Connect on the setup page</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${calls(m)}${form(m)}${pieces(m)}${said[m.id] ? `<p class="${said[m.id].startsWith("✓") ? "ok2" : "bad2"}" style="font-weight:600">${esc(said[m.id])}</p>` : ""}<p class="find-why d hidden"></p></div>`;
   const addons = st.modules.filter((m) => m.addon); // features from your own add-ons folder (core/overlay.py)
   const extras = st.modules.filter((m) => m.extra && !m.addon); // add-ons that come with Kurooto (Module.extra)
   const kept = $("#flog") ? $("#flog").innerHTML : ""; // what the last step said survives the re-render
   const hidden = st.modules.filter(hid);
+  const onFirst = (ms) => [...ms.filter((m) => m.on), ...ms.filter((m) => !m.on)]; // what's running first, then the rest in their order
   const hiddenBox = !hidden.length ? "" : `<div class="hid-box"><button class="linkish" data-showhidden="1">${SHOW_HIDDEN ? "close the hidden list" : `Show hidden (${hidden.length})`}</button>${SHOW_HIDDEN
     ? `<ul class="hid-list">${hidden.map((m) => `<li><b>${esc(m.title)}</b><span class="d">${esc(m.description)}</span><button data-unhide="${m.id}">Unhide</button></li>`).join("")}</ul>` : ""}</div>`;
   setupLeft(st.setup);
-  body.innerHTML = `${findBar("features", "features")}${setupBlock()}${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon && !m.extra).map(card).join("")}</div>${extras.length
-    ? `<p class="d addons-h">Add-ons: they come with Kurooto, and are off until you turn them on</p><div class="feat">${extras.map(card).join("")}</div>` : ""}${addons.length
-    ? `<p class="d addons-h">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${addons.map(card).join("")}</div>` : ""}<div class="log" id="flog">${kept}</div>${hiddenBox}`;
+  body.innerHTML = `${findBar("features", "features")}${setupBlock()}${healthBlock(health)}<div class="feat">${onFirst(st.modules.filter((m) => !m.addon && !m.extra)).map(card).join("")}</div>${extras.length
+    ? `<p class="d addons-h">Add-ons: they come with Kurooto, and are off until you turn them on</p><div class="feat">${onFirst(extras).map(card).join("")}</div>` : ""}${addons.length
+    ? `<p class="d addons-h">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${onFirst(addons).map(card).join("")}</div>` : ""}<div class="log" id="flog">${kept}</div>${hiddenBox}`;
   findWire(body, "features", typing);
   body.onsubmit = async (e) => {
     e.preventDefault();
@@ -1742,6 +1744,7 @@ async function renderFeatures(body) {
       await saveHiddenF(); renderFeatures(body); return;
     }
     if (t.dataset.showhidden) { SHOW_HIDDEN = !SHOW_HIDDEN; renderFeatures(body); return; }
+    if (t.dataset.gotoSetup) { location.href = `/setup#${t.dataset.gotoSetup}`; return; } // set up on the setup page's own step
     if (t.dataset.card) { const r = await api("modules/card", { id: t.dataset.card, act: t.dataset.act, value: t.checked }); flog.textContent = r.message || r.error || ""; renderFeatures(body); return; }
     if (t.dataset.fix) { t.disabled = true; const r = await api("health/fix", { id: t.dataset.fix }); flog.textContent = r.message || ""; renderFeatures(body); return; }
     if (t.dataset.on && HIDDEN_F.delete(t.dataset.on)) await saveHiddenF(); // turned on from the search: not hidden any more
@@ -1907,12 +1910,16 @@ async function renderSettings(body) {
     const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : key === "look.links_in" ? LINKS : null);
     const post = sec && sec.post ? ` data-post="${esc(sec.post)}"` : "";
     const html = fixed ? `<label><span>${esc(key)}</span><span class="fixed">${esc(fixed)}</span></label>`
-      : choices ? `<label><span>${esc(key)}</span><select data-key="${key}"${post}>${choices.map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
+      : choices ? `<label><span>${esc(key)}</span><select data-key="${key}"${post}>${(choices.some(([id]) => id === v) ? choices : [[v, String(v)], ...choices]) // a value not in the list stays shown, not silently the first
+        .map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
     return help ? html.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : html;
   };
   const plain = (key, v) => {
     if (typeof v === "boolean") return `<label><span>${esc(key)}</span><input type="checkbox" data-key="${key}" ${v ? "checked" : ""}></label>`;
-    if (Array.isArray(v) || (v && typeof v === "object")) return `<label><span>${esc(key)}</span><input data-key="${key}" data-json value="${esc(JSON.stringify(v))}"></label>`;
+    if (Array.isArray(v) || (v && typeof v === "object")) { // the whole value in view (a one-line box cut it off), saved when you leave the box
+      const short = JSON.stringify(v), text = short.length <= 40 ? short : JSON.stringify(v, null, 2);
+      return `<label><span>${esc(key)}</span><textarea data-key="${key}" data-json spellcheck="false" rows="${Math.min(8, text.split("\n").length)}">${esc(text)}</textarea></label>`;
+    }
     return `<label><span>${esc(key)}</span><input data-key="${key}" ${typeof v === "number" ? 'type="number" data-num' : ""} value="${esc(v ?? "")}"></label>`;
   };
   // what the search looks through: the section, the key, what it's called and means, and its value
@@ -1925,24 +1932,30 @@ async function renderSettings(body) {
   findWire(body, "settings", typing);
   const notesSet = body.querySelector('[data-key="notes.layout"]');  // the setup page's Notes step (core/notesfit.py)
   if (notesSet) notesSet.closest("fieldset").insertAdjacentHTML("beforeend", `<div class="help d"><a href="/setup#notes">Fit Kurooto to your notes</a>: it reads your notes folder, proposes where each kind of note goes, and moves its own notes there, with Undo.</div>`);
+  // what happened, right under the setting you changed (the page can be long: a line at its end went unseen)
+  const say = (t, text, bad) => {
+    $("#saved").textContent = text;
+    const row = t.closest(".set");
+    let line = row.querySelector(".said");
+    if (!line) { line = document.createElement("div"); line.setAttribute("aria-live", "polite"); row.append(line); }
+    line.className = `help said${bad ? " bad2" : ""}`;
+    line.textContent = text;
+    clearTimeout(line.t);
+    if (!bad) line.t = setTimeout(() => line.remove(), 4000);
+  };
   body.onchange = async (e) => {
     const t = e.target; if (!t.dataset.key) return;
     let value = t.type === "checkbox" ? t.checked : t.dataset.num !== undefined ? Number(t.value) : t.value;
-    if (t.dataset.json !== undefined) { try { value = JSON.parse(t.value); } catch { $("#saved").textContent = "That isn't valid; it wasn't saved."; return; } }
+    if (t.dataset.json !== undefined) { try { value = JSON.parse(t.value); } catch { say(t, "That isn't valid JSON; it wasn't saved.", true); return; } }
     if (t.dataset.post) { // its own request, which says what it did (and what's in effect when it couldn't)
-      $("#saved").textContent = "…";
+      say(t, "…");
       const r = await api(t.dataset.post, { [t.dataset.key.split(".").slice(1).join(".")]: value });
-      const said = r.message || r.error || (r.ok ? `Saved ${t.dataset.key}.` : "That didn't work.");
-      $("#saved").textContent = said;
-      const fs = t.closest("fieldset"); // and right under it, where you're looking
-      let line = fs.querySelector(".said");
-      if (!line) { line = document.createElement("div"); line.className = "help said"; fs.append(line); }
-      line.textContent = said;
+      say(t, r.message || r.error || (r.ok ? "Saved." : "That didn't work."), !r.ok);
       if (r.when && r.when !== value) t.value = r.when;
       return;
     }
     const r = await api("settings", { key: t.dataset.key, value });
-    $("#saved").textContent = r.ok ? `Saved ${t.dataset.key}.` : r.error;
+    say(t, r.ok ? "Saved." : r.error, !r.ok);
     if (r.ok) settingChanged(t.dataset.key, value);
   };
 }

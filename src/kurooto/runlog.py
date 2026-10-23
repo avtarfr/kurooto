@@ -132,10 +132,11 @@ class Runlog:
             "status": "running",
         }
         jsave(d / "meta.json", meta, mode=0o644)
+        run = d / "run.md"  # its links are written from here (notes.links)
         lines = [
             f"# Run: {name}",
             "",
-            f"Project: [[{self.notes.link('project', project=_slug(project))}|{project}]]. "
+            f"Project: {self.notes.note_link(self.notes.link('project', project=_slug(project)), project, run)}. "
             f"Started {meta['start'].replace('T', ' ')}"
             f" in {repo.name or repo}.",
         ]
@@ -239,7 +240,12 @@ class Runlog:
         line = (
             f"- **{dt.date.today().isoformat()}** | run:{meta.get('name', rid)} — {status} after {_took(secs)}"
             + (f" ({shown})" if shown else "")
-            + f" [[{self.notes.link('runs', project=_slug(project))}/{rid}/run|details]]"
+            + " "
+            + self.notes.note_link(
+                f"{self.notes.link('runs', project=_slug(project))}/{rid}/run",
+                "details",
+                self.notes.path("project", project=_slug(project)),
+            )
         )
         log_lines(self.notes, project, [line], self.assistant)
         st = self._state()

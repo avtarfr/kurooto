@@ -277,7 +277,8 @@ body[data-design="new"] .feat .card2 b { font-size: 14.5px; font-weight: 600; }
 body[data-design="new"].dense .page .feat .card2 b { font-size: 14px; }
 body[data-design="new"] .feat .card2 p, body[data-design="new"].dense .page .feat .card2 p { font-size: 13px; line-height: 1.5; color: var(--dim); }
 body[data-design="new"] .card2.health { border: 0; border-radius: 10px; background: color-mix(in srgb, var(--warn) 9%, var(--panel)); }
-body[data-design="new"] .feat .card2 .hide-f { font-size: 12px; }
+body[data-design="new"] :is(#ov-body, .tab-body) .feat .card2 .hide-f { font-size: 12px; border-color: transparent; background: none; color: var(--dim); } /* quiet: not every card's loudest thing */
+body[data-design="new"] :is(#ov-body, .tab-body) .feat .card2 .hide-f:is(:hover, :focus-visible) { border-color: var(--rule); color: var(--fg); }
 body[data-design="new"] .card2 .tag-h { border: 0; border-radius: 999px; padding: 1px 8px; background: color-mix(in srgb, var(--warn) 14%, transparent); font-size: 11.5px; }
 
 /* search on Features and Settings */
@@ -295,13 +296,17 @@ body[data-design="new"] .form legend + * { clear: both; }
 body[data-design="new"] .form label { margin: 4px 0; min-height: 30px; font: 13px var(--ui); color: var(--fg); }
 body[data-design="new"] .form label > span:first-child { font: 12px var(--code); color: color-mix(in srgb, var(--fg) 82%, transparent); overflow-wrap: anywhere; }
 /* a value that's typed or chosen goes under its name, the width of the box; a switch stays beside it */
-body[data-design="new"] .form label:has(select, input:not([type=checkbox])) { flex-direction: column; align-items: stretch; gap: 4px; margin: 6px 0 8px; }
+body[data-design="new"] .form label:has(select, textarea, input:not([type=checkbox])) { flex-direction: column; align-items: stretch; gap: 4px; margin: 6px 0 8px; }
 body[data-design="new"] .form label:has(.fixed) { flex-direction: column; align-items: stretch; gap: 2px; }
 body[data-design="new"] .form .fixed { width: auto; }
 body[data-design="new"] .form select, body[data-design="new"] .form input:not([type=checkbox]) { width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--rule);
   border-radius: var(--r-ctl); background: var(--bg); font: 13px var(--ui); }
 body[data-design="new"] .form input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+body[data-design="new"] .form textarea { width: 100%; min-height: 30px; padding: 5px 8px; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--bg);
+  color: var(--fg); font: 12px/1.45 var(--code); resize: vertical; }
 body[data-design="new"] .form .help { margin: -2px 0 8px; font-size: 12px; line-height: 1.45; color: var(--dim); }
+body[data-design="new"] .form .said { margin: 0 0 6px; color: var(--accent-text); }
+body[data-design="new"] .form .said.bad2 { color: var(--bad); }
 body[data-design="new"] .form .fixed { font-size: 13px; }
 
 /* Today */

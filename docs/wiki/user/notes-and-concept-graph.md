@@ -26,7 +26,8 @@ Skills that write notes for you (`/journal`, `/study-log`, `/add-to-notes` and t
 ## Your notes folder
 
 **What it is.** A normal folder of Markdown (`.md`) files. Links between notes are `[[wikilinks]]`, the same kind
-Obsidian, Logseq and many other note apps use. Nothing is stored in a database you can't read: if you stop using
+Obsidian, Logseq and many other note apps use, or markdown links (`[Name](../path.md)`) if your notes use those
+(`notes.links`, below). Nothing is stored in a database you can't read: if you stop using
 Kurooto, the notes stay exactly as they are.
 
 **Where it is by default.**
@@ -114,7 +115,13 @@ folder, a quick note in the inbox). The preview shows where notes will go, with 
     Daily notes -> Daily Notes/2026-10-20.md
     A course page -> Courses/linear-algebra/course.md
 
-**Use this layout** saves `notes.layout` and `notes.paths` (and the notes folder, if you looked at another one).
+**Links between notes** shows how your notes link, and Kurooto writes its own links the same way: `[[wikilinks]]`
+(the default) or markdown links, `[Name](path.md)` with the path relative to the note they're in. That's the setting
+`notes.links` (`wiki` or `markdown`; also in Settings → notes). Kurooto reads both kinds back, so its concept graph,
+link cards and hub lists keep working after a switch; links it wrote before stay as they were.
+
+**Use this layout** saves `notes.layout`, `notes.paths` and `notes.links` (and the notes folder, if you looked at
+another one).
 **Keep Kurooto's own layout** keeps, or goes back to, Kurooto's folders.
 
 **Moving Kurooto's own notes.** When Kurooto has already written notes, the step shows a plan before anything
@@ -135,7 +142,8 @@ never changed.
 - If a note's new place is already taken, the plan says so and nothing moves until you rename that note or change
   the line.
 - Looking at another folder switches Kurooto to it: its notes in the old folder stay there.
-- Link style isn't a setting: Kurooto keeps writing `[[wikilinks]]`, which Obsidian and most Markdown editors follow.
+- `notes.links` changes how new links are written, not the ones already there. Messages on Telegram still show
+  note paths as `[[path]]`.
 - A very big folder (over 20,000 notes) is read in part, and the step says so.
 
 **Undo.** After a move, the step shows **Undo**: it puts the notes back, undoes the link updates and sets the layout

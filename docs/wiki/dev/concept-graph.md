@@ -73,7 +73,7 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 ## 3. Candidates (`core/conceptgraph.py`, no AI)
 
 - `scan(app) -> {slug: Note}` over `concept_dirs(app)`: title (H1), frontmatter `aliases`, a 280-char `summary`, a
-  1500-char `head`, wikilinks, and a content hash. Where concept notes live comes from `core/layout.py` (kind
+  1500-char `head`, its links (`layout.link_targets`: wikilinks and relative markdown links alike), and a content hash. Where concept notes live comes from `core/layout.py` (kind
   `concept`: `{subject}/{slug}.md` in the `kurooto` preset, `zettel/{slug}.md` in `zettelkasten`).
 - `Index(notes, embedder, store, reranker)`:
   - `bm25()` in pure Python (title and aliases weighted 3x);
@@ -206,8 +206,10 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 - Kurooto's text lives in marked blocks: `<!-- kurooto:<key> ... -->` ... `<!-- /kurooto:<key> -->`, replaced as a
   whole by `put_block()`. Keys: `seen` (a concept note's "Seen in"), `concepts` (the book's index note), `books` (the
   course page's "From the books").
-- Links are lines `- relation:: [[target]] — reason` (`link_line`), appended under `## Links` by `add_links()` (which
-  uses `core/tools.py:add_to_section` and skips targets already linked).
+- Links are lines `- relation:: [[target]] — reason` (`link_line`; with `notes.links` "markdown",
+  `- relation:: [name](../target.md) — reason`, relative to the note), appended under `## Links` by `add_links()`
+  (which uses `core/tools.py:add_to_section` and skips targets already linked, in either style). `LINK_LINE` and
+  `line_target()` take both styles, so pruning, the guard and link cards (`quiz_links.LINE`) read either.
 - The guard: `outside(text)` removes Kurooto's blocks, link lines, `## Links` headings and `aliases:` lines;
   `guarded(old, new)` refuses the write if what remains differs (hash of whitespace-collapsed text). A refusal emits
   `integrate_refused` and counts as skipped.

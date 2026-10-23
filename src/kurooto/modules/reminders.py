@@ -1,6 +1,12 @@
 """Reminders: "remind me at 9 to call mum", "remind me in 20 minutes to take the tea off", /remind tomorrow 7am gym.
 They arrive on Telegram. If the computer was asleep at the time, the reminder still comes when it wakes, marked
-late; with Reminders with the lid shut on, your phone gets it at its time instead (lidsafe.py)."""
+late; with Reminders with the lid shut on, your phone gets it at its time instead (lidsafe.py).
+
+Location reminders (0.5.22, reminders.places, off by default): "remind me when I reach the library to return the
+book", "remind me whenever I'm at the gym to stretch". The place's name and the text go to the Android app (a "place"
+message through your call line), which keeps them and reminds you when you arrive at a place you saved there under
+that name (android/.../Places.java: Android's proximity alerts, no Google services). Where your places are never
+leaves the phone; this computer only knows their names."""
 
 from __future__ import annotations
 
@@ -10,6 +16,8 @@ import time
 import uuid
 
 from kurooto.core.clock import now, parse_when
+from kurooto.core.config import register_defaults
+from kurooto.core.notify import Message
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
@@ -19,6 +27,19 @@ REMIND = re.compile(r"^\s*remind me\s+(?P<rest>.+)$", re.I)
 WHEN_WORDS = re.compile(
     r"\b(?:in\s+\d+(?:\.\d+)?\s*[a-z]+|in\s+(?:an?|half an?)\s+[a-z]+|(?:at|by)\s+\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)?"
     r"|\d{1,2}(?:[:.]\d{2})\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)|(?:the\s+)?day after tomorrow|tomorrow|tonight|today)\b",
+    re.I,
+)
+register_defaults(
+    "reminders",
+    {
+        # sent to the Android app, which reminds you on arrival at a place saved there (turn on Places in the app too)
+        "places": False,  # location reminders: "remind me when I reach the library to …" (needs the Android app)
+    },
+)
+PLACE = re.compile(
+    r"^\s*remind me\s+(?P<when>whenever|every time|when|once|as soon as|(?:the )?next time)\s+"
+    r"(?:i|i'm|i am)\s+(?P<verb>reach|arrive at|arrive in|get back to|get to|am at|at|get back(?=\s+home\b)"
+    r"|get(?=\s+home\b))\s+(?P<place>.+?)\s*(?:[,:;]+|\s+-\s+|\s+(?:to|that|about)\s+)\s*(?P<what>\S.*)$",
     re.I,
 )
 JOIN = re.compile(r"^(?:\s*(?:[:;,.\-–—]+|(?:to|that|about)\b))+\s*", re.I)
@@ -148,8 +169,40 @@ class Reminders(Module):
         self._lidsafe_poke()
         return "Cancelled." if gone else "Already gone."
 
+    # ---------------------------------------------------------------------------------- at a place
+    def at_place(self, place: str, what: str, every: bool = False) -> str:
+        """A location reminder: the place's name and the text go to the phone app, which says it on arrival."""
+        place = re.sub(r"^(?:the|my|our)\s+", "", " ".join(place.split()), flags=re.I).strip(" .,!?")
+        what = tidy_what(what)
+        if not self.setting("places"):
+            return (
+                "Location reminders are off. Turn them on in Settings → Reminders (places), and Places in the phone "
+                "app."
+            )
+        calls = self.app.modules.get("calls")
+        if calls is None or not self.app.is_on("calls") or not calls.ready()[0]:
+            return "Location reminders work through the Android app: set up Phone calls and pair the phone first."
+        sent = calls.phone.send(Message(what, title=place, kind="place_every" if every else "place"))
+        if not sent:
+            return "That didn't reach the phone app. Try again in a moment."
+        self.app.events.emit("reminder_place", every=every)
+        how = "every time you reach" if every else "when you reach"
+        return (
+            f"Sent to your phone: {how} {place}, it reminds you: {what}. If {place} isn't saved in the app yet, "
+            "save it there once you're at it (Places → Save where you are now)."
+        )
+
     # ------------------------------------------------------------------------------- plain English
     def intents(self):
+        def match_place(text: str):
+            m = PLACE.match(text)
+            if not m or NEG.search(text):
+                return None
+            place = m["place"].strip()
+            if len(place) > 40 or len(place.split()) > 5 or not tidy_what(m["what"]):
+                return None
+            return {"place": place, "what": m["what"], "every": m["when"].lower() in ("whenever", "every time")}
+
         def match(text: str):
             m = REMIND.match(text)
             if not m or NEG.search(text):
@@ -172,12 +225,19 @@ class Reminders(Module):
 
         return [
             Intent(
+                "remind_place",
+                "a reminder for when you reach a place (the phone app)",
+                match_place,
+                lambda msg, s: self.at_place(s["place"], s["what"], s["every"]),
+                examples=("remind me when I reach the library to return the book",),
+            ),
+            Intent(
                 "remind",
                 "set a reminder",
                 match,
                 run,
                 examples=("remind me at 9 to call mum", "remind me in 20 minutes to take the tea off"),
-            )
+            ),
         ]
 
     def commands(self):

@@ -197,7 +197,8 @@ you decide whether to send it to whoever is helping you.
    else) adds what suits it: a student gets subjects, start-by dates, the quiz, after-class notes, doubts and the
    weekly summary; working, commitments, start-by dates, the calendar and the weekly summary; research, the Research
    feature, commitments, start-by dates and the weekly summary. **Everything** or **Pick myself** for more; the add-ons
-   that come with Kurooto (such as [Exam season](#exam-season)) are in no preset, only on when you pick them. Some
+   that come with Kurooto (such as [Exam season](#exam-season)) are in no preset, only on when you pick them. The cards
+   picked for you come first; the rest wait folded under **More features**. Some
    features ask for a detail right in their card (a calendar link, a repository); phone calls, voice notes and the alarm
    use your Gemini key (they ask for one if you picked another AI). Above the cards, one line says the daily limit
    ([Calm by default](#calm-by-default-why-each-message-came-and-a-daily-limit)): "Kurooto sends at most 6 messages a
@@ -477,6 +478,13 @@ exchanges go along too.
 `/reminders`. A reminder due while the computer slept arrives when it wakes, marked late (with
 [Reminders with the lid shut](#reminders-with-the-lid-shut) on, your Android phone gets it at its time instead).
 Buttons: +10 min, +1 h.
+
+**At a place** (0.5.22, off by default): "remind me when I reach the library to return the book", "remind me whenever
+I'm at the gym to stretch". Turn on Settings → Reminders → `places` and, in the Android app, Location reminders →
+Places (it says the battery cost, then asks for location). Save a place on the phone while you're there (a name, no
+map; 150 m around it). The computer sends only the place's name and the text; the phone keeps your places and reminds
+you when you arrive, with the computer off too. Needs Phone calls set up and the Android app. *Undo:* Turn off in
+Places (the app stops watching); `reminders.places` back to `false`.
 
 ### Check-ins
 At times you choose, Kurooto asks how the day is going: the **evening** check-in (default 22:00, the day in review),
@@ -1433,7 +1441,8 @@ handy; the first answer counts and the others go away.
 - *Android:* a notification with **Reply** (type the answer in the notification; on Android 6 it opens a small answer
   window), the question's choices, **Approve / Deny** for approvals, **Later** (ask me on the next call), or the
   message's own buttons. Tap the notification for every option. The app's main screen lists what's **waiting for
-  you**.
+  you**; check-ins and quiz questions are cards there, with an answer box and their buttons (In 30 min, Not tonight;
+  Forgot / Hard / Good / Easy, which come as the next card after your answer when Chat is off).
 - *iPhone:* a notification; tap it to open **Waiting for you** in the Kurooto Home Screen app, with the same buttons
   and a box to type in.
 - If the computer is off, your answer waits on your call line and is used as soon as the computer is back.
@@ -3397,7 +3406,8 @@ don't fill your notes or their history. Both are settings: dashboard → Setting
 
 In the zettelkasten layout, notes Kurooto and the AI write start with `id` (the note's path), `aliases`, `tags` and
 `trust_tier: agent_written` (your daily note and your quick notes don't get `trust_tier`: they're your words). Links
-are `[[wikilinks]]` either way. The AI is told your layout, and skills written for the default one (`journal/<date>`,
+are `[[wikilinks]]` either way, unless `notes.links` is `markdown`: then Kurooto writes `[Name](path.md)` links,
+relative to the note they're in, and tells the AI to do the same. It reads both kinds. The AI is told your layout, and skills written for the default one (`journal/<date>`,
 `<subject>/course`) are translated when they run, yours included.
 
 **Your own places** (`notes.paths`): any kind of note somewhere else, e.g. `{"daily": "diary/{date}.md", "ideas":
@@ -3447,7 +3457,8 @@ hold your words) and your profile never move; links in your own words that point
 changed. Links are updated only in Kurooto's notes, its `<!-- kurooto:... -->` blocks and the home note's course
 list. Nothing in the notes folder changes before you confirm, and only as the plan shown says: a note changed since,
 or a new place that's already taken, stops the whole move. Looking at another folder switches Kurooto to that folder;
-its notes in the old one stay there. Link style isn't a setting yet: Kurooto keeps writing `[[wikilinks]]`.
+its notes in the old one stay there. The step also proposes `notes.links` (`wiki` or `markdown`) from how your
+notes link, and saves it with the rest.
 
 *Leaves your computer:* nothing. *Undo:* the step's **Undo** puts the moved notes back, undoes the link updates and
 sets the layout back (a move log in Kurooto's state folder, `notes-moves/`, works with or without git). A note you

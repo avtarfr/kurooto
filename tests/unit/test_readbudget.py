@@ -244,7 +244,7 @@ def test_the_night_starts_5_hours_before_you_wake_but_not_before_bed_nor_after_i
 # ---------------------------------------------------------------------------------------------- through the feature
 class FakeClaude(Brain):
     id = "claude"
-    label = "Claude Code (Advanced)"
+    label = "Claude Code"
     kind = "cli"
 
     def __init__(self, script):

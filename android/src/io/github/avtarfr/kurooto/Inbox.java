@@ -62,7 +62,7 @@ final class Inbox {
 
     static void show(Context c, JSONObject it) {
         String id = it.optString("id");
-        if (id.isEmpty()) return;
+        if (id.isEmpty() || Places.adopt(c, it)) return; // a place reminder is kept on this phone, not shown as a question
         String body = text(it);
         Notification.Builder b = ListenService.builder(c, asks(it) ? ListenService.CH_ASK : ListenService.CH_MSG)
                 .setSmallIcon(R.drawable.ic_stat)

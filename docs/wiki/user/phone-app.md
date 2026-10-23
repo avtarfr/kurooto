@@ -66,10 +66,11 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
 4. Test it: Dashboard → Phone → **Ring my phone (test)**.
 
 **The app's screen**, top to bottom: the **Call** button, **Chat with Kurooto**, **Waiting for you** (open questions
-and approvals, one card each; tap one to answer it), what's **waiting for your computer** (things you sent while it was
-off), the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), the **Ringtones** (**Call
+and approvals, one card each; tap one to answer it; check-ins and quiz questions are answered right on their card, see
+[Check-in and quiz cards](#check-in-and-quiz-cards)), what's **waiting for your computer** (things you sent while it
+was off), the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), the **Ringtones** (**Call
 ringtone** and **Wake-up alarm tone**, each showing the tone it's set to; tap to change it. The alarm tone plays on the
-alarm volume), and **This phone** (what it's paired with, the app's version, and **Unpair this phone**). It starts
+alarm volume), **Location reminders** (Places, see [Location reminders](#location-reminders)), and **This phone** (what it's paired with, the app's version, and **Unpair this phone**). It starts
 listening again by itself after the phone restarts or the app updates ("Listening for calls" stays as a quiet
 notification).
 
@@ -144,7 +145,8 @@ the nightly look back, a reply draft to approve, your own scripts (`kurooto ask-
 
 **Android.** A notification with **Reply** (type the answer right in the notification; on Android 6 it opens a small
 answer window), the question's choices, **Approve / Deny** for approvals, **Later** (ask me on the next call), or the
-message's own buttons. Tap the notification for every option. The app's main screen lists what's **Waiting for you**.
+message's own buttons. Tap the notification for every option. The app's main screen lists what's **Waiting for you**
+(check-ins and quiz questions as [cards](#check-in-and-quiz-cards) you answer right there).
 
 **+1 on a deadline.** With `"deadline"` in `notify.app_kinds`, a deadline with parts still to do comes with **Reply**,
 **+1** and **Done** (Android shows three buttons; tap the notification for the rest). **+1** counts one more part done
@@ -169,6 +171,38 @@ to type in.
 | That's no longer open | It was answered somewhere else (Telegram, a call, another phone) or it expired. Nothing to do. |
 | That answer couldn't be opened here. Pair the phone again. | The phone's keys don't match any more (after `kurooto rotate`, say). Pair again. |
 | This phone was unpaired. Pair it again from your computer. | It was removed with `/unpair` or the dashboard. |
+
+## Check-in and quiz cards
+
+Under **Waiting for you**, the evening (or midday, night) check-in and quiz questions are cards you answer in place:
+
+- **Check-in:** the question (and, in the evening, what today's records show you did), a box for how it went, **Send**,
+  and its buttons (**In 30 min**, **Not tonight** or **Skip today**, **Tomorrow morning** for the night one). Your
+  answer goes into your journal, as a reply on Telegram does.
+- **Quiz:** the question and a box for your answer. With Chat on, your AI grades it and the reply says the key idea;
+  without it, the next card shows what the note says with **Forgot**, **Hard**, **Good** and **Easy**. Link recall
+  cards work the same way.
+
+With your computer asleep, the answer waits on your call line ("Saved. Your computer gets it when it is back on.")
+and is used when it's back; the quiz's grading card comes then. What you typed but didn't send stays in the box
+while the app is open. The cards need Kurooto 0.5.22 on the computer too (older ones still show these questions as
+plain cards that open the answer window).
+
+## Location reminders
+
+"Remind me when I reach the library to return the book." Off by default. In the app: **Location reminders → Places →
+Turn on location reminders**. The battery cost is said first, and the app asks to use the phone's location only then
+(and, on Android 10 and newer, "Allow all the time" so reminders come with the app closed).
+
+- **Save a place:** stand there, type a name, **Save this place** (no map; it takes up to 30 seconds to find where the
+  phone is). A place counts within 150 m.
+- **Reminders:** say it on Telegram or in the chat (turn on Settings → Reminders → places on the computer too), or
+  type one under the place: once, or every time you arrive.
+- **Waiting for a place:** a reminder for a name you haven't saved yet; tap "I'm here: save it as ..." when you're
+  there.
+- **Turn off:** the button at the bottom of Places. Your places and reminders stay on the phone; nothing is watched.
+
+Where your places are never leaves the phone. Details: [reminders-and-deadlines.md](reminders-and-deadlines.md#at-a-place-location-reminders).
 
 ## Chat with Kurooto in the app
 

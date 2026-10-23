@@ -48,8 +48,10 @@ body.home { color-scheme: dark;
 .form .help { font-size: 11.5px; margin: -4px 0 6px; }
 .form .fixed { width: 55%; color: var(--dim); }
 .form .said { color: var(--accent-text); margin-top: 2px; }
+.form .said.bad2 { color: var(--bad); }
 .form select { width: 55%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); padding: 3px 6px; font: 12px var(--mono); }
 .form input:not([type=checkbox]) { width: 55%; margin: 0; padding: 4px 6px; font: 12px var(--mono); }
+.form textarea { width: 55%; margin: 0; padding: 4px 6px; font: 12px/1.4 var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); resize: vertical; }
 .ok2 { color: var(--ok); } .bad2 { color: var(--bad); }
 @media (max-width: 900px) { body.home { overflow: auto; height: auto; } .grid { grid-template-columns: 1fr; grid-template-rows: 300px 420px 420px 360px; } }
 @media (prefers-reduced-motion: reduce) { .pane canvas { animation: none; } }

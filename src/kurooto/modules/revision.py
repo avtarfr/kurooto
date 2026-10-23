@@ -295,7 +295,7 @@ class Revision:
         out = []
         for iid, it in quiz.load(slug)["items"].items():
             text = str(it.get("text") or "")
-            if (rel and f"[[{rel}" in text) or studypack.hits(rx, text):
+            if (rel and (f"[[{rel}" in text or rel in layout.link_targets(text))) or studypack.hits(rx, text):
                 out.append(iid)
         return out[:MAX_ITEMS]
 

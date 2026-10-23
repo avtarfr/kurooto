@@ -54,7 +54,8 @@ join at the next quiz.
 With Phone calls on, `/quiz` first asks **Here or by call?** (buttons **Here** / **By call**). With `quiz.by_call` on as
 well, `/quiz` and "quiz me" call you straight away; add "here" to keep it on Telegram.
 
-**Answering.** Reply to the question with your answer.
+**Answering.** Reply to the question with your answer. In the Android app, quiz questions are cards under **Waiting
+for you** with a box for the answer; self-grading comes as the next card ([phone-app.md](phone-app.md#check-in-and-quiz-cards)).
 - With Chat on, your AI gives the key idea and a grade from 0 to 5, and the next question follows.
 - Without Chat (or if the AI fails), Kurooto shows what your note says and you grade yourself: **Forgot** (0),
   **Hard** (3), **Good** (4), **Easy** (5).

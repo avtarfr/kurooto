@@ -6,6 +6,7 @@ revision packs, handwriting originals, Classroom files). Every feature asks here
     notes.paths    your own place for any kind of note, over the layout's: {"daily": "diary/{date}.md"}
     files.folder   a folder outside your notes for photos, PDFs and packs; empty = inside the notes, as before
     files.links    how notes link to files outside the notes: "" (the layout's way), "relative" or "file" (file://)
+    notes.links    how notes link to each other: "wiki" ([[path|Name]], the default) or "markdown" ([Name](path.md))
 
 Features ask like this (`app` may also be a Layout, or a plain notes folder for the default layout):
 
@@ -13,6 +14,8 @@ Features ask like this (`app` may also be a Layout, or a plain notes folder for 
     layout.path(app, "daily", date="2026-10-20")              # <notes>/journal/2026-10-20.md
     layout.rel(app, "course", subject="linear-algebra")       # "linear-algebra/course.md"
     layout.link(app, "project", project="thesis")             # "research/thesis/index", for a [[wikilink]]
+    layout.note_link(app, "research/thesis/index", "Thesis", from_note=hub)  # "[[research/thesis/index|Thesis]]",
+                                                              # or "[Thesis](thesis/index.md)" with notes.links markdown
     layout.file_dir(app, "subject", subject="linear-algebra") # where that subject's photos and PDFs go
     layout.file_link(app, pdf, note)                          # "[x.pdf](files/x.pdf)", from that note
     layout.frontmatter(app, "lecture", path, title="Eigenvalues", subject="linear-algebra")
@@ -26,7 +29,9 @@ from __future__ import annotations
 
 import json
 import os
+import posixpath
 import re
+import urllib.parse
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -36,7 +41,15 @@ from kurooto.core.config import register_defaults
 if TYPE_CHECKING:
     from kurooto.core.config import Settings
 
-register_defaults("notes", {"layout": "kurooto", "paths": {}})
+register_defaults(
+    "notes",
+    {
+        "layout": "kurooto",
+        "paths": {},
+        # the Notes step proposes it from how your notes already link
+        "links": "wiki",  # how Kurooto links notes: "wiki" ([[path|Name]]) or "markdown" ([Name](path.md), relative)
+    },
+)
 register_defaults("files", {"folder": "", "links": ""})
 
 DEFAULT = "kurooto"
@@ -216,6 +229,52 @@ def _yaml(s: str) -> str:
     return json.dumps(s, ensure_ascii=False) if re.search(r"[:#\[\]{},&*!|>%@`\"']|^\s|\s$", s) or not s else s
 
 
+NOTE_STYLES = ("wiki", "markdown")
+WIKI = re.compile(r"\[\[([^\]|#\n]+)(?:#[^\]|\n]*)?(?:\|[^\]\n]*)?\]\]")
+MDLINK = re.compile(r"(?<!!)\[([^\]\n]*)\]\(\s*(<[^>\n]+>|[^)\s]+)(?:\s+\"[^\"\n]*\")?\s*\)")
+SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*:", re.I)
+
+
+def _note_rel(p) -> str:
+    """A note's path inside the notes folder, posix, with .md (or "" for the notes folder itself)."""
+    s = str(p or "").replace("\\", "/").strip("/")
+    return s if not s or s.endswith(".md") else s + ".md"
+
+
+def render_link(style: str, target: str, label: str | None = None, from_rel: str = "") -> str:
+    """A link to the note `target` (its path inside the notes folder, without .md) in the given style: "wiki" gives
+    [[target|label]]; "markdown" gives [label](path.md), the path relative to the note `from_rel` (a path inside the
+    notes folder) when it's known, else to the notes folder. Spaces are written %20."""
+    target = str(target).strip().removesuffix(".md")
+    if style != "markdown":
+        return f"[[{target}|{label}]]" if label else f"[[{target}]]"
+    base = posixpath.dirname(_note_rel(from_rel)) if from_rel else ""
+    path = posixpath.relpath(target + ".md", base or ".")
+    text = (label or posixpath.basename(target).replace("-", " ")).replace("[", "(").replace("]", ")")
+    return f"[{text}]({urllib.parse.quote(path, safe='/._-~()')})"
+
+
+def link_targets(text: str, from_rel: str = "") -> list[str]:
+    """Every note this text links to, in either style, as paths inside the notes folder without .md, in order:
+    [[target]] as written; a markdown link to a .md file (or a path without an extension) resolved against the note
+    `from_rel` (a leading / means the notes folder). Links to files, images and web pages are left out."""
+    out: list[tuple[int, str]] = [(m.start(), m[1].strip().removesuffix(".md")) for m in WIKI.finditer(text or "")]
+    base = posixpath.dirname(_note_rel(from_rel)) if from_rel else ""
+    for m in MDLINK.finditer(text or ""):
+        raw = m[2].strip("<>").split("#")[0].strip()
+        if not raw or SCHEME.match(raw):
+            continue
+        last = raw.rsplit("/", 1)[-1]
+        if not (last.lower().endswith(".md") or "." not in last):
+            continue
+        raw = urllib.parse.unquote(raw)
+        p = posixpath.normpath(raw.lstrip("/") if raw.startswith("/") else posixpath.join(base, raw))
+        if p.startswith("../") or p in (".", ".."):
+            continue
+        out.append((m.start(), p[:-3] if p.lower().endswith(".md") else p))
+    return [t for _, t in sorted(out)]
+
+
 class Layout:
     """Where notes and files go for one notes folder. `settings` None: the default layout, files inside the notes."""
 
@@ -244,7 +303,7 @@ class Layout:
 
     def is_default(self) -> bool:
         """The kurooto layout, no custom places, files inside the notes: everything where it always was."""
-        return self.preset == DEFAULT and not self.custom() and self.files_root() is None
+        return self.preset == DEFAULT and not self.custom() and self.files_root() is None and self.note_style == "wiki"
 
     def template(self, kind: str) -> str:
         if kind not in KINDS:
@@ -295,6 +354,28 @@ class Layout:
         """A [[wikilink]] target: the path inside the notes folder without .md."""
         r = self.rel(kind, **fields)
         return r[:-3] if r.endswith(".md") else r
+
+    @property
+    def note_style(self) -> str:
+        """notes.links: "wiki" (the default) or "markdown"."""
+        s = str(self._get("notes.links") or "wiki").strip().lower()
+        return s if s in NOTE_STYLES else "wiki"
+
+    def note_link(self, target: str, label: str | None = None, from_note=None) -> str:
+        """A link to another note (`target`: its path inside the notes folder, without .md) in your link style.
+        `from_note`: the note it's written in (a path, absolute or inside the notes folder), for markdown links'
+        relative paths."""
+        return render_link(self.note_style, target, label, self._from(from_note))
+
+    def note_targets(self, text: str, from_note=None) -> list[str]:
+        """The notes a text links to, in either style (see link_targets)."""
+        return link_targets(text, self._from(from_note))
+
+    def _from(self, note) -> str:
+        if note is None or note == "":
+            return ""
+        p = Path(note)
+        return self.shown(p) if p.is_absolute() else str(note)
 
     def shape(self, kind: str, **fields) -> str:
         """The place with placeholders for what isn't given ("dailies/<YYYY-MM-DD>"), without .md, for the AI."""
@@ -448,10 +529,18 @@ class Layout:
             "Their notes have their own layout (paths inside the notes folder, without .md; where a skill names "
             "other places, use these instead): " + "; ".join(parts) + "."
         )
+        markdown = self.note_style == "markdown"
         if self.preset == "zettelkasten":
             out += (
                 " New notes you write start with a header of id (the note's path without .md), aliases, tags and "
-                "trust_tier: agent_written; links are [[wikilinks]] to note paths without .md."
+                "trust_tier: agent_written"
+                + ("." if markdown else "; links are [[wikilinks]] to note paths without .md.")
+            )
+        if markdown:
+            out += (
+                " Their notes link with markdown links, not [[wikilinks]]: write every link to a note as "
+                "[Name](path.md), the path relative to the note you're writing in (../linear-algebra/course.md), "
+                "wherever a skill says [[...]]."
             )
         root = self.files_root()
         if root is not None:
@@ -563,6 +652,14 @@ def rel(app, kind: str, **fields) -> str:
 
 def link(app, kind: str, **fields) -> str:
     return of(app).link(kind, **fields)
+
+
+def note_link(app, target: str, label: str | None = None, from_note=None) -> str:
+    return of(app).note_link(target, label, from_note)
+
+
+def note_targets(app, text: str, from_note=None) -> list[str]:
+    return of(app).note_targets(text, from_note)
 
 
 def shown(app, p) -> str:

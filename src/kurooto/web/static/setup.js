@@ -247,6 +247,7 @@ async function loadFit(folder) {
 }
 function renderNotes() { if (!fit) loadFit(""); }
 function fitLayout() { return ($(".fit-layout.on") || {}).dataset?.fitLayout || fit.layout; }
+function fitLinks() { return ($(".fit-links.on") || {}).dataset?.fitLinks || fit.link_style.value; }  // notes.links
 function fitLines() { return Object.fromEntries($$("[data-fit-line]").map((i) => [i.dataset.fitLine, i.value.trim()])); }
 function pct(c) { return `${Math.round(c * 100)}%`; }
 function drawFit() {
@@ -262,6 +263,10 @@ function drawFit() {
     for (const ln of fit.lines) if (!ln.found) $(`[data-fit-line="${ln.kind}"]`).value = fit.presets[id][ln.kind];  // what was found stays
     previewFit();
   } }, label);
+  const linksBtn = (id, label) => el("button", { type: "button", class: "fit-links" + (id === fit.link_style.value ? " on" : ""), "data-fit-links": id, onclick: (e) => {
+    $$(".fit-links").forEach((b) => b.classList.toggle("on", b === e.target));
+    previewFit();
+  } }, label);
   panel.replaceChildren(
     el("div", { class: "box" }, el("p", {}, found), ...fit.said.map((x) => el("p", { class: "note" }, x))),
     el("h2", {}, "Layout"),
@@ -272,6 +277,9 @@ function drawFit() {
     ...fit.lines.map((ln) => el("label", {}, ln.label,
       el("input", { "data-fit-line": ln.kind, value: ln.template, spellcheck: "false", autocomplete: "off", oninput: () => { clearTimeout(fitTimer); fitTimer = setTimeout(previewFit, 400); } }),
       el("span", { class: "field-note" }, `${ln.found ? "Found" : "Not found"} (sure: ${pct(ln.confidence)}): ${ln.why}.`))),
+    el("h2", {}, "Links between notes"),
+    el("div", { class: "presets" }, linksBtn("wiki", "[[Wikilinks]]"), linksBtn("markdown", "Markdown: [Name](path.md)")),
+    el("p", { class: "note" }, `How Kurooto writes links in your notes. ${fit.link_style.found ? "Found" : "Not found"} (sure: ${pct(fit.link_style.confidence)}): ${fit.link_style.why}.`),
     el("h2", {}, "Preview"),
     el("ul", { class: "list", id: "nf-preview" }),
     el("div", { id: "nf-plan" }),
@@ -294,7 +302,7 @@ function undoBox(u) {
 async function previewFit() {
   const out = $("#nf-plan");
   if (!out) return;
-  const r = await api("notes/fit/preview", { layout: fitLayout(), lines: fitLines(), folder: $("#nf-folder").value });
+  const r = await api("notes/fit/preview", { layout: fitLayout(), lines: fitLines(), links: fitLinks(), folder: $("#nf-folder").value });
   fitShown = r.ok ? r : null;
   $("#nf-use").disabled = !r.ok || !r.plan.ok || r.problems.length > 0;
   if (!r.ok) { out.replaceChildren(el("p", { class: "bad" }, r.error)); return; }
@@ -320,7 +328,7 @@ async function useFit() {
   if (!fitShown) return;
   const btn = $("#nf-use"), out = $("#nf-result");
   btn.disabled = true;
-  const r = await api("notes/fit/apply", { layout: fitLayout(), lines: fitLines(), folder: $("#nf-folder").value, digest: fitShown.plan.digest });
+  const r = await api("notes/fit/apply", { layout: fitLayout(), lines: fitLines(), links: fitLinks(), folder: $("#nf-folder").value, digest: fitShown.plan.digest });
   if (!r.ok) { out.replaceChildren(el("p", { class: "bad" }, r.error)); await previewFit(); return; }
   out.replaceChildren(el("p", { class: "ok" }, `✓ Saved. ${r.moved ? `Moved ${r.moved} notes and fixed ${r.fixed} links.` : "Kurooto writes to these places from now on."}`));
   await refresh();
@@ -330,8 +338,9 @@ async function useFit() {
 }
 function keepFit() {
   const use = fit.in_use;
-  if (!fit.other_folder && use.layout === "kurooto" && !Object.keys(use.paths).length) { go(step + 1); return; }  // already
+  if (!fit.other_folder && use.layout === "kurooto" && !Object.keys(use.paths).length && use.links === "wiki") { go(step + 1); return; }  // already
   $$(".fit-layout").forEach((b) => b.classList.toggle("on", b.dataset.fitLayout === "kurooto"));
+  $$(".fit-links").forEach((b) => b.classList.toggle("on", b.dataset.fitLinks === "wiki"));
   $$("[data-fit-line]").forEach((i) => { i.value = fit.presets.kurooto[i.dataset.fitLine]; });
   $("#nf-folder").value = state.workspace;
   previewFit();
@@ -740,7 +749,11 @@ function renderFeatures() {
   if (!chosen.size && !renderFeatures.seeded) state.modules.filter((m) => m.on || (restored ? restored.includes(m.id) : m.starter)).forEach((m) => chosen.add(m.id));
   if (!renderFeatures.seeded && phoneApp()) { chosen.add("calls"); if (!state.telegram.paired) chosen.delete("telegram"); }
   renderFeatures.seeded = true;  // only the first time: unticking everything must stay unticked
-  $("#features").replaceChildren(...state.modules.map((m) => {
+  // the features for you (Starter, what suits what you do, what's on or ticked) first; the other 40-odd wait folded
+  // under "More features", so the step isn't a wall of cards. A card that was up top stays there when you untick it.
+  const top = (renderFeatures.top = renderFeatures.top || new Set());
+  for (const m of state.modules) if (m.on || m.starter || chosen.has(m.id) || (role && (m.roles || []).includes(role))) top.add(m.id);
+  const cards = state.modules.map((m) => {
     const box = el("input", { type: "checkbox", checked: chosen.has(m.id), onchange: (e) => {
       e.target.checked ? chosen.add(m.id) : chosen.delete(m.id);
       $$(".preset").forEach((p) => p.classList.toggle("on", p.dataset.preset === "custom"));
@@ -758,10 +771,22 @@ function renderFeatures() {
       m.form && chosen.has(m.id) && m.ready ? el("p", { class: "ok" }, "✓ Set up") : null,
       m.id === "calls" && chosen.has(m.id) ? callsBox(m) : null,
       m.id === keyCard() ? keyBox() : null);
-  }));
+  });
+  const rest = cards.filter((_, i) => !top.has(state.modules[i].id));
+  $("#features").replaceChildren(...cards.filter((_, i) => top.has(state.modules[i].id)));
+  let more = $("#features-more");
+  if (!more) {
+    more = el("details", { id: "features-more", class: "more-features" }, el("summary", {}), el("div", { class: "cards features" }));
+    $("#features").after(more);
+  }
+  more.hidden = !rest.length;
+  if (rest.length > 0 && !top.size) more.open = true; // nothing picked for you: the whole list
+  $("summary", more).textContent = `More features (${rest.length}): ${rest.some((c) => c.classList.contains("on")) ? "some ticked here too" : "open to pick from the rest"}`;
+  $(".features", more).replaceChildren(...rest);
   renderKeyBox();
   navHint();
   gloss($("#features"));
+  gloss(more);
 }
 
 // The Gemini key box goes right under the first ticked card that needs it.

@@ -328,7 +328,9 @@ differs from `/note` on Telegram, which makes a new note per thought.
 
 ### Features (Alt+F)
 
-A card for every feature: what it does, what leaves your computer (in a different colour) and a button.
+A card for every feature: what it does, what leaves your computer (in a different colour) and a button. The features
+that are on come first; the count beside the search box says how many are on. Telegram, which connects on the setup
+page, has **Connect on the setup page** while it isn't connected.
 
 | Button or part | Does |
 |---|---|
@@ -386,8 +388,10 @@ AI programs (`agents`), this computer (`hardware`), the dashboard's port (`web`)
 each feature that's **on**. A feature's settings appear once you turn it on.
 
 - **Change one:** tick a box, pick from a list, or type a value and leave the box (Tab or click elsewhere). It saves at
-  once and says "Saved `section.key`". Lists and groups (like `["status"]` or `{"night": "23:15"}`) are typed as JSON;
-  if what you typed isn't valid, it says so and saves nothing.
+  once and says "Saved." right under that setting. A setting that takes one of a few values (your AI, its fallback,
+  `brain.classify`, `updates.mode`, `updates.channel`, `power.on_battery`, the layouts) is a list to pick from. Lists
+  and groups (like `["status"]` or `{"night": "23:15"}`) are shown whole in a box of several lines and typed as JSON;
+  if what you typed isn't valid, it says so under the setting and saves nothing.
 - **Go back to a default:** type the default value back (every default is in the
   [settings guide](../../SETTINGS_GUIDE.md)), or delete that line from `settings.json`.
 - **Starting** has its own choice (when you log in, or on Linux when the computer starts) and says what it did.

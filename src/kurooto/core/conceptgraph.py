@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto.core import egress
+from kurooto.core.layout import link_targets
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -113,7 +114,7 @@ def read_note(root: Path, path: Path) -> Note | None:
     prose = re.sub(r"<!--.*?-->", "", body, flags=re.S)
     prose = re.sub(r"^#.*$|^\s*[-*]\s+\w[\w-]*::.*$", "", prose, flags=re.M).strip()
     prose = re.sub(r"\s+", " ", prose)
-    links = {m[1].strip().removesuffix(".md") for m in WIKILINK.finditer(body)}
+    links = set(link_targets(body, slug + ".md"))  # [[wikilinks]] and markdown links alike (notes.links)
     return Note(
         slug,
         path,
