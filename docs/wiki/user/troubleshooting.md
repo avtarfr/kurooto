@@ -66,6 +66,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | "No answer in time" | Start the message with `low:`, or split the request. |
 | "It got stuck" | Send it again. A request with no progress for `jobs.stuck_min` (10) minutes is stopped. |
 | The AI said it did something but nothing happened | Tell it so; check `/jobs`. A small local model may not support tools and answers without them. |
+| The AI didn't set the alarm or book the call I asked for | Outside a call it asks first: tap **Approve** under "Your OK first" (`/q` lists it). Or say it directly: "wake me at 6:45", "call me at 5". |
 | The setup page says agy "can't use Kurooto's tools yet" | agy's settings file isn't plain JSON, or `agy mcp add` failed. Add `mcp(kurooto/*)` to `permissions.allow` in agy's `settings.json` yourself, then Test again. |
 | An agent program says Kurooto's tools aren't running | Kurooto is off or restarting: `kurooto on`, then ask again. |
 | Building my profile failed | It's a big request: if the AI hit a limit, try again later or with a stronger AI (`brain.main`). |

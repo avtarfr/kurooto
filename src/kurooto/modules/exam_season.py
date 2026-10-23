@@ -834,6 +834,7 @@ class ExamSeason(Module):
                 lambda t: {} if pat.match(t.strip().rstrip(".!")) else None,
                 lambda m, s: self.summary()[0],
                 questions=True,
+                examples=("exam season", "what's my exam season?"),
             ),
             Intent(
                 "revise_today",
@@ -841,6 +842,7 @@ class ExamSeason(Module):
                 lambda t: {} if REVISE_Q.match(t.strip().rstrip(".!")) else None,
                 lambda m, s: self._revise_today(),
                 questions=True,
+                examples=("what should I revise today?",),
             ),
         ]
 

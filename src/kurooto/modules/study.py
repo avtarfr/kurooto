@@ -581,19 +581,28 @@ class Study(Module):
                 "Study mode on or off (the dashboard shows notes, the study timer and what's due)",
                 mode,
                 lambda m, s: self._mode(s["on"]),
+                examples=("study mode on", "study mode off"),
             ),
             Intent(
                 "study_start",
                 "starting to study a subject (a session away from the computer)",
                 start,
                 lambda m, s: self.start_session(s["slug"], s["mins"]),
+                examples=("starting to study la",),
             ),
-            Intent("study_stop", "done studying: end the session", stop, lambda m, s: self.stop_session()),
+            Intent(
+                "study_stop",
+                "done studying: end the session",
+                stop,
+                lambda m, s: self.stop_session(),
+                examples=("done studying",),
+            ),
             Intent(
                 "study_log",
                 "studied a subject for some time (logs it)",
                 log,
                 lambda m, s: self.log(f"{s['mins']}m {s['slug']}"),
+                examples=("studied la for 2 hours",),
             ),
             Intent(
                 "show_study",
@@ -601,6 +610,7 @@ class Study(Module):
                 show,
                 lambda m, s: self.report(s["days"]) + (self._running() if s["days"] == 1 else ""),
                 questions=True,
+                examples=("how much did I study this week?",),
             ),
         ]
 

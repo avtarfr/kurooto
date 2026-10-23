@@ -8,8 +8,8 @@ commit as the change**:
 1. the user wiki, `docs/wiki/user/` (the page for the feature, plus `commands.md`, `messages-it-sends.md`,
    `privacy.md`, `troubleshooting.md` or `glossary.md` when they're affected);
 2. this developer wiki, `docs/wiki/dev/` (the area's page, and its known problems when you fix or find one);
-3. `/help`: the command list Telegram shows (`app.py:App.help`, each module's `commands()` help text and `help()`),
-   and the `/` menu built from it;
+3. `/help`: the command list Telegram and the phone app's chat show (`core/commands.py`: each module's `commands()`
+   help text, `CORE`, the group in `GROUPS`, each request's `examples`), and the `/` menu;
 4. `CHANGELOG.md`, a line under the unreleased version;
 5. the site pages `tools/release.py` publishes (`site_pages`: the landing page from `installer/index.html`, the privacy
    page (`docs/PRIVACY.md` rendered into `installer/privacy.html` between its `PRIVACY:START`/`PRIVACY:END` markers),

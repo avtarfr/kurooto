@@ -295,7 +295,17 @@ def _intents(app, mid, fn):
                 except Exception as e:
                     return _said(app, mid, name, e)
 
-            out.append(Intent(it.name, it.description, match, run, it.questions))
+            out.append(
+                Intent(
+                    it.name,
+                    it.description,
+                    match,
+                    run,
+                    it.questions,
+                    tuple(getattr(it, "examples", ()) or ()),
+                    getattr(it, "guarded", "") or "",
+                )
+            )
         return out
 
     return intents

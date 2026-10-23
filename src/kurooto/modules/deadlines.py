@@ -1194,9 +1194,28 @@ class Deadlines(Module):
             return "OK. " + out if out.startswith("One question first") else out
 
         return [
-            Intent("show_due", "what's due", show, run_show, questions=True),
-            Intent("add_deadline", "add a deadline", add, lambda m, s: self.add(s["what"], s["when"])),
-            Intent("ignore_topic", "I don't care about X", ignore, lambda m, s: self._ignore(s["topic"])),
+            Intent(
+                "show_due",
+                "what's due",
+                show,
+                run_show,
+                questions=True,
+                examples=("what's due?", "what's due this week?"),
+            ),
+            Intent(
+                "add_deadline",
+                "add a deadline",
+                add,
+                lambda m, s: self.add(s["what"], s["when"]),
+                examples=("add a deadline: essay draft due friday 17:00", "I have a lab report due tomorrow 9am"),
+            ),
+            Intent(
+                "ignore_topic",
+                "I don't care about X",
+                ignore,
+                lambda m, s: self._ignore(s["topic"]),
+                examples=("I don't care about drama club",),
+            ),
             Intent(
                 "exam_mode",
                 "exam mode, when's my next quiz",
@@ -1205,13 +1224,21 @@ class Deadlines(Module):
                 ),
                 lambda m, s: self._exam(),
                 questions=True,
+                examples=("when's my next quiz?", "exam mode"),
             ),
-            Intent("add_recurring", "<subject> has a quiz every <day>", recur, run_recur),
+            Intent(
+                "add_recurring",
+                "<subject> has a quiz every <day>",
+                recur,
+                run_recur,
+                examples=("la has a quiz every thursday",),
+            ),
             Intent(
                 "deadline_progress",
                 "how much of a problem set is done: ps3 4/7",
                 progress,
                 lambda m, s: self.progress(s["what"], s["done"], s["total"]),
+                examples=("ps3 4/7",),
             ),
         ]
 

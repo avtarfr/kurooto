@@ -275,6 +275,12 @@ REASONS: dict[str, Reason] = {
         R("reply_drafts.approval", "a reply draft waiting for Send, Edit or Discard", exempt="approval", stop=None),
         R("agy.consent", "whether agy may use Kurooto's tools", exempt="approval", stop=None),
         R(
+            "tap.approval",
+            "an AI request wants to set an alarm or place a call: your OK first",
+            exempt="approval",
+            stop=None,
+        ),
+        R(
             "presence.line",
             "whether your call line may say when this computer is offline",
             exempt="approval",

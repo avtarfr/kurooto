@@ -269,7 +269,7 @@ Send these to your bot, one at a time:
 
 | Type | What happens |
 |---|---|
-| `/help` | Lists the commands of the features you have on. |
+| `/help` | Lists the commands of the features you have on, in groups, and what you can just say. |
 | `remind me in 2 minutes to stretch` | A reminder arrives in two minutes, with **+10 min** and **+1 h** buttons. |
 | `what's due?` | Your deadline list (empty at first). |
 | `/due fri 17:00 essay draft` | Adds a deadline; you'll get a nudge a day before. |

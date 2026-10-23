@@ -648,7 +648,25 @@ class Telegram(Module):
             return {"arg": f"{mins}m" if mins else f"until {tm}"} if (mins or tm) else None
 
         return [
-            Intent("hold_calls", "no calls for a while", hold, lambda m, s: self._hold(m, s["until"])),
-            Intent("calls_ok", "calls are fine again", calls_ok, lambda m, s: self._calls(m, "")),
-            Intent("focus", "do-not-disturb on or off", focus, lambda m, s: self._focus(m, s["arg"])),
+            Intent(
+                "hold_calls",
+                "no calls for a while",
+                hold,
+                lambda m, s: self._hold(m, s["until"]),
+                examples=("no calls for 2 hours", "no calls until 18:00"),
+            ),
+            Intent(
+                "calls_ok",
+                "calls are fine again",
+                calls_ok,
+                lambda m, s: self._calls(m, ""),
+                examples=("calls are fine again",),
+            ),
+            Intent(
+                "focus",
+                "do-not-disturb on or off",
+                focus,
+                lambda m, s: self._focus(m, s["arg"]),
+                examples=("focus for an hour", "focus off"),
+            ),
         ]

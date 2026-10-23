@@ -50,7 +50,8 @@ No. It answers only the Telegram account that tapped the pairing link; everyone 
 
 **Will it send email or messages for me?**
 Never by itself. It sends nothing to anyone but you. A reply to an email waits in Gmail until you tap Send; approvals
-are never given for you.
+are never given for you. The alarm and calls work the same way: your AI asks before it sets one
+([Never without your tap](talking-to-kurooto.md#never-without-your-tap)).
 
 **It messages me too much. How do I quiet it?**
 Tap **Less of this** under a message (Stop, Fewer or Another time), or lower the daily limit with `/calm 4`. At most 6

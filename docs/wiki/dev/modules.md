@@ -68,9 +68,51 @@ Data classes (`modules/base.py`):
   `via` is `telegram`, `terminal` (`kurooto ask`), `setup` (the try-it box), `routine`, ...
 - `Command(name, help, handler(msg, arg) -> str | None, usage="")`. Return the reply text, or `None` if you replied
   yourself.
-- `Intent(name, description, match(text) -> dict | None, run(msg, slots) -> str, questions=False)`. `questions=True`
-  lets it answer questions ("what's due?"); otherwise text that looks like a question goes to the AI.
+- `Intent(name, description, match(text) -> dict | None, run(msg, slots) -> str, questions=False, examples=(),
+  guarded="")`. `questions=True` lets it answer questions ("what's due?"); otherwise text that looks like a question
+  goes to the AI. `examples`: what you'd say, as `/help` shows it (each must be taken by `match`; a test checks).
+  `guarded`: see [Never without a tap](#never-without-a-tap-coretappy).
 - `Tool` lives in `modules/calls/tools.py` (see [brains.md](brains.md#tools-exposed-to-the-ai)).
+
+## Never without a tap (`core/tap.py`)
+
+Setting or moving an alarm, placing a call, reading mail from a new sender, sending anything out, attaching a code
+repository to a project and deleting the user's data happen only when the user asked (typed, said, on a live call) or
+tapped. `core/tap.py:GUARDED` names each action (`alarm.set`, `call.place`, `mail.read`, `send.out`, `repo.attach`,
+`data.delete`), the ways that approve it (`WAYS`: `typed`, `said`, `call`, `button`, `approval`, `confirm`) and where it
+happens.
+
+When your code does one of these, tag it:
+
+- a tool: `Tool(..., guarded="alarm.set")`. Outside a live call `run_tool` turns it into an Approve / Deny first
+  ([brains.md](brains.md#tools-exposed-to-the-ai)). `guard_if=lambda a: ...` when only some arguments do it
+  (`schedule_quiz` rings only by call); `asks=True` when the tool itself only asks (`draft_reply` drafts, and Send
+  waits for the tap). The action must allow `call` (or `approval` with `asks`).
+- a plain-English request: `Intent(..., guarded="call.place")`; its action must allow `said`.
+- a command: nothing to tag (typing it is the request), but add it to `GUARDED[...].where`.
+- anything that does it by itself (a schedule, `core/infer.py`, the look back): don't. Ask with
+  `app.ask.approval(...)` and act in the hook.
+
+`tests/unit/test_tap.py` runs every tool (as on a call, and unattended via `ai`, `mcp`, `api`) and every request's
+examples on Telegram with every feature on, with the guarded actions replaced by recorders (`Alarm.set`...,
+`Calls.place/schedule/ring`, the `mail_digest.read`/`query` and `research.repos`/`projects` settings, Gmail's
+`/send`, `retention.forget`, `ledger.forget`). It fails when one reaches an action it isn't tagged with, when a tag's
+way isn't allowed, or when an unattended run reaches one at all. A new guarded action: add it to `GUARDED`, its
+recorder to the test's `hits` fixture, and the user wiki's table (talking-to-kurooto.md, "Never without your tap").
+
+## /help and the command table (`core/commands.py`)
+
+`/help` is made from the real command table: `CORE` (Kurooto's own commands, answered in `App.handle`), each module's
+`commands()`, and each request's `examples`, in `GROUPS` (key, title, user wiki page, module ids, core names; `moved`
+takes a command into another group, as Telegram's `/hold` and `/calls` go to Calls and phone). A module no group names
+lands in `MORE`. `App.help_parts(arg)` returns the messages (each under `LIMIT` = 3900 characters), `App.help(arg)`
+joins them: everything when it fits one message, else an index; `/help <group>`, `/help all`, `/help <word>`
+(`find()`). Lines a module's `help()` adds that aren't one of its commands (Skills' `/<skill> …`) are kept.
+
+Adding a command: give it a `help` line; a new feature goes into a group. Adding one to `App.handle` itself: add it to
+`CORE` and to a group's `core`. `tests/unit/test_help.py` fails when a command registered anywhere (every module's,
+every name `App.handle` compares with) isn't in `/help`, when a feature has no group, a group's page isn't in
+docs/wiki/user, a message is too long, or an example isn't taken by its request.
 
 ## Lifecycle
 
@@ -198,6 +240,7 @@ class Pomodoro(Module):
                 "start a focus session",
                 match=lambda t: {} if START.match(t) else None,
                 run=lambda msg, slots: self.begin(""),
+                examples=("start a pomodoro",),  # what /help shows; START must take it
             )
         ]
 

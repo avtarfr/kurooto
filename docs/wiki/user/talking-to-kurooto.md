@@ -11,6 +11,7 @@ and in a terminal (`kurooto ask`). Telegram is optional: the phone app's chat ca
 - [What happens to a message](#what-happens-to-a-message)
 - [Chat with your AI](#chat-with-your-ai)
 - [Questions and approvals](#questions-and-approvals)
+- [Never without your tap](#never-without-your-tap)
 - [Buttons](#buttons)
 - [Status, pause, hold and focus](#status-pause-hold-and-focus)
 - [Voice notes](#voice-notes)
@@ -31,11 +32,16 @@ anyone else, and from groups, are ignored.
 with `_`: `/term_setup` runs term-setup. Telegram shows at most 100. Kurooto updates the menu within a minute of a
 feature going on or off, and looks for new skills every 15 minutes.
 
-**`/help`** (and `/start`) lists everything that works right now: the commands of each feature you have on, grouped
-by feature, Kurooto's own (`/q`, `/aboutme`, `/health`, `/calm`, `/why`, `/jobs`, `/sync`), every request it
-understands at once in plain words, and the features that are off. It ends with a link to this wiki. **`/help <word>`**
-searches everything, on or off: `/help call` shows Phone calls, its commands and how to turn it on. If Chat is off it
-says free text isn't sent to an AI. The full list is in [commands.md](commands.md).
+**`/help`** (and `/start`) lists everything that works right now, in groups (Talking, Reminders and deadlines,
+Classes and calendar, Study, Quiz and exams, Calls and phone, Check-ins and journal, Notes, Skills and routines,
+Research, Google, Teaching Kurooto, Privacy and memory, Settings and upkeep), each with its page in this wiki: the
+commands of the features you have on with what each does, Kurooto's own commands, what you can just say in plain words,
+and the features that are off. When that's more than one Telegram message, `/help` sends a short index instead (each
+group with its commands) and **`/help <group>`** shows one group in full (`/help calls`, `/help reminders`), including
+its features that are off; **`/help all`** sends every group, one message each. **`/help <word>`** searches
+everything, on or off: `/help call` shows Phone calls, its commands and how to turn it on. If Chat is off it says free
+text isn't sent to an AI. The same `/help` answers in the phone app's chat. The full list is in
+[commands.md](commands.md).
 
 **While Kurooto is off or asleep.** Telegram keeps your messages for about a day; Kurooto handles them when it's back.
 Telegram doesn't deliver Kurooto's messages while the computer sleeps; with Phone calls set up, your call line can say
@@ -174,6 +180,27 @@ then nothing happens ("That question expired"). Answered and expired questions a
 
 **What leaves your computer:** the question goes wherever Kurooto reaches you (Telegram, the phone app, the desktop);
 open questions are part of the brief your call line keeps for calls while the computer is off.
+
+## Never without your tap
+
+Some things Kurooto does only when you asked for them yourself or tapped to approve them. Your AI, a guess from
+something you said in passing, and Kurooto's own schedule never do them by themselves:
+
+| What | How it gets your OK |
+|---|---|
+| Setting, moving or clearing an alarm | you type `/alarm`, say "wake me at 6:45", ask on a call, tap **Set** under the alarm suggestion, or use the dashboard or the phone app |
+| Placing a call, or booking one for later | you say "call me at 5", "call me now", "I'm awake" or "quiz me by call", type `/quiz <subject> call` or `kurooto call`, or ask on a call. Calls of features you turned on (check-ins, the alarm, deadline calls) ring at the times you set |
+| Reading mail from a new sender, domain, label or search | only `/mail read`, `/mail query`, or Features → Mail digest |
+| Sending anything to someone else (mail, a message, publishing) | only your **Send** under a reply draft; nothing else sends to anyone but you |
+| Attaching a code repository to a project | only `/repos add <folder>`; repositories are never searched for on the disk |
+| Deleting your data | `/forget` (`/forget all` after a confirm button), `/memory forget`, `/gists forget`, Undo and Drop buttons; the AI never deletes (a note it changes keeps its earlier version) |
+
+**When your AI wants to.** On a call you're on the line, so the AI does what you asked and says so. Anywhere else (an
+AI request from the chat, a skill or routine, an agent program such as agy using Kurooto's tools) the AI can't set
+the alarm or book a call by itself: you get a **Your OK first** question ("An AI request wants to set, move or clear
+an alarm: set_alarm (time: 7:30). Do it?") with **Approve** / **Deny**, and it happens only on Approve. The AI is told
+it waits for you, and asking again doesn't send a second question. Like every approval it never expires into a yes;
+`/q` lists the open ones.
 
 ## Buttons
 
