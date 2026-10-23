@@ -18,6 +18,7 @@ One line per folder or important file. Paths are relative to the repository root
 | `.gitignore` | build output, venvs, `node_modules`, `.wrangler`, keys, `.env*`, the bundled `public/app.js`, `wrangler.toml`, the APK |
 | `src/kurooto/` | the Python package (below) |
 | `tests/` | pytest suite, fakes, JS tests, fixtures (below) |
+| `addons/` | add-ons ready to publish as repositories of their own (restic-backups, desktop-helpers, habits, handwriting-pull), each with `kurooto-addon.json`, a README and tests; `conftest.py` adds one by link in tests (in `testpaths`) |
 | `tools/` | release, privacy scanner, settings guide generator, update rehearsal, git hooks (below) |
 | `installer/` | `install.sh`, `install.ps1`, `bootstrap.py` (verifies signed releases, builds the first version), `index.html` and `privacy.html` templates for the site |
 | `android/` | the Android app (below) |

@@ -13,6 +13,13 @@ turn the feature on, and only from the folder you name (overlay.code turns the P
 A broken add-on never stops Kurooto: a file that fails to load is skipped, and an add-on that fails while running
 is cut off from that one call; both are logged and shown in `kurooto doctor`. Updates never touch this folder.
 
+Add-ons by link (core/addons.py: `kurooto addons add <git url>`) load here too, each from its own folder under
+Kurooto's data, whether or not "Your add-ons" is on: as the package kurooto_linked.<name> (so their helpers are
+imported relatively: `from . import _helpers`), only when their files are exactly the ones you agreed to, and held to
+their card (load_linked): only the features, commands, AI tools and jobs it names, only the hosts and programs it names
+(core/fence.py), and an intent classifier only with "classify": true. Their skills/ and prompts/ count as yours, but
+Kurooto's AI programs never write into them (places.write_roots).
+
 Extension points an add-on feature (a Module in modules/) may define, besides what every feature can:
 
     classify_intent(text, intents) -> None | "name" | {"intent": name, "slots": {...}, "confidence": 0.0-1.0}
@@ -80,11 +87,18 @@ def folder(app) -> Path | None:
     return p if p and p.is_absolute() and p.is_dir() else None
 
 
-def dirs(app, kind: str) -> list[Path]:
-    """[<add-ons>/<kind>] when that folder exists ("skills", "prompts"); [] when add-ons are off."""
+def dirs(app, kind: str, linked: bool = True) -> list[Path]:
+    """[<add-ons>/<kind>] when that folder exists ("skills", "prompts"); [] when add-ons are off. linked: also the
+    add-ons by link that loaded (core/addons.py)."""
     f = folder(app)
     d = f / kind if f else None
-    return [d] if d and d.is_dir() else []
+    out = [d] if d and d.is_dir() else []
+    if linked:
+        for row in (status(app).get("linked") or {}).values():
+            x = Path(row.get("folder") or "") / kind
+            if not row.get("problem") and row.get("folder") and x.is_dir():
+                out.append(x)
+    return out
 
 
 def inside_kurooto(app, p: Path) -> bool:
@@ -100,8 +114,23 @@ def inside_kurooto(app, p: Path) -> bool:
     return False
 
 
+def _empty() -> dict:
+    return {"path": "", "modules": [], "errors": [], "settings": False, "linked": {}, "linked_modules": []}
+
+
 def status(app) -> dict:
-    return getattr(app, "overlay", None) or {"path": "", "modules": [], "errors": [], "settings": False}
+    """{path, modules, errors, settings} of your add-ons folder, and {linked: {name: {folder, modules, problem}},
+    linked_modules} of the add-ons by link."""
+    st = getattr(app, "overlay", None) or _empty()
+    for k, v in _empty().items():
+        st.setdefault(k, v)
+    return st
+
+
+def all_modules(app) -> list[str]:
+    """Every add-on feature's id: your folder's, then the add-ons by link's."""
+    st = status(app)
+    return [*st["modules"], *st["linked_modules"]]
 
 
 def _fail(app, where: str, e: BaseException) -> None:
@@ -119,37 +148,39 @@ def _fail(app, where: str, e: BaseException) -> None:
 
 
 def load(app) -> dict:
-    """Lay the add-ons over Kurooto: their settings defaults, and (overlay.code) their features. Never raises."""
+    """Lay the add-ons over Kurooto: your folder's settings defaults and (overlay.code) features, then the add-ons by
+    link (addons.on). Never raises."""
+    prev = getattr(app, "overlay", None) or {}
     config.set_layer({})
-    st = {"path": "", "modules": [], "errors": [], "settings": False}
+    st = _empty()
+    if prev.get("linked_loaded"):  # "Your add-ons" turned on again: the add-ons by link are loaded already
+        st.update(linked=prev["linked"], linked_modules=prev["linked_modules"], linked_loaded=True)
     app.overlay = st
     try:
         f = folder(app)
-        if not f:
-            return st
-        if inside_kurooto(app, f):
+        if f and inside_kurooto(app, f):
             _fail(app, "folder", ValueError("the add-ons folder can't be inside Kurooto's own folders"))
-            return st
-        st["path"] = str(f)
-        sf = f / "settings.json"
-        if sf.is_file():
-            d = jload(sf, None)
-            if isinstance(d, dict):
-                config.set_layer({k: v for k, v in d.items() if k not in NO_DEFAULTS and isinstance(v, dict)})
-                st["settings"] = True
-            else:
-                _fail(app, "settings.json", ValueError("isn't a JSON object"))
-        if app.settings.get("overlay.code", True) is not False:
-            _modules(app, f / "modules")
+        elif f:
+            st["path"] = str(f)
+            sf = f / "settings.json"
+            if sf.is_file():
+                d = jload(sf, None)
+                if isinstance(d, dict):
+                    config.set_layer({k: v for k, v in d.items() if k not in NO_DEFAULTS and isinstance(v, dict)})
+                    st["settings"] = True
+                else:
+                    _fail(app, "settings.json", ValueError("isn't a JSON object"))
+            if app.settings.get("overlay.code", True) is not False:
+                _modules(app, f / "modules")
     except Exception as e:  # nothing in here may stop Kurooto from starting
         _fail(app, "add-ons", e)
+    if not st.get("linked_loaded"):
+        load_linked(app)
     return status(app)
 
 
-def unload(app) -> None:
-    """Turned off: the add-ons stop and leave the feature list (Python can't forget their code until a restart)."""
-    config.set_layer({})
-    for mid in list(status(app).get("modules") or []):
+def _drop(app, mids: list[str]) -> None:
+    for mid in mids:
         m = app.modules.pop(mid, None)
         if m is None:
             continue
@@ -158,31 +189,114 @@ def unload(app) -> None:
         except Exception as e:
             _fail(app, f"{mid}.stop", e)
         app.stop_background(m)
-    app.overlay = {"path": "", "modules": [], "errors": [], "settings": False}
 
 
-def _modules(app, d: Path) -> None:
-    if not d.is_dir():
+def unload(app) -> None:
+    """Turned off: your folder's add-ons stop and leave the feature list (Python can't forget their code until a
+    restart). The add-ons by link stay (they have their own switch, addons.on)."""
+    config.set_layer({})
+    st = status(app)
+    _drop(app, list(st.get("modules") or []))
+    app.overlay = {**_empty(), **{k: st[k] for k in ("linked", "linked_modules", "linked_loaded") if k in st}}
+
+
+def load_linked(app) -> None:
+    """The add-ons by link (core/addons.py): each whose files are the ones you agreed to, held to its card."""
+    from kurooto.core import addons, fence
+
+    st = status(app)
+    st["linked"], st["linked_modules"], st["linked_loaded"] = {}, [], True
+    if app.settings.get("addons.on", True) is False:
         return
+    try:
+        rows = addons.loadable(app.paths)
+    except Exception as e:
+        _fail(app, "add-ons by link", e)
+        return
+    for rec, f, problem in rows:
+        name, man = rec["name"], rec.get("manifest") or {}
+        st["linked"][name] = {"folder": str(f), "modules": [], "problem": problem, "commit": rec.get("commit", "")}
+        if problem:
+            _fail(app, f"add-on {name}", ValueError(problem))
+            continue
+        pkg = addons.package(name)
+        fence.add(
+            pkg,
+            name,
+            man.get("hosts") or (),
+            [p["name"] for p in man.get("programs") or []],
+            [p["name"] for p in man.get("programs") or [] if p.get("online")],
+        )
+        got = _modules(app, f / "modules", pkg, man)
+        st["linked"][name]["modules"] = got
+        st["linked_modules"] += got
+
+
+def reload_linked(app) -> dict:
+    """After an add, update, remove or undo: the add-ons by link stop and load again; the features of theirs you had
+    on start again. Returns the status."""
+    from kurooto.core import fence
+
+    st = status(app)
+    _drop(app, list(st.get("linked_modules") or []))
+    for name in list(st.get("linked") or {}):
+        from kurooto.core import addons
+
+        fence.remove(addons.package(name))
+    load_linked(app)
+    for mid in status(app)["linked_modules"]:
+        m = app.modules.get(mid)
+        if m is not None and app.is_on(mid):
+            m.start()
+            app.start_background(m)
+    return status(app)
+
+
+def _package(name: str, d: Path) -> None:
+    """The package an add-on's files import as (made fresh, with every module of it forgotten, at each load)."""
+    for k in [k for k in sys.modules if k == name or k.startswith(name + ".")]:
+        sys.modules.pop(k, None)
+    parent = name.rpartition(".")[0]
+    if parent and parent not in sys.modules:
+        root = types.ModuleType(parent)
+        root.__path__ = []
+        root.__doc__ = "Add-ons by link (core/addons.py)."
+        sys.modules[parent] = root
+    pkg = types.ModuleType(name)
+    pkg.__path__ = [str(d)]
+    pkg.__doc__ = "An add-on (core/overlay.py)."
+    sys.modules[name] = pkg
+
+
+def _modules(app, d: Path, package: str = PACKAGE, manifest: dict | None = None) -> list[str]:
+    """Load the features in d (an add-ons folder's modules/). manifest: an add-on by link's, which they're held to."""
+    if not d.is_dir():
+        return []
     from kurooto.modules.base import Module
 
-    pkg = sys.modules.get(PACKAGE)
-    if pkg is None or list(getattr(pkg, "__path__", [])) != [str(d)]:
-        pkg = types.ModuleType(PACKAGE)
-        pkg.__path__ = [str(d)]
-        pkg.__doc__ = "Your own add-ons (core/overlay.py)."
-        sys.modules[PACKAGE] = pkg
+    linked = manifest is not None
+    if linked:
+        _package(package, d)
+    else:
+        pkg = sys.modules.get(PACKAGE)
+        if pkg is None or list(getattr(pkg, "__path__", [])) != [str(d)]:
+            pkg = types.ModuleType(PACKAGE)
+            pkg.__path__ = [str(d)]
+            pkg.__doc__ = "Your own add-ons (core/overlay.py)."
+            sys.modules[PACKAGE] = pkg
+    where = f"{manifest['name']}/" if linked else ""
+    loaded = []
     for py in sorted(d.glob("*.py")):
         if py.name.startswith(("_", ".")) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", py.stem):
             continue
-        name = f"{PACKAGE}.{py.stem}"
+        name = f"{package}.{py.stem}"
         sys.modules.pop(name, None)  # loaded fresh each start
         try:
             mod = importlib.import_module(name)
         except BaseException as e:  # a syntax error, a missing import, even sys.exit(): skipped, never fatal
             if isinstance(e, KeyboardInterrupt):
                 raise
-            _fail(app, py.name, e)
+            _fail(app, where + py.name, e)
             continue
         found = [
             c
@@ -191,20 +305,81 @@ def _modules(app, d: Path) -> None:
         ]
         for cls in found:
             mid = str(getattr(cls, "id", "") or "")
+            here = f"{where}{py.name}: {cls.__name__}"
             if not re.fullmatch(r"[a-z][a-z0-9_]{1,39}", mid):
-                _fail(app, f"{py.name}: {cls.__name__}", ValueError("needs an id: lowercase letters, digits and _"))
+                _fail(app, here, ValueError("needs an id: lowercase letters, digits and _"))
                 continue
             if mid in app.modules:
-                _fail(app, f"{py.name}: {cls.__name__}", ValueError(f"the id {mid!r} is taken by another feature"))
+                _fail(app, here, ValueError(f"the id {mid!r} is taken by another feature"))
+                continue
+            if linked and mid not in manifest.get("features", []):
+                _fail(app, here, ValueError(f"the feature {mid!r} isn't on its card, so it didn't load"))
                 continue
             try:
                 inst = cls(app)
             except Exception as e:
-                _fail(app, f"{py.name}: {cls.__name__}", e)
+                _fail(app, here, e)
                 continue
             guard(app, inst)
+            if linked:
+                held(app, inst, manifest)
             app.modules[mid] = inst
-            status(app)["modules"].append(mid)
+            loaded.append(mid)
+            if not linked:
+                status(app)["modules"].append(mid)
+    return loaded
+
+
+class _Every(set):
+    def __contains__(self, _x) -> bool:
+        return True
+
+
+def held(app, m, manifest: dict) -> None:
+    """Hold an add-on by link to its card: what it offers beyond it is left out (and said once in the problems)."""
+    name, mid = manifest["name"], m.id
+    m.linked = name
+    m.linked_card = manifest
+    told: set = set()
+
+    def say(what: str, which: str) -> None:
+        if (what, which) not in told:
+            told.add((what, which))
+            _fail(app, f"{name}.{mid}", ValueError(f"the {what} {which!r} isn't on its card, so it was left out"))
+
+    def only(fn, what: str, allowed: set, key):
+        def inner(*a, **kw):
+            out = []
+            for x in fn(*a, **kw) or []:
+                k = key(x)
+                if k in allowed:
+                    out.append(x)
+                else:
+                    say(what, k)
+            return out
+
+        return inner
+
+    cmds = {c["name"] for c in manifest.get("commands") or []}
+    if "*" in cmds:  # commands you name yourself (its card says so): any name
+        cmds = _Every()
+    tools = {t["name"] for t in manifest.get("tools") or []}
+    jobs = {j["id"] for j in manifest.get("jobs") or []}
+    m.commands = only(m.commands, "command", cmds, lambda c: c.name)
+    for kind in ("agent_tools", "call_tools"):
+        if callable(getattr(m, kind, None)):
+            setattr(m, kind, only(getattr(m, kind), "AI tool", tools, lambda t: t.name))
+    every = m.every
+
+    def every_held(job: str, spec: str, action, payload=None, **kw):
+        if f"{mid}:{job}" not in jobs:
+            say("job", f"{mid}:{job}")
+            return None
+        return every(job, spec, action, payload, **kw)
+
+    m.every = every_held
+    if not manifest.get("classify") and callable(getattr(m, "classify_intent", None)):
+        m.classify_intent = None  # it may not see your messages first: its card didn't ask
 
 
 def guard(app, m) -> None:

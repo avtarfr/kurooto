@@ -116,6 +116,13 @@ def addons_md(app: App) -> str:
         lines.append(f"Folder: {st['path']}")
         mods = st.get("modules") or []
         lines += ["", *(f"- {m}" for m in mods)] if mods else ["", "No add-on features loaded."]
+    linked = st.get("linked") or {}
+    if linked:  # added by link (core/addons.py)
+        lines += ["", "## Added by link", ""]
+        for name, row in sorted(linked.items()):
+            what = row.get("problem") or (", ".join(row.get("modules") or []) or "no features")
+            lines.append(f"- {name} at {str(row.get('commit', ''))[:12]}: {what}")
+    if st.get("path") or linked:
         for e in st.get("errors") or []:
             lines.append(f"- failed: {e.get('where')}: {e.get('error')}")
     return "\n".join(lines) + "\n"

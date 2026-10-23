@@ -197,6 +197,11 @@ def more_checks(app, net: bool = True) -> list[tuple[str, bool | None, str]]:
             out.append(line)
     except Exception as e:
         out.append(("skills in agents", False, f"{type(e).__name__}: {e}"[:200]))
+    from kurooto.core import overlay  # add-ons by link (core/addons.py): each one loaded, or why not
+
+    for name, row in sorted((overlay.status(app).get("linked") or {}).items()):
+        mods = ", ".join(row.get("modules") or []) or "no features"
+        out.append((f"add-on {name}"[:60], False if row.get("problem") else True, row.get("problem") or mods))
     for m in app.enabled():  # an add-on's own checks (core/overlay.py: doctor_checks)
         fn = getattr(m, "doctor_checks", None)
         if not callable(fn):

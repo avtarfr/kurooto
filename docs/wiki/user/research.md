@@ -183,6 +183,7 @@ minutes.
 | You say | Kurooto |
 |---|---|
 | "I got a project under Prof Lena Ortiz on glacier flow" | starts the note *Glacier flow* with "With: Prof Lena Ortiz (supervisor)" |
+| "I'm doing my thesis under Prof Ana Ruiz", "My supervisor is Dr Ken Ito" | starts *Thesis with Prof Ana Ruiz*, *Project with Dr Ken Ito* the same way |
 | "I meet my manager Mira Castell every Monday at 10 about onboarding" | puts "With: Mira Castell (manager)" and "Meets: every Mon 10:00" in the project note *Onboarding* (made if missing; without a topic, *Meetings with Mira Castell*) |
 | "We meet my guide Dr Okafor every Tuesday at 4" | the weekly time for the project that's With Okafor already ("I have a weekly call with ... on Fridays at 5" works too) |
 | "Met Okafor today, we fixed the drift" | a dated line under the note's Meetings, and "Last met: <date>" |

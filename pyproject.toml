@@ -42,7 +42,7 @@ packages = ["src/kurooto"]
 exclude = ["**/node_modules", "**/.wrangler", "src/kurooto/data/worker/public/app.js"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "addons"]  # addons/: the add-ons to publish, each with its own tests
 addopts = "-q"
 markers = ["live: needs real accounts or network; not run in CI"]
 

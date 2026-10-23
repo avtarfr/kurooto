@@ -1818,6 +1818,85 @@ def jobs_run(a) -> int | None:
         app.close()
 
 
+# ------------------------------------------- `kurooto addons [add|update|remove|undo|show]` (core/addons.py)
+def addons_parsers(sub) -> None:
+    ad = sub.add_parser("addons", help="add-ons by link: add one from its git address, update, remove, undo")
+    asub = ad.add_subparsers(dest="addons_cmd")
+    asub.add_parser("list", help="the add-ons added by link, and whether each loaded (the default)")
+    add = asub.add_parser("add", help="look at an add-on's card, then add it if you say yes")
+    add.add_argument("url", help="its git address: https://..., git@host:path, or a folder")
+    add.add_argument("--ref", default="", help="a tag, branch or commit (default: the newest commit); it's pinned")
+    add.add_argument("--yes", action="store_true", help="add it after showing the card, without asking")
+    up = asub.add_parser("update", help="what a newer commit changes, then update if you say yes")
+    up.add_argument("name")
+    up.add_argument("--ref", default=None, help="move to this tag, branch or commit instead")
+    up.add_argument("--yes", action="store_true", help="update after showing the changes, without asking")
+    for cmd, what in (("show", "its card"), ("remove", "take it away (undo puts it back)"), ("undo", "put back "
+                      "what remove or update took away last")):  # fmt: skip
+        x = asub.add_parser(cmd, help=what)
+        x.add_argument("name")
+
+
+def _addons_yes(a, what: str) -> bool:
+    if a.yes:
+        return True
+    if not sys.stdin.isatty():
+        print(f"Not {what}: run it again with --yes once you've read the card.", file=sys.stderr)
+        return False
+    try:
+        return input(f"{what.capitalize()} it? Type yes: ").strip().lower() in ("yes", "y")
+    except EOFError:
+        return False
+
+
+def addons_run(a) -> int | None:
+    """Runs `kurooto addons ...`; None for any other command. The work is done here (git, the files); a running
+    Kurooto is then told to load them again."""
+    if a.cmd != "addons":
+        return None
+    from kurooto.core import addons
+
+    p = paths()
+    cmd = a.addons_cmd or "list"
+    try:
+        if cmd == "list":
+            rows = addons.listing(p)
+            for r in rows:
+                state = f"didn't load: {r['problem']}" if r["problem"] else "ok"
+                print(f"{r['name']:<24} {r['commit'][:12]}  {r['url']}  ({state})")
+            if not rows:
+                print("No add-ons by link. kurooto addons add <git url> looks at one first.")
+            return 0
+        if cmd == "show":
+            print(addons.show(p, a.name))
+            return 0
+        if cmd in ("remove", "undo"):
+            ok, msg = (addons.remove if cmd == "remove" else addons.undo)(p, a.name)
+            print(msg)
+        else:
+            out = addons.fetch(p, a.url, a.ref.strip()) if cmd == "add" else addons.check_update(p, a.name, a.ref)
+            if out.get("same"):
+                print(f"{a.name} is at the newest commit already ({out['commit'][:12]}).")
+                return 0
+            print(out["text"])
+            if out.get("changes_text"):
+                print("\nWhat changes:\n" + out["changes_text"])
+            print()
+            yes = _addons_yes(a, "added" if cmd == "add" else "updated")
+            ok, msg = addons.install(p, out["token"], yes)
+            print(msg)
+            if not yes:
+                return 1
+    except addons.AddonError as e:
+        said = str(e)
+        print(said[:1].upper() + said[1:] + ".", file=sys.stderr)
+        return 1
+    if ok:
+        r = ask_running("addons/reload")
+        print(r.get("message", "") if r else "Kurooto isn't running; it loads them when it starts.")
+    return 0 if ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     utf8_output()
     ap = argparse.ArgumentParser(prog="kurooto", description="Your assistant, on your own computer.")
@@ -1910,6 +1989,7 @@ def main(argv: list[str] | None = None) -> int:
     cases_parsers(sub)
     classpack_parsers(sub)
     jobs_parsers(sub)
+    addons_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = ws5_run(a) if done is None else done
@@ -1919,6 +1999,7 @@ def main(argv: list[str] | None = None) -> int:
     done = cases_run(a) if done is None else done
     done = classpack_run(a) if done is None else done
     done = jobs_run(a) if done is None else done
+    done = addons_run(a) if done is None else done
     if done is not None:
         return done
 

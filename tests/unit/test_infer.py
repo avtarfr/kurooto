@@ -220,3 +220,28 @@ def test_a_short_name_used_twice_for_the_one_course_it_fits_becomes_its_short_na
     item = infer._load(app)["items"][-1]
     assert infer.undo(app, item["id"]).startswith('Undone: Took "RA"')
     assert subj.resolve("ra") is None
+
+
+def test_a_thesis_a_supervisor_said_plainly_and_a_person_before_the_word(env):
+    app = setup(env)
+    told = infer.observe(app, "I'm doing my thesis under Prof Ana Ruiz.")
+    assert told and "Thesis with Prof Ana Ruiz" in told[0]
+    told = infer.observe(app, "I started working with Prof Mira Cole on a project about sea ice.")
+    assert told and "Sea ice" in told[0] and "Prof Mira Cole" in told[0]
+    told = infer.observe(app, "My supervisor is Dr Ken Ito, from next week.")
+    assert told and "Project with Dr Ken Ito" in told[0]
+    people = {who: role for _, who, role in infer.projects_with(app)}
+    assert people == {"Prof Ana Ruiz": "supervisor", "Prof Mira Cole": "supervisor", "Dr Ken Ito": "supervisor"}
+    for line in ("My friend's supervisor is Dr Lee Park.", "My supervisor is not Dr Lee Park anymore."):
+        assert infer.observe(app, line) == [], line
+
+
+def test_on_mondays_ive_got_and_go_running_are_weekly_too(env):
+    app = setup(env)
+    told = infer.observe(app, "I've got a Linear Algebra tutorial on Wednesdays at 14:00")
+    assert told and "Linear Algebra tutorial on Wed 14:00" in told[0]
+    told = infer.observe(app, "I've got a lab on Mondays at 9")
+    assert told and "Added lab to your commitments: Mon 09:00" in told[0]
+    told = infer.observe(app, "I go running every morning at 6am")
+    assert told and "Added running to your commitments" in told[0]
+    assert infer.observe(app, "I went running on Monday at 6am and it was cold.") == []

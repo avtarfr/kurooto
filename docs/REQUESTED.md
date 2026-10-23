@@ -59,9 +59,18 @@ Standing plans, never struck through.
   queries during calls.~~ (0.5.22: `gbrain.checkup_line`, one weekly line from its doctor; its contradictions report
   in Dreaming's morning section; `gbrain.course_pages`, each course page's key concepts and dated timeline; on calls
   search_notes searches by meaning and note_timeline reads a course's or a note's timeline)
-- **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting).
+- **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting). (0.5.22: all four
+  are ready in `addons/` with manifests, tests and READMEs, to add by link; left: publishing each as its own
+  repository)
 
 ## Done
+- ~~**Set up from what it sees, not from settings**: one pass over chat and the journal creates projects with whoever
+  they're with ("got a project under Prof X": the project, its supervisor, and meetings from then on), classes from
+  "every Monday at 9 I have a lab", routines, a deadline's course, subject aliases; one line to say so, and
+  `/inferred` to undo. Alarms, calls and anything outward still need a tap.~~ (0.5.9 to 0.5.20: projects, meetings,
+  classes, commitments, recurring quizzes, short names; a deadline's course from its title. 0.5.22: a thesis or
+  dissertation, "my supervisor is Dr X", the person before "project", "on Mondays", "I've got", "I go running every
+  morning"; a call with someone is never a routine. Rules alone are enough: no AI pass, nothing leaves the computer)
 - ~~Local model on the graphics card without spilling onto the processor~~ (0.5.9: spilled models are unloaded and
   reload fully on the card; one too big is told once; `/models` shows the share)
 - ~~Allow safe scripts for agents: named scripts, not a bare `python3`~~ (0.5.8: `agents.scripts`, full paths;

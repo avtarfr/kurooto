@@ -193,6 +193,10 @@ A Python file in the add-ons folder (`overlay.path`, shown in Settings → Add-o
 when Kurooto starts, once "Your add-ons" is on. It gets the same settings, features and dashboard cell as a built-in
 feature. Add-ons are yours: they aren't part of updates and aren't published.
 
+Add-ons by link (`kurooto addons add <git url>`, Features → Add-ons by link) come from someone else's repository at a
+pinned commit, after you've read their card; `addons.on` turns them all off. Their settings are listed in each one's
+README, and appear in Settings once their feature is on.
+
 ## Every setting
 """
 

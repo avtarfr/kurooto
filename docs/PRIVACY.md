@@ -90,6 +90,7 @@ computer only.
 | Terminals | nothing by themselves (see [Your own code and terminals](#your-own-code-and-terminals)) | stays on your computer |
 | Kurooto Terminal | nothing by itself; getting kitty or fish (only when you say yes) downloads them from their official GitHub releases. What you type to your AI's program goes to its service, as when you run it yourself | stays on your computer |
 | Your add-ons | nothing by the feature itself; your add-ons' own code can do anything Kurooto can, so they send whatever they're written to send | wherever your add-ons send it |
+| Add-ons by link | adding or updating one: git fetches it (handed to git); after that, its code may reach only the hosts on its card, and the programs on its card send what they send | the git address you gave; the hosts on its card |
 | Study tracker: telling you're away | nothing: the idle check reads input interrupt counts (`/proc/interrupts`), the cursor position (Hyprland) and whether a screen locker runs; never what you type, and none of it is kept | stays on your computer |
 | Calm by default (on by default) | nothing: what's recorded about each message that came by itself (when, why, the setting, what it was about, its first 300 characters (forgotten after `privacy.keep_days` when you set it), whether you tapped or answered it) stays in `calm.db` in Kurooto's state folder for 45 days, and a message waiting for the evening bundle is kept in full until it's sent. It goes into Backups like the rest of the state folder, never into Profile sync; `notify.calm.on` = `false` records nothing | stays on your computer |
 | Setup page progress | nothing: which steps of the setup page you finished or skipped, the seconds spent on each and how often you opened it stay in `setup.json` in Kurooto's state folder, never what you typed; `kurooto doctor --bundle` puts them in the zip it saves on this computer | stays on your computer |
@@ -131,7 +132,7 @@ pages your AI reads for a request (its web reading tool). This computer (`127.0.
 counted: nothing leaves.
 
 **Programs that go online by themselves** are counted as "handed to" them, with the feature; Kurooto doesn't look
-into what they send: git (Notes sync and Profile sync), npm and wrangler (setting up your call line), agy and Claude
+into what they send: git (Notes sync, Profile sync, Add-ons by link), npm and wrangler (setting up your call line), agy and Claude
 Code (AI requests), Ollama (downloading a model), GBrain (making the index with Gemini, or your own brain's models),
 Tectonic (LaTeX packages), and installers (winget, Homebrew, Flatpak, npm, Bun, a vendor's install script). Where they
 send it is in the tables above.
@@ -141,6 +142,11 @@ send it is in the tables above.
 can't know of. `enforce` refuses those: the feature fails with a message naming the host. To allow one, add it to
 `privacy.allow_hosts` (`["feeds.example.org"]`; `".example.org"` allows every host under it). `off` checks and counts
 nothing. Your add-ons' own code is covered only when it makes its requests through Kurooto's (`core/egress.py`).
+
+**Add-ons by link** are fenced apart (`core/fence.py`), in every mode: their code may connect only to the hosts on the
+card you agreed to and start only the programs on it; anything else is refused and shows in `/egress` as blocked for
+"add-on <name>". A program on the card that goes online by itself is counted as handed to it. It's a fence, not a
+sandbox: code you agreed to runs with Kurooto's access, and code written to get around a fence can.
 
 ## Free tiers and terms
 
@@ -277,6 +283,9 @@ folder; your notes stay the source of truth.
 
 - **Your add-ons** run your own Python code inside Kurooto, with its access to this computer. Only use add-ons you
   wrote or trust; `overlay.code` off keeps their skills, prompts and settings and skips the code.
+- **Add-ons by link** (`kurooto addons add`) run someone else's Python code the same way, after you've read their card
+  (what they add, the hosts they may reach, the programs they may start) and said yes. They load only while their
+  files are the ones you agreed to, at the commit you agreed to; an update shows what changes and asks again.
 - **Terminals** in the dashboard are real terminals on this computer: anyone who can open your dashboard can type into
   them, so only turn them on if you're the only person who uses this computer. The dashboard only answers this
   computer, needs a key only its own page gets, refuses other websites, and on Linux checks that every request comes

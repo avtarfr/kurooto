@@ -136,7 +136,7 @@ class Api:
         from kurooto.core import overlay  # your add-ons' features come last (core/overlay.py)
 
         out = []
-        for mid in [*MODULE_ORDER, *overlay.status(self.app)["modules"]]:
+        for mid in [*MODULE_ORDER, *overlay.all_modules(self.app)]:  # then the add-ons by link's
             m = self.app.modules.get(mid)
             if not m:
                 continue
@@ -156,12 +156,75 @@ class Api:
                     "setup": hasattr(m, "setup"),
                     "form": m.setup_form() if hasattr(m, "setup_form") else None,
                     "addon": bool(getattr(m, "addon", False)),
+                    "linked": str(getattr(m, "linked", "") or ""),  # the add-on by link it came from
                     "extra": bool(getattr(m, "extra", False)),
                     "bundle": str(getattr(m, "bundle", "") or ""),  # in an add-on bundle: on its card
                     "card": self._card(m),
                 }
             )
         return out
+
+    def _addons(self) -> dict:
+        from kurooto.core import addons, overlay
+
+        st = overlay.status(self.app).get("linked") or {}
+        rows = []
+        for r in addons.listing(self.app.paths):
+            row = st.get(r["name"]) or {}
+            rows.append(
+                {**r, "modules": row.get("modules") or [], "text": addons.card_text(r["card"]) if r["card"] else ""}
+            )
+        kept = {}
+        for k in addons.kept(self.app.paths):
+            if k.get("rec"):
+                kept[k["name"]] = {"name": k["name"], "why": k["why"], "at": k["at"], "commit": k["rec"].get("commit")}
+        return {
+            "on": self.app.settings.get("addons.on", True) is not False,
+            "linked": rows,
+            "kept": list(kept.values()),
+        }
+
+    def _addons_post(self, action: str, b: dict) -> tuple[int, dict]:
+        """look (a link's card), add (yes to a card), check (an update's card), update (yes to it), remove, undo,
+        drop (no to a card), reload (after `kurooto addons` changed them). Only you, by a button or the terminal."""
+        from kurooto.core import addons, overlay
+
+        p = self.app.paths
+        try:
+            if action == "look":
+                out = addons.fetch(p, str(b.get("url") or ""), str(b.get("ref") or "").strip())
+                return 200, {"ok": True, **out}
+            if action == "check":
+                out = addons.check_update(p, str(b.get("name") or ""))
+                if out.get("same"):
+                    return 200, {"ok": True, "same": True, "message": "Already at the newest commit."}
+                return 200, {"ok": True, **out}
+            if action in ("add", "update"):
+                code = bool(b.get("code"))  # the box: I trust this code
+                tok = str(b.get("token") or "")
+                needs_code = addons.runs_code(p, tok)
+                if needs_code and not code:
+                    return 200, {"ok": False, "message": "It runs code: tick the box to say you trust it first."}
+                ok, msg = addons.install(p, tok, bool(b.get("yes", True)), via="button")
+            elif action == "drop":
+                addons.drop(p, str(b.get("token") or ""))
+                return 200, {"ok": True, "message": "Dropped; nothing was kept."}
+            elif action == "remove":
+                ok, msg = addons.remove(p, str(b.get("name") or ""))
+            elif action == "undo":
+                ok, msg = addons.undo(p, str(b.get("name") or ""))
+            elif action == "reload":
+                ok, msg = True, ""
+            else:
+                return 404, {"error": "not found"}
+        except addons.AddonError as e:
+            said = str(e)
+            return 200, {"ok": False, "message": said[:1].upper() + said[1:] + "."}
+        st = overlay.reload_linked(self.app)
+        if action == "reload":
+            n = len(st.get("linked_modules") or [])
+            msg = f"Add-ons by link loaded again: {len(st.get('linked') or {})} add-on(s), {n} feature(s)."
+        return 200, {"ok": ok, "message": msg, "modules": self._modules()}
 
     def _card(self, m) -> dict | None:
         """A feature's own card parts while it's on (Module.card(): lines and switches, e.g. Exam season's)."""
@@ -179,6 +242,8 @@ class Api:
 
         if path in tools_api.GETS:
             return tools_api.get(self.app, path, q)
+        if path == "addons":  # the add-ons by link, their cards and what's kept for Undo (core/addons.py)
+            return 200, self._addons()
         if path == "jobs":  # what the AI is working on and what waits (core/jobs.py; `kurooto jobs`)
             from kurooto.core.jobs import public
 
@@ -331,6 +396,8 @@ class Api:
 
         if path in tools_api.POSTS:
             return tools_api.post(self.app, path, b)
+        if path.startswith("addons/"):  # Features → Add-ons by link, `kurooto addons` (core/addons.py)
+            return self._addons_post(path[len("addons/") :], b)
         if path == "jobs/cancel":  # a Cancel button on the AI jobs page, `kurooto jobs --cancel ID|all` (core/jobs.py)
             ref = str(b.get("id") or "").strip()
             if not ref:
@@ -947,6 +1014,7 @@ class Api:
         "hardware",
         "web",
         "date_offers",
+        "addons",
     )
     # the core sections' titles where the section's name alone says little
     TITLES = {
@@ -959,6 +1027,7 @@ class Api:
         "hardware": "This computer",
         "web": "Dashboard",
         "date_offers": "Dates offered (photos, mail, shared calendars)",
+        "addons": "Add-ons by link",
     }
     # Settings the page neither shows nor changes: who may talk to the bot and where it connects (set by pairing), brain
     # addresses and models (POST /api/brain sets those, with its checks), the subject list and timetable (their own

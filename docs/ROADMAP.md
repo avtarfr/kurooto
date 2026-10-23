@@ -95,7 +95,9 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - ~~**Bedside mode.** An old Android phone as a dock: clock, today, alarm, a talk button.~~ (0.6.0: a big clock, the
   next alarm and the calls due next, one Talk button that starts a call, over the lock screen; dims by the hour, warm
   at night; opens by itself while charging between chosen hours. In the app itself, not an add-on)
-- **Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.
+- ~~**Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.~~
+  (0.5.22: also on the dashboard; held to its card (features, commands, AI tools, jobs, and only the hosts and
+  programs it names); `update` shows what changes and asks again; `remove` with Undo)
 
 ## From the skeptic review (2026-10-23)
 Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.

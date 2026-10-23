@@ -5,6 +5,7 @@ features, have your own scripts message you or ask you things, or let other AI p
 a terminal; none of it needs you to be a programmer, except writing a Python add-on feature.
 
 - [Your add-ons (your own features, skills and prompts)](#your-add-ons)
+- [Add-ons by link (someone else's, from a git address)](#add-ons-by-link)
 - [Scripts and programs talking to Kurooto](#scripts-and-programs-talking-to-kurooto)
   - [kurooto notify](#kurooto-notify-send-yourself-a-message) ·
     [kurooto send](#kurooto-send-send-yourself-a-file) · [kurooto note](#kurooto-note-a-quick-note) ·
@@ -16,7 +17,7 @@ a terminal; none of it needs you to be a programmer, except writing a Python add
 - [The reserve: Kurooto's state as files for AI programs](#the-reserve-kurootos-state-as-files-for-ai-programs)
 - [When something looks wrong](#when-something-looks-wrong)
 
-All of these commands need Kurooto running (`kurooto on`), except `kurooto note`, `kurooto watch` (which then only
+All of these commands need Kurooto running (`kurooto on`), except `kurooto addons`, `kurooto note`, `kurooto watch` (which then only
 shows its message on this computer) and `kurooto reserve`. Every command is also listed in [commands.md](commands.md).
 
 ---
@@ -79,6 +80,61 @@ health check), plus:
 
 **Turn it off:** Features → Your add-ons → Turn off. The add-ons are unloaded; the folder stays as it is.
 `kurooto uninstall` never touches it either.
+
+---
+
+## Add-ons by link
+
+**What it does.** Adds an add-on someone published as a git repository: `kurooto addons add <git address>`, or
+Dashboard → Features → **Add-ons by link** → paste the address → **Look at it**. You see its **card** first, and
+nothing is added until you say yes.
+
+```
+kurooto addons add https://example.org/someone/kurooto-habits.git --ref v1.0.0
+```
+
+**The card** says, from the add-on's manifest (`kurooto-addon.json`) and its files:
+
+| Line | Means |
+|---|---|
+| From … at `<commit>` | the git address and the one commit it's pinned to: a tag, a commit or a branch's newest commit, kept as that commit's id. It never moves by itself; `kurooto addons update` moves it, after you've seen what changes. |
+| Adds | its features, commands, jobs (`feature:name`, with when), AI tools, skills and prompts |
+| May reach | the hosts on the internet its code may connect to, or "nothing on the internet" |
+| May start | the programs it may start; "goes online by itself" means that program reaches the internet itself and Kurooto can't see what it sends |
+| Sees each of your messages first | only when it asks to (`"classify": true`) |
+| Runs code | **YES** when it has Python files: they run inside Kurooto with its access to this computer. Only add it if you trust whoever wrote it. On the dashboard you tick "I trust this code" before **Add**. |
+
+**Held to its card.** Kurooto loads it only while its files are exactly the ones you agreed to (a changed file and it
+doesn't load; `kurooto doctor` and `/addons` say why). A feature, command, AI tool or job that isn't on the card is
+left out. Its code may connect only to the hosts on the card and start only the programs on the card: anything else
+is refused (`/egress` lists what was blocked, as "add-on <name>"), whatever `privacy.egress` says. That's a fence,
+not a sandbox: code you agreed to runs with Kurooto's access, and code written to get around a fence can. The card
+and your yes are what keeps you safe.
+
+**After adding.** Its features are listed under Features → **Add-ons by link**, each off until you turn it on. Its
+skills and prompts work like your own add-ons' (the AI never writes into its folder).
+
+**Update:** `kurooto addons update <name>` (or **Check for update** on the dashboard) fetches the newest commit of
+what you pinned (`--ref` moves to another tag), shows what changes (files added, removed and changed with their
+lines, and anything new on its card: hosts, programs, commands, code), then its card again, and asks again.
+
+**Remove:** `kurooto addons remove <name>` (or **Remove**). It's moved aside, not deleted: `kurooto addons undo
+<name>` (or **Undo**) puts it back, with its features as they were. Undo after an update puts the version before it
+back. The last 3 of each are kept.
+
+**Commands:** `kurooto addons` lists them; `kurooto addons show <name>` shows a card again. `--yes` adds or updates
+without asking (after printing the card), for when you've read it. A running Kurooto loads the change at once.
+
+**Settings:** `addons.on` (default on): off, none of them load; they stay where they are.
+
+**What leaves your computer:** git fetches the add-on from the address you gave (counted as handed to git); after
+that, only what its card says, and what the programs it may start send by themselves.
+
+**Ready to add:** `addons/` in Kurooto's own repository holds four, each to be published as a repository of its own:
+Machine backups (restic), Desktop helpers (KDE Connect at the alarm, screen wake), Your command words (`/j` for
+`/journal`) and Handwriting from the cloud (rclone). Each README there has its card.
+
+**Writing one** (for developers): [modules.md in the developer wiki](../dev/modules.md#add-ons-by-link-coreaddonspy-corefencepy).
 
 ---
 
@@ -289,3 +345,8 @@ writes them now. AI programs may read this folder, never write to it, and Kuroot
 | Your add-ons: a problem in `kurooto doctor` | `/addons` shows which file and the error. Fix it, then restart Kurooto (`kurooto stop`, `kurooto start`). |
 | An add-on change doesn't show | Restart Kurooto after editing add-on code. |
 | "the add-ons folder can't be inside Kurooto's own folders" | Move it elsewhere (for example `~/code/my-addons`) and give the new path. |
+| An add-on by link "didn't load: its files changed since you agreed to its card" | Something edited its folder. `kurooto addons update <name>` brings it back to a commit you agree to (or remove it and add it again). |
+| An add-on by link "needs Kurooto X or newer" | Update Kurooto (`kurooto update --now`); it loads at the next start. |
+| "The add-on X may only reach the hosts on its card" | Its code asked for a host it didn't declare: it's refused on purpose. Tell its author; a newer version that declares it shows the host when you update. |
+| "may only start the programs on its card" | The same for a program. |
+| `kurooto addons add`: "couldn't clone it" | Check the address; a private repository needs your git sign-in set up (Kurooto never asks for a password). |
