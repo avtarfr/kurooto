@@ -4,8 +4,9 @@
 
 - **Kurooto sets itself up from what you say** (`infer.*`, on): "I got a project under Prof Lena Ortiz on ring
   models" in the chat or your journal starts the project note with "With: Prof Lena Ortiz (supervisor)" and a
-  Meetings section; "met Ortiz today, we ..." becomes a dated line there (and "Last met: <date>" under "With:"), and "a meeting with Ortiz friday at 4"
-  a deadline; "every Monday at 9 I have a linear algebra lab" puts the class in your timetable. Rules only, on this
+  Meetings section; "met Ortiz today, we ..." becomes a dated line there (and "Last met: <date>" under "With:"),
+  and "a meeting with Ortiz friday at 4" a deadline; "every Monday at 9 I have a linear algebra lab" puts the class
+  in your timetable. Rules only, on this
   computer; nothing from other people's news or a "didn't"; each change in one line with Undo, and `/inferred` lists
   them (`/inferred undo <id>`). Never alarms, calls, mail or code repositories.
 - **Commitments** (a feature): the regular things in your week that aren't classes (the gym, a shift, a standup,
