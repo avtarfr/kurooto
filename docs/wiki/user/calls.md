@@ -527,6 +527,9 @@ Dashboard → Settings → calls. The ones you're likely to change:
 
 ## Turn it off
 
+
+Turning Phone calls off keeps the calls you booked: they ring when it's back on. A call whose time passed while it
+was off doesn't ring late; Kurooto tells you it was missed instead.
 - Features → Phone calls → Turn off. Morning alarm and Reminders with the lid shut need it, so turn those off first.
 - Just the look back: `calls.review` = `false`.
 - Just turn by turn: `calls.voice_mode` = `live` (failed calls go to Telegram).

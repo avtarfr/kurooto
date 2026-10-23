@@ -130,6 +130,7 @@ class Calls(Module):
     # ------------------------------------------------------------------------------------- lifecycle
     def start(self):
         self.action("ring", self._scheduled_ring)
+        self._unpark()
         self.action("missed", self._missed)
         self.action("task_check", self._task_check)
         self.action("realert", self._realert)
@@ -143,8 +144,43 @@ class Calls(Module):
         self.app.notifier.register("app", self.phone.send, self.phone.retract)  # questions etc. (phone.py)
 
     def stop(self):
+        """Turned off: calls you booked are kept (not cancelled) and booked again when it's turned back on."""
+        rows = [
+            {"key": j.key, "at": j.next_run, "payload": j.payload}
+            for j in self.app.scheduler.jobs("calls:ring:")
+            if j.action == "calls.ring"
+        ]
+        if rows:
+            jsave(self.parked_file, rows)
         super().stop()
         self.app.notifier.unregister("app")
+
+    @property
+    def parked_file(self):
+        return self.dir / "parked-calls.json"
+
+    def _unpark(self) -> None:
+        """Back on: the calls booked before it was turned off ring when they're due; one whose time passed meanwhile
+        isn't rung late: you're told about it instead."""
+        rows = jload(self.parked_file, []) or []
+        missed = []
+        for r in rows:
+            if r["at"] > time.time():
+                self.app.scheduler.at(
+                    r["at"], "calls.ring", r.get("payload") or {}, key=r["key"], module=self.id, grace_s=900,
+                    respect="none", replace=False,
+                )  # fmt: skip
+            else:
+                missed.append(
+                    f"{dt.datetime.fromtimestamp(r['at']):%a %H:%M} {(r.get('payload') or {}).get('reason', '')}"
+                )
+        self.parked_file.unlink(missing_ok=True)
+        if missed:
+            self.app.notify(
+                "While Phone calls was off, these calls came due and didn't ring:\n" + "\n".join(missed),
+                kind="info",
+                why="calls.own",
+            )
 
     def _line_update(self, p: dict | None = None) -> bool:
         """After Kurooto updated itself, the call line's code may be newer than what's deployed: redeploy it (in the

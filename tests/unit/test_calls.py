@@ -473,3 +473,22 @@ def test_lessons_merge_and_cap():
     assert merge([f"lesson number {i} about different topics{i}" for i in range(5)], ["brand new advice entirely"], 3)[
         -1
     ] == ("brand new advice entirely")
+
+
+def test_turning_calls_off_keeps_the_calls_you_booked(calls):
+    import time
+
+    app = calls.app
+    c = app.modules["calls"]
+    c.schedule(dt.datetime.now() + dt.timedelta(hours=1), "revise thermodynamics")
+    c.schedule(dt.datetime.now() + dt.timedelta(hours=2), "gym")
+    assert len(c.schedule_list()) == 2
+    app.disable("calls")
+    assert not app.scheduler.jobs("calls:ring:")
+    rows = __import__("json").loads(c.parked_file.read_text())
+    rows[1]["at"] = time.time() - 60  # this one came due while it was off
+    c.parked_file.write_text(__import__("json").dumps(rows))
+    calls.on("calls")
+    left = [x["reason"] for x in c.schedule_list()]
+    assert left == ["revise thermodynamics"] and not c.parked_file.exists()
+    assert "didn't ring" in calls.fake.texts()[-1] and "gym" in calls.fake.texts()[-1]

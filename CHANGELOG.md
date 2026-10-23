@@ -66,6 +66,8 @@
   options (a prompt hidden in a mail or a web page could have used them). Searching is the AI programs' own job, and
   Kurooto compiles LaTeX itself: now without a `latexmkrc` from the notes folder (`-norc`), and TeX may only read and
   write beside the document.
+- **Turning Phone calls off keeps the calls you booked**: they ring when it's back on; one that came due meanwhile
+  isn't rung late, you're told about it instead (Reminders already keeps its own the same way).
 - **A bare number is a time, not minutes**: `/remind 9 gym` is the next 9:00 (morning or evening, whichever comes
   first) and `/remind 18 gym` is 18:00; minutes need their unit (`20m`, `in 20 min`), and `/due` reads times the same way.
 - **Docs match the code**: the manual's term-note example no longer swallows the Concept graph, Space keeper and

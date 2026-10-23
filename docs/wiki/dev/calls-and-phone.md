@@ -87,6 +87,8 @@ Redeploys: `fingerprint` hashes the Worker source and the values baked into it (
    for `next_callable()` and the user is told.
 2. `Calls.schedule` books it with `scheduler.at(..., "calls.ring", key="calls:ring:<key>", grace_s=900)` and pokes the
    connector so the line has the schedule too.
+   Turned off, `Calls.stop` parks the booked `calls:ring:*` jobs in `calls/parked-calls.json`; `start()` books
+   them again (`_unpark`), and one whose time passed is reported in a message, not rung late.
 3. `Calls.ring`:
    - asks Calm first (`core/calm.py:Calm.call_ok`: by default one self-started call a day; the alarm and calls the user
      asked for are exempt). A refused call is held for the evening bundle as a line with a call link;
