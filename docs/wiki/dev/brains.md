@@ -15,7 +15,8 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 |---|---|
 | `Verdict` (StrEnum) | `ok`, `empty`, `denied`, `rate_limited`, `auth`, `timeout`, `error`, `cancelled`, `stuck`. Every brain maps its failures onto these; the queue decides retries from them. |
 | `Task` (dataclass) | One request: `prompt`, `effort`, `title`, `cwd` (the notes folder), `timeout_s`, `context` (the headless preamble), `tools` + `run_tool` (for API brains), `mcp` + `mcp_env` (for agent programs), `text_only`, `on_process(pid)`, `stop` (a `threading.Event`). |
-| `Result` (dataclass) | `verdict`, `text`, `seconds`, `detail` (log only, never shown raw), `retry_after_s`, `usage` (dict; keys used: `note`, `limit`, `tool_calls`, `tools_used`, `cost`, `denied`, `prompt_tokens` / `completion_tokens` (OpenAI-compatible), and `limits`, which the queue adds: every limit hit while trying the chain). `.ok` is `verdict == OK`. |
+| `Result` (dataclass) | `verdict`, `text`, `seconds`, `detail` (log only, never shown raw), `retry_after_s`, `usage` (dict; keys used: `note`, `limit`, `tool_calls`, `tools_used`, `cost`, `denied`, `prompt_tokens` / `completion_tokens` (OpenAI-compatible), and `limits`, which the queue adds: every limit hit while trying the chain), `model` (the model that answered, as the brain knows it: agy's `--model`, Claude Code's `modelUsage`, the OpenAI-compatible response's `model`; set on failures too). `.ok` is `verdict == OK`. |
+| `short_model(model, effort="")` | A model id for the run receipt: no vendor prefix, date or `-latest`, versions dotted (`claude-opus-4-5-20251101` → `opus-4.5`), and no effort suffix when it equals the effort shown (`gemini-3.8-flash-medium` at medium → `3.8-flash`). |
 | `Brain` | Base class. Attributes `id`, `label`, `kind` (`"api"` or `"cli"`), `meter`, `denied_help`. Methods `available() -> (bool, why)`, `run(task) -> Result`, `complete(prompt, system, effort, timeout) -> Result`, and for CLI brains `prepare(app)`, `has_worked(app)` / `mark_worked(app)` (a `<state>/<id>-worked.json` marker), `after_test(app)`. |
 | `RATE_LIMIT`, `AUTH_FAIL` | Regexes every brain uses to classify error text. |
 | `TEXT_ONLY` | The sentence prepended for text-only requests on agent programs. |
@@ -29,6 +30,8 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 `providers/__init__.py`:
 
 - `register_defaults("brain", ...)`: `brain.main`, `brain.fallback`, `brain.classify` (`rules` | `main` | any brain id),
+  `brain.fallback_on` (registered in `providers/fallback.py`, see below); `brain.fallback` may be one id or a list
+  (`fallback.chosen()` reads both),
   `brain.agy.io_mode` (`pipe` | `pty`), `brain.models` (per brain: `{"low","medium","high"}` model names),
   `brain.base_urls` (per preset), `brain.timeout_min` (`{"low": 10, "medium": 15, "high": 30}`).
 - `CHOICES`: id to label, for every buildable brain.
@@ -53,6 +56,7 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 - Prompts longer than `ARG_LIMIT` (20 000 chars on Windows, 100 000 elsewhere) go through `handover()`: written to
   `<notes>/.kurooto/requests/<id>.md` (with a `*` `.gitignore`), and agy is told to read that file. The file is
   deleted after the run.
+- `Agy.model(effort)`: the `--model` id for an effort; `run()` puts it on `Result.model`.
 - Verdicts (`verdict()`): exit 0 with "no output produced" means `DENIED` (agy's way of saying a step was refused);
   rate-limit and auth patterns only count when the exit code is non-zero or there was no output.
 - Tools: agy reaches Kurooto's tools through `kurooto mcp`, registered once as agy's MCP server "kurooto"
@@ -82,9 +86,16 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
   `WebFetch`, `WebSearch`, `mcp__kurooto`, `mcp__gbrain` when applicable; `deny` always holds `Bash(kurooto)` and
   `Bash(kurooto *)`.
 - Text-only requests get `--tools ""` and no MCP config.
-- `ClaudeCode.verdict()` parses the last JSON line (`type == "result"`): `is_error` goes through `_fail()`;
-  `permission_denials` with no text becomes `DENIED`; a "usage limit reached|<epoch>" message sets
-  `retry_after_s` (`LIMIT_RESET`).
+- `ClaudeCode.verdict()` parses the last JSON line (`type == "result"`): `is_error` goes through `_fail()`
+  (`RATE_LIMIT` or `PLAN_LIMIT`: "5-hour limit reached", "You've hit your limit", "Weekly limit reached" are
+  `RATE_LIMITED`); `permission_denials` with no text becomes `DENIED`. At a limit `limited()` reads the reset
+  (`reset_at()`: "...|<epoch>" (`LIMIT_RESET`), "resets 3pm", "resets 3:30pm (Europe/Berlin)", "resets Oct 27, 9am",
+  "resets Mon 9am"; a bare number is never a time) into `retry_after_s` and `usage["limit"] = {"reset_at": ...}`, so
+  `core/quota.py` marks the pool used up and `providers/fallback.py` skips it until then.
+- `used_model(data)`: the model from `modelUsage` (the entry that cost the most, else wrote the most) or `model`;
+  `run()` falls back to the model it passed (`brain.models.claude[effort]`, an alias like `sonnet`).
+- With Kurooto's tools, the run's permissions also allow `ListMcpResourcesTool` and `ReadMcpResourceTool`, so it can
+  read `kurooto://self`.
 - Default models: `MODELS = {"low": "haiku", "medium": "sonnet", "high": "sonnet"}`, overridable through
   `brain.models.claude`.
 
@@ -121,18 +132,51 @@ Timeouts per level: `brain.timeout_min`.
 
 `core/jobs.py:Jobs._run` builds the chain:
 
-1. `main` = `build(brain.main)`, `fallback` = `build(brain.fallback)`.
+1. `main` = `build(brain.main)`; `fallbacks` = each of `fallback.chosen(app)` (`brain.fallback`: one id, or a list in
+   order; an old single string is a list of one), `fallback` = the first of them.
 2. If the job was submitted with `brain=` (e.g. a concept-graph role), that brain becomes main and the first other
    available agent program becomes the fallback.
 3. `_last_resort(main)`: only when main is `gemini`, the first agent program that is available and `has_worked()` is
-   appended. Agent programs never fall back to the Gemini key.
-4. `quota.arrange(chain, level, background)` (`core/quota.py:Quota.arrange`): for your own requests, brains whose limit
+   appended.
+4. The automatic order (0.5.22, `providers/fallback.py`), only when no fallback is picked: `candidates(app, skip)`
+   appends the brains of `AUTO = ("agy", "claude", "gemini")` not already in the chain and set up here (`ready()`:
+   built, `available()`, and for a `cli` brain `has_worked()`). They are tried only after a failure whose verdict is in
+   `brain.fallback_on` (`triggers()`, default `{"rate_limited"}`; also `auth`, `timeout`) happened in this request, or
+   when a limited brain was skipped. `brain.fallback` is the one setting that holds an order (the nightly policy look
+   may tune it, with `brain.fallback_first`); there's no separate order setting.
+5. `skip_cooling(app, chain)`: brains waiting for a limit's reset (`cooling()`) are left out, unless that would leave
+   nothing that will run (then the chain stays whole: the limit may be back early).
+6. `quota.arrange(chain, level, background)` (`core/quota.py:Quota.arrange`): for your own requests, brains whose limit
    is used up go last; for background requests, brains whose limit is kept for you are dropped, and with none left the
    job is deferred (`Jobs._defer`, `not_before` set to the reset time) or moved to the local model.
-5. Each brain is tried in order; `RETRY = (RATE_LIMITED, AUTH, ERROR, DENIED, EMPTY)` moves to the next. `TIMEOUT`,
-   `CANCELLED`, `STUCK` and `OK` stop. `Jobs._problem` tells the user about a rate limit or sign-out at most once an
-   hour per brain (marker files `<state>/jobs/told-<brain>-<verdict>`).
-6. An answer from the last resort carries a one-line note saying why (`_why`).
+7. Each brain is tried in order; a verdict in `RETRY = (RATE_LIMITED, AUTH, ERROR, DENIED, EMPTY)` or in
+   `fallback_on` moves to the next. `TIMEOUT` (unless in `fallback_on`), `CANCELLED`, `STUCK` and `OK` stop. A
+   `RATE_LIMITED` result calls `fallback.cool(app, brain, result)`: skipped until the reset it named
+   (`usage["limit"]["reset_at"]`, `retry_after_s`, `retry_s`), a minute for a per-minute limit, else a back-off
+   (`BACKOFF_S` 30 min, doubling while it stays limited, at most `MAX_BACKOFF_S` 5 h); state
+   `<state>/brain-limits.json`, event `brain_limited`. An answer from a cooling brain clears it (`clear()`,
+   `brain_back`). `Jobs._problem` tells the user about a rate limit or sign-out at most once an hour per brain
+   (marker files `<state>/jobs/told-<brain>-<verdict>`).
+8. An answer from the last resort carries a one-line note saying why (`_why`). Any stand-in is named in the run receipt
+   (`handed()`: "Claude Code hit its limit; agy answered", "Claude Code is at its limit until 15:00; agy answered").
+
+`/brain` lists the order and who is waiting; `/usage` adds a line per waiting brain (`modules/chat.py:limit_lines`).
+
+**The concept graph's roles** (`modules/integrate.py:Integrate.roles`) go through `stand_in(bid)`: a role whose AI is
+cooling goes to the first other ready, non-cooling brain of the order, so reading goes on. `core/readbudget.py` keeps
+one record per brain: `Budget.count(job.brain)` counts a batch on the AI that read it, and `seen()` records each limit
+in `usage["limits"]` on the record of the AI that hit it, so a stand-in's reading never spends the bulk AI's budget.
+
+## The run receipt and the model
+
+`core/jobs.py:receipt(brain, effort, seconds, pct, steps, recalled, model, decided, fell)` builds the one line under
+each answer, at most `RECEIPT_MAX` (160) characters: `[decided by X, answered by] AI · model · effort · time · share
+of today's limit · what it did · remembered items`. When it's too long, what it did goes first; then it's cut with
+"…". `model` is `Result.model`, shortened by `short_model` and stored in `jobs.model` (shown by `/jobs`, `public()` and
+the dashboard's AI jobs page, whose result cell has the receipt as its tooltip). `decided`: `Jobs._classifier(main,
+jid)` records in `Jobs.decided[jid]` the brain and model that answered the effort question (`who()`: a `cli` brain by
+name and model, an API or local one by its model alone); it's shown only when that isn't the brain and model that
+answered. `fell` comes from `handed()` (step 8 above).
 
 ## Tools exposed to the AI
 
@@ -143,7 +187,9 @@ Timeouts per level: `brain.timeout_min`.
   (atomic rename, original line endings kept, Windows-reserved names refused).
 - `FileTools.tools()`: `read_file`, `list_files` (read-only, inside `places.read_roots`, links resolved and checked by
   `places.inside`), `fetch_url` (GET only, refuses this computer and private networks, at most `MAX_PAGE` bytes).
-- `sync_tools()`: `sync_status`.
+- `sync_tools()`: `sync_status`, `sync_now`.
+- `core/selfdoc.py:tool(app)`: `kurooto_self` (read-only): this computer's `self.md`, or with `part=manual` the shipped
+  manual. See [self-manual.md](self-manual.md).
 - `app.ask.agent_tools()`: `ask_user`.
 - For each enabled module: `call_tools()` and `agent_tools()`, deduplicated by name; `CALL_ONLY = {"run_task",
   "pending_items"}` are never given to unattended work. Learns from its own work adds `search_history` this way.
@@ -171,7 +217,9 @@ library only. It is a bridge: `Bridge.request()` calls the running daemon's `GET
 environment (`KUROOTO_TOOLS_URL`, `KUROOTO_TOOLS_TOKEN`, set per run by `run_env()`; `KUROOTO_JOB`, the request's id,
 which `call_tool` passes on as `job` so the use counts as one of its steps), falling back to
 `<state>/tools-access.json` (rewritten at every daemon start). When the daemon is down, `tools/list` answers from
-`<state>/tools-list.json` and every call returns `NOT_RUNNING`. `command(persistent=True)` (used for agy's saved
+`<state>/tools-list.json` and every call returns `NOT_RUNNING`. It also answers `resources/list` and
+`resources/read` for `RESOURCES` (`kurooto://self`, `kurooto://manual`), read from files (`resource_text()`), so they
+work while Kurooto is stopped. `command(persistent=True)` (used for agy's saved
 registration) goes through the installed launcher so it survives updates; on Windows `pythonw.exe` is swapped for
 `python.exe` (`_console`).
 
@@ -203,7 +251,9 @@ triggers a fresh consent question (`tools_once`: "more is wanted than was agreed
 `providers/context.py:headless_context(app)` is prepended to every job: who the user is, the time and zone, the notes
 folder, answer style, "nobody can answer follow-up questions", the tool rules, a pointer to `<state>/reserve/`, the
 profile brief (`core/aboutyou.py`), "how to help me" (`modules/remember.py:help_brief`), the persona card and the
-boundaries rule (`core/persona.py:card_text`, `rule`) and the notes layout (`core/layout.py:describe`). Chat's own
+boundaries rule (`core/persona.py:card_text`, `rule`), the notes layout (`core/layout.py:describe`) and a line pointing
+at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; a request about Kurooto
+(`core/selfdoc.py:wanted`) also gets `self.md` itself in its context (`for_request`, at most `CONTEXT_MAX`). Chat's own
 requests also end with one register line (`core/persona.py:register_line`, marked `[Reply style]`, left out of chat
 history by `strip_register`).
 

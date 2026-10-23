@@ -6,6 +6,9 @@ It is only a bridge. Every tool call goes to the Kurooto running on this compute
 and in API requests, with the features you have on. When Kurooto isn't running, the tools are the ones it last
 listed, and calling one says that Kurooto isn't running.
 
+It also offers two resources, read from files so they answer while Kurooto is stopped: kurooto://self (what it's
+running here, core/selfdoc.py) and kurooto://manual (how it works, data/ai-manual.md).
+
 Standard library only, and quick to start: agent programs start it for every run.
 """
 
@@ -39,6 +42,41 @@ INSTRUCTIONS = (
     "them or create new ones, never reword or remove their text. Only say you did something if the tool's answer "
     "says it was done."
 )
+
+
+# what Kurooto is running, and how it works (core/selfdoc.py), read from files so they answer with Kurooto stopped too
+RESOURCES = {
+    "kurooto://self": (
+        "kurooto_self",
+        "What Kurooto is running",
+        "This computer's Kurooto: version, AIs and models (and any at a limit), fallback order, features and their "
+        "health, the last day's failures, where logs and settings are. Read it for any question about Kurooto itself.",
+    ),
+    "kurooto://manual": (
+        "kurooto_manual",
+        "How Kurooto works",
+        "Kurooto's manual for its AI: how it works, where things are, what you may and may not do.",
+    ),
+}
+
+
+def resource_text(uri: str, p: Paths | None = None) -> str:
+    """A resource's text: self.md as Kurooto last wrote it (with its age), or the shipped manual."""
+    import time
+    from importlib import resources
+
+    if uri == "kurooto://manual":
+        try:
+            return resources.files("kurooto.data").joinpath("ai-manual.md").read_text(encoding="utf-8")
+        except (OSError, FileNotFoundError):
+            return "The manual isn't in this installation."
+    f = (p or paths()).state / "reserve" / "self.md"
+    try:
+        text = f.read_text(encoding="utf-8")
+    except OSError:
+        return "Kurooto hasn't written what it's running yet (it does at start). `kurooto doctor` shows the basics."
+    age = (time.time() - f.stat().st_mtime) / 60
+    return (f"(Written {age:.0f} min ago.)\n" if age >= 15 else "") + text
 
 
 def access_file(p: Paths | None = None) -> Path:
@@ -143,7 +181,7 @@ class Server:
         asked = params.get("protocolVersion")
         return {
             "protocolVersion": asked if asked in PROTOCOLS else PROTOCOLS[0],
-            "capabilities": {"tools": {"listChanged": False}},
+            "capabilities": {"tools": {"listChanged": False}, "resources": {"listChanged": False}},
             "serverInfo": {"name": NAME, "title": "Kurooto", "version": __version__},
             "instructions": INSTRUCTIONS,
         }
@@ -190,6 +228,20 @@ class Server:
         text = res if isinstance(res, str) else json.dumps(res, ensure_ascii=False, indent=1, default=str)
         return _text(text, error=not body.get("ok", True))
 
+    def list_resources(self) -> dict:
+        return {
+            "resources": [
+                {"uri": uri, "name": name, "title": title, "description": desc, "mimeType": "text/markdown"}
+                for uri, (name, title, desc) in RESOURCES.items()
+            ]
+        }
+
+    def read_resource(self, params: dict) -> dict:
+        uri = params.get("uri")
+        if uri not in RESOURCES:
+            raise RpcError(-32002, f"Resource not found: {uri}")
+        return {"contents": [{"uri": uri, "mimeType": "text/markdown", "text": resource_text(uri)}]}
+
     def dispatch(self, method: str, params: dict):
         if method == "initialize":
             return self.initialize(params)
@@ -199,6 +251,12 @@ class Server:
             return self.list_tools()
         if method == "tools/call":
             return self.call_tool(params)
+        if method == "resources/list":
+            return self.list_resources()
+        if method == "resources/templates/list":
+            return {"resourceTemplates": []}
+        if method == "resources/read":
+            return self.read_resource(params)
         raise RpcError(-32601, f"Method not found: {method}")
 
     def handle(self, msg) -> dict | None:

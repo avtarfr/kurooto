@@ -29,7 +29,81 @@ if TYPE_CHECKING:
 
 MODELS = {"low": "haiku", "medium": "sonnet", "high": "sonnet"}  # names Claude Code keeps pointed at the latest
 LIMIT_RESET = re.compile(r"usage limit reached\|(\d{9,11})", re.I)  # "Claude AI usage limit reached|<epoch>"
+# Claude Code's own words for its plan limits: "5-hour limit reached ∙ resets 3pm", "You've hit your limit · resets
+# 3pm (Europe/Berlin)", "Weekly limit reached ∙ resets Oct 27, 9am", "Opus weekly limit reached ∙ resets Mon 9am"
+PLAN_LIMIT = re.compile(
+    r"\b(?:5-hour|weekly|session|opus|sonnet) limit\b|hit your (?:usage )?limit|limit reached", re.I
+)
+RESETS = re.compile(
+    r"reset(?:s|ting)?(?:\s+at|\s+on)?\s+"
+    r"(?:(?P<mon>Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(?P<day>\d{1,2}),?\s+(?:at\s+)?)?"
+    r"(?:(?P<wd>Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s+(?:at\s+)?)?"
+    r"(?P<h>\d{1,2})(?::(?P<mi>\d{2}))?\s*(?P<ap>[ap]\.?m\.?)?"
+    r"(?:\s*\((?P<tz>[A-Za-z_]+(?:/[A-Za-z_+-]+)+|UTC|GMT)\))?",
+    re.I,
+)
+MONTHS = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
+DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 DENIAL_NAMES = 5  # how many refused tools the log line names
+
+
+def reset_at(text: str, now: float | None = None) -> float | None:
+    """When a Claude plan limit comes back, from Claude Code's own message: "...|<epoch>", "resets 3pm",
+    "resets 3:30pm (Asia/Kolkata)", "resets Oct 27, 9am", "resets Mon 9am". A timestamp, or None when it doesn't say."""
+    import datetime as dt
+    from zoneinfo import ZoneInfo
+
+    text = str(text or "")
+    now = time.time() if now is None else now
+    m = LIMIT_RESET.search(text)
+    if m:
+        return float(m.group(1))
+    for m in RESETS.finditer(text):
+        if not (m["ap"] or m["mi"]):  # a bare number isn't a time ("resets in 5 hours" is quota.hints's)
+            continue
+        try:
+            tz = ZoneInfo("UTC" if (m["tz"] or "").upper() == "GMT" else m["tz"]) if m["tz"] else None
+        except Exception:
+            tz = None
+        h, mi = int(m["h"]), int(m["mi"] or 0)
+        ap = (m["ap"] or "").lower()[:1]
+        if h > 23 or mi > 59 or (ap and not 1 <= h <= 12):
+            continue
+        h = h % 12 + (12 if ap == "p" else 0) if ap else h
+        base = dt.datetime.fromtimestamp(now, tz) if tz else dt.datetime.fromtimestamp(now)
+        when = base.replace(hour=h, minute=mi, second=0, microsecond=0)
+        if m["mon"]:
+            try:
+                when = when.replace(month=MONTHS.index(m["mon"][:3].lower()) + 1, day=int(m["day"]))
+            except ValueError:
+                continue
+            if when <= base:
+                when = when.replace(year=when.year + 1)
+        elif m["wd"]:
+            ahead = (DAYS.index(m["wd"][:3].lower()) - when.weekday()) % 7
+            when += dt.timedelta(days=ahead)
+            if when <= base:
+                when += dt.timedelta(days=7)
+        elif when <= base:
+            when += dt.timedelta(days=1)
+        return when.timestamp()
+    return None
+
+
+def used_model(data: dict) -> str:
+    """The model that did the work, from `--output-format json`'s modelUsage (the one that cost the most, else wrote
+    the most) or its model field; "" when it doesn't say."""
+    usage = data.get("modelUsage") if isinstance(data.get("modelUsage"), dict) else {}
+    best, score = "", (-1.0, -1.0)
+    for name, u in usage.items():
+        u = u if isinstance(u, dict) else {}
+        try:
+            s = (float(u.get("costUSD") or 0), float(u.get("outputTokens") or 0))
+        except (TypeError, ValueError):
+            s = (0.0, 0.0)
+        if s > score:
+            best, score = str(name), s
+    return best or str(data.get("model") or "")
 
 
 def _which(name: str, app_dir: Path | None = None) -> str | None:
@@ -42,11 +116,21 @@ def _which(name: str, app_dir: Path | None = None) -> str | None:
 def _fail(code: int | None, text: str, secs: float, minutes: int) -> Result | None:
     if code is None:
         return Result(Verdict.TIMEOUT, "", secs, f"timed out after {minutes} min")
-    if RATE_LIMIT.search(text):
+    if RATE_LIMIT.search(text) or PLAN_LIMIT.search(text):
         return Result(Verdict.RATE_LIMITED, "", secs, text[-500:])
     if AUTH_FAIL.search(text) or "/login" in text:
         return Result(Verdict.AUTH, "", secs, text[-500:])
     return None
+
+
+def limited(res: Result, text: str) -> None:
+    """A plan limit: when it resets (when Claude Code says), as retry_after_s and as a hint the free-limit count reads
+    (core/quota.py), so it's known as used up until then."""
+    at = reset_at(text)
+    if at is None:
+        return
+    res.retry_after_s = max(0, int(at - time.time()))
+    res.usage = {**res.usage, "limit": {"per": None, "limit": None, "retry_s": None, "reset_at": at, "model": None}}
 
 
 def rule_path(p: Path | str) -> str:
@@ -80,8 +164,8 @@ def permissions(app: App | None, task: Task) -> tuple[dict, list[str]]:
     for f, name in safe_scripts(app) if app is not None else []:  # your own scripts (agents.scripts)
         allow += [f"Bash({f})", f"Bash({f} *)", *([f"Bash({name})", f"Bash({name} *)"] if name else [])]
     allow += ["WebFetch", "WebSearch"]
-    if task.mcp:
-        allow.append("mcp__kurooto")
+    if task.mcp:  # Kurooto's tools, and its resources (kurooto://self: what it's running)
+        allow += ["mcp__kurooto", "ListMcpResourcesTool", "ReadMcpResourceTool"]
     if app is not None and gbrain_mcp(app):
         allow.append("mcp__gbrain")
     cfg = {
@@ -188,6 +272,7 @@ class ClaudeCode(Brain):
             )
             secs = time.monotonic() - t0
         result = self.verdict(r, secs, minutes)
+        result.model = result.model or self.models.get(task.effort) or ""  # what it said it used, else what was asked
         self.metered(None, result)  # counted against its own limit (core/quota.py)
         return result
 
@@ -205,25 +290,29 @@ class ClaudeCode(Brain):
                 str(d.get("tool_name") or "") for d in data.get("permission_denials") or [] if isinstance(d, dict)
             ]
             usage = {"cost": data.get("total_cost_usd")}
+            model = used_model(data)
             if denied:
                 usage["denied"] = denied[:DENIAL_NAMES]
             if data.get("is_error"):
                 bad = _fail(r.code if r.code is not None else 1, text + "\n" + (r.err or ""), secs, minutes)
                 if bad is not None:
-                    m = LIMIT_RESET.search(text)
-                    if bad.verdict == Verdict.RATE_LIMITED and m:
-                        bad.retry_after_s = max(0, int(m.group(1)) - int(time.time()))
+                    bad.model = model
+                    if bad.verdict == Verdict.RATE_LIMITED:
+                        limited(bad, text)
                     return bad
-                return Result(Verdict.ERROR, "", secs, text[-800:])
+                return Result(Verdict.ERROR, "", secs, text[-800:], model=model)
             if text:
-                return Result(Verdict.OK, text, secs, usage=usage)
+                return Result(Verdict.OK, text, secs, usage=usage, model=model)
             if denied:  # it stopped at something unattended runs may not do
                 what = ", ".join(sorted(set(denied)))
-                return Result(Verdict.DENIED, "", secs, f"Claude Code stopped: it tried {what}, which isn't allowed")
-            return Result(Verdict.EMPTY, "", secs, usage=usage)
-        return _fail(r.code, f"{r.out}\n{r.err}", secs, minutes) or Result(
-            Verdict.ERROR, "", secs, (r.err or r.out)[-800:] or f"exit {r.code}"
-        )
+                return Result(
+                    Verdict.DENIED, "", secs, f"Claude Code stopped: it tried {what}, which isn't allowed", model=model
+                )
+            return Result(Verdict.EMPTY, "", secs, usage=usage, model=model)
+        bad = _fail(r.code, f"{r.out}\n{r.err}", secs, minutes)
+        if bad is not None and bad.verdict == Verdict.RATE_LIMITED:
+            limited(bad, f"{r.out}\n{r.err}")
+        return bad or Result(Verdict.ERROR, "", secs, (r.err or r.out)[-800:] or f"exit {r.code}")
 
     def complete(self, prompt: str, system: str = "", effort: str = "low", timeout: int = 120) -> Result:
         return self.run(Task(prompt=prompt, context=system, effort=effort, timeout_s=timeout, text_only=True))

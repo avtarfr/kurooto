@@ -2,7 +2,8 @@
 
 Settings:
     brain.main       agy | claude | gemini | ollama | custom   (freellmapi: set up earlier, works as custom)
-    brain.fallback   another of those, used when the main one is rate-limited or signed out ("" = none)
+    brain.fallback   another of those, or a list of them in order, used when the main one can't answer ("": at a
+                     limit, the other agent program then a Gemini key; providers/fallback.py, with brain.fallback_on)
     brain.classify   rules | main | ollama   (the quick "how hard is this" question)
 """
 
@@ -11,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from kurooto.core.config import register_defaults
+from kurooto.providers import fallback as fallback  # brain.fallback's order and fallback_on
 from kurooto.providers.agy import Agy
 from kurooto.providers.base import Brain, Result, Task, Verdict
 from kurooto.providers.claude import ClaudeCode
@@ -51,6 +53,14 @@ def drop_retired(app: App) -> list[str]:
     cleared = []
     for key in ("brain.main", "brain.fallback"):
         old = app.settings.get(key) or ""
+        if isinstance(old, list):  # a list of fallbacks: only the retired ones go
+            gone = [x for x in old if x in RETIRED]
+            if gone:
+                app.settings.set(key, [x for x in old if x not in RETIRED])
+                cleared += gone
+                for g in gone:
+                    app.events.emit("brain_retired", brain=g, setting=key)
+            continue
         if old in RETIRED:
             app.settings.set(key, "")
             cleared.append(old)

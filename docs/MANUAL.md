@@ -286,7 +286,15 @@ working; it now shows as "Another OpenAI-compatible service". What each service'
 [PRIVACY.md](PRIVACY.md).
 
 **Limits:** free tiers have daily limits. When the brain hits one, Kurooto tells you once and uses your fallback if
-you set one. `/usage` (with Chat on) lists AI requests per day over the last 7 days (`/usage 14` for two weeks), per
+you set one. **At a limit, the other AI answers** (0.5.22): when Claude Code hits its limit (the 5-hour window or the
+weekly cap) the request goes to agy, and the other way round, then to a Gemini key if you saved one, each only once it
+has answered on this computer. The AI at its limit is skipped until it resets (the time it said, like "resets 3pm";
+otherwise half an hour, doubling up to 5 hours), so later requests go straight to the other; `/brain` and `/usage` say
+who is waiting and until when. This is what happens with no fallback picked (`brain.fallback` empty); a fallback you
+pick (one AI, or a list such as `["agy", "gemini"]`, in order) replaces it and takes over on any failure, as before.
+`brain.fallback_on` (`["rate_limited"]`; add `auth`, `timeout`) sets what moves a request on. The concept graph's
+reading and second looks move the same way; a stand-in's batches count on its own nightly budget.
+*Undo:* `brain.fallback_on` = `[]`. `/usage` (with Chat on) lists AI requests per day over the last 7 days (`/usage 14` for two weeks), per
 brain, and how often a limit was hit, from Kurooto's own request log; quick checks (how hard a request is, grading a
 quiz answer) and phone calls aren't counted. If agy is on this computer, `/usage` also counts **agy itself** from its
 own logs: every agy run, including the ones you type yourself, its model requests and the days it hit its limit (only
@@ -451,12 +459,23 @@ it works; `/jobs` what's running and waiting (with Cancel buttons; `/jobs cancel
 and the last few; `/usage` how many AI requests ran each day and the limits hit. Your requests never wait behind
 background work (it has its own lane), and a request that's stuck (no AI at work for `jobs.stuck_min` minutes, 10) is
 stopped with a message. **Run receipt:** every answer ends with one grey line (italics on Telegram, plain text in the
-dashboard and the terminal) built from the run's own record, not the answer's words: which AI, the effort, how long,
-the share of today's limit when Kurooto knows it, and what it actually did with Kurooto's tools ("searched notes, wrote
-1 note"; "did nothing" when it used none; agy and Claude Code's own file tools aren't seen, so for them "did nothing
-through Kurooto"; "used 2 remembered items" when it was told what's
-[remembered](#memory-open-threads-and-whats-remembered)). Quiet background work gets none; `jobs.receipt` = `false`
-turns it off.
+dashboard and the terminal) built from the run's own record, not the answer's words: which AI and the model it ran
+with, shortened (agy's `--model`, e.g. `3.8-flash`; the model Claude Code says it used, e.g. `opus-4.5`), who made the
+quick effort decision when that was another model ("decided by gemma4:e4b, answered by Claude Code · opus-4.5"), who
+stood in and why ("Claude Code hit its limit; agy answered"), the effort, how long, the share of today's limit when
+Kurooto knows it, and what it actually did with Kurooto's tools ("searched notes, wrote 1 note"; "did nothing" when it
+used none; agy and Claude Code's own file tools aren't seen, so for them "did nothing through Kurooto"; "used 2
+remembered items" when it was told what's [remembered](#memory-open-threads-and-whats-remembered)). `/jobs` and the
+dashboard's AI jobs page show each finished request's AI and model too. Quiet background work gets none;
+`jobs.receipt` = `false` turns it off.
+**Your AI knows what's running** (0.5.22): ask it "why didn't my alarm ring?" or "which model answered that?" and it
+reads `self.md` in Kurooto's reserve folder first: the version and update channel, this computer's system and hardware
+profile, the AIs and models set up (fallback order, any at a limit and until when), each feature that's on and
+whether its health check passes, the last day's failures counted by kind, and where the log and settings are. No
+messages, notes, request titles or secrets. Beside it, a manual for the AI (how Kurooto works, what it may and may not
+do) ships with each version. The AI reads both with the tool `kurooto_self` (agent programs also as `kurooto://self`
+and `kurooto://manual`); `/fixme`'s **Ask my AI** sends `self.md` along. *Leaves:* `self.md` goes to your AI only with
+a question about Kurooto itself (or Ask my AI), never with other requests.
 **Answers at your length** (`persona.register`, on): a short message (12 words or fewer) is answered briefly, a long
 one (80 or more) may get a full answer, and a voice note gets an answer worded to be said aloud. By your message's
 length only: nothing changes at night or partway through a conversation, and a length on your persona card wins.
@@ -2644,8 +2663,10 @@ you set it up):
 ### The reserve (Markdown copies of Kurooto's state for AI programs)
 An AI program that only has to read a file can't fail on a permission it doesn't have, so Kurooto keeps plain Markdown
 copies of its own state in `<state>/reserve/`: `alarm.md`, `deadlines.md`, `calendar.md`, `settings.md` (what differs
-from the defaults and which features are on; never a secret), `addons.md`, and `agent-guide.md` (what an AI program may
-read, write and run, its tools by name, the chat commands). They're rewritten every 10 minutes and when an alarm
+from the defaults and which features are on; never a secret), `addons.md`, `agent-guide.md` (what an AI program may
+read, write and run, its tools by name, the chat commands), `self.md` (what Kurooto is running: version, AIs and
+models, features and their health, the last day's failures; written when out of date) and `ai-manual.md` (how Kurooto
+works, for its AI). They're rewritten every 10 minutes and when an alarm
 changes, only when their text changed. `kurooto reserve` writes them now. An AI program may read this folder, never
 write to it, and Kurooto never reads it back.
 
@@ -3511,7 +3532,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Start-by dates come too early (or too late) | Tap the right size on a deadline (`/startby`). If they're all off, change how much of your free time counts (`startby.share`) or the day's window (`startby.window`). |
 | A class pack "isn't a class pack I can use" | The message says why: a field the format doesn't have, or text that looks personal (an email, a link, a phone number). Ask whoever made it to fix that and make it again; `kurooto classpack check FILE` checks a file. |
 | The AI says it isn't signed in | Setup page → AI → Install / sign in again → Test. |
-| "It's at its usage limit" | Free tiers have daily limits: wait, or set a fallback brain (Settings → `brain.fallback`). `/usage` shows how often it happens. |
+| "It's at its usage limit" | Free tiers have daily limits. The other AI program answers meanwhile if it's set up (no fallback picked, or `brain.fallback`; the receipt says "... hit its limit; ... answered"); otherwise wait, or set a fallback brain (Settings → `brain.fallback`). `/usage` shows how often it happens and who is waiting for a reset. |
 | "Google's free limit for today is used up" | It comes back at the time the message says. Meanwhile set a fallback brain (Settings → `brain.fallback`); calls and reminders still work. `/usage` shows each limit and when it resets. |
 | The Classroom digest or the look back didn't come | Past 70% of a free limit, background work waits for the reset ([Free limits: the reserve](#free-limits-the-reserve)); `/usage` says how many requests wait. Raise `quota.background_pct`, or set `quota.on` to `false`. |
 | The setup page says agy "can't use Kurooto's tools yet" | agy's settings file isn't plain JSON, or `agy mcp add` failed. Add `mcp(kurooto/*)` to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself, then Test again. |

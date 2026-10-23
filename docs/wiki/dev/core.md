@@ -177,13 +177,14 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `quiet.json`, `focus.json`, `oncall.json` | `{"until": iso, ...}` | `core/availability.py:Availability._set` |
 | `pause.json`, `off.json`, `power-held.json` | pause until, turned off, jobs held by power mode | `core/power.py:Power` |
 | `quota.json` | counts and learned limits per pool (no content) | `core/quota.py:Quota` |
+| `brain-limits.json` | AIs skipped until a limit's reset: `{brain: {until, src, hits, at}}` | `providers/fallback.py` |
 | `health.json` | last results, what was told | `core/health.py:Health` |
 | `fixme.json` | the last `/fixme` answer, for `/fixme ai` | `core/fixme.py:answer` |
 | `hardware.json`, `model-sizes.json` | the machine as read once; registry sizes | `core/hardware.py:current` |
 | `daemon.json`, `supervisor.json` | `{pid, started}` | `daemon.py:run`, `supervise` |
 | `web.json` | `{port, url, started}` | `web/server.py` |
 | `tools-access.json`, `tools-list.json` | the tools-only key and URL; the last tool list | `web/server.py`, `web/tools_api.py`, `core/mcp.py` |
-| `reserve/*.md` | Markdown copies for AI programs | `core/reserve.py`, `modules/alarm.py:_mirror` |
+| `reserve/*.md` | Markdown copies for AI programs, including `self.md` (what Kurooto runs; `.self.json` its fingerprint) and `ai-manual.md` | `core/reserve.py`, `modules/alarm.py:_mirror`, `core/selfdoc.py` |
 | `note-history/...` | earlier versions of notes the AI edited (20 each) | `core/tools.py:NoteTools` |
 | `sync-all.json` | the last "sync everything" | `core/syncall.py` |
 | `profile.json` | Profile sync state | `core/profile.py` |

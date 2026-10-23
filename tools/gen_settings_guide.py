@@ -34,7 +34,7 @@ NOTES = {  # settings whose source line has no comment: what they do
     "books.gemini_model": "the Gemini model that reads scanned book pages when it's chosen",
     "brain.agy.io_mode": "how Kurooto talks to agy: pipe, or a pseudo-terminal where pipes give no output",
     "brain.classify": "who judges how hard a request is: rules, main (your AI) or ollama",
-    "brain.fallback": "the AI that takes over when the main one is rate-limited or signed out (empty: none)",
+    "brain.fallback": "the AI that takes over when the main one can't answer, or a list of them in order; empty: at a limit (brain.fallback_on), the other agent program, then a Gemini key",
     "brain.main": "the AI that handles requests: agy, claude, gemini, ollama or custom",
     "brain.timeout_min.high": "minutes a hard request may run before it's stopped",
     "brain.timeout_min.low": "minutes a quick request may run before it's stopped",

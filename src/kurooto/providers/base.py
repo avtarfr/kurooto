@@ -51,6 +51,7 @@ class Result:
     detail: str = ""  # what went wrong, for the log (never shown raw to the user)
     retry_after_s: int | None = None
     usage: dict = field(default_factory=dict)
+    model: str = ""  # the model that answered, as the brain knows it (agy's --model id; Claude Code's own report)
 
     @property
     def ok(self) -> bool:
@@ -63,6 +64,25 @@ AUTH_FAIL = re.compile(
     r"|authentication required|visit the url to log in",  # the last two: agy when signed out (seen on all OSes)
     re.I,
 )
+
+
+MODEL_DATE = re.compile(r"-\d{8}$")
+MODEL_VERSION = re.compile(r"(?<![\d.])(\d+)-(\d{1,2})(?=$|-)")
+
+
+def short_model(model: str | None, effort: str = "") -> str:
+    """A model id short enough for the run receipt: no vendor prefix, release date or "-latest", versions with a dot
+    ("claude-opus-4-5-20251101" -> "opus-4.5", "gemini-3.8-flash-medium" -> "3.8-flash-medium"), and no effort suffix
+    when the receipt names the effort anyway ("3.8-flash-medium" at medium -> "3.8-flash")."""
+    m = re.sub(r"\[[^\]]*\]$", "", str(model or "").strip())  # "opus[1m]"
+    m = m.rsplit("/", 1)[-1]  # "models/gemini-..." or a router's "vendor/model"
+    m = MODEL_DATE.sub("", m)
+    m = re.sub(r"^claude-|^gemini-(?=\d)", "", m)  # "gemini-flash-latest" keeps its name
+    m = re.sub(r"-latest$", "", m)
+    m = MODEL_VERSION.sub(r"\1.\2", m)
+    if effort and m.endswith(f"-{effort}") and len(m) > len(effort) + 1:
+        m = m[: -len(effort) - 1]
+    return m[:32]
 
 
 class Brain:

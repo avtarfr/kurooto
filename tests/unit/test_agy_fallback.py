@@ -115,9 +115,14 @@ def test_the_key_hands_over_to_agy_once_agy_has_worked(env):
     job = run(app)  # agy never answered here: not used
     assert job.status == "failed" and job.brain == "gemini"
     mark_worked(app.paths.state)
+    providers.fallback.clear(app, "gemini")  # (0.5.22) the limit just hit would skip the key: see it tried again
     job = run(app, "and tomorrow?")
     assert job.status == "ok" and job.brain == "agy" and job.result.endswith("and tomorrow?")
     assert sent[-1].endswith("(Answered with agy: your Gemini key hit its limit.)")
+    n = len(gem.requests)
+    run(app, "and Friday?")  # the key is now skipped until its reset: straight to agy
+    assert len(gem.requests) == n and app.jobs.recent(1)[0].brain == "agy"
+    providers.fallback.clear(app, "gemini")
     gem.mode = "401"
     run(app, "x")
     assert sent[-1].endswith("(Answered with agy: your Gemini key stopped working.)")
