@@ -275,7 +275,7 @@ def check(
     `names` maps a concept name (normalised) to its slug, for the concepts made in this batch."""
     items: list[Item] = []
     nid = 0
-    gen: set[tuple[str, str]] = set()
+    wider: set[tuple[str, str]] = set()  # (the more general note, the special case), from this batch's links
     for c in concepts:
         if not evidence_ok(c, pages):
             c.flags.append("evidence")
@@ -306,10 +306,13 @@ def check(
             if bad:
                 lk.flags.append("reason")
             if lk.relation in ("generalises", "special-case-of"):
-                inv = "special-case-of" if lk.relation == "generalises" else "generalises"
-                if (target, inv) in gen:
+                # "A generalises B" and "B special-case-of A" agree; "A generalises B" and "B generalises A" (or
+                # "A special-case-of B") can't both hold
+                me = c.slug or c.name_key
+                pair = (me, target) if lk.relation == "generalises" else (target, me)
+                if pair[::-1] in wider:
                     lk.flags.append("both ways")
-                gen.add((c.slug or c.name_key, lk.relation))
+                wider.add(pair)
             if lk.confidence < 0.5:
                 lk.flags.append("unsure")
             if lk.flags:

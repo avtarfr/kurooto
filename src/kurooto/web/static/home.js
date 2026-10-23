@@ -927,7 +927,10 @@ class Mind {
     });
     window.addEventListener("keydown", (e) => {
       if (e.key === "/" && !e.altKey && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) { e.preventDefault(); findNote(); }
-      if ((e.key === "r" || e.key === "R") && !e.altKey && !e.ctrlKey && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) {
+      // R: only while the notes map is on screen (not hidden, nor under a page), and never while typing in a field
+      const el = document.activeElement;
+      if ((e.key === "r" || e.key === "R") && !e.altKey && !e.ctrlKey && !e.metaKey && paneShown("notes") && this.cv.getClientRects().length
+        && !["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) && !el.isContentEditable && !el.closest(".xterm")) {
         this.toggleRecent();
       }
     });
@@ -1325,7 +1328,7 @@ function tdDraw(el) {
   }
   // check-ins
   if (on.has("checkins") && (t.checkin_names || []).length) {
-    sec.push(`<section class="td-sec"><h4>Check-ins</h4>${t.checkin_names.map((c) => `<p>${esc(c.time)} ${esc(c.name)} <span class="d">${esc(c.status || "")}</span>${["planned", "waiting", ""].includes(c.status || "") ? ` ${btn("+30 min", "checkin.defer", { name: c.name })} ${btn("skip", "checkin.skip", { name: c.name })}` : ""}</p>`).join("")}</section>`);
+    sec.push(`<section class="td-sec"><h4>Check-ins</h4>${t.checkin_names.map((c) => `<p>${esc(c.time)} ${esc(c.name)} <span class="d">${esc(c.status || "")}</span>${["planned", "waiting", ""].includes(c.status || "") ? ` ${btn("+30 min", "checkin.postpone", { name: c.name, minutes: 30 })} ${btn("skip", "checkin.skip", { name: c.name })}` : ""}</p>`).join("")}</section>`);
   }
   // open questions
   if ((t.questions_full || []).length) {

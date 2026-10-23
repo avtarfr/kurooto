@@ -137,7 +137,8 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
 
 An action is a function `fn(app, args) -> dict` in `ACTIONS`: `journal.add`, `note.capture`, `reminder.add`,
 `reminder.cancel`, `reminder.snooze`, `deadline.add`, `deadline.done`, `deadline.move`, `alarm.set`, `alarm.skip`,
-`alarm.clear`, `alarm.daily`, `checkin.skip`, `checkin.defer`, `ask`, `question.answer`.
+`alarm.clear`, `alarm.daily`, `checkin.skip`, `checkin.postpone` (`Checkins.postpone`, the Today page's **+30 min**),
+`checkin.defer` (to tomorrow morning), `ask`, `question.answer`.
 
 `act(app, name, args, via)` never raises: a `Problem` becomes `{"ok": False, "message"}`, any other exception becomes
 a sentence plus an `action_failed` event; success emits `action` and returns `{"ok": True, ...}`. Actions call the
@@ -173,19 +174,19 @@ There is no per-module route registration. `web/api.py:Api._modules` and `_card`
 | `addon` (set by `core/overlay.py:guard`) | listed under "Your add-ons" |
 
 Settings UI: `Api._settings` lists `Api.EDITABLE` sections (`you`, `notify`, `availability`, `updates`, `brain`, `ask`,
-`look`, `power`, `notes`, `files`) plus the section of every enabled module whose id is a settings section, rendered
-generically by value type. Some keys are hidden there (`telegram.api_base`, `allowed_users`, `chat_id`;
-`brain.base_urls`, `models`; `subjects.list`, `timetable`). `Api._set` checks the section is editable, canonicalises
-`you.timezone`, requires the new value to have the old value's type, saves, and emits `setting_changed`.
+`look`, `power`, `notes`, `files`, `quota`, `health`, `jobs`, `sources`, `agents`, `hardware`, `web`; titled from
+`Api.TITLES` where the name says little) plus the section of every enabled module whose id is a settings section,
+rendered generically by value type. Left out: `modules` (the Features page's), `autostart` (its own row), and
+`Api.HIDDEN` (`telegram.api_base`, `allowed_users`, `chat_id`: set by pairing). A new core section that's meant to be
+set by hand goes into `EDITABLE` (and its defaults' module into the import at the top of `_settings`). `Api._set`
+refuses a bare section key, a section that isn't editable and a hidden key, canonicalises `you.timezone`, requires the
+new value to have the old value's type, saves, and emits `setting_changed`.
 
 `MODULE_ORDER` must list exactly the catalog's ids: `tests/unit/test_dashboard.py:
 test_every_feature_is_listed_in_the_wizard_and_dashboard` enforces it.
 
 ## Known rough edges
 
-- `Api._set` does not apply the hidden-key list, so with Telegram on, `POST /api/settings` can change
-  `telegram.allowed_users`, `api_base` or `chat_id`; a bare section key (`"you"`) replaces the whole section. The
-  caller is already authenticated as the same user, so this is a robustness issue rather than an exposure.
 - `Live.stop()` does not call the unsubscribe function `subscribe()` returned: each stopped server leaves an events
   listener behind (visible in tests that start many servers).
 - `do_POST` trusts `Content-Length` (a non-numeric value raises; a negative one reads to EOF).

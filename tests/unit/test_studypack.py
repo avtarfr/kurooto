@@ -181,25 +181,45 @@ def test_many_files_over_the_limit_go_to_drive_instead_of_being_refused(chat_on,
 
 
 def test_temporary_drive_files_are_deleted_when_their_days_are_up(env, monkeypatch):
+    """Each as the account that uploaded it, and only while it's still in Kurooto's folder (the upload message says
+    moving it out keeps it)."""
+    import json
+
     from kurooto.modules.google_drive import DriveUpload
 
     d = DriveUpload(env.app)
-    deleted = []
+    calls, parents = [], {"old1": ["kf-main"], "moved1": ["my-own"], "school1": ["kf-school"], "gone1": ["kf-x"]}
 
     class G:
-        def api(self, service, path, body=None, method=None, raw=0):
-            deleted.append((path, method))
-            return {}
+        def __init__(self, account):
+            self.account = account
 
-    monkeypatch.setattr(DriveUpload, "google", property(lambda self: G()))
-    monkeypatch.setattr(DriveUpload, "account", property(lambda self: "main"))
-    d.remember_temporary("old1", "pack.zip")
-    d.remember_temporary("new1", "other.zip")
-    rows = __import__("json").loads(d.temp_file.read_text())
-    rows[0]["delete_at"] = 0
-    d.temp_file.write_text(__import__("json").dumps(rows))
-    assert d.expire() == 1 and deleted == [("/files/old1", "DELETE")]
-    assert [r["id"] for r in __import__("json").loads(d.temp_file.read_text())] == ["new1"]
+        def api(self, service, path, body=None, method=None, raw=0):
+            calls.append((self.account, path, method))
+            fid = path.split("/")[2].split("?")[0]
+            return {} if method == "DELETE" else {"parents": parents[fid], "trashed": False}
+
+    env.app.settings.set("google.accounts", ["main", "school"])
+    monkeypatch.setattr(DriveUpload, "_as", lambda self, account: G(account))
+    who = {"a": "main"}
+    monkeypatch.setattr(DriveUpload, "account", property(lambda self: who["a"]))
+    d.remember_temporary("old1", "pack.zip", "kf-main")
+    d.remember_temporary("moved1", "kept.zip", "kf-main")
+    d.remember_temporary("new1", "other.zip", "kf-main")
+    d.remember_temporary("gone1", "forgotten.zip", "kf-x")
+    who["a"] = "school"
+    d.remember_temporary("school1", "big.zip", "kf-school")
+    who["a"] = "main"  # Drive upload moved back to main since
+    rows = json.loads(d.temp_file.read_text())
+    for r in rows:
+        r["delete_at"] = 0 if r["id"] != "new1" else r["delete_at"]
+    rows[3]["account"] = "old"  # an account whose sign-in was forgotten
+    d.temp_file.write_text(json.dumps(rows))
+    assert d.expire() == 2
+    deletes = [(a, p) for a, p, m in calls if m == "DELETE"]
+    assert deletes == [("main", "/files/old1"), ("school", "/files/school1")]  # not the moved one
+    assert not any(a == "old" for a, _, _ in calls)
+    assert [r["id"] for r in json.loads(d.temp_file.read_text())] == ["new1"]
 
 
 # ------------------------------------------------------------------------------ a topic, class first

@@ -407,12 +407,17 @@ def test_subjects_you_name_go_first_and_unread_pages_wait(world, tmp_path):
     b2 = next(x for x in books.library() if x["id"] == "munkres")
     d = books.book_dir(b2)
     d.mkdir(parents=True)
-    (d / "text.md").write_text(
-        "".join(f'<a id="p-{n}"></a>\n## [p. {n}]\n\nText {n}\n' for n in range(1, 5)), encoding="utf-8"
+    (d / "text.md").write_text(  # as books.finish writes it: pages 3 and 4 aren't read yet
+        "".join(f'<a id="p-{n}"></a>\n## [p. {n}]\n\nText {n}\n' for n in range(1, 3))
+        + "".join(f'<a id="p-{n}"></a>\n## [p. {n}] (not read: not yet)\n\n\n' for n in range(3, 5)),
+        encoding="utf-8",
     )
     jsave(d / "meta.json", {"pages": 4, "done": 2, "title": "Munkres"})
     todo = env.integrate.ready_batches()
     assert [b["id"] for b, _ in todo] == ["bishop"]  # the other has pages left to read: its batch isn't ready
+    (d / "text.md").write_text(
+        "".join(f'<a id="p-{n}"></a>\n## [p. {n}]\n\nText {n}\n' for n in range(1, 5)), encoding="utf-8"
+    )
     jsave(d / "meta.json", {"pages": 4, "done": 4, "title": "Munkres"})
     env.app.settings.set("integrate.first", ["topology"])
     assert [b["id"] for b, _ in env.integrate.ready_batches()][0] == "munkres"
@@ -594,3 +599,89 @@ def test_a_signed_out_stand_in_retries_soon_instead_of_in_hours(world):
     while env.app.jobs.run_next():
         pass
     assert env.app.scheduler.get("integrate:soon") is not None
+
+
+def test_graph_stop_holds_every_start_until_the_next_night_even_after_a_restart(world, monkeypatch):
+    import datetime as dt
+
+    from kurooto.modules import integrate as integrate_mod
+
+    env = world
+    t = {"now": dt.datetime(2026, 10, 21, 3, 0)}
+    monkeypatch.setattr(integrate_mod, "now", lambda: t["now"])
+    env.fake_ai.answer = answer(c_ad())
+    out = env.say("/graph stop")
+    assert "Stopped" in out and "Thu 01:30" in out, out
+    assert env.app.scheduler.get("integrate:night") is not None  # the night's own start stays
+    again = integrate_mod.Integrate(env.app)  # a restart: the stop is kept on disk
+    for start in (again.tick, env.integrate.tick):  # the 3-hourly and 20-minute retries, a book read, an answer
+        assert start({}) == {"submitted": 0, "stopped": True}
+    t["now"] = dt.datetime(2026, 10, 22, 1, 30)
+    assert env.integrate.tick({})["submitted"] == 1  # the next night goes ahead
+
+
+def test_graph_now_goes_on_after_a_stop(world):
+    env = world
+    env.fake_ai.answer = answer(c_ad())
+    env.say("/graph stop")
+    assert env.integrate.tick()["submitted"] == 0
+    assert env.say("/graph now") == "Started."
+
+
+def test_a_merge_the_second_look_turns_down_becomes_its_own_note_and_leaves_the_other_alone(world):
+    env = world
+    gd = env.app.workspace / "zettel" / "gradient-descent.md"
+    before = gd.read_text(encoding="utf-8")
+    wrong = c_bp(name="Error backpropagation in layers", aliases=[], same_as="zettel/gradient-descent", update="")
+    env.fake_ai.answer = answer(wrong)
+    env.integrate.tick()
+    env.app.jobs.run_next()
+    env.fake_ai.answer = json.dumps({"items": [{"id": 1, "same": False}]})  # not the same note
+    run_all(env)
+    assert gd.read_text(encoding="utf-8") == before
+    own = env.app.workspace / "zettel" / "error-backpropagation-in-layers.md"
+    assert own.is_file() and "Evaluates the gradient of the error" in own.read_text(encoding="utf-8")
+
+
+def test_a_book_with_a_skipped_page_still_finishes_its_last_batch(world):
+    """ "done" counts pages read: with page 3 skipped (waiting for a reader), done is 5 of 6, and the last batch
+    (pages 1-6) used to wait for page 6 <= 5 forever."""
+    env = world
+    d = env.app.modules["books"].book_dir(env.book)
+    text = (d / "text.md").read_text(encoding="utf-8").replace("## [p. 3]\n", "## [p. 3] (not read: needs OCR)\n")
+    (d / "text.md").write_text(text, encoding="utf-8")
+    meta = {"pages": 6, "done": 5, "title": "Bishop", "skipped": {"3": "needs OCR"}}
+    jsave(d / "meta.json", meta)
+    assert env.integrate.ready_batches() == []  # still reading: the skipped page may come yet
+    jsave(d / "meta.json", {**meta, "finished": "2026-10-21T02:00:00"})
+    assert [bt.id for _, bt in env.integrate.ready_batches()] == ["1-6"]
+
+
+def test_batches_follow_the_bookmarks_but_a_book_already_begun_keeps_its_batches(world):
+    env = world
+    env.app.settings.set("integrate.batch_pages", 3)
+    d = env.app.modules["books"].book_dir(env.book)
+    meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
+    by_text = [bt.id for bt in env.integrate.plan(env.book)]
+    jsave(d / "meta.json", {**meta, "outline": [[1, "Backpropagation", 1], [2, "Gradients", 1], [2, "Autodiff", 3]]})
+    assert [bt.id for bt in env.integrate.plan(env.book)] == ["1-2", "3-6"] != by_text
+    env.integrate.save("ledger.json", {"books": {"deep-learning/bishop": {"batches": {by_text[0]: {"state": "done"}}}}})
+    assert [bt.id for bt in env.integrate.plan(env.book)] == by_text  # begun before: the same batches to the end
+    env.integrate.record(env.book, by_text[1], state="pending")
+    assert env.integrate.load("ledger.json", {})["books"]["deep-learning/bishop"]["plan"] == "text"
+
+
+def test_the_both_ways_check_flags_two_notes_that_each_generalise_the_other_not_a_consistent_pair(world):
+    index = world.integrate.index()
+
+    def flags(rel_a, rel_b):
+        a = ai.Proposed(**{**c_ad(links=[]), "slug": "zettel/a"})
+        a.links = [ai.Link("zettel/backpropagation", rel_a, "backpropagation is reverse-mode on a layered net", 0.9)]
+        b = ai.Proposed(**{**c_bp(same_as=None, links=[]), "slug": "zettel/backpropagation"})
+        b.links = [ai.Link("Automatic differentiation", rel_b, "the deltas are the adjoints of reverse-mode AD", 0.9)]
+        _, items = ai.check([a, b], index, PAGES, {cg.normalise("Automatic differentiation"): "zettel/a"})
+        return [it.why for it in items if it.kind == "link"]
+
+    assert flags("generalises", "special-case-of") == []  # the same fact said from both ends
+    assert flags("generalises", "generalises") == ["both ways"]
+    assert flags("special-case-of", "special-case-of") == ["both ways"]

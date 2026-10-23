@@ -113,7 +113,7 @@ the day's limit for what you're waiting on: calls, voice notes, the morning plan
   from agy's logs (only counted; nothing in the logs is read out). Quick checks (how hard a request is, grading a quiz
   answer) and phone calls aren't counted. In a terminal: `kurooto usage [days]`. Needs Chat on.
 
-| Setting (in `settings.json`: not on the Settings page, see [Dashboard](dashboard.md#settings-alts)) | Default | Effect |
+| Setting (Settings → AI limits) | Default | Effect |
 |---|---|---|
 | `quota.on` | `true` | `false`: background work never waits (counting and the plain line stay) |
 | `quota.background_pct` | `70` | the share of a known daily limit after which background work waits |
@@ -205,11 +205,11 @@ Dashboard → Settings → brain (and quota, jobs, you):
 | `brain.main` | empty | the AI that handles requests: `agy`, `gemini`, `claude`, `ollama` or `custom` |
 | `brain.fallback` | empty | the AI that takes over when the main one can't answer |
 | `brain.classify` | `rules` | who judges how hard a request is: `rules`, `main` or `ollama` |
-| `brain.models` | `{}` | models per brain and effort, e.g. `{"custom": {"low": "...", "medium": "...", "high": "..."}}`, `{"claude": {"high": "opus"}}` (in `settings.json`; hidden on the Settings page) |
-| `brain.base_urls` | `{}` | override a preset's address (in `settings.json`; hidden on the Settings page) |
+| `brain.models` | `{}` | models per brain and effort, e.g. `{"custom": {"low": "...", "medium": "...", "high": "..."}}`, `{"claude": {"high": "opus"}}` |
+| `brain.base_urls` | `{}` | override a preset's address |
 | `brain.timeout_min.low` / `.medium` / `.high` | `10` / `15` / `30` | minutes a request may run |
 | `brain.agy.io_mode` | `pipe` | how Kurooto talks to agy (leave it unless agy gives no output) |
-| `jobs.stuck_min` | `10` | minutes without progress before a request is stopped (in `settings.json`, not on the Settings page) |
+| `jobs.stuck_min` | `10` | minutes without progress before a request is stopped (Settings → AI jobs) |
 | `you.language` | `follow` | answer in the language you write in, or always in the one named |
 
 **What leaves your computer:** what you ask, and the notes and files the AI reads for it, go to the AI service you

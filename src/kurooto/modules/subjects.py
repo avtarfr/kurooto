@@ -409,6 +409,9 @@ class Subjects(Module):
         return f"Added {name}" + (f" (also: {', '.join(aliases)})" if aliases else "") + "."
 
     def _class(self, msg: Incoming, arg: str) -> str:
+        rm = re.fullmatch(r"\s*(?:remove|delete|rm)\s+(?P<day>[a-z]{3})[a-z]*\s+(?P<s>\d{1,2}:\d{2})\s*", arg, re.I)
+        if rm and rm["day"].lower() in DAYS:
+            return self._remove_class(rm["day"].lower(), f"{int(rm['s'][:-3]):02d}{rm['s'][-3:]}")
         m = re.match(
             r"(?P<day>[a-z]{3})[a-z]*\s+(?P<s>\d{1,2}:\d{2})\s*[-–]\s*(?P<e>\d{1,2}:\d{2})\s+(?P<subj>.+)$", arg, re.I
         )
@@ -426,6 +429,16 @@ class Subjects(Module):
         tt = [c for c in self.setting("timetable") or [] if not (c["day"] == row["day"] and c["start"] == row["start"])]
         self.app.settings.set("subjects.timetable", [*tt, row])
         return f"{self.name_of(slug)} on {row['day'].title()} {row['start']}–{row['end']} added."
+
+    def _remove_class(self, day: str, start: str) -> str:
+        mine = self.setting("timetable") or []
+        tt = [c for c in mine if not (c["day"] == day and c["start"] == start)]
+        if len(tt) == len(mine):
+            if any(c["day"] == day and c["start"] == start for c in self.timetable()):
+                return f"The class on {day.title()} {start} comes from your term note or a class pack: change it there."
+            return f"No class on {day.title()} at {start} (/classes lists them)."
+        self.app.settings.set("subjects.timetable", tt)
+        return f"Removed the class on {day.title()} {start}."
 
     def _classes(self, msg: Incoming, arg: str) -> str:
         if arg.strip() == "today":

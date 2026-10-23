@@ -60,7 +60,7 @@ register_defaults(
         "voice": "",  # a Gemini Live voice name (e.g. "Kore"); empty = Google's default
         "persona": "",  # extra words on how to talk on calls, e.g. "be brief and a bit cheeky"
         "ntfy_server": "https://ntfy.sh",
-        "ring_s": 60,  # how long a call rings before it counts as missed
+        "ring_s": 60,  # how long a call rings before it counts as missed (a wake-up call rings 5 minutes)
         "later_min": 30,  # "Later" on a ringing call calls back after this long
         "realert_min": [3, 6],  # a call you didn't answer rings again this many minutes after the first; [] = once
         "notes_repo": "",  # owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off
@@ -72,6 +72,7 @@ register_defaults(
 )
 
 SECRETS = ("calls.call_secret", "calls.connector_secret", "calls.ntfy_topic", "calls.ntfy_key")
+ALARM_RING_S = 300  # how long the call line and the Android app ring a wake-up call (worker.js ALARM_RING_S)
 ON_CALL_S = 90  # a live call checks in every few seconds; this long after the last sign of it, it's over
 GEMINI_KEY = "gemini.api_key"
 
@@ -98,7 +99,9 @@ class Calls(Module):
         self.live = LiveHealth(self)  # when Gemini Live won't take a call (fallback.py)
         self.turns = VoiceTurns(self)
         self.textcall = TextCall(self)
-        self.tool_log: list[dict] = []  # this call's tool uses, for the look back after it (review.py)
+        # each call's tool uses, by the call's "since" ("" when the call page didn't say), for the look back after it
+        # (review.py); two calls at once, or work queued while the computer was off, each keep their own
+        self.tool_log: dict[str, list[dict]] = {}
 
     # ------------------------------------------------------------------------------------------ setup
     def worker_url(self) -> str:
@@ -297,7 +300,7 @@ class Calls(Module):
         """What unattended AI requests may do with calls: call back later, hold calls (core/tools.py)."""
         return [t for t in self._own_tools(live=False) if t.name in ("schedule_call", "hold_calls")]
 
-    def run_tool(self, name: str, args: dict):
+    def run_tool(self, name: str, args: dict, since: str = ""):
         tool = next((t for t in self.tools() if t.name == name), None)
         if not tool:
             return f"There's no {name} tool (that feature may be off)."
@@ -306,7 +309,10 @@ class Calls(Module):
             out = tool.run(args or {})
         except Exception as e:
             out = f"That failed: {type(e).__name__}: {e}"[:300]
-        self.tool_log = [*self.tool_log[-59:], {"name": name, "args": str(args or {})[:300], "result": str(out)[:300]}]
+        log = self.tool_log.setdefault(str(since or ""), [])
+        log[:] = [*log[-59:], {"name": name, "args": str(args or {})[:300], "result": str(out)[:300]}]
+        for old in list(self.tool_log)[:-10]:  # calls that never sent a transcript don't pile up
+            self.tool_log.pop(old, None)
         return out
 
     def pending(self) -> dict:
@@ -526,21 +532,27 @@ class Calls(Module):
             rings[since]["buttons"] = [list(b) for b in buttons]
         jsave(self.dir / "rings.json", dict(list(rings.items())[-100:]))
         voice = self.voice_for(key)
+        push = {
+            "title": "Wake-up call" if alarm else "Incoming call",
+            "message": str(reason)[:300],
+            "priority": 5,
+            "tags": ["call", f"since-{since}"] + (["alarm"] if alarm else []),
+            "click": self.link(reason, since=since, voice=voice),
+            "time": int(time.time()),
+            "assistant": self.app.name,
+        }
         sent = self.connector.admin_later(
-            "ring", reason=reason, alarm=alarm, since=since, key=key, assistant=self.app.name, voice=voice
+            "ring",
+            then=lambda res: self._ring_fallback(push, res),
+            reason=reason,
+            alarm=alarm,
+            since=since,
+            key=key,
+            assistant=self.app.name,
+            voice=voice,
         )
-        # Direct ntfy publish from laptop to ensure the paired phone app rings even if Worker egress fails
-        self.publish_ntfy(
-            {
-                "title": "Wake-up call" if alarm else "Incoming call",
-                "message": str(reason)[:300],
-                "priority": 5,
-                "tags": ["call", f"since-{since}"] + (["alarm"] if alarm else []),
-                "click": self.link(reason, since=since, voice=voice),
-                "time": int(time.time()),
-                "assistant": self.app.name,
-            }
-        )
+        if not sent:  # the call line isn't connected: this computer rings the Android app through ntfy itself
+            self.publish_ntfy(push)
         answer = [
             [("Answer", {"url": self.link(reason, since=since, voice=voice)}), *[tuple(b) for b in buttons or []]]
         ]
@@ -555,8 +567,8 @@ class Calls(Module):
                 urgent=True,
                 why=why or "calls.no_line",
             )
-        self.app.scheduler.at(
-            time.time() + (self.setting("ring_s") or 60) + 30,
+        self.app.scheduler.at(  # the call line and the app ring an alarm for ALARM_RING_S, other calls for ring_s
+            time.time() + (ALARM_RING_S if alarm else (self.setting("ring_s") or 60)) + 30,
             "calls.missed",
             {"since": since},
             key=f"calls:missed:{since}",
@@ -565,6 +577,12 @@ class Calls(Module):
         self.app.events.emit("call_rang", alarm=alarm, key=key, line=sent)
         self.connector.poke()  # the call line's copy of the schedule no longer has this one
         return since
+
+    def _ring_fallback(self, push: dict, res: dict | None) -> None:
+        """The call line's answer to "ring": it publishes to the Android app itself ("android": true), so this
+        computer publishes only when it didn't (an error, no answer, or its publish failed): one ring, not two."""
+        if not (res or {}).get("android"):
+            self.publish_ntfy(push)
 
     def _ring_state(self, since: str, state: str) -> dict | None:
         with Lock(self.app.paths.state, "calls-rings"):
@@ -580,10 +598,10 @@ class Calls(Module):
         if not r or r["state"] != "ringing":
             return
         self._ring_state(p["since"], "missed")
-        self.connector.admin_later("stop-ring", since=p["since"])
-        self.publish_ntfy(
-            {"title": "stop", "message": "", "tags": ["stop", f"since-{p['since']}"], "time": int(time.time())}
-        )
+        if not self.connector.admin_later("stop-ring", since=p["since"]):  # the line stops the app's ring itself
+            self.publish_ntfy(
+                {"title": "stop", "message": "", "tags": ["stop", f"since-{p['since']}"], "time": int(time.time())}
+            )
         if not self._realert_later(p["since"], r):
             self._missed_for_good(p["since"], r)
 
@@ -779,7 +797,7 @@ class Calls(Module):
         for it in items:
             try:
                 if it.get("kind") == "tool":
-                    self.run_tool(it.get("name", ""), it.get("args") or {})
+                    self.run_tool(it.get("name", ""), it.get("args") or {}, str(it.get("since") or ""))
                     done += 1
                 elif it.get("kind") == "transcript":
                     self._transcript(json.loads(it.get("body") or "{}"))
@@ -806,7 +824,9 @@ class Calls(Module):
             return self.phone.answer(json.loads(body or b"{}"))
         if url.path == "/tool":
             b = json.loads(body or b"{}")
-            return 200, {"result": self.run_tool(str(b.get("name", "")), b.get("args") or {})}
+            return 200, {
+                "result": self.run_tool(str(b.get("name", "")), b.get("args") or {}, str(b.get("since") or ""))
+            }
         if url.path == "/tasks":
             out = [t for t in self.finished.values() if not t["fetched"]]
             for t in out:
@@ -862,7 +882,7 @@ class Calls(Module):
             if m and self.app.is_on(mid) and hasattr(m, "call_transcript"):
                 m.call_transcript(r["key"], lines)
         self.app.events.emit("call_transcript", lines=len(lines), layer=str(b.get("layer") or "live")[:10])
-        used, self.tool_log = self.tool_log, []
+        used = self.tool_log.pop(str(b.get("since") or ""), [])
         try:  # the look back never stands in the way of keeping the transcript
             review.review(self, lines, used, purpose)
         except Exception as e:
@@ -1124,7 +1144,11 @@ class Calls(Module):
             Command("phone", "pair a phone so calls ring it", self._cmd_phone),
             Command("phones", "paired phones (and /unpair <id> to remove one)", self._cmd_phones),
             Command("unpair", "remove a paired phone: /unpair <id>", self._cmd_unpair),
-            Command("lessons", "what calls have learned from looking back (/lessons forget 2)", self._cmd_lessons),
+            Command(
+                "lessons",
+                "what calls have learned from looking back (/lessons forget 2, /lessons clear)",
+                self._cmd_lessons,
+            ),
         ]
 
     def _cmd_lessons(self, msg, arg: str) -> str:

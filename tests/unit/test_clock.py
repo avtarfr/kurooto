@@ -17,6 +17,7 @@ BASE = dt.datetime(2026, 10, 19, 17, 40)  # a Monday
         ("in 20 minutes", BASE + dt.timedelta(minutes=20)),
         ("30m", BASE + dt.timedelta(minutes=30)),
         ("+45", BASE + dt.timedelta(minutes=45)),
+        ("45", BASE + dt.timedelta(minutes=45)),  # a bare number is minutes (/remind 20 tea)
         ("2h", BASE + dt.timedelta(hours=2)),
         ("in 3 days", BASE + dt.timedelta(days=3)),
         ("tomorrow 7am", dt.datetime(2026, 10, 20, 7, 0)),

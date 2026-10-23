@@ -303,8 +303,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   replies (capped at 3000). The `/` menu is synced from enabled features (`_menu_tick`). Commands `/pause`, `/resume`,
   `/status`, `/hold`, `/calls`, `/focus`; intents `hold_calls`, `calls_ok`, `focus`. Settings `telegram.chat_id`,
   `allowed_users`, `silent_kinds`, `api_base` (tests point it at `tests/fakes/telegram.py`), `menu`.
-- **chat** (`modules/chat.py:Chat`): free text that isn't a command or intent becomes a job (`Chat.ask`). Within two
-  hours, the last six turns are prepended. `Chat.mine` / `Chat.owns(jid)`: only Chat's own jobs are recorded into
+- **chat** (`modules/chat.py:Chat`): free text that isn't a command or intent becomes a job (`Chat.ask`), and so does
+  a file nothing else took (`App.route`): its paths are added to the prompt for an agent program to open (no caption:
+  "say what it is"); with Chat off, the reply names what to turn on. Within two hours, the last six turns are
+  prepended. `Chat.mine` / `Chat.owns(jid)`: only Chat's own jobs are recorded into
   `chat/history.json` (see [core.md](core.md#jobs)); the set is in memory, so an answer finishing after a restart isn't
   recorded. Commands `/new`, `/clear`, `/brain`, `/usage`.
 - **cases** (`modules/cases.py`): the Wrong button on answers and a store of requests that fell through; a monthly
@@ -320,7 +322,12 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 ### Time and attention
 
 - **reminders** (`modules/reminders.py`): one-off `reminders:<id>` jobs (`reminders.fire`, registered in `__init__`),
-  snooze buttons `rem`, cancel `remx`, tool `add_reminder`. Asks lidsafe whether the phone already said it.
+  snooze buttons `rem`, cancel `remx`, tool `add_reminder`. `stop()` parks the pending jobs in
+  `<state>/reminders-parked.json` before the base cancel, and `start()` sets them again (a time that passed while off
+  fires at once with `while_off`, "late: Reminders was off"). Asks lidsafe whether the phone already said it. The
+  plain-English intent reads the time with `modules/text.py:when_from`, which takes a weekday only where
+  `text.WHEN_DAY` says it's the when ("friday at 5pm", "on friday"; "next friday" returns None, to the AI);
+  `/remind` and `/due` use `core/clock.py:parse_when`, where a bare number is minutes.
 - **checkins** (`modules/checkins.py`): evening/midday/night prompts by message or call, answers into the daily note;
   `checkins:plan` books the day's `checkins:<name>` jobs; call hooks `call_schedule`, `call_outcome`,
   `call_reschedule`, `call_transcript`. A check-in day starts at `checkins.day_starts` (05:00).
@@ -338,7 +345,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   and hands them to the call line, so they arrive with the lid shut; whichever side is awake says each once.
 - **awake** (`modules/awake.py`): holds a sleep inhibitor on mains power (`core/inhibit.py`).
 - **calendar** (`modules/calendar.py`): iCal links (secret `calendar.ics`) and Google Calendar, recurrences expanded,
-  private events masked; blocks calls during events, `#focus` and `#nocall`; `calendar:refresh` every 15 min.
+  private events masked; blocks calls during events, `#focus` and `#nocall`; `calendar:refresh` every 15 min. Each
+  stored event has a `src` (`ics:<hash of the link>`, `google:<account>`); a source that fails keeps its rows from
+  the last copy (`google_calendar.fetch` returns the failed accounts by name).
 - **weekly** (`modules/weekly.py`): Sunday summary from `events.jsonl` and modules' `weekly_lines`; optional review call.
 - **quests** (`modules/quests.py`): one onboarding quest a day for a week, judged from the event log.
 
@@ -387,7 +396,8 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 Drive files filed into notes by an AI job), **mail_digest** / **reply_drafts** / **digest_email**
 (`google_mail.py`), **agent_plan** (`google_plan.py`, its own calendar of time blocks), **google_calendar**
 (`google_calendar.py`, read-only), **drive_upload** (`google_drive.py`, resumable uploads; temporary uploads expire
-after `drive_upload.temp_days`). `google_confidential.py` is a helper for summarising confidential mail with a local
+after `drive_upload.temp_days`: `expire` deletes each as the account recorded with it, and only while the file's
+`parents` still hold the Kurooto folder it went into; a moved, trashed or unknown-folder one is forgotten, not deleted). `google_confidential.py` is a helper for summarising confidential mail with a local
 model. Any HTTP 401 is treated as a lost sign-in (the refresh token is dropped).
 
 ### Computer
@@ -400,7 +410,9 @@ model. Any HTTP 401 is treated as a lost sign-in (the refresh token is dropped).
   turns the palette into a terminal scheme; `launchers.py` adds app-menu entries; `defaults.py` (opt-in) makes it the
   default terminal and can undo exactly what it changed; `run.py` is the CLI.
 - **research** (`modules/research.py`): a weekly papers digest (arXiv, bioRxiv, medRxiv, PubMed, feeds), daily
-  project logs from git and `runs/`, and questions about idle projects.
+  project logs from git and `runs/`, and questions about idle projects. `papers()` collects with `mark_seen=False` and
+  marks them in `research-papers.json` once delivered: right after the plain digest, or in the `research.digest`
+  then-action when the AI-picked one succeeded.
 - **retro** (`modules/retro.py`, requires `chat`): the nightly look back proposes setting, profile, skill and idea
   changes, each confirmed through `app.ask`; only settings in `TUNABLE` (and modules' `tunable`) may be proposed.
 - **files** (`modules/files.py`): `take_files` for incoming files; with Chat on, an AI job files them.
@@ -419,9 +431,6 @@ note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py
   AI-written draft whose job finishes after a restart is dropped.
 - `modules/google.py:Google.api` and `modules/google_drive.py:DriveUpload._call` treat any HTTP 401 as a lost sign-in
   and delete the refresh token instead of refreshing once and retrying.
-- `modules/google_drive.py:DriveUpload.expire` deletes temporary uploads with the current account and by file id, so
-  after an account switch they are never deleted, and a file the user moved out of the folder is deleted anyway
-  (the user-facing text says moving it keeps it).
 - `modules/telegram/__init__.py:Telegram.run` drops the `telegram` notifier channel on a 401 and only `start()`
   registers it again, so after a new token works, outgoing messages stay off until the module restarts. `api.send`
   sends at most 6 parts of 3900 characters and silently drops the rest; there is no 429 handling.
@@ -431,12 +440,6 @@ note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py
   and `list(self.mine)[-50:]` keeps an arbitrary 50 ids rather than the newest.
 - `modules/hints.py:policy_kind` tests "no solutions" before "no AI", so a policy line saying both is read as hints
   allowed.
-- `modules/research.py`: papers are marked seen before the AI-ranked digest is delivered; a failed digest loses them.
-- `modules/capture.py` and `modules/checkins.py` declare no `privacy` and inherit "Stays on this computer.", though with
-  Chat on their content goes to the AI. `modules/google_mail.py:MailDigest.privacy` says confidential mail is never
-  read, but `mail_digest.confidential = "local"` has a local model read it.
 - `modules/skills.py:compile_tex` passes `-no-shell-escape` to pdflatex but not to latexmk.
-- `modules/calendar.py:Calendar.refresh` keeps the old copy only when every link failed; one failing link among several
-  silently drops that link's events.
 - `modules/classpacks.py`: `attendance_rules`, `attendance_rule` and `class_kind` have no callers once Attendance is
   removed.

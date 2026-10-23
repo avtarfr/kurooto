@@ -50,6 +50,13 @@ ALSO = re.compile(r"\b(?:also|plus|and then|after that|btw|by the way)\b", re.I)
 
 WEEKDAY = re.compile(r"\b(mon|tues|wednes|thurs|fri|satur|sun)day\b", re.I)
 WEEKDAYS = ["mon", "tues", "wednes", "thurs", "fri", "satur", "sun"]
+# A weekday that says when ("friday at 5pm", "on friday", "this friday", "next friday": first, after on/this/next, or
+# just before a time), not one in what it's about ("to revise for friday's quiz").
+WHEN_DAY = re.compile(
+    r"(?:^\s*|\b(?:on|this|(?P<next>next))\s+)(?P<d1>mon|tues|wednes|thurs|fri|satur|sun)day\b(?!')"
+    r"|\b(?P<d2>mon|tues|wednes|thurs|fri|satur|sun)day(?=\s+(?:at\s+|by\s+)?\d)",
+    re.I,
+)
 
 
 def tidy(text: str) -> str:
@@ -173,13 +180,27 @@ def a_minutes(text: str) -> int | None:
 
 
 def when_from(text: str, base: dt.datetime | None = None) -> dt.datetime | None:
-    """A moment from plain English: "in 20 min", "at 9", "tomorrow at 7", "tonight". None if there isn't one."""
+    """A moment from plain English: "in 20 min", "at 9", "tomorrow at 7", "tonight", "friday at 5pm" (the coming
+    Friday; today's if that time is still ahead, else a week on). None if there isn't one, or for "next Friday" (this
+    week's or the one after: left to the AI)."""
     base = base or now()
     low = text.lower()
     mins = a_minutes(text)
     if mins and re.search(r"\bin\s+(?:\d|an?\b|half\b|one\b)", low):
         return base + dt.timedelta(minutes=mins)
     tm = a_time(text, base)
+    wd = WHEN_DAY.search(text)
+    if wd or re.search(r"\bday after tomorrow\b", low):
+        if wd and wd["next"]:
+            return None
+        day = (
+            base.date() + dt.timedelta(days=(WEEKDAYS.index((wd["d1"] or wd["d2"]).lower()) - base.weekday()) % 7)
+            if wd
+            else base.date() + dt.timedelta(days=2)
+        )
+        h, mi = map(int, tm.split(":")) if tm else (9, 0)
+        t = dt.datetime.combine(day, dt.time(h, mi))
+        return t if t > base else t + dt.timedelta(days=7)
     if tm:
         h, mi = map(int, tm.split(":"))
         if "tomorrow" in low:

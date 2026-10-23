@@ -362,8 +362,7 @@ Event kinds that something reads (not just the feed):
 | Kind | Read by |
 |---|---|
 | `setting_changed`, `module_enabled`, `module_disabled` | profile auto-save, Telegram rename, terminal sync, health |
-| `job_done` | notes sync (push after AI work), weekly, retro |
-| `job_failed` | weekly (note: it mixes scheduler failures into "AI requests failed") |
+| `job_done` | notes sync (push after AI work), weekly (AI requests answered and failed, by its `ok`), retro |
 | `message_in`, `intent` | weekly, retro, cases (`intent`) |
 | `question_asked`, `question_answered`, `question_later`, `question_expired` | retro |
 | `classroom_synced`, `notes_synced`, `calendar_synced`, `backup_done`, `profile_save`, `gbrain_sync`, `calls_link`, `calls_line_updated`, `power_mode` | health checks (`core/health_checks.py`) |

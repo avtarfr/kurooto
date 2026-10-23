@@ -128,7 +128,8 @@ if that matters (it's required in the EEA, UK and Switzerland). See [AI brains](
 
 **Does it read all my email?**
 No. The mail digest reads only the senders, domains or labels you choose; the rest is only counted. Mail marked
-confidential is never read. See [Google](google.md).
+confidential never goes to the AI: it's only counted, or, if you opt in (`mail_digest.confidential` = `local`),
+summarised by a local model on this computer. See [Google](google.md).
 
 **How do I remove everything?**
 `kurooto uninstall --revoke` deletes your call line and takes back Google's and the bot's access first; then delete the

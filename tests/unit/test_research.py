@@ -233,8 +233,17 @@ def test_the_ai_picks_with_what_you_work_on(research):
     r.papers()
     job = env.app.jobs.recent(1)[0]
     assert job.title == "New papers" and "graph neural networks for drug discovery" in job.prompt
-    row = env.app.jobs._db.execute("select background from jobs where id=?", (job.id,)).fetchone()
+    row = env.app.jobs._db.execute("select background, then_payload from jobs where id=?", (job.id,)).fetchone()
     assert row[0] == 1  # waits for the charger on battery
+    # the papers count as sent only once the AI's digest came: a failed one leaves them for the next digest
+    from kurooto.providers.base import Result, Verdict
+
+    then = env.app.jobs.then_actions["research.digest"]
+    assert r.collect(mark_seen=False)[0]
+    then(job, Result(Verdict.ERROR, "", detail="the AI was down"), json.loads(row[1]))
+    assert r.collect(mark_seen=False)[0]
+    then(job, Result(Verdict.OK, "1. A paper"), json.loads(row[1]))
+    assert r.collect(mark_seen=False)[0] == []
 
 
 def test_the_research_tab(research):

@@ -158,5 +158,5 @@ def command(app: App, arg: str) -> str:
     return (
         "What calls have learned:\n"
         + "\n".join(f"{i}. {x}" for i, x in enumerate(items, 1))
-        + ("\n\n/lessons forget 2 removes one.")
+        + "\n\n/lessons forget 2 removes one; /lessons clear removes them all."
     )

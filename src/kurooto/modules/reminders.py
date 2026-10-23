@@ -10,14 +10,15 @@ import time
 import uuid
 
 from kurooto.core.clock import now, parse_when
+from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
-from kurooto.modules.text import NEG, stale_time, when_from
+from kurooto.modules.text import NEG, WHEN_DAY, stale_time, when_from
 
 REMIND = re.compile(r"^\s*remind me\s+(?P<rest>.+)$", re.I)
 WHEN_WORDS = re.compile(
     r"\b(?:in\s+\d+(?:\.\d+)?\s*[a-z]+|in\s+(?:an?|half an?)\s+[a-z]+|(?:at|by)\s+\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)?"
-    r"|\d{1,2}(?:[:.]\d{2})\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)|tomorrow|tonight|today)\b",
+    r"|\d{1,2}(?:[:.]\d{2})\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm)|(?:the\s+)?day after tomorrow|tomorrow|tonight|today)\b",
     re.I,
 )
 JOIN = re.compile(r"^(?:\s*(?:[:;,.\-–—]+|(?:to|that|about)\b))+\s*", re.I)
@@ -44,6 +45,36 @@ class Reminders(Module):
 
     def start(self):
         self.action("fire", self._fire)
+        self._unpark()
+
+    @property
+    def parked_file(self):
+        return self.app.paths.state / "reminders-parked.json"
+
+    def stop(self) -> None:
+        """Turned off: the reminders you set are kept (not cancelled) and set again when it's turned back on; any
+        whose time passed meanwhile come then, marked late."""
+        rows = jload(self.parked_file, []) or []
+        for j in self.app.scheduler.jobs(f"{self.id}:"):
+            if j.action == "reminders.fire":
+                rows.append({"key": j.key, "at": j.next_run, "payload": j.payload})
+        if rows:
+            jsave(self.parked_file, rows)
+        super().stop()
+        self._lidsafe_poke()
+
+    def _unpark(self) -> None:
+        rows = jload(self.parked_file, []) or []
+        for r in rows:
+            payload = dict(r.get("payload") or {})
+            if r["at"] <= time.time():
+                payload["while_off"] = True
+            self.app.scheduler.at(
+                max(r["at"], time.time()), "reminders.fire", payload, key=r["key"], module=self.id, replace=False
+            )
+        self.parked_file.unlink(missing_ok=True)
+        if rows:
+            self._lidsafe_poke()
 
     def add(self, when: dt.datetime, what: str) -> str:
         key = f"reminders:{uuid.uuid4().hex[:8]}"
@@ -70,7 +101,13 @@ class Reminders(Module):
         if ls is not None and ls.handed_over("reminders.fire", p):
             return  # your call line has a sealed copy: whichever side is awake now says it, once (lidsafe.py)
         what = p.get("what", "")
-        late = " (late: the computer was asleep)" if p.get("late_s") or p.get("missed") else ""
+        late = (
+            " (late: Reminders was off)"
+            if p.get("while_off")
+            else " (late: the computer was asleep)"
+            if p.get("late_s") or p.get("missed")
+            else ""
+        )
         ref = uuid.uuid4().hex[:8]
         self._snoozable(ref, what)
         self.app.notify(
@@ -119,7 +156,7 @@ class Reminders(Module):
             if not when:
                 said = stale_time(rest)  # "remind me, I didn't do it at 3": that time didn't happen, so ask
                 return {"ask": said} if said else None
-            what = tidy_what(WHEN_WORDS.sub("", rest))
+            what = tidy_what(WHEN_WORDS.sub("", WHEN_DAY.sub(" ", rest)))
             return {"when": when, "what": what or "you asked me to remind you"}
 
         def run(msg, s):
@@ -134,7 +171,11 @@ class Reminders(Module):
 
     def commands(self):
         return [
-            Command("remind", "a reminder (/remind 21:30 call mum, /remind tomorrow 7am gym)", self._cmd),
+            Command(
+                "remind",
+                "a reminder (/remind 21:30 call mum, /remind tomorrow 7am gym; /remind 20 tea: in 20 min)",
+                self._cmd,
+            ),
             Command("reminders", "your upcoming reminders", self._list),
         ]
 
@@ -147,7 +188,7 @@ class Reminders(Module):
                 except ValueError:
                     continue
                 return self.add(when, tidy_what(" ".join(parts[n:])) or "you asked me to remind you")
-        return "Usage: /remind 21:30 call mum   (or: tomorrow 7am gym, in 20m tea)"
+        return "Usage: /remind 21:30 call mum   (or: tomorrow 7am gym, in 20m tea; a bare number is minutes: 20 tea)"
 
     def _list(self, msg: Incoming, arg: str) -> str | None:
         jobs = self.app.scheduler.jobs("reminders:")

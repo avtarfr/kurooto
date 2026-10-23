@@ -310,7 +310,7 @@ minutes later whether it worked.
 all is well); `/health now` also asks online services; the dashboard's "needs a look" badge and the Features tab;
 `kurooto doctor` (`kurooto doctor --fix <id>` runs a fix); the weekly summary.
 
-| Setting (in `settings.json`: not on the Settings page, see [Dashboard](dashboard.md#settings-alts)) | Default | Effect |
+| Setting (Settings → Health checks) | Default | Effect |
 |---|---|---|
 | `health.on` | `true` | the daily pass and its messages (`/health`, the dashboard and doctor check either way) |
 | `health.when` | `daily 21:00` | when the daily pass runs |

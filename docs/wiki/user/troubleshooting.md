@@ -79,9 +79,8 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 |---|---|
 | A reminder came marked "late: the computer was asleep" | Keep the computer awake on the charger, or turn on [Reminders with the lid shut](calls.md#reminders-with-the-lid-shut) (Android). |
 | `/remind 9 call mum` came 9 minutes later | A bare number means minutes. Write `9:00`, `9am` or `21:00`. |
-| "remind me on Friday at 5 …" was set for today or tomorrow | Plain-English reminders handle today and tomorrow; for another day use `/remind fri 17:00 …`. |
 | "When should I remind you?" | The only time you gave was about the past ("since I didn't wake up at 12"); say the time you want. |
-| My reminders are gone after turning Reminders off | Turning the feature off cancels the reminders you had set. Set them again. |
+| "Reminder (late: Reminders was off)" | It was due while the feature was off; it's kept and comes when you turn it back on. |
 | A deadline shows up twice | They didn't look like the same thing (different dates or numbers in the title). Tap **Not mine** on one. |
 | A calendar event became a deadline by mistake | **Not mine** on it, or `/ignore` a word in its title; `deadlines.from_calendar` off stops calendar deadlines. |
 | A task in my notes isn't on the list | It needs a date on an unticked task line: `- [ ] Essay draft (2026-11-02 17:00)`. |
@@ -96,7 +95,6 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | "skip Friday's check-in" went to the AI | Only today, tomorrow, the day after and weekday names are understood instantly; dates and "next week" go to the AI. |
 | "I missed your evening check-in" | The computer was off for more than two hours at check-in time. Reply to it anyway. |
 | My check-in reply wasn't saved | Reply to the check-in message itself (Telegram's Reply), and check `checkins.journal` is on. |
-| The Today page's **+30 min** on a check-in moved it to the morning | A known problem in this version: use the **In 30 min** button on Telegram, or `/checkin evening 21:30`. |
 | No Sunday review call | `weekly.call` is off, Phone calls isn't set up, or the computer was off well past the time. |
 | The first-week quests stopped | `/quests` says why: you said stop, or a day's quest was left alone (they stop rather than nag). |
 
@@ -139,7 +137,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 
 | What you see | What to do |
 |---|---|
-| I can't remove a class with `/class` | Removing by command doesn't work in this version. Edit `subjects.timetable` in `settings.json` (see [Dashboard](dashboard.md#settings-alts)), or keep your timetable in a [term note](classes-and-timetable.md#the-term-note). |
+| I can't remove a class with `/class remove mon 09:00` | It says the class comes from your term note or a class pack: change it there. |
 | `/term` says "Term note …: not found" | The path is relative to your notes folder (`terms/2026-autumn`, `maps/semester-*`); `/term note <path>` again, or `/term note off`. |
 | A class or date from the term note is missing | Check the table headings ("Weekly timetable", "Key dates"), times like `09:00-09:55` and dates like `2026-11-12`; `/term` says how many it read. |
 | No after-class question | The class was skipped, it's a holiday or exam period, the term is over, the subject is left out in `capture.subjects` / `capture.skip_subjects`, or a class-calendar event names none of your subjects. |
@@ -154,7 +152,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | A book stays "not started" or "waiting for a reader" | Reading happens at night on the charger (`/books read now`, or `/books read force` on battery). Scanned pages need Tesseract (`/books setup`) or a vision model; encrypted PDFs need Poppler. `/books` says which. |
 | A book sent on Telegram wasn't added | Telegram lets bots fetch files up to 20 MB: drop bigger books into the folder (`/books folder <subject>`). The caption must say `book for <subject>`. |
 | A study pack is missing files | It was over 50 MB without Drive upload. `INDEX.md` in the zip lists what was left out; turn on Drive upload. |
-| A Drive link from a study pack stopped working | Temporary uploads are deleted after `drive_upload.temp_days` (7). Download what you want to keep. |
+| A Drive link from a study pack stopped working | Temporary uploads are deleted after `drive_upload.temp_days` (7). Download what you want to keep, or move it out of the Kurooto folder in Drive before then. |
 | Study time counts while I'm away (Wayland) | Add the idle hook (`kurooto idle away` / `back`; see [Books and study](books-and-study.md)). `kurooto doctor` shows what it uses now. |
 | Study time stopped counting | A `kurooto idle away` without its `back`: run `kurooto idle back`. |
 | A handwritten PDF isn't written out | PDFs read on this computer wait for the night on the charger, and while the graphics card is busy. `/handwritten` starts it now; "can't be drawn": install Poppler's PDF tools. |
@@ -173,7 +171,6 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | `/notes` or `/timeline` says the brain is busy | The nightly upkeep or a sync is using it; try again in a while. |
 | Notes brain: "can't find your gbrain" or "your brain's folder isn't there" | Your own GBrain: set `gbrain.exe` and `gbrain.home`, or set `gbrain.managed` back to `true`. |
 | The nightly upkeep didn't finish | Search still works. Its log is in the state folder (`gbrain/upkeep-<date>.log`); it tries again the next night. |
-| `/graph stop` didn't stop the concept graph | It only stops tonight's run until Kurooto restarts; turn the Concept graph feature off to stop it for sure. |
 | `/journal` (or another skill) goes to Chat as plain text | Turn on **Skills** (Features). `/skills` lists the names. |
 | A skill name can't be typed | A command with the same name wins; `/skills <name>` says so. |
 | `/every` refused | The command or skill doesn't exist, you already have 30 routines, or it contains `/every`. |
@@ -212,14 +209,13 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | `/draft` says drafts are off | Turn on `google.gmail_drafts`, enable the Gmail API and sign in again. |
 | Classroom notes say a PDF wasn't read | Install Poppler (`pdftotext`), or use agy or Claude Code as your AI. |
 | Classroom notes went to the wrong folder | `classroom_notes.folders`: `{"Exact course name": "folder-name"}`. |
-| A temporary Drive file disappeared after I moved it | In this version temporary uploads are deleted after `drive_upload.temp_days` even when moved. Download or copy what you want to keep, or set `drive_upload.temp_days` to `0`. |
 
 ## Dashboard and terminal
 
 | What you see | What to do |
 |---|---|
 | The dashboard won't open | `kurooto open`, or `http://127.0.0.1:8770`; the port may have moved (`kurooto paths` → `web.json`). It opens only on the computer Kurooto runs on. |
-| A setting isn't on the Settings page | A feature's settings appear once it's on. Some core settings (`quota.*`, `health.*`, `jobs.*`, `sources.*`, `hardware.*`, `web.port`) are only in `settings.json`: see [Dashboard](dashboard.md#settings-alts). |
+| A setting isn't on the Settings page | A feature's settings appear once it's on. Telegram's pairing (`telegram.chat_id` and the like) is set by pairing, not on the page. |
 | The Terminals tab says it's off, or a terminal won't type | Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose. |
 | Kurooto Terminal opens separate windows instead of tabs | kitty (Linux, macOS) or Windows Terminal isn't there: `kurooto term --install`, or Windows Terminal from the Microsoft Store. `kurooto term --print` says what it found. |
 | "kitty didn't start" | kitty needs OpenGL 3.3 (some virtual machines lack it); set `terminal.kitty` off to use your usual terminal. |

@@ -59,9 +59,8 @@ midnight, still belongs to the evening before: its journal entry and study logs 
 "move the evening check-in to 21:00" means the coming evening, and "skip the night check-in" skips the coming night's
 once tonight's is over. Set it to `00:00` for plain calendar days.
 
-**On the dashboard.** The [Today page](dashboard.md) lists today's check-ins with their state and **skip**. (In this
-version its **+30 min** button moves the check-in to the next morning, like **Tomorrow morning**; use the Telegram
-button or `/checkin` to push it by half an hour.)
+**On the dashboard.** The [Today page](dashboard.md) lists today's check-ins with their state, **+30 min** (pushes it
+back half an hour, like **In 30 min** on Telegram) and **skip**.
 
 **Limits and edge cases.**
 - **The computer was off at check-in time:** if it's back within 2 hours, the check-in comes then. Later than that,
@@ -287,6 +286,5 @@ Once a month, Calm may suggest turning off a kind of question you rarely answer,
 | "skip Friday's check-in" went to the AI | Kurooto acts by itself only for today, tomorrow, the day after or a weekday name. |
 | "I missed your evening check-in" | The computer was off for more than 2 hours past the time. Reply to that message and it still goes into the journal. |
 | My reply wasn't saved | Reply to the check-in message itself (Telegram's Reply), and check `checkins.journal` is on. |
-| The dashboard's +30 min moved my check-in to the morning | Use **In 30 min** on Telegram, or `/checkin evening 22:30`. |
 | No Sunday review call | `weekly.call` off, Phone calls not set up, or the computer was off more than 3 hours past the summary's time. |
 | The quests stopped | You tapped Stop, replied "stop", or left a day's quest alone. `/quests` says which. |

@@ -22,6 +22,7 @@ after-class question.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import re
 import urllib.request
@@ -263,26 +264,34 @@ class Calendar(Module):
     def refresh(self, p: dict | None = None) -> int:
         start = self.now() - dt.timedelta(days=1)
         end = self.now() + dt.timedelta(days=self.setting("days") or 14)
-        found, failed, names = [], 0, []
+        # each event remembers where it came from ("src"), so a link that fails this time keeps its last good events
+        found, failed, names = [], [], []
         for url in self.links():
+            src = "ics:" + hashlib.sha256(url.encode()).hexdigest()[:12]
             try:
                 evs = self._fetch(url)
                 names += [e["calendar"] for e in evs[:1] if e.get("calendar")]
-                found += expand(evs, start, end)
+                found += [(src, e) for e in expand(evs, start, end)]
             except Exception as e:
-                failed += 1
+                failed.append(src)
                 self.app.events.emit("calendar_failed", error=str(e)[:200])
         gc = self.google_source()
         if gc is not None:
             evs, cals, bad = gc.fetch(start, end, self.tz())
-            found += [e for e in evs if e["start"] < end and e["end"] > start]
+            found += [(f"google:{e.get('account', '')}", e) for e in evs if e["start"] < end and e["end"] > start]
             names += cals
-            failed += bad
+            failed += [f"google:{a}" for a in bad]
         elif self.app.is_on("google_calendar"):
-            failed += 1  # on, but its sign-in is missing: keep what was read last
+            failed.append("google:")  # on, but its sign-in is missing: keep what was read last
         if failed and not found:
             return 0  # keep the last good copy
-        rows = sorted((self._row(e) for e in found), key=lambda r: r["start"])
+        last = (jload(self.file, {}) or {}).get("events", []) if failed else []
+        kept = [
+            r
+            for r in last
+            if r.get("src") in failed or ("google:" in failed and str(r.get("src")).startswith("google:"))
+        ]
+        rows = sorted([{**self._row(e), "src": src} for src, e in found] + kept, key=lambda r: r["start"])
         with Lock(self.app.paths.state, "calendar"):
             jsave(
                 self.file,

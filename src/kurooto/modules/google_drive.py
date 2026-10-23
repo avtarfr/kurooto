@@ -21,7 +21,7 @@ from pathlib import Path
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
-from kurooto.modules.google import GoogleError, GooglePart, NeedsSignIn
+from kurooto.modules.google import MAIN, GoogleError, GooglePart, NeedsSignIn
 
 register_defaults(
     "drive_upload",
@@ -70,25 +70,49 @@ class DriveUpload(GooglePart):
     def start(self):
         self.every("expire", "daily 04:10", self.expire)
 
-    def remember_temporary(self, fid: str, name: str) -> None:
+    def remember_temporary(self, fid: str, name: str, folder: str = "") -> None:
         days = float(self.setting("temp_days") or 0)
         if not days or not fid:
             return
         rows = jload(self.temp_file, []) or []
-        rows.append({"id": fid, "name": name, "delete_at": time.time() + days * 86400, "account": self.account})
+        rows.append(
+            {
+                "id": fid,
+                "name": name,
+                "delete_at": time.time() + days * 86400,
+                "account": self.account,
+                "folder": folder,
+            }
+        )
         jsave(self.temp_file, rows[-500:])
 
+    def _as(self, account: str):
+        """Google's calls as one of your accounts (a temporary upload is deleted as the account that made it)."""
+        return self.app.modules["google"].as_account(account)
+
     def expire(self, payload: dict | None = None) -> int:
-        """Delete the temporary uploads whose days are up (a file you moved out of Kurooto's folder or deleted
-        yourself is just forgotten). Returns how many went."""
+        """Delete the temporary uploads whose days are up, each as the account that uploaded it. A file you moved out
+        of Kurooto's folder, trashed or deleted yourself is just forgotten, and so is one whose folder isn't known.
+        Returns how many went."""
         rows = jload(self.temp_file, []) or []
+        g = self.app.modules.get("google")
+        names = g.account_names() if g is not None else [MAIN]
+        st = jload(self.file, {}) or {}
         keep, gone = [], 0
         for r in rows:
             if r.get("delete_at", 0) > time.time():
                 keep.append(r)
                 continue
+            account = r.get("account") or MAIN
+            if account not in names:
+                continue  # that account's sign-in was forgotten: Kurooto can't reach the file any more
+            folder = r.get("folder") or (st.get("id") if st.get("account") == account else "")
             try:
-                self.google.api("drive", f"/files/{r['id']}", method="DELETE")
+                api = self._as(account)
+                meta = api.api("drive", f"/files/{r['id']}?fields=parents,trashed")
+                if not folder or meta.get("trashed") or folder not in (meta.get("parents") or []):
+                    continue  # moved out of the folder (kept, as the upload message promised), or already in the bin
+                api.api("drive", f"/files/{r['id']}", method="DELETE")
                 gone += 1
             except GoogleError as e:
                 if e.code not in (404, 403):
@@ -120,7 +144,8 @@ class DriveUpload(GooglePart):
 
     # ------------------------------------------------------------------------------------------ uploading
     def upload(self, path: Path, name: str | None = None) -> dict:
-        """Upload one file into Kurooto's folder: {"id", "name", "webViewLink"}. A folder you deleted is made again."""
+        """Upload one file into Kurooto's folder: {"id", "name", "webViewLink", "parents"}. A folder you deleted is
+        made again."""
         path = Path(path)
         name = name or f"{now():%Y-%m-%d}-{path.name}"
         for attempt in (0, 1):
@@ -161,7 +186,7 @@ class DriveUpload(GooglePart):
         size = path.stat().st_size
         mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         _, _, h = self._call(
-            f"{g.ep('drive_upload')}/files?uploadType=resumable&fields=id,name,webViewLink",
+            f"{g.ep('drive_upload')}/files?uploadType=resumable&fields=id,name,webViewLink,parents",
             json.dumps({"name": name, "parents": [folder]}).encode(),
             {
                 "Content-Type": "application/json; charset=UTF-8",
@@ -221,7 +246,7 @@ class DriveUpload(GooglePart):
         days = float(self.setting("temp_days") or 0)
         lasts = ""
         if temporary and days:
-            self.remember_temporary(str(f.get("id") or ""), path.name)
+            self.remember_temporary(str(f.get("id") or ""), path.name, (f.get("parents") or [""])[0])
             lasts = f" It's deleted from your Drive in {days:g} days; move it out of the {folder} folder to keep it."
         self.app.notify(
             f"{text}{path.name} is in your Google Drive ({folder} folder): {link}{lasts}",

@@ -30,8 +30,7 @@ two terminal features. For talking to Kurooto in general see [talking-to-kurooto
   "this computer".
 - If another program already uses port 8770, Kurooto takes the next free one (it tries 30 in a row). `kurooto paths`
   shows the state folder; `web.json` there says which port is in use. You can pick the starting port with the
-  `web.port` setting (default `8770`; it isn't on the Settings page, so change it in `settings.json`, see
-  [Settings](#settings-alts)).
+  `web.port` setting (default `8770`; Settings → Dashboard, then restart Kurooto).
 - The **setup** link in the top bar goes back to the setup page (`/setup`), for example to add more AI accounts to
   [About you](teaching-kurooto.md) or to restore a profile.
 - If Kurooto isn't running, the page can't load. Start it from your app menu (**Kurooto**) or with `kurooto on`.
@@ -296,8 +295,9 @@ yet, the page links to the setup page's About you step. See [teaching-kurooto.md
 ### Settings (Alt+S)
 
 Settings are grouped by section. The page shows the core sections (you, notifications, availability, updates, AI,
-questions, look, power, notes, files, and **Starting**) and the sections of each feature that's **on**. A feature's
-settings appear once you turn it on.
+questions, look, power, notes, files, AI limits (`quota`), health checks, AI jobs, sources for answers, skills in other
+AI programs (`agents`), this computer (`hardware`), the dashboard's port (`web`), and **Starting**) and the sections of
+each feature that's **on**. A feature's settings appear once you turn it on.
 
 - **Change one:** tick a box, pick from a list, or type a value and leave the box (Tab or click elsewhere). It saves at
   once and says "Saved `section.key`". Lists and groups (like `["status"]` or `{"night": "23:15"}`) are typed as JSON;
@@ -305,10 +305,11 @@ settings appear once you turn it on.
 - **Go back to a default:** type the default value back (every default is in the
   [settings guide](../../SETTINGS_GUIDE.md)), or delete that line from `settings.json`.
 - **Starting** has its own choice (when you log in, or on Linux when the computer starts) and says what it did.
-- **Settings not on the page** (for example `quota.*`, `health.*`, `web.port`, `hardware.*`, `jobs.*`, `sources.*`)
-  are changed in `settings.json` in Kurooto's settings folder (`kurooto paths` → config). It holds only what you
-  changed; a dotted name like `brain.main` is `{"brain": {"main": "…"}}`. Restart Kurooto after editing the file by
-  hand (`kurooto stop`, then `kurooto start`).
+- **Settings not on the page** (the features that are on, which the Features page changes, and Telegram's pairing:
+  `telegram.chat_id`, `telegram.allowed_users`, `telegram.api_base`) are in `settings.json` in Kurooto's settings
+  folder (`kurooto paths` → config), like every other setting. It holds only what you changed; a dotted name like
+  `brain.main` is `{"brain": {"main": "…"}}`. Restart Kurooto after editing the file by hand (`kurooto stop`, then
+  `kurooto start`).
 - Secrets (keys, tokens) are never on this page or in `settings.json`.
 
 ## Search, hiding features, bigger panes
@@ -417,7 +418,7 @@ a page.
 | **/** or **Ctrl+F** | the search box | Features and Settings pages |
 | **Esc** | empties the search box | Features and Settings |
 | **L** | open or fold every corner panel and legend | the board |
-| **R** | highlight notes edited in the last day (Recent) | the board |
+| **R** | highlight notes edited in the last day (Recent) | the board, while the NOTES map is showing (not while you type in a box) |
 | **Enter** | send | the kurooto chat tab, the Today box |
 | **↑ / ↓** | earlier lines you typed | the kurooto chat tab |
 | **Ctrl+L** | clear the chat tab | the kurooto chat tab |
@@ -534,7 +535,7 @@ removed and "default terminal" is undone. kitty or fish that Kurooto got stay in
 | The page won't open | Is Kurooto running? Start it from the app menu or `kurooto on`, then `kurooto open`. If the port moved, `web.json` in the state folder says which one. |
 | "reconnecting…" in a pane's top line | Kurooto stopped or is restarting; the page reconnects by itself. |
 | "Kurooto didn't answer (is it running?)" on Today or Ctrl+K | the same: start it, then try again. |
-| A feature's settings aren't on the Settings page | Turn the feature on first; its section then appears. Core settings not listed are changed in `settings.json`. |
+| A feature's settings aren't on the Settings page | Turn the feature on first; its section then appears. |
 | "That isn't valid; it wasn't saved" | A list or group must be valid JSON, e.g. `["pe"]` or `{"night": "23:15"}`. |
 | "needs a look" badge | Click it (or open Features): the Needs a look box says what, with a Fix button where Kurooto can fix it. |
 | Corner panels show only one line each | They're folded on purpose (0.5.8): point at one, or press **L** to open them all. |

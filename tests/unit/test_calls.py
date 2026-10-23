@@ -120,6 +120,29 @@ def test_ringing_without_a_connected_line_falls_back_to_telegram(calls):
     assert calls.app.scheduler.jobs("calls:ring:")
 
 
+def test_a_ring_goes_to_ntfy_once_and_an_alarm_counts_as_missed_only_after_its_five_minutes(calls, monkeypatch):
+    import time
+
+    c = calls.app.modules["calls"]
+    published = []
+    monkeypatch.setattr(c, "publish_ntfy", lambda fields: published.append(fields["title"]) or True)
+    # the line is connected and rang the Android app itself: this computer doesn't publish too
+    answer = {"android": True}
+    monkeypatch.setattr(
+        c.connector, "admin_later", lambda op, then=None, **kw: (then(answer) if then else None) or True
+    )
+    since = c.ring("Stand-up in 5")
+    assert published == []
+    answer = {"error": "timed out"}  # the line couldn't: this computer rings the app instead
+    c.ring("Stand-up in 6")
+    assert published == ["Incoming call"]
+    monkeypatch.setattr(c.connector, "admin_later", lambda op, then=None, **kw: False)  # not connected
+    alarm = c.ring("Wake-up call", alarm=True, key="alarm:next")
+    assert published == ["Incoming call", "Wake-up call"]
+    left = lambda s: calls.app.scheduler.get(f"calls:missed:{s}").next_run - time.time()  # noqa: E731
+    assert 80 < left(since) < 95 and 320 < left(alarm) < 335  # the line and the app ring an alarm for 5 minutes
+
+
 def test_call_me_intent_and_commands(calls):
     out = calls.say("call me in 20 minutes about the laundry")
     assert out.startswith("I'll call you") and "the laundry" in out
@@ -395,12 +418,16 @@ def test_after_a_call_a_stronger_request_looks_back_and_keeps_lessons(calls):
     app = calls.app
     app.settings.set("brain.main", "gemini")
     c = app.modules["calls"]
-    c.run_tool("hold_calls", {"until": "2h"})
+    c.handle_request(
+        "POST", "/tool", json.dumps({"name": "hold_calls", "args": {"until": "2h"}, "since": "11"}).encode()
+    )
+    c.run_tool("pending_items", {}, since="22")  # another call at the same time
     said = [{"who": "Sam", "text": t} for t in ("hi", "remind me after class to email the TA", "thanks", "bye")]
-    c.handle_request("POST", "/transcript", json.dumps({"lines": said}).encode())
+    c.handle_request("POST", "/transcript", json.dumps({"lines": said, "since": "11"}).encode())
     job = next(j for j in app.jobs.recent(5) if j.title == "Call review")
     assert job.effort_req == "high" and "email the TA" in job.prompt and "hold_calls" in job.prompt
-    assert c.tool_log == []  # the next call starts with a clean log
+    assert "pending_items" not in job.prompt  # the other call's tool stays with that call
+    assert "11" not in c.tool_log and [t["name"] for t in c.tool_log["22"]] == ["pending_items"]
 
     out = "Set the reminder for 17:00.\n```lessons\n- When they say 'after class', ask when class ends.\n```"
     app.jobs.then_actions["calls.reviewed"](job, Result(Verdict.OK, out), {})
@@ -419,7 +446,9 @@ def test_after_a_call_a_stronger_request_looks_back_and_keeps_lessons(calls):
         {},
     )
     assert len(review.lessons(app)) == 1
-    assert "1. When they say" in calls.say("/lessons")
+    listed = calls.say("/lessons")
+    assert "1. When they say" in listed and "/lessons clear" in listed  # the help names both ways to forget
+    assert any("/lessons clear" in c.help for c in app.modules["calls"].commands() if c.name == "lessons")
     assert calls.say("/lessons forget 1").startswith("Forgot:") and review.lessons(app) == []
 
     # nothing fixed, nothing learned: no message; a short call or review off: no look back at all

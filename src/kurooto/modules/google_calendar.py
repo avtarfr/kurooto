@@ -94,12 +94,13 @@ class GoogleCalendar(GooglePart):
                 grace_s=3600,
             )
 
-    def fetch(self, start: dt.datetime, end: dt.datetime, tz: dt.tzinfo) -> tuple[list[dict], list[str], int]:
-        """(events between start and end from every account it reads, the calendars' names, accounts that failed)."""
+    def fetch(self, start: dt.datetime, end: dt.datetime, tz: dt.tzinfo) -> tuple[list[dict], list[str], list[str]]:
+        """(events between start and end from every account it reads, each with its "account", the calendars' names,
+        the accounts that failed)."""
         g = self.app.modules["google"]
         skip = [str(x).lower() for x in self.setting("skip") or [] if str(x).strip()]
         own = (jload(self.app.paths.state / "agent-plan.json", {}) or {}).get("id")
-        events, names, failed = [], [], 0
+        events, names, failed = [], [], []
         for name in g.accounts_for(self.part):
             acct = g.as_account(name)
             try:
@@ -124,8 +125,8 @@ class GoogleCalendar(GooglePart):
                     except GoogleError as e:  # one calendar Google won't list: the others still come
                         self.app.events.emit("calendar_failed", error=str(e)[:200], source="google")
                         continue
-                    events += [ev for ev in (as_event(e, cname, tz) for e in found) if ev]
+                    events += [{**ev, "account": name} for ev in (as_event(e, cname, tz) for e in found) if ev]
             except Exception as e:
-                failed += 1
+                failed.append(name)
                 self.app.events.emit("calendar_failed", error=str(e)[:200], source="google")
         return events, list(dict.fromkeys(names)), failed

@@ -31,6 +31,7 @@ sets the same reminder again that much later).
 | `remind me tomorrow at 7am to go to the gym` | tomorrow 07:00 |
 | `remind me tomorrow to pay the fees` | tomorrow 09:00 (a day with no time means 09:00) |
 | `remind me tonight to pack` | today 21:00 |
+| `remind me friday at 5pm to submit the form` · `remind me on wednesday to call home` | the coming Friday 17:00 (today if it's Friday and 17:00 is still ahead, else a week on); a weekday with no time is 09:00. "next friday" goes to your AI |
 | `/remind 21:30 call mum` | 21:30 today, or tomorrow if 21:30 has passed |
 | `/remind tomorrow 7am gym` | tomorrow 07:00 |
 | `/remind in 20m tea` · `/remind 30m tea` · `/remind +45 tea` · `/remind 2h stretch` | that long from now |
@@ -68,8 +69,9 @@ your next day's reminders are part of the brief your call line keeps. With
 - **"Don't", "never", "stop" or "no need to" in the sentence**, or several requests in one message ("remind me at 9
   to call mum and skip the check-in"), go to your AI instead of being handled instantly. With Chat on, the AI can
   still set the reminder with its tool.
-- **Plain English understands today, tonight, tomorrow and "in ..."**. For another day, use `/remind` with the
-  weekday or date (`/remind fri 17:00 ...`), or ask your AI.
+- **Plain English understands today, tonight, tomorrow, the day after tomorrow, a weekday and "in ..."**. A weekday
+  counts when it says when ("friday at 5", "on friday", "this friday"), not when it's part of what to remember
+  ("revise for friday's quiz"). For a date, use `/remind` (`/remind 2026-11-02 14:00 ...`) or ask your AI.
 - **A bare number in `/remind` is minutes.** `/remind 9 call mum` means in 9 minutes. Write `9:00`, `9am` or `21:00`.
 - **Cancel** with the button under `/reminders` or on the Today page. "Already gone" means it fired or was cancelled.
 - The snooze buttons work for the last 200 reminders that fired; older ones say "That reminder is gone".
@@ -77,8 +79,9 @@ your next day's reminders are part of the brief your call line keeps. With
 **What leaves your computer.** The reminder goes through Telegram to your own bot. With Reminders with the lid shut
 on, the next day's reminders go to your call line sealed for your phone (it can read only their times).
 
-**Turn it off.** Features → Reminders → Turn off. This cancels every reminder you had set: they don't come back when
-you turn it on again, so note anything important first (`/reminders` lists them).
+**Turn it off.** Features → Reminders → Turn off. Nothing reminds you while it's off, but the reminders you had set
+are kept: turn it on again and they're back, and any whose time passed meanwhile come at once as "Reminder (late:
+Reminders was off): ...". To get rid of one, cancel it (`/reminders`) before turning the feature off.
 
 ---
 
@@ -116,7 +119,7 @@ midsem, endsem, viva, oral, test or assessment counts as an exam: it can't be "d
 |---|---|
 | `/due fri 17:00 essay draft` | adds it (the time first, then what it is) |
 | `/due 2026-11-02 lab report` | a date alone means 09:00 that day |
-| `/due tomorrow 23:59 reading response` · `/due in 3 days project` | any time `/remind` takes works |
+| `/due tomorrow 23:59 reading response` · `/due in 3 days project` | any time `/remind` takes works (a bare number is minutes from now, as in `/remind`) |
 | `add a deadline: essay draft due friday 5pm` · `I have a lab report due fri 17:00` | the same, in words (the part after "due" is the time) |
 | `/deadlines` | the next two weeks, soonest first (up to 12), with **Done** and **Not mine** buttons on things you hand in |
 | `what's due?` · `anything due?` · `show my deadlines` | the next two weeks |
@@ -383,7 +386,6 @@ Each of these has **Why?** and **Less of this** buttons on Telegram ([messages-i
 |---|---|
 | A reminder came late, marked "(late: the computer was asleep)" | The computer was asleep or off at that time. Keep it awake on the charger ([your-computer.md](your-computer.md)) or turn on Reminders with the lid shut ([calls.md](calls.md)). |
 | `/remind 9 call mum` fired in 9 minutes | A bare number is minutes. Write `9:00`, `9am` or `21:00`. |
-| "remind me on Friday at 5 ..." set a reminder for today or tomorrow | Plain English only reads today, tonight, tomorrow and "in ...". Use `/remind fri 17:00 ...`. |
 | Kurooto asked "When should I remind you?" | The only time in your message was about the past ("I didn't do it at 3"). Say the time you want. |
 | A deadline shows up twice | Their titles have different numbers or dates. Tap **Not mine** on one. |
 | A calendar event became a deadline by mistake | **Not mine** on it, `/ignore` a word in its title, or `deadlines.from_calendar` off. |

@@ -46,6 +46,15 @@ def test_durations_and_moments():
     assert when_from("tomorrow at 7", BASE) == dt.datetime(2026, 10, 20, 7, 0)
 
 
+def test_a_weekday_in_plain_english_is_that_day_not_the_next_time_the_clock_shows():
+    assert when_from("friday at 5pm", BASE) == dt.datetime(2026, 10, 23, 17, 0)
+    assert when_from("on wednesday", BASE) == dt.datetime(2026, 10, 21, 9, 0)
+    assert when_from("monday at 9am", BASE) == dt.datetime(2026, 10, 26, 9, 0)  # today's 9am is past: a week on
+    assert when_from("the day after tomorrow at 8", BASE) == dt.datetime(2026, 10, 21, 8, 0)
+    assert when_from("next friday at 5pm", BASE) is None  # a day it can't pin down goes to the AI
+    assert when_from("at 9 to revise for friday's quiz", BASE) == dt.datetime(2026, 10, 19, 21, 0)  # about, not when
+
+
 # -------------------------------------------------------------------------------------- reminders
 def test_reminder_in_plain_english_fires_and_snoozes(env):
     env.on("reminders")
@@ -57,6 +66,35 @@ def test_reminder_in_plain_english_fires_and_snoozes(env):
     buttons = [p for m, p in env.fake.sent if m == "sendMessage"][-1]["reply_markup"]["inline_keyboard"][0]
     assert env.press(buttons[0]["callback_data"]).startswith("Again at")
     assert len(env.app.scheduler.jobs("reminders:")) == 1
+
+
+def test_remind_me_on_a_weekday_sets_that_day(env):
+    env.on("reminders")
+    out = env.say("remind me friday at 5pm to submit the form")
+    assert out.startswith("I'll remind you Fri") and out.endswith(": submit the form"), out
+    job = env.app.scheduler.jobs("reminders:")[0]
+    when = job.when.astimezone().replace(tzinfo=None)
+    assert when.weekday() == 4 and (when.hour, when.minute) == (17, 0) and when - now() < dt.timedelta(days=7)
+    out = env.say("remind me to revise for friday's quiz on thursday at 6pm")
+    assert out.startswith("I'll remind you Thu") and out.endswith(": revise for friday's quiz"), out
+
+
+def test_turning_reminders_off_keeps_them_for_when_it_is_back_on(env, monkeypatch):
+    import kurooto.modules.reminders as rem_mod
+
+    env.on("reminders")
+    env.say("remind me in 2 hours to stretch")
+    env.say("remind me in 5 minutes to drink water")
+    assert len(env.app.scheduler.jobs("reminders:")) == 2
+    assert env.app.disable("reminders")[0]
+    assert env.app.scheduler.jobs("reminders:") == []  # nothing fires while it's off
+    later, real, t0 = 600, env.app.scheduler.clock, rem_mod.time.time
+    monkeypatch.setattr(env.app.scheduler, "clock", lambda: real() + later)
+    monkeypatch.setattr(rem_mod.time, "time", lambda: t0() + later)
+    env.on("reminders")  # ten minutes later, back on
+    asyncio.run(env.app.scheduler.tick())
+    assert env.fake.texts()[-1] == "Reminder (late: Reminders was off): drink water"
+    assert [j.payload["what"] for j in env.app.scheduler.jobs("reminders:")] == ["stretch"]
 
 
 def test_reminder_command_and_negation(env):
@@ -127,6 +165,16 @@ def test_exams_are_not_done_and_add_in_plain_english(env):
 
 
 # -------------------------------------------------------------------------------------- subjects
+def test_a_class_is_removed_by_command_as_the_usage_says(env):
+    env.on("subjects")
+    env.say("/subject add Linear Algebra (la)")
+    env.say("/class mon 09:00-09:55 la")
+    env.say("/class tue 9:00-09:55 la")
+    assert env.say("/class remove mon 9:00") == "Removed the class on Mon 09:00."
+    assert [(c["day"], c["start"]) for c in env.app.modules["subjects"].timetable()] == [("tue", "09:00")]
+    assert env.say("/class remove mon 09:00").startswith("No class on Mon at 09:00")
+
+
 def test_subjects_timetable_skip_and_no_calls_in_class(env):
     env.on("subjects")
     assert env.say("/subject add Linear Algebra (la, linalg)").startswith("Added Linear Algebra")
@@ -170,6 +218,35 @@ def test_weekly_counts_and_files_inbox(env):
     assert env.say("", document={"file_id": "F9", "file_name": "syllabus.pdf"}).startswith("Saved to inbox/")
     out = env.say("/week")
     assert "Reminders: 1 set, 1 delivered" in out and "Messages to me:" in out
+    env.app.events.emit("job_failed", key="x:y", outcome="error")  # a scheduled job, not an AI request
+    env.app.events.emit("job_done", ok=False)
+    env.app.events.emit("job_done", ok=True)
+    assert "AI requests: 1 answered, 1 failed" in env.app.modules["weekly"].summary()
+
+
+def test_a_photo_goes_to_chat_with_or_without_words_and_without_chat_says_what_to_turn_on(env):
+    from tests.fakes.openai import FakeOpenAI
+
+    env.fake.files["docs/ph1.pdf"] = b"img"
+    out = env.say("", photo=[{"file_id": "ph1"}])  # nothing reads it: say what would
+    assert out.startswith("Saved to inbox/") and "turn on Chat" in out and "Files into notes" in out
+    fake = FakeOpenAI()
+    try:
+        env.app.secrets.set("custom.api_key", fake.key)
+        env.app.settings.set("brain.base_urls", {"custom": fake.base})
+        env.app.settings.set("brain.models", {"custom": {"low": "m", "medium": "m", "high": "m"}})
+        env.app.settings.set("brain.main", "custom")
+        env.on("chat")
+        assert env.say("", photo=[{"file_id": "ph1"}]) == "On it."
+        env.app.jobs.run_next()
+        asked = fake.requests[-1]["messages"][-1]["content"]
+        assert "no words" in asked and "Files they sent with it" in asked and "photo" in asked
+        env.say(caption="what's wrong with this proof?", photo=[{"file_id": "ph1"}])
+        env.app.jobs.run_next()
+        asked = fake.requests[-1]["messages"][-1]["content"]
+        assert "what's wrong with this proof?" in asked and "Files they sent with it" in asked
+    finally:
+        fake.close()
 
 
 # ------------------------------------------------------------------------------- holds and routing
@@ -206,3 +283,16 @@ def test_help_lists_everything_on_says_what_is_off_finds_a_word_and_points_at_th
     found = env.say("/help call")
     assert "Phone calls (off: turn it on in Features" in found and "/call" in found
     assert env.say("/help zzzz").startswith('Nothing here matches "zzzz"')
+
+
+def test_each_features_privacy_line_says_where_its_content_goes():
+    from kurooto.modules.base import Module
+    from kurooto.modules.capture import Capture
+    from kurooto.modules.checkins import Checkins
+    from kurooto.modules.google import Google
+    from kurooto.modules.google_mail import MailDigest
+
+    for m in (Capture, Checkins):  # with Chat on, what you said goes to the AI: not "Stays on this computer."
+        assert m.privacy != Module.privacy and "the AI you picked" in m.privacy, m.id
+    assert "never read" not in MailDigest.privacy and "local model on this computer" in MailDigest.privacy
+    assert "a file only your user can read" in Google.privacy  # the keychain, or the owner-only file without one
