@@ -14,31 +14,13 @@
 // Two designs (Settings → look.design, or the "classic look" / "new look" button): "new" (home-new.css: a sans-serif,
 // Public Sans, with tabular figures; monospace only for terminals, code and paths) and "classic" (home.css alone: the
 // monospace look of 0.5.18). <body data-design> holds it; setDesign() switches without a reload.
+//
+// The drawing of SYSTEMS and the NOTES map, and the helpers they share (palette, fonts, clamp, rgba...), are in
+// views/common.js, views/systems.js and views/notesmap.js, loaded before this file: the phone app draws its Systems and
+// Notes map views with the very same code (views/phone.html). Board and Notes below add the dashboard's own parts.
 "use strict";
 const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s) => document.querySelector(s);
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const TAU = Math.PI * 2;
-const MONO = '"JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace'; // terminals, code, paths
-const SANS = '"Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'; // static/fonts/
-let NEW = document.body.dataset.design !== "classic"; // look.design
-let FONT = MONO, FSC = 1; // the canvases' words and their scale: set by useDesign() below
-// a canvas font: the new design's sans-serif is set a little larger than the classic monospace
-const cf = (px, weight = "", fam = FONT) => `${weight ? weight + " " : ""}${Math.round(px * FSC * 2) / 2}px ${fam}`;
-function useDesign() { NEW = document.body.dataset.design !== "classic"; FONT = NEW ? SANS : MONO; FSC = NEW ? 1.12 : 1; }
-useDesign();
-// the canvases' colours are the page's palette (style.css: "kuro" by default, "rose"; the system palette and the named
-// themes come as a <style> from core/palette.py)
-const css = (name, fallback) => { const v = getComputedStyle(document.body).getPropertyValue(name).trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : fallback; };
-const PAL = { bg: css("--bg", "#0b0f0a"), fg: css("--fg", "#dad3c8"), accent: css("--accent-text", "#a6c07a"), lav: css("--lav", "#8dbdb3"),
-  pink: css("--pink", "#d6967a"), peach: css("--peach", "#ddb866"), sand: css("--sand", "#e4d8b4"), rose: css("--rose", "#b9a6cc"),
-  bad: css("--bad", "#e8735a"), panel: css("--panel", "#151b12") };
-const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-const mix = (a, b, t) => "#" + hexRgb(a).map((v, i) => Math.round(v + (hexRgb(b)[i] - v) * t).toString(16).padStart(2, "0")).join("");
-const RGBA = new Map(); // the canvases ask for the same few colours hundreds of times a frame: each string is made once
-const rgba = (h, a) => { const k = h + Math.round(a * 200); let v = RGBA.get(k);
-  if (v === undefined) { const [r, g, b] = hexRgb(h); v = `rgba(${r},${g},${b},${Math.round(a * 200) / 200})`; if (RGBA.size > 5000) RGBA.clear(); RGBA.set(k, v); } return v; };
-PAL.dim = mix(PAL.fg, PAL.bg, 0.5); PAL.line = mix(PAL.lav, PAL.bg, 0.62);
 // the palette can change while the page is open (look.palette = system follows the desktop): read it again
 function readPalette() {
   Object.assign(PAL, { bg: css("--bg", PAL.bg), fg: css("--fg", PAL.fg), accent: css("--accent-text", PAL.accent), lav: css("--lav", PAL.lav),
@@ -54,16 +36,10 @@ window.addEventListener("kurooto:palette", () => requestAnimationFrame(readPalet
 // (the new design: the ink, and a warning colour only when it's high)
 const grad = (v) => NEW ? ((v || 0) >= 0.9 ? PAL.bad : (v || 0) >= 0.7 ? PAL.peach : PAL.fg)
   : (v = clamp(v || 0, 0, 1)) < 0.5 ? mix(PAL.lav, PAL.peach, v * 2) : mix(PAL.peach, PAL.pink, (v - 0.5) * 2);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const ago = (sec) => { if (sec == null || !isFinite(sec)) return "—"; sec = Math.max(0, sec); if (sec < 60) return `${Math.round(sec)}s`; if (sec < 3600) return `${Math.round(sec / 60)}m`; if (sec < 86400) return `${Math.floor(sec / 3600)}h${String(Math.floor((sec % 3600) / 60)).padStart(2, "0")}`; return `${Math.floor(sec / 86400)}d`; };
-const bytes = (n) => { if (!n) return "0"; const u = ["B", "K", "M", "G", "T"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return `${n.toFixed(i > 1 ? 1 : 0)}${u[i]}`; };
-const hm = (ts) => new Date(ts * 1000).toTimeString().slice(0, 5);
 const api = async (path, body) => (await fetch(`/api/${path}`, { method: body === undefined ? "GET" : "POST", headers: { "X-Kurooto": TOKEN, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) })).json();
-let LIGHT = false; // lighter drawing on modest computers (hardware profile "light") or with reduced motion
 
 // ------------------------------------------------------------------------------------------------ layout
 const WANT = () => (document.body.dataset.layout === "roomy" ? "roomy" : "dense");
-let DENSE = false;
 const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && window.innerHeight >= 600;
 
 // ------------------------------------------------------------------------------------------------ panes (dense)
@@ -207,25 +183,8 @@ function loadLook() {
   }).catch(() => {});
 }
 
-const SPRITES = new Map();
-function glow(color) {
-  if (SPRITES.has(color)) return SPRITES.get(color);
-  const c = document.createElement("canvas"); c.width = c.height = 128;
-  const g = c.getContext("2d"), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gr.addColorStop(0, rgba(color, 0.85)); gr.addColorStop(0.25, rgba(color, 0.35)); gr.addColorStop(1, rgba(color, 0));
-  g.fillStyle = gr; g.fillRect(0, 0, 128, 128); SPRITES.set(color, c); return c;
-}
-function fitCanvas(cv) {
-  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, w, h };
-}
-// text on a plate of background, so it stays readable over whatever moves behind it
-// The corner panels and legends are folded to their first line, for a calmer board: one opens while the pointer is
-// over it, and L opens (or folds) them all; the choice is remembered in this browser.
-let LEGENDS = false;
+// the corner panels and legends (views/common.js): L opens or folds them all, remembered in this browser
 try { LEGENDS = localStorage.getItem("kurooto.dash.legends") === "1"; } catch { /* fine */ }
-const inside = (m, r, pad = 6) => !!(m && r && m.x >= r.x0 - pad && m.x <= r.x1 + pad && m.y >= r.y0 - pad && m.y <= r.y1 + pad);
 window.addEventListener("keydown", (e) => {
   if ((e.key === "l" || e.key === "L") && !e.altKey && !e.ctrlKey && !e.metaKey
     && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) {
@@ -233,90 +192,18 @@ window.addEventListener("keydown", (e) => {
     try { localStorage.setItem("kurooto.dash.legends", LEGENDS ? "1" : "0"); } catch { /* fine */ }
   }
 });
-function say(ctx, s, x, y, col, align = "left", font = cf(9)) {
-  ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
-  const wd = ctx.measureText(s).width, x0 = align === "right" ? x - wd : align === "center" ? x - wd / 2 : x;
-  ctx.fillStyle = rgba(PAL.bg, 0.72); ctx.fillRect(x0 - 2, y - 9 * FSC, wd + 4, 12 * FSC); ctx.fillStyle = col; ctx.fillText(s, x, y);
-  return wd;
-}
 
 // ------------------------------------------------------------------------------------------------ SYSTEMS
-const COLORS = { telegram: "lav", chat: "peach", reminders: "pink", checkins: "rose", deadlines: "accent", gbrain: "lav",
-  local_models: "sand", subjects: "sand", quiz: "pink", weekly: "rose", files: "peach", skills: "lav", library: "sand",
-  remember: "rose", retro: "pink", capture: "peach", calls: "accent", alarm: "peach", voice_notes: "lav", calendar: "rose",
-  notes_sync: "lav", backups: "sand", google: "peach", study: "accent", research: "lav", terminals: "sand" };
-const SHORT = { telegram: "telegram", chat: "chat", reminders: "reminders", checkins: "check-ins", deadlines: "deadlines",
-  gbrain: "notes brain", local_models: "local models", subjects: "subjects", quiz: "quiz", weekly: "weekly", files: "files",
-  library: "quick notes", retro: "look back", capture: "after class", voice_notes: "voice notes", notes_sync: "notes sync",
-  classroom_notes: "classroom", mail_digest: "mail", reply_drafts: "drafts", agent_plan: "agent plan", awake: "awake",
-  handwritten: "handwritten", study: "study", research: "research", calendar: "calendar", alarm: "alarm", calls: "calls",
-  skills: "skills", remember: "remember", terminals: "terminals", backups: "backups", google: "google" };
-const OUTBOUND = /fired|asked|told|notified|done|reply/;
+// views/systems.js draws it (Body); Board adds the dashboard's own parts: a click on a cell opens its menu (ping, sync
+// now, quiet, its settings, its activity) and on the core Ctrl+K; the cells as buttons for Tab and screen readers; and
+// the dense board's four corners (recent events, the AI, today, what's due).
 const BRAIN = { agy: "agy", claude: "claude", gemini: "gemini", ollama: "local AI" };
 // agy, claude…; an extra Claude account by its name ("claude (work)"); any other brain is "your AI"
 const brainName = (b) => (b && (BRAIN[b.id] || (/^claude:/.test(b.id || "") ? `claude (${((b.label || "").match(/\((.*)\)$/) || [0, b.id.slice(7)])[1]})` : ""))) || "AI";
-
-// The SYSTEMS view is the board's control centre. The new design draws it as living tissue: the core is a membrane
-// (layered translucent rims round a brighter centre that carries the name; each heartbeat travels out through the
-// rims), each feature is a small neuron (a wobbling body with short branches whose length is how busy it was over the
-// last two minutes, oldest to newest clockwise), and each nerve is a tapered axon, thick at the core and fine at the
-// cell, with a thinner second fibre and a twig; a pulse that arrives flashes where it touches (a synapse). Behind them
-// a faint mesh, drawn once per size. Classic keeps its look (round cells with history ticks, plain curves).
-// Interaction (both designs): point at a cell (its nerve lights, it swells, a card says what it is); click it for its
-// menu (ping, sync now, quiet, its settings, its activity); click the core for Ctrl+K; drag to turn the ring a
-// little and scroll to zoom (dense layout), both springing back; Tab walks the cells (a list for screen readers
-// under the canvas), Enter opens a cell's menu, Esc closes it. With prefers-reduced-motion the tissue holds still.
-const STILL = matchMedia("(prefers-reduced-motion: reduce)");
-const CAN_HOVER = matchMedia("(hover: hover)");
-const BLOB = new Float32Array(2 * 64); // a blob's rim points (no arrays made per frame)
-const AX = new Float32Array(4 * 17); // an axon's two edges
-const rubber = (x, lim) => lim * Math.tanh(x / lim); // dragged past its limit, the ring turns ever less
-const wrapPi = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-
-class Body {
-  constructor(cv) {
-    this.cv = cv; this.state = null; this.o = new Map(); this.pulses = []; this.ripples = []; this.widths = new Map();
-    this.beats = []; this.systoles = []; this.nextBeat = 0; this.beat = 0; this.bpm = 60;
-    this.view = { rot: 0, vr: 0, zoom: 1, vz: 0, zt: 1, zAt: 0, drag: null }; // turned and zoomed by hand; springs back
-    this.syn = []; this.focus = null; this.menu = null; this.cellIds = "";
-    this.wire();
-  }
-  // ---------------------------------------------------------------------------------------------- input
+class Board extends Body {
+  constructor(cv) { super(cv, { meta: $("#sys-meta"), card: $("#body-card"), menu: $("#body-menu") }); }
   wire() {
-    const cv = this.cv, at = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-    cv.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || this.view.drag) return; // one pointer at a time: a second finger is ignored
-      const p = at(e);
-      this.view.drag = { id: e.pointerId, x0: p.x, y0: p.y, rot0: this.view.rot, hit: this.hit(p), moved: false };
-    });
-    cv.addEventListener("pointermove", (e) => {
-      const p = at(e), d = this.view.drag;
-      if (e.pointerType === "mouse") this.mouse = p; // a pointer that hovers; a finger or pen taps instead
-      if (d && e.pointerId === d.id) {
-        if (!d.moved && Math.hypot(p.x - d.x0, p.y - d.y0) > 5) { d.moved = true; try { cv.setPointerCapture(e.pointerId); } catch { /* gone */ } }
-        if (d.moved) {
-          const swept = wrapPi(Math.atan2(p.y - this.cy, p.x - this.cx) - Math.atan2(d.y0 - this.cy, d.x0 - this.cx));
-          this.view.rot = rubber(d.rot0 + swept, 0.55); this.view.vr = 0;
-        }
-      }
-      this.cursor();
-    });
-    const end = (e, cancel) => {
-      const d = this.view.drag; if (!d || e.pointerId !== d.id) return;
-      this.view.drag = null;
-      if (cancel || d.moved) { this.cursor(); return; }
-      if (d.hit === "core") { this.closeMenu(); cmdOpen(); }
-      else if (d.hit) { if (this.menu === d.hit.id) this.closeMenu(); else this.openMenu(d.hit, false); }
-      else this.closeMenu();
-    };
-    cv.addEventListener("pointerup", (e) => end(e, false));
-    cv.addEventListener("pointercancel", (e) => end(e, true));
-    cv.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") this.mouse = null; });
-    cv.addEventListener("wheel", (e) => { // the dense board doesn't scroll, so the wheel zooms (gently; it springs back)
-      if (!DENSE) return;
-      e.preventDefault();
-      this.view.zt = clamp(this.view.zt * Math.exp(-clamp(e.deltaY, -60, 60) * 0.004), 0.8, 1.3); this.view.zAt = performance.now();
-    }, { passive: false });
+    super.wire();
     // the cells as buttons, for Tab and screen readers (the canvas shows which one has the focus)
     const list = $("#body-cells");
     list.addEventListener("focusin", (e) => { const b = e.target.closest("[data-cell]"); this.focus = b ? b.dataset.cell : null; });
@@ -344,59 +231,12 @@ class Body {
     }, true);
     document.addEventListener("mousedown", (e) => { if (this.menu && !e.target.closest("#body-menu, #body")) this.closeMenu(); });
   }
-  cursor() {
-    const d = this.view.drag, h = d && d.moved ? "grabbing" : this.mouse && this.hit(this.mouse) ? "pointer" : "";
-    if (this.cv.style.cursor !== h) this.cv.style.cursor = h;
+  tap(hit) {
+    if (hit === "core") { this.closeMenu(); cmdOpen(); }
+    else if (hit) { if (this.menu === hit.id) this.closeMenu(); else this.openMenu(hit, false); }
+    else this.closeMenu();
   }
-  // what's under a point: "core", a cell, or null
-  hit(p) {
-    if (!p || this.cx == null) return null;
-    if (Math.hypot(p.x - this.cx, p.y - this.cy) < (this.cr || 20) * (NEW ? 1.2 : 1.1)) return "core";
-    let best = null, bd = 1e9;
-    for (const o of this.o.values()) { const d = Math.hypot(o.x - p.x, o.y - p.y); if (d < Math.max(14, (o.r || 10) * 2.2) && d < bd) { bd = d; best = o; } }
-    return best;
-  }
-  // the cell that's lit: pointed at, focused, or with its menu open
-  hot() {
-    if (this.menu) return this.menu;
-    if (this.focus) return this.focus;
-    const h = CAN_HOVER.matches && !(this.view.drag && this.view.drag.moved) ? this.hit(this.mouse) : null;
-    return h === "core" ? "core" : h ? h.id : null;
-  }
-  springs(now, dt, still) { // the hand's turn and zoom spring back (k 90, damping 13: a small overshoot)
-    const v = this.view;
-    if (!v.drag || !v.drag.moved) {
-      if (still) { v.rot = 0; v.vr = 0; } else { v.vr += (-90 * v.rot - 13 * v.vr) * dt; v.rot += v.vr * dt; }
-    }
-    const zt = now * 1000 - v.zAt < 900 ? v.zt : (v.zt = 1);
-    if (still) { v.zoom = zt; v.vz = 0; } else { v.vz += (-90 * (v.zoom - zt) - 13 * v.vz) * dt; v.zoom += v.vz * dt; }
-  }
-  // ---------------------------------------------------------------------------------------------- data
-  update(m) {
-    this.state = m;
-    const on = m.cells.filter((c) => c.on);
-    const ids = on.map((c) => c.id);
-    for (const id of [...this.o.keys()]) if (!ids.includes(id)) this.o.delete(id);
-    const fx = Object.fromEntries((m.features || []).map((f) => [f.id, f]));
-    on.forEach((c, i) => {
-      let o = this.o.get(c.id);
-      if (!o) {
-        const seed = Math.random() * 10;
-        o = { id: c.id, label: SHORT[c.id] || c.title, color: COLORS[c.id] || "fg", seed, act: 0, flash: 0, hist: [], hv: 0,
-          side: seed % 2 < 1 ? 1 : -1, twig: 0.5 + (seed % 1) * 0.25, // which side its second fibre and twig take
-          dend: [0, 1, 2, 3, 4].map((k) => ({ off: (k - 2) * 1.08 + (Math.random() - 0.5) * 0.4, bend: (Math.random() < 0.5 ? -1 : 1) * (0.25 + Math.random() * 0.35), len: 0.85 + Math.random() * 0.3 })) };
-        this.o.set(c.id, o);
-      }
-      o.i = i; o.target = c.act; o.data = c; o.hist.push(c.act); if (o.hist.length > 60) o.hist.shift();
-      const f = fx[c.id] || {};
-      o.proc = f.proc || null; o.last = f.last; o.next = f.next; o.down = !!f.down; o.idle = !!f.idle; o.often = !!f.intermittent;
-    });
-    let meta = `${on.length} feature${on.length === 1 ? "" : "s"} on`;
-    const down = (m.features || []).filter((f) => f.down).length;
-    if (down) meta += ` · ${down} not running`;
-    if (DENSE && m.core && m.core.mem) meta += ` · kurooto ${(m.core.cpu * 100).toFixed(1)}% · ${bytes(m.core.mem)}`;
-    if (m.link) meta += ` · call line ${m.link.connected ? "linked" : "offline"}`;
-    $("#sys-meta").textContent = meta;
+  updated(on) {
     this.cellList(on);
     if (this.menu && !this.o.has(this.menu)) this.closeMenu();
   }
@@ -417,476 +257,9 @@ class Body {
     }
   }
   event(e) {
+    super.event(e);
     const o = this.o.get(e.cell);
-    const col = o ? PAL[o.color] : PAL.accent;
-    if (o) { (OUTBOUND.test(e.kind) ? this.pulse("core", e.cell, col) : this.pulse(e.cell, "core", col)); o.flash = 1; }
-    else this.ripples.push({ t0: performance.now() / 1000, col });
-    this.extraBeat(1.3, col);
     if (o && this.menu === o.id) this.menuLog();
-  }
-  extraBeat(amp, col) {
-    const now = performance.now() / 1000, last = this.beats[this.beats.length - 1];
-    const t = last && now - last.t < 0.35 ? last.t + 0.35 : now;
-    this.beats.push({ t, amp, col }); this.systoles.push({ t: t + 0.15, amp, col }); this.nextBeat = Math.max(this.nextBeat, t + 0.5);
-  }
-  pulse(from, to, color, dur = 1.3) { const p = { from, to, color, t0: performance.now() / 1000, dur }; this.pulses.push(p); return p; }
-  tickBeats(now, cpu) {
-    const bpm = (this.bpm = clamp(58 + cpu * 140, 55, 130));
-    if (now >= this.nextBeat) {
-      const last = this.beats[this.beats.length - 1];
-      if (!last || now - last.t > 0.3) { this.beats.push({ t: now, amp: 1, col: null }); this.systoles.push({ t: now + 0.15, amp: 1, col: null }); }
-      this.nextBeat = now + (60 / bpm) * (0.94 + Math.random() * 0.12);
-    }
-    if (this.beats.length && now - this.beats[0].t >= 3) this.beats = this.beats.filter((b) => now - b.t < 3);
-    if (this.systoles.length && now - this.systoles[0].t >= 1.2) this.systoles = this.systoles.filter((p) => now - p.t < 1.2);
-  }
-  // the heartbeat's swell at a moment (lag: a rim further out feels it a little later)
-  lub(now, lag = 0) {
-    let v = 0;
-    for (const p of this.systoles) { const d = now - p.t - lag; v += p.amp * (0.12 * Math.exp(-((d - 0.02) ** 2) / 0.0018) + 0.05 * Math.exp(-((d - 0.33) ** 2) / 0.0018)); }
-    return v;
-  }
-  // ---------------------------------------------------------------------------------------------- shapes
-  // a closed, softly deforming outline: a circle whose radius is a sum of slow waves round the rim
-  blob(ctx, x, y, r, t, seed, wob, spin = 0) {
-    const N = LIGHT ? 24 : 48;
-    for (let i = 0; i < N; i++) {
-      const a = (i / N) * TAU, b = a - spin;
-      const k = 1 + wob * (0.5 * Math.sin(2 * b + t * 0.55 + seed) + 0.38 * Math.sin(3 * b - t * 0.9 + seed * 1.7) + 0.22 * Math.sin(5 * b + t * 1.4 + seed * 2.3));
-      BLOB[2 * i] = x + Math.cos(a) * r * k; BLOB[2 * i + 1] = y + Math.sin(a) * r * k;
-    }
-    ctx.beginPath();
-    ctx.moveTo((BLOB[2 * N - 2] + BLOB[0]) / 2, (BLOB[2 * N - 1] + BLOB[1]) / 2);
-    for (let i = 0; i < N; i++) {
-      const j = (i + 1) % N;
-      ctx.quadraticCurveTo(BLOB[2 * i], BLOB[2 * i + 1], (BLOB[2 * i] + BLOB[2 * j]) / 2, (BLOB[2 * i + 1] + BLOB[2 * j + 1]) / 2);
-    }
-    ctx.closePath();
-  }
-  say(ctx, s, x, y, col, align = "left", font = cf(9)) { return say(ctx, s, x, y, col, align, font); }
-  ecg(ctx, w, now, base, amp) {
-    const g = (d, mu, sd) => Math.exp(-((d - mu) ** 2) / (2 * sd * sd));
-    const at = (tt) => { let v = 0.004 * Math.sin(tt * 47), col = null, best = 0;
-      for (const b of this.beats) { const d = tt - b.t; if (d < -0.05 || d > 0.62) continue;
-        const k = b.amp * (0.1 * g(d, 0.05, 0.02) - 0.12 * g(d, 0.125, 0.008) + g(d, 0.15, 0.0085) - 0.32 * g(d, 0.172, 0.009) + 0.27 * g(d, 0.36, 0.05));
-        v += k; if (b.col && Math.abs(k) > best) { best = Math.abs(k); col = b.col; } }
-      return [v, best > 0.08 ? col : null]; };
-    const span = 6, step = 2, cols = Math.max(10, Math.floor(w / step)), c = this.trace || (this.trace = {});
-    const head = Math.floor(((((now % span) + span) % span) / span) * cols);
-    if (!c.v || c.v.length !== cols) { c.v = new Float32Array(cols); c.c = new Array(cols).fill(null);
-      for (let i = 0; i < cols; i++) { const [v, col] = at(now - ((head - i + cols) % cols) * (span / cols)); c.v[i] = v; c.c[i] = col; } c.head = head; }
-    let k = c.head, guard = 0;
-    while (k !== head && guard++ < cols) { k = (k + 1) % cols; const [v, col] = at(now - ((head - k + cols) % cols) * (span / cols)); c.v[k] = v; c.c[k] = col; }
-    c.head = head;
-    ctx.globalCompositeOperation = "lighter";
-    let run = null;
-    const flush = () => { if (run) { ctx.strokeStyle = rgba(run.col, run.a); ctx.lineWidth = 1.1; ctx.stroke(); run = null; } };
-    for (let i = 1; i < cols; i++) {
-      const age = ((head - i + cols) % cols) / cols;
-      if (age > 0.965 || i - 1 === head) { flush(); continue; }
-      const col = c.c[i] || PAL.accent, a = (NEW ? 0.17 : 0.24) * (1 - Math.min(5, Math.floor(age * 6)) / 6.5);
-      if (!run || run.col !== col || run.a !== a) { flush(); run = { col, a }; ctx.beginPath(); ctx.moveTo((i - 1) * step, base - c.v[i - 1] * amp); }
-      ctx.lineTo(i * step, base - c.v[i] * amp);
-    }
-    flush(); ctx.globalCompositeOperation = "source-over";
-  }
-  // dense: the day's hour lines carried out past the clock, the hours on the outer ring, and the cells' orbit
-  grid(ctx, cx, cy, r0, ringR, wide = 1) {
-    ctx.lineWidth = 1;
-    const r1 = ringR * 1.2;
-    for (let k = 0; k < 24; k++) {
-      const a = -Math.PI / 2 + (k / 24) * TAU, c = Math.cos(a), s = Math.sin(a);
-      ctx.strokeStyle = rgba(PAL.fg, NEW ? (k % 6 ? 0.02 : 0.05) : k % 6 ? 0.03 : 0.07);
-      ctx.beginPath(); ctx.moveTo(cx + c * r0, cy + s * r0 * 0.86); ctx.lineTo(cx + c * r1 * wide, cy + s * r1 * 0.86); ctx.stroke();
-      if (k % 3 === 0) {
-        ctx.font = cf(8); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = rgba(PAL.fg, 0.24);
-        ctx.fillText(String(k).padStart(2, "0"), cx + c * (r1 * wide + 9), cy + s * (r1 + 9) * 0.86);
-      }
-    }
-    ctx.strokeStyle = rgba(PAL.fg, 0.06); ctx.setLineDash([2, 4]);
-    ctx.beginPath(); ctx.ellipse(cx, cy, ringR * wide, ringR * 0.86, 0, 0, TAU); ctx.stroke();
-    ctx.setLineDash([]); ctx.strokeStyle = rgba(PAL.fg, 0.05);
-    ctx.beginPath(); ctx.ellipse(cx, cy, r1 * wide, r1 * 0.86, 0, 0, TAU); ctx.stroke();
-  }
-  clock(ctx, cx, cy, r, t) {
-    ctx.strokeStyle = rgba(PAL.line, 0.9); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
-    for (let h = 0; h < 24; h++) { const a = -Math.PI / 2 + (h / 24) * TAU, L = h % 6 === 0 ? 6 : 3;
-      ctx.strokeStyle = rgba(PAL.fg, h % 6 === 0 ? 0.45 : 0.18);
-      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * (r - L), cy + Math.sin(a) * (r - L)); ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); ctx.stroke(); }
-    const angHM = (s) => { const [H, M] = String(s).split(":").map(Number); return -Math.PI / 2 + ((H + (M || 0) / 60) / 24) * TAU; };
-    const ang = (d) => -Math.PI / 2 + ((d.getHours() + d.getMinutes() / 60) / 24) * TAU;
-    const today = (this.state && this.state.today) || {};
-    for (const c of (today.items || []).filter((x) => x.end)) { // classes and calendar events: arcs on the day's ring
-      ctx.strokeStyle = rgba(c.state === "now" ? PAL.accent : c.kind === "event" ? PAL.rose : PAL.lav, c.state === "skipped" ? 0.25 : c.state === "done" ? 0.4 : 0.85);
-      ctx.lineWidth = 4; ctx.setLineDash(c.state === "skipped" ? [2, 3] : []);
-      ctx.beginPath(); ctx.arc(cx, cy, r + 4, angHM(c.at), angHM(c.end)); ctx.stroke();
-    }
-    ctx.setLineDash([]); ctx.lineWidth = 1;
-    for (const j of (today.items || []).filter((x) => !x.end)) { const a = angHM(j.at); ctx.fillStyle = PAL.pink; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r + 4), cy + Math.sin(a) * (r + 4), 2.4, 0, TAU); ctx.fill(); }
-    if (!today.items) for (const j of (this.state && this.state.schedule) || []) {
-      if (j.kind !== "once") continue;
-      const when = new Date(j.when * 1000); if (when - Date.now() > 86400000) continue;
-      const a = ang(when); ctx.fillStyle = PAL.pink; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r + 4), cy + Math.sin(a) * (r + 4), 2.3, 0, TAU); ctx.fill();
-    }
-    const a = ang(new Date());
-    ctx.strokeStyle = rgba(PAL.sand, 0.9); ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * (r - 7), cy + Math.sin(a) * (r - 7)); ctx.lineTo(cx + Math.cos(a) * (r + 8), cy + Math.sin(a) * (r + 8)); ctx.stroke();
-    ctx.lineWidth = 1; ctx.fillStyle = PAL.sand; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r + 4), cy + Math.sin(a) * (r + 4), 2.2 + 0.6 * Math.sin(t * 3), 0, TAU); ctx.fill();
-  }
-  // new design: a faint mesh of specks and fine threads behind everything, drawn once for each size and palette
-  meshLayer(w, h) {
-    const dpr = window.devicePixelRatio || 1, key = `${w}x${h}x${dpr}|${PAL.fg}`;
-    if (this.meshKey === key) return this.meshCv;
-    const c = this.meshCv || (this.meshCv = document.createElement("canvas"));
-    c.width = Math.max(1, Math.round(w * dpr)); c.height = Math.max(1, Math.round(h * dpr));
-    const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    let s = 7; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; // the same mesh every time
-    const n = clamp(Math.round((w * h) / 2400), 40, 420), xs = new Float32Array(n), ys = new Float32Array(n);
-    for (let i = 0; i < n; i++) { xs[i] = rnd() * w; ys[i] = rnd() * h; }
-    g.lineWidth = 0.6; g.strokeStyle = rgba(PAL.fg, 0.05); g.beginPath();
-    for (let i = 0; i < n; i++) { // each speck threads to its two nearest neighbours, if they're close
-      let a = -1, b = -1, da = 1e9, db = 1e9;
-      for (let j = 0; j < n; j++) { if (j === i) continue; const d = (xs[i] - xs[j]) ** 2 + (ys[i] - ys[j]) ** 2;
-        if (d < da) { db = da; b = a; da = d; a = j; } else if (d < db) { db = d; b = j; } }
-      for (const [j, d] of [[a, da], [b, db]]) if (j > i && d < 52 * 52) {
-        const mx = (xs[i] + xs[j]) / 2 + (rnd() - 0.5) * 10, my = (ys[i] + ys[j]) / 2 + (rnd() - 0.5) * 10;
-        g.moveTo(xs[i], ys[i]); g.quadraticCurveTo(mx, my, xs[j], ys[j]); }
-    }
-    g.stroke();
-    for (let i = 0; i < n; i++) { g.fillStyle = rgba(PAL.fg, 0.07 + rnd() * 0.08); g.beginPath(); g.arc(xs[i], ys[i], 0.6 + rnd() * 0.7, 0, TAU); g.fill(); }
-    g.globalCompositeOperation = "destination-in"; // strongest round the ring, gone at the edges where the corners' words are
-    const fade = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.1, w / 2, h / 2, Math.max(w, h) * 0.62);
-    fade.addColorStop(0, "rgba(0,0,0,0.45)"); fade.addColorStop(0.45, "rgba(0,0,0,1)"); fade.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = fade; g.fillRect(0, 0, w, h); g.globalCompositeOperation = "source-over";
-    this.meshKey = key; return c;
-  }
-  // a point on a nerve (s: 0 at the core, 1 at the cell), into P
-  at(o, s, P) { const u = 1 - s; P.x = u * u * this.cx + 2 * u * s * o.q.x + s * s * o.x; P.y = u * u * this.cy + 2 * u * s * o.q.y + s * s * o.y; return P; }
-  // new design: a nerve as a tapered axon, thick at the core and fine at the cell, with a second fibre and a twig
-  axon(ctx, o, t, cr) {
-    const cx = this.cx, cy = this.cy, q = o.q, col = PAL[o.color], hv = o.hv, fill = o.pump || 0;
-    if (o.down) { // not running: a thin dashed line, as in classic
-      ctx.strokeStyle = rgba(PAL.dim, 0.45 + 0.3 * hv); ctx.lineWidth = 1; ctx.setLineDash([3, 6]);
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.quadraticCurveTo(q.x, q.y, o.x, o.y); ctx.stroke(); ctx.setLineDash([]); return;
-    }
-    const N = 16, w0 = Math.min(cr * 0.32, 2.6 + 3 * o.act + 2 * hv + 1.5 * o.flash + 0.8 * fill), w1 = 0.7 + 0.5 * hv;
-    for (let i = 0; i <= N; i++) {
-      const s = i / N, u = 1 - s, x = u * u * cx + 2 * u * s * q.x + s * s * o.x, y = u * u * cy + 2 * u * s * q.y + s * s * o.y;
-      let tx = 2 * u * (q.x - cx) + 2 * s * (o.x - q.x), ty = 2 * u * (q.y - cy) + 2 * s * (o.y - q.y); const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
-      const hill = s > 0.84 ? ((s - 0.84) / 0.16) ** 2 * (o.r || 6) * 0.9 : 0; // it widens into the cell's body
-      const half = (w1 + (w0 - w1) * Math.pow(u, 1.6) + hill) / 2;
-      AX[4 * i] = x - ty * half; AX[4 * i + 1] = y + tx * half; AX[4 * i + 2] = x + ty * half; AX[4 * i + 3] = y - tx * half;
-    }
-    ctx.beginPath(); ctx.moveTo(AX[0], AX[1]);
-    for (let i = 1; i <= N; i++) ctx.lineTo(AX[4 * i], AX[4 * i + 1]);
-    for (let i = N; i >= 0; i--) ctx.lineTo(AX[4 * i + 2], AX[4 * i + 3]);
-    ctx.closePath();
-    const g = ctx.createLinearGradient(cx, cy, o.x, o.y);
-    g.addColorStop(0, rgba(PAL.accent, 0.3 + 0.15 * fill + 0.2 * hv)); g.addColorStop(1, rgba(col, 0.4 + 0.35 * o.act + 0.15 * fill + 0.4 * hv));
-    ctx.fillStyle = g; ctx.fill();
-    // the second fibre leaves a third of the way out and meets the cell from the side
-    const P = this.at(o, 0.32, this.P1 || (this.P1 = {})), dx = o.x - P.x, dy = o.y - P.y, d = Math.hypot(dx, dy) || 1;
-    const k = o.side * d * (0.16 + 0.04 * Math.sin(t * 0.5 + o.seed));
-    ctx.strokeStyle = rgba(col, 0.16 + 0.18 * o.act + 0.3 * hv); ctx.lineWidth = 0.7;
-    ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.quadraticCurveTo((P.x + o.x) / 2 - (dy / d) * k, (P.y + o.y) / 2 + (dx / d) * k, o.x - (dy / d) * o.side * (o.r || 6) * 0.7, o.y + (dx / d) * o.side * (o.r || 6) * 0.7); ctx.stroke();
-    // and a twig on the other side that ends in two tips
-    const T = this.at(o, o.twig, this.P2 || (this.P2 = {})), sw = 0.25 * Math.sin(t * 0.8 + o.seed * 3), L = 7 + 5 * o.act;
-    const na = Math.atan2(o.y - cy, o.x - cx) - o.side * (1.1 + sw), ex = T.x + Math.cos(na) * L, ey = T.y + Math.sin(na) * L;
-    ctx.strokeStyle = rgba(col, 0.22 + 0.2 * hv); ctx.beginPath(); ctx.moveTo(T.x, T.y); ctx.lineTo(ex, ey);
-    for (const f of [-0.5, 0.5]) { ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(na + f) * L * 0.45, ey + Math.sin(na + f) * L * 0.45); }
-    ctx.stroke();
-  }
-  // new design: a feature as a small neuron. Five branches reach out round it (not on its nerve's side); each one's
-  // length is how busy the feature was in a fifth of the last two minutes (oldest first, clockwise), so a busy
-  // feature grows them out and a quiet one keeps them short
-  neuron(ctx, o, t, ringR) {
-    const base = ringR * 0.066, col = o.down ? PAL.dim : PAL[o.color], breath = 0.5 + 0.5 * Math.sin((TAU * t) / (5.5 - 4.2 * o.act) + o.seed);
-    const r = base * (1 + (0.05 + 0.1 * o.act) * breath + 0.2 * o.flash + 0.08 * (o.pump || 0)) * (1 + 0.14 * o.hv); o.r = r;
-    const out = Math.atan2(o.y - this.cy, o.x - this.cx), H = o.hist, n = H.length;
-    let far = r;
-    ctx.lineCap = "round";
-    for (let k = 0; k < 5; k++) {
-      const D = o.dend[k]; let sum = 0, cnt = 0;
-      for (let j = n - 60 + k * 12; j < n - 60 + (k + 1) * 12; j++) if (j >= 0) { sum += H[j]; cnt++; }
-      const busy = cnt ? clamp(sum / cnt, 0, 1) : 0, L = base * D.len * (0.95 + 1.25 * busy);
-      const a = out + D.off + 0.1 * Math.sin(t * 0.6 + o.seed + k * 1.7), cs = Math.cos(a), sn = Math.sin(a);
-      const bx = o.x + cs * r * 0.85, by = o.y + sn * r * 0.85, ex = bx + cs * L, ey = by + sn * L;
-      const bend = D.bend * L * (0.5 + 0.12 * Math.sin(t * 0.9 + k)), mx = (bx + ex) / 2 - sn * bend, my = (by + ey) / 2 + cs * bend;
-      const alpha = (o.down ? 0.28 : 0.3 + 0.32 * (k / 4)) + 0.25 * o.hv;
-      ctx.strokeStyle = rgba(col, alpha); ctx.lineWidth = 1.15;
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(mx, my, ex, ey); ctx.stroke();
-      // it forks: a twig from two thirds of the way out, and two short tips at its end
-      const fx = 0.11 * bx + 0.44 * mx + 0.44 * ex, fy = 0.11 * by + 0.44 * my + 0.44 * ey, ta = a + D.bend * 1.6, tl = L * 0.38;
-      ctx.lineWidth = 0.75; ctx.strokeStyle = rgba(col, alpha * 0.8); ctx.beginPath();
-      ctx.moveTo(fx, fy); ctx.lineTo(fx + Math.cos(ta) * tl, fy + Math.sin(ta) * tl);
-      const ea = Math.atan2(ey - my, ex - mx);
-      for (const f of [-0.42, 0.42]) { ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(ea + f) * L * 0.22, ey + Math.sin(ea + f) * L * 0.22); }
-      ctx.stroke();
-      far = Math.max(far, r * 0.85 + L * 1.1);
-    }
-    ctx.lineCap = "butt";
-    if (o.act > 0.05 || o.flash > 0.05) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.1 + 0.2 * breath * o.act + 0.45 * o.flash;
-      const gs = r * (3.5 + 2 * o.act); ctx.drawImage(glow(col), o.x - gs / 2, o.y - gs / 2, gs, gs); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
-    const spin = (o.i % 2 ? -1 : 1) * t * (0.2 + o.act) + o.seed;
-    this.blob(ctx, o.x, o.y, r, t * (0.7 + o.act), o.seed, 0.11 + 0.06 * o.act + 0.06 * o.flash, spin);
-    ctx.fillStyle = PAL.bg; ctx.fill(); ctx.fillStyle = rgba(col, 0.26 + 0.3 * o.act + 0.3 * o.flash + 0.16 * o.hv); ctx.fill();
-    ctx.strokeStyle = rgba(col, o.down ? 0.5 : 0.9); ctx.lineWidth = 1.2; ctx.setLineDash(o.down ? [2, 3] : []); ctx.stroke(); ctx.setLineDash([]);
-    o.reach = Math.max(r + 2, far * 0.8); // the cell with its branches: what words mustn't cover
-  }
-  // new design: the core as a membrane: a translucent body with a bright rim (the nerves show through it), two looser
-  // rims outside it, each a little later than the one inside, so a heartbeat travels outwards; and in the middle a
-  // denser centre that carries the name and swells with each beat
-  membrane(ctx, cx, cy, cr, t, now, breath) {
-    const A = PAL.accent, l0 = this.lub(now), l1 = this.lub(now, 0.07), l2 = this.lub(now, 0.14);
-    ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.16 + 0.08 * breath + 0.2 * this.beat + l0;
-    ctx.drawImage(glow(A), cx - cr * 2.8, cy - cr * 2.8, cr * 5.6, cr * 5.6);
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-    this.blob(ctx, cx, cy, cr * (1.52 + 0.03 * breath + 0.9 * l2), t * 0.3, 4.1, 0.13, t * 0.021);
-    ctx.fillStyle = rgba(A, 0.035); ctx.fill(); ctx.strokeStyle = rgba(A, 0.12); ctx.lineWidth = 1; ctx.stroke();
-    this.blob(ctx, cx, cy, cr * (1.24 + 0.025 * breath + 0.8 * l1), t * 0.4, 2.9, 0.1, -t * 0.03);
-    ctx.fillStyle = rgba(A, 0.055); ctx.fill(); ctx.strokeStyle = rgba(A, 0.2); ctx.stroke();
-    this.blob(ctx, cx, cy, cr * (1 + 0.04 * breath + 0.08 * this.beat + l0), t * 0.5, 1.7, 0.085, t * 0.04);
-    const g = ctx.createRadialGradient(cx, cy, cr * 0.2, cx, cy, cr * 1.1);
-    g.addColorStop(0, rgba(A, 0.34)); g.addColorStop(0.7, rgba(A, 0.2)); g.addColorStop(1, rgba(A, 0.42));
-    ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = rgba(mix(A, PAL.fg, 0.3), 0.9); ctx.lineWidth = 2; ctx.stroke();
-    ctx.strokeStyle = rgba(A, 0.3); ctx.lineWidth = 1; ctx.save(); ctx.translate(cx, cy); ctx.scale(0.92, 0.92); ctx.translate(-cx, -cy); ctx.stroke(); ctx.restore();
-    const nx = cx + cr * 0.06 * Math.sin(t * 0.3), ny = cy + cr * 0.05 * Math.cos(t * 0.23), nr = cr * (0.6 + 0.5 * l0 + 0.03 * breath);
-    this.blob(ctx, nx, ny, nr, t * 0.7, 6.2, 0.07, -t * 0.05);
-    const ng = ctx.createRadialGradient(nx - nr * 0.2, ny - nr * 0.25, nr * 0.1, nx, ny, nr);
-    ng.addColorStop(0, mix(A, PAL.fg, 0.22)); ng.addColorStop(1, A);
-    ctx.fillStyle = ng; ctx.fill(); ctx.strokeStyle = rgba(mix(A, PAL.fg, 0.4), 0.7); ctx.lineWidth = 1; ctx.stroke();
-    return nr;
-  }
-  // where a pulse arrives: a flash at the touching point, an arc on the rim and three sparks
-  synapses(ctx, now, cr) {
-    if (!this.syn.length) return;
-    if (now - this.syn[0].t0 >= 0.6) this.syn = this.syn.filter((s) => now - s.t0 < 0.6);
-    ctx.lineCap = "round";
-    for (const s of this.syn) {
-      const o = s.o, k = (now - s.t0) / 0.6, e = 1 - (1 - k) ** 3, a = Math.atan2(o.y - this.cy, o.x - this.cx);
-      const ox = s.core ? this.cx : o.x, oy = s.core ? this.cy : o.y, R = s.core ? cr : o.r || 8, ang = s.core ? a : a + Math.PI;
-      const px = ox + Math.cos(ang) * R, py = oy + Math.sin(ang) * R, sz = (s.core ? 30 : 20) * (0.6 + 0.6 * e);
-      ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.9 * (1 - k);
-      ctx.drawImage(glow(s.col), px - sz / 2, py - sz / 2, sz, sz);
-      ctx.globalAlpha = 1; ctx.strokeStyle = rgba(s.col, 0.75 * (1 - k)); ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.arc(ox, oy, R * (1.06 + 0.22 * e), ang - 0.55, ang + 0.55); ctx.stroke();
-      ctx.lineWidth = 1; ctx.beginPath();
-      for (let j = -1; j <= 1; j++) { const b = ang + j * 0.5, r0 = R * 1.1 + 2 + e * 4, r1 = r0 + 3 + 8 * e;
-        ctx.moveTo(ox + Math.cos(b) * r0, oy + Math.sin(b) * r0); ctx.lineTo(ox + Math.cos(b) * r1, oy + Math.sin(b) * r1); }
-      ctx.stroke(); ctx.globalCompositeOperation = "source-over";
-    }
-    ctx.lineCap = "butt";
-  }
-  // ---------------------------------------------------------------------------------------------- a frame
-  draw(t) {
-    const { ctx, w, h } = fitCanvas(this.cv);
-    ctx.clearRect(0, 0, w, h);
-    if (!this.state) return;
-    const now = performance.now() / 1000, cpu = this.state.sys.cpu || 0, still = STILL.matches, tm = still ? 0 : t;
-    const dt = clamp(now - (this.lastNow || now), 0, 0.05); this.lastNow = now;
-    this.springs(now, dt, still);
-    let ringR, cx = w / 2, cy = h / 2 + 4;
-    if (DENSE) { // room for the four corners: events, the AI, today, what's due (new design: folded to a line or two)
-      const lh = Math.round(12 * FSC), rows = NEW && !LEGENDS ? 2 : 6, top = 24 + rows * lh, bottom = h - 18 - rows * lh;
-      ringR = clamp(Math.min(w * 0.35, (bottom - top - 88) / 1.72), 56, 420);
-      cy = top + 0.86 * ringR + 28 + Math.max(0, (bottom - top - 88 - 1.72 * ringR) / 2);
-    } else ringR = clamp(Math.min(w * 0.36, (h - 70) / 1.9), 60, 420);
-    const L = this.lay; // the size eases to a new one (L for the legends, a pane resized) instead of jumping
-    if (!L || Math.abs(L.r - ringR) > 120 || still) this.lay = { r: ringR, cy };
-    else { L.r += (ringR - L.r) * 0.18; L.cy += (cy - L.cy) * 0.18; ringR = L.r; cy = L.cy; }
-    ringR *= this.view.zoom;
-    const coreR = ringR * (NEW ? 0.29 : 0.18), rc = NEW ? coreR * 1.72 : coreR * 2.2;
-    this.cx = cx; this.cy = cy;
-    this.tickBeats(now, cpu);
-    if (NEW) ctx.drawImage(this.meshLayer(w, h), 0, 0, w, h);
-    if (!LIGHT) this.ecg(ctx, w, now, cy, ringR * 0.55);
-    const cells = [...this.o.values()], n = Math.max(1, cells.length), orbit = LIGHT ? 0 : (t * TAU) / 180;
-    // dense, with many features: the orbit widens sideways, where the pane has room
-    const wide = DENSE ? Math.min(w * 0.42 / ringR, clamp(1 + (n - 10) * 0.035, 1, 1.3)) : 1;
-    // a crowded ring becomes two: every other cell rides a little closer in, so neighbours and their words have room
-    const twoRings = n >= 12 && (TAU * ringR * (1 + wide) / 2) / n < 80;
-    const hot = this.hot(), core = { x: cx, y: cy };
-    const ctrl = (a, b, seed) => { const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, k = 0.12 * d * Math.sin(tm * 0.37 + seed); return { x: mx - (dy / d) * k, y: my + (dx / d) * k }; };
-    for (const o of cells) {
-      const a = -Math.PI / 2 + (o.i / n) * TAU + orbit + this.view.rot + 0.05 * Math.sin(tm * 0.13 + o.seed);
-      const rr = ringR * (1 + 0.04 * Math.sin(tm * 0.21 + o.seed * 2)) * (twoRings && o.i % 2 ? 0.86 : 1);
-      o.x = cx + Math.cos(a) * rr * wide; o.y = cy + Math.sin(a) * rr * 0.86; o.q = ctrl(core, o, o.seed);
-      o.act += ((o.target || 0) - o.act) * 0.05; o.flash *= 0.94; o.pump = (o.pump || 0) * 0.88;
-      o.hv += ((hot === o.id ? 1 : 0) - o.hv) * (still ? 1 : 0.22);
-    }
-    if (DENSE) this.grid(ctx, cx, cy, rc + 14, ringR, wide);
-    if (NEW) for (const o of cells) this.axon(ctx, o, tm, coreR);
-    else {
-      for (const o of cells) {
-        const c = o.q, fill = o.pump || 0, g = ctx.createLinearGradient(cx, cy, o.x, o.y);
-        g.addColorStop(0, rgba(PAL.accent, 0.18 + 0.12 * fill + 0.15 * o.hv)); g.addColorStop(1, rgba(PAL[o.color], 0.28 + 0.4 * o.act + 0.12 * fill + 0.4 * o.hv));
-        ctx.strokeStyle = g; ctx.lineWidth = 0.8 + 2 * o.act + o.flash * 1.5 + 0.5 * fill + 1.2 * o.hv;
-        ctx.setLineDash(o.down ? [3, 6] : []);
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.quadraticCurveTo(c.x, c.y, o.x, o.y); ctx.stroke();
-      }
-      ctx.setLineDash([]);
-    }
-    ctx.globalCompositeOperation = "lighter";
-    const P = this.P0 || (this.P0 = {});
-    for (const p of this.systoles) {
-      const d = now - p.t; if (d < 0 || d > 1.0) continue;
-      const k = clamp(d / 0.7, 0, 1), ease = 1 - (1 - k) ** 3;
-      ctx.strokeStyle = rgba(p.col || PAL.accent, 0.12 * (1 - d) * p.amp); ctx.lineWidth = 1.2 * (1 - d);
-      ctx.beginPath(); ctx.arc(cx, cy, coreR * ((NEW ? 1.5 : 1.1) + 4 * ease), 0, TAU); ctx.stroke();
-      if (k >= 1 || LIGHT) continue;
-      for (const o of cells) {
-        this.at(o, ease, P);
-        const sz = 10 * p.amp; ctx.globalAlpha = 0.55 * (1 - k * 0.5); ctx.drawImage(glow(p.col || PAL[o.color]), P.x - sz / 2, P.y - sz / 2, sz, sz);
-        if (k > 0.86) o.pump = Math.max(o.pump || 0, p.amp);
-      }
-    }
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-    this.clock(ctx, cx, cy, rc, t);
-    ctx.globalCompositeOperation = "lighter";
-    if (this.pulses.length && now - this.pulses[0].t0 >= this.pulses[0].dur + 0.4) this.pulses = this.pulses.filter((p) => now - p.t0 < p.dur + 0.4);
-    for (const p of this.pulses) {
-      const o = this.o.get(p.from === "core" ? p.to : p.from); if (!o) continue;
-      const sp = clamp((now - p.t0) / p.dur, 0, 1), ease = sp < 0.5 ? 2 * sp * sp : 1 - Math.pow(-2 * sp + 2, 2) / 2;
-      for (let k = 0; k < 10; k++) {
-        let s = ease - k * 0.025; if (s < 0) break; if (p.to === "core") s = 1 - s;
-        this.at(o, s, P);
-        const sz = k === 0 ? 22 : 15 - k; ctx.globalAlpha = (1 - k / 10) * (1 - Math.max(0, (now - p.t0 - p.dur) / 0.4));
-        ctx.drawImage(glow(p.color), P.x - sz / 2, P.y - sz / 2, sz, sz);
-      }
-      if (sp >= 1 && !p.done) {
-        p.done = true;
-        if (p.to === "core") { this.ripples.push({ t0: now, col: p.color }); this.beat = Math.max(this.beat, 0.6); } else o.flash = 1;
-        if (NEW) this.syn.push({ t0: now, col: p.color, o, core: p.to === "core" });
-        if (p.back) this.pulse(p.to === "core" ? "core" : p.to, p.to === "core" ? p.from : "core", p.color); // a ping comes back
-      }
-    }
-    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-    for (const o of cells) if (NEW) this.neuron(ctx, o, tm, ringR); else this.cell(ctx, o, tm, ringR);
-    for (const o of cells) if (o.hv > 0.02 && (this.focus === o.id || this.menu === o.id)) { // the keyboard's focus, the open menu's cell
-      ctx.strokeStyle = rgba(PAL.fg, 0.85 * o.hv); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(o.x, o.y, Math.max(o.r * 1.9, o.r + 8), 0, TAU); ctx.stroke();
-    }
-    this.labels(ctx, cells, cx, cy, NEW ? coreR * 1.3 : coreR, w, h);
-    this.beat *= 0.9;
-    const breath = still ? 0.5 : 0.5 + 0.5 * Math.sin((TAU * t) / (6.5 - 3.5 * clamp(cpu * 2.5, 0, 1)));
-    let cr, nucleus = 0;
-    if (NEW) {
-      cr = coreR * (1 + (hot === "core" ? 0.05 : 0));
-      nucleus = this.membrane(ctx, cx, cy, cr, tm, now, breath);
-    } else {
-      const lubdub = this.lub(now);
-      cr = coreR * (1 + 0.04 * breath + 0.08 * this.beat + lubdub);
-      ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.22 + 0.12 * breath + 0.25 * this.beat + lubdub;
-      ctx.drawImage(glow(PAL.accent), cx - cr * 2.6, cy - cr * 2.6, cr * 5.2, cr * 5.2);
-      ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
-      this.blob(ctx, cx, cy, cr, tm * 0.7, 1.7, 0.05, tm * 0.04);
-      const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr); cg.addColorStop(0, mix(PAL.accent, PAL.pink, 0.35)); cg.addColorStop(1, PAL.accent);
-      ctx.fillStyle = cg; ctx.fill();
-    }
-    this.cr = cr;
-    const fs = NEW ? nucleus * 0.46 : cr * 0.32;
-    ctx.fillStyle = PAL.bg; ctx.font = `700 ${Math.max(9, fs)}px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const nm = this.state.name || "Kurooto", word = (NEW ? nm : nm.toUpperCase()).slice(0, 10);
-    if (NEW) { const fit = (nucleus * 1.76) / Math.max(1, ctx.measureText(word).width); if (fit < 1) ctx.font = `700 ${Math.max(7, fs * fit)}px ${FONT}`; }
-    ctx.fillText(word, cx, cy);
-    if (this.ripples.length && now - this.ripples[0].t0 >= 1.8) this.ripples = this.ripples.filter((r) => now - r.t0 < 1.8);
-    for (const r of this.ripples) { const k = (now - r.t0) / 1.8; ctx.strokeStyle = rgba(r.col, 0.45 * (1 - k)); ctx.lineWidth = 1.5 * (1 - k); ctx.beginPath(); ctx.arc(cx, cy, coreR * ((NEW ? 1.5 : 1.1) + k * 3.2), 0, TAU); ctx.stroke(); }
-    if (NEW) this.synapses(ctx, now, cr);
-    if (DENSE) this.panels(ctx, w, h, Math.round(12 * FSC));
-    if (!cells.length) this.say(ctx, `No features on yet: turn some on in ${DENSE ? "features (Alt+F)" : "the Features tab below"}.`, cx, h - 16 - (DENSE ? 84 : 0), PAL.dim, "center", cf(11));
-    this.hoverCard(hot);
-  }
-  cell(ctx, o, t, ringR) {
-    const base = ringR * 0.075, col = o.down ? PAL.dim : PAL[o.color], breath = 0.5 + 0.5 * Math.sin((TAU * t) / (5.5 - 4.2 * o.act) + o.seed);
-    const r = base * (1 + (0.05 + 0.1 * o.act) * breath + 0.2 * o.flash + 0.08 * (o.pump || 0)) * (1 + 0.12 * o.hv); o.r = r;
-    const hr = base * 1.32; ctx.lineWidth = 1;
-    o.hist.forEach((v, k) => { const a = -Math.PI / 2 + (k / 60) * TAU, L = 1.2 + base * 0.55 * v;
-      ctx.strokeStyle = rgba(col, 0.18 + 0.5 * (k / Math.max(1, o.hist.length - 1)));
-      ctx.beginPath(); ctx.moveTo(o.x + Math.cos(a) * hr, o.y + Math.sin(a) * hr); ctx.lineTo(o.x + Math.cos(a) * (hr + L), o.y + Math.sin(a) * (hr + L)); ctx.stroke(); });
-    const spin = (o.i % 2 ? -1 : 1) * t * (0.2 + o.act) + o.seed;
-    if (o.act > 0.05 || o.flash > 0.05) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.1 + 0.2 * breath * o.act + 0.45 * o.flash;
-      const gs = r * (3.5 + 2 * o.act); ctx.drawImage(glow(col), o.x - gs / 2, o.y - gs / 2, gs, gs); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
-    this.blob(ctx, o.x, o.y, r, t * (0.6 + o.act), o.seed, 0.05 + 0.05 * o.act + 0.05 * o.flash, spin);
-    ctx.fillStyle = PAL.bg; ctx.fill(); ctx.fillStyle = rgba(col, 0.2 + 0.35 * o.act + 0.3 * o.flash + 0.15 * o.hv); ctx.fill();
-    ctx.strokeStyle = rgba(col, o.down ? 0.5 : 0.85); ctx.lineWidth = 1.1; ctx.setLineDash(o.down ? [2, 3] : []); ctx.stroke(); ctx.setLineDash([]);
-    o.reach = hr + base * 0.55 + 1; // the cell with its halo: what words mustn't cover
-  }
-  // Each cell's words sit outside it, along the line from the core (never on its own nerve). A label that would touch
-  // another cell, another label, the core or a corner panel tries a little further out, then turned a little either
-  // way, then with fewer words (no detail, then the name alone, then a shortened name). A label that had to give way
-  // needs a few pixels to spare before it grows back, so the words don't flicker as the cells orbit.
-  labels(ctx, cells, cx, cy, coreR, w, h) {
-    const LH = Math.round(11 * FSC), placed = [], panels = DENSE ? this.panelRects || [] : [];
-    const width = (text, font) => { const k = font + "|" + text; let v = this.widths.get(k);
-      if (v === undefined) { ctx.font = font; v = ctx.measureText(text).width; if (this.widths.size > 4000) this.widths.clear(); this.widths.set(k, v); } return v; };
-    // how badly a box would cover what's there: 0 when it fits (pad: the room it must leave)
-    const cost = (b, o, pad) => {
-      let c = Math.max(0, 2 - b.x0) + Math.max(0, 2 - b.y0) + Math.max(0, b.x1 - w + 2) + Math.max(0, b.y1 - h + 2);
-      const into = (x, y, r) => Math.max(0, r - Math.hypot(clamp(x, b.x0 - pad, b.x1 + pad) - x, clamp(y, b.y0 - pad, b.y1 + pad) - y));
-      c += into(cx, cy, coreR * 1.25) * 4;
-      for (const q of cells) c += into(q.x, q.y, q === o ? q.reach - 1 : q.reach) * 3;
-      for (const r of [...placed, ...panels]) {
-        const ox = Math.min(b.x1 + pad, r.x1) - Math.max(b.x0 - pad, r.x0), oy = Math.min(b.y1 + pad, r.y1) - Math.max(b.y0 - pad, r.y0);
-        if (ox > 0 && oy > 0) c += Math.sqrt(ox * oy) * 2;
-      }
-      return c;
-    };
-    const order = [...cells].sort((a, b) => (b.data.events || 0) - (a.data.events || 0) || (b.proc ? 1 : 0) - (a.proc ? 1 : 0) || a.i - b.i);
-    for (const o of order) {
-      const col = o.down ? PAL.dim : PAL[o.color], vital = this.vital(o), more = DENSE ? this.detail(o) : "";
-      const name = [o.label, cf(10, 600), rgba(o.down ? PAL.dim : PAL.fg, 0.95)];
-      const full = [name, [vital, cf(9), o.down ? rgba(PAL.bad, 0.85) : rgba(col, 0.85)], ...(more ? [[more, cf(8), rgba(PAL.fg, 0.42)]] : [])];
-      const short = o.label.length > 8 ? [[o.label.slice(0, 7) + "…", name[1], name[2]]] : [name];
-      const variants = [full, full.slice(0, 2), [name], short].filter((v, i, all) => i === 0 || v.length < all[i - 1].length || v[0][0] !== all[i - 1][0][0]);
-      const dx = o.x - cx, dy = o.y - cy, d = Math.hypot(dx, dy) || 1, a0 = Math.atan2(dy / d, dx / d);
-      // close to the cell first (straight out, then turned a little), trading words for closeness before distance;
-      // when nothing fits, a small short name; when even that won't, no words at all (hovering still shows the card)
-      const near = [[0, 0], [0.35, 0], [-0.35, 0]], mid = [[0, 1], [0.35, 1], [-0.35, 1], [0.7, 0], [-0.7, 0]];
-      const far = [[0, 2], [0.7, 1], [-0.7, 1], [1.15, 0], [-1.15, 0], [1.15, 1], [-1.15, 1], [0, 3], [0.35, 3], [-0.35, 3], [1.15, 2], [-1.15, 2]];
-      const tries = [];
-      for (const spots of [near, mid]) for (const lines of variants.slice(0, 3)) for (const sp of spots) tries.push([lines, sp]);
-      for (const lines of variants.slice(2)) for (const sp of [...near, ...mid, ...far]) tries.push([lines, sp]);
-      const tiny = [[o.label.length > 8 ? o.label.slice(0, 7) + "…" : o.label, cf(8, 600), name[2]]];
-      for (const sp of [...near, ...mid, ...far]) tries.push([tiny, sp]);
-      let best = null, rank = 0;
-      for (const [lines, [turn, step]] of tries) {
-        const bw = Math.max(...lines.map(([s, f]) => width(s, f))) + 4, bh = lines.length * LH;
-        const ux = Math.cos(a0 + turn), uy = Math.sin(a0 + turn), dist = o.reach + 3 + step * 10, ax = o.x + ux * dist, ay = o.y + uy * dist;
-        const x0 = ax - bw / 2 + (bw / 2) * clamp(ux / 0.55, -1, 1), y0 = ay - bh / 2 + (bh / 2) * clamp(uy / 0.55, -1, 1);
-        const b = { x0, y0, x1: x0 + bw, y1: y0 + bh, ux }, moved = turn !== 0 || step > 0;
-        if (cost(b, o, rank < (o.labRank ?? 1e9) ? 5 : 1) === 0) { best = { b, lines, rank, moved }; break; }
-        rank++;
-      }
-      o.labRank = best ? best.rank : 1e6;
-      if (!best) continue;
-      placed.push(best.b);
-      if (best.moved) { // a hairline from the cell to words that had to move, so it's clear whose they are
-        const bx = clamp(o.x, best.b.x0, best.b.x1), by = clamp(o.y, best.b.y0, best.b.y1), dd = Math.hypot(bx - o.x, by - o.y) || 1;
-        ctx.strokeStyle = rgba(o.down ? PAL.dim : PAL[o.color], 0.35); ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.moveTo(o.x + ((bx - o.x) / dd) * o.reach, o.y + ((by - o.y) / dd) * o.reach); ctx.lineTo(bx, by); ctx.stroke();
-      }
-      const { b, lines } = best, align = b.ux > 0.5 ? "left" : b.ux < -0.5 ? "right" : "center";
-      const x = align === "left" ? b.x0 + 2 : align === "right" ? b.x1 - 2 : (b.x0 + b.x1) / 2;
-      lines.forEach(([s, f, c], k) => this.say(ctx, s, x, b.y0 + (k + 1) * LH - 2, c, align, f));
-      b.id = o.id;
-    }
-    this.placed = placed; // (what a check of the layout reads)
-  }
-  // a cell's figures: a feature with its own processes shows their cpu and memory, the others what they did
-  vital(o) {
-    const ev = o.data.events;
-    if (o.down) return "not running";
-    if (o.idle) return "idle"; // its programs run now and then (Module.processes_intermittent)
-    if (!DENSE) return o.often && o.proc ? "running" : ev ? `${ev} in 2 min` : "quiet";
-    if (o.proc) return `${o.often ? "running · " : ""}${(o.proc.cpu * 100).toFixed(1)}% · ${bytes(o.proc.mem)}`;
-    if (ev) return `${ev} in 2 min`;
-    return o.last != null ? `last ${ago(o.last)} ago` : "quiet";
-  }
-  detail(o) {
-    if (o.proc) return [`up ${ago(o.proc.up)}`, o.proc.threads ? `${o.proc.threads} threads` : ""].filter(Boolean).join(" · ");
-    if (o.next) { const d = o.next - Date.now() / 1000; return d < 86400 ? `next ${d < 3600 ? "in " + ago(d) : hm(o.next)}` : ""; }
-    return "";
   }
   // the four corners: recent events, the AI's corner, today, what's due
   panels(ctx, w, h, lh) {
@@ -947,55 +320,6 @@ class Body {
     for (const d of dl.slice(0, 5)) due.push([[d.title, `  ${when(d.hours)}`], d.hours < 0 ? PAL.bad : d.hours < 24 ? PAL.peach : mid]);
     if (!dl.length) due.push([this.o.has("deadlines") ? "nothing due" : "deadlines are off", mid]);
     block(due, w - 12, "right", false);
-  }
-  // ---------------------------------------------------------------------------------------------- the cards
-  // where a card goes: beside its cell, on the side away from the core (or beside the core), inside the pane
-  place(el, o, cw, ch) {
-    const w = this.w || 0, h = this.h || 0, off = this.off || { x: 0, y: 0 };
-    let x, y;
-    if (o) { // beside it on the side away from the core, else above or below it, else the other side: what fits best
-      const right = o.x >= this.cx, below = o.y >= this.cy, gap = Math.max(o.reach || 0, (o.r || 8) * 1.9) + 10, R = (this.cr || 20) * 1.6;
-      // (a big card in a small pane: the pane's corner nearest the cell, over the folded corner panels)
-      const spots = [[right ? o.x + gap : o.x - gap - cw, o.y - ch / 2, 0], [o.x - cw / 2, below ? o.y + gap : o.y - gap - ch, 0],
-        [o.x - cw / 2, below ? o.y - gap - ch : o.y + gap, 10], [right ? o.x - gap - cw : o.x + gap, o.y - ch / 2, 10],
-        ...[[6, 6], [w - cw - 6, 6], [6, h - ch - 6], [w - cw - 6, h - ch - 6]].map(([a, b]) => [a, b, 20 + Math.hypot(a + cw / 2 - o.x, b + ch / 2 - o.y) / 20])];
-      let best = 1e9;
-      for (const [sx, sy, cost] of spots) {
-        const fx = clamp(sx, 6, Math.max(6, w - cw - 6)), fy = clamp(sy, 6, Math.max(6, h - ch - 6)), m = (o.r || 8) + 4;
-        const core = Math.max(0, R - Math.hypot(clamp(this.cx, fx, fx + cw) - this.cx, clamp(this.cy, fy, fy + ch) - this.cy));
-        const bad = cost + Math.abs(fx - sx) + Math.abs(fy - sy) + core * 3 + (fx < o.x + m && fx + cw > o.x - m && fy < o.y + m && fy + ch > o.y - m ? 400 : 0);
-        if (bad < best - 0.5) { best = bad; x = fx; y = fy; }
-      }
-    } else { x = this.cx - cw / 2; y = this.cy + (this.cr || 20) * (NEW ? 1.6 : 1.3); } // the core's card: below it
-    x = clamp(x, 6, Math.max(6, w - cw - 6)); y = clamp(y, 6, Math.max(6, h - ch - 6));
-    const L = `${Math.round(x + off.x)}px`, T = `${Math.round(y + off.y)}px`;
-    if (el.style.left !== L) el.style.left = L;
-    if (el.style.top !== T) el.style.top = T;
-    if (el.style.right !== "auto") { el.style.right = "auto"; el.style.bottom = "auto"; }
-  }
-  // the card for the cell pointed at or focused (or the core): what it is and how it's doing
-  hoverCard(hot) {
-    const card = $("#body-card"), o = hot && hot !== "core" ? this.o.get(hot) : null;
-    if (this.w !== this.cv.clientWidth || this.h !== this.cv.clientHeight) { this.w = this.cv.clientWidth; this.h = this.cv.clientHeight; this.off = { x: this.cv.offsetLeft, y: this.cv.offsetTop }; }
-    if (this.menu) { const m = this.o.get(this.menu); if (m) this.place($("#body-menu"), m, this.menuW, this.menuH); }
-    if (this.menu || !(o || (hot === "core" && this.mouse))) { if (!card.classList.contains("hidden")) card.classList.add("hidden"); this.cardHtml = ""; return; }
-    let html;
-    if (o) {
-      const p = o.proc;
-      html = `<div class="h">${esc(o.data.title)}</div><div>${o.data.events} event${o.data.events === 1 ? "" : "s"} in the last 2 minutes</div>` +
-        (o.down ? '<div class="bad2">its program isn\'t running</div>' : "") +
-        (o.idle ? '<div class="d">idle: its program runs now and then</div>' : "") +
-        (p ? `<div class="d">${p.n > 1 ? `its ${p.n} processes` : "its process"}: cpu ${(p.cpu * 100).toFixed(1)}% · ${bytes(p.mem)} · ${p.threads} threads · up ${ago(p.up)}</div>` : "") +
-        (o.last != null ? `<div class="d">last event ${ago(o.last)} ago</div>` : "") +
-        (o.next ? `<div class="d">next scheduled ${hm(o.next)}</div>` : "") +
-        `<div class="d k">${this.focus === o.id ? "Enter" : "click"} for its actions</div>`;
-    } else {
-      const c = this.state.core || {};
-      html = `<div class="h">${esc(this.state.name || "Kurooto")}</div><div>beating ${Math.round(this.bpm)} a minute${c.mem ? ` · cpu ${(c.cpu * 100).toFixed(1)}% · ${bytes(c.mem)}` : ""}</div>` +
-        '<div class="d k">click: do something (Ctrl+K)</div>';
-    }
-    if (html !== this.cardHtml) { card.innerHTML = html; card.classList.remove("hidden"); this.cardHtml = html; this.cardW = card.offsetWidth; this.cardH = card.offsetHeight; }
-    this.place(card, o, this.cardW, this.cardH);
   }
   // a cell's menu: ping (a pulse there and back), sync now and quiet where the feature has them, its settings, its
   // activity. Opened from the keyboard it shows at once with the focus on its first action; from a click it fades in.
@@ -1060,402 +384,14 @@ class Body {
 const detailOf = (e) => Object.entries(e).filter(([k]) => !["ts", "kind", "t", "cell"].includes(k))
   .map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`).join(" ").slice(0, 60);
 
-// -------------------------------------------------------------------------------------------------- NOTES
-// Neighborhoods come from your own notes: each course or subject folder (sources/<name>/, or <name>/ beside its
-// course.md) is one, each research project (projects/<name>/ or research/<name>/) is one, the other maps and hubs are
-// the hub, and any other note joins the neighborhood most of its links go to.
-// Names on the map (0.5.19): at the usual zoom the map names its regions, like a map names places: each
-// neighbourhood's name (its course page's title, or its project's) at the middle of its notes. A note's own name shows
-// when you point at it, find it, light the recent ones (R) or zoom in; zoomed in, course pages, hubs and projects come
-// first, then notes that link across neighbourhoods. A book's index note comes last and is drawn small: its hundreds
-// of links come from reading the book ("Seen in" lines), not from how your notes connect.
-// -- the pure part (no page, no canvas): tests/unit/test_notes_labels.py runs it in node
-const HOOD_COLORS = ["peach", "lav", "rose", "pink", "sand"], MAX_HOODS = 8; // research projects are the accent
-const HUB = { label: "Maps & hubs", get color() { return PAL.fg; }, anchor: { x: 0, y: -40 } };
-const OTHER = { label: "Other Notes", get color() { return PAL.dim; }, anchor: { x: 0, y: 380 } };
-const prettyHood = (s) => s.replace(/^project:/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-// the folders research projects live in: projects/ and research/, and the layout's own (g.layout.project, e.g.
-// "work/{project}/index")
-function projectDirs(lay = {}) {
-  const dirs = new Set(["projects/", "research/"]), m = /^([^{}]+\/)\{project\}/.exec(lay.project || "");
-  if (m) dirs.add(m[1]);
-  return [...dirs];
-}
-// a note's role: "course" (a course page), "hub" (a map, the home or research hub, a project's index), "book" (a
-// book's index note, <subject>/books/<book>) or "note"
-function noteRole(id, lay = {}) {
-  if (/(^|\/)books\//.test(id)) return "book";
-  if (/^maps\/courses\/[^/]+$/.test(id) || /^[^/]+\/course$/.test(id) || /^sources\/[^/]+\/course$/.test(id)) return "course";
-  if (/^maps\//.test(id) || /^(index|research\/index|projects\/[^/]+\/index|research\/[^/]+\/index|projects\/[^/]+)$/.test(id) || id === lay.research) return "hub";
-  return "note";
-}
-// subjects: the folder names that are courses (sources/<s>/…, or <s>/course in the kurooto layout); dirs: projectDirs()
-function hoodOf(id, subjects = new Set(), dirs = projectDirs()) {
-  let m = /^sources\/([^/]+)\//.exec(id || ""); if (m) return m[1];
-  for (const d of dirs) { m = new RegExp(`^${escRe(d)}([^/]+)/.`).exec(id || ""); if (m && `${d}${m[1]}` !== "research/index") return `project:${m[1]}`; }
-  m = /^maps\/courses\/([^/]+)$/.exec(id || ""); if (m && subjects.has(m[1])) return m[1]; // a course page joins its course
-  if (/^(maps|projects|research)\//.test(id || "") || id === "index") return "hub";
-  m = /^([^/]+)\//.exec(id || ""); if (m && subjects.has(m[1])) return m[1];
-  return null;
-}
-// n.neighborhood, n.role, n.sdeg (links that aren't a book's nor provenance) and n.bridge (how many other
-// neighbourhoods its links reach) for every node (n.nb holds its links, n.out the ones it makes, n.snb the ones that
-// aren't only in a "Seen in" or a reading list: web/live.py PROVENANCE); returns {key: {label, color, anchor, project}}.
-// info: the graph's layout ({research, project}) and research ({<project>: {name, topics}}: each project's
-// entry in the research hub, read by web/live.py). Once per graph update, never per frame.
-// A research project's region is its folder's notes, the notes its index links to and the topics its hub entry links
-// to; it's always named, however small. Any other note (a concept note in zettel/, say) joins the region most of its
-// links come from (a tie goes to the course), else "other".
-function assignHoods(nodes, info = {}) {
-  const lay = info.layout || {}, research = info.research || {}, dirs = projectDirs(lay);
-  const subjects = new Set();
-  for (const n of nodes.values()) { const m = /^sources\/([^/]+)\//.exec(n.id) || /^([^/]+)\/course$/.exec(n.id); if (m) subjects.add(m[1]); }
-  const base = new Map(), size = new Map(), projects = new Set(Object.keys(research).map((p) => `project:${p}`));
-  for (const n of nodes.values()) {
-    n.role = noteRole(n.id, lay);
-    const k = hoodOf(n.id, subjects, dirs); base.set(n.id, k);
-    if (k && k.startsWith("project:")) projects.add(k); else if (k && k !== "hub") size.set(k, (size.get(k) || 0) + 1);
-  }
-  const courses = [...size].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, MAX_HOODS).map(([k]) => k);
-  const keys = [...courses, ...[...projects].sort()];
-  const known = new Set(keys), hoods = new Map([["hub", HUB], ["other", OTHER]]);
-  const titleOf = (...ids) => { for (const id of ids) { const n = nodes.get(id); if (n && n.title && n.title !== id.split("/").pop()) return n.title; } return null; };
-  const indexOf = (p) => [...dirs.map((d) => `${d}${p}/index`), ...dirs.map((d) => `${d}${p}`)].find((id) => nodes.has(id));
-  let ci = 0;
-  keys.forEach((k, i) => {
-    const ang = (i / keys.length) * 2 * Math.PI - Math.PI / 2, p = k.replace(/^project:/, ""), project = k.startsWith("project:");
-    const label = (project ? titleOf(...dirs.map((d) => `${d}${p}/index`), ...dirs.map((d) => `${d}${p}`)) || research[p]?.name
-      : titleOf(`maps/courses/${k}`, `${k}/course`, `sources/${k}/course`)) || prettyHood(k);
-    const col = project ? "accent" : HOOD_COLORS[ci++ % HOOD_COLORS.length];
-    hoods.set(k, { label, project, get color() { return PAL[col]; }, anchor: { x: Math.cos(ang) * 420, y: Math.sin(ang) * 300 } });
-  });
-  // a project's reach: what its index links to (one hop) and its hub entry's topics; a note in a folder stays there
-  const seed = new Map();
-  for (const k of keys) {
-    if (!k.startsWith("project:")) continue;
-    const p = k.slice(8), idx = nodes.get(indexOf(p));
-    for (const id of [...(idx ? idx.out || idx.nb || [] : []), ...(research[p]?.topics || [])]) if (!seed.has(id)) seed.set(id, k);
-  }
-  const region = (id) => { const b = base.get(id); return known.has(b) ? b : b === "hub" ? null : seed.get(id) || null; };
-  for (const n of nodes.values()) {
-    let k = base.get(n.id);
-    if (k !== "hub" && !known.has(k)) {
-      k = seed.get(n.id);
-      if (!k) {
-        const votes = new Map();
-        for (const id of n.nb || []) { const r = region(id); if (r) votes.set(r, (votes.get(r) || 0) + 1); }
-        const proj = (key) => (key.startsWith("project:") ? 1 : 0);
-        k = [...votes].sort((a, b) => b[1] - a[1] || proj(a[0]) - proj(b[0]) || a[0].localeCompare(b[0]))[0]?.[0] || "other";
-      }
-    }
-    n.neighborhood = k;
-  }
-  for (const n of nodes.values()) {
-    // n.snb: the links you'd follow; a provenance link ("Seen in", the lists reading writes: n.nb only) never sizes
-    // a note, so the class note a textbook came with, or a lecture note, doesn't swell into a hub
-    const own = n.snb || n.nb || new Set();
-    const other = [...own].map((id) => nodes.get(id)).filter((q) => q && q.role !== "book");
-    n.sdeg = n.role === "book" ? Math.min(own.size, 4) : other.length;
-    n.bridge = new Set(other.map((q) => q.neighborhood).filter((h) => h !== n.neighborhood && h !== "other")).size;
-  }
-  return hoods;
-}
-// which notes get their names when zoomed in, best first: course pages, hubs and projects, then notes that link
-// across neighbourhoods, then the best-linked; a book's index note last
-function rankLabels(nodes) {
-  const score = (n) => (n.role === "course" || n.role === "hub" ? 3e6 : n.role === "book" ? -1e6 : n.bridge * 1e3) + (n.sdeg || 0);
-  return [...nodes].sort((a, b) => score(b) - score(a) || a.id.localeCompare(b.id));
-}
-// each region's name and where it goes: the middle of its notes (better-linked notes count more; books barely), for
-// neighbourhoods of three notes or more, and every research project however small (placed first, so a bigger
-// region's name never crowds it out); in the map's own coordinates
-function regionSpots(nodes, hoods) {
-  const acc = new Map();
-  for (const n of nodes) {
-    if (n.neighborhood === "other" || !hoods.has(n.neighborhood)) continue;
-    const w = n.role === "book" ? 0.2 : Math.sqrt((n.sdeg || 0) + 1), a = acc.get(n.neighborhood) || { x: 0, y: 0, w: 0, n: 0 };
-    a.x += n.x * w; a.y += n.y * w; a.w += w; a.n++; acc.set(n.neighborhood, a);
-  }
-  const proj = (key) => (hoods.get(key).project ? 1 : 0); // research first: its name always gets a place
-  return [...acc].filter(([key, a]) => a.n >= 3 || proj(key)).sort((p, q) => proj(q[0]) - proj(p[0]) || q[1].n - p[1].n)
-    .map(([key, a]) => ({ key, label: hoods.get(key).label, project: !!hoods.get(key).project, x: a.x / a.w, y: a.y / a.w, n: a.n }));
-}
-// -- end of the pure part
-const ZOOM_NAMES = 1.35; // zoomed in this far, notes get their names and the regions' names step back
-const HL_TAU = 33, NB_NAMES = 24; // the notes map's light: its easing (ms; ~100 ms to settle); neighbours named at most
 
-const HUB_LINKS = 12, MAX_STEP = 40; // the notes graph: springs per hub, the furthest a note moves a frame
-class Mind {
-  constructor(cv) { this.cv = cv; this.nodes = new Map(); this.links = []; this.alpha = 1; this.view = { x: 0, y: 0, k: 1 }; this.autofit = true;
-    this.flares = []; this.groupIdx = new Map(); this.hover = null; this.selected = null; this.query = ""; this.showRecent = false; this.version = -1;
-    this.only = null; // Study mode: the subject's notes (their ids), lit and fitted to the pane
-    this.wire(); }
-  colorOf(n) {
-    const key = typeof n === "object" && n ? n.neighborhood : n;
-    return this.hoods?.get(key)?.color || PAL.dim;
-  }
-  update(g) {
-    const first = this.version < 0; this.version = g.version; const seen = new Set();
-    for (const n of g.nodes) { seen.add(n.id); let node = this.nodes.get(n.id);
-      if (!node) { node = { ...n, x: (Math.random() - 0.5) * 300, y: (Math.random() - 0.5) * 300, vx: 0, vy: 0, deg: 0 }; this.nodes.set(n.id, node); } else Object.assign(node, n); }
-    for (const id of [...this.nodes.keys()]) if (!seen.has(id)) this.nodes.delete(id);
-    // [a, b] a link you'd follow; [a, b, 1] one only in a provenance block (web/live.py): kept, but it sizes nothing
-    this.links = g.links.map(([a, b, via]) => { const l = [this.nodes.get(a), this.nodes.get(b)]; l.via = !!via; return l; }).filter(([a, b]) => a && b);
-    for (const n of this.nodes.values()) { n.deg = 0; n.via = 0; n.nb = new Set(); n.out = new Set(); n.snb = new Set(); }
-    for (const l of this.links) { const [a, b] = l; a.deg++; b.deg++; a.nb.add(b.id); b.nb.add(a.id); a.out.add(b.id);
-      if (l.via) { a.via++; b.via++; } else { a.snb.add(b.id); b.snb.add(a.id); } }
-    this.nbList = null; // the pointed-at note's neighbours, in label order: made again for the new graph
-    this.hoods = assignHoods(this.nodes, { layout: g.layout, research: g.research });
-    this.anchor = new Map([...this.hoods].map(([k, v]) => [k, v.anchor]));
-    if (first) for (const n of this.nodes.values()) { const a = this.anchor.get(n.neighborhood) || { x: 0, y: 0 }; n.x = a.x + (Math.random() - 0.5) * 140; n.y = a.y + (Math.random() - 0.5) * 140; }
-    else for (const id of g.changed || []) { const n = this.nodes.get(id); if (n) this.flares.push({ n, t0: performance.now() / 1000 }); this.alpha = Math.max(this.alpha, 0.45); }
-    this.meta();
-  }
+// ------------------------------------------------------------------------------------------------ NOTES
+// views/notesmap.js draws it (Mind); Notes adds the dashboard's own parts: point at a note for its card (click: its
+// first lines, double-click: open it), drag a note or the map, scroll to zoom, / to find a note, R for recent ones.
+class Notes extends Mind {
   meta() {
     $("#mind-meta").textContent = `${this.nodes.size} notes · ${this.links.length} links · ${new Set([...this.nodes.values()].map((n) => n.neighborhood)).size} neighborhoods`;
   }
-  toggleRecent() {
-    this.showRecent = !this.showRecent;
-    this.meta();
-  }
-  step() {
-    const nodes = [...this.nodes.values()]; if (!nodes.length) return; const a = this.alpha;
-    for (let i = 0; i < nodes.length; i++) {
-      const p = nodes[i];
-      for (let j = i + 1; j < nodes.length; j++) {
-        const q = nodes[j];
-        let dx = q.x - p.x, dy = q.y - p.y;
-        let d2 = dx * dx + dy * dy;
-        if (d2 > 360000) continue;
-        const d = Math.sqrt(Math.max(1, d2));
-        const minDist = 26;
-        let rep = (42 * a) / (d + 18);
-        if (d < minDist) rep += ((minDist - d) / minDist) * 2.0 * a;
-        const fx = (dx / d) * rep, fy = (dy / d) * rep;
-        p.vx -= fx; p.vy -= fy; q.vx += fx; q.vy += fy;
-      }
-    }
-    for (const [p, q] of this.links) {
-      const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1;
-      const sameHood = p.neighborhood === q.neighborhood;
-      const targetL = sameHood ? (70 + Math.min(50, (p.deg + q.deg) * 0.7)) : (120 + Math.min(60, (p.deg + q.deg) * 0.8));
-      const f = ((d - targetL) / d) * 0.022 * a;
-      // a hub's springs are shared out over its links: a map note with hundreds of them would otherwise overshoot
-      // further each step until the whole graph flies off the screen
-      const fp = f * Math.min(1, HUB_LINKS / p.deg), fq = f * Math.min(1, HUB_LINKS / q.deg);
-      p.vx += dx * fp; p.vy += dy * fp;
-      q.vx -= dx * fq; q.vy -= dy * fq;
-    }
-    for (const n of nodes) {
-      const an = this.anchor.get(n.neighborhood) || { x: 0, y: 0 };
-      const pull = n.deg ? 0.0007 : 0.0025;
-      n.vx += (an.x - n.x) * pull * a - n.x * 0.0001 * a;
-      n.vy += (an.y - n.y) * pull * a - n.y * 0.0001 * a;
-      if (n === this.dragging) { n.vx = n.vy = 0; continue; }
-      n.vx *= 0.80; n.vy *= 0.80;
-      const sp = Math.hypot(n.vx, n.vy); if (sp > MAX_STEP) { n.vx *= MAX_STEP / sp; n.vy *= MAX_STEP / sp; }
-      n.x += n.vx; n.y += n.vy;
-      if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) { n.x = an.x; n.y = an.y; n.vx = n.vy = 0; }
-    }
-    this.alpha = Math.max(0.04, this.alpha * 0.988);
-  }
-  fit(w, h) {
-    let nodes = [...this.nodes.values()]; if (!nodes.length) return;
-    if (this.only) { const o = nodes.filter((n) => this.only.has(n.id)); if (o.length) nodes = o; }
-    const xs = nodes.map((n) => n.x).sort((a, b) => a - b), ys = nodes.map((n) => n.y).sort((a, b) => a - b);
-    const q = (arr, f) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(f * (arr.length - 1))))];
-    const x0 = q(xs, 0.02), x1 = q(xs, 0.98), y0 = q(ys, 0.02), y1 = q(ys, 0.98);
-    const k = Math.min((w - (DENSE ? 120 : 160)) / Math.max(50, x1 - x0), (h - 90) / Math.max(50, y1 - y0)), tk = clamp(k, 0.08, 2.5);
-    this.view.k += (tk - this.view.k) * 0.05; this.view.x += (-(x0 + x1) / 2 - this.view.x) * 0.05; this.view.y += (-(y0 + y1) / 2 - this.view.y) * 0.05;
-  }
-  // a note's dot: bigger the more links it has (a book's links, and "Seen in" and reading lists, don't count)
-  radius(n) { return (2.0 + Math.sqrt(n.sdeg ?? n.deg) * 0.95) * Math.sqrt(this.view.k); }
-  toScreen(n, w, h) { return { x: w / 2 + (n.x + this.view.x) * this.view.k, y: h / 2 + 8 + (n.y + this.view.y) * this.view.k }; }
-  toWorld(x, y, w, h) { return { x: (x - w / 2) / this.view.k - this.view.x, y: (y - h / 2 - 8) / this.view.k - this.view.y }; }
-  // Pointing at a note (or choosing it with the arrow keys) lights it and its direct neighbours in full colour, with
-  // their names raised above everything (the pointed-at one first, then the best-placed neighbours, none overlapping),
-  // and dims the rest; the regions' names step aside. Each note's light (n.a) and the pointed-at one's (n.f) ease
-  // toward where they're going over about 100 ms (none with reduced motion): no layout work, one number per note.
-  draw() {
-    const { ctx, w, h } = fitCanvas(this.cv); this.w = w; this.h = h; ctx.clearRect(0, 0, w, h);
-    if (!this.nodes.size) { ctx.fillStyle = PAL.dim; ctx.font = cf(12); ctx.textAlign = "center"; ctx.fillText("Your notes folder is empty so far.", w / 2, h / 2); return; }
-    if (this.autofit) this.fit(w, h);
-    if (this.glide) this.glideStep();
-    const nowS = Date.now() / 1000, focus = this.hover || this.selected;
-    const match = this.query ? new Set([...this.nodes.values()].filter((n) => (n.title + " " + n.id).toLowerCase().includes(this.query)).map((n) => n.id)) : this.only && this.only.size ? this.only : null;
-    const isRecent = (n) => (nowS - (n.mtime || 0) < 86400);
-    const lit = (n) => (match ? match.has(n.id) : focus ? n === focus || focus.nb.has(n.id) : this.showRecent ? isRecent(n) : true);
-    // the light's easing: ~95% of the way in 100 ms (exponential, so it eases out); at once with reduced motion
-    const t = performance.now(), dt = Math.min(100, t - (this.lastT || t)); this.lastT = t;
-    const ease = STILL.matches ? 1 : 1 - Math.exp(-dt / HL_TAU), go = (v, to) => (Math.abs(to - v) < 0.01 ? to : v + (to - v) * ease);
-    this.fk = go(this.fk ?? 0, focus ? 1 : 0); // how much a note is pointed at: the regions' names give way, lit dots go full
-    this.rk = go(this.rk ?? 1, focus ? 0 : match || this.showRecent ? 0.37 : 1); // the regions' names' light
-    for (const n of this.nodes.values()) { n.a = n.a === undefined ? (lit(n) ? 1 : 0) : go(n.a, lit(n) ? 1 : 0); n.f = go(n.f || 0, n === focus ? 1 : 0); }
-    const hotDim = mix(PAL.dim, PAL.fg, 0.55); // a lit note of no neighbourhood: lighter than its usual grey
-
-    // Links with neighborhood color: a pointed-at note's own light up; the rest dim with their notes
-    for (const l of this.links) {
-      const [p, q] = l, A = this.toScreen(p, w, h), B = this.toScreen(q, w, h);
-      const k = Math.min(p.a, q.a), on = Math.max(p.f * q.a, q.f * p.a);
-      ctx.strokeStyle = rgba(this.colorOf(p), 0.015 + (l.via ? 0.05 : 0.065) * k + 0.77 * on);
-      ctx.lineWidth = 0.7 + 0.7 * on;
-      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
-    }
-
-    // Nodes
-    for (const n of this.nodes.values()) {
-      const S = this.toScreen(n, w, h); if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
-      const isNodeRecent = isRecent(n);
-      const isHourRecent = (nowS - (n.mtime || 0) < 3600);
-      const hot = focus && (n === focus || focus.nb.has(n.id));
-      const r = this.radius(n), base = this.colorOf(n), col = hot && base === PAL.dim ? hotDim : base;
-      ctx.fillStyle = rgba(col, 0.08 + (0.8 + 0.12 * this.fk) * n.a);
-      ctx.beginPath(); ctx.arc(S.x, S.y, r, 0, TAU); ctx.fill();
-      if (n.f > 0.02) { ctx.strokeStyle = rgba(PAL.fg, n.f); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(S.x, S.y, r + 4.5, 0, TAU); ctx.stroke(); }
-      if (this.showRecent && isNodeRecent) {
-        ctx.strokeStyle = isHourRecent ? PAL.peach : rgba(col, 0.70);
-        ctx.lineWidth = isHourRecent ? 1.4 : 0.9;
-        ctx.beginPath(); ctx.arc(S.x, S.y, r + (isHourRecent ? 4 : 3), 0, TAU); ctx.stroke();
-      }
-    }
-
-    const now = performance.now() / 1000; this.flares = this.flares.filter((f) => now - f.t0 < 4);
-    for (const f of this.flares) { const k = (now - f.t0) / 4, S = this.toScreen(f.n, w, h); ctx.strokeStyle = rgba(PAL.sand, 0.8 * (1 - k)); ctx.lineWidth = 2 * (1 - k); ctx.beginPath(); ctx.arc(S.x, S.y, 4 + 46 * Math.sqrt(k), 0, TAU); ctx.stroke(); }
-
-    // Names, none overlapping: the pointed-at note's, then its neighbours' (the best first, as many as fit), else the
-    // regions' names at the usual zoom; found notes; the recent ones (R); zoomed in, the best by rankLabels
-    const zoomed = this.view.k >= ZOOM_NAMES;
-    const onScreen = (n) => { const S = this.toScreen(n, w, h); return S.x > 0 && S.y > 0 && S.x < w && S.y < h; };
-    const candidates = [];
-    if (focus) {
-      candidates.push({ node: focus, isFocused: true });
-      for (const n of this.neighboursOf(focus)) if (onScreen(n)) candidates.push({ node: n, isNeighbor: true });
-    }
-    if (match && match.size < 25) for (const id of match) { const n = this.nodes.get(id); if (n && n !== focus) candidates.push({ node: n, isMatched: true }); }
-    if (!focus && !match) {
-      const list = this.showRecent ? [...this.nodes.values()].filter(isRecent).sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 8)
-        : zoomed ? rankLabels([...this.nodes.values()].filter(onScreen)).filter((n) => n.role !== "book").slice(0, Math.round(6 + 4 * this.view.k)) : [];
-      for (const n of list) candidates.push({ node: n, isHub: true });
-    }
-
-    const placed = [];
-    const collides = (b) => {
-      if (b.x < 6 || b.y < 22 || b.x + b.w > w - 6 || b.y + b.h > h - 6) return true;
-      for (const p of placed) {
-        if (!(b.x + b.w + 4 < p.x || b.x > p.x + p.w + 4 || b.y + b.h + 3 < p.y || b.y > p.y + p.h + 3)) return true;
-      }
-      return false;
-    };
-    // the notes' names are placed first (they're what you're looking at), drawn last (above everything)
-    ctx.font = cf(10.5, 600);
-    const pills = [];
-    let nbShown = 0;
-    for (const item of candidates) {
-      const n = item.node;
-      if (item.isNeighbor && nbShown >= NB_NAMES) break;
-      const S = this.toScreen(n, w, h);
-      if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
-      const r = this.radius(n);
-      const txt = n.title.length > 28 ? n.title.slice(0, 27) + "…" : n.title;
-      const pillW = ctx.measureText(txt).width + 18, pillH = 18, gap = r + 4;
-      const slots = [[-pillW / 2, -gap - pillH], [-pillW / 2, gap], [gap + 2, -pillH / 2], [-gap - 2 - pillW, -pillH / 2],
-        [gap - 2, -gap - pillH + 4], [-gap + 2 - pillW, -gap - pillH + 4], [gap - 2, gap - 4], [-gap + 2 - pillW, gap - 4]];
-      let chosen = null;
-      for (const [dx, dy] of slots) { const box = { x: S.x + dx, y: S.y + dy, w: pillW, h: pillH }; if (!collides(box)) { chosen = box; break; } }
-      if (!chosen && item.isFocused) chosen = { x: clamp(S.x - pillW / 2, 6, w - pillW - 6), y: clamp(S.y - gap - pillH, 22, h - pillH - 6), w: pillW, h: pillH };
-      if (!chosen) continue;
-      placed.push(chosen); pills.push({ item, n, txt, box: chosen });
-      if (item.isNeighbor) nbShown++;
-    }
-    // the regions' names: large and quiet, in their colour; they step aside while a note is pointed at (never over a
-    // note's name), stay faint while notes are found, and fade out as you zoom in
-    const fade = clamp((ZOOM_NAMES + 0.25 - this.view.k) / 0.5, 0, 1) * this.rk;
-    if (fade > 0.02 && !this.only) {
-      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
-      for (const g of regionSpots(this.nodes.values(), this.hoods || new Map())) {
-        ctx.font = cf(13, g.project ? 750 : 650); // a research project's name: a little stronger, in the accent
-        const S = this.toScreen(g, w, h), txt = g.label.length > 30 ? g.label.slice(0, 29) + "…" : g.label;
-        const tw = ctx.measureText(txt).width, bh = 18 * FSC;
-        let box = null;
-        for (const dy of [0, -bh - 2, bh + 2, -2 * bh - 4, 2 * bh + 4]) {
-          const b = { x: clamp(S.x - tw / 2 - 4, 8, w - tw - 16), y: clamp(S.y + dy - bh / 2, 24, h - bh - 8), w: tw + 8, h: bh };
-          if (!collides(b)) { box = b; break; }
-        }
-        if (!box) continue;
-        placed.push(box);
-        const a = fade * 0.95, x = box.x + box.w / 2, y = box.y + bh / 2;
-        ctx.strokeStyle = rgba(PAL.bg, 0.85 * a); ctx.lineWidth = 4; ctx.strokeText(txt, x, y);
-        ctx.fillStyle = rgba(g.project ? PAL.accent : mix(this.hoods.get(g.key).color, PAL.fg, 0.35), a); ctx.fillText(txt, x, y);
-      }
-    }
-    ctx.font = cf(10.5, 600);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (let i = pills.length - 1; i >= 0; i--) { // the pointed-at note's name last, on top
-      const { item, n, txt, box } = pills[i], a = item.isNeighbor ? n.a : 1, base = this.colorOf(n);
-      const col = base === PAL.dim && focus ? hotDim : base;
-      ctx.fillStyle = rgba(PAL.bg, (item.isFocused ? 0.95 : 0.9) * a);
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(box.x, box.y, box.w, box.h, 4); else ctx.rect(box.x, box.y, box.w, box.h);
-      ctx.fill();
-      ctx.strokeStyle = item.isFocused ? rgba(PAL.fg, a) : rgba(col, (item.isHub || item.isNeighbor ? 0.6 : 0.35) * a);
-      ctx.lineWidth = item.isFocused ? 1.2 : 0.8;
-      ctx.stroke();
-      ctx.fillStyle = rgba(col, a);
-      ctx.beginPath(); ctx.arc(box.x + 8, box.y + box.h / 2, 2.5, 0, TAU); ctx.fill();
-      ctx.fillStyle = rgba(PAL.fg, (item.isFocused ? 1 : 0.92) * a);
-      ctx.fillText(txt, box.x + box.w / 2 + 4, box.y + box.h / 2);
-    }
-    if (DENSE) this.hud(ctx, w, h, nowS);
-  }
-  // a note's neighbours in the order their names are shown: links you'd follow before "Seen in" ones, then course
-  // pages, hubs and projects, then the best-linked; made once per note pointed at (and per graph update)
-  neighboursOf(n) {
-    if (this.nbList && this.nbList.n === n) return this.nbList.list;
-    const role = (q) => (q.role === "course" || q.role === "hub" ? 1 : 0);
-    const list = [...n.nb].map((id) => this.nodes.get(id)).filter(Boolean)
-      .sort((p, q) => (n.snb.has(q.id) - n.snb.has(p.id)) || role(q) - role(p) || (q.sdeg || 0) - (p.sdeg || 0) || p.title.localeCompare(q.title));
-    this.nbList = { n, list };
-    return list;
-  }
-  // dense: semantic neighborhoods and their counts
-  hud(ctx, w, h, nowS) {
-    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.font = cf(11);
-    const counts = new Map();
-    for (const n of this.nodes.values()) counts.set(n.neighborhood, (counts.get(n.neighborhood) || 0) + 1);
-    const legend = [...(this.hoods || [])]
-      .map(([k, v]) => [v.label, counts.get(k) || 0, v.color])
-      .filter(([_, count]) => count > 0);
-    const legOpen = LEGENDS || inside(this.mouse, this.legendRect);
-    if (legOpen && legend.length) {
-      const lw = Math.max(...legend.map(([l, c]) => ctx.measureText(`${l} ${c}`).width)) + 26;
-      ctx.fillStyle = rgba(PAL.bg, 0.75); ctx.fillRect(w - lw - 10, 14, lw, legend.length * 15 + 6);
-      let y = 26;
-      for (const [label, count, col] of legend) {
-        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(w - lw - 1, y - 4, 3.5, 0, TAU); ctx.fill();
-        ctx.fillStyle = rgba(PAL.fg, 0.75); ctx.fillText(`${label} ${count}`, w - lw + 8, y); y += 15;
-      }
-      this.legendRect = { x0: w - lw - 10, y0: 14, x1: w - 10, y1: 14 + legend.length * 15 + 6 };
-    } else if (legend.length) { // folded: a row of the neighbourhoods' colours and one word
-      const dots = legend.length * 9, tw = ctx.measureText("legend ▸").width, x1 = w - 12, x0 = x1 - dots - tw - 8;
-      legend.forEach(([, , col], i) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x0 + 4 + i * 9, 22, 3, 0, TAU); ctx.fill(); });
-      ctx.fillStyle = rgba(PAL.fg, 0.5); ctx.fillText("legend ▸", x0 + dots + 6, 26);
-      this.legendRect = { x0: x0 - 2, y0: 14, x1: x1 + 2, y1: 32 };
-    }
-    if (this.showRecent) { // only while it's on: R (or a click on this line) turns it off
-      const hotHour = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 3600).length;
-      const hotDay = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 86400).length;
-      say(ctx, `Recent: ${hotHour} in the last hour, ${hotDay} today · R: off`, 14, 26, PAL.peach, "left", cf(11));
-    }
-    const recent = [...this.nodes.values()].sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 5);
-    const recOpen = LEGENDS || inside(this.mouse, this.recentRect);
-    const shown = recOpen ? recent : recent.slice(0, 1);
-    shown.forEach((n, i) => say(ctx, `~ ${n.id.slice(-40)} · ${ago(nowS - (n.mtime || 0))} ago${!recOpen && recent.length > 1 ? `  ▸ ${recent.length - 1}` : ""}`, 14, h - 14 - i * 15,
-      rgba(i === 0 ? PAL.sand : PAL.fg, 0.72 - i * 0.11), "left", NEW ? `11px ${MONO}` : cf(11))); // paths
-    this.recentRect = { x0: 10, y0: h - 14 - (shown.length - 1) * 15 - 12, x1: 340, y1: h - 8 };
-  }
-  pick(x, y) { let best = null, bd = 14; for (const n of this.nodes.values()) { const S = this.toScreen(n, this.w, this.h), d = Math.hypot(S.x - x, S.y - y); if (d < bd) { bd = d; best = n; } } return best; }
   async showCard(n, pinned) {
     const card = $("#mind-card"); if (!n) { card.classList.add("hidden"); return; }
     card.innerHTML = `<div class="h">${esc(n.title)}</div><div class="d">${esc(n.id)}</div><div>${n.deg - (n.via || 0)} links${n.via ? ` (+${n.via} from reading)` : ""} · ${n.words} words · edited ${ago(Date.now() / 1000 - (n.mtime || 0))} ago</div>` + (pinned ? '<pre>…</pre><div class="d">double-click: open it</div>' : "");
@@ -1482,10 +418,6 @@ class Mind {
     if (S.x > m && S.y > m && S.x < this.w - m && S.y < this.h - m) return;
     this.autofit = false; this.glide = { x: -n.x, y: -n.y };
     if (STILL.matches) this.glideStep(1);
-  }
-  glideStep(k = 0.2) {
-    const g = this.glide; this.view.x += (g.x - this.view.x) * k; this.view.y += (g.y - this.view.y) * k;
-    if (Math.abs(g.x - this.view.x) + Math.abs(g.y - this.view.y) < 0.5 / this.view.k) this.glide = null;
   }
   openSearch() { const s = $("#mind-search"); s.classList.remove("hidden"); s.value = this.query; s.focus(); }
   // a note to the middle of the map, with its card and first lines
@@ -2327,6 +1259,9 @@ async function renderPhone(body) {
     ${ph.shortcuts && ph.shortcuts.length ? `<h3>Tell Kurooto (iPhone Shortcut)</h3>
     <p class="d">Each link lets its Shortcut send you a chat message as that phone, and nothing else. Revoke one and its Shortcut stops working at once; the phone stays paired.</p>
     <table><tr><th>phone</th><th>made</th><th>last used</th><th></th></tr>${ph.shortcuts.map((s) => `<tr><td>${esc(s.device_name || s.device)}</td><td>${esc((s.created || "").slice(0, 10))}</td><td>${esc(s.used ? s.used.slice(0, 16).replace("T", " ") : "never")}</td><td><button data-shortcut="${esc(s.id)}">Revoke</button></td></tr>`).join("")}</table>` : ""}
+    <h3>On the phone</h3>
+    <p><label class="views-tg"><input type="checkbox" data-views ${ph.views ? "checked" : ""}> Show Systems and the Notes map in the Android app</label></p>
+    <p class="d">The app draws them as this page does. What goes: your notes' titles, where they are in your notes folder and which link to which (never what they say), and each feature's health. Sealed on this computer for each phone, so your call line can't read them; Systems only while you're looking at it. Turning it off drops your call line's copies. The iPhone app doesn't get them.</p>
     <h3>ntfy account (optional)</h3>
     <p class="d">Android rings go through ntfy.sh, which limits each internet address; yours is shared (your call line's Cloudflare one, often a campus or office too), so a ring can be refused and your phone stays silent. A free account's token makes ntfy count your account instead: <a href="https://ntfy.sh/signup" target="_blank" rel="noopener">make one</a>, then Account → Access tokens → Create.${ph.ntfy_limited && !ph.ntfy_token ? ` <span class="bad2">ntfy refused ${ph.ntfy_limited} ring(s) this week.</span>` : ""}</p>
     <p>${ph.ntfy_token ? "<span class=\"ok2\">Token kept.</span> " : ""}<input type="password" id="ntfy-token" placeholder="tk_..." autocomplete="off" spellcheck="false"> <button data-ntfy>Save</button>${ph.ntfy_token ? " <button data-ntfy-clear>Remove</button>" : ""}</p>
@@ -2348,6 +1283,11 @@ async function renderPhone(body) {
       const r = await api("phone/ntfy", { token });
       if (r.ok) renderPhone(body);
       setTimeout(() => { const m = $("#phone-msg"); if (m) m.textContent = r.message; }, 300);
+    }
+    if (t.dataset.views !== undefined) {
+      const r = await api("settings", { key: "calls.views", value: t.checked });
+      msg.textContent = r.error ? r.error : t.checked ? "On: your Android phone gets them within a few minutes." : "Off: your call line drops its copies within a few minutes.";
+      if (r.error) t.checked = !t.checked;
     }
     if (t.dataset.ring !== undefined) { const r = await api("phone/test", {}); msg.textContent = r.ok ? "Ringing your paired phones…" : r.error; }
     if (t.dataset.shortcut) { const r = await api("phone/shortcut/revoke", { id: t.dataset.shortcut }); await renderPhone(body); const m = $("#phone-msg"); if (m) m.textContent = r.ok ? "Revoked: that Shortcut no longer works." : (r.error || "Not found."); }
@@ -3058,7 +1998,7 @@ function refit() {
 window.addEventListener("resize", () => { applyLayout(); refit(); });
 
 (function main() {
-  body = new Body($("#body")); mind = new Mind($("#mind"));
+  body = new Board($("#body")); mind = new Notes($("#mind"));
   try { tab = localStorage.getItem("kurooto.dash.tab") || "activity"; dtab = localStorage.getItem("kurooto.dash.dtab") || "kurooto"; } catch { /* fine */ }
   if (!TABS[tab] && tab !== "terminals") tab = "activity";
   if (DLABEL[dtab]) dtab = "kurooto"; // 0.5.0 kept the pages in the terminal pane: they open over the board now

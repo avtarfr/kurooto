@@ -2016,6 +2016,8 @@ def ai_run(a) -> int | None:
     finally:
         app.close()
     return 1
+
+
 def project_parsers(sub) -> None:
     pj = sub.add_parser("project", help="a project set up from its repository: add, update, list (core/repoproject.py)")
     psub = pj.add_subparsers(dest="project_cmd")

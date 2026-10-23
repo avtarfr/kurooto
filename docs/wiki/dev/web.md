@@ -25,7 +25,7 @@ The user's view: [../user/dashboard.md](../user/dashboard.md).
   update's new file is never missed. Nothing is compressed: on 127.0.0.1 it would cost more than it saves. Because
   of the CSP, pages may not use inline scripts or load anything from another origin.
 - Static files: `static(name)` reads them with `importlib.resources`, only names matching
-  `(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)` or `fonts/[a-z0-9_-]+\.woff2` (served as `font/woff2`).
+  `(?:vendor/xterm/|views/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)` or `fonts/[a-z0-9_-]+\.woff2` (served as `font/woff2`).
 - `Server.fill(html)` substitutes `{{TOKEN}}`, `{{VERSION}}`, `{{PALETTE}}`, `{{LAYOUT}}`, `{{DESIGN}}` (`look.design`,
   anything but `DESIGNS` is `new`), `{{STUDY}}` and injects the
   palette style and `/static/palette.js` / `/static/links.js` before `</head>`.
@@ -134,7 +134,7 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   process and the name and thread count only for the rows it lists (`as_dict(["name", "num_threads"])`), which halves
   it. `jobs.recent()` uses the `jobs_created` index (it sorted the whole table, 20 ms with 900 jobs).
 - Message types the page handles (`static/home.js:connect`): `graph`, `body`, `event`, `hello`, `pty`.
-- NOTES names (0.5.19): the pure part of `home.js` between `// -- the pure part` and `// -- end of the pure part`
+- NOTES names (0.5.19): the pure part of `views/notesmap.js` (`home.js` before 0.7.0) between `// -- the pure part` and `// -- end of the pure part`
   (`noteRole`, `hoodOf`, `assignHoods`, `rankLabels`, `regionSpots`; no DOM, so `tests/unit/test_notes_labels.py`
   runs it in node) gives each note a role (`course`, `hub`, `book` for `<subject>/books/<book>`, `note`), a
   neighbourhood (a subject folder, `project:<name>` for `projects/<name>/` or `research/<name>/`, `hub`, or by vote),
@@ -159,7 +159,7 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   a neighbourhood), but only non-via ones go into `n.snb`, which `assignHoods` uses for `sdeg` (dot size, `rankLabels`)
   and `bridge`: a lecture note or a class post that many concepts were read from stays a small dot and isn't named
   first. `n.via` counts them for the card ("3 links (+152 from reading)"). Tests: `tests/unit/test_notes_labels.py`.
-- NOTES hover and keyboard focus (0.6.1, `Mind.draw`): `focus = hover || selected`; each frame every node's light
+- NOTES hover and keyboard focus (0.6.1, `Mind.draw` in `views/notesmap.js`; the keys and the card are home.js's `Notes`): `focus = hover || selected`; each frame every node's light
   `n.a` (lit: the focus, its `n.nb`, a search's matches, R's recent notes; else 0) and focus `n.f` ease toward their
   targets with `1 - exp(-dt / HL_TAU)` (33 ms: about 100 ms to settle, an ease-out; `STILL` sets them at once), so
   dots, lines (`0.015 + 0.065·min(p.a, q.a) + 0.77·max(p.f·q.a, q.f·p.a)`) and names fade together with no layout
@@ -171,10 +171,13 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   drawn last, the focus's on top. Every colour is `PAL` (the page's CSS variables via `readPalette`). Keys on the
   canvas (`tabindex=0`, an `aria-label`, `#mind-card` is `aria-live`): arrows `stepTo([dx, dy])` (the linked note that
   way, by distance / cos² within 60°, else any note that way; none chosen: the note nearest the middle) and
-  `keepInView` glides the view to it (`glideStep`; at once with reduced motion), Enter `open-note`, Esc lets go (and
+  `keepInView` glides the view to it (`Mind.glideStep`, called from `draw`; at once with reduced motion), Enter `open-note`, Esc lets go (and
   `preventDefault`s the board's own Esc). The pointer leaving the canvas clears `hover`. Checked in headless Chromium
   on 2,100 notes: a frame's `draw()` costs the same with a note pointed at as without (about 3.6 ms).
-- The NOTES map (`static/home.js:Mind`) is a force layout run each frame: pairwise repulsion, a spring per link,
+  The phone's Notes map (`views/phone.js`) gets the same light from the same `draw()`: a tap sets `selected`.
+  `notesmap.js` keeps to what Chrome 58 parses (no `?.`, `??`, object spread), so 0.6.1's code was rewritten
+  that way when it moved there (`tests/unit/test_views.py` checks it).
+- The NOTES map (`static/views/notesmap.js:Mind`) is a force layout run each frame: pairwise repulsion, a spring per link,
   a pull to the neighbourhood's anchor. A note's spring force is scaled by `min(1, HUB_LINKS / links)` and a step is
   capped at `MAX_STEP`: without that, a map note with hundreds of links (the concept graph's course maps) overshoots
   by more each step and the layout diverges (positions near 1e50, an empty pane). `fit()` zooms out to 0.08.
@@ -184,7 +187,8 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
 
 ## Front end (`web/static/`)
 
-- Pages: `setup.html` + `setup.js` (wizard), `home.html` + `home.js` + `home.css` (dashboard), `morning.html` +
+- Pages: `setup.html` + `setup.js` (wizard), `home.html` + `views/common.js`, `views/systems.js`, `views/notesmap.js` +
+  `home.js` + `home.css` (dashboard), `views/phone.html` (the Android app's Systems and Notes map, below), `morning.html` +
   `morning.js`, `confidential.html` + `confidential.js`. Shared: `style.css`, `palette.js` (colour palette: polls
   `GET /api/look` every 30 s), `links.js` (external links through `POST /api/open-url` unless `look.links_in = here`),
   `aboutme.js`.
@@ -218,7 +222,8 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   the clock's case, the page title's case, the chat banner, ✦ against a CSS dot, and `grad()` (classic: cool to warm;
   new: the ink, peach from 70%, bad from 90%), `areaGraph` instead of `dotGraph`'s dots, and meters' `.hi` class.
   Tests: `tests/unit/test_design.py`.
-- SYSTEMS (`home.js:Body`, 0.5.21). The new design draws it with `membrane()` (the core: three rims from `blob()`,
+- SYSTEMS (`Body`, 0.5.21; in `views/systems.js` since 0.7.0, with the dashboard's menu, cell list and corner panels
+  in `home.js:Board`). The new design draws it with `membrane()` (the core: three rims from `blob()`,
   each feeling the systole a little later, `lub(now, lag)`; a denser centre carries the name), `neuron()` (a cell:
   five branches outside its nerve's side, each one's length the mean of a fifth of `o.hist`; the soma is `blob()`),
   `axon()` (the nerve as a filled taper sampled at 17 points along the quadratic, widening into the soma; a second
@@ -252,6 +257,36 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   320 ms, `cubic-bezier(0.23, 1, 0.32, 1)`; none with `prefers-reduced-motion`). The page starts in the mode
   `look.study_mode` holds (`data-study`, filled by `Server.fill`) and follows the `study_mode` event, so
   `/study mode on|off` elsewhere switches it live.
+
+## The shared drawings (`web/static/views/`)
+
+0.7.0: SYSTEMS and the NOTES map are drawn by the same code on the dashboard and in the Android app
+([calls-and-phone.md](calls-and-phone.md#systems-and-the-notes-map-on-the-phone-070)).
+
+- `views/common.js`: what the canvases share: `clamp`, `TAU`, `MONO`/`SANS`, `NEW`/`FONT`/`FSC`/`cf`/`useDesign`, `css`,
+  `PAL` (from the page's CSS variables, with kuro's values when a page has none), `hexRgb`, `mix`, `rgba`, `esc`, `ago`,
+  `bytes`, `hm`, `LIGHT`, `DENSE`, `glow`, `fitCanvas`, `LEGENDS`, `inside`, `say`.
+- `views/systems.js`: `COLORS`, `SHORT`, `OUTBOUND`, `STILL`, `CAN_HOVER` and `class Body(cv, els)` (`els`: `meta`,
+  `card`, `menu`, any may be missing). Hooks a page overrides: `tap(hit)` (a click or tap that didn't drag: `"core"`,
+  a cell or null), `updated(on)` (after each update), `panels(...)` (the dense corners), `hint(o)` (the card's last
+  line). `o.health` comes from a feature's `health` (only the phone's copy has it).
+- `views/notesmap.js`: the pure part (`noteRole`, `hoodOf`, `assignHoods`, `rankLabels`, `regionSpots`) and `class
+  Mind(cv)`: data (`update`), layout (`step`, `fit`; `fitPad` overrides the margin), drawing (`draw`, `hud`), `pick`;
+  `meta()` and `wire()` are the page's.
+- `home.js` adds `class Board extends Body` (the cell menu, `#body-cells`, the corner panels; `tap` opens the menu or
+  Ctrl+K) and `class Notes extends Mind` (mouse, wheel, the card with a note's first lines, search, R, `goTo`).
+- `views/phone.html` + `phone.css` + `phone.js`: `PhoneBody` (tap pins a card, pinch zooms the ring) and `PhoneMind`
+  (drag, pinch round the fingers' middle, tap a note for its card, no text; the layout rests once settled), fed only by
+  `window.KurootoView.take(json)` (`{mode, snap, made, computer, reach, off, palette}`), which sets the palette as `PAL`
+  and CSS variables (`phone.css` names no colour). Its CSP allows no connections; it's served from the app's assets
+  (and, for testing, by the dashboard at `/static/views/phone.html`).
+- Scripts are classic scripts sharing one global scope, loaded in order (common, systems, notesmap, then the page's);
+  a top-level name is declared once. The `views/` files keep to Chrome 58 syntax (no `?.`, `??`, object spread, `catch`
+  without a binding, class fields; `Object.fromEntries` and `.at()` avoided too), because Android 6's WebView may be
+  that old: `tests/unit/test_views.py` builds each with esbuild for `chrome58` and for `esnext` and wants the same
+  output. `phone.css` avoids `color-mix`.
+- Changing them changes both: check the dashboard (both designs and layouts) and `phone.html` (a sample snapshot,
+  light and dark) in a browser.
 
 ## The Today page and actions (`core/actions.py`)
 

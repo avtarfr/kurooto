@@ -121,6 +121,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Morning alarm | the alarm time; with Chat on, the AI reads your notes to draft the day's plan, and the wake-up call's transcript to settle it | your call line; the AI you picked |
 | Location reminders (`reminders.places`, off by default) | the place's name and the reminder's text, to your Android app; where your places are and when you arrive stay on the phone | your call line; ntfy.sh (encrypted, as phone messages are) |
 | Reminders with the lid shut | the next day's reminders and a morning line, each sealed with a key only your Android phone has (your call line sees only times and ids); each phone's public key. When the computer sleeps, the sealed copy goes out through ntfy.sh | your call line; ntfy.sh, still sealed |
+| Systems and the Notes map on the Android app (`calls.views`, off by default) | your notes' titles, their paths in your notes folder, when each changed, how many words and which link to which (never what they say; at most the 1500 best-linked notes); each feature's state, its program's cpu and memory, its health lines; Kurooto's cpu and memory and today's class and event times (no names). Sealed on your computer, its key sealed for each Android phone with a key only that phone has: your call line keeps the newest copy of each and can't read them. Systems goes only while you look at it; off, the call line drops them. iPhones get nothing | your call line, sealed |
 
 ### Notes, sync and backups
 

@@ -1,6 +1,6 @@
 """The NOTES map's names (0.5.19): at the usual zoom it names its regions (each course by its course page's title, each
 research project by its index note's title) instead of its best-linked notes, so a book whose index note has hundreds
-of "Seen in" links doesn't take every label. The pure part of home.js (roles, neighbourhoods, ranking, where the
+of "Seen in" links doesn't take every label. The pure part of views/notesmap.js (roles, neighbourhoods, ranking, where the
 region names go) runs here in node on a pretend notes folder: 2 courses, 1 research project and a book with 300
 links."""
 
@@ -13,7 +13,7 @@ from importlib import resources
 
 import pytest
 
-JS = (resources.files("kurooto.web") / "static" / "home.js").read_text(encoding="utf-8")
+JS = (resources.files("kurooto.web") / "static" / "views" / "notesmap.js").read_text(encoding="utf-8")
 PURE = JS.split("// -- the pure part")[1].split("// -- end of the pure part")[0].split("\n", 1)[1]
 
 VAULT = """

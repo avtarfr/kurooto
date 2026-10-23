@@ -20,6 +20,9 @@
     <color name="k_blob_2">#3E6E66</color>
     <color name="k_blob_3">#8A6414</color>
     <color name="k_blob_4">#9A4E33</color>
+    <!-- the web pages' sand and rose, for Systems and the Notes map (ViewsActivity hands the page these colours) -->
+    <color name="k_sand">#6E5A2E</color>
+    <color name="k_rose">#6A5384</color>
     <color name="k_ok">#2E6B3F</color>
     <color name="k_bad">#B23A26</color>
 

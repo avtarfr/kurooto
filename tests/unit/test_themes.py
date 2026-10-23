@@ -161,11 +161,16 @@ def test_terminals_and_top_take_the_theme(tmp_path, monkeypatch):
 
 
 def test_dashboard_canvases_read_the_palette_from_css():
-    js = resources.files("kurooto.web").joinpath("static", "home.js").read_text(encoding="utf-8")
-    # every colour the canvases draw with is a CSS variable, read again on "kurooto:palette"
+    static = resources.files("kurooto.web").joinpath("static")
+    js = static.joinpath("home.js").read_text(encoding="utf-8")
+    # every colour the canvases draw with is a CSS variable, read again on "kurooto:palette"; the drawing itself is in
+    # views/*.js (0.7.0: the phone app draws with the same code), PAL in views/common.js
     assert 'window.addEventListener("kurooto:palette"' in js and "function readPalette()" in js
-    code = "\n".join(ln for ln in js.splitlines() if not ln.lstrip().startswith("//"))
+    names = ("common.js", "systems.js", "notesmap.js")
+    views = {f: static.joinpath("views", f).read_text(encoding="utf-8") for f in names}
+    every = js + "\n" + "\n".join(views.values())
+    code = "\n".join(ln for ln in every.splitlines() if not ln.lstrip().startswith("//"))
     literals = set(re.findall(r'"(#[0-9a-fA-F]{6})"', code))
-    pal = re.search(r"const PAL = \{(.*?)\};", js, re.S)[1]
+    pal = re.search(r"const PAL = \{(.*?)\};", views["common.js"], re.S)[1]
     assert literals <= set(re.findall(r'"(#[0-9a-fA-F]{6})"', pal))  # only the fallbacks before the style loads
     assert "swatch-row" in js  # Settings shows the chosen palette's colours

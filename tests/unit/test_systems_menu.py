@@ -62,7 +62,7 @@ def test_quiet_goes_through_calm_and_undo_puts_it_back(env):
 
 def test_the_page_has_the_menu_the_list_and_the_living_drawing():
     html = (STATIC / "home.html").read_text(encoding="utf-8")
-    js = (STATIC / "home.js").read_text(encoding="utf-8")
+    js = "".join((STATIC / f).read_text(encoding="utf-8") for f in ("home.js", "views/common.js", "views/systems.js"))
     assert 'id="body-cells"' in html and 'id="body-menu"' in html and "<b>ping</b>" in html  # the ? guide says how
     for part in ("membrane(", "neuron(", "axon(", "synapses(", "meshLayer(", "openMenu(", "closeMenu(", "springs("):
         assert part in js, part

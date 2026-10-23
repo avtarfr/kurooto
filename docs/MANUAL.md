@@ -3103,6 +3103,14 @@ the app with the internet on, which sends its key again (0.6.1).
 *Setting:* `calls.today` (on). *Undo:* `calls.today` off: the call line drops its copies, and no alarm is set on the
 phone from it.
 
+**Systems and the Notes map** (0.7.0, Android, off by default): the dashboard's SYSTEMS and NOTES map on the phone,
+drawn by the same code: tap a feature or a note for its card (no note contents), drag, pinch; read-only. Systems is
+live while it's open (the app tells your computer every 20 s; your computer sends a copy every few seconds), the
+Notes map follows your notes (at most every few minutes, the 1500 best-linked notes). With the computer asleep the
+last copy shows "as of" its time. Both go to your call line sealed for each Android phone; the call line can't read
+them. iPhones don't get them. *Setting:* `calls.views` (off), or dashboard → Phone → **Show Systems and the Notes map
+in the Android app**. *Undo:* turn it off: the call line drops its copies.
+
 **The wake-up alarm on the phone** (0.6.0): every alarm you set (and the next daily one) is also set on the phone with
 Android's alarm clock, so it rings with Stop and Snooze even when your computer, your call line or the internet can't
 be reached. The call for the same alarm and the phone's alarm ring as one; the first Stop, Snooze or Answer counts for

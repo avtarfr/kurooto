@@ -396,6 +396,9 @@ Needs [Phone calls](calls.md) on. It shows your call line's address and whether 
   Telegram does the same.
 - **Ring my phone (test):** rings every paired phone (only while connected).
 - **Paired phones:** name, kind, whether notifications are on, when it was paired, and **Remove**.
+- **On the phone:** **Show Systems and the Notes map in the Android app** (0.7.0, off at first): this board's SYSTEMS
+  and NOTES map in the app, sealed for each phone (see [phone-app.md](phone-app.md#systems-and-the-notes-map-on-the-phone)).
+  Turning it off drops your call line's copies.
 - **ntfy account (optional):** paste a free ntfy.sh account's access token so Android rings aren't refused for an
   internet address you share (it says how many were refused this week); **Remove** goes back to no token. Your call
   line is updated with it by itself.

@@ -113,6 +113,14 @@ public class MainActivity extends Activity {
         chat.setOnClickListener(v -> startActivity(new Intent(this, ChatActivity.class)));
         box.addView(chat);
         TodayView.add(this, box); // the day, from your computer's last copy (0.6.0)
+        // the dashboard's Systems and Notes map (0.7.0, ViewsActivity); for now two rows here, later in the bottom bar
+        box.addView(Ui.heading(this, "Your computer"));
+        LinearLayout views = Ui.list(this);
+        views.addView(Ui.item(this, "Systems", "Its features and their health, live while you look",
+                v -> startActivity(new Intent(this, ViewsActivity.class).putExtra("mode", "systems"))));
+        views.addView(Ui.item(this, "Notes map", "Your notes and their links",
+                v -> startActivity(new Intent(this, ViewsActivity.class).putExtra("mode", "notes"))));
+        box.addView(views);
         JSONArray queued = Chat.waiting(Chat.load(this));
         if (queued.length() > 0) {
             StringBuilder s = new StringBuilder("Waiting for your computer (on your call line):");

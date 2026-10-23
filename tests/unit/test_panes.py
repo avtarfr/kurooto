@@ -13,7 +13,8 @@ STATIC = resources.files("kurooto.web") / "static"
 @pytest.fixture
 def page():
     read = lambda name: (STATIC / name).read_text(encoding="utf-8")  # noqa: E731
-    return read("home.html"), read("home.js"), read("home.css")
+    js = "".join(read(n) for n in ("views/common.js", "views/systems.js", "views/notesmap.js", "home.js"))  # one page
+    return read("home.html"), js, read("home.css")
 
 
 def test_the_board_has_a_panes_menu_and_a_page_over_it(page):

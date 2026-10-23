@@ -324,6 +324,31 @@ internet just then), opening the app tries again (0.6.1; on 0.6.0, swipe the app
 
 **iPhone and browsers** don't get Today: it's sealed with a key only the Android app has.
 
+## Systems and the Notes map on the phone
+
+Android, 0.7.0, off until you turn it on: dashboard → **Phone** → **Show Systems and the Notes map in the Android app**
+(the setting `calls.views`). Then the app's first screen has **Systems** and **Notes map** under **Your computer**.
+They're the dashboard's own drawings, drawn on the phone by the same code, in the app's colours (light or dark).
+
+- **Systems:** the beating core and your features round it, as on the dashboard. **Tap a feature** for its card: how
+  busy it was in the last 2 minutes, its program (cpu, memory, uptime), when it last did something and runs next, and
+  what needs a look, if anything. Tap the core for Kurooto's own card and what needs a look. Drag to turn the ring and
+  pinch to zoom; both spring back. While it's open it's live: the app tells your computer every 20 seconds, and your
+  computer sends a fresh copy every few seconds until the app stops asking.
+- **Notes map:** your notes and their links, coloured by course and project, with the regions' names. **Drag** to move
+  the map, **pinch** to zoom, **tap a note** for its card (its title, where it is, links, words, when it changed);
+  tap the empty map to fit it again. Your computer sends it when your notes change (at most every few minutes) and
+  once an hour anyway. A very big notes folder is cut to the 1500 best-linked notes.
+- **Read-only:** nothing on these screens changes anything. Notes' contents never reach the phone.
+- **When it's from:** "live" while your computer is sending Systems, else "as of 14:05". With your computer asleep
+  the last copy shows with "your computer is asleep"; with no internet, "can't reach your call line".
+
+**"Nothing here yet"**: the switch is off on your computer, the computer hasn't been on since you turned it on, or
+your call line is older than 0.7.0 (it's updated at 05:10). **"This phone's web view is too old"**: update Android
+System WebView (or Chrome) from the Play Store; the drawings need version 58 or newer.
+
+**iPhone and browsers** don't get them: they're sealed with a key only the Android app has.
+
 ## The wake-up alarm on the phone
 
 Android, 0.6.0. Every alarm you set (and the next daily one) is also set on the phone with Android's own alarm clock:
@@ -543,6 +568,11 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
 - Today (Android): the day's list (classes, events, what's due, reminders, alarm times, open threads) goes to your call
   line sealed for each Android phone with a key only that phone has; your call line keeps one copy per phone and can't
   read it, and nudges the phone through ntfy (with nothing in the nudge) when it changed.
+- Systems and the Notes map (Android, only with `calls.views` on): your notes' titles, where they are in your notes
+  folder and which link to which (never what they say), and each feature's state and health lines. Each copy is
+  sealed on your computer, and its key sealed for each Android phone with a key only that phone has; your call line
+  keeps the newest of each and can't read them. Systems goes only while you're looking at it. Turning it off drops the
+  call line's copies.
 - Call audio: see [Calls: what leaves your computer](calls.md#what-leaves-your-computer).
 
 **Turn it off.** Unpair the phone (above). To stop questions reaching the phone but keep calls, take `"question"` and

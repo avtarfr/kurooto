@@ -13,7 +13,7 @@ STATIC = Path(kurooto.__file__).parent / "web" / "static"
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="needs node")
-@pytest.mark.parametrize("js", sorted(STATIC.glob("*.js")), ids=lambda p: p.name)
+@pytest.mark.parametrize("js", sorted([*STATIC.glob("*.js"), *STATIC.glob("views/*.js")]), ids=lambda p: p.name)
 def test_every_dashboard_script_parses(js):
     r = subprocess.run(["node", "--check", str(js)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr[-400:]

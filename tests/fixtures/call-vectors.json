@@ -19,5 +19,16 @@
     "nonce_hex": "707172737475767778797a7b",
     "plain": "{\"id\":\"0123456789abcdef\",\"title\":\"Kurooto\",\"text\":\"Reminder: Ünïcode ✓ call Sam\",\"at\":1760000000}",
     "sealed": "s1.BDb1J-_a1ti7F13WzhX0RqcNCWXxUE3KFyUkq_mVcJARqPcpicJh_QNb_LaFDz_ifdm7Wp5zsMi7fgxled8-_tA.cHFyc3R1dnd4eXp7nhluXKN8qvDUtHDTIcPB2LovbhsUr4OZu0tGSgwu4TANVweKrVqTcSe3QR4n3gee8Xu5nczTnJy363PRBS-t2IHrUmXKVY-fABkBx953PMwRAAygZe8Z5kcjXCb3ypYd5uYoHS12_jo6K_ymweoF-ummrPO_"
+  },
+  "v1": {
+    "phone": "the s1 phone's key",
+    "kind": "notes",
+    "rev": 1760000200123456,
+    "key_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+    "blob_nonce_hex": "000102030405060708090a0b",
+    "plain": "{\"v\":1,\"kind\":\"notes\",\"nodes\":[[\"maps/courses/algebra\",\"Älgebra ✓\",1760000000,42],[\"zettel/rings\",\"Rings\",1760000100,7]],\"links\":[[0,1]],\"made\":1760000200}",
+    "head": "v1 notes 1760000200123456 ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8 ac3aa6a646445bc4add510d730d892d7d3d16da5807429b5b5e1c7c82b205c2c",
+    "head_sealed": "s1.BDb1J-_a1ti7F13WzhX0RqcNCWXxUE3KFyUkq_mVcJARqPcpicJh_QNb_LaFDz_ifdm7Wp5zsMi7fgxled8-_tA.cHFyc3R1dnd4eXp7kwonVu4y7bPFt3TRJMXG0LF-PElC-dGOoUl7YD0rzWtmGQaWvFq3VifnIX9jzjOQkjnWpeSOu6aKvU6vTtp-zDV9YWCWEM4er-tAkt4tZNp2VVTgKvkZ9gEsXCGlzZUdsu4hHzQzJzsyM0C9H3cYYw8kEM0O9iEsNqRnQAskEJicVeVLK-demma1OSpjjDR9BHzjp5C6",
+    "blob": "AAECAwQFBgcICQoLQ9lVp0o16-y--mKQDCDsDschI6qmWvejdscYlfKsnUotDDt9wTV-v8NMS1iU9BMOhqHVSwJsxqKbCKWBNBWD305DIuqeE9j8TiLlQFpxK6S2t0o7lrcYNkKW0NqskzcKQD9OiITDhoF_kQqCh2q9GeIOtLcpFYErC3hOlC2D2Ilb054pAFYBlExDcDz75RG1_GyMlD8YTBMbhb8LIGSZjw"
   }
 }

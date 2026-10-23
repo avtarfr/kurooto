@@ -26,6 +26,7 @@ The user's side of this is in [../user/calls.md](../user/calls.md) and [../user/
 | `modules/calls/phone.py` | `PhoneApp`: questions and approvals as phone notifications with answer buttons |
 | `modules/calls/chat.py` | `PhoneChat`: the phone app as a chat channel (0.5.16), the `chat` notify channel, files for it as links and files shared from the phone (0.5.18) |
 | `modules/calls/today.py` | `PhoneToday`: the Android app's Today list, sealed for each phone, and Done / +1 tapped on it (0.6.0) |
+| `modules/calls/views.py` | `PhoneViews`, `trim_notes`: Systems and the Notes map for the Android app, sealed for each phone; Systems live while watched (0.7.0) |
 | `modules/calls/review.py` | the post-call look back and `/lessons` (0.5.8) |
 | `modules/calls/tools.py` | the `Tool` dataclass (shared with `core/tools.py`) and notes helpers |
 | `data/worker/src/worker.js` | the Worker: `fetch`, `scheduled`, Durable Object `class Line` |
@@ -40,7 +41,8 @@ The user's side of this is in [../user/calls.md](../user/calls.md) and [../user/
 writes `account`, `hash`, `deployed`), `live_model`, `live_models`, `voice_by_model`, `voice_mode` (`auto` | `live` |
 `phone`), `voice_by_kind`, `turn_brain` (`gemini` | `local`), `text_model`, `voice`, `persona`, `ntfy_server`
 (`https://ntfy.sh`), `ring_s` (60), `later_min` (30), `realert_min` ([3, 6]), `notes_repo`, and for the look back
-`review` (true), `review_effort` (`high`), `review_brain` (`""` = main), `lessons_max` (12).
+`review` (true), `review_effort` (`high`), `review_brain` (`""` = main), `lessons_max` (12); for the Android app
+`today` (true) and `views` (false: Systems and the Notes map, below).
 
 Secrets (`Calls.SECRETS` and `deploy.ensure_secrets`): `calls.call_secret`, `calls.connector_secret`,
 `calls.ntfy_topic`, `calls.ntfy_key`, `calls.vapid_jwk`, `calls.vapid_public`, `calls.ntfy_token` (optional, from
@@ -237,11 +239,13 @@ that `config_template` puts in the call's instructions.
 - Routes: top level `/health`, `/manifest.webmanifest`; the rest goes to `Line.fetch`. No auth: `/connect` (checked by
   the connector secret), `/pair/claim` and `GET /sealed/<32 hex>` (a sealed file: only its link's key opens it). Any valid key (device key `d1`, ticket `t1`, or a minted ticket):
   `/status`, `/token`, `/turn`, `/text-call`, `/call-report`, `/tool`, `/tasks`, `/transcript`, `/upload`. Paired
-  devices only: `/pending`, `/answer`, `/chat` (GET and POST), `/outbox`, `/today`, `/app-call`, `/ring-reply`,
+  devices only: `/pending`, `/answer`, `/chat` (GET and POST), `/outbox`, `/today`, `/view`, `/view/watch` (Android
+  only), `/app-call`, `/ring-reply`,
   `/push/subscribe`, `/device/key`, `/upcoming` (bedside mode), `/shortcut`, `/shortcut/new`, `/shortcut/off`. Only a
   Tell Kurooto link: `/tell/tk1.<id>.<secret>` (below).
 - Admin operations over the WebSocket: `ring`, `stop-ring`, `pair-code`, `devices`, `revoke` (`device`), `ticket`,
-  `bye`, `notify`, `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`, `file-put`, `today-put`, `tells`,
+  `bye`, `notify`, `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`, `file-put`, `today-put`,
+  `view-put`, `tells`,
   `tell-revoke` (`tid`). An op's own fields never use `id`: that's the request's id, and `connector.admin(op, id=...)`
   replaced it, so the answer never matched (before 0.6.0, `revoke` sent `id` and `/unpair` timed out; it also deletes
   the device's Today copy and its Tell Kurooto link).
@@ -413,6 +417,69 @@ no room; the app's own Done answers `{"dismiss": true}`, which `PhoneApp.answer`
 (`ListenService.sealedNote`) gets Done and +10 min / +1 h, kept on the phone (`ActionReceiver.SEALED_SNOOZE` shows it
 again with an inexact alarm): the computer is asleep when those come.
 
+## Systems and the Notes map on the phone (0.7.0)
+
+The dashboard's SYSTEMS and NOTES map in the Android app, drawn by the dashboard's own code
+(`web/static/views/`, see [web.md](web.md#the-shared-drawings-webstaticviews)); off by default (`calls.views`; the
+dashboard's Phone card has the switch, through `POST /api/settings`; `GET /api/phone` has `views`).
+
+**The copies.** `modules/calls/views.py`:
+- `notes_snapshot()`: `web/live.py:Graph` (its own instance, so the folder is read again only where files changed) with
+  `graph_layout`, then `trim_notes(payload)`: `{"v": 1, "kind": "notes", "nodes": [[path, title, mtime, words]] (path
+  order), "links": [[i, j]] (places in nodes), "layout": {research, project}, "research": {<project>: {name, topics}},
+  "total": {notes, links}, "cut": {notes, links}}`. Past `NOTES_MAX` (1500) the best-linked notes stay (ties: newest);
+  past `LINKS_MAX` (6000) the links between the least-linked notes stay (a book index's hundreds of "Seen in" links go
+  first). Never a note's text.
+- `systems_snapshot()`: `web/live.py:Vitals.board()` and `cells_of()` (shared with the dashboard's `Vitals.snapshot`):
+  `{"v", "kind": "systems", "name", "version", "sys": {cpu, mem}, "cells": [{id, title, act, events}] (on only),
+  "features": [{id, title, events, last, next, proc: {cpu, mem, threads, up, n} | null, down, idle, intermittent,
+  health?}], "core": {cpu, mem}, "link": {connected}, "today": {"items": [{at, end, kind, state}]} (no names), "health":
+  [{id, title, detail}] (at most 8)}`. `health` on a feature is its `/health` line (`core/health.py:board`).
+- Sizes (a made-up 896-note folder, 3362 links): notes 97 KB of JSON, 20 KB sealed; a 2961-note one is cut to 1500
+  notes and 4223 links, 144 KB, 32 KB sealed; Systems with 13 features 3 KB, 0.6 KB sealed.
+
+**Sealing (`line.py` v1).** `put(c, kind, snap, keys)` adds `"made"`, then `pack_v1`: gzip (mtime 0), then f1 with a
+fresh 32-byte key (the blob); `head_v1` = `"v1 <kind> <rev> <key b64url> <sha256 hex of the blob>"`, sealed s1 for
+each Android device with a `seal` key (as Today). The blob goes once, whatever the number of phones. `rev` is
+`max(last + 1, time_ns // 1000)` per kind (`<state>/calls/views.json`, under the `calls-views` lock).
+
+**Handing over.** `view-put {view, rev, part, parts, data (base64), size and keys on part 0}` in `PART` (96 KB) pieces,
+in order; at most `VIEW_MAX` (2 MB sealed). `Connector.push_state` calls `PhoneViews.push(c)` after Today's: turned
+off (and it was on), one `view-put {off: true}`; on, the notes map goes when its digest (with the phones' keys)
+changed and the last went `NOTES_MIN_S` (180) ago or the phones changed, or it's `NOTES_REFRESH_S` (an hour) old. The
+event `phone_views_pushed` (view, phones, bytes, notes, cut) on a change; `phone_views_failed` on an error (an older
+line's `unknown op` is left alone). `setting_changed` for `calls.views` pokes the connector (`PhoneViews.on_event`,
+subscribed in `Calls.start`).
+
+**Watching.** The app posts `/view/watch` every 20 s while Systems is open; the Worker passes it at most every 5 s per
+phone (`WATCH_MS`) as the event `views_watch` (only while the computer is connected: never queued) and answers `{ok,
+told, computer}` (`{ok: false, off: true}` when off; 403 for a web device). `Calls.on_event` hands it to
+`PhoneViews.watch`, which sets `until = now + WATCH_S` (30) and, if not running, starts `_watching` on the connector's
+loop: a Systems copy every `SYSTEMS_S` (4) until `until` passes, the connection drops or it's turned off (one
+`phone_views_watching` event per stretch). The phones' keys are asked for at most every `KEYS_S` (60) there; `revoke`
+clears that cache.
+
+**The Worker.** `Line.viewPut`: part 0 (with `size`, `keys`: only paired Android devices, `VIEW_KEY` tokens) starts a
+pending copy (`views.pend[kind]`, replacing one still coming in); a `rev` not above the kept one's is refused (`stale`);
+parts in order (`v:<kind>:<rev>:<n>`, at most `VIEW_PART` 96 KB and `VIEW_PARTS` 24); the last part swaps it in (the old
+parts go), so only the newest whole copy is kept, under `views` `{off, notes, systems: {rev, parts, size, keys, at},
+pend}`. `off` deletes everything (`viewsDrop`, also after `kurooto rotate` in `fresh()`); `revoke` drops the device's
+keys. `GET /view?kind=notes|systems` (a paired device): `{"view": {rev, at, key: this device's s1 head, data: the blob
+base64url} | null, "off", "computer"}` (400 for another kind).
+
+**The app.** `Views.fetch(c, kind)` (`Line.sendSealKey` first, as Today) opens a new `rev` with `ViewSeal.open` (s1 head,
+sha256, AES-GCM, gunzip, at most 16 MB unpacked) and keeps it in `view-<kind>.json` (`{snap, rev, at, computer, off,
+fetched, old}`); `Views.watch` posts `/view/watch`; unpairing deletes both (`Prefs.forget`). `ViewsActivity` (extra
+`mode`): a WebView loading `https://appassets.androidplatform.net/views/phone.html`, every request answered by
+`shouldInterceptRequest` from the APK's assets (`views/*.html|js|css`, `fonts/*.woff2`) and anything else 404, so the
+page reaches nothing; no file or content access, no DOM storage, no new windows, Safe Browsing off (8+), no navigation,
+and no JavaScript interface: the app hands data in with `evaluateJavascript("KurootoView.take(...)")` (`{mode, snap,
+computer, reach, off, palette}`; the palette is the app's colours: `k_bg`, `k_fg`, `k_primary`, `k_blob_2..4`, `k_sand`,
+`k_rose`, `k_bad`, `k_card`). Systems: watch every 20 s, fetch every 4 s (20 s while the computer is asleep); notes:
+fetched when opened. A WebView older than Chrome 58 (`MIN_CHROME`) gets a message instead. `android/build.sh` copies
+`src/kurooto/web/static/views/*` to `assets/views/` and the Public Sans files to `assets/fonts/` at build time.
+For now `MainActivity` opens it from two rows (**Systems**, **Notes map**) under **Your computer**.
+
 ## Tell Kurooto, the iPhone Shortcut (0.6.0)
 
 Apple doesn't allow generating a Shortcut file, so the phone shows a recipe with a link to paste.
@@ -472,9 +539,11 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 | t1 | `t1.<expiry ms>.<hex HMAC-SHA256 with the call secret>` |
 | d1 | device keys `d1.<id>.<secret>` |
 | s1 | ECDH P-256, HKDF-SHA256 (salt: the ephemeral public key, info `"kurooto s1"`) to an AES key, then k1 |
+| v1 | a view (0.7.0): the blob `nonce ‖ ciphertext+tag` of gzip(snapshot) under a fresh AES-256-GCM key, and the head `"v1 <kind> <rev> <key b64url> <sha256 hex of the blob>"` sealed s1 per phone (Python `line.pack_v1`/`head_v1`/`open_v1`, Java `ViewSeal`; the Worker only stores it) |
 | Web Push | VAPID ES256 JWT (`line.vapid_keys`, `worker.js:webPush`) |
 
-`tests/fixtures/call-vectors.json` holds k1, t1 and s1 vectors, checked by `tests/unit/test_calls.py`
+`tests/fixtures/call-vectors.json` holds k1, t1, s1 and v1 vectors (v1: `tests/unit/test_views.py`,
+`android/test/ViewsTest.java`), checked by `tests/unit/test_calls.py`
 (`test_k1_and_t1_match_the_shared_vectors`, and `test_the_worker_agrees_with_the_vectors` running
 `tests/js/vectors.mjs` in Node), `android/test/CryptoTest.java` (k1, s1; CI job `android`), and
 `tests/unit/test_lidsafe.py` (s1). Changing any format means changing all three and the vectors in one commit.
@@ -487,7 +556,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   release's tarball; see [release-and-updates.md](release-and-updates.md#the-phone-app-sign---apk)); otherwise a
   throwaway debug key. `build.sh --test` runs
   `test/CryptoTest.java`, `test/SpeechTest.java`, `test/CardsPlacesTest.java` (`CardRules`, `PlaceRules`),
-  `test/TodayTest.java` (`Buttons`, `AlarmPlan`) and `test/DockTest.java` on a plain JVM.
+  `test/TodayTest.java` (`Buttons`, `AlarmPlan`), `test/DockTest.java` and `test/ViewsTest.java` (`ViewSeal`) on a
+  plain JVM. `KUROOTO_APP_ID` (optional) renames the package for a test build that installs beside the real app.
 - Bedside mode (0.6.0): `BedsideActivity` (theme `Kurooto.Call`, `showWhenLocked`, immersive): clock, date, next
   alarm (the first `alarm` call from `GET /upcoming`, or `AlarmManager.getNextAlarmClock()` if earlier), up to three
   calls (reasons hidden while a secure keyguard is locked), the waiting count, and the Talk button (`Line.callLink` then
@@ -611,11 +681,13 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox),
   `test_presence_line.py`, `test_rotate_line.py`, `test_phone_today_line.py` (Today sealed per phone, kept while the
   computer is away, Done from the outbox, off), `test_shortcut_line.py` (Tell Kurooto links: made, scoped, revoked,
-  ended by unpairing, queued offline; and `/upcoming`). `test_phone_chat_line.py` also covers a sealed file put and
+  ended by unpairing, queued offline; and `/upcoming`), `test_phone_views_line.py` (the notes map sealed per phone and
+  kept while the computer is away, watching Systems, parts in order and the newest only, off). `test_phone_chat_line.py` also covers a sealed file put and
   fetched. They need Node; CI's `call-line` job installs the Worker's packages and bundles the page first.
 - Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_phone_cards.py`,
   `test_place_reminders.py`, `test_phone_today.py` (the Today list, its hand-over, Done / +1, reminder and deadline
-  buttons), `test_shortcut.py` (the computer's side of the links, the dashboard, `public/qr.js` against segno through
+  buttons), `test_views.py` (the views' copies, sealing, parts, watching, off; the shared drawing code against
+  Chrome 58 with esbuild), `test_shortcut.py` (the computer's side of the links, the dashboard, `public/qr.js` against segno through
   `tests/js/qr.mjs`), `test_app_first.py` (no Telegram: routing,
   files as links, shared files, setup, doctor), `test_livefallback.py` (runs `tests/js/fallback.mjs` and
   `tests/js/callpage.mjs`).
@@ -633,6 +705,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   minutes apart ring on the phone as one. A sealed reminder snoozed on the phone isn't known to the computer.
 - Today and the phone's alarm are untested on a real phone as of 0.6.0's build (JVM tests, the debug build, lint and
   the Worker tests only).
+- Systems and the Notes map (0.7.0) were checked on one real phone only with a stored sample copy (the
+  WebView, its assets, the colours, a tap); fetching from a real call line and watching ran against `wrangler dev`
+  only. The notes map's layout is worked out on the phone each time (no positions are kept), so it differs a little
+  from the dashboard's and takes a few seconds to settle.
 - `calls.ring_s` is never sent to the Worker or the app, which ring 60 s (5 minutes for an alarm) whatever it says.
 - Turn-by-turn calls run tools through `core/tools.py:run_tool` and don't reach `Calls.tool_log`; a call page from
   before 0.5.8 (until the Worker is deployed again) sends no `since`, so its tools share the `""` log.
