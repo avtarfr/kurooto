@@ -1,13 +1,14 @@
 # Quiz and exams
 
 Practice questions from your own notes, spaced so you see each one again just before you'd forget it; a stronger
-routine in the two weeks before a quiz or exam; an optional exam-season mode for the whole exam period; revision packs
-as PDFs; and a hint ladder for problems you're stuck on.
+routine in the two weeks before a quiz or exam; an optional exam-season mode for the whole exam period, with a revision
+plan before each exam; revision packs as PDFs; and a hint ladder for problems you're stuck on.
 
 - [Quiz](#quiz)
 - [Link recall cards](#link-recall-cards)
 - [Exam mode](#exam-mode)
 - [Exam season (optional)](#exam-season)
+  - [The revision plan](#the-revision-plan)
 - [Revision packs](#revision-packs)
 - [Hint ladder](#hint-ladder)
 
@@ -186,6 +187,7 @@ a part to switch it on or off), or in Settings → Exam season. All are on when 
 | Two-minute debrief (`debrief`) | half an hour after the exam ends (`exam_min`, 180 minutes after its start; the evening, when its time isn't known): "How did it go? What came up, what went well, what to fix before the next one." Your answer goes, as you said it, into the subject's course note (`<subject>/course.md`) under **Exam debriefs**, or into that day's daily note when the exam has no subject. **Nothing new** skips it. Asked up to 36 hours after, and open for 2 days. |
 | No calls during an exam (`no_calls`) | from 15 minutes before an exam until `exam_min` after its start. |
 | Only deadlines, quizzes and the alarm by day (`budget`) | during the season the [daily message limit](messages-it-sends.md) tightens: only Deadlines, Quiz, the alarm and Exam season itself come during the day; everything else that comes by itself waits for the evening bundle. Your own reminders, approvals and anything urgent still come. |
+| Revision plan before each exam (`revision`) | from two weeks before each exam, its course's topics ranked and laid into your free time, with what to read; the evening asks whether you covered them. See [the revision plan](#the-revision-plan). |
 
 **The quiz call before an exam** is off unless you pick it for that exam: the card (and `/examseason`, with Quiz and
 Phone calls on) has a **Quiz call before …** button per exam. Picked, Kurooto calls you for a quiz at `quiz_call_at`
@@ -196,6 +198,47 @@ on. For the season's other exams, practice stays a message.
 season, its exams with what you told Kurooto, and the parts that are on, with their switches.
 
 **On calls.** On the exam day and the day before, every call's brief has the exam and what you said about it.
+
+### The revision plan
+
+**What it does.** From `revision_days` (14) before an exam, the exam's course gets a revision plan: its topics, weakest
+first, laid into your free time before the exam, one topic per block, with what to read. Plain arithmetic on this
+computer: no AI. It needs the exam to have a course (`/due 2026-12-08 09:00 Linear Algebra final exam`, with the course
+in the title or set on the deadline).
+
+**Where the topics come from.** The course's exam prep note (`<subject>/exam-prep.md`): each line under **Covered so
+far** (the exam-prep skill writes it), then the short lines under **Gaps**; **Topics** or **Syllabus** work too. A
+line's link is the topic's note; "Lecture 5: Eigenvalues" is the topic "Eigenvalues". Without an exam prep note, the
+course's lecture notes (`<subject>/2026-11-05-....md`), in date order; without those, its concept notes (the concept
+graph's for the course, and the other notes in its folder).
+
+**How they're ranked.** Four groups, in this order: topics with **no note yet**; **a stub** (a note with under 50 words
+of your own; a missed-class stub counts until you fill it in); **weak recall** (its quiz grades and your answers to the
+evening question average under 3 of 5); the rest. In each group the weakest recall comes first, then the course's
+order. A topic's quiz items are the quiz questions that name it or link to its note. A topic you said **Yes** to isn't
+laid again for `revision_days`.
+
+**When the blocks go.** Into [Start-by's](reminders-and-deadlines.md#start-by-dates-and-crunch-weeks) free time: each day's window
+(`startby.window`, so never at night) less your classes and calendar events, and here also your
+[commitments](classes-and-timetable.md#commitments-gym-shifts-standups) and the exams themselves. `revision_share` (50%) of each day's free time goes
+to blocks of `block_min` (60) minutes. Each block goes to the soonest exam still ahead that has topics left, and ends
+before you leave for it (`leave_min`). An exam gets at most as many blocks as Start-by's size for it (10 hours until
+you say: `/startby exam la a week`); `/revise` says when topics didn't fit.
+
+**What to read.** With each topic: its own note, then the pages of class material that name it (Classroom's
+downloaded files, your files folder: "Lecture 5 slides.pdf, pp. 3-7"), then book pages (the pages the concept graph
+found it on, and pages of books Books has read that name it). Class material always comes first.
+
+**Every day.** Today's blocks are fixed the first time they're worked out that day; later days are worked out again as
+your notes and answers change. They're in the morning plan with Start-by's lines (the morning page, the wake-up call,
+the drafted plan; with Start-by dates on) and on the Exam season card. At the evening check-in's time (`night_at`,
+21:30, without Check-ins) one message asks about the day's topics: "Revision: did you cover Jordan form (Linear
+Algebra) today?" with **Yes**, **Partly** and **No**. The answer counts like a quiz answer: the topic's quiz items are
+graded (Yes as Good, 4 of 5; Partly 2; No 1, so they come back tomorrow) and the topic keeps the grade too. Tapping
+another answer replaces the first; `/revise undo` takes the last one back.
+
+**From Telegram.** `/revise` shows today's blocks and the next days'; `/revise la` one course's topics, ranked, with
+why; "what should I revise today?" today's blocks.
 
 **Settings that matter** (Dashboard → Settings → Exam season)
 
@@ -208,6 +251,11 @@ season, its exams with what you told Kurooto, and the parts that are on, with th
 | `exam_season.exam_min` | 180 | how long an exam is taken to last |
 | `exam_season.quizzes` | off | on: quizzes and tests outside an exam period count too |
 | `exam_season.quiz_call_at` | `19:00` | when a picked quiz call rings the evening before |
+| `exam_season.revision` | on | the revision plan |
+| `exam_season.revision_days` | 14 | the plan starts this many days before each exam |
+| `exam_season.revision_share` | 50 | % of each day's free time that revision blocks may take |
+| `exam_season.block_min` | 60 | one revision block, in minutes |
+| `exam_season.revision_ask` | on | the evening question about the day's topics |
 
 **What leaves your computer.** With Phone calls on, the leave-by alarm's time, the exam and what you said about it go
 to your call line so it can ring, like any call. Nothing else.
@@ -215,7 +263,8 @@ to your call line so it can ring, like any call. Nothing else.
 **Turn it off / undo.** Features → Exam season → Turn off: its timers, leave-by alarms (also on your call line) and the
 update hold go at once, and calls during exams are allowed again. Or switch off just the part you don't want.
 Debriefs already written stay in your notes; your answers are kept in Kurooto's state folder (`exam_season.json`) for 30
-days after each exam.
+days after each exam. The revision plan writes nothing in your notes; its days and your answers are in
+`revision.json` (14 days of plans), and `/revise undo` puts a topic's quiz grades back as they were.
 
 ## Revision packs
 

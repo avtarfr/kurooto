@@ -15,9 +15,11 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   (0.5.17: `/card`, `/cards on`, `quiz.links*`, the quiz's spacing; "Where to read" adds the subject's own notes and
   Classroom files; `quiz.links_check` for the local model. Not yet: papers from the research digest, which don't go
   through Books.)
-- **Revision plan.** When exam season starts, a course's topics are ranked (no note, stub, weak recall, the rest)
+- ~~**Revision plan.** When exam season starts, a course's topics are ranked (no note, stub, weak recall, the rest)
   and laid over Start-by's free slots with the pages to read; the evening check-in asks "did you cover X?" and feeds
-  the same recall score as the quiz. Plain arithmetic, no AI.
+  the same recall score as the quiz. Plain arithmetic, no AI.~~ (0.5.17: Exam season's `revision` part, `/revise`;
+  topics from the exam prep note, else lecture or concept notes; class material's pages before books'; Yes / Partly /
+  No grade the topic's quiz items, with Undo)
 - ~~**Turn on from chat.** A message that needs a feature that's off ("wake me at 7") offers [Turn on] [Not now]; one
   tap turns on it and what it needs, then does the original request.~~ (0.5.10)
 - ~~**Run receipt.** Every AI answer ends with one grey line built from the tool log, not the answer's words: brain,
@@ -66,10 +68,10 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 
 ## From the skeptic review (2026-10-23)
 Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.
-- **Make the panel's ideas general**: link recall cards and the revision plan also draw on course notes and Classroom
-  files, not only books; the meeting brief is for any recurring meeting ("With: X", their role in your own word: guide,
-  manager, coach); "check my attempt" becomes "check my draft" (essays, accounts working, code, proofs); missed-class
-  catch-up works without Classroom.
+- **Make the panel's ideas general**: link recall cards and ~~the revision plan~~ (0.5.17) also draw on course notes
+  and Classroom files, not only books; the meeting brief is for any recurring meeting ("With: X", their role in your
+  own word: guide, manager, coach); "check my attempt" becomes "check my draft" (essays, accounts working, code,
+  proofs); missed-class catch-up works without Classroom.
 - **A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking. Bedside
   mode is an Android add-on.
 - ~~**No college-term defaults**: the check-in times and Start-by's day window are learned from when you actually

@@ -132,7 +132,8 @@ def test_the_season_its_first_message_and_the_update_hold(season):
         "Exam season: Mon 7 Dec to Fri 11 Dec, 2 exams. Until it's over: updates wait (critical fixes still install); "
         "your alarm is checked every night; the evening before each exam I ask where it is; an alarm to leave on "
         "time; a two-minute debrief after each one; no calls during an exam; during the day only deadlines, quizzes "
-        "and the alarm message you (the rest waits for the evening). /examseason shows it and switches parts off."
+        "and the alarm message you (the rest waits for the evening); a revision plan in your free time before each "
+        "exam (/revise). /examseason shows it and switches parts off."
     ]
     w.go(at(dt.date(2026, 12, 6), 12, 15))
     assert len([t for t in w.texts() if t.startswith("Exam season:")]) == 1  # once a season

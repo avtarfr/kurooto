@@ -472,17 +472,22 @@ class StartBy(Module):
         return f"{r['title']}{r.get('parts', '')} ({on} {due}): {work}, {size_text(r['hours'])} of work"
 
     def morning_rows(self) -> list[dict]:
-        """For the morning page: what to start, {"title", "when"}."""
+        """For the morning page: what to start, {"title", "when"}, then the day's revision blocks."""
         today = now().date()
         return [
             {"title": r["title"], "when": f"{self.when_words(r, today)} · due {when_text(r['due'].isoformat())}"}
             for r in self.to_start()[:6]
-        ]
+        ] + self._revision("morning_rows")
 
     def morning_lines(self) -> list[str]:
         """For the wake-up call and the drafted plan."""
         today = now().date()
-        return [self.line(r, today) for r in self.to_start()[:6]]
+        return [self.line(r, today) for r in self.to_start()[:6]] + self._revision("morning_lines")
+
+    def _revision(self, what: str) -> list:
+        """Exam season's revision blocks for today (modules/revision.py), when it and its revision plan are on."""
+        es = self._on("exam_season")
+        return getattr(es.revision, what)() if es is not None and es.setting("revision") else []
 
     def crunch_text(self, weeks: list[dict]) -> str:
         parts = [

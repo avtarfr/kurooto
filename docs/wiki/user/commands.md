@@ -103,6 +103,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/quizstatus` | what's due to practise, per subject | Quiz |
 | `/card`, `/cards`, `/cards on`, `/cards off` | a link recall card now (how two of your concepts relate); how they're going; cards by themselves on or off | Quiz |
 | `/examseason` | exam season: dates, exams and parts (tap a part to switch it) | Exam season (optional) |
+| `/revise`, `/revise la`, `/revise undo` | the revision plan: today's blocks and the next days'; one course's topics, ranked; take back the last Yes / Partly / No | Exam season (optional) |
 | `/hint la` (with a photo, or the problem typed after it) | one hint at a time | Hint ladder |
 | `/pack linear algebra midterm` | a revision PDF from your notes | Skills |
 | `/studypack <subject> [what it's for]`, e.g. `/studypack la quiz on eigenvalues`; `/studypack prompt` (edit the prompt), `/studypack prompt reset` | a zip of a subject's materials, with a prompt for another AI sent as its own message; a topic narrows it, class material first; over 50 MB comes as a temporary Drive link | Skills |
@@ -218,6 +219,7 @@ the AI. A request that asks a question only matches the requests below that answ
 | "show my doubts" | your open doubts | Doubt queue |
 | "quiz me", "quiz me on topology", "test me on LA", "quiz me by call", "call me for a quiz", "quiz me at 9 tonight", "quiz me here" | a practice session | Quiz |
 | "exam season?" | what exam season does now | Exam season |
+| "what should I revise today?" | today's revision blocks | Exam season |
 | "starting linear algebra for 50 min" | a study session away from the computer | Study tracker |
 | "done studying" | end the session | Study tracker |
 | "studied stats for an hour" | log study time | Study tracker |

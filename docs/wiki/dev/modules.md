@@ -390,7 +390,19 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `startby.window`.
 - **exam_season** (`modules/exam_season.py`): one card for an exam period (update hold, alarm check, the eve question,
   leave-by alarm, debrief, no calls in exams, the Calm budget). Registers `app.updates.holds["exam_season"]` and an
-  availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`).
+  availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`). Its
+  `revision` part is `modules/revision.py` (not a module: `ExamSeason.revision`, a `Revision`, settings in
+  `exam_season.*`): `topics()` reads the exam prep note's "Covered so far"/"Gaps" lines, else dated lecture notes, else
+  concept notes (`integrate`'s `chapters.json`, the subject folder); `ranked()` sorts by `rank_key` (tier: no note,
+  stub by `body_words() < STUB_WORDS`, weak recall `< WEAK`; then recall, course order), recall being the last grades
+  of the topic's quiz items (`_items`: they name it or link its note) and its own last answer; `plan()` lays them with
+  the pure `lay()` into `startby.slots()` less commitments and the exams (`minus()`), soonest exam first, at most
+  Start-by's `size_of()` hours per exam; `reading()` lists the note, then `core/studypack.sources()` pages (class
+  material first) and the concept graph's `seen.json` pages. The day's blocks are fixed in `revision.json` the first
+  time (`today()`, also from the tick, the card and `StartBy.morning_rows/morning_lines`, which append them). The tick
+  sends `ask()` once a day (Calm reason `exam_season.revise`); buttons `rv:<yyyymmdd>-<n>:y|p|n` go to `answer()`,
+  which grades the quiz items through `Quiz.grade` and keeps their previous state for `undo()` (`Quiz.restore`).
+  Commands `/revise`, intent "what should I revise today". Tests: `tests/unit/test_revision.py`.
 - **alarm** (`modules/alarm.py`, requires `calls`): the wake-up call is booked on the call line so it rings with the
   computer asleep; `alarm:plan` every 30 min; the morning plan drafted `prep_min` before; sets
   `app.availability.sleep`; mirrors to `reserve/alarm.md`. Alarms you set are a list (`alarm-set.json`, `mine()`, at

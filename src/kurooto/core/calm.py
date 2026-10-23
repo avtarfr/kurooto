@@ -361,6 +361,15 @@ REASONS: dict[str, Reason] = {
             stop=to(False, "no more exam debriefs"),
             suggest=True,
         ),
+        R(
+            "exam_season.revise",
+            "the evening question: did you cover today's revision topics?",
+            many="revision questions",
+            setting="exam_season.revision_ask",
+            stop=to(False, "no more revision questions"),
+            later=False,
+            suggest=True,
+        ),
         # ----------------------------------------------------------------------------------- your day
         R(
             "checkins.question",

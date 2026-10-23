@@ -578,6 +578,20 @@ to switch it) or in Settings → Exam season:
 - **Only deadlines, quizzes and the alarm by day** (`budget`):
   [Calm](#calm-by-default-why-each-message-came-and-a-daily-limit) holds everything else that comes by itself for the
   evening bundle. Your own reminders, approvals and anything urgent still come.
+- **Revision plan before each exam** (`revision`): from `revision_days` (14) before an exam, its course's topics are
+  ranked and laid into your free time, one per `block_min` (60) minute block, with what to read. Plain arithmetic, no
+  AI. Topics: the course's exam prep note (**Covered so far**, then the short lines under **Gaps**), else its lecture
+  notes, else its concept notes. Ranked: no note yet, a stub (under 50 words of your own), weak recall (quiz grades and
+  your answers here average under 3 of 5), the rest; weakest recall first in each. Blocks go into
+  [Start-by's](#start-by-dates) free time (its window less classes and calendar events, and here also commitments and
+  the exams), `revision_share` (50%) of each day's, the soonest exam first, ending before you leave for it; at most
+  Start-by's size for the exam. With each topic: its note, then the class material's pages that name it (Classroom's
+  files, your files folder), then book pages (the concept graph's and Books'). Today's blocks are fixed the first time
+  they're worked out and are in the morning plan with Start-by's lines; at the evening check-in's time (`night_at`
+  without Check-ins) one message asks "did you cover Jordan form today?" with **Yes** / **Partly** / **No**
+  (`revision_ask`): the answer grades the topic's quiz items as a quiz answer would (4, 2 or 1 of 5), and a topic you
+  said Yes to isn't laid again. `/revise` shows the plan, `/revise la` a course's ranked topics, "what should I revise
+  today?" today's blocks.
 
 **The quiz call before an exam stays off unless you pick it for that exam:** the card (and `/examseason`, with Quiz
 and Phone calls on) has a switch per exam. Picked, Kurooto calls you for a quiz at `quiz_call_at` (19:00) the evening
@@ -589,10 +603,12 @@ On calls on the exam day and the day before, the brief has the exam and what you
 
 *Settings* (`exam_season.*`): `hold_updates`, `alarm_check`, `eve`, `leave_alarm`, `debrief`, `no_calls`, `budget`
 (all on), `night_at` (21:30), `eve_at` (18:00), `leave_min` (45), `exam_min` (180), `quizzes` (off), `quiz_call_at`
-(19:00).
+(19:00), `revision`, `revision_ask` (on), `revision_days` (14), `revision_share` (50), `block_min` (60).
 *Undo:* turn Exam season off in Features: its timers, leave-by alarms (also on your call line) and update hold go at
 once, and the call-blocking during exams stops. Or switch off just the part you don't want. Debriefs already written
-stay in your notes; answers are kept in `exam_season.json` in the state folder for 30 days after the exam.
+stay in your notes; answers are kept in `exam_season.json` in the state folder for 30 days after the exam. The
+revision plan writes nothing in your notes (its plans and answers are in `revision.json`); `/revise undo` puts a
+topic's quiz grades back as they were, and tapping another answer replaces the first.
 *Leaves:* with Phone calls on, the leave-by alarm's time, the exam and what you said about it go to your call line
 (like any call). Nothing else.
 ### Start-by dates

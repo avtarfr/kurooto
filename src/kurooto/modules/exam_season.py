@@ -22,6 +22,8 @@ Each part has its own switch (Settings, the card on the dashboard's Features tab
     no_calls      no calls during an exam (from 15 minutes before it, for exam_min, 3 hours)
     budget        the daily message limit (core/calm.py) tightens: during the day only deadlines, quizzes, the alarm
                   and exam season itself come; everything else that comes by itself waits for the evening bundle
+    revision      from revision_days (14) before each exam, its course's topics ranked and laid into your free time with
+                  what to read; the evening asks whether you covered them (modules/revision.py, /revise)
 The quiz call before an exam stays off unless you pick it for that exam (the card, or /examseason): then, with Quiz and
 Phone calls on, Kurooto calls you for a quiz the evening before (19:00) instead of offering one, and exam mode's
 practice check-ins may call for it (quiz.by_call). For the other exams of the season they stay messages.
@@ -43,6 +45,7 @@ from kurooto.core.notinterested import matcher
 from kurooto.core.state import jload, jsave
 from kurooto.modules import daily
 from kurooto.modules.base import Command, Incoming, Intent, Module
+from kurooto.modules.revision import REVISE_Q, Revision
 
 register_defaults(
     "exam_season",
@@ -60,6 +63,11 @@ register_defaults(
         "exam_min": 180,  # how long an exam takes (no calls then; the debrief comes half an hour after)
         "quizzes": False,  # quizzes and tests outside an exam period count as exams too
         "quiz_call_at": "19:00",  # the evening before an exam you picked a quiz call for
+        "revision": True,  # before each exam, its course's topics ranked and laid into your free time (/revise)
+        "revision_days": 14,  # the revision plan starts this many days before each exam
+        "revision_share": 50,  # % of your free time (Start-by's, less commitments) revision blocks may take
+        "block_min": 60,  # one revision block, in minutes (one topic each)
+        "revision_ask": True,  # the evening: did you cover today's topics? (counts like a quiz answer)
     },
 )
 
@@ -71,6 +79,7 @@ PIECES = {
     "debrief": "Two-minute debrief after each exam",
     "no_calls": "No calls during an exam",
     "budget": "Only deadlines, quizzes and the alarm by day",
+    "revision": "Revision plan before each exam",
 }
 SAID = {  # the season's first message, part by part
     "hold_updates": "updates wait (critical fixes still install)",
@@ -80,6 +89,7 @@ SAID = {  # the season's first message, part by part
     "debrief": "a two-minute debrief after each one",
     "no_calls": "no calls during an exam",
     "budget": "during the day only deadlines, quizzes and the alarm message you (the rest waits for the evening)",
+    "revision": "a revision plan in your free time before each exam (/revise)",
 }
 BIG = re.compile(r"\b(exam|exams|midterm|mid-term|finals?|midsem|mid-sem|endsem|end-sem|viva|oral)\b", re.I)
 TIME = r"(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\b"
@@ -118,7 +128,8 @@ class ExamSeason(Module):
     title = "Exam season"
     description = (
         "One card for the whole exam period: updates wait, your alarm is checked every night, the evening before each "
-        "exam a question about where it is and an alarm to leave, a short debrief after it. Each part has a switch."
+        "exam a question about where it is and an alarm to leave, a short debrief after it, and a revision plan "
+        "before it. Each part has a switch."
     )
     requires = ("deadlines",)
     extra = True  # an add-on: turned on by hand, never by a preset
@@ -126,6 +137,10 @@ class ExamSeason(Module):
         "Stays on this computer. With Phone calls on, the leave-by alarm (its time, the exam and what you said about "
         "the venue) goes to your call line so it can ring, like any call."
     )
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.revision = Revision(self)
 
     @property
     def file(self):
@@ -319,6 +334,10 @@ class ExamSeason(Module):
                 did.setdefault("quiz_call", []).append(self._place_quiz_call(e))
         if self.setting("alarm_check") and self._night_due(t, exams):
             did["night"] = self._night()
+        if self.setting("revision"):
+            self.revision.today(t)  # the day's blocks, fixed the first time they're worked out
+            if self.setting("revision_ask") and self.revision.ask(t):
+                did["revision"] = True
         self._prune(t)
         return did
 
@@ -723,6 +742,9 @@ class ExamSeason(Module):
         else:
             span = _day(s[0]) if s[0] == s[1] else f"{_day(s[0])} to {_day(s[1])}"
             lines = [f"{'On now' if on_now else 'Next'}: {span}.", *[self._line(e) for e in ahead]]
+            today = self.revision.today() if self.setting("revision") else []
+            if today:
+                lines.append("Revision today: " + "; ".join(f"{b['name']} {b['start']:%H:%M}" for b in today) + ".")
         can = self.app.is_on("quiz") and self.app.is_on("calls")
         toggles = [{"id": k, "label": label, "on": bool(self.setting(k))} for k, label in PIECES.items()]
         for e in ahead:
@@ -771,7 +793,22 @@ class ExamSeason(Module):
         return text, buttons
 
     def commands(self):
-        return [Command("examseason", "exam season: its dates, exams and parts (tap to switch)", self._cmd)]
+        return [
+            Command("examseason", "exam season: its dates, exams and parts (tap to switch)", self._cmd),
+            Command(
+                "revise", "the revision plan before your exams: /revise, /revise <subject>, /revise undo", self._revise
+            ),
+        ]
+
+    def _revise(self, msg: Incoming, arg: str) -> str:
+        a = arg.strip()
+        if a.lower() == "undo":
+            return self.revision.undo()
+        if not a:
+            return self.revision.overview()
+        subj = self.app.modules.get("subjects")
+        slug = subj.resolve(a) if subj is not None and self.app.is_on("subjects") else None
+        return self.revision.course(slug) if slug else f"I don't know a subject called {a!r}."
 
     def _cmd(self, msg: Incoming, arg: str) -> str | None:
         text, buttons = self.summary()
@@ -779,7 +816,7 @@ class ExamSeason(Module):
         return None
 
     def callbacks(self):
-        return {"es": self._button}
+        return {"es": self._button, "rv": self.revision.answer}
 
     def _button(self, ref: str, act: str) -> str:
         if act == "q":
@@ -797,8 +834,23 @@ class ExamSeason(Module):
                 lambda t: {} if pat.match(t.strip().rstrip(".!")) else None,
                 lambda m, s: self.summary()[0],
                 questions=True,
-            )
+            ),
+            Intent(
+                "revise_today",
+                "what should I revise today",
+                lambda t: {} if REVISE_Q.match(t.strip().rstrip(".!")) else None,
+                lambda m, s: self._revise_today(),
+                questions=True,
+            ),
         ]
+
+    def _revise_today(self) -> str:
+        if not self.setting("revision"):
+            return "The revision plan is off (/examseason switches it on)."
+        today = self.revision.today()
+        if not today:
+            return "No revision blocks today. /revise shows the plan."
+        return "Revise today:\n" + "\n".join(f"- {self.revision.line(b)}" for b in today)
 
     def call_brief(self) -> dict:
         """On calls: exams today and tomorrow, with what you said about them."""

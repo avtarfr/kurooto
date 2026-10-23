@@ -281,6 +281,12 @@ class Quiz(Module):
         self.app.events.emit("quiz_graded", subject=subject, q=q)
         return f"Grade {q}/5. Next time: {it['due']}."
 
+    def restore(self, subject: str, before: dict) -> None:
+        """Items back as they were before grades given elsewhere (Undo of the revision plan's evening answers)."""
+        st = self.load(subject)
+        st["items"].update(before)
+        jsave(self._dir() / f"{subject}.json", st)
+
     def replies(self):
         return {"quiz": self._answer, "qlink": self.links.answer}
 
