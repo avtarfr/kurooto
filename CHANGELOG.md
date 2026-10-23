@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.21 (2026-10-23)
+
+- **Research shows on the notes map:** every research project is a named region in the accent colour, however small its
+  folder, and takes in the notes its index links to and the topics its line in your research hub links to. Concept
+  notes join the course or project most of their links come from, so they no longer sit in one unnamed cloud.
+- **The pairing page serves the current phone app:** after an update, the app that goes with the new version reaches
+  your call line a minute after it's downloaded (never during a call; retried while offline; you hear about it only if
+  it fails twice), and "Download the app" shows its version.
+- **Processor numbers on one scale:** "kurooto" in the Systems header (Kurooto and every program it started) and each
+  feature cell are a share of the whole machine over a steady window, like the total and the process list; they read
+  as % of one core before and could pass 100%.
+
 ## 0.5.20 (2026-10-23)
 
 - **Problem-set progress, finished:** reply "4/7", "4", "+1" or "done" to a deadline's reminder or "Overdue?" message
