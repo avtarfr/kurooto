@@ -168,7 +168,10 @@ what it means.
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below.
 5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the notes
-   brain is a 0.5 GB download, so it's yours to tick). **Everything** or **Pick myself** for more; the add-ons that come
+   brain is a 0.5 GB download, so it's yours to tick). **What do you do?** (Student, Working, Research, Something
+   else) adds what suits it: a student gets subjects, start-by dates, the quiz, after-class notes, doubts and the
+   weekly summary; working, commitments, start-by dates, the calendar and the weekly summary; research, the Research
+   feature, commitments, start-by dates and the weekly summary. **Everything** or **Pick myself** for more; the add-ons that come
    with Kurooto (such as [Exam season](#exam-season)) are in no preset, only on when you pick them. Some features ask
    for a detail right in their card (a calendar link, a repository); phone calls, voice notes and the alarm use your
    Gemini key (they ask for one if you picked another AI).

@@ -20,3 +20,16 @@ def test_setup_page_guides_and_explains():
     assert "Open the dashboard" in js and "Go back to it" in js and "alert(" not in js
     assert 'class="rail"' in html and "@media (min-width: 1100px)" in css and ".wizard .nav { position: sticky" in css
     assert "kurootoLook" in static("palette.js") and "/api/look" in static("palette.js")
+
+
+def test_what_do_you_do_adds_what_suits_it_to_starter(env):
+    from kurooto.web.api import ROLES, STARTER
+
+    js, html = static("setup.js"), static("setup.html")
+    for r in ("student", "working", "research", "other"):
+        assert f'data-role="{r}"' in html, r
+    assert "(m.roles || []).includes(role)" in js and "★ suits what you do" in js
+    ids = set(env.app.modules)
+    for r, extra in ROLES.items():
+        assert set(extra) <= ids and not set(extra) & set(STARTER), r  # real features, none already in Starter
+        assert not any(env.app.modules[i].extra for i in extra), r  # add-ons stay hand-picked

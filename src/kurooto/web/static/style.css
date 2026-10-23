@@ -184,6 +184,9 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
 .wizard .log { border: 1px solid var(--line); border-radius: var(--rc); background: var(--bg); padding: 8px 10px; }
 .wizard .log:empty { display: none; }
 .wizard .presets { gap: 10px; margin-bottom: 18px; }
+.roles { align-items: center; }
+.roles-q { color: var(--dim); margin-right: 4px; }
+.preset-role.on { border-color: var(--accent-text); color: var(--accent-text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .wizard .preset.on { border-color: var(--accent-text); color: var(--accent-text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .wizard .big, .wizard code, .wizard pre.prompt, .wizard .qr { border-radius: var(--rc); }
 .wizard code { border-radius: 4px; }

@@ -22,6 +22,10 @@
 - **Start-by's day window learns your day** (`startby.learn_window`, on): once a week, with 7+ days of messages in the
   last three weeks, the window free time is counted in (09:00-22:00) moves to when your first and last messages
   usually come, with Undo. A window you set yourself is never changed.
+- **"What do you do?" in the setup wizard**: Student, Working, Research or Something else adds the features that suit
+  it to Starter (a student: subjects, start-by dates, quiz, after-class notes, doubts, the weekly summary; working:
+  commitments, start-by dates, the calendar, the weekly summary; research: the Research feature, commitments, start-by
+  dates, the weekly summary). Every card can still be unticked.
 - **Short names for subjects from what you say**: "by POTA I mean Physics of the Atmosphere", "LA is short for linear
   algebra", "I call stochastic calculus stoch" add that short name to the subject (`infer.aliases`), with Undo, so
   "POTA quiz friday" lands on the right course from then on. Only for your subjects, and never a name that's taken.

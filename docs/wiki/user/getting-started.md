@@ -174,7 +174,17 @@ you picked. **Next** skips this step. More: [teaching-kurooto.md](teaching-kuroo
 
 ### 5. Features: what should it do?
 
-Every feature is off until you tick it. Three buttons pick a set:
+Every feature is off until you tick it. First, **What do you do?** adds what suits it to Starter (each such card
+says "★ suits what you do"); you can still untick anything:
+
+| Answer | Added to Starter |
+|---|---|
+| **Student** | Subjects and timetable, Start-by dates, Quiz, After-class notes, Doubt queue, Weekly summary |
+| **Working** | Commitments, Start-by dates, Calendar, Weekly summary |
+| **Research** | Research, Commitments, Start-by dates, Weekly summary |
+| **Something else** | nothing: Starter as it is |
+
+Then three buttons pick a set:
 
 | Button | Turns on |
 |---|---|

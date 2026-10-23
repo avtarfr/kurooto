@@ -10,6 +10,7 @@ const HINTS = ["Your name and time zone", "What it found here", "Who answers you
 let state = null;
 let step = 0;
 let chosen = new Set();
+let role = null;  // "What do you do?" on the features step: Starter plus what suits it (api.py ROLES)
 
 async function api(path, body) {
   let r;
@@ -582,7 +583,7 @@ function renderFeatures() {
       box.dispatchEvent(new Event("change"));
     } },
       el("label", {}, box, el("h3", {}, m.title)), el("p", {}, m.description),
-      m.starter ? el("div", { class: "star" }, "★ in Starter") : m.extra ? el("div", { class: "star" }, "add-on: only if you pick it") : null, el("div", { class: "privacy" }, m.privacy),
+      m.starter ? el("div", { class: "star" }, "★ in Starter") : role && (m.roles || []).includes(role) ? el("div", { class: "star" }, "★ suits what you do") : m.extra ? el("div", { class: "star" }, "add-on: only if you pick it") : null, el("div", { class: "privacy" }, m.privacy),
       m.setup && !m.ready && m.why ? el("p", { class: "note" }, m.why[0].toUpperCase() + m.why.slice(1) + ".") : null,
       m.form && chosen.has(m.id) && !m.ready ? setupForm(m) : null,
       m.form && chosen.has(m.id) && m.ready ? el("p", { class: "ok" }, "✓ Set up") : null,
@@ -916,7 +917,11 @@ document.addEventListener("click", async (e) => {
   else if (e.target.matches("[data-preset]")) {
     const p = e.target.dataset.preset;
     $$(".preset").forEach((b) => b.classList.toggle("on", b === e.target));
-    if (p !== "custom") { chosen = new Set(state.modules.filter((m) => (p === "all" && !m.extra) || m.starter).map((m) => m.id)); renderFeatures(); } // add-ons (m.extra): only by hand
+    if (p !== "custom") { chosen = new Set(state.modules.filter((m) => (p === "all" && !m.extra) || m.starter || (role && (m.roles || []).includes(role))).map((m) => m.id)); renderFeatures(); } // add-ons (m.extra): only by hand
+  } else if (e.target.matches("[data-role]")) {
+    role = e.target.dataset.role;
+    $$(".preset-role").forEach((b) => b.classList.toggle("on", b === e.target));
+    $("[data-preset=starter]").click();  // Starter, plus what suits it
   }
 });
 $("#tg-check").addEventListener("click", checkToken);

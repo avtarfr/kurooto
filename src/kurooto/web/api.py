@@ -19,6 +19,12 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 STARTER = ["telegram", "chat", "reminders", "checkins", "deadlines"]  # GBrain: a 0.5 GB download, so it's opt-in
+# The wizard's "What do you do?": what's added to Starter for each answer ("other": Starter alone)
+ROLES = {
+    "student": ["subjects", "startby", "quiz", "capture", "doubts", "weekly"],
+    "working": ["commitments", "startby", "calendar", "weekly"],
+    "research": ["research", "commitments", "startby", "weekly"],
+}
 BRAIN_ORDER = [  # the first one is the ★ recommendation
     (
         "agy",
@@ -144,6 +150,7 @@ class Api:
                     "ready": ready,
                     "why": why,
                     "starter": m.id in STARTER,
+                    "roles": [r for r, ids in ROLES.items() if m.id in ids],
                     "setup": hasattr(m, "setup"),
                     "form": m.setup_form() if hasattr(m, "setup_form") else None,
                     "addon": bool(getattr(m, "addon", False)),
