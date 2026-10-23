@@ -245,7 +245,8 @@ phrasing in `/cases`; `kurooto cases forget all` deletes everything.
 
 After every call, Kurooto looks back at the transcript with a stronger AI: it does what was asked but slipped through
 (a reminder misheard, a note forgotten, a tool that failed) and writes down lessons for later calls. Every later call
-is told them. `/lessons` lists them; `/lessons forget 2` removes the second. Details are in [calls.md](calls.md).
+is told them. `/lessons` lists them; `/lessons forget 2` removes the second, `/lessons clear` all of them. Details are
+in [calls.md](calls.md).
 
 ---
 

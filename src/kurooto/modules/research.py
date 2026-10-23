@@ -277,6 +277,7 @@ class Research(Module):
         self.every("logs", self.setting("log_when") or "daily 23:30", lambda p: self.project_logs())
         self.every("idle", self.setting("idle_when") or "daily 18:00", lambda p: self.idle_check(), respect="quiet")
         self.action("remind", self._remind)
+        self.app.jobs.then_actions["research.digest"] = self._digested
         ask = getattr(self.app, "ask", None)
         if ask is not None:
             ask.hooks["research.idle"] = self._idle_answer
@@ -474,13 +475,24 @@ class Research(Module):
                 failed.append(f"{describe(feed)} ({type(e).__name__})")
                 self.app.events.emit("research_failed", error=str(e)[:200])
         if mark_seen:
-            for p in new:
-                seen[p["id"]] = now().date().isoformat()
-            jsave(seen_file, dict(list(seen.items())[-20000:]))
+            self.mark_seen([p["id"] for p in new])
         return new, failed
 
+    def mark_seen(self, ids: list[str]) -> None:
+        """Papers that were in a digest you got: never sent again."""
+        seen_file = self.app.paths.state / "research-papers.json"
+        seen = jload(seen_file, {}) or {}
+        for i in ids:
+            seen[i] = now().date().isoformat()
+        jsave(seen_file, dict(list(seen.items())[-20000:]))
+
+    def _digested(self, job, result, payload: dict) -> None:
+        """The AI-picked digest came: its papers count as sent. If it failed, they come again in the next digest."""
+        if result.ok:
+            self.mark_seen([str(i) for i in payload.get("ids") or []])
+
     def papers(self) -> list[dict]:
-        new, failed = self.collect()
+        new, failed = self.collect(mark_seen=False)  # seen once the digest is delivered, not before
         self.app.events.emit("research_papers", new=len(new), failed=len(failed))
         n = self.setting("max_papers") or 8
         note = f"\n\n(Couldn't reach: {'; '.join(failed)})" if failed else ""
@@ -508,6 +520,8 @@ class Research(Module):
                 effort="medium",
                 background=True,
                 why="research.papers",
+                then="research.digest",
+                then_payload={"ids": [p["id"] for p in new]},
             )
         else:
             rows = [f"• {p['title']} ({', '.join(p['authors'][:2]) or p['source']})\n  {p['link']}" for p in new[:n]]
@@ -515,6 +529,7 @@ class Research(Module):
             self.app.notify(
                 f"New papers ({len(new)}):\n" + "\n".join(rows) + more + note, kind="result", why="research.papers"
             )
+            self.mark_seen([p["id"] for p in new])
         return new
 
     def save_note(self, papers: list[dict]) -> Path:

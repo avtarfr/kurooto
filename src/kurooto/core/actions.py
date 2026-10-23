@@ -10,7 +10,8 @@ three can't behave differently.
 Actions: journal.add {text} · note.capture {text} · reminder.add {when, what} · reminder.cancel {key} ·
 reminder.snooze {key, minutes} · deadline.add {title, when} · deadline.done {id} · deadline.move {id, when} ·
 alarm.set {when} · alarm.skip {day} · alarm.clear · alarm.daily {time or "off"} · checkin.skip {name} ·
-checkin.defer {name} · ask {text} (a job: its answer comes like a chat answer) · question.answer {id, answer}
+checkin.postpone {name, minutes} (later today) · checkin.defer {name} (to tomorrow morning) · ask {text} (a job: its
+answer comes like a chat answer) · question.answer {id, answer}
 """
 
 from __future__ import annotations
@@ -239,6 +240,12 @@ def checkin_defer(app: App, args: dict) -> dict:
     return {"message": ck.defer(_text(args, "name"), via=args.get("_via", "dashboard"))}
 
 
+def checkin_postpone(app: App, args: dict) -> dict:
+    ck = _on(app, "checkins", "Check-ins")
+    minutes = max(1, min(12 * 60, int(args.get("minutes") or 30)))
+    return {"message": ck.postpone(_text(args, "name"), minutes, via=args.get("_via", "dashboard"))}
+
+
 def ask(app: App, args: dict) -> dict:
     from kurooto.web import tools_api
 
@@ -275,6 +282,7 @@ ACTIONS = {
     "alarm.clear": alarm_clear,
     "alarm.daily": alarm_daily,
     "checkin.skip": checkin_skip,
+    "checkin.postpone": checkin_postpone,
     "checkin.defer": checkin_defer,
     "ask": ask,
     "question.answer": question_answer,

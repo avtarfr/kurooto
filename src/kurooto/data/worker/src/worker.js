@@ -624,11 +624,11 @@ export class Line {
       const r = await this.relay('POST', '/tool', body);
       if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
     }
-    const { name = '', args = {} } = JSON.parse(body || '{}');
-    return json({ result: await this.offlineTool(String(name), args || {}) });
+    const { name = '', args = {}, since = '' } = JSON.parse(body || '{}');
+    return json({ result: await this.offlineTool(String(name), args || {}, String(since || '').slice(0, 20)) });
   }
 
-  async offlineTool(name, args) {
+  async offlineTool(name, args, since = '') {
     const brief = (await this.store.get('brief')) || {};
     const off = (await this.store.get('offline')) || {};
     const texts = (await this.store.get('texts')) || {};
@@ -643,7 +643,7 @@ export class Line {
       return this.env.GITHUB_TOKEN ? `No note "${args.slug}" in the notes repo.` : (texts.no_notes || 'Your computer is off, so whole notes can\'t be read right now.');
     }
     if ((off.queue || []).includes(name)) {
-      await this.queue({ kind: 'tool', name, args });
+      await this.queue({ kind: 'tool', name, args, since }); // the call's own look back gets it, not the next call's
       return texts.queued || 'Saved. Your computer is off; it will do this as soon as it is back online.';
     }
     return texts.needs_computer || 'That needs your computer, which is off right now.';

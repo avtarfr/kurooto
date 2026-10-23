@@ -38,8 +38,13 @@ class Chat(Module):
 
     def ask(self, msg: Incoming) -> str:
         text = msg.text.strip()
-        if text.lower() in ("/new", "/clear", "new", "clear"):
+        if text.lower() in ("/new", "/clear", "new", "clear") and not msg.files:
             return self.clear_history()
+        if msg.files:  # a photo or file sent with it (or alone): the AI is told where it is, to open it
+            sent = ", ".join(str(f) for f in msg.files)
+            text = (
+                f"{text}\n\n" if text else "They sent this with no words: say what it is, or answer what it asks.\n\n"
+            ) + f"Files they sent with it (on this computer; open them to read them): {sent}"
 
         terminal = msg.via in ("terminal", "setup")
         history = jload(self.history_file, []) or []
@@ -58,9 +63,8 @@ class Chat(Module):
         else:
             prompt = text
 
-        jid = self.app.jobs.submit(
-            prompt, title=text[:80], reply_to=None if terminal else msg.message_id, quiet=terminal
-        )
+        title = msg.text.strip()[:80] or (msg.files[0].name if msg.files else "")
+        jid = self.app.jobs.submit(prompt, title=title, reply_to=None if terminal else msg.message_id, quiet=terminal)
         msg.job = jid
         self.mine = {*list(self.mine)[-50:], jid}
         return "On it."

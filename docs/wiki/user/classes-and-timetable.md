@@ -53,11 +53,11 @@ each class covered. The assistant on a call can mark a class skipped for you ("I
 |---|---|---|
 | `subjects.no_calls_in_class` | on | off: classes no longer hold calls |
 | `subjects.margin_min` | 5 | minutes before a class when calls already wait |
-| `subjects.list`, `subjects.timetable` | empty | what `/subject` and `/class` fill in; they're hidden on the Settings page, so edit them in `settings.json` (see [Dashboard](dashboard.md#settings-alts)) |
+| `subjects.list`, `subjects.timetable` | empty | what `/subject` and `/class` fill in (lists, typed as JSON on the Settings page) |
 
 **Limits and edge cases.**
-- There is no command to remove a single class yet: `/class` says "/class remove mon 09:00", but that form isn't
-  understood. Edit `subjects.timetable` in `settings.json`, or keep your timetable in a [term note](#the-term-note) instead.
+- `/class remove mon 09:00` removes one of your own classes ("Removed the class on Mon 09:00."). A class from a term
+  note or a class pack is changed there instead.
 - Times are 24-hour (`14:00-14:55`).
 - Classes from a term note, a class pack or a class calendar join yours; where two say there's a class at the same day
   and time, yours wins.
@@ -250,7 +250,8 @@ and the dashboard's **today** corner. Start-by dates count your timed events as 
 
 **Limits and edge cases.** The link must be `https://`. A calendar file over 20 MB is cut off. Calendars in Outlook's
 Windows time-zone names are read in your own zone. Events far ahead (past `calendar.days`) aren't known yet, so start-by
-dates see those weeks as freer than they are.
+dates see those weeks as freer than they are. A link (or a Google account) that can't be read for a while keeps the
+events it last gave; the others still update.
 
 **What leaves your computer.** Nothing is sent: Kurooto only downloads your calendar from its link. Event descriptions
 are read only for `#nocall`, `#focus` and `#private` and aren't kept.

@@ -111,3 +111,29 @@ def test_a_stopped_server_stops_listening_to_events(tmp_path, monkeypatch):
     srv.stop()
     app.close()
     assert len(events._listeners) == before
+
+
+def test_the_settings_page_shows_every_core_section_you_can_set_and_never_pairing(env):
+    from kurooto.web.api import Api
+
+    api = Api(env.app)
+    env.on("subjects")
+    secs = {s["section"]: s for s in api._settings()["sections"]}
+    for key in (
+        "quota.background_pct",
+        "health.when",
+        "jobs.stuck_min",
+        "sources.budget",
+        "agents.export",
+        "hardware.force_profile",
+        "web.port",
+    ):
+        sec, k = key.split(".")
+        assert k in secs[sec]["values"], key
+    assert "modules" not in secs and secs["web"]["title"] == "Dashboard"
+    assert "chat_id" not in secs["telegram"]["values"]
+    assert "models" not in secs["brain"]["values"]  # the brain page sets those, with its checks
+    assert api.post("settings", {"key": "jobs.stuck_min", "value": 15}) == (200, {"ok": True})
+    assert api.post("settings", {"key": "telegram.chat_id", "value": 1})[0] == 400  # on, but set by pairing
+    assert api.post("settings", {"key": "modules.enabled", "value": []})[0] == 400
+    assert api.post("settings", {"key": "you", "value": {}})[0] == 400  # one setting at a time, not a section

@@ -210,7 +210,7 @@ than your graphics memory, it says part of it will run on the processor, slowly,
 
 | Setting | Default | What it does |
 |---|---|---|
-| `hardware.force_profile` | empty (detected) | another profile's models (the `hardware.*` settings aren't on the Settings page: use `kurooto hardware` or the setup page) |
+| `hardware.force_profile` | empty (detected) | another profile's models (Settings → This computer, `kurooto hardware` or the setup page) |
 | `hardware.extra_models` | `[]` | Ollama models of your own, e.g. `["gemma4:12b"]` |
 | `hardware.extra_prereqs` | `[]` | other programs to install, by id (e.g. `tesseract`, `poppler`, `tectonic`, `git`) |
 

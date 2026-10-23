@@ -72,6 +72,27 @@
   everywhere; the privacy page says the call line holds the Android app's message key, holds transcripts while the
   computer is off, and that every call's transcript goes to your AI for the look back; the settings guide drops
   Codex and `kurooto restart` and fixes six descriptions; RELEASING.md says never to rebuild after signing.
+- **"remind me friday at 5pm ..." means Friday** (it set the next 17:00): plain-English reminders read a weekday that
+  says when ("on friday", "this friday", "friday at 5"; "next friday" goes to the AI), not one in what to remember.
+- **Turning Reminders off keeps your reminders**: they come back when it's on again, and any that fell due meanwhile
+  come at once, marked late. **`/graph stop` holds** until the next night's start (the retries started batches
+  again, and a restart forgot it); `/graph now` goes on sooner.
+- **The Settings page shows every core setting meant for you**: AI limits, health checks, AI jobs, sources for
+  answers, skills in other AI programs, this computer and the dashboard's port, plus `brain.models`,
+  `brain.base_urls` and `subjects.timetable`; Telegram's pairing stays off the page and can't be changed through it.
+- **A photo or file with Chat on goes to your AI** (with its caption, or "say what it is" without one) when nothing
+  else takes it; with both Chat and Files into notes off, the reply says which to turn on.
+- Fixes: the Today page's **+30 min** on a check-in pushes it back half an hour (it moved it to the morning);
+  `/class remove mon 09:00` works; temporary Drive uploads are deleted with the account that made them, and one you
+  moved out of the Kurooto folder is kept, as the message says; a wake-up call rings its full 5 minutes before it
+  counts as missed; each ring reaches the Android app once, not twice; a call's look back sees only that call's
+  tools; `/lessons clear` is in the help; **R** toggles Recent only while the notes map shows and you aren't typing;
+  the concept graph writes a merge the second look turned down as its own note, finishes books with skipped pages,
+  follows the bookmarks for books it starts now, and flags two notes that each generalise the other (it flagged the
+  consistent pair); a research digest's papers count as sent only once it reached you; a calendar link (or Google
+  account) that fails keeps its last events while the others update; the weekly summary counts only AI requests as
+  failed AI requests; the privacy lines of After-class notes, Check-ins, Mail digest and Google say what really
+  leaves the computer; `/remind` and `/due` say a bare number is minutes.
 
 ## 0.5.7 (2026-10-23)
 

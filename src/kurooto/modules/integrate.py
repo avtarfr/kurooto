@@ -16,8 +16,8 @@ that's there now (the "garden"); the day's changes are one line on Telegram.
 Which AI: integrate.roles {"bulk": "agy", "check": "claude"} (empty: chosen from what's installed; one program does
 both). The two run side by side. With no agent program, your main AI (a Gemini key, say) does both, at its limit.
 
-State: <state>/integrate/ (ledger.json, seen.json, chapters.json, garden.json, pending/, undo/, vectors.db).
-Command: /graph (status), /graph now (start), /graph stop.
+State: <state>/integrate/ (ledger.json, seen.json, chapters.json, garden.json, stopped.json, pending/, undo/,
+vectors.db). Command: /graph (status), /graph now (start), /graph stop (until the next night's start).
 """
 
 from __future__ import annotations
@@ -155,10 +155,20 @@ class Integrate(Module):
         return layout.of(self.app).path("subject", subject=b["subject"]) / "books" / f"{b['id']}.md"
 
     def plan(self, b: dict) -> list[segment.Batch]:
-        """The batches of a book: its sections from the page text, sized by integrate.batch_pages."""
+        """The batches of a book, over all its pages: its sections (from its bookmarks, as the chapter list has them,
+        else from the page text), sized by integrate.batch_pages. A book whose batches began before 0.5.8 keeps the
+        batches it began with (the ledger's "plan": "text": no bookmarks, up to the last page read), so nothing is
+        asked twice."""
         pages = self.pages_of(b)
-        total = max(pages) if pages else 0
-        secs = segment.sections(pages, [], total)
+        meta = self.books.meta(b)
+        bk = (self.load("ledger.json", {}).get("books", {}) or {}).get(self.key(b), {}) or {}
+        outline: list[tuple[int, str, int]] = []
+        if bk.get("plan", "text" if bk.get("batches") else "outline") == "outline":
+            outline = [(int(lv), str(t), int(p)) for lv, t, p in meta.get("outline") or [] if p]
+            total = int(meta.get("pages") or 0) or (max(pages) if pages else 0)
+        else:
+            total = max(pages) if pages else 0
+        secs = segment.sections(pages, outline, total)
         return segment.batches(secs, total, int(self.setting("batch_pages") or segment.TARGET))
 
     def ready_batches(self) -> list[tuple[dict, segment.Batch]]:
@@ -176,15 +186,19 @@ class Integrate(Module):
         out = []
         for b in sorted(self.books.library(), key=rank):
             meta = metas[self.key(b)]
-            done = int(meta.get("done") or 0)
-            if not meta.get("pages") or not done:
+            if not meta.get("pages") or not meta.get("done"):
                 continue
+            # a page is ready when its text is there; one the reader skipped (waiting for OCR, say) doesn't hold its
+            # batch back once the book's reading pass is over ("done" counts pages read, not the last page number)
+            have = set(self.pages_of(b)) | (
+                {int(n) for n in meta.get("skipped") or {}} if meta.get("finished") else set()
+            )
             done_batches = (led.get("books", {}).get(self.key(b), {}) or {}).get("batches", {})
             for bt in self.plan(b):
                 rec = done_batches.get(bt.id, {})
                 if rec.get("state") in ("done", "failed", "queued", "checking"):
                     continue
-                if bt.last <= done:
+                if all(p in have for p in range(bt.first, bt.last + 1)):
                     out.append((b, bt))
         return out
 
@@ -192,9 +206,10 @@ class Integrate(Module):
     def record(self, b: dict, bt_id: str, **kw) -> dict:
         with self.lock:
             led = self.load("ledger.json", {})
-            rec = (
-                led.setdefault("books", {}).setdefault(self.key(b), {}).setdefault("batches", {}).setdefault(bt_id, {})
-            )
+            bk = led.setdefault("books", {}).setdefault(self.key(b), {})
+            # how plan() cuts the book, fixed at its first batch: "text" for one begun before bookmarks were used
+            bk.setdefault("plan", "text" if bk.get("batches") else "outline")
+            rec = bk.setdefault("batches", {}).setdefault(bt_id, {})
             rec.update(kw)
             rec["at"] = now().isoformat(timespec="seconds")
             self.save("ledger.json", led)
@@ -245,12 +260,32 @@ class Integrate(Module):
 
         return cg.Index(cg.scan(self.app), emb, self._store if emb else None, make_reranker(self.app))
 
+    def stopped_until(self) -> dt.datetime | None:
+        """After /graph stop: when the next night's start lifts it (kept in stopped.json, so a restart keeps it)."""
+        until = (self.load("stopped.json", {}) or {}).get("until")
+        if not until or float(until) <= now().timestamp():
+            return None
+        return dt.datetime.fromtimestamp(float(until))
+
+    def hold(self) -> dt.datetime:
+        """Start no more batches (the nightly start, the 3-hourly retry, the 20-minute retry, a book just read or a
+        batch's answer) until the next night's start; /graph now goes on at once."""
+        from kurooto.core.scheduler import next_after
+
+        tz = self.app.scheduler.tz
+        nxt = next_after(self.setting("at") or "daily 01:30", now().astimezone(tz), tz).astimezone(tz)
+        self.save("stopped.json", {"until": nxt.timestamp()})  # the night's own start goes ahead
+        self.app.scheduler.cancel(f"{self.id}:soon")
+        return nxt.replace(tzinfo=None)
+
     def tick(self, payload: dict | None = None) -> dict:
         """Ask for the next batch (one bulk request at a time per AI; second looks run beside it)."""
         if not self.app.is_on(self.id):
             return {}
-        bulk_out, _ = self.inflight()
         out = {"submitted": 0}
+        if self.stopped_until():
+            return {**out, "stopped": True}
+        bulk_out, _ = self.inflight()
         if bulk_out:
             return out
         led = self.load("ledger.json", {})
@@ -414,16 +449,21 @@ class Integrate(Module):
             if c.same_as and c.same_as in index.notes:
                 c.slug = c.same_as
                 continue
-            base = cg.slug_of(c.name)
-            slug_path = lay.path("concept", subject=b["subject"], slug=base)
+            c.slug = self.fresh_slug(c, b, taken, lay)
+
+    def fresh_slug(self, c: ai.Proposed, b: dict, taken: set[str], lay=None) -> str:
+        """A new note's slug for a concept: its name, with -2, -3... when that's taken."""
+        lay = lay or layout.of(self.app)
+        base = cg.slug_of(c.name)
+        slug_path = lay.path("concept", subject=b["subject"], slug=base)
+        rel = self.rel(slug_path)
+        n = 2
+        while rel in taken or slug_path.exists():
+            slug_path = lay.path("concept", subject=b["subject"], slug=f"{base}-{n}")
             rel = self.rel(slug_path)
-            n = 2
-            while rel in taken or slug_path.exists():
-                slug_path = lay.path("concept", subject=b["subject"], slug=f"{base}-{n}")
-                rel = self.rel(slug_path)
-                n += 1
-            taken.add(rel)
-            c.slug = rel
+            n += 1
+        taken.add(rel)
+        return rel
 
     def rel(self, path: Path) -> str:
         return Path(path).relative_to(Path(self.app.workspace)).with_suffix("").as_posix()
@@ -450,7 +490,12 @@ class Integrate(Module):
         answer = ai.parse_json(result.text) if result.ok else None
         kept, dropped = ai.apply_second_look(items, answer)
         pend.unlink(missing_ok=True)
-        self.write(b, payload, concepts, self.index(), flagged=len(items), dropped=dropped)
+        index = self.index()
+        taken = set(index.notes) | {c.slug for c in concepts if c.slug}
+        for c in concepts:  # a merge the second look turned down: a note of its own, not lines in the other one
+            if c.role == "core" and not c.same_as and c.slug in index.notes:
+                c.slug = self.fresh_slug(c, b, taken)
+        self.write(b, payload, concepts, index, flagged=len(items), dropped=dropped)
         self.tick()
 
     @staticmethod
@@ -850,11 +895,15 @@ class Integrate(Module):
     def _cmd(self, msg: Incoming, arg: str) -> str:
         a = (arg or "").strip().lower()
         if a == "now":
+            (self.dir / "stopped.json").unlink(missing_ok=True)
             r = self.tick()
             return "Started." if r.get("submitted") else f"Nothing to start ({r or 'already running'})."
         if a == "stop":
-            self.app.scheduler.cancel(f"{self.id}:night")
-            return "Stopped for tonight; it starts again at its usual time."
+            nxt = self.hold()
+            return (
+                f"Stopped: no new batches until its usual start, {nxt:%a %H:%M} (a batch already asked for still "
+                "finishes). /graph now goes on sooner."
+            )
         c, m = self.counts(), self.metrics()
         bulk, chk = self.roles()
         today = (self.load("ledger.json", {}).get("nights", {}) or {}).get(day(), {})

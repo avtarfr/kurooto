@@ -187,7 +187,8 @@ Dashboard → Features → Google → paste the client file → Save → sign in
   that Google refuses is simply renewed; only Google saying the sign-in itself is gone pauses anything.)
 
 **What leaves your computer.** Nothing new: Kurooto reads from Google with your own sign-in. Drafts are written into
-your own Gmail. The sign-in tokens stay in your computer's keychain.
+your own Gmail. The sign-in tokens stay on your computer: in its keychain, or where there's none (or Kurooto starts at
+boot), in a file only your user can read.
 
 **Turn it off.** Dashboard → Features → Google → Turn off. Features that build on it (reply drafts, digest by email)
 must be off first.
@@ -513,7 +514,7 @@ sends you the link with an **Open in Drive** button. This is how files bigger th
 - **Anything over Telegram's 50 MB** (a file Kurooto or the AI sends you, a big study pack, several files sent at
   once that together pass the limit) goes there by itself, with `drive_upload.big_files` on. These are **temporary**:
   the message says "It's deleted from your Drive in 7 days". A daily clean-up at 04:10 deletes them when their days are
-  up.
+  up, each with the Google account that uploaded it (switching Drive upload to another account doesn't strand them).
 - Big files go up in 8 MB pieces in the background: you first get "Uploading lecture.mp4 (212.4 MB) to your Google
   Drive; the link comes when it's done", then the link.
 
@@ -527,9 +528,9 @@ sends you the link with an **Open in Drive** button. This is how files bigger th
 
 **Limits and edge cases.**
 - Without Drive upload, a file over 50 MB isn't sent: "Telegram takes files up to 50 MB. Turn on Drive upload..."
-- To keep a temporary upload for good, the message says to move it out of the Kurooto folder. The safest way in this
-  version is to make a copy in Drive (right-click → Make a copy) and move the copy, or set `drive_upload.temp_days` to
-  `0` before it's uploaded.
+- To keep a temporary upload for good, move it out of the Kurooto folder in Drive before its days are up: the clean-up
+  checks the folder first and leaves a moved file alone (and forgets it). `drive_upload.temp_days` `0` keeps every
+  upload from the start.
 - Google's permission covers only files Kurooto makes, so it can't see the rest of your Drive. Nothing is shared: the
   link opens only for you (and whoever you share it with yourself, in Drive).
 - If the upload fails (sign-in expired, no space in Drive), you get "Couldn't upload ... to Drive" with the reason.

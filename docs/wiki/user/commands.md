@@ -87,7 +87,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | Command | What it does | Feature |
 |---|---|---|
 | `/subject add Linear Algebra (la, linalg)`, `/subject`, `/subject remove la` | add, list or remove subjects | Subjects and timetable |
-| `/class mon 09:00-09:55 la` | add a class to your timetable | Subjects and timetable |
+| `/class mon 09:00-09:55 la` · `/class remove mon 09:00` | add a class to your timetable, or remove one | Subjects and timetable |
 | `/classes`, `/classes today` | your timetable | Subjects and timetable |
 | `/skip la` (or `/skip la, stats`), `/attend la` | you're not going to a class today (no after-class question, calls allowed then); `/attend` undoes it | Subjects and timetable |
 | `/term`, `/term ends 2026-12-04`, `/term exams 2026-12-07 to 2026-12-18`, `/term note terms/2026-autumn`, `/term note off`, `/term clear` | term dates, or a term note to read them from | Subjects and timetable |
@@ -333,7 +333,7 @@ Mac, Option+letter in a text box types a character instead. Full details: [Dashb
 | **/** or **Ctrl+F** | the search box (Ctrl+F again is the browser's own) | Features and Settings |
 | **Esc** | empty the search box | Features and Settings |
 | **L** | open or fold every corner panel and legend (remembered in this browser) | the board |
-| **R** | highlight notes edited in the last day (Recent) | the board |
+| **R** | highlight notes edited in the last day (Recent) | the board, while the NOTES map is showing (not while you type in a box) |
 | **Enter** | send | the kurooto chat tab, the Today box |
 | **↑ / ↓** | earlier lines you typed | the kurooto chat tab |
 | **Ctrl+L** | clear the chat tab | the kurooto chat tab |

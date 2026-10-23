@@ -44,6 +44,10 @@ class Capture(Module):
         "A couple of minutes after each class ends, you're asked what was worth keeping; replies go to its log."
     )
     requires = ("telegram", "subjects")
+    privacy = (
+        "Your replies, photos and files go into the subject's class log in your notes, on this computer. With Chat on, "
+        "your reply and the files you sent go to the AI you picked, to write a study log (capture.study_log)."
+    )
 
     def start(self):
         self.action("ask", self._ask)

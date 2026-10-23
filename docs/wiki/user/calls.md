@@ -108,7 +108,7 @@ Every kind of call Kurooto can place, and where each is explained:
 | "cancel that call", "cancel the 12:00 call", "cancel tomorrow's 9 call" | Cancels the one booked call it can mean. If several fit (or none), it lists your booked calls, each with a **Cancel** button and its key. Check-ins and the alarm aren't in that list: use `/checkins` and `/alarm`. |
 | "call me for a quiz", "quiz me by call" | A quiz call (Quiz's own request). |
 
-**When it rings.** Your paired phones ring for up to 60 seconds (`calls.ring_s`). Telegram gets a quiet "Calling
+**When it rings.** Your paired phones ring for up to 60 seconds (`calls.ring_s`; a wake-up call, 5 minutes). Telegram gets a quiet "Calling
 you: ..." message with an **Answer** link, so you can pick up from any device. That Telegram message is silent when a
 phone app is paired (`telegram.silent_kinds`). If your computer can't reach your call line, Telegram instead gets an
 urgent "I tried to call you, but your call line isn't connected." with the same **Answer** link.
@@ -496,7 +496,7 @@ Dashboard → Settings → calls. The ones you're likely to change:
 |---|---|---|
 | `calls.realert_min` | `[3, 6]` | Minutes after the first ring that an unanswered call rings again. `[]`: once. |
 | `calls.later_min` | `30` | **Later** on a ringing call calls back after this long. |
-| `calls.ring_s` | `60` | How long a call rings before it counts as missed. |
+| `calls.ring_s` | `60` | How long a call rings before it counts as missed (a wake-up call rings 5 minutes). |
 | `calls.voice_mode` | `auto` | `auto`, `live` or `phone` (above). |
 | `calls.voice_by_kind` | `{}` | Voice mode per kind of call. |
 | `calls.voice` | empty | A Gemini Live voice name; empty is Google's default. |

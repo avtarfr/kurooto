@@ -63,7 +63,10 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
   `MIN_BATCH = 3` to `MAX_BATCH = 20` pages; level-2 sections are the units; long sections are cut into even windows
   titled "(i/n)"; small ones join the next.
 - `Integrate.plan(b)` splits `text.md` on the page marker (`Integrate.pages_of`) and calls
-  `segment.sections(pages, [], total)` and `segment.batches(..., integrate.batch_pages)` (12).
+  `segment.sections(pages, outline, total)` and `segment.batches(..., integrate.batch_pages)` (12). The outline is the
+  PDF's bookmarks to level 2, kept by `Books.finish` in `meta["outline"]`, and `total` is the book's page count. A
+  book whose ledger entry has `"plan": "text"` (set by `record()` for a book that had batches before 0.5.8) keeps the
+  old cut: no outline, up to the last page read, so its batch ids don't change.
 - Tests: `tests/unit/test_segment.py`.
 
 ## 3. Candidates (`core/conceptgraph.py`, no AI)
@@ -92,8 +95,8 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 
 - `Integrate.tick()`: nothing if the feature is off or a bulk request is in flight (`inflight()`); stops at
   `integrate.per_night` batches; else takes `ready_batches()[0]` (subjects in `integrate.first` first, then fewest pages
-  with `order = smallest`; skips batches in state done, failed, queued or checking; a batch is ready when its last page
-  has been read).
+  with `order = smallest`; skips batches in state done, failed, queued or checking; a batch is ready when each of its
+  pages has text in `text.md`, or was skipped by the reader once the book's reading pass is over, `meta["finished"]`).
 - `submit_batch(b, bt)`: the prompt is `integrate_ai.batch_prompt(...)` (`BATCH_PROMPT`) with the batch's text
   (`[p. N]` markers, at most 40 000 chars) and up to 30 candidate cards. It is submitted as
 
@@ -126,13 +129,15 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 - Link target: must be an existing slug or a concept name from this batch; links to itself are dropped.
 - Relation: must be in `core/graphwrite.py:RELATIONS` (needs, generalises, special-case-of, example-of,
   contrasts-with, equivalent-to, part-of, used-in); anything else is dropped.
-- Link flags: a vague reason (`graphwrite.lint_reason`: under 5 words or generic phrases), "both ways" for
-  generalises/special-case-of pairs, confidence under 0.5.
+- Link flags: a vague reason (`graphwrite.lint_reason`: under 5 words or generic phrases), "both ways" when two
+  generalises/special-case-of links in the batch contradict (A generalises B and B generalises A, or A special-case-of
+  B; "B special-case-of A" agrees and isn't flagged), confidence under 0.5.
 - Flagged items get one second look: `CHECK_PROMPT` plus `items_text()`, submitted with `lane="chk"`,
   `effort="medium"`, `brain=<check role>`, `then="integrate.checked"`. The batch's concepts wait in
   `<state>/integrate/pending/<jobid>.json`; ledger state `checking`.
 - `apply_second_look(items, answer) -> (kept, dropped)`: an unconfirmed concept is dropped, an unconfirmed merge
-  becomes its own concept, a link survives only with `keep`, a valid relation and a reason that passes lint. No usable
+  becomes its own concept (`_checked` gives it a slug of its own with `fresh_slug`, so nothing is written into the
+  note it was taken for; links other concepts made to it by name still point at that note), a link survives only with `keep`, a valid relation and a reason that passes lint. No usable
   answer drops every doubtful item; nothing is queued for the user.
 
 ## 6. Safe writes (`core/graphwrite.py`, `Integrate.write`)
@@ -190,7 +195,10 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   `garden_per_day` (40), `embeddings` (auto), `rerank` (auto), `rerank_model`, `first`, `order` (smallest), `commit`,
   `summary`.
 - `/graph` (`Integrate._cmd`): state, counts, `metrics()` (broken links, notes with no links in, boilerplate reasons,
-  top-3 share, name collisions), today's cost; `/graph now` runs `tick()`; `/graph stop` cancels `integrate:night`.
+  top-3 share, name collisions), today's cost; `/graph now` lifts a stop and runs `tick()`; `/graph stop`
+  (`Integrate.hold`; not `stop`, which is turning the feature off) writes `stopped.json` with the next `integrate.at`
+  time and cancels `integrate:soon`; `tick()` starts nothing before then, whoever calls it (the night and retry jobs,
+  `poke`, `_done`), and a restart keeps it.
 - No intents.
 - Tests: `tests/unit/test_integrate.py`, `test_books.py`, `test_segment.py`, `test_hubs.py`,
   `test_rerank_hardware.py`.
@@ -205,15 +213,8 @@ Verified against the code; fix with a test.
   `integrate.garden` and `integrate.summary` end as `error` (`job_failed` events). Work still starts through
   `Integrate.poke()` after a book is read, `/graph now`, `integrate.soon` (a `lambda p=None`) and the `_done` to
   `tick` chain. Other modules write their actions as `def x(self, p=None)`.
-- `apply_second_look` clears `same_as` on a rejected merge but `assign()` already set the existing note's slug, so the
-  concept is still written into that note.
-- The "both ways" flag in `integrate_ai.check` compares `(target, inverse)` against a set of `(source, relation)`:
-  a consistent pair (A generalises B, B special-case-of A) is flagged and a contradictory one (A generalises B,
-  B generalises A) is not. Check the intended meaning before changing it.
-- `ready_batches` compares a batch's last page number with `meta["done"]`, a count of pages read; a book with skipped
-  pages never finishes its last batches.
-- `Integrate.plan` passes no outline, so batches ignore bookmarks although the chapter list uses them.
-- `/graph stop` only deletes `integrate:night` until the next restart re-creates it; `integrate:retry` keeps going.
+- After a rejected merge, links other concepts in the batch made to that concept by name still point at the note it
+  was taken for (`check()` resolved them to that slug before the second look).
 - With `integrate.embeddings = auto` and no Ollama, note titles and openings go to Google's embedding API, and the key
   travels in the URL query (`?key=`). The privacy text says matching runs on this computer.
 - `prune_dangling` removes any line in the link syntax whose target is missing, including one the user wrote that way.

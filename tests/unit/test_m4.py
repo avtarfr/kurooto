@@ -444,3 +444,25 @@ def test_setup_pages_always_show_a_sign_in_link_and_the_call_steps():
     assert "The phone app comes from your own call line: set up Phone calls first." in home
     assert 'const kept = $("#flog")' in home  # the setup log survives a re-render
     assert "Set up now" in (static / "setup.js").read_text(encoding="utf-8")
+
+
+def test_a_calendar_link_that_fails_keeps_its_last_events_while_another_works(calendar):
+    env, base, today = calendar
+    c = env.app.modules["calendar"]
+    other = ics_for(today).replace("Lecture", "Seminar").replace("UID:", "UID:o-")
+    routes = {"/cal.ics": (200, ics_for(today).encode()), "/other.ics": (200, other.encode())}
+    srv, base2 = serve(routes)
+    try:
+        c.add_link(base + "/cal.ics")
+        c.add_link(base2 + "/other.ics")
+        env.on("calendar")
+        c.refresh()
+        both = [e["title"] for e in c.day(today)]
+        assert "Seminar (moved)" in both and "Lecture (moved)" in both
+        routes["/other.ics"] = (500, b"down")  # that link fails; the first still works
+        c.refresh()
+        assert [e["title"] for e in c.day(today)] == both  # its last good events stay, once
+        c.refresh()
+        assert [e["title"] for e in c.day(today)] == both
+    finally:
+        srv.shutdown()

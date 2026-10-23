@@ -232,7 +232,8 @@ class Google(Module):
     )
     privacy = (
         "Kurooto reads Classroom and writes Gmail drafts with your own Google client and sign-in; nothing is sent from "
-        "your Gmail (Email reply drafts sends one only when you tap Send). Tokens stay in this computer's keychain."
+        "your Gmail (Email reply drafts sends one only when you tap Send). Tokens stay on this computer: in its "
+        "keychain, or where there's none, in a file only your user can read."
     )
 
     def ep(self, name: str) -> str:

@@ -386,10 +386,18 @@ class App:
             msg.reply(syncall.start(self)[1])
             return
         chat = self.modules.get("chat")
-        if chat and chat in mods and text:
+        if chat and chat in mods and (text or msg.files):  # a photo or file comes with it, for the AI to open
             out = chat.ask(msg)
             if out:
                 msg.reply(out)
+            return
+        if msg.files:  # saved (Telegram puts what you send in your notes' inbox), but nothing here reads it
+            from kurooto.core import layout
+
+            msg.reply(
+                f"Saved to {', '.join(layout.shown(self, f) for f in msg.files)}. To have your AI look at it, turn on "
+                "Chat; to have it filed into your notes, turn on Files into notes (Features)."
+            )
             return
         msg.reply(
             "I can't answer free text yet: turn on Chat (it uses the AI you picked) in Settings. /help lists "

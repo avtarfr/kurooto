@@ -463,7 +463,9 @@ with an agent program (agy or Claude Code) installed; see "Which AI" below.
 **How one batch goes.**
 1. The book is cut into batches of about 12 pages (3 to 20) that follow its sections: the PDF's bookmarks, numbered
    headings, the running headers at the top of pages, or "Chapter 3 ..." lines. A margin note such as "Section 9.1"
-   is never taken for a heading.
+   is never taken for a heading. (A book the graph began before 0.5.8 keeps the batches it began with.) A batch waits
+   until its pages are read; a page the reader skipped (waiting for OCR, say) doesn't hold it back once the book's
+   reading is over.
 2. On this computer, without an AI, Kurooto finds the few existing notes that may be related: matching names and
    aliases, keyword ranking, the notes those link to, and, where there's a model for it, meaning (Ollama's
    nomic-embed-text, or your Gemini key). With a helper model on this computer, a **reranker** then orders them by
@@ -478,7 +480,8 @@ with an agent program (agy or Claude Code) installed; see "Which AI" below.
    - only the relation words above; two notes can't each generalise the other;
    - a concept with the same name as an existing note is never made a second time.
 5. Anything doubtful goes to a **second look** by the other AI program (or the same one, told to be strict), and is
-   dropped unless that confirms it. There's no queue for you to review.
+   dropped unless that confirms it; "this is your existing note X" that isn't confirmed becomes a note of its own and
+   leaves X alone. There's no queue for you to review.
 6. What's left is written and, if your notes are a Git repository, **committed: one commit per batch**, so
    `git revert <commit>` undoes exactly that batch.
 
@@ -508,7 +511,7 @@ limit is what runs out).
 |---|---|
 | `/graph` | The state: batches done, waiting and failed; which AI does the bulk work and the second look; today's AI requests and cost; and the quality numbers below |
 | `/graph now` | Starts the next batch now ("Started.", or "Nothing to start" and why) |
-| `/graph stop` | Takes tonight's start off the schedule ("Stopped for tonight") |
+| `/graph stop` | Starts no new batches until the next night's start ("Stopped: no new batches until its usual start, Thu 01:30"); it holds through a restart, and `/graph now` goes on sooner |
 
 The quality numbers in `/graph`: how many concepts and links, **broken** links, notes with **no links in**, links
 with a **vague reason**, and the share of all links that go to the three busiest notes (a high share means a few hub
@@ -543,8 +546,8 @@ skipped.
 
 **Limits and edge cases.**
 - It's heavy work: on battery (saver mode) it waits for the charger.
-- `/graph stop` only takes the nightly start off the schedule until Kurooto next starts; batches already sent finish,
-  and the 3-hourly retry can pick work up again. To stop it for sure, turn the feature off.
+- After `/graph stop`, a batch already sent still finishes, but nothing new starts (not the retries either) until the
+  next night's start (`integrate.at`). To stop it for longer, turn the feature off.
 - Page numbers are the PDF's own (page 1 is the first page of the file, often the cover).
 
 **What leaves your computer.** A few pages of a book's text at a time, and the titles and opening lines of the related

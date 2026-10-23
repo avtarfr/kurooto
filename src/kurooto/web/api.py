@@ -804,9 +804,38 @@ class Api:
         ok, note = opener.open_note(self.app.settings, p, self.app.workspace)
         return 200, {"ok": ok, **({"message": note} if note else {})}
 
-    EDITABLE = ("you", "notify", "availability", "updates", "brain", "ask", "look", "power", "notes", "files")
-    # Settings the page neither shows nor changes: who may talk to the bot and where it connects, brain addresses and
-    # models (POST /api/brain sets those), the subject list and timetable (their own pages).
+    EDITABLE = (
+        "you",
+        "notify",
+        "availability",
+        "updates",
+        "brain",
+        "ask",
+        "look",
+        "power",
+        "notes",
+        "files",
+        "quota",
+        "health",
+        "jobs",
+        "sources",
+        "agents",
+        "hardware",
+        "web",
+    )
+    # the core sections' titles where the section's name alone says little
+    TITLES = {
+        "quota": "AI limits",
+        "health": "Health checks",
+        "jobs": "AI jobs",
+        "sources": "Sources for answers",
+        "agents": "Skills in other AI programs",
+        "hardware": "This computer",
+        "web": "Dashboard",
+    }
+    # Settings the page neither shows nor changes: who may talk to the bot and where it connects (set by pairing), brain
+    # addresses and models (POST /api/brain sets those, with its checks), the subject list and timetable (their own
+    # pages).
     HIDDEN = {
         "telegram": {"api_base", "allowed_users", "chat_id"},
         "brain": {"base_urls", "models"},
@@ -814,7 +843,9 @@ class Api:
     }
 
     def _settings(self) -> dict:
-        """Every setting you can change: the core sections plus each enabled feature's own."""
+        """Every setting you can change: the core sections (not the list of features that are on, which Features
+        changes, nor Starting's, which has its own row) plus each enabled feature's own."""
+        from kurooto.core import agent_export, hardware, health, jobs, quota, sources  # noqa: F401 (their defaults)
         from kurooto.core.palette import settings_choices as look_choices
 
         allv = self.app.settings.all()
@@ -825,7 +856,7 @@ class Api:
         for sec in sections:
             vals = {k: v for k, v in (allv.get(sec) or {}).items() if k not in self.HIDDEN.get(sec, set())}
             if vals:
-                title = self.app.modules[sec].title if sec in self.app.modules else sec.title()
+                title = self.app.modules[sec].title if sec in self.app.modules else self.TITLES.get(sec, sec.title())
                 out.append({"section": sec, "title": title, "values": vals, **look_choices(self.app, sec)})
         at = next((i + 1 for i, x in enumerate(out) if x["section"] == "power"), len(out))
         out.insert(at, self._autostart_section())  # Settings → Starting, after Power
@@ -858,9 +889,9 @@ class Api:
         sec = key.split(".")[0]
         if key in ("look.palette", "look.theme_file") and (wrong := look_check(self.app, key, value)):  # palette.py
             return 400, {"error": wrong}
-        if sec not in self.EDITABLE and not self.app.is_on(sec):
-            return 400, {"error": "not a setting you can change here"}
-        if "." not in key or key.split(".")[1] in self.HIDDEN.get(sec, ()):  # a whole section would take them too
+        part = key.split(".")[1] if "." in key else ""
+        # a whole section at once would take the hidden ones too, so only section.key
+        if not part or (sec not in self.EDITABLE and not self.app.is_on(sec)) or part in self.HIDDEN.get(sec, set()):
             return 400, {"error": "not a setting you can change here"}
         if key == "you.timezone" and isinstance(value, str):  # saved under today's name (core/zones.py)
             from kurooto.core import zones

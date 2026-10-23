@@ -305,8 +305,8 @@ Your own skills in those programs stay.
 |---|---|---|
 | `skills.auto_pack` | `ask` | Revision packs before exams: `ask`, `auto` or `off` |
 | `skills.auto_pack_after` | `16:00` | Not offered before this time of day |
-| `agents.export` | `[]` | Agent programs your skills are copied into (set by `kurooto export-skills`; not on the Settings page) |
-| `agents.prefix` | empty | Prefix for the copied skills' names (in `settings.json`, not on the Settings page) |
+| `agents.export` | `[]` | Agent programs your skills are copied into (set by `kurooto export-skills`, or Settings → Skills in other AI programs) |
+| `agents.prefix` | empty | Prefix for the copied skills' names |
 
 **What leaves your computer.** What you send with a skill (text and files) and the notes it reads go to the AI you
 picked. Your own skills, routines and packs are files on your computer.

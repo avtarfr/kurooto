@@ -297,7 +297,7 @@ function onMessage(m) {
 async function runTool(fc) {
   say(toolLabel(fc), 'sys');
   let result;
-  try { result = (await api('/tool', { name: fc.name, args: fc.args || {} })).result; } catch (e) { result = `Tool failed: ${e.message}`; }
+  try { result = (await api('/tool', { name: fc.name, args: fc.args || {}, since })).result; } catch (e) { result = `Tool failed: ${e.message}`; }
   if (session) session.sendToolResponse({ functionResponses: [{ id: fc.id, name: fc.name, response: nonBlocking ? { result, scheduling: 'WHEN_IDLE' } : { result } }] });
 }
 function toolLabel(fc) {

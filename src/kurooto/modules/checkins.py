@@ -91,6 +91,10 @@ class Checkins(Module):
     title = "Check-ins"
     description = "Kurooto asks how your day is going at times you choose; your replies go into your journal."
     requires = ("telegram",)
+    privacy = (
+        "Replies on Telegram go straight into your journal, on this computer. On a check-in call with Chat on, what "
+        "you said goes to the AI you picked, to write your journal and study logs (checkins.ai_notes)."
+    )
 
     def start(self):
         self.action("fire", self._fire)

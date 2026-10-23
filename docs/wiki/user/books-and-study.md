@@ -119,7 +119,7 @@ Your own words are quoted, never reworded.
 | `/books mix linear algebra reset` | back to the general mix |
 | `/exam-prep linear algebra` | brings that subject's exam-prep note up to date from all three sources (also without Classroom); the [Quiz](quiz-and-exams.md#quiz) asks from it |
 
-**Settings** (`sources.*` is in `settings.json`, not on the Settings page: see [Dashboard](dashboard.md#settings-alts))
+**Settings** (Settings → Sources for answers)
 
 | Setting | Default | Effect |
 |---|---|---|

@@ -46,7 +46,7 @@ def _hm(h: str, mi: str | None, ampm: str | None) -> tuple[int, int]:
 def parse_when(text: str, base: dt.datetime | None = None) -> dt.datetime:
     """'21:30', '9pm', 'in 20 minutes', '30m', '2h', '+45', 'in 3 days', 'tomorrow 7:00', 'mon 9am',
     '2026-11-02 14:00', '2026-11-02' (09:00) -> a local datetime in the future (times today roll to tomorrow).
-    Raises ValueError if it can't read it."""
+    A bare number is minutes from now ('20' is in 20 minutes, not 20:00). Raises ValueError if it can't read it."""
     base = base or now()
     s = re.sub(r"\s+", " ", (text or "").strip().lower())
     s = re.sub(r"^(at|on|by) ", "", s)

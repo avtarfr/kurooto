@@ -86,7 +86,9 @@ brackets, and add `"categories"` to narrow it. A search with an unclosed bracket
 arXiv once every 3 seconds, as arXiv asks, so several arXiv sources take a little longer.
 
 **Limits.** Up to 30 sources, 20 keywords per source, 30 arXiv fields per source. Each digest looks back 7 days
-(`research.window_days`). On battery (saver mode) the scheduled digest waits for the charger.
+(`research.window_days`). On battery (saver mode) the scheduled digest waits for the charger. A paper counts as sent
+once its digest reaches you: if the AI's pick fails, those papers come again in the next digest (while they're still
+in its window).
 
 ---
 

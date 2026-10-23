@@ -2,6 +2,7 @@
 tool does, a feature that's off says so, and nothing raises."""
 
 import datetime as dt
+from pathlib import Path
 
 from kurooto.core import actions
 from kurooto.core.clock import now
@@ -86,3 +87,17 @@ def test_open_questions_can_be_answered_from_the_page(env):
     assert any(r["id"] == qid for r in rows)
     assert actions.act(env.app, "question.answer", {"id": qid, "answer": "Tea"})["ok"]
     assert actions.act(env.app, "question.answer", {"id": qid, "answer": "Coffee"})["ok"] is False
+
+
+def test_the_check_in_plus_30_button_pushes_it_later_today_not_to_tomorrow(env, monkeypatch):
+    from kurooto.modules import checkins as ck_mod
+
+    day = dt.date(2026, 10, 21)
+    monkeypatch.setattr(ck_mod, "now", lambda: dt.datetime.combine(day, dt.time(19, 50)))
+    env.app.settings.set("checkins.times.evening", "20:00")
+    env.on("checkins")
+    r = actions.act(env.app, "checkin.postpone", {"name": "evening", "minutes": 30})
+    assert r["ok"] and r["message"] == "Evening check-in at 20:30.", r
+    ck = env.app.modules["checkins"]
+    assert ck.today(day)["evening"]["time"] == "20:30" and ck.deferred() is None
+    assert "checkin.postpone" in (Path(actions.__file__).parents[1] / "web/static/home.js").read_text(encoding="utf-8")

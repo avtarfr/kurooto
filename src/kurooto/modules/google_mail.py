@@ -191,7 +191,8 @@ class MailDigest(GooglePart):
     privacy = (
         "Reads Gmail (read-only: nothing is sent, deleted or marked read). Only mail from senders or labels you chose "
         "(and, on a school or work account, your own domain, or what your mail query matches) is read and goes to the "
-        "AI you picked; the rest is only counted, on this computer. Mail marked confidential is never read."
+        "AI you picked; the rest is only counted, on this computer. Mail marked confidential never goes to the AI you "
+        "picked: it's only counted, or (mail_digest.confidential = local) summarised by a local model on this computer."
     )
     permission = (
         "Google will ask you to allow Kurooto to read your email (read-only: it can't send, delete or change "

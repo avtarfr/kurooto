@@ -625,6 +625,7 @@ class Books(Module):
         os.replace(tmp, d / "text.md")
         outline = (doc or Doc(b["path"], self.tools(), self.app.paths.cache / "books")).outline()
         meta["chapters"] = chapters(outline, pages, meta["pages"])
+        meta["outline"] = [[lv, t, p] for lv, t, p in outline if p and lv <= 2][:600]  # the concept graph's batches
         meta["index"] = self.write_index(b, meta)
         meta["finished"] = meta.get("finished") or now().isoformat(timespec="seconds")
         meta["indexed"] = self.to_brain(b, meta, pages)

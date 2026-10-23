@@ -94,11 +94,14 @@ Redeploys: `fingerprint` hashes the Worker source and the values baked into it (
    - sends `admin_later("ring", ...)`: the Worker's `Line.ring` mints a ticket (2 h; 3 h for alarms), publishes a
      k1-sealed message to ntfy for paired Android devices, and sends an empty Web Push (VAPID) to every subscribed
      browser, whose service worker (`public/sw.js`) then fetches `/pending`;
-   - also publishes to ntfy directly from the computer (`Calls.publish_ntfy`), in case the Worker's egress fails;
+   - publishes to ntfy directly from the computer (`Calls.publish_ntfy`) only when the line isn't connected, or
+     its answer to `ring` (`Calls._ring_fallback`) doesn't say `"android": true` (an error, no answer, its publish
+     failed, or no Android device paired): one ntfy message per ring;
    - sends a Telegram notice with an Answer link (`Calls.link`, a `t1` ticket in the URL fragment), or an urgent
      "the call line isn't connected" notice;
-   - schedules `calls.missed` at `ring_s + 30` s.
-4. `Calls._missed`: stops the ring (`stop-ring` and a direct ntfy stop), re-alerts at `realert_min` (not for alarms),
+   - schedules `calls.missed` at `ring_s + 30` s, or `ALARM_RING_S` (300, the Worker's and the app's alarm ring)
+     + 30 s for an alarm.
+4. `Calls._missed`: stops the ring (`stop-ring`, or a direct ntfy stop when the line isn't connected), re-alerts at `realert_min` (not for alarms),
    and finally "Missed call" with Call back / In 30 min buttons; the owning module hears `call_outcome(..., "missed")`.
 5. `Calls._scheduled_ring` skips a late or missed one-off when a line exists, assuming the line's cron placed it.
 
@@ -159,7 +162,9 @@ Failures are counted in `<state>/calls/live-health.json` (`LiveHealth.record`) a
                   lane="bg", why="calls.review", brain=calls.review_brain or None)
   ```
 
-  with the transcript (last 24 000 chars), `Calls.tool_log` (last 60 tool uses) and the current lessons. Because it is a
+  with the transcript (last 24 000 chars), that call's `Calls.tool_log[since]` (last 60 tool uses; the call page sends
+  its `since` with `/tool` and `/transcript`, and the Worker keeps it on tools it queues while the computer is off)
+  and the current lessons. Because it is a
   normal job with tools, the AI can do what the call missed (a reminder never set, a note never written).
 - `reviewed(calls, job, result, payload)` (registered as the `calls.reviewed` then-action) reads the ```` ```lessons ````
   fence, `merge()`s it into the existing lessons (60% word overlap replaces an old one; capped at `lessons_max`),
@@ -250,11 +255,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 
 ## Known problems and doc mismatches
 
-- `Calls.privacy` (the feature card's text) still says "Transcripts stay here", which doesn't hold while the computer
-  is off (`Line.transcript` queues them in Durable Object storage until `welcome`) or for the look back (the
-  transcript goes to the AI). `docs/PRIVACY.md`, the MANUAL and the user wiki say both.
-- Every ring is published to ntfy twice (Worker and `Calls.publish_ntfy`), including when no Android device is paired.
-- `calls.missed` fires at `ring_s + 30` s, which stops an alarm ring after about 90 s while the Worker and app would
-  ring an alarm for 5 minutes; `calls.ring_s` is never sent to the Worker or the app.
-- `Calls.tool_log` is one list for all calls: tools from queued offline work or overlapping calls are attributed to the
-  next transcript's review; turn-by-turn calls run tools through `core/tools.py:run_tool` and don't reach it.
+- With no Android device paired, the computer still publishes each ring to ntfy once (the Worker's answer can't tell
+  "no Android device" from "its publish failed").
+- `calls.ring_s` is never sent to the Worker or the app, which ring 60 s (5 minutes for an alarm) whatever it says.
+- Turn-by-turn calls run tools through `core/tools.py:run_tool` and don't reach `Calls.tool_log`; a call page from
+  before 0.5.8 (until the Worker is deployed again) sends no `since`, so its tools share the `""` log.

@@ -223,6 +223,8 @@ with the date and time. For a photo, the largest size is kept. The caption trave
 | a reply to a question, with files | the files are kept with your answer |
 | any other file, with Files into notes on | "Saved; filing it into your notes…": with Chat on, the AI writes a note that says what it is and links it, in the right place, then replies where it went. Without Chat: "Saved to inbox/...". |
 | a link on its own, with Skills on | filed into your notes by the `/add-to-notes` skill |
+| any other file, with Files into notes off and Chat on | it goes to your AI with the caption (or, with none, "say what it is"); the AI is told where the file is and opens it. Only an AI that opens files itself (agy, Claude Code) can see a photo: with a Gemini key or another API service, type what's in it |
+| any other file, with both off | "Saved to inbox/.... To have your AI look at it, turn on Chat; to have it filed into your notes, turn on Files into notes (Features)." |
 
 **Limits.** Telegram lets bots download files up to **20 MB**; a bigger file gets "Couldn't get that file: Telegram only
 lets bots download files up to 20 MB". Put bigger files into the folder yourself (for books: `/books folder <subject>`).
@@ -231,7 +233,7 @@ lets bots download files up to 20 MB". Put bigger files into the folder yourself
 them.
 
 **Turn it off:** Features → Files into notes. Files you send are still downloaded into the inbox, but nothing files
-them or tells you where they went (a caption then goes to Chat as plain text).
+them; with Chat on, the file and its caption go to your AI as a question instead.
 
 ## Getting files from Kurooto
 

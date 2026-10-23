@@ -65,14 +65,14 @@ class Weekly(Module):
                 continue
             k = e.get("kind")
             c[k] += 1
-            if k == "job_done":
-                c["job_ok" if e.get("ok") else "job_failed"] += 1
+            if k == "job_done":  # an AI request ("job_failed" is a scheduled job that failed: not counted here)
+                c["ai_ok" if e.get("ok") else "ai_failed"] += 1
             if k == "quiz_graded":
                 grades.append(e.get("q", 0))
         lines = [f"Your week ({since:%a %d %b} – {now():%a %d %b}):"]
         lines.append(
-            f"Messages to me: {c['message_in']}; AI requests: {c['job_ok']} answered"
-            + (f", {c['job_failed']} failed" if c["job_failed"] else "")
+            f"Messages to me: {c['message_in']}; AI requests: {c['ai_ok']} answered"
+            + (f", {c['ai_failed']} failed" if c["ai_failed"] else "")
         )
         if c["reminder_fired"] or c["reminder_set"]:
             lines.append(f"Reminders: {c['reminder_set']} set, {c['reminder_fired']} delivered")

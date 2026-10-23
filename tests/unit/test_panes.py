@@ -91,3 +91,11 @@ def test_panels_and_legends_fold_and_open_on_hover_or_l(page):
     assert 'e.key === "l"' in js and '!document.activeElement.closest(".xterm")' in js  # not inside a terminal
     assert "inside(this.mouse, this.openRects[key])" in js and "inside(this.mouse, this.legendRect)" in js
     assert "l legends" in js  # the key is in the border
+
+
+def test_r_toggles_recent_only_with_the_notes_map_on_screen_and_not_while_typing(page):
+    _, js, _ = page
+    line = next(ln for ln in js.splitlines() if 'e.key === "R"' in ln)
+    assert 'paneShown("notes")' in line and "this.cv.getClientRects().length" in line
+    rest = js[js.index(line) :][:400]
+    assert '"SELECT"' in rest and "isContentEditable" in rest and '.closest(".xterm")' in rest
