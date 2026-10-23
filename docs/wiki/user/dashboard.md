@@ -143,6 +143,15 @@ once the [concept graph](notes-and-concept-graph.md) reads a book, hundreds of n
 lines, and before 0.5.19 it took every label and the map read as a list of book titles. The region names step back
 while you point at or search for a note.
 
+**Research on the map (new in 0.5.21).** A research project's region is its folder's notes, the notes its index links
+to, and the topics its line in the research hub (`maps/research.md`, or your layout's research hub) links to, together
+with the lines indented under it. It's always named, however few notes its folder has: by its index note's title, or
+the hub's line for it ("L96 parameterization" in `- [[projects/l96/index|L96 parameterization]]: ...`). Research
+regions and their names are in the accent colour, their names a little bolder. Concept notes (`zettel/`) and any
+other note outside a course or project folder join the region most of their links come from, a course or a project
+(a tie goes to the course), so the cloud of concept notes splits into named topics; a note with no such links stays
+unnamed ("Other Notes").
+
 | To | Do |
 |---|---|
 | See a note's details | point at it: title, path, links, words, when it was edited |

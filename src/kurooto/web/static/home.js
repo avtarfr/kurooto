@@ -650,53 +650,83 @@ const detailOf = (e) => Object.entries(e).filter(([k]) => !["ts", "kind", "t", "
 // first, then notes that link across neighbourhoods. A book's index note comes last and is drawn small: its hundreds
 // of links come from reading the book ("Seen in" lines), not from how your notes connect.
 // -- the pure part (no page, no canvas): tests/unit/test_notes_labels.py runs it in node
-const HOOD_COLORS = ["peach", "lav", "rose", "accent", "pink", "sand"], MAX_HOODS = 8;
+const HOOD_COLORS = ["peach", "lav", "rose", "pink", "sand"], MAX_HOODS = 8; // research projects are the accent
 const HUB = { label: "Maps & hubs", get color() { return PAL.fg; }, anchor: { x: 0, y: -40 } };
 const OTHER = { label: "Other Notes", get color() { return PAL.dim; }, anchor: { x: 0, y: 380 } };
 const prettyHood = (s) => s.replace(/^project:/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// the folders research projects live in: projects/ and research/, and the layout's own (g.layout.project, e.g.
+// "work/{project}/index")
+function projectDirs(lay = {}) {
+  const dirs = new Set(["projects/", "research/"]), m = /^([^{}]+\/)\{project\}/.exec(lay.project || "");
+  if (m) dirs.add(m[1]);
+  return [...dirs];
+}
 // a note's role: "course" (a course page), "hub" (a map, the home or research hub, a project's index), "book" (a
 // book's index note, <subject>/books/<book>) or "note"
-function noteRole(id) {
+function noteRole(id, lay = {}) {
   if (/(^|\/)books\//.test(id)) return "book";
   if (/^maps\/courses\/[^/]+$/.test(id) || /^[^/]+\/course$/.test(id) || /^sources\/[^/]+\/course$/.test(id)) return "course";
-  if (/^maps\//.test(id) || /^(index|research\/index|projects\/[^/]+\/index|research\/[^/]+\/index|projects\/[^/]+)$/.test(id)) return "hub";
+  if (/^maps\//.test(id) || /^(index|research\/index|projects\/[^/]+\/index|research\/[^/]+\/index|projects\/[^/]+)$/.test(id) || id === lay.research) return "hub";
   return "note";
 }
-// subjects: the folder names that are courses (sources/<s>/…, or <s>/course in the kurooto layout)
-function hoodOf(id, subjects = new Set()) {
+// subjects: the folder names that are courses (sources/<s>/…, or <s>/course in the kurooto layout); dirs: projectDirs()
+function hoodOf(id, subjects = new Set(), dirs = projectDirs()) {
   let m = /^sources\/([^/]+)\//.exec(id || ""); if (m) return m[1];
-  m = /^(?:projects|research)\/([^/]+)\/./.exec(id || ""); if (m) return `project:${m[1]}`;
+  for (const d of dirs) { m = new RegExp(`^${escRe(d)}([^/]+)/.`).exec(id || ""); if (m && `${d}${m[1]}` !== "research/index") return `project:${m[1]}`; }
   m = /^maps\/courses\/([^/]+)$/.exec(id || ""); if (m && subjects.has(m[1])) return m[1]; // a course page joins its course
   if (/^(maps|projects|research)\//.test(id || "") || id === "index") return "hub";
   m = /^([^/]+)\//.exec(id || ""); if (m && subjects.has(m[1])) return m[1];
   return null;
 }
 // n.neighborhood, n.role, n.sdeg (links that aren't a book's) and n.bridge (how many other neighbourhoods its links
-// reach) for every node (n.nb already holds its links); returns {key: {label, color, anchor}}
-function assignHoods(nodes) {
+// reach) for every node (n.nb holds its links, n.out the ones it makes); returns {key: {label, color, anchor, project}}.
+// info: the graph's layout ({research, project}) and research ({<project>: {name, topics}}: each project's
+// entry in the research hub, read by web/live.py). Once per graph update, never per frame.
+// A research project's region is its folder's notes, the notes its index links to and the topics its hub entry links
+// to; it's always named, however small. Any other note (a concept note in zettel/, say) joins the region most of its
+// links come from (a tie goes to the course), else "other".
+function assignHoods(nodes, info = {}) {
+  const lay = info.layout || {}, research = info.research || {}, dirs = projectDirs(lay);
   const subjects = new Set();
   for (const n of nodes.values()) { const m = /^sources\/([^/]+)\//.exec(n.id) || /^([^/]+)\/course$/.exec(n.id); if (m) subjects.add(m[1]); }
-  const base = new Map(), size = new Map();
+  const base = new Map(), size = new Map(), projects = new Set(Object.keys(research).map((p) => `project:${p}`));
   for (const n of nodes.values()) {
-    n.role = noteRole(n.id);
-    const k = hoodOf(n.id, subjects); base.set(n.id, k); if (k && k !== "hub") size.set(k, (size.get(k) || 0) + 1);
+    n.role = noteRole(n.id, lay);
+    const k = hoodOf(n.id, subjects, dirs); base.set(n.id, k);
+    if (k && k.startsWith("project:")) projects.add(k); else if (k && k !== "hub") size.set(k, (size.get(k) || 0) + 1);
   }
-  const keys = [...size].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, MAX_HOODS).map(([k]) => k);
+  const courses = [...size].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, MAX_HOODS).map(([k]) => k);
+  const keys = [...courses, ...[...projects].sort()];
   const known = new Set(keys), hoods = new Map([["hub", HUB], ["other", OTHER]]);
-  const titleOf = (...ids) => { for (const id of ids) { const n = nodes.get(id); if (n && n.title) return n.title; } return null; };
+  const titleOf = (...ids) => { for (const id of ids) { const n = nodes.get(id); if (n && n.title && n.title !== id.split("/").pop()) return n.title; } return null; };
+  const indexOf = (p) => [...dirs.map((d) => `${d}${p}/index`), ...dirs.map((d) => `${d}${p}`)].find((id) => nodes.has(id));
+  let ci = 0;
   keys.forEach((k, i) => {
-    const ang = (i / keys.length) * 2 * Math.PI - Math.PI / 2, p = k.replace(/^project:/, "");
-    const label = (k.startsWith("project:") ? titleOf(`projects/${p}/index`, `research/${p}/index`, `projects/${p}`)
+    const ang = (i / keys.length) * 2 * Math.PI - Math.PI / 2, p = k.replace(/^project:/, ""), project = k.startsWith("project:");
+    const label = (project ? titleOf(...dirs.map((d) => `${d}${p}/index`), ...dirs.map((d) => `${d}${p}`)) || research[p]?.name
       : titleOf(`maps/courses/${k}`, `${k}/course`, `sources/${k}/course`)) || prettyHood(k);
-    hoods.set(k, { label, project: k.startsWith("project:"), get color() { return PAL[HOOD_COLORS[i % HOOD_COLORS.length]]; },
-      anchor: { x: Math.cos(ang) * 420, y: Math.sin(ang) * 300 } });
+    const col = project ? "accent" : HOOD_COLORS[ci++ % HOOD_COLORS.length];
+    hoods.set(k, { label, project, get color() { return PAL[col]; }, anchor: { x: Math.cos(ang) * 420, y: Math.sin(ang) * 300 } });
   });
+  // a project's reach: what its index links to (one hop) and its hub entry's topics; a note in a folder stays there
+  const seed = new Map();
+  for (const k of keys) {
+    if (!k.startsWith("project:")) continue;
+    const p = k.slice(8), idx = nodes.get(indexOf(p));
+    for (const id of [...(idx ? idx.out || idx.nb || [] : []), ...(research[p]?.topics || [])]) if (!seed.has(id)) seed.set(id, k);
+  }
+  const region = (id) => { const b = base.get(id); return known.has(b) ? b : b === "hub" ? null : seed.get(id) || null; };
   for (const n of nodes.values()) {
     let k = base.get(n.id);
     if (k !== "hub" && !known.has(k)) {
-      const votes = new Map();
-      for (const id of n.nb || []) { const b = base.get(id); if (known.has(b)) votes.set(b, (votes.get(b) || 0) + 1); }
-      k = [...votes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || "other";
+      k = seed.get(n.id);
+      if (!k) {
+        const votes = new Map();
+        for (const id of n.nb || []) { const r = region(id); if (r) votes.set(r, (votes.get(r) || 0) + 1); }
+        const proj = (key) => (key.startsWith("project:") ? 1 : 0);
+        k = [...votes].sort((a, b) => b[1] - a[1] || proj(a[0]) - proj(b[0]) || a[0].localeCompare(b[0]))[0]?.[0] || "other";
+      }
     }
     n.neighborhood = k;
   }
@@ -714,7 +744,8 @@ function rankLabels(nodes) {
   return [...nodes].sort((a, b) => score(b) - score(a) || a.id.localeCompare(b.id));
 }
 // each region's name and where it goes: the middle of its notes (better-linked notes count more; books barely), for
-// neighbourhoods of three notes or more; in the map's own coordinates
+// neighbourhoods of three notes or more, and every research project however small (placed first, so a bigger
+// region's name never crowds it out); in the map's own coordinates
 function regionSpots(nodes, hoods) {
   const acc = new Map();
   for (const n of nodes) {
@@ -722,8 +753,9 @@ function regionSpots(nodes, hoods) {
     const w = n.role === "book" ? 0.2 : Math.sqrt((n.sdeg || 0) + 1), a = acc.get(n.neighborhood) || { x: 0, y: 0, w: 0, n: 0 };
     a.x += n.x * w; a.y += n.y * w; a.w += w; a.n++; acc.set(n.neighborhood, a);
   }
-  return [...acc].filter(([, a]) => a.n >= 3).sort((p, q) => q[1].n - p[1].n)
-    .map(([key, a]) => ({ key, label: hoods.get(key).label, x: a.x / a.w, y: a.y / a.w, n: a.n }));
+  const proj = (key) => (hoods.get(key).project ? 1 : 0); // research first: its name always gets a place
+  return [...acc].filter(([key, a]) => a.n >= 3 || proj(key)).sort((p, q) => proj(q[0]) - proj(p[0]) || q[1].n - p[1].n)
+    .map(([key, a]) => ({ key, label: hoods.get(key).label, project: !!hoods.get(key).project, x: a.x / a.w, y: a.y / a.w, n: a.n }));
 }
 // -- end of the pure part
 const ZOOM_NAMES = 1.35; // zoomed in this far, notes get their names and the regions' names step back
@@ -744,9 +776,9 @@ class Mind {
       if (!node) { node = { ...n, x: (Math.random() - 0.5) * 300, y: (Math.random() - 0.5) * 300, vx: 0, vy: 0, deg: 0 }; this.nodes.set(n.id, node); } else Object.assign(node, n); }
     for (const id of [...this.nodes.keys()]) if (!seen.has(id)) this.nodes.delete(id);
     this.links = g.links.map(([a, b]) => [this.nodes.get(a), this.nodes.get(b)]).filter(([a, b]) => a && b);
-    for (const n of this.nodes.values()) { n.deg = 0; n.nb = new Set(); }
-    for (const [a, b] of this.links) { a.deg++; b.deg++; a.nb.add(b.id); b.nb.add(a.id); }
-    this.hoods = assignHoods(this.nodes);
+    for (const n of this.nodes.values()) { n.deg = 0; n.nb = new Set(); n.out = new Set(); }
+    for (const [a, b] of this.links) { a.deg++; b.deg++; a.nb.add(b.id); b.nb.add(a.id); a.out.add(b.id); }
+    this.hoods = assignHoods(this.nodes, { layout: g.layout, research: g.research });
     this.anchor = new Map([...this.hoods].map(([k, v]) => [k, v.anchor]));
     if (first) for (const n of this.nodes.values()) { const a = this.anchor.get(n.neighborhood) || { x: 0, y: 0 }; n.x = a.x + (Math.random() - 0.5) * 140; n.y = a.y + (Math.random() - 0.5) * 140; }
     else for (const id of g.changed || []) { const n = this.nodes.get(id); if (n) this.flares.push({ n, t0: performance.now() / 1000 }); this.alpha = Math.max(this.alpha, 0.45); }
@@ -885,8 +917,9 @@ class Mind {
     // fade out as you zoom in
     const quiet = focus || match || this.showRecent, fade = clamp((ZOOM_NAMES + 0.25 - this.view.k) / 0.5, 0, 1);
     if (fade > 0 && !this.only) {
-      ctx.font = cf(13, 650); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
       for (const g of regionSpots(this.nodes.values(), this.hoods || new Map())) {
+        ctx.font = cf(13, g.project ? 750 : 650); // a research project's name: a little stronger, in the accent
         const S = this.toScreen(g, w, h), txt = g.label.length > 30 ? g.label.slice(0, 29) + "…" : g.label;
         const tw = ctx.measureText(txt).width, bh = 18 * FSC;
         let box = null;
@@ -898,7 +931,7 @@ class Mind {
         if (!quiet) placed.push(box);
         const a = fade * (quiet ? 0.35 : 0.95), x = box.x + box.w / 2, y = box.y + bh / 2;
         ctx.strokeStyle = rgba(PAL.bg, 0.85 * a); ctx.lineWidth = 4; ctx.strokeText(txt, x, y);
-        ctx.fillStyle = rgba(mix(this.hoods.get(g.key).color, PAL.fg, 0.35), a); ctx.fillText(txt, x, y);
+        ctx.fillStyle = rgba(g.project ? PAL.accent : mix(this.hoods.get(g.key).color, PAL.fg, 0.35), a); ctx.fillText(txt, x, y);
       }
     }
     ctx.font = cf(10.5, 600);

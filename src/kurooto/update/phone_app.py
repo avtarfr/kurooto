@@ -6,7 +6,8 @@ version are in the release's signed manifest instead ("android"). ensure() reads
 runs, checks its signature and version, downloads the app once, checks it against the signed sha256 (a mismatch is
 thrown away) and keeps it in <data>/phone-app/kurooto.apk with app.json beside it. A release without an app keeps the
 one already here. current() is what the call line serves: that file while it still matches its recorded hash, else
-the copy an older package carried inside it (data/kurooto.apk, from build --apk up to 0.5.18), else none.
+the copy an older package carried inside it (data/kurooto.apk, from build --apk up to 0.5.18), else none. The line
+also serves TAG (kurooto-app.json, {"versionName": ...}) beside it, so its pairing page can say which app it hands out.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from kurooto.update.updater import UpdateError, Updater
 
 EMBEDDED = Path(__file__).resolve().parent.parent / "data" / "kurooto.apk"
 NAME = "kurooto.apk"
+TAG = "kurooto-app.json"  # beside the app on the call line: its version, for the pairing page
 
 
 def folder(data: Path) -> Path:
@@ -48,6 +50,12 @@ def current(data: Path) -> Path | None:
     if got:
         return got[0]
     return EMBEDDED if EMBEDDED.is_file() else None
+
+
+def version(data: Path) -> str:
+    """The served app's version ("" when it isn't known: the copy inside an older package, or none)."""
+    got = fetched(data)
+    return str(got[1].get("versionName") or "") if got else ""
 
 
 def fingerprint(data: Path) -> str:

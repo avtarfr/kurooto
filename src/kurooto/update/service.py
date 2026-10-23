@@ -15,7 +15,8 @@ night.
 
 With Phone calls on, the Android app named in the running version's signed manifest is downloaded after an update
 (update/phone_app.py: a couple of minutes after a start, then every 6 hours, which costs nothing once it's here); the
-call line serves it and its next redeploy (05:10) takes it.
+call line serves it: when the line serves another app, it's redeployed a minute later (calls.app_line: never
+during a call, retried when offline), not only at the 05:10 line update.
 """
 
 from __future__ import annotations
@@ -167,7 +168,20 @@ class Updates:
             return f"failed: {e}"
         if got == "fetched":
             self.app.events.emit("phone_app_fetched", version=__version__)
+        self._app_to_line()
         return got
+
+    def _app_to_line(self) -> None:
+        """The call line serves another app than the one here: it's redeployed in a minute or so (calls.app_line),
+        not at the next 05:10 line update, so the pairing page hands out the app that goes with this version."""
+        from kurooto.modules.calls import deploy
+
+        calls = self.app.modules.get("calls")
+        try:
+            if calls is not None and deploy.app_behind(self.app):
+                calls.app_line_soon()
+        except Exception as e:  # never fails the fetch itself
+            self.app.events.emit("phone_app_failed", error=f"couldn't book the call line update: {e}"[:200])
 
     def _install_info(self) -> tuple[str, str]:
         info = jload(self.app.paths.app / "install.json", {}) or {}

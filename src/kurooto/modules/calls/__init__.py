@@ -78,6 +78,10 @@ SECRETS = ("calls.call_secret", "calls.connector_secret", "calls.ntfy_topic", "c
 ALARM_RING_S = 300  # how long the call line and the Android app ring a wake-up call (worker.js ALARM_RING_S)
 ON_CALL_S = 90  # a live call checks in every few seconds; this long after the last sign of it, it's over
 GEMINI_KEY = "gemini.api_key"
+APP_LINE_SOON_MIN = 1  # a new phone app goes to the call line this soon after it's fetched
+APP_LINE_BUSY_MIN = 10  # on a call, or another deploy running: looked at again this much later
+APP_LINE_RETRY_MIN = 30  # a deploy that failed (offline, Cloudflare): tried again this much later
+APP_LINE_TRIES = 6  # then the 05:10 line update takes it
 
 
 def check_ntfy_token(server: str, token: str) -> tuple[str, str]:
@@ -203,6 +207,7 @@ class Calls(Module):
         self.action("task_check", self._task_check)
         self.action("realert", self._realert)
         self.every("line_update", "daily 05:10", self._line_update)
+        self.action("app_line", self._app_line)  # a new phone app goes to the line soon, not at 05:10
         self.app.jobs.then_actions["calls.task_done"] = self._task_done
         self.action("textcall_idle", self.textcall.idle)  # a call that went on as text (fallback.py)
         self.app.jobs.then_actions["calls.textcall_said"] = self.textcall.said
@@ -273,6 +278,55 @@ class Calls(Module):
 
         threading.Thread(target=go, name="call-line-update", daemon=True).start()
         return True
+
+    def app_line_soon(self, tries: int = 0, minutes: float = APP_LINE_SOON_MIN, replace: bool = False) -> None:
+        """Take the phone app fetched after an update to the call line in a few minutes (the pairing page's
+        /kurooto.apk), instead of at the next 05:10 line update. One booking: a retry already waiting is kept."""
+        self.app.scheduler.at(
+            now() + dt.timedelta(minutes=minutes), "calls.app_line", {"tries": tries}, key="calls:app_line",
+            module=self.id, replace=replace,
+        )  # fmt: skip
+
+    def _app_line(self, p: dict | None = None) -> str:
+        """Redeploy the call line for a new phone app: never during a call or another deploy (it waits 10 minutes),
+        and a failure (offline, Cloudflare) tries again in 30. One event per try; you hear only of a second failure."""
+        from kurooto.modules.calls import deploy
+
+        tries = int((p or {}).get("tries") or 0)
+        if not deploy.app_behind(self.app):
+            return "the call line has this phone app already"
+        if self.app.availability.on_call_until() is not None or deploy.deploying():
+            self.app_line_soon(tries, APP_LINE_BUSY_MIN, replace=True)
+            return f"busy; trying again in {APP_LINE_BUSY_MIN} min"
+        self._spawn(lambda: self._app_line_go(tries), "call-line-app")
+        return "updating the call line with the new phone app"
+
+    def _app_line_go(self, tries: int) -> None:
+        from kurooto.modules.calls import deploy
+        from kurooto.update import phone_app
+
+        ok, why = deploy.deploy(self.app, progress=lambda line: None, unattended=True)
+        if not ok and why == deploy.BUSY:  # another deploy started meanwhile: it may take the app; looked at again
+            self.app_line_soon(tries, APP_LINE_BUSY_MIN, replace=True)
+            return
+        app_v = phone_app.version(self.app.paths.data)
+        if ok:
+            self.app.events.emit("calls_line_updated", ok=True, why="phone_app", app=app_v)
+            return
+        tries += 1
+        self.app.events.emit("calls_line_updated", ok=False, why="phone_app", app=app_v, tries=tries, error=why[:200])
+        if tries < APP_LINE_TRIES:
+            self.app_line_soon(tries, APP_LINE_RETRY_MIN, replace=True)
+        if tries == 2:
+            self.app.notify(
+                f"Your call line couldn't take the new phone app{' ' + app_v if app_v else ''}: {why[:300]} "
+                "(the pairing page hands out the older app until it can; it keeps trying).",
+                kind="info",
+                why="calls.line_update",
+            )
+
+    def _spawn(self, fn, name: str) -> None:
+        threading.Thread(target=fn, name=name, daemon=True).start()
 
     def _scheduled_ring(self, p: dict) -> None:
         if (p.get("late_s") or p.get("missed")) and self.worker_url():

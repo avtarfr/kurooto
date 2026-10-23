@@ -91,7 +91,10 @@ language or speech settings; the place differs by phone). Then your voice never 
 available** button that opens the download. Install it over the old one; you stay paired. The pairing page always
 offers the newest app. Every app is signed with Kurooto's release key and listed in the signed release it belongs to.
 After your computer updates Kurooto, it also downloads the app that goes with the new version (with Phone calls on),
-checks it against that signed list, and your call line hands it out at `/kurooto.apk` from its next update (05:10).
+checks it against that signed list, and your call line is updated with it a minute later (never during a call; if
+it's offline it tries again every 30 minutes, and you get a message only if it fails twice), so the pairing page
+hands out the app that goes with your version. The pairing page shows the app's version next to "Download the app",
+so an old one is easy to spot.
 
 **Without the app.** The pairing page also offers "Use this page as an app instead". It works, but rings less
 reliably.

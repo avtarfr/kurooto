@@ -58,7 +58,9 @@ box) and `kurooto ntfy-token`; `GET /api/phone` has `ntfy_token` and `ntfy_limit
 1. `prepare`: Node via `core/prereqs.py`; copy `FILES` from `data/worker` into `<app>/call-line` (`skip_built` leaves
    out `public/app.js` and `node_modules`); copy the phone app (`update/phone_app.py:current`: the one
    downloaded from the running version's signed release, else `data/kurooto.apk` from an older package) to
-   `public/kurooto.apk`; `npm ci --ignore-scripts` (skipped when the `.kurooto-lock` stamp matches the
+   `public/kurooto.apk`, with `public/kurooto-app.json` (`{"versionName"}`, `phone_app.TAG`) beside it for the
+   pairing page's label (`pair.js`; removed when there's no app), and remembers the app's sha256 (`Deployer.apk`);
+   `npm ci --ignore-scripts` (skipped when the `.kurooto-lock` stamp matches the
    lockfile); esbuild bundles `web/app.js`.
 2. `sign_in`: `wrangler login --browser=false`, the URL opened in the user's browser. `wrangler_env` gives wrangler its
    own config home and strips `CLOUDFLARE_*`, `CF_*`, `WRANGLER_*` from the environment, so a developer's own
@@ -66,11 +68,23 @@ box) and `kurooto ntfy-token`; `GET /api/phone` has `ntfy_token` and `ntfy_limit
 3. `subdomain`: the account's workers.dev subdomain through the Cloudflare API (created as `k-<hex>` if missing).
 4. `write_config` / `render_toml`: fills `wrangler.template.toml`; the Worker name is `kurooto-<hex>` (`new_name`).
 5. `ensure_secrets`, `wrangler deploy`, `wrangler secret bulk`.
-6. Save `calls.worker`, then poll `/health` (24 times, 5 s apart).
+6. Save `calls.worker` (with `apk`: the served app's sha256), then poll `/health` (24 times, 5 s apart).
+
+`deploy()` runs one deploy at a time (`_one`; a second gets `BUSY`, `deploying()` tells).
 
 Redeploys: `fingerprint` hashes the Worker source and the values baked into it (time zone, `live_model`,
 `ntfy_server`, `notes_repo`, whether a GitHub token exists, the ntfy token, hashed); `needs_redeploy` compares it with `calls.worker.hash`.
 `Calls._line_update` runs daily at 05:10 and redeploys unattended unless `updates.mode` is `off`.
+
+A new phone app (0.5.21): `Updates.phone_app` (`update/service.py`, 2 min after a start and every 6 h) ends with
+`_app_to_line`: when `deploy.app_behind(app)` (a line exists, an app is here, and `calls.worker.apk` isn't its
+sha256; lines deployed before 0.5.21 have no `apk`, so they count as behind once), it books `calls.app_line` in
+`APP_LINE_SOON_MIN` (1) minute, key `calls:app_line`, not replacing one already booked. `Calls._app_line` does
+nothing once the line has the app; on a call (`availability.on_call_until()`) or while another deploy runs it books
+itself again in `APP_LINE_BUSY_MIN` (10); otherwise it deploys unattended in a thread (`_spawn`). Each try emits one
+`calls_line_updated` (`why="phone_app"`, `app`, and on failure `tries`, `error`); a failure is retried in
+`APP_LINE_RETRY_MIN` (30) up to `APP_LINE_TRIES` (6), then the 05:10 update takes over. The second failure sends
+one message (`why="calls.line_update"`). Tests: `tests/unit/test_apk_ship.py` (the `line` fixture fakes `deploy`).
 
 ## The connector (`modules/calls/connector.py:Connector`)
 

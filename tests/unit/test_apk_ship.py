@@ -10,6 +10,7 @@ import io
 import json
 import os
 import tarfile
+import time
 from pathlib import Path
 
 import pytest
@@ -338,7 +339,9 @@ def test_after_an_update_the_call_line_gets_the_new_app(app, tmp_path, site, mon
     assert not deploy.needs_redeploy(app)
     assert app.updates.phone_app() == "fetched"
     assert any(e.get("kind") == "phone_app_fetched" for e in app.events.tail(50))
-    assert deploy.needs_redeploy(app)  # the 05:10 line update takes the new app to the line
+    assert deploy.needs_redeploy(app) and deploy.app_behind(app)
+    job = app.scheduler.get("calls:app_line")  # the line takes the new app in a minute, not at 05:10
+    assert job and job.action == "calls.app_line" and job.next_run - time.time() < 120
     assert phone_app.current(app.paths.data).read_bytes() == APK
     release(site, "0.5.20", sha="1" * 64)
     monkeypatch.setattr(service, "__version__", "0.5.20")
@@ -365,6 +368,8 @@ def test_the_call_line_serves_the_downloaded_app(app, tmp_path, site, monkeypatc
     with pytest.raises(RuntimeError, match="stop after the copy"):
         d.prepare()
     assert (d.dir / "public" / "kurooto.apk").read_bytes() == APK
+    assert json.loads((d.dir / "public" / phone_app.TAG).read_text()) == {"versionName": "0.5.19"}  # pair.js shows it
+    assert d.apk == hashlib.sha256(APK).hexdigest()  # recorded as calls.worker.apk once deployed
 
 
 def test_an_older_package_with_the_app_inside_still_works(tmp_path, monkeypatch):
@@ -373,3 +378,113 @@ def test_an_older_package_with_the_app_inside_still_works(tmp_path, monkeypatch)
     monkeypatch.setattr(phone_app, "EMBEDDED", inside)
     assert phone_app.current(tmp_path / "data") == inside
     assert phone_app.fingerprint(tmp_path / "data") == hashlib.sha256(b"embedded").hexdigest()
+
+
+# ------------------------------------------------------------------- a new app goes to the line soon (0.5.21)
+@pytest.fixture
+def line(app, tmp_path, site, monkeypatch):
+    """Phone calls on with a deployed line that serves an older app, and the new app fetched here."""
+    from kurooto.modules.calls import deploy
+
+    monkeypatch.setattr(phone_app, "EMBEDDED", tmp_path / "none.apk")
+    release(site)
+    phone_app.ensure(upd(tmp_path, site), app.paths.data, "0.5.19")
+    app.settings.set("calls.worker", {"url": "https://line.example", "hash": "old", "apk": "0" * 64})
+    c = app.modules["calls"]
+    c._spawn = lambda fn, name: fn()  # the deploy runs in a thread; here, right away
+    ran, said = [], []
+
+    def fake(a, progress=None, unattended=False):
+        ran.append(unattended)
+        if c.fails:
+            return False, "couldn't reach Cloudflare"
+        w = a.settings.get("calls.worker")
+        a.settings.set("calls.worker", {**w, "apk": phone_app.fingerprint(a.paths.data)})
+        return True, "live"
+
+    c.fails = False
+    monkeypatch.setattr(deploy, "deploy", fake)
+    monkeypatch.setattr(app, "notify", lambda text, **k: said.append(text))
+    c.ran, c.said = ran, said
+    return c
+
+
+def booked(app):
+    j = app.scheduler.get("calls:app_line")
+    return (round((j.next_run - time.time()) / 60), j.payload.get("tries")) if j else None
+
+
+def line_events(app):
+    return [e for e in app.events.tail(50) if e.get("kind") == "calls_line_updated"]
+
+
+def test_a_new_app_is_taken_to_the_line_then_nothing_more(line):
+    app = line.app
+    app.updates._app_to_line()
+    assert booked(app) == (1, 0)
+    assert line._app_line({"tries": 0}).startswith("updating")
+    assert line.ran == [True]  # unattended: never a sign-in page
+    ev = line_events(app)
+    assert len(ev) == 1 and ev[0]["ok"] is True and ev[0]["app"] == "0.5.19" and not line.said
+    # the line has it now: nothing booked, nothing deployed
+    app.scheduler.cancel("calls:app_line")
+    app.updates._app_to_line()
+    assert booked(app) is None
+    assert "already" in line._app_line({}) and line.ran == [True]
+
+
+def test_the_same_app_books_nothing(line):
+    from kurooto.modules.calls import deploy
+
+    app = line.app
+    w = app.settings.get("calls.worker")
+    app.settings.set("calls.worker", {**w, "apk": phone_app.fingerprint(app.paths.data)})
+    assert not deploy.app_behind(app)
+    app.updates._app_to_line()
+    assert booked(app) is None and line.ran == []
+    app.settings.set("calls.worker", {})  # no line at all: nothing either
+    app.updates._app_to_line()
+    assert booked(app) is None
+
+
+def test_never_during_a_call(line):
+    import datetime as dt
+
+    app = line.app
+    app.availability.set_on_call(dt.datetime.now() + dt.timedelta(seconds=90))
+    assert "busy" in line._app_line({"tries": 0})
+    assert line.ran == [] and booked(app) == (10, 0)
+    app.availability.set_on_call(None)
+    line._app_line({"tries": 0})
+    assert line.ran == [True]
+
+
+def test_a_failure_is_retried_and_told_only_the_second_time(line):
+    app = line.app
+    line.fails = True
+    line._app_line({"tries": 0})
+    assert booked(app) == (30, 1) and not line.said
+    line._app_line({"tries": 1})
+    assert booked(app) == (30, 2) and len(line.said) == 1 and "new phone app 0.5.19" in line.said[0]
+    ev = line_events(app)
+    assert [e["ok"] for e in ev] == [False, False] and ev[-1]["tries"] == 2
+    line._app_line({"tries": 2})
+    assert len(line.said) == 1  # told once
+    line.fails = False
+    line._app_line({"tries": 3})
+    assert line_events(app)[-1]["ok"] is True
+    for t in range(5, 7):  # gives up after a few tries: the 05:10 line update takes it from there
+        line.fails = True
+        app.scheduler.cancel("calls:app_line")
+        w = app.settings.get("calls.worker")
+        app.settings.set("calls.worker", {**w, "apk": "0" * 64})
+        line._app_line({"tries": t})
+    assert booked(app) is None
+
+
+def test_another_deploy_running_waits(line, monkeypatch):
+    from kurooto.modules.calls import deploy
+
+    monkeypatch.setattr(deploy, "deploying", lambda: True)
+    assert "busy" in line._app_line({"tries": 1})
+    assert line.ran == [] and booked(line.app) == (10, 1)

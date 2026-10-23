@@ -111,6 +111,7 @@ LABELS = {  # what scheduled work is, in a few words (/status, `kurooto top`)
     "ask.sweep": "open questions",
     "calendar.focus_end": "focus ends",
     "calendar.refresh": "calendar refresh",
+    "calls.app_line": "new phone app to the call line",
     "calls.missed": "missed-call check",
     "calls.realert": "unanswered call rings again",
     "calls.task_check": "call follow-up",

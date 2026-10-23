@@ -95,12 +95,69 @@ def note_info(path: Path, root: Path) -> dict | None:
     }
 
 
+ALIASED = re.compile(r"(?<!!)\[\[([^\]|#^]+)[^\]|]*(?:\|([^\]]+))?\]\]")
+
+
+def graph_layout(app) -> dict:
+    """What the NOTES map needs of the notes layout (core/layout.py): the research hub and where projects live, as
+    link targets without .md ({"research": "maps/research", "project": "projects/{project}/index"})."""
+    from kurooto.core import layout
+
+    try:
+        lay = layout.of(app)
+        return {"research": lay.link("research"), "project": lay.shape("project").replace("<project>", "{project}")}
+    except Exception:
+        return {}
+
+
+def project_of(note: str, dirs: list[str]) -> str | None:
+    """The research project a note belongs to (projects/<p>/…, research/<p>/…, the layout's own folder), or None."""
+    for d in dirs:
+        m = re.match(re.escape(d) + r"([^/]+)(/|$)", note)
+        if m and not (d == "research/" and m.group(1) == "index" and not m.group(2)):
+            return m.group(1)
+    return None
+
+
+def research_entries(text: str, resolve, dirs: list[str]) -> dict[str, dict]:
+    """Each project's entry in the research hub: the line that links to it, with the lines indented under it. Its
+    name (the link's alias, else the line's words before a colon or dash) and the notes it links to besides the
+    project's own ("topics"). resolve(target) gives a note's id, or None."""
+    out: dict[str, dict] = {}
+    cur, depth = None, 0
+    for ln in text.splitlines():
+        if not ln.strip():
+            continue
+        indent = len(ln) - len(ln.lstrip())
+        hits = [(resolve(t.strip()), alias) for t, alias in ALIASED.findall(ln)]
+        if cur is not None and indent > depth and not ln.lstrip().startswith("#"):
+            out[cur]["topics"] += [n for n, _ in hits if n and project_of(n, dirs) != cur]
+            continue
+        cur = None
+        mine = [(n, alias, project_of(n, dirs)) for n, alias in hits if n and project_of(n, dirs)]
+        if not mine:
+            continue
+        cur, depth = mine[0][2], indent
+        e = out.setdefault(cur, {"name": "", "topics": []})
+        e["topics"] += [n for n, _ in hits if n and project_of(n, dirs) != cur]
+        if not e["name"]:
+            words = ALIASED.sub(lambda m: m.group(2) or "", ln)
+            words = re.split(r":| [-–—] ", re.sub(r"^[\s>*+#-]*(\d+\.\s*)?(\[[ xX]\]\s*)?", "", words))[0]
+            e["name"] = (mine[0][1] or re.sub(r"[*_`]", "", words)).strip()[:60]
+    for e in out.values():
+        e["topics"] = sorted(set(e["topics"]))
+    return out
+
+
 class Graph:
     def __init__(self, root: Path):
         self.root = Path(root)
         self.infos: dict[str, dict] = {}
         self.mtimes: dict[str, float] = {}
         self.payload = {"nodes": [], "links": [], "changed": [], "version": 0}
+        # the notes layout's places for the map (graph_layout; Live keeps it current), and the research hub's entries
+        self.lay: dict = {}
+        self._lay_seen: dict | None = None
 
     def scan(self) -> bool:
         """Re-read changed notes. Returns True if the graph changed."""
@@ -120,8 +177,10 @@ class Graph:
         changed = [k for k, m in new.items() if self.mtimes.get(k) != m]
         removed = [k for k in self.mtimes if k not in new]
         first = self.payload["version"] == 0
-        if not (changed or removed or first):
+        lay_changed = self._lay_seen != self.lay
+        if not (changed or removed or first or lay_changed):
             return False
+        self._lay_seen = dict(self.lay)
         for k in changed:
             info = note_info(files[k], self.root)
             if info:
@@ -147,8 +206,30 @@ class Graph:
             "links": sorted(links),
             "changed": [] if first else changed,
             "version": self.payload["version"] + 1,
+            "layout": self.lay,
+            "research": self._research(files, lower, by_base),
         }
         return True
+
+    def _research(self, files: dict, lower: dict, by_base: dict) -> dict:
+        """The research hub's entry for each project (research_entries), for the map's research regions."""
+        hub = self.lay.get("research") or "maps/research"
+        f = files.get(hub) or files.get("research/index")
+        if not f:
+            return {}
+        try:
+            text = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {}
+        dirs = ["projects/", "research/"]
+        m = re.match(r"([^{}]+/)\{project\}", self.lay.get("project") or "")
+        if m and m.group(1) not in dirs:
+            dirs.append(m.group(1))
+
+        def resolve(t: str) -> str | None:
+            return lower.get(t.lower()) or by_base.get(t.split("/")[-1].lower())
+
+        return research_entries(text, resolve, dirs)
 
 
 # --------------------------------------------------------------------------------------------- vitals
@@ -602,6 +683,7 @@ class Live:
                     if time.monotonic() - last_graph > 5:
                         last_graph = time.monotonic()
                         self.graph.root = self.app.workspace
+                        self.graph.lay = graph_layout(self.app)
                         if self.graph.scan():
                             self.push({"t": "graph", **self.graph.payload})
                     self.push(self.vitals.snapshot())

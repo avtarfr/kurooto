@@ -20,6 +20,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import threading
 import time
 import tomllib
 import urllib.error
@@ -186,6 +187,7 @@ class Deployer:
         self.prereqs = Prereqs(app.paths.app, app.paths.cache)
         self.node: str | None = None
         self.account = ""
+        self.apk = ""  # the sha256 of the phone app this deploy puts on the line ("" for none)
 
     # --------------------------------------------------------------------------------------- tools
     def _node(self) -> str:
@@ -238,9 +240,17 @@ class Deployer:
                 shutil.copytree(src, dst, dirs_exist_ok=True, ignore=skip_built)
             else:
                 shutil.copy2(src, dst)
-        apk = phone_app.current(self.app.paths.data)  # downloaded with this version, or inside an older package
+        data = self.app.paths.data
+        apk = phone_app.current(data)  # downloaded with this version, or inside an older package
+        tag = self.dir / "public" / phone_app.TAG
+        self.apk = ""
         if apk:
             shutil.copy2(apk, self.dir / "public" / "kurooto.apk")
+            self.apk = phone_app.fingerprint(data)
+            # the pairing page shows this next to "Download the app", so an old app on the line is visible
+            tag.write_text(json.dumps({"versionName": phone_app.version(data)}), encoding="utf-8")
+        else:
+            tag.unlink(missing_ok=True)
         lock = (self.dir / "package-lock.json").read_bytes()
         stamp = self.dir / "node_modules" / ".kurooto-lock"
         if not stamp.is_file() or stamp.read_bytes() != hashlib.sha256(lock).digest():
@@ -386,7 +396,15 @@ class Deployer:
             return False, "Setting the secrets failed: " + (r.err or r.out).strip()[-600:]
         app.settings.set(
             "calls.worker",
-            {**w, "name": name, "url": url, "account": self.account, "hash": fingerprint(app), "deployed": time.time()},
+            {
+                **w,
+                "name": name,
+                "url": url,
+                "account": self.account,
+                "hash": fingerprint(app),
+                "apk": self.apk,  # which phone app the line serves (app_behind)
+                "deployed": time.time(),
+            },
         )
         self.say("Checking it answers (a new address can take a minute or two to appear)…")
         for _ in range(24):
@@ -402,11 +420,23 @@ class Deployer:
         )
 
 
+_one = threading.Lock()  # one deploy at a time (setup, the 05:10 update, a new phone app, a new ntfy token)
+BUSY = "your call line is being updated already; try again in a minute"
+
+
 def deploy(app, progress: Progress = print, unattended: bool = False) -> tuple[bool, str]:
+    if not _one.acquire(blocking=False):
+        return False, BUSY
     try:
         return Deployer(app, progress, unattended).run()
     except Exception as e:
         return False, f"{e}"[:600]
+    finally:
+        _one.release()
+
+
+def deploying() -> bool:
+    return _one.locked()
 
 
 def fingerprint(app) -> str:
@@ -430,3 +460,11 @@ def fingerprint(app) -> str:
 def needs_redeploy(app) -> bool:
     w = app.settings.get("calls.worker") or {}
     return bool(w.get("url")) and w.get("hash") != fingerprint(app)
+
+
+def app_behind(app) -> bool:
+    """The line serves another phone app than the one here (a newer one was fetched after an update, or the line was
+    deployed before 0.5.21 recorded which app it got). No app here, or no line: False."""
+    w = app.settings.get("calls.worker") or {}
+    have = phone_app.fingerprint(app.paths.data)
+    return bool(w.get("url")) and bool(have) and w.get("apk") != have

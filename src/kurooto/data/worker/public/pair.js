@@ -80,12 +80,18 @@
     $('openapp').href = 'intent://pair?c=' + code + '&u=' + encodeURIComponent(location.origin) +
       '#Intent;scheme=kurooto;package=io.github.avtarfr.kurooto;S.browser_fallback_url=' + encodeURIComponent(back) + ';end';
     // The newest app comes from the Kurooto site (android.json names it), not from the copy this page was set up with,
-    // which only gets older. If the site can't be reached, the copy here is used.
+    // which only gets older. If the site can't be reached, the copy here is used, labelled with its version
+    // (kurooto-app.json, written next to it when the line is deployed) so an old one shows.
+    var label = function (v) { $('apk').textContent = '1. Download the app' + (v ? ' (' + v + ')' : ''); };
+    var site = false;
+    fetch('/kurooto-app.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (a) { if (!site && a && a.versionName) label(a.versionName); }).catch(function () {});
     fetch('https://avtarfr.github.io/kurooto/android.json', { cache: 'no-store' }).then(function (r) { return r.json(); })
       .then(function (a) {
         if (a && /^https:\/\/avtarfr\.github\.io\/kurooto\//.test(a.url || '')) {
+          site = true;
           $('apk').href = a.url;
-          $('apk').textContent = '1. Download the app' + (a.versionName ? ' (' + a.versionName + ')' : '');
+          label(a.versionName);
         } else { throw new Error('no url'); }
       })
       .catch(function () {

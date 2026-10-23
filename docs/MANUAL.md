@@ -2749,7 +2749,10 @@ line):
   and each research project by its index note's title, at the middle of its notes. A note's own name shows when you
   point at it, find it, light the recent ones (**R**) or zoom in; zoomed in, course pages, hubs and projects are named
   first, then notes that link across courses. A book's index note is drawn small and named last: its hundreds of
-  "Seen in" links come from reading the book, so it no longer crowds out everything else. Double-click a note on the map to open it: in your default app for Markdown, or in your own program
+  "Seen in" links come from reading the book, so it no longer crowds out everything else. A research project's
+  region (since 0.5.21) also takes the notes its index links to and the topics its line in the research hub links
+  to, and is always named, in the accent colour, however small its folder; concept notes join the course or project
+  most of their links come from (a tie goes to the course), so they no longer sit in one unnamed cloud. Double-click a note on the map to open it: in your default app for Markdown, or in your own program
   with Settings → notes → `open_with`, e.g. `kitty nvim {path}`, `code {path}` or `kurooto term -e nvim {path}` (on
   every system; the program has to open its own window). It runs as a program with arguments, never through a shell;
   `{path}` is the note (one argument even with spaces), `{folder}` your notes folder, and without `{path}` the note
@@ -3308,7 +3311,10 @@ turned off.
 
 Your call line is updated after Kurooto updates, if its code changed or the release brings a new Android app (Kurooto
 downloads the app that goes with its version and checks it against the signed release; the line hands it out at
-`/kurooto.apk`). The Android app shows an Update button; the iPhone web app updates itself.
+`/kurooto.apk`). A new app goes to the line a minute after it's downloaded, not at the nightly 05:10 update: never
+during a call, retried every 30 minutes while offline, and you hear about it only if it fails twice. The pairing page
+shows the app's version next to "Download the app". The Android app shows an Update button; the iPhone web app
+updates itself.
 
 ## Moving to a new computer
 

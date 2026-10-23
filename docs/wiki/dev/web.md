@@ -125,6 +125,16 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   links reach). `Mind.draw` names regions (the course page's or project index's title at the weighted centroid of its
   notes) below `ZOOM_NAMES` (1.35) and notes above it (`rankLabels`: course pages and hubs, then bridges, books never
   unless pointed at or found); focus, search, R and Study mode work as before.
+- NOTES research regions (0.5.21): `Graph.scan` (`web/live.py`) adds `layout` (`graph_layout(app)`: the layout's
+  research hub and project place, kept current by `Live._loop`; a layout change rescans) and `research`
+  (`research_entries`: per project, the hub line that links to it plus the lines indented under it: `name` (the link's
+  alias, else the words before a colon or dash) and `topics` (the other notes it links to)). `assignHoods(nodes,
+  {layout, research})` makes every project a region (not only the `MAX_HOODS` biggest), seeds it with its index's
+  out-links (`n.out`, one hop) and its hub topics (a note in a course or project folder stays in its folder), then
+  every other note votes by its links' regions (folder or seed; a tie goes to the course). Project regions use
+  `PAL.accent` (courses cycle the other colours), `regionSpots` keeps them however small and lists them first so
+  their names are placed before the courses', and `Mind.draw` sets their names in the accent at weight 750. All of it
+  runs once per graph update (`Mind.update`); a frame only reads `n.neighborhood`.
 - The NOTES map (`static/home.js:Mind`) is a force layout run each frame: pairwise repulsion, a spring per link,
   a pull to the neighbourhood's anchor. A note's spring force is scaled by `min(1, HUB_LINKS / links)` and a step is
   capped at `MAX_STEP`: without that, a map note with hundreds of links (the concept graph's course maps) overshoots
