@@ -77,3 +77,18 @@ def test_not_offered_on_light_computers(env):
     (env.app.paths.state / "hardware.json").write_text(json.dumps({"recommendation": {"local_models": []}}))
     ok, why = lm.ready()
     assert not ok and "better off without" in why
+
+
+def test_no_model_stays_half_on_the_processor(env, monkeypatch):
+    lm = env.app.modules["local_models"]
+    gone = []
+    monkeypatch.setattr(lm, "unload", lambda name: gone.append(name))
+    rows = [{"name": "embed", "size": 300, "vram": 300}, {"name": "helper", "size": 6000, "vram": 3000}]
+    monkeypatch.setattr(lm, "loaded", lambda: rows)
+    assert lm.guard() == ["unloaded embed, helper"] and gone == ["embed", "helper"]  # reloads fully on the card next
+    rows[:] = [{"name": "big", "size": 9000, "vram": 6000}]  # too big even alone: told once
+    assert lm.guard() == ["told: big 33% on the processor"]
+    assert "doesn't fit your graphics card" in env.fake.texts()[-1]
+    assert lm.guard() == []  # not twice
+    rows[:] = [{"name": "helper", "size": 6000, "vram": 6000}]
+    assert lm.guard() == [] and "100% on the graphics card" in lm._status(None, "")

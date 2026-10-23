@@ -314,3 +314,10 @@ online too). Kurooto also runs its own daily health pass and fixes what it safel
 
 `kurooto rotate` gives your call line new keys after a lost phone or a backup zip with keys that got out. Every phone
 then has to pair again. See [Phone app](phone-app.md).
+
+## Local models stay on the graphics card
+
+A model that runs partly on the processor is several times slower and heats the laptop. Every 10 minutes Kurooto looks
+at what Ollama has loaded: if models together don't fit your graphics card, it unloads them, so the next request loads
+its one model fully on the card; if one model doesn't fit even alone, you're told once, with what to do (a smaller
+model in Features → Local AI models). `/models` shows each loaded model and how much of it is on the card.

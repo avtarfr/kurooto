@@ -15,6 +15,9 @@
   from the last two weeks, notes nothing links to yet, links that point nowhere, tasks past due, AI requests that
   failed. It reads Kurooto's own log and your notes, so it costs nothing; the concept graph's own morning line folds
   into it. `/dream` shows it any time.
+- **No local model half on the processor**: every 10 minutes Kurooto checks what Ollama has loaded; when models
+  together don't fit your graphics card they're unloaded, so the next request loads its one model fully on the card, and
+  a model too big even alone is told to you once. `/models` shows each loaded model's share on the card.
 - **A deadline keeps its course**: the AI's `add_deadline` takes the subject (and whether it's an exam), so a mail's
   "Lab report" lands on the course page, Start-by and exam mode even when its title doesn't name the course.
 

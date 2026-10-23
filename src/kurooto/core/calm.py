@@ -475,6 +475,7 @@ REASONS: dict[str, Reason] = {
         R("calls.rang_offline", "a call your call line placed while this computer was off"),
         R("calls.held", "a call that waits for a better time"),
         R("calls.review", "what Kurooto fixed and learned looking back at a call", setting="calls.review"),
+        R("local_models.spill", "a local model that doesn't fit your graphics card", setting="local_models"),
         R("dreaming.morning", "what Kurooto did while you slept, and the loose ends", setting="dreaming.when"),
         R("infer.done", "something set up from what you said (a project, a class, a meeting)", setting="infer.on"),
         R(

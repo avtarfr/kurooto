@@ -40,10 +40,11 @@ Standing plans, never struck through.
   written for 0.5.8).
 - **Use GBrain more**: weekly checkup and contradiction reports in chat, entity and timeline pages for courses,
   queries during calls.
-- **Local model on the graphics card without spilling onto the processor**: one model at a time and a size that fits.
 - **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting).
 
 ## Done
+- ~~Local model on the graphics card without spilling onto the processor~~ (0.5.9: spilled models are unloaded and
+  reload fully on the card; one too big is told once; `/models` shows the share)
 - ~~Allow safe scripts for agents: named scripts, not a bare `python3`~~ (0.5.8: `agents.scripts`, full paths;
   shells and interpreters refused)
 - ~~Check that every button works after a restart~~ (0.5.8: every button's prefix has a handler, checked by a test;

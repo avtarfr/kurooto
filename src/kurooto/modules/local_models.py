@@ -10,6 +10,7 @@ import os
 import subprocess
 import urllib.request
 
+from kurooto.core.clock import now
 from kurooto.core.lock import Lock
 from kurooto.core.prereqs import Prereqs
 from kurooto.core.state import jload, jsave
@@ -185,9 +186,57 @@ class LocalModels(Module):
             self.app.settings.set("brain.classify", "ollama")
 
     def start(self):
-        self.every("keepalive", "every 10m", lambda p: self.serve())
+        self.every("keepalive", "every 10m", lambda p: self.serve() and self.guard())
         if self.app.power.current == "normal":
             self.serve()
+
+    def loaded(self) -> list[dict]:
+        """What Ollama has loaded now: [{"name", "size", "vram"}] (bytes; vram is the part on the graphics card)."""
+        try:
+            with self.api("/api/ps", timeout=3) as r:
+                rows = json.loads(r.read()).get("models", [])
+        except (OSError, ValueError):
+            return []
+        return [
+            {"name": m["name"], "size": int(m.get("size") or 0), "vram": int(m.get("size_vram") or 0)} for m in rows
+        ]
+
+    def unload(self, name: str) -> None:
+        with self.api("/api/generate", {"model": name, "keep_alive": 0}, timeout=30):
+            pass
+
+    def guard(self) -> list[str]:
+        """No model half on the processor (slow, and it heats the laptop): when models together don't fit the
+        graphics card, unload them, so the next request loads its one model fully on the card; a model that doesn't
+        fit even alone is told once, with what to do. Returns what it did."""
+        rows = self.loaded()
+        spilled = [m for m in rows if m["size"] and m["vram"] < m["size"] * 0.98]
+        if not spilled:
+            return []
+        if len(rows) > 1:
+            for m in rows:
+                try:
+                    self.unload(m["name"])
+                except OSError:
+                    continue
+            self.app.events.emit("local_models_spill", models=len(rows), unloaded=True)
+            return [f"unloaded {', '.join(m['name'] for m in rows)}"]
+        m = spilled[0]
+        told = jload(self.app.paths.state / "ollama-spill.json", {}) or {}
+        if m["name"] in told:
+            return []
+        on_cpu = round(100 * (1 - m["vram"] / m["size"]))
+        told[m["name"]] = now().isoformat()
+        jsave(self.app.paths.state / "ollama-spill.json", told)
+        self.app.events.emit("local_models_spill", models=1, unloaded=False, on_cpu=on_cpu)
+        self.app.notify(
+            f"{m['name']} doesn't fit your graphics card: {on_cpu}% of it runs on the processor, which is slow and "
+            "heats the laptop. Pick a smaller model for it (Features → Local AI models, or /models), or keep fewer "
+            "programs on the graphics card.",
+            kind="info",
+            why="local_models.spill",
+        )
+        return [f"told: {m['name']} {on_cpu}% on the processor"]
 
     def rest(self) -> None:
         """On battery or paused: free the graphics memory (unload the models), and stop Ollama if we started it."""
@@ -216,4 +265,10 @@ class LocalModels(Module):
         rows = [
             f"{'✓' if m['tag'] in have else '✗'} {m['tag']} ({m['size_gb']:g} GB): {m['use']}" for m in self.wanted()
         ]
+        for m in self.loaded():
+            share = round(100 * m["vram"] / m["size"]) if m["size"] else 100
+            rows.append(
+                f"loaded: {m['name']}, {share}% on the graphics card"
+                + ("" if share >= 98 else " (the rest on the processor)")
+            )
         return ("Ollama is running.\n" if self.running() else "Ollama isn't running.\n") + "\n".join(rows)
