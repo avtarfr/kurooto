@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.16 (2026-10-23)
+
+- **Chat in the Android app:** a chat with Kurooto that works like Telegram (commands, plain words, your AI, buttons,
+  Reply); `notify.app_chat` also puts Kurooto's own messages there.
+- **Phone outbox:** chat messages, button taps, answers and shared files sent while your computer is off wait on your
+  call line (up to 100 things, 20 MB) and reach it in order when it's back; the app shows "Waiting for your computer"
+  until then. Sharing to Kurooto no longer needs the computer to be on.
+- **A new look for the Android app:** Material 3 (cards, clearer type, bigger touch targets) that follows the phone's
+  light or dark mode and uses your wallpaper's colours on Android 12 and newer. On Android 12 and newer, calls ring
+  with the phone's own incoming-call look; the call screen stays clear of the status bar on Android 15; and the app has
+  a new icon to match the call line's.
+- **Link recall cards:** the concept graph's links become quiz cards ("How is Itô's lemma used in Fokker-Planck?").
+  Answer in your own words, see the reason and where to read (book pages, your notes, Classroom files), and grade with
+  the quiz's buttons and spacing. `/card` gives one now; `/cards on` sends up to five a day (`quiz.links_per_day`), also
+  to the phone app, never in class or focus. `quiz.links_check` lets the local model check your answer.
+- **Revision plan** (Exam season, `exam_season.revision`): from two weeks before each exam, its course's topics (exam
+  prep note, else lecture or concept notes) are ranked (no note, stub, weak recall, the rest) and laid into Start-by's
+  free time around classes and commitments, with the class material's and books' pages to read. They show in the
+  morning plan, and an evening Yes / Partly / No grades the topic's quiz items. `/revise`, `/revise <subject>`,
+  `/revise undo`. Plain arithmetic, no AI.
+- **Egress ledger:** every request Kurooto makes on the internet is counted per day, host and feature, and `/egress`
+  shows the last 7 days, with programs like git, agy and Claude Code listed as "handed to". `privacy.egress` is
+  `record` by default; `enforce` refuses hosts not in PRIVACY.md's "Where requests go" list, and
+  `privacy.allow_hosts` adds your own.
+
 ## 0.5.15 (2026-10-23)
 
 - **Forgetting, when you choose** (`privacy.keep_days`, off by default): set it (e.g. 30) and what Kurooto keeps of
