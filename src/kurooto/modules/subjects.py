@@ -314,7 +314,7 @@ class Subjects(Module):
             Command("subject", "add a subject: /subject add Linear Algebra (la, linalg)", self._subject),
             Command("class", "add a class to your timetable: /class mon 09:00-09:55 la", self._class),
             Command("classes", "your timetable (today: /classes today)", self._classes),
-            Command("skip", "you're not attending a class today: /skip la", lambda m, a: self._skip(a, True, msg=m)),
+            Command("skip", "you're not attending a class today: /skip la", lambda m, a: self._skip(a, True)),
             Command("attend", "undo /skip", lambda m, a: self._skip(a, False)),
             Command("term", "the term's dates, or a note to read them from: /term ends 2026-12-04", self._term),
         ]
@@ -442,38 +442,18 @@ class Subjects(Module):
             "No timetable yet. /class mon 09:00-09:55 la"
         )
 
-    def _attendance(self):
-        """Attendance (modules/attendance.py), when it's on: it asks before a skip takes a course under its rule."""
-        att = self.app.modules.get("attendance")
-        return att if att is not None and self.app.is_on("attendance") else None
-
-    def _skip(
-        self, arg: str, add: bool, day: dt.date | None = None, msg: Incoming | None = None, anyway: bool = False
-    ) -> str | None:
-        anyway = anyway or bool(re.search(r"\banyway\b", arg, re.I))
-        arg = re.sub(r"\s*\banyway\b", "", arg, flags=re.I).strip()
+    def _skip(self, arg: str, add: bool, day: dt.date | None = None) -> str:
         slugs = [s for s in (self.resolve(x) for x in re.split(r"[,\s]+and\s+|,\s*", arg) if x.strip()) if s]
         if not slugs:
             slugs = self.find_in(arg)
         if not slugs:
             return "Which subject? e.g. /skip la"
-        att = self._attendance() if add else None
-        warn, note = att.check_skip(slugs, day or now().date()) if att is not None else (None, "")
-        if warn and not anyway:
-            if msg is None:
-                return f'{warn}\nNot marked. Say it again with "anyway" to skip it all the same.'
-            msg.reply(
-                f"{warn}\nSkip anyway? (or /skip {arg} anyway)", buttons=att.skip_buttons(slugs, day or now().date())
-            )
-            return None
         cur = self.set_skip(slugs, add=add, day=day)
         self.app.events.emit("class_skip" if add else "class_attend", subjects=slugs)
         names = ", ".join(self.name_of(s) for s in sorted(cur)) or "nothing"
         if day and day != now().date():
-            out = f"On {day:%a %d %b} you're skipping: {names}."
-        else:
-            out = f"Today you're skipping: {names}. Calls are allowed during skipped classes."
-        return out + (f"\n{note}" if note else "")
+            return f"On {day:%a %d %b} you're skipping: {names}."
+        return f"Today you're skipping: {names}. Calls are allowed during skipped classes."
 
     def intents(self):
         def match(text: str):
@@ -484,15 +464,14 @@ class Subjects(Module):
             found, day = self.find_in(text), a_day(text)
             if day is None:  # a day it can't pin down: the AI works it out
                 return None
-            anyway = bool(re.search(r"\banyway\b", text, re.I))
-            return {"slugs": found, "day": day, "anyway": anyway} if len(found) == 1 else None
+            return {"slugs": found, "day": day} if len(found) == 1 else None
 
         return [
             Intent(
                 "skip_class",
                 "skipping a class (today, tomorrow or on a weekday)",
                 match,
-                lambda m, s: self._skip(s["slugs"][0], True, s["day"], anyway=s.get("anyway", False)),
+                lambda m, s: self._skip(s["slugs"][0], True, s["day"]),
             )
         ]
 
@@ -507,10 +486,7 @@ class Subjects(Module):
                 "skip_class",
                 "They're not going to this class today (no after-class question; calls are allowed during it).",
                 self._tool_skip,
-                {
-                    "subject": arg("e.g. Linear Algebra"),
-                    "anyway": arg("yes: they heard the attendance warning and still skip it"),
-                },
+                {"subject": arg("e.g. Linear Algebra")},
                 ("subject",),
                 offline="queue",
             )
@@ -520,9 +496,5 @@ class Subjects(Module):
         slug = self.resolve(str(a.get("subject", "")))
         if not slug:
             return "I don't know that subject."
-        att = self._attendance()
-        warn, note = att.check_skip([slug], now().date()) if att is not None else (None, "")
-        if warn and str(a.get("anyway") or "").strip().lower() not in ("yes", "true", "1"):
-            return f"{warn}\nNot marked: tell them, and if they still skip it, call skip_class again with anyway=yes."
         self.set_skip([slug])
-        return f"Skipping {self.name_of(slug)} today." + (f" {note}" if note else "")
+        return f"Skipping {self.name_of(slug)} today."

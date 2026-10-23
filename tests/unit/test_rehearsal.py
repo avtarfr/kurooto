@@ -225,6 +225,36 @@ def test_projects_quiet_at_the_update_are_not_asked_about(env, tmp_path):
     assert r.idle_check() == []  # and it stays noted for this quiet stretch
 
 
+def test_an_install_that_had_attendance_on_starts_and_lists_its_features(env):
+    """Attendance is gone in 0.5.8: an install that had it on, with its settings and a job, starts; it's taken out of
+    the features you have on with its settings and jobs, and Features and Settings list as before."""
+    import time
+
+    from kurooto.core import upgrade
+    from kurooto.web.api import Api
+
+    app = env.app
+    env.on("subjects")
+    app.settings.set("modules.enabled", [*app.settings.get("modules.enabled"), "attendance"])
+    app.settings.set("attendance.since", "2026-08-03")
+    app.settings.set("attendance.rules", {"la": 80})
+    app.settings.set("classpacks.min_pct", 80)  # only Attendance read it
+    app.scheduler.at(time.time() - 60, "attendance.weekly", key="attendance:weekly", module="attendance")
+    assert [m.id for m in app.enabled()] == ["telegram", "subjects"]  # before the start too: never a missing feature
+    app.start()
+    assert app.settings.get("modules.enabled") == ["telegram", "subjects"]
+    assert "attendance" not in app.settings.user() and app.settings.get("classpacks.min_pct") is None
+    assert app.scheduler.get("attendance:weekly") is None
+    assert upgrade.drop_retired(app) == []  # once
+    api = Api(app)
+    mods = {m["id"]: m for m in api.get("state")[1]["modules"]}
+    assert "attendance" not in mods and mods["subjects"]["on"]
+    sections = [s["section"] for s in api.get("settings")[1]["sections"]]
+    assert "subjects" in sections and "attendance" not in sections and "classpacks" not in sections
+    assert api.post("settings", {"key": "attendance.min_pct", "value": 75})[0] == 400
+    assert env.say("/skip").startswith("Which subject?")
+
+
 def test_24_hour_times_are_taken_as_written(env):
     env.on("checkins")
     assert env.say("/checkin midday 04:29") == "Midday check-in at 04:29."

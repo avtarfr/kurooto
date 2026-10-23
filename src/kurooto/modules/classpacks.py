@@ -1,13 +1,13 @@
 """Class packs: one student exports the section's setup as a small `.kurooto-course` file; classmates send it to their
-own Kurooto, tick their electives and lab batch, and the timetable, term dates, holidays, recurring quizzes, dated
-exams and attendance rules work from day one.
+own Kurooto, tick their electives and lab batch, and the timetable, term dates, holidays, recurring quizzes and
+dated exams work from day one.
 
     /classpack export                 a pack of your setup (subjects, timetable, term note, recurring quizzes)
     /classpack export from terms/b    a pack of one term note alone (it can list every lab batch and elective)
-    (send a .kurooto-course file)     its review: tick your electives and lab batch, change any rule, Import
-    /classpack                        what you have: the pack, your choices, its rules
-    /classpack set la 80              change a rule (also: la labs together, la quiz off, la quiz fri 11:00, la reset,
-                                      all 80, electives ml, topology, batch B)
+    (send a .kurooto-course file)     its review: tick your electives and lab batch, leave out or move a quiz, Import
+    /classpack                        what you have: the pack, your choices, your changes
+    /classpack set la quiz off        leave out a quiz (also: la quiz on, la quiz fri 11:00, la reset, electives ml,
+                                      topology, batch B)
     /classpack remove                 take it out (your own setup stays); /classpack undo goes back one step
 
 What a pack carries, and the checks that keep anything personal out of it, are in coursepack.py. Each pack is stamped
@@ -16,9 +16,9 @@ the review shows it to everyone who imports it.
 
 An imported pack sits under your own setup, never in it, and nothing is written into your notes: Subjects reads its
 courses, classes, holidays, exam periods and last day of classes under your term note and your own /class and /term
-(yours win), Deadlines reads its quizzes under your recurring table and its exams with the term note's key dates,
-and the attendance rules are here for an attendance feature to read (attendance_rule()). Importing again after a
-mid-term reshuffle shows what changes for you before anything does, and keeps your electives, batch and changes.
+(yours win), and Deadlines reads its quizzes under your recurring table and its exams with the term note's key
+dates. Importing again after a mid-term reshuffle shows what changes for you before anything does, and keeps your
+electives, batch and changes.
 
 State: <state>/classpacks/active.json (the pack, your choices and changes, and the one before it for undo) and
 drafts/<id>.json (packs being reviewed or made; a week). Packs you make go to <data>/classpacks/, packs you're sent
@@ -35,18 +35,10 @@ import uuid
 from pathlib import Path
 
 from kurooto.core.clock import now
-from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules import coursepack as cp
 from kurooto.modules.base import Command, Incoming, Module
 
-register_defaults(
-    "classpacks",
-    {
-        "min_pct": 75,  # the section's attendance rule in packs you make: at least this many percent of classes,
-        "labs": "separate",  # with labs counted on their own ("separate") or together with the lectures ("together")
-    },
-)
 PREFIX = "cpk"
 DRAFT_DAYS = 7
 STALE_DAYS = 14  # a pack whose term ended this long ago is worth a word in the weekly health list
@@ -57,8 +49,8 @@ class ClassPacks(Module):
     id = "classpacks"
     title = "Class packs"
     description = (
-        "Your section's timetable, term dates, holidays, recurring quizzes and attendance rules in one file to "
-        "share; import a classmate's and tick your electives and lab batch."
+        "Your section's timetable, term dates, holidays, recurring quizzes and dated exams in one file to share; "
+        "import a classmate's and tick your electives and lab batch."
     )
     requires = ("telegram", "subjects")
     privacy = (
@@ -133,22 +125,6 @@ class ClassPacks(Module):
         s = self.app.modules.get("subjects")
         return s if s is not None and self.app.is_on("subjects") else None
 
-    def attendance_rules(self) -> dict[str, dict]:
-        """Each pack course's attendance rule, by your subject's slug: {"min_pct": 75, "labs": "separate" or
-        "together", "yours": True when you changed it}. Empty without a pack."""
-        lay = self.layer()
-        if not lay:
-            return {}
-        sub = self._subjects()
-        return {((sub.resolve(s["slug"]) if sub else None) or s["slug"]): dict(lay["rules"][s["slug"]])
-                for s in lay["subjects"]}  # fmt: skip
-
-    def attendance_rule(self, subject: str) -> dict | None:
-        """One subject's rule from the pack ("la", "Linear Algebra"), or None when the pack doesn't have it."""
-        sub = self._subjects()
-        slug = (sub.resolve(subject) if sub else None) or subject
-        return self.attendance_rules().get(slug)
-
     def class_kind(self, subject: str, day: str, start: str) -> str:
         """lecture, lab or tutorial: what the pack says a class is ("lecture" when it doesn't have it)."""
         sub = self._subjects()
@@ -222,7 +198,7 @@ class ClassPacks(Module):
         if rec and cp.same(rec["pack"], pack):
             return (
                 f"That's the class pack you have already (checked {pack['checked']}); nothing changes. "
-                "/classpack set changes your electives, batch or rules."
+                "/classpack set changes your electives, batch or quizzes."
             )
         old = rec or {}
         el = {c["id"] for c in cp.electives(pack)}
@@ -263,7 +239,6 @@ class ClassPacks(Module):
             out.append(f"Your electives: {', '.join(took) or 'none ticked'} (tap to tick or untick).")
         if cp.batches(pack):
             out.append(f"Your lab batch: {d.get('batch') or 'none yet, so batch classes are left out'} (tap yours).")
-        out.append(cp.rules_line(pack, lay) + ".")
         out += self._yours(d, pack)
         if not self.app.is_on("deadlines") and (lay["quizzes"] or lay["exams"]):
             out.append("Deadlines is off: turn it on for the quizzes and exams.")
@@ -278,8 +253,7 @@ class ClassPacks(Module):
                 out.append(f"\nNothing changes for you from the pack you have (imported {when}).")
         ex = self._example(pack)
         out.append(
-            f'\nTo change a rule before importing, reply to this message: "{ex} 80" (attendance), "{ex} labs '
-            f'together", "{ex} quiz off", "{ex} quiz fri 11:00", "all 80".'
+            f'\nTo change something before importing, reply to this message: "{ex} quiz off", "{ex} quiz fri 11:00".'
         )
         return "\n".join(out)
 
@@ -453,36 +427,14 @@ class ClassPacks(Module):
             return (
                 "Holiday left out." if len(pack["term"]["holidays"]) < before else f"There's no holiday on {a['date']}."
             )
-        if kind in ("rule", "reset") and making:
-            if kind == "reset":
-                for c in pack["courses"]:
-                    if a["course"] in ("*", c["id"]):
-                        c.pop("attendance", None)
-                return f"{who}: the section's rule."
-            if a["course"] == "*":
-                pack["attendance"] = {**pack["attendance"], **{k: a[k] for k in ("min_pct", "labs") if k in a}}
-                return f"The section's rule: {cp.rule_text(pack['attendance'])}."
-            for c in pack["courses"]:
-                if c["id"] == a["course"]:
-                    c["attendance"] = {**(c.get("attendance") or pack["attendance"]),
-                                       **{k: a[k] for k in ("min_pct", "labs") if k in a}}  # fmt: skip
-                    return f"{who}: {cp.rule_text(c['attendance'])}."
+        if kind == "reset" and making:
+            return "That's for a pack you imported (/classpack set)."
         ch = rec.setdefault("changes", {})
-        if kind == "rule":
-            r = ch.setdefault("rules", {}).setdefault(a["course"], {})
-            r.update({k: a[k] for k in ("min_pct", "labs") if k in a})
-            said = []
-            if "min_pct" in a:
-                said.append(f"at least {a['min_pct']}%")
-            if "labs" in a:
-                said.append("labs counted separately" if a["labs"] == "separate" else "labs counted in")
-            return f"{who}: {', '.join(said)}."
         if kind == "reset":
             course = a["course"]
             if course == "*":
                 ch.clear()
-                return "Every rule as the pack says."
-            ch.get("rules", {}).pop(course, None)
+                return "Everything as the pack says."
             ch["off"] = [k for k in ch.get("off", []) if not k.startswith(course + "|")]
             ch["moved"] = {k: v for k, v in ch.get("moved", {}).items() if not k.startswith(course + "|")}
             return f"{who}: as the pack says."
@@ -544,7 +496,7 @@ class ClassPacks(Module):
         said, bad, checked = self._changes(d, d["pack"], msg.text, making)
         ex = self._example(d["pack"])
         if bad and not said and not checked:
-            return f'I couldn\'t read that. Replies like "{ex} 80", "{ex} labs together", "{ex} quiz off", ' + (
+            return f'I couldn\'t read that. Replies like "{ex} quiz off", "{ex} quiz fri 11:00", ' + (
                 '"title Year 2 section B", "checked 2026-10-18".' if making else '"electives ...", "batch B".'
             )
         self._put(d)
@@ -558,7 +510,7 @@ class ClassPacks(Module):
         return None
 
     def change(self, text: str) -> str:
-        """/classpack set ...: change the imported pack's rules or your choices; says what changes for you."""
+        """/classpack set ...: change your quizzes, electives or batch in the imported pack; says what changes."""
         rec = self.active()
         if not rec:
             return "There's no class pack yet; send one here to import it."
@@ -567,7 +519,7 @@ class ClassPacks(Module):
         said, bad, _ = self._changes(rec, pack, text, making=False)
         if not said:
             ex = self._example(pack)
-            return f"I couldn't read that. e.g. /classpack set {ex} 80, {ex} labs together, {ex} quiz off, batch B."
+            return f"I couldn't read that. e.g. /classpack set {ex} quiz off, {ex} quiz fri 11:00, batch B."
         self._save(rec)
         self._refresh()
         lines = cp.diff(was, self.layer()) if was else []
@@ -576,14 +528,6 @@ class ClassPacks(Module):
         return out + ("\n" + "\n".join(lines[:SHOWN]) if lines else "")
 
     # -------------------------------------------------------------------------------------------- making
-    def _default_rule(self) -> dict:
-        labs = self.setting("labs")
-        try:
-            pct = max(0, min(100, int(self.setting("min_pct"))))
-        except (TypeError, ValueError):
-            pct = cp.DEFAULT_RULE["min_pct"]
-        return {"min_pct": pct, "labs": labs if labs in cp.LABS else "separate"}
-
     def source_from_setup(self) -> dict:
         """What Kurooto knows of your term (Subjects with your term note and an imported pack, Deadlines' recurring
         quizzes), as a pack's source (coursepack.build). Never your skips, notes or anything else of yours."""
@@ -591,12 +535,10 @@ class ClassPacks(Module):
         if sub is None:
             return {}
         rec, lay = self.active(), self.layer()
-        el, rules, base = set(), {}, None
-        if rec and lay:  # a pack you imported: its electives, lab batches, kinds and the section's rules carry over
+        el = set()
+        if rec and lay:  # a pack you imported: its electives, lab batches and kinds carry over
             pack = cp.validate(rec["pack"])
             el = {sub.resolve(c["id"]) or c["id"] for c in cp.electives(pack)}
-            rules = {sub.resolve(c["id"]) or c["id"]: c["attendance"] for c in pack["courses"] if c.get("attendance")}
-            base = pack["attendance"]
         seen = {}
         for c in (lay or {"classes": []})["classes"]:
             seen[(sub.resolve(c["slug"]) or c["slug"], c["day"], c["start"])] = (c["kind"], c["batch"])
@@ -617,8 +559,6 @@ class ClassPacks(Module):
             "term_ends": sub.term_ends(),
             "dates": sub.key_dates(),
             "quizzes": quizzes,
-            "rules": rules,
-            "attendance": base,
         }
 
     def note_path(self, raw: str, anywhere: bool = False) -> Path | None:
@@ -645,7 +585,7 @@ class ClassPacks(Module):
             src = cp.source_from_note(p.read_text(encoding="utf-8", errors="replace"))
         else:
             src = self.source_from_setup()
-        pack, left = cp.build(src, now().date(), src.get("attendance") or self._default_rule())
+        pack, left = cp.build(src, now().date())
         if not pack["courses"]:
             where = f"{note} has no timetable with classes" if note else "Subjects has no subjects yet"
             return None, left, f"There's nothing to put in a pack: {where} (/subject, /class, or /term note)."
@@ -669,16 +609,14 @@ class ClassPacks(Module):
         hols = pack["term"]["holidays"]
         if hols:
             out.append("Holidays: " + "; ".join(f"{cp.span_text(h['from'], h['to'])} {h['what']}" for h in hols) + ".")
-        lay = cp.choose(pack, [c["id"] for c in cp.electives(pack)], "", None)
-        out.append(cp.rules_line(pack, lay) + ".")
         left = d.get("left") or []
         if left:
             out.append(f"Left out ({len(left)}): " + "; ".join(left[:6]) + (" ..." if len(left) > 6 else ""))
-        out.append("It carries no names, notes, keys or skips: only the section's timetable, dates, quizzes and rules.")
+        out.append("It carries no names, notes, keys or skips: only the section's timetable, dates and quizzes.")
         ex = self._example(pack)
         out.append(
             f'\nTap the electives (courses not everyone takes). Reply to change anything: "title Year 2 section B", '
-            f'"{ex} 80" or "all 80" (attendance), "{ex} labs together", "{ex} quiz off", "holiday 2026-10-02 off".'
+            f'"{ex} quiz off", "{ex} quiz fri 11:00", "holiday 2026-10-02 off".'
         )
         out.append(
             'Check it against the official timetable, then tap "Checked today" (or reply "checked 2026-10-18"): '
@@ -775,7 +713,7 @@ class ClassPacks(Module):
                 "classpack",
                 "your section's setup as a file to share, or a classmate's to import: /classpack export",
                 self._command,
-                "/classpack · /classpack export [from <note>] · /classpack set la 80 · /classpack remove · undo",
+                "/classpack · /classpack export [from <note>] · /classpack set la quiz off · /classpack remove · undo",
             )
         ]
 
@@ -796,9 +734,9 @@ class ClassPacks(Module):
         if low == "undo":
             return self.undo()
         return (
-            "Usage: /classpack (what you have), /classpack export [from <note>], /classpack set la 80 (or la labs "
-            "together, la quiz off, electives ..., batch B), /classpack remove, /classpack undo. To import a pack, "
-            "send its .kurooto-course file here."
+            "Usage: /classpack (what you have), /classpack export [from <note>], /classpack set la quiz off (or la "
+            "quiz fri 11:00, electives ..., batch B), /classpack remove, /classpack undo. To import a pack, send its "
+            ".kurooto-course file here."
         )
 
     def status(self) -> str:
@@ -823,12 +761,11 @@ class ClassPacks(Module):
             out.append(f"Your electives: {', '.join(took) or 'none'} (of {', '.join(c['name'] for c in els)}).")
         if cp.batches(pack):
             out.append(f"Your lab batch: {rec.get('batch') or 'none'} (of {', '.join(cp.batches(pack))}).")
-        out.append(cp.rules_line(pack, lay) + ".")
         out += self._yours(rec, pack)
         ex = self._example(pack)
         out.append(
-            f"/classpack set {ex} 80 changes a rule (also {ex} labs together, {ex} quiz off, electives ..., "
-            "batch ...); /classpack remove takes it out."
+            f"/classpack set {ex} quiz off leaves out a quiz (also {ex} quiz fri 11:00, electives ..., batch ...); "
+            "/classpack remove takes it out."
         )
         return "\n".join(out)
 
@@ -840,7 +777,7 @@ class ClassPacks(Module):
         self._refresh()
         self.app.events.emit("classpack_removed")
         return (
-            "Class pack removed: its classes, dates, quizzes and rules don't count any more; your own setup stays. "
+            "Class pack removed: its classes, dates and quizzes don't count any more; your own setup stays. "
             "/classpack undo brings it back."
         )
 

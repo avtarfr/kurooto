@@ -13,6 +13,8 @@
 - **Anything over Telegram's 50 MB comes as a Google Drive link** (with Drive upload on): study packs leave nothing
   out, several files sent at once aren't refused, and those uploads are deleted from your Drive after
   `drive_upload.temp_days` (7) unless you move them out of the Kurooto folder.
+- **Attendance and standing is gone**, and class packs no longer carry attendance rules: `/skip` still works (without
+  the warning), and class packs made earlier still import.
 
 - **The concept graph's own schedule works again**: its nightly start, 3-hourly retry, daily garden and morning
   summary (and the Space keeper's weekly clean, and expiring temporary Drive uploads) failed on every run; only

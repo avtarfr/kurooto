@@ -10,9 +10,7 @@ A pack carries these and nothing else. An unknown field anywhere makes the whole
       "term": {"name": "Autumn 2026", "starts": "2026-08-03", "classes_end": "2026-12-04",
                "holidays": [{"from": "2026-10-02", "to": "2026-10-02", "what": "Holiday"}],
                "exam_periods": [{"from": "2026-12-07", "to": "2026-12-18", "what": "End-term exams"}]},
-      "attendance": {"min_pct": 75, "labs": "separate"},        the section's rule; a course can have its own
-      "courses": [{"id": "linear-algebra", "name": "Linear Algebra", "short": ["la", "ma101"],
-                   "elective": false, "attendance": {"min_pct": 80, "labs": "together"}}],
+      "courses": [{"id": "linear-algebra", "name": "Linear Algebra", "short": ["la", "ma101"], "elective": false}],
       "classes": [{"course": "linear-algebra", "day": "mon", "start": "09:00", "end": "09:55",
                    "kind": "lecture", "batch": ""}],                kind: lecture, lab or tutorial; batch: "" or "A"
       "quizzes": [{"course": "linear-algebra", "what": "Quiz", "every_weeks": 1, "day": "thu", "time": "10:00",
@@ -23,16 +21,17 @@ A pack carries these and nothing else. An unknown field anywhere makes the whole
 What a pack never carries: people's names, keys or tokens, notes, skills, links, anyone's skips or anything else
 personal. The schema has no place for them, and every piece of text in it is checked: short plain words only, with no
 email address, phone number, web or notes link, @handle, file path or long code. A file that breaks any rule is
-refused whole, with the reason.
+refused whole, with the reason. Packs made before 0.5.8 may also carry attendance rules ("attendance", for the
+section and in a course): they still read, and the rules are left out.
 
 Pure functions, used by Class packs (modules/classpacks.py):
     validate / load / read / dumps    the schema, both ways (what Kurooto writes always reads back)
     build                             a pack from what Kurooto knows (or from a term note: source_from_note)
     choose                            one student's electives, lab batch and changes -> what counts for them, in the
-                                      term note's shape (termnote.parse) plus their quizzes, exams and rules
+                                      term note's shape (termnote.parse) plus their quizzes and exams
     under                             a term note's data over a pack's (the note wins)
     diff                              what changes for a student between two packs (a re-import)
-    read_change                       "la 80", "la labs together", "la quiz off", "batch B": what someone typed
+    read_change                       "la quiz off", "la quiz fri 11:00", "batch B": what someone typed
 """
 
 from __future__ import annotations
@@ -50,15 +49,13 @@ EXT = ".kurooto-course"
 MAX_BYTES = 200_000
 DAYS = recurring.DAYS
 KINDS = ("lecture", "lab", "tutorial")
-LABS = ("separate", "together")
-DEFAULT_RULE = {"min_pct": 75, "labs": "separate"}
 LIMITS = {"courses": 40, "classes": 250, "quizzes": 80, "exams": 150, "holidays": 80, "exam_periods": 12, "short": 6}
 
-# The fields there are, and only these (a field that isn't here makes the file invalid)
+# The fields there are, and only these (a field that isn't here makes the file invalid; "attendance" is an older
+# pack's rule, read and left out)
 TOP = {"format", "version", "title", "checked", "made", "term", "attendance", "courses", "classes", "quizzes", "exams"}
 TERM = {"name", "starts", "classes_end", "holidays", "exam_periods"}
 SPAN = {"from", "to", "what"}
-RULE = {"min_pct", "labs"}
 COURSE = {"id", "name", "short", "elective", "attendance"}
 CLASS = {"course", "day", "start", "end", "kind", "batch"}
 QUIZ = {"course", "what", "every_weeks", "day", "time", "next", "until", "batch"}
@@ -178,16 +175,6 @@ def _batch(v, where: str) -> str:
     return v.strip()
 
 
-def _rule(v, where: str) -> dict | None:
-    if v is None:
-        return None
-    r = _obj(v, RULE, where)
-    labs = r.get("labs", "separate")
-    if labs not in LABS:
-        raise PackError(f'{where}: labs should be "separate" or "together"')
-    return {"min_pct": _int(r.get("min_pct"), f"{where}'s minimum", 0, 100, DEFAULT_RULE["min_pct"]), "labs": labs}
-
-
 def _span(v, where: str) -> dict:
     s = _obj(v, SPAN, where, ("from",))
     a = _date(s["from"], f"{where}'s first day")
@@ -212,11 +199,7 @@ def _course(v, where: str) -> dict:
     elective = c.get("elective", False)
     if not isinstance(elective, bool):
         raise PackError(f"{where}: elective should be true or false")
-    out = {"id": cid, "name": _text(c["name"], f"{where}'s name", 80), "short": short, "elective": elective}
-    rule = _rule(c.get("attendance"), f"{where}'s attendance rule")
-    if rule:
-        out["attendance"] = rule
-    return out
+    return {"id": cid, "name": _text(c["name"], f"{where}'s name", 80), "short": short, "elective": elective}
 
 
 def _course_ref(v, where: str, ids: set) -> str:
@@ -297,7 +280,6 @@ def validate(data) -> dict:
         "holidays": [_span(x, f"holiday {i + 1}") for i, x in enumerate(hols)],
         "exam_periods": [_span(x, f"exam period {i + 1}") for i, x in enumerate(pers)],
     }
-    out["attendance"] = _rule(d.get("attendance"), "the section's attendance rule") or dict(DEFAULT_RULE)
     out["courses"] = []
     for i, c in enumerate(_list(d["courses"], "courses", LIMITS["courses"])):
         c = _course(c, f"course {i + 1}")
@@ -406,10 +388,9 @@ def moved_next(nxt: str, day: str) -> str:
 def choose(pack: dict, chosen_electives=(), batch: str = "", changes: dict | None = None) -> dict:
     """What counts for one student: the courses everyone takes and the electives they ticked; the classes and quizzes
     of their lab batch (and those without a batch); the term's dates; the quizzes and exams they didn't turn off, at
-    the times they moved them to; each course's attendance rule after their changes. In the term note's shape
-    (termnote.parse) plus "quizzes", "exams" and "rules"."""
+    the times they moved them to. In the term note's shape (termnote.parse) plus "quizzes" and "exams"."""
     ch = changes or {}
-    over, off, moved = ch.get("rules") or {}, set(ch.get("off") or []), ch.get("moved") or {}
+    off, moved = set(ch.get("off") or []), ch.get("moved") or {}
     picked = set(chosen_electives or ())
     courses = [c for c in pack["courses"] if not c["elective"] or c["id"] in picked]
     ids = {c["id"]: c for c in courses}
@@ -418,7 +399,7 @@ def choose(pack: dict, chosen_electives=(), batch: str = "", changes: dict | Non
     def ours(b: str) -> bool:
         return not b or b.lower() == mine
 
-    out = {**termnote.empty(), "quizzes": [], "exams": [], "rules": {}}
+    out = {**termnote.empty(), "quizzes": [], "exams": []}
     out["subjects"] = [{"name": c["name"], "slug": c["id"], "aliases": list(c["short"])} for c in courses]
     for k in pack["classes"]:
         if k["course"] in ids and ours(k["batch"]):
@@ -460,10 +441,6 @@ def choose(pack: dict, chosen_electives=(), batch: str = "", changes: dict | Non
                 "until": q["until"],
             }
         )
-    for c in courses:
-        yours = {**(over.get("*") or {}), **(over.get(c["id"]) or {})}
-        base = c.get("attendance") or pack["attendance"]
-        out["rules"][c["id"]] = {**base, **yours, "yours": bool(yours)}
     return out
 
 
@@ -518,21 +495,6 @@ def counts(layer: dict) -> str:
     out = [n(len(layer["subjects"]), "course"), f"{n(week(layer), 'class', 'classes')} a week"]
     out += [n(len(layer["quizzes"]), "recurring quiz", "recurring quizzes"), n(len(layer["exams"]), "dated exam")]
     return ", ".join(out)
-
-
-def rule_text(r: dict) -> str:
-    return f"{r['min_pct']}%" + (", labs counted separately" if r["labs"] == "separate" else ", labs counted in")
-
-
-def rules_line(pack: dict, layer: dict) -> str:
-    """'Attendance: 75%, labs counted separately; Statistics 80% (yours)'."""
-    base = pack["attendance"]
-    names = {s["slug"]: s["name"] for s in layer["subjects"]}
-    rest = []
-    for slug, r in layer["rules"].items():
-        if r["min_pct"] != base["min_pct"] or r["labs"] != base["labs"]:
-            rest.append(f"{names.get(slug, slug)} {rule_text(r)}" + (" (yours)" if r["yours"] else ""))
-    return "Attendance: " + rule_text(base) + (" for every course" if not rest else "; " + "; ".join(rest))
 
 
 def span_text(a: str, b: str) -> str:
@@ -601,10 +563,6 @@ def diff(old: dict, new: dict) -> list[str]:
         elif (o[k]["date"], o[k]["time"]) != (e["date"], e["time"]):
             out.append(f"{label}: {o[k]['date']} {o[k]['time']}".rstrip() + f" -> {when}")
     out += [f"- {names.get(o[k]['course'], o[k]['course'])} {o[k]['what']}" for k in o if k not in w]
-    for slug, r in new["rules"].items():
-        was = old["rules"].get(slug)
-        if was and (was["min_pct"], was["labs"]) != (r["min_pct"], r["labs"]):
-            out.append(f"Attendance for {names.get(slug, slug)}: {rule_text(was)} -> {rule_text(r)}")
     return out
 
 
@@ -637,15 +595,14 @@ def _ranges(days: list[str]) -> list[tuple[str, str]]:
     return [(a, b) for a, b in out]
 
 
-def build(src: dict, today: dt.date, default_rule: dict | None = None) -> tuple[dict, list[str]]:
+def build(src: dict, today: dt.date) -> tuple[dict, list[str]]:
     """A pack (not yet checked against the official timetable: "checked" is empty) from a source, and what was left
     out and why. The source, in the term note's words:
         subjects [{name, slug, aliases, elective?}], classes [{day, start, end, slug, kind?, batch?, name?}],
         holidays [days], exam_periods [[a, b]], term_ends, dates [{from, to, time, what, kind, subject}],
-        quizzes [{subject, what, every, day, time, next, until, batch?}], rules {slug: {min_pct, labs}}, title.
+        quizzes [{subject, what, every, day, time, next, until, batch?}], title.
     Each piece goes through the same checks a pack gets on import; one that fails is left out (and said)."""
     left: list[str] = []
-    rule = _rule(default_rule, "the default rule") or dict(DEFAULT_RULE)
     courses = []
     for s in src.get("subjects") or []:
         slug = termnote.slugify(s.get("slug") or s.get("name") or "")
@@ -665,13 +622,6 @@ def build(src: dict, today: dt.date, default_rule: dict | None = None) -> tuple[
         except PackError as e:
             left.append(f"the course {name[:40]} ({e})")
             continue
-        r = (src.get("rules") or {}).get(s.get("slug"))
-        try:
-            r = _rule(r, "its rule") if r else None
-        except PackError:
-            r = None
-        if r and r != rule:
-            c["attendance"] = r
         courses.append(c)
     ids = {c["id"] for c in courses}
     classes = []
@@ -751,7 +701,6 @@ def build(src: dict, today: dt.date, default_rule: dict | None = None) -> tuple[
             "holidays": holidays,
             "exam_periods": exam_periods,
         },
-        "attendance": rule,
         "courses": courses[: LIMITS["courses"]],
         "classes": classes[: LIMITS["classes"]],
         "quizzes": quizzes[: LIMITS["quizzes"]],
@@ -780,9 +729,6 @@ def section(text: str, heading: re.Pattern) -> str:
 
 
 RECURRING_H = re.compile(r"\brecurring\b|\bquizzes\b", re.I)
-ATTEND_H = re.compile(r"\battendance\b", re.I)
-MIN_H = {"minimum", "min", "min %", "required", "attendance", "at least", "%", "percent", "minimum %", "rule"}
-LABS_H = {"labs", "lab", "labs counted", "lab classes"}
 
 
 def _which(text: str, subjects: list[dict]) -> str | None:
@@ -803,8 +749,7 @@ def _which(text: str, subjects: list[dict]) -> str | None:
 def source_from_note(text: str) -> dict:
     """A term note (termnote.py) as a pack's source. Besides its timetable and key dates it may have: a Batch column
     in the timetable (a lab batch: "A", "B1"); a Type column (lecture, lab, tutorial; "elective" marks a course not
-    everyone takes); a "## Recurring quizzes" table in the recurring table's shape; and an "## Attendance" table
-    (Course, Minimum, Labs; a row for "All" sets the section's rule)."""
+    everyone takes); and a "## Recurring quizzes" table in the recurring table's shape."""
     t = termnote.parse(text)
     subjects = [dict(s) for s in t["subjects"]]
     elective = {c["slug"] for c in t["classes"] if "elective" in (c.get("kind") or "")}
@@ -819,22 +764,6 @@ def source_from_note(text: str) -> dict:
     for r in recurring.parse(section(text, RECURRING_H)):
         slug = _which(r["subject"], subjects) or termnote.slugify(r["subject"])
         quizzes.append({**r, "subject": slug})
-    rules, default = {}, None
-    for head, rows in termnote.tables(text, ATTEND_H):
-        cc, mc, lc = termnote.column(head, termnote.SUBJ_H), termnote.column(head, MIN_H), termnote.column(head, LABS_H)
-        cc, mc = 0 if cc is None else cc, 1 if mc is None else mc
-        for row in rows:
-            who = termnote.plain(termnote.cell(row, cc))
-            m = re.search(r"\d{1,3}", termnote.cell(row, mc))
-            labs = termnote.cell(row, lc).lower()
-            if not who or not m:
-                continue
-            together = re.search(r"together|with|same|\bin\b|included", labs)
-            r = {"min_pct": min(100, int(m[0])), "labs": "together" if together else "separate"}
-            if ALL.match(who):
-                default = r
-            elif slug := _which(who, subjects):
-                rules[slug] = r
     return {
         "subjects": subjects,
         "classes": classes,
@@ -843,8 +772,6 @@ def source_from_note(text: str) -> dict:
         "term_ends": t["term_ends"],
         "dates": dates,
         "quizzes": quizzes,
-        "rules": rules,
-        "attendance": default,
     }
 
 
@@ -868,8 +795,6 @@ def read_change(text: str, pack: dict) -> tuple[str, dict] | None:
     title Year 2 section B        ("title", {text})
     checked 2026-10-18 / today    ("checked", {date})
     electives ml, topology / none ("electives", {ids})       batch B / none  ("batch", {batch})
-    la 80 / all 75%               ("rule", {course, min_pct})
-    la labs together / separate   ("rule", {course, labs})
     la reset                      ("reset", {course})
     la elective / la core         ("elective", {course, on})
     la quiz off / la quiz on      ("off" / "on", {key})
@@ -897,12 +822,6 @@ def read_change(text: str, pack: dict) -> tuple[str, dict] | None:
             break
     else:
         return None
-    if m := re.fullmatch(r"(\d{1,3})\s*%?", rest):
-        return ("rule", {"course": course, "min_pct": int(m[1])}) if int(m[1]) <= 100 else None
-    if m := re.fullmatch(
-        r"labs?\s+(?:counted\s+)?(together|in|with lectures|separate(?:ly)?|apart|on their own)", rest
-    ):
-        return "rule", {"course": course, "labs": "separate" if m[1][:3] in ("sep", "apa", "on ") else "together"}
     if rest in ("reset", "back", "as the pack says"):
         return "reset", {"course": course}
     if rest in ("elective", "is elective", "is an elective", "core", "not elective", "everyone"):
