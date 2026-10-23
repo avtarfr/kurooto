@@ -29,6 +29,15 @@ comes in one line with Undo, and /inferred lists them (/inferred undo <id>).
 Never by itself: alarms, calls, mail, anything outward, or a code repository (a project gets code only by /repos add).
 Each line is looked at once, wherever it was said (a check-in answer reaches both the chat and the journal). A question
 ("is there a quiz every Monday?", "do I have lab on Thursdays") sets up nothing.
+
+The one pass (infer.sweep, on): what you say is read as it arrives; the pass also reads what didn't come through a
+message, your chats with Kurooto and your journal and daily notes as they are in your notes folder. It runs once when
+it's first on (the last infer.sweep_days, 30) and then nightly (04:20) on what's new since. Rules first; a line the
+rules can't read but that looks like one of these (first person, a project, a supervisor, "every ...", a lab, a short
+name) gets one more try with infer.sweep_ai: "local" (the default) asks the model on this computer, when there is one,
+to restate it in one of the forms above, using only words from the line itself, and the rules read that; "main" asks
+your own AI (only that line goes to it); "off" leaves it to the rules. Everything one pass sets up is told in one line
+with Undo all; /inferred lists each with its Undo, /inferred scan runs the pass now.
 """
 
 from __future__ import annotations
@@ -60,11 +69,17 @@ register_defaults(
         "commitments": True,  # "every Tuesday at 7pm I go to the gym": a commitment (it holds calls like a class)
         "quizzes": True,  # "there's a quiz on Linear Algebra every Monday": a row in the recurring quizzes table
         "short_names": True,  # "LA" for Linear Algebra after two messages call it that (it fits only that one)
+        "sweep": True,  # one pass over your chats and journal: once when first on, then nightly on what's new
+        "sweep_days": 30,  # how far back that first pass reads
+        "sweep_ai": "local",  # a line the rules can't read: local (this computer) restates it, main (your AI), off
     },
 )
 
 FILE = "inferred.json"
 KEEP = 200  # changes remembered (for /inferred and Undo)
+SEEN = 5000  # lines remembered as looked at already (a hash each), so a pass never sets up the same thing twice
+SWEEP_WHEN = "daily 04:20"
+SWEEP_AI_MAX = 10  # lines one pass may ask the AI about
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 TITLE = r"(?i:prof(?:essor)?\.?|dr\.?|sir|ma'?am|mr\.?|mrs\.?|ms\.?)"
 NAME = r"[A-Z][\w'-]+(?:\s+[A-Z][\w'-]+){0,3}"
@@ -182,7 +197,7 @@ def _load(app: App) -> dict:
 
 def _save(app: App, data: dict) -> None:
     data["items"] = data["items"][-KEEP:]
-    data["seen"] = data["seen"][-KEEP:]
+    data["seen"] = data["seen"][-SEEN:]
     jsave(Path(app.paths.state) / FILE, data)
 
 
@@ -656,6 +671,12 @@ def _commitment(app: App, sentence: str) -> dict | None:
 # ----------------------------------------------------------------------------------------------- run
 def observe(app: App, text: str, via: str = "chat") -> list[str]:
     """Look at something you said (a message, a journal line) once; set up what it states. Returns the lines told."""
+    return [g["line"] for g in _observe(app, text, via)]
+
+
+def _observe(app: App, text: str, via: str = "chat", quiet: bool = False, misses: list | None = None, tag: str = ""):
+    """observe(), returning what was set up; quiet: not told one by one (the pass tells them in one line); misses
+    gets the new lines nothing was set up from; tag marks each change as part of one pass."""
     if not text or not app.settings.get("infer.on"):
         return []
     told = []
@@ -681,13 +702,20 @@ def observe(app: App, text: str, via: str = "chat") -> list[str]:
                     continue
                 if got:
                     got.update(id=uuid.uuid4().hex[:6], at=time.time(), via=via, undone=False)
+                    if tag:
+                        got["pass"] = tag
                     data["items"].append(got)
                     told.append(got)
                     break
+            else:
+                if misses is not None:
+                    misses.append(sentence)
         if heard and _on(app, "short_names"):  # once per message, after what it states is set up
             try:
                 for got in _short_names(app, " ".join(heard)):
                     got.update(id=uuid.uuid4().hex[:6], at=time.time(), via=via, undone=False)
+                    if tag:
+                        got["pass"] = tag
                     data["items"].append(got)
                     told.append(got)
             except Exception as e:
@@ -695,11 +723,177 @@ def observe(app: App, text: str, via: str = "chat") -> list[str]:
         _save(app, data)
     for got in told:
         app.events.emit("inferred", kind=got["kind"], via=via)
-        app.notify(got["line"], kind="info", why="infer.done", buttons=[[("Undo", f"inf:{got['id']}:undo")]])
-    return [g["line"] for g in told]
+        if not quiet:
+            app.notify(got["line"], kind="info", why="infer.done", buttons=[[("Undo", f"inf:{got['id']}:undo")]])
+    return told
+
+
+# ------------------------------------------------------------------------------------------------ the one pass
+HINT = re.compile(
+    r"(?i)\b(?:project|thesis|dissertation|supervis\w*|advis\w*|guide|mentor|every|each|weekly|fortnightly|"
+    r"(?:mon|tues|wednes|thurs|fri|satur|sun)days|weekdays|weekends|lab|labs|tutorial|lecture|seminar|quiz|"
+    r"short for|stands for|i mean|i call)\b"
+)
+SWEEP_PROMPT = """Someone wrote this line to their assistant. If it states one of the following about them, rewrite it
+as exactly one line in that form, using only names, subjects, days and times that are in the line itself. Otherwise
+answer NONE. Output only the line or NONE.
+
+I got a project under <title and name> on <topic>
+every <weekday> at <time> I have a <subject> <class|lab|tutorial|lecture>
+every <weekday> at <time> I go to <activity>
+there's a quiz on <subject> every <weekday>
+by <short name> I mean <subject>
+
+Line: {line}
+"""
+FORM_WORDS = set(
+    "i got a an the project under on every at have go to there's there s quiz on by mean class lab tutorial lecture "
+    "prof professor dr am pm and from till until".split()
+)
+
+
+def faithful(line: str, restated: str) -> bool:
+    """Does the restatement use only what the line says? Every name, subject, day and number in it must be there."""
+    low = line.lower()
+    for w in re.findall(r"[a-z]+|\d+", restated.lower()):
+        if w in FORM_WORDS:
+            continue
+        if w[:3] in DAYS:  # a weekday: the line has to name it
+            if w[:3] not in low:
+                return False
+            continue
+        if w not in low:
+            return False
+    return True
+
+
+def _restate(app: App, misses: list[str]) -> list[str]:
+    """The lines the rules couldn't read but that look like something to set up, restated by the AI in a form the
+    rules read (infer.sweep_ai); a restatement that brings in anything the line doesn't say is dropped."""
+    how = str(app.settings.get("infer.sweep_ai") or "off").strip().lower()
+    hits = [s for s in misses if FIRST.search(s) and HINT.search(s) and not NOT.search(s)][:SWEEP_AI_MAX]
+    if how not in ("local", "main") or not hits:
+        return []
+    from kurooto.modules.consolidate import _brain
+
+    brain = _brain(app, how)
+    if brain is None:
+        return []
+    out = []
+    for s in hits:
+        try:
+            r = brain.complete(SWEEP_PROMPT.format(line=s[:400]), effort="low", timeout=60)
+        except Exception as e:
+            app.events.emit("infer_failed", part="sweep_ai", error=f"{type(e).__name__}"[:200])
+            break
+        said = ((getattr(r, "text", "") or "").strip().splitlines() or [""])[0].strip().strip('"')
+        if getattr(r, "ok", False) and said and not said.upper().startswith("NONE") and faithful(s, said):
+            out.append(said)
+    app.events.emit("infer_restated", asked=len(hits), used=len(out), how=how)
+    return out
+
+
+def recent_text(app: App, since: float) -> list[tuple[str, str]]:
+    """(via, text) said since then that a message may not have brought: your chat turns with Kurooto, and your
+    journal and daily notes as they are in your notes folder (your own lines, not Kurooto's blocks)."""
+    from kurooto.core import layout
+    from kurooto.core.graphwrite import outside
+
+    out: list[tuple[str, str]] = []
+    for t in jload(Path(app.paths.state) / "chat" / "history.json", []) or []:
+        if isinstance(t, dict) and float(t.get("at") or 0) > since and t.get("user"):
+            out.append(("chat", str(t["user"])[:4000]))
+    day = dt.date.fromtimestamp(since) if since > 0 else now().date()
+    while day <= now().date():
+        f = layout.path(app, "daily", date=day.isoformat())
+        day += dt.timedelta(days=1)
+        try:
+            if not f.is_file() or f.stat().st_mtime <= since:
+                continue
+            text = re.sub(
+                r"\A---\n.*?\n---\n", "", outside(f.read_text(encoding="utf-8", errors="replace")), flags=re.S
+            )
+        except OSError:
+            continue
+        lines = [re.sub(r"^\s*[-*+]\s+(?:\[[ xX]\]\s+)?", "", ln) for ln in text.splitlines()]
+        out.append(("journal", "\n".join(ln for ln in lines if ln.strip() and not ln.lstrip().startswith(("#", "|")))))
+    return out
+
+
+LABEL = {"project": "project", "meeting": "meeting", "meeting_ahead": "upcoming meeting", "meetings": "weekly meeting",
+         "class": "class", "alias": "short name", "commitment": "routine", "quiz": "recurring quiz"}  # fmt: skip
+
+
+def sweep(app: App, first: bool | None = None, tell: bool = True) -> list[dict]:
+    """The one pass: your recent chats and journal, rules first, the AI only on a line that looks like something the
+    rules couldn't read. The first pass reads infer.sweep_days back; later ones only what's new. One line says what
+    it set up, with Undo all. What was set up."""
+    if not app.settings.get("infer.on") or not app.settings.get("infer.sweep"):
+        return []
+    data = _load(app)
+    if first is None:
+        first = not data.get("swept")
+    try:
+        days = max(1.0, float(app.settings.get("infer.sweep_days") or 30))
+    except (TypeError, ValueError):
+        days = 30.0
+    since = time.time() - days * 86400 if first else float(data.get("swept") or 0)
+    started = time.time()
+    tag = uuid.uuid4().hex[:6]
+    told: list[dict] = []
+    misses: list[tuple[str, str]] = []
+    for via, text in recent_text(app, since):
+        miss: list[str] = []
+        told += _observe(app, text, via=via, quiet=True, misses=miss, tag=tag)
+        misses += [(via, m) for m in miss]
+    for via in ("chat", "journal"):
+        for said in _restate(app, [m for v, m in misses if v == via]):
+            told += _observe(app, said, via=via, quiet=True, tag=tag)
+    with Lock(app.paths.state, "infer", timeout=5):
+        data = _load(app)
+        data["swept"] = started
+        _save(app, data)
+    app.events.emit("infer_swept", first=first, set_up=len(told))
+    if told and tell:
+        app.notify(said_line(told), kind="info", why="infer.done", buttons=[[("Undo all", f"inf:pass-{tag}:undo")]])
+    return told
+
+
+def said_line(told: list[dict]) -> str:
+    """One line for everything a pass set up."""
+    from collections import Counter
+
+    n = len(told)
+    kinds = Counter(LABEL.get(g["kind"], g["kind"]) for g in told)
+    what = ", ".join(f"{c} {k}{'es' if c > 1 and k.endswith('s') else 's' if c > 1 else ''}" for k, c in kinds.items())
+    return (
+        f"Set up {n} thing{'s' if n != 1 else ''} from your recent chats and journal ({what}). /inferred shows each, "
+        "with its Undo."
+    )
+
+
+def start(app: App) -> None:
+    """Nightly: the pass on what's new; the first one soon after it's first on."""
+    import asyncio
+
+    async def run(payload: dict | None = None) -> str:
+        got = await asyncio.to_thread(sweep, app)
+        return f"set up {len(got)}"
+
+    app.scheduler.action("infer.sweep", run)
+    app.scheduler.every("infer:sweep", SWEEP_WHEN, "infer.sweep", module="infer", misfire="coalesce")
+    if app.settings.get("infer.on") and app.settings.get("infer.sweep") and not _load(app).get("swept"):
+        app.scheduler.at(time.time() + 180, "infer.sweep", key="infer:first", module="infer", replace=False)
 
 
 def undo(app: App, iid: str) -> str:
+    if iid.startswith("pass-"):  # Undo all, under the pass's one line
+        ids = [x["id"] for x in _load(app)["items"] if x.get("pass") == iid[5:] and not x.get("undone")]
+        if not ids:
+            return "Undone already."
+        for i in ids:
+            undo(app, i)
+        return f"Undone: {len(ids)} thing{'s' if len(ids) != 1 else ''} set up from your chats and journal."
     with Lock(app.paths.state, "infer", timeout=5):
         data = _load(app)
         it = next((x for x in data["items"] if x["id"] == iid), None)
@@ -781,9 +975,14 @@ def undo(app: App, iid: str) -> str:
 
 def command(app: App, arg: str) -> str:
     """/inferred: what was set up from what you said (newest first); /inferred undo <id>."""
-    m = re.fullmatch(r"\s*undo\s+(\w+)\s*", arg or "", re.I)
+    m = re.fullmatch(r"\s*undo\s+([\w-]+)\s*", arg or "", re.I)
     if m:
         return undo(app, m[1])
+    if (arg or "").strip().lower() in ("scan", "look", "now"):
+        if not app.settings.get("infer.on") or not app.settings.get("infer.sweep"):
+            return "The pass over your chats and journal is off (infer.on, infer.sweep)."
+        got = sweep(app, tell=False)
+        return said_line(got) if got else "Looked over your recent chats and journal: nothing new to set up."
     items = [x for x in _load(app)["items"] if not x.get("undone")][-15:]
     if not items:
         on = "on" if app.settings.get("infer.on") else "off (infer.on)"

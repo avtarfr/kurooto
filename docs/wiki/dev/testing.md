@@ -123,7 +123,9 @@ def test_something(env):  # a paired app talking to a fake Telegram (tests/conft
   (`App.handle` answers "X is off").
 - Two tests walk everything registered: `test_tap.py` (a tool or request that sets an alarm, places a call, sends
   something out... must say so with `guarded=`, and unattended AI runs must ask first) and `test_help.py` (every
-  command is in `/help`, every feature in a group, every request's `examples` taken by it). See
+  command is in `/help`, every feature in a group, every request's `examples` taken by it and shown in `/help all`,
+  every `CORE_SAY` example shown and understood by the code that handles it, and the phone app's chat getting the
+  same index). See
   [modules.md](modules.md#never-without-a-tap-coretappy).
 - Keep tests hermetic: no network (use a fake on 127.0.0.1), no sleeping on wall-clock time where a fake clock works.
 

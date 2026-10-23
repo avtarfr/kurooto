@@ -218,6 +218,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `calls/{rings,live,link,inbox,answer-nonces,live-health,textcalls}.json`, `calls/lessons.md`, `calls/transcripts/*.txt` (and `*.did.json`: what each call's tools did, for its gist; goes with the transcript) | `modules/calls`, `core/gists.py:note_call` |
 | `calls/searches.json` (what calls searched your notes for, 8 days at most), `dreaming-curious.json` (lines shown, settled, their buttons' offers, repositories' first commits) | `modules/curious.py` |
 | `dreaming-consolidate.json` (duplicates and disagreements waiting, by reference only; pairs settled by keyed hash; Undo records, a gist's words sealed with the ledger's key) | `modules/consolidate.py` |
+| `dreaming-fold.json` (owner-only: lines waiting for Keep, in your words with source and day; decided by hash; Undo records; each source's read mark) | `modules/fold.py` |
 | `alarm.json`, `alarm-last.json`, `alarm-skip.json`, `alarm-ringing.json` | `modules/alarm.py` |
 | `deadlines.json`, `deadlines-recurring.json` | `modules/deadlines.py` |
 | `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json`, `study/timer.json` | check-ins, capture, study (`timer.json`: Study mode's timer) |
@@ -338,6 +339,8 @@ Recurring (key → when; setting that controls it):
 | `exam_season:tick` | every 15m | | `modules/exam_season.py` |
 | `gbrain:sync`, `gbrain:nightly`, `gbrain:checkup` | every 15m; daily 03:00; weekly sun 19:30 | `gbrain.sync`, `gbrain.nightly`, `gbrain.checkup_when` | `modules/gbrain.py` |
 | `dreaming:consolidate` | daily 04:45 | `dreaming.consolidate` | `modules/consolidate.py` |
+| `dreaming:fold` | daily 04:50 | `dreaming.fold` | `modules/fold.py` |
+| `infer:sweep` (and `infer:first` once) | daily 04:20 | `infer.sweep` | `core/infer.py:start` |
 | `google:classroom` | every 3h | `google.classroom_every` | `modules/google.py` |
 | `classroom_notes:sync` | daily 07:00,13:00,19:00 | `classroom_notes.at` | `modules/google_classroom.py` |
 | `mail_digest:digest` | daily 08:00,18:00 | `mail_digest.at` | `modules/google_mail.py` |
@@ -1066,6 +1069,19 @@ their `undo` data, `seen`); `undo()` reverses one (a note it made and nobody tou
 line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `core/commands.py:CORE`. Calm reason
 `infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`, `aliases`, `commitments`, `quizzes`,
 `short_names`. Tests: `tests/unit/test_infer.py`.
+
+The one pass (`sweep(app, first, tell)`, `infer.sweep`): `start(app)` (from `App.start`, after the ledger) registers
+the action `infer.sweep`, the recurring job `infer:sweep` (`SWEEP_WHEN`, daily 04:20) and, while `inferred.json` has
+no `swept` time, a one-off `infer:first` three minutes on. `recent_text(app, since)` gives `(via, text)`: your turns
+in `<state>/chat/history.json` and each daily note (`layout.path(app, "daily")`) changed since, outside Kurooto's
+blocks (`graphwrite.outside`), list markers and headings stripped. The first pass reads `infer.sweep_days` back, later
+ones from `swept`. Each text goes through `_observe(..., quiet=True, misses=..., tag=...)` (the same rules and `seen`
+keys, now `SEEN` = 5000 kept, so nothing is set up twice; each change gets `pass` = the tag). Misses that are first
+person (`FIRST`), hint at something (`HINT`) and aren't negated (`NOT`) go to `_restate()` (`infer.sweep_ai`:
+`consolidate._brain`, `SWEEP_AI_MAX` 10, `SWEEP_PROMPT`'s five forms); a restatement passes only if `faithful()` (each
+word not in `FORM_WORDS` is in the line, a weekday the line names) and goes through `_observe` again. One
+`said_line()` notification with `inf:pass-<tag>:undo` (**Undo all**: `undo()` of each item of that pass); `/inferred
+scan` runs it with `tell=False` and answers with the line. Events `infer_swept`, `infer_restated`.
 
 ## Meetings: minutes and action items (`core/meetings.py`)
 

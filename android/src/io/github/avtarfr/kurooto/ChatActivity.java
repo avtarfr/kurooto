@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -168,6 +170,7 @@ public class ChatActivity extends Activity {
         TextView t = Ui.text(this, m.optString("text"), 16, false, Ui.color(this, mine ? R.color.k_on_primary_container : R.color.k_fg));
         t.setLayoutParams(new LinearLayout.LayoutParams(Ui.WRAP, Ui.WRAP));
         t.setTextIsSelectable(true);
+        if (Linkify.addLinks(t, Linkify.WEB_URLS)) t.setMovementMethod(LinkMovementMethod.getInstance());  // /help's wiki links open
         box.addView(t);
         String state = m.optString("state");
         if (mine && !state.isEmpty()) {

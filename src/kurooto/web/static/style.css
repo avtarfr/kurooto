@@ -198,7 +198,7 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
 .steps li.todo button { color: var(--fg); border-color: var(--warn); }
 .steps li.todo .n { color: var(--warn); border-color: var(--warn); font-weight: 700; }
 .steps li.skipped .n { border-style: dashed; }
-.wizard .calm { margin-bottom: 18px; }
+.wizard .calm { margin-top: 18px; }
 .wizard .more-features { margin-top: 18px; }
 .wizard .more-features > summary { width: fit-content; min-height: 40px; padding: 9px 16px; border: 1px solid var(--line); border-radius: var(--rc);
   font-weight: 500; cursor: pointer; }
@@ -244,6 +244,9 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
   .wizard .lead { font-size: 16px; }
   .wizard .row { align-items: stretch; }
   .wizard .row > input { flex: none; }
+  .wizard .nav { flex-wrap: wrap; }  /* the hint on its own line above the buttons, not squeezed into a column */
+  .wizard .nav-hint { flex-basis: 100%; order: -1; text-align: left; }
+  .steps li.on button:hover { color: var(--accent-contrast); background: var(--accent); }  /* a tap's sticky hover */
 }
 @media (min-width: 1100px) {
   .wizard { display: grid; grid-template-columns: 236px minmax(0, 1fr); column-gap: 56px; padding: 40px 48px 0; }

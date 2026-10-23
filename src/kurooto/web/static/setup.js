@@ -162,7 +162,7 @@ function navHint() {
   hint.textContent = {
     brain: brain && brain.ready ? "" : "Not working yet? You can go on and finish it later: this page opens again from the dashboard.",
     about: "Optional.",
-    notes: "Next keeps the layout in use; nothing moves without Use this layout.",
+    notes: $(".fit-more:not([open])") ? "" : "Next keeps the layout in use; nothing moves without Use this layout.",
     features: `${chosen.size} of ${state.modules.length} on.`,
     telegram: channelOk() ? "" : state.channel === "app" ? "Phone calls isn't set up yet? Skip it for now and finish it later."
       : "Not connected yet? Skip it for now: the dashboard keeps a way back here.",
@@ -267,8 +267,11 @@ function drawFit() {
     $$(".fit-links").forEach((b) => b.classList.toggle("on", b === e.target));
     previewFit();
   } }, label);
-  panel.replaceChildren(
-    el("div", { class: "box" }, el("p", {}, found), ...fit.said.map((x) => el("p", { class: "note" }, x))),
+  // A new, empty notes folder with Kurooto's own layout in use: nothing to fit in with, so the layout editor is folded
+  // away and Next is all there is to do. A folder with notes, another folder or a layout already changed shows it all.
+  const use = fit.in_use || {};
+  const fresh = !fit.notes && !fit.other_folder && !fit.undo && use.layout === "kurooto" && !Object.keys(use.paths || {}).length;
+  const editor = [
     el("h2", {}, "Layout"),
     el("div", { class: "presets" }, layoutBtn("kurooto", "Kurooto's: journal/, a folder per subject"), layoutBtn("zettelkasten", "Zettelkasten: dailies/, sources/, zettel/")),
     el("p", { class: "note" }, `Sure: ${pct(fit.layout_confidence)}. ${fit.layout_why}.`),
@@ -287,8 +290,14 @@ function drawFit() {
       el("button", { class: "primary", id: "nf-use", onclick: useFit }, "Use this layout"),
       el("button", { id: "nf-keep", onclick: keepFit }, "Keep Kurooto's own layout")),
     el("div", { class: "panel", id: "nf-result" }),
-    ...(fit.undo ? [undoBox(fit.undo)] : []));
+    ...(fit.undo ? [undoBox(fit.undo)] : [])];
+  const head = el("div", { class: "box" }, el("p", {}, fresh ? "The folder is empty, so there's nothing to fit in with: Kurooto starts its own "
+    + "folders here (daily notes in journal/, quick notes in inbox/, a folder per subject). Nothing else to do on this step: press Next."
+    : found), ...fit.said.map((x) => el("p", { class: "note" }, x)));
+  panel.replaceChildren(head, ...(fresh ? [el("details", { class: "more-features fit-more", ontoggle: navHint },
+    el("summary", {}, "Change where each kind of note goes"), ...editor)] : editor));
   previewFit();
+  navHint();
 }
 function undoBox(u) {
   const box = el("div", { class: "box" }, el("p", {}, `Moved ${u.moved} of Kurooto's notes (${String(u.at).replace("T", " ")}). `,
@@ -942,7 +951,7 @@ async function pairBox() {
 // ------------------------------------------------------------------------------------------ telegram
 function renderTelegram() {
   const app = phoneApp(), now = state.channel || (state.telegram.paired ? "telegram" : "");
-  $$(".chan").forEach((b) => b.classList.toggle("on", b.dataset.channel === now));
+  $$(".chan").forEach((b) => b.classList.toggle("on", b.dataset.channel === (now || "telegram")));  // what's shown is what's picked
   $("#tg-how").hidden = app;
   $("#app-panel").hidden = !app;
   if (app) renderAppChannel();

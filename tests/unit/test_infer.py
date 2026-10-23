@@ -245,3 +245,89 @@ def test_on_mondays_ive_got_and_go_running_are_weekly_too(env):
     told = infer.observe(app, "I go running every morning at 6am")
     assert told and "Added running to your commitments" in told[0]
     assert infer.observe(app, "I went running on Monday at 6am and it was cold.") == []
+
+
+# ------------------------------------------------------------------------------------------------ the one pass
+def _chat(app, *said, at=None):
+    import time
+
+    from kurooto.core.state import jload, jsave
+
+    f = app.paths.state / "chat" / "history.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    jsave(f, (jload(f, []) or []) + [{"user": s, "assistant": "ok", "at": at or time.time()} for s in said])
+
+
+def test_one_pass_over_chats_and_journal_says_it_in_one_line_with_undo_all(env, monkeypatch):
+    import time
+
+    from kurooto.core import layout
+    from kurooto.core.clock import now
+
+    app = setup(env)
+    app.settings.set("infer.sweep_ai", "off")
+    _chat(app, "Long day. I got a project under Prof Lena Ortiz on glacier flow.", at=time.time() - 5 * 86400)
+    _chat(app, "Long ago: I got a project under Dr Ken Ito on tides.", at=time.time() - 60 * 86400)  # too old
+    f = layout.path(app, "daily", date=f"{now():%Y-%m-%d}")
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(
+        "# Today\n\n- every Monday at 9 I have a linear algebra lab\n"
+        "<!-- kurooto:plan -->\nI got a project under Prof Ana Ruiz on ice.\n<!-- /kurooto:plan -->\n"
+    )
+    n = len(env.fake.texts())
+    got = infer.sweep(app)
+    assert sorted(g["kind"] for g in got) == ["class", "project"]  # not Kurooto's block, not the 60-day-old line
+    told = env.fake.texts()[n:]
+    assert told == [
+        "Set up 2 things from your recent chats and journal (1 project, 1 class). /inferred shows each, with its Undo."
+    ]
+    assert "Undo all" in str(env.fake.sent[-1])
+    assert infer.sweep(app) == []  # nightly: only what's new, and nothing twice
+    f.write_text(f.read_text() + "- every Monday at 9 I have a linear algebra lab\n")  # changed, same line
+    assert infer.sweep(app) == []
+    tag = infer._load(app)["items"][-1]["pass"]
+    assert app.callback(f"inf:pass-{tag}:undo") == "Undone: 2 things set up from your chats and journal."
+    assert not app.settings.get("subjects.timetable") and not research.project_note(app, "Glacier flow").exists()
+    assert env.say("/inferred scan") == "Looked over your recent chats and journal: nothing new to set up."
+    app.settings.set("infer.sweep", False)
+    assert infer.sweep(app) == [] and "off" in infer.command(app, "scan")
+
+
+def test_the_ai_only_on_a_hit_and_only_with_the_lines_own_words(env, monkeypatch):
+    from kurooto.modules import consolidate
+    from kurooto.providers.base import Result, Verdict
+
+    app = setup(env)
+    asked = []
+    answers = {
+        "glacier": "I got a project under Prof Lena Ortiz on glacier",
+        "stuck": "every Monday at 9 I have a Linear Algebra lab",
+        "ocean": "I got a project under Prof Made Up",  # a name the line doesn't have: dropped
+    }
+
+    class Brain:
+        def complete(self, prompt, **kw):
+            asked.append(prompt)
+            line = prompt.rsplit("Line: ", 1)[1].lower()
+            return Result(Verdict.OK, next((v for k, v in answers.items() if k in line), "NONE"))
+
+    monkeypatch.setattr(consolidate, "_brain", lambda app, how: Brain())
+    _chat(
+        app,
+        "Prof Lena Ortiz said yes, so I'm on her glacier team now as my project.",  # the rules can't read it
+        "I'm stuck in the linear algebra lab on mondays from 9",
+        "I am working with someone on an ocean project.",
+        "Bought bread and milk on the way home.",  # no hint: never asked
+    )
+    assert infer.observe(app, "Bought bread and milk on the way home.") == []
+    infer._save(app, {**infer._load(app), "seen": []})
+    got = infer.sweep(app)
+    assert len(asked) == 3 and not any("bread" in a for a in asked)
+    assert sorted(g["kind"] for g in got) == ["class", "project"]
+    assert infer.faithful("my thesis with Dr Ito", "I got a project under Dr Ito")
+    assert not infer.faithful("my thesis with Dr Ito", "I got a project under Dr Ito on Monday")
+    app.settings.set("infer.sweep_ai", "off")
+    _chat(app, "Prof Ken Ito agreed: I'm on his tides team as my project.")
+    n = len(asked)
+    infer.sweep(app)
+    assert len(asked) == n

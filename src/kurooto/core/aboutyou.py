@@ -11,6 +11,10 @@
    keeps the previous version beside it (profile-<date>.md). Building it again never replaces your edits silently: if
    you changed it since it was built, Kurooto asks first, and a profile you edit while a new one is being built stays
    as it is (the new one goes beside it as profile-new-<date>.md). /aboutme on Telegram shows the In-brief part.
+5. Dreaming can fold what it learned about you into the profile (modules/fold.py): a line goes into Kurooto's own
+   `<!-- kurooto:learned -->` block only when you tap Keep on it in the morning message, each with where it came from
+   ("(from a chat, 2026-10-23)"). The block's lines go along with every request next to the In-brief part; the rest of
+   the profile is never touched, building the profile again carries the block over, and lines you edit in it stay.
 """
 
 from __future__ import annotations
@@ -32,21 +36,38 @@ if TYPE_CHECKING:
 MAX_REPORT = 2_000_000  # characters
 MAX_PROFILE = 200_000  # characters: a profile is a few pages; this is far beyond that
 BRIEF = re.compile(r"^## In brief[^\n]*\n(.*?)(?=^## |\Z)", re.S | re.M)
+LEARNED = "learned"  # Kurooto's block in the profile: lines Dreaming folded in, each kept with a tap (modules/fold.py)
+LEARNED_BLOCK = re.compile(r"<!-- kurooto:learned\b[^>]*-->\n?(.*?)<!-- /kurooto:learned -->\n?", re.S)
+LEARNED_HEAD = "Learned from what you said (added only when you tapped Keep; edit or delete lines freely):"
 
 
 class Edited(ValueError):
     """The profile was changed since it was built: building it again needs a yes first."""
 
 
+def learned_lines(text: str) -> list[str]:
+    """The lines of Kurooto's learned block ("- ..."), wherever it is in the profile."""
+    m = LEARNED_BLOCK.search((text or "").replace("\r\n", "\n"))
+    return [ln.strip() for ln in (m.group(1) if m else "").splitlines() if ln.strip().startswith("- ")]
+
+
 def brief_of(text: str, limit: int = 2500) -> str:
-    """A profile's "In brief" part: exactly what goes along with every AI request ("" if there's none)."""
-    m = BRIEF.search((text or "").replace("\r\n", "\n"))
-    return (m.group(1) if m else "").strip()[:limit]
+    """A profile's "In brief" part and the lines Dreaming folded in with your Keep: exactly what goes along with every
+    AI request ("" if there's none)."""
+    text = (text or "").replace("\r\n", "\n")
+    m = BRIEF.search(LEARNED_BLOCK.sub("", text))
+    out = (m.group(1) if m else "").strip()
+    learned = learned_lines(text)
+    if learned:
+        out = (out + "\n\n" if out else "") + "Learned from what they said:\n" + "\n".join(learned)
+    return out[:limit]
 
 
 def brief_warning(text: str) -> str:
     """What's wrong with a profile's In-brief part, in a line ("" if nothing)."""
     if not re.search(r"^## In brief", text or "", re.M):
+        if learned_lines(text):
+            return ""  # only the lines folded in go along, which is fine
         return (
             'There\'s no "## In brief" section, so nothing from your profile goes along with your requests. Add one '
             "(a few lines about you, under that heading) if you want it to."
@@ -58,6 +79,16 @@ def brief_warning(text: str) -> str:
 
 def _hash(text: str) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+def _outside(text: str) -> str:
+    """A hash of the profile without Kurooto's learned block: what tells your edits from a line folded in."""
+    return _hash(re.sub(r"\s+", " ", LEARNED_BLOCK.sub("", text or "")).strip())
+
+
+def _same(a: str, b: str) -> bool:
+    n = lambda s: re.sub(r"[^a-z0-9]+", " ", re.sub(r"\((?:from [^()]*?, )?\d{4}-\d{2}-\d{2}\)", "", s.lower())).strip()  # noqa: E731
+    return n(a) == n(b)
 
 
 def _keep(f: Path, stem: str = "profile") -> Path:
@@ -198,7 +229,7 @@ class AboutYou:
             quiet=True,
             then="aboutyou.save",
             text_only=True,  # only text comes back; Kurooto writes the note itself
-            then_payload={"base": _hash(self.text()) if self.profile_file.exists() else ""},
+            then_payload={"base": _outside(self.text()) if self.profile_file.exists() else ""},
         )
 
     def save_profile(self, job, result, payload) -> None:
@@ -219,7 +250,7 @@ class AboutYou:
             f'report(s). Edit it freely: Kurooto reads the "In brief" part before every request.\n\n{text}\n'
         )
         base = (payload or {}).get("base")
-        if f.exists() and (_hash(self.text()) != base if base is not None else self.edited()):
+        if f.exists() and (_outside(self.text()) != base if base is not None else self.edited()):
             # you changed it while this one was being built: yours stays as it is, the new one goes beside it
             new = _keep(f, "profile-new")
             new.write_text(doc, encoding="utf-8")
@@ -232,10 +263,15 @@ class AboutYou:
                 why="asked",
             )
             return
+        carried = learned_lines(self.text())  # the lines you kept from Dreaming come along
+        if carried:
+            from kurooto.core.graphwrite import put_block
+
+            doc = put_block(doc, LEARNED, LEARNED_HEAD + "\n" + "\n".join(carried))
         if f.exists():  # keep the previous version next to it
             f.replace(_keep(f))
         f.write_text(doc, encoding="utf-8")
-        jsave(self.state_file, {"built": _hash(doc), "at": time.time()})
+        jsave(self.state_file, {"built": _hash(doc), "outside": _outside(doc), "at": time.time()})
         self.app.events.emit("aboutyou_profile", chars=len(text))
         self.app.notify(
             f"Your profile is ready: {layout.shown(self.app, f)} in your notes. "
@@ -259,8 +295,63 @@ class AboutYou:
         as yours.)"""
         if not self.profile_file.exists():
             return False
-        built = (jload(self.state_file, {}) or {}).get("built")
-        return built != _hash(self.text())
+        st = jload(self.state_file, {}) or {}
+        text = self.text()
+        if st.get("built") == _hash(text):
+            return False
+        return not (st.get("outside") and st["outside"] == _outside(text))  # only lines folded in since: not yours
+
+    # ------------------------------------------------------------------------------- what Dreaming folds in
+    def add_learned(self, line: str) -> bool:
+        """Add "- line" to Kurooto's learned block (made at the end of the In-brief part, or of the note; the note
+        itself is made if there's none yet). Nothing outside the block changes. False if it's there already."""
+        from kurooto.core.tools import write_note_file
+
+        f, text = self.profile_file, self.text()
+        made = not f.exists()
+        if made:
+            text = layout.frontmatter(self.app, "profile", f, title="About me", bare=True) + (
+                f"# About me\n\nWhat {self.app.name} has learned about you so far. For a fuller profile, build one "
+                "from the setup page's About you step.\n"
+            )
+        if any(_same(x[2:], line) for x in learned_lines(text)):
+            return False
+        end = "<!-- /kurooto:learned -->"
+        if LEARNED_BLOCK.search(text):
+            new = text.replace(end, f"- {line}\n{end}", 1)
+        else:
+            from kurooto.core.graphwrite import block
+
+            blk = block(LEARNED, LEARNED_HEAD + "\n" + f"- {line}")
+            m = BRIEF.search(text)
+            if m:  # at the end of the In-brief part, before the next section
+                cut = m.end(1)
+                head = text[:cut].rstrip("\n")
+                new = head + "\n\n" + blk + "\n" + ("\n" + text[cut:].lstrip("\n") if text[cut:].strip() else "")
+            else:
+                new = text.rstrip("\n") + "\n\n" + blk + "\n"
+        write_note_file(f, new)
+        if made:
+            jsave(self.state_file, {"built": _hash(new), "outside": _outside(new), "at": time.time()})
+        return True
+
+    def remove_learned(self, line: str) -> bool:
+        """Take "- line" out of the learned block, exactly as it was written (an Undo). False if it isn't there as
+        written any more: then nothing changes."""
+        from kurooto.core.tools import write_note_file
+
+        text = self.text()
+        m = LEARNED_BLOCK.search(text)
+        want = f"- {line}".rstrip()
+        if not m:
+            return False
+        rows = m.group(1).split("\n")
+        hit = next((i for i, ln in enumerate(rows) if ln.rstrip() == want), None)
+        if hit is None:
+            return False
+        body = "\n".join(rows[:hit] + rows[hit + 1 :])
+        write_note_file(self.profile_file, text[: m.start(1)] + body + text[m.end(1) :])
+        return True
 
     def save_text(self, text: str) -> dict:
         """Your edit, from the setup page or the dashboard. The previous version is kept beside it. Raises

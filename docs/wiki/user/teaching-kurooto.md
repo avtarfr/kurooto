@@ -59,6 +59,12 @@ profile again** asks first; say yes and the new one replaces yours, with yours k
 If you edit it while a new one is being built, yours stays and the new one goes beside it as
 `profile-new-<date>.md`.
 
+**What Dreaming adds.** With Dreaming on, the morning message can offer lasting things you said for your profile
+("For your profile", see [Dreaming](#dreaming)); a line goes in only when you tap **Keep**, into Kurooto's own block
+(`<!-- kurooto:learned -->`, at the end of the In-brief part), with where and when you said it. Those lines go along
+with every request too. They don't count as your edits, building the profile again keeps them, and you can edit or
+delete them like any line. With no profile yet, the first Keep starts one with just that block.
+
 **From Telegram.** `/aboutme` shows the In-brief part and a link to the editor (it opens on your computer).
 
 **What leaves your computer.** Building the profile sends the reports to the AI you picked. After that, the In-brief
@@ -459,11 +465,27 @@ up what they imply, then tells you in one line with an Undo button.
 It only acts on what you say about yourself: "my friend got a project", "I didn't get it" or "maybe I'll ask" set
 nothing up, and a line is looked at once even when it reaches both the chat and the journal. A question sets up
 nothing, with or without its question mark: "do I have lab every Thursday", "is there a quiz every Monday". It works by rules on this
-computer, with no AI. It never sets alarms, places calls, sends anything or attaches code (`/repos add` does that).
+computer (the one pass below can ask an AI about a line the rules can't read). It never sets alarms, places calls,
+sends anything or attaches code (`/repos add` does that).
+
+**The one pass** (`infer.sweep`, on). Besides what you send, Kurooto reads what never came as a message: your chats
+with it and your journal and daily notes as they are in your notes folder (your lines, not its own blocks). It does
+that once a few minutes after it's first on, over the last 30 days (`infer.sweep_days`), and then each night at 04:20
+over what's new. The rules come first. A line they can't read but that looks like one of the cases above ("Prof Lena
+Ortiz said yes, so I'm on her glacier team now as my project") gets one more try with `infer.sweep_ai`: `local` (the
+default) asks the model on this computer, when there is one, to restate it in one of the forms in the table, and the
+rules read that; a restatement that brings in a name, day or number your line doesn't have is dropped. `main` asks your
+own AI instead (only that line goes to it); `off` leaves it to the rules. What one pass sets up comes in one line:
+
+```
+Set up 2 things from your recent chats and journal (1 project, 1 class). /inferred shows each, with its Undo.
+```
+
+with **Undo all**. `/inferred scan` runs it now.
 
 `/inferred` lists what was set up, newest first; `/inferred undo <id>` (or the Undo button) takes one back. Turn it off
 with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`, `infer.commitments`,
-`infer.quizzes`, `infer.short_names`.
+`infer.quizzes`, `infer.short_names`; `infer.sweep` = false stops only the pass.
 
 ## Dreaming
 
@@ -552,6 +574,25 @@ of several. The day after an exam or a heavy day it starts with one line saying 
   It's rules first. A pair that's close but not clear can get a second opinion (`dreaming.consolidate_ai`): `local`
   (the default) asks the model on this computer when Local AI models has one, `main` asks your own AI (only
   how-to-help-me lines and note lines go to it, never a gist), `off` asks nobody; at most 8 a night.
+- **For your profile** (`dreaming.fold`, on): each night (04:50) it reads what you said since the last time (your
+  chats with Kurooto, your lines on calls, the AI requests you made, your journal and daily notes) for lines that say
+  something lasting about you or how you like to be helped, and offers a few (`dreaming.fold_max`, 3):
+
+  ```
+  For your profile (what you said that seems to last; nothing is written until you tap Keep):
+  1. "I'm a second-year geology student" (a chat, 23 Oct) → your profile
+  2. "Please don't call me before 9" (a call, 23 Oct) → how to help you
+  ```
+
+  Each has **Keep** and **Not that**. Keep adds it, in your words with where it came from ("- Please don't call me
+  before 9 (from a call, 2026-10-23)"): a fact about you into Kurooto's block of your profile, how to help you into
+  your how-to-help-me note; both go along with every AI request. Each Keep has **Undo** (the line comes out and is
+  offered again). Not that drops it for good; a line shown on two mornings without a tap is let go. It only picks
+  lines in the first person that state something (not a question, not "maybe" or "if", not only about today), not
+  already in your profile or note, and never about anyone else (a "he", "she", "my friend" or a phone number, so a
+  message you forwarded isn't learned from), health, money or passwords. With `dreaming.fold_ai` = `local` (the
+  default) the model on this computer, when there is one, takes a second look and drops what isn't lasting; `main`
+  asks your AI (only those lines go to it); `off` leaves it to the rules. `/dream fold` looks now.
 
 Apart from that second opinion, nothing new runs for it: it reads Kurooto's own log, its memory and your notes, so it
 uses no AI and nothing leaves the computer.

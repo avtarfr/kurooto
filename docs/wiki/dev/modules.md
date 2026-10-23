@@ -914,6 +914,26 @@ arrives.
   side unchanged (says where). The Undo (`dcn:<uid>:undo`) puts it back and forgets the decision (re-queuing the item
   unless it was a gist). Events `dreaming_consolidate`, `dreaming_second_opinion`, `dreaming_settled`,
   `dreaming_settle_undone`. `/dream check` is `consolidate.show`. Tests: `tests/unit/test_consolidate.py`.
+  Folding into your profile (`modules/fold.py`, `dreaming.fold`): `scan(app, ai)` runs at `dreaming:fold` (`daily
+  04:50`, in a thread) and inline (rules only) before the morning message when the last scan is over 20 h old.
+  `said(app, st)` reads, from the per-source marks in `<state>/dreaming-fold.json` (`marks`: chat, request, call,
+  journal; the first look `FIRST_DAYS` = 2 back): your turns in `<state>/chat/history.json`, `jobs.finished_since`
+  with lane `you` and no then-action (`learning.asked`), call transcripts' lines whose speaker isn't Kurooto or
+  `(note)`, and daily notes changed since (`graphwrite.outside`, so not Kurooto's blocks). `kind_of(sentence)`:
+  `help` (`HELP`) or `about` (`ABOUT`), never a question (`?`, `ASKS`), `SKIP` (today, maybe, if, "remember that"...),
+  `remember.sensitive` or `learning.OTHERS`. `known()` (profile and how-to-help-me lines, `learning.similar`) and
+  `decided` (hash → kept/no) filter; `second_look()` (`dreaming.fold_ai`, `consolidate._brain`, `AI_MAX` 8, one word
+  KEEP / SKIP) after the lock. `items` hold the words (the file is `owner_only`), at most `PENDING_MAX` 20.
+  `section(app, send)` renders up to `dreaming.fold_max` with rows `(n: Keep, dfo:<ref>:keep)`, `(n: Not that,
+  dfo:<ref>:no)`; shown `SHOWN_MAX` = 2 times without a tap, an item goes. `button` (`dfo`): `keep` writes
+  `"<text> (from <where>, <day>)"`, an `about` line by `AboutYou.add_learned` (core/aboutyou.py: the
+  `<!-- kurooto:learned -->` block, at the end of the In-brief part or the note; a stub profile if none, recorded as
+  built so it isn't "edited"), a `help` line by `remember.add_line(LEARNED)` (`KEPT_LINE` reads the `from ...,`
+  part, so rechecking and consolidating see it); `no` decides for good. Undo (`dfo:<uid>:undo`) is
+  `AboutYou.remove_learned` / `remember.remove_line` (exact line only) and re-queues the item. `brief_of` adds the
+  block's lines to the In-brief part; `save_profile` carries the block into a rebuilt profile and `edited()` compares
+  a hash without it (`_outside`). Events `dreaming_fold_found`, `dreaming_second_look`, `dreaming_fold`,
+  `dreaming_fold_undone`. `/dream fold` is `fold.show`. Tests: `tests/unit/test_fold.py`.
 - **learning** (`modules/learning.py:Learning`, requires `chat`, `extra = True`): "Learns from its own work", four parts
   each behind a setting (`learning.search`, `skills`, `corrections`, `remember`; `part(name)` is the feature and the
   part both on) and a card toggle (`card`, `card_action`, `PARTS`).

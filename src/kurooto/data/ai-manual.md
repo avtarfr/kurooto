@@ -164,7 +164,7 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 | /help, /start | this list; /help <group> shows one group in full, /help <word> finds a command or feature |
 | /aboutme | what I know about you (your profile's In-brief part), and where to edit it |
 | /persona | your persona card: how I talk to you (/persona tone: plain, /persona clear) |
-| /inferred | what was set up from what you said (a project, a class, a meeting), with /inferred undo <id> |
+| /inferred | what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>; /inferred scan looks over your recent chats and journal now |
 | /forget | forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all (asks first) |
 | /gists | one line of what each forgotten call or request decided; /gists <words> finds them |
 | /memory | what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I last talk to Prof Ortiz?", "what was I doing last Thursday?" |
@@ -197,8 +197,8 @@ Done without a tap (sure, only the user's own data, said in one line with Undo):
 
 ## Settings
 
-517 settings in 76 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
+523 settings in 76 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
 
-`addons` (1), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (15), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (8), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
+`addons` (1), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (18), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (11), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
 
-<!-- settings fingerprint: c97f05555ea487ee -->
+<!-- settings fingerprint: 9f47b67c2dd4e6a6 -->

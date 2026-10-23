@@ -340,6 +340,12 @@ class App:
             ledger.start(self)
         except Exception as e:
             self.events.emit("module_failed", module="memory", error=f"{type(e).__name__}: {e}"[:300])
+        try:
+            from kurooto.core import infer  # the one pass over your chats and journal, nightly (core/infer.py)
+
+            infer.start(self)
+        except Exception as e:
+            self.events.emit("module_failed", module="infer", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
     def handle(self, msg: Incoming, also: list[Module] | None = None) -> None:

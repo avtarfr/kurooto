@@ -399,7 +399,8 @@ Without Telegram:
 - Everything Kurooto says comes to the app's chat: reminders, check-ins, the morning message, what's due, your AI's
   answers, "after the call" notes, with their buttons (Snooze, Done, Why?, Less of this...). Questions and approvals
   come as notifications with answer buttons and under **Waiting for you**.
-- `/pause`, `/resume`, `/status`, `/focus`, `/hold` and `/calls` work in the chat, and `/help` lists them.
+- `/pause`, `/resume`, `/status`, `/focus`, `/hold` and `/calls` work in the chat, and `/help` lists them with
+  everything else, the same index as on Telegram; links in messages (each `/help` group's wiki page) open with a tap.
 - Features that send you things (Reminders, Check-ins, Deadlines, Weekly summary...) turn on with the app instead of
   Telegram. Voice notes and Files into notes still need Telegram (they're about what you send the bot; share files
   to the app instead).

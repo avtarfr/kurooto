@@ -320,6 +320,9 @@ README, and appear in Settings once their feature is on.
 | `dreaming.consolidate_ai` | `"local"` | a second opinion on near misses: local (this computer), main (your AI), off |
 | `dreaming.consolidate_max` | `3` | at most this many in one morning message; the rest wait for the next ones |
 | `dreaming.curious` | `true` | a topic you asked about 3+ times this week with no note on it: one line, Make a stub |
+| `dreaming.fold` | `true` | offer lasting things you said for your profile in the morning message (Keep / Not that) |
+| `dreaming.fold_ai` | `"local"` | a second look at what the rules found: local (this computer), main (your AI), off |
+| `dreaming.fold_max` | `3` | at most this many in one morning message; the rest wait for the next ones |
 | `dreaming.loose_ends` | `true` | also the loose ends: your open doubts, unlinked notes, broken links, tasks past due |
 | `dreaming.never_tune` | `["deadlines.reminder", "deadlines.call", "health.now", "a…` | kinds it never tunes (besides the alarm, your reminders and calls, deadlines under 12 hours) |
 | `dreaming.propose_prompts` | `false` | propose a fix to a skill that keeps going wrong (Apply or No; never by itself) |
@@ -468,6 +471,9 @@ README, and appear in Settings once their feature is on.
 | `infer.projects` | `true` | "I got a project under Prof X": a project note with them, and a Meetings section |
 | `infer.quizzes` | `true` | "there's a quiz on Linear Algebra every Monday": a row in the recurring quizzes table |
 | `infer.short_names` | `true` | "LA" for Linear Algebra after two messages call it that (it fits only that one) |
+| `infer.sweep` | `true` | one pass over your chats and journal: once when first on, then nightly on what's new |
+| `infer.sweep_ai` | `"local"` | a line the rules can't read: local (this computer) restates it, main (your AI), off |
+| `infer.sweep_days` | `30` | how far back that first pass reads |
 
 ### `integrate`
 

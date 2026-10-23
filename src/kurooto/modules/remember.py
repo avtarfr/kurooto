@@ -53,7 +53,9 @@ MANAGED = (TOLD, PICKED, LEARNED)  # the sections Kurooto writes in; only their 
 RECHECK_WHEN = "daily 18:30"
 RECHECK_WEEK = 2  # at most this many "Still true?" in 7 days...
 RECHECK_GAP_DAYS = 3  # ...this many days apart
-KEPT_LINE = re.compile(r"^- (?P<fact>\S.*?) \((?P<date>\d{4}-\d{2}-\d{2})\)\s*$")  # "- fact (2026-10-23)"
+KEPT_LINE = re.compile(  # "- fact (2026-10-23)", or with where it came from: "- fact (from a call, 2026-10-23)"
+    r"^- (?P<fact>\S.*?) \((?:(?P<src>from [^()]{1,40}?), )?(?P<date>\d{4}-\d{2}-\d{2})\)\s*$"
+)
 COMMON = set(
     "that this with when what have like from they them than then always never really just want would should "
     "about into your mine some more most much very please".split()
@@ -107,7 +109,7 @@ def help_rel(app: App) -> str:
 
 
 def _norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", re.sub(r"\(\d{4}-\d{2}-\d{2}[^)]*\)", "", s.lower())).strip()
+    return re.sub(r"[^a-z0-9]+", " ", re.sub(r"\((?:from [^()]*?, )?\d{4}-\d{2}-\d{2}[^)]*\)", "", s.lower())).strip()
 
 
 def has_line(text: str, line: str) -> bool:
@@ -228,7 +230,9 @@ def kept_lines(app: App) -> list[dict]:
         m = KEPT_LINE.match(ln.rstrip())
         if m and section in MANAGED:
             line = ln.rstrip()[2:]
-            out.append({"key": fact_key(m["fact"]), "fact": m["fact"], "line": line, "section": section, "date": m[2]})
+            out.append(
+                {"key": fact_key(m["fact"]), "fact": m["fact"], "line": line, "section": section, "date": m["date"]}
+            )
     return out
 
 
