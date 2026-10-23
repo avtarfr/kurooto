@@ -13,6 +13,10 @@
 - **A calmer board**: the corner panels of SYSTEMS (events, your AI, today, due) and the NOTES legend and recent list
   are folded to their first line (with how much more there is); one opens while the pointer is over it, and `L` opens
   or folds them all (remembered in this browser).
+- **A shorter mail digest, grouped by what it asks of you**: Needs you, Dates, Courses, Worth knowing, about 15
+  lines; newsletters only counted. **Exam mail becomes your schedule at once**: every exam of your subjects in a mail
+  (or its attached schedule) is a deadline with its time and room, and the room, syllabus and what to bring go in
+  the course note.
 - **? explains the board**: what the core, the cells, the dots along the nerves and the ripples mean in SYSTEMS, what
   the dots, lines and colours mean in NOTES, and every key.
 - **Ctrl+K from anywhere on the board**: one line for `ask`, `journal`, `note`, `remind 18:30 call mum`,

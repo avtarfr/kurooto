@@ -294,10 +294,14 @@ Nothing is changed in Classroom or Drive.
 
 ## Mail digest
 
-**What it does.** Twice a day (08:00 and 18:00) your new Gmail, sorted into **Needs action**, **People**,
-**Courses**, **Opportunities** and **Admin**, comes to you as one message (a busy check comes in parts, 20 mails each),
-with a copy in your notes (`mail/2026-10-20-0800.md`, linked from that day's journal). Deadlines it finds go into
-Deadlines; course news goes onto the course page. Gmail is only read: nothing is ever sent, deleted, archived or marked
+**What it does.** Twice a day (08:00 and 18:00) your new Gmail comes to you as one short message (about 15 lines; a
+busy check comes in parts, 20 mails each), grouped by what it asks of you: **Needs you** (requests, forms, replies due),
+**Dates** (exams, quizzes, deadlines, events, marked "added" when they went into Deadlines), **Courses** (other news
+per course) and **Worth knowing** (people, opportunities, office notices, five lines at most); newsletters are only
+counted. A copy goes in your notes (`mail/2026-10-20-0800.md`, linked from that day's journal). Mail about exams
+becomes your schedule at once: every exam of your subjects in it, or in a schedule attached as a PDF, is a deadline
+with its time and room, and the room, syllabus and what to bring go under `## Exams` in the course note. Course news
+goes onto the course page. Gmail is only read: nothing is ever sent, deleted, archived or marked
 read.
 
 **You choose what it may read.** Everything else is only counted, by sender, subject and labels, on your computer; its

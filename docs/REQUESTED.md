@@ -29,8 +29,6 @@ Standing plans, never struck through.
   hit) creates projects with whoever they're with ("got a project under Prof X": the project, its supervisor, and
   meetings from then on), classes from "every Monday at 9 I have a lab", routines, a deadline's course, subject
   aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.
-- **Mail about exams is read at once and turned into a schedule** (dates, rooms, what to prepare), not only digested.
-- **Mail digest formatting**: shorter, grouped by what needs you.
 - **Preview the organic blobs in the phone app**, as in the dashboard.
 - **A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
   Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.
@@ -46,6 +44,8 @@ Standing plans, never struck through.
 - **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~Mail digest formatting: shorter, grouped by what needs you~~ (0.5.8: Needs you, Dates, Courses, Worth knowing; about 15 lines)
+- ~~Mail about exams is read at once and turned into a schedule~~ (0.5.8: each exam of your subjects becomes a deadline with its time and room; details in the course note)
 - ~~A legend for the dashboard's organic view~~ (0.5.8: press ? on the board)
 - ~~Handwritten notes linked like any note~~ (0.5.8): a title from what's written, the subject and the lecture it
   was written in, links to the course page and the concepts on it, and its doubts kept findable (`/handwritten link`

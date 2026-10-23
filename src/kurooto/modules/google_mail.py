@@ -1,6 +1,6 @@
-"""Mail digest: twice a day, your new Gmail sorted into Needs action, People, Courses, Opportunities and Admin, sent to
-you with a copy in your notes (mail/). Deadlines it finds go into Deadlines. Gmail is only read: nothing is sent,
-deleted, archived or marked read.
+"""Mail digest: twice a day, your new Gmail grouped by what needs you (Needs you, Dates, Courses, Worth knowing),
+sent to you with a copy in your notes (mail/). Deadlines and exam schedules it finds go into Deadlines. Gmail is only
+read: nothing is sent, deleted, archived or marked read.
 
 What the AI may read is up to you. Everything else is only counted: never summarised, and its text never leaves this
 computer (Kurooto looks only at its sender, subject and Gmail labels, here, to sort it).
@@ -185,8 +185,8 @@ class MailDigest(GooglePart):
     part = "mail_digest"
     title = "Mail digest"
     description = (
-        "Twice a day, your new mail sorted into Needs action, People, Courses, Opportunities and Admin; deadlines "
-        "into Deadlines. Personal mail is only counted."
+        "Twice a day, your new mail grouped by what needs you (Needs you, Dates, Courses, Worth knowing); deadlines "
+        "and exam schedules straight into Deadlines. Personal mail is only counted."
     )
     privacy = (
         "Reads Gmail (read-only: nothing is sent, deleted or marked read). Only mail from senders or labels you chose "
