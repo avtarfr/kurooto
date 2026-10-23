@@ -9,8 +9,9 @@ When a job comes due late (the laptop was asleep):
     recurring jobs run once ("coalesce") or not at all ("skip"), then continue from now;
     one-off jobs run with payload["late_s"] set if they're within their grace period, or with payload["missed"]
     if not, so the module can say "this was due at 09:00" instead of acting as if it were on time.
-Gates postpone a job instead of running it: respect="quiet" waits out quiet hours, respect="call_block" waits
-until a call is allowed (both are hooks the availability rules provide).
+Gates postpone a job instead of running it: respect="quiet" waits out focus time (do-not-disturb: what it holds are
+messages, and "no calls until X" lets messages through), respect="call_block" waits until a call is allowed (both are
+hooks the availability rules provide).
 """
 
 from __future__ import annotations

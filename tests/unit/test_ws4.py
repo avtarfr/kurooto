@@ -250,6 +250,13 @@ def test_without_poppler_a_drawn_pdf_needs_it_and_nothing_goes_to_the_cloud(hw):
     assert "ink.pdf" in env.say("/handwritten status")
 
 
+def test_turning_it_off_stops_the_scan(hw):
+    env, h, _ = hw
+    assert env.app.scheduler.get("handwritten:scan")
+    env.app.disable("handwritten")
+    assert env.app.scheduler.get("handwritten:scan") is None  # no scan job left to fail with a missing action
+
+
 def test_the_card_must_have_room(env, monkeypatch):
     from contextlib import contextmanager
 

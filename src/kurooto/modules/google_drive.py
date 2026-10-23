@@ -133,7 +133,7 @@ class DriveUpload(GooglePart):
                 jsave(self.file, {})  # the folder is gone (deleted in Drive): make it again
         raise GoogleError(404, "Drive lost the folder")
 
-    def _call(self, url: str, data: bytes, headers: dict, method: str) -> tuple[int, bytes, dict]:
+    def _call(self, url: str, data: bytes, headers: dict, method: str, again: bool = False) -> tuple[int, bytes, dict]:
         g = self.app.modules["google"]
         req = urllib.request.Request(  # noqa: S310 (Google's upload address, https)
             url,
@@ -147,8 +147,10 @@ class DriveUpload(GooglePart):
         except urllib.error.HTTPError as e:
             if e.code == 308:  # "resume incomplete": send the next piece
                 return 308, b"", dict(e.headers)
+            if e.code == 401 and not again:  # a refused access token: once more with a new one (Google.api)
+                g._forget_access(self.account)
+                return self._call(url, data, headers, method, again=True)
             if e.code == 401:
-                g._lost_signin(self.account)
                 raise NeedsSignIn("Google refused the sign-in") from None
             try:
                 msg = json.loads(e.read()).get("error", {}).get("message", "")

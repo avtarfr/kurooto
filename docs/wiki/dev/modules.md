@@ -20,7 +20,6 @@ Class attributes:
 | `extra` | True: an add-on that ships with Kurooto: in no preset, listed apart under Features, on only by hand (Exam season) |
 | `heavy` | True: its scheduled work and background task wait for the charger in battery saver mode (`core/power.py`) |
 | `processes`, `processes_intermittent` | program names or command-line fragments to show CPU and memory for on the dashboard |
-| `defaults` | **not used**: nothing reads it. Register settings with `register_defaults` (below) |
 
 Methods on the base class:
 
@@ -115,7 +114,8 @@ register_defaults("pomodoro", {
 })
 ```
 
-The comment on each line becomes the description in `docs/SETTINGS_GUIDE.md`; run
+This is the only way to declare settings (there's no `defaults` class attribute). The comment on each line becomes
+the description in `docs/SETTINGS_GUIDE.md`; run
 `python tools/gen_settings_guide.py` after changing settings (`tests/unit/test_settings_guide.py` checks it). The
 dashboard's Settings tab shows every enabled module's section automatically, rendered by value type, and
 `POST /api/settings` refuses a value whose type differs from the current one. Read with `self.setting("minutes")`.
@@ -289,20 +289,22 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 
 ### Channels and conversation
 
-- **telegram** (`modules/telegram/__init__.py:Telegram`, `api.py:TelegramAPI`): the main channel. `background` long-polls
-  `getUpdates` (timeout 50 s, `allowed_updates` message and callback_query), saving the offset to
+- **telegram** (`modules/telegram/__init__.py:Telegram`, `api.py:TelegramAPI`): the main channel. `background`
+  long-polls `getUpdates` (timeout 50 s, `allowed_updates` message and callback_query), saving the offset to
   `telegram/offset.json` *before* handling each update (at-most-once). Back-off 5-120 s; 409 (another reader or a
-  webhook) waits 30 s; 401 (revoked token) drops the `telegram` notifier channel until the module restarts. Pairing
-  (`pair_start`, `pair_poll`): the token is checked with `getMe`, a one-hour code in a `t.me/<bot>?start=<code>` link,
-  accepted only from a private chat; on success `telegram.chat_id` and `telegram.allowed_users = [from.id]`. Only
-  `allowed_users` in a private chat are served; everyone else is ignored. While paused, messages go to
-  `telegram/paused.jsonl` and are replayed by `replay_paused`. Files are downloaded into the notes inbox (20 MB
-  Telegram download limit); voice goes to Voice notes. Sending: `api.send` splits at 3900 chars and sends at most 6
-  parts (longer text is cut; the job queue sends answers over 7000 chars as a file too); files via `sendDocument`
-  (captions 1000 chars, no buttons). No 429 handling. `telegram/map.json` maps sent message ids to `{kind, ref}` for
-  replies (capped at 3000). The `/` menu is synced from enabled features (`_menu_tick`). Commands `/pause`, `/resume`,
-  `/status`, `/hold`, `/calls`, `/focus`; intents `hold_calls`, `calls_ok`, `focus`. Settings `telegram.chat_id`,
-  `allowed_users`, `silent_kinds`, `api_base` (tests point it at `tests/fakes/telegram.py`), `menu`.
+  webhook) waits 30 s; 401 (revoked token) drops the `telegram` notifier channel until `getUpdates` works again (a new
+  token), then registers it again. Pairing (`pair_start`, `pair_poll`): the token is checked with `getMe`, a one-hour
+  code in a `t.me/<bot>?start=<code>` link, accepted only from a private chat; on success `telegram.chat_id` and
+  `telegram.allowed_users = [from.id]`. Only `allowed_users` in a private chat are served; everyone else is ignored.
+  While paused, messages go to `telegram/paused.jsonl` and are replayed by `replay_paused`. Files are downloaded into
+  the notes inbox (20 MB Telegram download limit); voice goes to Voice notes. Sending: `api.send` splits at 3900 chars;
+  past `MAX_PARTS` (6) it sends the first 5 and a line saying the rest follows, then the whole text as `message.txt`
+  (with the buttons), so nothing is cut (the job queue sends answers over 7000 chars as a file too); files via
+  `sendDocument` (captions 1000 chars, no buttons). `telegram.focus_end` (the end of a `/focus`) is registered in
+  `start()`. No 429 handling. `telegram/map.json` maps sent message ids to `{kind, ref}` for replies (capped at 3000).
+  The `/` menu is synced from enabled features (`_menu_tick`). Commands `/pause`, `/resume`, `/status`, `/hold`,
+  `/calls`, `/focus`; intents `hold_calls`, `calls_ok`, `focus`. Settings `telegram.chat_id`, `allowed_users`,
+  `silent_kinds`, `api_base` (tests point it at `tests/fakes/telegram.py`), `menu`.
 - **chat** (`modules/chat.py:Chat`): free text that isn't a command or intent becomes a job (`Chat.ask`). Within two
   hours, the last six turns are prepended. `Chat.mine` / `Chat.owns(jid)`: only Chat's own jobs are recorded into
   `chat/history.json` (see [core.md](core.md#jobs)); the set is in memory, so an answer finishing after a restart isn't
@@ -357,11 +359,12 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **study** (`modules/study.py`): minutes per subject from the focused window title (read and discarded), idle and lock
   aware (`core/idle.py`); Windows `GetForegroundWindow`, macOS System Events, Linux `hyprctl` / `swaymsg` / `xdotool`.
 - **skills** (`modules/skills.py`): runs `SKILL.md` files (shipped `data/skills`, add-ons, prompts with `skill: true`,
-  the user's own) as AI jobs; routines (`/every`), drafts (`/newskill`), LaTeX revision packs (Tectonic, `latexmk`,
-  `pdflatex`), study packs, `send_file(s)` (over 50 MB goes to Drive upload).
+  the user's own) as AI jobs; routines (`/every`), drafts (`/newskill`), LaTeX revision packs (Tectonic `--untrusted`,
+  else `latexmk` or `pdflatex` with `-no-shell-escape`: the AI wrote the LaTeX), study packs, `send_file(s)` (over
+  50 MB goes to Drive upload).
 - **books** and **integrate**: see [concept-graph.md](concept-graph.md).
 - **handwritten** (`modules/handwritten.py`): transcribes PDFs and photos from an inbox folder (local vision model or
-  Gemini) into Markdown.
+  Gemini) into Markdown. `stop()` cancels its `handwritten:scan` job and halts a scan in progress.
 
 ### Notes, sync and safety
 
@@ -388,7 +391,10 @@ Drive files filed into notes by an AI job), **mail_digest** / **reply_drafts** /
 (`google_mail.py`), **agent_plan** (`google_plan.py`, its own calendar of time blocks), **google_calendar**
 (`google_calendar.py`, read-only), **drive_upload** (`google_drive.py`, resumable uploads; temporary uploads expire
 after `drive_upload.temp_days`). `google_confidential.py` is a helper for summarising confidential mail with a local
-model. Any HTTP 401 is treated as a lost sign-in (the refresh token is dropped).
+model. An HTTP 401 from an API drops the access token and tries once more with a new one (`Google.api`,
+`DriveUpload._call`); only `invalid_grant` when renewing it is a lost sign-in (`_lost_signin` drops the refresh token).
+Then-action `google.draft` (an AI-written `/draft`) is registered in `start()`, so one finishing after a restart
+arrives.
 
 ### Computer
 
@@ -411,22 +417,12 @@ note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py
 
 ## Known problems (as of this writing)
 
-- `modules/handwritten.py:Handwritten.stop` doesn't call `super().stop()`: `handwritten:scan` keeps running after the
-  feature is turned off, and after a restart it is a `missing-action` (a `job_failed` event) every 15 minutes.
 - `modules/space.py:Space.run_clean` and `modules/integrate.py:Integrate.tick` / `garden` / `summary` take no payload,
   so their scheduled runs fail (see [core.md](core.md#every-scheduled-job)).
-- `modules/google.py:Google._draft` registers the `google.draft` then-action only when a draft is requested, so an
-  AI-written draft whose job finishes after a restart is dropped.
-- `modules/google.py:Google.api` and `modules/google_drive.py:DriveUpload._call` treat any HTTP 401 as a lost sign-in
-  and delete the refresh token instead of refreshing once and retrying.
 - `modules/google_drive.py:DriveUpload.expire` deletes temporary uploads with the current account and by file id, so
   after an account switch they are never deleted, and a file the user moved out of the folder is deleted anyway
   (the user-facing text says moving it keeps it).
-- `modules/telegram/__init__.py:Telegram.run` drops the `telegram` notifier channel on a 401 and only `start()`
-  registers it again, so after a new token works, outgoing messages stay off until the module restarts. `api.send`
-  sends at most 6 parts of 3900 characters and silently drops the rest; there is no 429 handling.
-- `modules/telegram/__init__.py`: `telegram.focus_end` is registered only inside the `/focus` handler, so a restart
-  during focus leaves `telegram:focus-end` as a `missing-action` and the focus queue isn't flushed at its end.
+- `modules/telegram/api.py`: there is no 429 (flood limit) handling.
 - `modules/chat.py:Chat.mine` lives in memory: an answer that finishes after a restart isn't recorded into the history,
   and `list(self.mine)[-50:]` keeps an arbitrary 50 ids rather than the newest.
 - `modules/hints.py:policy_kind` tests "no solutions" before "no AI", so a policy line saying both is read as hints
@@ -435,7 +431,6 @@ note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py
 - `modules/capture.py` and `modules/checkins.py` declare no `privacy` and inherit "Stays on this computer.", though with
   Chat on their content goes to the AI. `modules/google_mail.py:MailDigest.privacy` says confidential mail is never
   read, but `mail_digest.confidential = "local"` has a local model read it.
-- `modules/skills.py:compile_tex` passes `-no-shell-escape` to pdflatex but not to latexmk.
 - `modules/calendar.py:Calendar.refresh` keeps the old copy only when every link failed; one failing link among several
   silently drops that link's events.
 - `modules/classpacks.py`: `attendance_rules`, `attendance_rule` and `class_kind` have no callers once Attendance is

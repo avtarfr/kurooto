@@ -59,6 +59,7 @@ class Updates:
         # features that hold back non-critical updates for a while: name -> fn() giving the reason ("" = no hold);
         # exam season holds them during your exams (modules/exam_season.py)
         self.holds: dict[str, Callable[[], str]] = {}
+        self.clock = time.time  # what hold() reads as now (tests move it)
 
     def held(self) -> str:
         """Why a non-critical update waits now ("" when it doesn't). A release signed as critical never waits, and
@@ -71,7 +72,6 @@ class Updates:
             if why:
                 return str(why)
         return ""
-        self.clock = time.time
 
     def start(self) -> None:
         s = self.app.scheduler

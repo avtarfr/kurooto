@@ -130,6 +130,7 @@ class Handwritten(Module):
         self.every("scan", self.setting("every") or "every 15m", lambda p: self.spawn())
 
     def stop(self):
+        super().stop()  # its 15-minute scan with it
         self._halt.set()
 
     # ------------------------------------------------------------------------------------- engines

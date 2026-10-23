@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 
 API = "https://api.telegram.org"
+MAX_PARTS = 6  # a longer text comes as a file after its start (send)
 
 
 class TelegramError(RuntimeError):
@@ -96,8 +97,12 @@ class TelegramAPI:
         return self.call("getMe")
 
     def send(self, chat_id, text: str, buttons: list | None = None, reply_to=None, silent: bool = False) -> int:
-        """Send text (split if long; buttons go on the last part). Returns the last message id."""
-        parts = split_text(text)[:6]
+        """Send text (split if long; buttons go on the last part). Returns the last message id. Past MAX_PARTS
+        messages, the start comes as messages and the whole text as a file after them: nothing is left out."""
+        parts = split_text(text)
+        whole = len(parts) > MAX_PARTS
+        if whole:
+            parts = [*parts[: MAX_PARTS - 1], "(It goes on: the whole text is in the file below.)"]
         mid = None
         for i, part in enumerate(parts):
             params = {
@@ -108,9 +113,19 @@ class TelegramAPI:
             }
             if reply_to and i == 0:
                 params["reply_parameters"] = {"message_id": reply_to, "allow_sending_without_reply": True}
-            if buttons and i == len(parts) - 1:
+            if buttons and i == len(parts) - 1 and not whole:
                 params["reply_markup"] = keyboard(buttons)
             mid = self.call("sendMessage", params)["message_id"]
+        if whole:
+            import tempfile
+
+            with tempfile.TemporaryDirectory() as d:
+                f = Path(d) / "message.txt"
+                f.write_text(str(text), encoding="utf-8")
+                params = {"chat_id": chat_id, "disable_notification": bool(silent)}
+                if buttons:
+                    params["reply_markup"] = keyboard(buttons)
+                mid = self.call("sendDocument", params, files={"document": f}, timeout=300)["message_id"]
         return mid
 
     def edit(self, chat_id, message_id: int, text: str, buttons: list | None = None) -> None:

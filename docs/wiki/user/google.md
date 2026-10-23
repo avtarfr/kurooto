@@ -161,7 +161,8 @@ Dashboard → Features → Google → paste the client file → Save → sign in
 **From Telegram.**
 - `/classroom`: check Classroom now (deadlines and new posts).
 - `/draft someone@example.com ask for an extension on problem set 3`: the AI writes the email (needs Chat on) and saves
-  it as a draft. You get "Draft saved in Gmail: ... Open Gmail to check it and send it yourself."
+  it as a draft. You get "Draft saved in Gmail: ... Open Gmail to check it and send it yourself." (also when Kurooto
+  restarted while the AI was writing it).
 - `/draft someone@example.com | Extension request | Dear ...`: subject and text written by you, saved as it is. No AI.
 - `/draft` only exists while `google.gmail_drafts` is on.
 - `/sync all` (or "sync everything") also checks Classroom, then Classroom → notes and the mail digest.
@@ -182,7 +183,8 @@ Dashboard → Features → Google → paste the client file → Save → sign in
 - "Less of this" on an announcement offers **Fewer** (at most one announcement a day; the rest wait for the evening
   bundle) or Stop. See [messages-it-sends.md](messages-it-sends.md).
 - If the sign-in expires or you remove Kurooto's access at Google, you get an urgent message: "Google sign-in expired
-  ... the Google features are paused". Sign in again from Dashboard → Features → Google.
+  ... the Google features are paused". Sign in again from Dashboard → Features → Google. (A short-lived access key
+  that Google refuses is simply renewed; only Google saying the sign-in itself is gone pauses anything.)
 
 **What leaves your computer.** Nothing new: Kurooto reads from Google with your own sign-in. Drafts are written into
 your own Gmail. The sign-in tokens stay in your computer's keychain.

@@ -81,6 +81,18 @@ def run_jobs(app, n: int = 10) -> int:
     return done
 
 
+def test_a_draft_the_ai_finishes_after_a_restart_still_arrives(gx, monkeypatch):
+    env, g, ai = gx
+    app, gm = env.app, env.app.modules["google"]
+    made = []
+    monkeypatch.setattr(gm, "make_draft", lambda to, subject, body: made.append((to, subject, body)) or "saved")
+    ai.answer = "Subject: Thursday\n\nYes, I can present."
+    # queued before the restart, so /draft never ran in this process
+    app.jobs.submit("x", title="Email draft", quiet=True, then="google.draft", then_payload={"to": "a@b.example"})
+    run_jobs(app)
+    assert made == [("a@b.example", "Thursday", "Yes, I can present.")]
+
+
 # ------------------------------------------------------------------------------------------- permissions
 def test_each_add_on_asks_for_its_own_permission(gx):
     env, g, ai = gx

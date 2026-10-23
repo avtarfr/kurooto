@@ -168,3 +168,19 @@ def test_loop_wakes_for_new_jobs(tmp_path):
     asyncio.run(main())
     s.close()
     assert ran == [{"hi": 1}]
+
+
+def test_a_missing_action_is_reported_as_itself(env):
+    import time
+
+    app, s = env.app, env.app.scheduler
+    s.action("t.fine", lambda p: "all fine")
+    s.every("t:x", "every 10m", "t.fine")
+    s._set_next("t:x", time.time() - 1)
+    asyncio.run(s.tick())
+    assert s.get("t:x").last_result == "all fine"
+    del s.actions["t.fine"]  # its feature went away
+    s._set_next("t:x", time.time() - 1)
+    asyncio.run(s.tick())
+    failed = app.events.tail(5, {"job_failed"})[-1]
+    assert failed["outcome"] == "missing-action" and failed["error"] == "no action 't.fine'"  # not the run before

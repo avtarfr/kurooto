@@ -77,6 +77,13 @@ def test_settings_notes_and_stream(web):
     assert app.settings.get("you.name") == "Riya"
     assert call(srv, "/api/settings", {"key": "notify.desktop", "value": "yes"})[0] == 400  # wrong type
     assert call(srv, "/api/settings", {"key": "telegram.chat_id", "value": 1})[0] == 400  # not editable here
+    app.settings.set("modules.enabled", ["telegram"])  # hidden settings stay unwritable with their feature on
+    for key, value in (("telegram.allowed_users", [1]), ("telegram.api_base", "http://x"), ("telegram.chat_id", 1)):
+        assert call(srv, "/api/settings", {"key": key, "value": value})[0] == 400
+    assert call(srv, "/api/settings", {"key": "brain.base_urls", "value": {}})[0] == 400
+    assert call(srv, "/api/settings", {"key": "telegram", "value": {"allowed_users": [1]}})[0] == 400  # a section
+    assert call(srv, "/api/settings", {"key": "you", "value": {}})[0] == 400
+    assert app.settings.get("telegram.allowed_users") != [1] and app.settings.get("telegram.chat_id") != 1
     (app.workspace / "a.md").write_text("---\ntitle: x\n---\nhello there\n")
     assert call(srv, "/api/note?id=a")[1]["text"] == "hello there\n"
     assert call(srv, "/api/note?id=../../etc/passwd")[0] == 404
@@ -91,3 +98,16 @@ def test_every_feature_is_listed_in_the_wizard_and_dashboard(web):
     from kurooto.web.api import MODULE_ORDER
 
     assert sorted(MODULE_ORDER) == sorted(m.id for m in CATALOG)
+
+
+def test_a_stopped_server_stops_listening_to_events(tmp_path, monkeypatch):
+    from kurooto.core import events
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    app = App()
+    before = len(events._listeners)
+    srv = start(app, port=18771)
+    assert len(events._listeners) == before + 1
+    srv.stop()
+    app.close()
+    assert len(events._listeners) == before

@@ -109,6 +109,57 @@ def test_focus_holds_messages_until_it_ends(env):
     assert "not urgent" in fake.texts() and "1 message waited" in fake.texts()[-1]
 
 
+def test_a_focus_ending_after_a_restart_has_its_action(env):
+    app, tg, fake = env
+    pair(app, tg, fake)
+    app.enable("telegram")
+    assert "telegram.focus_end" in app.scheduler.actions  # before any /focus in this process
+
+
+def test_a_very_long_text_is_never_cut_off(env):
+    from kurooto.modules.telegram.api import TelegramAPI
+
+    app, tg, fake = env
+    api = TelegramAPI(fake.token, fake.base)
+    api.send(7, ("line\n" * 900).strip(), buttons=[[("Ok", "ok")]])  # 2 parts: messages only
+    assert [m for m, _ in fake.sent] == ["sendMessage"] * 2 and "reply_markup" in fake.sent[-1][1]
+    fake.sent.clear()
+    api.send(7, ("line\n" * 6000).strip(), buttons=[[("Ok", "ok")]])  # 8 parts: the start, then all of it as a file
+    assert [m for m, _ in fake.sent] == ["sendMessage"] * 6 + ["sendDocument"]
+    assert "the whole text is in the file" in fake.texts()[-1]
+
+
+def test_a_revoked_token_comes_back_when_it_works_again(env, monkeypatch):
+    import asyncio
+
+    app, tg, fake = env
+    pair(app, tg, fake)
+    app.enable("telegram")
+    real_sleep = asyncio.sleep
+    fake.fail["getUpdates"] = (401, "Unauthorized")
+
+    async def sleep(s):  # no waiting; the token works again after the first 401
+        if s == 300:
+            assert "telegram" not in app.notifier.channels
+            fake.fail.pop("getUpdates", None)
+        await real_sleep(0)
+
+    monkeypatch.setattr(asyncio, "sleep", sleep)
+
+    async def go():
+        stop = asyncio.Event()
+        task = asyncio.create_task(tg.run(stop))
+        for _ in range(2000):
+            if "getUpdates" not in fake.fail and "telegram" in app.notifier.channels:
+                break
+            await real_sleep(0.005)
+        stop.set()
+        await asyncio.wait_for(task, 10)
+
+    asyncio.run(go())
+    assert "telegram" in app.notifier.channels
+
+
 def test_long_text_splits_at_lines():
     parts = split_text(("line\n" * 2000).strip(), limit=3900)
     assert len(parts) == 3 and all(len(p) <= 3900 for p in parts) and not parts[1].startswith("\n")

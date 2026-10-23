@@ -9,9 +9,10 @@ Free limits (core/quota.py): background work skips a limit that's kept for you (
 or used up) and waits in the queue for its reset (not_before) instead of being dropped; your own requests try a
 used-up limit last, and a used-up limit is told in one plain line.
 
-Two lanes, each running one request at a time: yours ("you": what you asked on Telegram, a call, the terminal or the
-dashboard) and work nobody is waiting for ("bg": background=True, automatic revision packs, routines, the morning
-plan). Your request never waits behind a background one.
+Three lanes, each running one request at a time: yours ("you": what you asked on Telegram, a call, the terminal or
+the dashboard), work nobody is waiting for ("bg": background=True, automatic revision packs, routines, the morning
+plan), and a second lane of that work ("chk": the concept graph's second looks and linking, so its checking AI runs
+beside the first). Your request never waits behind a background one.
 
 A watchdog ends a request that is stuck: no AI at work on it and no program running for jobs.stuck_min minutes
 (10), or still going past its time limit plus a grace. It ends as failed with a plain message. You can cancel what's

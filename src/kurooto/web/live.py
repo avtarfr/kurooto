@@ -556,7 +556,7 @@ class Live:
         self.graph = Graph(app.workspace)
         self.vitals = Vitals(app)
         self._stop = threading.Event()
-        events_mod.subscribe(self._event)
+        self._unsub = events_mod.subscribe(self._event)
         threading.Thread(target=self._loop, name="live", daemon=True).start()
 
     def _event(self, rec: dict) -> None:
@@ -611,3 +611,4 @@ class Live:
 
     def stop(self) -> None:
         self._stop.set()
+        self._unsub()  # a stopped server's pages get no more events

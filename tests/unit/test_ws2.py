@@ -416,6 +416,16 @@ def test_send_a_file_to_drive_in_pieces(drive, tmp_path):
     assert not [p for _, p, _ in g.calls if "permissions" in p]
 
 
+def test_a_refused_access_token_mid_upload_is_renewed(drive, tmp_path):
+    env, g, ai, du = drive
+    gm = env.app.modules["google"]
+    env.app.secrets.set("google.tokens", json.dumps({**gm.tokens(), "access_token": "stale", "expires": 2e9}))
+    f = tmp_path / "notes.txt"
+    f.write_text("hello")
+    du._resumable(f, "notes.txt", "folder-1")  # its first call is refused, then works with a new token
+    assert gm.signed_in() and next(iter(g.uploads.values()))["data"] == b"hello"
+
+
 def test_files_over_telegrams_limit_go_to_drive(drive, tmp_path, monkeypatch):
     env, g, ai, du = drive
     app = env.app

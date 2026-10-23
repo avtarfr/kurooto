@@ -357,11 +357,13 @@ def test_an_answer_without_latex_is_delivered_as_is(env, ai, monkeypatch):
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="a script stands in for latexmk")
-def test_the_computers_own_latex_makes_the_pdf_when_tectonic_isnt_there(tmp_path, env, monkeypatch):
-    fake = tmp_path / "latexmk"
+@pytest.mark.parametrize("engine", ["latexmk", "pdflatex"])
+def test_the_computers_own_latex_makes_the_pdf_when_tectonic_isnt_there(tmp_path, env, monkeypatch, engine):
+    fake = tmp_path / engine
     fake.write_text(
         f"#!{sys.executable}\nimport sys, pathlib\n"
         "tex = pathlib.Path(sys.argv[-1])\n"
+        "tex.with_name('argv.txt').write_text(' '.join(sys.argv[1:]))\n"
         "tex.with_suffix('.pdf').write_bytes(b'%PDF-1.4 fake')\n"
         "tex.with_suffix('.aux').write_text('x')\n"
         "tex.with_suffix('.log').write_text('x')\n",
@@ -376,6 +378,7 @@ def test_the_computers_own_latex_makes_the_pdf_when_tectonic_isnt_there(tmp_path
     ok, err = sk.compile_tex(env.app, f)
     assert ok, err
     assert f.with_suffix(".pdf").is_file()
+    assert "-no-shell-escape" in (tmp_path / "argv.txt").read_text().split()  # AI-written LaTeX never runs commands
     assert not f.with_suffix(".aux").exists() and not f.with_suffix(".log").exists()  # no litter next to the pdf
 
 

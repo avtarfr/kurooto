@@ -513,7 +513,8 @@ class App:
 
     def _job_done(self, job, outcome: str, err: BaseException | None) -> None:
         if outcome in ("error", "missing-action"):
-            self.events.emit("job_failed", key=job.key, outcome=outcome, error=str(err or job.last_result)[:300])
+            why = str(err) if err else f"no action {job.action!r}"  # job.last_result is the run before this one
+            self.events.emit("job_failed", key=job.key, outcome=outcome, error=why[:300])
 
     def close(self) -> None:
         if self._stop is not None:  # the assistant itself is stopping (not a `kurooto` command): last words

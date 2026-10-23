@@ -127,7 +127,7 @@ def svc(env, site, tmp_path, monkeypatch):
     (tmp_path / "updates").mkdir()
     u.u = updater(tmp_path / "updates", site)
     u.u.state = env.app.paths.state
-    u.clock = time.time
+    assert u.clock is time.time  # the updater has its own clock (hold() used to raise AttributeError without this)
     staged: list[str] = []
 
     def stage(rel):  # no download or venv in tests

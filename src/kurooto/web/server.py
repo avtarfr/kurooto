@@ -223,7 +223,12 @@ class Server:
                 path = urlparse(self.path).path
                 if not self._host_ok() or not self._same_user() or not (self._authed() or self._tools_authed(path)):
                     return self._send(403, {"error": "no"})
-                n = int(self.headers.get("Content-Length") or 0)
+                try:
+                    n = int(self.headers.get("Content-Length") or 0)
+                except ValueError:
+                    n = -1
+                if n < 0:  # read(-1) would wait for the connection to close
+                    return self._send(400, {"error": "bad length"})
                 if n > 4_000_000:  # long reports from AI accounts (About you)
                     return self._send(413, {"error": "too big"})
                 try:

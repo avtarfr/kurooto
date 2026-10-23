@@ -27,7 +27,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | Not enough space | The wizard says what needs it. Free some space, or pick fewer features. |
 | "That doesn't look like a bot token" | Copy the whole token from BotFather's message (it looks like `123456789:AAH…`). |
 | Telegram didn't accept the token | Copy it again, or send `/token` to @BotFather to see it. |
-| "That token was revoked" | Get the new token from @BotFather and paste it on the setup page. |
+| "That token was revoked" | Get the new token from @BotFather and paste it on the setup page. Messages to you start again as soon as it works; no restart needed. |
 | "Got a /start without the code" | Send the whole `/start …` message the setup page shows, not just Start. |
 | "This link expired" | Pairing links last an hour: press **Get a new link**. |
 | "This bot is connected to a web address (a webhook)" | Press **Disconnect it** on the setup page. |
