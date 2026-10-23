@@ -191,6 +191,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | a PDF of handwriting waiting to be written out at night | Handwritten notes | | list | | yes | |
 | handwritten pages written out into notes | Handwritten notes | | list | one a day | yes | |
 | a handwritten file that couldn't be written out | Handwritten notes | | list | | yes | |
+| handwritten notes linked to their lecture, course page and concepts | Handwritten notes | | list | one a day | yes | |
 | a book that was read | Books and PDFs | `books.at` | list | | yes | |
 | what the concept graph did overnight | Concept graph | `integrate.at` | list | | yes | |
 | the notes brain's nightly upkeep didn't finish | Notes brain | `gbrain.upkeep` | list | | yes | |

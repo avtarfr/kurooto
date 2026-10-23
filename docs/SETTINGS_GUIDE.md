@@ -351,6 +351,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `handwritten.folder` | `""` | where scans land; empty = handwritten-inbox in your notes (or in your files folder) |
 | `handwritten.into` | `""` | where the notes go, inside your notes folder; empty = your notes layout's (handwritten/) |
 | `handwritten.keep_original` | `"copy"` | copy (next to the note, or in files.folder) \| link (leave it where it is) |
+| `handwritten.link` | `true` | link each written-out note to its lecture, course page and concept notes (one AI request) |
 | `handwritten.local` | `true` | a model on this computer reads the pages when there is one (photos and PDFs) |
 | `handwritten.local_model` | `""` | an Ollama model of your choice that reads pictures; empty: Local models' pick |
 | `handwritten.max_pages` | `60` | pages written out per PDF |

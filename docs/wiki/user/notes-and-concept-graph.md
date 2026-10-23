@@ -149,7 +149,7 @@ These rules hold for Kurooto itself, for every skill and for the AI's tools:
 - **It adds; it doesn't reword or delete.** New notes and new lines, yes. Your existing sentences stay as you wrote
   them, and your own words go in verbatim (only obvious typos fixed).
 - **Its own parts are marked.** Where Kurooto keeps a part of a note up to date (a book's chapter list, a concept's
-  "Seen in" list, exam prep, a handwritten transcription), that part sits between markers like
+  "Seen in" list, exam prep, a handwritten transcription and its links), that part sits between markers like
   `<!-- kurooto:seen -->` and `<!-- /kurooto:seen -->`. Only what's between them is ever replaced. Write anything you
   like above or below.
 - **Editing only when you ask.** The AI changes existing text only with its `edit_note` tool, when you asked it to,
@@ -496,6 +496,11 @@ with an agent program (agy or Claude Code) installed; see "Which AI" below.
 nothing links to, are checked once more against everything that's there now (up to 40 a day,
 `integrate.garden_per_day`). It also takes out links Kurooto wrote to notes that don't exist any more (a concept
 dropped after a second look, or a note you deleted). Your own links are never touched.
+
+**Handwritten notes join the graph too.** Each written-out handwritten note is linked with the same candidate search
+and one request to the second-look AI: to the lecture it was written in, the course page and the concept notes it
+covers, with a real title and its doubts listed (`/handwritten link` for older ones; details on
+[Books and study](books-and-study.md#handwritten-notes)).
 
 **The morning line** (`integrate.summary`), at 07:10 when anything happened: "Concept graph: 14 batches, +22 concept
 notes, +61 links, 9 notes updated; 30 AI requests (about $0.40 at API prices); 5 doubtful, 2 dropped after a second

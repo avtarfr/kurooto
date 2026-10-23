@@ -164,6 +164,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `books.json`, `gbrain.json`, `gbrain-checkup.json`, `gbrain/` | books, gbrain |
 | `integrate/` (`ledger.json`, `seen.json`, `chapters.json`, `garden.json`, `pending/`, `undo/`, `vectors.db`) | `modules/integrate.py`, `core/conceptgraph.py` |
 | `handwritten*.json`, `handwritten/<id>/` | `modules/handwritten.py` |
+| `handwritten-links.json`, `handwritten-undo/` | `modules/handwritten_links.py` |
 | `calendar.json` | `modules/calendar.py` |
 | `google-classroom.json`, `google-signin.json`, `google-needs-<part>` | `modules/google.py` |
 | `classroom-notes/`, `mail-digest/`, `reply-drafts/`, `digest-email-*`, `drive-upload.json`, `drive-temporary.json`, `agent-plan.json` | the Google parts |

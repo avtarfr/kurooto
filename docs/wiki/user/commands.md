@@ -103,6 +103,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/studied 2h linear algebra` | log study time done away from the computer | Study tracker |
 | `/books`, `/books read now`, `/books read force` (also on battery), `/books stop`, `/books folder la`, `/books mix la book 30 classroom 30 own 40`, `/books mix la prefer own book classroom`, `/books mix la reset`, `/books setup` | your books and how far reading got; the source mix | Books and PDFs |
 | `/handwritten`, `/handwritten status`, `/handwritten retry` | write out waiting handwritten pages now | Handwritten notes |
+| `/handwritten link`, `/handwritten undo` | link the notes written out before to their lecture, course page and concepts / take back the last linking | Handwritten notes |
 
 More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-and-exams.md),
 [Books and study](books-and-study.md).

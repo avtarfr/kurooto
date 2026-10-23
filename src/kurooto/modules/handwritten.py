@@ -14,6 +14,11 @@ Who reads the pages:
                     here instead).
 The note keeps Kurooto's part between markers: when the original changes (you edited the page on your tablet), only
 that part is written again; what you wrote around it stays.
+
+Then it's linked like any other note (modules/handwritten_links.py): a real title, its subject and lecture (from when
+it was written and the timetable, or from what it says), a ## Links list (the lecture, the course page, the concept
+notes it covers, with reasons) and a ## Doubts list, and a line on the course page. One request to your AI does the
+choosing; /handwritten link does it for notes written out before, /handwritten undo takes the last one back.
 """
 
 from __future__ import annotations
@@ -36,6 +41,7 @@ from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock, Timeout
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
+from kurooto.modules.handwritten_links import Linker
 from kurooto.modules.voice_notes import gemini_api
 
 register_defaults(
@@ -52,6 +58,7 @@ register_defaults(
         "dpi": 110,  # how sharp the page pictures are
         "max_pages": 60,  # pages written out per PDF
         "keep_original": "copy",  # copy (next to the note, or in files.folder) | link (leave it where it is)
+        "link": True,  # link each written-out note to its lecture, course page and concept notes (one AI request)
     },
 )
 KINDS = {
@@ -93,7 +100,9 @@ class Handwritten(Module):
     )
     privacy = (
         "Pages are read by a model on this computer when there is one; otherwise they go to Google (Gemini, your "
-        "free key), unless you turn that off (handwritten.cloud)."
+        "free key), unless you turn that off (handwritten.cloud). To link a written-out note to your other notes, "
+        "its text and the titles and opening lines of the notes it may relate to go to the AI you picked, like any "
+        "request (handwritten.link off: no linking)."
     )
 
     def __init__(self, app):
@@ -101,6 +110,7 @@ class Handwritten(Module):
         self._thread: threading.Thread | None = None
         self._halt = threading.Event()
         self.status = ""  # what it's doing now, for /handwritten status
+        self.linker = Linker(self)  # linking the notes into the rest (modules/handwritten_links.py)
 
     def folder(self) -> Path:
         f = self.setting("folder")
@@ -496,6 +506,10 @@ class Handwritten(Module):
         note.write_text(put_block(old, block, head), encoding="utf-8")
         known[src.name] = {"note": str(note), "copy": kept}
         jsave(notes_file, dict(list(known.items())[-2000:]))
+        try:  # linked like any other note; the answer comes later (a failure never costs the transcription)
+            self.linker.submit(note, src)
+        except Exception as e:
+            self.app.events.emit("handwritten_link_failed", error=str(e)[:200])
         return layout.shown(self.app, note)
 
     # ------------------------------------------------------------------------------------- telegram
@@ -503,7 +517,8 @@ class Handwritten(Module):
         return [
             Command(
                 "handwritten",
-                "write out the handwritten pages waiting in the folder now (/handwritten status, /handwritten retry)",
+                "write out the handwritten pages waiting in the folder now (/handwritten status, /handwritten retry, "
+                "/handwritten link, /handwritten undo)",
                 self._cmd,
             )
         ]
@@ -517,6 +532,10 @@ class Handwritten(Module):
             lines = [self.status or ("Working on the folder." if busy else "Nothing going on.")]
             lines += [f"Couldn't: {k} ({v})" for k, v in list(failed.items())[:5]]
             return "\n".join(lines)
+        if a == "link":  # notes written out before linking existed (or whose linking failed): once each
+            return self.linker.link_all()
+        if a == "undo":
+            return self.linker.undo()
         if a == "retry":  # files that failed get another go
             failed = jload(failed_file, {}) or {}
             seen = jload(self.app.paths.state / "handwritten.json", {}) or {}
