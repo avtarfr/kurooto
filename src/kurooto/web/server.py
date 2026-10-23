@@ -38,9 +38,11 @@ PALETTES = ("kuro", "rose", "system")
 # the dashboard's layout: dense (one full-screen board, on screens 1280 px wide or more; narrower ones get roomy) or
 # roomy; projects: folders of git repositories its PROJECTS box shows (empty: Research's repositories); panes: the dense
 # board's hidden panes ("status", "systems", "notes", "terminal"); hidden_features: features off the Features page;
-# links_in: where links to other sites open, "default" (this computer's default browser) or "here" (static/links.js)
+# links_in: where links to other sites open, "default" (this computer's default browser) or "here" (static/links.js);
+# study_mode: the board shows only the notes map and the STUDY pane (core/actions.py: study_mode)
 register_defaults(
-    "look", {"layout": "dense", "projects": [], "panes": [], "hidden_features": [], "links_in": "default"}
+    "look",
+    {"layout": "dense", "projects": [], "panes": [], "hidden_features": [], "links_in": "default", "study_mode": False},
 )
 LAYOUTS = ("dense", "roomy")
 CSP = (
@@ -252,9 +254,10 @@ class Server:
         jsave(access_file(app.paths), {"url": self.url, "token": self.tools_token, "started": time.time()})
 
     def fill(self, html: str) -> str:
-        """A page with its key, the version, the palette (look.palette) and the layout (look.layout) written in. The
-        system palette's colours come as a <style> (made only of checked #rrggbb values), and static/palette.js keeps
-        them current. static/links.js sends links to other sites to the default browser (look.links_in)."""
+        """A page with its key, the version, the palette (look.palette), the layout (look.layout) and Study mode
+        (look.study_mode) written in. The system palette's colours come as a <style> (made only of checked #rrggbb
+        values), and static/palette.js keeps them current. static/links.js sends links to other sites to the default
+        browser (look.links_in)."""
         from kurooto.core import palette as pal
 
         name = pal.resolve(self.app)[0]  # "system" with nothing found is kuro
@@ -266,6 +269,7 @@ class Server:
         links = "here" if self.app.settings.get("look.links_in") == "here" else "default"  # never anything else
         head += f'<meta name="kurooto-links" content="{links}"><script src="/static/links.js" defer></script>'
         html = html.replace("</head>", head + "\n</head>", 1).replace("{{LAYOUT}}", layout)
+        html = html.replace("{{STUDY}}", "on" if self.app.settings.get("look.study_mode") else "")
         return html.replace("{{TOKEN}}", self.token).replace("{{VERSION}}", __version__).replace("{{PALETTE}}", name)
 
     def start(self) -> Server:

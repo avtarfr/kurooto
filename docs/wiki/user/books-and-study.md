@@ -151,6 +151,7 @@ log by hand.
 | `/study la 50` | starts a 50-minute session away from the computer (library, paper); it ends by itself with "Session done. Linear Algebra: 50 min logged. Take a break." |
 | `/study la` | starts an open session |
 | `/study stop` | ends the session and logs it |
+| `/study mode on` / `/study mode off` | the dashboard's [Study mode](dashboard.md#study-mode) |
 | `/studied 2h linear algebra`, `/studied 90m stats` | logs time afterwards |
 | "starting linear algebra for 50 min", "I'm studying stats" | starts a session |
 | "done studying" | ends it |
@@ -186,7 +187,8 @@ For swayidle: `swayidle timeout 300 'kurooto idle away' resume 'kurooto idle bac
 **Research**; with [Research](research.md) on, its projects and repository folders count too.
 
 **On the dashboard.** The STATUS pane shows "study today"; `kurooto top` too. The weekly summary and the Sunday review
-call include study hours.
+call include study hours. [Study mode](dashboard.md#study-mode) (Alt+M, `/study mode on`) keeps only your notes and a
+focus and break timer: a focus holds calls and messages and logs its minutes here.
 
 **Settings that matter** (Dashboard → Settings → Study tracker)
 
@@ -196,6 +198,8 @@ call include study hours.
 | `study.daily_note` | `23:45` | when the day's hours go into the daily note; empty: never |
 | `study.research_paths` | `[]` | words or folders that count as Research |
 | `study.keywords` | `{}` | extra words per subject, e.g. `{"linear-algebra": ["matrix", "eigen"]}` |
+| `study.focus_min` / `study.break_min` | 25 / 5 | Study mode's timer: minutes of focus, then of break |
+| `study.timer_ends_mode` | off | Study mode ends when a focus ends, instead of a break |
 
 **What leaves your computer.** Nothing. Window titles are read here and thrown away.
 

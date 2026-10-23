@@ -2224,6 +2224,8 @@ window titles) and Linux on X11, Hyprland or Sway. Needs Subjects.
   runs, the window doesn't count. Afterwards: `/studied 2h linear algebra` or "studied stats for an hour", or tell
   the evening call.
 - **How much:** `/study` (today), `/study week`, "how much did I study today?".
+- **Study mode** on the dashboard (`/study mode on|off`, Alt+M): a focus and break timer for a subject that holds
+  calls and messages during the focus and logs its minutes here (see [The dashboard](#the-dashboard)).
 - **In your notes:** at 23:45 the day's hours go into your daily note as "## Study hours" (`study.daily_note`; empty
   to turn it off).
 - **How it tells you're away:** Windows and macOS from the system's last-input time; Linux from your desktop (X11,
@@ -2244,7 +2246,8 @@ window titles) and Linux on X11, Hyprland or Sway. Needs Subjects.
 - **Research:** a window naming one of `study.research_paths` (words, or folders matched by their name, e.g.
   `~/code/flow-model`) counts as **Research**; with Research on, its projects and repository folders count too.
 
-*Settings:* `study.idle_min` (default 5), `study.research_paths` (default empty), `study.daily_note`.
+*Settings:* `study.idle_min` (default 5), `study.research_paths` (default empty), `study.daily_note`,
+`study.focus_min` (25), `study.break_min` (5), `study.timer_ends_mode` (off).
 *Undo:* empty `study.research_paths`; remove the idle hook lines (and run `kurooto idle back` once).
 
 ### Research
@@ -2570,6 +2573,18 @@ again brings the others back. **panes**, in the board's top-right corner, hides 
 (one always stays) and the others take the room; it lists the pages and their keys too. What's hidden is the setting
 `look.panes` (e.g. `["status"]`), so every browser shows the same. *Undo:* panes → show them all, or empty
 `look.panes`.
+
+**Study mode.** **study** in the board's top-right corner (roomy: the top bar), **Alt+M**, Ctrl+K → `study on`, or
+`/study mode on` on Telegram (or "study mode", "leave study mode") keeps only your notes and studying: the NOTES map
+large, with the chosen subject's notes lit, and a STUDY pane with a focus and break timer, today's study per subject,
+what's due in two weeks (quizzes and exams, tasks, what's time to start), recall cards from the subject's exam prep
+(with Quiz on) and the subject's notes (course page, exam prep, lectures, concepts; click one to find it on the map,
+double-click to open it). A focus (`study.focus_min`, 25) is focus time, so calls and messages that can wait are held,
+and its minutes are logged to the subject in the [Study tracker](#study-tracker); then a break (`study.break_min`, 5),
+then the next focus waits for **start**. **pause** keeps what's left, **reset** ends it; `study.timer_ends_mode` (the
+pane's "then leave Study mode") ends Study mode with the focus instead of a break. Everything else is hidden, untouched,
+and leaving puts the board back exactly as it was. The mode is the setting `look.study_mode`, so it survives reloads
+and follows a switch from Telegram at once. *Undo:* leave Study mode (Alt+M again, or `/study mode off`).
 
 **Search.** Features and Settings have a search box at the top (`/` or **Ctrl+F** while the page is open; Ctrl+F
 again is the browser's own; **Esc** empties it). It filters as you type, in any case: a feature by its name, what it

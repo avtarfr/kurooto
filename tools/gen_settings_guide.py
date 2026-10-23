@@ -89,6 +89,7 @@ NOTES = {  # settings whose source line has no comment: what they do
     "look.links_in": "where links open: default is your default browser",
     "look.panes": "the dense board's hidden panes: status, systems, notes, terminal (empty: none hidden)",
     "look.projects": "folders of git repositories the PROJECTS box shows (empty: Research's repositories)",
+    "look.study_mode": "the dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, /study mode)",
     "mail_digest.at": "when mail digests run",
     "mail_digest.confidential": "what to do with confidential mail: count, hide or skip",
     "mail_digest.query": "an extra Gmail search the digest is limited to",

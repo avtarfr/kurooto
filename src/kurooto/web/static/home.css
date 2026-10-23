@@ -233,7 +233,7 @@ body.dense .maxed .mx::before, body.dense .pane.ov .mx::before { content: "⤡";
 body.dense .t:hover .mx::before { color: var(--accent-text); }
 body.dense .pane.tr > h3, body.dense #pane-tabs.tr > .tabs, body.dense #pane-page > .tabs { right: calc(var(--ctlw, 84px) + 18px); }
 .tabs .tab u, .panes-menu u { text-decoration: underline; text-underline-offset: 2px; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); }
-body.dense .panes-ctl { display: block; position: absolute; top: calc(14px - 0.78em); right: 24px; z-index: 8; font: 400 11.5px/1.5em var(--mono); }
+body.dense .panes-ctl { display: flex; gap: 8px; position: absolute; top: calc(14px - 0.78em); right: 24px; z-index: 8; font: 400 11.5px/1.5em var(--mono); }
 body.dense .panes-ctl > button { display: block; height: 1.5em; padding: 0 5px; border: 0; border-radius: 0; font: inherit; color: var(--dim);
   cursor: pointer; background: linear-gradient(var(--bg) 50%, var(--panel) 50%); }
 body.dense .panes-ctl > button::before { content: "┤ "; color: var(--line); }
@@ -312,3 +312,70 @@ body .hid-list li button { flex: none; padding: 1px 10px; font: 11.5px var(--mon
 .guide p { margin: 4px 0; color: var(--fg); white-space: normal; max-height: none; }
 .guide p.keys { margin-top: 12px; color: var(--dim, #8a8f84); font-size: 12px; }
 
+
+/* ------------------------------------------------------------------------------------------------ Study mode
+   body.study (Alt+M, look.study_mode): the NOTES map large beside the STUDY pane, the timer, today, what's due,
+   recall cards and the subject's notes. The other panes keep their state, hidden, and come back as they were. */
+#pane-study, .study-tg { display: none; }
+body.study #pane-study { display: flex; }
+body.dense.study #pane-study { grid-area: study; }
+body.study .mx, body.study #panes-btn { display: none; }
+body.study #study-btn { color: var(--accent-text); }
+.bar .right .study-tg { display: inline-block; padding: 2px 8px; font: 12px var(--mono); }
+body.study:not(.dense) .grid { grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr); grid-template-rows: minmax(0, 1fr); }
+body.study:not(.dense) #pane-status, body.study:not(.dense) #pane-systems, body.study:not(.dense) #pane-tabs { display: none; }
+@media (max-width: 900px) { body.study .grid, body.study .grid.tall { grid-template-columns: 1fr; grid-template-rows: 60vh auto; } }
+/* in and out: the panes that come slide up a little and fade in (none with reduced motion) */
+@keyframes sm-in { from { opacity: 0; transform: translateY(8px) scale(0.995); } }
+.grid.swap > .pane:not(.gone):not(.hidden) { animation: sm-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.grid.swap > .pane:not(.gone):not(.hidden):nth-of-type(2n) { animation-delay: 40ms; }
+@media (prefers-reduced-motion: reduce) { .grid.swap > .pane { animation: none !important; } }
+#sm-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 10px 8px; display: flex; flex-direction: column;
+  font: var(--fs) / var(--lh) var(--mono); scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+#sm-body .box:first-child { margin-top: 6px; }
+body.dense #sm-body { padding-top: 18px; }
+#sm-body .row { min-height: calc(var(--fs) * var(--lh)); }
+#sm-body .row.on .sm-name, #sm-body .row.on .sm-t { color: var(--accent-text); }
+.sm-sub { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; }
+.sm select, .sm input[type=number] { margin: 0; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 2px;
+  padding: 2px 6px; font: inherit; }
+.sm select { flex: 1; min-width: 0; }
+.sm input[type=number] { width: 4.4em; }
+.sm select:focus-visible, .sm input:focus-visible, .sm button:focus-visible, .sm summary:focus-visible { outline: 1px solid var(--hover); outline-offset: 1px; }
+.sm-clock { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 2px 0 2px; }
+.sm-time { font: 600 46px/1.1 var(--mono); letter-spacing: .02em; font-variant-numeric: tabular-nums; color: var(--dim); transition: color .3s ease; }
+.sm-time.run { color: var(--sand); }
+.sm-time.brk { color: var(--lav); }
+.sm-phase { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#sm-bar .m { height: 0.5em; }
+.sm-btns { display: flex; gap: 6px; margin: 8px 0 6px; }
+.sm-btns button { padding: 3px 14px; font: inherit; border-radius: 2px; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), border-color .2s ease; }
+.sm-btns button:active:not(:disabled) { transform: scale(0.97); }
+.sm-btns #sm-go:not(:disabled) { border-color: var(--accent); color: var(--fg); }
+.sm-btns button:disabled { opacity: .45; cursor: default; }
+.sm-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.sm-opts label { display: inline-flex; align-items: center; gap: 5px; margin: 0; font: inherit; color: var(--dim); }
+.sm-opts input[type=checkbox] { margin: 0; accent-color: var(--accent); }
+.sm-said { margin: 4px 0 0; min-height: 1.2em; color: var(--accent-text); white-space: pre-wrap; }
+.sm-said:empty { display: none; }
+.sm-said.bad { color: var(--bad); }
+.sm-name { width: 9em; overflow: hidden; text-overflow: ellipsis; flex: none; }
+.sm-h { min-width: 3.2em; }
+.sm-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sm-kind { flex: none; width: 4.2em; color: var(--dim); }
+.sm-kind.exam { color: var(--peach); }
+.sm-kind.start { color: var(--lav); }
+.sm-card { margin: 2px 0; }
+.sm-card summary { cursor: pointer; list-style: none; }
+.sm-card summary::before { content: "▸ "; color: var(--dim); }
+.sm-card[open] summary::before { content: "▾ "; }
+.sm-card p { margin: 2px 0 6px 1.4em; color: var(--fg); white-space: normal; }
+#sm-body > .sm-notes { flex: 1 0 auto; min-height: 9em; display: flex; flex-direction: column; }
+#sm-notes { display: flex; flex-direction: column; }
+.sm-note { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 1px 2px; border: 0; border-radius: 2px; background: none;
+  font: inherit; text-align: left; cursor: pointer; color: var(--fg); }
+.sm-note:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.sm-note.on { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.sm-note .sm-nk { flex: none; width: 4.6em; }
+.sm-note .sm-t { flex: 1; min-width: 0; }
+.sm-note .r { margin-left: auto; flex: none; }

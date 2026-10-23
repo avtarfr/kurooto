@@ -11,7 +11,11 @@ Actions: journal.add {text} · note.capture {text} · reminder.add {when, what} 
 reminder.snooze {key, minutes} · deadline.add {title, when, course?} · deadline.done {id} · deadline.move {id, when} ·
 alarm.set {when} · alarm.skip {day} · alarm.clear · alarm.daily {time or "off"} · checkin.skip {name} ·
 checkin.postpone {name, minutes} (later today) · checkin.defer {name} (to tomorrow morning) · ask {text} (a job: its
-answer comes like a chat answer) · question.answer {id, answer}
+answer comes like a chat answer) · question.answer {id, answer} · study.mode {on} · study.timer {do: start|pause|reset,
+subject?}
+
+    study_view(app, subject)        what the dashboard's Study mode shows (the timer, today's study per subject, what's
+                                    due, start-by dates, recall cards, the subject's notes)
 """
 
 from __future__ import annotations
@@ -118,6 +122,120 @@ def today(app: App) -> dict:
     )
     out["features"] = sorted(m.id for m in app.enabled())
     return out
+
+
+# ------------------------------------------------------------------------------------------------ Study mode
+# The dashboard's Study mode (look.study_mode): the NOTES map large beside a STUDY pane, everything else hidden until
+# it's off. /study mode on|off, "study mode", Alt+M and Ctrl+K → study all come here; the page follows the event.
+NOTE_KINDS = ("course", "exam_prep", "doubts", "class_log")  # a subject's own pages first, then its notes by date
+DATED = re.compile(r"^\d{4}-\d\d-\d\d-")  # a lecture note: <date>-<topic>.md (core/layout.py)
+
+
+def study_mode(app: App, on: bool) -> str:
+    app.settings.set("look.study_mode", bool(on))
+    app.events.emit("study_mode", on=bool(on))
+    if on:
+        return "Study mode on: the dashboard shows your notes, the study timer and what's due. /study mode off ends it."
+    return "Study mode off: the dashboard is back as it was."
+
+
+def subject_notes(app: App, slug: str, limit: int = 40) -> list[dict]:
+    """A subject's notes for Study mode: its course page, exam prep, doubts and class log, then its lecture and concept
+    notes, newest first (where core/layout.py keeps them; in the zettelkasten layout, concept notes tagged with it).
+    Ids are the notes map's (the path in the notes folder without .md)."""
+    from kurooto.web.live import note_info
+
+    root = Path(app.workspace)
+    found: dict[Path, str] = {layout.path(app, k, subject=slug): k for k in NOTE_KINDS}
+    folder = layout.path(app, "subject", subject=slug)
+    if folder.is_dir():
+        for f in folder.rglob("*.md"):
+            if not any(x.startswith(".") for x in f.relative_to(folder).parts):
+                found.setdefault(f, "lecture" if DATED.match(f.name) else "concept")
+    concepts = layout.path(app, "concept", subject=slug, slug="x").parent
+    if concepts != folder and concepts.is_dir():
+        tag = re.compile(rf"^(?:tags:.*[\[ ,]{re.escape(slug)}[\],]|subject:\s*[\"']?{re.escape(slug)}\b)", re.M)
+        for f in sorted(concepts.glob("*.md"))[:800]:
+            try:
+                with f.open(encoding="utf-8", errors="replace") as fh:
+                    head = fh.read(600)
+            except OSError:
+                continue
+            if tag.search(head):
+                found.setdefault(f, "concept")
+    rows = []
+    for f, kind in found.items():
+        info = note_info(f, root) if f.is_file() and f.is_relative_to(root) else None
+        if info:
+            rows.append({"id": info["id"], "title": info["title"], "kind": kind, "mtime": f.stat().st_mtime})
+    rows.sort(key=lambda r: (NOTE_KINDS.index(r["kind"]) if r["kind"] in NOTE_KINDS else 9, -r["mtime"]))
+    return rows[:limit]
+
+
+def study_view(app: App, subject: str | None = None) -> dict:
+    """What Study mode shows, for `subject` (else the timer's, else the one studied most today, else the first):
+    the timer, today's study per subject, what's due in two weeks (quizzes and exams, tasks), start-by dates, recall
+    cards (Quiz), the subject's notes, and the focus time that holds calls and messages."""
+    out: dict = {"on": bool(app.settings.get("look.study_mode")), "features": sorted(m.id for m in app.enabled())}
+    on = set(out["features"])
+    subj = app.modules.get("subjects") if "subjects" in on else None
+    st = app.modules.get("study") if "study" in on else None
+    out["subjects"] = [{"slug": s["slug"], "name": s["name"]} for s in subj.subjects()] if subj else []
+    slugs = [s["slug"] for s in out["subjects"]]
+    out["timer"] = st.timer_view() if st else None
+    out["focus_min"], out["break_min"] = (st.setting("focus_min"), st.setting("break_min")) if st else (25, 5)
+    totals = st.totals(1) if st else {}
+    out["today"] = [
+        {"slug": k, "name": st.name_of(k), "seconds": round(v)}
+        for k, v in sorted(totals.items(), key=lambda kv: -kv[1])
+    ]
+    slug = (subj.resolve(subject) if subj and subject else None) or (out["timer"] or {}).get("subject")
+    slug = slug or next((r["slug"] for r in out["today"] if r["slug"] in slugs), None) or (slugs[0] if slugs else "")
+    out["subject"] = slug
+    out["name"] = subj.name_of(slug) if subj and slug else ""
+    focus = app.availability.focus_until()
+    out["focus"] = f"{focus:%H:%M}" if focus else None
+    dl = app.modules.get("deadlines") if "deadlines" in on else None
+    out["due"] = (
+        [
+            {"title": it["title"], "kind": it["kind"], "subject": it.get("subject") or "", "hours": round(h, 1)}
+            for _, it, h in dl.upcoming(24 * 14)[:12]
+        ]
+        if dl
+        else []
+    )
+    sb = app.modules.get("startby") if "startby" in on and dl else None
+    out["start_by"] = sb.morning_rows() if sb else []
+    qz = app.modules.get("quiz") if "quiz" in on else None
+    out["recall"] = None
+    if qz and slug and slug in qz.sources():  # its exam-prep or quiz notes
+        _, items = qz.due(slug)
+        out["recall"] = {
+            "due": len(items),
+            "cards": [{"text": v["text"], "section": v["section"]} for _, v in items[:3]],
+        }
+    out["notes"] = subject_notes(app, slug) if slug else []
+    return out
+
+
+def study_mode_act(app: App, args: dict) -> dict:
+    v = args.get("on", True)
+    on = v if isinstance(v, bool) else str(v).strip().lower() not in ("off", "false", "0", "no")
+    return {"message": study_mode(app, on), "on": on}
+
+
+def study_timer(app: App, args: dict) -> dict:
+    st = _on(app, "study", "The Study tracker")
+    do = str(args.get("do") or "")
+    if do == "start":
+        said = st.timer_start(str(args.get("subject") or "").strip() or None)
+    elif do == "pause":
+        said = st.timer_pause()
+    elif do == "reset":
+        said = st.timer_reset()
+    else:
+        raise Problem("Start, pause or reset?")
+    return {"message": said, "timer": st.timer_view()}
 
 
 # ------------------------------------------------------------------------------------------------ actions
@@ -286,6 +404,8 @@ ACTIONS = {
     "checkin.defer": checkin_defer,
     "ask": ask,
     "question.answer": question_answer,
+    "study.mode": study_mode_act,
+    "study.timer": study_timer,
 }
 
 

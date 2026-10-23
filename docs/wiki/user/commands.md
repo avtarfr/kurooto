@@ -111,6 +111,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/pack linear algebra midterm` | a revision PDF from your notes | Skills |
 | `/studypack <subject> [what it's for]`, e.g. `/studypack la quiz on eigenvalues`; `/studypack prompt` (edit the prompt), `/studypack prompt reset` | a zip of a subject's materials, with a prompt for another AI sent as its own message; a topic narrows it, class material first; over 50 MB comes as a temporary Drive link | Skills |
 | `/study`, `/study week`, `/study la 50`, `/study stop` | study time; start or stop a session away from the computer | Study tracker |
+| `/study mode on`, `/study mode off` | the dashboard's [Study mode](dashboard.md#study-mode): notes, the study timer, what's due | Study tracker |
 | `/studied 2h linear algebra` | log study time done away from the computer | Study tracker |
 | `/books`, `/books read now`, `/books read force` (also on battery), `/books stop`, `/books folder la`, `/books mix la book 30 classroom 30 own 40`, `/books mix la prefer own book classroom`, `/books mix la reset`, `/books setup` | your books and how far reading got; the source mix | Books and PDFs |
 | `/handwritten`, `/handwritten status`, `/handwritten retry` | write out waiting handwritten pages now | Handwritten notes |
@@ -227,6 +228,7 @@ the AI. A request that asks a question only matches the requests below that answ
 | "done studying" | end the session | Study tracker |
 | "studied stats for an hour" | log study time | Study tracker |
 | "how much did I study today?" | study time | Study tracker |
+| "study mode", "turn on study mode", "leave study mode" | the dashboard's Study mode | Study tracker |
 | "what's on today?", "what's on tomorrow?", "anything planned tomorrow?" | your calendar | Calendar |
 | "call me at 5 about the laundry", "call me in 20 minutes about the essay" | a call later ("at 5" in the afternoon means 17:00) | Phone calls |
 | "call me now", "ring me about the essay" | a call right away, even during a class or a `/hold` (you asked for it) | Phone calls |

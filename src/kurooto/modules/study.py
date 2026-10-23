@@ -9,6 +9,8 @@ Time away from the computer (library, paper): start a session with "/study linea
 linear algebra for 50 min") and end it with "/study stop" ("done studying"); or log it afterwards: "/studied 2h
 linear algebra", "studied stats for an hour", or tell it on a call. /study shows today, /study week the last 7 days
 ("how much did I study today?" works too). At 23:45 the day's hours go into your daily note ("## Study hours").
+The dashboard's Study mode (/study mode on|off, core/actions.py) has a timer: a focus session for a subject (focus
+time, so calls and messages wait, and the minutes logged here), then a break; pause and reset.
 Works on Windows, macOS (it asks once for permission to see window titles) and Linux on X11, Hyprland or Sway;
 other Linux desktops can only log by hand. How it tells you're away: core/idle.py (on Wayland desktops without an idle
 API, your idle tool can tell it: `kurooto idle away` / `kurooto idle back`).
@@ -43,8 +45,14 @@ register_defaults(
         "keywords": {},  # {subject slug: [words]}
         "daily_note": "23:45",  # the day's hours go into your daily note at this time; None = don't
         "research_paths": [],  # words or folders: a window naming one counts as Research
+        "focus_min": 25,  # Study mode's timer: minutes of focus (calls and messages wait; the time is logged)
+        "break_min": 5,  # Study mode's timer: minutes of break after each focus
+        "timer_ends_mode": False,  # when a focus ends, Study mode ends too (look.study_mode), instead of a break
     },
 )
+# "turn on study mode", "leave study mode", "study mode off": the dashboard's Study mode (core/actions.py)
+MODE_ON = ("turn on", "switch on", "switch to", "go into", "start", "enter", "open")
+MODE_OFF = ("turn off", "switch off", "leave", "exit", "end", "stop", "close", "quit")
 RESEARCH = "research"  # the key research time is kept under (a subject called "research" shares it)
 HOW = {  # how the tracker tells you're away (core/idle.py), for the health line
     "windows": "Windows' last input",
@@ -122,6 +130,7 @@ class Study(Module):
 
     def start(self):
         self.action("session_end", self._session_end)
+        self.action("timer_end", self._timer_end)
         at = self.setting("daily_note")
         if at:
             self.every("write", f"daily {at}", self.write_day)
@@ -263,9 +272,13 @@ class Study(Module):
         return (f"{prev} " if prev else "") + f"{name}: session started{until}. /study stop when you're done."
 
     def stop_session(self, timer: bool = False) -> str:
+        """End the session and log it. timer: the scheduled end or Study mode's timer stops it; a timer's session
+        ended any other way (/study stop, "done studying", a new session) ends the timer too."""
         s = self.session()
         if not s.get("subject"):
             return "No study session is running."
+        if s.get("timer") and not timer:
+            return self.timer_reset()
         try:
             start = dt.datetime.fromisoformat(s["start"])
         except (KeyError, ValueError):
@@ -289,6 +302,156 @@ class Study(Module):
             self.app.notify(
                 f"Session done. {self.stop_session(timer=True)} Take a break.", kind="reminder", why="study.timer"
             )
+
+    # ------------------------------------------------------------------------------- Study mode's timer
+    # A focus is a session for the subject (logged when it ends, at most its length) with focus time until it ends,
+    # so calls and messages wait; then a break, then the next focus waits for you. Paused, it keeps what's left. Its
+    # end is scheduled (study.timer_end), so it keeps time with the dashboard closed. State: study/timer.json.
+    @property
+    def timer_file(self):
+        return self.app.paths.state / "study" / "timer.json"
+
+    def timer(self) -> dict:
+        return jload(self.timer_file, {}) or {}
+
+    def _length(self, key: str, default: int) -> float:
+        """study.focus_min or study.break_min, in seconds (1 to 240 minutes)."""
+        try:
+            return max(1.0, min(240.0, float(self.setting(key) or default))) * 60
+        except (TypeError, ValueError):
+            return default * 60.0
+
+    def _then(self) -> str:
+        return "end" if self.setting("timer_ends_mode") else "break"
+
+    def timer_view(self) -> dict:
+        """For the page: phase ("focus", "break", or "" before a start), subject, ends (epoch seconds, while it runs)
+        or left (seconds, paused), total, round, then ("break", or "end": Study mode ends with the focus)."""
+        t = self.timer()
+        ends, slug = t.get("ends"), t.get("subject") or ""
+        return {
+            "phase": t.get("phase", ""),
+            "subject": slug,
+            "name": self.name_of(slug) if slug else "",
+            "running": bool(ends),
+            "ends": dt.datetime.fromisoformat(ends).timestamp() if ends else None,
+            "left": t.get("left"),
+            "total": t.get("total") or self._length("focus_min", 25),
+            "round": t.get("round", 0),
+            "then": t.get("then") or self._then(),
+        }
+
+    def timer_start(self, subject: str | None = None) -> str:
+        """Start, or go on after a pause: a focus for `subject` (or the one it had), or what's left of a break."""
+        t = self.timer()
+        if t.get("ends"):
+            return "The timer is already running."
+        subj = self.app.modules["subjects"]
+        slug = (subj.resolve(subject) or (subj.find_in(subject) or [None])[0]) if subject else t.get("subject")
+        if not slug:
+            return f"I don't know the subject {subject!r} (Subjects lists them)." if subject else "Pick a subject."
+        phase = t.get("phase") or "focus"
+        total = t.get("total") or self._length("focus_min", 25)
+        left = t.get("left") or total
+        ends = now() + dt.timedelta(seconds=left)
+        jsave(
+            self.timer_file,
+            {
+                "phase": phase,
+                "subject": slug,
+                "ends": ends.isoformat(),
+                "left": None,
+                "total": total,
+                "round": t.get("round") or 1,
+                "then": t.get("then") or self._then(),
+                "focus_set": self._focus_begin(slug, ends, left) if phase == "focus" else None,
+            },
+        )
+        self.app.scheduler.at(ends, "study.timer_end", key=f"{self.id}:timer", module=self.id)
+        self.app.events.emit("study_timer", act="start", phase=phase, subject=slug, minutes=round(left / 60))
+        if phase == "break":
+            return f"Break until {ends:%H:%M}."
+        return f"{self.name_of(slug)}: focus until {ends:%H:%M}. Calls and messages wait till then."
+
+    def _focus_begin(self, slug: str, ends: dt.datetime, seconds: float) -> str | None:
+        """The focus's session (one of yours that's running ends here, logged) and focus time until it ends, unless
+        something holds it longer already. Returns the focus end it set, or None."""
+        s = self.session()
+        if s.get("subject"):
+            self.stop_session(timer=bool(s.get("timer")))
+        jsave(self.session_file, {"subject": slug, "start": now().isoformat(), "minutes": seconds / 60, "timer": True})
+        self.app.events.emit("study_session_start", subject=slug, planned=round(seconds / 60))
+        av = self.app.availability
+        held = av.focus_until()
+        if held is not None and held >= ends:
+            return None
+        av.set_focus(ends)
+        return ends.isoformat()
+
+    def _focus_end(self, t: dict) -> str:
+        """A focus is over, paused or reset: its session is logged, and the focus time it set ends (the messages that
+        waited come) unless a /focus or a #focus event of yours holds longer. Returns what was logged."""
+        said = self.stop_session(timer=True) if self.session().get("timer") else ""
+        mine, av = t.get("focus_set"), self.app.availability
+        held = av.focus_until()
+        if mine and held is not None and held <= dt.datetime.fromisoformat(mine) + dt.timedelta(seconds=1):
+            av.set_focus(None)
+            if av.focus_until() is None:
+                self.app.notifier.flush_queue()
+        return said
+
+    def timer_pause(self) -> str:
+        t = self.timer()
+        if not t.get("ends"):
+            return "The timer isn't running."
+        left = max(1, round((dt.datetime.fromisoformat(t["ends"]) - now()).total_seconds()))
+        self.app.scheduler.cancel(f"{self.id}:timer")
+        said = self._focus_end(t) if t.get("phase") == "focus" else ""
+        jsave(self.timer_file, {**t, "ends": None, "left": left, "focus_set": None})
+        self.app.events.emit("study_timer", act="pause", phase=t.get("phase"))
+        return "Paused." + (f" {said}" if said else "")
+
+    def timer_reset(self) -> str:
+        t = self.timer()
+        self.app.scheduler.cancel(f"{self.id}:timer")
+        said = self._focus_end(t) if t.get("phase") == "focus" and t.get("ends") else ""
+        self.timer_file.unlink(missing_ok=True)
+        if t:
+            self.app.events.emit("study_timer", act="reset", phase=t.get("phase"))
+        return "Timer reset." + (f" {said}" if said else "")
+
+    def _timer_end(self, p: dict | None = None) -> None:
+        t = self.timer()
+        if not t.get("ends"):
+            return
+        self.app.events.emit("study_timer", act="end", phase=t.get("phase"))
+        if t.get("phase") == "break":  # the next focus waits for you
+            total = self._length("focus_min", 25)
+            nxt = {
+                **t,
+                "phase": "focus",
+                "ends": None,
+                "left": total,
+                "total": total,
+                "round": (t.get("round") or 1) + 1,
+            }
+            jsave(self.timer_file, nxt)
+            self.app.notify(
+                "Break's over: the next focus starts when you press start.", kind="reminder", why="study.timer"
+            )
+            return
+        said = self._focus_end(t)
+        if t.get("then") == "end":
+            from kurooto.core.actions import study_mode
+
+            self.timer_file.unlink(missing_ok=True)
+            self.app.notify(f"Focus done. {said} {study_mode(self.app, False)}", kind="reminder", why="study.timer")
+            return
+        total = self._length("break_min", 5)
+        ends = now() + dt.timedelta(seconds=total)
+        jsave(self.timer_file, {**t, "phase": "break", "ends": ends.isoformat(), "total": total, "focus_set": None})
+        self.app.scheduler.at(ends, "study.timer_end", key=f"{self.id}:timer", module=self.id)
+        self.app.notify(f"Focus done. {said} Break until {ends:%H:%M}.", kind="reminder", why="study.timer")
 
     # -------------------------------------------------------------------------------- the daily note
     def write_day(self, p: dict | None = None) -> bool:
@@ -322,7 +485,8 @@ class Study(Module):
         return [
             Command(
                 "study",
-                "study time today (/study week); /study <subject> [minutes] starts a session, /study stop ends it",
+                "study time today (/study week); /study <subject> [minutes] starts a session, /study stop ends it; "
+                "/study mode on|off: the dashboard's Study mode",
                 self._cmd,
             ),
             Command(
@@ -339,12 +503,20 @@ class Study(Module):
             return self.report(7)
         if low in ("stop", "done", "end", "off", "finish", "finished"):
             return self.stop_session()
+        mode = re.fullmatch(r"mode(?:\s+(on|off))?", low)
+        if mode:  # the dashboard's Study mode (core/actions.py); "/study mode" on its own turns it on
+            return self._mode(mode.group(1) != "off")
         m = re.match(r"(.+?)\s+(\d+)\s*(?:m|min|mins|minutes)?$", a)
         if m:
             return self.start_session(m.group(1), int(m.group(2)))
         mins = a_minutes(a)
         subject = re.sub(r"\bfor\b.*$", "", a).strip() if mins else a
         return self.start_session(subject, mins)
+
+    def _mode(self, on: bool) -> str:
+        from kurooto.core.actions import study_mode
+
+        return study_mode(self.app, on)
 
     def _running(self) -> str:
         s = self.session()
@@ -389,7 +561,21 @@ class Study(Module):
                 return None
             return {"days": 7 if re.search(r"\b(?:this|last|the) week\b|\bweek\b", text, re.I) else 1}
 
+        def mode(text: str):
+            m = re.fullmatch(
+                rf"(?:({'|'.join(MODE_ON + MODE_OFF)}) |(?:turn|switch) (?=(?:the )?study mode (?:on|off)$))?"
+                r"(?:the )?study mode(?: (on|off))?",
+                text.strip().lower().rstrip(".!"),
+            )
+            return {"on": m.group(2) != "off" and m.group(1) not in MODE_OFF} if m else None
+
         return [
+            Intent(
+                "study_mode",
+                "Study mode on or off (the dashboard shows notes, the study timer and what's due)",
+                mode,
+                lambda m, s: self._mode(s["on"]),
+            ),
             Intent(
                 "study_start",
                 "starting to study a subject (a session away from the computer)",

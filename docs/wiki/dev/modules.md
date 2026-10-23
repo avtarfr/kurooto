@@ -476,6 +476,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **hints** (`modules/hints.py`): a hint ladder for a problem, respecting a course's AI policy line.
 - **study** (`modules/study.py`): minutes per subject from the focused window title (read and discarded), idle and lock
   aware (`core/idle.py`); Windows `GetForegroundWindow`, macOS System Events, Linux `hyprctl` / `swaymsg` / `xdotool`.
+  Paper sessions (`/study la 50`), and Study mode's focus and break timer (`timer_start`, `timer_pause`, `timer_reset`,
+  `_timer_end`; focus time through `core/availability.py`; see
+  [web.md](web.md#the-today-page-and-actions-coreactionspy)).
+  `/study mode on|off` and the `study_mode` intent call `core/actions.py:study_mode`.
 - **skills** (`modules/skills.py`): runs `SKILL.md` files (shipped `data/skills`, add-ons, prompts with `skill: true`,
   the user's own) as AI jobs; routines (`/every`), drafts (`/newskill`), LaTeX revision packs (Tectonic `--untrusted`,
   else `latexmk` or `pdflatex` with `-no-shell-escape`: the AI wrote the LaTeX), study packs, `send_file(s)` (over

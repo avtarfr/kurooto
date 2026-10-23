@@ -8,7 +8,8 @@
 // corner and recent events round the cells, NOTES with its folders and latest edits, and a terminal below whose
 // border also holds the other tabs (Alt+1… switches terminals, Alt+/ finds a note). Any pane can fill the board,
 // the "panes" menu hides some, and the pages (features, settings…) open over the whole board (Alt+F, Alt+S…).
-// "roomy" is the earlier layout with bigger type, used by itself on narrower screens.
+// "roomy" is the earlier layout with bigger type, used by itself on narrower screens. Study mode (Alt+M) keeps only
+// the NOTES map and a STUDY pane: a focus timer, today's study, what's due and the subject's notes.
 "use strict";
 const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s) => document.querySelector(s);
@@ -58,12 +59,14 @@ const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && windo
 const PANES = { status: "#pane-status", systems: "#pane-systems", notes: "#pane-vault", terminal: "#pane-tabs" };
 const PKEY = { today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
 let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
+let STUDY = false; // Study mode: the NOTES map and the STUDY pane only (look.study_mode); HIDE and MAX wait untouched
 let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_features; only ones that are off)
 const inTerm = (el) => !!(el && el.closest && el.closest(".xterm")); // a terminal keeps its own keys
 const cleanHide = (v) => { const s = new Set((Array.isArray(v) ? v : []).filter((p) => PANES[p])); return s.size >= Object.keys(PANES).length ? new Set() : s; };
 const hideList = () => Object.keys(PANES).filter((p) => HIDE.has(p));
-const shownPanes = () => new Set(Object.keys(PANES).filter((p) => (MAX ? p === MAX : !HIDE.has(p))));
-const paneShown = (p) => !DENSE || (!PAGE && shownPanes().has(p)); // on screen (not hidden, filled over or under a page)
+const shownPanes = () => (STUDY ? new Set(["notes"]) : new Set(Object.keys(PANES).filter((p) => (MAX ? p === MAX : !HIDE.has(p)))));
+// on screen (not hidden, filled over or under a page); in Study mode only the notes map
+const paneShown = (p) => (STUDY ? p === "notes" && !(DENSE && PAGE) : !DENSE || (!PAGE && shownPanes().has(p)));
 // the grid for the panes that show: STATUS down the left; SYSTEMS and NOTES on top and TERMINAL below, on the right
 function paneGrid(vis) {
   const st = vis.has("status"), top = ["systems", "notes"].filter((p) => vis.has(p)), rows = [];
@@ -77,19 +80,20 @@ function applyPanes() {
   const grid = $(".grid"), vis = shownPanes();
   for (const [p, sel] of Object.entries(PANES)) {
     const el = $(sel);
-    el.classList.toggle("gone", DENSE && !vis.has(p)); el.classList.toggle("maxed", DENSE && MAX === p); el.classList.remove("tr");
+    el.classList.toggle("gone", DENSE && !vis.has(p)); el.classList.toggle("maxed", DENSE && !STUDY && MAX === p); el.classList.remove("tr");
   }
+  $("#pane-study").classList.remove("tr");
   $("#pane-page").classList.toggle("hidden", !(DENSE && PAGE)); grid.classList.toggle("paged", DENSE && !!PAGE);
   if (!DENSE) { grid.style.gridTemplateAreas = grid.style.gridTemplateColumns = grid.style.gridTemplateRows = ""; closeMenu(); return; }
-  const g = paneGrid(vis);
+  const g = STUDY ? { areas: '"notes study"', cols: "minmax(0, 1fr) minmax(400px, 31%)", rows: "minmax(0, 1fr)" } : paneGrid(vis);
   Object.assign(grid.style, { gridTemplateAreas: g.areas, gridTemplateColumns: g.cols, gridTemplateRows: g.rows });
   // the pane in the board's top-right corner leaves room in its border for the panes menu
-  $(PANES[["notes", "systems", "terminal", "status"].find((p) => vis.has(p))]).classList.add("tr");
+  $(STUDY ? "#pane-study" : PANES[["notes", "systems", "terminal", "status"].find((p) => vis.has(p))]).classList.add("tr");
   grid.style.setProperty("--ctlw", `${$("#panes-ctl").offsetWidth}px`);
   renderMenu(); renderNav();
   requestAnimationFrame(refit);
 }
-function maxPane(p) { MAX = MAX === p || !PANES[p] ? null : p; applyPanes(); }
+function maxPane(p) { if (STUDY) return; MAX = MAX === p || !PANES[p] ? null : p; applyPanes(); }
 function savePanes() {
   try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ }
   api("settings", { key: "look.panes", value: hideList() }).catch(() => {});
@@ -107,6 +111,7 @@ function renderMenu() {
   const left = Object.keys(PANES).filter((p) => !HIDE.has(p)).length, NAMES = { status: "STATUS", systems: "SYSTEMS", notes: "NOTES", terminal: "TERMINAL" };
   m.innerHTML = `<div class="mh">panes</div>${Object.entries(NAMES).map(([p, l]) => `<label><input type="checkbox" data-pane="${p}"${HIDE.has(p) ? "" : " checked"}${!HIDE.has(p) && left === 1 ? ' disabled title="one pane always stays"' : ""}> ${l}${MAX === p ? ' <span class="d">fills the board</span>' : ""}</label>`).join("")}
     ${MAX || HIDE.size ? '<button data-all="1">show them all</button>' : ""}<p class="d">Click a pane's name or double-click its border and it fills the board; Esc brings the others back.</p>
+    <div class="mh">study</div><button data-study-toggle><span>study mode</span><span class="d">alt+m</span></button>
     <div class="mh">pages</div>${Object.keys(DLABEL).map((k) => `<button data-pg="${k}"><span>${mnem(k)}</span><span class="d">alt+${PKEY[k]}</span></button>`).join("")}`;
 }
 function openMenu(open) {
@@ -656,7 +661,9 @@ function assignHoods(nodes) {
 const HUB_LINKS = 12, MAX_STEP = 40; // the notes graph: springs per hub, the furthest a note moves a frame
 class Mind {
   constructor(cv) { this.cv = cv; this.nodes = new Map(); this.links = []; this.alpha = 1; this.view = { x: 0, y: 0, k: 1 }; this.autofit = true;
-    this.flares = []; this.groupIdx = new Map(); this.hover = null; this.selected = null; this.query = ""; this.showRecent = false; this.version = -1; this.wire(); }
+    this.flares = []; this.groupIdx = new Map(); this.hover = null; this.selected = null; this.query = ""; this.showRecent = false; this.version = -1;
+    this.only = null; // Study mode: the subject's notes (their ids), lit and fitted to the pane
+    this.wire(); }
   colorOf(n) {
     const key = typeof n === "object" && n ? n.neighborhood : n;
     return this.hoods?.get(key)?.color || PAL.dim;
@@ -724,7 +731,8 @@ class Mind {
     this.alpha = Math.max(0.04, this.alpha * 0.988);
   }
   fit(w, h) {
-    const nodes = [...this.nodes.values()]; if (!nodes.length) return;
+    let nodes = [...this.nodes.values()]; if (!nodes.length) return;
+    if (this.only) { const o = nodes.filter((n) => this.only.has(n.id)); if (o.length) nodes = o; }
     const xs = nodes.map((n) => n.x).sort((a, b) => a - b), ys = nodes.map((n) => n.y).sort((a, b) => a - b);
     const q = (arr, f) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(f * (arr.length - 1))))];
     const x0 = q(xs, 0.02), x1 = q(xs, 0.98), y0 = q(ys, 0.02), y1 = q(ys, 0.98);
@@ -738,7 +746,7 @@ class Mind {
     if (!this.nodes.size) { ctx.fillStyle = PAL.dim; ctx.font = `12px ${FONT}`; ctx.textAlign = "center"; ctx.fillText("Your notes folder is empty so far.", w / 2, h / 2); return; }
     if (this.autofit) this.fit(w, h);
     const nowS = Date.now() / 1000, focus = this.hover || this.selected;
-    const match = this.query ? new Set([...this.nodes.values()].filter((n) => (n.title + " " + n.id).toLowerCase().includes(this.query)).map((n) => n.id)) : null;
+    const match = this.query ? new Set([...this.nodes.values()].filter((n) => (n.title + " " + n.id).toLowerCase().includes(this.query)).map((n) => n.id)) : this.only && this.only.size ? this.only : null;
     const isRecent = (n) => (nowS - (n.mtime || 0) < 86400);
     const lit = (n) => (match ? match.has(n.id) : focus ? n === focus || focus.nb.has(n.id) : this.showRecent ? isRecent(n) : true);
     
@@ -894,6 +902,8 @@ class Mind {
     if (pinned) { try { const r = await api(`note?id=${encodeURIComponent(n.id)}`); if (this.selected === n) card.querySelector("pre").textContent = (r.text || "").trim().split("\n").slice(0, 14).join("\n"); } catch { /* leave it */ } }
   }
   openSearch() { const s = $("#mind-search"); s.classList.remove("hidden"); s.value = this.query; s.focus(); }
+  // a note to the middle of the map, with its card and first lines
+  goTo(n) { if (!n) return; this.selected = n; this.autofit = false; this.view.x = -n.x; this.view.y = -n.y; this.view.k = Math.max(this.view.k, 1.6); this.showCard(n, true); }
   wire() {
     const cv = this.cv; let down = null;
     cv.addEventListener("wheel", (e) => { e.preventDefault(); this.autofit = false; const r = cv.getBoundingClientRect(), before = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
@@ -918,7 +928,7 @@ class Mind {
       if (e.key === "Escape") { this.query = ""; s.value = ""; s.classList.add("hidden"); }
       if (e.key === "Enter") { // go to the first match
         const hit = [...this.nodes.values()].find((n) => (n.title + " " + n.id).toLowerCase().includes(this.query));
-        if (hit) { this.selected = hit; this.autofit = false; this.view.x = -hit.x; this.view.y = -hit.y; this.view.k = Math.max(this.view.k, 1.6); this.showCard(hit, true); }
+        this.goTo(hit);
       }
     });
     window.addEventListener("keydown", (e) => {
@@ -1185,7 +1195,7 @@ function renderNav() {
   if (!TERM.on) html += `<button class="tab off${dtab === "termsoff" ? " on" : ""}" data-dt="termsoff" title="a shell, your AI's program and the log, right here">+ terminals</button><span class="rule">─</span>`;
   if (isTerm) html += '<button class="tab" data-restart="1" title="end the program in this terminal and start it again">restart</button><span class="rule">─</span>';
   html += `<span class="rule">┤</span><span class="pages">${pageTabs()}</span><span class="rule">├</span>`;
-  html += `<span class="meta">? what's this · ctrl+k do · alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note · l legends</span>`;
+  html += `<span class="meta">? what's this · ctrl+k do · alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note · alt+m study · l legends</span>`;
   nav.innerHTML = html;
   nav.onclick = (e) => {
     if (e.target.closest(".t")) { maxPane("terminal"); return; }
@@ -1797,7 +1807,7 @@ const CHAT_HELP = `Type what you'd send Kurooto on Telegram: a reminder, "what's
   clear   a clean screen (Ctrl+L)
   ↑ ↓     what you typed before
 Alt+1… switches the terminal pane's tabs; Alt+/ finds a note; Alt and a page's underlined letter opens it
-(Alt+F features, Alt+S settings), over the whole board; Esc goes back.`;
+(Alt+F features, Alt+S settings), over the whole board; Esc goes back. Alt+M: Study mode (notes and a study timer).`;
 async function chatSend(text) {
   CHAT.hist.push(text); CHAT.hi = -1;
   chatAdd(`<span class="p">${esc(promptText())}</span>${esc(text)}`, "q", true);
@@ -1834,6 +1844,152 @@ async function chatSend(text) {
   chatAdd("No answer after 30 minutes; it may still be going (the jobs tab).", "d");
 }
 
+// ------------------------------------------------------------------------------------------------ Study mode
+// Alt+M, "study" in the board's top-right corner (roomy: the top bar), Ctrl+K → study, or /study mode on|off on
+// Telegram or in a terminal (core/actions.py: study_mode). The board keeps the NOTES map, large, and a STUDY pane: a
+// focus and break timer (modules/study.py: a focus is focus time, so calls and messages wait, and its minutes are
+// logged to the subject), today's study per subject, what's due in two weeks with start-by dates, recall cards (Quiz)
+// and the subject's own notes, which light up on the map. Everything else waits as it was (hidden panes, a pane that
+// filled the board, an open page) and comes back when it ends. The mode is the setting look.study_mode.
+const SM = { v: null, subject: "", note: "", page: null, poll: null, tick: null, soon: null, ended: false };
+const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const dur = (s) => (s < 3600 ? `${Math.round(s / 60)}m` : `${(s / 3600).toFixed(1)}h`);
+const smSay = (text, bad) => { const el = $("#sm-said"); if (el) { el.textContent = text; el.className = "sm-said" + (bad ? " bad" : ""); } };
+function setStudy(on, save = true, animate = true) {
+  on = !!on;
+  if (on === STUDY) return;
+  if (on) { SM.page = PAGE; closeMenu(); }
+  STUDY = on;
+  document.body.classList.toggle("study", on);
+  for (const b of document.querySelectorAll("#study-btn, .study-tg")) { b.textContent = on ? "leave study" : "study"; b.setAttribute("aria-pressed", String(on)); }
+  if (save) api("settings", { key: "look.study_mode", value: on }).catch(() => {});
+  if (on && PAGE) closePage(); else applyPanes();
+  if (on) {
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#pane-tabs")) document.activeElement.blur();
+    smBuild(); smLoad();
+    SM.poll = setInterval(smLoad, 30000); SM.tick = setInterval(smTick, 1000);
+  } else {
+    clearInterval(SM.poll); clearInterval(SM.tick); document.title = "Kurooto";
+    mind.only = null; mind.autofit = true;
+    const page = SM.page; SM.page = null;
+    if (page) openPage(page);
+  }
+  if (animate) swapIn();
+}
+const toggleStudy = () => setStudy(!STUDY);
+// the panes that come (or come back) slide in a little and fade up; nothing moves with reduced motion
+function swapIn() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const g = $(".grid"); g.classList.remove("swap"); void g.offsetWidth; g.classList.add("swap");
+  clearTimeout(SM.swap); SM.swap = setTimeout(() => g.classList.remove("swap"), 450);
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-study-toggle]")) { e.preventDefault(); toggleStudy(); } });
+function smBuild() {
+  const b = $("#sm-body");
+  if (b.querySelector("#sm-time")) return;
+  b.innerHTML = `
+  <div class="box sm-timer"><div class="lab"><span class="t">TIMER</span><span class="meta" id="sm-hold"></span></div>
+    <div class="sm-sub"><label class="k" for="sm-subject">subject</label><select id="sm-subject"></select></div>
+    <div class="sm-clock"><span class="sm-time" id="sm-time">25:00</span><span class="sm-phase" id="sm-phase"></span></div>
+    <div class="row" id="sm-bar">${meter(0)}</div>
+    <div class="sm-btns"><button data-t="start" id="sm-go">start</button><button data-t="pause" id="sm-pause">pause</button><button data-t="reset" id="sm-reset">reset</button></div>
+    <div class="sm-opts k"><label>focus <input type="number" min="1" max="240" id="sm-fmin" aria-label="focus minutes"></label><label>break <input type="number" min="1" max="240" id="sm-bmin" aria-label="break minutes"></label><span>min</span>
+      <label class="sm-then"><input type="checkbox" id="sm-then"> then leave Study mode</label></div>
+    <p class="sm-said" id="sm-said" aria-live="polite"></p></div>
+  <div class="box"><div class="lab"><span class="t">TODAY</span><span class="meta" id="sm-today-meta"></span></div><div id="sm-today"><span class="k">loading…</span></div></div>
+  <div class="box"><div class="lab"><span class="t">DUE</span><span class="meta">two weeks</span></div><div id="sm-due"></div></div>
+  <div class="box" id="sm-recall-box"><div class="lab"><span class="t">RECALL</span><span class="meta" id="sm-recall-meta"></span></div><div id="sm-recall"></div></div>
+  <div class="box sm-notes" title="click: find it on the map · double-click: open it"><div class="lab"><span class="t" id="sm-notes-t">NOTES</span><span class="meta" id="sm-notes-meta"></span></div><div id="sm-notes"></div></div>`;
+  $("#sm-subject").onchange = (e) => { SM.subject = e.target.value; mind.autofit = true; smLoad(); };
+  b.onclick = async (e) => {
+    const pg = e.target.closest("[data-page]"); if (pg) { e.preventDefault(); openPage(pg.dataset.page); return; }
+    const t = e.target.closest("[data-t]");
+    if (t) { t.disabled = true; await tdAct("study.timer", { do: t.dataset.t, subject: SM.subject }, smSay); smLoad(); return; }
+    const n = e.target.closest("[data-note]");
+    if (n) { SM.note = n.dataset.note; mind.goTo(mind.nodes.get(SM.note)); smNotes(); }
+  };
+  b.ondblclick = (e) => { const n = e.target.closest("[data-note]"); if (n) api("open-note", { id: n.dataset.note }); };
+  b.onchange = (e) => {
+    const key = { "sm-fmin": "study.focus_min", "sm-bmin": "study.break_min", "sm-then": "study.timer_ends_mode" }[e.target.id];
+    if (!key) return;
+    const value = e.target.type === "checkbox" ? e.target.checked : clamp(Math.round(Number(e.target.value) || 0), 1, 240);
+    api("settings", { key, value }).then((r) => { if (r && r.error) smSay(r.error, true); else smLoad(); }).catch(() => {});
+  };
+}
+async function smLoad() {
+  let v; try { v = await api(`study${SM.subject ? `?subject=${encodeURIComponent(SM.subject)}` : ""}`); } catch { smSay("Kurooto didn't answer (is it running?).", true); return; }
+  if (!STUDY) return;
+  const changed = !SM.v || v.subject !== SM.v.subject || (v.notes || []).length !== (SM.v.notes || []).length;
+  SM.v = v; SM.subject = v.subject || ""; SM.ended = false;
+  if (changed || !mind.only) { mind.only = new Set((v.notes || []).map((n) => n.id)); mind.autofit = true; }
+  smDraw();
+}
+// a refresh soon after something happened (a timer's end, a deadline, a setting), not one per event
+function smSoon() { clearTimeout(SM.soon); SM.soon = setTimeout(smLoad, 600); }
+function smDraw() {
+  const v = SM.v; if (!v || !$("#sm-time")) return;
+  const on = new Set(v.features || []);
+  const off = (what) => `<div class="row"><span class="k">${what} is off: <a href="#" data-page="features">turn it on in Features</a></span></div>`;
+  // the subject, the timer's lengths
+  const sel = $("#sm-subject"), opts = (v.subjects || []).map((s) => `<option value="${esc(s.slug)}"${s.slug === v.subject ? " selected" : ""}>${esc(s.name)}</option>`).join("");
+  if (sel.dataset.opts !== opts) { sel.innerHTML = opts || '<option value="">no subjects yet</option>'; sel.dataset.opts = opts; }
+  sel.value = v.subject || "";
+  const t = v.timer, tracker = !!t;
+  sel.disabled = !(v.subjects || []).length || !!(t && t.running);
+  for (const id of ["#sm-go", "#sm-pause", "#sm-reset", "#sm-fmin", "#sm-bmin", "#sm-then"]) $(id).classList.toggle("hidden", !tracker);
+  $("#sm-bar").classList.toggle("hidden", !tracker);
+  if (!tracker) smSay(on.has("subjects") ? "The timer needs the Study tracker: turn it on in Features." : "The timer needs Subjects and the Study tracker: turn them on in Features.");
+  else {
+    $("#sm-go").textContent = t.phase && !t.running && t.left && t.left < t.total ? "resume" : "start";
+    $("#sm-go").disabled = t.running || !v.subject; $("#sm-pause").disabled = !t.running; $("#sm-reset").disabled = !t.phase;
+    const active = document.activeElement;
+    if (active !== $("#sm-fmin")) $("#sm-fmin").value = v.focus_min || 25;
+    if (active !== $("#sm-bmin")) $("#sm-bmin").value = v.break_min || 5;
+    $("#sm-then").checked = t.then === "end";
+  }
+  $("#sm-hold").textContent = v.focus ? `calls and messages wait till ${v.focus}` : "";
+  // today, per subject
+  const today = v.today || [], top = Math.max(1, ...today.map((r) => r.seconds));
+  $("#sm-today-meta").textContent = today.length ? dur(today.reduce((a, r) => a + r.seconds, 0)) : "";
+  $("#sm-today").innerHTML = !tracker ? off("The Study tracker") : today.slice(0, 5).map((r) => `<div class="row${r.slug === v.subject ? " on" : ""}"><span class="v sm-name">${esc(r.name)}</span>${meter(r.seconds / top)}<span class="v r sm-h">${dur(r.seconds)}</span></div>`).join("") ||
+    '<div class="row"><span class="k">no study time yet today</span></div>';
+  // what's due: quizzes and exams, tasks; then what to start
+  const due = v.due || [], when = (hr) => (hr < 0 ? `overdue ${ago(-hr * 3600)}` : `in ${ago(hr * 3600)}`);
+  $("#sm-due").innerHTML = !on.has("deadlines") ? off("Deadlines") : (due.map((d) => `<div class="row${d.subject === v.subject ? " on" : ""}"><span class="sm-kind ${d.kind === "exam" ? "exam" : ""}">${d.kind === "exam" ? "exam" : "task"}</span><span class="v grow sm-t">${esc(d.title)}</span><span class="r ${d.hours < 0 ? "hot" : d.hours < 24 ? "warm" : "k"}">${when(d.hours)}</span></div>`).join("") ||
+    '<div class="row"><span class="k">nothing due in the next two weeks</span></div>') +
+    (v.start_by || []).slice(0, 3).map((r) => `<div class="row"><span class="sm-kind start">start</span><span class="v grow sm-t">${esc(r.title)}</span><span class="r k">${esc(r.when.split(" · ")[0])}</span></div>`).join("");
+  // recall cards: point at one (or tab to it) and it turns over
+  const rc = v.recall;
+  $("#sm-recall-box").classList.toggle("hidden", !on.has("quiz"));
+  $("#sm-recall-meta").textContent = rc ? `${rc.due} due` : "";
+  $("#sm-recall").innerHTML = !rc ? `<div class="row"><span class="k">no exam-prep or quiz notes for ${esc(v.name || "this subject")} yet</span></div>` :
+    rc.cards.map((c, i) => `<details class="sm-card"><summary><span class="k">${esc(c.section || "card")} · ${i + 1}</span></summary><p>${esc(c.text)}</p></details>`).join("") +
+    `<div class="row"><span class="k">${rc.due ? `practise them: /quiz ${esc(v.subject)}` : "nothing to go over today"}</span></div>`;
+  smNotes();
+  smTick();
+}
+function smNotes() {
+  const v = SM.v; if (!v) return;
+  const KIND = { course: "course", exam_prep: "prep", doubts: "doubts", class_log: "log", lecture: "lecture", concept: "concept" };
+  const notes = v.notes || [], nowS = Date.now() / 1000;
+  $("#sm-notes-t").textContent = v.name ? `NOTES · ${v.name.toUpperCase()}` : "NOTES";
+  $("#sm-notes-meta").textContent = notes.length ? String(notes.length) : "";
+  $("#sm-notes").innerHTML = notes.map((n) => `<button class="sm-note${n.id === SM.note ? " on" : ""}" data-note="${esc(n.id)}" title="${esc(n.id)}"><span class="k sm-nk">${KIND[n.kind] || n.kind}</span><span class="v sm-t">${esc(n.title)}</span><span class="k r">${ago(nowS - n.mtime)}</span></button>`).join("") ||
+    `<div class="row"><span class="k">${v.subject ? `no notes for ${esc(v.name)} yet` : "add your subjects first: /subject add Linear Algebra"}</span></div>`;
+}
+// once a second: the timer's digits, its bar and phase (and the tab's title while it runs)
+function smTick() {
+  const v = SM.v, t = v && v.timer; if (!t || !$("#sm-time")) return;
+  const total = t.total || 1500, left = t.running ? Math.max(0, t.ends - Date.now() / 1000) : t.phase ? (t.left ?? total) : total;
+  $("#sm-time").textContent = mmss(left);
+  $("#sm-time").className = `sm-time ${t.phase === "break" ? "brk" : t.running ? "run" : ""}`;
+  $("#sm-phase").textContent = !t.phase ? "ready" : t.running ? (t.phase === "focus" ? `focus · ${t.name} · until ${hm(t.ends)}` : `break · until ${hm(t.ends)}`)
+    : t.left && t.left < total ? `${t.phase} · paused` : `round ${t.round} · ready`;
+  const i = $("#sm-bar i"); if (i) i.style.clipPath = `inset(0 ${(100 * left / total).toFixed(1)}% 0 0)`;
+  document.title = t.running ? `${mmss(left)} ${t.phase} · Kurooto` : "Kurooto";
+  if (t.running && left <= 0 && !SM.ended) { SM.ended = true; setTimeout(smLoad, 1500); } // its end is the server's
+}
+
 // ------------------------------------------------------------------------------------------------ wiring
 let body, mind;
 function connect() {
@@ -1847,7 +2003,11 @@ function connect() {
       if (current() === "jobs" || current() === "schedule") renderTab();
       if (first && DENSE) { renderNav(); if (dtab === "kurooto") chatDraw(); }
     }
-    else if (m.t === "event") { SEEN.set(m, performance.now() / 1000); feed.unshift(m); feed.length = Math.min(feed.length, 200); body.event(m); if (current() === "activity") renderTab(); }
+    else if (m.t === "event") {
+      SEEN.set(m, performance.now() / 1000); feed.unshift(m); feed.length = Math.min(feed.length, 200); body.event(m); if (current() === "activity") renderTab();
+      if (m.kind === "study_mode") setStudy(!!m.on, false); // /study mode on|off, or the timer's end
+      else if (STUDY && /^(study|deadline|quiz|setting_changed)/.test(m.kind)) smSoon();
+    }
     else if (m.t === "hello") { TERM.cid = m.cid; if (TERM.shown) termAttach(TERM.shown); }
     else if (m.t === "pty") { termData(m); if (!TERM.live.has(m.n)) { TERM.live.add(m.n); if (DENSE) renderNav(); } }
   };
@@ -1859,6 +2019,7 @@ function settingChanged(key, value) {
   if (key === "look.palette") setTimeout(() => location.reload(), 300); // the canvases take their colours at load
   if (key === "look.panes") { HIDE = cleanHide(value); MAX = null; try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ } applyPanes(); }
   if (key === "look.hidden_features") HIDDEN_F = new Set(Array.isArray(value) ? value : []);
+  if (key === "look.study_mode") setStudy(!!value, false);
   if (key === "look.links_in" && $('meta[name="kurooto-links"]')) $('meta[name="kurooto-links"]').content = value; // links.js
 }
 function applyLayout(force = false) {
@@ -1967,8 +2128,9 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "/") { e.preventDefault(); e.stopPropagation(); findNote(); return; }
   const pg = Object.keys(PKEY).find((k) => e.code === `Key${PKEY[k].toUpperCase()}`);
   const types = /Mac/.test(navigator.platform) && ["INPUT", "TEXTAREA"].includes(e.target.tagName); // Option+letter types a character
+  if (e.code === "KeyM" && !e.shiftKey && !inTerm(e.target) && !types) { e.preventDefault(); e.stopPropagation(); toggleStudy(); return; } // Study mode
   if (pg && !e.shiftKey && !inTerm(e.target) && !types) { e.preventDefault(); e.stopPropagation(); if (DENSE && PAGE === pg) closePage(); else openPage(pg); return; }
-  if (!/^[1-9]$/.test(e.key)) return;
+  if (!/^[1-9]$/.test(e.key) || STUDY) return; // Study mode keeps the terminals out of the way
   const t = DENSE ? denseTerms()[Number(e.key) - 1] : tab === "terminals" ? TERM.list[Number(e.key) - 1] : null;
   if (!t) return;
   e.preventDefault(); e.stopPropagation();
@@ -2010,6 +2172,8 @@ const VERBS = [
     s.dispatchEvent(new Event("input")); s.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })); } },
   { w: "open", hint: `open a page: ${Object.keys(TABS).join(", ")}`, run: (r) => { const p = pageOf(r);
     if (!p) return cmdSay(`Which page? ${Object.keys(TABS).join(", ")}`, true); cmdClose(); openPage(p); } },
+  { w: "study", hint: "study on · study off: Study mode (Alt+M)", run: (r) => { const on = /^(on|start)$/i.test(r) ? true : /^(off|stop|end)$/i.test(r) ? false : null;
+    if (on === null) return cmdSay("study on, or study off", true); cmdClose(); setStudy(on); } },
 ];
 function cmdRows(v) {
   v = v.replace(/^j\s+/i, "journal ").replace(/^\.\s*(?=\S)/, "note ").replace(/^!\s*(?=\S)/, "remind ");
@@ -2078,6 +2242,7 @@ window.addEventListener("resize", () => { applyLayout(); refit(); });
   loadLook();
   api("events").then((r) => { for (const e of (r.events || []).reverse()) feed.push(e); if (current() === "activity") renderTab(); }).catch(() => {});
   applyLayout(true);
+  if (document.body.dataset.study === "on") setStudy(true, false, false); // look.study_mode: as it was left
   if (DENSE && DLABEL[asked]) openPage(asked);
   refreshTerms().then(() => { if (DENSE && !PAGE && TERM.list.some((t) => t.name === dtab)) showDense(dtab); else if (!DENSE && tab === "terminals") showTab("terminals"); });
   setInterval(refreshTerms, 20000);

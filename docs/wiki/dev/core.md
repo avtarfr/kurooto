@@ -166,7 +166,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `calls/searches.json` (what calls searched your notes for, 8 days at most), `dreaming-curious.json` (lines shown, settled, their buttons' offers, repositories' first commits) | `modules/curious.py` |
 | `alarm.json`, `alarm-last.json`, `alarm-skip.json`, `alarm-ringing.json` | `modules/alarm.py` |
 | `deadlines.json`, `deadlines-recurring.json` | `modules/deadlines.py` |
-| `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json` | check-ins, capture, study |
+| `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json`, `study/timer.json` | check-ins, capture, study (`timer.json`: Study mode's timer) |
 | `subjects/term-note.json`, `subjects/skip-<day>.json` | `modules/subjects.py` |
 | `exam_season.json`, `revision.json`, `startby.json`, `quests.json`, `reminders-snooze.json` | those modules (`revision.json`: Exam season's revision plan, `modules/revision.py`) |
 | `doubts/*.json`, `hints/<id>.json`, `quiz/<subject>.json`, `quiz/{session,offered}.json`, `quiz/_links.json` (link recall cards) | doubts, hints, quiz |
@@ -309,9 +309,9 @@ fire even before the feature is on), `alarm:ring` / `alarm:prep` / `alarm:awake`
 `exam_season:night_again`, `health:after:<id>`, `health:recheck`, `integrate:soon`, `integrate:early` (the night's
 start moved earlier for an early wake, set by `integrate:plan`), `notes_sync:soon` (debounced after
 `job_done`), `profile:soon` (debounced after setting changes), `research:remind:<slug>`, `retro:after-reset`,
-`study:session-end`, `telegram:focus-end`, `books:now`, `books:resume`, `updates:apply`, `updates:probation`,
-`updates:rolled_back`, `upgrade:whats_new`. Profile restore re-books saved `reminders:`, `calls:ring:` and
-`alarm:ring` jobs (`core/profile.py`).
+`study:session-end`, `study:timer`, `telegram:focus-end`, `books:now`, `books:resume`, `updates:apply`,
+`updates:probation`, `updates:rolled_back`, `upgrade:whats_new`. Profile restore re-books saved `reminders:`,
+`calls:ring:` and `alarm:ring` jobs (`core/profile.py`).
 
 Every scheduled action takes the job's payload (`tests/unit/test_scheduled_actions.py` checks it).
 
