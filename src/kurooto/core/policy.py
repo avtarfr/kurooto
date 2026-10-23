@@ -216,14 +216,12 @@ def replay(app: App, c: Candidate, rows: list[Row], base: Candidate | None = Non
 
 def blocked(app: App, st: dict) -> set[str]:
     """Kinds whose change from here was undone (or put back by hand) in the last BLOCK_DAYS days."""
-    cur, cutoff, out = today(app), now() - dt.timedelta(days=BLOCK_DAYS), set()
+    cutoff, out = now() - dt.timedelta(days=BLOCK_DAYS), set()
     for d in st.get("decisions") or []:
         if not d.get("applied") or dt.datetime.fromisoformat(d["at"]) < cutoff:
             continue
-        k, lever = d["kind"], d["lever"]
-        live = k in cur.evening if lever == "evening" else k in (cur.habituate if lever == "habituate" else cur.windows)
-        if not live:
-            out.add(k)
+        if not live(app, d):
+            out.add(d["kind"])
     return out
 
 
@@ -263,14 +261,13 @@ def state_file(app: App):
     return app.paths.state / "dream-policy.json"
 
 
-def tune(app: App) -> dict | None:
-    """Tonight's round: replay today's policy and its variants on the whole record; apply the best if it beats today's
-    by the margin. Once a day. Returns the decision (also kept), or None when there was no round."""
+def consider(app: App) -> tuple[dict, Change | None] | None:
+    """Tonight's round, without applying anything: replay today's policy and its variants on the whole record. (the
+    decision, the best variant's change or None), or None when there is no round (off, Calm off, done today)."""
     if not app.settings.get("dreaming.tune_messages") or not app.calm.on():
         return None
     st = jload(state_file(app), {}) or {}
-    day = now().date().isoformat()
-    if st.get("day") == day:
+    if st.get("day") == now().date().isoformat():
         return None  # one round (and at most one change) a night
     rows = record(app)
     cur = today(app)
@@ -281,7 +278,6 @@ def tune(app: App) -> dict | None:
         r = replay(app, c, rows, base=cur)
         if r.score > best_r.score:  # ties keep today's
             best, best_r = c, r
-    margin = float(app.settings.get("dreaming.tune_margin") or 0)
     days = max(1, round((now().timestamp() - rows[0].ts) / 86400)) if rows else 0
     d = {
         "at": now().isoformat(timespec="seconds"),
@@ -295,14 +291,32 @@ def tune(app: App) -> dict | None:
     if best.lever:
         d.update(kind=best.kind, lever=best.lever, value=best.value, said=best.said())
         d.update(saved=best_r.saved, delayed=best_r.delayed)
-    if best.lever and best_r.score - base.score >= margin:
-        ok, said, uid = app.calm.apply(best.change(), why=BY)
+    return d, (best.change() if best.lever else None)
+
+
+def settle(app: App, d: dict, change: Change | None, apply: bool, why: str = BY) -> dict:
+    """Keep tonight's decision (and apply its change when `apply`, through Calm, with Undo)."""
+    if apply and change is not None:
+        ok, _said, uid = app.calm.apply(change, why=why)
         d.update(applied=ok, uid=uid)
-    st["day"] = day
+    st = jload(state_file(app), {}) or {}
+    st["day"] = now().date().isoformat()
     st["decisions"] = [*(st.get("decisions") or []), d][-KEEP_DECISIONS:]
     jsave(state_file(app), st)
     app.events.emit("dreaming_policy", applied=d["applied"], kind=d.get("kind", ""), gain=d["best"] - d["score"])
     return d
+
+
+def tune(app: App) -> dict | None:
+    """Tonight's round on its own: apply the best variant if it beats today's by dreaming.tune_margin. Once a day.
+    Returns the decision (also kept), or None when there was no round. Dreaming's morning goes through
+    core/tuning.py:night instead, which weighs this against the other areas (one change a night in all)."""
+    got = consider(app)
+    if got is None:
+        return None
+    d, change = got
+    margin = float(app.settings.get("dreaming.tune_margin") or 0)
+    return settle(app, d, change, change is not None and d["best"] - d["score"] >= margin)
 
 
 def morning(app: App, send: bool = True) -> tuple[list[str], list | None]:
@@ -319,12 +333,32 @@ def morning(app: App, send: bool = True) -> tuple[list[str], list | None]:
         return [], None
     if not d or not d.get("applied"):
         return [], None
+    return [line(d)], [[("Undo", f"calm:{d['uid']}:undo")]]
+
+
+def line(d: dict) -> str:
+    """The morning message's line for an applied decision."""
     s = "s" if d["saved"] != 1 else ""
-    line = (
+    return (
         f"Learned while you slept: {d['said']}; over the last {d['days']} days that would have saved {d['saved']} "
         f"ignored ping{s} and delayed {d['delayed'] or 'none'} you answered."
     )
-    return [line], [[("Undo", f"calm:{d['uid']}:undo")]]
+
+
+def applied_today(app: App) -> dict | None:
+    """Today's decision when it changed something (for the morning message and /dream)."""
+    last = ((jload(state_file(app), {}) or {}).get("decisions") or [None])[-1]
+    ok = last and last.get("applied") and last["at"][:10] == now().date().isoformat()
+    return last if ok else None
+
+
+def live(app: App, d: dict) -> bool:
+    """Is an applied decision's change still in place (not undone or put back by hand)?"""
+    cur, k = today(app), d.get("kind")
+    lever = d.get("lever")
+    if lever == "evening":
+        return k in cur.evening
+    return k in (cur.habituate if lever == "habituate" else cur.windows)
 
 
 def show(app: App) -> str:

@@ -454,6 +454,10 @@ class App:
         learning = self.modules.get("learning") if self.is_on("learning") else None
         if learning is not None and text:  # "no, ..." just after a skill's answer teaches it (it goes on as usual)
             learning.heard(msg, text)
+        if text and not text.startswith("/") and self.is_on("dreaming"):  # "that's not what I asked": a miss
+            from kurooto.core import tuning  # for the effort replay and proposed fixes (Dream RSI part three)
+
+            tuning.heard(self, text)
         if text and not text.startswith("/"):  # "I got a project under Prof X": set up what it states (core/infer.py)
             from kurooto.core import infer
 

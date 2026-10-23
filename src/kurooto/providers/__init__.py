@@ -4,6 +4,8 @@ Settings:
     brain.main       agy | claude | gemini | ollama | custom   (freellmapi: set up earlier, works as custom)
     brain.fallback   another of those, used when the main one is rate-limited or signed out ("" = none)
     brain.classify   rules | main | ollama   (the quick "how hard is this" question)
+    brain.effort_map      what Dreaming tuned: the effort your requests get per origin (providers/effort.py)
+    brain.fallback_first  what Dreaming tuned: effort levels at which the fallback is tried before the main AI
 """
 
 from __future__ import annotations
@@ -31,6 +33,8 @@ register_defaults(
         "models": {},  # per brain: {"custom": {"low": ..., "medium": ..., "high": ...}}
         "base_urls": {},  # per brain, to override a preset's address
         "timeout_min": {"low": 10, "medium": 15, "high": 30},
+        "effort_map": {},  # tuned while dreaming: {"low": "medium"} runs your requests rated low at medium effort
+        "fallback_first": [],  # tuned while dreaming: effort levels ("high") at which the fallback AI goes first
     },
 )
 

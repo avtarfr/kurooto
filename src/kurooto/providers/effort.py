@@ -3,6 +3,10 @@
 In order: a "high:" / "low:" prefix you typed; notes to study from (always high); a quick classifier (a small
 local model, or the brain itself) if one is set up; otherwise medium. Anything that changes, schedules or
 remembers something is never treated as a quick lookup.
+
+What decided it is the request's origin (pick_with_origin): "notes" for the notes rule, else the level the classifier
+or the default gave ("low", "medium", "high"); a typed prefix has none. Dreaming may tune what an origin gets for your
+own requests (brain.effort_map, Dream RSI part three: core/tuning.py); a typed prefix is never tuned.
 """
 
 from __future__ import annotations
@@ -37,11 +41,22 @@ def strip_forced(prompt: str) -> tuple[str | None, str]:
 
 
 def pick(prompt: str, classify: Callable[[str], str | None] | None = None) -> str:
+    return pick_with_origin(prompt, classify)[0]
+
+
+def tuned(level: str, origin: str | None, mapping: dict | None) -> str:
+    """The level after brain.effort_map ({origin: level}); a typed prefix (no origin) is never changed."""
+    got = (mapping or {}).get(origin) if origin else None
+    return got if got in CRITERIA else level
+
+
+def pick_with_origin(prompt: str, classify: Callable[[str], str | None] | None = None) -> tuple[str, str | None]:
+    """(level, what decided it: "notes", "low", "medium", "high", or None for a prefix you typed)."""
     level, prompt = strip_forced(prompt)
     if level:
-        return level
+        return level, None
     if NOTES.search(prompt):
-        return "high"
+        return "high", "notes"
     choice = None
     if classify:
         try:
@@ -52,4 +67,4 @@ def pick(prompt: str, classify: Callable[[str], str | None] | None = None) -> st
     choice = choice or "medium"
     if choice == "low" and ACTS.search(prompt):
         choice = "medium"
-    return choice
+    return choice, choice

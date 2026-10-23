@@ -683,9 +683,13 @@ arrives.
   counts `case_kept` events (missed vs `wrong`), then with Cases on runs `cases.suite()` and reports test cases in
   `fail` whose id was in the stored `passing` list (`<state>/dreaming.json`), emitting `dreaming_regressed`; only the
   sent morning message replaces `passing`. A suite error emits `dreaming_check_failed` and skips the check. Before
-  the message, `policy.morning(app, send)` (Dream RSI part two, `dreaming.tune_messages`; see
-  [core.md](core.md#the-message-policy-dream-rsi-part-two-corepolicypy)) may tune one Calm setting and adds its line
-  and Undo button; `/dream policy` is `policy.show`.
+  the message, `tuning.morning(app, send)` (Dream RSI parts two and three; see
+  [core.md](core.md#the-message-policy-dream-rsi-part-two-corepolicypy) and
+  [core.md](core.md#tuning-the-rest-dream-rsi-part-three-coretuningpy)) runs `tuning.night` on the sent message (one
+  change a night across messages, effort, AI order and Start-by sizes) and adds its line and Undo button, and a ready
+  skill proposal's line with `rsi:<pid>:apply|no` (`callbacks()` → `tuning.answer`); `/dream policy` is `policy.show`
+  plus `tuning.show`, `/dream proposal` is `tuning.show_proposal`. `__init__` registers the job follow-up
+  `dreaming.proposal` (`tuning.proposal_ready`).
   `curious_lines(send)` adds at most two lines to the loose ends from `modules/curious.py` (rules only), their buttons
   in `self.buttons` (the morning message carries them; `/dream` replies with them). `curious_line`
   (`dreaming.curious`): `asks()` = lane-`you` job titles of 7 days (`Jobs.finished_since`), call `search_notes`

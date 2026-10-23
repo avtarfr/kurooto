@@ -163,6 +163,8 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `ledger.db` | SQLite, tables `rows` (kind, sub, at, upd, src, h, `blob` = AES-GCM sealed JSON), `seen`, `forgot` (WAL, 0600): the memory ledger, encrypted; gists, threads, rows read from notes. Not backed up unless `backups.memory` | `core/ledger.py:Ledger` |
 | `gists.jsonl` | (0.5.17 only) the gists before the ledger; moved into it and removed on first use | `core/gists.py:_move` |
 | `dream-policy.json` | the day of the last tuning round and the last 30 decisions with their replay scores | `core/policy.py:tune` |
+| `dream-tuning.json` | Dream RSI part three: the day of the last night round, the last 60 decisions (every area's, with mirrors of applied message changes), outcomes per kind of change, the skill proposal | `core/tuning.py:night` |
+| `tuning/proposal-<id>.md` | a proposed skill waiting for Apply or No | `core/tuning.py:proposal_ready` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
 | `notes-moves/<stamp>.json` | each Notes-step move: moves, link edits (old text, new sha256), folders made and removed, settings before and after, `undone` | `core/notesfit.py` |
 | `setup.json` | the setup page's steps: `steps.<id>` = `{status: done\|skipped\|open, seconds, visits, left_at}`, and `chosen` (the features ticked before the page was closed) | `core/setupsteps.py` |
@@ -1095,3 +1097,64 @@ by a margin. Part one is Dreaming's self-check (`modules/dreaming.py:self_check`
   (the replay must decide it from recorded fields only), its proposals in `propose()` with a `CHANGE` cost and a
   `Candidate.said()`/`change()` branch, `KEYS`, and a test in `tests/unit/test_dream_policy.py`. Never a lever that
   sends something that wasn't sent: the replay can't judge it.
+- **Split for part three**: `consider(app)` is the round without applying (`(decision, change)` or None),
+  `settle(app, d, change, apply, why)` applies through Calm and keeps the decision; `tune(app)` is both with the plain
+  margin. `line(d)`, `applied_today(app)` and `live(app, d)` serve `core/tuning.py`.
+
+## Tuning the rest: Dream RSI, part three (`core/tuning.py`)
+
+The same method on three more recorded decisions, each an "area" with its switch (`dreaming.tune_effort`,
+`tune_fallbacks`, `tune_sizing`, on) and a `*_plan(app, st)` returning `(decision, Change | None)` or None (off, no
+record): today's rules are scored by a replay, one-setting variants are scored the same way minus `CHANGE[area]` (0.5),
+the best strictly better one (ties keep today's) is the area's proposal.
+
+- **Effort** (`effort_plan`): the runtime is `Jobs._run`: `effort.pick_with_origin` gives `(level, origin)` (origin
+  `notes`, `low`, `medium`, `high`; None for a typed prefix), and for lane `you` `effort.tuned(level, origin,
+  brain.effort_map)`; the origin goes in `jobs.effort_from`. The record (`asks()`): lane-`you` jobs of 45 days with
+  their misses: `wrong` (a Wrong case with that `job`, modules/cases.py), `corrected` (`jobs.corrected`, set by
+  `heard()` from `App.handle` on `CORRECTS` within 10 minutes of the answer; the words, 300 chars, blanked by
+  `Jobs.forget`), `retried` (a later lane-`you` job within `RETRY_MIN = 15` of its end with word overlap ≥ 0.6, or
+  the same skill), and verdicts empty/timeout/stuck. Judged: a known origin and level, verdict in
+  `JUDGED_VERDICTS`. `_effort_score`: recorded level → `+GOOD` or `-MISS[k]` minus minutes × `MINUTE` (0.1);
+  another level is estimated: run time scaled by the levels' recorded median ratio (`TIME` when under 3 each); more
+  effort fixes `MORE_FIXES` (half) of a miss and never a timeout; less breaks a good answer with p = max(`LESS_BREAKS`,
+  that level's own miss rate) and half the timeouts finish. Variants: one level up or down for an origin with
+  `MIN_ASKS = 8` judged requests. Trust kinds `effort.up` / `effort.down`.
+- **AI order** (`fallbacks_plan`): runtime in `Jobs._run`: unpinned jobs whose level is in `brain.fallback_first` get
+  `[fallback, main, ...]`. The record (`tries()`): attempts of 45 days per unpinned job with a level. `_chain_score`
+  plays an order: a recorded try is used as it happened (an answer: `ANSWER` minus minutes and `TRY` per failed try
+  before it; a failure in `RETRY_VERDICTS` hands on, others end it with `-FAIL`); an untried AI is estimated by
+  `_Odds.guess`: limited (fails fast) when its last try in the `LIMIT_H = 2` hours before was a limit or sign-out, else
+  its Laplace-smoothed record at that level (all levels under `MIN_TRIES`). Variants toggle one level, needing
+  `MIN_JOBS = 6` jobs there and, to add it, `MIN_FAILS = 3` failed main tries and a fallback record. Trust kinds
+  `fallbacks.first` / `fallbacks.back`.
+- **Start-by sizes** (`sizing_plan`): `samples()`: deadlines due in 90 days with a size you tapped (startby state
+  `sizes`), or done (`done_at`) / with parts half done (`progress_at`, extrapolated) and a subject: study seconds on
+  that subject (`Study.day`, manual entries too) each day from its start-by date (`told`, else `SPAN_DAYS = 14` before
+  due) to then, shared among that subject's open spans by planned size. Score: `-Σ |ln(h / actual)|`, `UNDER = 1.5`
+  times when h is too small. Variants per kind with `MIN_SAMPLES = 4`, not set by the user (a user value that isn't the
+  last one applied here): the ladder step nearest the median and the next step toward it. Trust kinds `sizing.up` /
+  `sizing.down`.
+- **The night** (`night(app)`, from `morning(app, send=True)`, once a day: `dream-tuning.json` `day`): `review()`
+  first, then `policy.consider` and each area's plan (an exception skips that area: `dreaming_tuning_failed`). Each
+  plan's margin is `dreaming.tune_margin × trust(st, kind)`; of the plans whose gain clears it, the largest gain /
+  margin is applied (`Calm.apply(change, why="dreaming.tuning")`, Undo `calm:<uid>:undo`; messages through
+  `policy.settle`). The others are kept, with `waited` when they'd have cleared. Events `dreaming_tuned`,
+  `dreaming_outcome`.
+- **Outcomes and trust** (`review`, `trust`, `live`, `blocked`): an applied decision not `live` any more is `undone`,
+  still live after `KEPT_DAYS = 14` is `kept`, counted per trust kind in `outcomes`. `trust = 1 + undone - kept/2`,
+  clamped to 1..`MAX_TRUST` (4). `blocked(app, st, area)`: targets applied (or declined) in `BLOCK_DAYS = 30` that
+  aren't live.
+- **Proposals** (`propose`, `proposal_ready`, `answer`; `dreaming.propose_prompts`, off; needs Skills and Learning):
+  `failures()` groups lane-`you` skill jobs (`then_action` skills.done/latex, payload name) of `FAIL_DAYS = 14` with a
+  wrong/corrected/retried miss; a skill with `REPEAT = 2`, not blocked, at most every `PROPOSE_EVERY_DAYS = 7`, gets
+  one quiet, text-only, background job on `Learning.check_brain()` (lane `chk`) with `PROPOSE`, follow-up
+  `dreaming.proposal`. `proposal_ready` drops it unless: not NONE, an extractable skill (`extract_skill`, `make`), the
+  file unchanged since (sha), length ratio 0.5-2, and `FIXES k: yes` lines ≥ `FIX_SHARE × trust("prompts")` of the
+  cases; else status `ready` with `proposal-<pid>.md`. `morning` offers a ready one (≤ `PROPOSAL_DAYS = 7`) with
+  `rsi:<pid>:apply|no`. Apply: `Learning._change(name, ..., "proposal")` (before-copy, `lrn:` Undo), then
+  `_replay_cases`: `cases.suite()` against this morning's `passing`; a newly failing case undoes it. No: `declined`,
+  counted `undone` for `prompts`, and the skill blocked.
+- **Adding an area**: a setting the runtime reads, a `*_plan` with a replay from recorded fields, a `live()` branch, a
+  trust kind per direction, its entry in `AREAS`, a line in `show()`, and a test in `tests/unit/test_dream_tuning.py`.
+

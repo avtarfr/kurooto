@@ -205,9 +205,12 @@ class Jobs:
             ("deadline", "real"),
             ("brain_req", "text"),
             ("receipt", "text"),
+            ("effort_from", "text"),
+            ("corrected", "text"),
         ):
             if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline;
-                # the AI it was pinned to; the run receipt
+                # the AI it was pinned to; the run receipt; what picked its effort and your words when you said its
+                # answer missed (both for Dream RSI part three, core/tuning.py)
                 self._db.execute(f"alter table jobs add column {col} {kind}")
         self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
         self._lanes: dict[str, tuple[str, threading.Thread]] = {}  # lane -> (job, the thread running it)
@@ -326,7 +329,8 @@ class Jobs:
         without its words, for /usage and the Space keeper. How many were forgotten (core/retention.py)."""
         with self._lock:
             n = self._db.execute(
-                "update jobs set title='(forgotten)', prompt='', result=null, detail=null, then_payload=null "
+                "update jobs set title='(forgotten)', prompt='', result=null, detail=null, then_payload=null, "
+                "corrected=case when coalesce(corrected,'')='' then corrected else '-' end "
                 "where status not in ('queued','running') and prompt != '' and coalesce(finished, created) >= ? "
                 "and coalesce(finished, created) < ?",
                 (lo, hi),
@@ -466,11 +470,14 @@ class Jobs:
                     None,
                 )
                 main, fallback = pinned, other or fallback
-        level = (
-            job.effort_req
-            if job.effort_req in ("low", "medium", "high")
-            else effort_mod.pick(job.prompt, self._classifier(main))
-        )
+        origin = None  # what picked the effort (providers/effort.py); none when it was asked for
+        if job.effort_req in ("low", "medium", "high"):
+            level = job.effort_req
+        else:
+            level, origin = effort_mod.pick_with_origin(job.prompt, self._classifier(main))
+            if job.lane == "you":  # tuned while dreaming, for your own requests only (core/tuning.py)
+                level = effort_mod.tuned(level, origin, s.get("brain.effort_map"))
+        self._mark(jid, effort_from=origin or "")
         minutes = (s.get("brain.timeout_min") or {}).get(level, 15)
         tools = agent_tools(self.app)
         text_only = bool(self._read("select text_only from jobs where id=?", (jid,))[0])
@@ -493,6 +500,8 @@ class Jobs:
             stop=stop,
         )
         chain = [b for b in (main, fallback) if b is not None]
+        if not want and fallback is not None and level in (s.get("brain.fallback_first") or []):
+            chain = [fallback, *[b for b in chain if b is not fallback]]  # tuned while dreaming (core/tuning.py)
         last = self._last_resort(main)
         if last is not None and last.id not in {b.id for b in chain}:
             chain.append(last)
@@ -714,6 +723,19 @@ class Jobs:
                 if self._end(jid, Verdict.STUCK, why):
                     out.append(jid)
         return out
+
+    def corrected(self, said: str, within_s: float = 600) -> str | None:
+        """You said "that's not what I asked" (core/tuning.py:heard): your last request answered in the last
+        `within_s` seconds keeps your words (300 characters; forgotten with the request), once. Its id, or None."""
+        with self._lock:
+            row = self._db.execute(
+                "select id from jobs where status in ('ok','failed') and coalesce(lane,'you')='you' and finished >= ? "
+                "and coalesce(corrected,'')='' order by finished desc limit 1",
+                (time.time() - within_s,),
+            ).fetchone()
+            if row:
+                self._db.execute("update jobs set corrected=? where id=?", ((said or "").strip()[:300] or "-", row[0]))
+        return row[0] if row else None
 
     def _attempt(self, jid: str, brain: str, result: Result) -> None:
         tools = result.usage.get("tool_calls") if isinstance(result.usage, dict) else 0
