@@ -16,6 +16,12 @@ once (Approve / Deny; Deny holds for 30 days) instead of having agy's settings c
 To undo: `agy mcp remove kurooto`, and take those lines out of ~/.gemini/antigravity-cli/settings.json (or put back
 the backup from Kurooto's state folder, backups/).
 
+A change request (core/scratch.py: Help with your project, a change to your notes you asked for) runs agy in its
+scratch folder (the working folder), and Kurooto's tools in that run write only there. agy's allow-list is one settings
+file for every run, so it can't be narrowed for one request: agy's own file tools keep the folders above, and nothing
+new is added to the list for scratch folders (agy writes there through Kurooto's tools). What changed in the original
+while it worked is reported with the proposal (scratch.audit).
+
 With your own GBrain (gbrain.managed = false) and gbrain.agy_mcp on, the same approval also gives agy that brain's own
 MCP server, registered as "gbrain" (unless agy has one by that name already, which is kept), and "mcp(gbrain/*)" in
 its allow-list (unless you listed gbrain's tools there yourself, which are kept as they are). Undo: `agy mcp remove

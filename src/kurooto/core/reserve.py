@@ -152,6 +152,11 @@ def guide_md(app: App) -> str:
             "## It may write",
             writes,
             "",
+            "A request that changes files (Help with your project, a change to notes the user asked for) may write "
+            "only in its own scratch folder, which its context names; the change reaches the user as a proposal they "
+            "apply (ai-manual.md: Change requests). Changing text already in a note: edit_note, which makes it a "
+            "proposal.",
+            "",
             "## Commands it may run",
             ", ".join(COMMANDS) + ". Never `kurooto` itself, and no inline scripts.",
             *(

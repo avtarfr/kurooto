@@ -170,7 +170,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | File | Format | Owner |
 |---|---|---|
 | `schedule.db` | SQLite, table `schedule` (WAL, 0600) | `core/scheduler.py:Scheduler` |
-| `jobs.db` | SQLite, tables `jobs`, `attempts` (WAL, 0600) | `core/jobs.py:Jobs` |
+| `jobs.db` | SQLite, tables `jobs` (`scratch`: the scratch folder a change request writes in), `attempts` (WAL, 0600) | `core/jobs.py:Jobs` |
 | `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers (kept `privacy.keep_days`); once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
 | `calm.db` | SQLite, table `sent`, kept 45 days (`text`/`title` only `privacy.keep_days`) | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
@@ -203,6 +203,8 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `tools-access.json`, `tools-list.json` | the tools-only key and URL; the last tool list | `web/server.py`, `web/tools_api.py`, `core/mcp.py` |
 | `reserve/*.md` | Markdown copies for AI programs, including `self.md` (what Kurooto runs; `.self.json` its fingerprint) and `ai-manual.md` | `core/reserve.py`, `modules/alarm.py:_mirror`, `core/selfdoc.py` |
 | `note-history/...` | earlier versions of notes the AI edited (20 each) | `core/tools.py:NoteTools` |
+| `scratch/<sid>/` | a change request's scratch folder: `scratch.json`, `work/` (a git worktree, or a mirror), `base/` (originals as first copied); removed after Apply, Discard or `proposals.keep_days`; `.nohooks/` an empty hooks folder for Kurooto's git calls | `core/scratch.py` |
+| `proposals/<pid>.json`, `<pid>.diff`, `<pid>/before/` | proposals (title, summary, files, status, how it was applied), their diffs, the earlier versions Undo puts back; settled ones go after a month | `core/proposals.py` |
 | `sync-all.json` | the last "sync everything" | `core/syncall.py` |
 | `profile.json` | Profile sync state | `core/profile.py` |
 | `aboutyou.json` | About you state | `core/aboutyou.py` |
@@ -324,6 +326,8 @@ Recurring (key → when; setting that controls it):
 | `ask:sweep` | every 10m | | `core/ask.py:Ask.start` |
 | `retention:expire` | daily 04:15 | `privacy.keep_days` | `core/retention.py:start` |
 | `memory:nightly` | daily 04:30 | `memory.thread_days` | `core/ledger.py:start` (notes read again, `threads.expire`) |
+| `proposals:cleanup` | daily 04:20 | `proposals.keep_days` | `core/proposals.py:start` (unanswered proposals expire, scratch folders go) |
+| `proposals:morning` | `proposals.morning` (daily 07:30) | `proposals.morning` | `core/proposals.py:start` (the night's proposals, only while Dreaming is off) |
 | `reserve:refresh` | every 10m | | `core/reserve.py:start` |
 | `agents:export` | hourly (only while export is on) | `agents.export` | `core/agent_export.py` |
 | `health:daily` | daily 21:00 | `health.when` | `core/health.py:Health.start` |

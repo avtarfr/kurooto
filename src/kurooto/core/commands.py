@@ -29,6 +29,11 @@ LIMIT = 3900  # characters per message (Telegram takes 4096)
 CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (("q", "questions"), "open questions I asked you (reply to one to answer it)"),
     (("jobs",), "what the AI is working on and what waits, with Cancel buttons"),
+    (
+        ("proposals",),
+        "the AI's changes to your files waiting for your OK (Apply, Change, Discard); /proposals <number> shows one "
+        "with its diff; /proposals apply|discard|undo <id>",
+    ),
     (("threads",), 'what you\'re in the middle of, with Done, Drop and Undo; also "did I finish that thing?"'),
     (("help", "start"), "this list; /help <group> shows one group in full, /help <word> finds a command or feature"),
     (("aboutme",), "what I know about you (your profile's In-brief part), and where to edit it"),
@@ -89,6 +94,7 @@ GROUPS: tuple[Group, ...] = (
         ("library", "gbrain", "notes_sync", "integrate", "files"),
         ("sync", "notes"),
     ),
+    Group("projects", "Projects and proposals", "proposals", ("projects",), ("proposals",)),
     Group("skills", "Skills and routines", "skills-and-routines", ("skills",)),
     Group("research", "Research", "research", ("research", "research_addon")),
     Group(

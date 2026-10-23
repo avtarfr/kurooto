@@ -142,6 +142,76 @@ A reminder: `Reminders.add` books a one-off `reminders:<id>` job in `schedule.db
 queue it unless urgent; the notifier delivers it with snooze buttons. A tap comes back as `rem:<ref>:10` through
 `Telegram._update` → `App.callback` → `Reminders.callbacks()["rem"]`.
 
+## Scratch folders and proposals
+
+Since 0.7.0 the AI may think, draft and write freely, but every change to the user's real files arrives as a proposal
+(title, a few lines, the files, the diff) that only their tap applies. Two modules, both core:
+
+- `core/scratch.py`: scratch folders, `<state>/scratch/<sid>/` with `scratch.json` (the `Scratch` dataclass), `work/`
+  (what the AI may write) and, for a mirror, `base/` (each original as it was when first copied in). `create(app,
+  origin, label, project=, checks=, lazy=, git_ok=)` makes a **git worktree** on a new branch `kurooto/<sid>` from HEAD
+  when `origin` is a repository's top (`repo_top`), else a **mirror** that starts empty (`kind="files"`): `pull()`
+  copies a file in on its first change (copy-on-write), `seed()` sets one from Kurooto itself (Dreaming's skill).
+  `changes()` compares: a mirror with `difflib` against `base/` (or the original now, for files the AI made with its
+  own tools), a worktree with `git add -A` and `git diff --cached --binary --full-index <base_commit>`; both drop keys
+  and passwords (`SECRETS`, `secret()`), `.git` and `.kurooto`, and a mirror drops hidden files. `fingerprint()` /
+  `audit()` name what changed in the original while the AI worked. `run_checks()` runs the project's check command in
+  `sandbox()` (bubblewrap on Linux: read-only `/`, a tmpfs over Kurooto's state and config and the user's key folders,
+  the scratch folder bound read-write, `--unshare-net`; macOS: `sandbox-exec` with a deny-network, write-only-here
+  profile, untested; elsewhere none, so checks don't run). Every git call goes through `git()`, which sets
+  `core.hooksPath` to an empty folder, no fsmonitor and no signing: nothing of the repository's runs.
+- `core/proposals.py`: `submit()` queues a job with `scratch=<sid>` and the follow-up `proposal.make` (`job_done`);
+  `make()` turns `changes()` into a record (`<state>/proposals/<pid>.json` and `<pid>.diff`), refusing past
+  `proposals.max_kb` / `max_files`; `tell()` sends it (`why="asked"`, buttons `prop:<pid>:apply|change|discard`, the
+  diff inline up to `proposals.inline_lines`, else as a file). Work nobody waits for (`lane != "you"`) is `night`: it
+  isn't told one by one but in the morning (`morning_lines()`, in Dreaming's report, or `morning()` at
+  `proposals.morning` when Dreaming is off, `why="proposals.morning"`). `apply()` is the guarded tap
+  (`core/tap.py:GUARDED["proposal.apply"]`, ways typed and button): a mirror's files are checked unchanged since
+  (`old_sha`), written atomically, and their earlier versions kept in `<state>/proposals/<pid>/before/` for `undo()`;
+  a worktree's patch becomes one commit through a temporary index (`_commit`: `read-tree HEAD`, `apply --cached`,
+  `write-tree`, `commit-tree --no-gpg-sign`, `update-ref` compare-and-swap on the current branch, then `checkout` of
+  just those paths), refused for uncommitted changes in those paths, a detached HEAD or a merge in progress; never a
+  push. Undo is the reverse patch as a revert commit. `change()` asks (hook `proposals.change`), `change_with()` runs
+  the AI again in the same scratch folder with `pid`, and `job_done` updates the proposal (`rev`). `discard()` removes
+  the folder. `cleanup()` (daily 04:20) expires proposals after `proposals.keep_days` and removes scratch folders
+  nothing needs. `APPLY` / `UNDO` hold special Apply and Undo per `apply_hook` (Dreaming's `dream.skill`, which goes
+  through Learning and the test-case replay: `core/tuning.py:wire`).
+
+How the job is confined (`core/jobs.py:_run`): a job whose `scratch` column names a non-lazy scratch folder gets
+`Task.cwd = Task.scratch = work`, `Task.reads = [origin]`, the context from `scratch.context()`, and its tools from
+`core/tools.py:tools_for(app, job)`, which is `scratch.tools()`: everything that only reads (read_note and read_file
+find the scratch copy first), and write_note, add_to_note, edit_note and delete_file writing in `work/` only (`locate()`
+maps a path in the original to the same path in the scratch folder; anything else is refused with `block()`, recorded
+in `Scratch.blocked` and the proposal), run_checks when the project has a check command. Every other writing tool is
+left out. Per brain:
+
+| Brain | How it's kept in the scratch folder |
+|---|---|
+| API brains (Gemini key, Ollama, others) | only Kurooto's tools exist for them, and those write only in `work/` |
+| Claude Code | `providers/claude.py:permissions(app, task)`: `Edit` allowed for `work/**` only, `Edit` of the original and every usual write root denied, `Read` of `SECRETS` denied in every read root, no `mkdir`/`echo`, no agents.scripts, no GBrain server; given per run with `--settings` (its own settings files untouched) |
+| agy | it runs with `work/` as its working folder and its Kurooto tools are confined (the MCP bridge passes `KUROOTO_JOB`; `web/tools_api.py` picks `tools_for(app, job)` for both the list and the call). agy's allow-list is one settings file for every run, so its built-in file tools keep their usual folders; `scratch.audit()` reports what changed in the original while it ran |
+
+`kurooto mcp` (`core/mcp.py`) lists tools with `GET tools?job=<id>` so an agent program sees the confined set.
+
+Ordinary requests: with `proposals.notes_edits` on, `tools_for()` wraps edit_note (`scratch.lazy_tools`): its first
+change makes a *lazy* scratch folder of the notes for that job (`Scratch.lazy`, `jobs.set_scratch`), later reads of
+that note find the copy, and the watcher `proposals.watch` turns it into a proposal when the job ends. Adding to notes
+and new notes are unchanged.
+
+### Making a feature produce proposals
+
+1. Make a scratch folder: `sc = scratch.create(app, folder, "label", project=..., checks=...)` (or `git_ok=False` for a
+   mirror even in a repository, as the notes do).
+2. Either let the AI work in it: `proposals.submit(app, sc, prompt, title, reply_to=..., background=..., source=...)`;
+   the job is quiet, and its answer (first line the title, then the summary) becomes the proposal, or a line saying
+   why there's none. Or write the change yourself with `scratch.seed(sc, rel, new, old)` and call
+   `proposals.make(app, sc, title, summary, source=..., night=...)` then `proposals.tell(app, p)` (or leave a night
+   proposal for the morning).
+3. A change that must be applied your way (through another feature) registers `proposals.APPLY[name] = fn(app, p, sc)
+   -> (ok, message, undo_info)` and `proposals.UNDO[name]` (and `UNDO[f"{name}.discard"]`), and passes
+   `apply_hook=name` to `make()`.
+4. Never apply anything without the user's tap: Apply is `proposal.apply` in `core/tap.py`.
+
 ## Where to change what
 
 | To change | Look at |
@@ -149,7 +219,8 @@ queue it unless urgent; the notifier delivers it with snooze buttons. A tap come
 | how text is routed | `app.py:App.handle`, `modules/text.py` |
 | a feature | its module in `modules/`, its tests, `docs/MANUAL.md` |
 | which AI answers and how | `providers/`, `core/jobs.py`, `core/quota.py` |
-| what the AI may touch | `core/places.py`, `core/tools.py`, `providers/agy.py:wanted_rules`, `providers/claude.py:permissions` |
+| what the AI may touch | `core/places.py`, `core/tools.py`, `providers/agy.py:wanted_rules`, `providers/claude.py:permissions`, `core/scratch.py` |
+| how the AI's changes reach your files | `core/scratch.py`, `core/proposals.py`, `modules/projects.py` |
 | when messages arrive | `core/notify.py`, `core/calm.py`, `core/availability.py`, `core/presence.py` |
 | scheduled work | `core/scheduler.py`, the module's `start()` |
 | the dashboard | `web/`, `web/static/` |

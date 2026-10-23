@@ -3,9 +3,11 @@
 Each run gets its permissions from Kurooto, the same folders and harmless commands as agy's allow-list
 (providers/agy.py, core/places.py): read your notes, course files and Documents/Downloads; write in the notes folder,
 the course files folder and your add-ons' skills; harmless commands; the web; Kurooto's tools, and your own GBrain's
-when gbrain.agy_mcp is on. Nothing else is allowed (`--permission-mode dontAsk`), and `kurooto` itself never runs
-from inside a request. Nothing is saved in Claude Code's own settings, nor are its user, project or local settings,
-hooks or session history used: all of it is given for the run only, so there's nothing to undo.
+when gbrain.agy_mcp is on. A change request (core/scratch.py) runs in its scratch folder and may edit only there;
+the real folders are denied for editing, and files of keys or passwords for reading. Nothing else is allowed
+(`--permission-mode dontAsk`), and `kurooto` itself never runs from inside a request. Nothing is saved in Claude Code's
+own settings, nor are its user, project or local settings, hooks or session history used: all of it is given for the run
+only, so there's nothing to undo.
 
 Settings: brain.models.claude {"low": "haiku", "medium": "sonnet", "high": "sonnet"} (any model name Claude Code
 takes), and your Claude sign-in (`claude` once, or Settings → AI → Test).
@@ -45,6 +47,7 @@ RESETS = re.compile(
 MONTHS = ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")
 DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 DENIAL_NAMES = 5  # how many refused tools the log line names
+SCRATCH_NO = {"mkdir", "echo"}  # commands a change request doesn't get: they could write outside its scratch folder
 
 
 def reset_at(text: str, now: float | None = None) -> float | None:
@@ -144,35 +147,53 @@ def rule_path(p: Path | str) -> str:
 
 
 def permissions(app: App | None, task: Task) -> tuple[dict, list[str]]:
-    """The run's permissions ({"permissions": ...} for `--settings`) and the folders outside the notes it reads."""
+    """The run's permissions ({"permissions": ...} for `--settings`) and the folders outside the notes it reads.
+
+    A change request (task.scratch, core/scratch.py) may edit its scratch folder and nothing else: Edit is allowed
+    there only, editing the original and every usual write folder is denied outright, commands that write (mkdir,
+    echo) aren't allowed, and files of keys or passwords (.env, *.pem, id_rsa ...) are denied for reading and editing
+    in every folder it can see."""
     from kurooto.providers.agy import COMMANDS, gbrain_mcp, safe_scripts
 
     allow: list[str] = []
+    deny: list[str] = ["Bash(kurooto)", "Bash(kurooto *)"]  # off, uninstall and restore never run unattended
     dirs: list[Path] = []
+    scratch = Path(task.scratch) if task.scratch else None
     if app is not None:
         from kurooto.core.places import read_roots, write_roots
 
-        write = write_roots(app)
-        read = read_roots(app)
+        write = write_roots(app, scratch=scratch)
+        read = read_roots(app, extra=[*task.reads, *([scratch] if scratch else [])])
         allow += [f"Edit({rule_path(p)}/**)" for p in write]
         allow += [f"Read({rule_path(p)}/**)" for p in read]
         dirs = [p for p in read if p.is_dir()]
+        if scratch is not None:
+            inside = scratch.resolve()
+            for p in [*write_roots(app), *task.reads]:  # never the real folders, even if a rule above were wider
+                rp = Path(p).resolve()
+                if rp != inside and rp not in inside.parents:
+                    deny.append(f"Edit({rule_path(p)}/**)")
+            from kurooto.core.scratch import SECRETS
+
+            for p in read:
+                deny += [f"Read({rule_path(p)}/**/{pat})" for pat in SECRETS]
+            deny += [f"Edit({rule_path(scratch)}/**/{pat})" for pat in SECRETS]
     elif task.cwd:  # no app (tests): the folder it runs in
         allow += [f"Read({rule_path(task.cwd)}/**)"]
-    for c in COMMANDS:
+    for c in COMMANDS if scratch is None else [c for c in COMMANDS if c not in SCRATCH_NO]:
         allow += [f"Bash({c})", f"Bash({c} *)"]
-    for f, name in safe_scripts(app) if app is not None else []:  # your own scripts (agents.scripts)
+    for f, name in safe_scripts(app) if app is not None and scratch is None else []:  # your scripts (agents.scripts)
         allow += [f"Bash({f})", f"Bash({f} *)", *([f"Bash({name})", f"Bash({name} *)"] if name else [])]
     allow += ["WebFetch", "WebSearch"]
     if task.mcp:  # Kurooto's tools, and its resources (kurooto://self: what it's running)
         allow += ["mcp__kurooto", "ListMcpResourcesTool", "ReadMcpResourceTool"]
-    if app is not None and gbrain_mcp(app):
+    if app is not None and gbrain_mcp(app) and scratch is None:
         allow.append("mcp__gbrain")
     cfg = {
         "permissions": {
             "defaultMode": "dontAsk",
             "allow": list(dict.fromkeys(allow)),
-            "deny": ["Bash(kurooto)", "Bash(kurooto *)"],  # off, uninstall and restore never run unattended
+            "deny": list(dict.fromkeys(deny)),
         }
     }
     return cfg, [str(p) for p in dirs]
@@ -182,7 +203,7 @@ def mcp_servers(app: App | None, task: Task) -> dict:
     servers: dict = {}
     if task.mcp:
         servers["kurooto"] = {"command": task.mcp[0], "args": task.mcp[1:], "env": task.mcp_env}
-    if app is not None:
+    if app is not None and not task.scratch:  # a change request gets Kurooto's tools only (they write in its folder)
         from kurooto.modules.gbrain import serve_command
         from kurooto.providers.agy import gbrain_mcp
 

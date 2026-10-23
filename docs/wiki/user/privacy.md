@@ -67,6 +67,8 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Nightly look back | what happened today (what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out: `retro.transcripts`, `retro.journal`), your how-to-help-me note, the settings it may change; for a skill change you approved, that skill's text | the AI you picked |
 | Dreaming: a second opinion (`dreaming.consolidate_ai` = `main` only; the default asks the model on this computer) | two lines that may say the same thing or disagree: how-to-help-me lines and lines of your notes, never a gist; at most 8 pairs a night | the AI you picked |
 | Learns from its own work | nothing to build its search index (it stays on this computer); the passages the AI finds when it searches it, with that request; to learn a skill, the finished request, its answer and its steps; to learn a lesson, your correction and the skill; to pick up facts, the day's requests (with the nightly look back) | the AI that takes second looks (`learning.brain`), else the AI you picked |
+| Help with your project (off; and per project, `/project help on`) | your request, and the files of that project the AI reads or writes in its scratch folder; checks (your command, if you set one) run with no network | the AI you picked |
+| Proposals (changes to your notes you asked for) | the request and the notes the AI reads or changes in its scratch copy; nothing new: these went to the AI before 0.7.0 too | the AI you picked |
 | Dreaming: proposed fixes to skills (`dreaming.propose_prompts`, off) | the skill that keeps going wrong and the requests that went wrong (what was asked and your words about it); tuning effort, AI order and Start-by sizes sends nothing | the AI that takes second looks (`learning.brain`), else the AI you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI you picked |
 | Skills: revision packs | Tectonic, if you install it, downloads LaTeX packages; nothing of yours is sent | Tectonic's public package server |
@@ -236,7 +238,10 @@ reach for each request only; nothing is saved in its own settings.
 - **The state folder** holds your check-ins, deadlines, AI requests and answers, call transcripts, the schedule,
   questions, the record of messages that came by themselves (`calm.db`, kept 45 days: when, why, the setting, what it
   was about, the first 300 characters, whether you tapped it), test cases (`cases/`), the calls' lessons
-  (`calls/lessons.md`), and earlier versions of notes the AI edited (`note-history/`, the last 20 per file). With
+  (`calls/lessons.md`), earlier versions of notes the AI edited (`note-history/`, the last 20 per file), the AI's
+  scratch folders (`scratch/`: copies of the files it changed, or a git worktree of a project; gone after Apply,
+  Discard or `proposals.keep_days`) and proposals (`proposals/`: their diffs and the earlier versions Undo puts back,
+  settled ones kept a month). With
   Learns from its own work on: the search index of past requests, calls and chats (`learning/history.db`), and the
   earlier versions of skills it changed (`learning/before/`). What's kept of conversations stays until you
   set how long:
@@ -374,8 +379,12 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
   mail; the reserve. Hidden files and folders (like `.git`) are left out, and a link that leads elsewhere is refused.
 - **Write:** your notes folder, Classroom's course files folder, and (with add-ons on) your add-ons' `skills/`. Text
   files only. Documents and Downloads stay read-only.
-- **Your text:** it adds notes and lines; it changes existing text only when you asked, one passage at a time, after
-  keeping the previous version.
+- **Your text:** it adds notes and lines; it changes existing text only when you asked, and that change comes as a
+  proposal you apply (Undo puts it back). [Projects and proposals](proposals.md).
+- **Change requests** (your project, a change to your notes, a fix for a skill): it writes in a scratch folder of its
+  own in Kurooto's state folder, nowhere else; your files change only when you tap Apply. Keys and passwords (`.env`,
+  `*.pem`, `id_rsa` ...) are never copied there or proposed. Checks you turn on for a project run in a sandbox with no
+  network.
 - **The web:** public pages, read only, a few MB at most; never this computer or your local network.
 - Everything it reads goes to the AI you picked, like the notes it reads to answer.
 

@@ -14,6 +14,9 @@ sense in unattended work). Below, the ones that are always there:
   failures) and, with part=manual, how it works (core/selfdoc.py).
 Tools say whether they write (Tool.writes): text-only requests get none at all. A tool that sets an alarm, places a
 call or does anything else on core/tap.py's list says so (Tool.guarded): outside a live call it waits for your Approve.
+A request that changes files works in a scratch folder (core/scratch.py, tools_for()): its writing tools write only
+there, and the change reaches you as a proposal (core/proposals.py). In any other AI request, edit_note's change to
+your text becomes a proposal too (proposals.notes_edits).
 """
 
 from __future__ import annotations
@@ -690,6 +693,21 @@ def agent_tools(app: App) -> list[Tool]:
         except Exception as e:
             app.events.emit("tools_failed", module=source, error=str(e)[:200])
     return out
+
+
+def tools_for(app: App, job: str | None = None) -> list[Tool]:
+    """The tools one AI request gets. A change request (it works in a scratch folder, core/scratch.py): reading as
+    always, writing only in that folder. Any other request: agent_tools(), with edit_note's changes to your notes
+    becoming a proposal (proposals.notes_edits) instead of being made."""
+    from kurooto.core import scratch
+
+    sc = scratch.for_job(app, job) if job else None
+    if sc is not None and not sc.lazy:
+        return scratch.tools(app, sc, job)
+    base = agent_tools(app)
+    if job and app.settings.get("proposals.notes_edits"):
+        return scratch.lazy_tools(app, job, base)
+    return base
 
 
 def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, via: str = "ai", job: str | None = None):

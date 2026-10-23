@@ -170,7 +170,8 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
 - Updates install themselves at night by default, signed and with automatic rollback.
 - On battery (`power.on_battery`, default `saver`) heavy work waits for the charger on purpose; Telegram keeps working.
 - The notes folder is plain Markdown files; Kurooto never deletes it, and its notes tools only create, add to and
-  tick tasks. `about-me/how-to-help-me.md` there says how the person likes to be helped: follow it.
+  tick tasks. A change to the person's text, or to a project's files, is drafted by the AI in a scratch folder and
+  reaches them only as a proposal (a diff) they apply with a tap (`/proposals`); never apply one for them. `about-me/how-to-help-me.md` there says how the person likes to be helped: follow it.
 - Kurooto's tools (reminders, deadlines, notes, questions to the person) are yours too through `kurooto mcp`, while
   Kurooto runs.
 - `about-me/profile.md` in the notes folder is the person's profile, built from what their other AI accounts know

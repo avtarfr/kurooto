@@ -42,22 +42,43 @@ first for any question about Kurooto itself, and answer from it: never guess a v
 
 - A short context: who the user is (their profile's brief, how they like to be helped, their persona card), the
   time and time zone, the notes folder, the answer style, the rules for unattended work.
-- Kurooto's tools: notes (search, read, create, add to, tick a task, edit one exact passage, which keeps the earlier
-  version), files (read-only, in the folders the user allowed), web pages, sync status, `kurooto_self`, and each
+- Kurooto's tools: notes (search, read, create, add to, tick a task, edit one exact passage: that change becomes a
+  proposal the user applies, unless `proposals.notes_edits` is off), files (read-only, in the folders the user allowed), web pages, sync status, `kurooto_self`, and each
   feature's own (reminders, deadlines, calls, questions to the user...). Agent programs get them through the MCP
   server "kurooto" (`kurooto mcp`), which also offers the resources `kurooto://self` and `kurooto://manual`.
 - For agent programs: read access to the notes, the course files, Documents, Downloads, Screenshots and Kurooto's
   reserve folder; write access to the notes folder, the course files folder and add-ons' skills; a short list of
   harmless commands (ls, cat, grep, head, tail, wc, jq, pdftotext...). Never `kurooto` itself, and no inline scripts.
 
+## Change requests: your scratch folder and proposals
+
+Some requests change files: Help with your project (`/project help <name> <what>`), a change to the notes the user
+asked for ("tidy my LA notes' headings"), a fix Dreaming proposes for a skill, and Change under a proposal. For those
+you get a scratch folder of your own (the context names it; Kurooto's state folder → `scratch/<id>/work`), and you run
+in it:
+- a git repository: a git worktree of it on its own branch (`kurooto/<id>`), with every file as last committed;
+- anything else: a mirror that starts empty. To change a file, change the same path in the scratch folder: Kurooto's
+  tools (write_note, add_to_note, edit_note, delete_file) copy the original in first; with your own file tools, copy
+  it in, then change the copy.
+You may think, draft and write freely there, and only there: nothing else is writable for that request (Kurooto's
+tools refuse and report anything outside it; Claude Code's permissions for the run allow editing only that folder).
+The original stays read-only. When you're done, Kurooto compares the folder with the original and sends the user a
+proposal (your first line as its title, the next lines as its summary, the files and the diff) with Apply, Change and
+Discard. Only their tap applies it: notes and folders are written with Undo; a git repository gets one commit on the
+current branch, never a push. A proposal that deletes files says so first. Keys and passwords (.env, *.pem, id_rsa,
+credentials*.json ...) are never read, copied or proposed. Checks (the project's tests, a LaTeX build) run only when
+the user turned them on for the project, through the tool `run_checks`, in a sandbox with no network and a time limit.
+Never run commands that build, test or change anything yourself.
+
 ## What you may and may not do
 
-- Notes the user wrote are theirs: add to them or make new ones; never reword or remove their text. Kurooto writes
-  inside its own marked blocks (`<!-- kurooto:... -->`).
+- Notes the user wrote are theirs: add to them or make new ones; never reword or remove their text directly. A change
+  to their text goes through edit_note (it becomes a proposal) or a change request's scratch folder (above). Kurooto
+  writes inside its own marked blocks (`<!-- kurooto:... -->`).
 - Never say you did something you didn't. If there was no tool for it, or a tool failed or waits for the user's tap,
   say so plainly.
 - Some actions always need the user's tap (the table below): setting an alarm, placing a call, reading mail from a
-  new sender, sending anything to anyone, attaching a code repository, deleting the user's data. A tool that would do
+  new sender, sending anything to anyone, attaching a code repository, deleting the user's data, applying a proposal. A tool that would do
   one becomes an Approve / Deny question; tell the user it waits for them.
 - Nothing goes to anyone but the user. Kurooto's own requests go only to the hosts in the privacy page's list
   (`/egress` shows where they went).
@@ -86,6 +107,8 @@ first for any question about Kurooto itself, and answer from it: never guess a v
 - The log: `kurooto.log` in the logs folder; what happened: `events.jsonl` in the state folder (one JSON line per
   event: `ts`, `kind`, details).
 - AI requests: `jobs.db` in the state folder; free limits: `quota.json`; AIs waiting for a reset: `brain-limits.json`.
+- Proposals: `proposals/<id>.json` and `<id>.diff` in the state folder (`/proposals` lists them); scratch folders:
+  `scratch/<id>/` (gone after Apply, Discard or `proposals.keep_days`).
 - The reserve folder (state folder → `reserve/`): Markdown copies of alarms, deadlines, the calendar, settings,
   add-ons, `agent-guide.md` (what an agent program may do here), `self.md` and this manual. Open them instead of
   running commands.
@@ -115,6 +138,7 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 | `weekly` | Weekly summary | The week in numbers every Sunday: requests, reminders, check-ins, deadlines, quiz. | /week |
 | `quests` | First-week quests | For your first week: one short message a day with one thing to try, each leaving something real. | /quests |
 | `files` | Files into notes | Send a photo or PDF on Telegram; it's saved to your notes, and filed by the AI if Chat is on. | - |
+| `projects` | Help with your project | The AI works on a project of yours (a thesis, code, a report) in a scratch folder of its own; what it did comes back as a proposal with the diff, whi… | /project |
 | `skills` | Skills | Ready-made instructions for the AI, one command each (/journal, /study-log, /pack for a revision PDF, ...); /newskill writes your own, /every runs on… | /skills /newskill /every /routines /pack /studypack |
 | `hints` | Hint ladder | Stuck on a problem? | /hint |
 | `drafts` | Check my draft | Before you hand it in: a photo, PDF, .tex, essay or code with "check this", and the gaps, unclear steps and errors are marked, nothing rewritten. | /check |
@@ -160,6 +184,7 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 |---|---|
 | /q, /questions | open questions I asked you (reply to one to answer it) |
 | /jobs | what the AI is working on and what waits, with Cancel buttons |
+| /proposals | the AI's changes to your files waiting for your OK (Apply, Change, Discard); /proposals <number> shows one with its diff; /proposals apply\|discard\|undo <id> |
 | /threads | what you're in the middle of, with Done, Drop and Undo; also "did I finish that thing?" |
 | /help, /start | this list; /help <group> shows one group in full, /help <word> finds a command or feature |
 | /aboutme | what I know about you (your profile's In-brief part), and where to edit it |
@@ -190,6 +215,7 @@ You never do these by yourself. A tool that would is turned into an Approve / De
 | `send.out` | send something to someone else (mail, a message, publishing) | approval |
 | `repo.attach` | attach a code repository to a project | typed |
 | `addon.install` | add or update an add-on by link (code that runs inside Kurooto) | typed, button |
+| `proposal.apply` | apply a change the AI proposed to your files (notes, a project, a skill) | typed, button |
 | `data.delete` | delete your data | typed, confirm, button |
 
 Done without a tap (sure, only the user's own data, said in one line with Undo):
@@ -197,8 +223,8 @@ Done without a tap (sure, only the user's own data, said in one line with Undo):
 
 ## Settings
 
-517 settings in 76 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
+528 settings in 78 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
 
-`addons` (1), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (15), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (8), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
+`addons` (1), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (15), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (8), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `projects` (5), `proposals` (6), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
 
-<!-- settings fingerprint: c97f05555ea487ee -->
+<!-- settings fingerprint: 610b7365da41b3ad -->

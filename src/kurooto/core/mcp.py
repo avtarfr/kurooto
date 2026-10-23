@@ -19,6 +19,7 @@ import os
 import sys
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -187,7 +188,8 @@ class Server:
         }
 
     def list_tools(self) -> dict:
-        r = self.bridge.request("GET", "tools")
+        jid = os.environ.get(ENV_JOB)  # a change request's tools write only in its scratch folder
+        r = self.bridge.request("GET", "tools" + (f"?job={urllib.parse.quote(jid)}" if jid else ""))
         tools = r[1].get("tools") if r and r[0] == 200 else None
         if not isinstance(tools, list):
             tools = jload(tools_cache(), []) or []  # not running: what it last listed

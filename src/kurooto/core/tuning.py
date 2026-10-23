@@ -36,7 +36,9 @@ REPEAT times or more in the last FAIL_DAYS days, the night asks the second-look 
 failing step rewritten, and for each past failure whether the rewrite fixes it. Offered only when it fixes at least
 half of them (more for a kind you said No to or undid: trust()), in the morning message with Apply and No; never
 applied without your tap. Apply changes the skill through Learning (before-copy, Undo) and replays your test cases
-(modules/cases.py); if one that passed goes wrong, the change is put back at once. /dream proposal shows it.
+(modules/cases.py); if one that passed goes wrong, the change is put back at once. /dream proposal shows it. Since
+0.7.0 it's also a proposal (core/proposals.py): a diff in /proposals and on the dashboard, with Apply, Change (the AI
+works on it again in a scratch folder) and Discard; Apply still goes through Learning and the replay above.
 
 State: <state>/dream-tuning.json (the day, the decisions, the outcomes per kind, the proposal) and
 <state>/tuning/proposal-<id>.md (the proposed skill). /dream policy shows the rules and the decisions.
@@ -774,7 +776,18 @@ def morning(app: App, send: bool = True) -> tuple[list[str], list]:
             f"A fix for /{p['name']}, which went wrong {p['n']} times lately: {p['change']} It fixes {p['fixes']} of "
             "them by the AI's own replay; /dream proposal shows it."
         )
-        buttons.append([("Apply", f"rsi:{p['pid']}:apply"), ("No", f"rsi:{p['pid']}:no")])
+        prop = None
+        if p.get("prop"):
+            from kurooto.core import proposals
+
+            prop = proposals.get(app, p["prop"])
+        if prop is not None and prop.get("status") == "waiting":  # its proposal: Apply / Change / Discard, the diff
+            buttons += proposals.BUTTONS(prop["id"])
+            if send:
+                prop["told"] = True  # said here: not again among the night's proposals
+                proposals.save(app, prop)
+        else:
+            buttons.append([("Apply", f"rsi:{p['pid']}:apply"), ("No", f"rsi:{p['pid']}:no")])
     return lines, buttons
 
 
@@ -924,16 +937,90 @@ def proposal_ready(app: App, job, result, payload: dict) -> None:
     f.write_text(new, encoding="utf-8")
     st["proposal"] = {**p, "status": "ready", "change": change if change.endswith(".") else change + ".",
                       "fixes": yes, "base": payload.get("base")}  # fmt: skip
+    st["proposal"]["prop"] = _as_proposal(app, st["proposal"], Path(s.path), old, new)
     _save(app, st)
     app.events.emit("dreaming_proposal_ready", fixes=yes, of=n)
 
 
-def answer(app: App, pid: str, act: str) -> str:
-    """The proposal's buttons: apply (through Learning, then your test cases replayed) or no."""
+def _as_proposal(app: App, p: dict, path, old: str, new: str) -> str | None:
+    """The fix as a proposal (core/proposals.py): the diff on the dashboard and in /proposals, Apply / Change / Discard,
+    Change working on it in a scratch folder. Apply still goes through answer() below (Learning, your test cases)."""
+    from kurooto.core import proposals, scratch
+
+    try:
+        sc = scratch.create(app, path.parent, f"/{p['name']}", git_ok=False)
+        scratch.seed(sc, path.name, new, old)
+        made, _why = proposals.make(
+            app, sc, f"A fix for /{p['name']}", f"It went wrong {p['n']} times lately: {p['change']} It fixes "
+            f"{p['fixes']} of them by the AI's own replay.", request=f"A fix for the skill /{p['name']}, which keeps "
+            "going wrong", source="dream", night=True, apply_hook="dream.skill", meta={"rsi": p["pid"]},
+        )  # fmt: skip
+    except Exception as e:  # the old way (rsi buttons) still works without it
+        app.events.emit("dreaming_proposal_failed", error=f"{type(e).__name__}: {e}"[:200])
+        return None
+    return made["id"] if made else None
+
+
+def proposal_apply(app: App, prop: dict, sc) -> tuple[bool, str, dict]:
+    """Apply on the fix's proposal: the skill as it's in the scratch folder (Change may have changed it), through
+    answer()."""
+    from pathlib import Path
+
+    rel = next(iter(sc.seeded), "")
+    try:
+        new = (Path(sc.work) / rel).read_text(encoding="utf-8")
+    except OSError:
+        return False, "The proposed skill is gone.", {}
+    pid = (prop.get("meta") or {}).get("rsi", "")
+    out = answer(app, pid, "apply", new=new)
+    cid = (_load(app).get("proposal") or {}).get("cid")
+    return out.startswith("Changed"), out, {"cid": cid}
+
+
+def proposal_undo(app: App, prop: dict) -> tuple[bool, str]:
+    lrn = app.modules.get("learning")
+    cid = (prop.get("applied") or {}).get("cid")
+    if lrn is None or not cid:
+        return False, "Undo it with /learned."
+    out = lrn.undo(cid)
+    return True, str(out or "Undone.")
+
+
+def proposal_discard(app: App, prop: dict) -> None:
+    pid = (prop.get("meta") or {}).get("rsi", "")
+    p = _load(app).get("proposal") or {}
+    if p.get("pid") == pid and p.get("status") == "ready":
+        answer(app, pid, "no")
+
+
+def wire(app: App) -> None:
+    """Dreaming's fixes as proposals: their Apply, Undo and Discard (core/proposals.py)."""
+    from kurooto.core import proposals
+
+    proposals.APPLY["dream.skill"] = proposal_apply
+    proposals.UNDO["dream.skill"] = proposal_undo
+    proposals.UNDO["dream.skill.discard"] = lambda a, prop: proposal_discard(a, prop)
+
+
+def answer(app: App, pid: str, act: str, new: str | None = None) -> str:
+    """The proposal's buttons: apply (through Learning, then your test cases replayed) or no. new: the skill as its
+    proposal has it now (Change on the proposal may have changed it); else the file kept for it."""
     st = _load(app)
     p = st.get("proposal") or {}
     if p.get("pid") != pid or p.get("status") != "ready":
         return "That proposal isn't waiting any more."
+    if new is None and p.get("prop"):  # an old Apply / No button: its proposal goes with it
+        from kurooto.core import proposals
+
+        prop = proposals.get(app, p["prop"])
+        if prop is not None and prop.get("status") in proposals.OPEN:
+            sc = scratch_of(app, prop)
+            prop["status"] = "discarded" if act == "no" else "applied"
+            proposals.save(app, prop)
+            if sc is not None:
+                from kurooto.core import scratch
+
+                scratch.remove(app, sc)
     name = p["name"]
     d = _decision("prompts", target=name, trust="prompts", said=f"/{name}: {p.get('change', '')}")
     if act == "no":
@@ -946,7 +1033,7 @@ def answer(app: App, pid: str, act: str) -> str:
         return f"Left /{name} as it is; I won't propose a change to it for {BLOCK_DAYS} days."
     lrn = app.modules.get("learning")
     try:
-        new = proposal_file(app, pid).read_text(encoding="utf-8")
+        new = new if new is not None else proposal_file(app, pid).read_text(encoding="utf-8")
     except OSError:
         return "The proposal's file is gone."
     if lrn is None:
@@ -972,6 +1059,12 @@ def answer(app: App, pid: str, act: str) -> str:
     return f"Changed /{name}. Undo with /learned."
 
 
+def scratch_of(app: App, prop: dict):
+    from kurooto.core import scratch
+
+    return scratch.get(app, prop.get("sid"))
+
+
 def _replay_cases(app: App) -> str:
     """Your test cases, routed as now: the text of one that passed this morning and fails now, or ""."""
     cases = app.modules.get("cases") if app.is_on("cases") else None
@@ -991,7 +1084,8 @@ def show_proposal(app: App) -> str:
         text = proposal_file(app, p["pid"]).read_text(encoding="utf-8")
     except OSError:
         return "The proposal's file is gone."
-    return f"Proposed for /{p['name']} ({p['change']}):\n\n{text[:3500]}"
+    more = f"\n\n(/proposals {p['prop']} shows it as a diff, with Apply, Change and Discard.)" if p.get("prop") else ""
+    return f"Proposed for /{p['name']} ({p['change']}):\n\n{text[:3500]}{more}"
 
 
 # ------------------------------------------------------------------------------------------------ show

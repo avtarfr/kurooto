@@ -178,8 +178,14 @@ answer.
   `skills/`. Text files only (`.md`, `.txt`, `.tex`, `.bib`, `.csv`, `.json`, `.yaml`...). Documents and Downloads
   stay read-only.
 - **Your own text:** it creates notes and adds to them. It changes existing text only with `edit_note`, when you asked,
-  one exact passage at a time, and keeps the previous version first (Kurooto's state folder → `note-history/`, the
-  last 20 per file).
+  one exact passage at a time, and that change comes to you as a [proposal](proposals.md) you apply (with
+  `proposals.notes_edits` off it changes the note and keeps the previous version first: Kurooto's state folder →
+  `note-history/`, the last 20 per file).
+- **Change requests** (Help with your project, a change to your notes you asked for, a fix Dreaming proposes): it may
+  write in a scratch folder of its own and nowhere else, and what it did reaches your files only when you tap Apply on
+  its proposal. Claude Code's permissions for that request allow editing only the scratch folder; agy's own allow-list
+  is the same for every run, so for agy it's Kurooto's tools that keep it there, and the proposal names anything in
+  the original that changed while it worked. [Projects and proposals](proposals.md).
 - **The web:** a public page as plain text (at most a few MB); never this computer or your local network.
 - **Never:** send anything to anyone but you, or run the `kurooto` command.
 

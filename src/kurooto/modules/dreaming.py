@@ -17,8 +17,9 @@ the messages it sent you by itself under a few variants of when they come, appli
 as they are (one change a night, with Undo) and says so in one line. /dream policy shows the rules and the decisions.
 Part three (core/tuning.py) weighs that against the effort your requests get, which AI goes first and Start-by's sizes
 (dreaming.tune_effort, tune_fallbacks, tune_sizing, on): still one change a night in all. With
-dreaming.propose_prompts (off), a fix for a skill that keeps going wrong is offered here with Apply and No
-(/dream proposal shows it).
+dreaming.propose_prompts (off), a fix for a skill that keeps going wrong is offered here as a proposal (Apply, Change,
+Discard; /dream proposal and /proposals show it). Any other change the AI proposed during the night (core/proposals.py)
+gets a line here too, with its buttons.
 
 Curious and remembering (dreaming.curious, dreaming.resurface; modules/curious.py): one line about a topic you asked
 about 3+ times this week with no note on it (Make a stub / Not interested), and one from a shared past, a note or quiz
@@ -73,6 +74,7 @@ class Dreaming(Module):
     def __init__(self, app):
         super().__init__(app)
         app.jobs.then_actions["dreaming.proposal"] = lambda job, result, p: tuning.proposal_ready(app, job, result, p)
+        tuning.wire(app)  # a fix for a skill is a proposal too: its Apply goes through Learning (core/proposals.py)
 
     def start(self):
         self.every("morning", self.setting("when") or "daily 07:30", self.morning)
@@ -287,6 +289,12 @@ class Dreaming(Module):
         checked, passing = self.self_check(ev)
         learned, undo = tuning.morning(self.app, send)  # Dream RSI: tonight's one change (Undo), a proposed fix
         did += learned
+        from kurooto.core import proposals  # changes the AI proposed tonight: Apply / Change / Discard
+
+        fix = tuning.proposal(self.app)  # its own line above, with its buttons
+        waiting, wait_buttons = proposals.morning_lines(self.app, send, skip={(fix or {}).get("prop")})
+        did += waiting
+        undo = list(undo or []) + wait_buttons
         ends += checked
         ends += self.curious_lines(send)
         try:  # duplicates and lines that disagree in what's remembered (modules/consolidate.py)

@@ -78,6 +78,11 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | An agent program says Kurooto's tools aren't running | Kurooto is off or restarting: `kurooto on`, then ask again. |
 | Building my profile failed | It's a big request: if the AI hit a limit, try again later or with a stronger AI (`brain.main`). |
 | "There's no ## In brief section" | Add that heading to your profile with a few lines about you; without it nothing goes along with AI requests. |
+| Apply says "you have uncommitted changes in ..." | A proposal for a git project is one commit on your branch, and it won't touch files you're still changing: commit or stash those files (`git stash`), then tap Apply again. Changes in other files don't matter. |
+| Apply says a file "changed since this was proposed" | You (or a sync) changed it after the AI made its proposal. Tap **Change** and say "redo it on the new version", or **Discard**. |
+| Apply says the repository is "on no branch" or "in the middle of a merge" | Check out a branch (`git switch main`), or finish the merge or rebase, then tap Apply again. |
+| A proposal says "Checks didn't run: this computer has no sandbox" | Checks run only in a sandbox that keeps them in the scratch folder with no network: install bubblewrap on Linux (`sudo apt install bubblewrap`, `sudo pacman -S bubblewrap`, `sudo dnf install bubblewrap`). On Windows they don't run. |
+| "The AI doesn't help with <project> yet" | `/project help on <project>` lets it; `/project` lists your projects. |
 
 ## Messages
 

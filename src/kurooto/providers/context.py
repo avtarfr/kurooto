@@ -29,7 +29,7 @@ def headless_context(app: App, extra: str = "") -> str:
         f'You can act through {app.name}\'s tools (in agent programs, the MCP server "kurooto"): reminders, calls, '
         "deadlines, adding to notes and more, depending on the features they turned on. Use them when the request "
         "asks for an action. Notes they wrote are theirs: add to them or create new ones, never reword or remove "
-        "their text.",
+        "their text yourself; a change they asked for goes through edit_note, which makes it a proposal they approve.",
         "Never say you did something you didn't: if there was no tool for it or a tool failed, say so plainly.",
         "To learn what is set or due (alarms, deadlines, the calendar, settings, what you may do), open the Markdown "
         f"files in {app.paths.state / 'reserve'} (agent-guide.md says what each holds) instead of running commands.",

@@ -46,6 +46,8 @@ all of them.
 - [Notes and the concept graph](notes-and-concept-graph.md): your notes folder, quick notes, files into notes, search by meaning, Notes sync, the concept graph.
 - [Skills and routines](skills-and-routines.md): `/journal`, `/study-log` and the other skills, your own skills, things on a schedule.
 - [Research](research.md): a digest of new papers, project logs, experiment runs, a message when a long job ends.
+- [Projects and proposals](proposals.md): the AI drafts in a scratch folder of its own; every change to your files
+  (notes, a project, a skill) comes as a proposal with the diff, and only your tap applies it. Help with your project.
 - [Google](google.md): Classroom, Gmail digest and reply drafts, Google Calendar, the Agent plan calendar, Drive upload, and setting up your own Google sign-in.
 
 **Kurooto itself**

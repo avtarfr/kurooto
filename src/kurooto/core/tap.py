@@ -80,6 +80,12 @@ GUARDED: dict[str, Guard] = {
         "`kurooto addons add|update` after its card (yes typed, or --yes), Features → Add-ons by link (Add or Update "
         "after the card, with the box for code ticked); never by the AI, a request or a schedule",
     ),
+    "proposal.apply": Guard(
+        "apply a change the AI proposed to your files (notes, a project, a skill)",
+        ("typed", "button"),
+        "Apply under a proposal (Telegram, the phone app's chat, the morning message, the dashboard's Proposals page) "
+        "and /proposals apply <id>; never by the AI, a request or a schedule (core/proposals.py)",
+    ),
     "data.delete": Guard(
         "delete your data",
         ("typed", "confirm", "button"),

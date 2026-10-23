@@ -953,6 +953,15 @@ arrives.
     the section `PICKED`; one message with an Undo per fact.
   - Calm reasons `learning.skill`, `learning.lesson`, `learning.remember`; events `learning_*`, `history_searched`.
 - **files** (`modules/files.py`): `take_files` for incoming files; with Chat on, an AI job files them.
+- **projects** (`modules/projects.py:Projects`, 0.7.0, Help with your project): `/project` (list, `add <folder> [as
+  <name>]` into `projects.folders`, `help on|off <name>` into `projects.help`, `help <name> <what>`, `checks <name>
+  <command>|off` into `projects.checks`, with `suggest_checks()`), the intent `project_help` ("help with my thesis:
+  ...", "in my thesis project, ..."; "in my <name> ..." only for a known project). `sources()` merges `SOURCES`:
+  `own_folders`, `research_repos` (`research.repos` named by `research.projects`), `latex_documents`
+  (`research_addon.latex_repos`); a feature that makes projects (a project from a GitHub repository) appends its own
+  `fn(app) -> {name: folder}` to `SOURCES`. `start_help()` refuses a project not switched on, one already busy
+  (`scratch.busy`), then `scratch.create(...)` (a worktree for a repository) and `proposals.submit(...)` at
+  `projects.effort`. The rest is core: [architecture.md](architecture.md#scratch-folders-and-proposals).
 
 Helpers that aren't modules: `modules/text.py` (time parsing, `too_complex`, `tidy`), `modules/daily.py` (the daily
 note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py`, `modules/coursepack.py`,

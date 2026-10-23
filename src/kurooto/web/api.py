@@ -59,6 +59,7 @@ MODULE_ORDER = [
     "weekly",
     "quests",
     "files",
+    "projects",
     "skills",
     "hints",
     "library",
@@ -371,6 +372,24 @@ class Api:
             from kurooto.core import actions
 
             return 200, actions.study_view(self.app, q.get("subject"))
+        if path == "proposals" or path.startswith("proposals/"):  # the AI's changes waiting for your OK, with diffs
+            from kurooto.core import proposals
+
+            if path == "proposals":
+                pj = self.app.modules.get("projects")
+                mine = (
+                    [{"name": k, "help": pj.helps(k)} for k in sorted(pj.known())]
+                    if pj is not None and self.app.is_on("projects")
+                    else None
+                )
+                return 200, {
+                    "proposals": [proposals.public(self.app, p) for p in proposals.every(self.app)[:60]],
+                    "projects": mine,  # Help with your project: None while it's off
+                }
+            p = proposals.get(self.app, path.split("/", 1)[1])
+            if p is None:
+                return 404, {"error": "no such proposal"}
+            return 200, {"proposal": proposals.public(self.app, p, diff=True)}
         if path == "morning":  # the morning page (rhythm)
             from kurooto.modules.daily import morning_view
 
@@ -785,6 +804,26 @@ class Api:
             return 200, {"ok": True}
         if path == "ask" or path.startswith("ask/"):
             return self._ask(path, b, post=True)
+        if path == "projects/help":  # {name, what}: Help with your project, from the Proposals page
+            pj = self.app.modules.get("projects")
+            if pj is None or not self.app.is_on("projects"):
+                return 200, {"ok": False, "error": "Help with your project is off (Features)."}
+            return 200, {"ok": True, "message": pj.start_help(str(b.get("name") or ""), str(b.get("what") or ""))}
+        if path == "proposals/act":  # {id, act: apply|discard|undo|change, text}: your tap on the Proposals page
+            from kurooto.core import proposals
+
+            pid, act = str(b.get("id") or ""), str(b.get("act") or "")
+            if proposals.get(self.app, pid) is None:
+                return 404, {"ok": False, "error": "no such proposal"}
+            if act == "apply":
+                return 200, {"ok": True, "message": proposals.apply(self.app, pid, via="dashboard")}
+            if act == "discard":
+                return 200, {"ok": True, "message": proposals.discard(self.app, pid)}
+            if act == "undo":
+                return 200, {"ok": True, "message": proposals.undo(self.app, pid)}
+            if act == "change":
+                return 200, {"ok": True, "message": proposals.change_with(self.app, pid, str(b.get("text") or ""))}
+            return 400, {"ok": False, "error": "act: apply, discard, undo or change"}
         if path == "mail/confidential/settle":  # a date found in confidential mail: add it to Deadlines, or not
             from kurooto.modules.google_confidential import settle
 

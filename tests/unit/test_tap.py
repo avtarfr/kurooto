@@ -6,7 +6,7 @@ an unattended AI run never reaches one: it gets an Approve / Deny, and only Appr
 import pytest
 
 from kurooto.app import App
-from kurooto.core import ledger, retention, tap
+from kurooto.core import ledger, proposals, retention, tap
 from kurooto.core.config import Settings
 from kurooto.core.tools import agent_tools, run_tool
 from kurooto.modules.alarm import Alarm
@@ -20,6 +20,7 @@ SETTING_SINKS = {
     "research.repos": "repo.attach",
     "research.projects": "repo.attach",
     "research_addon.latex_repos": "repo.attach",
+    "projects.folders": "repo.attach",
 }
 # what a tool gets for each argument (anything else: "test"; booleans: True)
 VALUES = {
@@ -61,6 +62,7 @@ def hits(monkeypatch):
     for name in ("place", "schedule", "ring"):
         monkeypatch.setattr(Calls, name, stand_in("call.place"))
     monkeypatch.setattr(retention, "forget", stand_in("data.delete"))
+    monkeypatch.setattr(proposals, "apply", stand_in("proposal.apply"))
     monkeypatch.setattr(ledger, "forget", stand_in("data.delete"))
     real_set, real_api = Settings.set, Google.api
 
@@ -115,6 +117,7 @@ def test_the_table_names_each_action_and_how_it_is_approved():
         "repo.attach",
         "addon.install",
         "data.delete",
+        "proposal.apply",
     }
     for action, g in tap.GUARDED.items():
         assert g.what and g.where and g.ways, action
