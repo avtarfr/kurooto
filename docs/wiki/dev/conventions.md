@@ -28,7 +28,8 @@ Also, when they apply: `docs/MANUAL.md` (with the Undo), `docs/PRIVACY.md`, `doc
   `ruff check` and `ruff format --check`; run both before pushing.
 - Standard library first. The dependency list (`pyproject.toml [project] dependencies`) is short on purpose:
   `cryptography`, `filelock`, `keyring`, `psutil`, `ptyprocess`/`pywinpty`, `python-dateutil`, `segno`, `tzdata`,
-  `websockets`, `zstandard` (Linux). HTTP is `urllib.request`; the web server is `http.server`. Adding a dependency
+  `websockets`, `zstandard` (Linux). HTTP is `urllib.request`, always through `core/egress.py:urlopen` for an
+  internet address (see Privacy rules); the web server is `http.server`. Adding a dependency
   means updating `uv.lock` **and** `requirements.lock` (CI compares them) and is a decision for the owner.
 - No new subprocess calls through `subprocess` directly: use `core/proc.py:run` (no console windows, UTF-8, tree kill,
   `.cmd` shims). No new JSON writes with `write_text`: use `core/state.py:jsave`. No notes writes outside
@@ -64,6 +65,12 @@ Also, when they apply: `docs/MANUAL.md` (with the Undo), `docs/PRIVACY.md`, `doc
 - Nothing leaves the computer unless a feature the user turned on says so in its `privacy` text and in
   `docs/PRIVACY.md`. A new outward call (a host, an API, a cloud service) needs: the module's `privacy` string, a
   `docs/PRIVACY.md` entry, a setting to turn it off where it isn't the feature's whole point, and the owner's OK.
+- Every request on the internet goes through `core/egress.py`: `egress.urlopen(req, "<feature>", timeout=...)` in place
+  of `urllib.request.urlopen` (`own=True` only for an address the user gave), `egress.allow(url, feature)` before
+  another kind of connection, `egress.handed("<program>", "<feature>")` before starting a program that goes online by
+  itself. A new built-in host goes into `egress.HOSTS` and PRIVACY.md's "Where requests go" table together (a test
+  compares them); without it, `privacy.egress` `enforce` refuses the request. Details:
+  [core.md](core.md#egress-every-request-on-the-internet).
 - Kurooto never sends mail or messages to anyone but its owner on its own. Drafts wait for an explicit Send.
 - Secrets live in `app.secrets` only, never in settings, events, logs, notes, the reserve or the diagnostics bundle. New
   secret names go into `diagnostics.py:KNOWN_SECRETS`. Pass tokens to child programs through environment variables or

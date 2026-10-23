@@ -561,6 +561,8 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `privacy.allow_hosts` | `[]` | more hosts Kurooto may reach, e.g. ["feeds.example.org"]; ".example.org" for all of it |
+| `privacy.egress` | `"record"` | record (count every request), enforce (also refuse hosts not on the list), off |
 | `privacy.keep_days` | `30` | transcripts, AI requests and answers, chats and logs go after this many days (0: kept) |
 
 ### `profile`

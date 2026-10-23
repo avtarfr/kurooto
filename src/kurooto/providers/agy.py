@@ -34,7 +34,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kurooto.core import proc
+from kurooto.core import egress, proc
 from kurooto.core.state import jload, jsave
 from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, TEXT_ONLY, Brain, Result, Task, Verdict
 
@@ -125,6 +125,7 @@ class Agy(Brain):
         long = handover(prompt, task.cwd, task.text_only)
         args = self._args(long[1] if long else prompt, task.effort, minutes)
         env = {**os.environ, **task.mcp_env} if task.mcp_env else None  # agy hands it on to `kurooto mcp`
+        egress.handed("agy", "AI requests")  # what agy sends to Google, it sends itself
         t0 = time.monotonic()
         try:
             if self.io_mode == "pty":

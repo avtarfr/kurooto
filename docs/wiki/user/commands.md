@@ -31,6 +31,7 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/why` | why the last message that came by itself came | [Messages it sends](messages-it-sends.md) |
 | `/keep` · `/keep 60` · `/keep <feature>` | what you used of each feature that's on (last 30 days, or as many as you say, up to 90) and what it sent by itself; one feature with Keep / Quiet / Off buttons | [Messages it sends](messages-it-sends.md#keep-or-drop-the-features-you-dont-use) |
 | `/forget 7d` · `/forget 2w` · `/forget all` | forget what Kurooto kept of your conversations from the last 7 days (12h, 2w...) now, with a count per kind; `all` forgets everything after a **Forget everything** button; `/forget` alone says how long things are kept (`privacy.keep_days`, 30) | [Privacy](privacy.md#how-long-its-kept) |
+| `/egress` | where Kurooto's requests went in the last 7 days: each host with the feature, requests and bytes out and in; programs it handed work to (git, agy, Claude Code...); hosts not on the list, and any it blocked | [Privacy](privacy.md#where-requests-go) |
 | `/sync` | with Notes sync off: sync everything that's on (with it on, see Notes sync below) | [Notes](notes-and-concept-graph.md) |
 
 ### Telegram feature

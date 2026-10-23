@@ -241,6 +241,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | `kurooto autostart boot`: "Linux didn't allow that from here" | Run `loginctl enable-linger` in a terminal, then `kurooto autostart boot` again. |
 | `kurooto ask`, `call`, `send`, `ask-me` or `ask-approval` say Kurooto isn't running | `kurooto on`, then try again. `--timeout` is in minutes. |
 | A low-disk warning | `/space clean` removes Kurooto's own old files; free space elsewhere too. |
+| "Kurooto didn't connect to <host> ... it isn't on the list" | `privacy.egress` is `enforce` and that host isn't on Kurooto's list (an address changed in settings, an add-on). If you trust it, add it to `privacy.allow_hosts` in Settings (`["feeds.example.org"]`), or set `privacy.egress` back to `record`. `/egress` shows what was blocked. |
 
 ## Updates, backups and moving
 

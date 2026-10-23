@@ -22,6 +22,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable
 
+from kurooto.core import egress
 from kurooto.core.health import Check
 
 CRED_WARN_S = {"google": 8 * 86400, "github": 10 * 86400}  # a sign-in ending sooner than this is a problem
@@ -151,7 +152,7 @@ def notes_sync(m) -> Check:
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+            with egress.urlopen(req, "Notes sync", timeout=20) as r:
                 exp = github_expiry(r.headers.get("github-authentication-token-expiration"))
         except urllib.error.HTTPError as e:
             if e.code == 401:

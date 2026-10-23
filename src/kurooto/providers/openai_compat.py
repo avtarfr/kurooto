@@ -15,6 +15,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from kurooto.core import egress
 from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
 
 MAX_ROUNDS = 16  # rounds of tool calls in one request, at most; then it must answer
@@ -87,12 +88,12 @@ class OpenAICompat(Brain):
             data=json.dumps(body).encode(),
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"},
         )
-        with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
+        with egress.urlopen(req, "AI requests", timeout=timeout, own=True) as r:  # the service you set up
             return json.loads(r.read())
 
     def list_models(self, timeout: float = 20) -> list[str]:
         req = urllib.request.Request(f"{self.base_url}/models", headers={"Authorization": f"Bearer {self.api_key}"})  # noqa: S310
-        with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
+        with egress.urlopen(req, "AI requests", timeout=timeout, own=True) as r:
             data = json.loads(r.read())
         return sorted(m.get("id", "").removeprefix("models/") for m in data.get("data", []) if m.get("id"))
 

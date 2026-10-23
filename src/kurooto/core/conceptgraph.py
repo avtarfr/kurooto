@@ -34,6 +34,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kurooto.core import egress
+
 if TYPE_CHECKING:
     from kurooto.app import App
 
@@ -389,7 +391,7 @@ class HttpEmbedder:
             req = urllib.request.Request(  # noqa: S310 (a fixed https or localhost address)
                 url, json.dumps(body).encode(), {"Content-Type": "application/json"}, method="POST"
             )
-            with urllib.request.urlopen(req, timeout=self.timeout) as r:  # noqa: S310
+            with egress.urlopen(req, "notes index", timeout=self.timeout) as r:
                 data = json.loads(r.read().decode("utf-8"))
             vecs = (
                 data.get("embeddings") if self.kind == "ollama" else [e["values"] for e in data.get("embeddings", [])]

@@ -10,6 +10,8 @@ import urllib.request
 import uuid
 from pathlib import Path
 
+from kurooto.core import egress
+
 API = "https://api.telegram.org"
 MAX_PARTS = 6  # a longer text comes as a file after its start (send)
 
@@ -82,7 +84,7 @@ class TelegramAPI:
             data, ctype = json.dumps(params).encode(), "application/json"
         req = urllib.request.Request(url, data=data, headers={"Content-Type": ctype})  # noqa: S310 (fixed https API)
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
+            with egress.urlopen(req, "Telegram", timeout=timeout) as r:
                 res = json.loads(r.read())
         except urllib.error.HTTPError as e:
             try:
@@ -169,6 +171,6 @@ class TelegramAPI:
         ext = Path(info["file_path"]).suffix
         safe = re.sub(r"[^\w.-]+", "-", name_hint or "file").strip("-")[:60] or "file"
         dest = dest_dir / f"{stamp}-{safe}{'' if safe.endswith(ext) else ext}"
-        with urllib.request.urlopen(url, timeout=120) as r:  # noqa: S310
+        with egress.urlopen(url, "Telegram", timeout=120) as r:
             dest.write_bytes(r.read())
         return dest

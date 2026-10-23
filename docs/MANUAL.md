@@ -50,6 +50,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Calm by default: why each message came, and a daily limit](#calm-by-default-why-each-message-came-and-a-daily-limit)
   - [Keep or drop](#keep-or-drop)
 - [Forgetting: how long conversations are kept](#forgetting-how-long-conversations-are-kept)
+- [Where requests go: /egress](#where-requests-go-egress)
 - [Updates and going back](#updates-and-going-back)
 - [Moving to a new computer](#moving-to-a-new-computer)
 - [Your computer and Kurooto (hardware profiles)](#your-computer-and-kurooto-hardware-profiles)
@@ -2836,6 +2837,35 @@ typed or what was answered, and features learn your rhythm from it over weeks. Y
 transcript only while the computer is off and hands it over when it's back, so nothing waits there.
 *Undo:* none for what's forgotten (that's the point); a backup zip made before still has it. Set
 `privacy.keep_days` to 0 to keep everything again from now.
+
+## Where requests go: /egress
+
+Always on. Every request Kurooto makes on the internet goes through one place that counts it: the host, the feature,
+how many requests and how many bytes went out and came back, per day. It's checked against the list of hosts in
+`docs/PRIVACY.md` ("Where requests go"); addresses you gave (your calendar's link, your feeds, your own AI service,
+your call line, your ntfy server, pages your AI reads for you) are yours and always allowed, and this computer
+(`127.0.0.1`) is never counted. Programs that go online by themselves (git for Notes sync, npm and wrangler for the
+call line, agy and Claude Code, Ollama, GBrain, Tectonic, installers) are counted as "handed to" them: what they send
+isn't seen by Kurooto.
+
+**`/egress`** shows the last 7 days:
+
+    What Kurooto sent out in the last 7 days (privacy.egress: record):
+    - api.telegram.org (Telegram): 2,210 requests, 1.9 MB out, 4.4 MB in
+    - handed to agy (AI requests): 31 runs; what it sends, it sends itself
+    - generativelanguage.googleapis.com (Voice notes): 4 requests, 812.0 KB out, 3.1 KB in
+
+A host that isn't on the list shows "(not on the list)". With `privacy.egress` set to `enforce`, Kurooto refuses it:
+the feature fails with "Kurooto didn't connect to <host> (<feature>): it isn't on the list ...", and `/egress` lists it
+under Blocked. Add the host to `privacy.allow_hosts` to allow it.
+
+*Settings:* `privacy.egress`: `record` (the default: counts everything, stops nothing, because an add-on or an
+address changed in settings can reach hosts the list can't know of), `enforce` (also refuses hosts not on the list),
+`off` (counts and checks nothing). `privacy.allow_hosts`: more hosts, e.g. `["feeds.example.org"]`;
+`".example.org"` allows every host under it.
+*Leaves:* nothing. The counts stay in `egress.json` in the state folder for 30 days: hosts, features, numbers and
+bytes, never what was sent.
+*Undo:* `privacy.egress` back to `record` (or `off`); remove a host from `privacy.allow_hosts`.
 
 ### Keep or drop
 

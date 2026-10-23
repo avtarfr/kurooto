@@ -27,7 +27,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from kurooto.core import proc
+from kurooto.core import egress, proc
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
@@ -120,6 +120,8 @@ class NotesSync(Module):
         exe = self.git_exe()
         if not exe:
             raise RuntimeError("Git isn't installed")
+        if args and args[0] in egress.GIT_ONLINE and not self.setting("remote"):
+            egress.handed("git", "Notes sync")
         return proc.run([exe, "-C", str(self.app.workspace), *args], timeout=timeout, env=self._env())
 
     # ----------------------------------------------------------------------------------- setup
@@ -154,7 +156,7 @@ class NotesSync(Module):
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+            with egress.urlopen(req, "Notes sync", timeout=20) as r:
                 info = json.loads(r.read())
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):

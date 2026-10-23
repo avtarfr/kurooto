@@ -42,7 +42,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from kurooto.core import layout, proc, sources
+from kurooto.core import egress, layout, proc, sources
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock, Timeout
@@ -469,7 +469,7 @@ class Books(Module):
             headers={"Content-Type": "application/json", "x-goog-api-key": key},
         )
         try:
-            with urllib.request.urlopen(req, timeout=300) as r:  # noqa: S310
+            with egress.urlopen(req, "Books and PDFs", timeout=300) as r:
                 out = json.loads(r.read())
         except urllib.error.HTTPError as e:
             if e.code == 429:

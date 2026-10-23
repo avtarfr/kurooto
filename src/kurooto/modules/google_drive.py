@@ -18,6 +18,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from kurooto.core import egress
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
@@ -167,7 +168,7 @@ class DriveUpload(GooglePart):
             headers={"Authorization": f"Bearer {g.access_token(self.account)}", **headers},
         )
         try:
-            with urllib.request.urlopen(req, timeout=300) as r:  # noqa: S310
+            with egress.urlopen(req, "Drive upload", timeout=300) as r:
                 return r.status, r.read(), dict(r.headers)
         except urllib.error.HTTPError as e:
             if e.code == 308:  # "resume incomplete": send the next piece

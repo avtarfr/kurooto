@@ -9,7 +9,7 @@ import time
 from typing import TYPE_CHECKING
 
 from kurooto import __version__, providers
-from kurooto.core import autostart, hardware, opener
+from kurooto.core import autostart, egress, hardware, opener
 from kurooto.core.prereqs import Prereqs
 from kurooto.core.state import jload
 from kurooto.modules.telegram.api import TelegramError
@@ -710,7 +710,7 @@ class Api:
             gemini_api(self.app) + "/models?pageSize=1", headers={"x-goog-api-key": key}
         )
         try:
-            with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+            with egress.urlopen(req, "Gemini key check", timeout=20) as r:
                 json.loads(r.read())
         except urllib.error.HTTPError as e:
             return {
