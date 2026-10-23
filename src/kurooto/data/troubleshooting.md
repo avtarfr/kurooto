@@ -176,7 +176,13 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | The first PDF takes minutes | Tectonic fetches about 50 MB of LaTeX packages once; later packs take seconds. |
 | "it didn't compile" | The `.tex` is in your notes. `/pack` again, or reply with what to change. |
 | A hint photo wasn't read | Photos need an AI that opens files (agy or Claude Code). Type the problem instead. |
-| No hints at all for a subject | Its course note's "AI policy" line says no AI help. Change that line. |
+| No hints at all for a subject | The course's AI policy is off (`/subject policy la` shows it; `/subject policy la hints` changes it), or its course note's "AI policy" line says no AI help. Change that line. |
+| "check this" did nothing with my file | Check my draft is part of the Research add-on: turn it on in Features. The file has to come with the words, or "check this" within 15 minutes after it (`drafts.recent_minutes`). |
+| A draft check says the course's AI policy is off | `/subject policy <course> hints` (or the AI help box in the dashboard's Study pane) if the course allows hints. |
+| A photo or PDF draft wasn't read | Photos and PDFs need an AI that opens files (agy or Claude Code); send `.tex`, `.md`, `.txt` or code instead. |
+| No Zotero button under the digest's papers | Open the Zotero app on this computer, or add a web API key: `/zotero key <key>` (zotero.org/settings/keys, with write access). `/zotero` says which way works now; `research.zotero` mustn't be `off`. |
+| A paper is in Zotero but my notes don't link to it | Through the Zotero app, turn on its local API (Zotero 7: Settings → Advanced → "Allow other applications on this computer to communicate with Zotero"), then add the paper again, or use the web API key. |
+| `/notes pdf` sends a `.tex`, not a PDF | No LaTeX engine: tap **Install Tectonic** (with Skills on), or install TeX Live, MiKTeX or MacTeX. "Some maths didn't compile" means a macro of your own: define it in your copy of the template (`/notes pdf template`). |
 | A book stays "not started" or "waiting for a reader" | Reading happens at night on the charger (`/books read now`, or `/books read force` on battery). Scanned pages need Tesseract (`/books setup`) or a vision model; encrypted PDFs need Poppler. `/books` says which. |
 | A book sent on Telegram wasn't added | Telegram lets bots fetch files up to 20 MB: drop bigger books into the folder (`/books folder <subject>`). The caption must say `book for <subject>`. |
 | A study pack is missing files | It was over 50 MB without Drive upload. `INDEX.md` in the zip lists what was left out; turn on Drive upload. |

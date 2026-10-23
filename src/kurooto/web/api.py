@@ -91,6 +91,7 @@ MODULE_ORDER = [
     "study",
     "research",
     "research_addon",
+    "drafts",  # Check my draft: in the Research add-on bundle
     "terminals",
     "terminal",
     "overlay",

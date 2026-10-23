@@ -14,6 +14,7 @@ from kurooto.modules.classpacks import ClassPacks
 from kurooto.modules.commitments import Commitments
 from kurooto.modules.deadlines import Deadlines
 from kurooto.modules.doubts import Doubts
+from kurooto.modules.drafts import Drafts
 from kurooto.modules.dreaming import Dreaming
 from kurooto.modules.exam_season import ExamSeason
 from kurooto.modules.files import Files
@@ -71,6 +72,7 @@ CATALOG = [
     Files,
     Skills,
     Hints,
+    Drafts,
     Library,
     GBrain,
     LocalModels,

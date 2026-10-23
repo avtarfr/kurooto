@@ -7,6 +7,7 @@ the short name of the one subject whose initials it is (short_names_used(), adde
     /class mon 09:00-09:55 la        /classes        /skip la   /attend la
     /term ends 2026-12-04            /term exams 2026-12-07 to 2026-12-18
     /term note terms/2026-autumn     read the timetable and key dates from a note, live (/term note off)
+    /subject policy la hints         the course's AI policy: allowed, hints or off (Check my draft, Hint ladder)
 
 Holidays, exam periods and the days after the term's last day have no classes: no after-class questions, and the
 timetable doesn't hold calls then. Events in calendars you mark as classes (Calendar: /cal classes Timetable) are
@@ -73,6 +74,9 @@ NOT_SHORT = {
 MINOR = {"of", "the", "and", "in", "to", "for", "a", "an", "on", "with", "into"}
 ROMAN = {"i", "ii", "iii", "iv", "v", "vi"}
 SHORT_DAYS = 60  # two uses of a short name count only this many days apart
+POLICIES = ("allowed", "hints", "off")  # a course's AI policy (a subject's "ai_policy"); unset: allowed
+POLICY_WORDS = {"allowed": "allowed", "on": "allowed", "yes": "allowed", "full": "allowed", "hints": "hints",
+                "hint": "hints", "hints-only": "hints", "off": "off", "none": "off", "no": "off"}  # fmt: skip
 POSTS_HEAD = "## Classroom posts that day"  # in a catch-up's lecture stub, above...
 COVERED = "## What was covered"  # ...the part you fill in
 
@@ -270,6 +274,51 @@ class Subjects(Module):
 
     def name_of(self, slug: str) -> str:
         return next((s["name"] for s in self.subjects() if s["slug"] == slug), slug)
+
+    # ------------------------------------------------------------------------------------ AI policy
+    def ai_policy(self, slug: str) -> str | None:
+        """The course's AI policy: "allowed", "hints" or "off" (its "ai_policy", set by /subject policy or the
+        dashboard's Study pane), else what an "AI policy: ..." line in its course note says (Hint ladder's), else
+        None (not set: features treat it as allowed)."""
+        row = next((s for s in self.subjects() if s["slug"] == slug), None)
+        v = str((row or {}).get("ai_policy") or "").strip().lower()
+        if v in POLICIES:
+            return v
+        hints = self.app.modules.get("hints")
+        line = hints.policy(slug) if hints is not None else None
+        if line:
+            from kurooto.modules.hints import policy_kind
+
+            return {"solution": "allowed", "hints": "hints", "none": "off"}[policy_kind(line)]
+        return None
+
+    def set_ai_policy(self, slug: str, value: str) -> str:
+        """Set a course's AI policy ("allowed", "hints", "off"; "" clears it). A subject from the term note gets a
+        row of its own in subjects.list to hold it. Returns the sentence to show."""
+        v = POLICY_WORDS.get(str(value or "").strip().lower(), "") if value else ""
+        if value and not v:
+            return "The AI policy is allowed, hints or off."
+        items = [dict(s) for s in self.setting("list") or []]
+        row = next((s for s in items if s["slug"] == slug), None)
+        if row is None:
+            known = next((s for s in self.subjects() if s["slug"] == slug), None)
+            if known is None:
+                return "No such subject."
+            row = {"name": known["name"], "slug": slug, "aliases": []}
+            items.append(row)
+        if v:
+            row["ai_policy"] = v
+        else:
+            row.pop("ai_policy", None)
+        self.app.settings.set("subjects.list", items)
+        self.app.events.emit("ai_policy_set", policy=v or "unset")
+        name = self.name_of(slug)
+        return {
+            "allowed": f"{name}: AI help allowed (Check my draft explains each problem it marks; hints as usual).",
+            "hints": f"{name}: hints only (Check my draft only marks where a problem is; no full solutions).",
+            "off": f"{name}: no AI help (Check my draft and the Hint ladder say no for it).",
+            "": f"{name}: no AI policy set (treated as allowed).",
+        }[v]
 
     def find_in(self, text: str) -> list[str]:
         """Every subject named in a sentence, in order."""
@@ -540,7 +589,11 @@ class Subjects(Module):
     # ------------------------------------------------------------------------------------ commands
     def commands(self):
         return [
-            Command("subject", "add a subject: /subject add Linear Algebra (la, linalg)", self._subject),
+            Command(
+                "subject",
+                "add a subject: /subject add Linear Algebra (la, linalg); its AI policy: /subject policy la hints",
+                self._subject,
+            ),
             Command("class", "add a class to your timetable: /class mon 09:00-09:55 la", self._class),
             Command("classes", "your timetable (today: /classes today)", self._classes),
             Command("skip", "you're not attending a class today: /skip la", lambda m, a: self._skip(a, True)),
@@ -622,9 +675,29 @@ class Subjects(Module):
         return "\n".join(self._term_summary()) + "\nI'll read it again whenever it changes."
 
     def _subject(self, msg: Incoming, arg: str) -> str:
+        pol = re.fullmatch(r"\s*(?:ai[ -]?)?policy\b\s*(?P<rest>.*)", arg, re.I)
+        if pol:  # /subject policy la hints (or /subject policy la: what it is now)
+            words = pol["rest"].split()
+            value = None
+            if words and (words[-1].lower() in POLICY_WORDS or words[-1].lower() in ("clear", "unset")):
+                value = words.pop().lower()
+            slug = self.resolve(" ".join(words))
+            if not slug:
+                return "Which subject? /subject policy la hints (allowed, hints or off)"
+            if value is not None:
+                return self.set_ai_policy(slug, "" if value in ("clear", "unset") else value)
+            cur = self.ai_policy(slug)
+            return (
+                f"{self.name_of(slug)}: AI policy {cur or 'not set (treated as allowed)'}. Change it: /subject policy "
+                f"{' '.join(words)} allowed|hints|off"
+            )
         m = re.match(r"(?:add\s+)?(?P<name>[^()]+?)\s*(?:\((?P<aliases>[^)]*)\))?\s*$", arg)
         if not arg or not m:
-            names = ", ".join(f"{s['name']} ({', '.join(s.get('aliases', []))})" for s in self.subjects())
+            names = ", ".join(
+                f"{s['name']} ({', '.join(s.get('aliases', []))})"
+                + (f" [AI: {s['ai_policy']}]" if s.get("ai_policy") in POLICIES else "")
+                for s in self.subjects()
+            )
             return names or "No subjects yet. /subject add Linear Algebra (la, linalg)"
         if arg.lower().startswith("remove "):
             slug = self.resolve(arg[7:])
@@ -632,8 +705,12 @@ class Subjects(Module):
             return f"Removed {arg[7:]}." if slug else "No such subject."
         name = m["name"].strip()
         aliases = [a.strip().lower() for a in (m["aliases"] or "").split(",") if a.strip()]
+        old = next((s for s in self.setting("list") or [] if s["slug"] == slugify(name)), {})
         items = [s for s in self.setting("list") or [] if s["slug"] != slugify(name)]
-        items.append({"name": name, "slug": slugify(name), "aliases": aliases})
+        row = {"name": name, "slug": slugify(name), "aliases": aliases}
+        if old.get("ai_policy") in POLICIES:  # adding it again changes its short names, not its policy
+            row["ai_policy"] = old["ai_policy"]
+        items.append(row)
         self.app.settings.set("subjects.list", items)
         return f"Added {name}" + (f" (also: {', '.join(aliases)})" if aliases else "") + "."
 

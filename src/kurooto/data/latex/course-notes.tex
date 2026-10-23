@@ -1,0 +1,40 @@
+% Made by Kurooto from your notes: the template for /notes pdf (core/coursepdf.py).
+% Your own copy (/notes pdf template) replaces it. Three words between double percent signs are filled in:
+% COURSE (the course's name), DATE (today) and BODY (the notes, one section each), as below.
+% Tectonic (or your own LaTeX) makes the PDF; shell escape is always off.
+\documentclass[11pt,a4paper]{article}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \IfFileExists{lmodern.sty}{\usepackage[T1]{fontenc}\usepackage{lmodern}}{}
+\else
+  \usepackage{fontspec}
+\fi
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+\setlist{itemsep=0.15em,topsep=0.3em}
+\providecommand{\R}{\mathbb{R}}
+\providecommand{\N}{\mathbb{N}}
+\providecommand{\Z}{\mathbb{Z}}
+\providecommand{\Q}{\mathbb{Q}}
+\providecommand{\C}{\mathbb{C}}
+\providecommand{\E}{\mathbb{E}}
+\providecommand{\Var}{\operatorname{Var}}
+\providecommand{\tr}{\operatorname{tr}}
+\newcommand{\knote}[1]{\par\smallskip{\footnotesize\color{gray}#1}\par}
+\title{%%COURSE%%}
+\author{Course notes}
+\date{%%DATE%%}
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+%%BODY%%
+\end{document}

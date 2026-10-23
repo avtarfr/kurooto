@@ -47,6 +47,10 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (("keep",), "what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off"),
     (("calm",), "messages that come by themselves: today's count, the limit and what waits"),
     (("why",), "why the last message that came by itself came"),
+    (
+        ("notes",),
+        "pdf <course>: a course's notes as one PDF",
+    ),
 )
 SYNC = (("sync",), "sync everything that's on (Classroom, calendar, research, notes brain)")  # while Notes sync is off
 
@@ -76,7 +80,7 @@ GROUPS: tuple[Group, ...] = (
         "classes-and-timetable",
         ("subjects", "commitments", "classpacks", "doubts", "capture", "calendar"),
     ),
-    Group("study", "Study", "books-and-study", ("study", "books", "handwritten")),
+    Group("study", "Study", "books-and-study", ("study", "books", "handwritten", "drafts")),
     Group("quiz", "Quiz and exams", "quiz-and-exams", ("quiz", "exam_season", "hints")),
     Group("calls", "Calls and phone", "calls", ("calls", "alarm", "lidsafe"), moved=("hold", "calls")),
     Group("checkins", "Check-ins and journal", "check-ins-and-journal", ("checkins", "dreaming", "weekly", "quests")),
@@ -85,7 +89,7 @@ GROUPS: tuple[Group, ...] = (
         "Notes",
         "notes-and-concept-graph",
         ("library", "gbrain", "notes_sync", "integrate", "files"),
-        ("sync",),
+        ("sync", "notes"),
     ),
     Group("skills", "Skills and routines", "skills-and-routines", ("skills",)),
     Group("research", "Research", "research", ("research", "research_addon")),
@@ -170,6 +174,8 @@ def _extra(app: App, m: Module, names: set[str]) -> list[str]:
 def _core(app: App, name: str) -> tuple[tuple[str, ...], str] | None:
     if name == "sync":
         return None if app.is_on("notes_sync") else SYNC
+    if name == "notes" and not app.is_on("subjects"):  # /notes pdf <course>: listed once you have courses
+        return None
     return next((c for c in CORE if c[0][0] == name), None)
 
 
@@ -229,6 +235,7 @@ def _footer(app: App) -> list[str]:
     out = []
     if app.app_main():
         out.append("You talk to me in the phone app's chat; Telegram is optional (Features → Telegram).")
+    # a bundle's members (Check my draft in the Research add-on) are turned on with their bundle, not one by one
     offs = [m for m in app.modules.values() if not app.is_on(m.id) and m.title and not getattr(m, "bundle", "")]
     off = [m.title for m in offs if not getattr(m, "extra", False)]
     extras = len(offs) - len(off)  # add-ons that come with Kurooto: named in Features, counted here

@@ -62,6 +62,10 @@ you and says why.
 | `/topics` | Your quick keywords searched across all of arXiv |
 | `/topics add graph neural networks` | Adds one |
 | `/topics remove graph neural networks` | Takes one off |
+| `/zotero` | How papers go into Zotero now (the app, or the web API), and how many went in |
+| `/zotero key <key>` | Keeps your Zotero web API key (`/zotero key off` removes it) |
+| `/zotero 3` | Puts paper 3 of the last digest into Zotero (the number on its button) |
+| `/zotero links` | Links your reading notes to the Zotero items of the papers they cite, now |
 
 **What a digest looks like.**
 - With **Chat on** and more new papers than your limit: the AI's pick of the most relevant, each with its title, link
@@ -91,6 +95,24 @@ arXiv once every 3 seconds, as arXiv asks, so several arXiv sources take a littl
 (`research.window_days`). On battery (saver mode) the scheduled digest waits for the charger. A paper counts as sent
 once its digest reaches you: if the AI's pick fails, those papers come again in the next digest (while they're still
 in its window).
+
+### Zotero
+
+**What it does.** Each paper in the digest comes with a **Zotero** button: one tap puts it in your Zotero library
+(title, authors, abstract, date, link, arXiv id or DOI), and a second tap doesn't add it twice. Your reading notes that
+link the paper (its arXiv, bioRxiv, medRxiv, PubMed or feed link) get a Kurooto block with a `zotero://select` link
+that opens the item in Zotero, at once and in a nightly pass; nothing of yours in the note changes.
+
+**Two ways in** (`research.zotero`, `auto`):
+- **The Zotero app** on this computer, when it's running: through its connector at `127.0.0.1:23119`, as the browser
+  extension does. Nothing leaves your computer from Kurooto. For notes to link the item, turn on Zotero's local API
+  (Zotero 7: Settings → Advanced → "Allow other applications on this computer to communicate with Zotero").
+- **Zotero's web API** with a key: make one at zotero.org/settings/keys with library and write access, then
+  `/zotero key <key>` (or Research's setup form on the dashboard). It's kept with your other secrets, never in
+  settings.
+
+`auto` uses the app when it's running, else the web API when there's a key; `app` or `web` only that one; `off` no
+buttons. Without either, the digest has no Zotero buttons.
 
 ---
 
@@ -323,7 +345,7 @@ repository folders count too.
 
 **What it is.** The narrower research tools, kept out of the everyday student features in one bundle: **run compare**
 and the **LaTeX writing tracker**, plus the concept graph's **notation crosswalk** (a Notation table when two sources
-write a concept differently), with more research tools joining it (check my draft). It's
+write a concept differently), and **Check my draft** ([books-and-study.md](books-and-study.md#check-my-draft)). It's
 off until you turn it on, and it doesn't need the papers digest (the Research feature) to be on.
 
 **Turn it on:** Dashboard → Features → under **Add-ons**, **Research add-on** → **Turn on**. That one switch turns the
@@ -423,6 +445,8 @@ Dashboard → Settings → research (most of these are also on the Research tab)
 | `research.idle_when` | `daily 18:00` | When that's checked |
 | `research.remind_by_call` | on | "Remind me tomorrow" is a call (with Phone calls on) |
 | `research.repo_runs` | `runs` | The folder in each repository where scripts keep their runs; empty = don't read |
+| `research.zotero` | `auto` | Papers into Zotero with one tap: `auto`, `app`, `web`, `off` ([Zotero](#zotero)) |
+| `research.zotero_links` | on | Notes that link a paper you put in Zotero get a link to its Zotero item |
 | `research_addon.run_compare` | on | Run compare (a part of the Research add-on; its card switches it) |
 | `research_addon.latex` | on | The LaTeX tracker (a part of the Research add-on) |
 | `research_addon.latex_repos` | `[]` | The documents you attached with `/latex add` |
@@ -442,11 +466,14 @@ feeds), all public; never your notes. With Chat on and the AI picking, the paper
 work on go to the AI you picked. Notes you send after a meeting go to the AI you picked, to be written up as minutes
 (a voice note goes to Google first to be written out, as any voice note does). Commit messages and runs stay on this
 computer. `kurooto watch` messages go through
-Telegram like any message. The Research add-on: run comparisons and LaTeX builds stay on this computer; Tectonic
-fetches LaTeX packages it lacks from its public server (nothing of yours is sent); a BibTeX suggestion, only when you
-tap for one, sends the citation key and the sentence it's in to the AI you picked.
+Telegram like any message. A paper you tap into Zotero goes to the Zotero app on this computer, or, with your key, to
+Zotero's web API (`api.zotero.org`): only its public details. The Research add-on: run comparisons and LaTeX builds
+stay on this computer; Tectonic fetches LaTeX packages it lacks from its public server (nothing of yours is sent); a
+BibTeX suggestion, only when you tap for one, sends the citation key and the sentence it's in to the AI you picked.
 
 **Turn it off.** Features → Research → Turn off: no digests, logs or questions. Project notes and log lines stay.
 `research.save_note` = `false` stops the digest notes; take a search out of `research.feeds` to drop it; empty
-`research.repo_runs` stops reading runs (lines already in your notes stay). The Research add-on: Features → Research add-on →
-**Turn off** (or a part's switch on its card); comparisons in your notes and entries you added to a `.bib` stay.
+`research.repo_runs` stops reading runs (lines already in your notes stay). `research.zotero` = `off` drops the Zotero
+buttons, `/zotero key off` removes the key; delete a `kurooto:zotero` block from a note if you don't want it. The
+Research add-on: Features → Research add-on → **Turn off** (or a part's switch on its card); comparisons in your notes
+and entries you added to a `.bib` stay.

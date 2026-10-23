@@ -20,7 +20,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Subjects and timetable](#subjects-and-timetable) · [Class packs](#class-packs) · [Doubt queue](#doubt-queue) ·
     [Quiz](#quiz) · [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
-    [Hint ladder](#hint-ladder) ·
+    [Hint ladder](#hint-ladder) · [Check my draft](#check-my-draft) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) ·
     [The offline helper](#the-offline-helper) ·
     [After-class notes](#after-class-notes) ·
@@ -39,6 +39,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Google Calendar](#google-calendar) · [Mail digest by email](#mail-digest-by-email) · [Drive upload](#drive-upload)
   - [Handwritten notes](#handwritten-notes) · [Books and PDFs](#books-and-pdfs) ·
     [Concept graph](#concept-graph-books-into-linked-notes) · [Study packs](#study-packs) ·
+    [Course notes as one PDF](#course-notes-as-one-pdf) ·
     [Study tracker](#study-tracker) · [Research](#research) · [Terminals](#terminals) ·
     [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) ·
     [From a terminal or a script](#from-a-terminal-or-a-script) ·
@@ -807,6 +808,10 @@ la`). Kurooto never calls you during a class (or in the 5 minutes before it, `su
 gone from 0.5.8: `/skip` no longer warns about attendance. "not going to LA on Friday" and "skipping stats tomorrow"
 mark that day. Other features use the subjects: after-class notes, the quiz, the study tracker.
 
+**A course's AI policy:** `/subject policy la hints` (`allowed`, `hints` or `off`; `/subject policy la` shows it,
+`clear` unsets it), or the AI help box in the dashboard's Study pane. [Check my draft](#check-my-draft) and the
+[Hint ladder](#hint-ladder) go by it; `/subject` shows it next to each course. Not set counts as allowed.
+
 **Missed-class catch-up** (`subjects.catch_up`, on): a class you skipped, or one over before you were up (the alarm
 answered, "I'm awake", or your first message of the day), gets a catch-up task in Deadlines due when that course's
 next class starts (else in 3 days) and a lecture note for that day (yours, else a short stub to fill in). One message
@@ -1106,7 +1111,8 @@ to (the AI's pick if that note exists, else the subject's note whose name fits t
   in the subject's course note: `AI policy: Hints only, no full solutions (your answer to Kurooto, 2026-10-20)`. After
   that it reads the line from the note, so change it there; a line you wrote yourself (`AI policy: ...`) counts too.
   "No full solutions" (or "hints only") ends the ladder at the key step; "no AI help" (or "not allowed") means no hints
-  for that subject, and nothing is sent to the AI.
+  for that subject, and nothing is sent to the AI. A policy set for the course itself (`/subject policy la hints`, or
+  the AI help box in the dashboard's Study pane: allowed, hints, off) comes first, and then nothing is asked.
 - The AI works out the whole ladder once and Kurooto shows it a step at a time; an answer that doesn't come in steps
   is never passed on (it could give the solution away). It's the shipped `hint` skill: copy it into your skills folder
   to change how hints are written.
@@ -1118,6 +1124,32 @@ there if you like.
 
 *Leaves:* the problem (its photo or text), the subject's AI-policy line, and the notes the AI reads to find the lecture
 note go to the AI you picked.
+
+### Check my draft
+Part of the Research add-on (Features → Research add-on). Before you hand something in, send it with "check this": a
+photo of a proof, a PDF, a `.tex` derivation, an essay (`.md`, `.txt`, `.docx`), accounts working or code. Your AI
+marks what to look at, each comment pointing at a line (`L12-14`) or a place (`p2, the second displayed equation`):
+**gap** (a step is missing), **unclear** (can't be followed as written), **error** (false, miscalculated, doesn't
+compile or run), **needs a reason** (true, but unjustified). It **never rewrites the work or gives a solution**: a
+comment that would hand over the fix is left out (the message says how many), and an answer that doesn't come as
+comments is never passed on.
+- **How to send it:** on Telegram, the file with `check this` (or `check my proof for la`, `/check la the induction
+  step`) as its caption, or `check this` within 15 minutes after sending it (`drafts.recent_minutes`); from the phone
+  app, share the file with the note `check this` (or type it in the chat just after sharing); on the dashboard, Study
+  pane → COURSE → the file's path → **check**, or `/check la ~/proof.tex` in its chat.
+- **The course** is named in the message or the file's name, else its folder, the class going on or just over, your
+  only subject; else Kurooto asks once with your courses as buttons.
+- **The course's AI policy** (`/subject policy la allowed|hints|off`, or the Study pane's AI help box): **hints** says
+  only where each problem is and what kind; **off** checks nothing and sends nothing. Not set counts as allowed.
+- **Notes:** when the draft is lecture notes (a note of yours, or what the AI says are notes), the comments also go into
+  the matching lecture note in a Kurooto block (`drafts.note_block`); your text there never changes.
+- A text file (up to 60,000 characters) goes in numbered line by line, so any AI can name lines; photos and PDFs need
+  an AI that opens files itself (agy, Claude Code). At most `drafts.max_comments` (15) comments.
+
+**Undo:** turn the Research add-on off (dashboard → Features); delete a `kurooto:draft-check` block from a note if you
+don't want it.
+
+*Leaves:* the draft and the course notes the AI reads go to the AI you picked; with the course's policy `off`, nothing.
 
 ### Notes brain (GBrain)
 Search your notes by meaning (`/notes what is a compact space`), and your AI gets a memory of them. Kurooto installs
@@ -2562,6 +2594,21 @@ works too.
 Drive upload on. *Turn it off:* turn off Skills, or just don't use `/studypack`. The zip is kept in Kurooto's cache,
 which the [Space keeper](#space-keeper-cleaning-off-old-backups-and-leftovers) clears after 14 days.
 
+### Course notes as one PDF
+`/notes pdf la` (or the dashboard's Study pane → COURSE → **notes → pdf**): one PDF of a course's notes, its course
+page, its lecture notes in date order and the concept notes they link, each a section, with a table of contents. Your
+Markdown becomes LaTeX through a template (headings, lists, tables, code, links, your maths as written) and Tectonic,
+or the LaTeX already on your computer (shell escape off), makes the PDF. No AI; nothing in your notes changes. It comes
+like other files (Telegram, or a link in the phone app's chat); the `.tex` and PDF are kept where revision packs go
+(`<course>/course-notes-<course>.tex`), and a file of yours with that name is never written over.
+- Maths that doesn't compile (a macro of your own): the PDF is made again with the maths shown as written.
+- `/notes pdf template`: a copy of the template beside your study pack prompt (`kurooto/course-notes-template.tex`) to
+  edit (`%%COURSE%%`, `%%DATE%%`, `%%BODY%%` are filled in); delete it to go back to Kurooto's.
+- No LaTeX engine: you get the `.tex` and, with Skills on, an **Install Tectonic** button; the PDF follows.
+
+*Leaves:* nothing from Kurooto; Tectonic fetches LaTeX packages it lacks the first time. *Undo:* delete the
+`course-notes-*` files.
+
 ### Study tracker
 How long you spend on each subject, counted from the window you're working in: a window whose title names a subject
 (its name or a short name, a PDF called `linear-algebra-week3.pdf`, a note in that subject's folder) counts while
@@ -2620,6 +2667,15 @@ A digest of new papers in your fields, on Telegram, weekly by default. Set it up
 
 On Telegram: `/papers` (the digest now), `/feeds` (your sources), `/topics add …` (quick keywords searched across all of
 arXiv).
+
+**Zotero** (`research.zotero`, `auto`): each paper in the digest comes with a **Zotero** button; one tap puts it in
+your Zotero library (a second tap doesn't add it twice), through the Zotero app on this computer when it's running
+(its connector at `127.0.0.1:23119`), else Zotero's web API with your key (`/zotero key <key>`, made at
+zotero.org/settings/keys with library and write access; kept with your secrets). Your notes that link the paper get a
+Kurooto block with a `zotero://select` link to the item, at once and nightly (`research.zotero_links`); through the app
+that needs Zotero's local API on (Settings → Advanced → "Allow other applications..."). `/zotero` says which way it
+goes, `/zotero 3` adds paper 3 of the last digest, `/zotero links` links notes now. *Leaves:* only the paper's public
+details, to the Zotero app here or `api.zotero.org`. *Undo:* `research.zotero` = `off`, `/zotero key off`.
 
 **arXiv in its own words.** A source in `research.feeds` can be a search written the way arXiv's API takes it, with a
 name that heads its part of the digest: `{"type": "arxiv", "name": "Molecules", "query": "abs:\"graph neural
@@ -2689,8 +2745,8 @@ message through Telegram, like any message.
 **The Research add-on** (Features → Add-ons → **Research add-on**, off until you turn it on; it doesn't need Research
 itself on). One switch for the narrower research tools; its card has a switch for each part, and a part you switch
 off stays off when you turn the add-on on again. The notation crosswalk (the concept graph's Notation tables,
-`integrate.notation`) is one of its parts, and the research tools other features add (check my draft) join the same
-card.
+`integrate.notation`) is one of its parts, and [Check my draft](#check-my-draft) joins the same card with its own
+switch.
 
 - **Run compare.** `/runs` lists the ten most recent runs, numbered; `/runs compare 2 1` (numbers, ids or a unique
   piece of an id) or `kurooto runlog diff A B` puts two side by side; `/runs compare` alone takes the last two runs of

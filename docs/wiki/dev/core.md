@@ -221,7 +221,8 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `exam_season.json`, `revision.json`, `startby.json`, `quests.json`, `reminders-snooze.json` | those modules (`revision.json`: Exam season's revision plan, `modules/revision.py`) |
 | `doubts/*.json`, `hints/<id>.json`, `quiz/<subject>.json`, `quiz/{session,offered}.json`, `quiz/_links.json` (link recall cards) | doubts, hints, quiz |
 | `retro.json`, `retro-state.json` (also `routines` asked, added or declined, and `fixes` with their undo), `observations.json`, `retro-skills/` | `modules/retro.py` |
-| `research-papers.json`, `research-logs.json` | `modules/research.py` |
+| `research-papers.json`, `research-logs.json`, `research/digest-papers.json`, `research/digest-last.json`, `research/zotero.json` (Zotero's user id and the items added) | `modules/research.py`, `modules/zotero.py` |
+| `drafts/<id>.json` | Check my draft (`modules/drafts.py`), the last 100 |
 | `books.json`, `gbrain.json`, `gbrain-checkup.json`, `gbrain/` | books, gbrain |
 | `integrate/` (`ledger.json`, `seen.json`, `chapters.json`, `garden.json`, `budget.json`, `notation.json`, `made.json`, `dupes.json`, `pending/`, `undo/`, `vectors.db`) | `modules/integrate.py`, `core/conceptgraph.py`, `core/graphmerge.py`, `core/readbudget.py` |
 | `handwritten*.json`, `handwritten/<id>/` | `modules/handwritten.py` |
@@ -347,6 +348,7 @@ Recurring (key → when; setting that controls it):
 | `quests:daily` | daily 18:00, respect quiet | `quests.when` | `modules/quests.py` |
 | `quiz:offers`, `quiz:exam_daily`, `quiz:links` | hourly; `daily <quiz.exam_daily>` if set; `quiz.links_at` if `quiz.links` is on | `quiz.exam_daily`, `quiz.links` | `modules/quiz.py`, `modules/quiz_links.py` |
 | `research:papers`, `research:logs`, `research:idle` | weekly mon 08:00; daily 23:30; daily 18:00 (quiet) | `research.papers`, `research.log_when`, `research.idle_when` | `modules/research.py` |
+| `research:zotero_links` | daily 04:40 | `research.zotero_links`, `research.zotero` | `modules/research.py` → `modules/zotero.py:link_notes` (a thread) |
 | `retro:nightly` | daily 23:50 | `retro.when` | `modules/retro.py` |
 | `skills:autopack`, `skills:routine:<id>` | every 30m; the user's `/every` spec | | `modules/skills.py` |
 | `space:clean` | weekly sun 04:30 | `space.when` | `modules/space.py` |
@@ -990,6 +992,7 @@ the offline helper (`core/helper.py`) offers it on computers whose profile has n
 | `core/shortcuts.py` | the app-menu "Kurooto" entry |
 | `core/sources.py` | the book / Classroom / own-notes mix for note-writing skills |
 | `core/tap.py` | never without a tap: `GUARDED`, `WAYS`, `ask_first()` and `approved()` for guarded tools; `BY_ITSELF`, the data fixes the look back makes with Undo ([modules.md](modules.md#never-without-a-tap-coretappy)) |
+| `core/coursepdf.py` | `/notes pdf <course>` (answered in `App.handle` before the modules' `/notes`, so it works without the notes brain; listed in `CORE` while Subjects is on) and the Study pane's `notes.pdf` action: `notes_for()` (the course page, `DATED` lecture notes by name, and wiki-linked notes in the concept folder or the course folder, up to `MAX_LINKED`), `document()` fills `data/latex/course-notes.tex` (or the user's `course-notes-template.tex` beside the study pack prompt, when it has `%%BODY%%`) with `md_to_tex()` per note (frontmatter and Kurooto blocks dropped; maths passed through, or as `\texttt` with `safe=True`), `build()` (a thread) writes `out_path()` (the `pack` file kind; a `.tex` not starting with `MARK` is never overwritten), compiles with `skills.compile_tex`, retries once with `safe=True`, and sends with `skills.send_file`; no engine: the `.tex` and Skills' Tectonic offer (`skt:` buttons) |
 | `core/studypack.py` | a subject's notes and files as a zip with a prompt for another AI. `sources()` merges Books' reads (`book-text/<subject>/*/meta.json`, bookmarks in `chapters`) with Classroom's files and their `<file>.txt` (pages split on form feeds), dropping copies (`same_doc`); `is_class()` tells class material from books by length and title; with topics, `book_tiers()` ranks a book's pages (cited readings from `citations()`, then title-matching chapters, then hit pages) and `book_share()` fits all books into `MAX_PACK_BOOK_PAGES`; the prompt is `prompt_text()`, from the user's `study_pack_prompt` note when there is one |
 | `core/syncall.py` | "sync everything" (`sync_now` on each module that has one) |
 | `core/upgrade.py` | one-time steps at the first start of a new version (`upgrades.json`), the "what's new" message |

@@ -7,7 +7,7 @@ Its own parts:
                         (modules/latex_tracker.py)
     Notation crosswalk  the concept graph's Notation table (modules/integrate.py); its switch is the setting
                         `integrate.notation` (PART_SETTING), and it writes tables only while the add-on is on
-Other features join the bundle with `bundle = "research_addon"` on their Module (check my draft):
+Other features join the bundle with `bundle = "research_addon"` on their Module (Check my draft, modules/drafts.py):
 they get no card of their own, the add-on's card has a switch for each, and turning the add-on on or off turns them
 on or off with it (App.enable / App.disable call turned_on / turned_off). A member you switch off on the card stays off
 the next time the add-on is turned on (research_addon.members_off).

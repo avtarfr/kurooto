@@ -52,6 +52,7 @@ KNOWN_SECRETS = [
     "calendar.ics",
     "profile.token",
     "profile.key",
+    "research.zotero_key",
 ]
 SENSITIVE_KEYS = re.compile(
     r"name|chat|user|url|repo|topic|link|email|workspace|folder|keywords|list|timetable|persona|"

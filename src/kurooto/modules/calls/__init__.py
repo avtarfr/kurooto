@@ -42,6 +42,7 @@ from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, liv
 from kurooto.modules.calls.phone import PhoneApp
 from kurooto.modules.calls.today import PhoneToday
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
+from kurooto.modules.drafts import wants as wants_check
 from kurooto.modules.text import a_time, stale_time
 
 register_defaults(
@@ -1183,6 +1184,10 @@ class Calls(Module):
 
         if note and photodates.on(self.app) and photodates.WORDS.search(note) and photodates.pictures([dest]):
             self.app.notify(photodates.start(self.app, [dest], via="app"), kind="info", why="asked")
+            return 200, {"ok": True, "saved": rel}
+        drafts = self.app.modules.get("drafts")  # shared with "check this": Check my draft (modules/drafts.py)
+        if drafts is not None and self.app.is_on("drafts") and note and wants_check(note):
+            self.app.notify(drafts.check([dest], note, via="app"), kind="info", why="asked")
             return 200, {"ok": True, "saved": rel}
         if self.app.is_on("chat"):
             jid = self.app.jobs.submit(

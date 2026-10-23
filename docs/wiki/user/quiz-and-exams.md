@@ -336,6 +336,8 @@ key step**. The full solution comes only when you ask for it. Every step names t
 and full solutions**, **Hints only, no full solutions**, **No AI help**, or your own words. Your answer becomes a line
 in the subject's course note: `AI policy: Hints only, no full solutions (your answer to Kurooto, 2026-10-20)`. After
 that it reads the line from the note, so change it there; a line you wrote yourself (`AI policy: ...`) counts too.
+A policy set for the course itself (`/subject policy la hints`, or the AI help box in the dashboard's Study pane:
+allowed, hints, off) comes first, and then nothing is asked.
 - "No full solutions" or "hints only": the ladder ends at the key step.
 - "No AI help", "not allowed": no hints for that subject, and nothing is sent to the AI.
 

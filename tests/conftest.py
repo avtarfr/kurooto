@@ -75,6 +75,16 @@ def nowhere_real(tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
+def no_real_zotero(monkeypatch):
+    """Research's Zotero (modules/zotero.py) never reaches a developer's running Zotero app or zotero.org: a port
+    nothing listens on, and a host that doesn't exist. Tests that need one point these at a fake."""
+    from kurooto.modules import zotero
+
+    monkeypatch.setattr(zotero, "LOCAL", "http://127.0.0.1:9")
+    monkeypatch.setattr(zotero, "WEB", "https://zotero.invalid")
+
+
+@pytest.fixture(autouse=True)
 def no_desktop_popups(monkeypatch):
     """Tests never show real desktop notifications or run the real loginctl, systemctl, launchctl or kurooto:
     do-nothing notify-send/osascript/powershell and refusing stand-ins come first on PATH (a developer's machine

@@ -2522,8 +2522,21 @@ function smBuild() {
   <div class="box"><div class="lab"><span class="t">TODAY</span><span class="meta" id="sm-today-meta"></span></div><div id="sm-today"><span class="k">loading…</span></div></div>
   <div class="box"><div class="lab"><span class="t">DUE</span><span class="meta">two weeks</span></div><div id="sm-due"></div></div>
   <div class="box" id="sm-recall-box"><div class="lab"><span class="t">RECALL</span><span class="meta" id="sm-recall-meta"></span></div><div id="sm-recall"></div></div>
+  <div class="box sm-course" id="sm-course-box"><div class="lab"><span class="t">COURSE</span><span class="meta">AI help, notes as a PDF, a draft to check</span></div>
+    <div class="sm-sub"><label class="k" for="sm-policy">AI help</label><select id="sm-policy" title="the course's AI policy: Check my draft and the Hint ladder go by it"><option value="">not set (allowed)</option><option value="allowed">allowed</option><option value="hints">hints only</option><option value="off">off</option></select><button id="sm-pdf" title="this course's notes as one PDF (/notes pdf)">notes → pdf</button></div>
+    <form class="sm-sub" id="sm-check"><input id="sm-draft" placeholder="a draft to check: its path, e.g. ~/proof.tex" autocomplete="off" spellcheck="false" aria-label="a draft's path to check"><button>check</button></form>
+    <p class="sm-said" id="sm-csaid" aria-live="polite"></p></div>
   <div class="box sm-notes" title="click: find it on the map · double-click: open it"><div class="lab"><span class="t" id="sm-notes-t">NOTES</span><span class="meta" id="sm-notes-meta"></span></div><div id="sm-notes"></div></div>`;
   $("#sm-subject").onchange = (e) => { SM.subject = e.target.value; mind.autofit = true; smLoad(); };
+  // the course: its AI policy, its notes as a PDF, a draft to check (core/actions.py)
+  const cSay = (text, bad) => { const el = $("#sm-csaid"); if (el) { el.textContent = text; el.className = "sm-said" + (bad ? " bad" : ""); } };
+  $("#sm-policy").onchange = async (e) => { await tdAct("subject.policy", { subject: SM.subject, policy: e.target.value }, cSay); smLoad(); };
+  $("#sm-pdf").onclick = async (e) => { e.target.disabled = true; await tdAct("notes.pdf", { subject: SM.subject }, cSay); e.target.disabled = false; };
+  $("#sm-check").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = $("#sm-draft"); if (!f.value.trim()) return;
+    await tdAct("draft.check", { path: f.value.trim(), subject: SM.subject }, cSay);
+  };
   b.onclick = async (e) => {
     const pg = e.target.closest("[data-page]"); if (pg) { e.preventDefault(); openPage(pg.dataset.page); return; }
     const t = e.target.closest("[data-t]");
@@ -2571,6 +2584,11 @@ function smDraw() {
     $("#sm-then").checked = t.then === "end";
   }
   $("#sm-hold").textContent = v.focus ? `calls and messages wait till ${v.focus}` : "";
+  // the course box: its AI policy (Subjects), notes → pdf, a draft to check (Check my draft)
+  const pol = $("#sm-policy");
+  if (document.activeElement !== pol) pol.value = v.ai_policy || "";
+  pol.disabled = $("#sm-pdf").disabled = !v.subject;
+  $("#sm-check").classList.toggle("hidden", !on.has("drafts"));
   // today, per subject
   const today = v.today || [], top = Math.max(1, ...today.map((r) => r.seconds));
   $("#sm-today-meta").textContent = today.length ? dur(today.reduce((a, r) => a + r.seconds, 0)) : "";

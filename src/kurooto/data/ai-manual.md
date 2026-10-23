@@ -117,6 +117,7 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 | `files` | Files into notes | Send a photo or PDF on Telegram; it's saved to your notes, and filed by the AI if Chat is on. | - |
 | `skills` | Skills | Ready-made instructions for the AI, one command each (/journal, /study-log, /pack for a revision PDF, ...); /newskill writes your own, /every runs on… | /skills /newskill /every /routines /pack /studypack |
 | `hints` | Hint ladder | Stuck on a problem? | /hint |
+| `drafts` | Check my draft | Before you hand it in: a photo, PDF, .tex, essay or code with "check this", and the gaps, unclear steps and errors are marked, nothing rewritten. | /check |
 | `library` | Quick notes and prompts | /note saves a thought to your notes' inbox; /prompts and /prompt keep prompts you reuse. | /note /prompts /prompt |
 | `gbrain` | Notes brain (GBrain) | Search your notes by meaning (/notes …), and give your AI a memory of them. | /notes /timeline |
 | `local_models` | Local AI models | Small models on this computer for quick decisions and the notes index: private and offline. | /models |
@@ -147,7 +148,7 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 | `integrate` | Concept graph | When a book has been read (and when Classroom files a lecture's slides or handouts), weaves its concepts into your notes: new concept notes, links wi… | /graph |
 | `space` | Space keeper | Cleans off Kurooto's own old backups, downloads, logs and finished requests, so it never takes too much room. | /space |
 | `study` | Study tracker | Minutes per subject from the window you're working in, plus what you log by hand; /study. | /study /studied |
-| `research` | Research | A digest of new papers in your fields (arXiv, bioRxiv, medRxiv, PubMed, any feed), and project logs. | /papers /feeds /topics /repos |
+| `research` | Research | A digest of new papers in your fields (arXiv, bioRxiv, medRxiv, PubMed, any feed), and project logs. | /papers /feeds /zotero /topics /repos |
 | `research_addon` | Research add-on | For research work, in one switch: compare two experiment runs (config, code, metrics, curves), a nightly build of your LaTeX papers (errors, missing … | /runs /latex |
 | `terminals` | Terminals | Real terminals in the dashboard: your AI's own program, a shell, `kurooto ask` and Kurooto's log. | - |
 | `terminal` | Kurooto Terminal | Kurooto in a terminal window of its own: your AI's program, your shell, Kurooto chat and its log, with the status board beside them, in Kurooto's col… | - |
@@ -174,6 +175,7 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 | /keep | what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off |
 | /calm | messages that come by themselves: today's count, the limit and what waits |
 | /why | why the last message that came by itself came |
+| /notes | pdf <course>: a course's notes as one PDF |
 | /sync | sync everything that's on (Classroom, calendar, research, notes brain) |
 
 ## Never without the user's tap
@@ -194,8 +196,8 @@ Done without a tap (sure, only the user's own data, said in one line with Undo):
 
 ## Settings
 
-511 settings in 74 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
+516 settings in 75 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
 
-`agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `dreaming` (15), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (8), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (18), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
+`agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (15), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (8), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
 
-<!-- settings fingerprint: 14677653488e912d -->
+<!-- settings fingerprint: da5caeeeb9577a38 -->

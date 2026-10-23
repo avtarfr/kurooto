@@ -388,7 +388,7 @@ def test_one_switch_turns_the_group_on_and_off(env, monkeypatch):
     ok, _ = app.enable("research_addon")
     assert ok and app.is_on("notation_test")  # the member came on with it
     card = app.modules["research_addon"].card()
-    assert [t["id"] for t in card["toggles"]] == ["run_compare", "latex", "notation", "m:notation_test"]
+    assert [t["id"] for t in card["toggles"]] == ["run_compare", "latex", "notation", "m:drafts", "m:notation_test"]
     m = app.modules["research_addon"]
     assert m.card_action("m:notation_test", False) == "Draft checker is off."
     assert app.settings.get("research_addon.members_off") == ["notation_test"]

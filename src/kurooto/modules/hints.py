@@ -7,7 +7,8 @@ The AI works out the whole ladder once (the shipped `hint` skill; your own copy 
 and Kurooto shows it a step at a time. Before the first /hint for a subject, it asks what the course allows for AI
 help and keeps your answer as an "AI policy: ..." line in the subject's course note; after that it reads the line
 from there (change it in the note any time). "No full solutions" ends the ladder at the key step; "no AI help" means
-no hints for that subject at all.
+no hints for that subject at all. A policy set for the course itself (/subject policy la hints, or the dashboard's
+Study pane: allowed, hints or off) comes first, and then nothing is asked.
 
     /hint <subject> <the problem>, or a photo with /hint <subject> as its caption
 """
@@ -99,7 +100,13 @@ class Hints(Module):
         return layout.path(self.app, "course", subject=slug)
 
     def policy(self, slug: str) -> str | None:
-        """The "AI policy: ..." line from the subject's course note, or None if it has none."""
+        """The course's policy set as a setting (/subject policy, in its words: CHOICES), else the "AI policy: ..."
+        line from the subject's course note, or None if it has neither."""
+        sub = self.app.modules.get("subjects")
+        row = next((s for s in sub.subjects() if s["slug"] == slug), None) if sub is not None else None
+        set_ = {"allowed": CHOICES[0], "hints": CHOICES[1], "off": CHOICES[2]}.get(str((row or {}).get("ai_policy")))
+        if set_:
+            return set_
         try:
             m = POLICY.search(self.course_note(slug).read_text(encoding="utf-8", errors="replace"))
         except OSError:
@@ -187,7 +194,8 @@ class Hints(Module):
             h["status"] = "refused"
             self._save(h)
             self.app.events.emit("hint_refused", why="policy")
-            return f'The AI policy in {name}\'s course note says "{line}", so no hints from me for {name}.'
+            where = "course settings" if line == CHOICES[2] else "course note"
+            return f'The AI policy in {name}\'s {where} says "{line}", so no hints from me for {name}.'
         args = (
             f"Subject: {name} (its notes folder: {layout.rel(self.app, 'subject', subject=h['subject'])})\n"
             f"Course AI policy: {line}\nThe problem: {h['problem'] or '(in the file below)'}"
