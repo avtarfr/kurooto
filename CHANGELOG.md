@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.8 (unreleased)
+## 0.5.8 (2026-10-23)
 
 - **Learns from its own work** (an optional add-on, in no preset; the idea from Hermes Agent, none of its code): a
   search of your past AI requests, call transcripts and chats kept on this computer (`/history lab report`, and the AI's
