@@ -12,6 +12,10 @@ updates.wait_hours (48) without being withdrawn, and never during your exams (an
 or exam within a day in Deadlines; updates.exam_hold). A release signed as critical skips both. Whatever the setting,
 a version on the maintainer's signed yank list is never installed, even one already downloaded and waiting for the
 night.
+
+With Phone calls on, the Android app named in the running version's signed manifest is downloaded after an update
+(update/phone_app.py: a couple of minutes after a start, then every 6 hours, which costs nothing once it's here); the
+call line serves it and its next redeploy (05:10) takes it.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from kurooto import __version__
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
+from kurooto.update import phone_app
 from kurooto.update.updater import PAGES, UpdateError, Updater, vtuple
 
 if TYPE_CHECKING:
@@ -79,7 +84,10 @@ class Updates:
         s.action("updates.apply", lambda p: self.apply_if_quiet())
         s.action("updates.probation", lambda p: self.end_probation())
         s.action("updates.rolled_back", lambda p: self.tell_rolled_back())
+        s.action("updates.phone_app", lambda p: self.phone_app())
         s.every("updates:check", "every 6h", "updates.check")
+        s.every("updates:phone_app", "every 6h", "updates.phone_app")
+        s.at(now() + dt.timedelta(minutes=2), "updates.phone_app", key="updates:phone_app:start")
         ready = str((jload(self.ready_file, None) or {}).get("version") or "")
         if ready and (vtuple(ready) <= vtuple(__version__) or ready in self.u.bad() or ready in self.u.yanked(False)):
             self.ready_file.unlink(missing_ok=True)  # installed (`kurooto update --now` leaves it), or rolled back
@@ -146,6 +154,20 @@ class Updates:
             return f"asked about {rel.version}"
         threading.Thread(target=self._stage_then_wait, args=(rel,), daemon=True).start()
         return f"preparing {rel.version}"
+
+    def phone_app(self) -> str:
+        """The Android app for the version that runs, from its signed release, for the call line to serve
+        (update/phone_app.py). Only with Phone calls on and updates not off."""
+        if not self.app.is_on("calls") or (self.app.settings.get("updates.mode") or "night") == "off":
+            return "skipped"
+        try:
+            got = phone_app.ensure(self.u, self.app.paths.data, __version__)
+        except (UpdateError, OSError, ValueError) as e:
+            self.app.events.emit("phone_app_failed", error=str(e)[:200])
+            return f"failed: {e}"
+        if got == "fetched":
+            self.app.events.emit("phone_app_fetched", version=__version__)
+        return got
 
     def _install_info(self) -> tuple[str, str]:
         info = jload(self.app.paths.app / "install.json", {}) or {}

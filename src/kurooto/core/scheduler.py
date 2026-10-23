@@ -133,6 +133,7 @@ LABELS = {  # what scheduled work is, in a few words (/status, `kurooto top`)
     "telegram.focus_end": "focus ends",
     "updates.apply": "update",
     "updates.check": "update check",
+    "updates.phone_app": "phone app for the call line",
     "updates.probation": "update settles",
     "updates.rolled_back": "rollback notice",
     "upgrade.whats_new": "what's new",

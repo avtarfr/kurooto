@@ -56,8 +56,9 @@ box) and `kurooto ntfy-token`; `GET /api/phone` has `ntfy_token` and `ntfy_limit
 `deploy(...)` runs `Deployer.run`:
 
 1. `prepare`: Node via `core/prereqs.py`; copy `FILES` from `data/worker` into `<app>/call-line` (`skip_built` leaves
-   out `public/app.js` and `node_modules`); copy `data/kurooto.apk` (put into release builds by `tools/release.py
-   build --apk`) to `public/kurooto.apk`; `npm ci --ignore-scripts` (skipped when the `.kurooto-lock` stamp matches the
+   out `public/app.js` and `node_modules`); copy the phone app (`update/phone_app.py:current`: the one
+   downloaded from the running version's signed release, else `data/kurooto.apk` from an older package) to
+   `public/kurooto.apk`; `npm ci --ignore-scripts` (skipped when the `.kurooto-lock` stamp matches the
    lockfile); esbuild bundles `web/app.js`.
 2. `sign_in`: `wrangler login --browser=false`, the URL opened in the user's browser. `wrangler_env` gives wrangler its
    own config home and strips `CLOUDFLARE_*`, `CF_*`, `WRANGLER_*` from the environment, so a developer's own
@@ -364,7 +365,9 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 
 - The package is named in `android/AndroidManifest.xml`; minSdk 23, target 35. Built without Gradle by `android/build.sh` (aapt2, javac
   `-source 8`, d8, zipalign, apksigner); versionCode from `pyproject.toml`. Release signing uses `KUROOTO_KEYSTORE` and
-  `KUROOTO_KEYSTORE_PASS` on the maintainer's machine; otherwise a throwaway debug key. `build.sh --test` runs
+  `KUROOTO_KEYSTORE_PASS` on the maintainer's machine (`tools/release.py sign --apk` sets them and builds from the
+  release's tarball; see [release-and-updates.md](release-and-updates.md#the-phone-app-sign---apk)); otherwise a
+  throwaway debug key. `build.sh --test` runs
   `test/CryptoTest.java` and `test/SpeechTest.java` on a plain JVM.
 - Components: `MainActivity` (the checklist: battery, notifications, full-screen calls), `PairActivity`,
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and

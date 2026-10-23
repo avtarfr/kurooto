@@ -3163,8 +3163,9 @@ badge says "waiting" (point at it for why; with `updates.mode` = `ask` you're as
 **Undo:** `updates.staged` = `false` installs new versions as soon as they're found, as before. The yank list can't be
 turned off.
 
-Your call line is updated after Kurooto updates, if its code changed. The Android app shows an Update button; the
-iPhone web app updates itself.
+Your call line is updated after Kurooto updates, if its code changed or the release brings a new Android app (Kurooto
+downloads the app that goes with its version and checks it against the signed release; the line hands it out at
+`/kurooto.apk`). The Android app shows an Update button; the iPhone web app updates itself.
 
 ## Moving to a new computer
 
