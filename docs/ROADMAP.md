@@ -86,6 +86,10 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   attaching a code repository to a project. Repositories are never searched for on the disk.
 
 ## Ideas
+- **Dream RSI, part three.** The nightly replay that tunes when messages come (part two) applied to Kurooto's
+  other recorded decisions: which effort an AI request gets, the order of fallback AIs when one fails, and how
+  Start-by sizes work. Each candidate is replayed against what actually happened, the current rules always among
+  them, and a change is kept only if it's better, one at a time, with Undo. After part two has proven itself.
 - **Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
   rest.
 - **An email-in address.** Forward a notice or a receipt to your own call line, and it's filed in your notes or
