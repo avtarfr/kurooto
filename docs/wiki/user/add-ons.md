@@ -7,6 +7,7 @@ a terminal; none of it needs you to be a programmer, except writing a Python add
 - [Your add-ons (your own features, skills and prompts)](#your-add-ons)
 - [Add-ons by link (someone else's, from a git address)](#add-ons-by-link)
 - [Official add-ons (published with Kurooto, one tap to add)](#official-add-ons)
+- [Night performance (the highest performance mode during the night's work)](#night-performance)
 - [Scripts and programs talking to Kurooto](#scripts-and-programs-talking-to-kurooto)
   - [kurooto notify](#kurooto-notify-send-yourself-a-message) ·
     [kurooto send](#kurooto-send-send-yourself-a-file) · [kurooto note](#kurooto-note-a-quick-note) ·
@@ -174,6 +175,53 @@ itself. `addons.official_updates` off: no message (the buttons stay).
 **What leaves your computer:** git fetches the add-on from github.com when you add or update one (counted in
 `/egress` as handed to git). None of the four reaches a host on the internet itself; restic and rclone, which they may
 start, reach your own backup repository and cloud.
+
+---
+
+## Night performance
+
+**What it does.** Reading books into your notes at night keeps a laptop busy for hours, and it heats up. This add-on
+switches the computer to its highest performance power mode while Kurooto's heavy night work runs (which on most
+laptops also runs the fans harder), and back to exactly the mode it found when the work is done. It's an add-on by
+link, made with Kurooto (not in the official list yet):
+
+```
+kurooto addons add https://github.com/avtarfr/kurooto-night-performance --ref v1.0.0
+```
+
+Then turn on **Night performance** (Features) and send `/perf`: it says what it found, the mode now and tonight's
+reading window, with a **Test** button that switches and puts back at once.
+
+**When it switches:** inside tonight's reading window (from the night's start until you usually wake), while the
+night's AI work runs, on the charger, and only when you're away from the computer (no input for 10 minutes, or the
+screen locked). Back 10 minutes after the work ends, at the end of the window, when you come back to the computer,
+or when the laptop goes on battery. Kurooto stopping puts it back; after a crash, the next start does.
+
+**How, by itself (no password, no root):**
+
+| System | What it uses |
+|---|---|
+| Linux | a Lenovo Legion or LOQ with the add-on's helper installed (custom profile, fans at full speed); power-profiles-daemon (`powerprofilesctl`); tuned (`tuned-adm`); asusctl (ASUS laptops) |
+| Windows | the Ultimate Performance or High performance power plan, else the Best performance power mode (`powercfg`) |
+| macOS | nothing: Low Power Mode changes only as root, so enter your own commands |
+
+**Your own commands**, where it can't find a way (Features → Night performance → Set up, or the settings
+`night_performance.on_command` / `off_command`): one program each, run without a shell, and only a program its card
+names; `sudo` always runs with `-n`, so nothing ever waits for a password (a command that needs root needs a sudo rule
+for exactly that line). Commands set anywhere but Set up run only after you tap **Allow** under `/perf`. The off
+command has to put back what was there; Kurooto runs it and nothing else.
+
+**Lenovo Legion and LOQ on Linux** (the `legion_laptop` driver): the custom profile and the full-speed fans need root,
+so the add-on brings a small helper and installs it with one command, which `/perf` shows with the right folder:
+`sudo bash <the add-on's folder>/legion/install.sh`. It adds a sudo rule for only that helper's on, off and status
+lines; after that the add-on uses it by itself. The add-on's README has the details and the Undo line.
+
+**If it can't switch** at night, the morning message (Dreaming) has one line about it, and `/perf` the reason.
+
+**Settings that matter:** `night_performance.on` (off: never switches), `away_min` (10), `settle_min` (10),
+`legion_profile` (`custom` or `performance`), `legion_max_fan` (on).
+
+**What leaves your computer:** nothing.
 
 ---
 

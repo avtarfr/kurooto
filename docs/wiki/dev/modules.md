@@ -58,6 +58,7 @@ Optional hooks, found by `getattr`/`hasattr` where they are used:
 | `rest()` | `core/power.py` | release resources in battery saver (local models unload) |
 | `sync_now()` | `core/syncall.py` | part of "sync everything" |
 | `status_lines() -> [str]` | Telegram `/status` | extra status lines |
+| `dreaming_lines() -> [str]` | `modules/dreaming.py:loose_ends` | its own loose ends in the morning message (at most 2; an add-on's too, e.g. Night performance's "couldn't switch") |
 | `weekly_lines() -> [str]` | `modules/weekly.py` | lines in the weekly summary |
 | `doctor_checks() -> [(name, ok, detail)]` | `diagnostics.py:more_checks` | extra doctor rows |
 | `tunable` | `modules/retro.py` | settings the nightly look back may propose to change |
@@ -356,7 +357,8 @@ user's folder over Kurooto:
   an existing feature. Each is off until the user turns it on.
 - `skills/<name>/SKILL.md`, `prompts/*.md`, `settings.json` (defaults between Kurooto's and the user's).
 - `guard(app, m)` marks `m.addon = True` and wraps every method in `GUARDED` (commands, callbacks, replies, intents,
-  help, call_tools, agent_tools, call_brief, classify_intent, status_lines, doctor_checks, health_check) plus `ready`,
+  help, call_tools, agent_tools, call_brief, classify_intent, status_lines, dreaming_lines, doctor_checks, health_check)
+  plus `ready`,
   `health`, `start`, `stop`, `take_files`, so an exception is logged (`addon_failed`, shown by `/addons` and
   `kurooto doctor`) and the call returns a safe default.
 - Extra hooks only add-ons get: `classify_intent(text, intents)` (runs before the built-in patterns, with
@@ -424,8 +426,9 @@ no `settings.json`), plus a manifest at the top:
   function, ctypes, or an allowed program that goes online by itself get past it; it's a fence, the card and consent
   are the line.
 
-The published ones' sources live in `addons/<name>/` (restic-backups, desktop-helpers, habits, handwriting-pull), each
-with its manifest, README and tests; `addons/conftest.py:load_addon` adds one by link in a test (a git repo made from
+The published ones' sources live in `addons/<name>/` (restic-backups, desktop-helpers, habits, handwriting-pull, and
+night-performance, not in the official list yet: `test_addon_packages.py:UNLISTED`), each with its manifest, README and
+tests; `addons/conftest.py:load_addon` adds one by link in a test (a git repo made from
 a copy), and `tests/unit/test_addon_packages.py` checks each loads with exactly its card and that the official list
 matches the folders.
 
@@ -897,7 +900,8 @@ arrives.
   `integrate_batch`, `book_read`, `integrate_pruned`, `handwritten_linked`, `gbrain_upkeep`, `call_reviewed`,
   `learning_skill_learned`/`_improved`, `learning_remembered`, `inferred`; `loose_ends()` reads open doubts (`## Doubts`
   bullets in notes changed in 14 days), `Integrate.metrics()` (broken, no links in), past-due tasks
-  (`Deadlines.upcoming`), `job_failed` events. No AI. `Integrate.summary` doesn't send its own line while it's on.
+  (`Deadlines.upcoming`), `job_failed` events, and each enabled feature's `dreaming_lines()` (at most 2 each; a
+  failure emits `dreaming_check_failed`). No AI. `Integrate.summary` doesn't send its own line while it's on.
   On a lighter day `report()` starts with `app.rhythm.lighter_line(mark=send)` and adds `rhy:lighter:no` (Not today).
   `/dream` shows it without marking it sent. Calm reason `dreaming.morning`. `self_check(ev)` (`dreaming.self_check`):
   counts `case_kept` events (missed vs `wrong`), then with Cases on runs `cases.suite()` and reports test cases in

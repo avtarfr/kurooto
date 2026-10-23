@@ -3,7 +3,8 @@ graph and its daily garden), the notes brain's upkeep, the look back after calls
 handwritten notes it linked, things it set up from what you said: one message at dreaming.when ("While you slept"),
 with the loose ends worth a look (your own open doubts, notes nothing links to yet, links that point nowhere, tasks
 past due, AI requests that failed). Nothing new runs: it gathers what the night did from the event log and the
-features' own state, so it costs nothing. While it's on, the concept graph's own morning line is folded into it. The
+features' own state, so it costs nothing. A feature (an add-on too) may add its own loose ends: dreaming_lines()
+(Night performance's "couldn't switch"). While it's on, the concept graph's own morning line is folded into it. The
 day after an exam or a heavy day it starts with one line saying the day will be lighter, with Not today; dreaming.when
 follows when you're usually up once that's learned (core/rhythm.py).
 
@@ -222,6 +223,13 @@ class Dreaming(Module):
         failed = [e for e in ev if e.get("kind") == "job_failed"]
         if failed:
             out.append(f"{len(failed)} AI request{'s' if len(failed) != 1 else ''} failed overnight (/jobs).")
+        for m in self.app.enabled():  # a feature's own loose end, e.g. an add-on's (core/overlay.py: dreaming_lines)
+            fn = getattr(m, "dreaming_lines", None)
+            if fn is not None and m is not self:
+                try:
+                    out += [str(x)[:300] for x in fn() or []][:2]
+                except Exception as e:  # never at the cost of the morning message
+                    self.app.events.emit("dreaming_check_failed", error=f"{m.id}: {type(e).__name__}: {e}"[:200])
         return out
 
     # ---------------------------------------------------------------------------------- the self-check

@@ -9,7 +9,8 @@ start() runs once, from tests/conftest.py, before anything imports kurooto:
   that refuse to do anything (only where the real ones exist, so `which` answers the same);
 - a guard (an audit hook) that blocks and records any test opening for writing, creating, renaming or deleting
   anything in the real Kurooto install or the folders it changes (systemd user units, autostart, the app menu,
-  ~/.gemini, the `kurooto` command), running the real loginctl/systemctl/launchctl/kurooto, or connecting to the
+  ~/.gemini, the `kurooto` command), running the real loginctl/systemctl/launchctl/kurooto or a real program that
+  changes the power mode (POWER: powerprofilesctl, sudo, ...; a test's own stand-ins are fine), or connecting to the
   real dashboard's port (binding it is refused too, so test servers move to the next port). A test that trips it
   fails; reads of those folders are only counted.
 """
@@ -31,6 +32,18 @@ from urllib.parse import urlsplit
 DAEMON_PORT = 8770  # the dashboard's default port (web.port)
 PROGRAMS = ("loginctl", "systemctl", "launchctl", "kurooto")  # never the real ones
 QUIET = ("notify-send", "osascript")  # desktop popups: do nothing, successfully
+# this computer's power mode (the Night performance add-on): never the real ones; a test's own stand-ins are fine
+POWER = (
+    "powerprofilesctl",
+    "tuned-adm",
+    "asusctl",
+    "system76-power",
+    "powercfg",
+    "pmset",
+    "sudo",
+    "kurooto-legion-night",
+)
+REAL_POWER: dict[str, str] = {}  # where the real ones are (start())
 _WRITE = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC | os.O_APPEND
 
 ROOT: Path | None = None  # the session's temporary folder
@@ -156,6 +169,13 @@ def _check_program(prog: str, env) -> None:
     name = os.path.basename(prog).lower()
     for ext in (".exe", ".cmd", ".bat"):
         name = name.removesuffix(ext)
+    if name in REAL_POWER:
+        full = (
+            os.path.abspath(prog) if os.path.dirname(prog) else shutil.which(prog, path=(env or os.environ).get("PATH"))
+        )
+        if full and os.path.realpath(full) == REAL_POWER[name]:
+            _refuse(f"run {name} from", full)
+        return
     if name not in PROGRAMS:
         return
     if os.path.dirname(prog):
@@ -285,6 +305,10 @@ def start() -> None:
     if ROOT is not None:
         return
     real_env = dict(os.environ)
+    for name in POWER:
+        found = shutil.which(name) or (f"/usr/local/bin/{name}" if os.path.isfile(f"/usr/local/bin/{name}") else None)
+        if found:
+            REAL_POWER[name] = os.path.realpath(found)
     homes = _real_homes()
     folders = protected_paths(real_env, homes)
     PROTECTED = tuple(sorted({s for p in folders for s in (os.path.abspath(p), os.path.realpath(p))}))
