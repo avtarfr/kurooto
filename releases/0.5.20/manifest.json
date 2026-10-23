@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.5.20",
+  "notes": "Problem-set progress by reply or +1, minutes and action items for any recurring meeting, an evening look-back and hooks, more set up from what you say, deadline copies merged, and a setup step that fits Kurooto to your notes folder.",
+  "created": 1792775122.8485959,
+  "files": {
+   "kurooto-0.5.20.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.20/kurooto-0.5.20.tar.gz",
+    "sha256": "5705be8d4e55dd7ea24d18edbb9a6bd9bbc6cdfddfc95d529591f6be7fa5c884",
+    "size": 2661436
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.5.20/kurooto.apk",
+   "sha256": "bdad69a8ee36c723efa6ea07e859a886386c80c0c134e7d7c465b30631f26c43",
+   "size": 74880,
+   "versionCode": 50209,
+   "versionName": "0.5.20",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "315f35cc03ae2565ba1821fa4d93439affcc233e4dee8a1453dd5d8e0e75dbe2"
+  }
+ },
+ "sig": "3OCaJRJWYHwjDg8B3q9jAdr9F2QgCeYRxke0kr4lnBjjXuWGNghTyMoqJvCLyBpXQFJMwMDLe30xWwUt+0gZDg=="
+}

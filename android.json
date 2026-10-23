@@ -1,6 +1,17 @@
 {
- "versionCode": 50049,
- "versionName": "0.5.4",
- "url": "https://avtarfr.github.io/kurooto/releases/0.5.4/kurooto.apk",
- "sha256": "4b7742e60ad1873c3763ffcaa63c455ad04ff8430f1e87af3f2a791a3116ad6e"
+ "versionCode": 50209,
+ "versionName": "0.5.20",
+ "url": "https://avtarfr.github.io/kurooto/releases/0.5.20/kurooto.apk",
+ "sha256": "bdad69a8ee36c723efa6ea07e859a886386c80c0c134e7d7c465b30631f26c43",
+ "doc": {
+  "versionCode": 50209,
+  "versionName": "0.5.20",
+  "url": "https://avtarfr.github.io/kurooto/releases/0.5.20/kurooto.apk",
+  "sha256": "bdad69a8ee36c723efa6ea07e859a886386c80c0c134e7d7c465b30631f26c43",
+  "size": 74880,
+  "manifest_url": "https://avtarfr.github.io/kurooto/releases/0.5.20/manifest.json",
+  "channel": "beta",
+  "issued": 1792776314.5179634
+ },
+ "sig": "w290a8wi9fz8rYxQkDJJgbsYSO3zlDocMhJBfCovJTspqIbVwP5VEqXHyNV2AbzhGMPLTehOVR+lrkwp039zBA=="
 }
