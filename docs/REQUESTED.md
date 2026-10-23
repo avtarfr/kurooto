@@ -23,7 +23,8 @@ Standing plans, never struck through.
   your journal), consolidates what it learned into memory and your profile, spots contradictions and loose ends, and
   tells you in the morning what it tidied.
 - **Dream RSI (self-improvement while dreaming)** (0.5.9 has the first part: each morning it replays your test cases
-  and names any that went wrong since yesterday): the same night pass also looks at what went wrong (failed or
+  and names any that went wrong since yesterday; 0.5.10 learns a phrasing you twice said again in other words, gated
+  by the same replay): the same night pass also looks at what went wrong (failed or
   retried requests, your corrections, call lessons, answers that claimed what they didn't do), changes its own
   prompts, skills and quiet settings to fix it, and keeps a change only if replaying the past cases goes better;
   each change is listed with Undo. It improves the way it improves: the checks themselves are revised the same way.

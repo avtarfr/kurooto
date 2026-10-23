@@ -209,6 +209,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `cases.fallthroughs` | `true` | keep short requests no instant request understood (they went to the AI) |
 | `cases.keep_days` | `30` | cases you didn't make test cases are forgotten after this long |
 | `cases.learn` | `true` | a test case may teach its phrasing (only if every test case that passed still passes) |
+| `cases.learn_rephrased` | `true` | the same not-understood phrasing, twice followed by the same request: learn it |
 | `cases.review` | `"weekly sun 19:00"` | when the look back may show the phrasings that came up most... |
 | `cases.review_days` | `28` | ...at most this often (about once a month) |
 | `cases.review_max` | `5` | phrasings in one look back |

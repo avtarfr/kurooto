@@ -336,7 +336,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   recorded. Commands `/new`, `/clear`, `/brain`, `/usage`.
 - **cases** (`modules/cases.py`): the Wrong button on answers and a store of requests that fell through; a monthly
   review can turn one into a test case and teach a phrasing, only if the whole suite still passes. `cases/cases.json`,
-  never backed up. `kurooto cases export` writes a pytest file.
+  never backed up. `kurooto cases export` writes a pytest file. `_rephrased(d)` runs after the first reply to an
+  understood request: if the draft before it (same channel, `REPHRASE_S` 180 s earlier) was kept as a fallthrough,
+  the case gets `rephrased`/`rephrased_to`; at `REPHRASE_TIMES` (2) cases with the same `norm` text and target it
+  calls `teach()` (the replay gate applies) and notifies with Undo (Calm reason `cases.rephrased`, event
+  `case_rephrased`). Setting `cases.learn_rephrased`.
 - **voice_notes** (`modules/voice_notes.py`): `transcribe()` posts audio to Gemini `generateContent`; used by Telegram.
   18 MB limit.
 - **library** (`modules/library.py`): `/note` into the inbox; `/prompts`, `/prompt` (the prompt library in

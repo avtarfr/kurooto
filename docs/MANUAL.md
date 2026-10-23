@@ -1146,7 +1146,9 @@ anything about health, money or passwords are never kept.
 with **Make it a test case**. Tap it and reply with what you meant, in words Kurooto already understands ("what's
 due"), or tap **The AI**. That makes it a test case, and it teaches the phrasing: from then on "whats on my plate" is
 taken as "what's due", at once, with today's time ("skip gym tmrw" taught as "skip gym tomorrow" always means the day
-after you say it). To teach one straight away: `/wrong what's due` (or `/wrong ai`) right after the reply.
+after you say it). To teach one straight away: `/wrong what's due` (or `/wrong ai`) right after the reply. It also
+learns by itself when you say something again in other words (`cases.learn_rephrased`, on): a phrasing nothing
+understood, followed within 3 minutes by one it does, twice, is learned with a line and **Undo**.
 
 Two rules keep this safe:
 - **A phrasing is learned only if every test case that passed before still passes with it.** If it would change what

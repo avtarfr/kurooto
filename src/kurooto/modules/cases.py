@@ -12,6 +12,12 @@ That makes it a test case. It also teaches the phrasing, "whats on my plate" now
 every test case that passed before still passes with it, and never for a request that sends, deletes, calls, rings
 or approves anything (those always need their own words). /wrong <what you meant> does the same at once.
 
+Learning from a rephrase (cases.learn_rephrased, on): when a short request nothing understood is followed within 3
+minutes by you saying it again in words Kurooto does understand ("whats on my plate", then "what's due"), that pair
+is noted on the case. The second time the same phrasing is followed by the same request, it's taught as above (only if
+every test case that passed still passes, never for requests that send, delete, call, ring or approve), with a line
+and Undo.
+
 A taught phrasing is matched whole (case and punctuation aside) and goes first, before the usual patterns; the request
 it stands for runs with today's time ("skip gym tomorrow" means tomorrow from now). Undo: /cases, Unlearn.
 
@@ -56,6 +62,7 @@ register_defaults(
         "review_days": 28,  # ...at most this often (about once a month)
         "review_max": 5,  # phrasings in one look back
         "learn": True,  # a test case may teach its phrasing (only if every test case that passed still passes)
+        "learn_rephrased": True,  # the same not-understood phrasing, twice followed by the same request: learn it
     },
 )
 
@@ -73,6 +80,8 @@ SHORT = 120  # longer requests that went to the AI are meant for it: not kept
 MAX_CASES = 500
 MAX_LEARNED = 200
 DRAFTS = 100  # recent requests kept in memory (never on disk) until you tap Wrong
+REPHRASE_S = 180  # a request understood this soon after one that wasn't: you said it again in other words
+REPHRASE_TIMES = 2  # the same phrasing followed by the same request this often: learned
 FILE = "cases/cases.json"  # in the state folder; backups skip state/cases (modules/backups.py)
 SNAPSHOT_SKIP = re.compile(
     r"token|key|secret|password|chat|user|url|repo|email|account|workspace|folder|path|link|persona|remote|base", re.I
@@ -294,13 +303,17 @@ class Cases(Module):
             return
 
         def respond(text, buttons=None):
-            if not d.get("said"):
+            first = not d.get("said")
+            if first:
                 d["said"] = str(text)[:300] or "-"
                 _handling.draft = None
                 self._replied(msg, d)
                 if msg.via == "telegram" and self.setting("button", True):
                     buttons = [*(buttons or []), [("Wrong", f"wrong:{d['id']}:x")]]
-            return orig(text, buttons=buttons)
+            out = orig(text, buttons=buttons)
+            if first and d.get("did") not in ("ai", "none", "sync", "other", "") and d.get("how") != "taught":
+                self._rephrased(d)  # after the reply, so what was learned comes after the answer
+            return out
 
         msg.respond = respond
 
@@ -320,6 +333,50 @@ class Cases(Module):
             if len(d["text"]) <= SHORT and not too_complex(tidy(d["text"])) and not self._sensitive(d["text"]):
                 if not self._tested(d["text"]):  # a test case stands for it already
                     self._keep(d, "fallthrough")
+
+    def _rephrased(self, d: dict) -> None:
+        """d was understood: was it the request before it (kept, not understood, moments ago) said again? Noted on
+        that case; the second time a phrasing is followed by the same request, it's learned (with Undo)."""
+        if not self.setting("learn_rephrased", True) or not self.setting("learn", True):
+            return
+        with self._lock:
+            ids = list(self._drafts)
+        if d["id"] not in ids or ids.index(d["id"]) == 0:
+            return
+        p = self._drafts.get(ids[ids.index(d["id"]) - 1])
+        if not p or p.get("via") != d.get("via") or p.get("did") not in ("ai", "none") or p.get("how") == "taught":
+            return
+        gap = (dt.datetime.fromisoformat(d["at"]) - dt.datetime.fromisoformat(p["at"])).total_seconds()
+        if not 0 <= gap <= REPHRASE_S or norm(p["text"]) == norm(d["text"]):
+            return
+        data = self.store.load()
+        if p["id"] not in data["cases"]:
+            return  # not kept (long, sensitive, or a test case already stands for it)
+        means, target = tidy(d["text"]), d["did"]
+
+        def put(dd):
+            if p["id"] in dd["cases"]:
+                dd["cases"][p["id"]].update(rephrased=means[:300], rephrased_to=target)
+
+        self.store.change(put, self._keep_days())
+        key = norm(p["text"])
+        times = sum(
+            1
+            for c in self.store.load()["cases"].values()
+            if norm(c.get("text", "")) == key and c.get("rephrased_to") == target
+        )
+        self.app.events.emit("case_rephrased", intent=target, times=times)
+        if times < REPHRASE_TIMES:
+            return
+        said, buttons = self.teach(p["id"], means)
+        if not said.startswith("Learned"):
+            return
+        self.app.notify(
+            f'You said "{_short(p["text"])}" and then "{_short(means)}" {times} times, so: {said}',
+            kind="info",
+            why="cases.rephrased",
+            buttons=buttons,
+        )
 
     def _tested(self, text: str) -> bool:
         key = norm(text)

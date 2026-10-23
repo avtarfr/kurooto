@@ -446,3 +446,40 @@ def test_a_fresh_install_has_no_cases_file(tmp_path, monkeypatch):
         assert not app.is_on("cases") and not (app.paths.state / "cases").exists()
     finally:
         app.close()
+
+
+# ------------------------------------------------------------------------------------- learning from a rephrase
+def test_said_again_in_other_words_twice_teaches_the_phrasing_with_undo(on, clock):
+    app = on.app
+    assert on.say("whats on my plate") == "On it."  # nothing understood it: the AI
+    clock.add(seconds=40)
+    on.say("what's due this week")  # said again in words Kurooto understands
+    c = only_case(app)
+    assert c["rephrased"] == "what's due this week" and c["rephrased_to"] == "show_due"
+    assert not store(app)["learned"]  # once isn't enough
+    clock.add(hours=2)
+    on.say("whats on my plate")
+    clock.add(seconds=30)
+    on.say("what's due this week")
+    told = on.fake.texts()[-1]
+    assert told.startswith('You said "whats on my plate" and then "what\'s due this week" 2 times, so: Learned')
+    assert any(b.endswith(":unlearn") for b in buttons(sent(on)[-1]))
+    assert store(app)["learned"][0]["intent"] == "show_due"
+    assert on.say("whats on my plate") == "Nothing due in that time."  # taken at once now
+
+
+def test_not_a_rephrase_too_late_or_switched_off(on, clock):
+    app = on.app
+    for _ in range(2):
+        on.say("whats on my plate")
+        clock.add(minutes=10)  # too late to be the same thing said again
+        on.say("what's due this week")
+        clock.add(hours=1)
+    assert not store(app)["learned"] and not any(c.get("rephrased") for c in store(app)["cases"].values())
+    app.settings.set("cases.learn_rephrased", False)
+    for _ in range(2):
+        on.say("whats on my plate")
+        clock.add(seconds=20)
+        on.say("what's due this week")
+        clock.add(hours=1)
+    assert not store(app)["learned"]

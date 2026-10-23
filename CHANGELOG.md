@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.10 (unreleased)
+
+- **Learns a phrasing when you say it again in other words** (`cases.learn_rephrased`, on; with Wrong button and test
+  cases): a short request nothing understood, followed within 3 minutes by you saying it in words Kurooto does
+  understand, is noted; the second time the same phrasing leads to the same request, it's learned (only if every test
+  case that passed still passes, never for requests that send, delete, call, ring or approve), with a line and Undo.
+  Dream RSI's second piece: it improves from your corrections without waiting for the monthly look back.
+
 ## 0.5.9 (2026-10-23)
 
 - **Kurooto sets itself up from what you say** (`infer.*`, on): "I got a project under Prof Lena Ortiz on ring

@@ -243,6 +243,10 @@ plate" taken as "what's due").
   `/wrong ai` says the AI was the right place for it.
 - **Once a month** (a Sunday evening): the look back lists the phrasings that came up most (up to 5), each with
   **Make it a test case**. Tap it, then reply with what you meant, or tap **The AI**.
+- **By itself, when you say it again in other words** (`cases.learn_rephrased`, on): "whats on my plate" goes to the
+  AI, and within 3 minutes you write "what's due this week". The second time that same phrasing is followed by the
+  same request, it's learned, under the same two rules below: "You said "whats on my plate" and then "what's due this
+  week" 2 times, so: Learned: ...", with **Undo**.
 
 From then on that phrasing is taken as the request you named, at once, with today's time ("skip gym tmrw" taught as
 "skip gym tomorrow" always means the day after you say it). A taught phrasing is matched whole (capitals and
@@ -285,6 +289,7 @@ punctuation aside) and goes before the usual patterns.
 | `cases.review_days` | `28` | at most this often |
 | `cases.review_max` | `5` | phrasings in one list |
 | `cases.learn` | on | off keeps test cases without teaching anything |
+| `cases.learn_rephrased` | on | learn a phrasing you twice said again in other words within 3 minutes |
 
 **Limits.** At most 500 cases and 200 taught phrasings. If a taught phrasing stops working (its feature changed or
 went off), it goes to the AI as before, and `/health` (and `kurooto doctor`) says so.

@@ -363,6 +363,11 @@ REASONS: dict[str, Reason] = {
         ),
         R("checkins.moved", "a check-in call that moved to another time", setting="checkins.by_call"),
         R("startby.window", "Start-by's day window moved to when you're up", setting="startby.learn_window"),
+        R(
+            "cases.rephrased",
+            "a phrasing learned because you said it again in other words",
+            setting="cases.learn_rephrased",
+        ),
         R("checkins.learned", "a check-in's time moved to when you've been doing it", setting="checkins.learn_times"),
         R("weekly.summary", "the weekly summary", setting="weekly.when", stop=FEATURE),
         R("weekly.call", "the Sunday review call", setting="weekly.call", stop=to(False, "no Sunday review call")),
