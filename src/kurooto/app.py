@@ -471,8 +471,8 @@ class App:
         for m in on:
             try:
                 said += [i.description for i in m.intents()]
-            except Exception:  # a feature's intents failing must not take /help down
-                continue
+            except Exception as e:  # a feature's intents failing must not take /help down
+                self.events.emit("module_failed", module=m.id, error=f"in /help: {e}"[:300])
         if said:
             lines += ["", "Understood at once, in plain words:", *(f"- {d}" for d in dict.fromkeys(said))]
         off = [m.title for m in self.modules.values() if m not in on and m.title]
@@ -490,7 +490,7 @@ class App:
             if word in n or word in h.lower():
                 hits.append(f"/{n}  {h}")
         for m in self.modules.values():
-            state = "" if m in on else " (off: turn it on in Features, or say \"turn on " + m.title.lower() + '")'
+            state = "" if m in on else ' (off: turn it on in Features, or say "turn on ' + m.title.lower() + '")'
             about = f"{m.title} {m.description}".lower()
             try:
                 cmds = [c for c in m.commands() if word in c.name or word in c.help.lower()]
