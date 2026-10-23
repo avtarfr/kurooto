@@ -698,6 +698,9 @@ def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, v
     if missing:
         return f"{name} needs: {', '.join(missing)}."
     app.events.emit("tool_used", name=name, via=via)
+    keep = getattr(app, "keep", None)
+    if via == "call" and keep is not None:  # a call that went on as text: counted like a live call's (core/keep.py)
+        keep.used(keep.tool_owner(name), "tool")
     note = getattr(getattr(app, "jobs", None), "note_step", None)
     if job and note is not None:
         note(job, name, args)

@@ -28,6 +28,7 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/health` | what isn't working, with Fix buttons; `/health now` also checks online services | [Messages it sends](messages-it-sends.md) |
 | `/calm` | messages that came by themselves today, the limit, what waits for the evening and what you turned down; `/calm 8` (messages a day), `/calm calls 2`, `/calm evening 21:00`, `/calm off`, `/calm on` | [Messages it sends](messages-it-sends.md) |
 | `/why` | why the last message that came by itself came | [Messages it sends](messages-it-sends.md) |
+| `/keep` · `/keep 60` · `/keep <feature>` | what you used of each feature that's on (last 30 days, or as many as you say, up to 90) and what it sent by itself; one feature with Keep / Quiet / Off buttons | [Messages it sends](messages-it-sends.md#keep-or-drop-the-features-you-dont-use) |
 | `/sync` | with Notes sync off: sync everything that's on (with it on, see Notes sync below) | [Notes](notes-and-concept-graph.md) |
 
 ### Telegram feature
@@ -380,5 +381,5 @@ The Today box takes the same `j`, `.` and `!` shortcuts. A bare verb is complete
 ## How this list was checked
 
 Every Telegram command above comes from the code's command list (each feature's `commands()` and Kurooto's own
-`/help`, `/start`, `/q`, `/aboutme`, `/health`, `/calm`, `/why`, `/jobs`), every plain-English row from each feature's
+`/help`, `/start`, `/q`, `/aboutme`, `/health`, `/calm`, `/why`, `/keep`, `/jobs`), every plain-English row from each feature's
 instant requests, and every terminal command from `kurooto --help`.

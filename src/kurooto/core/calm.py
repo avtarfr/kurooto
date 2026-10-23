@@ -89,6 +89,7 @@ TITLES = {  # features that aren't modules
     "claude": "Claude Code",
     "presence": "Online and offline messages",
     "reply_drafts": "Reply drafts",
+    "keep": "Keep or drop",
 }
 
 
@@ -497,6 +498,13 @@ REASONS: dict[str, Reason] = {
             setting="notify.calm.monthly",
             stop=to(False, "no more monthly suggestions"),
             later=False,
+        ),
+        R(
+            "keep.ask",
+            "a look at what you use of each feature, with Keep, Quiet and Off",
+            many="questions about the features you use",
+            setting="keep.ask",
+            stop=to(False, "no more questions about the features you use (/keep still shows the counts)"),
         ),
     )
 }
@@ -1176,6 +1184,16 @@ class Calm:
         )
         self.app.events.emit("calm_suggestion", why=r.id, answer="asked")
         return r.id
+
+    def sent_by(self, since: float) -> dict[str, int]:
+        """Per feature, the messages and calls that came by themselves since then (not your own reminders)."""
+        with self._db() as db:
+            rows = db.execute(
+                "select feature, count(*) from sent where ts>=? and state in ('sent','bundled','rang') and why!='' "
+                "and coalesce(exempt,'')!='own' group by feature",
+                (since,),
+            ).fetchall()
+        return {f: int(n) for f, n in rows}
 
     # ---------------------------------------------------------------------------------------- /calm, /why
     def command(self, arg: str = "") -> tuple[str, list | None]:

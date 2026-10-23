@@ -23,8 +23,9 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - **/fixme that works when the AI is what broke.** Doctor's symptoms matched by rules to the manual's
   troubleshooting and a signed known-issues list shipped with releases; Fix buttons run `doctor --fix`; your AI only
   explains, if it answers.
-- **Keep or drop.** A local count of what you actually use per feature; on day 10, Keep / Quiet / Off per feature,
-  then monthly for features unused for 60 days that still run jobs. Never switched off without asking.
+- ~~**Keep or drop.** A local count of what you actually use per feature; on day 10, Keep / Quiet / Off per feature,
+  then monthly for features unused for 60 days that still run jobs. Never switched off without asking.~~ (0.5.15:
+  `/keep`; Quiet uses Calm's stopped list, Off the usual turn-off, both with Undo)
 - **Egress ledger, enforced.** Every request Kurooto makes goes through one place that records host, feature and
   bytes and blocks hosts not listed in PRIVACY.md; `/egress` shows the week. Requests your AI program makes itself
   show as "handed to agy / Claude Code".
