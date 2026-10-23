@@ -1664,8 +1664,10 @@ ends with **End the call**. The Live retries can't be turned off; `calls.live_mo
 
 ### Morning alarm
 Kurooto wakes you with a call. On the Android app it rings with your alarm sound on the alarm volume, so it rings even
-on silent. The call line places it, so it rings even if your computer is asleep. "wake me at 6:45", `/alarm 7:30`,
-`/alarm off`, the evening check-in call ("wake me at 7"), or a daily default (Settings → `alarm.daily`). Set several
+on silent. The call line places it, so it rings even if your computer is asleep, and the Android app also sets it on
+the phone itself, so it rings even with no internet (see [Your phone](#android-recommended)).
+"wake me at 6:45", `/alarm 7:30`, `/alarm off`, the evening check-in call ("wake me at 7"), or a daily default
+(Settings → `alarm.daily`). Set several
 (up to 10): each waits its turn and your call line holds them all; "cancel my alarm" clears the next one, "cancel the
 10:30 alarm" (`/alarm off 10:30`) that one, "cancel all my alarms" (`/alarm off all`) every one you set. Not
 answered: it rings twice more, 5 minutes apart (`alarm.retries`). **Snooze** gives 10 minutes (`alarm.snooze_min`).
@@ -2858,13 +2860,31 @@ language is downloaded for on-device recognition (in the phone's language or spe
      browser. Kurooto isn't on the Play Store.
    - *Play Protect warns:* tap "More details" → "Install anyway".
 3. Back on the page, tap **Pair the app**. The app opens, pairs, and shows a checklist.
-4. Tap **Fix** beside every checklist item without a tick: notifications, microphone, full-screen calls (Android 14+), and **Battery:
-   unrestricted**. On Samsung, Xiaomi, Oppo, Vivo, OnePlus and Huawei phones, also take Kurooto off any "sleeping
+4. Tap **Fix** beside every checklist item without a tick: notifications, microphone, full-screen calls (Android 14+),
+   alarms at the exact time (Android 12+), and **Battery: unrestricted**. On Samsung, Xiaomi, Oppo, Vivo, OnePlus and Huawei phones, also take Kurooto off any "sleeping
    apps" list in Settings → Battery, or calls may not ring.
 5. Test: dashboard → Phone → **Ring my phone**.
 
 The app looks for a new version each time you open it (at most every 2 minutes) and shows an **Update** button; it
 opens the download.
+
+**Today** (0.6.0): under Call and Chat, your day as your computer last sent it ("As of 14:05"), also while it's off:
+the alarm, classes and calendar events, what's due with parts done ("4/7"), reminders and open threads. Tap something
+due for **+1** and **Done** (as on Telegram; with the computer off they wait on your call line). The list goes to your
+call line sealed for each Android phone with a key only that phone has; the call line can't read it.
+*Setting:* `calls.today` (on). *Undo:* `calls.today` off: the call line drops its copies, and no alarm is set on the
+phone from it.
+
+**The wake-up alarm on the phone** (0.6.0): every alarm you set (and the next daily one) is also set on the phone with
+Android's alarm clock, so it rings with Stop and Snooze even when your computer, your call line or the internet can't
+be reached. The call for the same alarm and the phone's alarm ring as one; the first Stop, Snooze or Answer counts for
+both (Stop turns the call down, Snooze snoozes it). Android 12+: allow exact alarms (the checklist's Fix), or it can
+ring a few minutes late. *Undo:* tap **Ring on this phone too** on Today's alarm card to turn the phone's copy off.
+
+**Buttons on notifications** (0.6.0): with `"reminder"` or `"deadline"` in `notify.app_kinds`, a reminder comes with
+**Done**, **+10 min**, **+1 h**, a deadline with **+1**, **Done**, **Snooze 3 h**: the same as on Telegram (a
+reminder's Done takes it off your phones). A reminder sent with the lid shut gets Done, +10 min and +1 h kept on the
+phone. Tap the notification for the rest (Reply, Not mine).
 
 ### iPhone
 iPhones use Kurooto as a web app on the Home Screen (iOS 16.4 or newer).

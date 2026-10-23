@@ -5,7 +5,8 @@ rings like a phone call; an iPhone gets a web app on its Home Screen. Both need 
 the app comes from your own call line.
 
 The phone app adds calls, the wake-up alarm, questions with answer buttons, and a chat with Kurooto that works like
-Telegram. It can replace Telegram entirely: see [Using the app instead of Telegram](#using-the-app-instead-of-telegram).
+Telegram. On Android it also shows your day (Today) and rings the wake-up alarm on the phone itself, even with your
+computer and call line out of reach. It can replace Telegram entirely: see [Using the app instead of Telegram](#using-the-app-instead-of-telegram).
 
 - [Pair a phone](#pair-a-phone)
 - [Android](#android)
@@ -13,6 +14,9 @@ Telegram. It can replace Telegram entirely: see [Using the app instead of Telegr
 - [Any browser](#any-browser)
 - [What reaches the phone](#what-reaches-the-phone)
 - [Answering questions on the phone](#answering-questions-on-the-phone)
+- [Today on the phone](#today-on-the-phone)
+- [The wake-up alarm on the phone](#the-wake-up-alarm-on-the-phone)
+- [Done and Snooze on notifications](#done-and-snooze-on-notifications)
 - [Chat with Kurooto in the app](#chat-with-kurooto-in-the-app)
 - [Using the app instead of Telegram](#using-the-app-instead-of-telegram)
 - [Files from your computer](#files-from-your-computer)
@@ -54,6 +58,7 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
 | Notifications | Calls, questions and wake-up alarms arrive as notifications. |
 | Microphone | For calls. |
 | Full-screen calls (ring on the lock screen) | Android 14 and newer ask for this separately. |
+| Alarms at the exact time (the wake-up alarm on this phone) | Android 12 and newer: lets the phone's own copy of the wake-up alarm ring at its minute. Without it, it may ring a few minutes late. |
 | Battery: unrestricted (keeps listening) | Without it Android stops the app in the background and calls don't ring. |
 
    On Samsung, Xiaomi, Oppo, Vivo, OnePlus and Huawei phones, also take Kurooto off any "sleeping apps" or "deep
@@ -65,8 +70,9 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
    refused a ring, `/health` and the dashboard say so.
 4. Test it: Dashboard → Phone → **Ring my phone (test)**.
 
-**The app's screen**, top to bottom: the **Call** button, **Chat with Kurooto**, **Waiting for you** (open questions
-and approvals, one card each; tap one to answer it; check-ins and quiz questions are answered right on their card, see
+**The app's screen**, top to bottom: the **Call** button, **Chat with Kurooto**, **Today** (your day: see
+[Today on the phone](#today-on-the-phone)), **Waiting for you** (open questions and approvals, one card each; tap one
+to answer it; check-ins and quiz questions are answered right on their card, see
 [Check-in and quiz cards](#check-in-and-quiz-cards)), what's **waiting for your computer** (things you sent while it
 was off), the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), the **Ringtones** (**Call
 ringtone** and **Wake-up alarm tone**, each showing the tone it's set to; tap to change it. The alarm tone plays on the
@@ -148,11 +154,12 @@ answer window), the question's choices, **Approve / Deny** for approvals, **Late
 message's own buttons. Tap the notification for every option. The app's main screen lists what's **Waiting for you**
 (check-ins and quiz questions as [cards](#check-in-and-quiz-cards) you answer right there).
 
-**+1 on a deadline.** With `"deadline"` in `notify.app_kinds`, a deadline with parts still to do comes with **Reply**,
-**+1** and **Done** (Android shows three buttons; tap the notification for the rest). **+1** counts one more part done
-and the notification stays, showing "Problem set 3: 5/7, 2 to go...", so you can tap it after each question. In the
-app's chat, **+1** is under the message, and on the chat's notification too. **Reply** with `4/7` or `done` works as
-well ([reminders-and-deadlines.md](reminders-and-deadlines.md#problem-set-progress)).
+**+1 on a deadline.** With `"deadline"` in `notify.app_kinds`, a deadline with parts still to do comes with **+1**,
+**Done** and **Snooze 3 h** (Android shows three buttons; tap the notification for the rest, **Reply** and **Not mine**
+among them). **+1** counts one more part done and the notification stays, showing "Problem set 3: 5/7, 2 to go...",
+so you can tap it after each question. In the app's chat, **+1** is under the message, and on the chat's notification
+too. **Reply** with `4/7` or `done` works as well
+([reminders-and-deadlines.md](reminders-and-deadlines.md#problem-set-progress)).
 
 **iPhone.** A notification; tap it to open **Waiting for you** in the Home Screen app, with the same buttons and a box
 to type in.
@@ -203,6 +210,64 @@ Turn on location reminders**. The battery cost is said first, and the app asks t
 - **Turn off:** the button at the bottom of Places. Your places and reminders stay on the phone; nothing is watched.
 
 Where your places are never leaves the phone. Details: [reminders-and-deadlines.md](reminders-and-deadlines.md#at-a-place-location-reminders).
+
+## Today on the phone
+
+Android, 0.6.0. The app's first screen shows **Today** under **Call** and **Chat with Kurooto**: the main parts of
+the dashboard's Today page, as your computer last sent them.
+
+- **When it's from:** "As of 14:05" (when your call line got it), and "your computer is off" when it is. It shows
+  with the computer asleep or off, and with no internet on the phone (the copy the app last fetched).
+- **Alarm:** the next one, the daily alarm, and **Ring on this phone too** (see below).
+- **Classes and events:** today's classes (a class you're skipping says so) and your calendar.
+- **Due:** what's due, soonest first, with parts done ("4/7 · due tomorrow"). Tap one for **+1** and **Done**: the same
+  as those buttons on the deadline's Telegram message. With the computer off, the tap waits on your call line and
+  counts when it's back; "Waiting for your computer" lists it meanwhile. Quizzes and exams have no buttons.
+- **Reminders** and **open threads** (what you're in the middle of, with memory threads on).
+- How many questions wait for you; they're under **Waiting for you**, as before.
+
+Your computer sends a new list within seconds of a change on it (a deadline done on Telegram, an alarm set) and looks
+for changes every 5 minutes; the phone fetches it when it's told, when you open the app, and when it reconnects. Turn it off with `calls.today` (Dashboard → Settings → calls): the app then says "Turned off
+on your computer" and no alarm is set on the phone from it.
+
+**iPhone and browsers** don't get Today: it's sealed with a key only the Android app has.
+
+## The wake-up alarm on the phone
+
+Android, 0.6.0. Every alarm you set (and the next daily one) is also set on the phone with Android's own alarm clock:
+it shows in the status bar, survives deep sleep, and rings full screen on the alarm volume **even if your computer is
+off and your call line or the internet can't be reached**. It rings like the wake-up call, with **Stop** and
+**Snooze**.
+
+- **One alarm, not two.** The call from your call line comes too. Whichever rings first is the one you hear; the other
+  joins it (the call adds **Answer** to the alarm's screen). The first **Stop**, **Snooze** or **Answer** counts for
+  both: Stop turns the call down (as Decline does), Snooze snoozes it (`alarm.snooze_min`, 10 minutes, on the phone as
+  well), Answer starts the wake-up call. A call that comes after you stopped the phone's alarm doesn't ring.
+- **Only your own alarms.** The phone copies what your computer has: alarms you set yourself, by message, command,
+  call or a button you tapped. The app never sets one of its own; the AI can't set one without your tap either.
+- **Ring on this phone too** (Today's alarm card): tap to turn the phone's copy off or on. Off, only the call rings.
+- **Android 12 and newer** asks for exact alarms: the checklist's **Alarms at the exact time** and Today's **Allow
+  exact alarms** open the setting. On Android 13 and newer the app has it from the start. Without it the alarm is set
+  as close as Android allows, which can be a few minutes late in deep sleep, and Today says so.
+- **What it needs from your computer:** the list of alarms, sent with Today. An alarm you set or cancel while the phone
+  is offline reaches it when it's online again. The daily alarm is sent one morning at a time: the phone always has
+  the next one, and the one after once your computer has been awake after the next rings.
+- Alarms less than 5 minutes apart ring on the phone as one.
+
+## Done and Snooze on notifications
+
+With `"reminder"` or `"deadline"` in `notify.app_kinds` (Dashboard → Settings → notify), their notifications carry the
+buttons Telegram shows, so you can deal with them from the notification shade:
+
+| Notification | Buttons | What they do |
+|---|---|---|
+| A reminder | **Done**, **+10 min**, **+1 h** | Done takes it down here and on your other phones; +10 min and +1 h remind you again then (as on Telegram) |
+| A deadline | **+1** (with parts to do), **Done**, **Snooze 3 h** | as on Telegram: one more part, done, ask again in 3 hours |
+| A reminder sent with the lid shut | **Done**, **+10 min**, **+1 h** | kept on this phone: it shows the reminder again then (your computer is asleep) |
+
+The chat's notification gets the same buttons when a reminder or deadline comes to the chat (`notify.app_chat`, or no
+Telegram). Tapping the notification still opens every option (Reply, Not mine...). With the computer off, a tap waits
+on your call line and is done when it's back, in order.
 
 ## Chat with Kurooto in the app
 
@@ -284,7 +349,9 @@ sent them, each once.
 
 - The chat shows **Waiting for your computer** under each one; the app's main screen lists what's waiting.
 - **+1** taps on a deadline count one each, in order: three taps while the laptop sleeps are three parts done when
-  it's back. The notification says the tap is waiting and keeps its **+1**.
+  it's back. The notification says the tap is waiting and keeps its **+1**. **Done** and **+1** on Today wait the
+  same way.
+- **Today** shows the copy your computer last sent ("As of ..."), and the wake-up alarm rings on the phone by itself.
 - When the computer takes one, the phone hears it: the chat's mark goes away and the answer comes, and for an answer
   or a file you get a quiet "Reached your computer" notification.
 - The call line holds at most 100 things and 20 MB of files. When it's full: "Your call line is holding as much as it
@@ -344,6 +411,9 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
 - While your computer is off, what you send from the phone waits on your call line until the computer takes it (then
   it's deleted there): chat messages and answers as sent (sealed from Android), files as they are. A day's record of
   what went through (ids and short notes, no text you typed) stays so the phone can show it.
+- Today (Android): the day's list (classes, events, what's due, reminders, alarm times, open threads) goes to your call
+  line sealed for each Android phone with a key only that phone has; your call line keeps one copy per phone and can't
+  read it, and nudges the phone through ntfy (with nothing in the nudge) when it changed.
 - Call audio: see [Calls: what leaves your computer](calls.md#what-leaves-your-computer).
 
 **Turn it off.** Unpair the phone (above). To stop questions reaching the phone but keep calls, take `"question"` and

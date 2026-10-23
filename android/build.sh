@@ -4,7 +4,8 @@
 #   ANDROID_HOME=/path/to/sdk android/build.sh            build/kurooto.apk (or kurooto-debug.apk, see below)
 #   android/build.sh --test                                the JVM tests: crypto against the shared vectors, the
 #                                                          call page's speech bridge (what's heard, quoted safely),
-#                                                          and the cards' and location reminders' rules
+#                                                          the cards' and location reminders' rules, and the
+#                                                          notification buttons and local alarm rules
 #
 # Needs: an Android SDK (any recent build-tools and platform; the newest installed are used) and a JDK (javac).
 # Signing: KUROOTO_KEYSTORE (path), KUROOTO_KEYSTORE_PASS and optionally KUROOTO_KEY_ALIAS (default "kurooto").
@@ -20,9 +21,11 @@ PKG=io/github/avtarfr/kurooto
 crypto_test() {
   local t; t=$(mktemp -d)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/B64.java" "$HERE/src/$PKG/Crypto.java" "$HERE/src/$PKG/Seal.java" \
-    "$HERE/src/$PKG/Speech.java" "$HERE/test/CryptoTest.java" "$HERE/test/SpeechTest.java"
+    "$HERE/src/$PKG/Speech.java" "$HERE/src/$PKG/Buttons.java" "$HERE/src/$PKG/AlarmPlan.java" \
+    "$HERE/test/CryptoTest.java" "$HERE/test/SpeechTest.java" "$HERE/test/TodayTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CryptoTest "$ROOT/tests/fixtures/call-vectors.json"
   java -Dfile.encoding=UTF-8 -cp "$t" io.github.avtarfr.kurooto.SpeechTest
+  java -cp "$t" io.github.avtarfr.kurooto.TodayTest
   # the check-in and quiz cards' and location reminders' rules (0.5.22)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/CardRules.java" "$HERE/src/$PKG/PlaceRules.java" "$HERE/test/CardsPlacesTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CardsPlacesTest

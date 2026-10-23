@@ -33,6 +33,10 @@
 //     the morning's first class and what's due, each as a time plus copies sealed for your Android phones with keys
 //     only those phones hold ("s1"; this Worker can't open them). Whichever side is awake at an item's time says it:
 //     your computer claims it then, or the cron sends it to the phones. One answer per item, so nothing comes twice.
+//   - The app's Today screen (0.6.0): your computer hands over the day's list (classes, what's due, the alarm...)
+//     sealed for each Android phone with that phone's own key ("s1", as above: this Worker can't open it), one copy
+//     per phone ("today-put"); a phone fetches its own from /today, with when it came, so it shows with the computer
+//     off. A changed list nudges the phones ("today" on ntfy).
 //   - When Gemini Live won't take a call (web/fallback.js): the call page asks for a token for the next Live model
 //     (the list your computer pushed), then goes turn by turn (/turn: each turn to your computer's AI, or to a Gemini
 //     text model with your key here while the computer is off, with the same instructions and tools), then to
@@ -213,6 +217,7 @@ const FILE_PART = 400 * 1024, FILE_MAX = 10 * 1024 * 1024 + 64, FILES_BYTES = 30
 const SEALED_MAX = 40, SEALED_TRIES = 5, SEALED_BUSY_MS = 120e3, SEALED_KEEP_MS = 3 * 86400e3;
 const SEAL_TOKEN = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,2210}$/; // at most 2300 in all: fits ntfy sealed again
 const SEAL_KEY = /^B[A-Za-z0-9_-]{86}$/; // a phone's P-256 public key, 65 bytes uncompressed, base64url
+const TODAY_TOKEN = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,110000}$/; // the Today list sealed for one phone
 // calls when Gemini Live won't (web/fallback.js): Live model ids; rounds of tool calls in one text turn; what a text
 // turn is told when your computer didn't push its own wording
 const MODEL_ID = /^[A-Za-z0-9][\w.-]{0,79}$/;
@@ -337,6 +342,11 @@ export class Line {
         return json({ seq: log.seq, msgs: log.msgs.filter((m) => m.seq > after), ...(await this.outboxFor(who.id)), assistant: ((await this.store.get('names')) || {}).assistant || '' });
       }
       if (p === '/outbox') return json(await this.outboxFor(who.id));
+      if (p === '/today') { // this phone's sealed copy of the Today list (null until your computer sent one for it)
+        const t = (await this.store.get('today')) || null;
+        const mine = !!t && (t.devs || []).includes(who.id);
+        return json({ today: mine ? (await this.store.get(`today:${who.id}`)) || null : null, at: mine ? t.at : null, off: !!t?.off, computer: this.online() ? 'online' : 'offline' });
+      }
       if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/?v=${await this.voice('outgoing')}#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
       if (p === '/ring-reply' && req.method === 'POST') {
         const { since = '', action = '' } = await req.json();
@@ -508,6 +518,7 @@ export class Line {
       const had = !!d[m.id];
       delete d[m.id];
       await this.store.put('devices', d);
+      await this.store.delete(`today:${String(m.id)}`);
       return { ok: had };
     }
     if (m.op === 'ticket') return { ticket: await this.mintTicket(Math.min(Number(m.hours) || 2, 24)) };
@@ -524,6 +535,7 @@ export class Line {
     if (m.op === 'outbox') return this.outbox(m.done);
     if (m.op === 'chat-say') return this.chatSay(m.msg || {}, m.assistant);
     if (m.op === 'file-put') return this.filePut(m);
+    if (m.op === 'today-put') return this.todayPut(m);
     return { error: 'unknown op' };
   }
 
@@ -1004,6 +1016,29 @@ export class Line {
       at += b.length;
     }
     return new Response(out, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store', ...CORS } });
+  }
+
+  // ----------------------------------------------------------------------------------- the Today screen
+  // Your computer's newest batch replaces the last (an older one never replaces a newer): one sealed copy per Android
+  // phone, kept under its own key; phones no longer in it lose theirs. changed: the list itself changed, so the
+  // phones are nudged to fetch it ("stop" too, so an older app ignores it). off: calls.today was turned off.
+  async todayPut(m) {
+    const cur = (await this.store.get('today')) || { rev: 0, devs: [] };
+    const rev = Number(m.rev) || 0;
+    if (rev < cur.rev) return { ok: false, stale: true };
+    const devices = (await this.store.get('devices')) || {};
+    const devs = [];
+    for (const [dev, tok] of Object.entries(m.seal && typeof m.seal === 'object' ? m.seal : {})) {
+      if (devices[dev]?.kind !== 'android' || !TODAY_TOKEN.test(String(tok)) || devs.length >= MAX_DEVICES) continue;
+      await this.store.put(`today:${dev}`, String(tok));
+      devs.push(dev);
+    }
+    for (const dev of cur.devs || []) if (!devs.includes(dev)) await this.store.delete(`today:${dev}`);
+    await this.store.put('today', { rev, devs, at: new Date().toISOString(), off: !!m.off });
+    if ((m.changed || m.off) && Object.values(devices).some((d) => d.kind === 'android')) {
+      await this.toPhones({ title: 'stop', message: '', tags: ['stop', 'today'], time: Math.floor(Date.now() / 1000) }).catch(() => false);
+    }
+    return { ok: true, held: devs.length };
   }
 
   // ------------------------------------------------------------------------------------- the phone outbox

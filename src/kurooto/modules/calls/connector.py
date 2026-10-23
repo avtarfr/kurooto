@@ -1,7 +1,8 @@
 """This computer's end of your call line: one outbound WebSocket to the Worker (works behind any router or campus
 network; nothing listens for the internet here). The Worker passes requests from calls (tools, finished tasks,
 transcripts, shared files) down it, and this answers them. Every 5 minutes, and whenever your scheduled calls
-change, it pushes what calls need while the computer is off: the call setup, a brief, and the upcoming calls.
+change, it pushes what calls need while the computer is off: the call setup, a brief, and the upcoming calls; and
+with it the phone app's Today list, sealed for each Android phone, when that changed (today.py).
 
 What waited on the line while this computer was off (requests from calls, and what you did on your phone: answers,
 chat messages, shared files, the "phone outbox") is taken one item at a time, in order, each removed from the line
@@ -205,6 +206,11 @@ class Connector:
             return
         msg = await asyncio.to_thread(self.calls.state_message)
         await self.ws.send(json.dumps({"type": "state", **msg}, default=str))
+        if not getattr(self.calls, "silenced", False):
+            try:  # the phone app's Today list, sealed for each Android phone, when it changed (today.py)
+                await self.calls.today.push(self)
+            except Exception as e:
+                log.info("call line: the Today list didn't go: %s", e)
         if time.time() - self.last_index > INDEX_S and self.calls.offline_notes():
             self.last_index = time.time()
             items = await asyncio.to_thread(self.calls.index_items)

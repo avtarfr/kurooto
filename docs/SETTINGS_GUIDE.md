@@ -191,6 +191,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `calls.review_effort` | `"high"` | how hard that look back thinks (low, medium, high) |
 | `calls.ring_s` | `60` | how long a call rings before it counts as missed (a wake-up call rings 5 minutes) |
 | `calls.text_model` | `"gemini-flash-latest"` | the Gemini model for turn-by-turn calls (here, or on your call line) |
+| `calls.today` | `true` | the Android app's Today screen and its copy of your alarm, sealed for each phone (today.py) |
 | `calls.turn_brain` | `"gemini"` | answers turn-by-turn calls here: "gemini" (your key) or "local" (Local AI models) |
 | `calls.voice` | `""` | a Gemini Live voice name (e.g. "Kore"); empty = Google's default |
 | `calls.voice_by_kind` | `{}` | a voice per kind of call, e.g. {"alarm": "Puck"} |

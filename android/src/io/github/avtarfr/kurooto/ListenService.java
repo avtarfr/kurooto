@@ -46,11 +46,15 @@ import java.net.URL;
  *                   app ignores it.
  *   tags "chat"   -> a chat message from Kurooto (Chat): kept, and a notification unless the chat is open ("stop" too)
  *   tags "outbox" -> things this phone sent while your computer was off went through to it (Chat; "stop" too)
+ *   tags "today"  -> your computer's Today list changed: fetch this phone's sealed copy (Today; "stop" too)
  *   anything else -> a normal notification
+ * It also rings this phone's own copy of the wake-up alarm (Alarms, 0.6.0): the call for the same alarm and this
+ * one ring as one (AlarmPlan), and a reminder's or deadline's notification carries Done and Snooze (Buttons).
  */
 public class ListenService extends Service {
     static final String CH_SERVICE = "service", CH_CALL = "calls_v2", CH_MSG = "messages", CH_ASK = "questions";
     static final int ID_SERVICE = 1, ID_CALL = 2, ID_SEALED = 8;
+    static final String ACTION_ALARM = "io.github.avtarfr.kurooto.LOCAL_ALARM";
     static final int SDK = Build.VERSION.SDK_INT;
 
     private static ListenService instance;
@@ -58,12 +62,27 @@ public class ListenService extends Service {
     private Thread thread;
     private MediaPlayer player;
     private Vibrator vibrator;
-    private String ringingSince = "";
+    private String ringingSince = ""; // "local:<s>" while this phone's own alarm rings without its call
+    private boolean ringingAlarm = false;
     private final Handler main = new Handler(Looper.getMainLooper());
 
     static void start(Context c) {
         Intent i = new Intent(c, ListenService.class);
         if (SDK >= 26) c.startForegroundService(i); else c.startService(i);
+    }
+
+    /** This phone's own copy of the wake-up alarm went off (Alarms.fired): ring it here. If the app was stopped and
+     *  Android won't start it again just now, the alarm still shows full screen with the call channel's sound. */
+    static void localAlarm(Context c, long at) {
+        ListenService s = instance;
+        if (s != null) { s.main.post(() -> s.ringLocal(at)); return; }
+        Intent i = new Intent(c, ListenService.class).setAction(ACTION_ALARM).putExtra("at", at);
+        try {
+            if (SDK >= 26) c.startForegroundService(i); else c.startService(i);
+        } catch (Exception e) {
+            ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE))
+                    .notify(ID_CALL, ringNotice(c, Alarms.reason(c), null, "local:" + at, true, ALARM_RING_MS, false).build());
+        }
     }
 
     static void stopRinging(Context c) {
@@ -136,6 +155,10 @@ public class ListenService extends Service {
         if (SDK >= 34) startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
         else startForeground(ID_SERVICE, n);
         if (!Prefs.paired(this)) { stopSelf(); return START_NOT_STICKY; }
+        if (intent != null && ACTION_ALARM.equals(intent.getAction())) {
+            final long at = intent.getLongExtra("at", 0);
+            main.post(() -> ringLocal(at));
+        }
         if (!running) {
             running = true;
             thread = new Thread(this::loop, "ntfy-stream");
@@ -161,6 +184,7 @@ public class ListenService extends Service {
             String topic = Prefs.topic(this);
             if (topic.isEmpty() || !Prefs.paired(this)) { sleep(30); continue; }
             Line.sendSealKey(this); // so your computer can seal reminders for this phone (once; tried again on reconnects)
+            if (System.currentTimeMillis() - Today.fetchedAt(this) > 5 * 60_000) Today.fetch(this); // a nudge missed?
             HttpURLConnection c = null;
             try {
                 String since = Prefs.since(this);
@@ -213,6 +237,10 @@ public class ListenService extends Service {
                 if (m.optString("dev").equals(Prefs.deviceId(this))) outboxDone(Chat.done(this, m.optJSONArray("done")));
                 return;
             }
+            if (tagStr.contains("\"today\"")) { // the Today list changed: this phone's copy, off the stream's thread
+                new Thread(() -> Today.fetch(this)).start();
+                return;
+            }
             if (tagStr.contains("\"clear\"")) {
                 Inbox.cancel(this, m.optJSONArray("ids"));
                 return;
@@ -252,46 +280,66 @@ public class ListenService extends Service {
     }
 
     // ---------- ringing ----------
-    private void ring(String reason, String url, String since, boolean alarm) {
-        int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
-        Intent full = new Intent(this, CallActivity.class)
-                .putExtra("url", url).putExtra("reason", reason).putExtra("ringing", true).putExtra("since", since).putExtra("alarm", alarm)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        PendingIntent fullPi = PendingIntent.getActivity(this, 1, full, flags);
-        Intent answer = new Intent(full).putExtra("ringing", false);
-        PendingIntent answerPi = PendingIntent.getActivity(this, 2, answer, flags);
-        PendingIntent declinePi = PendingIntent.getBroadcast(this, 3,
-                new Intent(this, ActionReceiver.class).setAction(ActionReceiver.DECLINE).putExtra("since", since), flags);
-        PendingIntent laterPi = PendingIntent.getBroadcast(this, 4,
-                new Intent(this, ActionReceiver.class).setAction(ActionReceiver.LATER).putExtra("since", since), flags);
-        long ringMs = alarm ? 300000 : 60000;
+    static final long RING_MS = 60000, ALARM_RING_MS = 300000;
+
+    /** This phone's own alarm (Alarms), unless the call for the same alarm rings or rang already. */
+    private void ringLocal(long at) {
+        if (ringingAlarm && !ringingSince.isEmpty()) return; // the call for it rings now
+        if (AlarmPlan.same(Alarms.lastCall(this), at)) return; // it rang (and was answered, snoozed or stopped)
+        ring(Alarms.reason(this), null, "local:" + at, true);
+    }
+
+    /** A ring: a call (url: its link), or this phone's own wake-up alarm (url null, since "local:<s>"). The call for
+     *  an alarm that rings here already joins it: one sound, and its notification and screen gain Answer. One that
+     *  was stopped or snoozed here already is answered that way at once, without ringing. */
+    private void ring(String reason, String url, final String since, boolean alarm) {
+        boolean local = url == null;
+        boolean join = alarm && !local && ringingSince.startsWith("local:");
+        if (alarm && !local) {
+            long callAt = AlarmPlan.since(since);
+            Alarms.callRang(this, callAt);
+            final String done = join ? "" : Alarms.answered(this, callAt);
+            if (!done.isEmpty()) {
+                new Thread(() -> Line.ringReply(this, since, done)).start();
+                return;
+            }
+        }
+        long ringMs = alarm ? ALARM_RING_MS : RING_MS;
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        boolean shown = false;
-        if (SDK >= 31) { // Android's own incoming-call look; if this phone won't take it, the plain one below
-            try {
-                Notification.Builder b = ringNotice(reason, alarm, fullPi, ringMs);
-                callStyle(b, alarm ? "Wake-up call" : Prefs.assistant(this), declinePi, answerPi);
-                nm.notify(ID_CALL, b.addAction(new Notification.Action.Builder(null, alarm ? "Snooze" : "Later", laterPi).build()).build());
-                shown = true;
-            } catch (Exception ignored) { }
+        try {
+            nm.notify(ID_CALL, ringNotice(this, reason, url, since, alarm, ringMs, true).build());
+        } catch (Exception e) { // this phone won't take the incoming-call style: the plain one
+            nm.notify(ID_CALL, ringNotice(this, reason, url, since, alarm, ringMs, false).build());
         }
-        if (!shown) {
-            Notification.Builder b = ringNotice(reason, alarm, fullPi, ringMs)
-                    .setContentTitle(alarm ? "Wake-up call" : Prefs.assistant(this) + " is calling")
-                    .setStyle(new Notification.BigTextStyle().bigText(reason));
-            b.addAction(new Notification.Action.Builder(null, "Decline", declinePi).build())
-                    .addAction(new Notification.Action.Builder(null, alarm ? "Snooze" : "Later", laterPi).build())
-                    .addAction(new Notification.Action.Builder(null, "Answer", answerPi).build());
-            nm.notify(ID_CALL, b.build());
+        if (join && CallActivity.showing) { // the alarm's screen is up: it gains the call's Answer
+            try { startActivity(fullScreen(this, reason, url, since, alarm)); } catch (Exception ignored) { }
         }
-        ringingSince = since;
-        startRing(alarm);
+        if (!join) startRing(alarm);
+        ringingSince = since; // after startRing, which stops whatever rang before (and clears this)
+        ringingAlarm = alarm;
         main.postDelayed(() -> { if (since.equals(ringingSince)) { stopRing(); cancel(ID_CALL); } }, ringMs);
     }
 
-    /** What every ringing notification has: the reason, full screen over the lock screen, ongoing until answered. */
-    private Notification.Builder ringNotice(String reason, boolean alarm, PendingIntent fullPi, long ringMs) {
-        Notification.Builder b = builder(this, CH_CALL)
+    static Intent fullScreen(Context c, String reason, String url, String since, boolean alarm) {
+        return new Intent(c, CallActivity.class)
+                .putExtra("url", url).putExtra("reason", reason).putExtra("ringing", true).putExtra("since", since)
+                .putExtra("alarm", alarm).putExtra("local", url == null)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    }
+
+    /** The ringing notification, full screen over the lock screen, ongoing until answered. A call: Decline, Later
+     *  (Snooze for the wake-up call) and Answer, in Android 12+'s incoming-call style when the phone takes it. This
+     *  phone's own alarm: Stop and Snooze. */
+    static Notification.Builder ringNotice(Context c, String reason, String url, String since, boolean alarm, long ringMs,
+                                           boolean styled) {
+        int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
+        Intent full = fullScreen(c, reason, url, since, alarm);
+        PendingIntent fullPi = PendingIntent.getActivity(c, 1, full, flags);
+        PendingIntent declinePi = PendingIntent.getBroadcast(c, 3, new Intent(c, ActionReceiver.class)
+                .setAction(ActionReceiver.DECLINE).putExtra("since", since).putExtra("alarm", alarm), flags);
+        PendingIntent laterPi = PendingIntent.getBroadcast(c, 4, new Intent(c, ActionReceiver.class)
+                .setAction(ActionReceiver.LATER).putExtra("since", since).putExtra("alarm", alarm), flags);
+        Notification.Builder b = builder(c, CH_CALL)
                 .setSmallIcon(R.drawable.ic_stat)
                 .setContentText(reason)
                 .setCategory(alarm ? Notification.CATEGORY_ALARM : Notification.CATEGORY_CALL)
@@ -301,14 +349,28 @@ public class ListenService extends Service {
                 .setVisibility(Notification.VISIBILITY_PUBLIC);
         if (SDK >= 21) b.setPriority(Notification.PRIORITY_MAX);
         if (SDK >= 26) b.setTimeoutAfter(ringMs);
-        return b;
+        if (url == null) { // this phone's own alarm: nothing to answer (yet)
+            return b.setContentTitle("Wake-up alarm").setStyle(new Notification.BigTextStyle().bigText(reason))
+                    .addAction(new Notification.Action.Builder(null, "Stop", declinePi).build())
+                    .addAction(new Notification.Action.Builder(null, "Snooze", laterPi).build());
+        }
+        PendingIntent answerPi = PendingIntent.getActivity(c, 2, new Intent(full).putExtra("ringing", false), flags);
+        if (styled && SDK >= 31) { // Android's own incoming-call look (ring() falls back to the plain one below)
+            callStyle(c, b, alarm ? "Wake-up call" : Prefs.assistant(c), declinePi, answerPi);
+            return b.addAction(new Notification.Action.Builder(null, alarm ? "Snooze" : "Later", laterPi).build());
+        }
+        return b.setContentTitle(alarm ? "Wake-up call" : Prefs.assistant(c) + " is calling")
+                .setStyle(new Notification.BigTextStyle().bigText(reason))
+                .addAction(new Notification.Action.Builder(null, "Decline", declinePi).build())
+                .addAction(new Notification.Action.Builder(null, alarm ? "Snooze" : "Later", laterPi).build())
+                .addAction(new Notification.Action.Builder(null, "Answer", answerPi).build());
     }
 
     /** Android 12+: the incoming-call style (who's calling, a red Decline and a green Answer; Later sits between). */
     @TargetApi(31)
-    private void callStyle(Notification.Builder b, String who, PendingIntent declinePi, PendingIntent answerPi) {
+    private static void callStyle(Context c, Notification.Builder b, String who, PendingIntent declinePi, PendingIntent answerPi) {
         Person caller = new Person.Builder().setName(who).setImportant(true)
-                .setIcon(Icon.createWithResource(this, R.drawable.ic_agent)).build();
+                .setIcon(Icon.createWithResource(c, R.drawable.ic_agent)).build();
         b.setStyle(Notification.CallStyle.forIncomingCall(caller, declinePi, answerPi));
     }
 
@@ -356,6 +418,7 @@ public class ListenService extends Service {
 
     void stopRing() {
         ringingSince = "";
+        ringingAlarm = false;
         if (player != null) { try { player.stop(); player.release(); } catch (Exception ignored) { } player = null; }
         if (vibrator != null) { try { vibrator.cancel(); } catch (Exception ignored) { } vibrator = null; }
     }
@@ -370,18 +433,35 @@ public class ListenService extends Service {
         if (plain == null) return;
         try {
             JSONObject it = new JSONObject(plain);
-            String text = it.optString("text", "");
-            Notification n = builder(this, CH_MSG)
-                    .setSmallIcon(R.drawable.ic_stat)
-                    .setContentTitle(it.optString("title", Prefs.assistant(this)))
-                    .setContentText(text)
-                    .setStyle(new Notification.BigTextStyle().bigText(text))
-                    .setCategory(Notification.CATEGORY_REMINDER)
-                    .setContentIntent(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE))
-                    .setAutoCancel(true)
-                    .build();
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify("sealed-" + it.optString("id"), ID_SEALED, n);
+            sealedNote(this, it.optString("id"), it.optString("title", Prefs.assistant(this)), it.optString("text", ""));
         } catch (Exception ignored) { }
+    }
+
+    /** A sealed reminder's notification. A reminder (not the morning line) has Done and Telegram's snoozes, +10 min
+     *  and +1 h: with your computer asleep they're kept on this phone (it shows the reminder again then; Alarms isn't
+     *  needed for that, a plain inexact alarm will do). */
+    static void sealedNote(Context c, String id, String title, String text) {
+        int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
+        String tag = "sealed-" + id;
+        Notification.Builder b = builder(c, CH_MSG)
+                .setSmallIcon(R.drawable.ic_stat)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(new Notification.BigTextStyle().bigText(text))
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setContentIntent(PendingIntent.getActivity(c, 0, new Intent(c, MainActivity.class), PendingIntent.FLAG_IMMUTABLE))
+                .setAutoCancel(true);
+        if (text.startsWith("Reminder")) {
+            b.addAction(new Notification.Action.Builder(null, "Done", PendingIntent.getBroadcast(c, (tag + ":done").hashCode(),
+                    new Intent(c, ActionReceiver.class).setAction(ActionReceiver.NOTE_DONE).putExtra("tag", tag).putExtra("id", ID_SEALED), flags)).build());
+            for (int m : new int[]{10, 60}) {
+                Intent i = new Intent(c, ActionReceiver.class).setAction(ActionReceiver.SEALED_SNOOZE).putExtra("sid", id)
+                        .putExtra("title", title).putExtra("text", text).putExtra("min", m);
+                b.addAction(new Notification.Action.Builder(null, m < 60 ? "+" + m + " min" : "+1 h",
+                        PendingIntent.getBroadcast(c, (tag + ":" + m).hashCode(), i, flags)).build());
+            }
+        }
+        ((NotificationManager) c.getSystemService(NOTIFICATION_SERVICE)).notify(tag, ID_SEALED, b.build());
     }
 
     /** A chat message from Kurooto: into the chat, and a notification that opens it (unless it's open already). */
@@ -397,9 +477,10 @@ public class ListenService extends Service {
         } catch (Exception ignored) { }
     }
 
-    /** The chat's notification: Kurooto's newest message. A counting button under it ("+1") is an action there too,
-     *  tapped like the chat's own button (Chat.tap: through the outbox while your computer is off). quiet: shown
-     *  again after such a tap, without a sound. */
+    /** The chat's notification: Kurooto's newest message. Its quick buttons (Buttons: "+1", Done, the snoozes of a
+     *  reminder or deadline) are actions there too, tapped like the chat's own (Chat.tap: through the outbox while
+     *  your computer is off); one that snoozes without a Done gets a Done that only takes it down. quiet: shown again
+     *  after such a tap, without a sound. */
     static void chatNote(Context c, String id, String text, JSONArray buttons, boolean quiet) {
         int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
         Notification.Builder b = builder(c, CH_MSG)
@@ -411,13 +492,18 @@ public class ListenService extends Service {
                 .setOnlyAlertOnce(quiet)
                 .setContentIntent(PendingIntent.getActivity(c, 5, new Intent(c, ChatActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags))
                 .setAutoCancel(true);
-        for (int i = 0, n = 0; buttons != null && i < buttons.length() && n < 2; i++) {
+        String[] labels = Inbox.labels(buttons);
+        int room = Buttons.MAX;
+        if (Buttons.addDone(labels)) {
+            Intent done = new Intent(c, ActionReceiver.class).setAction(ActionReceiver.NOTE_DONE).putExtra("tag", "chat").putExtra("id", ChatActivity.ID_NOTE);
+            b.addAction(new Notification.Action.Builder(null, "Done", PendingIntent.getBroadcast(c, (id + ":done").hashCode(), done, flags)).build());
+            room--;
+        }
+        for (int i : Buttons.pick(labels, room)) {
             JSONObject x = buttons.optJSONObject(i);
-            if (!Inbox.counts(x)) continue;
             Intent tap = new Intent(c, ActionReceiver.class).setAction(ActionReceiver.CHAT_TAP).putExtra("msg", id)
                     .putExtra("n", i).putExtra("label", x.optString("label")).putExtra("buttons", buttons.toString());
             b.addAction(new Notification.Action.Builder(null, x.optString("label"), PendingIntent.getBroadcast(c, (id + ":t" + i).hashCode(), tap, flags)).build());
-            n++;
         }
         ((NotificationManager) c.getSystemService(NOTIFICATION_SERVICE)).notify("chat", ChatActivity.ID_NOTE, b.build());
     }
@@ -427,7 +513,8 @@ public class ListenService extends Service {
     private void outboxDone(JSONArray gone) {
         for (int i = 0; gone != null && i < gone.length(); i++) {
             JSONObject x = gone.optJSONObject(i);
-            if (x == null || "chat".equals(x.optString("kind")) || "button".equals(x.optString("kind"))) continue;
+            String k = x == null ? "" : x.optString("kind");
+            if (x == null || "chat".equals(k) || "button".equals(k) || "today".equals(k)) continue; // the chat / Today show it
             String what = ("file".equals(x.optString("kind")) ? "File: " : "Answer: ") + x.optString("label");
             String note = x.optString("note");
             Notification n = builder(this, CH_MSG)

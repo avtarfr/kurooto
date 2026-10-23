@@ -106,6 +106,7 @@ public class MainActivity extends Activity {
         Ui.gap(chat, 8, 0);
         chat.setOnClickListener(v -> startActivity(new Intent(this, ChatActivity.class)));
         box.addView(chat);
+        TodayView.add(this, box); // the day, from your computer's last copy (0.6.0)
         JSONArray queued = Chat.waiting(Chat.load(this));
         if (queued.length() > 0) {
             StringBuilder s = new StringBuilder("Waiting for your computer (on your call line):");
@@ -140,6 +141,7 @@ public class MainActivity extends Activity {
         check(list, "Microphone", checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED, appInfo);
         if (SDK >= 34) check(list, "Full-screen calls (ring on the lock screen)", nm.canUseFullScreenIntent(),
                 new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + getPackageName())));
+        if (SDK >= 31) check(list, "Alarms at the exact time (the wake-up alarm on this phone)", Alarms.exact(this), Alarms.allowExact(this));
         check(list, "Battery: unrestricted (keeps listening)", pm.isIgnoringBatteryOptimizations(getPackageName()),
                 new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
         if (Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT).matches(".*(samsung|xiaomi|redmi|poco|oppo|realme|vivo|oneplus|huawei|honor).*")) {

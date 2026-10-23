@@ -15,8 +15,10 @@ Standing plans, never struck through.
 ## Open
 - **Common features directly usable from the phone app** (and the rest of the dashboard plan:
   ~~check-in and quiz cards~~ (0.5.22: answered on the app's main screen with an answer box and their buttons, through
-  the phone outbox while the laptop sleeps)): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done; the app's Today screen,
-  local alarm and notification buttons are planned for 0.6.0.
+  the phone outbox while the laptop sleeps)): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done;
+  ~~the app's Today screen, local alarm and notification buttons~~ (0.6.0: Today on the app's first screen with
+  Done / +1 on what's due, the wake-up alarm also set on the phone, Done and Snooze on reminder and deadline
+  notifications).
 - **A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
   groups, with a link to the user wiki for the rest.
 - **Dreaming** (0.5.9 has the morning message of the night's work and the loose ends; ~~consolidating memory and

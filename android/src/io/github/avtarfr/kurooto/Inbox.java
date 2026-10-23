@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   Android 6: Reply opens a small answer window (AnswerActivity), as tapping the notification does everywhere.
  * A counting button ("+1": one more part of a problem set done) leaves the notification up after a tap, showing what
  * your computer said (or that the tap waits on the call line for it), so the next tap counts too.
+ * A reminder or a deadline (0.6.0) puts its quick buttons on the notification instead (Buttons): +1, Done, Snooze 3 h
+ * for a deadline; Done, +10 min, +1 h for a reminder, whose Done only takes it down (on every phone: "dismiss").
  */
 final class Inbox {
     static final int ID = 7; // one number for all of them; the tag (the item id) tells them apart
@@ -42,7 +44,22 @@ final class Inbox {
     static String text(JSONObject it) { return it.optString("message", it.optString("text", "")); }
 
     /** A counting button: labelled "+1" (or "+2"...). Your computer keeps its message open for the next tap. */
-    static boolean counts(JSONObject button) { return button != null && button.optString("label").matches("\\+\\d+"); }
+    static boolean counts(JSONObject button) { return button != null && Buttons.counts(button.optString("label")); }
+
+    /** The buttons' labels (null for a link, which never goes on as a quick button). */
+    static String[] labels(JSONArray bs) {
+        String[] out = new String[bs == null ? 0 : bs.length()];
+        for (int i = 0; i < out.length; i++) {
+            JSONObject x = bs.optJSONObject(i);
+            out[i] = x == null || x.has("url") ? null : x.optString("label");
+        }
+        return out;
+    }
+
+    static boolean quickKind(JSONObject it) {
+        String k = it.optString("kind");
+        return "reminder".equals(k) || "deadline".equals(k);
+    }
 
     private static int code(String id, String what) { return (id + ":" + what).hashCode(); }
 
@@ -73,13 +90,29 @@ final class Inbox {
                 .setOnlyAlertOnce(true) // shown again after a +1: quietly
                 .setContentIntent(open(c, it, "open"))
                 .setAutoCancel(!asks(it));
+        JSONArray bs = it.optJSONArray("buttons");
+        String[] labels = labels(bs);
+        int[] quick = quickKind(it) ? Buttons.pick(labels, Buttons.MAX) : new int[0];
+        if (quick.length > 0) { // a reminder or a deadline: Done and Snooze first (Reply is in the answer window)
+            int n = 0;
+            if (Buttons.addDone(labels)) {
+                b.addAction(new Notification.Action.Builder(null, "Done", act(c, it, ActionReceiver.DISMISS, "dismiss", "dismiss", "1")).build());
+                n++;
+            }
+            for (int i = 0; i < quick.length && n < Buttons.MAX; i++, n++) {
+                b.addAction(new Notification.Action.Builder(null, labels[quick[i]],
+                        act(c, it, ActionReceiver.BUTTON, "b" + quick[i], "button", String.valueOf(quick[i]))).build());
+            }
+            if (it.optBoolean("reply") && n < Buttons.MAX) b.addAction(reply(c, it));
+            nm(c).notify(id, ID, b.build());
+            return;
+        }
         int n = 0;
         if (it.optBoolean("reply")) { b.addAction(reply(c, it)); n++; }
         JSONArray ch = it.optJSONArray("choices");
         for (int i = 0; ch != null && i < ch.length() && n < 3; i++, n++) {
             b.addAction(new Notification.Action.Builder(null, ch.optString(i), act(c, it, ActionReceiver.ANSWER, "c" + i, "answer", ch.optString(i))).build());
         }
-        JSONArray bs = it.optJSONArray("buttons");
         for (int i = 0; bs != null && i < bs.length() && n < 3; i++, n++) {
             JSONObject x = bs.optJSONObject(i);
             if (x == null) continue;
@@ -143,6 +176,8 @@ final class Inbox {
                 fields.put("answer", typed.toString().trim());
             } else if (ActionReceiver.BUTTON.equals(i.getAction())) {
                 fields.put("button", Integer.parseInt(i.getStringExtra("button")));
+            } else if (ActionReceiver.DISMISS.equals(i.getAction())) {
+                fields.put("dismiss", true);
             } else {
                 fields.put("answer", i.getStringExtra("answer"));
             }
@@ -162,6 +197,8 @@ final class Inbox {
                 if (again && r.delivered()) {
                     try { it.put("message", r.note); } catch (Exception ignored) { }
                     show(c, it); // still there, for the next +1
+                } else if (fields.has("dismiss") && (r.delivered() || r.gone())) {
+                    cancel(c, it.optString("id")); // Done on a reminder: gone here, and from your other phones
                 } else {
                     done(c, it, r);
                 }
