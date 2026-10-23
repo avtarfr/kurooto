@@ -5,6 +5,9 @@
 - **A calmer board**: the corner panels of SYSTEMS (events, your AI, today, due) and the NOTES legend and recent list
   are folded to their first line (with how much more there is); one opens while the pointer is over it, and `L` opens
   or folds them all (remembered in this browser).
+- **Ctrl+K from anywhere on the board**: one line for `ask`, `journal`, `note`, `remind 18:30 call mum`,
+  `due essay fri 17:00`, `alarm 7:30` (or `skip`, `off`), `find` a note and `open` a page, plus the Today box's `j`,
+  `.` and `!`. A bare word is completed, the result shows under the line, and an AI's answer arrives there too.
 
 - **Study packs: the prompt comes on its own**, as a message next to the zip, ready to copy (it's still in the zip).
 - **Anything over Telegram's 50 MB comes as a Google Drive link** (with Drive upload on): study packs leave nothing

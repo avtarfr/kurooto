@@ -296,3 +296,15 @@ body .hid-list li button { flex: none; padding: 1px 10px; font: 11.5px var(--mon
 .today .td-sec form input, .today .td-sec form textarea { flex: 1; min-width: 0; font: inherit; padding: 5px 7px; background: var(--panel); color: var(--fg); border: 1px solid var(--line, #3a4434); border-radius: 5px; }
 .today button.mini { padding: 1px 7px; font-size: 11px; margin-left: 4px; }
 .today .d { color: var(--dim, #8a8f84); }
+/* Ctrl+K: one line for the everyday things, over whatever is open */
+.cmdk { position: fixed; top: 14vh; left: 50%; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); z-index: 50;
+  background: var(--bg); border: 1px solid var(--line, #3a4434); border-radius: 8px; padding: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.5); font: 13px var(--mono); }
+.cmdk input { margin: 0; font: inherit; padding: 8px 10px; background: var(--panel); color: var(--fg); border: 1px solid var(--line, #3a4434); border-radius: 6px; }
+.cmdk ul { list-style: none; margin: 6px 0 0; padding: 0; max-height: 40vh; overflow: auto; }
+.cmdk li { padding: 4px 8px; border-radius: 4px; cursor: pointer; color: var(--dim, #8a8f84); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmdk li b { color: var(--fg); font-weight: 600; margin-right: 8px; }
+.cmdk li.on { background: var(--panel); color: var(--fg); }
+.cmdk li.on b { color: var(--accent-text); }
+.cmdk p { white-space: pre-wrap; margin: 6px 8px 2px; max-height: 30vh; overflow: auto; color: var(--accent-text); }
+.cmdk p:empty { display: none; }
+.cmdk p.bad { color: var(--bad); }

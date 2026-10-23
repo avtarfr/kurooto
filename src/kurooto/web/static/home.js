@@ -1186,7 +1186,7 @@ function renderNav() {
   if (!TERM.on) html += `<button class="tab off${dtab === "termsoff" ? " on" : ""}" data-dt="termsoff" title="a shell, your AI's program and the log, right here">+ terminals</button><span class="rule">─</span>`;
   if (isTerm) html += '<button class="tab" data-restart="1" title="end the program in this terminal and start it again">restart</button><span class="rule">─</span>';
   html += `<span class="rule">┤</span><span class="pages">${pageTabs()}</span><span class="rule">├</span>`;
-  html += `<span class="meta">alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note · l legends</span>`;
+  html += `<span class="meta">ctrl+k do · alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note · l legends</span>`;
   nav.innerHTML = html;
   nav.onclick = (e) => {
     if (e.target.closest(".t")) { maxPane("terminal"); return; }
@@ -1225,6 +1225,18 @@ function renderPage(name, body) {
 // One box takes anything: plain words go to Kurooto as if typed on Telegram; "j …" is a journal line, ". …" a note
 // in the inbox, "! …" a reminder ("! 18:30 call mum").
 let TODAY = null;
+const REM_WHEN = /^(in \d+\s*\w+|tomorrow(?: \d{1,2}(?::\d\d)?\s*(?:am|pm)?)?|\d{1,2}(?::\d\d)?\s*(?:am|pm)?|\w{3,9}day \d{1,2}(?::\d\d)?)\s+(.+)$/i;
+const DUE_WHEN = /^(.*?)\s+((?:mon|tue|wed|thu|fri|sat|sun)\w*\s+\d{1,2}(?::\d\d)?|tomorrow(?:\s+\d{1,2}(?::\d\d)?)?|\d{4}-\d\d-\d\d(?:\s+\d\d:\d\d)?|in \d+\s*\w+)$/i;
+// the box's shorthand to an action: {action, args} or {error}
+function quick(v) {
+  if (/^j\s+/i.test(v)) return { action: "journal.add", args: { text: v.replace(/^j\s+/i, "") } };
+  if (/^\.\s*/.test(v)) return { action: "note.capture", args: { text: v.replace(/^\.\s*/, "") } };
+  if (/^!\s*/.test(v)) {
+    const m = v.replace(/^!\s*/, "").match(REM_WHEN);
+    return m ? { action: "reminder.add", args: { when: m[1], what: m[2] } } : { error: "Write the time first: ! 18:30 call mum, ! in 20m tea, ! tomorrow 9am gym" };
+  }
+  return { action: "ask", args: { text: v } };
+}
 async function renderToday(body) {
   if (!body.querySelector("#td-box")) {
     body.innerHTML = `<div class="today">
@@ -1234,16 +1246,10 @@ async function renderToday(body) {
     const box = body.querySelector("#td-box");
     const go = async () => {
       const v = box.value.trim(); if (!v) return;
-      let action = "ask", args = { text: v };
-      if (/^j\s+/i.test(v)) { action = "journal.add"; args = { text: v.replace(/^j\s+/i, "") }; }
-      else if (/^\.\s*/.test(v)) { action = "note.capture"; args = { text: v.replace(/^\.\s*/, "") }; }
-      else if (/^!\s*/.test(v)) {
-        const m = v.replace(/^!\s*/, "").match(/^(in \d+\s*\w+|tomorrow(?: \d{1,2}(?::\d\d)?\s*(?:am|pm)?)?|\d{1,2}(?::\d\d)?\s*(?:am|pm)?|\w{3,9}day \d{1,2}(?::\d\d)?)\s+(.+)$/i);
-        if (!m) { tdSay("Write the time first: ! 18:30 call mum, ! in 20m tea, ! tomorrow 9am gym", true); return; }
-        action = "reminder.add"; args = { when: m[1], what: m[2] };
-      }
+      const q = quick(v);
+      if (q.error) { tdSay(q.error, true); return; }
       box.value = "";
-      await tdAct(action, args);
+      await tdAct(q.action, q.args);
     };
     box.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
     body.querySelector("#td-go").onclick = go;
@@ -1268,24 +1274,25 @@ async function renderToday(body) {
   tdDraw(body.querySelector("#td-body"));
 }
 function tdSay(text, bad) { const el = $("#td-said"); if (el) { el.textContent = text; el.className = "td-said" + (bad ? " bad" : ""); } }
-async function tdAct(action, args) {
-  let r; try { r = await api("act", { action, args }); } catch { tdSay("Kurooto didn't answer (is it running?).", true); return; }
-  tdSay(r.message || (r.ok ? "Done." : "That didn't work."), !r.ok);
-  if (r.job) tdWait(r.job);
-  const body = $("#ov-body").querySelector(".today") ? $("#ov-body") : $("#tab-body");
-  try { TODAY = await api("today"); tdDraw(body.querySelector("#td-body")); } catch { /* the next refresh */ }
+// one action; its sentence (and an AI request's answer when it comes) goes to say, and an open Today page redraws
+async function tdAct(action, args, say = tdSay) {
+  let r; try { r = await api("act", { action, args }); } catch { say("Kurooto didn't answer (is it running?).", true); return; }
+  say(r.message || (r.ok ? "Done." : "That didn't work."), !r.ok);
+  if (r.job) tdWait(r.job, say);
+  const host = [$("#ov-body"), $("#tab-body")].find((b) => b && b.querySelector("#td-body"));
+  if (host) try { TODAY = await api("today"); tdDraw(host.querySelector("#td-body")); } catch { /* the next refresh */ }
 }
-async function tdWait(job) {
+async function tdWait(job, say = tdSay) {
   for (let i = 0; i < 450; i++) {
     await sleep(i < 10 ? 1000 : 3000);
     let j; try { j = await api(`job?id=${encodeURIComponent(job)}`); } catch { continue; }
     if (j.ok === false) return;
     if (j.status === "ok" || j.status === "failed") {
       const who = [j.label || j.brain, j.effort, j.seconds ? `${Math.round(j.seconds)} s` : ""].filter(Boolean).join(" · ");
-      tdSay(`${who ? who + "\n" : ""}${String(j.answer || "").trim() || "(no answer)"}`, j.status !== "ok");
+      say(`${who ? who + "\n" : ""}${String(j.answer || "").trim() || "(no answer)"}`, j.status !== "ok");
       return;
     }
-    tdSay(`working${j.brain ? " · " + j.brain : ""} · ${Math.round((Date.now() / 1000) - (j.created || Date.now() / 1000))} s`);
+    say(`working${j.brain ? " · " + j.brain : ""} · ${Math.round((Date.now() / 1000) - (j.created || Date.now() / 1000))} s`);
   }
 }
 function tdDraw(el) {
@@ -1334,7 +1341,7 @@ function tdDraw(el) {
   const add = el.querySelector(".td-add");
   if (add) add.onsubmit = async (e) => {
     e.preventDefault(); const v = add.querySelector("input").value.trim(); if (!v) return;
-    const m = v.match(/^(.*?)\s+((?:mon|tue|wed|thu|fri|sat|sun)\w*\s+\d{1,2}(?::\d\d)?|tomorrow(?:\s+\d{1,2}(?::\d\d)?)?|\d{4}-\d\d-\d\d(?:\s+\d\d:\d\d)?|in \d+\s*\w+)$/i);
+    const m = v.match(DUE_WHEN);
     if (!m) { tdSay("End with when it's due: essay draft fri 17:00", true); return; }
     await tdAct("deadline.add", { title: m[1], when: m[2] });
   };
@@ -1970,6 +1977,70 @@ window.addEventListener("keydown", (e) => {
   if (PAGE) { closePage(); return; }
   if (MAX && (!["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) || e.target.id === "chat-input")) maxPane(MAX);
 });
+// Ctrl+K (or ⌘K): one line for the everyday things from anywhere on the board, the same actions as the Today page:
+// ask, journal, note, remind, due, alarm, find (a note), open (a page), and the Today box's shorthand (j, ., !).
+// Enter does the highlighted line (a bare word is completed first); what happened shows under it, and an AI
+// request's answer arrives there too. Not from inside a terminal, where Ctrl+K belongs to the shell.
+const CMD = { sel: 0, rows: [] };
+const cmdSay = (text, bad) => { const el = $("#cmdk-said"); el.textContent = text; el.className = bad ? "bad" : ""; };
+const pageOf = (r) => { const s = r.toLowerCase(); return Object.keys(TABS).find((k) => k.startsWith(s) || TABS[k].toLowerCase().startsWith(s)); };
+const VERBS = [
+  { w: "ask", hint: "ask Kurooto anything", run: (r) => tdAct("ask", { text: r }, cmdSay) },
+  { w: "journal", hint: "a line in today's journal", run: (r) => tdAct("journal.add", { text: r }, cmdSay) },
+  { w: "note", hint: "a note in the inbox", run: (r) => tdAct("note.capture", { text: r }, cmdSay) },
+  { w: "remind", hint: "remind 18:30 call mum · remind in 20m tea", run: (r) => { const m = r.match(REM_WHEN);
+    return m ? tdAct("reminder.add", { when: m[1], what: m[2] }, cmdSay) : cmdSay("Time first: remind 18:30 call mum", true); } },
+  { w: "due", hint: "due essay draft fri 17:00", run: (r) => { const m = r.match(DUE_WHEN);
+    return m ? tdAct("deadline.add", { title: m[1], when: m[2] }, cmdSay) : cmdSay("End with when it's due: due essay draft fri 17:00", true); } },
+  { w: "alarm", hint: "alarm 7:30 · alarm skip tomorrow · alarm off", run: (r) => { const s = r.match(/^skip\b\s*(.*)$/i);
+    return s ? tdAct("alarm.skip", { day: s[1] || "tomorrow" }, cmdSay) : /^off$/i.test(r) ? tdAct("alarm.clear", {}, cmdSay) : tdAct("alarm.set", { when: r }, cmdSay); } },
+  { w: "find", hint: "find a note by its name", run: (r) => { cmdClose(); findNote(); const s = $("#mind-search"); s.value = r;
+    s.dispatchEvent(new Event("input")); s.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })); } },
+  { w: "open", hint: `open a page: ${Object.keys(TABS).join(", ")}`, run: (r) => { const p = pageOf(r);
+    if (!p) return cmdSay(`Which page? ${Object.keys(TABS).join(", ")}`, true); cmdClose(); openPage(p); } },
+];
+function cmdRows(v) {
+  v = v.replace(/^j\s+/i, "journal ").replace(/^\.\s*(?=\S)/, "note ").replace(/^!\s*(?=\S)/, "remind ");
+  if (!v.trim()) return VERBS.map((verb) => ({ verb, rest: "" }));
+  const m = v.trimStart().match(/^(\S+)(\s+([\s\S]*))?$/), w = m[1].toLowerCase(), rest = (m[3] || "").trim();
+  const exact = VERBS.find((x) => x.w === w);
+  if (exact && m[2] !== undefined) return [{ verb: exact, rest }];
+  const pre = m[2] === undefined ? VERBS.filter((x) => x.w.startsWith(w) && (x.w !== "ask" || w === "ask")) : [];
+  return [...pre.map((verb) => ({ verb, rest: "" })), { verb: VERBS[0], rest: v.trim() }];
+}
+function cmdDraw() {
+  CMD.rows = cmdRows($("#cmdk-in").value); CMD.sel = clamp(CMD.sel, 0, CMD.rows.length - 1);
+  $("#cmdk-list").innerHTML = CMD.rows.map((r, i) => `<li role="option" data-i="${i}" class="${i === CMD.sel ? "on" : ""}"><b>${r.verb.w}</b>${esc(r.rest || r.verb.hint)}</li>`).join("");
+}
+function cmdOpen() {
+  const box = $("#cmdk"), inp = $("#cmdk-in");
+  box.classList.remove("hidden"); inp.value = ""; CMD.sel = 0; cmdSay(""); cmdDraw(); inp.focus();
+}
+function cmdClose() { $("#cmdk").classList.add("hidden"); if (document.activeElement === $("#cmdk-in")) $("#cmdk-in").blur(); }
+// a bare word is completed ("re" → "remind "); with something after it, it runs, and the line clears for the next
+async function cmdGo(i = CMD.sel) {
+  const row = CMD.rows[i], inp = $("#cmdk-in"); if (!row) return;
+  if (!row.rest) { inp.value = row.verb.w + " "; CMD.sel = 0; cmdDraw(); cmdSay(row.verb.hint); inp.focus(); return; }
+  inp.value = ""; cmdDraw();
+  await row.verb.run(row.rest);
+}
+window.addEventListener("keydown", (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyK" || inTerm(e.target)) return;
+  e.preventDefault(); e.stopPropagation();
+  if ($("#cmdk").classList.contains("hidden")) cmdOpen(); else cmdClose();
+}, true);
+(() => {
+  const inp = $("#cmdk-in"), list = $("#cmdk-list");
+  inp.addEventListener("input", () => { CMD.sel = 0; cmdDraw(); });
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cmdClose(); }
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); CMD.sel += e.key === "ArrowDown" ? 1 : -1; cmdDraw(); }
+    else if (e.key === "Tab") { const r = CMD.rows[CMD.sel]; if (r && r.verb.w !== "ask") { e.preventDefault(); inp.value = r.verb.w + " " + r.rest; cmdDraw(); } }
+    else if (e.key === "Enter") { e.preventDefault(); cmdGo(); }
+  });
+  list.addEventListener("mousedown", (e) => { const li = e.target.closest("li"); if (li) { e.preventDefault(); cmdGo(Number(li.dataset.i)); } });
+  document.addEventListener("mousedown", (e) => { if (!e.target.closest("#cmdk")) cmdClose(); });
+})();
 // after the window or a pane changes size: STATUS shows as many processes as fit, the terminal fills its pane
 function refit() {
   if (DENSE && last) renderStatus(last);

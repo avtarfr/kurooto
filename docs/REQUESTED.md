@@ -6,8 +6,8 @@ the rest are open. (Ideas nobody has asked for yet are in [ROADMAP.md](ROADMAP.m
 To ask for something: open an issue on GitHub, or tell your own Kurooto on Telegram: "add to the requested list: …".
 
 ## Open
-- **Common features directly usable from the phone app** (and the rest of the dashboard plan: Ctrl+K palette,
-  check-in and quiz cards): the dashboard's Today page is done (0.5.7); the app's Today screen, local alarm and
+- **Common features directly usable from the phone app** (and the rest of the dashboard plan:
+  check-in and quiz cards): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done; the app's Today screen, local alarm and
   notification buttons are planned for 0.6.0.
 - **Mail about exams is read at once and turned into a schedule** (dates, rooms, what to prepare), not only digested.
 - **PDF, Word and PowerPoint to Markdown** with Microsoft's MarkItDown for books and Classroom files (needs a pip
