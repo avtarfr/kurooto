@@ -24,14 +24,12 @@ scanner's denylist is the `PRIVACY_DENYLIST` Actions secret (terms only).
 # 1. version and changelog
 #    pyproject.toml: version = "0.1.0"; CHANGELOG.md: the release's notes; known problems found since the last
 #    release go in src/kurooto/data/known_issues.json (/fixme reads it; see below); commit, tag v0.1.0, push; CI green.
-# 2. the Android app, release-signed
-KUROOTO_KEYSTORE=~/.config/kurooto-dev/android-release.keystore KUROOTO_KEYSTORE_PASS=… \
-  ANDROID_HOME=/path/to/sdk android/build.sh
-# 3. build and sign the release
-uv run tools/release.py build --site ~/kurooto-site --base https://avtarfr.github.io/kurooto \
-  --apk android/build/kurooto.apk --notes "…"
+# 2. build the release (anyone may, when asked; it warns when android/ changed since the last app that shipped)
+uv run tools/release.py build --site ~/kurooto-site --base https://avtarfr.github.io/kurooto --notes "…"
+# 3. sign it; --apk also builds the Android app from the release's tarball and signs it with the Android keystore
+#    (asks for the update key's passphrase, then the keystore's password; needs ANDROID_HOME, a JDK and bash)
 uv run tools/release.py sign --site ~/kurooto-site --base https://avtarfr.github.io/kurooto \
-  --version 0.1.0 --key ~/.config/kurooto-dev/release-key.pem --channel stable
+  --version 0.1.0 --key ~/.config/kurooto-dev/release-key.pem --channel stable --apk
 # 4. publish
 uv run tools/release.py publish --site ~/kurooto-site --message "release 0.1.0"
 ```
@@ -48,11 +46,27 @@ signed manifest, `sign --critical` in the signed channel pointer, and installs t
 enough). The pointer's mark goes when that channel is signed again without it; the manifest's stays with the
 version. Only for fixes that can't wait.
 
+**The phone app** is made when the release is signed, not when it's built: the package's hash is fixed at `build`, and
+only the owner has the Android keystore. `sign --apk` unpacks the release's own tarball (checked against
+`manifest.unsigned.json`), runs its `android/build.sh` with `KUROOTO_KEYSTORE` (`--keystore`, default
+`~/.config/kurooto-dev/android-release.keystore`) and the password from `KUROOTO_KEYSTORE_PASS`, else asked for (never
+shown, logged or written; build.sh hands it to apksigner through the environment). It refuses an app whose
+versionName or versionCode isn't the release's, and one signed with another certificate than the last app that
+shipped (phones would refuse it as an update; `--new-app-key` if every phone should reinstall). The app goes to
+`SITE/releases/<v>/kurooto.apk`, its entry (`url`, `sha256`, `size`, `versionCode`, `versionName`, `cert_sha256`,
+`source`: a hash of `android/`) into the manifest before it's signed, and signed `android-<channel>.json` and
+`android.json` are written. `android.json` is what the app's update check and the pairing page read; it follows the
+newest signed app on any channel and never moves back to an older one. A version gets its app once: signing it again
+(promoting beta to stable) without `--apk` keeps the app and writes that channel's file; `--apk` again is refused.
+`build` warns when `android/` changed since the last app that shipped; that release needs `sign --apk`. Installs don't
+carry the app inside the package: after an update they download the one their version's manifest names (with Phone
+calls on), check its sha256, and their call line serves it at `/kurooto.apk`.
+
 **Never rebuild after the owner has signed: the tarball must stay byte-identical to the signed one.** `sign` signs
 what `manifest.unsigned.json` says, including the tarball's sha256 and size. `build` isn't reproducible (file times
 in the archive, the manifest's `created`), and running it again for the same version overwrites the tarball and the
-unsigned manifest but not the signed `manifest.json`. Nothing catches it: `sign` doesn't hash the tarball again and
-`publish` checks neither signatures nor hashes. Published, every install and update of that version then fails with
+unsigned manifest but not the signed `manifest.json`. Little catches it: only `sign --apk` hashes the tarball again
+(it builds the app from it); plain `sign` doesn't, and `publish` checks neither signatures nor hashes. Published, every install and update of that version then fails with
 "didn't match its signed checksum", while installs that already downloaded the old build keep it. So an agent or
 contributor goes no further than `build`, and only when asked; signing and publishing are the owner's. After the
 owner has signed, don't run `build` for that version again or touch anything in `SITE/releases/<v>/`: a problem

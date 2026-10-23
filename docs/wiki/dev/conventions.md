@@ -103,7 +103,8 @@ Findings print `path:line` and the kind, never the matched value. Install the ho
 - Secrets of any kind, `.dev.vars`, keystores (`*.keystore`, `*.jks`), PEM files, the release key.
 - Real names, emails, phone numbers, chat ids, Telegram usernames, Worker hostnames, paths from anyone's machine.
 - Real user data: settings, events, transcripts, notes, diagnostics bundles, `cases` exports.
-- Build output: `src/kurooto/data/kurooto.apk` (git-ignored; added by `tools/release.py build --apk`),
+- Build output: `src/kurooto/data/kurooto.apk` (git-ignored; only older packages carried it, releases now name the
+  app in their signed manifest),
   `src/kurooto/data/worker/public/app.js` (bundled at deploy), `node_modules/`, `.wrangler/`, `dist/`, `build/`,
   the release site folder.
 - Generated docs out of date: regenerate `docs/SETTINGS_GUIDE.md` instead of editing it by hand.

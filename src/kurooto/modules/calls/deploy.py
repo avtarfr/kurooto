@@ -32,6 +32,7 @@ from kurooto import __version__
 from kurooto.core import egress, proc, zones
 from kurooto.core.prereqs import Prereqs
 from kurooto.modules.calls import line
+from kurooto.update import phone_app
 
 SOURCE = Path(__file__).resolve().parent.parent.parent / "data" / "worker"
 FILES = ("src", "web", "public", "package.json", "package-lock.json", "wrangler.template.toml")
@@ -237,8 +238,8 @@ class Deployer:
                 shutil.copytree(src, dst, dirs_exist_ok=True, ignore=skip_built)
             else:
                 shutil.copy2(src, dst)
-        apk = SOURCE.parent / "kurooto.apk"
-        if apk.is_file():
+        apk = phone_app.current(self.app.paths.data)  # downloaded with this version, or inside an older package
+        if apk:
             shutil.copy2(apk, self.dir / "public" / "kurooto.apk")
         lock = (self.dir / "package-lock.json").read_bytes()
         stamp = self.dir / "node_modules" / ".kurooto-lock"
@@ -420,6 +421,9 @@ def fingerprint(app) -> str:
         "gh" if app.secrets.get("calls.github_token") else "",
         app.secrets.get("calls.ntfy_token") or "",  # a new or cleared ntfy token goes to the line (hashed here)
     ]
+    apk = phone_app.fingerprint(app.paths.data)
+    if apk:
+        parts.append(apk)  # a new phone app goes to the line (only when there is one: no redeploy for nothing)
     return hashlib.sha256("|".join(parts).encode()).hexdigest()[:16]
 
 

@@ -85,8 +85,9 @@ season on yourself; it's off by default and in no preset. Critical releases stil
 
 **What else updates:**
 
-- **Your call line** (with [Phone calls](calls.md) on) is redeployed after Kurooto updates, when its code changed. This
-  happens in the background at 05:10. If it fails you get "Your call line couldn't be updated: ..." and calls keep
+- **Your call line** (with [Phone calls](calls.md) on) is redeployed after Kurooto updates, when its code changed or
+  the release brings a new Android app (downloaded after the update and checked against the signed release, so the
+  line hands out the app that goes with your version). This happens in the background at 05:10. If it fails you get "Your call line couldn't be updated: ..." and calls keep
   working on the old version; Features → Phone calls → Set up tries again. With `updates.mode` = `off`, the line isn't
   updated either.
 - **The Android app** checks for a new version each time you open it (at most every 2 minutes) and shows an **Update**

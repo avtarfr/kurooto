@@ -271,6 +271,7 @@ Recurring (key → when; setting that controls it):
 | `agents:export` | hourly (only while export is on) | `agents.export` | `core/agent_export.py` |
 | `health:daily` | daily 21:00 | `health.when` | `core/health.py:Health.start` |
 | `updates:check` | every 6h | | `update/service.py:Updates.start` |
+| `updates:phone_app` | every 6h (and `updates:phone_app:start` 2 min after a start) | | `update/service.py:Updates.start` |
 | `alarm:plan` | every 30m | | `modules/alarm.py` |
 | `alarm:suggest` | every 30m | `alarm.suggest` | `modules/alarm.py` |
 | `backups:run`, `backups:catchup` | daily 03:30; hourly | `backups.when` | `modules/backups.py` |

@@ -38,19 +38,46 @@ The user's view: [../user/updates-and-backups.md](../user/updates-and-backups.md
 | Subcommand | Function | Needs the key | What it does |
 |---|---|---|---|
 | `keygen` | `keygen(out, no_pass)` | makes it | writes a PKCS8 PEM (refuses to overwrite) and prints the public key to paste into both `PUBLIC_KEYS` lists |
-| `build` | `build(site, base, version, notes, break_run, apk, critical)` | no | copies the repo to a temp dir (no `.git`, venvs, `node_modules`, keys, `docs/media`), optionally adds the APK as `src/kurooto/data/kurooto.apk`, runs `uv build --sdist`, writes `SITE/releases/<v>/kurooto-<v>.tar.gz` and `manifest.unsigned.json` (`{version, notes, [critical], created, files: {name: {url, sha256, size}}}`), the site pages (`install.sh`, `install.ps1`, `bootstrap.py`, `index.html`, `privacy.html` (`docs/PRIVACY.md` rendered into `installer/privacy.html`, `privacy_page`), `changelog.html`) and, with `--apk`, `android.json` |
-| `sign` | `sign(site, base, version, key_path, channel, critical)` | yes | refuses a key not in the trusted list (`trusted_key`), writes `releases/<v>/manifest.json` = `{"doc": ..., "sig": ...}` and the channel pointer `SITE/<channel>.json` = signed `{version, manifest_url, issued, channel, [critical]}` |
+| `build` | `build(site, base, version, notes, break_run, critical)` | no | copies the repo to a temp dir (no `.git`, venvs, `node_modules`, keys, APKs, `docs/media`), runs `uv build --sdist`, writes `SITE/releases/<v>/kurooto-<v>.tar.gz` and `manifest.unsigned.json` (`{version, notes, [critical], created, files: {name: {url, sha256, size}}}`), the site pages (`install.sh`, `install.ps1`, `bootstrap.py`, `index.html`, `privacy.html` (`docs/PRIVACY.md` rendered into `installer/privacy.html`, `privacy_page`), `changelog.html`), then warns when `android/` changed since the last app that shipped (`app_changed`). `build --apk` is gone (it says to use `sign --apk`) |
+| `sign` | `sign(site, base, version, key_path, channel, critical, apk, keystore, new_app_key)` | yes | refuses a key not in the trusted list (`trusted_key`); with `--apk`, builds and signs the Android app first and adds its `android` entry to the manifest (`make_app`, below); writes `releases/<v>/manifest.json` = `{"doc": ..., "sig": ...}`, the channel pointer `SITE/<channel>.json` = signed `{version, manifest_url, issued, channel, [critical]}` and, when the manifest has an app, `android-<channel>.json` and `android.json` (`app_pointers`) |
 | `yank` | `yank(site, key_path, versions, reason, undo)` | yes | signed `SITE/yank.json` (`{yanked: {v: reason}, issued}`, `issued` always rises) |
 | `publish` | `publish(site, message)` | no | copies the site into a worktree of `gh-pages` (except `*.unsigned.json`), commits and pushes |
 
 `--break-run` (build) injects a crash into `daemon.run()`; it exists only for the rollback rehearsal.
 
+### The phone app (`sign --apk`)
+
+The APK isn't in the package: the tarball's sha256 is fixed at `build`, and only the owner has the Android keystore,
+so the app is built and signed at `sign` time and named in the signed manifest instead.
+
+- `make_app`: `release_sources` checks the release tarball against `manifest.unsigned.json` and unpacks it to a temp
+  dir (so the app is built from exactly what was released, whatever the working tree holds; the sdist carries
+  `android/`), checks its `pyproject.toml` version, takes `android_source` (a sha256 over `android/` without `build/`),
+  then `build_app` runs its `android/build.sh` with `KUROOTO_KEYSTORE` (`--keystore`, default
+  `~/.config/kurooto-dev/android-release.keystore`, or `KUROOTO_KEYSTORE` in the environment) and
+  `KUROOTO_KEYSTORE_PASS` (from the environment, else `getpass`). The password only travels in the child's environment
+  (`apksigner --ks-pass env:KUROOTO_KEYSTORE_PASS`), is masked in build output shown on failure, and is never written.
+- Checks (`apk_info`, `apk_cert`: the newest `$ANDROID_HOME/build-tools` `aapt2 dump badging` and `apksigner verify
+  --print-certs`): package `io.github.avtarfr.kurooto`, versionName = the version and versionCode = `version_code(v)`,
+  exactly one signer, and that signer's SHA-256 equal to the last shipped app's (`last_app`: the newest older manifest
+  with an `android` entry, else the legacy `android.json` and its APK on the site); `--new-app-key` accepts a change.
+- Manifest entry `android`: `{file, url, sha256, size, versionCode, versionName, cert_sha256, source}`, written into
+  `manifest.unsigned.json` and signed with the rest. A version that has one refuses `--apk` again; `sign` without it
+  keeps the entry (promotion to another channel).
+- `app_pointers`: `android-<channel>.json` and `android.json` = `{versionCode, versionName, url, sha256, doc, sig}`,
+  `doc` = signed `{versionCode, versionName, url, sha256, size, manifest_url, channel, issued}`. The four plain fields
+  on top are what apps up to 0.5.18 (`MainActivity.checkForUpdate`) and `pair.js` read; they ignore `doc`/`sig`.
+  `android.json` follows the newest signed app on any channel (the app has one update URL) and is never rewritten
+  with a lower versionCode.
+- `build` guard (`app_changed`): compares `android_source(ROOT/android)` with the last shipped app's `source`; no
+  record (the legacy `android.json`) or no app at all also prints a warning. It never fails the build.
+
 ### Never rebuild after signing
 
 The owner signs. `sign` signs whatever `manifest.unsigned.json` says, including the sha256 of the tarball that `build`
 made. `build` is not reproducible (timestamps), and running it again for the same version overwrites the tarball and
-the unsigned manifest without touching the signed `manifest.json`. Nothing checks this: `sign` doesn't re-hash the
-tarball and `publish` checks neither signatures nor hashes. The result of a rebuild after signing is a published
+the unsigned manifest without touching the signed `manifest.json`. Little checks this: only `sign --apk` re-hashes the
+tarball (it builds the app from it); plain `sign` doesn't, and `publish` checks neither signatures nor hashes. The result of a rebuild after signing is a published
 manifest whose checksum doesn't match its tarball, and every client then fails with "didn't match its signed checksum"
 (`update/updater.py:Updater._download`, `installer/bootstrap.py`). Clients that already staged that version keep the
 old build (`Updater.stage` returns early when `versions/<v>` exists).
@@ -88,6 +115,9 @@ In the app folder (`Paths.app`):
 | `launcher.json` | `launcher.run` | the launcher's own record |
 | `call-line/` | `modules/calls/deploy.py` | the Worker build folder |
 
+In the data folder (`Paths.data`): `phone-app/kurooto.apk` and `phone-app/app.json` (`{for, none, sha256,
+versionName, fetched}`), written by `update/phone_app.py:ensure`.
+
 State files: `<state>/update-seen.json` (last `issued` per channel and for the yank list), `<state>/yank.json` (cached
 yank list), `<state>/update-ready.json` (a staged update waiting for its window).
 
@@ -111,7 +141,7 @@ yank list), `<state>/update-ready.json` (a staged update waiting for its window)
 
 - Settings: `updates.mode` (`night` | `ask` | `off`), `updates.channel`, `updates.window` (`["03:00", "05:00"]`),
   `updates.staged`, `updates.wait_hours` (48), `updates.exam_hold`.
-- Schedule: `updates:check` every 6 h; `updates.probation` about 5 minutes after a start on trial; a rollback notice.
+- Schedule: `updates:check` and `updates:phone_app` every 6 h; `updates.probation` about 5 minutes after a start on trial; a rollback notice.
 - `check()`: emits `update_found`, then in order: `hold()` (staged wait, timed by `Updates.clock`, or exams)
   `update_waiting`; `mode == off` (a note only); `held()` (feature holds registered in `Updates.holds`, e.g. exam
   season) `update_held`; `ask` (a Telegram message with `upd:<v>:now|later|skip` buttons, handled by `Updates.button`);
@@ -119,6 +149,15 @@ yank list), `<state>/update-ready.json` (a staged update waiting for its window)
 - `apply_if_quiet()`: waits if held; retries in 20 minutes while AI jobs run or a call is live; re-checks the yank list;
   then `switch_to()`: `Updater.switch`, `update_switch` event, `app.request_restart()`.
 - `end_probation()`: prunes and says "Kurooto updated".
+- `phone_app()` (action `updates.phone_app`: 2 minutes after each start and every 6 h; only with Phone calls on and
+  `updates.mode` not `off`): `update/phone_app.py:ensure` reads the running version's signed
+  `releases/<v>/manifest.json` (signature and version checked), downloads its `android.url` once, checks the sha256 and
+  keeps it in `<data>/phone-app/`. Nothing is fetched again for a version already looked at, or when the file on disk
+  already has that hash; a release without an app keeps the one there; a 404 (not published) isn't recorded, so it's
+  tried again. Events `phone_app_fetched` / `phone_app_failed`. `phone_app.current()` is what the call line serves
+  (the download while it matches its recorded hash, else the `data/kurooto.apk` an older package carried, else none);
+  `modules/calls/deploy.py` copies it to `public/kurooto.apk` in `prepare`, and `fingerprint` includes its hash (only
+  when there is one), so a new app redeploys the line at 05:10.
 
 `kurooto update` (`cli.py:update`) checks and reports; `kurooto update --now` stages, switches and restarts at once,
 bypassing holds on purpose.
