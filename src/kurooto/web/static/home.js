@@ -1097,8 +1097,9 @@ function hoodOf(id, subjects = new Set(), dirs = projectDirs()) {
   m = /^([^/]+)\//.exec(id || ""); if (m && subjects.has(m[1])) return m[1];
   return null;
 }
-// n.neighborhood, n.role, n.sdeg (links that aren't a book's) and n.bridge (how many other neighbourhoods its links
-// reach) for every node (n.nb holds its links, n.out the ones it makes); returns {key: {label, color, anchor, project}}.
+// n.neighborhood, n.role, n.sdeg (links that aren't a book's nor provenance) and n.bridge (how many other
+// neighbourhoods its links reach) for every node (n.nb holds its links, n.out the ones it makes, n.snb the ones that
+// aren't only in a "Seen in" or a reading list: web/live.py PROVENANCE); returns {key: {label, color, anchor, project}}.
 // info: the graph's layout ({research, project}) and research ({<project>: {name, topics}}: each project's
 // entry in the research hub, read by web/live.py). Once per graph update, never per frame.
 // A research project's region is its folder's notes, the notes its index links to and the topics its hub entry links
@@ -1149,8 +1150,11 @@ function assignHoods(nodes, info = {}) {
     n.neighborhood = k;
   }
   for (const n of nodes.values()) {
-    const other = [...(n.nb || [])].map((id) => nodes.get(id)).filter((q) => q && q.role !== "book");
-    n.sdeg = n.role === "book" ? Math.min(n.nb ? n.nb.size : 0, 4) : other.length;
+    // n.snb: the links you'd follow; a provenance link ("Seen in", the lists reading writes: n.nb only) never sizes
+    // a note, so the class note a textbook came with, or a lecture note, doesn't swell into a hub
+    const own = n.snb || n.nb || new Set();
+    const other = [...own].map((id) => nodes.get(id)).filter((q) => q && q.role !== "book");
+    n.sdeg = n.role === "book" ? Math.min(own.size, 4) : other.length;
     n.bridge = new Set(other.map((q) => q.neighborhood).filter((h) => h !== n.neighborhood && h !== "other")).size;
   }
   return hoods;
@@ -1177,6 +1181,7 @@ function regionSpots(nodes, hoods) {
 }
 // -- end of the pure part
 const ZOOM_NAMES = 1.35; // zoomed in this far, notes get their names and the regions' names step back
+const HL_TAU = 33, NB_NAMES = 24; // the notes map's light: its easing (ms; ~100 ms to settle); neighbours named at most
 
 const HUB_LINKS = 12, MAX_STEP = 40; // the notes graph: springs per hub, the furthest a note moves a frame
 class Mind {
@@ -1193,9 +1198,12 @@ class Mind {
     for (const n of g.nodes) { seen.add(n.id); let node = this.nodes.get(n.id);
       if (!node) { node = { ...n, x: (Math.random() - 0.5) * 300, y: (Math.random() - 0.5) * 300, vx: 0, vy: 0, deg: 0 }; this.nodes.set(n.id, node); } else Object.assign(node, n); }
     for (const id of [...this.nodes.keys()]) if (!seen.has(id)) this.nodes.delete(id);
-    this.links = g.links.map(([a, b]) => [this.nodes.get(a), this.nodes.get(b)]).filter(([a, b]) => a && b);
-    for (const n of this.nodes.values()) { n.deg = 0; n.nb = new Set(); n.out = new Set(); }
-    for (const [a, b] of this.links) { a.deg++; b.deg++; a.nb.add(b.id); b.nb.add(a.id); a.out.add(b.id); }
+    // [a, b] a link you'd follow; [a, b, 1] one only in a provenance block (web/live.py): kept, but it sizes nothing
+    this.links = g.links.map(([a, b, via]) => { const l = [this.nodes.get(a), this.nodes.get(b)]; l.via = !!via; return l; }).filter(([a, b]) => a && b);
+    for (const n of this.nodes.values()) { n.deg = 0; n.via = 0; n.nb = new Set(); n.out = new Set(); n.snb = new Set(); }
+    for (const l of this.links) { const [a, b] = l; a.deg++; b.deg++; a.nb.add(b.id); b.nb.add(a.id); a.out.add(b.id);
+      if (l.via) { a.via++; b.via++; } else { a.snb.add(b.id); b.snb.add(a.id); } }
+    this.nbList = null; // the pointed-at note's neighbours, in label order: made again for the new graph
     this.hoods = assignHoods(this.nodes, { layout: g.layout, research: g.research });
     this.anchor = new Map([...this.hoods].map(([k, v]) => [k, v.anchor]));
     if (first) for (const n of this.nodes.values()) { const a = this.anchor.get(n.neighborhood) || { x: 0, y: 0 }; n.x = a.x + (Math.random() - 0.5) * 140; n.y = a.y + (Math.random() - 0.5) * 140; }
@@ -1259,40 +1267,50 @@ class Mind {
     const k = Math.min((w - (DENSE ? 120 : 160)) / Math.max(50, x1 - x0), (h - 90) / Math.max(50, y1 - y0)), tk = clamp(k, 0.08, 2.5);
     this.view.k += (tk - this.view.k) * 0.05; this.view.x += (-(x0 + x1) / 2 - this.view.x) * 0.05; this.view.y += (-(y0 + y1) / 2 - this.view.y) * 0.05;
   }
-  // a note's dot: bigger the more links it has (a book's reading links don't count)
+  // a note's dot: bigger the more links it has (a book's links, and "Seen in" and reading lists, don't count)
   radius(n) { return (2.0 + Math.sqrt(n.sdeg ?? n.deg) * 0.95) * Math.sqrt(this.view.k); }
   toScreen(n, w, h) { return { x: w / 2 + (n.x + this.view.x) * this.view.k, y: h / 2 + 8 + (n.y + this.view.y) * this.view.k }; }
   toWorld(x, y, w, h) { return { x: (x - w / 2) / this.view.k - this.view.x, y: (y - h / 2 - 8) / this.view.k - this.view.y }; }
+  // Pointing at a note (or choosing it with the arrow keys) lights it and its direct neighbours in full colour, with
+  // their names raised above everything (the pointed-at one first, then the best-placed neighbours, none overlapping),
+  // and dims the rest; the regions' names step aside. Each note's light (n.a) and the pointed-at one's (n.f) ease
+  // toward where they're going over about 100 ms (none with reduced motion): no layout work, one number per note.
   draw() {
     const { ctx, w, h } = fitCanvas(this.cv); this.w = w; this.h = h; ctx.clearRect(0, 0, w, h);
     if (!this.nodes.size) { ctx.fillStyle = PAL.dim; ctx.font = cf(12); ctx.textAlign = "center"; ctx.fillText("Your notes folder is empty so far.", w / 2, h / 2); return; }
     if (this.autofit) this.fit(w, h);
+    if (this.glide) this.glideStep();
     const nowS = Date.now() / 1000, focus = this.hover || this.selected;
     const match = this.query ? new Set([...this.nodes.values()].filter((n) => (n.title + " " + n.id).toLowerCase().includes(this.query)).map((n) => n.id)) : this.only && this.only.size ? this.only : null;
     const isRecent = (n) => (nowS - (n.mtime || 0) < 86400);
     const lit = (n) => (match ? match.has(n.id) : focus ? n === focus || focus.nb.has(n.id) : this.showRecent ? isRecent(n) : true);
-    
-    // Links with neighborhood color
-    for (const [p, q] of this.links) {
-      const A = this.toScreen(p, w, h), B = this.toScreen(q, w, h), on = focus && (p === focus || q === focus);
-      const col = this.colorOf(p);
-      const linkLit = (!focus && !match && !this.showRecent) || (focus && on) || (match && match.has(p.id) && match.has(q.id)) || (this.showRecent && isRecent(p) && isRecent(q));
-      ctx.strokeStyle = rgba(col, on ? 0.85 : linkLit ? 0.08 : 0.015);
-      ctx.lineWidth = on ? 1.4 : 0.7;
+    // the light's easing: ~95% of the way in 100 ms (exponential, so it eases out); at once with reduced motion
+    const t = performance.now(), dt = Math.min(100, t - (this.lastT || t)); this.lastT = t;
+    const ease = STILL.matches ? 1 : 1 - Math.exp(-dt / HL_TAU), go = (v, to) => (Math.abs(to - v) < 0.01 ? to : v + (to - v) * ease);
+    this.fk = go(this.fk ?? 0, focus ? 1 : 0); // how much a note is pointed at: the regions' names give way, lit dots go full
+    this.rk = go(this.rk ?? 1, focus ? 0 : match || this.showRecent ? 0.37 : 1); // the regions' names' light
+    for (const n of this.nodes.values()) { n.a = n.a === undefined ? (lit(n) ? 1 : 0) : go(n.a, lit(n) ? 1 : 0); n.f = go(n.f || 0, n === focus ? 1 : 0); }
+    const hotDim = mix(PAL.dim, PAL.fg, 0.55); // a lit note of no neighbourhood: lighter than its usual grey
+
+    // Links with neighborhood color: a pointed-at note's own light up; the rest dim with their notes
+    for (const l of this.links) {
+      const [p, q] = l, A = this.toScreen(p, w, h), B = this.toScreen(q, w, h);
+      const k = Math.min(p.a, q.a), on = Math.max(p.f * q.a, q.f * p.a);
+      ctx.strokeStyle = rgba(this.colorOf(p), 0.015 + (l.via ? 0.05 : 0.065) * k + 0.77 * on);
+      ctx.lineWidth = 0.7 + 0.7 * on;
       ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
     }
 
     // Nodes
     for (const n of this.nodes.values()) {
       const S = this.toScreen(n, w, h); if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
-      const isFocused = (n === focus), isNeighbor = focus && focus.nb.has(n.id);
       const isNodeRecent = isRecent(n);
       const isHourRecent = (nowS - (n.mtime || 0) < 3600);
-      const isLit = lit(n);
-      const r = this.radius(n), col = this.colorOf(n);
-      ctx.fillStyle = rgba(col, isLit ? (isFocused || isNeighbor ? 1.0 : 0.88) : 0.08);
+      const hot = focus && (n === focus || focus.nb.has(n.id));
+      const r = this.radius(n), base = this.colorOf(n), col = hot && base === PAL.dim ? hotDim : base;
+      ctx.fillStyle = rgba(col, 0.08 + (0.8 + 0.12 * this.fk) * n.a);
       ctx.beginPath(); ctx.arc(S.x, S.y, r, 0, TAU); ctx.fill();
-      if (isFocused) { ctx.strokeStyle = PAL.fg; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(S.x, S.y, r + 4.5, 0, TAU); ctx.stroke(); }
+      if (n.f > 0.02) { ctx.strokeStyle = rgba(PAL.fg, n.f); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(S.x, S.y, r + 4.5, 0, TAU); ctx.stroke(); }
       if (this.showRecent && isNodeRecent) {
         ctx.strokeStyle = isHourRecent ? PAL.peach : rgba(col, 0.70);
         ctx.lineWidth = isHourRecent ? 1.4 : 0.9;
@@ -1302,25 +1320,21 @@ class Mind {
 
     const now = performance.now() / 1000; this.flares = this.flares.filter((f) => now - f.t0 < 4);
     for (const f of this.flares) { const k = (now - f.t0) / 4, S = this.toScreen(f.n, w, h); ctx.strokeStyle = rgba(PAL.sand, 0.8 * (1 - k)); ctx.lineWidth = 2 * (1 - k); ctx.beginPath(); ctx.arc(S.x, S.y, 4 + 46 * Math.sqrt(k), 0, TAU); ctx.stroke(); }
-    
-    // Names, with collision avoidance: the regions' names at the usual zoom; the notes' own when pointed at, found,
-    // recent (R) or zoomed in (then the best by rankLabels)
+
+    // Names, none overlapping: the pointed-at note's, then its neighbours' (the best first, as many as fit), else the
+    // regions' names at the usual zoom; found notes; the recent ones (R); zoomed in, the best by rankLabels
     const zoomed = this.view.k >= ZOOM_NAMES;
     const onScreen = (n) => { const S = this.toScreen(n, w, h); return S.x > 0 && S.y > 0 && S.x < w && S.y < h; };
-    const hubs = zoomed ? rankLabels([...this.nodes.values()].filter(onScreen)).filter((n) => n.role !== "book").slice(0, Math.round(6 + 4 * this.view.k)) : [];
-    const recentTop = this.showRecent ? [...this.nodes.values()].filter(isRecent).sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 8) : [];
-
     const candidates = [];
-    if (focus) candidates.push({ node: focus, isFocused: true, priority: 1 });
-    if (match && match.size < 25) {
-      for (const id of match) {
-        const n = this.nodes.get(id);
-        if (n && n !== focus) candidates.push({ node: n, isMatched: true, priority: 2 });
-      }
+    if (focus) {
+      candidates.push({ node: focus, isFocused: true });
+      for (const n of this.neighboursOf(focus)) if (onScreen(n)) candidates.push({ node: n, isNeighbor: true });
     }
+    if (match && match.size < 25) for (const id of match) { const n = this.nodes.get(id); if (n && n !== focus) candidates.push({ node: n, isMatched: true }); }
     if (!focus && !match) {
-      const list = this.showRecent ? recentTop : hubs;
-      for (const n of list) candidates.push({ node: n, isHub: true, priority: 3 });
+      const list = this.showRecent ? [...this.nodes.values()].filter(isRecent).sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 8)
+        : zoomed ? rankLabels([...this.nodes.values()].filter(onScreen)).filter((n) => n.role !== "book").slice(0, Math.round(6 + 4 * this.view.k)) : [];
+      for (const n of list) candidates.push({ node: n, isHub: true });
     }
 
     const placed = [];
@@ -1331,10 +1345,31 @@ class Mind {
       }
       return false;
     };
-    // the regions' names: large and quiet, in their colour; they step back while a note is pointed at or found, and
-    // fade out as you zoom in
-    const quiet = focus || match || this.showRecent, fade = clamp((ZOOM_NAMES + 0.25 - this.view.k) / 0.5, 0, 1);
-    if (fade > 0 && !this.only) {
+    // the notes' names are placed first (they're what you're looking at), drawn last (above everything)
+    ctx.font = cf(10.5, 600);
+    const pills = [];
+    let nbShown = 0;
+    for (const item of candidates) {
+      const n = item.node;
+      if (item.isNeighbor && nbShown >= NB_NAMES) break;
+      const S = this.toScreen(n, w, h);
+      if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
+      const r = this.radius(n);
+      const txt = n.title.length > 28 ? n.title.slice(0, 27) + "…" : n.title;
+      const pillW = ctx.measureText(txt).width + 18, pillH = 18, gap = r + 4;
+      const slots = [[-pillW / 2, -gap - pillH], [-pillW / 2, gap], [gap + 2, -pillH / 2], [-gap - 2 - pillW, -pillH / 2],
+        [gap - 2, -gap - pillH + 4], [-gap + 2 - pillW, -gap - pillH + 4], [gap - 2, gap - 4], [-gap + 2 - pillW, gap - 4]];
+      let chosen = null;
+      for (const [dx, dy] of slots) { const box = { x: S.x + dx, y: S.y + dy, w: pillW, h: pillH }; if (!collides(box)) { chosen = box; break; } }
+      if (!chosen && item.isFocused) chosen = { x: clamp(S.x - pillW / 2, 6, w - pillW - 6), y: clamp(S.y - gap - pillH, 22, h - pillH - 6), w: pillW, h: pillH };
+      if (!chosen) continue;
+      placed.push(chosen); pills.push({ item, n, txt, box: chosen });
+      if (item.isNeighbor) nbShown++;
+    }
+    // the regions' names: large and quiet, in their colour; they step aside while a note is pointed at (never over a
+    // note's name), stay faint while notes are found, and fade out as you zoom in
+    const fade = clamp((ZOOM_NAMES + 0.25 - this.view.k) / 0.5, 0, 1) * this.rk;
+    if (fade > 0.02 && !this.only) {
       ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
       for (const g of regionSpots(this.nodes.values(), this.hoods || new Map())) {
         ctx.font = cf(13, g.project ? 750 : 650); // a research project's name: a little stronger, in the accent
@@ -1346,8 +1381,8 @@ class Mind {
           if (!collides(b)) { box = b; break; }
         }
         if (!box) continue;
-        if (!quiet) placed.push(box);
-        const a = fade * (quiet ? 0.35 : 0.95), x = box.x + box.w / 2, y = box.y + bh / 2;
+        placed.push(box);
+        const a = fade * 0.95, x = box.x + box.w / 2, y = box.y + bh / 2;
         ctx.strokeStyle = rgba(PAL.bg, 0.85 * a); ctx.lineWidth = 4; ctx.strokeText(txt, x, y);
         ctx.fillStyle = rgba(g.project ? PAL.accent : mix(this.hoods.get(g.key).color, PAL.fg, 0.35), a); ctx.fillText(txt, x, y);
       }
@@ -1355,54 +1390,32 @@ class Mind {
     ctx.font = cf(10.5, 600);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-
-    for (const item of candidates) {
-      const n = item.node;
-      const S = this.toScreen(n, w, h);
-      if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
-      const r = this.radius(n);
-      const txt = n.title.length > 28 ? n.title.slice(0, 27) + "…" : n.title;
-      const tw = ctx.measureText(txt).width;
-      const pillW = tw + 18, pillH = 18;
-
-      const slots = [
-        { x: S.x - pillW / 2, y: S.y - r - pillH - 4 },
-        { x: S.x - pillW / 2, y: S.y + r + 4 },
-        { x: S.x + r + 6, y: S.y - pillH / 2 },
-        { x: S.x - r - pillW - 6, y: S.y - pillH / 2 }
-      ];
-
-      let chosen = null;
-      for (const s of slots) {
-        const box = { x: s.x, y: s.y, w: pillW, h: pillH };
-        if (!collides(box)) { chosen = box; break; }
-      }
-
-      if (!chosen && item.isFocused) {
-        chosen = { x: S.x - pillW / 2, y: S.y - r - pillH - 4, w: pillW, h: pillH };
-      }
-      if (!chosen) continue;
-
-      placed.push(chosen);
-      const col = this.colorOf(n);
-
-      ctx.fillStyle = rgba(PAL.bg, item.isFocused ? 0.95 : 0.88);
+    for (let i = pills.length - 1; i >= 0; i--) { // the pointed-at note's name last, on top
+      const { item, n, txt, box } = pills[i], a = item.isNeighbor ? n.a : 1, base = this.colorOf(n);
+      const col = base === PAL.dim && focus ? hotDim : base;
+      ctx.fillStyle = rgba(PAL.bg, (item.isFocused ? 0.95 : 0.9) * a);
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(chosen.x, chosen.y, pillW, pillH, 4);
-      else ctx.rect(chosen.x, chosen.y, pillW, pillH);
+      if (ctx.roundRect) ctx.roundRect(box.x, box.y, box.w, box.h, 4); else ctx.rect(box.x, box.y, box.w, box.h);
       ctx.fill();
-
-      ctx.strokeStyle = item.isFocused ? PAL.fg : rgba(col, item.isHub ? 0.6 : 0.35);
+      ctx.strokeStyle = item.isFocused ? rgba(PAL.fg, a) : rgba(col, (item.isHub || item.isNeighbor ? 0.6 : 0.35) * a);
       ctx.lineWidth = item.isFocused ? 1.2 : 0.8;
       ctx.stroke();
-
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(chosen.x + 8, chosen.y + pillH / 2, 2.5, 0, TAU); ctx.fill();
-
-      ctx.fillStyle = item.isFocused ? PAL.fg : rgba(PAL.fg, 0.92);
-      ctx.fillText(txt, chosen.x + pillW / 2 + 4, chosen.y + pillH / 2);
+      ctx.fillStyle = rgba(col, a);
+      ctx.beginPath(); ctx.arc(box.x + 8, box.y + box.h / 2, 2.5, 0, TAU); ctx.fill();
+      ctx.fillStyle = rgba(PAL.fg, (item.isFocused ? 1 : 0.92) * a);
+      ctx.fillText(txt, box.x + box.w / 2 + 4, box.y + box.h / 2);
     }
     if (DENSE) this.hud(ctx, w, h, nowS);
+  }
+  // a note's neighbours in the order their names are shown: links you'd follow before "Seen in" ones, then course
+  // pages, hubs and projects, then the best-linked; made once per note pointed at (and per graph update)
+  neighboursOf(n) {
+    if (this.nbList && this.nbList.n === n) return this.nbList.list;
+    const role = (q) => (q.role === "course" || q.role === "hub" ? 1 : 0);
+    const list = [...n.nb].map((id) => this.nodes.get(id)).filter(Boolean)
+      .sort((p, q) => (n.snb.has(q.id) - n.snb.has(p.id)) || role(q) - role(p) || (q.sdeg || 0) - (p.sdeg || 0) || p.title.localeCompare(q.title));
+    this.nbList = { n, list };
+    return list;
   }
   // dense: semantic neighborhoods and their counts
   hud(ctx, w, h, nowS) {
@@ -1443,22 +1456,57 @@ class Mind {
   pick(x, y) { let best = null, bd = 14; for (const n of this.nodes.values()) { const S = this.toScreen(n, this.w, this.h), d = Math.hypot(S.x - x, S.y - y); if (d < bd) { bd = d; best = n; } } return best; }
   async showCard(n, pinned) {
     const card = $("#mind-card"); if (!n) { card.classList.add("hidden"); return; }
-    card.innerHTML = `<div class="h">${esc(n.title)}</div><div class="d">${esc(n.id)}</div><div>${n.deg} links · ${n.words} words · edited ${ago(Date.now() / 1000 - (n.mtime || 0))} ago</div>` + (pinned ? '<pre>…</pre><div class="d">double-click: open it</div>' : "");
+    card.innerHTML = `<div class="h">${esc(n.title)}</div><div class="d">${esc(n.id)}</div><div>${n.deg - (n.via || 0)} links${n.via ? ` (+${n.via} from reading)` : ""} · ${n.words} words · edited ${ago(Date.now() / 1000 - (n.mtime || 0))} ago</div>` + (pinned ? '<pre>…</pre><div class="d">double-click: open it</div>' : "");
     card.classList.remove("hidden");
     if (pinned) { try { const r = await api(`note?id=${encodeURIComponent(n.id)}`); if (this.selected === n) card.querySelector("pre").textContent = (r.text || "").trim().split("\n").slice(0, 14).join("\n"); } catch { /* leave it */ } }
+  }
+  // the arrow keys (the map focused: Tab to it): from the chosen note to the linked note that way, else the nearest
+  // note that way; with none chosen, the note nearest the middle
+  stepTo([dx, dy]) {
+    const from = this.selected || this.hover, all = [...this.nodes.values()];
+    if (!from) {
+      const c = this.toWorld(this.w / 2, this.h / 2, this.w, this.h), d = (n) => Math.hypot(n.x - c.x, n.y - c.y);
+      return all.reduce((b, n) => (!b || d(n) < d(b) ? n : b), null);
+    }
+    const best = (pool) => { let pick = null, bs = Infinity;
+      for (const n of pool) { if (n === from) continue; const vx = n.x - from.x, vy = n.y - from.y, d = Math.hypot(vx, vy) || 1, cos = (vx * dx + vy * dy) / d;
+        if (cos < 0.5) continue; const sc = d / (cos * cos); if (sc < bs) { bs = sc; pick = n; } }
+      return pick; };
+    return best([...from.nb].map((id) => this.nodes.get(id)).filter(Boolean)) || best(all);
+  }
+  // a note chosen with the keys that's near the edge (or off it): the map glides to it
+  keepInView(n) {
+    const S = this.toScreen(n, this.w, this.h), m = 60;
+    if (S.x > m && S.y > m && S.x < this.w - m && S.y < this.h - m) return;
+    this.autofit = false; this.glide = { x: -n.x, y: -n.y };
+    if (STILL.matches) this.glideStep(1);
+  }
+  glideStep(k = 0.2) {
+    const g = this.glide; this.view.x += (g.x - this.view.x) * k; this.view.y += (g.y - this.view.y) * k;
+    if (Math.abs(g.x - this.view.x) + Math.abs(g.y - this.view.y) < 0.5 / this.view.k) this.glide = null;
   }
   openSearch() { const s = $("#mind-search"); s.classList.remove("hidden"); s.value = this.query; s.focus(); }
   // a note to the middle of the map, with its card and first lines
   goTo(n) { if (!n) return; this.selected = n; this.autofit = false; this.view.x = -n.x; this.view.y = -n.y; this.view.k = Math.max(this.view.k, 1.6); this.showCard(n, true); }
   wire() {
     const cv = this.cv; let down = null;
-    cv.addEventListener("wheel", (e) => { e.preventDefault(); this.autofit = false; const r = cv.getBoundingClientRect(), before = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
+    cv.addEventListener("wheel", (e) => { e.preventDefault(); this.autofit = false; this.glide = null; const r = cv.getBoundingClientRect(), before = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
       this.view.k = clamp(this.view.k * Math.exp(-e.deltaY * 0.0015), 0.08, 6); const after = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
       this.view.x += after.x - before.x; this.view.y += after.y - before.y; }, { passive: false });
     cv.addEventListener("mousedown", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       if (this.showRecent && x < 240 && y < 40) { this.toggleRecent(); return; }
-      const n = this.pick(x, y);
+      const n = this.pick(x, y); this.glide = null;
       down = { x, y, n, vx: this.view.x, vy: this.view.y, moved: false }; if (n) this.dragging = n; });
+    // the pointer leaving the map lets go of the note it pointed at (the chosen one stays lit)
+    cv.addEventListener("mouseleave", (e) => { if (down || !this.hover || e.relatedTarget?.closest?.("#mind-card")) return;
+      this.hover = null; this.showCard(this.selected, !!this.selected); });
+    cv.addEventListener("keydown", (e) => {
+      const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (dir && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); this.hover = null;
+        const n = this.stepTo(dir); if (n) { this.selected = n; this.showCard(n, true); this.keepInView(n); } return; }
+      if (e.key === "Enter" && this.selected) { e.preventDefault(); api("open-note", { id: this.selected.id }); return; }
+      if (e.key === "Escape" && this.selected) { e.preventDefault(); this.selected = null; this.showCard(null); }
+    });
     window.addEventListener("mousemove", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       this.mouse = x < 0 || y < 0 || x > r.width || y > r.height ? null : { x, y };
       if (down) { if (Math.hypot(x - down.x, y - down.y) > 3) down.moved = true;

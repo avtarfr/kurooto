@@ -113,6 +113,27 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
   note it was filed into: `layout.path("lecture", subject, date, slugify(post title))` if it exists, else the newest
   dated note in the lecture folder whose text (Kurooto's blocks stripped) contains the file's slugified title as a
   whole slug, else the course page.
+- **Textbooks filed from Classroom** (0.6.1): `queue_item` stores `kind` = `kind_for(source, title, text)`: "book"
+  when `core/studypack.py:is_class(title, pages, 1)` says it isn't class material (more than `BOOK_PAGES` = 80 pages,
+  or `BOOK_WORDS` in the title; up to `CLASS_PAGES` = 40, or `CLASS_WORDS` in the title, is class), where `pages` is
+  the PDF's page count or the number of `PART_CHARS` parts (slides count 0: class unless the title says book); only
+  Classroom items can be books. `booklike(b)` reads it (an item from before 0.6.1 gets it worked out once and saved,
+  `set_item`). For a textbook, `stub(b)` is `book_note(b)`: `layout.path("subject")/books/<books.slug(title)>.md`
+  (chosen once, `items.json` `source_note`): a Books index note of that name (it has `books.START`) is the same book,
+  so that one; a note of that name that's neither that nor this item's (no `item=<key>` in it) gets `-<hash6>`.
+  `write()` then calls `write_book_note(b, put, linker)` instead of the per-file `material<hash8>` list: the source
+  note gets a `source` block (`<!-- kurooto:source item=<key> -->`, `source_block`: course, size, the post note it
+  was filed with, date, "## Concepts in this book" per batch from `chapters.json`, in pages / slides / parts) made
+  with frontmatter and `# <title>` if new (nothing is written into a Books index note), and the post note's
+  `material<hash8>` block becomes one line, "Textbook: [[<source note>|<title>]] (its concepts are listed there)."
+  So the post (a "Books" reading-list post) doesn't become a hub of every concept's "Seen in".
+- **Moving what was written before** (`migrate_booklike()`, from `start()`; 0.6.1): every Classroom item that's
+  `booklike` and not `moved` goes through `move_item(it, seen)`: its `seen.json` rows get `note` = the source note,
+  each concept note's `seen` block is rebuilt with `seen_body` (`put_block`, `guarded`; a refusal emits
+  `integrate_refused`), `write_book_note` writes the source note and the post's pointer line, the before-copies go to
+  `undo/<subject>-<id>-moved.json`, and it's one commit `graph: <title> is a textbook: its concepts' Seen in points at
+  its own note`. The item is then `moved` (items queued from 0.6.1 on are `moved` from the start); emits
+  `integrate_moved` `{items, notes}`.
 - **Handwritten** (`Linker.done` → `Linker.to_graph` → `Integrate.take_handwritten(note, subject, title, day)`, after
   a successful `apply`, which now also returns `subject` and `day`): the transcription between the handwritten markers
   (`handwritten_links.parts`); notes with no subject are skipped. "Seen in" points at the handwritten note.
@@ -133,7 +154,7 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
   ...").
 - **Writes**: the same `write()`. Seen rows of an item carry `source` and `unit`; `seen_body` prints `pp.` for pages,
   `slides a–z` for slides, nothing for parts, and the "Added from" lines under `SEEN_HEAD[source]` ("### Added from
-  the books" unchanged). A Classroom item whose note isn't the course page gets a `material<hash8>` block, "## Concepts
+  the books" unchanged). A Classroom item (not a textbook) whose note isn't the course page gets a `material<hash8>` block, "## Concepts
   in <file>" (a key per file, since several files share a lecture note). The course page's "From the books" block and
   a book's `concepts` block are books only. Commits are `classroom: <title> (+N notes, ...)`.
 - **Ledger**: items go under `ledger.json["items"][key]`, books stay under `["books"]` (no migration: the books'
@@ -208,7 +229,8 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 
 - Kurooto's text lives in marked blocks: `<!-- kurooto:<key> ... -->` ... `<!-- /kurooto:<key> -->`, replaced as a
   whole by `put_block()`. Keys: `seen` (a concept note's "Seen in"), `concepts` (the book's index note), `books` (the
-  course page's "From the books"), `notation` (0.6.0: the Notation table), `merges` (what a merge brought in) and
+  course page's "From the books"), `source` (0.6.1: a Classroom textbook's source note, `item=<key>` in its head),
+  `material<hash8>` (a class note's list of a file's concepts, or a textbook's pointer line), `notation` (0.6.0: the Notation table), `merges` (what a merge brought in) and
   `merged-into` (a redirect, put under the title by `put_block_top`). Block keys are matched with `\b` after the key,
   so a key mustn't be a prefix of another before a hyphen (hence `merges`, not `merged`).
 - Links are lines `- relation:: [[target]] — reason` (`link_line`; with `notes.links` "markdown",
@@ -237,7 +259,7 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 | `ledger.json` | `{"books": {"<subject>/<id>": {"batches": {"<first>-<last>": {state, at, job, tries, why, check_job, concepts, flagged, dropped, commit, new, same, links, skipped}}}}, "nights": {"YYYY-MM-DD": {requests, cost, batches, new, links, updated, flagged, dropped, failed, garden}}}` (30 nights kept); `"items": {"<source>:<hash16>": {...the same...}}` for the rest |
 | `seen.json` | `{slug: [{book, note, title, batch, pages, update, def, source?, unit?}]}` (`book` is the item key for an item) |
 | `chapters.json` | `{bookkey or itemkey: {batchid: {first, last, title, concepts}}}` |
-| `items.json` | `{"items": {"<source>:<hash16>": {source, key, id, subject, title, course, note, date, added, backfill, order}}, "backfill": {"classroom": "<when>"}}` |
+| `items.json` | `{"items": {"<source>:<hash16>": {source, key, id, subject, title, course, note, date, added, backfill, order, kind, moved, source_note}}, "backfill": {"classroom": "<when>"}}` (`kind` "book" or "class", `moved` and `source_note`: textbooks, 0.6.1) |
 | `texts/<hash16>.txt` | the copy of an item's text that's read |
 | `garden.json` | `{"queue": [slugs], "last": {slug: date}}` |
 | `notation.json` | `{slug: [{book, batch, source, symbol, what, quote}]}` |
@@ -250,6 +272,15 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 
 Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handling:
 - `STALE_S` (3 h): a queued/checking record older than that goes back to pending (`inflight()`).
+- A lost request (0.6.1, `lost(rec)`): a queued record's `job` (a checking one's `check_job`) that
+  `core/jobs.py:Jobs.settled(jid)` calls settled goes back to pending at once, with `why` "asked again: its request
+  was lost" (a checking one's `pending/<job>.json` is removed). Settled: no such row, or the job ended and its
+  follow-up isn't running in this process (`Jobs._following`, set around the then-action in `_after`) nor about to
+  (it ended here, `runner` this process or none, less than `FOLLOW_GRACE_S` = 120 s ago). A job a restart cut off
+  mid-run is still `running` until the worker's `recover()` queues it again, so it isn't lost: it runs again and its
+  answer is written. What this catches: an update or crash after the job ended but before `_done`/`_checked` had
+  written (the job is `ok` or `failed` in the queue, the ledger still `queued`), and a cleared job queue.
+  `inflight()` runs under `Integrate.lock`.
 - A rate-limited or signed-out AI with no answer: back to pending without counting a try, `integrate_waiting` event,
   and a one-off `integrate.soon` in 20 minutes (key `integrate:soon`).
 - Any other unusable answer counts a try; at `TRIES = 3` the batch is `failed`.
@@ -270,6 +301,12 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
 - `integrate:night` (`integrate.at`, "daily 01:30") and `integrate:retry` ("every 3h") call `tick`. `integrate:plan`
   (hourly, `plan_night`) books a one-off `integrate:early` (action `integrate.soon`) when the next night should start
   before `integrate.at` (`Budget.next_start`), and cancels it otherwise.
+- `resume()` (0.6.1, from `start()`, so on every daemon start): `inflight()` (lost requests back to pending), then,
+  when nothing bulk is in flight, `stopped_until()` is None, `Budget.in_window()` and `Budget.gate()` is None, a
+  one-off `integrate:soon` (action `integrate.soon` → `tick`, the nightly start's own path) a minute later, so a
+  restart after the night's start doesn't leave the night idle until tomorrow's `integrate.at`. Whether work waits is
+  `tick`'s to find (`idle`), so a start doesn't plan every item. `Budget.window(t)` = (the night's start from
+  `plan(day)`, the wake time from `sleep(day)` when known, else `integrate.at` + `NIGHT_S` = 6 h).
 
 ## Near-duplicates and merging (0.6.0, `core/graphmerge.py`)
 
@@ -390,6 +427,8 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
 - The links are read back as review cards by the Quiz (`modules/quiz_links.py`, see [modules.md](modules.md)), with
   `seen.json`'s pages for "Where to read"; nothing there writes to the notes.
 - Tests: `tests/unit/test_integrate.py`, `test_integrate_sources.py` (Classroom, handwritten, backfill, the split),
+  `test_graph_restart.py` (lost requests, `resume`, the reading window), `test_graph_textbooks.py` (`kind_for`,
+  textbook source notes, the move with its before-copies),
   `test_graph_dupes.py` (near-duplicates, merge and its Undo, notation),
   `test_readbudget.py`, `test_books.py`, `test_segment.py`, `test_hubs.py`,
   `test_rerank_hardware.py`.

@@ -136,6 +136,28 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   `PAL.accent` (courses cycle the other colours), `regionSpots` keeps them however small and lists them first so
   their names are placed before the courses', and `Mind.draw` sets their names in the accent at weight 750. All of it
   runs once per graph update (`Mind.update`); a frame only reads `n.neighborhood`.
+- NOTES provenance links (0.6.1): `note_info` (`web/live.py`) splits a note's wikilinks into `targets` (outside
+  Kurooto's provenance blocks) and `via` (only inside them: `PROVENANCE`, the blocks `seen`, `concepts`, `books`,
+  `source` and `material<hash>`, see [concept-graph.md](concept-graph.md)); `Graph.scan` sends `[a, b]` for a link
+  and `[a, b, 1]` for a via-only one. `Mind.update` keeps both as lines (`l.via`) and in `n.nb` (lit on hover, votes for
+  a neighbourhood), but only non-via ones go into `n.snb`, which `assignHoods` uses for `sdeg` (dot size, `rankLabels`)
+  and `bridge`: a lecture note or a class post that many concepts were read from stays a small dot and isn't named
+  first. `n.via` counts them for the card ("3 links (+152 from reading)"). Tests: `tests/unit/test_notes_labels.py`.
+- NOTES hover and keyboard focus (0.6.1, `Mind.draw`): `focus = hover || selected`; each frame every node's light
+  `n.a` (lit: the focus, its `n.nb`, a search's matches, R's recent notes; else 0) and focus `n.f` ease toward their
+  targets with `1 - exp(-dt / HL_TAU)` (33 ms: about 100 ms to settle, an ease-out; `STILL` sets them at once), so
+  dots, lines (`0.015 + 0.065·min(p.a, q.a) + 0.77·max(p.f·q.a, q.f·p.a)`) and names fade together with no layout
+  work. Lit notes of no neighbourhood (`PAL.dim`) are drawn lighter (`mix(dim, fg, 0.55)`). Names are placed before
+  they're drawn: the focus's first (forced on screen), then up to `NB_NAMES` (24) neighbours from `neighboursOf(n)`
+  (links in `n.snb` before via ones, then course pages and hubs, then `sdeg`; sorted once per focus and graph
+  update), each in the first of eight slots around its dot that collides with nothing placed; region names fade with
+  `this.rk` (0 while a note is pointed at, 0.37 while searching or R) and only take places that are free; the pills are
+  drawn last, the focus's on top. Every colour is `PAL` (the page's CSS variables via `readPalette`). Keys on the
+  canvas (`tabindex=0`, an `aria-label`, `#mind-card` is `aria-live`): arrows `stepTo([dx, dy])` (the linked note that
+  way, by distance / cos² within 60°, else any note that way; none chosen: the note nearest the middle) and
+  `keepInView` glides the view to it (`glideStep`; at once with reduced motion), Enter `open-note`, Esc lets go (and
+  `preventDefault`s the board's own Esc). The pointer leaving the canvas clears `hover`. Checked in headless Chromium
+  on 2,100 notes: a frame's `draw()` costs the same with a note pointed at as without (about 3.6 ms).
 - The NOTES map (`static/home.js:Mind`) is a force layout run each frame: pairwise repulsion, a spring per link,
   a pull to the neighbourhood's anchor. A note's spring force is scaled by `min(1, HUB_LINKS / links)` and a step is
   capped at `MAX_STEP`: without that, a map note with hundreds of links (the concept graph's course maps) overshoots

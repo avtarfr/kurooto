@@ -565,6 +565,15 @@ The relation words are: `needs`, `generalises`, `special-case-of`, `example-of`,
   solutions, 1,500 characters or more (a one-line announcement isn't read). Its course is the subject, so its concept
   notes go where that course's do. The "Seen in" line points at the lecture note the file was filed into (else the
   course page), and that lecture note gets a "Concepts in <file>" list of its own.
+  **A textbook filed from Classroom** (0.6.1: a course's "Books" post with the PDF attached, say) is read like a book
+  and gets a note of its own, like a book's: `sources/<subject>/books/<its title>.md`, titled with the file's name,
+  with Kurooto's part (what it is, where it was filed, the concepts each stretch of pages introduced) between markers.
+  Its concepts' "Seen in" points there, and the class note it came with gets one line pointing at it, instead of
+  every concept becoming a link to that note. Class material or a textbook is told apart the way study packs do it:
+  more than 80 pages is a book; 40 or fewer, or a title that says lecture, slides, notes, handout and the like, is
+  class material; in between, the title decides (a title with "edition", "textbook" or "handbook" is a book).
+  Textbooks read before 0.6.1 move over by themselves the first time 0.6.1 starts: only Kurooto's "Seen in" blocks
+  change, each file's before-copy is kept, and it's one Git commit per textbook.
 - `handwritten` (add it to turn it on): your [handwritten notes](books-and-study.md#handwritten-notes), once written
   out and linked; "Seen in" points at the handwritten note. Notes with no subject are left out.
 
@@ -762,6 +771,10 @@ skipped.
 - It's heavy work: on battery (saver mode) it waits for the charger.
 - After `/graph stop`, a batch already sent still finishes, but nothing new starts (not the retries either) until the
   next night's start (`integrate.at`). To stop it for longer, turn the feature off.
+- A restart (an update, say) during the night (0.6.1): a batch whose request the restart cut off is asked again at
+  once, not three hours later, and when Kurooto starts again inside tonight's reading window (from the night's start
+  until you wake, by your alarm or night hours; else until 6 hours after `integrate.at`), the reading carries on a
+  minute later, within tonight's budget, unless `/graph stop` holds it.
 - Page numbers are the PDF's own (page 1 is the first page of the file, often the cover).
 
 **What leaves your computer.** A few pages of a book's text (or of a class file, or of your handwritten notes when
