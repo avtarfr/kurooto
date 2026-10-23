@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.10 (unreleased)
+## 0.5.10 (2026-10-23)
 
 - **Fix (Windows):** `agents.scripts` accepted any file there, since Windows says every file can run; now only
   programs by their extension (`PATHEXT`: .exe, .bat, .cmd...).
