@@ -43,7 +43,7 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 | `you`, `modules` | `app.py` |
 | `brain` | `providers/__init__.py` |
 | `jobs` | `core/jobs.py` |
-| `notify` (`desktop`, `desktop_kinds`, `app_kinds`), `notify.calm`, `notify.presence` | `core/notify.py`, `core/calm.py`, `core/presence.py` |
+| `notify` (`desktop`, `desktop_kinds`, `app_kinds`, `app_chat`), `notify.calm`, `notify.presence` | `core/notify.py`, `core/calm.py`, `core/presence.py` |
 | `availability` | `core/availability.py` |
 | `ask` | `core/ask.py` |
 | `keep` | `core/keep.py` |
@@ -128,7 +128,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `calm.db` | SQLite, table `sent`, kept 45 days (`text`/`title` only `privacy.keep_days`) | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
 | `ledger.db` | SQLite, tables `rows` (kind, sub, at, upd, src, h, `blob` = AES-GCM sealed JSON), `seen`, `forgot` (WAL, 0600): the memory ledger, encrypted; gists, threads, rows read from notes. Not backed up unless `backups.memory` | `core/ledger.py:Ledger` |
-| `gists.jsonl` | (0.5.18 only) the gists before the ledger; moved into it and removed on first use | `core/gists.py:_move` |
+| `gists.jsonl` | (0.5.17 only) the gists before the ledger; moved into it and removed on first use | `core/gists.py:_move` |
 | `dream-policy.json` | the day of the last tuning round and the last 30 decisions with their replay scores | `core/policy.py:tune` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
 | `rhythm.json` | usual quiet hours, the last learned change and its Undo, lighter-day and absence marks, quiet week | `core/rhythm.py:Rhythm` |
@@ -376,7 +376,7 @@ jid = app.jobs.submit(
   never delivered, so they get none. Tests run with it off (`tests/conftest.py:no_receipts`);
   `tests/unit/test_receipt.py` turns it on. When the request was told remembered items (below), the line ends
   "· used N remembered items" (`receipt(..., recalled=)`; it stays when the line is shortened).
-- **Memory in the context** (0.5.19): `_run` calls `core/assembler.py:for_request(app, job)` before building the
+- **Memory in the context** (0.5.18): `_run` calls `core/assembler.py:for_request(app, job)` before building the
   `Task` and passes the block as `headless_context(app, extra)`; the count goes into `Jobs.recalled[jid]` for the
   receipt and is dropped with the tool log. Only lane `you`; never raises (`recall_failed`).
 - **Chat history** (0.5.8): after delivery, the answer is recorded into Chat's history only if
@@ -460,8 +460,19 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `about`, `item`, `due`.
 - `send()`: Calm decides first (`Calm.decide`: `send`, `hold` or `stop`); during focus, non-urgent messages that aren't
   `approval`/`call` go to `focus-queue.jsonl` (flushed by `flush_queue()` when focus ends); otherwise `_deliver()`:
-  Telegram (unless presence holds it because the network is down), the phone app for `notify.app_kinds`, the desktop
-  (`core/desktop.py`) for `notify.desktop_kinds` or when no other channel delivered. Emits `notified`.
+  Telegram (unless presence holds it because the network is down), the phone app for `notify.app_kinds`, the app's
+  chat (`chat`) for the rest when `notify.app_chat` is on or `App.app_main()` (Telegram off, Phone calls on: Calm's
+  `extra` rows come along then), the desktop (`core/desktop.py`) for `notify.desktop_kinds` or when no other channel
+  delivered. A `reply_to` of `"app:<id>"` goes to the chat only. Emits `notified`.
+- Telegram is optional (0.5.18). `app.py:met(need, on, m)` is the requirement check `App.enable`, `App.disable`,
+  `core/turnon.py` and `core/profile.py` use: `"telegram"` in a module's `requires` means somewhere to talk, met by
+  Telegram or by `calls` (the phone app's chat) unless the module sets `telegram_only` (Voice notes, Files into notes).
+  `App.need_title` words it ("Telegram or the phone app (Phone calls)"). `App.basics()` hands Telegram's own commands
+  and intents (`/pause`, `/resume`, `/status`, `/hold`, `/calls`, `/focus`) to `App.handle` and `App.help` when
+  `app_main()`; `App.start` registers `telegram.focus_end` itself, so `/focus` ends without Telegram.
+  `core/presence.py:Presence.channels` uses `app` in place of `telegram` then. Files: `Message.file` to the chat
+  becomes a link (`modules/calls/chat.py:PhoneChat.send_file`, see calls-and-phone.md); `Jobs._deliver` sends a long
+  answer's file with the same `reply_to` as its text.
 - Channels are registered by modules: `notifier.register("telegram", send, retract=None)`. `retract(map_kind, map_ref,
   button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
 - Button data is `"<prefix>:<ref>:<action>"`; `App.callback` routes core prefixes (`calm`, `upd`, `ask`, `health`,
@@ -668,7 +679,7 @@ same answer (wrapped to count the bytes read; use it as a context manager) and r
 
 `core/gists.py`: words fade, meaning settles. `keep(app, kind, lo, hi)` makes one line per item `MAKERS[kind]` finds
 in the stretch, by rules from records, and keeps it in the memory ledger as rows of kind `gist` (sub = call, request,
-chat; under `Lock(state, "gists")`; `load()`/`_save()` read and replace them all, `_move()` brings a 0.5.18
+chat; under `Lock(state, "gists")`; `load()`/`_save()` read and replace them all, `_move()` brings a 0.5.17
 `gists.jsonl` in once; an item already gisted by `(kind, at)` is skipped, so a retry never doubles). While the
 ledger's key can't be read, `load()` is empty and `_save()` raises `ledger.Locked` before changing anything, so the
 daily job keeps the words:
@@ -690,7 +701,7 @@ daily job keeps the words:
 
 ## Memory: the ledger, threads and the assembler
 
-Three pieces (0.5.19), all rules, no AI.
+Three pieces (0.5.18), all rules, no AI.
 
 **The ledger** (`core/ledger.py`). One SQLite store, `state/ledger.db`, opened lazily per app (`of(app)`, closed by
 `App.close`). Kinds (`NAMES`): `gist`, `thread` (only here), `fact`, `day`, `meeting` (`NOTES`: read from notes).

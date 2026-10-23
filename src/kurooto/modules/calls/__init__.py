@@ -347,8 +347,9 @@ class Calls(Module):
             ),
             Tool(
                 "send_message",
-                "Send them a message on their chat (Telegram): something they asked to have in writing, a list, a "
-                "link, a summary of what was decided. Never say you'll send something without calling this.",
+                "Send them a message on their chat (Telegram, or the phone app's): something they asked to have in "
+                "writing, a list, a link, a summary of what was decided. Never say you'll send something without "
+                "calling this.",
                 lambda a: self._tool_message(a),
                 {"text": arg("the message, plain text")},
                 ("text",),
@@ -1099,13 +1100,15 @@ class Calls(Module):
             tmp.replace(dest)
         rel = layout.shown(self.app, dest)
         self.app.events.emit("files_shared", via="phone", bytes=dest.stat().st_size)
+        self.chat.shared(dest, note)  # "summarise the PDF I just sent" finds it (chat.py, modules/chat.py)
         if self.app.is_on("chat"):
-            self.app.jobs.submit(
+            jid = self.app.jobs.submit(
                 f"A file was shared from my phone: {rel}"
                 + (f" (my note: {note})" if note else "")
                 + ". File it into my notes where it belongs, and tell me where it went.",
                 title=f"Shared: {name}",
             )
+            self.app.modules["chat"].own(jid)  # part of the conversation: where it went is known to what you ask next
         else:
             self.app.notify(f"Got {name} from your phone: saved to {rel}.", kind="info", why="asked")
         return 200, {"ok": True, "saved": rel}

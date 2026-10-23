@@ -6,7 +6,15 @@ line → your phones (sealed ntfy for Android, an empty Web Push and a fetch for
 answer work as on Telegram: the phone sends the button's number, never its data, and App.callback does the rest.
 
 With notify.app_chat on, Kurooto's own messages (reminders, results, info...) also appear in the chat, besides
-Telegram; questions and approvals stay under "Waiting for you" (phone.py).
+Telegram; questions and approvals stay under "Waiting for you" (phone.py). Without Telegram (0.5.18: it's optional)
+the chat is where they all go, as if app_chat were on.
+
+Files (0.5.18): the chat carries no files, so where Telegram would get a document (a long answer, `kurooto send`, the
+AI's send_file) the chat gets a link: Google Drive with Drive upload on (a copy deleted after drive_upload.temp_days),
+else a sealed copy on your call line for FILE_HOURS (line.py "f1": the key is only in the link's #fragment; the
+call line's file page opens it in the phone's browser), else a plain note that it stays on this computer, with its
+path. Files you share from the phone are listed in <state>/calls/shared.json, so "summarise the PDF I just sent"
+finds them (modules/chat.py).
 
 The Android app seals what you type with the ntfy key (as it does answers); the iPhone app sends it over HTTPS with
 its device key. Each message carries a random nonce and the time it was sent, so it's used once. While this
@@ -18,10 +26,15 @@ computer off; this computer keeps the last 100 (for buttons and replies) in <sta
 
 from __future__ import annotations
 
+import base64
 import json
+import os
 import re
+import threading
 import time
+import urllib.parse
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto.core.lock import Lock
@@ -39,6 +52,11 @@ TEXT_MAX = 4000  # what you type
 SAY_MAX = 6000  # what Kurooto says (the call line keeps this much too)
 ID = re.compile(r"[0-9a-f]{16}")
 PREFIX = "app:"  # an Incoming's message_id, and the reply_to of what answers it
+# files for the chat, kept sealed on the call line: the largest, how long, and the size of each part sent there
+FILE_MAX = 10 * 2**20
+FILE_HOURS = 24
+FILE_PART = 384 * 1024  # base64 keeps each message to the call line under 1 MB
+SHARED_KEEP = 20  # files shared from the phone remembered for the chat's AI
 
 
 def _clip(s: str, n: int) -> str:
@@ -111,14 +129,94 @@ class PhoneChat:
         return m
 
     def send(self, msg: Message) -> str | None:
-        """The `chat` channel: an answer to what you wrote in the app, or (notify.app_chat) any message."""
+        """The `chat` channel: an answer to what you wrote in the app, or (notify.app_chat, or no Telegram) any
+        message. A file comes as a link, a moment later (send_file)."""
+        re_id = msg.reply_to[len(PREFIX) :] if answers_app(msg) else ""
+        if msg.file:
+            self.send_file(Path(msg.file), msg.text or "", re_id=re_id if ID.fullmatch(re_id) else "")
+            return None
         if not (msg.text or "").strip():
             return None
-        re_id = msg.reply_to[len(PREFIX) :] if answers_app(msg) else ""
         mapped = (msg.map_kind, msg.map_ref) if msg.map_kind else None
         m = self.say(msg.text, msg.buttons, re_id=re_id if ID.fullmatch(re_id) else "", title=msg.title or "",
                      mapped=mapped)  # fmt: skip
         return PREFIX + m["id"]
+
+    # --------------------------------------------------------------------------------------- files
+    def send_file(self, path: Path, caption: str = "", re_id: str = "", wait: bool = False) -> tuple[bool, str]:
+        """A file for you in the chat, as a link (made in the background: an upload can take a while). (ok, what
+        to say now)."""
+        path = Path(path)
+        if not path.is_file():
+            return False, f"There's no file {path.name}."
+        t = threading.Thread(target=self._file_now, args=(path, caption, re_id), daemon=True, name="chat-file")
+        t.start()
+        if wait:
+            t.join()
+        return True, f"{path.name} comes to the phone app's chat as a link."
+
+    def _file_now(self, path: Path, caption: str, re_id: str) -> None:
+        head = caption.strip()
+        head = f"{head}\n\n" if head and head != path.name else ""
+        drive = self.app.modules.get("drive_upload")  # (google_drive.py) your own Drive, when it's set up
+        if drive is not None and self.app.is_on("drive_upload") and drive.ready()[0]:
+            try:
+                link, said = drive.put(path, temporary=True)
+                self.say(head + said, [[("Open in Drive", {"url": link})]], re_id=re_id)
+                return
+            except Exception as e:  # the call line next
+                self.app.events.emit("drive_upload_failed", error=f"for the chat: {type(e).__name__}"[:200])
+        link, why = self.to_line(path)
+        if link:
+            self.app.events.emit("file_sent", via="line", bytes=path.stat().st_size)
+            self.say(
+                f"{head}{path.name}: tap Open to read or save it on this phone (the link works {FILE_HOURS} hours).",
+                [[("Open " + _clip(path.name, 30), {"url": link})]],
+                re_id=re_id,
+            )
+            return
+        page = (jload(self.app.paths.state / "web.json", {}) or {}).get("url") or ""
+        self.say(
+            f"{head}{path.name} stays on your computer ({why}): {path}"
+            + (f". On the computer, the dashboard is at {page}" if page else "")
+            + ". Turn on Drive upload (Features) to get files here as a Google Drive link.",
+            re_id=re_id,
+        )
+
+    def to_line(self, path: Path) -> tuple[str, str]:
+        """Put a sealed copy of a file on your call line for FILE_HOURS: (the link, "") or ("", why not). The key is
+        made here and only goes in the link's #fragment (line.py f1)."""
+        c = self.calls.connector
+        if not self.calls.worker_url() or c.ws is None:
+            return "", "your call line isn't connected right now"
+        size = path.stat().st_size
+        if size > FILE_MAX:
+            return "", f"it's {size / 2**20:.0f} MB; your call line carries files up to {FILE_MAX // 2**20} MB"
+        key = os.urandom(32)
+        blob = line.seal_f1(key, path.read_bytes())
+        fid = uuid.uuid4().hex
+        parts = [blob[i : i + FILE_PART] for i in range(0, len(blob), FILE_PART)]
+        for i, part in enumerate(parts):
+            try:
+                res = c.admin_wait(
+                    "file-put", timeout=60, fid=fid, part=i, parts=len(parts), size=len(blob), hours=FILE_HOURS,
+                    data=base64.b64encode(part).decode(),
+                )  # fmt: skip
+            except Exception as e:
+                return "", f"your call line didn't take it: {type(e).__name__}"
+            if res.get("error"):
+                return "", str(res.get("note") or res["error"])[:200]
+        frag = urllib.parse.urlencode({"i": fid, "k": line.b64url(key), "n": path.name[:120]})
+        return f"{self.calls.worker_url()}/file#{frag}", ""
+
+    def shared(self, path: Path, note: str = "") -> None:
+        """A file you shared from the phone landed here: remembered, so the chat's AI knows what "the PDF I just sent"
+        is."""
+        f = self.calls.dir / "shared.json"
+        with Lock(self.app.paths.state, "calls-shared"):
+            rows = [r for r in (jload(f, []) or []) if isinstance(r, dict)]
+            rows.append({"name": path.name, "path": str(path), "note": note[:200], "at": int(time.time())})
+            jsave(f, rows[-SHARED_KEEP:])
 
     def _push(self, m: dict) -> bool:
         def done(res):

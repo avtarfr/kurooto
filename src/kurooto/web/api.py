@@ -233,6 +233,8 @@ class Api:
                 "prereqs": self.prereqs.status(),
                 "room": self.prereqs.room(["ollama"] if models_gb else [], extra_gb=models_gb),  # ★ AI: a key
                 "telegram": {"token_set": bool(self.app.secrets.get("telegram.token")), "paired": tg.ready()[0]},
+                # where you talk to it: "telegram", or "app" (the phone app's chat instead; 0.5.18), "" not chosen
+                "channel": s.get("setup.channel") or "",
                 "keys": {"gemini": bool(self.app.secrets.get("gemini.api_key"))},
                 "power": self._power(),
                 "autostart": autostart.status(),
@@ -450,7 +452,12 @@ class Api:
                 return 200, {"ok": False, "error": f"Couldn't disconnect it: {e}"[:200]}
         if path == "modules/enable":
             res = {}
-            for mid in sorted(b.get("ids", []), key=lambda m: MODULE_ORDER.index(m) if m in MODULE_ORDER else 99):
+            ids = b.get("ids", [])
+            app_chat = "telegram" not in ids and not self.app.is_on("telegram")  # the phone app's chat goes first
+            for mid in sorted(
+                ids,
+                key=lambda m: -1 if app_chat and m == "calls" else MODULE_ORDER.index(m) if m in MODULE_ORDER else 99,
+            ):
                 res[mid] = self.app.enable(mid)
             return 200, {
                 "results": {k: {"ok": v[0], "message": v[1]} for k, v in res.items()},
@@ -620,10 +627,17 @@ class Api:
             from kurooto.web import tryit
 
             return tryit.say(self.app, str(b.get("text") or ""))
+        if path == "setup/channel":  # the setup page: Telegram, or the Kurooto phone app instead (0.5.18)
+            ch = str(b.get("channel") or "")
+            if ch not in ("telegram", "app"):
+                return 400, {"error": "telegram or app"}
+            s.set("setup.channel", ch)
+            return 200, {"ok": True, "channel": ch}
         if path == "setup/done":
             s.set("setup.done", True)
             on = [m.title for m in self.app.enabled()]
-            self.app.notify(f"{self.app.name} is set up. On: {', '.join(on)}. Send /help any time.", why="asked")
+            where = " in the phone app's chat" if self.app.app_main() else ""
+            self.app.notify(f"{self.app.name} is set up. On: {', '.join(on)}. Send /help{where} any time.", why="asked")
             return 200, {"ok": True}
         if path == "ask" or path.startswith("ask/"):
             return self._ask(path, b, post=True)

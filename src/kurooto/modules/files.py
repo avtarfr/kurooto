@@ -13,6 +13,7 @@ class Files(Module):
     title = "Files into notes"
     description = "Send a photo or PDF on Telegram; it's saved to your notes, and filed by the AI if Chat is on."
     requires = ("telegram",)
+    telegram_only = True  # what comes to your bot (the phone app shares files its own way)
     privacy = "Files are saved on this computer. With Chat on, the AI you picked reads them to file them."
 
     def take_files(self, msg: Incoming) -> str:

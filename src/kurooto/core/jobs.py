@@ -813,7 +813,8 @@ class Jobs:
                 why=why,
                 tail=tail,
             )
-            self.app.notify(job.title, kind="result", file=str(md), why=why)
+            # the file follows the answer (the phone app's chat gets a link: calls/chat.py:send_file)
+            self.app.notify(job.title, kind="result", file=str(md), reply_to=reply_to, why=why)
         else:
             self.app.notify(
                 f"{head}\n\n{body}{end}", kind="result", reply_to=reply_to, buttons=buttons, why=why, tail=tail

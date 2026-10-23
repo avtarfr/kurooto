@@ -236,25 +236,26 @@ class DriveUpload(GooglePart):
             f"Uploading {path.name} ({size / 2**20:.1f} MB) to your Google Drive; the link comes when it's done.",
         )
 
-    def _send_now(self, path: Path, caption: str, temporary: bool = False) -> None:
-        try:
-            f = self.upload(path)
-        except (NeedsSignIn, GoogleError, OSError) as e:
-            self.app.notify(f"Couldn't upload {path.name} to Drive: {e}"[:300], kind="result", why="asked")
-            self.app.events.emit("drive_upload_failed")
-            return
+    def put(self, path: Path, temporary: bool = False) -> tuple[str, str]:
+        """Upload now and give (its link, what to say about it). Raises NeedsSignIn, GoogleError or OSError. Also used
+        for files to the phone app's chat (calls/chat.py)."""
+        f = self.upload(path)
         link = f.get("webViewLink") or f"https://drive.google.com/file/d/{f.get('id', '')}/view"
         folder = str(self.setting("folder") or "Kurooto")
-        text = f"{caption.strip()}\n" if caption.strip() else ""
         days = float(self.setting("temp_days") or 0)
         lasts = ""
         if temporary and days:
             self.remember_temporary(str(f.get("id") or ""), path.name, (f.get("parents") or [""])[0])
             lasts = f" It's deleted from your Drive in {days:g} days; move it out of the {folder} folder to keep it."
-        self.app.notify(
-            f"{text}{path.name} is in your Google Drive ({folder} folder): {link}{lasts}",
-            kind="result",
-            buttons=[[("Open in Drive", {"url": link})]],
-            why="asked",
-        )
         self.app.events.emit("file_sent", via="drive", bytes=path.stat().st_size)
+        return link, f"{path.name} is in your Google Drive ({folder} folder): {link}{lasts}"
+
+    def _send_now(self, path: Path, caption: str, temporary: bool = False) -> None:
+        try:
+            link, said = self.put(path, temporary)
+        except (NeedsSignIn, GoogleError, OSError) as e:
+            self.app.notify(f"Couldn't upload {path.name} to Drive: {e}"[:300], kind="result", why="asked")
+            self.app.events.emit("drive_upload_failed")
+            return
+        text = f"{caption.strip()}\n" if caption.strip() else ""
+        self.app.notify(f"{text}{said}", kind="result", buttons=[[("Open in Drive", {"url": link})]], why="asked")

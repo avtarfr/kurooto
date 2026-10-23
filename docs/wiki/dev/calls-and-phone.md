@@ -24,12 +24,12 @@ The user's side of this is in [../user/calls.md](../user/calls.md) and [../user/
 | `modules/calls/fallback.py` | `LiveHealth`, `VoiceTurns`, `TextCall`, `rotate`, `live_profile`: when Gemini Live fails |
 | `modules/calls/line.py` | the shared crypto (k1, t1, s1, pair codes, VAPID keys) |
 | `modules/calls/phone.py` | `PhoneApp`: questions and approvals as phone notifications with answer buttons |
-| `modules/calls/chat.py` | `PhoneChat`: the phone app as a chat channel (0.5.16), the `chat` notify channel |
+| `modules/calls/chat.py` | `PhoneChat`: the phone app as a chat channel (0.5.16), the `chat` notify channel, files for it as links and files shared from the phone (0.5.18) |
 | `modules/calls/review.py` | the post-call look back and `/lessons` (0.5.8) |
 | `modules/calls/tools.py` | the `Tool` dataclass (shared with `core/tools.py`) and notes helpers |
 | `data/worker/src/worker.js` | the Worker: `fetch`, `scheduled`, Durable Object `class Line` |
 | `data/worker/web/app.js`, `web/fallback.js` | the call page source (bundled into `public/app.js` at deploy) |
-| `data/worker/public/` | `index.html`, `pair.html`/`pair.js`, `inbox.html`/`inbox.js`, `sw.js`, `worklet.js`, icons |
+| `data/worker/public/` | `index.html`, `pair.html`/`pair.js`, `inbox.html`/`inbox.js`, `talk.html`/`talk.js` (the web app's chat, 0.5.18), `file.html`/`file.js` (a sealed file for the chat, 0.5.18), `sw.js`, `worklet.js`, icons |
 | `data/worker/wrangler.template.toml`, `package.json`, `package-lock.json` | Worker config and pinned packages |
 | `android/` | the app (Java, no Gradle), `build.sh`, `smoke.sh`, `test/` |
 
@@ -214,12 +214,12 @@ kind clears it).
   `NTFY_TOKEN` (always sent, empty without one, so clearing it clears the line's copy),
   optional `GITHUB_TOKEN`.
 - Routes: top level `/health`, `/manifest.webmanifest`; the rest goes to `Line.fetch`. No auth: `/connect` (checked by
-  the connector secret) and `/pair/claim`. Any valid key (device key `d1`, ticket `t1`, or a minted ticket):
+  the connector secret), `/pair/claim` and `GET /sealed/<32 hex>` (a sealed file: only its link's key opens it). Any valid key (device key `d1`, ticket `t1`, or a minted ticket):
   `/status`, `/token`, `/turn`, `/text-call`, `/call-report`, `/tool`, `/tasks`, `/transcript`, `/upload`. Paired
   devices only: `/pending`, `/answer`, `/chat` (GET and POST), `/outbox`, `/app-call`, `/ring-reply`,
   `/push/subscribe`, `/device/key`.
 - Admin operations over the WebSocket: `ring`, `stop-ring`, `pair-code`, `devices`, `revoke`, `ticket`, `bye`, `notify`,
-  `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`.
+  `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`, `file-put`.
 - Pinned packages in `package.json` / `package-lock.json` (`@google/genai`, esbuild, wrangler). CI installs them with
   `npm ci --ignore-scripts`.
 
@@ -234,6 +234,36 @@ Jobs answer with `reply_to="app:<id>"`: `core/notify.py:Notifier._deliver` sends
 only (and the desktop, by its kinds); with no `chat` channel it goes to Telegram without the reply_to. With
 `notify.app_chat` on, messages whose kind isn't in `notify.app_kinds` (and isn't `call`) also go to `chat`.
 A button press runs `App.callback(data)` and says its answer in the chat unless it's empty or "ok".
+Without Telegram (`App.app_main()`: Telegram off, Phone calls on; 0.5.18) the chat gets everything not in
+`notify.app_kinds` as if `app_chat` were on, Calm's Why? / Less of this rows included (core.md, Notify and Calm).
+
+**Files for the chat (0.5.18).** `PhoneChat.send` hands a `Message.file` to `send_file(path, caption, re_id)`, which
+makes the link in a thread (`_file_now`) and says it in the chat as a URL button:
+
+1. Drive upload on and ready: `modules/google_drive.py:DriveUpload.put(path, temporary=True)` (deleted after
+   `drive_upload.temp_days`), button "Open in Drive".
+2. Else `to_line(path)`: a fresh 32-byte key, `line.seal_f1` (AES-256-GCM, raw `nonce ‖ ciphertext+tag`), sent with
+   `admin_wait("file-put", fid, part, parts, size, hours, data)` in `FILE_PART` (384 KB) pieces, in order (`fid`,
+   not `id`: `id` is the admin request's own). At most `FILE_MAX` (10 MB); kept `FILE_HOURS` (24). The link is
+   `<worker>/file#i=<fid>&k=<base64url key>&n=<name>`; `public/file.js` fetches `/sealed/<fid>`, decrypts with
+   WebCrypto, offers Save and shows text files. The Worker (`Line.filePut`, `filesLive`, `fileGet`) keeps parts under
+   `f:<id>:<n>` and an index `files` (`{parts, size, got, bytes, exp}`), at most `FILES_BYTES` (30 MB) at once
+   (`{"error": "full", "note"}` past it), and drops expired files on access and every cron tick.
+3. Else a plain message: the file stays on the computer, with its path and the dashboard's address.
+
+`modules/skills.py:send_file` (`kurooto send`, the AI's `send_file`) goes to `send_file` directly when
+`app_main()`. `Jobs._deliver` sends a long answer's file with the text's `reply_to`, so an answer to the app's chat
+gets its file there too.
+
+**Files from the phone.** `Calls._upload` records each saved file in `<state>/calls/shared.json` (`PhoneChat.shared`:
+name, path, note, time; last 20), and the filing job it submits with Chat on is Chat's own (`Chat.own`), so where it
+went joins the conversation. `modules/chat.py:Chat.ask` adds the last two hours' shares (`SHARED_S`) to a request
+that talks of a file (`REFERS`); `record_turn` keeps that note out of the history.
+
+**The web app's chat.** `public/talk.html` / `talk.js` (at `/talk`): the documented API below with the device key from
+`localStorage` (`kurootoDevice`); its own copy of the chat in `localStorage` (`kurootoChat`); `GET /chat?after=` on
+opening, every 5 s while visible and on `visibilitychange`; a Kurooto chat push opens `/talk` (`sw.js`). The call
+page (paired browsers), the inbox and the pairing page link to it.
 
 **The phone outbox.** The Worker's `queue` (one value: an index of items, each with a rising `seq`; a phone item's body
 under its own key `q:<seq>`) holds both the line's own items (`tool`, `transcript`, `event`) and phone items
@@ -319,6 +349,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 | Name | Format |
 |---|---|
 | k1 | AES-256-GCM, 12-byte nonce: `"k1." + base64url(nonce ‖ ciphertext+tag)` |
+| f1 | a file for the chat: raw bytes `nonce ‖ ciphertext+tag` (AES-256-GCM, a fresh key per file, base64url in the link's fragment; Python `line.seal_f1`/`open_f1`, browser `public/file.js`; no Java side) |
 | t1 | `t1.<expiry ms>.<hex HMAC-SHA256 with the call secret>` |
 | d1 | device keys `d1.<id>.<secret>` |
 | s1 | ECDH P-256, HKDF-SHA256 (salt: the ephemeral public key, info `"kurooto s1"`) to an AES key, then k1 |
@@ -381,20 +412,21 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   (`tests/fakes/cloud.py:FakeCloud`) and the real `Connector`: `test_call_line.py` (auth, pairing, tokens, tool relay,
   ringing with VAPID signature checks, uploads, transcripts, the offline queue and cron), `test_lidsafe_line.py`,
   `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox),
-  `test_presence_line.py`, `test_rotate_line.py`. They need Node;
+  `test_presence_line.py`, `test_rotate_line.py`. `test_phone_chat_line.py` also covers a sealed file put and fetched. They need Node;
   CI's `call-line` job installs the Worker's packages and bundles the page first.
-- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_livefallback.py` (runs `tests/js/fallback.mjs` and
+- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_app_first.py` (no Telegram: routing,
+  files as links, shared files, setup, doctor), `test_livefallback.py` (runs `tests/js/fallback.mjs` and
   `tests/js/callpage.mjs`).
 
 ## Known problems and doc mismatches
 
-- The app's chat gets no files: a long AI answer's attached file (`Jobs._deliver`) goes to Telegram only, and the chat
-  shows its first 1500 characters.
 - A shared file's part that the computer took but didn't confirm (it crashed in between) is written twice when the
   outbox is taken again; chat messages and answers are protected by their nonce, file parts aren't.
 
 - With no Android device paired, the computer still publishes each ring to ntfy once (the Worker's answer can't tell
   "no Android device" from "its publish failed").
+- A sealed file's link holds its key, and the link is part of a chat message the call line keeps (3 days): the file
+  is only as private from the call line as the chat is.
 - `calls.ring_s` is never sent to the Worker or the app, which ring 60 s (5 minutes for an alarm) whatever it says.
 - Turn-by-turn calls run tools through `core/tools.py:run_tool` and don't reach `Calls.tool_log`; a call page from
   before 0.5.8 (until the Worker is deployed again) sends no `since`, so its tools share the `""` log.

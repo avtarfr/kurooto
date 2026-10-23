@@ -3,8 +3,9 @@
 You talk to Kurooto through your own Telegram bot: plain sentences, `/commands`, voice messages, photos and files.
 Quick requests ("remind me at 9 to call mum") are done at once on your computer; anything else goes to your AI, which
 answers as a reply. The same requests work in the dashboard's Today page and Ctrl+K box ([dashboard.md](dashboard.md)),
-on a phone call ([calls.md](calls.md)), in the phone app's chat, where Telegram is blocked or little used
-([phone-app.md](phone-app.md#chat-with-kurooto-in-the-app)), and in a terminal (`kurooto ask`).
+on a phone call ([calls.md](calls.md)), in the phone app's chat ([phone-app.md](phone-app.md#chat-with-kurooto-in-the-app)),
+and in a terminal (`kurooto ask`). Telegram is optional: the phone app's chat can take its place entirely
+([phone-app.md](phone-app.md#using-the-app-instead-of-telegram)).
 
 - [Your bot](#your-bot)
 - [What happens to a message](#what-happens-to-a-message)
@@ -21,7 +22,7 @@ on a phone call ([calls.md](calls.md)), in the phone app's chat, where Telegram 
 
 ## Your bot
 
-**What it does.** Your own bot, made with @BotFather during setup ([getting-started.md](getting-started.md#6-telegram-connect-your-bot)).
+**What it does.** Your own bot, made with @BotFather during setup ([getting-started.md](getting-started.md#6-chat-telegram-or-the-phone-app)).
 It serves only the Telegram account that tapped the one-time pairing link, and only in a private chat; messages from
 anyone else, and from groups, are ignored.
 
@@ -193,6 +194,8 @@ Tapping a button shows a short note at the top of the chat. A button from a feat
 
 ## Status, pause, hold and focus
 
+These come with Telegram, and without it they answer in the phone app's chat (with Phone calls on).
+
 **`/status`** (answers even while Telegram's own feature is off, e.g. from a terminal): whether calls are allowed or
 held and until when, focus, the next scheduled things, open questions, today's check-ins, what's due soon, the alarm,
 your last three AI requests, add-ons' own lines, and the features that are on.
@@ -286,6 +289,10 @@ notes folder ("send me my linear algebra pack"), on calls too. From a terminal: 
   are refused without Drive upload).
 - **During focus** a file waits until focus ends.
 - The AI can only send files from your notes folder.
+- **Without Telegram** (the phone app instead), a file comes to the app's chat as a link: Google Drive with Drive upload
+  on, else a sealed copy on your call line for a day (up to 10 MB), else a note that it stays on your computer, with its
+  path. A long answer's full text comes the same way, right after its first part
+  ([phone-app.md](phone-app.md#files-from-your-computer)).
 
 ## Boundaries it keeps
 

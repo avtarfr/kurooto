@@ -56,6 +56,9 @@ class Module:
     title = ""
     description = ""
     requires: tuple[str, ...] = ()
+    # "telegram" in requires means somewhere to talk to you: Telegram or the phone app's chat (app.py:met). True: it
+    # works only on Telegram itself (voice messages, files sent to the bot)
+    telegram_only = False
     privacy = "Stays on this computer."
     extra = False  # an add-on that comes with Kurooto: in no preset ("Everything" too), listed apart, on only by hand
     heavy = False  # True: its scheduled work waits for the charger when the laptop is on battery ("saver" mode)

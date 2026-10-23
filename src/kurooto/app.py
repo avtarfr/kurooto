@@ -31,6 +31,14 @@ register_defaults("modules", {"enabled": []})
 ALWAYS = ("status",)  # commands that answer even while their feature is off (/help and /jobs are Kurooto's own)
 
 
+def met(need: str, on, m: Module | None = None) -> bool:
+    """A feature's requirement is on. "telegram" means somewhere to talk to you: Telegram, or the phone app's chat
+    (Phone calls) for every feature that isn't Telegram-only (0.5.18: Telegram is optional)."""
+    if need in on:
+        return True
+    return need == "telegram" and "calls" in on and not getattr(m, "telegram_only", False)
+
+
 def default_workspace(home: Path | None = None) -> Path:
     if os.environ.get("KUROOTO_HOME") and home is None:  # tests and portable installs stay inside their folder
         return Path(os.environ["KUROOTO_HOME"]) / "workspace"
@@ -133,9 +141,10 @@ class App:
         m = self.modules.get(module_id)
         if not m:
             return False, f"no feature called {module_id}"
-        missing = [r for r in m.requires if not self.is_on(r)]
+        on = set(self.settings.get("modules.enabled") or [])
+        missing = [r for r in m.requires if not met(r, on, m)]
         if missing:
-            return False, f"{m.title} needs {', '.join(self.modules[r].title for r in missing)} first"
+            return False, f"{m.title} needs {', '.join(self.need_title(r, m) for r in missing)} first"
         ok, why = m.ready()
         if not ok:
             return False, why
@@ -148,7 +157,12 @@ class App:
         return True, f"{m.title} is on"
 
     def disable(self, module_id: str) -> tuple[bool, str]:
-        users = [m.title for m in self.enabled() if module_id in m.requires]
+        on = set(self.settings.get("modules.enabled") or [])
+        users = [  # what would lose something it needs (Telegram and the phone app's chat stand in for each other)
+            m.title
+            for m in self.enabled()
+            if any(met(r, on, m) and not met(r, on - {module_id}, m) for r in m.requires)
+        ]
         if users:
             return False, f"turn off {', '.join(users)} first; they use it"
         m = self.modules.get(module_id)
@@ -160,6 +174,23 @@ class App:
         )
         self.events.emit("module_disabled", module=module_id)
         return True, f"{m.title if m else module_id} is off"
+
+    def need_title(self, need: str, m: Module | None = None) -> str:
+        """A requirement in words: "Telegram or the phone app (Phone calls)" when either does."""
+        title = self.modules[need].title if need in self.modules else need
+        if need == "telegram" and not getattr(m, "telegram_only", False):
+            return "Telegram or the phone app (Phone calls)"
+        return title
+
+    def app_main(self) -> bool:
+        """The phone app's chat is where Kurooto talks to you: Telegram isn't on, Phone calls is (0.5.18)."""
+        return not self.is_on("telegram") and self.is_on("calls")
+
+    def basics(self) -> list[Module]:
+        """Telegram's own commands and requests (/pause, /resume, /status, /hold, /calls, /focus) are Kurooto's basics:
+        with the phone app's chat standing in for Telegram, they answer there too."""
+        tg = self.modules.get("telegram")
+        return [tg] if tg is not None and self.app_main() else []
 
     def start_background(self, m: Module) -> None:
         """Start a module's long-running part (its `background(stop)` coroutine) on the daemon's loop, once."""
@@ -234,6 +265,7 @@ class App:
             self.updates.start()
         except Exception as e:
             self.events.emit("module_failed", module="updates", error=str(e)[:300])
+        self.scheduler.action("telegram.focus_end", lambda p: self.notifier.flush_queue())  # /focus, Telegram or not
         try:
             self.ask.start()
         except Exception as e:
@@ -292,6 +324,7 @@ class App:
         request that runs instantly, or (if Chat is on) a request for the AI. `also`: features that answer this
         message as if they were on (the setup page's try-it box, web/tryit.py)."""
         mods = self.enabled() + [m for m in also or [] if not self.is_on(m.id)]
+        mods += [m for m in self.basics() if m not in mods]  # /pause, /focus... without Telegram (the app's chat)
         self.events.emit("message_in", via=msg.via, chars=len(msg.text), files=len(msg.files))
         if msg.reply_to:  # (calm) you answered one of its messages (core/calm.py)
             self.calm.touched(map_kind=msg.reply_to.get("kind"), map_ref=msg.reply_to.get("ref"))
@@ -630,15 +663,15 @@ class App:
         if word:
             return self._help_find(word, wiki)
         lines = [f"{self.name}, your assistant. Plain words work; so do these."]
-        for m in on:
+        for m in on + self.basics():  # Telegram's /pause, /focus... answer in the phone app's chat without it
             cmds = m.help()
             if cmds:
-                lines += ["", f"{m.title}:", *cmds]
+                lines += ["", "Pause, focus and calls:" if m in self.basics() else f"{m.title}:", *cmds]
         lines += ["", "Kurooto itself:", *(f"/{n}  {h}" for n, h in self.CORE_HELP)]
         if not self.is_on("notes_sync"):
             lines.append("/sync  sync everything that's on (Classroom, calendar, research, notes brain)")
         said = []
-        for m in on:
+        for m in on + self.basics():
             try:
                 said += [i.description for i in m.intents()]
             except Exception as e:  # a feature's intents failing must not take /help down
@@ -646,6 +679,8 @@ class App:
         if said:
             lines += ["", "Understood at once, in plain words:", *(f"- {d}" for d in dict.fromkeys(said))]
         off = [m.title for m in self.modules.values() if m not in on and m.title]
+        if self.app_main():
+            lines += ["", "You talk to me in the phone app's chat; Telegram is optional (Features → Telegram)."]
         if off:
             lines += ["", f"Off right now ({len(off)}): " + ", ".join(off) + ". /help <name> says what one does."]
         if not self.is_on("chat"):

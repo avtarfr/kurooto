@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * "Share to Kurooto": files, photos, links and text from any app go to your computer's notes inbox (through your
  * call line). With your computer off, the call line keeps them (up to 20 MB) until it's back. With Chat on, the AI
- * files them and tells you where on Telegram.
+ * files them and tells you where (in the app's chat, or on Telegram), and you can ask about them in the chat.
  */
 public class ShareActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());
@@ -55,8 +55,8 @@ public class ShareActivity extends Activity {
                 }
             }
             done(ok == total && waiting > 0 ? "Your computer is off: it waits on your call line and goes to your notes inbox when the computer is back."
-                    : ok == total ? "Sent. It's in your notes inbox; with Chat on, the AI files it and tells you where."
-                    : ok == 0 ? "Not sent: is this phone online? Your call line may also be full while your computer is off. (You can send it to your Telegram bot instead.)"
+                    : ok == total ? "Sent. It's in your notes inbox; with Chat on, the AI files it and tells you where. Ask about it in Chat (\"summarise what I just sent\")."
+                    : ok == 0 ? "Not sent: is this phone online? Your call line may also be full while your computer is off."
                     : "Sent " + ok + " of " + total + ".", ok == total);
         }).start();
     }

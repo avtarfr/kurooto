@@ -4,9 +4,9 @@ const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const STEPS = ["you", "computer", "brain", "about", "features", "telegram", "finish"];
-const LABELS = ["You", "Computer", "AI", "About you", "Features", "Telegram", "Done"];
+const LABELS = ["You", "Computer", "AI", "About you", "Features", "Chat", "Done"];
 const HINTS = ["Your name and time zone", "What it found here", "Who answers you", "Optional: what other AIs know",
-  "What it does for you", "Where you talk to it", "Install and turn on"];
+  "What it does for you", "Telegram or the phone app", "Install and turn on"];
 let state = null;
 let step = 0;
 let chosen = new Set();
@@ -127,7 +127,7 @@ function show(i) {
   // the steps: a row on phones, a rail with what each is for on wide screens; any of them can be opened
   // (a step passed but not finished, like an AI that doesn't answer yet, shows "!" instead of a tick)
   const brain = state && state.brains.find((b) => b.id === state.brain.main);
-  const open = { brain: state && !(brain && brain.ready), telegram: state && !state.telegram.paired };
+  const open = { brain: state && !(brain && brain.ready), telegram: state && !channelOk() };
   $("#steps").replaceChildren(...LABELS.map((l, j) => {
     const todo = j < step && open[STEPS[j]], hint = todo ? "not finished yet" : HINTS[j];
     return el("li", { class: j === step ? "on" : todo ? "todo" : j < step ? "done" : "" },
@@ -155,11 +155,19 @@ function navHint() {
     brain: brain && brain.ready ? "" : "Not working yet? You can go on and finish it later: this page opens again from the dashboard.",
     about: "Optional: Next skips it.",
     features: `${chosen.size} of ${state.modules.length} on.`,
-    telegram: state.telegram.paired ? "" : "Not connected yet? You can go on and connect it later.",
+    telegram: channelOk() ? "" : state.channel === "app" ? "Phone calls isn't set up yet? You can go on and finish it later."
+      : "Not connected yet? You can go on and connect it later.",
   }[STEPS[step]] || "";
 }
 
 async function refresh() { state = await api("state"); }
+
+// Where you talk to it: Telegram (paired), or the phone app's chat instead (0.5.18), which needs Phone calls set up.
+function phoneApp() { return state.channel === "app"; }
+function channelOk() {
+  const c = state.modules.find((m) => m.id === "calls");
+  return phoneApp() ? !!(c && c.ready && (chosen.has("calls") || c.on)) : state.telegram.paired;
+}
 
 // Leaving a step saves what it holds (Next, Back or a step in the list alike).
 async function go(i) {
@@ -570,6 +578,7 @@ async function addReport(label, text) {
 const NEEDS_GEMINI = ["calls", "voice_notes", "alarm"];
 function renderFeatures() {
   if (!chosen.size && !renderFeatures.seeded) state.modules.filter((m) => m.on || (restored ? restored.includes(m.id) : m.starter)).forEach((m) => chosen.add(m.id));
+  if (!renderFeatures.seeded && phoneApp()) { chosen.add("calls"); if (!state.telegram.paired) chosen.delete("telegram"); }
   renderFeatures.seeded = true;  // only the first time: unticking everything must stay unticked
   $("#features").replaceChildren(...state.modules.map((m) => {
     const box = el("input", { type: "checkbox", checked: chosen.has(m.id), onchange: (e) => {
@@ -747,9 +756,40 @@ async function pairBox() {
 
 // ------------------------------------------------------------------------------------------ telegram
 function renderTelegram() {
+  const app = phoneApp(), now = state.channel || (state.telegram.paired ? "telegram" : "");
+  $$(".chan").forEach((b) => b.classList.toggle("on", b.dataset.channel === now));
+  $("#tg-how").hidden = app;
+  $("#app-panel").hidden = !app;
+  if (app) renderAppChannel();
   const p = $("#tg-panel");
   if (state.telegram.paired) p.replaceChildren(el("div", { class: "box" }, el("p", { class: "ok" }, "✓ Telegram is connected. Your bot only answers you. Go on to the last step.")));
   navHint();
+}
+
+// The phone app instead of Telegram: what it needs (Phone calls, set up on the Features step), and pairing right here
+// once the call line is up.
+function renderAppChannel() {
+  const box = $("#app-panel"), c = state.modules.find((m) => m.id === "calls"), ready = !!(c && c.ready);
+  const pair = el("div", {});
+  box.replaceChildren(el("div", { class: "box" },
+    el("p", {}, "The app's chat takes Telegram's place: commands, reminders, check-ins, questions with buttons, your AI's answers. Files come as links (your Google Drive with Drive upload on, else a sealed copy on your call line for a day). It needs Phone calls:"),
+    el("ol", {},
+      el("li", {}, "a free Gemini API key", state.keys.gemini ? " ✓" : ""),
+      el("li", {}, "your call line on a free Cloudflare account", ready ? " ✓" : ""),
+      el("li", {}, "then pair your phone: here, or after Finish")),
+    ready ? el("p", {}, el("button", { class: "primary", onclick: async (e) => { e.target.disabled = true; pair.replaceChildren(await pairBox()); e.target.disabled = false; } }, "Pair my phone now"))
+      : el("p", {}, el("button", { type: "button", class: "link", onclick: () => go(STEPS.indexOf("features")) }, "Set up Phone calls on the Features step"), " (tick Phone calls, then Set up now)."),
+    pair,
+    el("p", { class: "note" }, "Telegram can be added later from the dashboard (Features → Telegram); then both work.")));
+  gloss(box);
+}
+
+async function pickChannel(ch) {
+  await api("setup/channel", { channel: ch });
+  state.channel = ch;
+  if (ch === "app") { chosen.add("calls"); if (!state.telegram.paired) chosen.delete("telegram"); }
+  else chosen.add("telegram");
+  renderTelegram();
 }
 
 async function checkToken() {
@@ -839,7 +879,8 @@ function renderFinish() {
     back != null && !ok ? el("button", { type: "button", class: "link", onclick: () => go(back) }, "Go back to it") : null);
   $("#summary").replaceChildren(
     row(brain && brain.ready, "Your AI", brain ? brain.label + (brain.ready ? ", working" : ", not working yet (you can finish it later)") : "none picked yet", STEPS.indexOf("brain")),
-    row(state.telegram.paired, "Telegram", state.telegram.paired ? "connected" : "not connected yet", STEPS.indexOf("telegram")),
+    phoneApp() ? row(channelOk(), "The phone app", channelOk() ? "its chat instead of Telegram; pair your phone after Finish if you haven't" : "Phone calls isn't set up yet", STEPS.indexOf("features"))
+      : row(state.telegram.paired, "Telegram", state.telegram.paired ? "connected" : "not connected yet", STEPS.indexOf("telegram")),
     row(true, "Features", titles.join(", ") || "none: you can turn some on later"),
     row(true, "Your notes folder", el("code", {}, state.workspace)));
   gloss($("#summary"));
@@ -859,6 +900,7 @@ async function finish() {
     else await watchInstall(null, `Setting up ${m.title}… this can take a few minutes; keep this page open.`);
     box.querySelector("#log").removeAttribute("id"); // the next feature's box gets the live log
   }
+  if (phoneApp() && !state.telegram.paired) chosen.delete("telegram");  // the phone app's chat stands in for it
   const turning = working("Turning your features on…");
   out.append(turning);
   const res = await api("modules/enable", { ids: [...chosen] });
@@ -874,7 +916,8 @@ async function finish() {
     el("p", {}, "Next:"),
     el("ol", { class: "next" },
       state.telegram.paired ? el("li", {}, "Send /help to your bot in Telegram to see what it can do.")
-        : el("li", {}, "Connect Telegram (step 6), so you can talk to your assistant."),
+        : phoneApp() ? el("li", {}, "Pair your phone (below), then open Chat in the Kurooto app (iPhone: the Chat button) and send /help.")
+        : el("li", {}, "Connect Telegram or pick the phone app (step 6), so you can talk to your assistant."),
       el("li", {}, "Open the dashboard: what's happening, your features and settings, all in one place.")),
     el("p", {}, el("a", { class: "button primary", href: "/" }, "Open the dashboard"))));
   if (chosen.has("calls") && !(res.results.calls && !res.results.calls.ok)) out.append(await pairBox());
@@ -934,6 +977,8 @@ document.addEventListener("click", async (e) => {
     const p = e.target.dataset.preset;
     $$(".preset").forEach((b) => b.classList.toggle("on", b === e.target));
     if (p !== "custom") { chosen = new Set(state.modules.filter((m) => (p === "all" && !m.extra) || m.starter || (role && (m.roles || []).includes(role))).map((m) => m.id)); renderFeatures(); } // add-ons (m.extra): only by hand
+  } else if (e.target.matches("[data-channel]")) {
+    await pickChannel(e.target.dataset.channel);
   } else if (e.target.matches("[data-role]")) {
     role = e.target.dataset.role;
     $$(".preset-role").forEach((b) => b.classList.toggle("on", b === e.target));

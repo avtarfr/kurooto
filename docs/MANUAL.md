@@ -180,14 +180,17 @@ what it means.
    that come with Kurooto (such as [Exam season](#exam-season)) are in no preset, only on when you pick them. Some
    features ask for a detail right in their card (a calendar link, a repository); phone calls, voice notes and the alarm
    use your Gemini key (they ask for one if you picked another AI).
-6. **Telegram:** make your own bot in two minutes:
+6. **Chat:** pick where you talk to Kurooto: **Telegram** or **The Kurooto phone app instead**. The phone app needs
+   Phone calls (tick it on the Features step, **Set up now**); then **Pair my phone now**, or pair after Done. Its chat
+   does what the bot does; files come as links (see [Without Telegram](#without-telegram)). *Undo:* pick Telegram
+   instead, or add it later in Features. For **Telegram**, make your own bot in two minutes:
    1. Open [@BotFather](https://t.me/BotFather) in Telegram, send `/newbot`, answer its two questions (a display name,
       then a username ending in `bot`).
    2. BotFather replies with a token like `123456789:AAH…`. Paste it in the wizard and press **Check**.
    3. Tap the link the wizard shows, then **Start** in Telegram. Kurooto now knows that chat is yours and ignores
       everyone else.
 7. **Done:** Kurooto installs what your features need (with progress), turns them on, and, if you chose Phone calls,
-   shows a QR code to pair your phone. Send `/help` to your bot.
+   shows a QR code to pair your phone. Send `/help` to your bot (or in the phone app's chat).
 
 **Used Kurooto before?** The first page has **I've used Kurooto before**: give your private repository, a token for it
 and your profile's passphrase, and your setup comes back (see [Moving to a new computer](#moving-to-a-new-computer)).
@@ -368,7 +371,7 @@ the commands and plain-English requests of the features you have on, grouped by 
 command or feature, on or off (`/help quiz`, `/help alarm`).
 
 ### Telegram
-Your own bot, which only answers you. Commands: `/status` (what's going on: whether calls are held, focus, what's
+Your own bot, which only answers you. Optional when the phone app is paired (see [Without Telegram](#without-telegram)). Commands: `/status` (what's going on: whether calls are held, focus, what's
 coming up, open questions, today's check-ins, what's due in the next 3 days, the alarm, your last AI requests and
 the features that are on), `/hold 2h` or `/hold 18:00` (no calls until then), `/calls` (allow calls again), `/focus 2h` (do-not-disturb: messages wait until it ends).
 
@@ -2564,8 +2567,32 @@ iPhones use Kurooto as a web app on the Home Screen (iOS 16.4 or newer).
 3. Open **Kurooto from the Home Screen** (not from Safari): it finishes pairing.
 4. Tap **Turn on notifications** and allow them (calls, questions and approvals arrive this way).
 
+**Chat:** tap **Chat** in the Home Screen app (or open `<your call line>/talk`): the same chat as Android's, with
+buttons, Reply and "Waiting for your computer".
+
 **What doesn't work on iPhone:** calls arrive as notifications you tap to answer; they can't ring like a phone call,
 ring on silent, or show on the lock screen as a call. If you need those, use Telegram reminders or an Android phone.
+
+### Without Telegram
+Telegram is optional (0.5.18) once the phone app is paired: pick the phone app on the setup page's Chat step, or turn
+Telegram off in Features while Phone calls is on.
+
+- Everything Kurooto sends comes to the app's chat (reminders, check-ins, the morning message, AI answers, with their
+  buttons); questions and approvals come with answer buttons under **Waiting for you**.
+- `/pause`, `/resume`, `/status`, `/focus`, `/hold`, `/calls` and `/help` work in the chat.
+- Features that send you things turn on with the app instead of Telegram; Voice notes and Files into notes still need
+  Telegram.
+- Files (a long answer, `kurooto send`, a file your AI sends): a link in the chat. With Drive upload on, a Google Drive
+  link (deleted after `drive_upload.temp_days`); otherwise a copy sealed on your computer, kept on your call line for a
+  day (up to 10 MB), opened in the phone's browser; otherwise the chat says the file stays on your computer, with its
+  path.
+- Files you share to the app can be asked about in the chat for two hours ("summarise the PDF I just sent").
+- `kurooto doctor` notes "talks to you: in the phone app's chat"; no Telegram isn't a problem.
+
+*Undo:* connect Telegram in Features; both then work (the chat gets Kurooto's own messages only with
+`notify.app_chat` on).
+*Leaves your computer:* what the chat already sends; with Drive upload on, files go to your Drive; otherwise a sealed
+copy of each file stays on your call line for a day (the key is only in the link inside the chat message).
 
 ## The dashboard
 

@@ -16,6 +16,10 @@
 //   - Chat (0.5.16): what you type in the phone app goes through /chat to your computer like a Telegram message;
 //     its answers come back the way messages do (chat-say), and this keeps the chat's last 50 messages (3 days at
 //     most) so a phone can catch up with the computer off.
+//   - Files for the chat (0.5.18): where Telegram would get a document, your computer can leave a sealed copy here
+//     for a day ("file-put"; AES-256-GCM with a key made on your computer that's only in the link's #fragment, so
+//     what's kept here can't be opened without the link); /file is the page that fetches it (/sealed/<id>) and opens
+//     it in the phone's browser. At most FILE_MAX each and FILES_BYTES in all.
 //   - While your computer is off: answers come from the brief it last pushed, notes from the index it pushed (and,
 //     with Notes sync, whole notes from your private GitHub repo); anything that needs the computer is queued.
 //     What you do on a paired phone meanwhile (answers, chat messages and button taps, shared files) waits here
@@ -201,6 +205,9 @@ const OUTBOX_MAX = 100, OUTBOX_BYTES = 20 * 1024 * 1024, PART = 512 * 1024, QUEU
 const OUTBOX_FULL = 'Your call line is holding as much as it can for your computer. Wait till it is back on, or use Telegram.';
 // the chat: messages kept, for how long, longest text kept
 const CHAT_MAX = 50, CHAT_KEEP_S = 3 * 86400, CHAT_TEXT = 6000, DONE_KEEP_MS = 86400e3;
+// files for the chat (sealed on your computer): the id, a part's most, a file's most, all of them at once
+const FILE_ID = /^[0-9a-f]{32}$/;
+const FILE_PART = 400 * 1024, FILE_MAX = 10 * 1024 * 1024 + 64, FILES_BYTES = 30 * 1024 * 1024;
 // sealed reminders: at most this many held; a failed send is tried again each minute this many times; a send in
 // progress counts as sent this long; answers are kept this long
 const SEALED_MAX = 40, SEALED_TRIES = 5, SEALED_BUSY_MS = 120e3, SEALED_KEEP_MS = 3 * 86400e3;
@@ -303,6 +310,7 @@ export class Line {
     if (p === '/connect') return this.connect(req);
     if (p === '/tick') return json(await this.tick());
     if (p === '/pair/claim' && req.method === 'POST') return this.claim(req);
+    if (p.startsWith('/sealed/') && req.method === 'GET') return this.fileGet(p.slice(8)); // the key is in the link
     const who = await this.auth(req.headers.get('x-call-secret'));
     // a refused request's body is read first: answering before it has all arrived trips up the local dev server
     const refuse = async (error, status) => { try { await req.arrayBuffer(); } catch { /* none */ } return json({ error }, status); };
@@ -515,6 +523,7 @@ export class Line {
     if (m.op === 'sealed-claim') return this.sealedClaim((Array.isArray(m.ids) ? m.ids : []).map(String));
     if (m.op === 'outbox') return this.outbox(m.done);
     if (m.op === 'chat-say') return this.chatSay(m.msg || {}, m.assistant);
+    if (m.op === 'file-put') return this.filePut(m);
     return { error: 'unknown op' };
   }
 
@@ -943,6 +952,60 @@ export class Line {
     return { ok: true, seq: m.seq, android, web, errors };
   }
 
+  // ------------------------------------------------------------------------------------ files for the chat
+  // A file from your computer, sealed there, in parts (`size`: all of it, said with part 0); it can be fetched once
+  // every part is here, for `hours`.
+  async filePut(m) {
+    const id = String(m.fid || ''), part = Number(m.part), parts = Number(m.parts); // m.id is the request's
+    if (!FILE_ID.test(id) || !Number.isInteger(part) || !Number.isInteger(parts) || part < 0 || part >= parts) return { error: 'bad part' };
+    const data = unb64(String(m.data || '').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''));
+    const files = await this.filesLive();
+    if (part === 0) {
+      const size = Number(m.size) || 0;
+      if (size > FILE_MAX || size < data.length) return { error: 'too big', note: 'Too big for your call line.' };
+      const used = Object.values(files).reduce((n, f) => n + f.size, 0);
+      if (used + size > FILES_BYTES) return { error: 'full', note: 'Your call line holds as many files as it can for now; try again tomorrow.' };
+      files[id] = { parts, size, got: 0, bytes: 0, exp: Date.now() + Math.min(Math.max(Number(m.hours) || 24, 1), 48) * 3600e3 };
+    }
+    const f = files[id];
+    if (!f || f.parts !== parts || f.got !== part) return { error: 'parts in order, from part 0' };
+    if (data.length > FILE_PART || f.bytes + data.length > f.size) return { error: 'too big', note: 'Too big for your call line.' };
+    await this.store.put(`f:${id}:${part}`, data);
+    f.got += 1;
+    f.bytes += data.length;
+    await this.store.put('files', files);
+    return { ok: true, part, ready: f.got >= f.parts };
+  }
+
+  // The files still in date; the parts of those that aren't go.
+  async filesLive() {
+    const files = (await this.store.get('files')) || {};
+    const now = Date.now();
+    let gone = false;
+    for (const [id, f] of Object.entries(files)) {
+      if (f.exp > now) continue;
+      for (let i = 0; i < f.parts; i++) await this.store.delete(`f:${id}:${i}`);
+      delete files[id];
+      gone = true;
+    }
+    if (gone) await this.store.put('files', files);
+    return files;
+  }
+
+  async fileGet(id) {
+    const f = FILE_ID.test(id) ? (await this.filesLive())[id] : null;
+    if (!f || f.got < f.parts || f.bytes !== f.size) return json({ error: 'gone', note: 'This file is gone: links to files work for a day. Ask for it again.' }, 404);
+    const out = new Uint8Array(f.bytes);
+    let at = 0;
+    for (let i = 0; i < f.parts; i++) {
+      const b = await this.store.get(`f:${id}:${i}`);
+      if (!b) return json({ error: 'gone' }, 404);
+      out.set(b, at);
+      at += b.length;
+    }
+    return new Response(out, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store', ...CORS } });
+  }
+
   // ------------------------------------------------------------------------------------- the phone outbox
   async outboxBusy() {
     return ((await this.store.get('queue')) || []).some((x) => PHONE_KINDS.includes(x.kind));
@@ -1166,6 +1229,7 @@ export class Line {
 
   // Every minute (cron): place the calls that fall due while the computer is off, from the schedule it pushed.
   async tick() {
+    await this.filesLive(); // files for the chat whose day is up go
     const presence = await this.presenceTick();
     const sealed = await this.sealedTick().catch((e) => ({ error: String(e?.message || e).slice(0, 200) }));
     if (this.online()) return { skipped: 'computer online' };

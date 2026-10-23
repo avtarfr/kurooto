@@ -585,9 +585,10 @@ if (secret) {
   }).catch((e) => { status(`This link doesn't work: ${e.message}. Ask your bot for /call again.`, 'err'); $('call').disabled = true; });
 }
 if ('serviceWorker' in navigator && !App && store.get('kurootoDevice')) navigator.serviceWorker.register('/sw.js').catch(() => {});
-// A paired phone (not a one-off call link): what's waiting for you (questions, approvals, messages).
+// A paired phone (not a one-off call link): what's waiting for you (questions, approvals, messages), and the chat.
 if (!App && store.get('kurootoDevice') && secret === store.get('kurootoDevice')) {
   $('inbox').hidden = false;
+  $('chat').hidden = false;
   api('/pending').then((j) => { const n = (j.items || []).length; if (n) $('inbox').textContent = `Waiting for you (${n})`; }).catch(() => {});
 }
 

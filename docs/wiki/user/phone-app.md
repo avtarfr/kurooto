@@ -5,7 +5,7 @@ rings like a phone call; an iPhone gets a web app on its Home Screen. Both need 
 the app comes from your own call line.
 
 The phone app adds calls, the wake-up alarm, questions with answer buttons, and a chat with Kurooto that works like
-Telegram, for places where Telegram is blocked or little used.
+Telegram. It can replace Telegram entirely: see [Using the app instead of Telegram](#using-the-app-instead-of-telegram).
 
 - [Pair a phone](#pair-a-phone)
 - [Android](#android)
@@ -14,6 +14,8 @@ Telegram, for places where Telegram is blocked or little used.
 - [What reaches the phone](#what-reaches-the-phone)
 - [Answering questions on the phone](#answering-questions-on-the-phone)
 - [Chat with Kurooto in the app](#chat-with-kurooto-in-the-app)
+- [Using the app instead of Telegram](#using-the-app-instead-of-telegram)
+- [Files from your computer](#files-from-your-computer)
 - [Sharing files to your notes](#sharing-files-to-your-notes)
 - [When your computer is off](#when-your-computer-is-off)
 - [Managing paired phones](#managing-paired-phones)
@@ -166,12 +168,14 @@ done), and as a notification when the chat isn't open. Buttons under an answer w
 message that takes one (a reminder, a check-in) answers it. Answers to what you wrote in the app come back to the app
 only, not to Telegram.
 
-**iPhone:** the chat comes to the Home Screen app in a later version. Chat messages from Kurooto already arrive as
-notifications.
+**iPhone (and any paired browser):** open Kurooto from the Home Screen and tap **Chat** (or open `<your call
+line>/talk`). It works like the Android chat: buttons, **Reply**, and "Waiting for your computer" while it's off. A
+notification for a chat message opens the chat. The page keeps its own copy of the chat in the browser and looks for
+new messages every few seconds while it's open.
 
 **Kurooto's own messages in the chat.** With `notify.app_chat` on (Dashboard → Settings → notify), reminders,
-results and other messages also show in the chat, besides Telegram. Questions and approvals stay under **Waiting for
-you**.
+results and other messages also show in the chat, besides Telegram. Without Telegram they always do. Questions and
+approvals stay under **Waiting for you**, with their answer buttons.
 
 **What you see under your message:**
 
@@ -181,13 +185,51 @@ you**.
 | Waiting for your computer | Your computer is off. It waits on your call line and goes to the computer when it's back; then this goes away and the answer comes. |
 | Not sent: tap to try again | The phone was offline, or your call line refused it (the reason is in brackets). Tap the message to send it again. |
 
+## Using the app instead of Telegram
+
+Telegram is optional (0.5.18). In setup, on the **Chat** step, pick **The Kurooto phone app instead**. It needs
+[Phone calls](calls.md) (a free Gemini key and your call line on a free Cloudflare account; the Features step sets it
+up), then you pair your phone right there or after **Finish setup**. Already set up with Telegram? Turn Telegram off
+in Features: as long as Phone calls is on, everything moves to the app.
+
+Without Telegram:
+
+- Everything Kurooto says comes to the app's chat: reminders, check-ins, the morning message, what's due, your AI's
+  answers, "after the call" notes, with their buttons (Snooze, Done, Why?, Less of this...). Questions and approvals
+  come as notifications with answer buttons and under **Waiting for you**.
+- `/pause`, `/resume`, `/status`, `/focus`, `/hold` and `/calls` work in the chat, and `/help` lists them.
+- Features that send you things (Reminders, Check-ins, Deadlines, Weekly summary...) turn on with the app instead of
+  Telegram. Voice notes and Files into notes still need Telegram (they're about what you send the bot; share files
+  to the app instead).
+- A file Kurooto would have sent on Telegram (a long answer, `kurooto send`, a file your AI sends you) comes as a link:
+  see [Files from your computer](#files-from-your-computer).
+- `kurooto doctor` says "talks to you: in the phone app's chat" and doesn't count the missing bot as a problem.
+
+What Telegram still does better: voice messages, sending files straight from Telegram's own share sheet on any
+device, and a desktop app. You can add Telegram later (Features → Telegram); then both work, and the chat gets
+Kurooto's own messages only with `notify.app_chat` on.
+
+## Files from your computer
+
+The chat doesn't carry files, so where Telegram would get a document, the chat gets a button that opens a link:
+
+1. **Google Drive**, with [Drive upload](google.md) on: the file goes to the Kurooto folder in your Drive and **Open
+   in Drive** opens it. It's deleted from your Drive after `drive_upload.temp_days` (7) days; move it out of the folder
+   to keep it.
+2. Otherwise **your call line** keeps a sealed copy for a day (files up to 10 MB). **Open** shows it in the phone's
+   browser, with **Save** (and the text itself for a text file). The key that opens it is made on your computer and is
+   only in the link, never stored on its own; after a day the copy is deleted and the link says "This file is gone".
+3. If neither works (the call line isn't connected, or the file is bigger), the chat says the file stays on your
+   computer, with its path.
+
 ## Sharing files to your notes
 
 **Android:** in any app, Share → **Share to Kurooto** (one file or several). Each goes into your notes' `inbox/` (or
 your files folder's, if you set one). With Chat on, the AI files it where it belongs and tells you where; without
 Chat you get "Got <file> from your phone: saved to ...". Files can be up to 50 MB each. A small window shows the progress, then
 "Sent." in green or what went wrong in red, and closes by itself. With the computer off, a file up to 20 MB waits on
-your call line (below).
+your call line (below). Then ask about it in the chat: "summarise the PDF I just sent" works for
+files shared in the last two hours (your AI is told their names and where they are).
 
 ## When your computer is off
 
@@ -209,7 +251,7 @@ sent them, each once.
 |---|---|
 | Telegram | `/phones` lists paired phones with their id, kind, whether notifications are on, and since when. `/unpair <id>` removes one (ids are 8 characters from `/phones`). |
 | Dashboard → Phone | Your call line's address and whether it's connected; **Pair a phone**; **Ring my phone (test)** (only while connected); the list of phones with **Remove**. |
-| Android app | **Unpair this phone** unpairs it on the phone; also remove it on your computer (Phone tab, or `/phones`). |
+| Android app | **Unpair this phone** unpairs it on the phone; also remove it on your computer (the dashboard's Phone tab, or `/phones`). |
 
 ## A lost phone, or keys that got out
 
@@ -249,6 +291,9 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
   answers go back like questions do. Your call line keeps the chat's last 50 messages, each for at most 3 days, so a
   phone can catch up while the computer is off.
 - Files you share go from the phone through your call line to your computer.
+- Files from your computer for the chat (where Telegram would get a document): with Drive upload on, to your own Google
+  Drive; otherwise a copy on your call line for a day, encrypted on your computer. The key is only in the link, which
+  travels inside the chat message, so the copy is as private as the chat itself; ntfy never sees either.
 - While your computer is off, what you send from the phone waits on your call line until the computer takes it (then
   it's deleted there): chat messages and answers as sent (sealed from Android), files as they are. A day's record of
   what went through (ids and short notes, no text you typed) stays so the phone can show it.

@@ -14,7 +14,7 @@ call decided; never a cloud AI. A line that looks like a health, money or passwo
 rules) keeps only its kind and outcome.
 
 Kept in the memory ledger (core/ledger.py: encrypted, in Kurooto's state folder, never in your notes) for good, or
-privacy.gist_days when you set it (before 0.5.19 they were in gists.jsonl, moved there on first use). /gists shows the
+privacy.gist_days when you set it (before 0.5.18 they were in gists.jsonl, moved there on first use). /gists shows the
 latest, /gists <words> finds them, /gists forget 3 drops one. /forget 7d keeps them; /forget all asks.
 """
 
@@ -242,7 +242,7 @@ def _old(app: App) -> list[dict]:
 
 
 def _move(app: App) -> None:
-    """gists.jsonl (0.5.18) into the encrypted ledger, once; the plain file goes only after they're in."""
+    """gists.jsonl (0.5.17) into the encrypted ledger, once; the plain file goes only after they're in."""
     if not gists_file(app).exists():
         return
     from kurooto.core import ledger

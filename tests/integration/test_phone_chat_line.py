@@ -116,3 +116,31 @@ def outbox_notes(w, n0):
         if "outbox" in inner.get("tags", []):
             out.append(inner)
     return out
+
+
+def test_a_file_for_the_chat_waits_sealed_on_the_line(chats, tmp_path):
+    """Where Telegram would get a document, the chat gets a link: the line keeps the sealed bytes, the key is only in
+    the link's #fragment, and the file page fetches it (0.5.18)."""
+    import urllib.parse
+    import urllib.request
+
+    from kurooto.modules.calls import chat as chatmod
+
+    w, ln = chats, chats["line"]
+    f = tmp_path / "answer.md"
+    f.write_bytes(os.urandom(chatmod.FILE_PART + 1000))
+    link, why = w["calls"].chat.to_line(f)
+    assert link and not why, why
+    assert link.startswith(ln.base + "/file#")
+    frag = dict(urllib.parse.parse_qsl(link.split("#", 1)[1]))
+    with urllib.request.urlopen(f"{ln.base}/sealed/{frag['i']}", timeout=30) as r:  # no key needed: it's sealed
+        blob = r.read()
+    assert blob != f.read_bytes() and line.open_f1(line.unb64url(frag["k"]), blob) == f.read_bytes()
+    assert ln.call("GET", "/sealed/" + "0" * 32)[0] == 404
+    assert ln.call("GET", "/sealed/nothex")[0] == 404
+    for page, word in (("/file", "file.js"), ("/talk", "talk.js")):  # the file page, and the web app's chat
+        with urllib.request.urlopen(ln.base + page, timeout=30) as r:
+            assert word in r.read().decode()
+    big = tmp_path / "big.bin"
+    big.write_bytes(b"\0" * (chatmod.FILE_MAX + 1))
+    assert w["calls"].chat.to_line(big)[0] == ""  # too big: said so, nothing sent

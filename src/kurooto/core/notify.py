@@ -7,6 +7,9 @@ may hold it for the evening bundle or, if you stopped that kind, drop it. Its Wh
 Telegram only; the phone app and the desktop get the plain message.
 Channels are registered by the modules that provide them (Telegram, the phone app and its chat); the desktop is
 built in. An answer to something you wrote in the phone app's chat (reply_to "app:<id>") goes back to that chat only.
+Without Telegram (0.5.18: it's optional when the phone app is paired), the chat is where everything else goes, as with
+notify.app_chat on, Why? / Less of this included; a file (a long answer, `kurooto send`) comes there as a link
+(calls/chat.py: Google Drive with Drive upload on, else a sealed copy on your call line).
 A channel that keeps its own copy of a question (the phone app) also registers a retract handler: when that question
 is dealt with anywhere (answered on Telegram, a button tapped, expired), retract() takes its copy down.
 """
@@ -32,7 +35,7 @@ register_defaults(
         # the phone app: calls ring it, and questions and approvals come with answer buttons. Add "reminder",
         # "deadline", "result" or "info" to get those there too (they still go to Telegram as well).
         "app_kinds": ["call", "question", "approval"],
-        "app_chat": False,  # Kurooto's own messages (those not in app_kinds) also go to the phone app's chat
+        "app_chat": False,  # Kurooto's own messages (not app_kinds) also go to the app's chat; always without Telegram
     },
 )
 
@@ -128,9 +131,10 @@ class Notifier:
                 self.channels["app"](msg)
             except Exception as e:
                 self.app.events.emit("notify_failed", channel="app", error=str(e)[:200])
-        elif "chat" in self.channels and s.get("notify.app_chat") and msg.kind != "call":
-            try:
-                self.channels["chat"](msg)
+        elif "chat" in self.channels and msg.kind != "call" and (self.app.app_main() or s.get("notify.app_chat")):
+            try:  # without Telegram the chat is your channel: Calm's Why? / Less of this come there too, and files
+                if self.app.app_main() or not msg.file:  # (with Telegram, a file is Telegram's document)
+                    self.channels["chat"](tmsg if self.app.app_main() else msg)
             except Exception as e:
                 self.app.events.emit("notify_failed", channel="chat", error=str(e)[:200])
         no_other_channel = ref is None and "app" not in self.channels

@@ -16,7 +16,8 @@ kurooto ask-me "question" [--choices "a|b|c"] [--expires 2d] [--wait [--timeout 
 kurooto ask-me --pending [--json] | --id ID [--wait]   the open questions; one asked earlier (wait for its answer)
 kurooto ask-me "question" --then "CMD {answer}"   run a command with the answer once it comes (no shell; {id} too)
 kurooto ask-approval "question" [--timeout MIN]   ask for a yes/no and wait (exit 0 yes, 1 no, 2 timeout)
-kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB; --to drive: Google Drive)
+kurooto send FILE [--caption T]     send yourself a file on Telegram (up to 50 MB; --to drive: Google Drive;
+                                    no Telegram: a link in the phone app's chat)
 kurooto note [--title T] TEXT       save a quick note to your notes' inbox (or pipe text in)
 kurooto top [--once]     a status board: this computer and Kurooto (q quits)
 kurooto term [--print]   Kurooto Terminal: your AI, your shell, Kurooto chat and its log in one window

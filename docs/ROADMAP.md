@@ -84,7 +84,8 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   you do?" in the wizard, holiday calendars)
 - ~~**The phone app as a full chat channel** beside Telegram, for places where Telegram is blocked or little used.~~
   (0.5.16: Android's chat, handled like a Telegram message with working buttons; `notify.app_chat` sends Kurooto's
-  own messages there too; the iPhone app's chat is still to come, on the same call-line API)
+  own messages there too) (0.5.18: the iPhone app's chat; Telegram is optional: setup offers the phone app instead,
+  and without Telegram everything comes to the chat, files as Drive links or a sealed copy on the call line)
 - **Small gaps**: ~~`add_deadline` takes the course, so a mail's "Lab report" lands on the right course page~~
   (0.5.15: `course` by name or short name; an unknown one is said, never guessed); a recurring fact said in chat
   becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look back can propose routines
@@ -139,27 +140,27 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 ## More human (2026-10-23)
 - ~~**Open threads and "that thing".** A small list of what you're in the middle of, opened from what you say you'll
   do and tasks you start, closed when done; "did I finish that thing?" resolves from the last 48 hours and asks once
-  when two fit.~~ (0.5.19: `/threads` with Done, Drop and Undo; also from what you say on calls; `memory.thread_days`;
+  when two fit.~~ (0.5.18: `/threads` with Done, Drop and Undo; also from what you say on calls; `memory.thread_days`;
   a thing found that way is only read or asked about, never acted on without your OK)
 - ~~**A context assembler with a memory budget.** Each AI reply gets only the remembered items your message refers to,
-  capped, and the receipt says how many.~~ (0.5.19: `memory.budget_tokens` 600, `memory.recall`; open threads, gists,
+  capped, and the receipt says how many.~~ (0.5.18: `memory.budget_tokens` 600, `memory.recall`; open threads, gists,
   meetings and daily notes by rules; gists only, never transcripts; "used 2 remembered items"; calls get open threads
   and the day's gists)
 - ~~**A memory ledger with an episodic timeline.** One local store of everything remembered, each row with its source
-  and a Forget; "when did I last talk to Prof X?", "what was I doing last Thursday?".~~ (0.5.19: always encrypted with
+  and a Forget; "when did I last talk to Prof X?", "what was I doing last Thursday?".~~ (0.5.18: always encrypted with
   a key in your keychain, out of backups unless `backups.memory`, covered by `/forget`; `/memory`, `/memory forget 3`,
   `/memory export` to a note)
 
 What people have asked for, open and done, is in [REQUESTED.md](REQUESTED.md). Have an idea? Open an issue on GitHub.
 
 ## More human (2026-10-23)
-- ~~**Persona card**: what to call you, tone, length, things to avoid, in every AI request and call.~~ (0.5.19:
+- ~~**Persona card**: what to call you, tone, length, things to avoid, in every AI request and call.~~ (0.5.18:
   `/persona`, the About you tab, Settings; empty to start; feelings, a backstory and "I missed you" are left out)
-- ~~**Negotiate, don't repeat**: a reshaped plan from your own plan instead of the same reminder again.~~ (0.5.19:
+- ~~**Negotiate, don't repeat**: a reshaped plan from your own plan instead of the same reminder again.~~ (0.5.18:
   "1 h now, 1 h tomorrow?" with Do that / Not today, once per deadline per day, on Telegram, the app and calls)
-- ~~**Repair with two readings**: ask with both as buttons when two requests are about equally close.~~ (0.5.19: the
+- ~~**Repair with two readings**: ask with both as buttons when two requests are about equally close.~~ (0.5.18: the
   same pick twice teaches the phrasing through test cases)
-- ~~**Boundaries it keeps**: health, relationship and money decisions point to a person.~~ (0.5.19: a rule list for
+- ~~**Boundaries it keeps**: health, relationship and money decisions point to a person.~~ (0.5.18: a rule list for
   plain-English requests, and an instruction to every AI request and call)
-- ~~**Register that follows yours**: a short message gets a short answer, a voice note a spoken one.~~ (0.5.19: by
+- ~~**Register that follows yours**: a short message gets a short answer, a voice note a spoken one.~~ (0.5.18: by
   length band only, `persona.register`)

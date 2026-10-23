@@ -9,7 +9,7 @@ h2 { font-size: 16px; margin: 8px 0 0; }
 p { margin: 0; color: var(--dim); }
 a { color: var(--fg); }
 #reason { color: var(--dim); font-size: 15px; min-height: 1.4em; }
-#inbox { flex: 0 0 auto; }  /* a link, not a spacer: #log takes the room */
+#inbox, #chat, main > .button { flex: 0 0 auto; }  /* links, not spacers: #log takes the room */
 #status { font-size: 14px; color: var(--dim); }
 #status.live, .ok { color: var(--ok); }
 #status.err, .err { color: var(--bad); }
