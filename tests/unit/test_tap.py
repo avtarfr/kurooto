@@ -106,7 +106,15 @@ def every_tool(app) -> list:
 
 
 def test_the_table_names_each_action_and_how_it_is_approved():
-    assert set(tap.GUARDED) == {"alarm.set", "call.place", "mail.read", "send.out", "repo.attach", "data.delete"}
+    assert set(tap.GUARDED) == {
+        "alarm.set",
+        "call.place",
+        "mail.read",
+        "send.out",
+        "repo.attach",
+        "addon.install",
+        "data.delete",
+    }
     for action, g in tap.GUARDED.items():
         assert g.what and g.where and g.ways, action
         assert set(g.ways) <= set(tap.WAYS), action

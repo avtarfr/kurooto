@@ -73,6 +73,12 @@ GUARDED: dict[str, Guard] = {
         ("typed",),
         "/repos add <folder> [as <project>]; repositories are never searched for on the disk",
     ),
+    "addon.install": Guard(
+        "add or update an add-on by link (code that runs inside Kurooto)",
+        ("typed", "button"),
+        "`kurooto addons add|update` after its card (yes typed, or --yes), Features → Add-ons by link (Add or Update "
+        "after the card, with the box for code ticked); never by the AI, a request or a schedule",
+    ),
     "data.delete": Guard(
         "delete your data",
         ("typed", "confirm", "button"),

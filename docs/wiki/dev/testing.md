@@ -9,8 +9,12 @@ uv run pytest tests/unit/test_jobs.py -k watchdog
 uv run ruff check . && uv run ruff format --check .
 ```
 
-- `pyproject.toml [tool.pytest.ini_options]`: `testpaths = ["tests"]`, marker `live` ("needs real accounts or
+- `pyproject.toml [tool.pytest.ini_options]`: `testpaths = ["tests", "addons"]`, marker `live` ("needs real accounts or
   network; not run in CI"). Never write a test that needs a real account or the internet without that marker.
+- `addons/<name>/tests/`: each ready-to-publish add-on's own tests. `addons/conftest.py` imports `tests/conftest.py`'s
+  fixtures (the pretend home, the env fixture) and adds `load_addon(name, app)` (a git repo made from a copy, fetched
+  and agreed to like a user would, held to its card) and `fake_programs({...})` (stand-ins first on PATH that log
+  their arguments). `uv run pytest addons/restic-backups` runs one.
 - Some tests need Node: `tests/unit/test_static_js.py` (`node --check` on every dashboard script),
   `tests/unit/test_livefallback.py` (runs `tests/js/*.mjs`), `tests/unit/test_calls.py` (the Worker against the
   crypto vectors). They skip when `node` isn't on PATH.

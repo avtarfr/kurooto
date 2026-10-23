@@ -383,3 +383,7 @@ body.dense #sm-body { padding-top: 18px; }
 .sm-note .r { margin-left: auto; flex: none; }
 
 #cpu-info .item { white-space: nowrap; }
+
+/* Add-ons by link: the card you read before adding one (home.js linkBlock) */
+.al-card { white-space: pre-wrap; font: inherit; font-size: 13px; margin: 6px 0; }
+.al-row, .al-pending { margin: 8px 0; }

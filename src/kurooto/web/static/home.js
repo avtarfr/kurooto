@@ -1659,7 +1659,7 @@ const said = {}; // a feature's last Set up result (✓ or ✗), shown on its ca
 let SHOW_HIDDEN = false, FSET = {}; // the list of hidden features is open; each feature's own settings (for the search)
 async function renderFeatures(body) {
   const typing = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.find === "features";
-  const [st, sets] = await Promise.all([api("state"), api("settings").catch(() => ({ sections: [] }))]);
+  const [st, sets, al] = await Promise.all([api("state"), api("settings").catch(() => ({ sections: [] })), api("addons").catch(() => ({ linked: [], kept: [] }))]);
   let health = {};
   try { health = await api("health"); } catch { /* an older Kurooto */ }
   if (stale(body, "features")) return; // another page was opened meanwhile
@@ -1690,7 +1690,8 @@ async function renderFeatures(body) {
   const pieces = (m) => !m.on || !m.card ? "" : `<div class="pieces">${(m.card.lines || []).map((l) => `<p>${esc(l)}</p>`).join("")}${(m.card.toggles || []).map((x) => `<label><input type="checkbox" data-card="${esc(m.id)}" data-act="${esc(x.id)}"${x.on ? " checked" : ""}${x.disabled ? " disabled" : ""}> ${esc(x.label)}</label>`).join("")}</div>`;
   const card = (m) => `<div class="card2 ${m.on ? "on" : ""}${hid(m) ? " hid hidden" : ""}" data-id="${m.id}" data-hay="${esc(hay(m))}">${hideBtn(m)}<b>${esc(m.title)}</b>${hid(m) ? ' <span class="tag-h">hidden</span>' : ""}<p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>${m.id === "mail_digest" && m.on ? `<p><a href="/confidential" target="_blank" rel="noopener">Confidential mail (summarised on this computer)</a></p>` : ""}
     ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${calls(m)}${form(m)}${pieces(m)}${said[m.id] ? `<p class="${said[m.id].startsWith("✓") ? "ok2" : "bad2"}" style="font-weight:600">${esc(said[m.id])}</p>` : ""}<p class="find-why d hidden"></p></div>`;
-  const addons = st.modules.filter((m) => m.addon); // features from your own add-ons folder (core/overlay.py)
+  const addons = st.modules.filter((m) => m.addon && !m.linked); // features from your own add-ons folder (core/overlay.py)
+  const linked = st.modules.filter((m) => m.linked); // features of the add-ons by link (core/addons.py)
   const extras = st.modules.filter((m) => m.extra && !m.addon); // add-ons that come with Kurooto (Module.extra)
   const kept = $("#flog") ? $("#flog").innerHTML : ""; // what the last step said survives the re-render
   const hidden = st.modules.filter(hid);
@@ -1699,11 +1700,18 @@ async function renderFeatures(body) {
   setupLeft(st.setup);
   body.innerHTML = `${findBar("features", "features")}${setupBlock()}${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon && !m.extra).map(card).join("")}</div>${extras.length
     ? `<p class="d addons-h">Add-ons: they come with Kurooto, and are off until you turn them on</p><div class="feat">${extras.map(card).join("")}</div>` : ""}${addons.length
-    ? `<p class="d addons-h">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${addons.map(card).join("")}</div>` : ""}<div class="log" id="flog">${kept}</div>${hiddenBox}`;
+    ? `<p class="d addons-h">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${addons.map(card).join("")}</div>` : ""}${linkBlock(al, linked.map(card).join(""))}<div class="log" id="flog">${kept}</div>${hiddenBox}`;
   findWire(body, "features", typing);
   body.onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target, flog = $("#flog");
+    if (f.dataset.addlink !== undefined) { // Add-ons by link: its card first (core/addons.py)
+      const btn = f.querySelector("button"); btn.disabled = true; flog.textContent = "Cloning it to read its card…";
+      const r = await api("addons/look", { url: f.url.value.trim(), ref: f.ref.value.trim() });
+      btn.disabled = false; flog.textContent = r.ok ? "" : r.message;
+      if (r.ok) { AL_CARD = { ...r, kind: "add" }; renderFeatures(body); }
+      return;
+    }
     const values = Object.fromEntries([...f.querySelectorAll("input:not([type=file]), textarea")].map((i) => [i.name, i.value]));
     if (f.dataset.gemini !== undefined) { // the Gemini key, for Phone calls
       const r = await api("keys/gemini", { key: values.key });
@@ -1742,6 +1750,25 @@ async function renderFeatures(body) {
       await saveHiddenF(); renderFeatures(body); return;
     }
     if (t.dataset.showhidden) { SHOW_HIDDEN = !SHOW_HIDDEN; renderFeatures(body); return; }
+    if (t.dataset.alcheck) { // a newer commit's card and what it changes
+      t.disabled = true; flog.textContent = `Looking for a newer commit of ${t.dataset.alcheck}…`;
+      const r = await api("addons/check", { name: t.dataset.alcheck });
+      flog.textContent = r.ok && !r.same ? "" : r.message;
+      if (r.ok && !r.same) AL_CARD = { ...r, kind: "update" };
+      renderFeatures(body); return;
+    }
+    if (t.dataset.aladd) { // yes to the card (with the box ticked when it runs code)
+      const box = body.querySelector("[data-alcode]");
+      const r = await api(`addons/${AL_CARD && AL_CARD.kind === "update" ? "update" : "add"}`, { token: t.dataset.aladd, code: !!(box && box.checked) });
+      flog.textContent = r.message || "";
+      if (r.ok) { AL_CARD = null; renderFeatures(body); }
+      return;
+    }
+    if (t.dataset.aldrop) { await api("addons/drop", { token: t.dataset.aldrop }); AL_CARD = null; flog.textContent = "Dropped; nothing was kept."; renderFeatures(body); return; }
+    if (t.dataset.alremove || t.dataset.alundo) {
+      const r = await api(t.dataset.alremove ? "addons/remove" : "addons/undo", { name: t.dataset.alremove || t.dataset.alundo });
+      flog.textContent = r.message || ""; renderFeatures(body); return;
+    }
     if (t.dataset.card) { const r = await api("modules/card", { id: t.dataset.card, act: t.dataset.act, value: t.checked }); flog.textContent = r.message || r.error || ""; renderFeatures(body); return; }
     if (t.dataset.fix) { t.disabled = true; const r = await api("health/fix", { id: t.dataset.fix }); flog.textContent = r.message || ""; renderFeatures(body); return; }
     if (t.dataset.on && HIDDEN_F.delete(t.dataset.on)) await saveHiddenF(); // turned on from the search: not hidden any more
@@ -1758,6 +1785,26 @@ async function renderFeatures(body) {
       renderFeatures(body); // the log stays (kept), and the ✓/✗ line shows on the card
     }
   };
+}
+// ----------------------------------------------------------------------- Add-ons by link (core/addons.py)
+// A git address, then its card (what it adds, may reach and start, whether it runs code) before anything is added;
+// each added one with Check for update (what changes, then its card again) and Remove (Undo puts it back).
+let AL_CARD = null; // the card waiting for an answer: {token, text, changes_text?, card, kind: add|update}
+function linkBlock(al, featureCards) {
+  const rows = (al.linked || []).map((r) => `<div class="card2 al-row"><b>${esc(r.title)}</b> <span class="d">${esc(r.name)} · ${esc(String(r.commit).slice(0, 12))} · ${esc(r.url)}</span>
+    ${r.problem ? `<p class="bad2">Didn't load: ${esc(r.problem)}</p>` : ""}
+    <p><button data-alcheck="${esc(r.name)}">Check for update</button> <button data-alremove="${esc(r.name)}">Remove</button></p></div>`).join("");
+  const have = new Set((al.linked || []).map((r) => r.name));
+  const undo = (al.kept || []).map((k) => `<p class="d">${esc(k.name)}: ${k.why === "removed" && !have.has(k.name) ? "removed" : "an earlier version is kept"} · <button data-alundo="${esc(k.name)}">Undo</button></p>`).join("");
+  const c = AL_CARD;
+  const pending = !c ? "" : `<div class="card2 al-pending"><b>${c.kind === "update" ? "What this update brings" : "Its card: read it before adding"}</b>
+    ${c.changes_text ? `<div class="al-card">${esc(c.changes_text)}</div>` : ""}<div class="al-card">${esc(c.text)}</div>
+    ${c.card && c.card.code && c.card.code.length ? `<label><input type="checkbox" data-alcode> I trust this code: it runs inside Kurooto with its access to this computer</label>` : ""}
+    <p><button class="primary" data-aladd="${esc(c.token)}">${c.kind === "update" ? "Update" : "Add"}</button> <button data-aldrop="${esc(c.token)}">Don't</button></p></div>`;
+  return `<p class="d addons-h">Add-ons by link: made by others, each pinned to one commit; you read its card before anything is added</p>
+    <div class="feat"><div class="card2 al-row"><b>Add one from its git address</b><form class="sf" data-addlink><label>Git address<input name="url" placeholder="https://github.com/someone/kurooto-habits" autocomplete="off" spellcheck="false"></label>
+    <label>Tag, branch or commit (optional: the newest commit, pinned)<input name="ref" autocomplete="off" spellcheck="false"></label><button class="primary" type="submit">Look at it</button></form>${undo}</div>${rows}</div>
+    ${pending}${featureCards ? `<div class="feat">${featureCards}</div>` : ""}`;
 }
 // escaped text with its web addresses as links (the Cloudflare sign-in page shows up in a setup log)
 const linkify = (text) => text.split(/(https?:\/\/[^\s<>"]+)/g).map((part, i) => (i % 2

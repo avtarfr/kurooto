@@ -142,6 +142,7 @@ Details of each Google permission are in [google.md](google.md#what-each-feature
 | Kurooto Terminal | nothing by itself; getting kitty or fish (only when you say yes) downloads them | their official releases |
 | Terminals, and your AI's program in them | nothing by themselves; what you type to your AI's program goes to its service, as when you run it yourself | that program's service |
 | Your add-ons | nothing by the feature; your add-ons' own code can send whatever it's written to send | wherever your add-ons send it |
+| Add-ons by link | git fetches it when you add or update one; then only what its card says: the hosts it may reach, and what the programs it may start send | the git address you gave; the hosts on its card |
 | Diagnostics zip (`kurooto doctor --bundle`) | nothing: it's saved on this computer for you to look at and send yourself | stays here until you send it |
 | Setup page progress | nothing: which setup steps you finished or skipped, and the seconds spent on each, stay in `setup.json` in Kurooto's state folder (never what you typed); the diagnostics zip includes them | stays on your computer |
 | `kurooto uninstall --revoke` | requests to delete your call line (Cloudflare), revoke each Google sign-in (Google), and clear your bot's webhook, waiting messages and command menu (Telegram) | those services |
@@ -169,7 +170,7 @@ Google's APIs (Gemini, sign-in, Classroom, Gmail, Drive and Calendar), GitHub, C
 Addresses you gave are yours and always allowed: your calendar's link, your Research feeds, your own AI service, your
 call line, your ntfy server, and pages your AI reads for a request. This computer (`127.0.0.1`) is never counted.
 
-Programs that go online by themselves show as **handed to** them, with the feature: git (Notes sync, Profile sync),
+Programs that go online by themselves show as **handed to** them, with the feature: git (Notes sync, Profile sync, add-ons by link),
 npm and wrangler (setting up the call line), agy and Claude Code, Ollama (a model download), GBrain, Tectonic and
 installers. Kurooto doesn't see what they send; the tables above say where it goes.
 
@@ -179,6 +180,10 @@ installers. Kurooto doesn't see what they send; the tables above say where it go
 - `enforce`: it's refused, and the feature says "Kurooto didn't connect to <host>". Add hosts you trust to
   **`privacy.allow_hosts`** (`["feeds.example.org"]`; `".example.org"` allows every host under it).
 - `off`: nothing is checked or counted.
+
+**Add-ons by link** are fenced apart in every mode: their code reaches only the hosts on the card you agreed to and
+starts only the programs on it; anything else is refused and listed by `/egress` as blocked for "add-on <name>"
+([add-ons.md](add-ons.md#add-ons-by-link)).
 
 ## Free AI tiers and their terms
 

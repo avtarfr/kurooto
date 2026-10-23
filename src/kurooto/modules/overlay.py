@@ -100,13 +100,19 @@ class AddOns(Module):
 
     # ------------------------------------------------------------------------------------------ telegram
     def commands(self):
-        return [Command("addons", "your add-ons: what loaded, and what didn't", self._cmd)]
+        return [
+            Command(
+                "addons", "your add-ons (your folder's and those added by link): what loaded, what didn't", self._cmd
+            )
+        ]
 
     def _cmd(self, msg: Incoming, arg: str) -> str:
         st = overlay.status(self.app)
+        linked = self.linked_lines()
         if not st.get("path"):
-            return "No add-ons loaded: " + (self.ready()[1] or "turn the feature on again")
-        rows = [f"Your add-ons from {st['path']}:"]
+            return "\n".join([*linked, "", "No add-ons folder loaded: " + (self.ready()[1] or "turn it on again")])
+        rows = [*linked, ""] if linked else []
+        rows.append(f"Your add-ons from {st['path']}:")
         for mid in st.get("modules") or []:
             m = self.app.modules.get(mid)
             if m:
@@ -119,3 +125,21 @@ class AddOns(Module):
         for e in (st.get("errors") or [])[-5:]:
             rows.append(f"Problem: {e['where']}: {e['error']}")
         return "\n".join(rows)
+
+    def linked_lines(self) -> list[str]:
+        """The add-ons by link (core/addons.py), for /addons: each with its features, or why it didn't load."""
+        linked = overlay.status(self.app).get("linked") or {}
+        if not linked:
+            return ["No add-ons by link (kurooto addons add <git url> on your computer, or the dashboard)."]
+        rows = ["Added by link:"]
+        for name, row in sorted(linked.items()):
+            if row.get("problem"):
+                rows.append(f"• {name}: didn't load: {row['problem']}")
+                continue
+            feats = [
+                f"{m.title or mid} ({'on' if self.app.is_on(mid) else 'off'})"
+                for mid in row.get("modules") or []
+                if (m := self.app.modules.get(mid))
+            ]
+            rows.append(f"• {name} at {str(row.get('commit', ''))[:12]}: {', '.join(feats) or 'no features'}")
+        return rows

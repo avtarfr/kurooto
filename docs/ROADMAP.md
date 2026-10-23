@@ -77,7 +77,9 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   (0.5.14: a task due before the next class and a lecture note stub, also for classes you slept through; 0.5.15:
   that day's Classroom posts in the message and the stub, and without Classroom it works the same)
 - **Bedside mode.** An old Android phone as a dock: clock, today, alarm, a talk button.
-- **Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.
+- ~~**Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.~~
+  (0.5.22: also on the dashboard; held to its card (features, commands, AI tools, jobs, and only the hosts and
+  programs it names); `update` shows what changes and asks again; `remove` with Undo)
 
 ## From the skeptic review (2026-10-23)
 Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.

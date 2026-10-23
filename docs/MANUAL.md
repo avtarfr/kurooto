@@ -38,7 +38,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Handwritten notes](#handwritten-notes) · [Books and PDFs](#books-and-pdfs) ·
     [Concept graph](#concept-graph-books-into-linked-notes) · [Study packs](#study-packs) ·
     [Study tracker](#study-tracker) · [Research](#research) · [Terminals](#terminals) ·
-    [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) ·
+    [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) · [Add-ons by link](#add-ons-by-link) ·
     [From a terminal or a script](#from-a-terminal-or-a-script) ·
     [The reserve](#the-reserve-markdown-copies-of-kurootos-state-for-ai-programs)
 - [Your phone](#your-phone)
@@ -1308,8 +1308,9 @@ a stub it made is a plain note you can delete; `/unignore <topic>` takes back No
 
 ### Set up from what you say
 
-**What it does.** "I got a project under Prof X on <topic>" (in the chat or your journal) starts that project's note
-with "With: Prof X (supervisor)" and a Meetings section; "met X today, ..." adds a dated line there and sets "Last
+**What it does.** "I got a project under Prof X on <topic>" (in the chat or your journal; also "my thesis under Prof
+X", "working with Prof X on a project about <topic>", "my supervisor is Dr X") starts that project's note with "With:
+Prof X (supervisor)" and a Meetings section; "met X today, ..." adds a dated line there and sets "Last
 met: <date>"; "a meeting with X on Friday at 4" becomes a deadline; "I meet my manager Mira Castell every Monday at
 10 about onboarding" (any role, in your word) puts "With:" and "Meets: every Mon 10:00" in that project's note (see
 [Meetings: minutes and action items](#meetings-minutes-and-action-items)); the evening before a meeting (20:00,
@@ -1317,7 +1318,8 @@ met: <date>"; "a meeting with X on Friday at 4" becomes a deadline; "I meet my m
 Next steps", the last meeting's line and the last minutes; "every Monday at 9 I have a <subject> lab" puts
 the class in your timetable; "every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from
 9 to 5" or "gym Tue Thu 7am" adds a [commitment](#commitments) (an hour long unless you say the end; Commitments is
-turned on if it was off), and so does "I have lab every Thursday 2-5" when no course is named; "there's a quiz on
+turned on if it was off), and so does "I have lab every Thursday 2-5" when no course is named ("on Mondays" counts as
+every Monday, "I've got" as "I have", "I go running every morning at 6" too; a call or meeting with someone never); "there's a quiz on
 Linear Algebra every Monday at 10" adds a row to the recurring quizzes table when the course and the day are said (a
 message that is only that request goes to the request, which asks for what's missing); "by POTA I mean Physics of
 the Atmosphere" or "I call stochastic calculus stoch" gives that subject the short name, and so does using one in
@@ -2589,6 +2591,29 @@ the top of `src/kurooto/core/overlay.py`):
 
 *Turn it off:* Features → Your add-ons → Turn off; the add-ons are unloaded and their folder stays as it is.
 
+### Add-ons by link
+Someone else's add-on, published as a git repository: `kurooto addons add <git address> [--ref <tag>]`, or Dashboard →
+Features → **Add-ons by link** → paste the address → **Look at it**. Its **card** comes first: where it's from and the
+one commit it's pinned to (a tag, a commit, or a branch's newest commit kept as that commit), what it adds (features,
+commands, jobs, AI tools, skills, prompts), the hosts it may reach, the programs it may start (and which go online by
+themselves), whether it sees your messages first, and whether it **runs code** (Python inside Kurooto with its access
+to this computer). Nothing is added until you say yes; on the dashboard you also tick "I trust this code".
+
+It's held to its card: it loads only while its files are exactly the ones you agreed to; features, commands, AI tools
+and jobs not on the card are left out; its code may connect only to the hosts on the card and start only the programs
+on it (refusals show in `/egress` as "add-on <name>", whatever `privacy.egress` is). That's a fence for mistakes and
+overreach, not a sandbox: only add code you trust. Its features are listed under **Add-ons by link**, each off until
+you turn it on.
+
+`kurooto addons update <name>` (**Check for update**) shows what a newer commit changes (files, and what's new on the
+card) and its card again, then asks again. `kurooto addons remove <name>` (**Remove**) moves it aside; `kurooto addons
+undo <name>` (**Undo**) puts it back, or the version before an update. `kurooto addons` lists them, `kurooto addons
+show <name>` shows a card. `addons.on` off loads none of them. The four generic add-ons in Kurooto's `addons/` folder
+(restic backups, desktop helpers, your command words, handwriting from the cloud) are ready to add this way once
+they're published.
+
+*Leaves your computer:* git fetches the add-on from the address you give; after that, what its card says.
+
 ### From a terminal or a script
 Scripts and other tools on your computer can reach you through Kurooto (Telegram, the phone app, the desktop, however
 you set it up):
@@ -3608,6 +3633,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | A class or date from the term note is missing | Check the table's heading ("Weekly timetable", "Key dates"), times like `09:00-09:55` and dates like `2026-11-12`; `/term` says how many classes and key dates it read. |
 | Telegram's "/" menu is out of date | It updates within a minute of a feature going on or off, and every quarter of an hour for skills; `telegram.menu` off and on again sets it within a minute. |
 | Your add-ons: a problem in `kurooto doctor` | `/addons` shows which file and the error. Fix it, then restart Kurooto (`kurooto stop`, `kurooto start`). |
+| An add-on by link didn't load: "its files changed since you agreed to its card" | `kurooto addons update <name>` (or remove it and add it again). |
+| "The add-on X may only reach the hosts on its card" / "start the programs on its card" | Refused on purpose: it asked for something its card doesn't say. A newer version that declares it shows it when you update. |
 | Something else | `kurooto doctor --bundle` and send the zip to whoever is helping you (see below). |
 
 ## Getting help (diagnostics)

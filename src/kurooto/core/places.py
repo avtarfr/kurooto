@@ -111,7 +111,7 @@ def write_roots(app: App) -> list[Path]:
         notes_root(app),
         course_files(app),
         *([f] if (f := files_folder(app)) else []),
-        *overlay.dirs(app, "skills"),
+        *overlay.dirs(app, "skills", linked=False),  # an add-on by link's files stay as you agreed to them
     ]
     return list(dict.fromkeys(Path(os.path.abspath(p)) for p in roots))
 

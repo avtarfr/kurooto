@@ -28,11 +28,6 @@ Standing plans, never struck through.
   retried requests, your corrections, call lessons, answers that claimed what they didn't do), changes its own
   prompts, skills and quiet settings to fix it, and keeps a change only if replaying the past cases goes better;
   each change is listed with Undo. It improves the way it improves: the checks themselves are revised the same way.
-- **Set up from what it sees, not from settings** (0.5.9 has projects with their supervisor, meetings, classes,
-  commitments like the gym or a shift, a mail deadline's course and subjects' short names): one pass over chat and the journal (rules first, the AI only on a
-  hit) creates projects with whoever they're with ("got a project under Prof X": the project, its supervisor, and
-  meetings from then on), classes from "every Monday at 9 I have a lab", routines, a deadline's course, subject
-  aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.
 - **Preview the organic blobs in the phone app**, as in the dashboard.
 - **A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
   Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.
@@ -42,9 +37,18 @@ Standing plans, never struck through.
   written for 0.5.8).
 - **Use GBrain more**: weekly checkup and contradiction reports in chat, entity and timeline pages for courses,
   queries during calls.
-- **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting).
+- **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting). (0.5.22: all four
+  are ready in `addons/` with manifests, tests and READMEs, to add by link; left: publishing each as its own
+  repository)
 
 ## Done
+- ~~**Set up from what it sees, not from settings**: one pass over chat and the journal creates projects with whoever
+  they're with ("got a project under Prof X": the project, its supervisor, and meetings from then on), classes from
+  "every Monday at 9 I have a lab", routines, a deadline's course, subject aliases; one line to say so, and
+  `/inferred` to undo. Alarms, calls and anything outward still need a tap.~~ (0.5.9 to 0.5.20: projects, meetings,
+  classes, commitments, recurring quizzes, short names; a deadline's course from its title. 0.5.22: a thesis or
+  dissertation, "my supervisor is Dr X", the person before "project", "on Mondays", "I've got", "I go running every
+  morning"; a call with someone is never a routine. Rules alone are enough: no AI pass, nothing leaves the computer)
 - ~~Local model on the graphics card without spilling onto the processor~~ (0.5.9: spilled models are unloaded and
   reload fully on the card; one too big is told once; `/models` shows the share)
 - ~~Allow safe scripts for agents: named scripts, not a bare `python3`~~ (0.5.8: `agents.scripts`, full paths;

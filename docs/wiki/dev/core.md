@@ -702,7 +702,9 @@ same answer (wrapped to count the bytes read; use it as a context manager) and r
   the custom AI service's `base_url`, the call line and its ntfy server, the AI's `fetch` tool, whose pages are chosen
   for the user's request). In `enforce`, a host that's none of those raises `Blocked`, an `urllib.error.URLError`
   whose text names the host and `privacy.allow_hosts`, so existing `except OSError` / `URLError` handling copes.
-  `record` (the default) counts it with `unlisted`.
+  `record` (the default) counts it with `unlisted`. A request whose innermost owner is an add-on by link
+  (`core/fence.py:owner`) is checked against its card instead, in every mode: an undeclared host raises `Fenced` (a
+  `Blocked`).
 - `urlopen` counts `len(req.data)` out and what's read in, once, when the answer is closed (`_Counted`); a request that
   raised (an `HTTPError` too) is counted with what went out. `urllib.request.urlopen` is looked up at call time, so
   tests that put a fake there still work. Redirects are followed by urllib and aren't checked again.
@@ -896,7 +898,9 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/leave.py` | uninstall (`--revoke`) and `kurooto rotate` |
 | `core/mcp.py` | `kurooto mcp` ([brains.md](brains.md#how-agent-programs-get-them-kurooto-mcp)) |
 | `core/notinterested.py` | topics the user doesn't care about (`about-me/not-interested.md`) |
-| `core/overlay.py` | add-ons ([modules.md](modules.md#add-ons-coreoverlaypy)) |
+| `core/overlay.py` | add-ons: your folder's, and loading the add-ons by link ([modules.md](modules.md#add-ons-coreoverlaypy)) |
+| `core/addons.py` | add-ons by link: fetch at a pinned commit, the card, consent, update with what changes, remove and undo ([modules.md](modules.md#add-ons-by-link-coreaddonspy-corefencepy)) |
+| `core/fence.py` | the fence around add-ons by link: only the hosts and programs on their card (an audit hook) |
 | `core/palette.py`, `core/syscolors.py` | the pages' colour palette, and the OS accent colour for the `system` palette |
 | `core/pathfix.py` | putting `~/.local/bin` on PATH (disabled in tests) |
 | `core/persona.py` | the persona card (`persona.call_me/tone/length/avoid`, empty by default; `clean()` drops parts matching `GUARD`: feelings, saying it missed you, a backstory, a relationship; applied on save and on every read), `/persona` (`command`), the dashboard's `persona` API (`view`, `save`); boundaries (`DECIDE` + `AREAS` rules, `keeps()` in `App.handle`, `BOUNDARY_RULE` in the headless context and calls; `persona.boundaries`); register (`register_line()`: `SHORT_WORDS` 12, `LONG_WORDS` 80, voice notes; `persona.register`). Events `persona_saved`, `boundary_kept`. Tests: `tests/unit/test_persona.py` |

@@ -28,7 +28,9 @@ register_defaults(
     },
 )
 register_defaults("modules", {"enabled": []})
-ALWAYS = ("status",)  # commands that answer even while their feature is off (/help and /jobs are Kurooto's own)
+# commands that answer even while their feature is off (/help and /jobs are Kurooto's own); /addons also lists the
+# add-ons by link, which need no folder (core/addons.py)
+ALWAYS = ("status", "addons")
 
 
 def met(need: str, on, m: Module | None = None) -> bool:

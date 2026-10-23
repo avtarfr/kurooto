@@ -19,6 +19,9 @@ more. This computer (127.0.0.1, localhost) is always allowed and never counted: 
 Record is the default because add-ons and endpoints changed in settings can reach hosts this list can't know of;
 /egress shows any of them, so you can allow them and then turn enforce on. The ledger (state/egress.json) keeps
 counts for DAYS days and no more; it never holds what was sent, only where, how often and how much.
+
+Add-ons added by link (core/addons.py) are fenced apart (core/fence.py): their code reaches only the hosts on the card
+you agreed to, in every mode (a refusal is Fenced, a kind of Blocked), and is counted as "add-on <name>".
 """
 
 from __future__ import annotations
@@ -94,6 +97,19 @@ class Blocked(urllib.error.URLError):
         return str(self.reason)
 
 
+class Fenced(Blocked):
+    """A request refused because an add-on added by link asked for a host its card doesn't declare (core/fence.py).
+    Whatever privacy.egress says: the card is what you agreed to."""
+
+    def __init__(self, host: str, addon: str, hosts):
+        urllib.error.URLError.__init__(
+            self,
+            f"The add-on {addon} may only reach the hosts on its card ({', '.join(hosts) or 'none'}); {host} isn't "
+            f"one, so Kurooto didn't connect to it. `kurooto addons show {addon}` shows its card.",
+        )
+        self.host, self.feature = host, f"add-on {addon}"
+
+
 def attach(app: App) -> None:
     """The running assistant's settings and ledger; before this (a bare `kurooto` command) nothing is counted."""
     _on.update(state=Path(app.paths.state), settings=app.settings)
@@ -128,7 +144,18 @@ def _check(host: str, feature: str, own: bool) -> bool | None:
     """None: not counted (this computer, or privacy.egress off); else whether the host is on the list. Raises
     Blocked (and counts it) in enforce mode for a host that isn't on the list and isn't yours."""
     m = mode()
-    if not host or host in LOOPBACK or m == "off":
+    if not host or host in LOOPBACK:
+        return None
+    from kurooto.core import fence  # an add-on by link asking: only the hosts on its card, whatever the mode
+
+    fe = fence.owner()
+    if fe is not None:
+        if not fence.allowed(host, fe["hosts"]):
+            if m != "off":
+                record(host, feature, blocked=True)
+            raise Fenced(host, fe["name"], fe["hosts"])
+        return None if m == "off" else True
+    if m == "off":
         return None
     ok = own or listed(host)
     if not ok and m == "enforce":
@@ -322,4 +349,17 @@ def command(app: App, arg: str = "") -> str:
     return "\n".join(lines)
 
 
-__all__ = ["HOSTS", "Blocked", "attach", "allow", "urlopen", "handed", "record", "week", "command", "listed", "mode"]
+__all__ = [
+    "HOSTS",
+    "Blocked",
+    "Fenced",
+    "attach",
+    "allow",
+    "urlopen",
+    "handed",
+    "record",
+    "week",
+    "command",
+    "listed",
+    "mode",
+]

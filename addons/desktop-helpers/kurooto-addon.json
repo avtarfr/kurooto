@@ -1,0 +1,19 @@
+{
+  "name": "desktop-helpers",
+  "title": "Desktop helpers",
+  "description": "At the alarm, rings your phone through KDE Connect and wakes the screen (Hyprland, Sway or X11); pings the phone for the kinds of messages you pick; /findphone rings it now.",
+  "version": "1.0.0",
+  "kurooto": ">=0.5.22",
+  "license": "Apache-2.0",
+  "features": ["desktop_helpers"],
+  "commands": [{"name": "findphone", "what": "rings your phone through KDE Connect"}],
+  "jobs": [],
+  "tools": [],
+  "hosts": [],
+  "programs": [
+    {"name": "kdeconnect-cli", "what": "rings and pings your phone over your own network"},
+    {"name": "hyprctl", "what": "wakes the screen on Hyprland"},
+    {"name": "swaymsg", "what": "wakes the screen on Sway"},
+    {"name": "xset", "what": "wakes the screen on X11"}
+  ]
+}

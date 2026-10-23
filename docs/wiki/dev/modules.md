@@ -81,6 +81,7 @@ Data classes (`modules/base.py`):
 Setting or moving an alarm, placing a call, reading mail from a new sender, sending anything out, attaching a code
 repository to a project and deleting the user's data happen only when the user asked (typed, said, on a live call) or
 tapped. `core/tap.py:GUARDED` names each action (`alarm.set`, `call.place`, `mail.read`, `send.out`, `repo.attach`,
+`addon.install` (adding or updating an add-on by link: the terminal or a dashboard button, never a tool or request),
 `data.delete`), the ways that approve it (`WAYS`: `typed`, `said`, `call`, `button`, `approval`, `confirm`) and where it
 happens.
 
@@ -330,7 +331,7 @@ def test_pomodoro_starts_and_ends(env):
   feature out of every preset (setup.js leaves it out of "Everything") and lists it apart on the Features page
   (`/api/state` sends `extra`).
 - `extra` versus `addon`: `extra` is an optional feature that comes with Kurooto; `addon` is set by `core/overlay.py`
-  on features loaded from the user's own add-ons folder.
+  on features loaded from the user's own add-ons folder, and from add-ons by link (which also get `linked = <name>`).
 
 ## Add-ons (`core/overlay.py`)
 
@@ -350,6 +351,69 @@ user's folder over Kurooto:
 - The folder can't be inside Kurooto's own folders (`inside_kurooto`), and updates never touch it.
 - Turning add-ons on changes `core/places.py:write_roots` (their `skills/`), which makes agy's consent question appear
   again.
+
+## Add-ons by link (`core/addons.py`, `core/fence.py`)
+
+Someone else's add-on from a git address: `kurooto addons add <url> [--ref R]` (`cli.py:addons_run`) or the
+dashboard's Features → Add-ons by link (`web/api.py:_addons_post`: `addons/look`, `add`, `check`, `update`, `drop`,
+`remove`, `undo`, `reload`; GET `addons`). The same folder layout as "Your add-ons" (`modules/`, `skills/`, `prompts/`;
+no `settings.json`), plus a manifest at the top:
+
+```json
+{"name": "weather-x", "title": "Weather X", "description": "...", "version": "1.0.0", "kurooto": ">=0.5.22",
+ "license": "Apache-2.0", "homepage": "https://...",
+ "features": ["weather_x"],
+ "commands": [{"name": "weather", "what": "the weather now"}],
+ "jobs": [{"id": "weather_x:hourly", "what": "checks every hour"}],
+ "tools": [{"name": "weather_now", "what": "..."}],
+ "hosts": ["api.weather.example", ".tiles.weather.example"],
+ "programs": [{"name": "git", "online": true, "what": "..."}],
+ "classify": false}
+```
+
+- **Fetching** (`fetch`): `check_url` takes `https://`, `ssh://`, `git@host:path`, `file://` or an absolute folder;
+  `http://`, `ext::`/`fd::` transports and anything starting with `-` are refused. git runs with
+  `GIT_TERMINAL_PROMPT=0`, `protocol.ext.allow=never`, `core.symlinks=false`, no submodules, into
+  `<data>/addons/.staging/<token>`; the ref (`refs/tags/R`, `origin/R`, `R`; default `HEAD`) is resolved to a commit id
+  and checked out detached. Symlinks, special files, over 2000 files or 50 MB are refused (`files`). The pending card
+  waits under its token in `<state>/addons.json` for `PENDING_S` (an hour) with the tree's `digest`.
+- **The card** (`card`, `card_text`): the manifest plus what the files say: `code` (modules/*.py), `skills`, `prompts`,
+  size, and `warnings` (code without features, `classify_intent` without `"classify": true`, a Kurooto too old:
+  `fits`).
+- **Consent** (`install(p, token, yes, via)`): yes moves the staging folder to `<data>/addons/<name>` (an existing one is
+  kept aside first) and records `{url, ref, commit, digest, manifest, added, updated, consent}`; the digest is checked
+  again so files changed after the card was shown aren't added. The dashboard needs `code: true` (the box) when
+  `runs_code`. Guarded as `addon.install` in `core/tap.py`.
+- **Update** (`check_update`): a fresh clone of the same URL and ref (or `--ref`), `{"same": True}` when the commit
+  didn't move; otherwise the card plus `changes()` (files added/removed/changed with line counts, and what's new on the
+  card: hosts, features, commands, tools, jobs, programs, classify, code), then `install`.
+- **Remove / Undo**: `remove` moves the folder to `<data>/addons/.kept/<name>-<stamp>` with its record; `undo` puts the
+  last kept one back (after checking its digest), keeping the current one aside in turn. `KEEP` (3) per add-on.
+- **Loading** (`core/overlay.py:load_linked`, called from `load`, and `reload_linked` after a change; `addons.on`
+  false skips them): `addons.loadable` re-hashes each folder against the recorded digest (a change: "didn't load",
+  shown by `/addons`, `kurooto doctor`'s `add-on <name>` rows and the reserve's `addons.md`). Each loads as the package
+  `kurooto_linked.<name>` (fresh each load, helpers too: `from . import _helpers`), after `fence.add(...)`. `_modules`
+  skips a feature id that isn't in `features`; `held(app, m, manifest)` sets `m.linked`, filters `commands()`,
+  `agent_tools()`, `call_tools()` to the card (`"*"` in commands: any name, for commands the user names), wraps
+  `every()` so only `<id>:<name>` jobs on the card are made, and drops `classify_intent` unless `"classify": true`.
+  Anything left out is logged once as a problem. Their `skills/` count in `overlay.dirs(..., linked=True)` but never in
+  `places.write_roots` (the AI writing there would break the digest).
+- **The fence** (`core/fence.py`): an audit hook (`sys.addaudithook`, installed with the first fence, inert without
+  one) on `socket.getaddrinfo`, `socket.connect`, `subprocess.Popen`, `os.exec`, `os.posix_spawn`, `os.spawn`,
+  `os.system`, `os.startfile`. `_walk` goes from the innermost frame out, passing over library frames and
+  `PASS` (`core/egress.py`, `core/proc.py`, `core/fence.py`): the first `kurooto.*` or `kurooto_addons.*` frame means
+  Kurooto's own work (no fence); the first `kurooto_linked.<name>.*` frame means that add-on's card applies. A lookup
+  of an undeclared host raises `egress.Fenced` (a `Blocked`, so an `URLError`/`OSError`) and is recorded as blocked for
+  `add-on <name>`; an allowed lookup lets the thread connect for `WINDOW` seconds; an undeclared program (and always
+  `os.system`/`os.startfile`) raises `fence.ProgramFenced` (a `PermissionError`). Requests through
+  `egress.urlopen` are checked in `egress._check` the same way, in every `privacy.egress` mode. Programs marked
+  `online` are counted as handed to them. Limits, said in the docstring: a thread started directly on a library
+  function, ctypes, or an allowed program that goes online by itself get past it; it's a fence, the card and consent
+  are the line.
+
+Ready-made ones to publish live in `addons/<name>/` (restic-backups, desktop-helpers, habits, handwriting-pull), each
+with its manifest, README and tests; `addons/conftest.py:load_addon` adds one by link in a test (a git repo made from
+a copy), and `tests/unit/test_addon_packages.py` checks each loads with exactly its card.
 
 ## Module reference
 

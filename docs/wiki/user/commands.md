@@ -205,7 +205,7 @@ More: [Google](google.md), [Classes and timetable](classes-and-timetable.md#cale
 | `/profile`, `/profile save` | what your saved profile holds; save it now | Profile sync |
 | `/space`, `/space clean` | what Kurooto takes and what can go; clean it | Space keeper |
 | `/models` | the local models and whether they're running | Local AI models |
-| `/addons` | your add-ons: what loaded and what didn't | Your add-ons |
+| `/addons` | your add-ons (your folder's and those added by link): what loaded and what didn't; answers with the feature off too | Your add-ons |
 
 More: [Teaching Kurooto](teaching-kurooto.md), [Updates and backups](updates-and-backups.md),
 [Your computer](your-computer.md), [Add-ons and scripts](add-ons.md).
@@ -341,6 +341,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto cases [list \| check \| export \| forget <id \| all>]` (`--out`, `--all`) | test cases from the Wrong button |
 | `kurooto classpack check <file>`, `export --checked today [--from <note>] [--title …] [--elective …] [--out …]`, `import <file>` | class packs |
 | `kurooto term` (`--shell`, `--print`, `--install`, `--default on \| off \| status`, `-e <command>`) | open Kurooto Terminal |
+| `kurooto addons` (`list`), `add <git url> [--ref <tag>] [--yes]`, `update <name> [--ref …] [--yes]`, `show <name>`, `remove <name>`, `undo <name>` | [add-ons by link](add-ons.md#add-ons-by-link): read its card, then add, update, remove, undo |
 
 `kurooto ask`, `call`, `send`, `notify`, `ask-me` and `ask-approval` need Kurooto running; they say so (and exit with
 2) when it isn't. See [Add-ons and scripts](add-ons.md).

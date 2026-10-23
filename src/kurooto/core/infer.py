@@ -2,7 +2,9 @@
 what it implies, so nothing waits for a settings page. Rules only (no AI, nothing leaves the computer); each change
 comes in one line with Undo, and /inferred lists them (/inferred undo <id>).
 
-    "I got a project under Prof Lena Ortiz" / "I've started a project on glacier flow with Dr Okafor"
+    "I got a project under Prof Lena Ortiz" / "I've started a project on glacier flow with Dr Okafor" / "I'm doing my
+    thesis under Prof Ana Ruiz" / "I started working with Prof Cole on a project about sea ice" / "my supervisor is
+    Dr Ken Ito"
         -> a project note (research/<slug>/index.md) with "With: Prof Lena Ortiz (supervisor)" and a Meetings section
     "met Ortiz today, we fixed the forcing" (someone a project is With, said in the first person)
         -> a dated line under that project's ## Meetings; a meeting ahead ("meeting with Ortiz friday at 4")
@@ -13,7 +15,8 @@ comes in one line with Undo, and /inferred lists them (/inferred undo <id>).
     "every Monday at 9 I have a Linear Algebra lab" / "I have an LA tutorial every wed at 14:00"
         -> a class in the timetable (for a subject you have; it holds calls), 55 minutes unless the end is said
     "every Tuesday and Thursday at 7pm I go to the gym" / "I work a shift every weekend from 9 to 5" / "gym Tue Thu
-    7am" / "I have lab every Thursday 2-5" (a lab, tutorial or class with no course named)
+    7am" / "I have lab every Thursday 2-5" / "I've got a lab on Mondays at 9" / "I go running every morning at 6"
+    (a lab, tutorial or class with no course named; never a meeting or a call with someone)
         -> a commitment (Commitments, turned on if it was off; it holds calls), an hour unless the end is said
     "there's a quiz on Linear Algebra every Monday" / "LA has a test every other Friday from 2026-10-30"
         -> a row in the recurring quizzes table (Deadlines), when the course, the day and (every other week) the date
@@ -74,7 +77,11 @@ NOT = re.compile(r"(?i)\b(?:not|didn't|don't|never|no longer|haven't|hasn't|won'
 PROJECT = re.compile(
     r"(?i)\b(?:i|i've|i have|i'm|i am|we|we've)\b[^.!?\n]{0,40}?\b(?:got|get|getting|started|starting|joined|"
     r"joining|took|taken|taking|doing|begun|began|been given|working on|will do|will be doing|have)\b[^.!?\n]{0,40}?"
-    r"\bproject\b(?P<rest>[^.!?\n]{0,140})"
+    r"\b(?P<noun>project|thesis|dissertation)\b(?P<rest>[^.!?\n]{0,140})"
+)
+SUPERVISOR = re.compile(  # "my supervisor is Dr Ana Ruiz", "my thesis advisor is Prof Ken Ito"
+    r"(?i:\bmy\s+(?:(?:project|thesis|phd|research)\s+)?(?P<role>supervisor|guide|advisor|adviser|mentor|pi)\s+"
+    r"(?:is|will be)\s+)(?P<title>" + TITLE + r")?\s*(?P<name>" + NAME + ")"
 )
 WITH = re.compile(
     r"\b(?P<how>(?i:under|with|supervised by|guided by|advised by))\s+(?P<title>"
@@ -112,7 +119,7 @@ DAYSET = (
     r"(?P<days>(?i:week\s?days?|weekends?|day|morning|evening|night|" + WD + r"(?:\s*(?:,|and|&|-|to)\s*" + WD + r")*))"
 )
 SPAN = r"(?:at|from)?\s*(?P<s>" + TIME + r")(?:\s*(?:-|–|to|till|until)\s*(?P<e>" + TIME + r"))?"
-ACT = r"(?P<verb>(?i:go to|go for|have|do|attend|work|teach|play|train at|train|volunteer at|volunteer))"
+ACT = r"(?P<verb>(?i:go to|go for|go|have|do|attend|work|teach|play|train at|train|volunteer at|volunteer))"
 RWHAT = r"(?:\s+(?:a|an|my|the|our)\b)?(?:\s+(?P<what>[A-Za-z][\w' -]{1,30}?))?"
 REGULAR = (
     re.compile(
@@ -231,17 +238,32 @@ def projects_with(app: App) -> list[tuple[Path, str, str]]:
 
 def _project(app: App, sentence: str) -> dict | None:
     m = PROJECT.search(sentence)
-    if not m or NOT.search(sentence[: m.end()]):
-        return None
-    w = WITH.search(m["rest"])
-    if not w:
-        return None
-    who, role = _person(w)
+    noun, topic, who = "project", "", ""
+    if m and not NOT.search(sentence[: m.end()]):
+        noun = m["noun"].lower()
+        w = WITH.search(m["rest"])
+        t = None
+        if w:
+            t = TOPIC.search(m["rest"][: w.start()]) or TOPIC_AFTER.search(m["rest"][w.end() :])
+        else:  # "I started working with Prof Mira Cole on a project about sea ice": the person before the noun
+            w = WITH.search(sentence[m.start() : m.start("noun")])
+            t = TOPIC.search(m["rest"]) or TOPIC_AFTER.search(m["rest"])
+        if w:
+            who, role = _person(w)
+            topic = (t["topic"].strip() if t else "").rstrip(" .")
+    if not who:  # "my supervisor is Dr Ana Ruiz": a project with them, named after them
+        sv = SUPERVISOR.search(sentence)
+        if not sv or NOT.search(sentence):
+            return None
+        title = (sv["title"] or "").strip().rstrip(".")
+        title = {"prof": "Prof", "professor": "Prof", "dr": "Dr"}.get(title.lower(), title)
+        who = f"{title} {sv['name']}".strip()
+        role = {"pi": "supervisor", "guide": "supervisor", "adviser": "advisor"}.get(
+            sv["role"].lower(), sv["role"].lower()
+        )
     if any(who.split()[-1].lower() == p.split()[-1].lower() for _, p, _ in projects_with(app)):
         return None  # already with them
-    t = TOPIC.search(m["rest"][: w.start()]) or TOPIC_AFTER.search(m["rest"][w.end() :])
-    topic = (t["topic"].strip() if t else "").rstrip(" .")
-    name = topic[:1].upper() + topic[1:] if topic else f"Project with {who}"
+    name = topic[:1].upper() + topic[1:] if topic else f"{noun.title()} with {who}"
     from kurooto.modules import research
 
     note = research.project_note(app, name)
@@ -404,10 +426,17 @@ def add_section(text: str, name: str) -> str:
 
 
 # -------------------------------------------------------------------------------------------- classes
+def _weekly(sentence: str) -> str:
+    """The same sentence said the way the rules read it: "on Mondays" is "every Mondays", "I've got" is "I have"."""
+    s = re.sub(r"(?i)\bon\s+(?=(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*s\b)", "every ", sentence)
+    return re.sub(r"(?i)\b(i|we)(?:'ve|\s+have)\s+got\b", r"\1 have", s)
+
+
 def _class(app: App, sentence: str) -> dict | None:
     subj = app.modules.get("subjects")
     if subj is None or not app.is_on("subjects") or NOT.search(sentence):
         return None
+    sentence = _weekly(sentence)
     for rx in CLASS:
         m = rx.search(sentence)
         if not m:
@@ -573,8 +602,9 @@ def _quiz(app: App, sentence: str) -> dict | None:
 
 # ---------------------------------------------------------------------------------------- commitments
 def _commitment(app: App, sentence: str) -> dict | None:
-    if NOT.search(sentence) or "commitments" not in app.modules:
-        return None
+    if NOT.search(sentence) or MEET.search(sentence) or "commitments" not in app.modules:
+        return None  # a meeting or a call with someone is the meetings rule's (a person it knows), never a routine
+    sentence = _weekly(sentence)
     from kurooto.modules import commitments as rt
 
     subj = app.modules.get("subjects") if app.is_on("subjects") else None
