@@ -8,6 +8,7 @@ instead of holding the request for its whole time. A model on this computer gets
 
 from __future__ import annotations
 
+import base64
 import json
 import re
 import time
@@ -17,6 +18,28 @@ import urllib.request
 
 from kurooto.core import egress
 from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
+
+PICTURE_MAX = 15 * 1024 * 1024  # one picture sent with a request, at most (services cap a whole request near 20 MB)
+PICTURE_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp",
+                 ".gif": "image/gif", ".heic": "image/heic"}  # fmt: skip
+_SEES: dict[tuple[str, str], bool | None] = {}  # (address, model) -> does Ollama say it reads pictures?
+
+
+def with_pictures(text: str, images) -> str | list[dict]:
+    """A user message's content with pictures, the OpenAI way (the text, then each picture as a data: URL). Just the
+    text when there are none; a picture that's gone, too big or not a picture type is left out."""
+    parts: list[dict] = []
+    for f in images or []:
+        try:
+            mime = PICTURE_TYPES.get(f.suffix.lower())
+            if mime is None or f.stat().st_size > PICTURE_MAX:
+                continue
+            data = base64.b64encode(f.read_bytes()).decode()
+        except OSError:
+            continue
+        parts.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{data}"}})
+    return [{"type": "text", "text": text}, *parts] if parts else text
+
 
 MAX_ROUNDS = 16  # rounds of tool calls in one request, at most; then it must answer
 REQUEST_S = {"low": 180, "medium": 300, "high": 600}  # one request on the internet waits this long at most
@@ -77,6 +100,29 @@ class OpenAICompat(Brain):
         if not self.models.get("medium"):
             return False, "no model chosen"
         return True, ""
+
+    def sees(self):
+        """Gemini reads pictures; Ollama does when its model does (it says so: /api/show's "vision"); another
+        service can't be known before trying."""
+        if self.id == "gemini":
+            return True, ""
+        model = self.models.get("medium") or ""
+        if self.id != "ollama" or not model:
+            return None, "it may not read pictures"
+        key = (self.base_url, model)
+        if key not in _SEES:
+            root = re.sub(r"/v1$", "", self.base_url)
+            req = urllib.request.Request(  # noqa: S310 (Ollama on this computer)
+                f"{root}/api/show",
+                data=json.dumps({"model": model}).encode(),
+                headers={"Content-Type": "application/json"},
+            )
+            try:
+                with egress.urlopen(req, "AI requests", timeout=10, own=True) as r:
+                    _SEES[key] = "vision" in (json.loads(r.read()).get("capabilities") or [])
+            except (OSError, ValueError):
+                return None, "Ollama didn't say whether its model reads pictures"
+        return (True, "") if _SEES[key] else (False, f"the Ollama model {model} doesn't read pictures")
 
     def local(self) -> bool:
         """Is the service on this computer (Ollama, a local server)?"""
@@ -175,7 +221,7 @@ class OpenAICompat(Brain):
 
     def run(self, task: Task) -> Result:
         msgs = ([{"role": "system", "content": task.context}] if task.context else []) + [
-            {"role": "user", "content": task.prompt}
+            {"role": "user", "content": with_pictures(task.prompt, task.images)}
         ]
         if not task.tools or not task.run_tool:
             return self.chat(msgs, task.effort, task.timeout_s)

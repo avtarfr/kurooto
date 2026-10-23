@@ -37,6 +37,7 @@ One line per folder or important file. Paths are relative to the repository root
 | `watch.py` | `kurooto watch -- CMD` and the log follower for `kurooto logs -f` |
 | `runlog.py` | `kurooto runlog`, experiment-run logs written into the notes |
 | `runcompare.py` | run compare (the Research add-on): `kurooto runlog diff` and `/runs compare` |
+| `popup.py` | `kurooto ask --popup`, the Quick ask window (Tk); `Asker` is its logic, testable without a window |
 | `core/` | shared services: settings, secrets, paths, scheduler, jobs, events, notify, Calm, ask, availability, power, presence, quota, health, tools, MCP, places, layout, the concept graph's engine, ... ([core.md](core.md)) |
 | `providers/` | AI brains: `base.py` (interface), `agy.py`, `claude.py`, `openai_compat.py`, `effort.py`, `context.py`, registry in `__init__.py` ([brains.md](brains.md)) |
 | `modules/` | one file (or package) per feature, `base.py` (the `Module` class), `catalog.py` (the list) ([modules.md](modules.md)) |
@@ -47,6 +48,8 @@ One line per folder or important file. Paths are relative to the repository root
 | `modules/latex_tracker.py` | not a feature: the Research add-on's LaTeX tracker (build, log, words, BibTeX) |
 | `modules/consolidate.py` | not a feature: Dreaming's "Worth a look in what I remember" (duplicates and lines that disagree) and its buttons |
 | `modules/coursepages.py` | not a feature: the notes brain's course pages (key concepts and a dated timeline per course) |
+| `modules/photodates.py` | not a feature: Photo to dates, part of Deadlines (a photo's dates read by the AI, offered through `core/dateoffers.py`) |
+| `modules/mailin.py` | not a feature: Email in, part of Mail digest (mail to +kurooto or a label, filed into notes) |
 | `web/` | the local HTTP server, API, live events, tools API, try-it; `web/static/` the pages and scripts ([web.md](web.md)) |
 | `update/` | `launcher.py` (stdlib-only, copied into the app folder), `updater.py`, `service.py`, `signing.py` ([release-and-updates.md](release-and-updates.md)) |
 | `data/` | package data: `skills/<name>/SKILL.md` (shipped skills), `prompts/`, `prereqs.toml` (helper programs and their checksums), `ollama_models.toml` (models per hardware profile), `research_sources.json`, `troubleshooting.md` (a copy of the user wiki's, for `/fixme`), `known_issues.json` (`/fixme`'s known issues, signed with the release), `worker/` (the call line's Worker source) |

@@ -75,6 +75,7 @@ More: [AI brains](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat
 | `/due fri 17:00 essay draft`, `/due 2026-11-02 lab report` | add a deadline | Deadlines |
 | `/exam` | exam mode: quizzes and exams in the next two weeks, and what's due to practise | Deadlines |
 | `/recurring`, `/recurring add la quiz every 2 weeks thu 10:00`, `/recurring remove la quiz` | repeating quizzes and tests | Deadlines |
+| a photo with `/dates` (or `dates`, `timetable`) as its caption; `/dates` alone | the photo's deadlines, exams and events as Add buttons, a timetable's classes with one button; alone: the newest photo of the last two hours ([Photo to dates](reminders-and-deadlines.md#photo-to-dates)) | Deadlines |
 | `/ignore drama club`, `/ignored`, `/unignore drama club` | topics you don't care about | Deadlines |
 | `/startby`, `/startby exam la 2-3 days`, `/startby exam` | when to start each deadline; set how long a subject's exams take | Start-by dates |
 | `/checkins` | today's check-ins with +30 min and Skip buttons | Check-ins |
@@ -187,9 +188,11 @@ sent with it (as the caption) go along; reply to the answer to carry on. In the 
 | `/google`, `/google use mail school`, `/google forget school` | your Google accounts and which feature uses which (features: `classroom`, `drafts`, `mail`, `email`, `calendar`, `plan`, `drive`, `classroom_notes`) | Google |
 | `/classnotes`, `/classnotes courses`, `/classnotes skip chess`, `/classnotes unskip chess` | file new Classroom posts into your notes now | Classroom → notes |
 | `/mail`, `/mail read @school.example`, `/mail unread …`, `/mail never …`, `/mail unnever …`, `/mail query …`, `/mail query off`, `/mail rules`, `/mail confidential` | your mail digest now, and what it may read | Mail digest |
+| `/mail in`, `/mail in on`, `/mail in off`, `/mail in label Kurooto`, `/mail in label off`, `/mail in from you@school.example`, `/mail in unfrom …` | Email in: mail forwarded to you+kurooto@…, or labelled, filed into your notes with its dates as Add buttons ([google.md](google.md#email-in)) | Mail digest |
 | `/blocks`, `/blocks add 14:00-15:30 problem set`, `/blocks shift [19:00]`, `/blocks shift by 2 hours`, `/blocks undo`, `/blocks clear` | today's planned time blocks; shift reschedules the day | Agent plan calendar |
 | `/today` | today's calendar | Calendar |
 | `/cal`, `/cal classes Timetable`, `/cal classes none`, `/cal holidays Holidays`, `/cal holidays none` | the next 7 days; which calendars hold classes; which mark holidays | Calendar |
+| `/cal subscribe <iCal link> as LA class`, `/cal shared`, `/cal unsubscribe LA class` | a class calendar a classmate or the course shares: its events marked with its name, its deadlines and exams offered with Add buttons ([classes-and-timetable.md](classes-and-timetable.md#shared-class-calendars)) | Calendar |
 
 More: [Google](google.md), [Classes and timetable](classes-and-timetable.md#calendar).
 
@@ -231,6 +234,7 @@ the AI. A request that asks a question only matches the requests below that answ
 | "what's due?", "anything due?", "show my deadlines" (two weeks), "what's due this week?" (7 days), "what's due soon?" (`deadlines.plan_h`, 3 days) | the deadline list | Deadlines |
 | "add a deadline: essay draft due friday 5pm", "I have a lab report due fri 17:00" | a new deadline | Deadlines |
 | "I don't care about the drama club", "stop telling me about …" | a topic on your not-interested list | Deadlines |
+| "find the dates in that photo", "deadlines from this notice" | the newest photo of the last two hours, read for its dates (Add buttons) | Deadlines |
 | "linear algebra has a quiz every thursday" | a recurring quiz | Deadlines |
 | "when's my next exam?", "exam mode" | exam mode and your next quiz or exam | Deadlines |
 | "when should I start the lab report?" | its start-by date | Start-by dates |
@@ -330,6 +334,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | Command | What it does |
 |---|---|
 | `kurooto ask "what's due this week?"`, `kurooto ask` | plain English as on Telegram; alone, a prompt for one request after another (`!command` runs a shell command there); `--no-wait`, `--job <id>`, `--timeout <minutes>` |
+| `kurooto ask --popup`, `kurooto ask --shortcut` | a small window to type one request in, the answer shown there (bind it to a hotkey in your system: [Quick ask](talking-to-kurooto.md#quick-ask-a-hotkey)); `--shortcut` adds Kurooto Quick ask to your app menu (on Windows its Properties take a shortcut key) |
 | `kurooto note "an idea"`, `… \| kurooto note --title "output"` | a quick note in your inbox (works with Kurooto stopped) |
 | `kurooto notify "text"` (`--title`, `--kind`, `--urgent`, `--button "Label=…"`, `--click URL`, `--print-id`, `--reply-to ID`) | send yourself a message |
 | `kurooto send <file>` (`--caption`, `--to drive`) | send yourself a file on Telegram (up to 50 MB), or to your Google Drive |

@@ -389,6 +389,7 @@ jid = app.jobs.submit(
     lane=None,
     brain=None,  # lane "you" | "bg" | "chk"; pin to a brain id
     offline=False,  # the internet is down and the caller said it waits (Chat): it waits from now
+    images=None,  # pictures to look at (paths), kept as the `images` column (JSON); Task.images
 )
 ```
 
@@ -1089,6 +1090,22 @@ Tests: `tests/unit/test_meetings.py`.
 "not met for a while" for notes with a `Meets:` schedule whose `last_met()` is `QUIET_DAYS` (21) or more ago. "" when
 there's nothing. `modules/weekly.py:summary` adds it when `weekly.people` is on (a failure is `weekly_line_failed`);
 nothing else sends it.
+
+## Dates offered with a button (`core/dateoffers.py`)
+
+What Photo to dates (`modules/photodates.py`), Email in (`modules/mailin.py`) and a shared class calendar
+(`modules/calendar.py:_offer_shared`) found, offered one **Add** button each; nothing is added without a tap.
+`clean_items(raw)` checks an AI's or a calendar's items (title, ISO date not before yesterday, `HH:MM` or "", type
+`deadline` | `exam` | `event`, optional `where`; repeats dropped; sorted by date and time) and `clean_classes(raw)` a
+timetable's (`subject`, `day` mon..sun, `start` < `end`). `make(app, source, items, classes, about)` keeps a batch in
+`<state>/date-offers/<id>.json` (the newest `KEEP` 100) and returns its id (None: nothing); `message(app, id, intro)`
+gives the text and buttons: `dof:<id>:<n>` (at most `SHOWN` 10), `:tt` (the classes), `:all`, `:none`. `button()`
+(a core prefix in `App.callback`; `tests/unit/test_buttons.py:CORE`) under the `date-offers` lock: a deadline or exam
+→ `Deadlines.add(source=photo | mail | shared-calendar, kind=exam | task)` (no time: 23:59); an event →
+`Reminders.add` `date_offers.remind_min` (60) before it (no time: 08:00 that day; never in the past); classes →
+`add_classes()`: `Subjects.resolve()` else a new subject in `subjects.list`, then `subjects.timetable` rows unless one
+starts then. A feature that's off is named in the answer and the item stays open. Events `dates_offered`,
+`dates_tapped`, `timetable_from_photo` (counts). Tests: `tests/unit/test_inputs.py`.
 
 ## Keep or drop (`core/keep.py`)
 

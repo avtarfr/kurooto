@@ -389,18 +389,28 @@ class FakeGoogle:
 
 
 def _search(q: str, m: dict, labels: list[dict]) -> bool:
-    """A few of Gmail's search words, each may be negated with "-": category:, label:, from:. The others (after:,
-    in:) match everything, as before."""
+    """A few of Gmail's search words, each may be negated with "-": category:, label:, from:, to: and deliveredto:
+    (both look at the mail's "to"), and "(a OR b)" groups. The others (after:, in:) match everything, as before."""
     names = {x["id"]: x["name"].lower() for x in labels}
     have = {names.get(i, i.lower()) for i in m["labels"]} | {i.lower() for i in m["labels"]}
-    for neg, key, val in re.findall(r"(-?)(category|label|from):([^\s()]+)", q, re.I):
+    words = r"(category|label|from|to|deliveredto):([^\s()]+)"
+
+    def hit(key: str, val: str) -> bool:
         val = val.lower()
-        hit = {
+        return {
             "category": f"category_{val}" in have,
-            "label": val in have,
+            "label": val in have or val.replace("-", " ") in have,
             "from": val in m["from"].lower(),
+            "to": val in m.get("to", "").lower(),
+            "deliveredto": val in m.get("to", "").lower(),
         }[key.lower()]
-        if hit == bool(neg):
+
+    for group in re.findall(r"\(([^()]*\sOR\s[^()]*)\)", q):
+        if not any(hit(k, v) for k, v in re.findall(words, group, re.I)):
+            return False
+        q = q.replace(f"({group})", " ")
+    for neg, key, val in re.findall(r"(-?)" + words, q, re.I):
+        if hit(key, val) == bool(neg):
             return False
     return True
 

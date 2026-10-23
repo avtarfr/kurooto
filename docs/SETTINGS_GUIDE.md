@@ -173,6 +173,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `calendar.private_keyword` | `"#private"` | an event with this in its title is never shown or read aloud |
 | `calendar.refresh` | `"every 15m"` | how often the calendar is read again |
 | `calendar.remind_min` | `0` | minutes before an event to remind you (0: off) |
+| `calendar.shared_offer` | `true` | a subscribed calendar's deadlines and exams offered with an Add button each |
 
 ### `calls`
 
@@ -260,6 +261,12 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `commitments.items` | `[]` | {"name": "gym", "days": ["mon", "wed"], "start": "18:00", "end": "19:00", "calls": true} |
 | `commitments.no_calls` | `true` | no calls during a commitment (each one can opt out: /busy calls gym off) |
 
+### `date_offers`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `date_offers.remind_min` | `60` | an event you tap Add on (a photo, mail, a shared calendar): reminded this long before |
+
 ### `deadlines`
 
 | Setting | Default | What it does |
@@ -267,6 +274,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `deadlines.call` | `true` | with Phone calls on, the six-hour nudge is a call (a message when no call fits before it) |
 | `deadlines.exam_mode_days` | `14` | exam mode starts this many days before a quiz or exam (0: never) |
 | `deadlines.from_calendar` | `true` | calendar events that look like deadlines or exams (with Calendar on) |
+| `deadlines.from_photos` | `true` | Photo to dates: a photo with "dates" as its caption, its dates as buttons |
 | `deadlines.from_term_note` | `true` | quizzes, exams and deadlines from the term note's key dates (Subjects: /term note) |
 | `deadlines.horizon_days` | `30` | recurring quizzes become dated deadlines this far ahead |
 | `deadlines.max_files` | `3000` | the most notes read when looking for deadlines |
@@ -539,6 +547,11 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `mail_digest.confidential_words` | `["confidential", "do not forward", "restricted", "private…` | regular expressions, any case; a space matches any run of spaces or line breaks |
 | `mail_digest.first_days` | `3` | the first digest looks this far back |
 | `mail_digest.local_model` | `""` | which Ollama model reads it; empty: Local AI models' helper model |
+| `mail_digest.mail_in` | `false` | Email in: mail to you+kurooto@ (or labelled) filed into notes, dates as buttons |
+| `mail_digest.mail_in_anyone` | `false` | True: mail to +kurooto from anyone goes in (a stranger could write into your notes) |
+| `mail_digest.mail_in_every` | `"every 10m"` | how often it looks for mail sent in |
+| `mail_digest.mail_in_label` | `""` | a Gmail label whose mail goes in too, from anyone (you put it on, or a Gmail filter) |
+| `mail_digest.mail_in_senders` | `[]` | your other addresses whose mail to +kurooto goes in (your own address always does) |
 | `mail_digest.max_messages` | `200` | per check |
 | `mail_digest.never_read` | `[]` | senders, @domains or label:Name the digest never reads, even if chosen above |
 | `mail_digest.own_domain` | `true` | on a school or work account, mail from your own domain is read too |

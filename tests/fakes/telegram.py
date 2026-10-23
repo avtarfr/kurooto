@@ -78,6 +78,9 @@ class FakeTelegram:
             self._next_msg += 1
             return {"message_id": self._next_msg}
         if method == "getFile":
+            for path in self.files:  # one served as photos/<id>.jpg is a photo (Telegram's own path for photos)
+                if path.startswith("photos/") and path.split("/")[1].split(".")[0] == p["file_id"]:
+                    return {"file_id": p["file_id"], "file_path": path, "file_size": 10}
             return {"file_id": p["file_id"], "file_path": f"docs/{p['file_id']}.pdf", "file_size": 10}
         return True
 

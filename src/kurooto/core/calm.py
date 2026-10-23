@@ -255,6 +255,13 @@ REASONS: dict[str, Reason] = {
             stop=None,
         ),
         R("research.remind", "a reminder you asked for about a project", exempt="own", stop=None),
+        R(
+            "calendar.shared",
+            "deadlines and exams in a class calendar you subscribed to",
+            many="dates from shared class calendars",
+            setting="calendar.shared_offer",
+            stop=to(False, "their entries only show as events, without Add buttons"),
+        ),
         R("lidsafe.failed", "a reminder of yours your call line couldn't get to your phone", exempt="own", stop=None),
         R("alarm.ring", "your wake-up alarm", exempt="alarm", stop=None, later=False),
         R(
@@ -528,6 +535,13 @@ REASONS: dict[str, Reason] = {
         R("mail_digest.setup", "what the mail digest may read", setting="mail_digest.read"),
         R("mail_digest.failed", "a mail digest that didn't come together"),
         R("digest_email.failed", "the digest couldn't be emailed to you"),
+        R(
+            "mail_digest.mail_in",
+            "mail you sent to Kurooto (+kurooto or your Email in label), filed into your notes",
+            many="mail filed into your notes",
+            setting="mail_digest.mail_in",
+            stop=to(False, "Email in is off"),
+        ),
         # ---------------------------------------------------------------------------- notes and research
         R(
             "research.papers",

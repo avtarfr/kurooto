@@ -7,7 +7,10 @@ Where deadlines come from (the same thing from two places is kept once):
 - calendar events that look like deadlines or exams ("Problem set 3 due", "Midterm"; with Calendar on);
 - recurring quizzes and tests, from the table in your notes at kurooto/recurring.md (/recurring);
 - the key dates in your term note (Subjects: /term note), read again whenever the note changes: its quizzes and
-  exams, and deadlines that name one of your subjects.
+  exams, and deadlines that name one of your subjects;
+- offered with a button each, added only when you tap: a photo of a notice or timetable ("dates" as its caption, or
+  /dates; modules/photodates.py), mail you forward to yourself (Mail digest's Email in) and a class calendar you
+  subscribe to (Calendar: /cal subscribe).
 Topics on your not-interested list (/ignore) are left out.
 
 The chase, for things you hand in: a message with Done / Snooze / Not mine a day before; six hours before, a call
@@ -52,6 +55,9 @@ register_defaults(
         "horizon_days": 30,  # recurring quizzes become dated deadlines this far ahead
         "exam_mode_days": 14,  # exam mode starts this many days before a quiz or exam (0: never)
         "meeting_brief": "daily 20:00",  # the evening before a meeting with a project's person: a brief ("": off)
+        # Photo to dates: a photo sent with "dates" as its caption (or note) goes to your AI, and each date it finds
+        # comes back as a button; nothing is added without a tap (modules/photodates.py)
+        "from_photos": True,  # Photo to dates: a photo with "dates" as its caption, its dates as buttons
     },
 )
 EXAMISH = re.compile(
@@ -61,6 +67,11 @@ NOT_EXAM = re.compile(r"\b(view|viewing|graded|results?|solutions?|marks|papers?
 DUEISH = re.compile(
     r"\b(due|deadline|submit|submission|hand[- ]?in|assignment|homework|hw|problem set|coursework|report|"
     r"presentation)\b",
+    re.I,
+)
+PHOTO_ASK = re.compile(  # "dates from that photo": the newest photo of the last two hours (modules/photodates.py)
+    r"\b(?:dates?|deadlines?|exams?|events?|timetable)\s+(?:from|in|on)\s+(?:that|the|this|my)\s+"
+    r"(?:photo|picture|pic|image|notice|poster|screenshot)\b",
     re.I,
 )
 TASK = re.compile(r"^\s*[-*] \[( |x|X)\] (.*?\((\d{4}-\d{2}-\d{2})([^)]*)\).*)$")
@@ -207,6 +218,13 @@ class Deadlines(Module):
         "before, a call six hours before, an overdue check; exam mode before quizzes and exams."
     )
     requires = ("telegram",)
+
+    def __init__(self, app):
+        super().__init__(app)
+        from kurooto.modules import photodates
+
+        # Photo to dates: an answer that arrives after Deadlines is turned off still comes (its buttons say so then)
+        app.jobs.then_actions[photodates.THEN] = lambda job, result, p: photodates.ready(app, job, result, p)
 
     @property
     def file(self):
@@ -646,6 +664,8 @@ class Deadlines(Module):
         end = t0 + dt.timedelta(days=cal.setting("days") or 14)
         rows = []
         for e in cal.events(t0 - dt.timedelta(days=1), end):
+            if e.get("from"):  # a calendar someone shares: offered with a button instead (calendar.shared_offer)
+                continue
             title = re.sub(r"^(?:assignment|due|deadline)\s*:\s*", "", (e.get("title") or "").strip(), flags=re.I)
             if not title or not (EXAMISH.search(title) or DUEISH.search(title)):
                 continue
@@ -1311,6 +1331,9 @@ class Deadlines(Module):
             Command("due", "add one: /due fri 17:00 essay draft", self._due),
             Command("exam", "exam mode: quizzes and exams in the next two weeks", lambda m, a: self._exam()),
             Command("recurring", "repeating quizzes: /recurring add la quiz every 2 weeks thu 10:00", self._recurring),
+            Command(
+                "dates", "a photo of a notice or timetable, /dates as its caption: its dates as buttons", self._dates
+            ),
             Command("ignore", "a topic you don't care about: /ignore drama club", lambda m, a: self._ignore(a)),
             Command("ignored", "your not-interested list", lambda m, a: self._ignored()),
             Command("unignore", "take a topic off that list: /unignore drama club", lambda m, a: self._unignore(a)),
@@ -1344,6 +1367,20 @@ class Deadlines(Module):
             "Usage: /due fri 17:00 essay draft   (or: /due 2026-11-02 lab report; a bare number is the hour: 5 is the "
             "next 5:00)"
         )
+
+    def _dates(self, msg: Incoming, arg: str) -> str:
+        """/dates with a photo (its caption), or alone just after one: the photo's dates as buttons."""
+        from kurooto.modules import photodates
+
+        if not self.setting("from_photos"):
+            return "Photo to dates is off (deadlines.from_photos in Settings)."
+        files = photodates.pictures(msg.files)
+        if not files:
+            pic = photodates.latest(self.app)
+            if pic is None:
+                return 'Send a photo of the notice or timetable with /dates (or just "dates") as its caption.'
+            files = [pic]
+        return photodates.start(self.app, files, via=msg.via)
 
     def _exam(self) -> str:
         days = self.setting("exam_mode_days") or 0
@@ -1415,6 +1452,10 @@ class Deadlines(Module):
         return f"'{topic.strip()}' is off the list." if remove_topic(self.app, topic) else "That isn't on the list."
 
     def intents(self):
+        def photo(text: str):
+            ok = PHOTO_ASK.search(text) and self.setting("from_photos")
+            return {} if ok else None
+
         def show(text: str):
             if re.search(r"\b(what'?s|what is|anything|show)\b.*\b(due|deadlines?)\b", text, re.I):
                 return {
@@ -1514,6 +1555,14 @@ class Deadlines(Module):
                 progress,
                 lambda m, s: self.progress(s["what"], s["done"], s["total"]),
                 examples=("ps3 4/7",),
+            ),
+            Intent(
+                "photo_dates",
+                "the dates in the photo you just sent, as buttons",
+                photo,
+                lambda m, s: self._dates(m, ""),
+                questions=True,
+                examples=("find the dates in that photo", "deadlines from this notice"),
             ),
         ]
 

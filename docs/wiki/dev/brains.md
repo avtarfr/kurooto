@@ -14,10 +14,10 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 | Symbol | What it is |
 |---|---|
 | `Verdict` (StrEnum) | `ok`, `empty`, `denied`, `rate_limited`, `auth`, `timeout`, `error`, `cancelled`, `stuck`. Every brain maps its failures onto these; the queue decides retries from them. |
-| `Task` (dataclass) | One request: `prompt`, `effort`, `title`, `cwd` (the notes folder), `timeout_s`, `context` (the headless preamble), `tools` + `run_tool` (for API brains), `mcp` + `mcp_env` (for agent programs), `text_only`, `on_process(pid)`, `stop` (a `threading.Event`). |
+| `Task` (dataclass) | One request: `prompt`, `effort`, `title`, `cwd` (the notes folder), `timeout_s`, `context` (the headless preamble), `tools` + `run_tool` (for API brains), `mcp` + `mcp_env` (for agent programs), `text_only`, `on_process(pid)`, `stop` (a `threading.Event`), `images` (pictures to look at, paths: `OpenAICompat` sends them with the request as `image_url` data URLs; agent programs open them where the prompt says). |
 | `Result` (dataclass) | `verdict`, `text`, `seconds`, `detail` (log only, never shown raw), `retry_after_s`, `usage` (dict; keys used: `note`, `limit`, `tool_calls`, `tools_used`, `cost`, `denied`, `prompt_tokens` / `completion_tokens` (OpenAI-compatible), and `limits`, which the queue adds: every limit hit while trying the chain), `model` (the model that answered, as the brain knows it: agy's `--model`, Claude Code's `modelUsage`, the OpenAI-compatible response's `model`; set on failures too). `.ok` is `verdict == OK`. |
 | `short_model(model, effort="")` | A model id for the run receipt: no vendor prefix, date or `-latest`, versions dotted (`claude-opus-4-5-20251101` → `opus-4.5`), and no effort suffix when it equals the effort shown (`gemini-3.8-flash-medium` at medium → `3.8-flash`). |
-| `Brain` | Base class. Attributes `id`, `label`, `kind` (`"api"` or `"cli"`), `meter`, `denied_help`. Methods `available() -> (bool, why)`, `run(task) -> Result`, `complete(prompt, system, effort, timeout) -> Result`, and for CLI brains `prepare(app)`, `has_worked(app)` / `mark_worked(app)` (a `<state>/<id>-worked.json` marker), `after_test(app)`. |
+| `Brain` | Base class. Attributes `id`, `label`, `kind` (`"api"` or `"cli"`), `meter`, `denied_help`. Methods `available() -> (bool, why)`, `run(task) -> Result`, `complete(prompt, system, effort, timeout) -> Result`, and for CLI brains `prepare(app)`, `has_worked(app)` / `mark_worked(app)` (a `<state>/<id>-worked.json` marker), `after_test(app)`, and `sees() -> (True | False | None, why)`: can it read pictures (agy and Claude Code: yes; `OpenAICompat`: Gemini yes, Ollama asks `/api/show` for the model's `vision` capability and caches it in `_SEES`, others `None` = try). `providers.sees(app)` answers for `brain.main` with the sentence to show. |
 | `RATE_LIMIT`, `AUTH_FAIL` | Regexes every brain uses to classify error text. |
 | `TEXT_ONLY` | The sentence prepended for text-only requests on agent programs. |
 
@@ -114,6 +114,8 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
   early; a local one gets the request's whole time (`OpenAICompat.local`).
 - `reasoning_effort` is sent only for presets with `reasoning: True` (Gemini).
 - 429 responses carry `usage["limit"] = core.quota.hints(...)`, which teaches the quota its numbers.
+- `task.images`: the user message's content becomes `with_pictures()` (the text part, then one `image_url` part per
+  picture of a `PICTURE_TYPES` kind under `PICTURE_MAX`, 15 MB); none: the plain string, as before.
 
 ## Effort
 

@@ -41,6 +41,8 @@ class Task:
     text_only: bool = False  # the answer is just text: agent programs are told to use no tools
     on_process: Callable | None = None  # (pid) when an agent program starts: cancelling it stops its process tree
     stop: Any = None  # a threading.Event set when the request is cancelled or stopped: no more steps after it
+    images: list = field(default_factory=list)  # pictures to look at (paths): API brains get them with the request,
+    # agent programs open them where the prompt says they are (Photo to dates: modules/photodates.py)
 
 
 @dataclass
@@ -105,6 +107,10 @@ class Brain:
 
     def available(self) -> tuple[bool, str]:
         return True, ""
+
+    def sees(self) -> tuple[bool | None, str]:
+        """Can it read pictures? (True, ""), (False, why) or (None, why) when it can't be known before trying."""
+        return None, "it may not read pictures"
 
     # What an agent program (kind "cli") does around a run; an API brain has nothing to do here.
     def prepare(self, app) -> None:

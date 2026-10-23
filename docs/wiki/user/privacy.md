@@ -50,6 +50,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Setup page: Try it now | what you type that isn't an instant request, like a Chat message; nothing goes to Telegram or your phone | the AI you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
 | Files into notes | with Chat on, the files you send, so the AI can file them | the AI you picked |
+| Photo to dates | the photo you sent for its dates (`dates` as its caption, `/dates`); nothing is added before you tap | the AI you picked |
 | Going offline and coming back (on by default) | the "going offline" and "back online" messages, and messages kept while the network was down | Telegram; with Phone calls, the phone app through your call line |
 | Going offline, with Phone calls | your night and focus hours for the next day and the message's wording; only after you approve (asked once): your bot's token and chat id, so the line can say "offline since 22:10" | your own Cloudflare account (your call line) |
 | Calm by default | nothing (see [What stays](#what-stays-on-your-computer-and-where)) | stays here |
@@ -133,6 +134,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Classroom → notes | post text and the text of attached files, to write the notes | the AI you picked |
 | Mail digest | the text of the mail you chose (senders, domains and labels you named; your own school or work domain; what your mail query matches, where personal mail is only counted). Everything else, mail marked confidential and your never-read list: only counted, here | the AI you picked |
 | Mail digest, local confidential summaries | nothing: a model on this computer reads it; the summary stays in Kurooto's data folder | stays here |
+| Email in (off by default) | the text of mail you forwarded to your +kurooto address or labelled for it; mail to +kurooto from anyone but you (and addresses you listed) is never opened | the AI you picked |
 | Email reply drafts | the draft, into your Gmail Drafts; sent only when you tap Send | Google (your Gmail) |
 | Mail digest by email | each digest's text, to your own address only; not sent if it mentions confidential material | Google (your Gmail, to yourself) |
 | Agent plan calendar | each block's title and time | your Google Calendar, in Kurooto's own calendar |
@@ -175,7 +177,7 @@ kept (`egress.json` in the state folder, 30 days), never what was sent.
 Each host is checked against Kurooto's list, which is the "Where requests go" table in `docs/PRIVACY.md`: Telegram,
 Google's APIs (Gemini, sign-in, Classroom, Gmail, Drive and Calendar), GitHub, Cloudflare and your call line
 (`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, arXiv, bioRxiv and PubMed, and Kurooto's release site.
-Addresses you gave are yours and always allowed: your calendar's link, your Research feeds, your own AI service, your
+Addresses you gave are yours and always allowed: your calendar's link, class calendars you subscribed to, your Research feeds, your own AI service, your
 call line, your ntfy server, and pages your AI reads for a request. This computer (`127.0.0.1`) is never counted.
 
 Programs that go online by themselves show as **handed to** them, with the feature: git (Notes sync, Profile sync),

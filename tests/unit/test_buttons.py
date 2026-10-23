@@ -8,7 +8,8 @@ import kurooto
 
 SRC = Path(kurooto.__file__).parent
 # routed by App.callback itself
-CORE = {"calm", "upd", "ask", "health", "fixme", "job", "inf", "ton", "keep", "fgt", "rhy", "rpr", "thr", "mtg", "lh"}
+CORE = {"calm", "upd", "ask", "health", "fixme", "job", "inf", "ton", "keep", "fgt", "rhy", "rpr", "thr", "mtg"}
+CORE |= {"lh", "dof"}  # the offline helper's question; dates offered with a button (core/dateoffers.py)
 NOT_BUTTONS = {
     "http",
     "https",

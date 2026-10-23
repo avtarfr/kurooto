@@ -399,6 +399,50 @@ you picked. For everything else, only counts, on your computer.
 **Turn it off / undo.** Dashboard → Features → Mail digest → Turn off. `/mail query off` goes back to only your `/mail
 read` rules and your own domain.
 
+## Email in
+
+**What it does.** Forward a notice, a receipt or a schedule to Kurooto, and it's filed in your notes with a short
+summary, and its dates come back with an **Add** button each. Your call line lives on workers.dev, which can't receive
+mail (Cloudflare only routes mail for a domain of your own), so the way in is your own Gmail, with the Mail digest's
+read-only access:
+
+- forward it to your own address with `+kurooto` before the @ (`example+kurooto@gmail.com` for example@gmail.com; Gmail delivers it to you as
+  usual; on a school account, `you+kurooto@school.example`), or
+- put a Gmail label on it (`/mail in label Kurooto`), by hand or with a Gmail filter.
+
+Every ten minutes (`mail_digest.mail_in_every`) Kurooto looks for such mail. Each one goes to the AI you picked, which
+writes the note in your notes' inbox (`inbox/2026-10-23-hostel-fee.md`: a summary, a link to open it in Gmail, then
+the mail's text) and lists its dates. You get "Email in: Hostel fee, filed in inbox/...", with the dates, if any, each
+with **Add** (a deadline or exam goes into Deadlines, an event becomes a reminder), **Add all** and **None of these**.
+Nothing goes into Deadlines until you tap. Each mail goes in once.
+
+**Turn it on.** Mail digest must be set up (it's the same Gmail access). Then `/mail in on`. It's off by default.
+
+| You send | What happens |
+|---|---|
+| `/mail in` | whether it's on, your +kurooto address, and who may send mail in |
+| `/mail in on` · `/mail in off` | turn it on (and look now) or off |
+| `/mail in label Kurooto` · `/mail in label off` | mail with that Gmail label goes in too, from anyone |
+| `/mail in from you@school.example` · `/mail in unfrom ...` | your other address, which forwards to +kurooto, may send mail in |
+
+**Who may put mail in.** Anyone who learns your +kurooto address could mail it, so mail to it goes in only when it's
+from your own address or one you listed (`/mail in from`); anything else is never even opened. A label is yours to put
+on, so labelled mail goes in from any sender. Your never-read list (`/mail never`) and the confidentiality check still
+hold: such mail is only counted, never read. The AI reads the mail as information, never as instructions, with no
+tools: it can only write the note's summary and list dates. `mail_digest.mail_in_anyone` lets mail to +kurooto in from
+anyone (not recommended).
+
+**With your own domain.** If your domain's mail is on Cloudflare, Cloudflare Email Routing (free) can deliver
+`kurooto@your-domain.example` to `example+kurooto@gmail.com`: add the Gmail address as a destination, then a rule for the address.
+Mail sent there then arrives "from" whoever sent it, so add those senders with `/mail in from`, or have Gmail label it
+(a filter on `to:kurooto@your-domain.example`, label Kurooto). A Cloudflare Email Worker that hands mail straight to your call
+line isn't built yet.
+
+**Settings** (Dashboard → Settings → mail_digest): `mail_in` (off), `mail_in_label` (empty), `mail_in_senders` (`[]`),
+`mail_in_anyone` (`false`), `mail_in_every` (`every 10m`).
+
+**What leaves your computer.** The text of the mail sent in goes to the AI you picked. The note stays in your notes.
+
 ## Email reply drafts
 
 **What it does.** When the mail digest finds mail that needs your reply (a question or request to you), the AI writes a

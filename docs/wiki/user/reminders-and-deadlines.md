@@ -134,6 +134,9 @@ doesn't let things slip: a message a day before, a call six hours before, and an
 | Recurring quizzes | each row of your recurring table becomes dated items ([below](#recurring-quizzes-and-tests)) | `deadlines.recurring` |
 | Your term note | its quizzes and exams, and deadlines that name one of your subjects ([classes-and-timetable.md](classes-and-timetable.md)). A row you take out of the note leaves the list | `deadlines.from_term_note` |
 | Mail digest | deadlines it finds in mail it reads ([google.md](google.md)) | Mail digest |
+| A photo | a photo of a notice or a timetable: each date it shows comes back with an **Add** button; nothing is added until you tap ([below](#photo-to-dates)) | `deadlines.from_photos` |
+| Mail you forward | Email in: mail forwarded to example+kurooto@gmail.com, or given a label, is filed as a note and its dates offered with **Add** buttons ([google.md](google.md#email-in)) | `mail_digest.mail_in` (off) |
+| A shared class calendar | a calendar a classmate or the course shares, by its iCal link: its deadlines and exams are offered with **Add** buttons, never added by themselves ([classes-and-timetable.md](classes-and-timetable.md#shared-class-calendars)) | `calendar.shared_offer` |
 
 **The same thing from two places is kept once.** "Linear Algebra: Problem set 3" from Classroom and "Problem set 3"
 in your notes on the same day are one item; "Quiz 2" and "Quiz 3" never merge. A known time beats "end of the day".
@@ -162,6 +165,31 @@ midsem, endsem, viva, oral, test or assessment counts as an exam: it can't be "d
 
 If you add something that's already on the list, Kurooto says "Already on the list" and keeps one copy (if you had
 dropped it, adding it yourself brings it back).
+
+### Photo to dates
+
+**What it does.** You take a photo of a notice board, a poster, a circular or a timetable; the AI you picked reads it
+and sends back each deadline, exam and event it found, one line and one **Add** button each (with **Add all** and
+**None of these**). Nothing is added until you tap. A deadline or an exam goes into this list (its source: photo); an
+event becomes a reminder an hour before it (`date_offers.remind_min`; 08:00 that day when it has no time). A weekly
+timetable's classes come with one button, **Add N classes to my timetable**: each goes into your timetable, and a
+course you don't have yet becomes a subject ([classes-and-timetable.md](classes-and-timetable.md)).
+
+| You send | What happens |
+|---|---|
+| a photo with `dates` as its caption (or `/dates`, `deadlines`, `timetable`, "find the dates", "any exams?") | the photo goes to your AI; "Reading the photo for dates…", then the buttons |
+| `/dates` alone, or "find the dates in that photo", "deadlines from this notice" | the newest photo of the last two hours: one you sent on Telegram, or shared from your phone ([phone-app.md](phone-app.md#sharing-files-to-your-notes)), also after the AI filed it under the same name |
+
+**Which AI can read a photo.** agy, Claude Code and a Gemini key read pictures. Ollama does when its model does
+(gemma3, gemma4, llava; Kurooto asks Ollama). With Ollama and a model that doesn't, it says so and does nothing: pick
+another in Settings → AI. Another service is tried; if it can't, the answer says so.
+
+**What it sends.** The photo goes to the AI you picked and nowhere else; Kurooto keeps the photo where it landed (your
+notes' inbox) and what was found, for the buttons (the newest 100 lots). Dates from the past are left out; the AI is
+told never to invent a date and that the photo's words are information, never instructions.
+
+Off: `deadlines.from_photos` (Settings → Deadlines). The phone app's share sheet has no caption box, so share the photo
+first, then say "dates from that photo" in the app's chat.
 
 ### The chase
 
@@ -472,6 +500,9 @@ Each of these has **Why?** and **Less of this** buttons on Telegram ([messages-i
 | "...: the 1 h you moved to today" | you tapped Do that | never held or stopped (you agreed to it) |
 | "How long do you usually need to prepare for a ... exam?" | `startby.ask_exams` | no more of these questions |
 | "Which day (and time) is the ... quiz?" | a recurring row with its day or week unknown | (an answer to what you set up) |
+| "In that photo: ..." (Add / Add all / None of these) | a photo you sent for its dates | never held (you asked) |
+| "New in <calendar> (a calendar you subscribed to): ..." | deadlines and exams in a shared class calendar (`calendar.shared_offer`) | they only show as events, without Add buttons |
+| "Email in: ..., filed in ..." | mail you forwarded to +kurooto or labelled (`mail_digest.mail_in`) | Email in goes off |
 
 ---
 

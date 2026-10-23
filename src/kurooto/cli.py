@@ -1878,6 +1878,10 @@ def main(argv: list[str] | None = None) -> int:
     ak.add_argument("--no-wait", action="store_true", help="for a bigger request: print its id instead of waiting")
     ak.add_argument("--job", default="", help="wait for the answer to a request started with --no-wait")
     ak.add_argument("--timeout", type=int, default=60, help="minutes to wait for an answer (default 60)")
+    ak.add_argument("--popup", action="store_true", help="a small window to type one request in (bind it to a hotkey)")
+    ak.add_argument(
+        "--shortcut", action="store_true", help="make a Quick ask entry in your app menu, to give a shortcut key"
+    )
     ca = sub.add_parser("call", help="ring your phone now or later (for scripts and agent programs)")
     ca.add_argument("reason", nargs="*")
     ca.add_argument("--at", default="", help='when: 17:30, "in 20 min", "tomorrow 7:00" (default: now)')
@@ -1998,6 +2002,15 @@ def main(argv: list[str] | None = None) -> int:
         print(r.get("message", "") if r else "Kurooto isn't running (`kurooto on` starts it).")
         return 0 if r else 1
     if a.cmd == "ask":
+        if a.shortcut:  # Quick ask in the app menu, for a shortcut key (core/shortcuts.py)
+            from kurooto.core import shortcuts
+
+            print(shortcuts.quick_ask_help(shortcuts.create_quick_ask()))
+            return 0
+        if a.popup:  # a small window (popup.py); the hotkey is set in the system
+            from kurooto import popup
+
+            return popup.run(min(a.timeout, 30))
         return plain(" ".join(a.text).strip(), not a.no_wait, a.timeout, a.job)
     if a.cmd == "call":
         if a.list or a.cancel:
