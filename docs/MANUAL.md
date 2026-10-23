@@ -1112,7 +1112,7 @@ Wrong taps since the last message; the Sunday look back shows them.
 ### Set up from what you say
 
 **What it does.** "I got a project under Prof X on <topic>" (in the chat or your journal) starts that project's note
-with "With: Prof X (supervisor)" and a Meetings section; "met X today, ..." adds a dated line there; "a meeting with X
+with "With: Prof X (supervisor)" and a Meetings section; "met X today, ..." adds a dated line there and sets "Last met: <date>"; "a meeting with X
 on Friday at 4" becomes a deadline; "every Monday at 9 I have a <subject> lab" puts the class in your timetable;
 "every Tuesday and Thursday at 7pm I go to the gym" or "I work a shift every weekend from 9 to 5" adds a
 [commitment](#commitments) (an hour long unless you say the end; Commitments is turned on if it was off); "by POTA I

@@ -72,6 +72,7 @@ TOPIC = re.compile(
 )
 TOPIC_AFTER = re.compile(r"(?i)\b(?:on|about)\s+(?P<topic>[^,;]{3,60}?)\s*$")
 WITH_LINE = re.compile(r"(?m)^With:\s*(?P<who>.+?)\s*\((?P<role>[^)]+)\)\s*$")
+LAST_MET = re.compile(r"(?m)^Last met: \d{4}-\d{2}-\d{2}$")
 MEET = re.compile(
     r"(?i)\b(?:met|meeting|meet|meets|talked to|talk to|spoke to|spoke with|speak to|discussed with|call with|"
     r"caught up with|catch up with|catching up with)\b"
@@ -260,13 +261,22 @@ def _meeting(app: App, sentence: str) -> dict | None:
             text = text.replace("## Meetings\n", f"## Meetings\n{line}\n", 1)
         else:
             text = text.rstrip() + f"\n\n## Meetings\n{line}\n"
-        note.write_text(text, encoding="utf-8")
+        last = LAST_MET.search(text)
+        before = last[0] if last else None
+        met = f"Last met: {now():%Y-%m-%d}"
+        if last:
+            text = text[: last.start()] + met + text[last.end() :]
+        else:  # under the "With:" lines
+            w = list(WITH_LINE.finditer(text))
+            at = (text.find("\n", w[-1].start()) % (len(text) + 1)) if w else 0  # the end of the last one's line
+            text = text[:at] + ("\n" if at else "") + met + ("" if at else "\n") + text[at:]
         from kurooto.core import layout
 
+        note.write_text(text, encoding="utf-8")
         return {
             "kind": "meeting",
             "line": f"Logged a meeting with {who} in {layout.shown(app, note)}.",
-            "undo": {"file": str(note), "remove": line},
+            "undo": {"file": str(note), "remove": line, "met": met, "met_before": before},
         }
     return None
 
@@ -422,10 +432,14 @@ def undo(app: App, iid: str) -> str:
         if it.get("undone"):
             return "Undone already."
         u = it["undo"]
-        if "file" in u and "remove" in u:  # a meeting line
+        if "file" in u and "remove" in u:  # a meeting line (and the "Last met" it set)
             f = Path(u["file"])
             if f.is_file():
-                f.write_text(f.read_text(encoding="utf-8").replace(u["remove"] + "\n", "", 1), encoding="utf-8")
+                text = f.read_text(encoding="utf-8").replace(u["remove"] + "\n", "", 1)
+                if u.get("met"):
+                    old = u.get("met_before")
+                    text = text.replace(u["met"], old, 1) if old else text.replace(u["met"] + "\n", "", 1)
+                f.write_text(text, encoding="utf-8")
         elif "file" in u:  # a project note
             f = Path(u["file"])
             if f.is_file():

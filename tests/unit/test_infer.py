@@ -48,6 +48,10 @@ def test_meetings_with_a_project_person_are_logged_and_one_ahead_becomes_a_deadl
     assert (
         f"- {dt.date.today():%Y-%m-%d}: Met Okafor today and we agreed on the forcing experiments." in note.read_text()
     )
+    assert f"With: Dr Sam Okafor (supervisor)\nLast met: {dt.date.today():%Y-%m-%d}\n" in note.read_text()
+    meet = infer._load(app)["items"][-1]
+    infer.undo(app, meet["id"])
+    assert "Last met" not in note.read_text() and "forcing experiments" not in note.read_text()
     told = infer.observe(app, "I have a meeting with Okafor tomorrow at 4pm.")
     assert told and "Meeting: Dr Sam Okafor" in told[0]
     assert any(d["title"] == "Meeting: Dr Sam Okafor" for d in app.modules["deadlines"].items().values())

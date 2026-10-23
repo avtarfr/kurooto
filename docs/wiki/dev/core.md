@@ -622,7 +622,8 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 `infer.observe(app, text, via)` runs on every plain chat message (`App.handle`, before routing; it never consumes the
 message) and every `daily.append` body. Rules only: `PROJECT` + `WITH` (first person, no `NOT` words) start a project
 via `modules/research.py:ensure_project` and write `With: <who> (<role>)` and `## Meetings`; `MEET` with a project
-person's surname logs a dated line, or a deadline "Meeting: <who>" when `modules/text.py:when_from` finds a time more
+person's surname logs a dated line (and sets `Last met: <date>`, `LAST_MET`, under the last `With:` line; undo puts back
+the one before), or a deadline "Meeting: <who>" when `modules/text.py:when_from` finds a time more
 than 30 minutes ahead; `CLASS` adds a `subjects.timetable` row for a known subject; `REGULAR` ("every <days> at <time> I go to/have/work
 <what>", or the other order; not for class, test or quiz words, which `NOT_REGULAR` leaves to the classes rule and
 Deadlines) adds a `commitments.items` row via `modules/commitments.py:Commitments.add`, turning the feature on if it
