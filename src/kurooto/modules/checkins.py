@@ -20,6 +20,9 @@ Gone to bed: with the alarm set, a night check-in call that comes after your bed
 setting the alarm yourself) doesn't ring; it moves to the wake-up call, and a message offers Call me now or Skip
 (checkins.asleep_defers).
 
+Lighter days (core/rhythm.py, notify.calm.lighter_after): the day after an exam or a heavy day, its first check-in
+comes an hour later; Not today under the morning line puts it back.
+
 Learned times (checkins.learn_times, on): when, over the last two weeks, you answered a check-in on at least 5 days and
 on 4 or more of them at a time 30 minutes or more from its setting, all on the same side (you moved it, or replied
 late to it), its time moves to when you actually did it (the middle of those times, to the quarter hour). One line
@@ -162,15 +165,42 @@ class Checkins(Module):
         or skipped ahead of time, e.g. "skip Friday's check-in", is already in that day's plan)."""
         day = self.day_of()
         plan = self.today(day)
+        new = []
         for name in NAMES:
             t = (self.setting("times") or {}).get(name)
             # not one long over (Kurooto starting at 2 am doesn't say it missed last evening's)
             if t and name not in plan and self.at(day, t) > now() - dt.timedelta(seconds=GRACE_S):
                 plan[name] = {"time": t, "status": "planned"}
+                new.append(name)
+        self._lighter(plan, new, day)
         self._save(plan, day)
         for name, c in plan.items():
             if c["status"] == "planned" and c.get("time"):
                 self._schedule(name, c["time"], day)
+
+    def _lighter(self, plan: dict, new: list[str], day: dt.date) -> None:
+        """A lighter day after an exam or a heavy one (core/rhythm.py): the day's first check-in, if it's just been
+        planned, comes LATER_MIN later (its own time kept under "lighter", for Not today)."""
+        rh = getattr(self.app, "rhythm", None)
+        planned = [n for n, c in plan.items() if c.get("status") == "planned" and c.get("time")]
+        if not new or not planned or rh is None or not rh.lighter(day):
+            return
+        from kurooto.core.rhythm import LATER_MIN
+
+        first = min(planned, key=lambda n: self.at(day, plan[n]["time"]))
+        was = self.at(day, plan[first]["time"])
+        later = f"{was + dt.timedelta(minutes=LATER_MIN):%H:%M}"
+        if first in new and self.at(day, later) > was:  # still the same check-in day
+            plan[first] = {"time": later, "status": "planned", "lighter": plan[first]["time"]}
+
+    def unlighten(self, day: dt.date) -> None:
+        """Not today: a check-in a lighter day moved goes back to its time (not one you moved since)."""
+        plan = self.today(day)
+        for name, c in plan.items():
+            if c.get("lighter") and c.get("status") == "planned":
+                plan[name] = {"time": c["lighter"], "status": "planned"}
+                self._save(plan, day)
+                self._schedule(name, c["lighter"], day)
 
     def _schedule(self, name: str, hhmm: str, day: dt.date) -> dt.datetime:
         at = self.at(day, hhmm)
@@ -544,7 +574,7 @@ class Checkins(Module):
             for k in range(1, LEARN_DAYS + 1):
                 d = today - dt.timedelta(days=k)
                 e = self.today(d).get(name) or {}
-                if e.get("status") != "answered":
+                if e.get("status") != "answered" or e.get("lighter"):  # a lighter day's time was mine, not yours
                     continue
                 at = self.at(d, e.get("time") or cur)  # moved: the time it was moved to
                 if e.get("answered_at") and not e.get("moved"):

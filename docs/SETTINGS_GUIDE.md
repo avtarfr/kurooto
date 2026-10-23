@@ -76,6 +76,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `alarm.reason` | `"Wake-up call"` | what the wake-up call says it's for |
 | `alarm.retries` | `2` | how many more times it rings if you don't answer |
 | `alarm.snooze_min` | `10` | minutes a snoozed alarm waits |
+| `alarm.suggest` | `true` | before your usual bedtime with no alarm set: one message suggesting your usual time |
 
 ### `ask`
 
@@ -94,7 +95,10 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `availability.absence_days` | `2` | nothing from you this many days: one gentle message (0: never) |
 | `availability.focus_keyword` | `"#focus"` | a calendar event with this in its title holds messages and calls (focus) |
+| `availability.learn_morning` | `true` | the check-in day, morning message and "Time to start" follow them (not ones you set) |
+| `availability.learn_night` | `true` | move the night hours to when you're usually quiet (not ones you set), with Undo |
 | `availability.night.alarm_only` | `false` | hold calls at night only when a wake-up alarm is set |
 | `availability.night.enabled` | `true` | no calls during the night hours |
 | `availability.night.from` | `"23:30"` | when the night hours start |
@@ -538,6 +542,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `notify.calm.evening` | `[]` | kinds that always wait for the evening bundle (Less of this → Another time) |
 | `notify.calm.evening_at` | `"20:00"` | the evening bundle: what waited today |
 | `notify.calm.fewer` | `{}` | kind -> at most this many a day; more wait for the evening (Less of this → Fewer) |
+| `notify.calm.lighter_after` | `true` | after an exam or a heavy day: a lighter next day |
 | `notify.calm.messages` | `6` | messages a day that come by themselves; more wait for the evening bundle |
 | `notify.calm.monthly` | `true` | once a month: a kind of question you rarely answer, and whether to turn it off |
 | `notify.calm.on` | `true` | reasons, Why? and Less of this, the daily limit; off: everything comes as it always did |

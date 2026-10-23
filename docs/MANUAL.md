@@ -49,6 +49,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Kurooto keeps itself working](#kurooto-keeps-itself-working)
 - [Calm by default: why each message came, and a daily limit](#calm-by-default-why-each-message-came-and-a-daily-limit)
   - [Keep or drop](#keep-or-drop)
+- [Your rhythm: quiet hours, lighter days, gone quiet](#your-rhythm-quiet-hours-lighter-days-gone-quiet)
 - [Forgetting: how long conversations are kept](#forgetting-how-long-conversations-are-kept)
 - [Where requests go: /egress](#where-requests-go-egress)
 - [Updates and going back](#updates-and-going-back)
@@ -431,7 +432,10 @@ into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
   past midnight ("push the night check-in by 30 min" at 23:50), is still that evening's: it rings at 00:20 and its
   journal and study logs go to the evening's day. Still up at 1 am, "move the evening check-in to 21:00" means the
   coming evening, and "skip the night check-in" skips the coming night's once tonight's is over. Set it to `00:00`
-  for calendar days.
+  for calendar days. Once your quiet hours are learned, it turns two hours before you're usually up, unless you set
+  it ([Your rhythm](#your-rhythm-quiet-hours-lighter-days-gone-quiet)).
+- **Lighter days:** the day after an exam or a heavy study day, the first check-in comes an hour later; **Not today**
+  under the morning line puts it back.
 - `/checkins` lists today's, with **+30 min** and **Skip** buttons (and **Tomorrow morning** for the night one);
   `/checkin evening 21:30` (today only), `/checkin night skip`, `/checkin night morning` (to your wake-up call).
 
@@ -1158,7 +1162,9 @@ a skill on a schedule.
 `dreaming.when` (07:30): books read into your notes, links tidied, handwritten notes linked, lessons from calls,
 skills and facts learned, things set up from what you said; then the loose ends: your open doubts from the last two
 weeks, notes nothing links to yet, broken links, tasks past due, AI requests that failed. A quiet night sends nothing.
-`/dream` shows it any time.
+`/dream` shows it any time. The day after an exam or a heavy day it starts with one line saying the day will be
+lighter, with **Not today**; once your quiet hours are learned, `dreaming.when` follows when you're usually up
+([Your rhythm](#your-rhythm-quiet-hours-lighter-days-gone-quiet)).
 
 **The self-check** (`dreaming.self_check`, on). With [Wrong button and test cases](#wrong-button-and-test-cases) on,
 each morning it replays your test cases and names any that went right yesterday but go wrong now (after an update or a
@@ -1406,8 +1412,10 @@ Needs Phone calls.
 
 *Settings:* `alarm.daily`, `alarm.days`, `alarm.bedtime`, `alarm.prep_min` (default 20; 0 = no draft),
 `alarm.open_page` (default on), `alarm.notes` (default on: the wake-up call goes into the daily note),
-`alarm.keep_awake` (default off), `availability.night.alarm_only` (default off).
-*Undo:* `alarm.keep_awake` off; it lets go at once. `availability.night.alarm_only` off: the fixed night hours hold
+`alarm.keep_awake` (default off), `availability.night.alarm_only` (default off), `alarm.suggest` (default on: before
+your usual bedtime with no alarm set, one message suggesting your usual time; see
+[Your rhythm](#your-rhythm-quiet-hours-lighter-days-gone-quiet)).
+*Undo:* `alarm.suggest` off: no more suggestions. `alarm.keep_awake` off; it lets go at once. `availability.night.alarm_only` off: the fixed night hours hold
 calls again at once.
 *Leaves:* the alarm time goes to your call line; with Chat on, the AI reads your notes to draft the plan, and the
 wake-up call's transcript to settle it.
@@ -2850,6 +2858,38 @@ nothing is recorded; anything already waiting still comes at the evening bundle.
 *Leaves:* nothing. What's recorded stays in `calm.db` in the state folder for 45 days: when, the reason, the setting,
 what it was about, the first 300 characters (forgotten after `privacy.keep_days` when you set it) and whether you tapped or answered it;
 a waiting message in full until its evening.
+
+## Your rhythm: quiet hours, lighter days, gone quiet
+
+Rules only, on this computer. Each change is said once, with **Undo**.
+
+- **Quiet hours that fit you** (`availability.learn_night`, on). Once a day Kurooto looks at the last three weeks of
+  when you were around (messages, buttons you tapped, calls you answered, "I'm awake") and takes each day's long quiet
+  stretch (4 to 16 hours). With 7 or more, the middle of their starts and ends, to the half hour, are your usual quiet
+  hours. When an end is an hour or more from the night hours (`availability.night`), they move there: "Quiet hours at
+  night (no calls) now run from 08:00 to 16:00, not 23:30 to 07:00: that's when you've been quiet on 12 of the last 21
+  days." Nights into the afternoon are fine. At most once a week; never night hours you set yourself; after Undo, left
+  alone for a month. Only those two times are kept.
+- **Mornings follow** (`availability.learn_morning`, on), in the same line, unless you set them yourself: the check-in
+  day turns two hours before you're usually up (`checkins.day_starts`), Dreaming's morning message comes half an hour
+  after (`dreaming.when`), Start-by's "Time to start" an hour after (`startby.when`).
+- **No alarm set** (`alarm.suggest`, on): within the hour before your usual bedtime, "You usually wake around 16:30;
+  set an alarm?" with **Set 16:30** / **Not tonight**. Once a day at most; it never sets one by itself.
+- **Lighter days** (`notify.calm.lighter_after`, on): the day after an exam (a quiz or exam on your deadline list whose
+  time passed) or 8 hours or more on the Study tracker, half the daily limit of messages that come by themselves, the
+  first check-in an hour later, and one line in the morning message (Dreaming's, or its own) with **Not today**.
+- **Gone quiet** (`availability.absence_days`, 2; `0`: off): nothing from you for two days while Kurooto kept running:
+  "Haven't heard from you in two days. All good? Nothing's urgent." with **I'm fine** / **Busy, quiet for a week**.
+  Never repeated or turned into a call until you're back; it waits out the night, focus, `/hold`, `/pause`. **Busy**:
+  no calls for a week (`/calls` lifts it) and what comes by itself waits for each evening's bundle; the alarm, approvals
+  and your own reminders still come.
+
+*Settings:* `availability.learn_night`, `availability.learn_morning`, `availability.absence_days`,
+`notify.calm.lighter_after`, `alarm.suggest`.
+*Undo:* the **Undo** button under the quiet-hours line puts every setting it changed back (left alone for a month);
+**Not today** cancels a lighter day; **Undo** under "Quiet until ..." ends a quiet week. Turning a setting off stops
+that part at once.
+*Leaves:* nothing. `state/rhythm.json` keeps the two learned times, the last change and its Undo, and the dates asked.
 
 ## Forgetting: how long conversations are kept
 

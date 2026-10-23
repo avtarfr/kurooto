@@ -23,6 +23,10 @@ While it's set, the night runs from your bedtime until the alarm: no other calls
 come. With Chat on, 20 minutes before the alarm the AI drafts the day's plan into today's daily note (the
 morning-prep skill); the call goes through it with you, and if this computer is awake it opens the morning page.
 
+No alarm set and your usual bedtime coming (alarm.suggest, on; learned by core/rhythm.py): within the hour before it,
+one message, "You usually wake around 16:30; set an alarm?", with Set 16:30 / Not tonight. At most once a day; it never
+sets one by itself.
+
 Keep awake (alarm.keep_awake, off unless you turn it on): this computer doesn't sleep in the 12 hours before the
 alarm, until 15 minutes after it rings (or until you answer), so the plan is drafted in time even if it would have
 gone to sleep overnight. On Linux it keeps running with the lid closed too; a Mac sleeps when its lid is closed, and
@@ -59,6 +63,7 @@ register_defaults(
         "open_page": True,  # at the alarm, open the morning page on this computer if it's awake
         "notes": True,  # after the wake-up call: today's plan (with Chat on) or what you said, in the daily note
         "keep_awake": False,  # keep this computer awake until the alarm (Linux: lid closed too), so the plan is drafted
+        "suggest": True,  # before your usual bedtime with no alarm set: one message suggesting your usual time
     },
 )
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -68,6 +73,7 @@ PLAN_EVERY = "every 30m"  # the next daily alarm is checked this often too (and 
 AWAKE_AFTER_MIN = 15  # keep_awake holds until this long after the alarm (repeat rings, the plan)
 AWAKE_BEFORE_H = 12  # ... from this long before it (a daily alarm set in the morning doesn't hold all day)
 MAX_SET = 10  # alarms you set yourself, kept at once (the daily one isn't counted)
+SUGGEST_MIN = 60  # the suggestion comes within this long before your usual bedtime
 
 
 def _this_minute(at: dt.datetime) -> dt.datetime:
@@ -126,6 +132,7 @@ class Alarm(Module):
         self.action("prep", self._prep)
         self.action("awake", lambda p: self.keep_awake())
         self.every("plan", PLAN_EVERY, lambda p: self._plan())
+        self.every("suggest", "every 30m", lambda p: self.suggest())
         self.app.availability.sleep = self.sleep_windows
         self._plan()
         self.keep_awake()
@@ -710,6 +717,53 @@ class Alarm(Module):
             return self.set(_this_minute(parse_when(t).replace(tzinfo=None)))
         except ValueError:
             return f"I couldn't read {t!r}."
+
+    # ------------------------------------------------------------------------------------ the suggestion
+    def suggest(self) -> str:
+        """Within an hour of your usual bedtime (core/rhythm.py learns it), with no alarm for the coming wake: one
+        message suggesting your usual time, at most once a day. It never sets one by itself."""
+        rh = getattr(self.app, "rhythm", None)
+        u = rh.usual_hours() if rh is not None and self.setting("suggest") else None
+        if not u:
+            return ""
+        t = now()
+        try:
+            bed_t, wake_t = dt.time.fromisoformat(u["from"]), dt.time.fromisoformat(u["to"])
+        except ValueError:
+            return ""
+        bed = min(b for b in (dt.datetime.combine(t.date() + dt.timedelta(days=k), bed_t) for k in (0, 1)) if b > t)
+        if bed - t > dt.timedelta(minutes=SUGGEST_MIN):
+            return ""
+        wake = dt.datetime.combine(bed.date(), wake_t)
+        wake += dt.timedelta(days=1) if wake <= bed else dt.timedelta(0)
+        daily_at = self.next_daily()
+        if any(t < a <= wake + dt.timedelta(hours=3) for a in [*self.upcoming(), *([daily_at] if daily_at else [])]):
+            return ""  # one's set for that wake already
+        f = self.app.paths.state / "alarm-suggest.json"
+        if (jload(f, {}) or {}).get("day") == bed.date().isoformat():
+            return ""
+        jsave(f, {"day": bed.date().isoformat()})
+        text = f"You usually wake around {wake:%H:%M}; set an alarm?"
+        self.app.notify(
+            text,
+            kind="question",
+            why="alarm.suggest",
+            buttons=[[(f"Set {wake:%H:%M}", f"alm:{wake:%Y%m%d%H%M}:set"), ("Not tonight", "alm:suggest:no")]],
+        )
+        self.app.events.emit("alarm_suggested", at=wake.isoformat())
+        return text
+
+    def callbacks(self):
+        return {"alm": self._suggest_button}
+
+    def _suggest_button(self, ref: str, act: str) -> str:
+        if act != "set":
+            return "OK, no alarm."
+        try:
+            at = dt.datetime.strptime(ref, "%Y%m%d%H%M")
+        except ValueError:
+            return "That button is out of date."
+        return self.set(at) if at > now() else "That time has passed."
 
     # -------------------------------------------------------------------------------------- telegram
     def commands(self):

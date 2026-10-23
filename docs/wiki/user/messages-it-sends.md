@@ -208,6 +208,10 @@ No Stop; only Another time. When sent as urgent they always come.
 | the weekly summary (Sunday 19:00) | Weekly summary | `weekly.when` | feature off | | yes | |
 | the Sunday review call | Weekly summary | `weekly.call` | no Sunday call | | yes | |
 | a first-week quest | First-week quests | `quests.days` | feature off | | yes | yes |
+| night hours (and mornings) moved to when you're usually quiet (Undo) | Your rhythm | `availability.learn_night` | the night hours stay where they are | | yes | |
+| "A lighter day after your exam ..." (Not today; Dreaming's morning message carries it when that's on) | Your rhythm | `notify.calm.lighter_after` | no more lighter days | | | |
+| "Haven't heard from you in two days. All good? Nothing's urgent." (I'm fine / Busy, quiet for a week) | Your rhythm | `availability.absence_days` | no more of these | | | |
+| "You usually wake around 16:30; set an alarm?" (Set / Not tonight) | Morning alarm | `alarm.suggest` | no more alarm suggestions | | | |
 
 ### Google
 
@@ -367,11 +371,28 @@ all is well); `/health now` also asks online services; the dashboard's "needs a 
 **What leaves your computer:** nothing new. The checks ask services Kurooto already uses: Telegram whether your bot
 answers, GitHub whether your notes token works, your call line whether it's up.
 
+## Lighter days and when you've gone quiet
+
+**Lighter days** (`notify.calm.lighter_after`, on). The day after an exam (a quiz or exam on your deadline list whose
+time passed the day before) or a heavy day (8 hours or more on the Study tracker), Kurooto goes easier: half the daily
+limit of messages that come by themselves (3 instead of 6; the rest wait for the evening bundle), and your first
+check-in an hour later. The morning message says so in one line ("A lighter day after your exam (Linear Algebra
+midsem): fewer messages from me and the first check-in an hour later."), with **Not today**, which puts the day back
+as usual. Without Dreaming, the line comes on its own once your night hours are over.
+
+**When you've gone quiet** (`availability.absence_days`, 2; `0` turns it off). If nothing came from you for two days
+(no message, no button, no answered call) while Kurooto kept running, one message: "Haven't heard from you in two days.
+All good? Nothing's urgent.", with **I'm fine** and **Busy, quiet for a week**. It's never repeated, never followed up
+and never a call: the next one can only come after you've been back. It waits out the night, focus, `/hold`, `/pause`
+and a quiet week. **Busy, quiet for a week**: no calls for a week (like `/hold`; `/calls` lifts it), and whatever comes
+by itself waits for one message each evening until then; the alarm, approvals and your own reminders still come.
+**Undo** under the reply ends it early.
+
 ## The night, focus and urgent messages
 
 | | Calls | Messages |
 |---|---|---|
-| **Night** (23:30 to 07:00, `availability.night`; or bedtime to your alarm) | held until it ends, except the alarm | still arrive (mute the chat in Telegram if you like); the "back online" message waits for the morning |
+| **Night** (23:30 to 07:00, `availability.night`, or your learned quiet hours; or bedtime to your alarm) | held until it ends, except the alarm | still arrive (mute the chat in Telegram if you like); the "back online" message waits for the morning |
 | **Focus** (`/focus 2h`, a `#focus` calendar event) | held | wait until focus ends, then come together; approvals, calls and urgent messages still come |
 | **`/hold`**, a class, a calendar event | held ("Held a call until 18:02 (class: ...)") and placed by itself when it ends | not affected |
 | **Paused** (`/pause`) | your call line still places scheduled calls (the alarm rings) | reminders and other messages wait until you resume |

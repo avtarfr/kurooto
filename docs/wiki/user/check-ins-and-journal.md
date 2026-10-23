@@ -63,7 +63,13 @@ moved again for two weeks, and one you undid is left alone for a month.
 **The check-in day runs from 05:00 to 05:00** (`checkins.day_starts`). A night check-in at 00:30, or one you push past
 midnight, still belongs to the evening before: its journal entry and study logs go to that day. Still up at 1 am,
 "move the evening check-in to 21:00" means the coming evening, and "skip the night check-in" skips the coming night's
-once tonight's is over. Set it to `00:00` for plain calendar days.
+once tonight's is over. Set it to `00:00` for plain calendar days. Once Kurooto has learned when you're usually up
+([calls.md](calls.md#morning-alarm), `availability.learn_morning`), the day turns two hours before that (14:00 if you're
+up around 16:00), unless you set it yourself.
+
+**Lighter days.** The day after an exam or a heavy study day (`notify.calm.lighter_after`), the day's first check-in
+comes an hour later. **Not today** under the morning line puts it back
+([messages-it-sends.md](messages-it-sends.md#lighter-days-and-when-youve-gone-quiet)).
 
 **On the dashboard.** The [Today page](dashboard.md) lists today's check-ins with their state, **+30 min** (pushes it
 back half an hour, like **In 30 min** on Telegram) and **skip**.
