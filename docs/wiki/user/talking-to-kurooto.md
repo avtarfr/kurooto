@@ -39,8 +39,11 @@ you have on and Kurooto's own), how many things you can just say, and its page i
 are off. **`/help <group>`** shows one group in full (`/help calls`, `/help reminders`): what each command does, what
 you can just say in plain words, and its features that are off; **`/help all`** sends every group, one message each. **`/help <word>`** searches
 everything, on or off: `/help call` shows Phone calls, its commands and how to turn it on. If Chat is off it says free
-text isn't sent to an AI. The same `/help` answers in the phone app's chat. The full list is in
-[commands.md](commands.md).
+text isn't sent to an AI. "What you can just say" covers each feature's requests and the ones Kurooto understands by
+itself: "did I finish that thing?" (Talking), "when did I last talk to Prof Ortiz?" (Privacy and memory), "sync
+everything" (Notes), "I got a project under Prof Ortiz" (Teaching Kurooto) and "about the meeting with Prof Ortiz:
+..." (Research, with Chat on). The same `/help` answers in the phone app's chat, where its wiki links open with a tap.
+The full list is in [commands.md](commands.md).
 
 **While Kurooto is off or asleep.** Telegram keeps your messages for about a day; Kurooto handles them when it's back.
 Telegram doesn't deliver Kurooto's messages while the computer sleeps; with Phone calls set up, your call line can say

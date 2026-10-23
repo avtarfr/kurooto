@@ -30,6 +30,12 @@ how-to-help-me line, your recent notes, an open deadline, and the notes brain's 
 date, time or number for the same thing). The morning message lists a few in one section, "Worth a look in what I
 remember", each with Keep A / Keep B / Both true; nothing changes until you tap, and each change has an Undo.
 /dream check looks now.
+
+Folding it into your profile (dreaming.fold, on; modules/fold.py): each night (04:50) it reads what you said since the
+last time (your chats, calls, AI requests and journal) for lasting facts about you and how you like to be helped, and
+the morning message offers a few, "For your profile", each with Keep and Not that. A Keep adds the line, your words
+with where and when they came from, to Kurooto's own block of your profile or to your how-to-help-me note, with an
+Undo; nothing is written until you tap. Never health, money, passwords or anyone else's words. /dream fold looks now.
 """
 
 from __future__ import annotations
@@ -43,7 +49,7 @@ from kurooto.core import policy, tuning
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
-from kurooto.modules import consolidate, curious
+from kurooto.modules import consolidate, curious, fold
 from kurooto.modules.base import Command, Module
 
 register_defaults(
@@ -77,6 +83,7 @@ class Dreaming(Module):
     def start(self):
         self.every("morning", self.setting("when") or "daily 07:30", self.morning)
         self.every("consolidate", consolidate.WHEN, lambda p: asyncio.to_thread(consolidate.scan, self.app))
+        self.every("fold", fold.WHEN, lambda p: asyncio.to_thread(fold.scan, self.app))
 
     def commands(self):
         return [
@@ -85,7 +92,8 @@ class Dreaming(Module):
                 "what Kurooto did since the last morning message, and the loose ends, now; /dream policy: what it "
                 "tunes while you sleep (when its messages reach you, effort, which AI first, Start-by sizes) and "
                 "what it changed; /dream proposal: a fix for a skill, waiting for Apply or No; /dream check: "
-                "duplicates and lines that disagree in what it remembers, now",
+                "duplicates and lines that disagree in what it remembers, now; /dream fold: what you said lately "
+                "that could go into your profile, with Keep and Not that",
                 self._cmd,
             )
         ]
@@ -102,6 +110,13 @@ class Dreaming(Module):
                 msg.reply(text, buttons=buttons)
                 return None
             return text
+        if arg.strip().lower() in ("fold", "profile", "learned"):
+            text = fold.show(self.app)
+            _t, buttons = fold.section(self.app, send=False)
+            if buttons and msg.respond:
+                msg.reply(text, buttons=buttons)
+                return None
+            return text
         text = self.report(send=False) or "Nothing happened overnight that's worth a line, and no loose ends."
         if self.buttons and msg.respond:  # the curious and resurfacing lines' buttons
             msg.reply(text, buttons=self.buttons)
@@ -113,6 +128,7 @@ class Dreaming(Module):
             "drm": lambda ref, act: curious.button(self.app, ref, act),
             "dcn": lambda ref, act: consolidate.button(self.app, ref, act),  # Keep A / Keep B / Both true, Undo
             "rsi": lambda ref, act: tuning.answer(self.app, ref, act),  # a proposed fix: Apply or No
+            "dfo": lambda ref, act: fold.button(self.app, ref, act),  # a line for your profile: Keep, Not that, Undo
         }
 
     # ------------------------------------------------------------------------------------- the morning
@@ -294,19 +310,26 @@ class Dreaming(Module):
         except Exception as e:  # never at the cost of the morning message
             self.app.events.emit("dreaming_check_failed", error=f"consolidate: {type(e).__name__}: {e}"[:200])
             tidy, tidy_buttons = "", []
-        self.buttons = list(self.buttons or []) + tidy_buttons
+        try:  # lasting things you said, for your profile (modules/fold.py)
+            folded, fold_buttons = fold.section(self.app, send)
+        except Exception as e:  # never at the cost of the morning message
+            self.app.events.emit("dreaming_check_failed", error=f"fold: {type(e).__name__}: {e}"[:200])
+            folded, fold_buttons = "", []
+        self.buttons = list(self.buttons or []) + tidy_buttons + fold_buttons
         if send:
             st = {"at": now().isoformat()}
             prev = (jload(self.state_file, {}) or {}).get("passing")
             st["passing"] = passing if passing is not None else prev
             jsave(self.state_file, st)
-        if not did and not ends and not light and not tidy:
+        if not did and not ends and not light and not tidy and not folded:
             return ""
         parts = [light] if light else []
         if did:
             parts.append("While you slept:\n" + "\n".join(f"- {x}" for x in did))
         if tidy:
             parts.append(tidy)
+        if folded:
+            parts.append(folded)
         if ends:
             parts.append("Loose ends:\n" + "\n".join(f"- {x}" for x in ends))
         text = "\n\n".join(parts)
@@ -314,5 +337,7 @@ class Dreaming(Module):
             buttons = [[("Not today", "rhy:lighter:no")]] if light else []
             buttons += list(undo or []) + list(self.buttons or [])  # Dream RSI's Undo, the curious lines' buttons
             self.app.notify(text, kind="result", title="Dreaming", why="dreaming.morning", buttons=buttons or None)
-        self.app.events.emit("dreaming_told", did=len(did), loose=len(ends), tidy=len(tidy_buttons), sent=send)
+        self.app.events.emit(
+            "dreaming_told", did=len(did), loose=len(ends), tidy=len(tidy_buttons), fold=len(fold_buttons), sent=send
+        )
         return text

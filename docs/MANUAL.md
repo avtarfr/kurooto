@@ -407,7 +407,10 @@ group (Talking, Reminders and deadlines, Calls and phone, Notes, Privacy and mem
 commands (the features you have on and Kurooto's own: `/q`, `/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/jobs`)
 and its page in the user wiki, then the features that are off; `/help <group>` (`/help calls`) shows one group in full,
 what each command does and what you can just say, and `/help all` every group, one message each. `/help <word>` finds a command or feature, on or off
-(`/help quiz`, `/help alarm`). The phone app's chat answers `/help` the same way.
+(`/help quiz`, `/help alarm`). What you can just say includes the requests Kurooto understands by itself ("did I
+finish that thing?", "when did I last talk to Prof Ortiz?", "sync everything", "I got a project under Prof Ortiz",
+"about the meeting with Prof Ortiz: ..."). The phone app's chat answers `/help` the same way; its links open with a
+tap.
 
 ### Telegram
 Your own bot, which only answers you. Optional when the phone app is paired (see [Without Telegram](#without-telegram)). Commands: `/status` (what's going on: whether calls are held, focus, what's
@@ -1467,9 +1470,27 @@ item shown on two mornings without a tap is let go. `/dream check` looks now. Ru
 not clear can get a second opinion (`dreaming.consolidate_ai`): `local` (the model on this computer, when there is
 one), `main` (your AI; only how-to-help-me lines and note lines, never a gist) or `off`, at most 8 a night.
 
+**For your profile** (`dreaming.fold`, on). Each night at 04:50 it reads what you said since the last time (your
+chats with Kurooto, your lines on calls, the AI requests you made, your journal and daily notes) for lines that state
+something lasting about you ("I'm a second-year geology student", "my thesis is on sea ice") or how you like to be
+helped ("don't call me before 9", "I prefer short answers"). A few (`dreaming.fold_max`, 3) come as one section of
+the morning message, each with where and when you said it and where it would go, and **Keep** and **Not that**.
+Nothing is written until you tap Keep: a fact about you goes into Kurooto's own block of your profile
+(`<!-- kurooto:learned -->` in about-me/profile.md, made if you have no profile yet; it goes along with every AI
+request next to the In-brief part), a how-to-help line into your how-to-help-me note under "Learned in the nightly
+look back", each in your words with where it came from: "- I prefer short answers (from a call, 2026-10-23)". Rules
+pick the lines: first person, a statement (not a question, not "maybe" or "if"), not only about today, not already in
+your profile or how-to-help-me note, nothing about other people (a "he", "she", "my friend" or a phone number, so a
+forwarded message isn't learned from), never health, money or passwords. With `dreaming.fold_ai` = `local` (the
+default) the model on this computer, when there is one, takes a second look and drops what isn't lasting; `main` asks
+your AI (only those lines go to it); `off` leaves it to the rules. **Not that** drops a line for good; one shown on two
+mornings without a tap is let go. Building your profile again keeps the block; lines you edit in it stay as you wrote
+them. `/dream fold` looks now.
+
 **What leaves your computer.** Nothing: it reads Kurooto's own log, its memory, your requests' titles and your notes.
 What calls searched your notes for is kept 8 days at most (and `/forget` clears it). With `dreaming.consolidate_ai` =
-`main`, the pairs it asks about go to your AI. With `dreaming.propose_prompts` on, a proposed fix sends the skill,
+`main`, the pairs it asks about go to your AI; with `dreaming.fold_ai` = `main`, the lines it found for your profile.
+Lines waiting for Keep are kept in Kurooto's state folder (owner-only) until you tap or they're let go. With `dreaming.propose_prompts` on, a proposed fix sends the skill,
 the requests that went wrong and your words about them to Learning's second-look AI. Your "that's not what I asked"
 words are kept on that request and forgotten with it.
 
@@ -1481,7 +1502,8 @@ the entry from `brain.effort_map`, `brain.fallback_first` or `startby.sizes`; `d
 `dreaming.curious` or `dreaming.resurface` = false drops one line;
 a stub it made is a plain note you can delete; `/unignore <topic>` takes back Not interested. A Keep A / Keep B: its
 **Undo** button (the line, the gist or the deadline's date comes back, and the pair is asked about again);
-`dreaming.consolidate` = false stops looking.
+`dreaming.consolidate` = false stops looking. A Keep for your profile: its **Undo** button (the line comes out and is
+offered again), or delete the line from the note; `dreaming.fold` = false stops offering.
 
 ### Set up from what you say
 
@@ -1505,7 +1527,19 @@ yourself, by rules on this computer; a question (with or without its "?") sets u
 line with Undo; `/inferred` lists them. Settings `infer.on`, `infer.projects`, `infer.meetings`, `infer.classes`,
 `infer.aliases`, `infer.commitments`, `infer.quizzes`, `infer.short_names`.
 
-**Undo.** The Undo button, or `/inferred undo <id>`; `infer.on` = false stops it.
+**The one pass** (`infer.sweep`, on). What you say is read as it arrives; the pass also reads what didn't come as a
+message: your chats with Kurooto and your journal and daily notes as they are in your notes folder (your lines, not
+Kurooto's blocks). It runs once a few minutes after it's first on, over the last `infer.sweep_days` (30), then each
+night at 04:20 over what's new since. Rules first; a line the rules can't read but that looks like one of these (in
+the first person, with a project, a supervisor, "every ...", a lab or a short name) gets one more try with
+`infer.sweep_ai`: `local` (the default) asks the model on this computer, when there is one, to restate it in one of
+the forms above, and the rules read that; a restatement that brings in a name, day or number the line doesn't have is
+dropped. `main` asks your own AI (only that line goes to it, at most 10 a night); `off` leaves it to the rules.
+Everything one pass sets up is told in one line ("Set up 2 things from your recent chats and journal (1 project, 1
+class)") with **Undo all**. `/inferred scan` runs it now. Alarms, calls and anything sent out still need your tap.
+
+**Undo.** The Undo button, or `/inferred undo <id>`; **Undo all** under a pass's line; `infer.on` = false stops it,
+`infer.sweep` = false stops the pass only.
 
 ### Meetings: minutes and action items
 

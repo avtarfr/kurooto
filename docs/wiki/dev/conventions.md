@@ -9,7 +9,8 @@ commit as the change**:
    `privacy.md`, `troubleshooting.md` or `glossary.md` when they're affected);
 2. this developer wiki, `docs/wiki/dev/` (the area's page, and its known problems when you fix or find one);
 3. `/help`: the command list Telegram and the phone app's chat show (`core/commands.py`: each module's `commands()`
-   help text, `CORE`, the group in `GROUPS`, each request's `examples`), and the `/` menu;
+   help text, `CORE`, the group in `GROUPS`, each request's `examples`, and `CORE_SAY` for a plain-English request
+   App.handle answers outside any feature's intents), and the `/` menu;
 4. `CHANGELOG.md`, a line under the unreleased version;
 5. the site pages `tools/release.py` publishes (`site_pages`: the landing page from `installer/index.html`, the privacy
    page (`docs/PRIVACY.md` rendered into `installer/privacy.html` between its `PRIVACY:START`/`PRIVACY:END` markers),

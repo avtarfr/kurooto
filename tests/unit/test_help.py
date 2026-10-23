@@ -135,3 +135,46 @@ def test_help_on_telegram_and_in_the_phone_app_is_the_same(env):
     got = []
     env.app.handle(Incoming("/help", via="app", respond=lambda t, buttons=None: got.append(t)))
     assert got == env.app.help_parts()
+
+
+def test_every_plain_english_request_is_in_help_and_understood(env):
+    """Every feature's request (its examples) and every one Kurooto understands by itself (CORE_SAY) is in /help, and
+    each of Kurooto's own examples is taken by what /help says takes it."""
+    from kurooto.core import infer, ledger, meetings, syncall, threads
+
+    app = env.app
+    everything(app)
+    env.say("/subject add Linear Algebra")
+    text = "\n".join(app.help_parts("all"))
+    missing = []
+    for m in app.modules.values():
+        for it in m.intents():
+            missing += [f"{m.id}.{it.name}: {ex}" for ex in it.examples if f'"{ex}"' not in text]
+    assert not missing, f"not in /help: {missing}"
+    check = {
+        "threads": lambda t: threads.intent(app, t) is not None,
+        "memory": lambda t: ledger.intent(app, t) is not None,
+        "sync": syncall.wanted,
+        "set up from what you say": lambda t: bool(infer.observe(app, t)),
+        "meeting minutes": lambda t: bool(meetings.EXPLICIT.search(t)),
+    }
+    for key, what, examples, _needs in commands.CORE_SAY:
+        assert commands.find_group(key) is not None, key
+        for ex in examples:
+            assert f'"{ex}"' in text, ex
+            assert check[what](ex), f"{what}: {ex!r}"
+    app.settings.set("infer.on", False)
+    assert '"I got a project under Prof Ortiz"' not in "\n".join(app.help_parts("all"))  # off: not offered
+    assert 'just say "sync everything"' in app.help_parts("sync")[0]
+
+
+def test_the_phone_apps_chat_gets_the_index_with_its_wiki_links(env):
+    """The app's chat (modules/calls/chat.py:PhoneChat) answers /help with the same index, each group's wiki link in
+    it (the Android chat makes them tappable)."""
+    app = env.app
+    got = []
+    app.handle(Incoming("/help", via="app", respond=lambda t, buttons=None: got.append(t)))
+    assert got and got == app.help_parts() and commands.wiki() in got[-1]
+    assert all(commands.wiki(g.page) in "\n".join(got) for g in commands.GROUPS if f"/help {g.key}" in "\n".join(got))
+    java = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "ChatActivity.java").read_text()
+    assert "Linkify.addLinks(t, Linkify.WEB_URLS)" in java

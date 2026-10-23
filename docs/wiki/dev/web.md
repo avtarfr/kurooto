@@ -300,7 +300,10 @@ never to `settings.json`.
 The `notes` step (`renderNotes`, 0.5.20) loads `GET notes/fit`, draws the layout buttons and one input per line, and
 posts `notes/fit/preview` 400 ms after typing stops; **Use this layout** posts `notes/fit/apply` with the digest of the
 plan last shown (`fitShown`), so a plan that changed since is refused, not applied. **Keep Kurooto's own layout** moves
-on when nothing would change, else fills in `presets.kurooto` for the notes folder. Settings → notes links to
+on when nothing would change, else fills in `presets.kurooto` for the notes folder. A fresh start (`fresh` in
+`drawFit`: no notes, the workspace itself, nothing to undo, Kurooto's own layout with no custom places) says there is
+nothing to fit in with and folds that editor into a `<details class="fit-more">`; the "Next keeps the layout" hint
+shows only while it's open. Settings → notes links to
 `/setup#notes` (`home.js:renderSettings`).
 
 **Where you are (`core/setupsteps.py`, `<state>/setup.json`).** The daemon keeps each step's status, not the browser.
@@ -317,8 +320,12 @@ done nor skipped, else the first skipped, else `you`; the page opens there unles
 (`/setup#about`). Seconds per visit are capped at `MAX_VISIT` (an hour). `chosen` restores the features' ticks while
 `setup.done` is false. `kurooto setup [STEP]` opens `<url>setup#STEP`. The dashboard (`home.js:setupLeft`) reads `GET
 setup` at start and `state.setup` on the Features tab: the corner link becomes **finish setup (N)** and a **Finish
-setting up** box lists each step with its link. The features step also says Calm's daily limit (`state.calm`, the
-number field saves `notify.calm.messages` through `POST settings`). Tests: `tests/unit/test_setup_resume.py`.
+setting up** box lists each step with its link. The features step also says Calm's daily limit, under the cards
+(`state.calm`, the number field saves `notify.calm.messages` through `POST settings`). The hint beside Next
+(`navHint`) gets its own line above the buttons under 520 px wide. There, too, the current step's chip keeps its accent
+through a tap's sticky hover. The Telegram step's channel buttons show Telegram picked until you pick (`renderTelegram`:
+its steps are what shows first). Tests: `tests/unit/test_setup_resume.py`,
+`tests/unit/test_look_setup.py`.
 
 ## How a module shows up in the UI
 

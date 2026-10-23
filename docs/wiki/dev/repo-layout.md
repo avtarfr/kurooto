@@ -48,6 +48,7 @@ One line per folder or important file. Paths are relative to the repository root
 | `modules/curious.py` | not a feature: Dreaming's curious and resurfacing lines (rules only) and their buttons |
 | `modules/latex_tracker.py` | not a feature: the Research add-on's LaTeX tracker (build, log, words, BibTeX) |
 | `modules/consolidate.py` | not a feature: Dreaming's "Worth a look in what I remember" (duplicates and lines that disagree) and its buttons |
+| `modules/fold.py` | not a feature: Dreaming's "For your profile" (lasting things you said, Keep / Not that / Undo into your profile or how-to-help-me note) |
 | `modules/coursepages.py` | not a feature: the notes brain's course pages (key concepts and a dated timeline per course) |
 | `modules/photodates.py` | not a feature: Photo to dates, part of Deadlines (a photo's dates read by the AI, offered through `core/dateoffers.py`) |
 | `modules/mailin.py` | not a feature: Email in, part of Mail digest (mail to +kurooto or a label, filed into notes) |

@@ -140,7 +140,9 @@ notes → `Daily Notes/2026-10-20.md`").
 - **Skip for now** leaves it for later. Kurooto's own layout is used until then.
 
 You can come back to this any time from **Dashboard → Settings → notes → Fit Kurooto to your notes**, or with
-`kurooto setup notes`. If Kurooto has already written notes, the step also shows which of them would move. More:
+`kurooto setup notes`. If Kurooto has already written notes, the step also shows which of them would move. Starting
+fresh, with the notes folder still empty? There's nothing to fit in with: the step says so, folds all of the above under
+**Change where each kind of note goes**, and **Next** is all there is to do. More:
 [notes-and-concept-graph.md](notes-and-concept-graph.md#fit-kurooto-to-the-notes-you-have).
 
 ### 3. Your computer
@@ -234,7 +236,7 @@ Gemini key even if another AI answers your messages: a key box appears under the
 The Notes brain is a 0.5 GB download, so it's not in Starter. You can change any of this later on the dashboard
 (Features, Alt+F).
 
-**How many messages a day.** Above the cards, one line says it plainly: "Kurooto sends at most 6 messages a day on its
+**How many messages a day.** Under the cards, one line says it plainly: "Kurooto sends at most 6 messages a day on its
 own; the rest wait for one evening bundle at 20:00. Your own reminders, alarms and approvals always come." Change the
 number in the box beside it (`notify.calm.messages`); more about the limit in
 [messages-it-sends.md](messages-it-sends.md#calm-why-less-of-this-and-the-daily-limit).

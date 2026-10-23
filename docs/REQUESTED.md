@@ -13,21 +13,28 @@ Standing plans, never struck through.
 - **Kurooto knows itself**: every feature, command and setting is in `/help` and the wikis the day it ships.
 
 ## Open
-- **Common features directly usable from the phone app** (and the rest of the dashboard plan:
+- ~~**Common features directly usable from the phone app** (and the rest of the dashboard plan:
   ~~check-in and quiz cards~~ (0.6.0: answered on the app's main screen with an answer box and their buttons, through
   the phone outbox while the laptop sleeps)): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done;
   ~~the app's Today screen, local alarm and notification buttons~~ (0.6.0: Today on the app's first screen with
   Done / +1 on what's due, the wake-up alarm also set on the phone, Done and Snooze on reminder and deadline
-  notifications).
-- **A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
-  groups, with a link to the user wiki for the rest.
-- **Dreaming** (0.5.9 has the morning message of the night's work and the loose ends; ~~consolidating memory and
+  notifications).~~ (0.6.1: nothing left outside the Compose app: its bottom navigation between Today, Inbox and
+  Phone is on its own branch; links in the app's chat open with a tap)
+- ~~**A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
+  groups, with a link to the user wiki for the rest.~~ (0.6.1: the requests Kurooto understands by itself ("did I
+  finish that thing?", "when did I last talk to ...", "sync everything", "I got a project under ...", "about the
+  meeting with ...: ...") in their groups' "Just say"; a test that every command, every feature's request and each of
+  those is in /help and understood; the app's chat gets the same index, its wiki links tappable)
+- ~~**Dreaming** (0.5.9 has the morning message of the night's work and the loose ends; ~~consolidating memory and
   spotting contradictions across notes~~ (0.6.0: duplicate gists and how-to-help-me lines, and lines that disagree
   across how-to-help-me lines, notes, deadlines and GBrain's contradictions report, in the morning message with
   Keep A / Keep B / Both true; nothing changes until a tap); still to come: folding what it learned into your profile
   note): while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
   your journal), consolidates what it learned into memory and your profile, spots contradictions and loose ends, and
-  tells you in the morning what it tidied.
+  tells you in the morning what it tidied.~~ (0.6.1: "For your profile" in the morning message: lasting facts and
+  how-to-help lines from your chats, calls, requests and journal, by rules with an optional second look
+  (`dreaming.fold`, `fold_ai`), each with Keep / Not that; a Keep writes your words with where they came from into
+  Kurooto's own block of your profile or your how-to-help-me note, with Undo; never health, money or other people)
 - ~~**Dream RSI (self-improvement while dreaming)** (0.5.9 has the first part: each morning it replays your test cases
   and names any that went wrong since yesterday; 0.5.10 learns a phrasing you twice said again in other words, gated
   by the same replay): the same night pass also looks at what went wrong (failed or
@@ -37,21 +44,28 @@ Standing plans, never struck through.
   (0.6.0: the night pass also tunes effort, AI order and Start-by sizes by replay, one change a night with Undo; a
   skill that keeps going wrong gets a proposed fix gated by the AI's replay of those cases and your test cases, Apply
   or No, `dreaming.propose_prompts`; each change's outcome is kept and a kind you undid needs a clearer win)
-- **Set up from what it sees, not from settings** (0.5.9 has projects with their supervisor, meetings, classes,
+- ~~**Set up from what it sees, not from settings** (0.5.9 has projects with their supervisor, meetings, classes,
   commitments like the gym or a shift, a mail deadline's course and subjects' short names): one pass over chat and the journal (rules first, the AI only on a
   hit) creates projects with whoever they're with ("got a project under Prof X": the project, its supervisor, and
   meetings from then on), classes from "every Monday at 9 I have a lab", routines, a deadline's course, subject
-  aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.
+  aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.~~
+  (0.6.1: `infer.sweep`, once over the last 30 days when first on, then nightly on what's new: your chats and your
+  journal and daily notes as they are in your notes folder; a line the rules can't read but that looks like one gets
+  restated by the model on this computer (`infer.sweep_ai`) and kept only if it adds nothing the line doesn't say; one
+  line with Undo all, `/inferred scan`)
 - ~~**Preview the organic blobs in the phone app**, as in the dashboard.~~ (0.6.0: behind the main screen, in the
   palette or Material You's accents, still with "Remove animations" or battery saver)
 - ~~**A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
   Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.~~ (0.6.0: the
   0.5.16 look carried through the chat, with a top app bar, and the widgets; bottom navigation waits for the Today
   screen)
-- **Make the UI more intuitive**, and keep improving the setup wizard's elements. (0.6.0: settings with a few values are lists, JSON
+- ~~**Make the UI more intuitive**, and keep improving the setup wizard's elements. (0.6.0: settings with a few values are lists, JSON
   settings shown whole, "Saved" under the setting changed, features that are on first, the setup page's features step
   shows your picks first with the rest folded, Telegram's card links to its setup step; Claude Code is named "Claude
-  Code" everywhere)
+  Code" everywhere)~~ (0.6.1: walked as a new user in a browser; a new, empty notes folder no longer opens the layout
+  editor (it's folded under "Change where each kind of note goes"), the daily message limit comes after the
+  features, the hint beside Next has its own line on phones, the channel shown is the one picked, and the current
+  step stays readable after a tap on phones)
 - **Wiki-level documentation**: a user wiki and a developer wiki (for people and for AI agents), each a page on
   the site, covering every nook and cranny; one full read equips someone to use, develop and fix Kurooto (being
   written for 0.5.8).

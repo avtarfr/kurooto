@@ -11,7 +11,8 @@ once (Intent.examples), in groups, each with its page in the user wiki.
 
 Every message stays under Telegram's 4096 characters (LIMIT); an index that won't fit one comes in two, split between
 groups. A feature that isn't in a group lands in "More".
-tests/unit/test_help.py fails when a command registered anywhere isn't in /help.
+tests/unit/test_help.py fails when a command registered anywhere isn't in /help, or when a plain-English request
+(a feature's Intent or one of Kurooto's own, CORE_SAY) isn't.
 """
 
 from __future__ import annotations
@@ -33,7 +34,11 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (("help", "start"), "this list; /help <group> shows one group in full, /help <word> finds a command or feature"),
     (("aboutme",), "what I know about you (your profile's In-brief part), and where to edit it"),
     (("persona",), "your persona card: how I talk to you (/persona tone: plain, /persona clear)"),
-    (("inferred",), "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>"),
+    (
+        ("inferred",),
+        "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>; /inferred "
+        "scan looks over your recent chats and journal now",
+    ),
     (("forget",), "forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all (asks first)"),
     (("gists",), "one line of what each forgotten call or request decided; /gists <words> finds them"),
     (
@@ -51,6 +56,25 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (("notes",), "pdf <course>: a course's notes as one PDF; /notes pdf template: a copy of the template to edit"),
 )
 SYNC = (("sync",), "sync everything that's on (Classroom, calendar, research, notes brain)")  # while Notes sync is off
+
+# What Kurooto understands in plain words by itself, outside any feature's Intents (App.handle): (group, what it is,
+# examples, the setting or feature it needs, "" for none). tests/unit/test_help.py checks each example is understood.
+CORE_SAY: tuple[tuple[str, str, tuple[str, ...], str], ...] = (
+    ("talking", "threads", ("did I finish that thing?", "that thing is done"), ""),
+    ("privacy", "memory", ("when did I last talk to Prof Ortiz?", "what was I doing last Thursday?"), ""),
+    ("notes", "sync", ("sync everything",), ""),
+    (
+        "teaching",
+        "set up from what you say",
+        (
+            "I got a project under Prof Ortiz",
+            "every Monday at 9 I have a Linear Algebra lab",
+            "by LA I mean Linear Algebra",
+        ),
+        "infer.on",
+    ),
+    ("research", "meeting minutes", ("about the meeting with Prof Ortiz: we fixed the forcing",), "chat"),
+)
 
 
 @dataclass(frozen=True)
@@ -177,6 +201,18 @@ def _core(app: App, name: str) -> tuple[tuple[str, ...], str] | None:
     return next((c for c in CORE if c[0][0] == name), None)
 
 
+def _core_said(app: App, g: Group) -> list[str]:
+    """Kurooto's own plain-English requests in this group (CORE_SAY), when what they need is on."""
+    out = []
+    for key, _what, examples, needs in CORE_SAY:
+        if key != g.key:
+            continue
+        if needs and not (app.is_on(needs) if "." not in needs else app.settings.get(needs)):
+            continue
+        out.append(", ".join(f'"{x}"' for x in examples))
+    return out
+
+
 def _say(it: Intent) -> str:
     """A request as /help shows it: its example phrasings, or what it does when it has none."""
     return ", ".join(f'"{x}"' for x in it.examples) if it.examples else it.description
@@ -188,7 +224,7 @@ def _line(names: tuple[str, ...], text: str) -> str:
 
 def _parts(app: App, g: Group, on: list[Module]):
     """(command lines, plain-word lines, command names) of a group, for the features that are on."""
-    lines, said, names = [], [], []
+    lines, said, names = [], _core_said(app, g), []
     for n in g.core:
         c = _core(app, n)
         if c:
@@ -304,6 +340,9 @@ def find(app: App, word: str) -> str:
     for names, h in (*CORE, SYNC):
         if any(word in n for n in names) or word in h.lower():
             hits.append(_line(names, h))
+    for _key, what, examples, _needs in CORE_SAY:
+        if word in what or any(word in x.lower() for x in examples):
+            hits.append(f"{what[:1].upper() + what[1:]}: just say " + ", ".join(f'"{x}"' for x in examples))
     for m in app.modules.values():
         state = "" if m in on else ' (off: turn it on in Features, or say "turn on ' + m.title.lower() + '")'
         about = f"{m.title} {m.description}".lower()

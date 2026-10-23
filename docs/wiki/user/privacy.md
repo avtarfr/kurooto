@@ -66,6 +66,8 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | What Kurooto is running (`self.md`) | only with a question about Kurooto itself, when your AI reads it (`kurooto_self`), or with `/fixme`'s Ask my AI: the version and update channel, this computer's system and hardware profile, the AIs and models set up (fallback order, limits), each feature and whether it works, the last day's failures counted by kind, the last few requests' AI, model and time, and where the settings and log are. Never messages, notes, request titles, answers or secrets | the AI you picked |
 | Nightly look back | what happened today (what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out: `retro.transcripts`, `retro.journal`), your how-to-help-me note, the settings it may change; for a skill change you approved, that skill's text | the AI you picked |
 | Dreaming: a second opinion (`dreaming.consolidate_ai` = `main` only; the default asks the model on this computer) | two lines that may say the same thing or disagree: how-to-help-me lines and lines of your notes, never a gist; at most 8 pairs a night | the AI you picked |
+| Dreaming: for your profile, a second look (`dreaming.fold_ai` = `main` only; the default asks the model on this computer) | the lines of yours the rules picked as lasting (from your chats, calls, requests and journal; never health, money, passwords or other people), one at a time, at most 8 a night. A line you Keep then goes along with every AI request, in your profile or how-to-help-me note | the AI you picked |
+| Set up from what you say: the one pass (`infer.sweep_ai` = `main` only; the default asks the model on this computer) | a line of your chats or journal that the rules couldn't read but that looks like a project, a class, a routine or a short name, one at a time, at most 10 a night | the AI you picked |
 | Learns from its own work | nothing to build its search index (it stays on this computer); the passages the AI finds when it searches it, with that request; to learn a skill, the finished request, its answer and its steps; to learn a lesson, your correction and the skill; to pick up facts, the day's requests (with the nightly look back) | the AI that takes second looks (`learning.brain`), else the AI you picked |
 | Dreaming: proposed fixes to skills (`dreaming.propose_prompts`, off) | the skill that keeps going wrong and the requests that went wrong (what was asked and your words about it); tuning effort, AI order and Start-by sizes sends nothing | the AI that takes second looks (`learning.brain`), else the AI you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI you picked |
@@ -167,8 +169,10 @@ are kept only as "Busy (private)", not even told to your AI), Study tracker (win
 only minutes per subject are kept; the idle check never reads what you type), Quick notes and prompts, Local AI models,
 the [offline helper](your-computer.md#the-offline-helper) (only its model's download goes out, made by Ollama),
 Stay awake on charger, Space keeper, the reserve (Markdown copies of Kurooto's state for AI programs, in the state
-folder), notes brain timelines, course pages, weekly checkup and checkup line, Dreaming's consolidating (rules, and
-the model on this computer for a second opinion), `kurooto top`, `kurooto runlog` (and run compare). Sync everything sends only what each
+folder), notes brain timelines, course pages, weekly checkup and checkup line, Dreaming's consolidating and its
+"For your profile" lines (rules, and the model on this computer for a second look; the lines waiting for your Keep
+are kept owner-only in Kurooto's state folder), setting up from what you say and its nightly pass (rules, and the
+model on this computer for a line the rules can't read), `kurooto top`, `kurooto runlog` (and run compare). Sync everything sends only what each
 sync's own feature sends.
 
 ## Where requests go
