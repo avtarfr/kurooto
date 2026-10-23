@@ -3,7 +3,8 @@ a stretch of it now.
 
 What it covers, all in Kurooto's own folders (your notes folder is never touched):
 
-    calls       call transcripts (state/calls/transcripts/) and calls that went on as text (calls/textcalls.json)
+    calls       call transcripts (state/calls/transcripts/), calls that went on as text (calls/textcalls.json) and
+                what calls searched your notes for (calls/searches.json, 8 days at most: modules/curious.py)
     requests    what was asked and answered in finished AI requests (jobs.db: the row stays, without its words, for
                 /usage and the Space keeper) and long answers kept as files (jobs/<id>-result.md)
     chats       Chat's recent turns (chat/history.json)
@@ -111,6 +112,12 @@ def _calls(app: App, lo: float, hi: float) -> int:
             if gone:
                 jsave(tc, {k: c for k, c in convs.items() if k not in gone})
         n += len(gone)
+    sf = d / "searches.json"
+    if sf.exists():
+        rows = jload(sf, []) or []
+        keep = [r for r in rows if not (isinstance(r, dict) and _in(float(r.get("at") or 0), lo, hi))]
+        if len(keep) != len(rows):
+            jsave(sf, keep)
     return n
 
 

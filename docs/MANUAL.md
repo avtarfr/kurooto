@@ -1136,9 +1136,24 @@ each morning it replays your test cases and names any that went right yesterday 
 settings change), so a step back shows up the next morning. It also counts the requests it didn't understand and the
 Wrong taps since the last message; the Sunday look back shows them.
 
-**What leaves your computer.** Nothing: it reads Kurooto's own log and your notes.
+**Curious** (`dreaming.curious`, on). A topic you asked about 3 or more times this week (requests to the AI, what calls
+searched your notes for, quiz questions you got wrong) with no note on it, or only a stub, gets one line: "You've
+asked about the Fokker–Planck equation 3 times this week and there's no note on it. Want one?" **Make a stub** writes
+a concept note in that subject's folder, linked from its course page; **Not interested** adds the topic to your
+not-interested list. Only clear topics count: your concept notes' names, phrases ending in a word like equation,
+lemma or theorem, and pairs of names like Navier–Stokes.
 
-**Undo.** Turn it off in Features; the concept graph's morning line comes on its own again.
+**From the past** (`dreaming.resurface`, on). One line about a note you last changed 10 to 30 days ago, a subject you
+last practised in a quiz then (those with an exam in two weeks first), or an anniversary of a project's first Log line
+or a repository's first commit, in whole months or years. **Open it** (or **Practise**) and **Less of this**.
+Each line comes at most once a day; the same topic or note not again for 30 days.
+
+**What leaves your computer.** Nothing: it reads Kurooto's own log, your requests' titles and your notes. What calls
+searched your notes for is kept 8 days at most (and `/forget` clears it).
+
+**Undo.** Turn it off in Features; the concept graph's morning line comes on its own again. `dreaming.curious` or
+`dreaming.resurface` = false drops one line; a stub it made is a plain note you can delete; `/unignore <topic>` takes
+back Not interested.
 
 ### Set up from what you say
 

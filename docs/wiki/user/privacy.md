@@ -206,7 +206,7 @@ What Kurooto keeps of your conversations is forgotten after **`privacy.keep_days
 
 | What | Where (state folder) |
 |---|---|
-| Call transcripts, and calls that went on as text | `calls/transcripts/`, `calls/textcalls.json` |
+| Call transcripts, calls that went on as text, and what calls searched your notes for (8 days at most) | `calls/transcripts/`, `calls/textcalls.json`, `calls/searches.json` |
 | What you asked the AI and what it answered (the time, AI and effort stay, without the words, for `/usage`) | `jobs.db`, `jobs/*-result.md` |
 | Chat's recent turns | `chat/history.json` |
 | Answered and expired questions (`ask.keep_days` gives them their own time) | `ask/` |

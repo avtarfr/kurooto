@@ -85,6 +85,12 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 - **Never without a tap**: setting or moving an alarm, placing calls, reading new mail senders, sending anything out,
   attaching a code repository to a project. Repositories are never searched for on the disk.
 
+## Human-like (2026-10-23)
+- ~~**Curious**: a topic you asked about 3+ times this week with no note gets one morning line, with Make a stub and
+  Not interested.~~ (0.5.18: `dreaming.curious`, rules only)
+- ~~**Remembering**: one morning line from a shared past, a note or quiz subject from 10-30 days ago (exam subjects
+  first) or a project's anniversary, with Open it and Less of this.~~ (0.5.18: `dreaming.resurface`)
+
 ## Ideas
 - **Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
   rest.

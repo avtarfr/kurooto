@@ -536,6 +536,12 @@ notes, +61 links, 9 notes updated; 30 AI requests (about $0.40 at API prices); 5
 look." The cost is what the requests would cost at API prices; a subscription plan isn't billed per request (its own
 limit is what runs out).
 
+**Gaps you keep asking about.** With Dreaming on, a topic you asked about 3 or more times this week that has no note,
+or only a stub, gets one line in the morning message, with **Make a stub**: a concept note where your layout keeps
+them (the subject's folder, or `zettel/`), linked from the course page under "Concepts", for you (or the next book)
+to fill in. A note you changed 10 to 30 days ago may come back there too ("You last worked on Itô's lemma 12 days
+ago"). See [Dreaming](teaching-kurooto.md#dreaming).
+
 **From Telegram.**
 
 | Command | What it does |
