@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.5.19 (2026-10-23)
+
+- **A new look for the dashboard:** one sans-serif typeface (Public Sans, bundled; nothing fetched from the internet)
+  with figures that keep their width, calmer rounded panes under a top bar, thin-line graphs; monospace only for
+  terminals, code and paths. The classic look is one click away (**classic look** in the top bar, or Settings →
+  `look.design`).
+- **The notes map names its regions:** your courses and research projects, instead of its best-linked notes, so books
+  read into the concept graph no longer fill it with their titles. A note's name shows when you point at it, find it,
+  press R or zoom in.
+- **The daily limit says so:** when the day's limit of messages starts holding, one line says so at once, with **Send
+  them as they come today**, **Raise to 12** (with Undo) and **Fine**. Update notices no longer use up the limit (and
+  several in a day fold into one), Classroom sends one message per check, and the evening bundle and `/calm` say how
+  many waited and why. Setup states the limit with a box to change it.
+- **Class materials are read like books:** each Classroom file with real text (slides, handouts, PDFs, solutions) is
+  read once into concept notes and typed links, with "Seen in" pointing at its lecture note. `integrate.sources`
+  chooses what's read (books and Classroom by default; add handwritten notes). One queue and one budget, newest class
+  material first; `/graph` shows what waits by source; `/graph backfill classroom | handwritten | all` reads what was
+  filed or written before.
+- **Never without your tap, enforced:** an AI request or agent program that wants to set your alarm or book a call now
+  asks "Your OK first" (Approve / Deny); before, unattended AI work could. On a live call it still just does it. A
+  test checks every tool and plain-English request.
+- **`/help` lists everything,** built from the real command table, in groups with their wiki page; `/help <group>`,
+  `/help all`, `/help <word>`.
+- **Setup picks up where you left off,** with Skip for now on every step except You and the AI; skipped steps wait on
+  the dashboard (Finish setting up) and in `kurooto doctor`. `kurooto setup [step]` reopens a step.
+  `kurooto doctor --bundle` shows how long each setup step took; it stays on your computer.
+- **The phone app ships again:** it's built and signed with each release, listed in the signed release, and your call
+  line hands the matching app to your phone after an update.
+- **Processor numbers that add up:** the dashboard's and `kurooto top`'s per-core and per-process use is measured over
+  a steady window from the counters themselves (an idle core could read 98% and every quiet process 0.8%), and
+  processes are shown as a share of the whole machine, like the total.
+- **Repository:** issue templates that ask for `kurooto doctor --bundle`, and a "What it can't do yet" wiki page.
+
 ## 0.5.18 (2026-10-23)
 
 - **Telegram is optional:** setup offers the Kurooto phone app instead, and its chat gets everything Kurooto sends,
