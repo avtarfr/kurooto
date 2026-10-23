@@ -482,7 +482,7 @@ README, and appear in Settings once their feature is on.
 | `integrate.garden` | `true` | each day, a second pass over the notes the reading touched and notes nothing links to |
 | `integrate.garden_per_day` | `40` | the most notes in that pass |
 | `integrate.max_cost_per_night` | `0.5` | an API key: the most a night's reading may cost (USD, as the service reports it) |
-| `integrate.notation` | `true` | a Notation table when a second source writes a concept differently (Research add-on part) |
+| `integrate.notation` | `true` | a Notation table when a second source writes a concept differently (a switch on the card) |
 | `integrate.order` | `"smallest"` | which books first: smallest (fewest pages: most books done soonest) \| name |
 | `integrate.per_night` | `"auto"` | batches a night: auto (fitted to your AI's plan by itself) or a number (a hard ceiling) |
 | `integrate.price_per_mtok.in` | `2.0` | an API key that reports no cost: its USD per million tokens |

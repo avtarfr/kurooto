@@ -339,8 +339,8 @@ def test_pomodoro_starts_and_ends(env):
   add-on; a feature joins it with `bundle = "research_addon"` (and `extra = True`, and its id in `MODULE_ORDER` so
   `/api/state` knows it). `ResearchAddon.members()` finds them; `turned_on()` enables each one not in
   `research_addon.members_off`, `turned_off()` disables them; the card (`card()`/`card_action`) has a switch per own
-  part (`run_compare`, `latex`: settings; `notation`, whose switch is another feature's setting through
-  `PART_SETTING`: `integrate.notation`, read by `Integrate.notation_on()`, which also needs the add-on on) and per member (`m:<id>`: enables or disables it and keeps
+  part (`run_compare`, `latex`: settings; `PART_SETTING` lets a part's switch be another feature's setting, none at
+  present: the notation crosswalk runs with the concept graph and switches on its card) and per member (`m:<id>`: enables or disables it and keeps
   `members_off`). `core/commands.py:_footer` leaves bundle members out of /help's off list and counts the other
   `extra` features as "and N add-ons", so a new add-on doesn't push the one-message /help over Telegram's limit.
 

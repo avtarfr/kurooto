@@ -325,8 +325,8 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   `notation_body` → `graphwrite.notation_table(rows)`: "" unless 2+ sources have rows and their symbol sets differ;
   else "## Notation" and a `| Source | Notation | What it stands for |` table (16 rows at most; `cell()` escapes `|`,
   `math_cell()` wraps LaTeX-looking or 3-character symbols in `$...$`). Written as the `notation` block on new and
-  existing notes when `Integrate.notation_on()`: `integrate.notation` is on and so is the Research add-on (its
-  card's "Notation crosswalk" part switches that setting; `research_addon.PART_SETTING`). A merge writes the kept
+  existing notes when `Integrate.notation_on()`: `integrate.notation` is on (the card's `notation` switch,
+  `Integrate.card_action`; whenever the graph reads, not tied to the Research add-on). A merge writes the kept
   note's table under the same rule.
 
 ## Reading budget (`core/readbudget.py`)

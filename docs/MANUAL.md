@@ -2522,8 +2522,8 @@ into the kept note. Links Kurooto wrote elsewhere follow, and new reading under 
 first, each linking the other as `equivalent-to`. Each has **Undo** (a note you changed since stays as it is, and it
 says so). A pair you don't answer comes back after two weeks; `/graph same` asks now.
 
-**Notation** (`integrate.notation`, on, a part of the Research add-on: tables are written only while the add-on is
-on, and its card's Notation crosswalk switch is this setting). The reading also notes how the pages write each concept (`B_t`, `W_t`, where
+**Notation** (`integrate.notation`, on; a switch on the Concept graph card: tables are written whenever the graph
+reads, books, class files or handwritten notes). The reading also notes how the pages write each concept (`B_t`, `W_t`, where
 the 2π goes in a Fourier transform), each with a quote that must be in those pages and hold the symbol, or the row is
 dropped. When a second source writes the concept differently, its note gets a **Notation** table (source, notation,
 what it stands for) in Kurooto's part of the note. One source, or sources that agree, give no table.
@@ -2558,7 +2558,7 @@ the feature's card show tonight's budget, how it was decided and the last limit 
 | `integrate.embeddings` | auto, ollama, gemini or off |
 | `integrate.commit` | one git commit per batch |
 | `integrate.duplicates` | each morning, up to three look-alike concept notes with Merge / Keep both / Add alias |
-| `integrate.notation` | a Notation table when a second source writes a concept differently (while the Research add-on is on) |
+| `integrate.notation` | a Notation table when a second source writes a concept differently (a switch on the Concept graph card) |
 
 **Undo.** `git revert` a batch's commit; each batch also keeps a before-copy of every file it changed in
 `<state>/integrate/undo/`. A Merge, Keep both or Add alias: the Undo under its answer (their before-copies are in
@@ -2745,9 +2745,8 @@ message through Telegram, like any message.
 
 **The Research add-on** (Features → Add-ons → **Research add-on**, off until you turn it on; it doesn't need Research
 itself on). One switch for the narrower research tools; its card has a switch for each part, and a part you switch
-off stays off when you turn the add-on on again. The notation crosswalk (the concept graph's Notation tables,
-`integrate.notation`) is one of its parts, and [Check my draft](#check-my-draft) joins the same card with its own
-switch.
+off stays off when you turn the add-on on again. [Check my draft](#check-my-draft) joins the same card with its own
+switch. (The notation crosswalk runs with the concept graph itself, switched on its card.)
 
 - **Run compare.** `/runs` lists the ten most recent runs, numbered; `/runs compare 2 1` (numbers, ids or a unique
   piece of an id) or `kurooto runlog diff A B` puts two side by side; `/runs compare` alone takes the last two runs of

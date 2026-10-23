@@ -671,8 +671,8 @@ Every answer comes back with **Undo**, which puts the notes back as they were (a
 is, and the message says so). A pair you don't answer comes back after two weeks; `/graph same` asks now, those
 included. Nothing is merged without your tap, and nothing you wrote is deleted.
 
-**Notation side by side** (`integrate.notation`, on, a part of the Research add-on: tables come only while the add-on
-is on; Dashboard → Features → Add-ons → Research add-on, where its Notation crosswalk switch is this setting). The
+**Notation side by side** (`integrate.notation`, on; a switch on the Concept graph card in Dashboard → Features:
+tables come whenever the graph reads books, class files or handwritten notes). The
 reading also notes how the pages write each concept: the
 symbol (`B_t`, `W_t`, `\hat f(\xi)`) or a convention in words (where the 2π goes in a Fourier transform), each with
 a short quote from the pages. A row whose quote isn't in those pages, or doesn't hold the symbol, is dropped, like
@@ -756,7 +756,7 @@ skipped.
 | `integrate.commit` | on | One Git commit per batch, when your notes are a repository |
 | `integrate.summary` | on | The morning line |
 | `integrate.duplicates` | on | Each morning, up to three look-alike concept notes: Merge / Keep both / Add alias |
-| `integrate.notation` | on | A Notation table when a second source writes a concept differently (while the Research add-on is on) |
+| `integrate.notation` | on | A Notation table when a second source writes a concept differently (a switch on the Concept graph card) |
 
 **Limits and edge cases.**
 - It's heavy work: on battery (saver mode) it waits for the charger.

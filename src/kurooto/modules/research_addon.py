@@ -5,8 +5,6 @@ Its own parts:
     Run compare         /runs (recent runs), /runs compare A B, `kurooto runlog diff A B` (kurooto/runcompare.py)
     LaTeX tracker       /latex add <folder> [main.tex], /latex, /latex build; a nightly build and one morning line
                         (modules/latex_tracker.py)
-    Notation crosswalk  the concept graph's Notation table (modules/integrate.py); its switch is the setting
-                        `integrate.notation` (PART_SETTING), and it writes tables only while the add-on is on
 Other features join the bundle with `bundle = "research_addon"` on their Module (Check my draft, modules/drafts.py):
 they get no card of their own, the add-on's card has a switch for each, and turning the add-on on or off turns them
 on or off with it (App.enable / App.disable call turned_on / turned_off). A member you switch off on the card stays off
@@ -38,9 +36,8 @@ register_defaults(
 PARTS = {
     "run_compare": "Run compare (/runs, kurooto runlog diff)",
     "latex": "LaTeX tracker (/latex)",
-    "notation": "Notation crosswalk (the concept graph's Notation table)",
 }
-PART_SETTING = {"notation": "integrate.notation"}  # a part whose switch is another feature's setting
+PART_SETTING: dict[str, str] = {}  # a part whose switch is another feature's setting (none since notation left)
 RUNS_SHOWN = 10
 
 
@@ -133,10 +130,6 @@ class ResearchAddon(Module):
                 f"LaTeX tracker: {len(docs)} document{'s' if len(docs) != 1 else ''} followed (/latex)."
                 if docs
                 else "LaTeX tracker: no document yet (/latex add <folder>)."
-            )
-        if self.part_on("notation"):
-            lines.append(
-                "Notation crosswalk: a Notation table on a concept note when two sources write it differently."
             )
         toggles = [{"id": k, "label": label, "on": self.part_on(k)} for k, label in PARTS.items()]
         toggles += [{"id": f"m:{m.id}", "label": m.title, "on": self.app.is_on(m.id)} for m in self.members()]
