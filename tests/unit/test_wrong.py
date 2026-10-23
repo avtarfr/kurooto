@@ -225,7 +225,7 @@ def test_never_learned_send_delete_call_approve(on):
     assert not learnable(app.modules["alarm"].intents()[0])
     assert not learnable(app.modules["quiz"].intents()[0])  # "quiz me ... by call"
     assert learnable(next(i for i in app.modules["deadlines"].intents() if i.name == "show_due"))
-    assert learnable(app.modules["reminders"].intents()[0])
+    assert learnable(next(i for i in app.modules["reminders"].intents() if i.name == "remind"))
     assert learnable(next(i for i in app.modules["checkins"].intents() if i.name == "move_checkin"))  # "postpone"
 
     class Notes(Module):
