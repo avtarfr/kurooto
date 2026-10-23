@@ -30,7 +30,7 @@
     <application
         android:name=".App"
         android:label="Kurooto"
-        android:icon="@drawable/ic_agent"
+        android:icon="@mipmap/ic_launcher"
         android:theme="@style/Kurooto"
         android:allowBackup="false"
         android:usesCleartextTraffic="false">

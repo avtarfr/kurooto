@@ -65,9 +65,11 @@ as a quiet notification).
 
 **Its look** follows the phone: light or dark as the phone is set, and on Android 12 and newer in your wallpaper's
 colours (Material You). Older phones get Kurooto's own greens. The ringing screen is always dark, like the call
-itself.
+itself. The app's icon is the call line's: a white handset in a green circle (on Android 13 and newer it follows
+themed icons if you use them).
 
-**A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). What each does is in
+**A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). On Android 12 and
+newer the notification looks like the phone's own incoming calls (a red Decline, a green Answer). What each does is in
 [Calls: Kurooto calling you](calls.md#kurooto-calling-you).
 
 **Speech on the phone.** For calls that go turn by turn (when Google's live voice is down, or by choice with

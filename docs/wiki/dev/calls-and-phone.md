@@ -275,6 +275,16 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     LinearLayout params and a small gap above, so `col.addView(v)` is enough. A new screen: declare it with
     `android:theme="@style/Kurooto"` (or leave it to the app's default) and start `onCreate` with
     `LinearLayout col = Ui.page(this);`.
+  - The launcher icon is `public/icon.svg`'s motif: on Android 8+ the adaptive `mipmap-anydpi-v26/ic_launcher.xml`
+    (background `k_call_bg`, foreground `drawable/ic_launcher_fg.xml` with icon.svg's 24 units in the middle 72dp,
+    monochrome `ic_launcher_mono.xml` for themed icons); on 6 and 7 the plain vector `mipmap/ic_launcher.xml`.
+    `drawable/ic_agent.xml` is Kurooto as a caller (the ringing notification's picture).
+  - The ringing notification (`ListenService.ring`): on Android 12+ `Notification.CallStyle.forIncomingCall` (Person =
+    the assistant's name, or "Wake-up call"; Decline and Answer are the same intents as before, Later/Snooze is an
+    extra action between them). If Android refuses it (`notify` throws), and below 12, the old BigText notification
+    with three actions. Both share `ringNotice()` (full-screen intent, ongoing, timeout).
+  - `CallActivity` puts the WebView in a `fitsSystemWindows` FrameLayout, so on Android 15 (edge to edge) the call page
+    stays clear of the status and navigation bars; on 6 to 14 the insets are 0 and nothing changes.
   - Touch targets are 48dp at least (56dp for `large`, list rows 64dp). Use `Ui.color(c, R.color.k_*)`, never a
     hard-coded colour, so dark mode and Material You keep working.
 - CI: `ci.yml` job `android` (vectors, debug build, `NewApi`/`InlinedApi` lint as errors);

@@ -1,13 +1,16 @@
 package io.github.avtarfr.kurooto;
 
+import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.Person;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
@@ -252,25 +255,51 @@ public class ListenService extends Service {
         PendingIntent laterPi = PendingIntent.getBroadcast(this, 4,
                 new Intent(this, ActionReceiver.class).setAction(ActionReceiver.LATER).putExtra("since", since), flags);
         long ringMs = alarm ? 300000 : 60000;
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        boolean shown = false;
+        if (SDK >= 31) { // Android's own incoming-call look; if this phone won't take it, the plain one below
+            try {
+                Notification.Builder b = ringNotice(reason, alarm, fullPi, ringMs);
+                callStyle(b, alarm ? "Wake-up call" : Prefs.assistant(this), declinePi, answerPi);
+                nm.notify(ID_CALL, b.addAction(new Notification.Action.Builder(null, alarm ? "Snooze" : "Later", laterPi).build()).build());
+                shown = true;
+            } catch (Exception ignored) { }
+        }
+        if (!shown) {
+            Notification.Builder b = ringNotice(reason, alarm, fullPi, ringMs)
+                    .setContentTitle(alarm ? "Wake-up call" : Prefs.assistant(this) + " is calling")
+                    .setStyle(new Notification.BigTextStyle().bigText(reason));
+            b.addAction(new Notification.Action.Builder(null, "Decline", declinePi).build())
+                    .addAction(new Notification.Action.Builder(null, alarm ? "Snooze" : "Later", laterPi).build())
+                    .addAction(new Notification.Action.Builder(null, "Answer", answerPi).build());
+            nm.notify(ID_CALL, b.build());
+        }
+        ringingSince = since;
+        startRing(alarm);
+        main.postDelayed(() -> { if (since.equals(ringingSince)) { stopRing(); cancel(ID_CALL); } }, ringMs);
+    }
+
+    /** What every ringing notification has: the reason, full screen over the lock screen, ongoing until answered. */
+    private Notification.Builder ringNotice(String reason, boolean alarm, PendingIntent fullPi, long ringMs) {
         Notification.Builder b = builder(this, CH_CALL)
                 .setSmallIcon(R.drawable.ic_stat)
-                .setContentTitle(alarm ? "Wake-up call" : Prefs.assistant(this) + " is calling")
                 .setContentText(reason)
-                .setStyle(new Notification.BigTextStyle().bigText(reason))
                 .setCategory(alarm ? Notification.CATEGORY_ALARM : Notification.CATEGORY_CALL)
                 .setFullScreenIntent(fullPi, true)
                 .setContentIntent(fullPi)
                 .setOngoing(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC);
         if (SDK >= 21) b.setPriority(Notification.PRIORITY_MAX);
-        b.addAction(new Notification.Action.Builder(null, "Decline", declinePi).build())
-                .addAction(new Notification.Action.Builder(null, alarm ? "Snooze" : "Later", laterPi).build())
-                .addAction(new Notification.Action.Builder(null, "Answer", answerPi).build());
         if (SDK >= 26) b.setTimeoutAfter(ringMs);
-        ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(ID_CALL, b.build());
-        ringingSince = since;
-        startRing(alarm);
-        main.postDelayed(() -> { if (since.equals(ringingSince)) { stopRing(); cancel(ID_CALL); } }, ringMs);
+        return b;
+    }
+
+    /** Android 12+: the incoming-call style (who's calling, a red Decline and a green Answer; Later sits between). */
+    @TargetApi(31)
+    private void callStyle(Notification.Builder b, String who, PendingIntent declinePi, PendingIntent answerPi) {
+        Person caller = new Person.Builder().setName(who).setImportant(true)
+                .setIcon(Icon.createWithResource(this, R.drawable.ic_agent)).build();
+        b.setStyle(Notification.CallStyle.forIncomingCall(caller, declinePi, answerPi));
     }
 
     /** Calls use your call ringtone; wake-up calls use the alarm tone on the alarm stream, so they ring on silent. */

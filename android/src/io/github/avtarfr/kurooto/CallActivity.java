@@ -29,6 +29,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -54,6 +55,7 @@ public class CallActivity extends Activity {
     static final int MIN_WEBVIEW = 80; // Chrome version the call page needs (audio worklets, modern JavaScript)
 
     private WebView web;
+    private FrameLayout page; // the WebView, kept clear of the status and navigation bars (Android 15 draws behind them)
     private AudioManager am;
     private PowerManager.WakeLock proximity;
     private boolean speaker = false, inCall = false;
@@ -210,8 +212,12 @@ public class CallActivity extends Activity {
                     req.deny();
                 }
             });
+            page = new FrameLayout(this);
+            page.setFitsSystemWindows(true);
+            page.setBackgroundColor(Ui.color(this, R.color.k_call_bg));
+            page.addView(web);
         }
-        setContentView(web);
+        setContentView(page);
         web.loadUrl(withAuto(url));
     }
 

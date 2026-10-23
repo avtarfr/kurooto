@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the launcher icon on Android 8+: the call line's icon (src/kurooto/data/worker/public/icon.svg) as layers, so
+     the launcher picks the shape; monochrome is the handset alone, for Android 13's themed icons -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/k_call_bg" />
+    <foreground android:drawable="@drawable/ic_launcher_fg" />
+    <monochrome android:drawable="@drawable/ic_launcher_mono" />
+</adaptive-icon>
