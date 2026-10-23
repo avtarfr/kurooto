@@ -59,6 +59,8 @@ def test_study_mode_from_the_command_plain_english_and_the_page(study):
 
 
 def test_a_focus_holds_messages_logs_its_minutes_then_a_break(study, monkeypatch):
+    if (now() + dt.timedelta(minutes=30)).date() != now().date():
+        pytest.skip("the focus would end after midnight: its minutes count on the day it started")
     env, st = study
     r = actions.act(env.app, "study.timer", {"do": "start", "subject": "la"})
     assert r["ok"] and r["message"].startswith("Linear Algebra: focus until")
