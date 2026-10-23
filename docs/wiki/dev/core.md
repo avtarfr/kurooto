@@ -162,7 +162,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `retro.json`, `retro-state.json`, `observations.json`, `retro-skills/` | `modules/retro.py` |
 | `research-papers.json`, `research-logs.json` | `modules/research.py` |
 | `books.json`, `gbrain.json`, `gbrain-checkup.json`, `gbrain/` | books, gbrain |
-| `integrate/` (`ledger.json`, `seen.json`, `chapters.json`, `garden.json`, `pending/`, `undo/`, `vectors.db`) | `modules/integrate.py`, `core/conceptgraph.py` |
+| `integrate/` (`ledger.json`, `seen.json`, `chapters.json`, `garden.json`, `budget.json`, `pending/`, `undo/`, `vectors.db`) | `modules/integrate.py`, `core/conceptgraph.py`, `core/readbudget.py` |
 | `handwritten*.json`, `handwritten/<id>/` | `modules/handwritten.py` |
 | `calendar.json` | `modules/calendar.py` |
 | `google-classroom.json`, `google-signin.json`, `google-needs-<part>` | `modules/google.py` |
@@ -264,7 +264,7 @@ Recurring (key → when; setting that controls it):
 | `mail_digest:digest` | daily 08:00,18:00 | `mail_digest.at` | `modules/google_mail.py` |
 | `drive_upload:expire` | daily 04:10 | | `modules/google_drive.py` |
 | `handwritten:scan` | every 15m | `handwritten.every` | `modules/handwritten.py` |
-| `integrate:night`, `integrate:retry`, `integrate:garden`, `integrate:summary` | daily 01:30; every 3h; daily 06:20; daily 07:10 | `integrate.at`, `integrate.garden`, `integrate.summary` | `modules/integrate.py` |
+| `integrate:night`, `integrate:retry`, `integrate:plan`, `integrate:garden`, `integrate:summary` | daily 01:30; every 3h; hourly; daily 06:20; daily 07:10 | `integrate.at`, `integrate.garden`, `integrate.summary` | `modules/integrate.py` |
 | `local_models:keepalive` | every 10m | | `modules/local_models.py` |
 | `notes_sync:sync` | every 10m | `notes_sync.every` | `modules/notes_sync.py` |
 | `profile:daily` | daily 04:40 | `profile.when` | `modules/profile.py` |
@@ -284,7 +284,8 @@ fire even before the feature is on), `alarm:ring` / `alarm:prep` / `alarm:awake`
 `calls:missed:<since>`, `calls:realert:<first>`, `calls:task:<job>`, `calls:textcall:<cid>`, `checkins:<name>`,
 `checkins:unstick:<name>`, `checkins:deferred`, `capture:<subject>:<end>`, `calendar:focus:<end>`,
 `calendar:remind:*`, `google_calendar:refresh`, `quiz:checkin:<ts>`, `exam_season:leave:<id>`,
-`exam_season:night_again`, `health:after:<id>`, `health:recheck`, `integrate:soon`, `notes_sync:soon` (debounced after
+`exam_season:night_again`, `health:after:<id>`, `health:recheck`, `integrate:soon`, `integrate:early` (the night's
+start moved earlier for an early wake, set by `integrate:plan`), `notes_sync:soon` (debounced after
 `job_done`), `profile:soon` (debounced after setting changes), `research:remind:<slug>`, `retro:after-reset`,
 `study:session-end`, `telegram:focus-end`, `books:now`, `books:resume`, `updates:apply`, `updates:probation`,
 `updates:rolled_back`, `upgrade:whats_new`. Profile restore re-books saved `reminders:`, `calls:ring:` and
@@ -338,6 +339,8 @@ jid = app.jobs.submit(
   success and failure alike (check `result.ok`). A name not registered when the job finishes is skipped silently, so
   register then-actions in `__init__` or `start()`, never lazily just before submitting (`modules/google.py` registers
   `google.draft` lazily and loses drafts across a restart). Exceptions become `job_then_failed`.
+  `result.usage["limits"]` lists every usage limit hit on the way (`{"brain", "retry_after_s", "detail"}`), also one a
+  stand-in then answered for; the concept graph's reading budget reads it (`core/readbudget.py`).
 - **Shutdown**: `halt()` stops running jobs where they are; they stay `running` and `recover()` re-queues them at the
   next start.
 - `usage(days)` (from `attempts`) feeds `/usage`; `public(job)` is what the dashboard and CLI may show (no prompt, no
@@ -381,9 +384,9 @@ power `power_pause`, `power_resume`, `power_off`; health `health_checked`, `heal
 `update_failed`, `update_progress`, `update_switch`; Telegram `telegram_error`, `telegram_paired`, `telegram_menu_*`;
 calls `call_scheduled`, `call_rang`, `call_rang_offline`, `call_answered`, `call_missed`, `call_held`,
 `call_transcript`, `call_reviewed`, `call_review_failed`, `call_live_failed`, `call_fallback`, `calls_*`; concept graph
-`book_read`, `integrate_batch`, `integrate_refused`, `integrate_waiting`, `integrate_pruned`, `hubs_updated`; and one
-family per feature (`alarm_*`, `deadline_*`, `exam_*`, `study_*`, `quiz_*`, `skill_*`, `retro_*`, `google_*`,
-`mail_*`, `classroom_notes_*`, ...). Grep `events.emit("` to find the emitter of any kind.
+`book_read`, `integrate_batch`, `integrate_refused`, `integrate_waiting`, `integrate_limit`, `integrate_pruned`,
+`hubs_updated`; and one family per feature (`alarm_*`, `deadline_*`, `exam_*`, `study_*`, `quiz_*`, `skill_*`,
+`retro_*`, `google_*`, `mail_*`, `classroom_notes_*`, ...). Grep `events.emit("` to find the emitter of any kind.
 
 When you add an event: name it `<area>_<what happened>` in the past tense, keep fields to ids, counts and short error
 text (never message content, notes or secrets: the bundle and the feed show them), and if a health check should
@@ -490,6 +493,11 @@ Pacific. Once a day's count passes `quota.background_pct` (70%) of a known limit
 (`wait_until`, `arrange`); `used_up` pools go last for the user's own requests; `line()` is the one plain sentence when a
 limit is used up. Settings `quota.on`, `background_pct`, `limits` (user numbers win), `local` (`quick` |
 `background` | `off`). State `quota.json` holds counts only.
+
+Quota thinks in daily limits (Google's). Subscription plans (Claude's rolling 5-hour window and weekly cap, shared
+with the user's own chats) aren't modelled here; the concept graph's nightly reading, the one big background consumer,
+has its own budget that learns them: `core/readbudget.py`, see
+[concept-graph.md](concept-graph.md#reading-budget-corereadbudgetpy).
 
 ## The reserve
 

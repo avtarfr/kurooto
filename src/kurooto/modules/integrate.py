@@ -16,6 +16,11 @@ that's there now (the "garden"); the day's changes are one line on Telegram.
 Which AI: integrate.roles {"bulk": "agy", "check": "claude"} (empty: chosen from what's installed; one program does
 both). The two run side by side. With no agent program, your main AI (a Gemini key, say) does both, at its limit.
 
+How much a night: integrate.per_night "auto" fits it to that AI by itself (core/readbudget.py): learned for a
+subscription (Claude Code, agy), a share of a free Gemini key's day, money for an API key, no limit for the model on
+this computer; a number is a hard ceiling. The night starts 5 hours before you usually wake, never later than
+integrate.at.
+
 State: <state>/integrate/ (ledger.json, seen.json, chapters.json, garden.json, pending/, undo/, vectors.db).
 Command: /graph (status), /graph now (start), /graph stop.
 """
@@ -34,7 +39,7 @@ from kurooto import providers
 from kurooto.core import conceptgraph as cg
 from kurooto.core import graphwrite as gw
 from kurooto.core import integrate_ai as ai
-from kurooto.core import layout, proc, segment
+from kurooto.core import layout, proc, readbudget, segment
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
@@ -48,7 +53,10 @@ register_defaults(
         "at": "daily 01:30",  # when the night's integration starts (it carries on batch after batch)
         "roles": {"bulk": "", "check": ""},  # the AI for the bulk work and for the second look ("": chosen for you)
         "batch_pages": 12,  # about this many pages per request
-        "per_night": 300,  # the most batches in a night (a limit on how much of your AI's day it may use)
+        "per_night": "auto",  # batches a night: auto (fitted to your AI's plan by itself) or a number (a hard ceiling)
+        "share_pct": 60,  # a subscription's usage window (or a free key's day): the most of it reading takes
+        "max_cost_per_night": 0.5,  # an API key: the most a night's reading may cost (USD, as the service reports it)
+        "price_per_mtok": {"in": 2.0, "out": 8.0},  # an API key that reports no cost: its USD per million tokens
         "garden": True,  # each day, a second pass over the notes the reading touched and notes nothing links to
         "garden_per_day": 40,  # the most notes in that pass
         "embeddings": "auto",  # where meaning-based matching comes from: auto | ollama | gemini | off
@@ -93,6 +101,7 @@ class Integrate(Module):
         self.lock = threading.RLock()
         self._index: cg.Index | None = None
         self._store: cg.VectorStore | None = None
+        self.budget = readbudget.Budget(app, lambda: self.roles()[0])  # how much a night (integrate.per_night)
 
     # ------------------------------------------------------------------------------------------------- places
     @property
@@ -114,6 +123,8 @@ class Integrate(Module):
         self.action("soon", lambda p=None: self.tick())
         self.every("night", self.setting("at") or "daily 01:30", self.tick)
         self.every("retry", "every 3h", self.tick)  # carries on after a limit has reset
+        self.every("plan", "hourly", self.plan_night)  # tonight's start, from when you wake (alarm, night hours)
+        self.plan_night()
         if self.setting("garden"):
             self.every("garden", "daily 06:20", self.garden)
         if self.setting("summary"):
@@ -253,10 +264,9 @@ class Integrate(Module):
         out = {"submitted": 0}
         if bulk_out:
             return out
-        led = self.load("ledger.json", {})
-        today = (led.get("nights", {}) or {}).get(day(), {}).get("batches", 0)
-        if today >= int(self.setting("per_night") or 300):
-            return {**out, "limit": "per_night"}
+        stop = self.budget.gate()  # tonight's budget, or a limit's reset (core/readbudget.py)
+        if stop:
+            return {**out, **stop}
         todo = self.ready_batches()
         if not todo:
             return {**out, "idle": True}
@@ -264,6 +274,15 @@ class Integrate(Module):
         self.submit_batch(b, bt)
         out["submitted"] = 1
         return out
+
+    def plan_night(self, payload: dict | None = None) -> None:
+        """Start the next night early when you wake early: 5 hours before, so a 5-hour usage window the reading opens
+        has reset when you get up (integrate.at stays the latest start)."""
+        nxt = self.budget.next_start()
+        if nxt and nxt[0] < nxt[1]:
+            self.app.scheduler.at(nxt[0], "integrate.soon", key=f"{self.id}:early", module=self.id)
+        else:
+            self.app.scheduler.cancel(f"{self.id}:early")
 
     def poke(self) -> None:
         """A book was read: carry on tonight (the schedule would only start it at integrate.at)."""
@@ -330,6 +349,7 @@ class Integrate(Module):
             return
         bid = payload["batch"]
         self.spend(result)
+        self.budget.seen(job, result)
         data = ai.parse_json(result.text) if result.ok else None
         if data is None and getattr(result, "verdict", None) in (Verdict.RATE_LIMITED, Verdict.AUTH):
             # the AI's limit (or its sign-in): nothing is wrong with the batch; it's asked again later (every few
@@ -447,6 +467,7 @@ class Integrate(Module):
             for s in saved["items"]
         ]
         self.spend(result)
+        self.budget.seen(job, result)
         answer = ai.parse_json(result.text) if result.ok else None
         kept, dropped = ai.apply_second_look(items, answer)
         pend.unlink(missing_ok=True)
@@ -572,6 +593,7 @@ class Integrate(Module):
             flagged=flagged,
             dropped=dropped,
         )
+        self.budget.count()
         self.queue_garden([c.slug for c in core])
         self.app.events.emit("integrate_batch", book=self.key(b), batch=bid, **counts)
         return counts
@@ -747,6 +769,7 @@ class Integrate(Module):
 
     def _linked(self, job, result, payload: dict) -> None:
         self.spend(result)
+        self.budget.seen(job, result)
         data = ai.parse_json(result.text) if result.ok else None
         s = payload["note"]
         path = Path(self.app.workspace) / f"{s}.md"
@@ -837,6 +860,11 @@ class Integrate(Module):
         self.app.notify(line + ".", kind="result", title="Concept graph", why="integrate.summary")
         return line
 
+    def card(self) -> dict:
+        """The dashboard's card: tonight's reading budget, how it was decided, the last limit (and, for a free Gemini
+        key with little room, that agy or the model on this computer reads books better)."""
+        return {"lines": self.budget.lines(), "toggles": []}
+
     def health(self):
         if not self.app.modules["books"] or not self.app.is_on("books"):
             return False, "turn on Books and PDFs"
@@ -851,6 +879,8 @@ class Integrate(Module):
         a = (arg or "").strip().lower()
         if a == "now":
             r = self.tick()
+            if r.get("limit") in ("per_night", "cost", "hit"):
+                return "Nothing to start: " + " ".join(self.budget.lines())
             return "Started." if r.get("submitted") else f"Nothing to start ({r or 'already running'})."
         if a == "stop":
             self.app.scheduler.cancel(f"{self.id}:night")
@@ -864,9 +894,10 @@ class Integrate(Module):
             if today.get("requests")
             else ""
         )
+        budget = "".join(f"\n{ln}" for ln in self.budget.lines())
         return (
             f"Concept graph: {c['done']} batches done, {c['todo']} waiting, {c['failed']} failed. "
-            f"AI: {bulk or 'none'} (bulk), {chk or 'none'} (second look).{spent}\n"
+            f"AI: {bulk or 'none'} (bulk), {chk or 'none'} (second look).{spent}{budget}\n"
             f"{m['concepts']} concepts, {m['links']} links; {m['broken']} broken, {m['no_links_in']} with no links in, "
             f"{m['boilerplate_reasons']} with a vague reason, the top three notes get {m['top3_share']:.0%} of links."
         )

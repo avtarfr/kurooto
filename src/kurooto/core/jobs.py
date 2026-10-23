@@ -414,6 +414,7 @@ class Jobs:
             self._defer(jid, wait)
             return
         used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
+        limits: list[dict] = []  # every limit hit on the way, also one a stand-in then answered for
         for i, brain in enumerate(chain):
             if stop.is_set():  # cancelled, or ended by the watchdog: it was told already
                 return
@@ -435,12 +436,18 @@ class Jobs:
             if stop.is_set():
                 return
             self._attempt(jid, brain.id, result)
+            if result.verdict == Verdict.RATE_LIMITED:
+                limits.append(
+                    {"brain": brain.id, "retry_after_s": result.retry_after_s, "detail": result.detail[-500:]}
+                )
             if brain.kind == "cli" and result.ok:
                 brain.mark_worked(self.app)
             if result.verdict not in RETRY:
                 break
             first = first or (brain, result)
             self._problem(brain, result, chain[i + 1] if i + 1 < len(chain) else None, level)
+        if limits:  # the follow-up sees them (the concept graph's reading budget: core/readbudget.py)
+            result.usage = {**result.usage, "limits": limits}
         if wait is not None and not result.ok:  # moved to the model here, which couldn't: it waits for the reset
             self._defer(jid, wait)
             return

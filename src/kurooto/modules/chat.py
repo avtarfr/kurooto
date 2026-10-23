@@ -114,10 +114,16 @@ class Chat(Module):
 
     def _usage(self, msg: Incoming, arg: str) -> str:
         days = int(arg) if arg.strip().isdigit() and 1 <= int(arg) <= 60 else 7
+        from kurooto.core.readbudget import usage_text as reading
         from kurooto.providers.agy import log_usage, log_usage_text  # (ws5) agy's own count, interactive use too
 
-        # today's free limits: used, learned, when they reset (core/quota.py)
-        return usage_text(self.app.jobs.usage(days), days) + log_usage_text(log_usage(days)) + self.app.quota.text()
+        # today's free limits: used, learned, when they reset (core/quota.py); the concept graph's reading budget
+        return (
+            usage_text(self.app.jobs.usage(days), days)
+            + log_usage_text(log_usage(days))
+            + self.app.quota.text()
+            + reading(self.app)
+        )
 
 
 def usage_text(rows: list[dict], days: int) -> str:

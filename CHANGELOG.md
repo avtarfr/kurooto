@@ -2,6 +2,17 @@
 
 ## 0.5.8 (unreleased)
 
+- **The concept graph's reading fits your AI plan by itself** (`integrate.per_night` = `auto`, the new default; a
+  number is still a hard ceiling). With Claude Code or agy, whose usage you share with your own chats, it learns what
+  fits: 30 batches the first night (or the most it read in a night before), 50% more after each night with no limit
+  hit, half after a limit and nothing more until its reset (Claude's 5-hour window and weekly cap told apart by how far
+  away the reset is; a weekly one also starts the next week lower), and at most 60% of what fit in one window
+  (`integrate.share_pct`), so the rest is yours. A free Gemini key takes 60% of its daily limit, and under 10 batches
+  a night `/graph` and the card suggest agy or the model on this computer; an API key stops at $0.50 a night
+  (`integrate.max_cost_per_night`, from the cost each answer reports or its tokens); the model on this computer has
+  no budget. The night now starts 5 hours before you usually wake (never later than `integrate.at`), so a window it
+  opens has reset when you get up. `/graph`, `/usage` and the feature's card show tonight's budget, how it was
+  decided, and the last limit with its reset.
 - **A calmer board**: the corner panels of SYSTEMS (events, your AI, today, due) and the NOTES legend and recent list
   are folded to their first line (with how much more there is); one opens while the pointer is over it, and `L` opens
   or folds them all (remembered in this browser).

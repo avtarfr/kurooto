@@ -15,7 +15,7 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 |---|---|
 | `Verdict` (StrEnum) | `ok`, `empty`, `denied`, `rate_limited`, `auth`, `timeout`, `error`, `cancelled`, `stuck`. Every brain maps its failures onto these; the queue decides retries from them. |
 | `Task` (dataclass) | One request: `prompt`, `effort`, `title`, `cwd` (the notes folder), `timeout_s`, `context` (the headless preamble), `tools` + `run_tool` (for API brains), `mcp` + `mcp_env` (for agent programs), `text_only`, `on_process(pid)`, `stop` (a `threading.Event`). |
-| `Result` (dataclass) | `verdict`, `text`, `seconds`, `detail` (log only, never shown raw), `retry_after_s`, `usage` (dict; keys used: `note`, `limit`, `tool_calls`, `tools_used`, `cost`, `denied`). `.ok` is `verdict == OK`. |
+| `Result` (dataclass) | `verdict`, `text`, `seconds`, `detail` (log only, never shown raw), `retry_after_s`, `usage` (dict; keys used: `note`, `limit`, `tool_calls`, `tools_used`, `cost`, `denied`, `prompt_tokens` / `completion_tokens` (OpenAI-compatible), and `limits`, which the queue adds: every limit hit while trying the chain). `.ok` is `verdict == OK`. |
 | `Brain` | Base class. Attributes `id`, `label`, `kind` (`"api"` or `"cli"`), `meter`, `denied_help`. Methods `available() -> (bool, why)`, `run(task) -> Result`, `complete(prompt, system, effort, timeout) -> Result`, and for CLI brains `prepare(app)`, `has_worked(app)` / `mark_worked(app)` (a `<state>/<id>-worked.json` marker), `after_test(app)`. |
 | `RATE_LIMIT`, `AUTH_FAIL` | Regexes every brain uses to classify error text. |
 | `TEXT_ONLY` | The sentence prepended for text-only requests on agent programs. |

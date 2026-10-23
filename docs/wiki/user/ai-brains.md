@@ -122,6 +122,14 @@ the day's limit for what you're waiting on: calls, voice notes, the morning plan
 
 Only counts and times are kept (`quota.json` in Kurooto's state folder). Delete that file to forget what was learned.
 
+**Subscriptions (Claude Code, agy) and the concept graph.** A Claude plan has a rolling 5-hour window and a weekly
+cap, shared between Kurooto and your own Claude chats and Claude Code, and Anthropic doesn't publish the numbers. The
+one big background job, the concept graph reading your books at night, therefore has a budget of its own that learns
+your plan: it starts small, grows after nights with no limit hit, halves at a limit, waits for its reset, and leaves
+40% of a window for you. It starts reading 5 hours before you usually wake, so a window it opens has reset when you
+get up. With a free Gemini key it takes 60% of the day's limit; with a paid API key, at most $0.50 a night. Details:
+[Notes and the concept graph](notes-and-concept-graph.md). `/usage` shows tonight's budget and the last limit hit.
+
 ## What the AI can do (its tools)
 
 Your AI doesn't only answer: it can act, the same way in Chat, on a phone call and in background requests. Each feature

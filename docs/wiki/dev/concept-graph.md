@@ -90,10 +90,11 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 
 ## 4. The AI batch (`modules/integrate.py`, `core/integrate_ai.py`)
 
-- `Integrate.tick()`: nothing if the feature is off or a bulk request is in flight (`inflight()`); stops at
-  `integrate.per_night` batches; else takes `ready_batches()[0]` (subjects in `integrate.first` first, then fewest pages
-  with `order = smallest`; skips batches in state done, failed, queued or checking; a batch is ready when its last page
-  has been read).
+- `Integrate.tick()`: nothing if the feature is off or a bulk request is in flight (`inflight()`); stops when
+  `Budget.gate()` says so (tonight's budget is read, its money is spent, or the bulk AI's limit hasn't reset: see
+  [Reading budget](#reading-budget-corereadbudgetpy)); else takes `ready_batches()[0]` (subjects in
+  `integrate.first` first, then fewest pages with `order = smallest`; skips batches in state done, failed, queued or
+  checking; a batch is ready when its last page has been read).
 - `submit_batch(b, bt)`: the prompt is `integrate_ai.batch_prompt(...)` (`BATCH_PROMPT`) with the batch's text
   (`[p. N]` markers, at most 40 000 chars) and up to 30 candidate cards. It is submitted as
 
@@ -163,6 +164,7 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 | `seen.json` | `{slug: [{book, note, title, batch, pages, update, def}]}` |
 | `chapters.json` | `{bookkey: {batchid: {first, last, title, concepts}}}` |
 | `garden.json` | `{"queue": [slugs], "last": {slug: date}}` |
+| `budget.json` | `{"brains": {"<bulk AI>": {learned, why, capacity, capacity_at, capacity_kind, hold_until, last_hit: {at, kind, reset, fit}, done: [batch times, 8 days], night, nights: {"<morning date>": {kind, batches, cost, how, used, spent, hit}}}}}` (30 nights kept) |
 | `pending/<jobid>.json` | a batch waiting for its second look |
 | `undo/*.json` | before-copies |
 | `vectors.db` | embedding cache |
@@ -182,17 +184,61 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   `_linked` keeps a link only with an existing target, a valid relation, a reason that passes lint and confidence at
   least 0.5.
 - `integrate:summary` ("daily 07:10") sends one line with Calm reason `integrate.summary`.
-- `integrate:night` (`integrate.at`, "daily 01:30") and `integrate:retry` ("every 3h") call `tick`.
+- `integrate:night` (`integrate.at`, "daily 01:30") and `integrate:retry` ("every 3h") call `tick`. `integrate:plan`
+  (hourly, `plan_night`) books a one-off `integrate:early` (action `integrate.soon`) when the next night should start
+  before `integrate.at` (`Budget.next_start`), and cancels it otherwise.
+
+## Reading budget (`core/readbudget.py`)
+
+`Budget(app, bulk)` (`Integrate.budget`, `bulk` = the bulk role's brain id) decides how much a night reads when
+`integrate.per_night` is `"auto"` (the default); a number there is a hard ceiling on top of everything below.
+
+- **Kinds** (`kind(brain)`): `plan` (`claude`, `agy`, any other agent program), `free` (`gemini`), `money` (any other
+  API brain), `local` (`ollama`, or an API brain whose base URL is loopback: `OpenAICompat.local()`), `none`.
+- **A night** (`night(t)`) is keyed by the morning it ends on and runs from one night's start to the next, so daytime
+  retries count toward the night before. `plan(day) -> (start, latest)`: `latest` is `integrate.at` (only
+  `daily HH:MM` is read; anything else counts as 01:30); `start = min(latest, max(bedtime, wake - 5 h))`, with
+  (bedtime, wake) from the alarm's `availability.sleep` windows, else `availability.night`, else unknown (start =
+  latest).
+- **plan / free with no known limit**: `learned` starts at `FIRST = 30`, or the most batches of any ledger night if
+  more (`_seed`; an install that read 60 a night keeps 60). At each new night (`_roll`), a night that read its whole
+  budget with no limit hit raises it by `GROW = 1.5` (rounded up), capped at `MOST = 300`, the ceiling and the share
+  cap. `capacity` (what fit in one window) is forgotten after `FORGET_S` (14 days).
+- **A limit** (`seen(job, result)` from `_done`, `_checked` and `_linked`): the hits are read from
+  `result.usage["limits"]` (added by `Jobs._run` for every rate-limited attempt, so a hit is seen even when a stand-in
+  answered), else from a rate-limited result itself. `hit()`: the reset is `retry_after_s` (Claude Code's
+  `usage limit reached|<epoch>`), else `quota.hints(detail)`. For Claude (and unknown plans) a reset more than
+  `WEEKLY_S` (6 h) away, or "week" in the text, is the weekly cap, else the 5-hour window (unknown reset: 5 h, or a day
+  for weekly); for agy and Gemini it's the day's limit (unknown reset: `quota.day_end`, midnight Pacific). `fit` =
+  batches done since the window began (`reset - 5 h`), the Google day began, or in the last 7 days. Window and day
+  hits halve `learned` (at least `FLOOR = 5`) and set `capacity = fit`; a weekly hit sets
+  `learned = max(5, min(learned // 2, share × fit / 7))`. `hold_until = reset`; a second hit while holding only moves
+  the reset. Emits `integrate_limit`.
+- **Tonight** (`tonight()`, recomputed on every call): plan: `min(learned, share_pct% of capacity, ceiling)`; free:
+  `share_pct%` of `quota.status(quota.pool(brain, "low"))["limit"]` when known, else as plan; money: `cost =
+  integrate.max_cost_per_night`, batches only by the ceiling; local and none: the ceiling or nothing. `how` is the
+  sentence `/graph` shows ("learned: 15 batches, 60% of the 25 that fit last night"). A free key under `TINY = 10`
+  batches gets `advice`.
+- **Money** (`seen` on an OK answer from the bulk brain when it's `money`): `cost_of(usage, integrate.price_per_mtok)`:
+  the reported `cost` / `total_cost` / `total_cost_usd`, else `prompt_tokens` and `completion_tokens` at
+  `{"in": 2.0, "out": 8.0}` USD per million.
+- **Counting**: `Integrate.write` calls `count()` per batch written (the batch time goes into `done`).
+- **Showing**: `lines()` for `/graph`, `/graph now` when nothing may start, the feature's dashboard card
+  (`Integrate.card`), and `/usage` / `kurooto usage` (`usage_text(app)`, which doesn't save).
+- Tests: `tests/unit/test_readbudget.py` (a fake clock; Claude Code's real parser on a fake limit answer; a fake
+  Claude brain through the queue for the whole path).
 
 ## Settings, commands, tests
 
-- `register_defaults("integrate", ...)`: `at`, `roles`, `batch_pages` (12), `per_night` (300), `garden`,
+- `register_defaults("integrate", ...)`: `at`, `roles`, `batch_pages` (12), `per_night` (`"auto"` or a ceiling),
+  `share_pct` (60), `max_cost_per_night` (0.5), `price_per_mtok` (`{"in": 2.0, "out": 8.0}`), `garden`,
   `garden_per_day` (40), `embeddings` (auto), `rerank` (auto), `rerank_model`, `first`, `order` (smallest), `commit`,
   `summary`.
-- `/graph` (`Integrate._cmd`): state, counts, `metrics()` (broken links, notes with no links in, boilerplate reasons,
-  top-3 share, name collisions), today's cost; `/graph now` runs `tick()`; `/graph stop` cancels `integrate:night`.
+- `/graph` (`Integrate._cmd`): state, counts, tonight's budget and the last limit (`Budget.lines`), `metrics()` (broken
+  links, notes with no links in, boilerplate reasons, top-3 share, name collisions), today's cost; `/graph now` runs
+  `tick()` (and says the budget's lines when it may not start); `/graph stop` cancels `integrate:night`.
 - No intents.
-- Tests: `tests/unit/test_integrate.py`, `test_books.py`, `test_segment.py`, `test_hubs.py`,
+- Tests: `tests/unit/test_integrate.py`, `test_readbudget.py`, `test_books.py`, `test_segment.py`, `test_hubs.py`,
   `test_rerank_hardware.py`.
 
 ## Known problems (as of this writing)
