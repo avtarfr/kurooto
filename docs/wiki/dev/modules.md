@@ -108,10 +108,13 @@ Declare at import time, in the module's file, under the module's id:
 ```python
 from kurooto.core.config import register_defaults
 
-register_defaults("pomodoro", {
-    "minutes": 25,          # how long one session lasts
-    "nudge": "daily 09:00", # when to suggest the first one; "" turns it off
-})
+register_defaults(
+    "pomodoro",
+    {
+        "minutes": 25,  # how long one session lasts
+        "nudge": "daily 09:00",  # when to suggest the first one; "" turns it off
+    },
+)
 ```
 
 This is the only way to declare settings (there's no `defaults` class attribute). The comment on each line becomes
@@ -155,10 +158,13 @@ from kurooto.core.config import register_defaults
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
 
-register_defaults("pomodoro", {
-    "minutes": 25,           # how long one session lasts
-    "nudge": "",             # e.g. "daily 09:00": suggest one then; "" for never
-})
+register_defaults(
+    "pomodoro",
+    {
+        "minutes": 25,  # how long one session lasts
+        "nudge": "",  # e.g. "daily 09:00": suggest one then; "" for never
+    },
+)
 
 START = re.compile(r"^(start|begin) (a )?pomodoro$", re.I)
 
@@ -178,26 +184,37 @@ class Pomodoro(Module):
     def start(self):
         spec = self.setting("nudge")
         if spec:
-            self.every("nudge", spec, self._nudge)       # key pomodoro:nudge, action pomodoro.nudge
+            self.every("nudge", spec, self._nudge)  # key pomodoro:nudge, action pomodoro.nudge
 
     # ---- what it offers
     def commands(self):
         return [Command("pomodoro", "start a focus session", lambda msg, arg: self.begin(arg))]
 
     def intents(self):
-        return [Intent("pomodoro", "start a focus session",
-                       match=lambda t: {} if START.match(t) else None,
-                       run=lambda msg, slots: self.begin(""))]
+        return [
+            Intent(
+                "pomodoro",
+                "start a focus session",
+                match=lambda t: {} if START.match(t) else None,
+                run=lambda msg, slots: self.begin(""),
+            )
+        ]
 
     def callbacks(self):
         return {"pom": self._button}
 
     def call_tools(self):
-        return [Tool("start_pomodoro", "Start a focus session for the user.",
-                     lambda a: self.begin(a.get("minutes", "")),
-                     {"minutes": arg("length in minutes; empty for the default")},
-                     offline="queue", writes=True,
-                     hint="When they ask to focus for a while, call start_pomodoro.")]
+        return [
+            Tool(
+                "start_pomodoro",
+                "Start a focus session for the user.",
+                lambda a: self.begin(a.get("minutes", "")),
+                {"minutes": arg("length in minutes; empty for the default")},
+                offline="queue",
+                writes=True,
+                hint="When they ask to focus for a while, call start_pomodoro.",
+            )
+        ]
 
     # ---- the work
     def begin(self, minutes: str) -> str:
@@ -207,14 +224,16 @@ class Pomodoro(Module):
         self.app.events.emit("pomodoro_started", minutes=m)
         return f"Focus until {until:%H:%M}."
 
-    def _end(self, p: dict):                               # every action takes the payload
+    def _end(self, p: dict):  # every action takes the payload
         late = " (late: the computer was asleep)" if p.get("late_s") or p.get("missed") else ""
-        self.app.notify(f"Pomodoro done{late}.", kind="reminder", why="pomodoro.end",
-                        buttons=[[("Another", "pom:x:again")]])
+        self.app.notify(
+            f"Pomodoro done{late}.", kind="reminder", why="pomodoro.end", buttons=[[("Another", "pom:x:again")]]
+        )
 
     def _nudge(self, p=None):
-        self.app.notify("Start a pomodoro?", why="pomodoro.nudge", setting="pomodoro.nudge",
-                        buttons=[[("Start", "pom:x:again")]])
+        self.app.notify(
+            "Start a pomodoro?", why="pomodoro.nudge", setting="pomodoro.nudge", buttons=[[("Start", "pom:x:again")]]
+        )
 
     def _button(self, ref: str, act: str) -> str:
         return self.begin("") if act == "again" else "unknown button"

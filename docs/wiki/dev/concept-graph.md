@@ -104,8 +104,17 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
   (`[p. N]` markers, at most 40 000 chars) and up to 30 candidate cards. It is submitted as
 
   ```python
-  app.jobs.submit(prompt, effort=effort_for(...), background=True, text_only=True, quiet=True, lane="bg",
-                  brain=bulk, then="integrate.done", then_payload={book, batch, first, last, title})
+  app.jobs.submit(
+      prompt,
+      effort=effort_for(...),
+      background=True,
+      text_only=True,
+      quiet=True,
+      lane="bg",
+      brain=bulk,
+      then="integrate.done",
+      then_payload={book, batch, first, last, title},
+  )
   ```
 
   and the ledger state becomes `queued`.

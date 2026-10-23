@@ -302,12 +302,18 @@ Every scheduled action takes the job's payload (`tests/unit/test_scheduled_actio
 
 ```python
 jid = app.jobs.submit(
-    prompt, title=None, effort="auto",        # "low" | "medium" | "high" | "auto"
-    reply_to=None, quiet=False,               # quiet: no answer is sent (the then-action handles it)
-    then=None, then_payload=None,             # a follow-up registered in app.jobs.then_actions
-    background=False, text_only=False,        # background: waits for the charger and for kept free limits
-    why=None,                                 # a Calm reason for an answer that comes by itself
-    lane=None, brain=None,                    # lane "you" | "bg" | "chk"; pin to a brain id
+    prompt,
+    title=None,
+    effort="auto",  # "low" | "medium" | "high" | "auto"
+    reply_to=None,
+    quiet=False,  # quiet: no answer is sent (the then-action handles it)
+    then=None,
+    then_payload=None,  # a follow-up registered in app.jobs.then_actions
+    background=False,
+    text_only=False,  # background: waits for the charger and for kept free limits
+    why=None,  # a Calm reason for an answer that comes by itself
+    lane=None,
+    brain=None,  # lane "you" | "bg" | "chk"; pin to a brain id
 )
 ```
 
@@ -444,10 +450,17 @@ one thing) to `app.notify`. A message without a reason still works but can't be 
 `core/ask.py:Ask` (`app.ask`). Any feature, background job or script can ask the user and act on the answer.
 
 ```python
-qid = app.ask.ask("Which chapter is the quiz on?", choices=["3", "4"], hook="study.quiz_topic",
-                  hook_payload={...}, expires="2d", source="study", why="study.quiz")
-app.ask.hooks["study.quiz_topic"] = lambda q, answer: "noted"   # register in __init__/start
-app.ask.approval("Send this draft?", hook="mail.send")             # Approve / Deny
+qid = app.ask.ask(
+    "Which chapter is the quiz on?",
+    choices=["3", "4"],
+    hook="study.quiz_topic",
+    hook_payload={...},
+    expires="2d",
+    source="study",
+    why="study.quiz",
+)
+app.ask.hooks["study.quiz_topic"] = lambda q, answer: "noted"  # register in __init__/start
+app.ask.approval("Send this draft?", hook="mail.send")  # Approve / Deny
 ```
 
 - Delivered to Telegram (choices as buttons plus Later), the desktop, the phone app and the next call
