@@ -38,7 +38,7 @@ import psutil
 from kurooto import providers
 from kurooto.core import proc
 from kurooto.core.config import register_defaults
-from kurooto.core.mcp import command, run_env
+from kurooto.core.mcp import ENV_JOB, command, run_env
 from kurooto.core.state import owner_only
 from kurooto.core.tools import agent_tools, run_tool
 from kurooto.providers import effort as effort_mod
@@ -68,6 +68,7 @@ GRACE_S = 120  # the watchdog's grace past a try's time limit (and the brain's o
 ACTIVE = ("queued", "running")
 RETRY = (Verdict.RATE_LIMITED, Verdict.AUTH, Verdict.ERROR, Verdict.DENIED, Verdict.EMPTY)  # the next brain tries
 GEMINI_KEY = "gemini.api_key"  # also what calls and voice notes use
+MAX_STEPS = 200  # tool uses kept per running request (its tool log)
 DENIED_HELP = Agy.denied_help  # what an AI that was refused says (providers/agy.py); a brain's own is `denied_help`
 SHORT = {"agy": "agy", "gemini": "your Gemini key", "claude": "Claude Code"}
 
@@ -141,6 +142,10 @@ class Jobs:
         self._wake: asyncio.Event | None = None
         self._loop = None
         self.then_actions: dict = {}  # name -> fn(job, result)
+        # fn(job, result, info) after every finished request, its then-action included; info: "steps" (its tool log:
+        # [{"name", "args"}]), "then", "payload". Learns from its own work (modules/learning.py) watches here
+        self.watchers: list = []
+        self.steps: dict[str, list[dict]] = {}  # a running request's tool log (note_step), dropped when it ends
         if "background" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # older databases
             self._db.execute("alter table jobs add column background integer default 0")
         if "runner" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # which process runs it
@@ -252,6 +257,16 @@ class Jobs:
         rows = self._read(f"select {self._cols} from jobs order by created desc limit ?", (n,), one=False)
         return [self._job(r) for r in rows]
 
+    def finished_since(self, t: float, limit: int = 500) -> list[tuple]:
+        """Requests that ended well after time t, oldest first, for the search index (modules/learning.py):
+        (id, title, prompt, result, finished, lane, then_action)."""
+        return self._read(
+            "select id, title, prompt, result, finished, coalesce(lane, 'you'), coalesce(then_action, '') from jobs "
+            "where status='ok' and finished > ? order by finished limit ?",
+            (t, limit),
+            one=False,
+        )
+
     def active(self) -> list[Job]:
         """What's running, then what's waiting, oldest first."""
         rows = self._read(
@@ -360,6 +375,7 @@ class Jobs:
             self._end(jid, Verdict.ERROR, f"{type(e).__name__}: {e}")
         finally:
             self._stops.pop(jid, None)
+            self.steps.pop(jid, None)
             self.poke()
 
     def _run(self, jid: str) -> None:
@@ -397,9 +413,9 @@ class Jobs:
             timeout_s=minutes * 60,
             context=headless_context(self.app),
             tools=[] if text_only else tools,  # text-only work gets no tools (and agent programs no MCP)
-            run_tool=lambda name, args: run_tool(self.app, name, args, tools),
+            run_tool=lambda name, args: run_tool(self.app, name, args, tools, job=jid),
             mcp=None if text_only else mcp_command(),
-            mcp_env=run_env(self.app.paths),
+            mcp_env={**run_env(self.app.paths), ENV_JOB: jid},  # its tool uses come back marked as its steps
             text_only=text_only,
             on_process=lambda pid: self._mark(jid, proc=_process(pid)),
             stop=stop,
@@ -433,6 +449,9 @@ class Jobs:
                 self._mark(jid, proc=None, deadline=None)
             if stop.is_set():
                 return
+            steps = len(self.steps.get(jid, ()))  # agent programs' tool uses arrive through `kurooto mcp`
+            if steps and isinstance(result.usage, dict) and not result.usage.get("tool_calls"):
+                result.usage = {**result.usage, "tool_calls": steps}
             self._attempt(jid, brain.id, result)
             if brain.kind == "cli" and result.ok:
                 brain.mark_worked(self.app)
@@ -492,6 +511,30 @@ class Jobs:
                 self.then_actions[then[0]](job, result, json.loads(then[1] or "{}"))
             except Exception as e:
                 self.app.events.emit("job_then_failed", job=job.id, error=str(e)[:300])
+        with self._lock:
+            steps = self.steps.pop(job.id, [])
+        if self.watchers:
+            try:
+                payload = json.loads((then[1] if then else None) or "{}")
+            except ValueError:
+                payload = {}
+            info = {"steps": steps, "then": (then[0] if then else None) or "", "payload": payload}
+            for fn in list(self.watchers):
+                try:
+                    fn(job, result, info)
+                except Exception as e:  # a watcher's mistake never touches the answer, which is delivered already
+                    self.app.events.emit("job_watcher_failed", job=job.id, error=f"{type(e).__name__}: {e}"[:300])
+
+    def note_step(self, jid: str, name: str, args: dict | None = None) -> None:
+        """One tool use by a request that is running in this process (from core/tools.py:run_tool): its tool log."""
+        with self._lock:
+            if jid not in self._stops:  # not one of ours, or over already
+                return
+            log = self.steps.setdefault(jid, [])
+            if len(log) < MAX_STEPS:
+                log.append(
+                    {"name": str(name)[:60], "args": json.dumps(args or {}, ensure_ascii=False, default=str)[:300]}
+                )
 
     def _mark(self, jid: str, **cols) -> None:
         """Note how a running job is doing (which AI, its program, its deadline); each note is a sign of life."""

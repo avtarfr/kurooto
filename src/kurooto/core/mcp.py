@@ -26,6 +26,7 @@ from kurooto.core.state import jload
 NAME = "kurooto"
 PROTOCOLS = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")  # newest first
 ENV_URL, ENV_TOKEN = "KUROOTO_TOOLS_URL", "KUROOTO_TOOLS_TOKEN"
+ENV_JOB = "KUROOTO_JOB"  # the AI request this run belongs to, so its tool uses are counted as its steps (core/jobs.py)
 # what paths() reads, so the bridge finds Kurooto's folders even when an agent program passes it a short environment
 ENV_PATHS = ("KUROOTO_HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "LOCALAPPDATA")
 NOT_RUNNING = (
@@ -174,7 +175,10 @@ class Server:
             args = {}
         if not isinstance(args, dict):
             return _text("The arguments must be a JSON object.", error=True)
-        r = self.bridge.request("POST", "tools/call", {"name": name, "args": args, "via": "mcp"})
+        body = {"name": name, "args": args, "via": "mcp"}
+        if os.environ.get(ENV_JOB):
+            body["job"] = os.environ[ENV_JOB]
+        r = self.bridge.request("POST", "tools/call", body)
         if r is None:
             return _text(NOT_RUNNING, error=True)
         code, body = r

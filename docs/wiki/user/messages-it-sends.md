@@ -187,6 +187,9 @@ No Stop; only Another time. When sent as urgent they always come.
 | the new-papers digest | Research | `research.papers` | list | weekly | yes | |
 | a question about a project with no commits for a while | Research | `research.idle_days` | no more | half as often | yes | yes |
 | a suggestion from the nightly look back | Nightly look back | `retro.when` | feature off | weekly | yes | yes |
+| a skill learned or improved from a request that took many steps | Learns from its own work | `learning.skills` | no more learned skills | one a day | yes | |
+| a lesson a skill took from your correction | Learns from its own work | `learning.corrections` | no more lessons | | yes | |
+| facts from your chats and calls kept in your how-to-help-me note | Learns from its own work | `learning.remember` | nothing kept by itself | | yes | |
 | the look back at what you typed that I didn't understand | Wrong button and test cases | `cases.review_days` | list | half as often | yes | |
 | a PDF of handwriting waiting to be written out at night | Handwritten notes | | list | | yes | |
 | handwritten pages written out into notes | Handwritten notes | | list | one a day | yes | |

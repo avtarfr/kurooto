@@ -146,9 +146,10 @@ Timeouts per level: `brain.timeout_min`.
 - `sync_tools()`: `sync_status`.
 - `app.ask.agent_tools()`: `ask_user`.
 - For each enabled module: `call_tools()` and `agent_tools()`, deduplicated by name; `CALL_ONLY = {"run_task",
-  "pending_items"}` are never given to unattended work.
+  "pending_items"}` are never given to unattended work. Learns from its own work adds `search_history` this way.
 
-`run_tool(app, name, args, tools, via)` validates `required`, emits `tool_used` / `tool_failed`, and never raises: an
+`run_tool(app, name, args, tools, via, job=None)` validates `required`, emits `tool_used` / `tool_failed`, notes the
+use in the request's tool log when `job` is given (`Jobs.note_step`, see [core.md](core.md#jobs)), and never raises: an
 error comes back as a sentence. Text-only jobs get no tools at all (`Jobs._run`: `tools=[] if text_only`).
 
 The `Tool` dataclass lives in `modules/calls/tools.py` (shared with calls): `name`, `description`, `run(args)`,
@@ -160,7 +161,8 @@ does when the computer is off), `hint`, `writes` (True/False/None; MCP turns it 
 `core/mcp.py` is a stdio MCP server (JSON-RPC 2.0, one message per line; protocol versions in `PROTOCOLS`), standard
 library only. It is a bridge: `Bridge.request()` calls the running daemon's `GET /api/tools` and
 `POST /api/tools/call` (`web/tools_api.py`) with header `X-Kurooto-Tools: <token>`. The URL and token come from the
-environment (`KUROOTO_TOOLS_URL`, `KUROOTO_TOOLS_TOKEN`, set per run by `run_env()`), falling back to
+environment (`KUROOTO_TOOLS_URL`, `KUROOTO_TOOLS_TOKEN`, set per run by `run_env()`; `KUROOTO_JOB`, the request's id,
+which `call_tool` passes on as `job` so the use counts as one of its steps), falling back to
 `<state>/tools-access.json` (rewritten at every daemon start). When the daemon is down, `tools/list` answers from
 `<state>/tools-list.json` and every call returns `NOT_RUNNING`. `command(persistent=True)` (used for agy's saved
 registration) goes through the installed launcher so it survives updates; on Windows `pythonw.exe` is swapped for

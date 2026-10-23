@@ -169,6 +169,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `classroom-notes/`, `mail-digest/`, `reply-drafts/`, `digest-email-*`, `drive-upload.json`, `drive-temporary.json`, `agent-plan.json` | the Google parts |
 | `notes-sync.json`, `backups.json`, `ollama-ours.json` | notes sync, backups, local models |
 | `skills/{packs,auto-packs}.json`, `skills/drafts/`, `skills/tectonic-declined` | `modules/skills.py` |
+| `learning/history.db` (FTS5 search index, not backed up), `learning/{state,changes}.json`, `learning/before/` | `modules/learning.py` |
 | `classpacks/active.json`, `classpacks/drafts/` | `modules/classpacks.py` |
 | `lidsafe/{held,waiting,said}.json` | `modules/lidsafe.py` |
 | `cases/cases.json` (never backed up or bundled) | `modules/cases.py` |
@@ -262,6 +263,7 @@ Recurring (key → when; setting that controls it):
 | `mail_digest:digest` | daily 08:00,18:00 | `mail_digest.at` | `modules/google_mail.py` |
 | `drive_upload:expire` | daily 04:10 | | `modules/google_drive.py` |
 | `handwritten:scan` | every 15m | `handwritten.every` | `modules/handwritten.py` |
+| `learning:index` | every 15m | `learning.search` | `modules/learning.py` |
 | `integrate:night`, `integrate:retry`, `integrate:garden`, `integrate:summary` | daily 01:30; every 3h; daily 06:20; daily 07:10 | `integrate.at`, `integrate.garden`, `integrate.summary` | `modules/integrate.py` |
 | `local_models:keepalive` | every 10m | | `modules/local_models.py` |
 | `notes_sync:sync` | every 10m | `notes_sync.every` | `modules/notes_sync.py` |
@@ -336,6 +338,16 @@ jid = app.jobs.submit(
 - **Chat history** (0.5.8): after delivery, the answer is recorded into Chat's history only if
   `chat.owns(job.id)` (`modules/chat.py:Chat.owns`, the set of job ids `Chat.ask` submitted). Digests, research,
   call reviews and skills therefore never become "the conversation".
+- **Tool log** (0.5.8): `Jobs.note_step(jid, name, args)` records each tool use of a request running in this process
+  in `Jobs.steps[jid]` (at most `MAX_STEPS`). API brains reach it through `Task.run_tool` (`run_tool(..., job=jid)`);
+  agent programs through `kurooto mcp`, which sends the request's id from the `KUROOTO_JOB` variable
+  (`core/mcp.py:ENV_JOB`, put into `Task.mcp_env` by `_run`) as `job` in `POST /api/tools/call`. When a brain's
+  `Result.usage` has no `tool_calls`, the log's count is used, so `attempts.tool_calls` and `/usage` count agy and
+  Claude Code too. The log is dropped when the request ends.
+- **Watchers** (0.5.8): `app.jobs.watchers` holds `fn(job, result, info)` called by `_after` for every finished request,
+  after delivery and the then-action, success or not, with `info = {"steps", "then", "payload"}`; a failure emits
+  `job_watcher_failed`. Learns from its own work (`modules/learning.py`) is the one user. `finished_since(t)` lists
+  requests that ended well after `t` (its search index).
 - **Then-actions**: `app.jobs.then_actions[name] = fn(job, result, payload)`, run by `_after` after delivery, for
   success and failure alike (check `result.ok`). A name not registered when the job finishes is skipped silently, so
   register then-actions in `__init__` or `start()`, never lazily just before submitting (`modules/google.py` registers
@@ -380,7 +392,7 @@ power `power_pause`, `power_resume`, `power_off`; health `health_checked`, `heal
 calls `call_scheduled`, `call_rang`, `call_rang_offline`, `call_answered`, `call_missed`, `call_held`,
 `call_transcript`, `call_reviewed`, `call_review_failed`, `call_live_failed`, `call_fallback`, `calls_*`; concept graph
 `book_read`, `integrate_batch`, `integrate_refused`, `integrate_waiting`, `integrate_pruned`, `hubs_updated`; and one
-family per feature (`alarm_*`, `deadline_*`, `exam_*`, `study_*`, `quiz_*`, `skill_*`, `retro_*`, `google_*`,
+family per feature (`alarm_*`, `deadline_*`, `exam_*`, `study_*`, `quiz_*`, `skill_*`, `retro_*`, `learning_*`, `google_*`,
 `mail_*`, `classroom_notes_*`, ...). Grep `events.emit("` to find the emitter of any kind.
 
 When you add an event: name it `<area>_<what happened>` in the past tense, keep fields to ids, counts and short error
@@ -501,10 +513,12 @@ written when its text changed (`write_if_changed`). Kurooto never reads them bac
 
 `core/space.py`: `plan(app) -> [Item]` lists Kurooto's own leftovers (old backup zips beyond `backups.keep` /
 `space.backups_max_gb` / `space.backups_max_age_days`, never the newest; cache files older than `space.cache_days`;
-log files over `space.log_mb`; finished jobs older than `space.jobs_days`; concept-graph `pending/` and `undo/` older
+log files over `space.log_mb`; finished jobs older than `space.jobs_days`, and search-index items (`modules/learning.py`) as old; concept-graph
+`pending/` and `undo/` older
 than `space.undo_days`; diagnostics zips; extra program versions). `clean(app, items)` removes them. Run by the Space
 keeper feature (`space:clean`, `space.when`), `/space`, `kurooto space [--clean]`; `kurooto doctor` only reports.
-`low_disk(app)` feeds health. Never touches notes, books or user folders except Kurooto's own zips there.
+`low_disk(app)` feeds health. `footprint(app)` lists the search index of past requests apart from the rest of the
+state folder. Never touches notes, books or user folders except Kurooto's own zips there.
 
 ## Hardware profiles
 

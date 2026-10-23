@@ -1,7 +1,8 @@
 """The local API for the AI's tools and for Kurooto's terminal commands.
 
 GET  tools                     every tool unattended AI runs get: name, description, JSON schema
-POST tools/call {name, args}   run one (what `kurooto mcp` does for agent programs)
+POST tools/call {name, args, job?}   run one (what `kurooto mcp` does for agent programs; job: the request it's a
+                               step of, counted in core/jobs.py)
 POST say {text}                plain English, as if typed on Telegram (`kurooto ask`); a bigger request becomes
                                a job whose answer comes back here instead of to Telegram
 GET  job?id= / POST job {id}   how that job is going, and its answer
@@ -69,7 +70,8 @@ def post(app: App, path: str, b: dict) -> tuple[int, dict]:
         if args is not None and not isinstance(args, dict):
             return 400, {"ok": False, "error": "args must be an object"}
         via = b.get("via") if b.get("via") in ("mcp", "dashboard", "terminal") else "api"
-        return 200, {"ok": True, "result": run_tool(app, name, args or {}, tools, via=via)}
+        of = str(b.get("job") or "")[:40] or None  # an agent program's request: the tool use is one of its steps
+        return 200, {"ok": True, "result": run_tool(app, name, args or {}, tools, via=via, job=of)}
     if path == "say":
         return say(app, str(b.get("text") or ""))
     if path == "job":

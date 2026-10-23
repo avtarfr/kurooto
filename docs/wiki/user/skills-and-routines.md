@@ -175,6 +175,11 @@ isn't a usable skill, you're told to try again with more detail. New skills may 
 told never to run shell commands, delete or reword your text, or send anything to anyone else. Edit the file in your
 notes any time.
 
+**Skills Kurooto learns by itself.** With the optional [Learns from its own work](teaching-kurooto.md#learns-from-its-own-work)
+on, a request of yours that took many steps can become a skill without a Save tap ("Learned a skill: /..., from today's
+request", with Undo), a skill can gain tips ("Learned from experience") or lessons ("Lessons") from your corrections.
+Their header says `learned: true`; they're your skills like any other.
+
 ---
 
 ## Prompts that are skills

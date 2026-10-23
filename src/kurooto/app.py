@@ -331,6 +331,9 @@ class App:
                 if out is not None:
                     msg.reply(out)
                     return
+        learning = self.modules.get("learning") if self.is_on("learning") else None
+        if learning is not None and text:  # "no, ..." just after a skill's answer teaches it (it goes on as usual)
+            learning.heard(msg, text)
         books = self.modules.get("books")  # a PDF sent as "book for <subject>" goes to that subject's books
         if msg.files and books is not None and self.is_on("books"):
             out = books.take_book(msg)

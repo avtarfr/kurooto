@@ -174,6 +174,8 @@ More: [Google](google.md), [Classes and timetable](classes-and-timetable.md#cale
 | `/observe whether I sleep better for 2 weeks` | watch something before deciding | Nightly look back |
 | `/observing` | what's being watched (Stop and +7 days buttons) | Nightly look back |
 | `/lookback`, `/lookback now` | the last nightly look back; run one now | Nightly look back |
+| `/history lab report`, `/history 7d lab report` | search past requests, calls and chats (the last 7 days) | Learns from its own work (optional) |
+| `/learned` | what it learned lately, each with Undo | Learns from its own work (optional) |
 | `/wrong`, `/wrong <what you meant>`, `/wrong ai` | my last reply was wrong: keep it as a case, or teach me | Wrong button and test cases |
 | `/cases`, `/cases review` | test cases and the phrasings you taught (Unlearn buttons) | Wrong button and test cases |
 | `/backup`, `/backups` | make a backup now; list them | Backups |

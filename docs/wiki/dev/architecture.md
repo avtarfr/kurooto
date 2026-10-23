@@ -78,6 +78,8 @@ What happens when the user types "what's due this week? and summarise my linear 
    3. `/start`, `/help`, `/aboutme`, `/q`, `/health`, `/calm`, `/why`, `/jobs` (core);
    4. a `/command` of an enabled module; a command of a disabled module answers "X is off: Features → X → Turn on"
       (except `ALWAYS = ("status",)`); a skill name when Skills is on (`modules/skills.py:Skills.typed`);
+      (from here on, with Learns from its own work on, `Learning.heard` sees the text without taking it: "no, ..."
+      soon after a skill's answer is a correction of that skill);
    5. files: a PDF captioned "book for <subject>" → Books; a `.kurooto-course` file → Class packs; otherwise the first
       enabled module with `take_files`;
    6. a text call in progress (`calls.textcall.takes`);
@@ -109,7 +111,8 @@ What happens when the user types "what's due this week? and summarise my linear 
    - an OpenAI-compatible API: `OpenAICompat.run` loops over function calls, calling `task.run_tool` →
      `core/tools.py:run_tool` directly in the daemon.
    Either way the tools are the same (`search_notes`, `read_note`, `read_file`, and the enabled modules' own, such as
-   Deadlines' `add_deadline` or Reminders' `add_reminder`), and each use emits `tool_used`.
+   Deadlines' `add_deadline` or Reminders' `add_reminder`), and each use emits `tool_used` and goes into the request's
+   tool log (`Jobs.note_step`; agent programs' uses carry the request's id from `KUROOTO_JOB`).
 7. **Verdict and fallback**: the brain returns a `Result`; a retryable verdict moves to the next brain; the job row is
    updated (`ok` / `failed`), an `attempts` row added, `job_done` emitted.
 8. **Delivery** (`Jobs._deliver`): `app.notify("[<brain> · high] <title>\n\n<answer>", kind="result",
@@ -117,7 +120,8 @@ What happens when the user types "what's due this week? and summarise my linear 
    `core/notify.py:Notifier._deliver` sends it to the Telegram channel (registered by `Telegram.start`), the phone app
    if `result` is in `notify.app_kinds`, the desktop if configured. A long answer is also attached as a file.
 9. **After**: because `Chat.owns(job_id)`, the turn is appended to `chat/history.json`; the then-action, if any, runs
-   (`Jobs._after`). Notes sync, if on, schedules a push a couple of minutes after any `job_done`.
+   (`Jobs._after`), then the watchers (`Jobs.watchers`, e.g. Learns from its own work) with the request's tool log.
+   Notes sync, if on, schedules a push a couple of minutes after any `job_done`.
 
 The same `App.handle` serves `kurooto ask` (`via="terminal"`, through `POST /api/say`), the setup page's try-it box
 (`via="setup"`, `web/tryit.py`), routines (`via="routine"`), and the dashboard's Ctrl+K "ask". Calls take a different

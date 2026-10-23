@@ -60,6 +60,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | About you | the reports you add stay on this computer; building the profile sends them to the AI once; afterwards its "In brief" part goes along with every AI request | the AI you picked |
 | Remember | your how-to-help-me note goes along with every AI request | the AI you picked |
 | Nightly look back | what happened today (what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out: `retro.transcripts`, `retro.journal`), your how-to-help-me note, the settings it may change; for a skill change you approved, that skill's text | the AI you picked |
+| Learns from its own work | nothing to build its search index (it stays on this computer); the passages the AI finds when it searches it, with that request; to learn a skill, the finished request, its answer and its steps; to learn a lesson, your correction and the skill; to pick up facts, the day's requests (with the nightly look back) | the AI that takes second looks (`learning.brain`), else the AI you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI you picked |
 | Skills: revision packs | Tectonic, if you install it, downloads LaTeX packages; nothing of yours is sent | Tectonic's public package server |
 | Skills: packs before exams | the same as `/pack`, only after you tap Build it (unless `skills.auto_pack` is `auto`) | the AI you picked |
@@ -186,7 +187,9 @@ reach for each request only; nothing is saved in its own settings.
   questions (deleted 30 days after they're answered or expire, `ask.keep_days`), the record of messages that came by
   themselves (`calm.db`, kept 45 days: when, why, the setting, what it was about, the first 300 characters, whether
   you tapped it), test cases (`cases/`), the calls' lessons (`calls/lessons.md`), and earlier versions of notes the AI
-  edited (`note-history/`, the last 20 per file).
+  edited (`note-history/`, the last 20 per file). With Learns from its own work on: the search index of past
+  requests, calls and chats (`learning/history.db`, trimmed after `space.jobs_days`), and the earlier versions of skills
+  it changed (`learning/before/`).
 - **The data folder** holds the About you reports (never synced), Classroom's downloaded files, books and their text,
   and confidential mail summaries (`mail/confidential/`, readable only by your user account).
 - **Mail copies:** the text of mail chosen for the digest only until the digest is written; the sender, subject and a
@@ -209,6 +212,7 @@ reach for each request only; nothing is saved in its own settings.
 | Confidential mail summaries | only with `backups.confidential_mail` | no | no |
 | Calm records | yes | no | no |
 | Test cases | no | no | no |
+| The search index of past requests (Learns from its own work) | no (it's built again from the rest) | no | no |
 
 More on each: [updates-and-backups.md](updates-and-backups.md). Before you share a diagnostics zip, open it and look.
 
@@ -216,6 +220,8 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 
 - **Remember** won't store health, money or password details: they'd travel with every AI request. It says so and
   keeps nothing. Skills are told to keep health, money and other people's private details out of your notes too.
+- **Learns from its own work** never keeps a fact about health, money, passwords or other people (a line naming a
+  relative or friend, a phone number, an email address).
 - **Wrong button and test cases** never keep long messages, several requests in one, or anything about health, money
   or passwords. Cases you didn't review are forgotten after 30 days.
 - **Mail marked confidential** is never read by the AI you picked, never summarised by it, and never answered with an

@@ -251,12 +251,21 @@ class Retro(Module):
         active = [o for o in self.observations() if o["status"] == "active"]
         ended = [o for o in active if o["until"] <= now().isoformat()]
         ctx = self.context(since, [o for o in active if o not in ended], ended)
+        learning = self.app.modules.get("learning")  # Learns from its own work: facts you stated (modules/learning.py)
+        picks = learning.picks_facts() if learning is not None else 0
+        if picks:
+            from kurooto.modules.learning import REMEMBER_ASK
+
+            instructions += "\n" + REMEMBER_ASK.format(n=picks)
+            ctx["chats"] = learning.chats(since)
         prompt = instructions + "\n\nINPUT (JSON):\n" + json.dumps(ctx, ensure_ascii=False, indent=1, default=str)
         r = brain.complete(prompt[:120_000], effort=effort, timeout=600)
         out = self._parse(r.text) if r.ok else None
         if out is None:
             self.app.events.emit("retro_failed", reason="no answer" if not r.ok else "unreadable")
             return 0
+        if picks:
+            learning.keep_facts(out.get("remember"))  # kept at once, each with an Undo (no tap needed)
         found = {str(f.get("id")): str(f.get("finding") or "").strip() for f in out.get("findings") or [] if f}
         for o in ended:
             self._finish_observation(o, found.get(o["id"], ""))

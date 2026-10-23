@@ -2,6 +2,14 @@
 
 ## 0.5.8 (unreleased)
 
+- **Learns from its own work** (an optional add-on, in no preset; the idea from Hermes Agent, none of its code): a
+  search of your past AI requests, call transcripts and chats kept on this computer (`/history lab report`, and the AI's
+  `search_history` tool for agy, Claude Code and API brains); a request that took many steps becomes a skill (or tips
+  for the skill that does it), a skill takes a lesson when you correct its answer ("no, ...", or a reply), and the
+  nightly look back keeps facts you stated in your how-to-help-me note. No review queue: each change comes in one line
+  with Undo, and `/learned` lists them. A part each: `learning.search`, `skills`, `corrections`, `remember`.
+- **AI requests count their steps with every brain**: tool uses by agy and Claude Code (through `kurooto mcp`) are
+  now counted per request like an API brain's, so `/usage` shows them too.
 - **A calmer board**: the corner panels of SYSTEMS (events, your AI, today, due) and the NOTES legend and recent list
   are folded to their first line (with how much more there is); one opens while the pointer is over it, and `L` opens
   or folds them all (remembered in this browser).
