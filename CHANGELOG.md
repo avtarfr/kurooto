@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.1 (unreleased)
+## 0.6.1 (2026-10-24)
 
 - **Today reaches every phone:** a phone whose key didn't reach your call line when it paired (no internet just then)
   showed "Nothing here yet" until its connection happened to drop, which can take days. Opening the app now sends the
@@ -33,6 +33,18 @@
 - **The notes map highlights properly:** pointing at a note, or choosing it with Tab and the arrow keys, lights it and
   its linked notes in full colour with names that don't overlap, and dims the rest; "Seen in" and reading-list links
   are drawn but no longer make a dot big.
+- **Dreaming fills in your profile, with your say:** lasting things you said (in chat, on calls, in your journal) come
+  in the morning message under "For your profile", each with Keep and Not that. A Keep adds your words, with where and
+  when you said them, to Kurooto's own block of your profile or to your how-to-help-me note, with Undo. Never health,
+  money or other people. `dreaming.fold`, `/dream fold`.
+- **Set up from what you say, in one pass:** Kurooto also reads your chats and journal, once over the last 30 days and
+  then nightly on what's new, and sets up the projects, classes, routines and short names it finds; one line says
+  what, with Undo all. A line the rules can't read can be restated by the model on this computer, kept only if it adds
+  nothing. `infer.sweep`, `/inferred scan`.
+- **/help lists every request it understands by itself** ("did I finish that thing?", "when did I last talk to…",
+  "sync everything"…), and links in the phone app's chat open with a tap.
+- **Setup is smoother:** an empty notes folder no longer opens the layout editor, the daily message limit comes after
+  the features, and on phones the hint beside Next gets its own line.
 - **AGENTS.md** covers 0.6.0: Quick ask, add-ons by link, run compare, an empty Today, held requests and draft checks.
 
 ## 0.6.0 (2026-10-24)
