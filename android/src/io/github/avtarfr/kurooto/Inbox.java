@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * tagged with the item's id, so the call line can take it down once it's dealt with somewhere else.
  *   Android 7 and newer: Reply types the answer right in the notification (the choices are offered there too).
  *   Android 6: Reply opens a small answer window (AnswerActivity), as tapping the notification does everywhere.
+ * A counting button ("+1": one more part of a problem set done) leaves the notification up after a tap, showing what
+ * your computer said (or that the tap waits on the call line for it), so the next tap counts too.
  */
 final class Inbox {
     static final int ID = 7; // one number for all of them; the tag (the item id) tells them apart
@@ -38,6 +40,9 @@ final class Inbox {
     }
 
     static String text(JSONObject it) { return it.optString("message", it.optString("text", "")); }
+
+    /** A counting button: labelled "+1" (or "+2"...). Your computer keeps its message open for the next tap. */
+    static boolean counts(JSONObject button) { return button != null && button.optString("label").matches("\\+\\d+"); }
 
     private static int code(String id, String what) { return (id + ":" + what).hashCode(); }
 
@@ -65,6 +70,7 @@ final class Inbox {
                 .setContentText(body)
                 .setStyle(new Notification.BigTextStyle().bigText(body))
                 .setCategory(Notification.CATEGORY_MESSAGE)
+                .setOnlyAlertOnce(true) // shown again after a +1: quietly
                 .setContentIntent(open(c, it, "open"))
                 .setAutoCancel(!asks(it));
         int n = 0;
@@ -144,12 +150,22 @@ final class Inbox {
             pr.finish();
             return;
         }
+        JSONArray bs = it.optJSONArray("buttons");
+        final boolean again = fields.has("button") && bs != null && counts(bs.optJSONObject(fields.optInt("button")));
         // a receiver may only hold on for a few seconds; the listening service keeps the app alive after that
         final AtomicBoolean finished = new AtomicBoolean(false);
         final Runnable release = () -> { if (finished.compareAndSet(false, true)) pr.finish(); };
         new Handler(Looper.getMainLooper()).postDelayed(release, 8000);
         new Thread(() -> {
-            try { done(c, it, Line.answer(c, it.optString("id"), fields)); } finally { release.run(); }
+            try {
+                Line.Answered r = Line.answer(c, it.optString("id"), fields);
+                if (again && r.delivered()) {
+                    try { it.put("message", r.note); } catch (Exception ignored) { }
+                    show(c, it); // still there, for the next +1
+                } else {
+                    done(c, it, r);
+                }
+            } finally { release.run(); }
         }).start();
     }
 

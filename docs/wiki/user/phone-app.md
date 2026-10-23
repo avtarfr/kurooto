@@ -143,6 +143,12 @@ the nightly look back, a reply draft to approve, your own scripts (`kurooto ask-
 answer window), the question's choices, **Approve / Deny** for approvals, **Later** (ask me on the next call), or the
 message's own buttons. Tap the notification for every option. The app's main screen lists what's **Waiting for you**.
 
+**+1 on a deadline.** With `"deadline"` in `notify.app_kinds`, a deadline with parts still to do comes with **Reply**,
+**+1** and **Done** (Android shows three buttons; tap the notification for the rest). **+1** counts one more part done
+and the notification stays, showing "Problem set 3: 5/7, 2 to go...", so you can tap it after each question. In the
+app's chat, **+1** is under the message, and on the chat's notification too. **Reply** with `4/7` or `done` works as
+well ([reminders-and-deadlines.md](reminders-and-deadlines.md#problem-set-progress)).
+
 **iPhone.** A notification; tap it to open **Waiting for you** in the Home Screen app, with the same buttons and a box
 to type in.
 
@@ -240,6 +246,8 @@ and shared files wait on your call line (the "phone outbox") and go to the compu
 sent them, each once.
 
 - The chat shows **Waiting for your computer** under each one; the app's main screen lists what's waiting.
+- **+1** taps on a deadline count one each, in order: three taps while the laptop sleeps are three parts done when
+  it's back. The notification says the tap is waiting and keeps its **+1**.
 - When the computer takes one, the phone hears it: the chat's mark goes away and the answer comes, and for an answer
   or a file you get a quiet "Reached your computer" notification.
 - The call line holds at most 100 things and 20 MB of files. When it's full: "Your call line is holding as much as it

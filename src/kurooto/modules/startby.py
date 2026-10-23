@@ -483,7 +483,10 @@ class StartBy(Module):
         """For the morning page: what to start, {"title", "when"}, then the day's revision blocks."""
         today = now().date()
         return [
-            {"title": r["title"], "when": f"{self.when_words(r, today)} · due {when_text(r['due'].isoformat())}"}
+            {
+                "title": r["title"] + r.get("parts", ""),
+                "when": f"{self.when_words(r, today)} · due {when_text(r['due'].isoformat())}",
+            }
             for r in self.to_start()[:6]
         ] + self._revision("morning_rows")
 

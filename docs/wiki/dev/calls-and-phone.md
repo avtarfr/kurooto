@@ -234,7 +234,9 @@ on Telegram (`core/turnon.py` already offers its buttons for `via` `app`). `resp
 Jobs answer with `reply_to="app:<id>"`: `core/notify.py:Notifier._deliver` sends such a message to the `chat` channel
 only (and the desktop, by its kinds); with no `chat` channel it goes to Telegram without the reply_to. With
 `notify.app_chat` on, messages whose kind isn't in `notify.app_kinds` (and isn't `call`) also go to `chat`.
-A button press runs `App.callback(data)` and says its answer in the chat unless it's empty or "ok".
+A button press runs `App.callback(data)` and says its answer in the chat unless it's empty or "ok"; under the answer
+to a counting button (`core/notify.py:counts`, a "+1"; 0.5.20) the same button again, so the chat's notification can
+offer it too.
 Without Telegram (`App.app_main()`: Telegram off, Phone calls on; 0.5.18) the chat gets everything not in
 `notify.app_kinds` as if `app_chat` were on, Calm's Why? / Less of this rows included (core.md, Notify and Calm).
 
@@ -376,6 +378,12 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`.
   Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Chat`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25),
   `B64`, `Ui` (the look).
+- Counting buttons (0.5.20, a deadline's **+1**): `Inbox.counts(button)` is a label `+<n>` (the Worker passes only
+  labels). `Inbox.send` shows such an item again after a tap that went through or waits on the line (`setOnlyAlertOnce`,
+  the answer's note as its text) instead of `done()`; the computer keeps the item open for it (`PhoneApp._button`).
+  `ListenService.chatNote` (the chat's notification) adds up to two such buttons as actions, `ActionReceiver.CHAT_TAP`
+  sends them with `Chat.tap` (the outbox when the computer is off) and shows the waiting or failed note with the
+  action kept; one that went through comes back as a new chat message with the button again.
 - The look is Material 3 from the framework alone (no AndroidX or Material Components), views built in code:
   - Colours are resources named after Material 3's roles (`k_bg`, `k_card`, `k_fg`, `k_dim`, `k_primary`,
     `k_tonal`, `k_ok`, `k_bad`, ...): `res/values/colors.xml` is the web pages' light "kuro" palette, `values-night`

@@ -25,6 +25,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from kurooto.core.lock import Lock
+from kurooto.core.notify import counts
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Incoming
 from kurooto.modules.calls import line
@@ -263,7 +264,8 @@ class PhoneApp:
         if not target:
             return 400, {"ok": False, "note": "That button is out of date."}
         out = self.app.callback(target)  # also retracts this message from your phones (App.callback)
-        self._remove(lambda i: i["id"] == it["id"])
+        if not counts(target):  # a +1 stays open: the phone shows it again, and the next tap counts too
+            self._remove(lambda i: i["id"] == it["id"])
         self.app.events.emit("phone_button", kind=it["kind"])
         return 200, {"ok": True, "note": _clip(out, 300)}
 

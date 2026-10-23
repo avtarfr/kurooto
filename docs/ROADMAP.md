@@ -41,9 +41,12 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   line's queued copies; `/forget 7d`.~~ (0.5.15: nightly, call transcripts, AI requests' words, chats, questions,
   cases, sent messages' words, the search index and log lines; `/forget 7d`, `/forget all` with a confirm button.
   Voice recordings stay, being in your notes; the call line's queue is emptied whenever the computer connects)
-- **Problem-set progress.** (0.5.10 has "ps3 4/7" in chat and on calls, shown in lists and Start-by, which plans from
-  what's left; still to come: replying "4/7" to a deadline message, +1 on the phone.) Deadlines with parts (Q1–7):
-  reply "4/7" or tap +1 on the phone; Start-by plans from what's left; the morning says "ps3 4/7, due Fri".
+- ~~**Problem-set progress.** Deadlines with parts (Q1–7): reply "4/7" or tap +1 on the phone; Start-by plans from
+  what's left; the morning says "ps3 4/7, due Fri".~~ (0.5.10: "ps3 4/7" in chat and on calls, shown in lists and
+  Start-by; 0.5.20: a reply "4/7", "4", "+1" or "done" to a deadline's message on Telegram, in the app's chat or the
+  phone's Reply, with Undo; **+1** on the message and the phone's notification, which stays for the next tap and
+  counts each tap in order through the phone outbox; the wake-up call, morning page and /status say "ps3 4/7, due
+  Fri")
 - ~~**Phone outbox.** Captures and taps made while the laptop sleeps wait on the call line and merge on wake~~ (0.5.16:
   chat messages, button taps, answers and shared files wait on the call line and reach the computer in order, each
   once, and the phone hears when each went through); still to come: a home screen widget and a capture tile
