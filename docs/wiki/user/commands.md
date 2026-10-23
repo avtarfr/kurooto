@@ -141,6 +141,7 @@ More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-a
 | `/graph backfill classroom` | read the Classroom files filed before 0.5.19 into the concept graph, night by night | Concept graph |
 | `/graph backfill handwritten` | read the handwritten notes linked before into the concept graph (with `handwritten` in `integrate.sources`); `/handwritten link` links older ones first | Concept graph |
 | `/graph backfill all` | both backfills, for every source that's on | Concept graph |
+| `/graph same` | concept notes that look like one concept, with Merge / Keep both / Add alias | Concept graph |
 | `/skills`, `/skills journal`, `/skills copy journal` | the skills you can run; show one; make your own copy to edit | Skills |
 | `/newskill <what it should do>` | the AI writes a new skill (Save / Discard) | Skills |
 | `/every monday 9:00 /journal plan my week`, `/every weekdays 7:30 /morning-prep`, `/every daily 21:00 how did today go?` | run a skill, a command or a request on a schedule (days: daily, weekdays, weekends, a day, or several like `mon,thu`; at most 30) | Skills |

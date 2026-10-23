@@ -232,6 +232,11 @@ today's note unless you turn that off (`retro.journal`).
 - lines from other features: study hours per subject (Study tracker), research activity, crunch weeks and what to
   start next week ([Start-by dates](reminders-and-deadlines.md#start-by-dates-and-crunch-weeks));
 - **Needs a look**: what isn't working and could wait until Sunday ([your-computer.md](your-computer.md)).
+- **People** (`weekly.people`, on): one line about the people in your [project notes](research.md), only from
+  what's logged there (minutes, "Last met", "Meets:"): who you met this week, who's next in the coming week, and
+  anyone you meet regularly but haven't met for three weeks. "People (from your project notes): met Dr Okafor
+  (guide, Glacier drift) Tue. next: Mira Castell Mon 10:00." It's never a message of its own, and nobody is mentioned
+  from chats or mail.
 
 `/week` shows it any time (the last 7 days). Everything is counted from Kurooto's own event log on this computer.
 
@@ -249,6 +254,7 @@ the time), you get only the text.
 |---|---|---|
 | `weekly.when` | `weekly sun 19:00` | when it comes (`weekly <day> <HH:MM>`) |
 | `weekly.call` | off | the Sunday review call after it |
+| `weekly.people` | on | the People line from your project notes |
 
 **What leaves your computer.** Nothing but the message itself. With the call, the call audio goes to Google, and with
 Chat on, the transcript goes to your AI to write the review.

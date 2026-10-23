@@ -22,6 +22,12 @@ A watchdog ends a request that is stuck: no AI at work on it and no program runn
 (10), or still going past its time limit plus a grace. It ends as failed with a plain message. You can cancel what's
 running or waiting (/jobs, the dashboard's AI jobs page, `kurooto jobs --cancel ID`); a running agent program is
 stopped with everything it started.
+
+The plan line (jobs.plan_line, 0.5.22): when one of your text requests is likely to take more than PLAN_S seconds
+(the median of your last requests on that AI and effort, from at least 3), one short line comes first ("Searching your
+notes, then answering (about 40 s with agy)."), from what's known before it runs: a file you sent, a link, remembered
+items, words about your notes. Never on a call (calls' requests are quiet, and none while you're on one), never for
+background work.
 """
 
 from __future__ import annotations
@@ -30,6 +36,7 @@ import asyncio
 import datetime
 import json
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -69,10 +76,15 @@ register_defaults(
     {
         "stuck_min": 10,  # the watchdog: minutes with no AI at work and no program running
         "receipt": True,  # a quiet last line under each answer: which AI, effort, time, limit used, what it did
+        "plan_line": True,  # a short "Searching your notes, then answering" first, when a text answer will take 20 s+
     },
 )
 
 LONG = 7000  # longer answers are also sent as a document
+PLAN_S = 20  # a request expected to take longer than this gets the plan line first
+PLAN_SAMPLES = 3  # past requests on that AI and effort needed before guessing
+NOTES_CUE = re.compile(r"(?i)\b(?:my|the|in|from|of)\s+(?:own\s+)?notes?\b|\bnotes?\s+(?:on|about)\b|\bvault\b")
+URL = re.compile(r"https?://\S+")
 LANES = ("you", "bg", "chk")  # your own requests; work nobody is waiting for; a second kind of that work, so two
 # AI programs (agy and Claude Code) can each have a job running at once
 GRACE_S = 120  # the watchdog's grace past a try's time limit (and the brain's own grace)
@@ -535,6 +547,8 @@ class Jobs:
             elif not waited or helper.sure():  # one that waited already tries, unless it's down for certain
                 self._hold(jid, job)
                 return
+        if chain:
+            self.plan_line(job, chain[0], level, self.recalled.get(jid, 0))
         tried = time.time()
         used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
         limits: list[dict] = []  # every limit hit on the way, also one a stand-in then answered for
@@ -655,6 +669,48 @@ class Jobs:
                     fn(job, result, info)
                 except Exception as e:  # a watcher's mistake never touches the answer, which is delivered already
                     self.app.events.emit("job_watcher_failed", job=job.id, error=f"{type(e).__name__}: {e}"[:300])
+
+    def expected(self, brain: str, level: str) -> float | None:
+        """How long a request of yours on this AI and effort usually takes: the median of the last 9 that answered,
+        or None with fewer than PLAN_SAMPLES."""
+        rows = self._read(
+            "select seconds from jobs where lane='you' and status='ok' and brain=? and effort=? "
+            "and seconds is not null order by finished desc limit 9",
+            (brain, level),
+            one=False,
+        )
+        secs = sorted(float(r[0]) for r in rows or [])
+        return secs[len(secs) // 2] if len(secs) >= PLAN_SAMPLES else None
+
+    def plan_line(self, job: Job, brain, level: str, recalled: int = 0) -> str:
+        """The plan line before a long text answer of yours (jobs.plan_line); "" when there's none. Never for quiet or
+        background work (a call's requests are quiet) or while you're on a call."""
+        if not self.app.settings.get("jobs.plan_line") or job.quiet or job.background or job.lane != "you":
+            return ""
+        try:
+            if self.app.availability.on_call_until():
+                return ""
+        except Exception:  # no availability: no reason to hold it
+            pass
+        est = self.expected(brain.id, level)
+        if est is None or est <= PLAN_S:
+            return ""
+        prompt = job.prompt.split("Current request:\n", 1)[-1]
+        steps = []
+        if "Files they sent with it" in prompt:
+            steps.append("Opening the file you sent")
+        if URL.search(prompt):
+            steps.append("Reading the link")
+        if NOTES_CUE.search(prompt):
+            steps.append("Searching your notes")
+        if recalled:
+            steps.append(f"going over {recalled} remembered {_plural('item', recalled)}")
+        first = (", ".join(steps[:2]) or "Thinking it through").capitalize()
+        line = f"{first}, then answering (about {_took(est)} with {SHORT.get(brain.id, brain.label)})."
+        reply_to = int(job.reply_to) if job.reply_to and job.reply_to.isdigit() else job.reply_to
+        self.app.notify(line, kind="info", reply_to=reply_to, why="asked")
+        self.app.events.emit("job_plan_line", job=job.id, expected=round(est))
+        return line
 
     def note_step(self, jid: str, name: str, args: dict | None = None) -> None:
         """One tool use by a request that is running in this process (from core/tools.py:run_tool): its tool log."""

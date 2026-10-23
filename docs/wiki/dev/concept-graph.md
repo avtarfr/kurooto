@@ -205,11 +205,15 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 
 - Kurooto's text lives in marked blocks: `<!-- kurooto:<key> ... -->` ... `<!-- /kurooto:<key> -->`, replaced as a
   whole by `put_block()`. Keys: `seen` (a concept note's "Seen in"), `concepts` (the book's index note), `books` (the
-  course page's "From the books").
+  course page's "From the books"), `notation` (0.5.22: the Notation table), `merges` (what a merge brought in) and
+  `merged-into` (a redirect, put under the title by `put_block_top`). Block keys are matched with `\b` after the key,
+  so a key mustn't be a prefix of another before a hyphen (hence `merges`, not `merged`).
 - Links are lines `- relation:: [[target]] — reason` (`link_line`; with `notes.links` "markdown",
   `- relation:: [name](../target.md) — reason`, relative to the note), appended under `## Links` by `add_links()`
   (which uses `core/tools.py:add_to_section` and skips targets already linked, in either style). `LINK_LINE` and
-  `line_target()` take both styles, so pruning, the guard and link cards (`quiz_links.LINE`) read either.
+  `line_target()` take both styles, so pruning, the guard, link cards (`quiz_links.LINE`, `quiz_links.PLAIN`) and a
+  merge (`link_lines`, `drop_link_lines`, `retarget`, `relink`, which rewrites a moved line's link for the note it
+  goes into) read and write either.
 - The guard: `outside(text)` removes Kurooto's blocks, link lines, `## Links` headings and `aliases:` lines;
   `guarded(old, new)` refuses the write if what remains differs (hash of whitespace-collapsed text). A refusal emits
   `integrate_refused` and counts as skipped.
@@ -233,6 +237,9 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 | `items.json` | `{"items": {"<source>:<hash16>": {source, key, id, subject, title, course, note, date, added, backfill, order}}, "backfill": {"classroom": "<when>"}}` |
 | `texts/<hash16>.txt` | the copy of an item's text that's read |
 | `garden.json` | `{"queue": [slugs], "last": {slug: date}}` |
+| `notation.json` | `{slug: [{book, batch, source, symbol, what, quote}]}` |
+| `made.json` | `{slug: outside_hash}` of notes the graph made (0.5.22 on) |
+| `dupes.json` | look-alike pairs, their answers and before-copies (see Near-duplicates) |
 | `budget.json` | `{"brains": {"<bulk AI>": {learned, why, capacity, capacity_at, capacity_kind, hold_until, last_hit: {at, kind, reset, fit}, done: [batch times, 8 days], night, nights: {"<morning date>": {kind, batches, cost, how, used, spent, hit}}}}}` (30 nights kept) |
 | `pending/<jobid>.json` | a batch waiting for its second look |
 | `undo/*.json` | before-copies |
@@ -260,6 +267,67 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
 - `integrate:night` (`integrate.at`, "daily 01:30") and `integrate:retry` ("every 3h") call `tick`. `integrate:plan`
   (hourly, `plan_night`) books a one-off `integrate:early` (action `integrate.soon`) when the next night should start
   before `integrate.at` (`Budget.next_start`), and cancels it otherwise.
+
+## Near-duplicates and merging (0.5.22, `core/graphmerge.py`)
+
+- **Finding** (`conceptgraph.near_duplicates(index, skip, focus, cutoff=DUP_COSINE)`, no AI): over notes that are
+  `concept_like` (not a dated note, `course`, `class-log`, `exam-prep`, `doubts`, `index`, `readme`, nor under a
+  `books/` folder: in the plain layout they share the subject folder), pairs with the same `normalise(title)` (`name`,
+  score 1.0), a shared title-or-alias of 3+ normalised characters (`alias`, 0.95, `shared` = the name), or cosine of
+  `index.vec` at least 0.92 (`meaning`, the cosine; only `focus` notes against all, as it's n×m in pure Python).
+  Left out: keys in `skip` and pairs where either note's typed link to the other is in `DISTINCT` (anything but
+  `equivalent-to`; `Note.typed` = target → relation, parsed in `read_note`). `Pair.a` is `keeper()`: more inbound
+  links, then a longer `head`, then the shorter slug.
+- **Redirects**: a note with a `merged-into` block (`MERGED`, the first `[[...]]` inside it) has `Note.redirect`;
+  `Index` keeps it out of `notes` (so out of candidates, BM25, vectors, orphans, `prune_dangling`'s note loop and
+  near-duplicates) in `index.redirects`, and maps its names to the end of its redirect chain in `by_name` (8 hops at
+  most) after the real notes' own, so `match_name` and `assign()` land new reading on the kept note.
+- **Night** (`integrate:duplicates`, "daily 06:25", only acts with `integrate.duplicates` on): `graphmerge.night` →
+  `find()` (skip: pairs answered `merge`/`keep`/`alias`, and pairs asked in the last `REASK_DAYS` = 14; `focus`: the
+  `fresh` slugs `Integrate.write` added (`graphmerge.fresh`), then a `SWEEP` = 40 slice of `index.vec` from a rotating
+  `cursor`) → at most `MOST` = 3 pairs (2 when `app.app_main()`: the phone chat shows six buttons) → `message()` (one text, a row of three buttons per pair:
+  `dup:<pid>:merge|keep|alias`, `pid` = sha1 of the pair key, 8 hex) with Calm reason `integrate.duplicates`; `sent`
+  keeps it to one a day. `/graph same` (`ask_now`, `again=True`) replies with the same, unanswered pairs included.
+- **Buttons** (`Integrate.callbacks()["dup"]` → `graphmerge.button`, under `Integrate.lock`): each answer is also a
+  message (`why="asked"`) with `dup:<pid>:undo`.
+  - `merge(ig, pid, rec, index)`: into `a`: `add_links` of `b`'s typed lines (`graphwrite.link_lines`, not to a or b),
+    the `seen` block from both notes' `seen.json` rows, `add_alias(b's title and aliases)` (only where `a` has an
+    `aliases: [...]` line), the `notation` block from both notes' rows, and a `merges` block ("## Merged here", one
+    "### From [[b|title]] (date)" per merge, from `dupes.json["merges"][a]`). `b`: when `made_by_graph(text,
+    made.json[b])` (its outside text hashes as it did when `write()` created it), `redirect_note()` (frontmatter, title,
+    `merged-into` block) and its `own_body()` went into `a`'s `merges`; otherwise `drop_link_lines`, drop the `seen`
+    and `notation` blocks, and `put_block_top("merged-into", ...)` under its title. `guarded()` must pass for `a` and
+    (the second case) `b`; else "Not merged: ..." and nothing is written. Other notes' typed lines to `b` go through
+    `retarget(text, b, a)` (dropped if they'd repeat a link to `a`). `seen.json` / `notation.json` rows move to `a`;
+    one commit `graph: merged <b> into <a>`.
+  - `alias()`: `add_alias` on `a`, an `equivalent-to` line each way ("<A> and <B> name the same concept").
+  - `keep`: the state only.
+  - `undo()`: each journaled file whose text is still what the answer wrote goes back to its before-copy (else it's
+    named as left alone); a merge's `seen`/`notation` rows (`before`) and its `merges` entry are restored or removed;
+    the pair is `undone` (askable again after `REASK_DAYS`).
+- State `dupes.json`: `{"pairs": {pid: {a, b, why, shared, score, asked, state, at, journal: {path: [old, new]},
+  before}}, "merges": {a: [{pid, from, title, day, text}]}, "sent", "fresh", "cursor"}`; `made.json`: `{slug:
+  outside_hash at creation}` for notes `write()` made from 0.5.22 on (older notes count as yours: they keep their
+  text when merged).
+- Events `integrate_duplicates` (pairs asked), `integrate_duplicate` (act). Tests: `tests/unit/test_graph_dupes.py`.
+
+## Notation crosswalk (0.5.22)
+
+- The batch answer's concepts carry `notation: [{symbol, what, quote}]` (`BATCH_PROMPT`, `PROMPT_VERSION` 2;
+  `read_batch` keeps at most `MAX_NOTATION` = 4, `Proposed.notation`, defaulted so old pending files revive).
+- `check()` runs `check_notation(c, pages)` first: a row stays only when its quote (2 to 60 words), squashed, is in the
+  concept's pages ±1 and `symbol_in(symbol, quote)` holds: LaTeX commands removed, then two or more 3+-letter words
+  (a convention in words) need half of them in the quote, else the squashed symbol is a substring of the squashed
+  quote (a PDF's `π`, `ξ`, `−` squash away like the commands). Failing rows are dropped; there's no second look.
+- `Integrate.write` → `add_notation(notation, c, entry, title, first, last)`: this batch's rows (`book`, `batch`,
+  `source` = "<title>, pp. a–b" / "slides a–z" via `where()`, plus the row) replace the same batch's earlier ones,
+  de-duplicated by (book, squashed symbol), sorted by `what` then source, kept in `notation.json[slug]`.
+  `notation_body` → `graphwrite.notation_table(rows)`: "" unless 2+ sources have rows and their symbol sets differ;
+  else "## Notation" and a `| Source | Notation | What it stands for |` table (16 rows at most; `cell()` escapes `|`,
+  `math_cell()` wraps LaTeX-looking or 3-character symbols in `$...$`). Written as the `notation` block on new and
+  existing notes when `Integrate.notation_on()`: `integrate.notation` is on and so is the Research add-on (its
+  card's "Notation crosswalk" part switches that setting; `research_addon.PART_SETTING`). A merge writes the kept
+  note's table under the same rule.
 
 ## Reading budget (`core/readbudget.py`)
 
@@ -306,18 +374,20 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
 - `register_defaults("integrate", ...)`: `at`, `roles`, `batch_pages` (12), `per_night` (`"auto"` or a ceiling),
   `share_pct` (60), `max_cost_per_night` (0.5), `price_per_mtok` (`{"in": 2.0, "out": 8.0}`), `garden`,
   `garden_per_day` (40), `embeddings` (auto), `rerank` (auto), `rerank_model`, `sources` (`["books", "classroom"]`),
-  `first`, `order` (smallest), `commit`, `summary`.
+  `first`, `order` (smallest), `commit`, `summary`, `duplicates` (on), `notation` (on).
 - `/graph` (`Integrate._cmd`): state, counts, tonight's budget and the last limit (`Budget.lines`), `metrics()` (broken
   links, notes with no links in, boilerplate reasons, top-3 share, name collisions), today's cost; `/graph now` lifts a stop and runs
   `tick()` (and says the budget's lines when it may not start); `/graph stop` (`Integrate.hold`; not `stop`, which is
   turning the feature off) writes `stopped.json` with the next `integrate.at` time and cancels `integrate:soon`;
   `tick()` starts nothing before then, whoever calls it (the night, retry, plan and early jobs, `poke`, `_done`), and a
   restart keeps it. `/graph backfill classroom` runs `backfill_classroom()` and says what it queued
-  (`backfill_said`).
+  (`backfill_said`). `/graph same` (also `duplicates`, `dupes`) runs `graphmerge.ask_now` and replies with its
+  buttons.
 - No intents.
 - The links are read back as review cards by the Quiz (`modules/quiz_links.py`, see [modules.md](modules.md)), with
   `seen.json`'s pages for "Where to read"; nothing there writes to the notes.
 - Tests: `tests/unit/test_integrate.py`, `test_integrate_sources.py` (Classroom, handwritten, backfill, the split),
+  `test_graph_dupes.py` (near-duplicates, merge and its Undo, notation),
   `test_readbudget.py`, `test_books.py`, `test_segment.py`, `test_hubs.py`,
   `test_rerank_hardware.py`.
 

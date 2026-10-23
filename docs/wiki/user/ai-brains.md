@@ -228,6 +228,21 @@ your notes" without using a tool for it shows up: the line says what it did.
 Failed requests get it too. Quiet background work that doesn't message you (the look back, the concept graph) gets
 none. Turn it off with `jobs.receipt` = `false` (Settings → AI jobs).
 
+## The plan line
+
+Before an answer that will likely take a while, one short line says what's coming: "Searching your notes, then
+answering (about 40 s with agy)."
+
+- **When**: the request is one of yours as text (Telegram, the phone app's chat, the dashboard), and your last
+  requests on that AI at that effort took a median of more than 20 seconds (it waits until there are three to go on).
+- **What it says**: from what's known before the run: "Opening the file you sent", "Reading the link", "Searching your
+  notes" (when you mention your notes), "going over 2 remembered items"; otherwise "Thinking it through". Then the
+  usual time and the AI. The run receipt under the answer says what it really did.
+- **Never**: on a call (a call's requests are quiet, and none goes while you're on one), for background work, or in
+  the terminal.
+
+Turn it off with `jobs.plan_line` = `false` (Settings → AI jobs).
+
 ## What goes along with every request
 
 Every request carries a short context: who you are, the time and time zone, where your notes are, and the rules (plain

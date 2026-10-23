@@ -448,11 +448,13 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `integrate.at` | `"daily 01:30"` | when the night's integration starts (it carries on batch after batch) |
 | `integrate.batch_pages` | `12` | about this many pages per request |
 | `integrate.commit` | `true` | one git commit per batch, when your notes are a repository |
+| `integrate.duplicates` | `true` | each morning, up to 3 pairs of look-alike concept notes: Merge / Keep both / Add alias |
 | `integrate.embeddings` | `"auto"` | where meaning-based matching comes from: auto \| ollama \| gemini \| off |
 | `integrate.first` | `[]` | subjects to do first, e.g. ["deep-learning"] |
 | `integrate.garden` | `true` | each day, a second pass over the notes the reading touched and notes nothing links to |
 | `integrate.garden_per_day` | `40` | the most notes in that pass |
 | `integrate.max_cost_per_night` | `0.5` | an API key: the most a night's reading may cost (USD, as the service reports it) |
+| `integrate.notation` | `true` | a Notation table when a second source writes a concept differently (Research add-on part) |
 | `integrate.order` | `"smallest"` | which books first: smallest (fewest pages: most books done soonest) \| name |
 | `integrate.per_night` | `"auto"` | batches a night: auto (fitted to your AI's plan by itself) or a number (a hard ceiling) |
 | `integrate.price_per_mtok.in` | `2.0` | an API key that reports no cost: its USD per million tokens |
@@ -469,6 +471,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `jobs.plan_line` | `true` | a short "Searching your notes, then answering" first, when a text answer will take 20 s+ |
 | `jobs.receipt` | `true` | a quiet last line under each answer: which AI, effort, time, limit used, what it did |
 | `jobs.stuck_min` | `10` | the watchdog: minutes with no AI at work and no program running |
 
@@ -897,6 +900,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `weekly.call` | `false` | with Phone calls on: also a Sunday review call after the summary |
+| `weekly.people` | `true` | a line about who you met and meet next, only from your project notes' logged meetings |
 | `weekly.when` | `"weekly sun 19:00"` | when the week's summary comes ("weekly <day> HH:MM") |
 
 ### `you`

@@ -14,6 +14,12 @@ Candidates come from four places, then are merged and ranked:
 
 Every new concept is compared with every concept this way, in milliseconds, so nothing depends on an AI reading the
 whole vault: the AI is shown the few notes that matter.
+
+    near_duplicates(index)     pairs of notes that look like one concept (0.5.22): the same name, a name they share
+                               (an alias), or embeddings at least 0.92 alike; modules/integrate.py asks about them
+
+A note merged into another (a `<!-- kurooto:merged-into -->` block naming it) is a redirect: it isn't offered as a
+candidate, and its names find the note it was merged into.
 """
 
 from __future__ import annotations
@@ -41,6 +47,12 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 WIKILINK = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
+TYPED = re.compile(r"^\s*[-*] ([a-z-]+):: (\[\[.+|\[.+)$", re.M)  # a typed link line: relation, its link and reason
+MERGED = re.compile(  # a redirect's target: the first link inside its merged-into block
+    r"<!-- kurooto:merged-into\b[^>]*-->(?:(?!<!-- /kurooto:merged-into).)*?\[\[([^\]|#]+)", re.S
+)
+NOT_CONCEPT = re.compile(r"^(?:\d{4}-\d{2}-\d{2}|course$|class-log$|exam-prep$|doubts$|index$|readme$)", re.I)
+DUP_COSINE = 0.92  # embeddings this alike: two notes about one concept
 FRONT = re.compile(r"\A---\n(.*?)\n---\n?", re.S)
 STOP = set(
     "a an the of and or to in on for with by from as at is are be this that these those it its we you can which "
@@ -76,6 +88,8 @@ class Note:
     head: str = ""  # what is searched
     links: set[str] = field(default_factory=set)  # slugs it links to
     hash: str = ""
+    typed: dict[str, str] = field(default_factory=dict)  # target -> relation, from its typed link lines
+    redirect: str = ""  # merged into this note (a redirect), else ""
 
     @property
     def names(self) -> list[str]:
@@ -115,6 +129,12 @@ def read_note(root: Path, path: Path) -> Note | None:
     prose = re.sub(r"^#.*$|^\s*[-*]\s+\w[\w-]*::.*$", "", prose, flags=re.M).strip()
     prose = re.sub(r"\s+", " ", prose)
     links = set(link_targets(body, slug + ".md"))  # [[wikilinks]] and markdown links alike (notes.links)
+    typed: dict[str, str] = {}
+    for m in TYPED.finditer(body):  # a typed link line in either link style
+        found = link_targets(m[2], slug + ".md")
+        if found:
+            typed[found[0]] = m[1]
+    red = MERGED.search(body)
     return Note(
         slug,
         path,
@@ -124,6 +144,8 @@ def read_note(root: Path, path: Path) -> Note | None:
         prose[:BODY_CHARS],
         links,
         hashlib.sha256(text.encode("utf-8")).hexdigest()[:16],
+        typed,
+        red[1].strip().removesuffix(".md") if red else "",
     )
 
 
@@ -212,6 +234,10 @@ class Index:
     def __init__(
         self, notes: dict[str, Note], embedder: Embedder | None = None, store: VectorStore | None = None, reranker=None
     ):
+        # a note merged into another is left out; its names find the note it was merged into
+        self.redirects = {s: n.redirect for s, n in notes.items() if n.redirect and n.redirect != s}
+        merged = {s: notes[s] for s in self.redirects}
+        notes = {s: n for s, n in notes.items() if s not in self.redirects}
         self.notes = notes
         self.embedder, self.store = embedder, store
         self.reranker = reranker  # core/rerank.py: a local model that judges pairs, where this computer can run one
@@ -226,6 +252,15 @@ class Index:
             self.df.update(c.keys())
             for name in n.names:
                 self.by_name.setdefault(normalise(name), s)
+        for s, n in merged.items():
+            target = self.redirects[s]
+            for _ in range(8):  # merged into a note that was merged on
+                if target not in self.redirects:
+                    break
+                target = self.redirects[target]
+            if target in notes:
+                for name in n.names:
+                    self.by_name.setdefault(normalise(name), target)
         self.avg = (sum(self.len.values()) / len(self.len)) if self.len else 1.0
         self.vec: dict[str, list[float]] = {}
         self.embed_notes()
@@ -363,6 +398,103 @@ class Index:
             "summary": n.summary,
             "links": sorted(n.links)[:8],
         }
+
+
+# ------------------------------------------------------------------------------------------------ near-duplicates
+@dataclass
+class Pair:
+    """Two notes that look like one concept: `a` is the one a merge keeps (more links in, then more text)."""
+
+    a: str
+    b: str
+    why: str  # name | alias | meaning
+    score: float
+    shared: str = ""  # the name they share (alias), or the cosine (meaning)
+
+    @property
+    def key(self) -> str:
+        return pair_key(self.a, self.b)
+
+
+def pair_key(a: str, b: str) -> str:
+    return "|".join(sorted((a, b)))
+
+
+DISTINCT = {"needs", "generalises", "special-case-of", "example-of", "contrasts-with", "part-of", "used-in"}
+
+
+def concept_like(n: Note) -> bool:
+    """A note that is one idea: not a dated (lecture) note, a course page, a class log or a book's index note (in the
+    plain layout they share the subject's folder with the concept notes)."""
+    return not NOT_CONCEPT.match(n.path.stem) and "books" not in n.slug.split("/")[:-1]
+
+
+def keeper(index: Index, a: str, b: str) -> tuple[str, str]:
+    """(the note a merge keeps, the other): more notes linking in, then more text, then the shorter path."""
+    inbound = {a: 0, b: 0}
+    for n in index.notes.values():
+        for t in (a, b):
+            if t in n.links and n.slug != t:
+                inbound[t] += 1
+
+    def rank(s: str):
+        n = index.notes[s]
+        return (-inbound[s], -len(n.head), len(s), s)
+
+    first, second = sorted((a, b), key=rank)
+    return first, second
+
+
+def near_duplicates(
+    index: Index, skip: set[str] | frozenset = frozenset(), focus: list[str] | None = None, cutoff: float = DUP_COSINE
+) -> list[Pair]:
+    """Pairs of notes that look like one concept, the surest first: the same name (normalised), a name they share (a
+    title or alias of one is a title or alias of the other, 3+ characters), or embeddings at least `cutoff` alike
+    (when there are vectors; `focus` limits that part to these notes against all, as it costs n x m). Pairs whose key
+    is in `skip` (answered before) and pairs one of which already links the other as a different concept (needs,
+    generalises, special-case-of, ...) are left out. No AI."""
+    found: dict[str, Pair] = {}
+
+    def distinct(a: str, b: str) -> bool:
+        return index.notes[a].typed.get(b) in DISTINCT or index.notes[b].typed.get(a) in DISTINCT
+
+    def add(a: str, b: str, why: str, score: float, shared: str = "") -> None:
+        k = pair_key(a, b)
+        if a == b or k in skip or k in found or distinct(a, b):
+            return
+        keep, other = keeper(index, a, b)
+        found[k] = Pair(keep, other, why, score, shared)
+
+    by_title: dict[str, list[str]] = {}
+    by_any: dict[str, list[tuple[str, str]]] = {}
+    ideas = {s: n for s, n in index.notes.items() if concept_like(n)}
+    for s, n in sorted(ideas.items()):
+        by_title.setdefault(normalise(n.title), []).append(s)
+        for nm in dict.fromkeys([n.title, *n.aliases]):
+            k = normalise(nm)
+            if len(k) >= 3:
+                by_any.setdefault(k, []).append((s, nm))
+    for slugs in by_title.values():
+        for i, a in enumerate(slugs):
+            for b in slugs[i + 1 :]:
+                add(a, b, "name", 1.0, index.notes[a].title)
+    for rows in by_any.values():
+        slugs = list(dict.fromkeys(s for s, _ in rows))
+        for i, a in enumerate(slugs):
+            for b in slugs[i + 1 :]:
+                add(a, b, "alias", 0.95, next(nm for s, nm in rows if s == a))
+    if index.vec:
+        norm = {s: math.sqrt(sum(x * x for x in v)) or 1.0 for s, v in index.vec.items()}
+        mine = [s for s in (focus if focus is not None else list(index.vec)) if s in index.vec and s in ideas]
+        for a in mine:
+            va, na = index.vec[a], norm[a]
+            for b, vb in index.vec.items():
+                if b == a or b not in ideas or pair_key(a, b) in found:
+                    continue
+                cs = sum(x * y for x, y in zip(va, vb, strict=False)) / (na * norm[b])
+                if cs >= cutoff:
+                    add(a, b, "meaning", round(cs, 3), f"{cs:.2f}")
+    return sorted(found.values(), key=lambda p: (-p.score, p.key))
 
 
 # ------------------------------------------------------------------------------------------- where vectors come from

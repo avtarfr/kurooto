@@ -322,12 +322,13 @@ repository folders count too.
 ## The Research add-on: run compare and the LaTeX tracker
 
 **What it is.** The narrower research tools, kept out of the everyday student features in one bundle: **run compare**
-and the **LaTeX writing tracker** now, with more research tools joining it (notation crosswalk, check my draft). It's
+and the **LaTeX writing tracker**, plus the concept graph's **notation crosswalk** (a Notation table when two sources
+write a concept differently), with more research tools joining it (check my draft). It's
 off until you turn it on, and it doesn't need the papers digest (the Research feature) to be on.
 
 **Turn it on:** Dashboard → Features → under **Add-ons**, **Research add-on** → **Turn on**. That one switch turns the
-whole group on. Its card then has a switch for each part (Run compare, LaTeX tracker, and each research tool in the
-bundle); a part you switch off stays off the next time you turn the add-on on. **Turn off** turns the whole group off;
+whole group on. Its card then has a switch for each part (Run compare, LaTeX tracker, Notation crosswalk, and each research tool in
+the bundle); a part you switch off stays off the next time you turn the add-on on. **Turn off** turns the whole group off;
 your notes and files stay as they are.
 
 ### Run compare

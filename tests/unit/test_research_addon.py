@@ -377,7 +377,7 @@ def test_a_bibtex_entry_needs_a_tap_to_ask_and_a_tap_to_write(env, tmp_path, mon
 # ================================================================================================ the bundle
 class Crosswalk(Module):
     id = "notation_test"
-    title = "Notation crosswalk"
+    title = "Draft checker"
     extra = True
     bundle = "research_addon"
 
@@ -388,20 +388,34 @@ def test_one_switch_turns_the_group_on_and_off(env, monkeypatch):
     ok, _ = app.enable("research_addon")
     assert ok and app.is_on("notation_test")  # the member came on with it
     card = app.modules["research_addon"].card()
-    assert [t["id"] for t in card["toggles"]] == ["run_compare", "latex", "m:notation_test"]
+    assert [t["id"] for t in card["toggles"]] == ["run_compare", "latex", "notation", "m:notation_test"]
     m = app.modules["research_addon"]
-    assert m.card_action("m:notation_test", False) == "Notation crosswalk is off."
+    assert m.card_action("m:notation_test", False) == "Draft checker is off."
     assert app.settings.get("research_addon.members_off") == ["notation_test"]
     app.disable("research_addon")
     app.enable("research_addon")
     assert not app.is_on("notation_test")  # switched off on the card: it stays off
-    assert m.card_action("m:notation_test", True) == "Notation crosswalk is on."
+    assert m.card_action("m:notation_test", True) == "Draft checker is on."
     assert app.settings.get("research_addon.members_off") == []
     app.disable("research_addon")
     assert not app.is_on("notation_test")  # and goes off with it
     assert m.card_action("latex", False) == "LaTeX tracker: off."
     app.enable("research_addon")
     assert env.say("/latex") == "The LaTeX tracker is off: switch it on on the Research add-on's card."
+
+
+def test_the_notation_crosswalk_is_a_part_switched_by_its_concept_graph_setting(env):
+    app = env.app
+    m, ig = app.modules["research_addon"], app.modules["integrate"]
+    assert app.settings.get("integrate.notation") is True and not ig.notation_on()  # the add-on is off
+    app.enable("research_addon")
+    assert ig.notation_on()
+    assert any(ln.startswith("Notation crosswalk:") for ln in m.card()["lines"])
+    assert m.card_action("notation", False) == "Notation crosswalk: off."
+    assert app.settings.get("integrate.notation") is False and not ig.notation_on()
+    assert not any(ln.startswith("Notation crosswalk:") for ln in m.card()["lines"])
+    m.card_action("notation", True)
+    assert ig.notation_on()
 
 
 def test_the_add_on_is_one_card_among_the_add_ons(env, monkeypatch):

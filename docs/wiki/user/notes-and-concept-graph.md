@@ -652,6 +652,40 @@ nothing links to, are checked once more against everything that's there now (up 
 `integrate.garden_per_day`). It also takes out links Kurooto wrote to notes that don't exist any more (a concept
 dropped after a second look, or a note you deleted). Your own links are never touched.
 
+**Look-alike concept notes** (`integrate.duplicates`, on). Each morning at 06:25, up to three pairs of concept notes
+that look like one concept come as one message: the same name ("Back-propagation" and "Backpropagation"), a name they
+share ("Brownian motion" is an alias of the "Wiener process" note), or text that means nearly the same (embeddings at
+least 0.92 alike, where this computer has them). Lecture notes, course pages and the books' notes are never paired.
+Each pair has three buttons (two pairs at most when the phone app's chat is your only channel, as it shows six
+buttons):
+- **Merge**: the first note (the one more notes link to) keeps everything: the other's links, its "Seen in" lines, its
+  names as aliases, and its notation, plus a "Merged here" part saying what came from it. The other note becomes a
+  short redirect ("Merged into [[...]]") under its title. Anything you wrote in it stays; only a note Kurooto wrote
+  all of (and you haven't changed since) shrinks to the redirect, its text having moved into the kept note. Links
+  Kurooto wrote elsewhere to the old note point at the kept one; new reading under the old name lands there too.
+- **Keep both**: they're different; that pair is never asked about again.
+- **Add alias**: both notes stay; the second name becomes an alias of the first and each links the other as
+  `equivalent-to`.
+
+Every answer comes back with **Undo**, which puts the notes back as they were (a note you changed since stays as it
+is, and the message says so). A pair you don't answer comes back after two weeks; `/graph same` asks now, those
+included. Nothing is merged without your tap, and nothing you wrote is deleted.
+
+**Notation side by side** (`integrate.notation`, on, a part of the Research add-on: tables come only while the add-on
+is on; Dashboard → Features → Add-ons → Research add-on, where its Notation crosswalk switch is this setting). The
+reading also notes how the pages write each concept: the
+symbol (`B_t`, `W_t`, `\hat f(\xi)`) or a convention in words (where the 2π goes in a Fourier transform), each with
+a short quote from the pages. A row whose quote isn't in those pages, or doesn't hold the symbol, is dropped, like
+any other claim. When a second source (another book, a class file, your handwritten notes) writes the concept
+differently, its note gets a **Notation** table in Kurooto's part of the note:
+
+| Source | Notation | What it stands for |
+|---|---|---|
+| Øksendal: Stochastic Differential Equations, pp. 11–20 | $B_t$ | Brownian motion at time t |
+| Lecture 4 slides, slides 3–9 | $W_t$ | Brownian motion at time t |
+
+One source, or sources that agree, give no table.
+
 **Handwritten notes join the graph too.** Each written-out handwritten note is linked with the same candidate search
 and one request to the second-look AI: to the lecture it was written in, the course page and the concept notes it
 covers, with a real title and its doubts listed (`/handwritten link` for older ones; details on
@@ -660,6 +694,8 @@ covers, with a real title and its doubts listed (`/handwritten link` for older o
 **Review the links.** With Quiz on, every link between two concept notes is also a
 [link recall card](quiz-and-exams.md#link-recall-cards): "How is Itô's lemma used in Fokker-Planck?", answered in
 your own words, with the reason and the book pages (and the subject's own notes and Classroom files) to read after.
+Links with a reason in your course notes become cards too, and new cards about what you met in class lately come
+first.
 `/card` for one now, `/cards on` for up to five a day.
 
 **The morning line** (`integrate.summary`), at 07:10 when anything happened: "Concept graph: 14 batches, +22 concept
@@ -683,6 +719,7 @@ ago"). See [Dreaming](teaching-kurooto.md#dreaming).
 | `/graph backfill classroom` | Queues the Classroom files filed before 0.5.19, the oldest course first ("Queued 12 Classroom files from 3 courses, the oldest course first. They're read within each night's budget, after what's filed from now on.") |
 | `/graph backfill handwritten` | Queues the handwritten notes linked before, the oldest day first ("Queued 3 handwritten notes..."); notes never linked are queued when `/handwritten link` links them. |
 | `/graph backfill all` | Every backfill for the sources that are on: Classroom, handwritten. Books need none: they're queued as they're found. |
+| `/graph same` | The concept notes that look like one concept now, with Merge / Keep both / Add alias (also pairs asked before and not answered) |
 
 The quality numbers in `/graph`: how many concepts and links, **broken** links, notes with **no links in**, links
 with a **vague reason**, and the share of all links that go to the three busiest notes (a high share means a few hub
@@ -718,6 +755,8 @@ skipped.
 | `integrate.rerank_model` | empty | Another Ollama model for it (empty: this computer's helper model) |
 | `integrate.commit` | on | One Git commit per batch, when your notes are a repository |
 | `integrate.summary` | on | The morning line |
+| `integrate.duplicates` | on | Each morning, up to three look-alike concept notes: Merge / Keep both / Add alias |
+| `integrate.notation` | on | A Notation table when a second source writes a concept differently (while the Research add-on is on) |
 
 **Limits and edge cases.**
 - It's heavy work: on battery (saver mode) it waits for the charger.

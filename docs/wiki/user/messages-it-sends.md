@@ -298,6 +298,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | handwritten notes linked to their lecture, course page and concepts | Handwritten notes | | list | one a day | yes | |
 | a book that was read | Books and PDFs | `books.at` | list | | yes | |
 | what the concept graph did overnight | Concept graph | `integrate.at` | list | | yes | |
+| concept notes that look like one concept, up to three pairs (Merge / Keep both / Add alias, each with Undo) | Concept graph | `integrate.duplicates` | no more | | yes | |
 | what Kurooto did while you slept, the loose ends, a topic you keep asking about with no note, a line from the past, and what's worth a look in what it remembers (Make a stub / Not interested, Open it / Less of this, Keep A / Keep B / Both true) | Dreaming | `dreaming.when` | list | | yes | |
 | the notes brain's nightly upkeep didn't finish | Notes brain | `gbrain.upkeep` | list | | yes | |
 | the notes brain's weekly checkup | Notes brain | `gbrain.checkup` | no checkup | | yes | |

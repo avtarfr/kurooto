@@ -5,7 +5,9 @@ Its own parts:
     Run compare         /runs (recent runs), /runs compare A B, `kurooto runlog diff A B` (kurooto/runcompare.py)
     LaTeX tracker       /latex add <folder> [main.tex], /latex, /latex build; a nightly build and one morning line
                         (modules/latex_tracker.py)
-Other features join the bundle with `bundle = "research_addon"` on their Module (notation crosswalk, check my draft):
+    Notation crosswalk  the concept graph's Notation table (modules/integrate.py); its switch is the setting
+                        `integrate.notation` (PART_SETTING), and it writes tables only while the add-on is on
+Other features join the bundle with `bundle = "research_addon"` on their Module (check my draft):
 they get no card of their own, the add-on's card has a switch for each, and turning the add-on on or off turns them
 on or off with it (App.enable / App.disable call turned_on / turned_off). A member you switch off on the card stays off
 the next time the add-on is turned on (research_addon.members_off).
@@ -33,7 +35,12 @@ register_defaults(
         "members_off": [],  # features of the bundle you switched off on its card (they stay off when it's turned on)
     },
 )
-PARTS = {"run_compare": "Run compare (/runs, kurooto runlog diff)", "latex": "LaTeX tracker (/latex)"}
+PARTS = {
+    "run_compare": "Run compare (/runs, kurooto runlog diff)",
+    "latex": "LaTeX tracker (/latex)",
+    "notation": "Notation crosswalk (the concept graph's Notation table)",
+}
+PART_SETTING = {"notation": "integrate.notation"}  # a part whose switch is another feature's setting
 RUNS_SHOWN = 10
 
 
@@ -77,7 +84,10 @@ class ResearchAddon(Module):
                 self.app.disable(m.id)
 
     def part_on(self, part: str) -> bool:
-        return self.setting(part) is not False
+        return self.app.settings.get(self.part_key(part)) is not False
+
+    def part_key(self, part: str) -> str:
+        return PART_SETTING.get(part, f"{self.id}.{part}")
 
     # ---------------------------------------------------------------------------------------- lifecycle
     def start(self):
@@ -124,13 +134,17 @@ class ResearchAddon(Module):
                 if docs
                 else "LaTeX tracker: no document yet (/latex add <folder>)."
             )
+        if self.part_on("notation"):
+            lines.append(
+                "Notation crosswalk: a Notation table on a concept note when two sources write it differently."
+            )
         toggles = [{"id": k, "label": label, "on": self.part_on(k)} for k, label in PARTS.items()]
         toggles += [{"id": f"m:{m.id}", "label": m.title, "on": self.app.is_on(m.id)} for m in self.members()]
         return {"lines": lines, "toggles": toggles}
 
     def card_action(self, act: str, value) -> str:
         if act in PARTS:
-            self.app.settings.set(f"research_addon.{act}", bool(value))
+            self.app.settings.set(self.part_key(act), bool(value))
             self.app.events.emit("research_addon_part", part=act, on=bool(value))
             return f"{PARTS[act].split(' (')[0]}: {'on' if value else 'off'}."
         if act.startswith("m:"):
