@@ -252,7 +252,9 @@ class LinkCards:
             for r in (seen.get(s) or [])[:2]:
                 pages = r.get("pages") or []
                 if len(pages) == 2:
-                    out.append(f"{r.get('title') or r.get('book')} pp. {pages[0]}–{pages[1]}")
+                    unit = r.get("unit") or "pages"  # a class file's slides, or parts of a text with no pages
+                    at = "" if unit == "parts" else f" {'slides' if unit == 'slides' else 'pp.'} {pages[0]}–{pages[1]}"
+                    out.append(f"{r.get('title') or r.get('book')}{at}")
         subject = it.get("subject") or ""
         if subject:
             own, cls = sources.notes_material(self.app, subject)

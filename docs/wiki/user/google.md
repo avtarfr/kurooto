@@ -273,6 +273,13 @@ Files are kept in Kurooto's data folder, not your notes (or in your files folder
 [notes-and-concept-graph.md](notes-and-concept-graph.md)). The AI reads up to about 60,000 characters of file text per
 request and can read more of a file when it needs to.
 
+**Into the concept graph.** With the [Concept graph](notes-and-concept-graph.md#concept-graph) on, each filed file
+with real text (slides, handouts, PDFs, solutions: 1,500 characters or more, not a one-line announcement) is then
+read into it like a book: new concept notes, links with reasons, and "Seen in" lines pointing at the lecture note the
+file was filed into. Each file is read once (the same file filed again isn't read twice; an edited one is). Files
+filed before 0.5.19: `/graph backfill classroom`. To leave class files out, take `classroom` out of
+`integrate.sources`.
+
 **Settings that matter** (Dashboard → Settings → classroom_notes):
 
 | Setting | Default | Effect |

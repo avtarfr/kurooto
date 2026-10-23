@@ -1,4 +1,14 @@
-"""Concept graph: what you read in a book is woven into the notes you already have.
+"""Concept graph: what you read in a book, and your class materials, are woven into the notes you already have.
+
+What gets read (integrate.sources): books (modules/books.py), the Classroom files filed into your notes
+(modules/google_classroom.py: slides, handouts, PDFs, solutions with at least 1,500 characters of text, MIN_CHARS; a
+short announcement isn't), and, when you add "handwritten", your handwritten notes once they're written out and linked
+(modules/handwritten_links.py). Each item that isn't a book is read once: it's keyed by the hash of its text, so a file
+filed again unchanged isn't read again and an edited one is. They share one queue and one night's budget with the
+books: the newest class material first (it's what you're studying now), then what /graph backfill classroom queued
+(the materials filed before 0.5.19, the oldest course first), then the books in their order. A copy of each item's text
+is kept in <state>/integrate/texts/, so moving the file doesn't lose it; its "Seen in" lines point at the note it was
+filed into (the lecture note Classroom → notes wrote, else the course page; the handwritten note itself).
 
 When a book has been read, its text is cut into batches that follow its sections (core/segment.py, 3 to 20 pages). For
 each batch, one AI request (the bulk AI) is shown the pages and the few existing notes that may be related (found with
@@ -21,13 +31,16 @@ subscription (Claude Code, agy), a share of a free Gemini key's day, money for a
 this computer; a number is a hard ceiling. The night starts 5 hours before you usually wake, never later than
 integrate.at.
 
-State: <state>/integrate/ (ledger.json, seen.json, chapters.json, garden.json, stopped.json, budget.json, pending/,
-undo/, vectors.db). Command: /graph (status), /graph now (start), /graph stop (until the next night's start).
+State: <state>/integrate/ (ledger.json: "books" per book and "items" per other item; items.json: what was queued
+from Classroom and handwritten notes; texts/, seen.json, chapters.json, garden.json, stopped.json, budget.json,
+pending/, undo/, vectors.db). Command: /graph (status), /graph now (start), /graph stop (until the next night's start),
+/graph backfill classroom (read the Classroom files filed before).
 """
 
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import re
 import threading
@@ -62,6 +75,7 @@ register_defaults(
         "embeddings": "auto",  # where meaning-based matching comes from: auto | ollama | gemini | off
         "rerank": "auto",  # a local model judges which notes belong together (a graphics card helps): auto | off
         "rerank_model": "",  # which one ("": the helper model of this computer's setup)
+        "sources": ["books", "classroom"],  # what's read into the graph: books, classroom (filed files), handwritten
         "first": [],  # subjects to do first, e.g. ["deep-learning"]
         "order": "smallest",  # which books first: smallest (fewest pages: most books done soonest) | name
         "commit": True,  # one git commit per batch, when your notes are a repository
@@ -71,6 +85,20 @@ register_defaults(
 STALE_S = 3 * 3600  # a request that didn't come back in this long is asked again
 TRIES = 3
 PAGE_MARK = re.compile(r'<a id="p-(\d+)"></a>\n## \[p\. \d+\]\n')
+SOURCES = ("books", "classroom", "handwritten")  # what integrate.sources may name
+MIN_CHARS = {"classroom": 1500, "handwritten": 800}  # less text (an announcement, a one-line post) isn't read
+PART_CHARS = 3000  # text with no pages of its own is cut into parts of about this many characters (about a page)
+SLIDE = re.compile(r"^--- slide \d+ ---$", re.M)  # how Classroom writes out a .pptx (google_classroom._xml_text)
+NAMED = {
+    "books": ("book", "books"),
+    "classroom": ("class file", "class files"),
+    "handwritten": ("handwritten", "handwritten"),
+}
+SEEN_HEAD = {  # what a "Seen in" block calls the lines each source adds to an existing note
+    "books": "### Added from the books",
+    "classroom": "### Added from class",
+    "handwritten": "### Added from your handwritten notes",
+}
 
 
 def day() -> str:
@@ -82,16 +110,53 @@ def short(text: str, n: int) -> str:
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
 
 
+def text_hash(text: str) -> str:
+    """What an item is known by: the hash of its text with the spacing evened out (a file downloaded again unchanged
+    is the same item; one with a word changed is a new one)."""
+    return hashlib.sha256(re.sub(r"\s+", " ", text or "").strip().encode("utf-8")).hexdigest()
+
+
+def split_pages(text: str) -> tuple[dict[int, str], str]:
+    """The pages of an item's text and what they are: a PDF's own pages (pdftotext puts a form feed between them),
+    slides, else parts of about PART_CHARS characters cut at paragraphs."""
+    t = (text or "").replace("\r\n", "\n")
+    if "\f" in t:
+        pages = [p.strip() for p in t.split("\f")]
+        unit = "pages"
+    elif len(SLIDE.findall(t)) >= 2:
+        pages = [p.strip() for p in SLIDE.split(t)]
+        pages = pages[1:] if not pages[0] else pages
+        unit = "slides"
+    else:
+        pages, cur = [], ""
+        for para in re.split(r"\n\s*\n", t):
+            if cur and len(cur) + len(para) > PART_CHARS:
+                pages.append(cur.strip())
+                cur = ""
+            cur += para + "\n\n"
+            while len(cur) > 2 * PART_CHARS:  # one huge paragraph: cut it
+                pages.append(cur[:PART_CHARS].strip())
+                cur = cur[PART_CHARS:]
+        if cur.strip():
+            pages.append(cur.strip())
+        unit = "parts"
+    while pages and not pages[-1]:
+        pages.pop()
+    return {i: p for i, p in enumerate(pages, 1)}, unit
+
+
 class Integrate(Module):
     id = "integrate"
     title = "Concept graph"
     description = (
-        "When a book has been read, weaves its concepts into your notes: new concept notes, links with their reasons, "
-        "and the places each concept is met, checked before anything is written. Never changes your own text."
+        "When a book has been read (and when Classroom files a lecture's slides or handouts), weaves its concepts into "
+        "your notes: new concept notes, links with their reasons, and the places each concept is met, checked before "
+        "anything is written. Never changes your own text."
     )
     privacy = (
-        "A few pages of a book's text at a time, and the titles and opening lines of related notes, go to the AI you "
-        "picked (like any request). The checks and the matching run on this computer."
+        "A few pages of a book's text (or of a class file, or your handwritten notes when you add them) at a time, and "
+        "the titles and opening lines of related notes, go to the AI you picked (like any request). The checks and the "
+        "matching run on this computer."
     )
     requires = ("books",)
     heavy = True  # night work: on battery it waits for the charger
@@ -149,8 +214,215 @@ class Integrate(Module):
         check = want.get("check") or next((k for k in avail if k != bulk), bulk)
         return bulk, check
 
+    # ------------------------------------------------------------------------------------------------ sources
+    def sources(self) -> list[str]:
+        """What's read into the graph (integrate.sources), in SOURCES order; unknown names are ignored."""
+        v = self.setting("sources")
+        if isinstance(v, str):
+            v = re.split(r"[,\s]+", v)
+        if not isinstance(v, (list, tuple)):
+            v = ["books", "classroom"]
+        want = {str(x).strip().lower() for x in v}
+        return [x for x in SOURCES if x in want]
+
+    def reads(self, source: str) -> bool:
+        return source in self.sources()
+
+    @staticmethod
+    def source_of(b: dict) -> str:
+        """What an item is: "books" for a book (from modules/books.py), else the source it was queued from."""
+        return b.get("source") or "books"
+
+    def section(self, b: dict) -> str:
+        """Where the ledger keeps it: "books" (as before 0.5.19) or "items" (everything else)."""
+        return "books" if self.source_of(b) == "books" else "items"
+
+    def entry(self, led: dict, b: dict) -> dict:
+        return (led.get(self.section(b), {}) or {}).get(self.key(b), {}) or {}
+
+    def items(self) -> dict[str, dict]:
+        return (self.load("items.json", {}) or {}).get("items", {}) or {}
+
+    def queue_item(
+        self,
+        source: str,
+        text: str,
+        subject: str,
+        title: str,
+        note: str,
+        date: str = "",
+        course: str = "",
+        backfill: bool = False,
+        order: int = 0,
+    ) -> str | None:
+        """Queue a text that isn't a book (a Classroom file, handwritten notes) to be read like one. Its key, or None:
+        the graph is off, that source isn't read, there's too little text, or the same text was queued before."""
+        if not self.app.is_on(self.id) or not self.reads(source) or source == "books":
+            return None
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", subject or ""):
+            return None  # no subject, no place for its concept notes
+        if len(re.sub(r"\s+", " ", text or "").strip()) < MIN_CHARS.get(source, 1500):
+            return None
+        h = text_hash(text)[:16]
+        key = f"{source}:{h}"
+        with self.lock:
+            data = self.load("items.json", {}) or {}
+            items = data.setdefault("items", {})
+            if key in items:
+                return None  # read once: the same text filed again isn't read again
+            d = self.dir / "texts"
+            d.mkdir(parents=True, exist_ok=True)
+            (d / f"{h}.txt").write_text(text, encoding="utf-8")
+            items[key] = {
+                "source": source,
+                "key": key,
+                "id": h,
+                "subject": subject,
+                "title": short(title or subject, 120),
+                "course": course,
+                "note": note,
+                "date": date,
+                "added": now().isoformat(timespec="seconds"),
+                "backfill": backfill,
+                "order": order,
+            }
+            self.save("items.json", data)
+        self.app.events.emit("integrate_queued", source=source, subject=subject)
+        return key
+
+    def queued_items(self) -> list[dict]:
+        """The items of the sources read, in the order to read them: what was filed lately, newest first; then what a
+        backfill queued, in its order (the oldest course first)."""
+        on = set(self.sources())
+        items = [it for it in self.items().values() if it.get("source") in on]
+        fresh = sorted(
+            (it for it in items if not it.get("backfill")),
+            key=lambda it: (it.get("date") or "", it.get("added") or ""),
+            reverse=True,
+        )
+        back = sorted((it for it in items if it.get("backfill")), key=lambda it: int(it.get("order") or 0))
+        return fresh + back
+
+    def take_classroom(self, batch: dict) -> int:
+        """Classroom → notes filed a batch (modules/google_classroom.py): each file in it with real text, and a post
+        long enough to be material itself, is queued to be read like a book. How many were queued."""
+        if not self.app.is_on(self.id) or not self.reads("classroom"):
+            return 0
+        cn = self.app.modules.get("classroom_notes")
+        folder, course = str(batch.get("folder") or ""), str(batch.get("course") or "")
+        n = 0
+        for it in batch.get("items") or []:
+            post, date = str(it.get("title") or ""), str(it.get("date") or "")
+            for f in it.get("files") or []:
+                text = cn.file_text(f["file"]) if cn is not None and f.get("chars") and f.get("file") else None
+                if not text:
+                    continue
+                name = re.sub(r"\.[A-Za-z0-9]{1,5}$", "", str(f.get("title") or "")).strip() or post
+                note = self.source_note(folder, post, date, [str(f.get("title") or ""), name])
+                n += bool(self.queue_item("classroom", text, folder, name, note, date=date, course=course))
+            text = str(it.get("text") or "")
+            if len(text) >= MIN_CHARS["classroom"]:  # a long post (notes typed into Classroom itself)
+                note = self.source_note(folder, post, date, [post])
+                n += bool(self.queue_item("classroom", text, folder, post, note, date=date, course=course))
+        return n
+
+    def take_handwritten(self, note: Path, subject: str, title: str, day: str = "") -> str | None:
+        """Handwritten notes were written out and linked (modules/handwritten_links.py): queue the transcription to be
+        read like a book, when integrate.sources has "handwritten"."""
+        if not self.app.is_on(self.id) or not self.reads("handwritten"):
+            return None
+        from kurooto.modules.handwritten_links import parts
+
+        try:
+            got = parts(Path(note).read_text(encoding="utf-8"))
+        except OSError:
+            return None
+        if got is None:
+            return None
+        return self.queue_item("handwritten", got[1], subject, title or Path(note).stem, self.rel(note), date=day)
+
+    def source_note(self, subject: str, title: str, date: str = "", names: list[str] = ()) -> str:
+        """The note a class file was filed into, as a [[link]] path: the lecture note Classroom → notes wrote for its
+        post (the post's date and title), else a dated note in the subject's folder that names the file, else the
+        course page."""
+        from kurooto.modules.google_classroom import slugify
+
+        lay = layout.of(self.app)
+        if date and title:
+            p = lay.path("lecture", subject=subject, date=date, slug=slugify(title))
+            if p.is_file():
+                return self.rel(p)
+        folder = lay.path("lecture", subject=subject, date=date or "2000-01-01", slug="x").parent
+        wants = {slugify(n, 200) for n in names if n and len(slugify(n, 200)) >= 5}
+        if folder.is_dir() and wants:
+            for f in sorted(folder.glob("*.md"), reverse=True):  # dated names: the newest first
+                if not re.match(r"\d{4}-\d{2}-\d{2}-", f.name):
+                    continue
+                try:
+                    body = gw.BLOCK_ANY.sub("", f.read_text(encoding="utf-8", errors="replace"))
+                except OSError:
+                    continue
+                norm = f"-{slugify(body, 10**9)}-"
+                if any(f"-{w}-" in norm for w in wants):
+                    return self.rel(f)
+        return self.rel(lay.path("course", subject=subject))
+
+    def backfill_classroom(self) -> tuple[int, int]:
+        """Queue the Classroom files filed before the graph read them (before 0.5.19): the oldest course first, each
+        course's files oldest first, after what's filed from now on. Read within each night's budget like the rest.
+        (files queued, courses)."""
+        from kurooto.modules.google_classroom import TEXT_EXT, slugify
+
+        cn = self.app.modules.get("classroom_notes")
+        if cn is None or not self.app.is_on(self.id) or not self.reads("classroom"):
+            return 0, 0
+        known = jload(cn.dir / "folders.json", {}) or {}
+        folders = set(known.values()) | {slugify(v) for v in (cn.setting("folders") or {}).values() if v}
+        found: dict[str, list[tuple[str, str, str]]] = {}  # folder -> [(date, title, text)]
+        for root in dict.fromkeys([cn.files_dir, self.app.paths.data / "classroom"]):
+            for folder in sorted(folders):
+                d = root / folder
+                if not d.is_dir():
+                    continue
+                for f in sorted(d.iterdir()):
+                    if not f.is_file() or (f.suffix == ".txt" and f.with_suffix("").is_file()):
+                        continue  # a file's text beside it: read with the file
+                    side = f.with_name(f.name + ".txt")
+                    src = side if side.is_file() else f if f.suffix.lower() in TEXT_EXT else None
+                    if src is None:
+                        continue
+                    try:
+                        text = src.read_text(encoding="utf-8", errors="replace")
+                    except OSError:
+                        continue
+                    m = re.match(r"(\d{4}-\d{2}-\d{2})-(.*)$", f.stem)
+                    date, rest = (m[1], m[2]) if m else ("", f.stem)
+                    if len(rest) > 7 and rest[-7] == "-":
+                        rest = rest[:-7]  # the Drive file's id, after its name
+                    title = rest.replace("-", " ").strip()
+                    found.setdefault(folder, []).append((date, title[:1].upper() + title[1:], text))
+        course_of = {v: k for k, v in known.items()}
+        order = max((int(it.get("order") or 0) for it in self.items().values()), default=0)
+        n, courses = 0, set()
+        for folder in sorted(found, key=lambda f: (min(x[0] or "9999" for x in found[f]), f)):
+            for date, title, text in sorted(found[folder], key=lambda x: (x[0], x[1])):
+                order += 1
+                note = self.source_note(folder, "", date, [title])
+                if self.queue_item(
+                    "classroom", text, folder, title, note, date, course_of.get(folder, ""), backfill=True, order=order
+                ):
+                    n += 1
+                    courses.add(folder)
+        with self.lock:
+            data = self.load("items.json", {}) or {}
+            data.setdefault("backfill", {})["classroom"] = now().isoformat(timespec="seconds")
+            self.save("items.json", data)
+        return n, len(courses)
+
     # -------------------------------------------------------------------------------------------------- books
     def pages_of(self, b: dict) -> dict[int, str]:
+        if self.source_of(b) != "books":
+            return self.item_text(b)[0]
         f = self.books.book_dir(b) / "text.md"
         try:
             text = f.read_text(encoding="utf-8")
@@ -159,18 +431,40 @@ class Integrate(Module):
         parts = PAGE_MARK.split(text)
         return {int(parts[i]): parts[i + 1].strip() for i in range(1, len(parts) - 1, 2)}
 
+    def item_text(self, b: dict) -> tuple[dict[int, str], str]:
+        """An item's pages and what they are (pages, slides or parts), from the copy of its text."""
+        try:
+            text = (self.dir / "texts" / f"{b['id']}.txt").read_text(encoding="utf-8")
+        except OSError:
+            return {}, "parts"
+        return split_pages(text)
+
     def key(self, b: dict) -> str:
+        if self.source_of(b) != "books":
+            return b["key"]
         return f"{b['subject']}/{b['id']}"
 
+    def title_of(self, b: dict) -> str:
+        if self.source_of(b) != "books":
+            return b.get("title") or b["id"]
+        return self.books.meta(b).get("title") or b["id"]
+
     def stub(self, b: dict) -> Path:
+        """The note an item's concepts point back to ("Seen in"): a book's index note; the note a class file was filed
+        into; the handwritten note itself."""
+        if self.source_of(b) != "books":
+            return Path(self.app.workspace) / f"{b['note']}.md"
         return layout.of(self.app).path("subject", subject=b["subject"]) / "books" / f"{b['id']}.md"
 
     def plan(self, b: dict) -> list[segment.Batch]:
         """The batches of a book, over all its pages: its sections (from its bookmarks, as the chapter list has them,
         else from the page text), sized by integrate.batch_pages. A book whose batches began before 0.5.8 keeps the
         batches it began with (the ledger's "plan": "text": no bookmarks, up to the last page read), so nothing is
-        asked twice."""
+        asked twice. Anything else: its sections from its text, the same way."""
         pages = self.pages_of(b)
+        if self.source_of(b) != "books":
+            total = max(pages) if pages else 0
+            return segment.batches(segment.sections(pages, [], total), total, int(self.setting("batch_pages") or 12))
         meta = self.books.meta(b)
         bk = (self.load("ledger.json", {}).get("books", {}) or {}).get(self.key(b), {}) or {}
         outline: list[tuple[int, str, int]] = []
@@ -183,9 +477,18 @@ class Integrate(Module):
         return segment.batches(secs, total, int(self.setting("batch_pages") or segment.TARGET))
 
     def ready_batches(self) -> list[tuple[dict, segment.Batch]]:
-        """Every batch not done yet whose pages have all been read, in the order to do them."""
+        """Every batch not done yet whose pages have all been read, in the order to do them: class material (newest
+        first) and handwritten notes, then a backfill's, then the books."""
         self.inflight()  # forget requests that never came back, so they're asked again
         led = self.load("ledger.json", {})
+        out = []
+        for it in self.queued_items():
+            done_batches = self.entry(led, it).get("batches", {})
+            for bt in self.plan(it):
+                if (done_batches.get(bt.id, {}) or {}).get("state") not in ("done", "failed", "queued", "checking"):
+                    out.append((it, bt))
+        if not self.reads("books"):
+            return out
         first = [str(x) for x in self.setting("first") or []]
         metas = {self.key(b): self.books.meta(b) for b in self.books.library()}
         smallest = str(self.setting("order") or "smallest") == "smallest"
@@ -194,7 +497,6 @@ class Integrate(Module):
             pages = int(metas[self.key(b)].get("pages") or 0) if smallest else 0
             return (b["subject"] not in first, pages, b["subject"], b["id"])
 
-        out = []
         for b in sorted(self.books.library(), key=rank):
             meta = metas[self.key(b)]
             if not meta.get("pages") or not meta.get("done"):
@@ -217,7 +519,7 @@ class Integrate(Module):
     def record(self, b: dict, bt_id: str, **kw) -> dict:
         with self.lock:
             led = self.load("ledger.json", {})
-            bk = led.setdefault("books", {}).setdefault(self.key(b), {})
+            bk = led.setdefault(self.section(b), {}).setdefault(self.key(b), {})
             # how plan() cuts the book, fixed at its first batch: "text" for one begun before bookmarks were used
             bk.setdefault("plan", "text" if bk.get("batches") else "outline")
             rec = bk.setdefault("batches", {}).setdefault(bt_id, {})
@@ -246,7 +548,7 @@ class Integrate(Module):
         led = self.load("ledger.json", {})
         bulk = chk = 0
         changed = False
-        for bk in led.get("books", {}).values():
+        for bk in [*led.get("books", {}).values(), *led.get("items", {}).values()]:
             for rec in bk.get("batches", {}).values():
                 if rec.get("state") in ("queued", "checking"):
                     age = time.time() - (dt.datetime.fromisoformat(rec["at"]).timestamp() if rec.get("at") else 0)
@@ -326,23 +628,26 @@ class Integrate(Module):
 
     def submit_batch(self, b: dict, bt: segment.Batch) -> str:
         pages = self.pages_of(b)
-        meta = self.books.meta(b)
+        title, src = self.title_of(b), self.source_of(b)
         index = self.index()
         text = ai.page_text(pages, bt.first, bt.last)
         near = index.candidates(f"{bt.title}. {text[:3000]}", "", None, limit=30, rerank=False)
         prompt = ai.batch_prompt(
-            meta.get("title") or b["id"],
+            title,
             b["subject"],
             bt.first,
             bt.last,
             bt.title,
             ai.cards_text(index, [c.slug for c in near]),
             text,
+            source=src,
+            unit=self.item_text(b)[1] if src != "books" else "pages",
         )
         bulk, _ = self.roles()
+        where = f"pp. {bt.first}-{bt.last}" if src == "books" else f"({NAMED[src][0]}, {bt.first}-{bt.last})"
         jid = self.app.jobs.submit(
             prompt,
-            title=f"Concepts: {short(meta.get('title') or b['id'], 40)} pp. {bt.first}-{bt.last}",
+            title=f"Concepts: {short(title, 40)} {where}",
             effort=self.effort_for(b, bt),
             background=True,
             text_only=True,
@@ -360,11 +665,7 @@ class Integrate(Module):
         that failed before, and for a book whose recent batches needed many second looks (its text is hard)."""
         if self.tries(b, bt.id):
             return "medium"
-        recs = list(
-            ((self.load("ledger.json", {}).get("books", {}) or {}).get(self.key(b), {}) or {})
-            .get("batches", {})
-            .values()
-        )
+        recs = list(self.entry(self.load("ledger.json", {}), b).get("batches", {}).values())
         recent = [r for r in recs if r.get("state") == "done"][-3:]
         concepts = sum(int(r.get("concepts") or 0) for r in recent)
         flagged = sum(int(r.get("flagged") or 0) for r in recent)
@@ -372,9 +673,13 @@ class Integrate(Module):
 
     def tries(self, b: dict, bid: str) -> int:
         led = self.load("ledger.json", {})
-        return int((led.get("books", {}).get(self.key(b), {}).get("batches", {}).get(bid, {}) or {}).get("tries", 0))
+        return int((self.entry(led, b).get("batches", {}).get(bid, {}) or {}).get("tries", 0))
 
     def find_book(self, key: str) -> dict | None:
+        """A book (by "subject/id") or another item (by "source:hash") from its key."""
+        item = self.items().get(key)
+        if item is not None:
+            return item
         return next((b for b in self.books.library() if self.key(b) == key), None)
 
     # --------------------------------------------------------------------------------------------- the answer
@@ -531,10 +836,10 @@ class Integrate(Module):
         lay = layout.of(self.app)
         root = Path(self.app.workspace)
         bid, first, last = payload["batch"], payload["first"], payload["last"]
-        meta = self.books.meta(b)
+        src = self.source_of(b)
         stub = self.stub(b)
         stub_slug = self.rel(stub)
-        title = meta.get("title") or b["id"]
+        title = self.title_of(b)
         journal: dict[str, str | None] = {}
         counts = {"new": 0, "same": 0, "links": 0, "skipped": 0}
         seen = self.load("seen.json", {})
@@ -555,6 +860,8 @@ class Integrate(Module):
         for c in core:
             path = root / f"{c.slug}.md"
             entry = {"book": self.key(b), "note": stub_slug, "title": title, "batch": bid, "pages": [first, last]}
+            if src != "books":
+                entry |= {"source": src, "unit": self.item_text(b)[1]}
             entry["update"] = c.update if c.same_as else ""
             entry["def"] = short(c.definition, 160) if not c.same_as else ""
             rows = seen.setdefault(c.slug, [])
@@ -576,7 +883,7 @@ class Integrate(Module):
                     front,
                     gw.Concept(c.name, c.slug, c.aliases, c.definition, c.formulas, c.kind),
                     [ln for _, ln in lines],
-                    f"Source: {title}, pp. {first}–{last}",
+                    f"Source: {title}{self.where({'pages': [first, last], **entry}, ',')}",
                 )
                 body = gw.put_block(body, "seen", self.seen_body(seen[c.slug]))
                 if put(path, None, body):
@@ -595,14 +902,22 @@ class Integrate(Module):
         bk = chap.setdefault(self.key(b), {})
         bk[bid] = {"first": first, "last": last, "title": payload.get("title", ""), "concepts": [c.slug for c in core]}
         self.save("chapters.json", chap)
-        if stub.is_file():
+        course = lay.path("course", subject=b["subject"])
+        if stub.is_file() and src == "books":
             old = stub.read_text(encoding="utf-8")
             new = gw.put_block(old, "concepts", self.chapter_body(bk, names_by_slug, index))
             if new != old:
                 put(stub, old, new)
+        elif stub.is_file() and src == "classroom" and stub != course:
+            # the lecture note it was filed into lists what it introduces, in a block of its own per file
+            slugs = list(dict.fromkeys(x for rec in bk.values() for x in rec["concepts"]))
+            body = f"## Concepts in {title}\n" + (", ".join(f"[[{x}]]" for x in slugs) or "(none new)")
+            old = stub.read_text(encoding="utf-8")
+            new = gw.put_block(old, f"material{b['id'][:8]}", body)
+            if new != old:
+                put(stub, old, new)
         # the course map lists the concepts the books introduced, in a block of its own
-        course = lay.path("course", subject=b["subject"])
-        if course.is_file():
+        if course.is_file() and src == "books":
             slugs: list[str] = []
             for key, rec in chap.items():
                 if key.split("/")[0] == b["subject"]:
@@ -622,9 +937,10 @@ class Integrate(Module):
                 if new != old:
                     put(course, old, new)
         self.undo(b, bid, journal)
+        at = f" pp. {first}-{last}" if src == "books" else ""
         sha = self.commit(
             list(journal),
-            f"books: {short(title, 40)} pp. {first}-{last} "
+            f"{src}: {short(title, 40)}{at} "
             f"(+{counts['new']} notes, +{counts['links']} links, {counts['same']} updated)",
         )
         self.record(
@@ -674,16 +990,23 @@ class Integrate(Module):
         return text[: m.start()] + new + text[m.end() :]
 
     @staticmethod
-    def seen_body(rows: list[dict]) -> str:
+    def where(r: dict, sep: str = "") -> str:
+        """Where in its source a row is: " pp. 3–14" for a book or a PDF's pages, " slides 2–9", nothing for parts of
+        a text with no pages of its own."""
+        a, z = r["pages"]
+        unit = r.get("unit") or "pages"
+        return f"{sep} pp. {a}–{z}" if unit == "pages" else f"{sep} slides {a}–{z}" if unit == "slides" else ""
+
+    @classmethod
+    def seen_body(cls, rows: list[dict]) -> str:
         rows = sorted(rows, key=lambda r: (r["book"], r["pages"][0]))
         lines = ["## Seen in"]
-        for r in rows:
-            a, z = r["pages"]
-            lines.append(f"- [[{r['note']}|{r['title']}]] pp. {a}–{z}")
-        ups = [r for r in rows if r.get("update")]
-        if ups:
-            lines += ["", "### Added from the books"]
-            lines += [f"- {r['title']} pp. {r['pages'][0]}–{r['pages'][1]}: {r['update']}" for r in ups]
+        lines += dict.fromkeys(f"- [[{r['note']}|{r['title']}]]{cls.where(r)}" for r in rows)
+        for src, head in SEEN_HEAD.items():
+            ups = [r for r in rows if r.get("update") and (r.get("source") or "books") == src]
+            if ups:
+                lines += ["", head]
+                lines += [f"- {r['title']}{cls.where(r)}: {r['update']}" for r in ups]
         return "\n".join(lines)
 
     @staticmethod
@@ -881,7 +1204,7 @@ class Integrate(Module):
     def counts(self) -> dict:
         led = self.load("ledger.json", {})
         c = {"done": 0, "failed": 0, "pending": 0}
-        for bk in led.get("books", {}).values():
+        for bk in [*led.get("books", {}).values(), *led.get("items", {}).values()]:
             for rec in bk.get("batches", {}).values():
                 st = rec.get("state")
                 c["done" if st == "done" else "failed" if st == "failed" else "pending"] += 1
@@ -906,10 +1229,70 @@ class Integrate(Module):
             self.app.notify(line + ".", kind="result", title="Concept graph", why="integrate.summary")
         return line
 
+    def waiting(self) -> dict[str, int]:
+        """How many items of each source have a batch waiting to be read."""
+        keys: dict[str, str] = {}
+        for b, _ in self.ready_batches():
+            keys.setdefault(self.key(b), self.source_of(b))
+        per = {src: 0 for src in SOURCES}
+        for src in keys.values():
+            per[src] += 1
+        return {k: v for k, v in per.items() if v}
+
+    def waiting_line(self) -> str:
+        """ "Waiting to be read: 2 books, 5 class files, 1 handwritten." (empty when nothing waits)"""
+        per = self.waiting()
+        if not per:
+            return ""
+        return "Waiting to be read: " + ", ".join(f"{n} {NAMED[k][n != 1]}" for k, n in per.items()) + "."
+
+    def backfill_said(self, n: int, courses: int) -> str:
+        if not self.reads("classroom"):
+            return 'Class materials aren\'t read into the graph: add "classroom" to integrate.sources first.'
+        if not n:
+            return "No Classroom files waiting: those filed before are read already, or none had enough text."
+        return (
+            f"Queued {n} Classroom file{'s' if n != 1 else ''} from {courses} course{'s' if courses != 1 else ''}, "
+            "the oldest course first. They're read within each night's budget, after what's filed from now on."
+        )
+
     def card(self) -> dict:
         """The dashboard's card: tonight's reading budget, how it was decided, the last limit (and, for a free Gemini
-        key with little room, that agy or the model on this computer reads books better)."""
-        return {"lines": self.budget.lines(), "toggles": []}
+        key with little room, that agy or the model on this computer reads books better); what's waiting, by source; a
+        switch per source, and one to read the Classroom files filed before."""
+        lines = self.budget.lines()
+        wait = self.waiting_line()
+        on = self.sources()
+        toggles = [
+            {"id": f"source:{k}", "label": label, "on": k in on}
+            for k, label in (
+                ("books", "Read books"),
+                ("classroom", "Read class materials Classroom files into your notes"),
+                ("handwritten", "Read your handwritten notes"),
+            )
+        ]
+        if self.app.is_on("classroom_notes") and "classroom" in on:
+            done = bool((self.load("items.json", {}) or {}).get("backfill", {}).get("classroom"))
+            toggles.append(
+                {
+                    "id": "backfill:classroom",
+                    "label": "Also read the Classroom files filed before" + (" (queued)" if done else ""),
+                    "on": done,
+                    "disabled": done,
+                }
+            )
+        return {"lines": [*lines, wait] if wait else lines, "toggles": toggles}
+
+    def card_action(self, act: str, value) -> str:
+        """A switch on the card: a source (integrate.sources), or the Classroom backfill."""
+        if act.startswith("source:") and act[7:] in SOURCES:
+            k, cur = act[7:], self.sources()
+            new = [x for x in SOURCES if (x in cur and x != k) or (x == k and value)]
+            self.app.settings.set("integrate.sources", new)
+            return f"Read into the graph: {', '.join(new) or 'nothing'}."
+        if act == "backfill:classroom":
+            return self.backfill_said(*self.backfill_classroom()) if value else "Already queued."
+        return "There's no such switch."
 
     def health(self):
         if not self.app.modules["books"] or not self.app.is_on("books"):
@@ -919,7 +1302,14 @@ class Integrate(Module):
 
     # ----------------------------------------------------------------------------------------------- command
     def commands(self):
-        return [Command("graph", "the concept graph: /graph, /graph now, /graph stop", self._cmd)]
+        return [
+            Command(
+                "graph",
+                "the concept graph: /graph, /graph now, /graph stop, /graph backfill classroom",
+                self._cmd,
+                usage="/graph [now | stop | backfill classroom]",
+            )
+        ]
 
     def _cmd(self, msg: Incoming, arg: str) -> str:
         a = (arg or "").strip().lower()
@@ -929,6 +1319,10 @@ class Integrate(Module):
             if r.get("limit") in ("per_night", "cost", "hit"):
                 return "Nothing to start: " + " ".join(self.budget.lines())
             return "Started." if r.get("submitted") else f"Nothing to start ({r or 'already running'})."
+        if a.startswith("backfill"):
+            if a.split()[1:] != ["classroom"]:
+                return "Usage: /graph backfill classroom (reads the Classroom files filed before, night by night)."
+            return self.backfill_said(*self.backfill_classroom())
         if a == "stop":
             nxt = self.hold()
             return (
@@ -945,8 +1339,11 @@ class Integrate(Module):
             else ""
         )
         budget = "".join(f"\n{ln}" for ln in self.budget.lines())
+        wait = self.waiting_line()
         return (
             f"Concept graph: {c['done']} batches done, {c['todo']} waiting, {c['failed']} failed. "
+            + (f"{wait} " if wait else "")
+            + f"Reads: {', '.join(self.sources()) or 'nothing'} (integrate.sources). "
             f"AI: {bulk or 'none'} (bulk), {chk or 'none'} (second look).{spent}{budget}\n"
             f"{m['concepts']} concepts, {m['links']} links; {m['broken']} broken, {m['no_links_in']} with no links in, "
             f"{m['boilerplate_reasons']} with a vague reason, the top three notes get {m['top3_share']:.0%} of links."

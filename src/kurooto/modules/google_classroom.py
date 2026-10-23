@@ -14,6 +14,8 @@ Drive (read-only, so it can open the files attached to posts; it opens nothing e
 Kurooto's own data folder, not in your notes. Posts about topics on your not-interested list are only counted.
 Each check that found something ends in one message, once the AI has filed all of it: what was filed, by title (the
 first eight, then "and N more"), whichever courses it came from.
+Once filed, the files with real text (slides, handouts, PDFs, solutions) are read into the concept graph like a book
+(modules/integrate.py, integrate.sources).
 """
 
 from __future__ import annotations
@@ -594,6 +596,17 @@ class ClassroomNotes(GooglePart):
         except Exception as e:
             self.app.events.emit("hubs_failed", error=str(e)[:200])
 
+    def _to_graph(self, data: dict) -> None:
+        """The files just filed, with real text, are read into the concept graph like a book (modules/integrate.py,
+        integrate.sources); never fails the filing."""
+        ig = self.app.modules.get("integrate")
+        if ig is None or not self.app.is_on("integrate"):
+            return
+        try:
+            ig.take_classroom(data)
+        except Exception as e:
+            self.app.events.emit("integrate_queue_failed", source="classroom", error=str(e)[:200])
+
     def _filed(self, job, result, payload) -> None:
         b = self.dir / "batches" / str(payload.get("batch", "x")).replace("/", "")
         data = jload(b, {}) or {}
@@ -606,6 +619,7 @@ class ClassroomNotes(GooglePart):
             items = data.get("items", [])
             self.app.events.emit("classroom_notes_filed", items=len(items))
             self._hubs()
+            self._to_graph(data)
             titles = [str(it.get("title") or "untitled")[:100] for it in items]
             self._run_back(run, b.name, {"course": data["course"], "folder": data["folder"], "titles": titles})
             return
