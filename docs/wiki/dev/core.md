@@ -872,7 +872,7 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/studypack.py` | a subject's notes and files as a zip with a prompt for another AI. `sources()` merges Books' reads (`book-text/<subject>/*/meta.json`, bookmarks in `chapters`) with Classroom's files and their `<file>.txt` (pages split on form feeds), dropping copies (`same_doc`); `is_class()` tells class material from books by length and title; with topics, `book_tiers()` ranks a book's pages (cited readings from `citations()`, then title-matching chapters, then hit pages) and `book_share()` fits all books into `MAX_PACK_BOOK_PAGES`; the prompt is `prompt_text()`, from the user's `study_pack_prompt` note when there is one |
 | `core/syncall.py` | "sync everything" (`sync_now` on each module that has one) |
 | `core/upgrade.py` | one-time steps at the first start of a new version (`upgrades.json`), the "what's new" message |
-| `core/vitals.py` | CPU, memory, GPU, network, disk and battery samples for the board and `kurooto top` |
+| `core/vitals.py` | CPU, memory, GPU, network, disk and battery samples for the board and `kurooto top`; processor use comes from the cores' own counters over at least a second (`Sampler._core_use`), the same for every reader in that second (psutil.cpu_percent measured since whichever caller asked last) |
 | `core/zones.py` | old and new names of the same time zone |
 
 ## Turn on from chat (`core/turnon.py`)

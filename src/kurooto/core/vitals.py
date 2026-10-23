@@ -162,6 +162,14 @@ def nic_wanted(name: str) -> bool:
     return not (low.startswith(SKIP_NIC) or "loopback" in low or "pseudo" in low)
 
 
+def _busy(t) -> tuple[float, float]:
+    """(busy, all) seconds from one core's cpu_times: idle and iowait are idle; guest time is already in user."""
+    d = t._asdict()
+    idle = d.get("idle", 0.0) + d.get("iowait", 0.0)
+    total = sum(d.values()) - d.get("guest", 0.0) - d.get("guest_nice", 0.0)
+    return total - idle, total
+
+
 class Sampler:
     """Read the computer with sample(); each call adds to the histories (keep `history` readings)."""
 
@@ -176,7 +184,11 @@ class Sampler:
         self._net: tuple[float, dict] | None = None
         self._io: tuple[float, int, int] | None = None
         self._dev: str | None = None
-        psutil.cpu_percent(percpu=True)  # the first reading is always 0: prime it
+        # processor use is measured here, from the cores' own counters, over at least a second: psutil.cpu_percent()
+        # measures since whichever caller asked last, so two readers a moment apart got windows of milliseconds
+        self._times: tuple[float, list] | None = None
+        self._cores: list[float] = []
+        self._core_use()
 
     # ------------------------------------------------------------------------------------------- pieces
     def _hardware(self) -> dict:
@@ -304,9 +316,29 @@ class Sampler:
             "watts": self.cache.get("batw", 5, battery_watts),
         }
 
+    def _core_use(self, window: float = 1.0) -> list[float]:
+        """Each core's use (0..1) over the last `window` seconds or more, the same for every reader in between."""
+        now = time.monotonic()
+        if self._times and now - self._times[0] < window and self._cores:
+            return self._cores
+        try:
+            times = psutil.cpu_times(percpu=True)
+        except (OSError, RuntimeError):
+            return self._cores
+        if self._times and len(self._times[1]) == len(times):
+            use = []
+            for a, b in zip(self._times[1], times, strict=True):
+                busy_a, all_a = _busy(a)
+                busy_b, all_b = _busy(b)
+                d = all_b - all_a
+                use.append(min(1.0, max(0.0, (busy_b - busy_a) / d)) if d > 0 else 0.0)
+            self._cores = use
+        self._times = (now, times)
+        return self._cores
+
     # ---------------------------------------------------------------------------------------- the reading
     def sample(self, force: bool = False) -> dict:
-        cores = [c / 100 for c in psutil.cpu_percent(percpu=True)]
+        cores = list(self._core_use())
         cpu = sum(cores) / max(1, len(cores))
         vm, sw = psutil.virtual_memory(), psutil.swap_memory()
         try:
