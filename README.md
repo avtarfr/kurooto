@@ -72,7 +72,7 @@ recommends settings for it (★), installs whatever the features you pick need, 
 | **Notes** | search your notes by meaning, skills like `/journal` and `/study-log`, revision packs as PDF, quick notes, files and handwritten pages into notes, sync to your private GitHub repository; books and class materials read into a concept graph of your notes |
 | **Study** | subjects, timetable and term dates, a spaced-repetition quiz with an exam mode, an exam-season card, after-class notes, a study-time tracker, a study mode for the dashboard |
 | **Google** | Classroom materials into your notes, a mail digest that reads only what you choose, reply drafts you send with a tap, its own calendar for planned time |
-| **Research** | a digest of new papers in your fields (arXiv, bioRxiv, medRxiv, PubMed, any journal's feed), project notes from your code, experiment run logs, a message when a long job ends |
+| **Research** | a digest of new papers in your fields (arXiv, bioRxiv, medRxiv, PubMed, any journal's feed), project notes from your code, experiment run logs, a message when a long job ends; minutes and action items for any recurring meeting |
 | **Your setup** | daily backups to a folder you pick; your setup encrypted in your private repository, so a new computer is ready in a minute |
 | **See it all** | a local dashboard (a calm new look, or the classic one a click away; terminals if you like), a status board in any terminal, and a look back each night that suggests small improvements |
 

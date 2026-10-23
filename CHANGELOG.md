@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.20 (2026-10-23)
+
+- **Problem-set progress, finished:** reply "4/7", "4", "+1" or "done" to a deadline's reminder or "Overdue?" message
+  (Telegram, the app's chat, the phone's Reply) to record progress, with Undo. **+1** on deadline messages and phone
+  notifications stays for the next tap, and taps made while the computer sleeps each count, in order. The wake-up call,
+  morning page and `/status` say "Problem set 3 4/7, due Fri".
+- **Any recurring meeting:** "I meet my manager Mira Castell every Monday at 10" puts "Meets:" in the project note and
+  the evening-before brief covers it. After the meeting, a voice or typed note (or one starting "about the meeting with
+  X:") becomes minutes in the project note, in Kurooto's own block; **Not about the meeting** takes them back out. The
+  action items go under Next steps and come back as buttons; each becomes a deadline only when you tap it.
+- **The evening check-in looks back:** up to three things the day's records show you did (deadlines done or moved on,
+  threads closed, study time, classes logged) and "What's first tomorrow?", with **Not tonight**. Nothing recorded
+  means no list, and never a streak or score (`checkins.reflect`).
+- **Hooks from chat:** "when I say gym, hold calls 90 min" (or "hold everything 2 h") makes "gym" on its own start that
+  hold later. `/hooks` lists them, `/hooks drop gym` forgets one, every step has Undo.
+- **Set up from more of what you say:** "I have lab every Thursday 2-5", "gym Tue Thu 7am" and "there's a quiz on
+  Linear Algebra every Monday" become a commitment or a recurring quiz, with Undo (`/inferred`); questions set up
+  nothing. "LA" used in two messages, when only Linear Algebra fits, becomes its short name.
+- **The look back reads your records:** the same thing at the same time on 3+ weeks comes once with Add / No, and two
+  copies of one deadline (Classroom's and yours) become one at once, with Undo (`retro.routines`, `retro.fixes`).
+- **Your notes, your layout:** a **Notes** step in setup (also Settings → notes and `kurooto setup notes`) reads your
+  existing notes folder, with no AI, and proposes where daily notes, the inbox, subject folders, concept notes and
+  projects go, with a preview. Moving to it moves only Kurooto's own notes, as one plan shown first, with Undo; your
+  notes, daily notes and profile never move. Note places can use `{year}/{month}/{day}`.
+
 ## 0.5.19 (2026-10-23)
 
 - **A new look for the dashboard:** one sans-serif typeface (Public Sans, bundled; nothing fetched from the internet)
