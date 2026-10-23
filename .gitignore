@@ -18,3 +18,5 @@ src/kurooto/data/worker/public/app.js
 src/kurooto/data/worker/wrangler.toml
 android/build/
 src/kurooto/data/kurooto.apk
+.pytest-progress.json
+.pytest-progress.json.tmp

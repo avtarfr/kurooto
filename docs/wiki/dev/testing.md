@@ -18,6 +18,10 @@ uv run ruff check . && uv run ruff format --check .
   (`npm ci --no-audit --no-fund --ignore-scripts` in `src/kurooto/data/worker`, then bundle the call page with
   `npx esbuild web/app.js --bundle --minify --format=esm --target=es2019 --outfile=public/app.js`), and skips on
   Windows or without them (`pytestmark` in each file).
+- A progress bar for long runs, tqdm-style, with no extra package: start the run with
+  `PYTHONPATH=tools uv run pytest -p pytest_progress tests/unit` (it writes `.pytest-progress.json` as tests finish)
+  and watch it from another terminal with `python3 tools/pytest_progress.py`: tests done of all, rate, time left, and
+  each failure the moment it happens (`tools/pytest_progress.py`; `KUROOTO_TEST_PROGRESS` names another file).
 - Android: `android/build.sh --test` runs the crypto and speech tests on a plain JVM; `android/build.sh` builds a
   debug APK (needs the Android SDK).
 
