@@ -416,7 +416,8 @@ def test_sync_everything_from_telegram(env, monkeypatch):
     # any message, not only the last: another feature may speak in between on a slow runner
     assert wait_for(lambda: any("Calendar: ok, 3 events" in (t or "") for t in env.fake.texts()), 30)
     assert wait_for(lambda: syncall.status(app)["running"] is False)
-    assert "/sync  sync everything" in env.say("/help")
+    assert "/sync" in env.say("/help")  # the index (0.5.19: /help is built from the command table, in groups)
+    assert "sync everything that's on" in env.say("/help sync")  # the finder gives the line in full
 
 
 @needs_git
