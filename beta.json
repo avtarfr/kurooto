@@ -1,9 +1,9 @@
 {
  "doc": {
-  "version": "0.5.7",
-  "manifest_url": "https://avtarfr.github.io/kurooto/releases/0.5.7/manifest.json",
-  "issued": 1792712834.590085,
+  "version": "0.5.10",
+  "manifest_url": "https://avtarfr.github.io/kurooto/releases/0.5.10/manifest.json",
+  "issued": 1792753709.872942,
   "channel": "beta"
  },
- "sig": "6+mLXULBoKlgpZ3Ffrmu/4Owzu04TMjZQLZUPLfW3IUyGNYlMG4WgdU4TmkAPSecDgcgk2E3bOx9K4mUM7iYCQ=="
+ "sig": "PEXgTLaw67Ptj2My30bAEBhhQrkvi1tvwuZk364F85GYw1jdnxiE/LUfkdRAjMbiDdp2RaSXlJ0hiMgJUxZgAQ=="
 }

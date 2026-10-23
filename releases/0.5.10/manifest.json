@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.10",
+  "notes": "Learns a phrasing you rephrase, turn on a feature from chat, problem-set progress (ps3 4/7), meeting brief, a Windows fix for agents.scripts",
+  "created": 1792729401.362779,
+  "files": {
+   "kurooto-0.5.10.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.10/kurooto-0.5.10.tar.gz",
+    "sha256": "6ffad1949626846c7c8bedb45fe540bc70c931358dd8fad164ffa7f89f5c2724",
+    "size": 2113457
+   }
+  }
+ },
+ "sig": "TrjQvX9xjmbxii2OV2E6MIQTxzVKcw0gFjAYnkEgZTrnq0IROyUyG+HeScR6BIPATV7UIKbi+lWA9SVrEkp0Ag=="
+}
