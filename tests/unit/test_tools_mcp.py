@@ -487,7 +487,7 @@ def test_call_later_and_mistakes(calls):
 def test_kurooto_call_cli(calls, capsys):
     app, fake = calls
     app.settings.set("availability.night", {"enabled": False, "from": "23:30", "to": "07:00"})
-    assert cli.main(["call", "the", "backup", "finished"]) == 1  # not running
+    assert cli.main(["call", "the", "backup", "finished"]) == 2  # not running (like send, notify, ask-me)
     assert "isn't running" in capsys.readouterr().err
     srv = start(app, port=18900 + os.getpid() % 100)
     try:

@@ -190,6 +190,7 @@ class Telegram(Module):
     # ------------------------------------------------------------------------------------ the channel
     def start(self):
         self.app.notifier.register("telegram", self._send)
+        self.action("focus_end", lambda p: self.app.notifier.flush_queue())  # a /focus that ends after a restart
         from kurooto.core.events import subscribe
 
         self._unsub_name = subscribe(self._on_setting)
@@ -294,11 +295,13 @@ class Telegram(Module):
                 )
                 backoff = 5
                 self._net_seen(None)
+                if "telegram" not in self.app.notifier.channels:  # the token works again after a 401
+                    self.app.notifier.register("telegram", self._send)
             except TelegramError as e:
                 self._net_seen(None)  # Telegram answered: the network is fine
                 self.app.events.emit("telegram_error", code=e.code, error=e.description[:200])
-                if e.code == 401:  # the token was revoked
-                    self.app.notifier.channels.pop("telegram", None)
+                if e.code == 401:  # the token was revoked (it comes back above once the token works)
+                    self.app.notifier.unregister("telegram")
                     await asyncio.sleep(300)
                 await asyncio.sleep(30 if e.code == 409 else backoff)  # 409: the bot runs somewhere else too
                 continue
@@ -600,7 +603,6 @@ class Telegram(Module):
         except ValueError as e:
             return str(e)
         a.set_focus(until)
-        self.app.scheduler.action("telegram.focus_end", lambda p: self.app.notifier.flush_queue())
         self.app.scheduler.at(until, "telegram.focus_end", key="telegram:focus-end", module=self.id)
         return f"Focus until {until:%H:%M}: I'll hold everything that isn't urgent until then."
 

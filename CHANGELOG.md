@@ -46,6 +46,21 @@
   `/lessons forget 2` removes one. One message only when it fixed or learned something; `calls.review` off stops it.
 - **Chat remembers only the chat**: a digest's or research run's answer no longer turns up as "you said" in the
   context of your next message.
+- **Safer settings and LaTeX**: the dashboard can't change hidden settings any more (who may talk to the Telegram bot,
+  where it connects, AI addresses and models; a whole section at once is refused too), and LaTeX the AI wrote never
+  runs commands with `latexmk` either (`-no-shell-escape`, as with `pdflatex` and Tectonic).
+- **Long Telegram messages are never cut off**: past six parts, the first five come and then the whole text as a file.
+  After a revoked bot token is replaced, messages to you come again without a restart.
+- **The event log is trimmed** like the logs (past 10 MB the older part moves to `events.jsonl.1`), and reading its end
+  no longer reads the whole file.
+- **Google keeps your sign-in** when it refuses a short-lived access key: Kurooto gets a new one and tries again; only
+  Google saying the sign-in itself is gone pauses the Google features (any refusal used to).
+- Fixes: staged updates (`updates.staged`) broke the update check; turning Handwritten notes off didn't stop its
+  15-minute scan; an AI-written `/draft`, or the end of a `/focus`, was lost if Kurooto restarted meanwhile; a missing
+  scheduled action was logged with the previous run's result; `kurooto doctor --bundle` says when it can't make the
+  zip; `kurooto call` exits 2 when Kurooto isn't running, like `send`, `notify` and `ask-me`; the local page answers a
+  bad `Content-Length` with 400; a stopped dashboard server stops listening to events; the settings guide no longer
+  reads a module `defaults` attribute that nothing used (it's gone from `Module`).
 
 ## 0.5.7 (2026-10-23)
 

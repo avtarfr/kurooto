@@ -96,7 +96,7 @@ def test_call_list_and_cancel(env, monkeypatch, capsys):
     assert cli.main(["call", "--cancel", "wake"]) == 0 and "Cancelled" in capsys.readouterr().out
     assert cli.main(["call", "--list"]) == 0 and "No calls booked" in capsys.readouterr().out
     monkeypatch.setattr(cli, "ask_running", lambda path, body=None: None)
-    assert cli.main(["call", "--list"]) == 1
+    assert cli.main(["call", "--list"]) == 2  # not running
 
 
 # ============================================================================================ sync everything

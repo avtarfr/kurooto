@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Write docs/SETTINGS_GUIDE.md: every setting Kurooto has, with its default and what it does, read from the code itself
-(the `defaults` of each module and every register_defaults call, with the comment on each line), so the guide can't
-drift from the program. Run it after changing a setting: python tools/gen_settings_guide.py [--check]
+(every register_defaults call, which is how a module declares its settings, with the comment on each line), so the
+guide can't drift from the program. Run it after changing a setting: python tools/gen_settings_guide.py [--check]
 
 --check exits 1 when the committed guide is out of date (CI runs it)."""
 
@@ -236,25 +236,6 @@ def collect() -> list[tuple[str, object, str]]:
                 and isinstance(n.args[1], ast.Dict)
             ):
                 flatten(n.args[1], n.args[0].value, cm, rows)
-            if isinstance(n, ast.ClassDef):
-                mid = next(
-                    (
-                        s.value.value
-                        for s in n.body
-                        if isinstance(s, ast.Assign)
-                        and getattr(s.targets[0], "id", "") == "id"
-                        and isinstance(s.value, ast.Constant)
-                    ),
-                    None,
-                )
-                for s in n.body:
-                    if (
-                        mid
-                        and isinstance(s, ast.Assign)
-                        and getattr(s.targets[0], "id", "") == "defaults"
-                        and isinstance(s.value, ast.Dict)
-                    ):
-                        flatten(s.value, mid, cm, rows)
         for name, value, why in rows:
             found.setdefault(name, (value, why))
     return sorted((k, *v) for k, v in found.items())

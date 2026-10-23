@@ -19,8 +19,8 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 
 - Defaults: every section is declared by `register_defaults(section, dict)` at **import time** of the module that owns
   it (e.g. `register_defaults("jobs", {"stuck_min": 10})` at the top of `core/jobs.py`). Calls for the same section
-  merge (`merge`). The `Module.defaults` class attribute in `modules/base.py` is not read by anything; use
-  `register_defaults`.
+  merge (`merge`). It's the only way (`Module` has no `defaults` attribute), and `tools/gen_settings_guide.py` reads
+  only these calls.
 - User overrides: `<config>/settings.json` holds only what the user changed. `Settings.all()` is
   `merge(defaults, add-on layer, user)`, so a new default in an update reaches everyone who didn't change that key.
 - Add-on layer: `set_layer()` (called by `core/overlay.py:load`) lays an add-ons folder's `settings.json` between the
@@ -120,7 +120,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers; once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
 | `calm.db` | SQLite, table `sent`, kept 45 days | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
-| `events.jsonl` | JSON lines, append-only, never trimmed | `core/events.py:Events` |
+| `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
 | `net-outbox.jsonl` | JSON lines: Telegram messages held while offline (rewritten with `write_text`) | `core/presence.py` |
 | `presence.json` | heartbeat, last stop, offline periods (15 days) | `core/presence.py:Presence` |
@@ -214,16 +214,18 @@ What `tick()` does with each due job, in order:
 1. **Hold** (`Scheduler.hold = Power.hold`): in saver or paused mode a job whose module may not run is pushed an hour and
    recorded in `power-held.json`; `Power.release()` runs them the moment the mode allows. Jobs with `module=""` are held
    only when paused.
-2. **Gate** (`respect`): `"quiet"` uses `Availability.quiet_gate`, which postpones to the end of **focus** time (not the
-   `quiet.json` "no calls" window, despite the name); `"call_block"` uses `Availability.call_gate` (no built-in job uses
-   it). Postponed jobs keep their key.
+2. **Gate** (`respect`): `"quiet"` uses `Availability.quiet_gate`, which postpones to the end of **focus** time, not the
+   `quiet.json` "no calls" window: every job that uses it sends a message (check-ins, quizzes, the morning lists), and
+   "no calls" lets messages through while focus holds them; `"call_block"` uses `Availability.call_gate` (no built-in
+   job uses it). Postponed jobs keep their key.
 3. **Misfire**: a one-off later than its `grace_s` gets `payload["missed"] = True`; later than 120 s gets
    `payload["late_s"]`. A recurring job with `misfire="skip"` more than 120 s late doesn't run (no built-in job uses
    `skip`); `coalesce` runs it once. Either way the next run is computed from now.
 4. **Run**: `outcome` is `ran`, `error` (the exception text goes to `last_result`), `missing-action` (nothing registered
    under that action name: its module is off or never registered it), or `skipped`/`held`/`postponed`. One-offs are
    deleted unless the handler rescheduled the same key.
-5. `on_result` = `App._job_done`, which emits `job_failed` for `error` and `missing-action`.
+5. `on_result` = `App._job_done`, which emits `job_failed` for `error` (the exception) and `missing-action`
+   (`no action '<name>'`).
 
 Handlers run on the event loop thread. A slow synchronous handler (git, a zip, an HTTP call) blocks every other job and
 async task for its duration; long work should start a thread (`threading.Thread`, `asyncio.to_thread`) as
@@ -288,12 +290,9 @@ fire even before the feature is on), `alarm:ring` / `alarm:prep` / `alarm:awake`
 `updates:rolled_back`, `upgrade:whats_new`. Profile restore re-books saved `reminders:`, `calls:ring:` and
 `alarm:ring` jobs (`core/profile.py`).
 
-Known problems: `space:clean`, `integrate:night`, `integrate:retry`, `integrate:garden` and `integrate:summary`
-register methods that take no payload and fail on every scheduled run (see [concept-graph.md](concept-graph.md#known-problems-as-of-this-writing));
-`telegram.focus_end` is only registered inside the `/focus` handler, so after a restart during focus the
-`telegram:focus-end` job is a `missing-action`; `handwritten.py:Handwritten.stop` doesn't call `super().stop()`, so
-`handwritten:scan` keeps running after the feature is turned off and becomes a `missing-action` every 15 minutes after
-a restart.
+Known problems: `space:clean`, `integrate:night`, `integrate:retry`, `integrate:garden` and `integrate:summary` register
+methods that take no payload and fail on every scheduled run (see
+[concept-graph.md](concept-graph.md#known-problems-as-of-this-writing)).
 
 ## Jobs
 
@@ -313,8 +312,7 @@ jid = app.jobs.submit(
 - Status: `queued` → `running` → `ok` | `failed`. Verdicts are `providers.base.Verdict`.
 - **Lanes** (`LANES = ("you", "bg", "chk")`): one job at a time per lane, so the user's own request never waits
   behind background work. Unset, `background=True` goes to `bg`, everything else to `you`. `chk` is a second
-  background lane so two agent programs can work at once (the concept graph's check role, call reviews). The module
-  docstring still says "two lanes".
+  background lane so two agent programs can work at once (the concept graph's check role, call reviews).
 - **Worker** (`Jobs.worker`, an asyncio task): `recover()` first (jobs left `running` by a dead process, identified by
   `runner` = pid plus start time, go back to `queued`), then every 5 s or on `poke()`: `watchdog()`, and for each free
   lane `_claim()` the oldest ready job and run it in a thread (`_start`). Nothing runs while paused; background jobs
@@ -349,8 +347,12 @@ jid = app.jobs.submit(
 
 `core/events.py`: `Events(state).emit(kind, **fields) -> dict` appends `{"ts": iso, "kind": kind, ...}` to
 `<state>/events.jsonl` (a field named `kind` is stored as `subkind`), then calls every `subscribe(cb)` listener in this
-process. `tail(n, kinds=None)` reads the file backwards. Writes are serialised by a thread lock only; CLI processes
-append to the same file but their events never reach the daemon's listeners. The file is not rotated.
+process. `tail(n, kinds=None)` reads backwards from the end a block at a time (`lines_back`, `Events.lines()`), so its
+cost is what it reads, not the log's size. Writes are serialised by a thread lock only; CLI processes append to the
+same file but their events never reach the daemon's listeners. Like the logs it's trimmed: past `MAX_BYTES` (10 MB)
+`emit` moves it to `events.jsonl.1` (replacing the one before) and starts a new one; `tail`, `Events.lines()` and
+`health.Latest` read on into `.1`. Readers that keep a byte offset (presence, quests, `Latest`) start again from the
+top when the file is smaller than their offset.
 
 Consumers: the dashboard feed (`web/live.py`, `EVENT_CELL` prefix → cell), `/api/events`, the diagnostics bundle,
 the nightly look back (`modules/retro.py:evidence`), the weekly summary (`modules/weekly.py`), health

@@ -484,7 +484,8 @@ night) and calls when they end.
 | `--list` | The calls booked for later, with their keys. |
 | `--cancel KEY` | Takes a booked call off (your call line forgets it too). |
 
-It needs Kurooto running (`kurooto on`); otherwise it says so and exits with 1. More script commands are on
+It needs Kurooto running (`kurooto on`); otherwise it says so and exits with 2, like `kurooto send`, `notify` and
+`ask-me` (1 means Kurooto refused the call, with the reason). More script commands are on
 [Add-ons and scripts](add-ons.md).
 
 ## All call settings

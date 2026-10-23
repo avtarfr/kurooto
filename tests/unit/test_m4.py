@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from kurooto.modules import calendar as cal_mod
+from kurooto.modules.google import NeedsSignIn
 from tests.fakes.google import FakeGoogle
 
 
@@ -323,6 +324,20 @@ def test_expired_google_access_asks_to_sign_in_again(google):
     fake.refresh_ok = False
     assert gm.classroom_sync() == {"error": "needs sign-in"} or not gm.ready()[0]
     assert not gm.ready()[0] and "sign-in expired" in env.fake.texts()[-1]
+
+
+def test_a_refused_access_token_is_renewed_and_keeps_the_sign_in(google):
+    env, fake, gm = google
+    gm.set_client(CLIENT)
+    sign_in(gm, fake)
+    gm.app.secrets.set("google.tokens", json.dumps({**gm.tokens(), "access_token": "stale", "expires": 2e9}))
+    assert gm.api("classroom", "/courses")["courses"]  # 401 on the stale token, then a fresh one works
+    assert gm.signed_in() and gm.tokens()["access_token"] == "access-2"
+    gm.app.secrets.set("google.tokens", json.dumps({**gm.tokens(), "access_token": "stale", "expires": 2e9}))
+    fake.refresh_ok = False  # only Google's invalid_grant on renewing it ends the sign-in
+    with pytest.raises(NeedsSignIn):
+        gm.api("classroom", "/courses")
+    assert not gm.signed_in()
 
 
 def test_gmail_drafts_are_only_drafts(google):

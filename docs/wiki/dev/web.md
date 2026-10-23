@@ -44,7 +44,7 @@ The user's view: [../user/dashboard.md](../user/dashboard.md).
 - There is no CSRF token: a cross-site page cannot set the custom header without a CORS preflight, which is never
   answered; the Origin check and `form-action 'none'` back that up.
 - Failures: GET without auth 401 `{"error":"no"}`; wrong Host 403; another account 403; any POST auth failure 403;
-  body over 4 000 000 bytes 413; bad JSON 400.
+  body over 4 000 000 bytes 413; a non-numeric or negative `Content-Length` 400; bad JSON 400.
 - Unauthenticated by design: `/health` (`{ok, version}`), `/static/*`, and `/oauth/google` (Host and same-user checked,
   plus the one-time OAuth `state`).
 
@@ -108,6 +108,7 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   a `body` snapshot and `hello` (with its `cid`).
 - `Live.__init__` calls `core/events.py:subscribe(self._event)`: every `Events.emit` is pushed as
   `{"t": "event", "cell": cell_of(kind), ...}` (`EVENT_CELL` maps event-kind prefixes to dashboard cells).
+  `Live.stop()` unsubscribes it.
 - `Live._loop` runs only while clients exist: a `Vitals.snapshot()` (`body`: machine vitals from `core/vitals.py`,
   feature cells, jobs, schedule, updates, power, processes) every 2 s, and the notes graph (`Graph.scan()`) every
   5 s when notes changed. Errors emit `dashboard_error`.
@@ -174,8 +175,9 @@ There is no per-module route registration. `web/api.py:Api._modules` and `_card`
 
 Settings UI: `Api._settings` lists `Api.EDITABLE` sections (`you`, `notify`, `availability`, `updates`, `brain`, `ask`,
 `look`, `power`, `notes`, `files`) plus the section of every enabled module whose id is a settings section, rendered
-generically by value type. Some keys are hidden there (`telegram.api_base`, `allowed_users`, `chat_id`;
-`brain.base_urls`, `models`; `subjects.list`, `timetable`). `Api._set` checks the section is editable, canonicalises
+generically by value type. Some keys are hidden there (`Api.HIDDEN`: `telegram.api_base`, `allowed_users`, `chat_id`;
+`brain.base_urls`, `models`; `subjects.list`, `timetable`). `Api._set` checks the section is editable, refuses a hidden
+key and a bare section key (`"telegram"`, which would replace the hidden keys with the rest), canonicalises
 `you.timezone`, requires the new value to have the old value's type, saves, and emits `setting_changed`.
 
 `MODULE_ORDER` must list exactly the catalog's ids: `tests/unit/test_dashboard.py:
@@ -183,10 +185,4 @@ test_every_feature_is_listed_in_the_wizard_and_dashboard` enforces it.
 
 ## Known rough edges
 
-- `Api._set` does not apply the hidden-key list, so with Telegram on, `POST /api/settings` can change
-  `telegram.allowed_users`, `api_base` or `chat_id`; a bare section key (`"you"`) replaces the whole section. The
-  caller is already authenticated as the same user, so this is a robustness issue rather than an exposure.
-- `Live.stop()` does not call the unsubscribe function `subscribe()` returned: each stopped server leaves an events
-  listener behind (visible in tests that start many servers).
-- `do_POST` trusts `Content-Length` (a non-numeric value raises; a negative one reads to EOF).
 - `setup.js` treats any 403 as "the page is out of date", though Host, account and Origin failures also give 403.

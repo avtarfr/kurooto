@@ -12,6 +12,20 @@ def test_paths_and_doctor(tmp_path, monkeypatch, capsys):
     assert report["problems"] == 0 and any(c["name"] == "config folder" for c in report["checks"])
 
 
+def test_doctor_bundle_says_so_when_kurooto_cant_start(tmp_path, monkeypatch, capsys):
+    import kurooto.app
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+
+    def broken():
+        raise RuntimeError("settings.json is broken")
+
+    monkeypatch.setattr(kurooto.app, "App", broken)
+    assert main(["doctor", "--bundle"]) == 1
+    out = capsys.readouterr()
+    assert "settings.json is broken" in out.out and "No diagnostics zip" in out.err
+
+
 def test_doctor_bundle_blanks_out_secrets_and_personal_details(env):
     import zipfile
 
@@ -64,3 +78,13 @@ def test_notify_when_kurooto_isnt_running(env, monkeypatch, capsys):
     monkeypatch.setattr(desktop, "notify", lambda title, text, urgent=False: shown.append((title, text)) or True)
     assert main(["notify", "--title", "Backup", "done"]) == 2
     assert shown == [("Backup", "done")] and "isn't running" in capsys.readouterr().err
+
+
+def test_call_says_2_when_kurooto_isnt_running(tmp_path, monkeypatch, capsys):
+    from kurooto import cli
+
+    monkeypatch.setenv("KUROOTO_HOME", str(tmp_path))
+    monkeypatch.setattr(cli, "ask_running", lambda *a, **k: None)
+    assert main(["call", "the backup finished"]) == 2  # like send, notify and ask-me
+    assert main(["call", "--list"]) == 2
+    assert "isn't running" in capsys.readouterr().err

@@ -101,6 +101,12 @@ def doctor(as_json: bool, make_bundle: bool = False) -> int:
         for n, ok, d in checks:
             print(f"{'ok  ' if ok else '--  ' if ok is None else 'FAIL'} {n:<22} {d}")
         print("all good" if not problems else f"{problems} problem{'s' if problems > 1 else ''}")
+    if make_bundle and app is None:  # the bundle needs Kurooto itself; say so instead of making nothing silently
+        print(
+            "\nNo diagnostics zip: Kurooto itself can't start, so it couldn't be made. Send what's above instead "
+            "(look through it first).",
+            file=sys.stderr,
+        )
     return problems
 
 
@@ -1094,7 +1100,7 @@ def call(reason: str, at: str, alarm: bool, force: bool) -> int:
     r = ask_running("call", {"reason": reason, "at": at, "alarm": alarm, "force": force})
     if r is None:
         print("Kurooto isn't running, so it can't call you (`kurooto on` starts it).", file=sys.stderr)
-        return 1
+        return 2
     print(r.get("message", ""))
     return 0 if r.get("ok") else 1
 
@@ -1184,7 +1190,7 @@ def booked_calls(cancel: str = "") -> int:
     r = ask_running("call/cancel", {"key": cancel}) if cancel else ask_running("call/list")
     if r is None:
         print("Kurooto isn't running (`kurooto on` starts it), so its booked calls can't be read.", file=sys.stderr)
-        return 1
+        return 2
     if cancel:
         print(r.get("message", ""))
         return 0 if r.get("ok") else 1

@@ -110,10 +110,10 @@ yank list), `<state>/update-ready.json` (a staged update waiting for its window)
 - Settings: `updates.mode` (`night` | `ask` | `off`), `updates.channel`, `updates.window` (`["03:00", "05:00"]`),
   `updates.staged`, `updates.wait_hours` (48), `updates.exam_hold`.
 - Schedule: `updates:check` every 6 h; `updates.probation` about 5 minutes after a start on trial; a rollback notice.
-- `check()`: emits `update_found`, then in order: `hold()` (staged wait or exams) `update_waiting`; `mode == off`
-  (a note only); `held()` (feature holds registered in `Updates.holds`, e.g. exam season) `update_held`; `ask` (a
-  Telegram message with `upd:<v>:now|later|skip` buttons, handled by `Updates.button`); otherwise stage in a thread and
-  book `updates.apply` at a random time in the window.
+- `check()`: emits `update_found`, then in order: `hold()` (staged wait, timed by `Updates.clock`, or exams)
+  `update_waiting`; `mode == off` (a note only); `held()` (feature holds registered in `Updates.holds`, e.g. exam
+  season) `update_held`; `ask` (a Telegram message with `upd:<v>:now|later|skip` buttons, handled by `Updates.button`);
+  otherwise stage in a thread and book `updates.apply` at a random time in the window.
 - `apply_if_quiet()`: waits if held; retries in 20 minutes while AI jobs run or a call is live; re-checks the yank list;
   then `switch_to()`: `Updater.switch`, `update_switch` event, `app.request_restart()`.
 - `end_probation()`: prunes and says "Kurooto updated".
@@ -156,9 +156,5 @@ installer, 0.2.0 through `kurooto update --now`, 0.3.0 built with `--break-run` 
 
 ## Known problems
 
-- `update/service.py:Updates.held` has `self.clock = time.time` after its `return`, so `Updates` never gets a `clock`
-  attribute. `Updates.hold` calls `self.clock()` when `updates.staged` is on and the release isn't critical, which raises
-  `AttributeError` (not caught by `check()`). `tests/unit/test_quick_updates.py` sets `u.clock` by hand, hiding it. The
-  assignment belongs in `__init__`.
 - `docs/RELEASING.md` describes `build --critical` and `sign --critical` as different; in code both skip every hold.
 - `update/launcher.py`'s docstring lists the phases as `trial | ok`; `rolled_back` is also written.

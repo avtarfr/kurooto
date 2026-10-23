@@ -474,7 +474,8 @@ def _tex_errors(res) -> str:
 
 def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
     """Make the PDF next to the .tex: with Tectonic (untrusted mode: no shell escape; the first run downloads the LaTeX
-    packages it needs into Kurooto's cache folder, which takes a few minutes), else with the computer's own LaTeX."""
+    packages it needs into Kurooto's cache folder, which takes a few minutes), else with the computer's own LaTeX
+    (shell escape off too: the AI wrote this LaTeX, and it never runs commands)."""
     from kurooto.core import proc
 
     exe = tectonic(app)
@@ -498,6 +499,7 @@ def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
                     "-pdf",
                     "-interaction=nonstopmode",
                     "-halt-on-error",
+                    "-no-shell-escape",  # latexmk passes it on to pdflatex
                     "-silent",
                     f"-outdir={tex.parent}",
                     str(tex),

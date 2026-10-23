@@ -102,7 +102,8 @@ The subject is found from the first words: a subject's name or short name from S
 The rest says what it's for; without it, the pack is for the next quiz or exam.
 
 **Making the PDF.** Kurooto uses **Tectonic** (a small LaTeX program) if it's installed, else LaTeX already on your
-computer (`latexmk` or `pdflatex`, e.g. TeX Live, MiKTeX or MacTeX). With neither:
+computer (`latexmk` or `pdflatex`, e.g. TeX Live, MiKTeX or MacTeX). Either way the LaTeX can't run commands on your
+computer (shell escape is off), since an AI wrote it. With neither:
 - the pack comes as a `.tex` file, and a message asks **Install Tectonic** / **Not now**;
 - **Install Tectonic** downloads it (about 25 MB, from Tectonic's official releases) and then makes the PDF of the
   pack that was waiting. The first PDF takes a few minutes while it fetches about 50 MB of LaTeX packages into

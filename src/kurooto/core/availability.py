@@ -137,6 +137,8 @@ class Availability:
 
     # gates for the scheduler: when to postpone a job to
     def quiet_gate(self, at_utc: dt.datetime) -> dt.datetime | None:
+        """respect="quiet": a message job (a check-in, a quiz, the morning list) waits out focus time, like the
+        messages focus holds; "no calls until X" (quiet_until) lets messages through, so it doesn't hold them."""
         t = at_utc.astimezone().replace(tzinfo=None)
         f = self.focus_until(t)
         return f.astimezone() if f else None

@@ -98,8 +98,9 @@ notes and files): see [ai-brains.md](ai-brains.md#what-the-ai-can-do-its-tools).
 as the last one was within 2 hours; after 2 hours of quiet a new message starts fresh. Requests from a terminal start
 fresh every time. Background requests (digests, the look back) never become part of the chat.
 
-**Limits.** Telegram messages hold about 4,000 characters, so long answers come in parts (at most six); answers over
-about 7,000 characters also come as a file. A request that's stuck for 10 minutes is stopped with a message.
+**Limits.** Telegram messages hold about 4,000 characters, so long answers come in parts; past six parts, the first
+five come and then the whole text as a file (nothing is cut off). Answers over about 7,000 characters also come as a
+file. A request that's stuck for 10 minutes is stopped with a message.
 
 **What leaves your computer:** what you ask, and the notes it reads, go to the AI you picked.
 

@@ -38,12 +38,14 @@ import datetime as dt
 import json
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
+from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from kurooto.core.config import register_defaults
+from kurooto.core.events import lines_back
 from kurooto.core.state import jload, jsave
 
 if TYPE_CHECKING:
@@ -114,27 +116,6 @@ class Result:
 
 
 # ------------------------------------------------------------------------------------- the event log, read cheaply
-def _lines_back(file: Path, end: int) -> Iterator[str]:
-    """The event log's lines from byte `end` backwards (newest first)."""
-    try:
-        f = open(file, "rb")  # noqa: SIM115 (a generator keeps it open while it's read)
-    except OSError:
-        return
-    with f:
-        pos, rest = end, b""
-        while pos > 0:
-            n = min(1 << 20, pos)
-            pos -= n
-            f.seek(pos)
-            parts = (f.read(n) + rest).split(b"\n")
-            rest = parts[0]
-            for ln in reversed(parts[1:]):
-                if ln:
-                    yield ln.decode("utf-8", "replace")
-        if rest:
-            yield rest.decode("utf-8", "replace")
-
-
 def _ts(line: str) -> float | None:
     try:
         return dt.datetime.fromisoformat(line[8:27]).timestamp()  # {"ts": "2026-10-20T21:00:00", ...
@@ -188,7 +169,8 @@ class Latest:
                 return found
             stop = dt.datetime.fromtimestamp(horizon).isoformat()[:19]
             found = None
-            for ln in _lines_back(self.file, size):
+            older = self.file.with_name(self.file.name + ".1")  # moved aside when it grew (core/events.py)
+            for ln in chain(lines_back(self.file, size), lines_back(older)):
                 if ln[8:27] < stop and ln.startswith('{"ts": "'):
                     break
                 found = hit(ln)

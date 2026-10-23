@@ -323,7 +323,8 @@ class Presence:
         """Reminders that fired late and calls your call line placed, since it came back (from the event log)."""
         try:
             with open(self.app.events.file, "rb") as f:
-                f.seek(int(mark or 0))
+                end = f.seek(0, 2)
+                f.seek(int(mark or 0) if int(mark or 0) <= end else 0)  # smaller: the log was trimmed since (events.py)
                 lines = f.read(4_000_000).decode("utf-8", "replace").splitlines()
         except (OSError, ValueError):
             return 0, 0

@@ -51,6 +51,20 @@ def test_protections(web):
     assert code == 200 and srv.token in page and "Set up Kurooto" in page
 
 
+def test_a_bad_content_length_is_refused(web):
+    import http.client
+
+    app, srv = web
+    for length, want in (("abc", 400), ("-1", 400), ("5000000", 413)):
+        c = http.client.HTTPConnection("127.0.0.1", 18770, timeout=5)
+        c.putrequest("POST", "/api/you")
+        for k, v in (("X-Kurooto", srv.token), ("Content-Type", "application/json"), ("Content-Length", length)):
+            c.putheader(k, v)
+        c.endheaders()
+        assert c.getresponse().status == want
+        c.close()
+
+
 def test_wizard_end_to_end(web):
     app, srv = web
     fake_tg, ai = FakeTelegram(), FakeOpenAI()

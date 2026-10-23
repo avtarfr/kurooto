@@ -536,6 +536,14 @@ class Google(Module):
             self._save_tokens(fresh, account)
             return fresh["access_token"]
 
+    def _forget_access(self, account: str = MAIN) -> None:
+        """Drop the access token (not the sign-in): the next call gets a new one."""
+        with Lock(self.app.paths.state, "google-token"):
+            t = self.tokens(account)
+            t.pop("access_token", None)
+            t["expires"] = 0
+            self.app.secrets.set(self._secret(account), json.dumps(t))
+
     def _lost_signin(self, account: str = MAIN) -> None:
         t = self.tokens(account)
         t.pop("refresh_token", None)
@@ -565,9 +573,11 @@ class Google(Module):
         method: str | None = None,
         raw: int = 0,
         account: str = MAIN,
+        again: bool = False,
     ) -> dict | bytes:
         """Call a Google API as one of your accounts. raw=N: the response's bytes (a file), at most N of them (more
-        raises GoogleError 413)."""
+        raises GoogleError 413). A refused access token is renewed once; only Google's invalid_grant on renewing it
+        ends the sign-in (access_token)."""
         req = urllib.request.Request(  # noqa: S310 (Google's APIs, https)
             f"{self.ep(service)}{path}",
             data=None if body is None else json.dumps(body).encode(),
@@ -583,8 +593,10 @@ class Google(Module):
                     return data
                 return json.loads(r.read() or b"{}")
         except urllib.error.HTTPError as e:
+            if e.code == 401 and not again:  # the access token was refused (expired early): once more with a new one
+                self._forget_access(account)
+                return self.api(service, path, body, method, raw, account, again=True)
             if e.code == 401:
-                self._lost_signin(account)
                 raise NeedsSignIn("Google refused the sign-in") from None
             try:
                 msg = json.loads(e.read()).get("error", {}).get("message", "")
@@ -611,6 +623,7 @@ class Google(Module):
 
     # -------------------------------------------------------------------------------- Classroom
     def start(self):
+        self.app.jobs.then_actions["google.draft"] = self._draft_done  # a draft the AI finishes after a restart
         if self.setting("classroom"):
             self.every("classroom", self.setting("classroom_every") or "every 3h", lambda p: self.classroom_sync())
 
@@ -793,7 +806,6 @@ class Google(Module):
             return self.make_draft(to, subject.strip(), body.strip())
         if not self.app.is_on("chat"):
             return "Turn on Chat for AI-written drafts, or write it yourself: /draft to | subject | body"
-        self.app.jobs.then_actions["google.draft"] = self._draft_done
         self.app.jobs.submit(
             f"Write an email to {to}. What it should say: {what}\n\nReply with exactly:\nSubject: <subject>\n\n<body>\n"
             "Plain text, the sender's voice, no placeholders. Don't send anything; it becomes a draft.",

@@ -191,6 +191,16 @@ def test_nocall_and_focus_events(env):
     assert c._tags({"title": "Lunch"}) == {}
 
 
+def test_respect_quiet_waits_out_focus_not_no_calls(env):
+    av = env.app.availability
+    t = now().astimezone()
+    av.set_quiet(now() + dt.timedelta(hours=1))  # "no calls until X": messages still come
+    assert av.quiet_gate(t) is None
+    until = (now() + dt.timedelta(hours=2)).replace(microsecond=0)
+    av.set_focus(until)  # do-not-disturb: a check-in or quiz message waits for it
+    assert av.quiet_gate(t) == until.astimezone()
+
+
 def test_focus_event_end_delivers_what_waited(env, monkeypatch):
     c = env.app.modules["calendar"]
     t0 = dt.datetime.now().astimezone().replace(microsecond=0)

@@ -12,14 +12,15 @@ What a user sees and is told to do is in [../user/troubleshooting.md](../user/tr
 1. `kurooto paths`: where config, data, state, logs, cache and the program are (`core/paths.py:paths`).
 2. `kurooto doctor` (`cli.py:doctor`, rows from `diagnostics.py:checks`): exit code = number of `FAIL` rows.
 3. `kurooto logs -n 200` (`watch.py:follow_log` on `<logs>/kurooto.log`).
-4. The event log: `<state>/events.jsonl`, one JSON object per line, newest last.
+4. The event log: `<state>/events.jsonl`, one JSON object per line, newest last (past 10 MB the older part is in
+   `events.jsonl.1`).
 5. `kurooto top --once`: the machine, what's on, open questions, jobs, what's scheduled next.
 
 ## `kurooto doctor`
 
-- Builds a full `App()`. If that fails, only basic rows are shown (Python, folders writable) and `--bundle` is
-  silently not made; the exception is the bug, so run `python -c "from kurooto.app import App; App()"` in a scratch
-  `KUROOTO_HOME` to see it.
+- Builds a full `App()`. If that fails, only basic rows are shown (Python, folders writable), and with `--bundle` a line
+  on stderr says no zip could be made; the exception is the bug, so run `python -c "from kurooto.app import App; App()"`
+  in a scratch `KUROOTO_HOME` to see it.
 - Rows (`diagnostics.checks`): Python, OS, the folders writable, free space (at least 5 GB), running
   (`<state>/daemon.json` pid), time zone (`timezone_check`), the AI brain, each enabled module's `health()` (for
   calls, `call_line()` when doctor runs outside the daemon), `more_checks` (Telegram `getMe`, agent export, add-ons'
