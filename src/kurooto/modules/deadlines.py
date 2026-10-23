@@ -267,12 +267,15 @@ class Deadlines(Module):
         return f"{self.full_title(it)}: {done}/{total}, {left}."
 
     def meeting_briefs(self) -> list[str]:
-        """The evening before a "Meeting: <who>" deadline whose person a project note is With: what's been logged in
-        that project since you last met, the open next steps and the last meeting's line. Once per meeting."""
-        from kurooto.core import infer
+        """The evening before a meeting with someone a project note is With (a "Meeting: <who>" deadline, or the
+        note's weekly "Meets:" line; core/meetings.py): what's been logged in that project since you last met, the
+        open next steps, the last meeting's line and minutes. Once per meeting. Action items you said Later to come
+        back here too."""
+        from kurooto.core import infer, meetings
 
         tomorrow = now().date() + dt.timedelta(days=1)
         sent = []
+        briefed = set()
         for i, it in list(self.items().items()):
             due = dt.datetime.fromisoformat(it["due"])
             if it.get("status") != "open" or due.date() != tomorrow or "briefed" in it.get("told", []):
@@ -293,6 +296,16 @@ class Deadlines(Module):
             self.app.notify(text, kind="info", title="Meeting brief", why="deadlines.meeting_brief", about=who)
             self.app.events.emit("meeting_brief", lines=text.count("\n"))
             sent.append(text)
+            briefed.add(str(hit[0]))
+        for note, who, due in meetings.on_day(self.app, tomorrow, deadlines=False):  # weekly ones ("Meets:")
+            if str(note) in briefed or not meetings.briefed(self.app, note, tomorrow):
+                continue
+            briefed.add(str(note))
+            text = infer.brief(note, who, due)
+            self.app.notify(text, kind="info", title="Meeting brief", why="deadlines.meeting_brief", about=who)
+            self.app.events.emit("meeting_brief", lines=text.count("\n"))
+            sent.append(text)
+        meetings.offers_due(self.app)
         return sent
 
     def full_title(self, it: dict) -> str:

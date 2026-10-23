@@ -77,6 +77,11 @@ class App:
 
         self.updates = Updates(self)
         self.jobs.then_actions["aboutyou.save"] = self.about.save_profile
+        from kurooto.core import meetings  # notes after a meeting become minutes through your AI (core/meetings.py)
+
+        self.jobs.then_actions["meetings.minutes"] = lambda job, result, p: meetings.minutes_written(
+            self, job, result, p
+        )
         from kurooto.core.ask import Ask  # questions and approvals for you, from any feature (app.ask)
 
         self.ask = Ask(self)
@@ -456,6 +461,10 @@ class App:
             from kurooto.core import threads  # "I'll send the draft tonight": an open thread (core/threads.py)
 
             threads.observe(self, text, via="chat")
+            from kurooto.core import meetings  # "about the meeting with X: ...": minutes in its project note
+
+            if meetings.take(self, msg, text):
+                return
         books = self.modules.get("books")  # a PDF sent as "book for <subject>" goes to that subject's books
         if msg.files and books is not None and self.is_on("books"):
             out = books.take_book(msg)
@@ -535,6 +544,10 @@ class App:
         if syncall.wanted(text) or text.lower().split("@")[0] == "/sync":
             msg.reply(syncall.start(self)[1])
             return
+        from kurooto.core import meetings  # a voice note or long note just after a meeting: its minutes
+
+        if text and meetings.take(self, msg, text, window=True):
+            return
         chat = self.modules.get("chat")
         if chat and chat in mods and (text or msg.files):  # a photo or file comes with it, for the AI to open
             out = chat.ask(msg)
@@ -611,6 +624,10 @@ class App:
             from kurooto.core import infer
 
             return infer.undo(self, ref)
+        if prefix == "mtg":  # a meeting's action items, None, Later, Not about the meeting (core/meetings.py)
+            from kurooto.core import meetings
+
+            return meetings.button(self, ref, act)
         if prefix == "ton":  # Turn on / Not now under a request a feature that's off would do (core/turnon.py)
             from kurooto.core import turnon
 

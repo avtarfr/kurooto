@@ -7,6 +7,9 @@ comes in one line with Undo, and /inferred lists them (/inferred undo <id>).
     "met Ortiz today, we fixed the forcing" (someone a project is With, said in the first person)
         -> a dated line under that project's ## Meetings; a meeting ahead ("meeting with Ortiz friday at 4")
            also becomes a deadline ("Meeting: Prof Lena Ortiz"), so it's planned around and reminded
+    "I meet my manager Mira Castell every Monday at 10 about onboarding" (any role, in your word)
+        -> "With: Mira Castell (manager)" and "Meets: every Mon 10:00" in Kurooto's block of that project's note: a
+           brief the evening before each one, and minutes from what you send after it (core/meetings.py)
     "every Monday at 9 I have a Linear Algebra lab" / "I have an LA tutorial every wed at 14:00"
         -> a class in the timetable (for a subject you have; it holds calls), 55 minutes unless the end is said
     "every Tuesday and Thursday at 7pm I go to the gym" / "I work a shift every weekend from 9 to 5"
@@ -71,8 +74,8 @@ TOPIC = re.compile(
     r"(?i)^\s*(?:on|about|in)\s+(?P<topic>[^,;]{3,60}?)\s*(?=\b(?:under|with|supervised|guided|advised)\b|$)"
 )
 TOPIC_AFTER = re.compile(r"(?i)\b(?:on|about)\s+(?P<topic>[^,;]{3,60}?)\s*$")
+MINUTES = re.compile(r"<!-- kurooto:minutes-(\d{4}-\d{2}-\d{2}) -->\n(.*?)\n<!-- /kurooto:minutes-", re.S)
 WITH_LINE = re.compile(r"(?m)^With:\s*(?P<who>.+?)\s*\((?P<role>[^)]+)\)\s*$")
-LAST_MET = re.compile(r"(?m)^Last met: \d{4}-\d{2}-\d{2}$")
 MEET = re.compile(
     r"(?i)\b(?:met|meeting|meet|meets|talked to|talk to|spoke to|spoke with|speak to|discussed with|call with|"
     r"caught up with|catch up with|catching up with)\b"
@@ -210,17 +213,12 @@ def _project(app: App, sentence: str) -> dict | None:
     note = research.project_note(app, name)
     made = not note.exists()
     research.ensure_project(app, name, assistant=app.name)
-    text = note.read_text(encoding="utf-8")
-    head = f"# {name}\n"
+    from kurooto.core import meetings
+
+    text = meetings.set_fields(note.read_text(encoding="utf-8"), who=who, role=role)  # in Kurooto's block
     line = f"With: {who} ({role})\n"
-    if head in text:
-        text = text.replace(head, head + "\n" + line, 1)
-    else:
-        text = line + text
     if "## Meetings" not in text:
-        text = (
-            text.replace("## Log\n", "## Meetings\n\n## Log\n", 1) if "## Log\n" in text else text + "\n## Meetings\n"
-        )
+        text = add_section(text, "Meetings")
     note.write_text(text, encoding="utf-8")
     from kurooto.core import layout
 
@@ -235,6 +233,9 @@ def _project(app: App, sentence: str) -> dict | None:
 def _meeting(app: App, sentence: str) -> dict | None:
     if not MEET.search(sentence) or not FIRST.search(sentence) or NOT.search(sentence):
         return None
+    got = _recurring(app, sentence)
+    if got is not None:
+        return got or None
     for note, who, _role in projects_with(app):
         last = who.split()[-1]
         if not re.search(rf"(?i)\b{re.escape(last)}\b", sentence):
@@ -261,24 +262,111 @@ def _meeting(app: App, sentence: str) -> dict | None:
             text = text.replace("## Meetings\n", f"## Meetings\n{line}\n", 1)
         else:
             text = text.rstrip() + f"\n\n## Meetings\n{line}\n"
-        last = LAST_MET.search(text)
-        before = last[0] if last else None
-        met = f"Last met: {now():%Y-%m-%d}"
-        if last:
-            text = text[: last.start()] + met + text[last.end() :]
-        else:  # under the "With:" lines
-            w = list(WITH_LINE.finditer(text))
-            at = (text.find("\n", w[-1].start()) % (len(text) + 1)) if w else 0  # the end of the last one's line
-            text = text[:at] + ("\n" if at else "") + met + ("" if at else "\n") + text[at:]
-        from kurooto.core import layout
+        from kurooto.core import layout, meetings
 
+        block_before = meetings.block_body(text, meetings.BLOCK)
+        text = meetings.set_fields(text, met=f"{now():%Y-%m-%d}")  # "Last met:" in Kurooto's block
         note.write_text(text, encoding="utf-8")
         return {
             "kind": "meeting",
             "line": f"Logged a meeting with {who} in {layout.shown(app, note)}.",
-            "undo": {"file": str(note), "remove": line, "met": met, "met_before": before},
+            "undo": {"file": str(note), "remove": line, "block_before": block_before},
         }
     return None
+
+
+ROLE = r"(?P<role>(?:[A-Za-z]+\s+)?[a-z][a-z-]+)"
+PERSON = re.compile(
+    r"^(?:(?i:my|our)\s+" + ROLE + r"\s*,?\s+)?(?:(?P<title>" + TITLE + r")\s*)?(?P<name>" + NAME + r")"
+    r"(?:\s*,?\s+(?i:about|on|for|to discuss)\s+(?P<topic>[^,;]{3,60}?))?\s*$"
+)
+TOPIC_REST = re.compile(r"(?i)^\s*,?\s*(?:about|on|for|to discuss)\s+(?P<topic>[^,;]{3,60}?)\s*$")
+MDAY = r"(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*"
+MDAYS = r"(?P<days>" + MDAY + r"(?:\s*(?:,|and|&)\s*" + MDAY + r")*)"
+MSPAN = r"(?:at\s+)?(?P<s>" + TIME + r")"
+MVERB = (
+    r"(?:meet(?:\s+with)?|see|have\s+(?:a\s+|my\s+|our\s+)?(?:weekly\s+)?(?:meeting|call|catch[- ]up|check[- ]in|"
+    r"one[- ]on[- ]one|1:1|sync)\s+with)"
+)
+RECURRING = (
+    re.compile(
+        r"(?i:\b(?:i|we)\s+"
+        + MVERB
+        + r")\s+(?P<person>.+?)\s+(?i:(?:on\s+)?every\s+"
+        + MDAYS
+        + r"\s*,?\s*"
+        + MSPAN
+        + r")(?P<rest>[^.!?;]*)"
+    ),
+    re.compile(
+        r"(?i:\bevery\s+" + MDAYS + r"\s*,?\s*" + MSPAN + r"\s*,?\s*(?:i|we)\s+" + MVERB + r")\s+"
+        r"(?P<person>[^.,;!?]+)"
+    ),
+    re.compile(
+        r"(?i:\b(?:i|we)\s+have\s+(?:a\s+|my\s+|our\s+)?weekly\s+(?:meeting|call|catch[- ]up|check[- ]in|"
+        r"one[- ]on[- ]one|1:1|sync)\s+with)\s+(?P<person>.+?)\s+(?i:on\s+" + MDAYS + r"\s*,?\s*" + MSPAN + r")"
+        r"(?P<rest>[^.!?;]*)"
+    ),
+)
+
+
+def _recurring(app: App, sentence: str) -> dict | bool | None:
+    """ "I meet my manager Priya Rao every Monday at 10": "Meets: every Mon 10:00" (and their "With:" line, when no
+    project note has them yet: a new one, "Meetings with Priya Rao") in Kurooto's block of the project note, so the
+    evening before each one a brief comes and notes after it become minutes (core/meetings.py). None: not a weekly
+    meeting; False: one, but nothing to set up (someone unknown said without a role or title, or known already)."""
+    from kurooto.core import layout, meetings
+    from kurooto.modules import commitments as rt
+
+    for rx in RECURRING:
+        m = rx.search(sentence)
+        if not m:
+            continue
+        days, start = rt.parse_days(m["days"].replace(",", " ")), _hm(m["s"])
+        p = PERSON.match(m["person"].strip())
+        if not days or not start or not p:
+            return False
+        title = (p["title"] or "").strip().rstrip(".")
+        title = {"prof": "Prof", "professor": "Prof", "dr": "Dr", "mr": "Mr", "mrs": "Mrs", "ms": "Ms"}.get(
+            title.lower(), ""
+        )
+        who = f"{title} {p['name']}".strip()
+        role = (p["role"] or "").strip().lower() or None
+        hit = next((x for x in projects_with(app) if x[1].split()[-1].lower() == who.split()[-1].lower()), None)
+        made = False
+        if hit is None:
+            if not role and not title:
+                return False  # someone you meet, but nothing says who they are to you
+            from kurooto.modules import research
+
+            t = p["topic"] or (TOPIC_REST.match(m.groupdict().get("rest") or "") or {"topic": ""})["topic"]
+            topic = t.strip().rstrip(" .")
+            name = topic[:1].upper() + topic[1:] if topic else f"Meetings with {who}"
+            note = research.project_note(app, name)
+            made = not note.exists()
+            research.ensure_project(app, name, assistant=app.name)
+        else:
+            note, who = hit[0], hit[1]
+        before = note.read_text(encoding="utf-8")
+        meets = meetings.meets_text(days, start)
+        text = meetings.set_fields(before, who=who, role=role, meets=meets)
+        if "## Meetings" not in text:
+            text = add_section(text, "Meetings")
+        if text == before:
+            return False
+        note.write_text(text, encoding="utf-8")
+        return {
+            "kind": "meetings",
+            "line": f"You meet {who} {meets}: it's in {layout.shown(app, note)}. The evening before each meeting a "
+            "brief comes from it, and notes you send after one become its minutes.",
+            "undo": {"file": str(note), "made": made, "note_before": before, "hash": _key(text)},
+        }
+    return None
+
+
+def add_section(text: str, name: str) -> str:
+    """An empty "## <name>" before "## Log" (else at the end)."""
+    return text.replace("## Log\n", f"## {name}\n\n## Log\n", 1) if "## Log\n" in text else text + f"\n## {name}\n"
 
 
 # -------------------------------------------------------------------------------------------- classes
@@ -314,10 +402,14 @@ def _class(app: App, sentence: str) -> dict | None:
 
 def brief(note: Path, who: str, due: dt.datetime) -> str:
     """A meeting brief from a project note: since the "Last met" date (else two weeks), the Log's dated lines, the
-    open "## Next steps" items, and the last Meetings line."""
-    text = note.read_text(encoding="utf-8")
-    m = LAST_MET.search(text)
-    since = m[0].split(": ", 1)[1] if m else f"{now().date() - dt.timedelta(days=14):%Y-%m-%d}"
+    open "## Next steps" items (yours and the action items from minutes), the last Meetings line and the last
+    minutes' summary."""
+    from kurooto.core import meetings
+
+    full = note.read_text(encoding="utf-8")
+    m = meetings.last_met(full)
+    since = m or f"{now().date() - dt.timedelta(days=14):%Y-%m-%d}"
+    text = meetings.outside(full)  # the Meetings lines are yours; minutes come from their own blocks below
 
     def section(name: str) -> list[str]:
         s = re.search(rf"(?ms)^## {name}\n(.*?)(?=^## |\Z)", text)
@@ -328,8 +420,14 @@ def brief(note: Path, who: str, due: dt.datetime) -> str:
         d = re.search(r"\d{4}-\d{2}-\d{2}", ln)
         if d and d[0] >= since:
             logged.append("- " + re.sub(r"\*\*|^[-*]\s*", "", ln)[:200])
-    steps = ["- " + ln[5:].strip()[:200] for ln in section("Next steps") if ln.startswith(("- [ ]", "* [ ]"))]
-    meetings = section("Meetings")
+    open_steps = re.search(r"(?ms)^## Next steps\n(.*?)(?=^## |\Z)", full)
+    steps = [
+        "- " + ln.strip()[5:].strip()[:200]
+        for ln in (open_steps[1].splitlines() if open_steps else [])
+        if ln.strip().startswith(("- [ ]", "* [ ]"))
+    ]
+    met = section("Meetings")
+    minutes = sorted(re.findall(MINUTES, full))
     title = re.search(r"(?m)^# (.+)$", text)
     out = [f"Tomorrow at {due:%H:%M}: meeting with {who}" + (f" ({title[1].strip()})." if title else ".")]
     when = "since you last met" if m else "in the last two weeks"
@@ -337,8 +435,13 @@ def brief(note: Path, who: str, due: dt.datetime) -> str:
     out += logged[-8:]
     if steps:
         out += ["Open next steps:", *steps[:5]]
-    if meetings:
-        out.append("Last time: " + re.sub(r"^[-*]\s*", "", meetings[0])[:200])
+    if met:
+        out.append("Last time: " + re.sub(r"^[-*]\s*", "", met[0])[:200])
+    if minutes:
+        day, body = minutes[-1]
+        points = [ln[2:].strip() for ln in body.split("\n") if ln.startswith("- ")][:3]
+        if points:
+            out += [f"From the minutes of {day}:", *("- " + p[:200] for p in points)]
     return "\n".join(out)
 
 
@@ -462,10 +565,24 @@ def undo(app: App, iid: str) -> str:
         if it.get("undone"):
             return "Undone already."
         u = it["undo"]
-        if "file" in u and "remove" in u:  # a meeting line (and the "Last met" it set)
+        if "note_before" in u:  # a weekly meeting: the note as it was, unless it changed since
+            f = Path(u["file"])
+            if f.is_file():
+                if _key(f.read_text(encoding="utf-8")) != u["hash"]:
+                    return "That note changed since, so it's left as it is: edit its Meets line yourself."
+                if u.get("made"):
+                    f.unlink()
+                else:
+                    f.write_text(u["note_before"], encoding="utf-8")
+        elif "file" in u and "remove" in u:  # a meeting line (and the "Last met" it set)
+            from kurooto.core import meetings
+
             f = Path(u["file"])
             if f.is_file():
                 text = f.read_text(encoding="utf-8").replace(u["remove"] + "\n", "", 1)
+                if "block_before" in u:  # Kurooto's block as it was (0.5.20 on)
+                    old = u["block_before"]
+                    text = meetings.put(text, meetings.BLOCK, old) if old else meetings.drop(text, meetings.BLOCK)
                 if u.get("met"):
                     old = u.get("met_before")
                     text = text.replace(u["met"], old, 1) if old else text.replace(u["met"] + "\n", "", 1)
@@ -477,7 +594,12 @@ def undo(app: App, iid: str) -> str:
                 if u.get("made") and _key(text) == u.get("hash"):
                     f.unlink()
                 else:
-                    f.write_text(text.replace(u["with"] + "\n", "", 1), encoding="utf-8")
+                    from kurooto.core import meetings
+
+                    text = text.replace(u["with"] + "\n", "", 1)
+                    if meetings.block_body(text, meetings.BLOCK) == "":  # the block held only that line
+                        text = meetings.drop(text, meetings.BLOCK)
+                    f.write_text(text, encoding="utf-8")
         elif "class" in u:
             row = u["class"]
             tt = app.settings.get("subjects.timetable") or []

@@ -55,9 +55,11 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - **Notation crosswalk.** When a concept appears in a second source, its notation and conventions are written side
   by side (B_t vs W_t, Fourier 2π), quote-checked like every graph claim.
 - **Near-duplicate concepts.** "Wiener process" and "Brownian motion": Merge / Keep both / Add alias.
-- **Supervisor meeting brief.** (0.5.10 has the brief from the project note; still to come: a voice note becoming
+- ~~**Supervisor meeting brief.** (0.5.10 has the brief from the project note; still to come: a voice note becoming
   minutes, action items becoming deadlines.) The evening before a tagged meeting, a page from the project log since the last
-  one; after it, a voice note becomes minutes, and action items become deadlines on a tap.
+  one; after it, a voice note becomes minutes, and action items become deadlines on a tap.~~ (0.5.20: for any
+  meeting with someone a project note is With, weekly ones included; a voice note or typed note after it becomes
+  minutes through your AI, and each action item is a deadline on a tap)
 - **Run compare.** `kurooto runlog diff A B` and `/runs compare`: config differences, code diff, metrics and loss
   curves side by side, written to the project's notes.
 - **LaTeX writing tracker.** Nightly build of your `.tex` repos: errors, undefined references, missing citations
@@ -73,9 +75,10 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 ## From the skeptic review (2026-10-23)
 Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.
 - **Make the panel's ideas general**: link recall cards and ~~the revision plan~~ (0.5.16) also draw on course notes
-  and Classroom files, not only books; the meeting brief is for any recurring meeting ("With: X", their role in your
-  own word: guide, manager, coach); "check my attempt" becomes "check my draft" (essays, accounts working, code,
-  proofs); missed-class catch-up works without Classroom.
+  and Classroom files, not only books; ~~the meeting brief is for any recurring meeting ("With: X", their role in your
+  own word: guide, manager, coach)~~ (0.5.20, with "Meets:", "Last met" and Next steps kept in Kurooto's block);
+  "check my attempt" becomes "check my draft" (essays, accounts working, code, proofs); missed-class catch-up works
+  without Classroom.
 - **A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking. Bedside
   mode is an Android add-on.
 - ~~**No college-term defaults**: the check-in times and Start-by's day window are learned from when you actually

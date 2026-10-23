@@ -23,6 +23,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Hint ladder](#hint-ladder) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back) · [Learns from its own work](#learns-from-its-own-work) · [Dreaming](#dreaming) · [Set up from what you say](#set-up-from-what-you-say) ·
+    [Meetings: minutes and action items](#meetings-minutes-and-action-items) ·
     [Wrong button and test cases](#wrong-button-and-test-cases)
   - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) ·
     [Reminders with the lid shut](#reminders-with-the-lid-shut) · [Voice notes](#voice-notes) ·
@@ -1275,9 +1276,11 @@ a stub it made is a plain note you can delete; `/unignore <topic>` takes back No
 
 **What it does.** "I got a project under Prof X on <topic>" (in the chat or your journal) starts that project's note
 with "With: Prof X (supervisor)" and a Meetings section; "met X today, ..." adds a dated line there and sets "Last
-met: <date>"; "a meeting with X on Friday at 4" becomes a deadline, and the evening before (20:00,
+met: <date>"; "a meeting with X on Friday at 4" becomes a deadline; "I meet my manager Mira Castell every Monday at
+10 about onboarding" (any role, in your word) puts "With:" and "Meets: every Mon 10:00" in that project's note (see
+[Meetings: minutes and action items](#meetings-minutes-and-action-items)); the evening before a meeting (20:00,
 `deadlines.meeting_brief`) a meeting brief comes from that project's note: its Log since you last met, its open "##
-Next steps" and the last meeting's line; "every Monday at 9 I have a <subject> lab" puts
+Next steps", the last meeting's line and the last minutes; "every Monday at 9 I have a <subject> lab" puts
 the class in your timetable; "every Tuesday and Thursday at 7pm I go to the gym" or "I work a shift every weekend from
 9 to 5" adds a [commitment](#commitments) (an hour long unless you say the end; Commitments is turned on if it was
 off); "by POTA I mean Physics of the Atmosphere" or "I call stochastic calculus stoch" gives that subject the short
@@ -1286,6 +1289,24 @@ lists them. Settings `infer.on`, `infer.projects`, `infer.meetings`, `infer.clas
 `infer.commitments`.
 
 **Undo.** The Undo button, or `/inferred undo <id>`; `infer.on` = false stops it.
+
+### Meetings: minutes and action items
+
+**What it does.** For a meeting with someone a project note is With (a "Meeting: X" deadline, or the note's weekly
+"Meets:" line), what you send after it becomes minutes in that note through your AI (one request; needs Chat): a voice
+note within 3 hours of its start (`meetings.after_h`), a typed note of 20+ words then that nothing else answers, or a
+message starting "about the meeting with X:" / "notes from today's meeting:". The reply names the meeting, with **Not
+about the meeting** (the minutes come out and the message goes to your AI as usual). The minutes go under `## Meetings`
+in Kurooto's block for that day (`<!-- kurooto:minutes-YYYY-MM-DD -->`), "Last met" moves to that day, and the action
+items go as `- [ ]` lines in Kurooto's block under `## Next steps`. They come back as buttons on Telegram and in the
+phone app's chat: **Add N** makes that item a deadline (the date said, else your next meeting with them, else a week
+on), **None**, **Later** (back the next evening). No deadline is made without the tap. "With:", "Meets:" and "Last
+met:" live in Kurooto's `<!-- kurooto:meeting -->` block; only Kurooto's blocks are rewritten, never your text (a note
+from before 0.5.20 keeps its own lines). If the AI fails, your notes go into the minutes block as you sent them.
+Settings `meetings.minutes`, `meetings.after_h`.
+
+**Undo.** **Not about the meeting** puts the note's blocks back as they were; a deadline you added: Drop on it, or
+`/deadlines`. `meetings.minutes` = false stops minutes.
 
 ### Wrong button and test cases
 When Kurooto gets a plain-English request wrong, tap **Wrong** under its reply (or under the AI's answer), or send
