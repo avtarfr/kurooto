@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes and the concept graph · User wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="User wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>User wiki</strong>: <a href="index.html">Start</a> <a href="commands.html">Commands</a> <a href="getting-started.html">Getting started</a> <a href="ai-brains.html">AI brains</a> <a href="talking-to-kurooto.html">Talking to Kurooto</a> <a href="messages-it-sends.html">Messages Kurooto sends by itself</a> <a href="reminders-and-deadlines.html">Reminders and deadlines</a> <a href="check-ins-and-journal.html">Check-ins and journal</a> <a href="calls.html">Phone calls and the morning alarm</a> <a href="phone-app.html">Your phone</a> <a href="classes-and-timetable.html">Classes, timetable and calendar</a> <a href="quiz-and-exams.html">Quiz and exams</a> <a href="books-and-study.html">Books and study</a> <a href="notes-and-concept-graph.html" aria-current="page">Notes and the concept graph</a> <a href="skills-and-routines.html">Skills and routines</a> <a href="research.html">Research</a> <a href="google.html">Google: Classroom, Gmail, Calendar and Drive</a> <a href="teaching-kurooto.html">Teaching Kurooto about you</a> <a href="dashboard.html">The dashboard</a> <a href="your-computer.html">Your computer</a> <a href="updates-and-backups.html">Updates, backups and moving</a> <a href="privacy.html">Privacy: what stays and what leaves</a> <a href="add-ons.html">Add-ons, scripts and other programs</a> <a href="faq.html">FAQ</a> <a href="troubleshooting.html">Troubleshooting</a> <a href="glossary.html">Glossary</a> · <a href="../dev/index.html">Developer wiki</a></nav>
+<h1 id="notes-and-the-concept-graph">Notes and the concept graph</h1>
+<p>Kurooto keeps everything it writes for you in one folder of plain Markdown files: your <strong>notes folder</strong>. You can open it in any editor, or as an Obsidian vault. This page covers that folder and the features that work on it: saving files and quick notes, searching by meaning, syncing to GitHub, and the concept graph that weaves books into linked notes.</p>
+<ul><li><a href="#your-notes-folder">Your notes folder</a></li><li><a href="#where-each-kind-of-note-goes-layouts">Where each kind of note goes (layouts)</a></li><li><a href="#the-files-folder-keeping-photos-and-pdfs-out-of-your-notes">The files folder: keeping photos and PDFs out of your notes</a></li><li><a href="#home-and-hub-notes">Home and hub notes</a></li><li><a href="#what-kurooto-never-does-to-your-text">What Kurooto never does to your text</a></li><li><a href="#files-into-notes">Files into notes</a></li><li><a href="#quick-notes-and-prompts">Quick notes and prompts</a></li><li><a href="#notes-brain-search-by-meaning">Notes brain (search by meaning)</a></li><li><a href="#notes-sync-github">Notes sync (GitHub)</a></li><li><a href="#sync-everything">Sync everything</a></li><li><a href="#concept-graph">Concept graph</a></li></ul>
+<p>Skills that write notes for you (<code>/journal</code>, <code>/study-log</code>, <code>/add-to-notes</code> and the rest) are on <a href="../../wiki/user/skills-and-routines.html">Skills and routines</a>. Books and handwritten pages are on <a href="../../wiki/user/books-and-study.html">Books and study</a>.</p>
+<hr>
+<h2 id="your-notes-folder">Your notes folder</h2>
+<p><strong>What it is.</strong> A normal folder of Markdown (<code>.md</code>) files. Links between notes are <code>[[wikilinks]]</code>, the same kind Obsidian, Logseq and many other note apps use. Nothing is stored in a database you can't read: if you stop using Kurooto, the notes stay exactly as they are.</p>
+<p><strong>Where it is by default.</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Computer</th><th>Notes folder</th></tr></thead><tbody><tr><td>Windows</td><td><code>Documents\Kurooto</code></td></tr><tr><td>macOS</td><td><code>~/Documents/Kurooto</code></td></tr><tr><td>Linux</td><td><code>~/Documents/Kurooto</code>, or <code>~/Kurooto</code> if you have no <code>Documents</code> folder</td></tr></tbody></table></div>
+<p>To use another folder (an existing Obsidian vault, say), set <strong>Dashboard → Settings → you → <code>you.workspace</code></strong> to its full path. Empty means the default above.</p>
+<p><strong>Using it with Obsidian.</strong> Open the notes folder as a vault ("Open folder as vault"). Everything works both ways: notes you write in Obsidian are read by Kurooto (search, deadlines from <code>- [ ]</code> tasks, the term note, and so on), and notes Kurooto writes show up in Obsidian. With <a href="#notes-sync-github">Notes sync</a> on, Obsidian's per-device window layout files (<code>.obsidian/workspace*.json</code>) are left out of the repository so two devices don't fight over them.</p>
+<p><strong>Opening a note from the dashboard.</strong> The dashboard's NOTES map opens a note on double-click; see <a href="../../wiki/user/dashboard.html">Dashboard</a> for <code>notes.open_with</code>.</p>
+<hr>
+<h2 id="where-each-kind-of-note-goes-layouts">Where each kind of note goes (layouts)</h2>
+<p><strong>What it does.</strong> Kurooto knows two ways to arrange a notes folder. Pick one in <strong>Dashboard → Settings → notes → <code>notes.layout</code></strong>: <code>kurooto</code> (the default) or <code>zettelkasten</code>. The AI is told which one you use, and skills written for the default layout are translated to yours when they run (yours included).</p>
+<div class="table-wrap"><table><thead><tr><th>What</th><th><code>kurooto</code> (default)</th><th><code>zettelkasten</code></th></tr></thead><tbody><tr><td>Daily note (journal, plans, check-ins, study hours)</td><td><code>journal/&lt;date&gt;.md</code></td><td><code>dailies/&lt;date&gt;.md</code></td></tr><tr><td>Your profile, how to help you, not-interested topics</td><td><code>about-me/</code></td><td><code>master/</code></td></tr><tr><td>Recurring quizzes</td><td><code>kurooto/recurring.md</code></td><td><code>master/recurring-assessments.md</code></td></tr><tr><td>Ideas from the nightly look back</td><td><code>kurooto/ideas.md</code></td><td><code>master/ideas.md</code></td></tr><tr><td>Your own skills</td><td><code>kurooto/skills/</code></td><td><code>master/skills/</code></td></tr><tr><td>Home note</td><td><code>index.md</code></td><td><code>maps/index.md</code></td></tr><tr><td>A subject's course page</td><td><code>&lt;subject&gt;/course.md</code></td><td><code>maps/courses/&lt;subject&gt;.md</code></td></tr><tr><td>Lecture notes, exam prep, class log, doubts</td><td><code>&lt;subject&gt;/</code></td><td><code>sources/&lt;subject&gt;/</code></td></tr><tr><td>Concept notes (one idea each)</td><td><code>&lt;subject&gt;/&lt;idea&gt;.md</code></td><td><code>zettel/&lt;idea&gt;.md</code></td></tr><tr><td>Research hub, projects and runs</td><td><code>research/index.md</code>, <code>research/&lt;project&gt;/</code></td><td><code>maps/research.md</code>, <code>projects/&lt;project&gt;/</code></td></tr><tr><td>Mail digests</td><td><code>mail/&lt;date&gt;-&lt;time&gt;.md</code></td><td><code>digests/mail-&lt;date&gt;-&lt;time&gt;.md</code></td></tr><tr><td>Quick notes, prompts, handwritten notes</td><td><code>inbox/</code>, <code>prompts/</code>, <code>handwritten/</code></td><td>the same</td></tr></tbody></table></div>
+<p><strong>Note headers.</strong> A note Kurooto or the AI writes starts with a short header ("frontmatter"):</p>
+<ul><li><code>kurooto</code> layout: <code>made_by</code> (your assistant's name) and <code>date</code>.</li><li><code>zettelkasten</code> layout: <code>id</code> (the note's path), <code>aliases</code>, <code>tags</code> and <code>trust_tier: agent_written</code>. Your daily note and your quick notes don't get <code>trust_tier</code>, because they're your own words.</li></ul>
+<p><strong>Your own places (<code>notes.paths</code>).</strong> Put any kind of note somewhere else, for example <code>{"daily": "diary/{date}.md", "ideas": "plans/ideas.md"}</code>.</p>
+<div class="table-wrap"><table><thead><tr><th>Kinds you can move</th><th>Parts you can use in braces</th></tr></thead><tbody><tr><td><code>daily</code>, <code>profile</code>, <code>how_to_help</code>, <code>not_interested</code>, <code>recurring</code>, <code>ideas</code>, <code>skills</code>, <code>prompts</code>, <code>inbox</code>, <code>note</code>, <code>subject</code>, <code>course</code>, <code>class_log</code>, <code>lecture</code>, <code>concept</code>, <code>exam_prep</code>, <code>doubts</code>, <code>home</code>, <code>research</code>, <code>project</code>, <code>runs</code>, <code>handwritten</code>, <code>mail</code></td><td><code>{date}</code>, <code>{time}</code>, <code>{subject}</code>, <code>{project}</code>, <code>{slug}</code></td></tr></tbody></table></div>
+<p>A place that doesn't work (a part that kind doesn't have, or <code>..</code>) falls back to the layout's own, and <code>/health</code> says so.</p>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>Changing the layout or a place affects <strong>new</strong> notes only. Nothing is moved. Move existing notes yourself if you want them in the new places; Kurooto then finds them there.</li></ul>
+<p><strong>Undo.</strong> Set <code>notes.layout</code> back to <code>kurooto</code> and empty <code>notes.paths</code>. What was written meanwhile stays where it was.</p>
+<hr>
+<h2 id="the-files-folder-keeping-photos-and-pdfs-out-of-your-notes">The files folder: keeping photos and PDFs out of your notes</h2>
+<p><strong>What it does.</strong> By default, photos, PDFs and other files you send go inside your notes folder. If you'd rather keep big files out of your notes (and out of their Git history), set <strong>Dashboard → Settings → files → <code>files.folder</code></strong> to a folder outside your notes, for example <code>Documents/Kurooto files</code> or a folder your cloud drive syncs.</p>
+<p>With it set, these go there instead:</p>
+<div class="table-wrap"><table><thead><tr><th>What</th><th>Folder inside <code>files.folder</code></th></tr></thead><tbody><tr><td>Photos, PDFs and documents you send (Telegram, the phone app)</td><td><code>inbox/</code></td></tr><tr><td>After-class photos and files</td><td><code>&lt;subject&gt;/</code></td></tr><tr><td>Revision packs (LaTeX and PDF)</td><td><code>&lt;subject&gt;/</code></td></tr><tr><td>Other LaTeX documents skills make</td><td><code>inbox/</code></td></tr><tr><td>Originals of handwritten pages</td><td><code>handwritten/</code></td></tr><tr><td>New handwritten scans to read</td><td><code>handwritten-inbox/</code> (unless you already have that folder in your notes, or set <code>handwritten.folder</code>)</td></tr><tr><td>Classroom's downloaded course files</td><td><code>&lt;subject&gt;/</code></td></tr><tr><td>A research project's files</td><td><code>&lt;project&gt;/</code></td></tr></tbody></table></div>
+<p>Without it (the default), those files stay inside your notes: <code>inbox/</code>, <code>&lt;subject&gt;/files/</code>, <code>research/&lt;project&gt;/files/</code> in the <code>kurooto</code> layout, or under <code>attachments/</code> in the <code>zettelkasten</code> layout. Classroom's downloads then stay in Kurooto's own data folder.</p>
+<p><strong>How notes link to the files</strong> (<code>files.links</code>): <code>relative</code> (a normal relative link; images show inside the note) or <code>file</code> (a <code>file://</code> link). Empty means the layout's own choice: <code>relative</code> for <code>kurooto</code>, <code>file</code> for <code>zettelkasten</code>.</p>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>A <code>files.folder</code> inside your notes folder changes nothing (files still go into the notes), and <code>/health</code> says so.</li><li>Notes sync and Backups don't include the files folder. Pick one your cloud drive syncs, or back it up yourself.</li><li>Changing it affects new files only; nothing is moved.</li></ul>
+<p><strong>Undo.</strong> Empty <code>files.folder</code>.</p>
+<hr>
+<h2 id="home-and-hub-notes">Home and hub notes</h2>
+<p>So your notes don't end up as separate islands, Kurooto keeps two hub notes:</p>
+<ul><li><strong>Home</strong> (<code>index.md</code>, or <code>maps/index.md</code> in the zettelkasten layout): a "Hubs" list (the research hub) and a "Courses" list (each subject's course page).</li><li><strong>Research hub</strong> (<code>research/index.md</code> or <code>maps/research.md</code>): your projects, and what you work on if you told the Research feature.</li></ul>
+<p>Each course page gets one line at its end linking back to Home and Research. Kurooto only ever adds lines here, and a line that's already there isn't added twice. They're brought up to date after a book has been read; the research hub is also made when your first project gets a log line.</p>
+<hr>
+<h2 id="what-kurooto-never-does-to-your-text">What Kurooto never does to your text</h2>
+<p>These rules hold for Kurooto itself, for every skill and for the AI's tools:</p>
+<ul><li><strong>It adds; it doesn't reword or delete.</strong> New notes and new lines, yes. Your existing sentences stay as you wrote them, and your own words go in verbatim (only obvious typos fixed).</li><li><strong>Its own parts are marked.</strong> Where Kurooto keeps a part of a note up to date (a book's chapter list, a concept's "Seen in" list, exam prep, a handwritten transcription), that part sits between markers like `<code> and </code>`. Only what's between them is ever replaced. Write anything you like above or below.</li><li><strong>Editing only when you ask.</strong> The AI changes existing text only with its <code>edit_note</code> tool, when you asked it to, one exact passage at a time. Before each edit the previous version is saved in Kurooto's state folder, <code>note-history/</code>, the last 20 versions per note. With Notes sync on, your repository's history has every version too.</li><li><strong>Text files only.</strong> The AI writes only text files (<code>.md</code>, <code>.txt</code>, <code>.tex</code>, <code>.bib</code>, <code>.csv</code>, <code>.json</code>, <code>.yaml</code>, ...).</li><li><strong>No private details.</strong> Skills keep health and medical details, money, passwords and other people's private details out of your notes, and say what they left out.</li></ul>
+<p>What the AI may read and write on your computer is on <a href="../../wiki/user/ai-brains.html">AI brains</a>.</p>
+<hr>
+<h2 id="files-into-notes">Files into notes</h2>
+<p><strong>What it does.</strong> Send a photo, PDF, document, video or audio file to your bot and it's saved in your notes. With Chat on, the AI then files it properly: a note in the right place that says what the file is and links to it.</p>
+<p><strong>Turn it on.</strong> Dashboard → Features → <strong>Files into notes</strong>. Needs Telegram. Filing by the AI needs <strong>Chat</strong>.</p>
+<p><strong>From Telegram.</strong></p>
+<ul><li>Send the file. It's saved as <code>&lt;date&gt;-&lt;time&gt;-&lt;name&gt;</code> in your inbox (<code>inbox/</code> in your notes, or in your files folder when <code>files.folder</code> is set).</li><li>Without Chat: the reply is "Saved to inbox/…". Nothing else happens.</li><li>With Chat: the reply is "Saved; filing it into your notes…", then a one-line answer saying where it went. The caption tells the AI what the file is for ("slides from today's Linear Algebra lecture").</li><li>With Skills on, a <strong>link sent on its own</strong> (with at most a few words around it, not a question) is filed the same way, by the <code>/add-to-notes</code> skill: "https://example.com/paper.pdf for statistics".</li></ul>
+<p><strong>Which feature takes a file.</strong> A file is checked in this order, and the first match wins:</p>
+<div class="table-wrap"><table><thead><tr><th>What you send</th><th>What happens</th></tr></thead><tbody><tr><td>A caption that starts with a command (<code>/note</code>, <code>/hint la</code>, <code>/journal</code>, <code>/study-log</code>...)</td><td>That command or skill gets the file</td></tr><tr><td>A PDF with a caption like <code>book for linear algebra</code> (Books and PDFs on)</td><td>It becomes a book for that subject (<a href="../../wiki/user/books-and-study.html">Books and study</a>)</td></tr><tr><td>A <code>.kurooto-course</code> file</td><td>A class pack to review (<a href="../../wiki/user/classes-and-timetable.html">Classes and timetable</a>)</td></tr><tr><td>A voice message</td><td>Written out and handled like typed text (<a href="../../wiki/user/talking-to-kurooto.html">Talking to Kurooto</a>)</td></tr><tr><td>Anything else</td><td>Files into notes, as above</td></tr></tbody></table></div>
+<p><strong>On the phone.</strong> The Android app's share menu sends files to your notes too (<a href="../../wiki/user/phone-app.html">Phone app</a>).</p>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>Telegram lets bots download files up to <strong>20 MB</strong>. A bigger file gets "Couldn't get that file: Telegram only lets bots download files up to 20 MB". Copy it into the folder yourself instead.</li><li>With <code>files.folder</code> set, the AI is told never to copy the file into the notes folder; it links to it where it is.</li><li>With Files into notes off, a file you send is still saved in the inbox, but nobody files it.</li></ul>
+<p><strong>What leaves your computer.</strong> The file travels through Telegram to your computer. With Chat on, the AI you picked reads it to file it.</p>
+<p><strong>Turn it off.</strong> Features → Files into notes → Turn off. Saved files and notes stay.</p>
+<hr>
+<h2 id="quick-notes-and-prompts">Quick notes and prompts</h2>
+<p><strong>What it does.</strong> <code>/note</code> saves a thought straight into your inbox, word for word. The prompt library keeps prompts you reuse, ready to copy. No AI is involved.</p>
+<p><strong>Turn it on.</strong> Features → <strong>Quick notes and prompts</strong>. Needs Telegram.</p>
+<p><strong>From Telegram.</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>/note buy graph paper</code></td><td>Saves <code>inbox/&lt;date&gt;-&lt;first words&gt;.md</code> with your text as written. Never overwrites: a second note with the same name gets <code>-2</code>.</td></tr><tr><td>A photo or file with <code>/note</code> (and optional text) as its caption</td><td>The note links the file.</td></tr><tr><td><code>/prompts</code></td><td>Lists the prompts in your <code>prompts/</code> folder (subfolders allowed; a <code>README.md</code> is skipped), and your add-ons' prompts as <code>add-ons/&lt;name&gt;</code>. A prompt that's also a skill shows "(also /name)".</td></tr><tr><td><code>/prompt &lt;name&gt;</code></td><td>Sends that prompt back so you can copy it. Matches the name, file name or title in any case, or a unique part of one. Several matches: it lists them.</td></tr><tr><td><code>/prompt save &lt;name&gt;</code> with the prompt on the next lines</td><td>Adds <code>prompts/&lt;name&gt;.md</code>.</td></tr></tbody></table></div>
+<p>Example of saving a prompt:</p>
+<pre><code>/prompt save summarise
+Summarise this in 5 bullet points, keeping every number.</code></pre>
+<p>A prompt whose header has <code>skill: true</code> (or <code>skill: &lt;name&gt;</code>) is also a skill you can run as a command; see <a href="../../wiki/user/skills-and-routines.html#prompts-that-are-skills">Skills and routines</a>.</p>
+<p><strong>From a terminal.</strong> <code>kurooto note "an idea"</code> saves a quick note the same way; pipe text in with <code>some-command | kurooto note --title "output"</code>. It works even when Kurooto isn't running.</p>
+<p><strong>What leaves your computer.</strong> Nothing.</p>
+<p><strong>Turn it off.</strong> Features → Quick notes and prompts → Turn off. Notes and prompts stay.</p>
+<hr>
+<h2 id="notes-brain-search-by-meaning">Notes brain (search by meaning)</h2>
+<p><strong>What it does.</strong> Builds an index of your notes so you can search them by meaning, not just exact words (<code>/notes what is a compact space</code>), and gives your AI a memory of them: it uses the same search when it answers you, on calls too. Kurooto installs <a href="https://github.com/garrytan/gbrain">GBrain</a> for this and keeps its index in Kurooto's own data folder.</p>
+<p><strong>Turn it on.</strong> Features → <strong>Notes brain (GBrain)</strong> → Set up. It installs Bun and GBrain (about <strong>0.5 GB</strong>, which is why it isn't in the Starter set), creates the brain and reads your notes into it once.</p>
+<p><strong>How the index is made</strong> (<code>gbrain.embeddings</code>, default <code>auto</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Mode</th><th>When <code>auto</code> picks it</th><th>Where note text goes</th></tr></thead><tbody><tr><td><code>ollama</code></td><td>Computers with a graphics card or Apple Silicon (a small model on this computer)</td><td>Stays on your computer</td></tr><tr><td><code>gemini</code></td><td>Computers without one, when you have a Gemini key</td><td>Note text goes to Google to make the index</td></tr><tr><td><code>off</code></td><td>No graphics card and no Gemini key</td><td>Keyword search only; nothing leaves</td></tr></tbody></table></div>
+<p><strong>From Telegram.</strong></p>
+<ul><li><code>/notes &lt;what you're looking for&gt;</code>: the best matches from your notes.</li><li><code>/timeline &lt;note&gt;</code>: a note's dated log, oldest first, e.g. <code>/timeline research/reading-group</code>.</li><li>Ask your AI in plain words ("what did I write about eigenvalues?", "when did I last work on the reading group?"): with Chat on, it searches the brain itself.</li></ul>
+<p><strong>Timelines</strong> (<code>gbrain.timelines</code>, on). Every night, dated log lines in your notes, written like <code>- **2026-10-19** | source — what happened</code>, become that note's timeline. Kurooto's own skills and features write their log lines this way (journal, research project logs). No AI is involved and nothing leaves your computer.</p>
+<p><strong>Nightly upkeep</strong> (<code>gbrain.upkeep</code>, off). GBrain's maintenance at 03:00 with light steps only: backlinks, facts, the index and orphaned pages (timelines are part of it when it's on). Steps that would rewrite your note files or call an AI model are left out. It's heavy, so on a laptop it waits for the charger. If it fails you get one message ("The notes brain's nightly upkeep didn't finish ... Search still works"), with where its log is, and not again until it has worked once. Logs are kept two weeks.</p>
+<p><strong>Choosing the upkeep's steps</strong> (<code>gbrain.upkeep_steps</code>). Empty means the light steps above. You can list GBrain's own phase names instead, for example <code>["lint", "backlinks", "sync", "extract", "extract_facts", "consolidate", "embed", "orphans"]</code>. Know what you add: <code>lint</code> and the repair steps rewrite note files, and <code>consolidate</code>, <code>synthesize</code> or <code>edge_contradictions</code> call the AI model GBrain is set up with (on a paid key, they spend money). Kurooto never runs <code>purge</code> (it deletes pages for good), and unknown names are skipped. *Undo:* empty the list.</p>
+<p><strong>Weekly checkup</strong> (<code>gbrain.checkup</code>, off). GBrain's own advisor, Sundays at 19:30. You get a message only when something is a warning or worse, listing up to 8 findings, with buttons:</p>
+<ul><li><strong>Ignore these</strong>: adds them to <code>gbrain.checkup_ignore</code>, so the checkup doesn't mention them again.</li><li><strong>Update the brain</strong> (only when the brain needs a schema update, and only for Kurooto's own brain): runs GBrain's update. "The brain is busy" means try again later.</li></ul>
+<p>A button on an old checkup says "That checkup is old; the next one comes on Sunday."</p>
+<p><strong>Your own GBrain.</strong> If you already run GBrain yourself, Kurooto can use that brain instead of making its own:</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Set it to</th></tr></thead><tbody><tr><td><code>gbrain.managed</code></td><td><code>false</code></td></tr><tr><td><code>gbrain.exe</code></td><td>your gbrain program (empty: the one on your PATH)</td></tr><tr><td><code>gbrain.home</code></td><td>its <code>GBRAIN_HOME</code> folder (empty: GBrain's default)</td></tr><tr><td><code>gbrain.source</code></td><td>the GBrain source that is your notes folder (optional)</td></tr></tbody></table></div>
+<p>Then press Set up; it only checks that your brain answers. From then on Kurooto searches it, adds pages through gbrain's own commands (books, for example), runs the nightly steps you turned on, and, if you named <code>gbrain.source</code>, runs <code>gbrain sync</code> and <code>gbrain embed --stale</code> for that source every 15 minutes. It never creates, migrates, upgrades or reconfigures your brain, and doesn't back it up. With <code>gbrain.agy_mcp</code> on, agy is also offered your brain's own MCP tools (asked first, with Approve / Deny); <code>gbrain.mcp_surface</code> (<code>full</code>, <code>starter</code>, <code>verbs</code>) picks how many.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → gbrain):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>gbrain.embeddings</code></td><td><code>auto</code></td><td>How the index is made: <code>auto</code>, <code>ollama</code>, <code>gemini</code>, <code>off</code></td></tr><tr><td><code>gbrain.sync</code></td><td><code>every 15m</code></td><td>How often your notes are read into the brain</td></tr><tr><td><code>gbrain.timelines</code></td><td>on</td><td>Nightly timelines from dated log lines</td></tr><tr><td><code>gbrain.upkeep</code></td><td>off</td><td>Nightly upkeep (light steps)</td></tr><tr><td><code>gbrain.nightly</code></td><td><code>daily 03:00</code></td><td>When timelines and upkeep run</td></tr><tr><td><code>gbrain.upkeep_steps</code></td><td><code>[]</code></td><td>The upkeep's steps; empty = the light ones</td></tr><tr><td><code>gbrain.checkup</code></td><td>off</td><td>The weekly checkup</td></tr><tr><td><code>gbrain.checkup_when</code></td><td><code>weekly sun 19:30</code></td><td>When it runs</td></tr><tr><td><code>gbrain.checkup_ignore</code></td><td>a list</td><td>Findings the checkup leaves out</td></tr><tr><td><code>gbrain.managed</code></td><td>on</td><td>Off: use your own GBrain</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>"The notes brain is busy with its upkeep; try again in a while": the upkeep or a sync is using it.</li><li>"Nothing in your notes about that": no match.</li><li>Kurooto pins GBrain's version and turns off GBrain's own update check.</li><li>On battery (in the default saver mode) the 15-minute re-reading, timelines and upkeep wait for the charger; <code>/notes</code> still works on what's indexed.</li></ul>
+<p><strong>What leaves your computer.</strong> Nothing with a graphics card or Apple Silicon. In <code>gemini</code> mode, note text goes to Google (your key) to make the index; on Google's free tier, Google may use it to improve its products.</p>
+<p><strong>Turn it off / undo.</strong> Features → Notes brain → Turn off. The index stays in Kurooto's data folder; your notes are untouched. For your own GBrain: set <code>gbrain.managed</code> back to <code>true</code>; <code>agy mcp remove gbrain</code> takes its tools away from agy.</p>
+<hr>
+<h2 id="notes-sync-github">Notes sync (GitHub)</h2>
+<p><strong>What it does.</strong> Keeps your notes folder in your own <strong>private</strong> GitHub repository. Every change is kept in its history (so nothing written is ever lost), and edits made elsewhere (another computer, GitHub's website, a phone app that syncs with the repository) come in too. With Phone calls on, your call line can read whole notes from the repository while your computer is off.</p>
+<p><strong>Turn it on (about 5 minutes).</strong></p>
+<ol><li><a href="https://github.com/new">Make a repository</a>: any name, <strong>Private</strong>, nothing ticked.</li><li><a href="https://github.com/settings/personal-access-tokens/new">Make a fine-grained token</a>: Repository access → Only select repositories → that one; Permissions → Contents → <strong>Read and write</strong>.</li><li>Features → <strong>Notes sync</strong>: paste the repository as <code>owner/name</code> and the token, press Save.</li></ol>
+<p>Git is installed for you if it's missing (MinGit on Windows; on a Mac, Apple's installer opens: click Install, then press Set up again). Kurooto checks the repository first and refuses:</p>
+<ul><li>a <strong>public</strong> repository ("anyone could read your notes");</li><li>a token that can only read ("it needs Contents: Read and write");</li><li>a repository the token can't see (pick it under Repository access).</li></ul>
+<p><strong>When it syncs.</strong></p>
+<ul><li>Every 10 minutes (<code>notes_sync.every</code>).</li><li>About 2 minutes after an AI request finishes, so what it wrote goes up soon (<code>notes_sync.after_jobs</code>; one push for a burst of requests; 0 waits for the timer).</li><li>When Kurooto stops (a shutdown, an update), quickly, unless Kurooto is paused.</li><li>When you ask: <code>/sync</code>.</li></ul>
+<p>Each sync saves what changed here (one commit, "notes: &lt;date time&gt;"), takes in what changed elsewhere, then sends it up.</p>
+<p><strong>A notes folder that's already a Git repository.</strong> Its <code>origin</code> is used as it is when it's the same repository (HTTPS or SSH). An <code>origin</code> that points at another repository is left alone, and Kurooto adds a remote of its own called <code>kurooto</code>. A <code>.gitignore</code> is written if there's none (system junk files, Obsidian's workspace files, half-downloaded files).</p>
+<p><strong>When a note changed in two places at once</strong> (<code>notes_sync.on_conflict</code>):</p>
+<ul><li><code>keep both</code> (default): the note keeps the version from elsewhere, and this computer's version goes beside it as <code>&lt;note&gt; (conflict, this computer, &lt;date time&gt;).md</code>. You get a message naming both. Merge them when you like and delete the copy. A note deleted on one side and changed on the other is kept, changed. Notes changed on one side only merge as usual.</li><li><code>stop</code>: sync stops, changes nothing, and tells you (at most every 6 hours) until you've sorted it out yourself in the notes folder (<code>git pull --rebase</code>, fix the files, <code>git add</code>, <code>git rebase --continue</code>). It never forces anything.</li></ul>
+<p>A merge or rebase left half done in the notes folder is left alone; sync waits until it's finished. A notes folder that's not on a branch ("detached HEAD") also stops sync until you check your branch out again.</p>
+<p><strong>From Telegram.</strong> <code>/sync</code> syncs your notes now ("Notes synced." or "Couldn't sync: &lt;why&gt;"). <code>/sync all</code> syncs everything (<a href="#sync-everything">below</a>).</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → notes_sync):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>notes_sync.every</code></td><td><code>every 10m</code></td><td>How often it syncs</td></tr><tr><td><code>notes_sync.after_jobs</code></td><td><code>2</code></td><td>Minutes after an AI request before its notes go up; 0 = wait for the timer</td></tr><tr><td><code>notes_sync.on_conflict</code></td><td><code>keep both</code></td><td><code>keep both</code> or <code>stop</code></td></tr><tr><td><code>notes_sync.share_with_calls</code></td><td>on</td><td>Your call line may read notes from the repository while the computer is off</td></tr><tr><td><code>notes_sync.branch</code></td><td><code>main</code></td><td>Filled in from the repository</td></tr></tbody></table></div>
+<p><strong>Messages it sends by itself.</strong> "Notes sync: N note(s) changed here and elsewhere at once..." (a clash kept as copies), and "Notes sync: &lt;problem&gt;." at most every 6 hours while something is wrong (can't reach the repository, can't push, unfinished merge).</p>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>On battery (saver mode) the 10-minute sync waits for the charger. <code>/sync</code> works any time.</li><li>The files folder (<code>files.folder</code>) isn't synced.</li><li><code>/health</code> warns when the GitHub token expires within 10 days (GitHub also emails you 7 days before).</li><li>Two computers can sync the same notes repository; conflicts are handled as above.</li></ul>
+<p><strong>What leaves your computer.</strong> Your notes, to your own private GitHub repository. With Phone calls on, your call line can read them from there.</p>
+<p><strong>Turn it off / undo.</strong> Features → Notes sync → Turn off. The repository and its history stay on GitHub; delete the repository there if you want them gone. <code>notes_sync.on_conflict</code> = <code>stop</code> undoes the keep-both behaviour. Conflict copies are ordinary notes: delete them once merged.</p>
+<hr>
+<h2 id="sync-everything">Sync everything</h2>
+<p><strong>What it does.</strong> Runs every sync that's on, one after another, in the background, then sends one line per feature, for example "Calendar: ok, 23 events". The order:</p>
+<ol><li>your notes (to take in what changed elsewhere),</li><li>Google: Classroom, Classroom → notes and the mail digest,</li><li>your calendars,</li><li>research project logs,</li><li>the notes brain's index,</li><li>a backup (with Backups on; skipped, not failed, when the backup folder isn't there, e.g. the drive is unplugged),</li><li>your notes again (to send up what the others just wrote).</li></ol>
+<p>A feature that's off is left out. Only one runs at a time: "A sync is already running; you'll get its summary."</p>
+<p><strong>From Telegram.</strong> <code>/sync all</code>, <code>/sync everything</code>, or in plain words "sync everything", "sync it all", "sync all the things". With Notes sync off, plain <code>/sync</code> does the same.</p>
+<p><strong>From a terminal</strong> (Kurooto running):</p>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>kurooto sync</code></td><td>Runs it and waits, then prints the summary</td></tr><tr><td><code>kurooto sync --no-wait</code></td><td>Starts it and returns; the summary comes as a message</td></tr><tr><td><code>kurooto sync --status</code></td><td>Whether one is running and how the last one went (works with Kurooto stopped)</td></tr></tbody></table></div>
+<hr>
+<h2 id="concept-graph">Concept graph</h2>
+<p><strong>What it does.</strong> When a book has been read (see <a href="../../wiki/user/books-and-study.html">Books and study</a>), its concepts are woven into your notes:</p>
+<ul><li>a <strong>concept note</strong> for each new concept (its definition, formulas, links, and where it came from);</li><li><strong>typed links</strong> to notes you already have, each with a relation and a one-sentence reason, e.g. <code>- special-case-of:: [[linear-algebra/eigenvalues]] — the diagonal case of the spectral theorem</code>;</li><li>a <strong>"Seen in"</strong> list on each concept: the book and pages, plus "Added from the books" lines for what an existing note lacked;</li><li>in the <strong>book's own note</strong>, which concepts each stretch of pages introduces;</li><li>on the subject's <strong>course page</strong>, a "From the books" list of the concepts its books introduced.</li></ul>
+<p>Your own text is never changed. Kurooto adds lines and keeps its parts between `` markers; a write that would touch anything else is refused.</p>
+<p>The relation words are: <code>needs</code>, <code>generalises</code>, <code>special-case-of</code>, <code>example-of</code>, <code>contrasts-with</code>, <code>equivalent-to</code>, <code>part-of</code>, <code>used-in</code>.</p>
+<p><strong>Turn it on.</strong> Features → <strong>Concept graph</strong>. Needs <strong>Books and PDFs</strong> on (and at least one book read). It works best with an agent program (agy or Claude Code) installed; see "Which AI" below.</p>
+<p><strong>How one batch goes.</strong></p>
+<ol><li>The book is cut into batches of about 12 pages (3 to 20) that follow its sections: the PDF's bookmarks, numbered headings, the running headers at the top of pages, or "Chapter 3 ..." lines. A margin note such as "Section 9.1" is never taken for a heading.</li><li>On this computer, without an AI, Kurooto finds the few existing notes that may be related: matching names and aliases, keyword ranking, the notes those link to, and, where there's a model for it, meaning (Ollama's nomic-embed-text, or your Gemini key). With a helper model on this computer, a <strong>reranker</strong> then orders them by how likely each belongs with the new concept (no extra download, no AI requests).</li><li>One AI request is shown the pages and those notes only, and answers with the concepts the pages develop, how each relates to your notes, and what an existing note lacks.</li><li>Plain checks run on the answer, without trusting the AI's opinion of itself:</li><li>the quote it gives must really be in those pages;</li><li>a link's reason must say something specific ("related to", "see also", "connected" are refused);</li><li>a link must point at a note that exists, or one made in the same batch;</li><li>"this is your existing note X" needs the names or the meaning to agree;</li><li>only the relation words above; two notes can't each generalise the other;</li><li>a concept with the same name as an existing note is never made a second time.</li><li>Anything doubtful goes to a <strong>second look</strong> by the other AI program (or the same one, told to be strict), and is dropped unless that confirms it. There's no queue for you to review.</li><li>What's left is written and, if your notes are a Git repository, <strong>committed: one commit per batch</strong>, so <code>git revert &lt;commit&gt;</code> undoes exactly that batch.</li></ol>
+<p><strong>When it runs.</strong></p>
+<ul><li>Each night from 01:30 (<code>integrate.at</code>), batch after batch, and right after a book has been read.</li><li>Every 3 hours it carries on if something was waiting (a limit that has reset). When the AI was at its limit or signed out, it tries again after 20 minutes. A batch that fails 3 times is marked failed.</li><li>At most <code>integrate.per_night</code> (300) batches a day, so it can't use all of your AI's day.</li><li>Books with the fewest pages go first (<code>integrate.order</code>), so the most books get done soonest; list subjects to do first in <code>integrate.first</code>.</li><li>Effort: the small, quick model by default; the next one up for a batch that failed before, or for a book whose recent batches needed many second looks.</li></ul>
+<p><strong>The daily second pass ("garden")</strong>, at 06:20 (<code>integrate.garden</code>): the notes the reading touched, then notes that nothing links to, are checked once more against everything that's there now (up to 40 a day, <code>integrate.garden_per_day</code>). It also takes out links Kurooto wrote to notes that don't exist any more (a concept dropped after a second look, or a note you deleted). Your own links are never touched.</p>
+<p><strong>The morning line</strong> (<code>integrate.summary</code>), at 07:10 when anything happened: "Concept graph: 14 batches, +22 concept notes, +61 links, 9 notes updated; 30 AI requests (about $0.40 at API prices); 5 doubtful, 2 dropped after a second look." The cost is what the requests would cost at API prices; a subscription plan isn't billed per request (its own limit is what runs out).</p>
+<p><strong>From Telegram.</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>/graph</code></td><td>The state: batches done, waiting and failed; which AI does the bulk work and the second look; today's AI requests and cost; and the quality numbers below</td></tr><tr><td><code>/graph now</code></td><td>Starts the next batch now ("Started.", or "Nothing to start" and why)</td></tr><tr><td><code>/graph stop</code></td><td>Takes tonight's start off the schedule ("Stopped for tonight")</td></tr></tbody></table></div>
+<p>The quality numbers in <code>/graph</code>: how many concepts and links, <strong>broken</strong> links, notes with <strong>no links in</strong>, links with a <strong>vague reason</strong>, and the share of all links that go to the three busiest notes (a high share means a few hub notes swallow everything).</p>
+<p><strong>Which AI</strong> (<code>integrate.roles</code>, e.g. <code>{"bulk": "agy", "check": "claude"}</code>). Empty (the default) chooses for you:</p>
+<ul><li>agy and Claude Code both installed: they split the work (bulk and second look) and run side by side;</li><li>one of them: it does both;</li><li>neither: your main AI does both. With a free Gemini key's daily limit that's slow: set <code>integrate.per_night</code> low and <code>integrate.first</code> to your current subjects.</li></ul>
+<p>Without a graphics card nothing changes except that the meaning-based matching comes from your Gemini key or is skipped.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → integrate):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>integrate.at</code></td><td><code>daily 01:30</code></td><td>When the night's work starts</td></tr><tr><td><code>integrate.roles</code></td><td><code>{"bulk": "", "check": ""}</code></td><td>The AI for the bulk work and the second look; empty = chosen for you</td></tr><tr><td><code>integrate.batch_pages</code></td><td><code>12</code></td><td>About how many pages per request</td></tr><tr><td><code>integrate.per_night</code></td><td><code>300</code></td><td>The most batches in a day</td></tr><tr><td><code>integrate.first</code></td><td><code>[]</code></td><td>Subjects to do first, e.g. <code>["linear-algebra"]</code></td></tr><tr><td><code>integrate.order</code></td><td><code>smallest</code></td><td>Which books first: <code>smallest</code> or <code>name</code></td></tr><tr><td><code>integrate.garden</code></td><td>on</td><td>The daily second pass</td></tr><tr><td><code>integrate.garden_per_day</code></td><td><code>40</code></td><td>The most notes in that pass</td></tr><tr><td><code>integrate.embeddings</code></td><td><code>auto</code></td><td>Meaning-based matching: <code>auto</code>, <code>ollama</code>, <code>gemini</code>, <code>off</code></td></tr><tr><td><code>integrate.rerank</code></td><td><code>auto</code></td><td>The local reranker: <code>auto</code> or <code>off</code></td></tr><tr><td><code>integrate.rerank_model</code></td><td>empty</td><td>Another Ollama model for it (empty: this computer's helper model)</td></tr><tr><td><code>integrate.commit</code></td><td>on</td><td>One Git commit per batch, when your notes are a repository</td></tr><tr><td><code>integrate.summary</code></td><td>on</td><td>The morning line</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>It's heavy work: on battery (saver mode) it waits for the charger.</li><li><code>/graph stop</code> only takes the nightly start off the schedule until Kurooto next starts; batches already sent finish, and the 3-hourly retry can pick work up again. To stop it for sure, turn the feature off.</li><li>Page numbers are the PDF's own (page 1 is the first page of the file, often the cover).</li></ul>
+<p><strong>What leaves your computer.</strong> A few pages of a book's text at a time, and the titles and opening lines of the related notes, go to the AI you picked, like any request. The matching, the checks and the reranker run on this computer.</p>
+<p><strong>Turn it off / undo.</strong></p>
+<ul><li>Features → Concept graph → Turn off stops it. Notes already written stay.</li><li><code>git revert &lt;commit&gt;</code> undoes one batch (each batch is one commit, named like <code>books: &lt;title&gt; pp. 41-52 (+3 notes, +7 links, 2 updated)</code>).</li><li>Each batch also keeps a before-copy of every file it changed in Kurooto's state folder, <code>integrate/undo/</code> (the last 60 batches; the <a href="../../wiki/user/updates-and-backups.html">Space keeper</a> removes copies older than 30 days).</li></ul>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/notes-and-concept-graph.md">docs/wiki/user/notes-and-concept-graph.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

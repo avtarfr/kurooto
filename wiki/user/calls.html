@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone calls and the morning alarm · User wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="User wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>User wiki</strong>: <a href="index.html">Start</a> <a href="commands.html">Commands</a> <a href="getting-started.html">Getting started</a> <a href="ai-brains.html">AI brains</a> <a href="talking-to-kurooto.html">Talking to Kurooto</a> <a href="messages-it-sends.html">Messages Kurooto sends by itself</a> <a href="reminders-and-deadlines.html">Reminders and deadlines</a> <a href="check-ins-and-journal.html">Check-ins and journal</a> <a href="calls.html" aria-current="page">Phone calls and the morning alarm</a> <a href="phone-app.html">Your phone</a> <a href="classes-and-timetable.html">Classes, timetable and calendar</a> <a href="quiz-and-exams.html">Quiz and exams</a> <a href="books-and-study.html">Books and study</a> <a href="notes-and-concept-graph.html">Notes and the concept graph</a> <a href="skills-and-routines.html">Skills and routines</a> <a href="research.html">Research</a> <a href="google.html">Google: Classroom, Gmail, Calendar and Drive</a> <a href="teaching-kurooto.html">Teaching Kurooto about you</a> <a href="dashboard.html">The dashboard</a> <a href="your-computer.html">Your computer</a> <a href="updates-and-backups.html">Updates, backups and moving</a> <a href="privacy.html">Privacy: what stays and what leaves</a> <a href="add-ons.html">Add-ons, scripts and other programs</a> <a href="faq.html">FAQ</a> <a href="troubleshooting.html">Troubleshooting</a> <a href="glossary.html">Glossary</a> · <a href="../dev/index.html">Developer wiki</a></nav>
+<h1 id="phone-calls-and-the-morning-alarm">Phone calls and the morning alarm</h1>
+<p>Kurooto can ring your phone, and you can ring it. Calls go through your own <strong>call line</strong>, a small free program on your own Cloudflare account, and the voice is Google's Gemini Live with your own Gemini key. Calls keep working while your computer is asleep or off, from what it last sent.</p>
+<p>This page covers calls, the morning alarm and reminders with the lid shut. Pairing and using the phone itself is on <a href="../../wiki/user/phone-app.html">Your phone</a>.</p>
+<ul><li><a href="#how-calls-work">How calls work</a></li><li><a href="#set-up-phone-calls">Set up Phone calls</a></li><li><a href="#calling-kurooto">Calling Kurooto</a></li><li><a href="#kurooto-calling-you">Kurooto calling you</a></li><li><a href="#when-calls-are-held">When calls are held</a></li><li><a href="#on-a-call">On a call</a></li><li><a href="#what-a-call-can-do">What a call can do</a></li><li><a href="#when-the-voice-service-is-down">When the voice service is down</a></li><li><a href="#live-voice-or-your-phones-own-speech">Live voice or your phone's own speech</a></li><li><a href="#the-look-back-after-every-call">The look back after every call</a></li><li><a href="#while-your-computer-is-off">While your computer is off</a></li><li><a href="#morning-alarm">Morning alarm</a></li><li><a href="#reminders-with-the-lid-shut">Reminders with the lid shut</a></li><li><a href="#calls-from-a-terminal-or-script">Calls from a terminal or script</a></li><li><a href="#all-call-settings">All call settings</a></li><li><a href="#what-leaves-your-computer">What leaves your computer</a></li><li><a href="#turn-it-off">Turn it off</a></li></ul>
+<hr>
+<h2 id="how-calls-work">How calls work</h2>
+<p><strong>What it does.</strong> Three pieces work together:</p>
+<div class="table-wrap"><table><thead><tr><th>Piece</th><th>What it is</th></tr></thead><tbody><tr><td>Your computer</td><td>Runs Kurooto. It keeps one outgoing connection to your call line (works behind any home or campus network; nothing on your computer listens to the internet) and answers what calls ask for: your notes, reminders, deadlines.</td></tr><tr><td>Your call line</td><td>A Cloudflare Worker named <code>kurooto-</code> plus random letters, at a <code>workers.dev</code> address, on your own free Cloudflare account. It rings your phone, hosts the call page, and keeps a short brief so calls work while the computer is off. The address is public but useless without the keys only your computer and paired phones have.</td></tr><tr><td>Your phone</td><td>The Kurooto Android app, or the Kurooto web app on an iPhone's Home Screen, or any browser with a call link. See <a href="../../wiki/user/phone-app.html">Your phone</a>.</td></tr></tbody></table></div>
+<p>During a call the audio goes between your phone and Google (Gemini Live, your key). Only tool requests ("what's due?", "add a reminder") come back to your computer.</p>
+<p>Every 5 minutes, and whenever your scheduled calls change, your computer sends the call line what it needs while the computer is off: how to talk, a brief (what's due, today's classes and check-ins, open questions), and the calls booked for the next 24 hours (up to 30).</p>
+<h2 id="set-up-phone-calls">Set up Phone calls</h2>
+<p><strong>What it needs.</strong></p>
+<ul><li>A Gemini API key (free from Google AI Studio). If your main AI is something else, the setup asks for one; calls, voice notes and the alarm always use it. See <a href="../../wiki/user/ai-brains.html">AI brains</a>.</li><li>A free Cloudflare account. You can make one during setup.</li><li>About 350 MB of disk, once: Node.js (about 120 MB, inside Kurooto's own folder) and the call line's packages (about 230 MB).</li></ul>
+<p><strong>Turn it on.</strong></p>
+<ol><li>Dashboard → <strong>Features</strong> → <strong>Phone calls</strong> → paste your Gemini key if it asks → <strong>Set up</strong> (or tick Phone calls in the setup wizard).</li><li>Kurooto installs what it needs (with progress), then opens Cloudflare's sign-in in your browser. Sign in or make an account, and approve. Kurooto uses its own Cloudflare login, kept apart from any other Cloudflare login on your computer.</li><li>Kurooto makes your <code>workers.dev</code> subdomain if you don't have one, creates the call line's keys, deploys it, checks it answers, and connects.</li><li>Pair your phone: <a href="../../wiki/user/phone-app.html">Your phone</a>.</li></ol>
+<p>Setup is safe to repeat. If the Cloudflare sign-in didn't finish, press <strong>Set up</strong> again; the sign-in link is also in the progress log.</p>
+<p><strong>After Kurooto updates itself</strong>, it checks at 05:10 whether the call line's code changed and redeploys it in the background. If that fails you get "Your call line couldn't be updated: ... (calls keep working on the old version; Settings → Features → Phone calls → Set up tries again)." This doesn't happen when <code>updates.mode</code> is <code>off</code>.</p>
+<h2 id="calling-kurooto">Calling Kurooto</h2>
+<p><strong>From Telegram:</strong> <code>/call</code> sends a <strong>Call now</strong> button with a link. It works from any phone or browser for 2 hours.</p>
+<p><strong>From the phone app:</strong> the Android app and the iPhone Home Screen app have a <strong>Call</strong> button.</p>
+<p><strong>What happens:</strong> Kurooto picks up, starts by looking at what needs your attention (open questions first), and talks like a friend on the phone. Talk in any language Gemini Live speaks; it follows yours.</p>
+<h2 id="kurooto-calling-you">Kurooto calling you</h2>
+<p>Every kind of call Kurooto can place, and where each is explained:</p>
+<div class="table-wrap"><table><thead><tr><th>Call</th><th>When</th><th>More</th></tr></thead><tbody><tr><td>A reminder call</td><td>"call me at 5 about the laundry", "call me in 20 minutes about the essay"</td><td>below</td></tr><tr><td>Right now</td><td>"call me now", "ring me", "give me a call"</td><td>below</td></tr><tr><td>Morning alarm</td><td>the time you set, or your daily alarm</td><td><a href="#morning-alarm">Morning alarm</a></td></tr><tr><td>Morning call on request</td><td>"I'm awake", "I just woke up", "I'm up" (needs the Morning alarm feature)</td><td><a href="#morning-alarm">Morning alarm</a></td></tr><tr><td>Check-in debrief</td><td>evening (and night or midday if you set them), with <code>checkins.by_call</code> on</td><td><a href="../../wiki/user/check-ins-and-journal.html">Check-ins</a></td></tr><tr><td>Deadline nudge</td><td>six hours before something you hand in (<code>deadlines.urgent_h</code>), with <code>deadlines.call</code> on</td><td><a href="../../wiki/user/reminders-and-deadlines.html">Reminders and deadlines</a></td></tr><tr><td>Quiz</td><td><code>/quiz la call</code>, "quiz me by call", or the practice offer's <strong>Call me for a quiz</strong></td><td><a href="../../wiki/user/quiz-and-exams.html">Quiz and exams</a></td></tr><tr><td>Sunday review</td><td>after the weekly summary, with <code>weekly.call</code> on</td><td><a href="../../wiki/user/check-ins-and-journal.html">Check-ins and journal</a></td></tr><tr><td>Leave for an exam</td><td>exam day, with Exam season on and its leave alarm part on</td><td><a href="../../wiki/user/quiz-and-exams.html">Quiz and exams</a></td></tr><tr><td>Quiet research project</td><td><strong>Remind me tomorrow</strong> on the "what's up with this project?" question</td><td><a href="../../wiki/user/research.html">Research</a></td></tr><tr><td>From a script</td><td><code>kurooto call "the backup finished"</code></td><td><a href="#calls-from-a-terminal-or-script">below</a></td></tr></tbody></table></div>
+<p><strong>Plain English that books or places calls</strong> (these work on Telegram, the dashboard's box and <code>kurooto ask</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>You say</th><th>What happens</th></tr></thead><tbody><tr><td>"call me at 5 about the laundry"</td><td>A call at five o'clock. "at 5" is a clock time, never "in 5 minutes"; said in the afternoon, it means 17:00.</td></tr><tr><td>"call me in 20 minutes about the essay", "call me tomorrow at 7", "call me tonight at 9 to revise"</td><td>A call then. Without "about ..." the reason is "a reminder call".</td></tr><tr><td>"call me now", "ring me about the essay", "give me a call"</td><td>Rings right away, even during a class or a hold (you asked).</td></tr><tr><td>"call me, I didn't wake up at 12"</td><td>Nothing is booked. A time that's about the past, or something that didn't happen, is never used as the time of a call; Kurooto asks "When should I call?".</td></tr><tr><td>"cancel that call", "cancel the 12:00 call", "cancel tomorrow's 9 call"</td><td>Cancels the one booked call it can mean. If several fit (or none), it lists your booked calls, each with a <strong>Cancel</strong> button and its key. Check-ins and the alarm aren't in that list: use <code>/checkins</code> and <code>/alarm</code>.</td></tr><tr><td>"call me for a quiz", "quiz me by call"</td><td>A quiz call (Quiz's own request).</td></tr></tbody></table></div>
+<p><strong>When it rings.</strong> Your paired phones ring for up to 60 seconds (<code>calls.ring_s</code>). Telegram gets a quiet "Calling you: ..." message with an <strong>Answer</strong> link, so you can pick up from any device. That Telegram message is silent when a phone app is paired (<code>telegram.silent_kinds</code>). If your computer can't reach your call line, Telegram instead gets an urgent "I tried to call you, but your call line isn't connected." with the same <strong>Answer</strong> link.</p>
+<p><strong>Buttons on the ringing phone:</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Button</th><th>Does</th></tr></thead><tbody><tr><td>Answer</td><td>Starts the call.</td></tr><tr><td>Later</td><td>Rings again in 30 minutes (<code>calls.later_min</code>). For a check-in it moves the check-in by that much; for the alarm it's <strong>Snooze</strong> (10 minutes, <code>alarm.snooze_min</code>); for an exam leave-by alarm, 5 minutes (twice at most).</td></tr><tr><td>Decline</td><td>Stops ringing. A reminder call ends there (no missed-call message). A declined check-in becomes a message you can answer by text. A declined alarm counts as "you're up".</td></tr></tbody></table></div>
+<p><strong>Not answered.</strong> A call you don't answer rings again 3 and 6 minutes after the first (<code>calls.realert_min</code>; <code>[]</code> rings once), unless calls are held by then. After the last ring you get <strong>Missed call: ...</strong> on Telegram with:</p>
+<div class="table-wrap"><table><thead><tr><th>Button</th><th>Does</th></tr></thead><tbody><tr><td>Call back</td><td>A link that calls Kurooto about the same thing.</td></tr><tr><td>In 30 min</td><td>Books the same call again 30 minutes later.</td></tr></tbody></table></div>
+<p>Check-ins, the alarm, deadline nudges and exam leave-by alarms have their own follow-ups instead (a check-in becomes a message with <strong>Call me now / Tomorrow morning / Skip</strong>; the alarm repeats; a missed deadline call becomes an urgent message; a missed leave-by alarm becomes an urgent "Time to leave" message).</p>
+<p><strong>The daily call limit.</strong> With Calm on (the default), at most 1 call a day comes by itself (<code>notify.calm.calls</code>). Past that, a check-in comes as a message, and any other call waits in the evening bundle with a <strong>Call now</strong> link (valid for 26 hours). Calls you asked for, the alarm, the exam leave-by alarm and a deadline less than 12 hours away never count and are never held. <code>/calm calls 2</code> allows two. See <a href="../../wiki/user/messages-it-sends.html">Messages Kurooto sends by itself</a>.</p>
+<h2 id="when-calls-are-held">When calls are held</h2>
+<p>A call that comes due when you shouldn't be disturbed waits, and you're told: <strong>"Held a call until 18:02 (class: Linear Algebra): the essay"</strong>. It's placed by itself when the block ends.</p>
+<div class="table-wrap"><table><thead><tr><th>What holds calls</th><th>Details</th></tr></thead><tbody><tr><td>Another call</td><td>Nothing else rings while you're on a call (also when the computer is off). Updates wait too.</td></tr><tr><td><code>/hold 18:00</code>, <code>/hold 2h</code>, "no calls for an hour"</td><td>Until then. <code>/calls</code> or "calls are fine again" lifts it. Messages still come.</td></tr><tr><td>Focus</td><td><code>/focus 2h</code>, or a calendar event with <code>#focus</code>. Calls held and non-urgent messages wait.</td></tr><tr><td>The night</td><td><code>availability.night</code>, 23:30 to 07:00. With the alarm set, the night is from your bedtime until the alarm instead (see <a href="#morning-alarm">Morning alarm</a>).</td></tr><tr><td>A class</td><td>Every class on your timetable, plus 5 minutes before it (<code>subjects.margin_min</code>), while <code>subjects.no_calls_in_class</code> is on. A class you <code>/skip</code> doesn't hold calls. Holidays, exam periods and days after the term ends have no classes.</td></tr><tr><td>A calendar event</td><td>Every timed event (<code>calendar.no_calls_in_events</code>), or only events tagged <code>#nocall</code> and events in a calendar whose name contains "no call" when <code>calendar.nocall_events</code> = <code>tagged</code>.</td></tr><tr><td>An exam</td><td>With Exam season on and its <code>no_calls</code> part on: from 15 minutes before an exam until <code>exam_season.exam_min</code> (180) minutes after it starts.</td></tr></tbody></table></div>
+<p>Never held: the morning alarm and exam leave-by alarms (they ring through the night and holds), "call me now", and <code>kurooto call --force</code>. A repeat ring of an unanswered call is dropped (it becomes a missed call) if a block started meanwhile.</p>
+<p><strong>Check-ins</strong> wait out a block and ring when it ends, or come as a message if that would be too late. See <a href="../../wiki/user/check-ins-and-journal.html">Check-ins</a>.</p>
+<h2 id="on-a-call">On a call</h2>
+<ul><li><strong>Speak naturally.</strong> You can interrupt it, as on a real call.</li><li><strong>Interrupt</strong> button: talk over it when the loudspeaker's echo keeps cutting it off.</li><li><strong>Mic gate</strong> slider: needs a louder voice before it counts as speech. Move it right in a noisy room.</li><li><strong>Earpiece / Speaker</strong>: switches output. Some browsers can't switch; use earphones then. In the Android app the screen goes off at your ear.</li><li><strong>Mute</strong>, <strong>Hang up</strong>.</li><li><strong>Open questions and approvals come first.</strong> Every call starts with what needs you (<code>pending_items</code>): open questions, approvals, deadlines soon, today's classes and check-ins, calls booked. Answer them by voice. An approval that arrives during a call is asked right away.</li><li><strong>"Call me back in an hour"</strong> during a check-in or the wake-up call moves that same call (with its steps), not a new reminder call. On the wake-up call it works like a snooze.</li><li><strong>Long jobs:</strong> ask for something that needs real work ("write up a plan for the lab report") and it hands it to the AI on your computer (<code>run_task</code>, needs Chat). It says it's started and keeps talking; the result is told on the call when it's ready, or sent to Telegram as "From your call: ..." if the call ended.</li><li><strong>Your persona:</strong> <code>calls.persona</code> adds words on how to talk, e.g. "be brief and a bit cheeky".</li></ul>
+<p>The call's transcript is kept on your computer (Kurooto's state folder → <code>calls/transcripts/</code>, readable only by your user account). A check-in's transcript becomes your journal and study logs; the wake-up call's becomes today's plan.</p>
+<h2 id="what-a-call-can-do">What a call can do</h2>
+<p>Each feature you turn on adds what calls can do; a feature that's off adds nothing. In plain words:</p>
+<div class="table-wrap"><table><thead><tr><th>You can ask</th><th>Needs</th><th>Works while the computer is off</th></tr></thead><tbody><tr><td>What needs my attention? (asked at the start of every call)</td><td>Phone calls</td><td>yes, from the last brief</td></tr><tr><td>Search my notes; read a note</td><td>Phone calls</td><td>keyword search over titles and headings only; whole notes only with Notes sync on</td></tr><tr><td>Call me back later about something</td><td>Phone calls</td><td>yes (queued)</td></tr><tr><td>Call me now</td><td>Phone calls</td><td>needs the computer</td></tr><tr><td>No calls until a time, or lift a hold</td><td>Phone calls</td><td>yes (queued)</td></tr><tr><td>Do a bigger job on my computer (write, plan, file)</td><td>Chat</td><td>yes (queued)</td></tr><tr><td>Answer an open question or approval</td><td>always</td><td>yes (queued)</td></tr><tr><td>How are my syncs doing?</td><td>always</td><td>needs the computer</td></tr><tr><td>Add a reminder</td><td>Reminders</td><td>yes (queued)</td></tr><tr><td>Move, skip or defer a check-in; the check-in's steps</td><td>Check-ins</td><td>yes (queued)</td></tr><tr><td>Mark a deadline done, add or move one, ignore a topic, add a recurring quiz</td><td>Deadlines</td><td>yes (queued)</td></tr><tr><td>When should I start X; this is about a day of work</td><td>Start-by dates</td><td>start dates from the last brief; sizes queued</td></tr><tr><td>I'm skipping a class today</td><td>Subjects</td><td>yes (queued)</td></tr><tr><td>Quiz me (questions, grading); schedule a quiz</td><td>Quiz</td><td>questions from the last brief; grades and scheduling queued</td></tr><tr><td>Set, skip or turn off the alarm; when is my alarm</td><td>Morning alarm</td><td>yes</td></tr><tr><td>Log study time; how much did I study</td><td>Study tracker</td><td>logging queued; totals need the computer</td></tr><tr><td>Remember how I like to be helped</td><td>Remember</td><td>yes (queued)</td></tr><tr><td>Keep an eye on something for a while</td><td>Nightly look back</td><td>yes (queued)</td></tr><tr><td>The week in numbers; the Sunday review's steps</td><td>Weekly summary</td><td>the review's steps from the last brief; the numbers need the computer</td></tr><tr><td>Block time in the Agent plan calendar</td><td>Agent plan calendar</td><td>yes (queued)</td></tr><tr><td>Send me a file, several files, or a study pack</td><td>Skills</td><td>yes (queued)</td></tr></tbody></table></div>
+<p>"Queued" means it's saved on your call line and done as soon as the computer is back; you then get "Done what you asked for on a call while the computer was off (N item(s))."</p>
+<h2 id="when-the-voice-service-is-down">When the voice service is down</h2>
+<p>Google's live voice sometimes refuses calls ("503: the service is currently unavailable"). The call still happens, in one of three ways, tried in order:</p>
+<ol><li><strong>Live again.</strong> The call page shows "Reconnecting…" and tries after about 1 second, then 3, each time with the next Live model: <code>calls.live_model</code>, then <code>calls.live_models</code>. A call that drops in the middle is tried again once.</li><li><strong>Turn by turn.</strong> "The live voice isn't working, so we'll take turns." Your phone's own speech recognition hears you, a text AI answers, and your phone reads the answer aloud. Tap <strong>Talk</strong> if it stopped listening; tap while it speaks to skip the rest. Same call, same steps, same tools. Your computer answers each turn (your Gemini key, or the model on your computer with <code>calls.turn_brain</code> = <code>local</code>; never agy or Claude Code, which are too slow to start). If the computer is off or doesn't answer within 25 seconds, Gemini on your call line answers.</li><li><strong>Text on Telegram.</strong> When your phone can't turn speech into text, or there's no microphone: "Your call couldn't go on by voice (...), so let's carry on here." The call goes on as messages, about the same thing. Reply or just type; what you type is part of the call, not a new request. <strong>End the call</strong> ends it, and so do 20 minutes without a message ("Ended the call (no messages for 20 minutes)."). Without Telegram, it goes to the phone app with a Reply box. If it happened while the computer was off, it starts on Telegram when the computer is back, within 2 hours; later than that you get "A call couldn't connect by voice while this computer was off ... Tell me here if it still matters."</li></ol>
+<p>Whichever way the call went, its transcript is kept and used the same way. <code>kurooto doctor</code> has a line "Phone calls: voice service": how often Live failed this week and what calls did instead, and it names a model in your list that Google says no longer exists.</p>
+<h2 id="live-voice-or-your-phones-own-speech">Live voice or your phone's own speech</h2>
+<p><code>calls.voice_mode</code> decides how calls listen and speak:</p>
+<div class="table-wrap"><table><thead><tr><th>Value</th><th>Does</th></tr></thead><tbody><tr><td><code>auto</code> (default)</td><td>Gemini Live, and your phone's speech when Live fails.</td></tr><tr><td><code>live</code></td><td>Live only. When it fails, the call goes to Telegram.</td></tr><tr><td><code>phone</code></td><td>Your phone's speech, turn by turn, every time. Live only when the phone can't.</td></tr></tbody></table></div>
+<p><code>calls.voice_by_kind</code> sets it per kind of call, e.g. <code>{"alarm": "phone", "checkins:night": "phone", "checkins:evening": "live"}</code>. Kinds: a feature's name (<code>alarm</code>, <code>checkins</code>, <code>weekly</code>, <code>quiz</code>, <code>deadlines</code>, <code>research</code>), one of its calls (<code>checkins:evening</code>, <code>checkins:night</code>, <code>checkins:midday</code>), <code>reminder</code> (reminder calls) and <code>outgoing</code> (calls you start). The more exact kind wins.</p>
+<div class="table-wrap"><table><thead><tr><th></th><th>Live (Gemini Live)</th><th>Your phone's speech (turn by turn)</th></tr></thead><tbody><tr><td>Feel</td><td>a real conversation: you can interrupt, it hears your tone</td><td>walkie-talkie: you talk, then it answers; tap Talk to cut in</td></tr><tr><td>Wait for an answer</td><td>under a second</td><td>about 2 to 5 seconds a turn</td></tr><tr><td>Languages</td><td>the ones Gemini Live speaks</td><td>the ones your phone's recognizer and voice have installed (your phone's language)</td></tr><tr><td>Where your voice goes</td><td>audio to Google (Gemini Live, your key)</td><td>Android 13+ with your language downloaded for on-device recognition: stays on the phone. Otherwise your phone's speech service (usually Google; Apple on iPhone; Chrome sends it to Google). Each turn's text goes to your computer's AI or Gemini.</td></tr><tr><td>When Google's live voice is down</td><td>retries, then turn by turn</td><td>not affected</td></tr><tr><td>Screen</td><td>off at your ear (Android app, earpiece)</td><td>stays on, on the loudspeaker (phones stop listening when the screen goes off)</td></tr></tbody></table></div>
+<p><strong>Limits of turn by turn:</strong> the screen has to stay on (the app keeps it on; in a browser don't lock the phone or switch apps, or tap <strong>Talk</strong> again). It uses the loudspeaker by default; <strong>Earpiece</strong> switches, but your cheek can tap buttons. It can't hear you while it speaks. On iPhones and some browsers, answers are read aloud only where the browser has a voice; otherwise you read them.</p>
+<p><strong>The voice itself:</strong> <code>calls.voice</code> names a Gemini Live voice (e.g. <code>Kore</code>); empty is Google's default. <code>calls.voice_by_model</code> picks a voice per Live model. The backup Live models only get one of Google's prebuilt voices.</p>
+<h2 id="the-look-back-after-every-call">The look back after every call</h2>
+<p><strong>What it does.</strong> New in 0.5.8. After every call that said something (at least 4 lines), a stronger AI request (your main AI, at high effort) reads the transcript and the tools the call used, and:</p>
+<ol><li><strong>Does what slipped through.</strong> Anything you asked for that the call misheard, forgot, promised without doing, or where a tool failed: it does it now if it's safe to do unasked (a reminder, a note, a deadline, a journal line, an answer you wanted). Anything that sends a message, places a call, deletes or spends money it doesn't do: it lists it under "Needs you".</li><li><strong>Keeps lessons.</strong> Up to 3 short, general instructions for future calls ("When they say 'after class', ask when class ends before setting the reminder."). Every later call is told them. No names or details of other people, nothing secret.</li></ol>
+<p><strong>The message.</strong> Only when something was fixed or learned: "After the call: &lt;what it fixed&gt;", "Needs you: ...", and "Learned for next time: ..." with a pointer to <code>/lessons</code>. A call where nothing slipped and nothing was learned sends nothing.</p>
+<p><strong>From Telegram:</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody><tr><td><code>/lessons</code></td><td>Lists what calls have learned, numbered.</td></tr><tr><td><code>/lessons forget 2</code></td><td>Removes lesson 2 (<code>remove 2</code> and <code>drop 2</code> work too).</td></tr><tr><td><code>/lessons clear</code></td><td>Removes every lesson.</td></tr></tbody></table></div>
+<p>The lessons are a plain file you can edit: Kurooto's state folder → <code>calls/lessons.md</code> (one <code>- </code> line each). At most <code>calls.lessons_max</code> (12) are kept: a new lesson that says much the same as an old one replaces it, and the oldest go first.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → calls):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>calls.review</code></td><td><code>true</code></td><td>The look back after every call. <code>false</code> turns it off.</td></tr><tr><td><code>calls.review_effort</code></td><td><code>high</code></td><td>How hard the AI thinks.</td></tr><tr><td><code>calls.review_brain</code></td><td>empty</td><td>Which AI does it; empty is your main AI.</td></tr><tr><td><code>calls.lessons_max</code></td><td><code>12</code></td><td>How many lessons are kept.</td></tr></tbody></table></div>
+<p><strong>Limits.</strong> It needs a main AI set. It runs in the background lane, so it waits behind nothing you asked for, and it counts as background work for free limits (it can wait past 70% of a known daily limit; see <a href="../../wiki/user/ai-brains.html">AI brains</a>).</p>
+<p><strong>What leaves your computer.</strong> The transcript and the call's tool results go to the AI you picked, like any request.</p>
+<p><strong>Turn it off.</strong> <code>calls.review</code> = <code>false</code>. Lessons already kept stay until you <code>/lessons clear</code>.</p>
+<h2 id="while-your-computer-is-off">While your computer is off</h2>
+<ul><li><strong>Calls Kurooto booked still ring:</strong> your call line holds the next 24 hours of calls (reminder calls, check-ins, the alarm, leave-by alarms) and places them itself. When the computer is back: "While this computer was off, your call line called you: ...".</li><li><strong>You can still call.</strong> The call says the computer is off and answers from the last brief: what's due, today's classes and check-ins, open questions, your notes' titles. Notes search is keyword-only; whole notes can be read only with <a href="../../wiki/user/notes-and-concept-graph.html">Notes sync</a> on (from your GitHub repository).</li><li><strong>What needs the computer</strong> is either saved and done when it's back ("Saved. Their computer is off; it will do this as soon as it's back on.") or the call says it can't right now.</li><li><strong>Answers you give on the phone</strong> wait on your call line and are used when the computer is back.</li><li><strong>Paused</strong> (<code>/pause</code>): the call line keeps placing scheduled calls, so the alarm still rings.</li><li><strong>Turned off</strong> (<code>kurooto off</code>): the call line stops placing scheduled calls and drops what it holds, until you turn Kurooto on again. <code>kurooto off --keep-calls</code> keeps them (for the alarm).</li><li><strong>On battery:</strong> calls and the alarm keep working in every battery mode except <code>pause</code>. See <a href="../../wiki/user/your-computer.html">Your computer</a>.</li></ul>
+<h2 id="morning-alarm">Morning alarm</h2>
+<p><strong>What it does.</strong> Kurooto wakes you with a call. On the Android app it rings with your alarm sound on the alarm volume, so it rings even on silent. Your call line places it, so it rings even if your computer is asleep or off.</p>
+<p><strong>Turn it on.</strong> Dashboard → Features → Morning alarm. Needs Phone calls.</p>
+<p><strong>From Telegram:</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody><tr><td><code>/alarm</code></td><td>What's set: the next alarm, the daily alarm and its days, skipped days.</td></tr><tr><td><code>/alarm 6:45</code>, <code>/alarm tomorrow 7</code>, <code>/alarm 7:30am</code></td><td>Sets the alarm.</td></tr><tr><td><code>/alarm off</code></td><td>Clears the alarm that's set. With a daily alarm, that morning is skipped and the daily one comes back after.</td></tr><tr><td><code>/alarm skip friday</code>, <code>/alarm skip tomorrow</code></td><td>No alarm that day; the daily alarm is back the day after.</td></tr><tr><td><code>/alarm daily 7:00</code></td><td>The daily alarm.</td></tr><tr><td><code>/alarm daily off</code></td><td>Stops the daily alarm (an alarm you set for one morning stays).</td></tr></tbody></table></div>
+<p><strong>Plain English:</strong> "wake me at 6:45", "wake me up at 7 tomorrow", "set my alarm for 7", "cancel my alarm", "no alarm tomorrow", "cancel Friday's alarm", "don't wake me on Saturday", "turn my daily alarm off", "do I have any alarms?", "when is my alarm?". On the evening check-in call: "wake me at 7". The <code>/goodnight 7:00</code> skill sets it too. "Tomorrow" said at 2 am means the coming morning (the day runs from <code>checkins.day_starts</code>, 05:00).</p>
+<p><strong>The Today page</strong> has the alarm with a box ("7:30", "tomorrow 6:45"), skip tomorrow, off, and the daily alarm. See <a href="../../wiki/user/dashboard.html">Dashboard</a>.</p>
+<p><strong>How it rings:</strong></p>
+<ul><li>Not answered: rings again 5 minutes later, up to twice more (<code>alarm.retries</code>).</li><li><strong>Snooze</strong> on the ringing phone: 10 minutes (<code>alarm.snooze_min</code>). "Call me back in ten minutes" on the call does the same.</li><li>One alarm per morning: one you set for a morning replaces the daily alarm.</li><li>The daily alarm is always with your call line well before the night: the next one is sent as soon as one has rung, at start, after the computer wakes, and checked every 30 minutes.</li></ul>
+<p><strong>The night follows your alarm.</strong> While an alarm is set, no other calls from your bedtime (<code>alarm.bedtime</code>; empty means the start of the night hours, 23:30) until it rings, and once you're up calls can come even if the usual night hours aren't over. An alarm set for a nap counts from when you set it. Without an alarm, the night is the fixed hours (<code>availability.night</code>). With <code>availability.night.alarm_only</code> on, the fixed hours stop holding calls: only bedtime to the alarm does, and with no alarm set nothing holds calls overnight (a reminder call you set for 02:00 rings at 02:00). Off (the default) is the safe choice.</p>
+<p><strong>Your day, drafted.</strong> With Chat on, 20 minutes before the alarm (<code>alarm.prep_min</code>) the AI drafts today's plan into today's daily note under "## Plan for today (draft …)": classes, what's due, a top 3, suggested blocks, questions for you (the <code>morning-prep</code> skill). It runs once a day and never holds up your own requests.</p>
+<p><strong>The wake-up call</strong> goes through that plan, asks which classes you're skipping, what's due, start-by dates that have come, when to call today (the evening check-in, and a midday one if you want), and wishes you a good day. If last night's check-in was moved to this call, it starts with that. Afterwards, with Chat on, the AI settles "## Plan for today" in the daily note from what you said (the <code>morning</code> skill); without Chat, your words go into the daily note as they are (<code>alarm.notes</code>).</p>
+<p><strong>The morning page.</strong> At the alarm, if this computer is awake and has a screen, it opens <code>http://127.0.0.1:8770/morning</code> in your browser (<code>alarm.open_page</code>): today's plan, classes, calendar, what's due, check-ins and open questions.</p>
+<p><strong>"I'm awake".</strong> Say "I'm awake", "I just woke up" or "I'm up" (even with "call me if you need to ...") and Kurooto rings the morning call now, planning from the current time, and opens the morning page. It's a plain call, not the alarm: no snooze, no repeat rings. If an alarm is still set within 12 hours, it says so ("cancel my alarm" turns it off).</p>
+<p><strong>Keep this computer awake until the alarm</strong> (<code>alarm.keep_awake</code>, off): from 12 hours before the alarm until 15 minutes after it rings (or until you answer), the computer doesn't sleep by itself, so the plan is drafted in time. Linux: it keeps running with the lid closed too. macOS: a closed lid still sleeps a Mac (unless an external display is attached). Windows: the lid follows Power Options. On battery, setting the alarm says "Plug this computer in: it stays awake until then." The hold ends by itself, even if Kurooto stops; the screen can still turn off.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → alarm):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>alarm.daily</code></td><td>empty (off)</td><td>A time like <code>07:00</code>: rings every day on <code>alarm.days</code>.</td></tr><tr><td><code>alarm.days</code></td><td>every day</td><td>Days the daily alarm rings, e.g. <code>["mon","tue","wed","thu","fri"]</code>.</td></tr><tr><td><code>alarm.reason</code></td><td><code>Wake-up call</code></td><td>What the ringing phone shows.</td></tr><tr><td><code>alarm.retries</code></td><td><code>2</code></td><td>Extra rings, 5 minutes apart, if you don't answer.</td></tr><tr><td><code>alarm.snooze_min</code></td><td><code>10</code></td><td>Snooze length.</td></tr><tr><td><code>alarm.bedtime</code></td><td>empty</td><td>With an alarm set, no calls from this time until it rings. Empty: the night's start (23:30).</td></tr><tr><td><code>alarm.prep_min</code></td><td><code>20</code></td><td>Minutes before the alarm the plan is drafted (needs Chat). <code>0</code>: no draft.</td></tr><tr><td><code>alarm.open_page</code></td><td><code>true</code></td><td>Open the morning page at the alarm.</td></tr><tr><td><code>alarm.notes</code></td><td><code>true</code></td><td>The wake-up call goes into the daily note.</td></tr><tr><td><code>alarm.keep_awake</code></td><td><code>false</code></td><td>Keep the computer awake until the alarm.</td></tr><tr><td><code>availability.night</code></td><td><code>{"enabled": true, "from": "23:30", "to": "07:00", "alarm_only": false}</code></td><td>The fixed night hours; <code>enabled</code> false: no night at all; <code>alarm_only</code> true: only bedtime to the alarm holds calls.</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>A skipped day can't be un-skipped; set that morning's alarm yourself ("wake me at 7 tomorrow").</li><li>The plan needs the alarm set at least a few minutes ahead, Chat on, and the computer awake then.</li><li>Every night at 21:00 Kurooto's health pass checks tonight's alarm is planned, on your call line, and that a phone is paired. If not, at once: "Your alarm at 07:00 might not ring: ... Set your phone's own alarm too." with a <strong>Fix</strong> button. See <a href="../../wiki/user/your-computer.html">Your computer</a>.</li></ul>
+<p><strong>What leaves your computer.</strong> The alarm time goes to your call line. With Chat on, the AI reads your notes to draft the plan, and the wake-up call's transcript to settle it.</p>
+<p><strong>Turn it off.</strong> Features → Morning alarm → Turn off. <code>alarm.keep_awake</code> off lets the computer sleep at once.</p>
+<h2 id="reminders-with-the-lid-shut">Reminders with the lid shut</h2>
+<p><strong>What it does.</strong> When your computer is asleep or off (a shut lid, a flat battery, <code>kurooto stop</code>), your Android phone still gets your reminders at their time, and in the morning one line with the day's first class and what's due: "First class 09:00: Linear Algebra. Due today: Problem set 3 (17:00)."</p>
+<p><strong>Turn it on.</strong> Dashboard → Features → Reminders with the lid shut. Needs Phone calls and the Kurooto app on an Android phone (open it once after updating so it makes its key). An iPhone can't get these.</p>
+<p><strong>How it works.</strong></p>
+<ul><li>Whenever your reminders change, every 10 minutes, and as the computer goes to sleep (Linux and Windows say so), Kurooto hands your call line what's timed in the next day (up to 40 items), each sealed with a key only your phone has. The call line keeps the times, not the text.</li><li><strong>Whichever side is awake says it, once.</strong> Computer awake: Telegram as usual. Asleep: the call line sends it to your phone (through ntfy.sh, still sealed) as a normal notification, and the computer doesn't repeat it when it wakes. Telegram doesn't get reminders while the computer sleeps; they come when it wakes, unless your phone already had them.</li><li><strong>The morning line</strong> comes with your alarm if one is set that morning, else at <code>lidsafe.morning</code> (07:30), never later than 30 minutes before the first class. It only comes from the call line: when the computer is awake, the morning page and check-ins have it.</li><li><strong>Computer on but can't reach the call line</strong> when a reminder is due: it waits 2 minutes (30 just after waking), then says it anyway. If the call line sent it meanwhile, it comes twice.</li><li><strong>macOS</strong> doesn't tell programs it's about to sleep: a reminder set in the seconds before you shut a Mac's lid may wait until it wakes.</li><li>A reminder the call line couldn't get to your phone (5 tries, a minute apart) comes on Telegram when the computer is back: "Your call line couldn't get this to your phone: ...".</li></ul>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → lidsafe):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>lidsafe.hours</code></td><td><code>24</code></td><td>How far ahead the call line holds things (12 to 24).</td></tr><tr><td><code>lidsafe.reminders</code></td><td><code>true</code></td><td>Your reminders.</td></tr><tr><td><code>lidsafe.today</code></td><td><code>true</code></td><td>The morning line.</td></tr><tr><td><code>lidsafe.morning</code></td><td><code>07:30</code></td><td>When the morning line comes if no alarm is set.</td></tr></tbody></table></div>
+<p><strong>Check it.</strong> <code>kurooto doctor</code> or <code>/health</code>: "Reminders with the lid shut: your call line holds 5 for 1 phone(s)". "No phone can open them yet": update the Android app and open it once.</p>
+<p><strong>What leaves your computer.</strong> The next day's reminder times and ids, and for each Android phone a copy sealed with its key, go to your call line; your phone's public key too. Sent ones pass through ntfy.sh, still sealed.</p>
+<p><strong>Turn it off.</strong> Features → Reminders with the lid shut → Turn off. Your call line drops what it holds at once (or the next time the computer reaches it).</p>
+<h2 id="calls-from-a-terminal-or-script">Calls from a terminal or script</h2>
+<p><code>kurooto call "the backup finished"</code> rings your phone. It waits out your no-call rules (classes, <code>/hold</code>, focus, the night) and calls when they end.</p>
+<div class="table-wrap"><table><thead><tr><th>Option</th><th>Does</th></tr></thead><tbody><tr><td><code>--at 17:30</code>, <code>--at "in 20 min"</code>, <code>--at "tomorrow 7:00"</code></td><td>Calls later.</td></tr><tr><td><code>--force</code></td><td>Rings now despite no-call rules (never during another call).</td></tr><tr><td><code>--alarm</code></td><td>Rings as a wake-up alarm (no-call rules don't apply).</td></tr><tr><td><code>--list</code></td><td>The calls booked for later, with their keys.</td></tr><tr><td><code>--cancel KEY</code></td><td>Takes a booked call off (your call line forgets it too).</td></tr></tbody></table></div>
+<p>It needs Kurooto running (<code>kurooto on</code>); otherwise it says so and exits with 1. More script commands are on <a href="../../wiki/user/add-ons.html">Add-ons and scripts</a>.</p>
+<h2 id="all-call-settings">All call settings</h2>
+<p>Dashboard → Settings → calls. The ones you're likely to change:</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>calls.realert_min</code></td><td><code>[3, 6]</code></td><td>Minutes after the first ring that an unanswered call rings again. <code>[]</code>: once.</td></tr><tr><td><code>calls.later_min</code></td><td><code>30</code></td><td><strong>Later</strong> on a ringing call calls back after this long.</td></tr><tr><td><code>calls.ring_s</code></td><td><code>60</code></td><td>How long a call rings before it counts as missed.</td></tr><tr><td><code>calls.voice_mode</code></td><td><code>auto</code></td><td><code>auto</code>, <code>live</code> or <code>phone</code> (above).</td></tr><tr><td><code>calls.voice_by_kind</code></td><td><code>{}</code></td><td>Voice mode per kind of call.</td></tr><tr><td><code>calls.voice</code></td><td>empty</td><td>A Gemini Live voice name; empty is Google's default.</td></tr><tr><td><code>calls.voice_by_model</code></td><td><code>{}</code></td><td>A voice per Live model.</td></tr><tr><td><code>calls.live_model</code></td><td><code>gemini-3.8-live</code></td><td>The Live model calls try first.</td></tr><tr><td><code>calls.live_models</code></td><td><code>["gemini-3.1-flash-live-preview", "gemini-2.5-flash-native-audio-latest"]</code></td><td>Live models to try next. <code>[]</code> keeps to <code>live_model</code>.</td></tr><tr><td><code>calls.turn_brain</code></td><td><code>gemini</code></td><td>Who answers turn-by-turn calls on your computer: <code>gemini</code> (your key) or <code>local</code> (Local AI models).</td></tr><tr><td><code>calls.text_model</code></td><td><code>gemini-flash-latest</code></td><td>The Gemini model for turn-by-turn calls.</td></tr><tr><td><code>calls.persona</code></td><td>empty</td><td>Extra words on how to talk on calls.</td></tr><tr><td><code>calls.review</code>, <code>review_effort</code>, <code>review_brain</code>, <code>lessons_max</code></td><td><code>true</code>, <code>high</code>, empty, <code>12</code></td><td>The look back after every call (above).</td></tr><tr><td><code>calls.notes_repo</code></td><td>set by Notes sync</td><td>Lets calls read whole notes from GitHub while the computer is off.</td></tr><tr><td><code>notify.app_kinds</code></td><td><code>["call", "question", "approval"]</code></td><td>What goes to the phone app (see <a href="../../wiki/user/phone-app.html">Your phone</a>).</td></tr><tr><td><code>telegram.silent_kinds</code></td><td><code>["call"]</code></td><td>Telegram's "Calling you" message is silent while a phone app is paired.</td></tr></tbody></table></div>
+<h2 id="what-leaves-your-computer">What leaves your computer</h2>
+<ul><li>Call audio goes between your phone and Google (Gemini Live, your key). On the free tier Google may use what you send to improve its products.</li><li>Turn by turn: your speech goes to your phone's speech service unless it's recognised on the phone; each turn's text goes to Gemini (your key) or the model on your computer.</li><li>Text on Telegram: the conversation goes through your Telegram bot and your AI, like your other messages.</li><li>Your call line, on your Cloudflare account, keeps: your Gemini key; a short brief (what's due, today's classes and check-ins, open questions, the steps for check-in, wake-up and Sunday review calls, your notes' titles); the calls booked for the next day; questions and messages waiting for your phones; and, only if you approved it, your bot's token (for "Kurooto has been offline since ..." messages; see <a href="../../wiki/user/messages-it-sends.html">Messages it sends</a>).</li><li>Transcripts, lessons and everything else stay on your computer. The look back sends a call's transcript to your AI.</li><li>Full list: <a href="../../wiki/user/privacy.html">Privacy</a>.</li></ul>
+<h2 id="turn-it-off">Turn it off</h2>
+<ul><li>Features → Phone calls → Turn off. Morning alarm and Reminders with the lid shut need it, so turn those off first.</li><li>Just the look back: <code>calls.review</code> = <code>false</code>.</li><li>Just turn by turn: <code>calls.voice_mode</code> = <code>live</code> (failed calls go to Telegram).</li><li>Keep calls from ringing for a while: <code>/hold 2h</code>, or <code>/focus</code>.</li><li>The call line stays on your Cloudflare account until you delete it (Cloudflare dashboard → Workers &amp; Pages → the <code>kurooto-…</code> worker → Settings → Delete), or until <code>kurooto uninstall --revoke</code> deletes it for you. See <a href="../../wiki/user/updates-and-backups.html">Updates and backups</a>.</li></ul>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/calls.md">docs/wiki/user/calls.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Releases and self-updates · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html">Architecture</a> <a href="repo-layout.html">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="modules.html">Feature modules</a> <a href="web.html">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="testing.html">Testing</a> <a href="release-and-updates.html" aria-current="page">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="releases-and-self-updates">Releases and self-updates</h1>
+<p>Kurooto updates itself from signed releases published as static files on GitHub Pages. The installer, the updater and the release tool share one signing scheme. The maintainer's checklist is <code>docs/RELEASING.md</code>; this page explains the machinery behind it.</p>
+<p>The user's view: <a href="../../wiki/user/updates-and-backups.html">../user/updates-and-backups.md</a>.</p>
+<h2 id="versioning-and-the-changelog">Versioning and the changelog</h2>
+<ul><li>The version lives only in <code>pyproject.toml</code> (<code>[project] version</code>). At runtime <code>kurooto.__version__</code> comes from <code>importlib.metadata.version("kurooto")</code>, or <code>"0.0.0+source"</code> when running from a tree that isn't installed (<code>src/kurooto/__init__.py</code>).</li><li><code>CHANGELOG.md</code>: <code>## X.Y.Z (YYYY-MM-DD)</code> sections, newest first, bullets with a bold lead. Work in progress goes under <code>## X.Y.Z (unreleased)</code>; the date replaces "unreleased" when it ships. The site's changelog page is built from this file (<code>tools/release.py:site_pages</code>, <code>md_html</code>).</li><li>The Android app's versionCode is derived from <code>pyproject.toml</code> (<code>android/build.sh</code>, <code>tools/release.py:version_code</code>).</li><li>Dependencies are pinned twice: <code>uv.lock</code> for development and <code>requirements.lock</code> (hashes) for installs. CI's <code>update-rehearsal</code> job fails if they disagree (<code>uv export --frozen --no-dev --no-emit-project --format requirements-txt</code>). Regenerate <code>requirements.lock</code> with that command whenever <code>uv.lock</code> changes.</li></ul>
+<h2 id="keys">Keys</h2>
+<ul><li>Ed25519, through the <code>cryptography</code> package (<code>src/kurooto/update/signing.py</code>: <code>sign</code>, <code>verify</code>, <code>canonical</code>, <code>public_b64</code>). <code>canonical(doc)</code> is <code>json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False)</code>, so signatures are over a canonical form, not the bytes on disk.</li><li>Trusted public keys: <code>signing.PUBLIC_KEYS</code> <strong>and</strong> the same list in <code>installer/bootstrap.py:PUBLIC_KEYS</code>. Rotate by adding the new key first (newest first), releasing, and retiring the old one later. Both lists must change together.</li><li>The private key never leaves the maintainer's machine (by default <code>~/.config/kurooto-dev/release-key.pem</code>, passphrase-encrypted; <code>tools/release.py:keygen</code>). CI never signs. The Android release keystore lives beside it.</li><li><code>KUROOTO_EXTRA_UPDATE_KEY</code> adds one more trusted key at runtime; it exists for tests and the rehearsal. Never set it on a real install.</li></ul>
+<h2 id="toolsreleasepy"><code>tools/release.py</code></h2>
+<div class="table-wrap"><table><thead><tr><th>Subcommand</th><th>Function</th><th>Needs the key</th><th>What it does</th></tr></thead><tbody><tr><td><code>keygen</code></td><td><code>keygen(out, no_pass)</code></td><td>makes it</td><td>writes a PKCS8 PEM (refuses to overwrite) and prints the public key to paste into both <code>PUBLIC_KEYS</code> lists</td></tr><tr><td><code>build</code></td><td><code>build(site, base, version, notes, break_run, apk, critical)</code></td><td>no</td><td>copies the repo to a temp dir (no <code>.git</code>, venvs, <code>node_modules</code>, keys, <code>docs/media</code>), optionally adds the APK as <code>src/kurooto/data/kurooto.apk</code>, runs <code>uv build --sdist</code>, writes <code>SITE/releases/&lt;v&gt;/kurooto-&lt;v&gt;.tar.gz</code> and <code>manifest.unsigned.json</code> (<code>{version, notes, [critical], created, files: {name: {url, sha256, size}}}</code>), the site pages (<code>install.sh</code>, <code>install.ps1</code>, <code>bootstrap.py</code>, <code>index.html</code>, <code>privacy.html</code> (<code>docs/PRIVACY.md</code> rendered into <code>installer/privacy.html</code>, <code>privacy_page</code>), <code>changelog.html</code>) and, with <code>--apk</code>, <code>android.json</code></td></tr><tr><td><code>sign</code></td><td><code>sign(site, base, version, key_path, channel, critical)</code></td><td>yes</td><td>refuses a key not in the trusted list (<code>trusted_key</code>), writes <code>releases/&lt;v&gt;/manifest.json</code> = <code>{"doc": ..., "sig": ...}</code> and the channel pointer <code>SITE/&lt;channel&gt;.json</code> = signed <code>{version, manifest_url, issued, channel, [critical]}</code></td></tr><tr><td><code>yank</code></td><td><code>yank(site, key_path, versions, reason, undo)</code></td><td>yes</td><td>signed <code>SITE/yank.json</code> (<code>{yanked: {v: reason}, issued}</code>, <code>issued</code> always rises)</td></tr><tr><td><code>publish</code></td><td><code>publish(site, message)</code></td><td>no</td><td>copies the site into a worktree of <code>gh-pages</code> (except <code>*.unsigned.json</code>), commits and pushes</td></tr></tbody></table></div>
+<p><code>--break-run</code> (build) injects a crash into <code>daemon.run()</code>; it exists only for the rollback rehearsal.</p>
+<h3 id="never-rebuild-after-signing">Never rebuild after signing</h3>
+<p>The owner signs. <code>sign</code> signs whatever <code>manifest.unsigned.json</code> says, including the sha256 of the tarball that <code>build</code> made. <code>build</code> is not reproducible (timestamps), and running it again for the same version overwrites the tarball and the unsigned manifest without touching the signed <code>manifest.json</code>. Nothing checks this: <code>sign</code> doesn't re-hash the tarball and <code>publish</code> checks neither signatures nor hashes. The result of a rebuild after signing is a published manifest whose checksum doesn't match its tarball, and every client then fails with "didn't match its signed checksum" (<code>update/updater.py:Updater._download</code>, <code>installer/bootstrap.py</code>). Clients that already staged that version keep the old build (<code>Updater.stage</code> returns early when <code>versions/&lt;v&gt;</code> exists).</p>
+<p>Rules that follow:</p>
+<ul><li>An agent or contributor prepares a release up to <code>build</code> at most, and only when asked. Signing and publishing are the owner's.</li><li>After the owner has signed, don't run <code>build</code> for that version again, don't touch <code>SITE/releases/&lt;v&gt;/</code>, and don't "fix" anything inside the site folder. A problem means a new version (or a yank), not a rebuild.</li></ul>
+<h3 id="channels">Channels</h3>
+<p><code>sign --channel &lt;name&gt;</code> writes <code>&lt;name&gt;.json</code>; <code>stable</code> is the default and <code>beta</code> is the convention for testers. An install's channel is <code>updates.channel</code> (default <code>stable</code>; the installer writes it for non-stable channels via <code>KUROOTO_CHANNEL</code>, <code>bootstrap.py:remember_channel</code>).</p>
+<h3 id="critical-releases">Critical releases</h3>
+<p><code>build --critical</code> marks the manifest, <code>sign --critical</code> marks the pointer; <code>Updater.check</code> ORs them. A critical release skips every hold (exam season, staged waiting, feature holds). The pointer's flag is lost when that channel is signed again.</p>
+<h2 id="install-layout-srckurootoupdate">Install layout (<code>src/kurooto/update/</code>)</h2>
+<p>In the app folder (<code>Paths.app</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>Written by</th><th>Content</th></tr></thead><tbody><tr><td><code>launcher.py</code></td><td><code>cli.py:install_finish</code> (copied from <code>update/launcher.py</code>)</td><td>stdlib-only launcher; lives outside the versions so an update can't break it</td></tr><tr><td><code>versions/&lt;v&gt;/</code></td><td><code>Updater.stage</code>, <code>bootstrap.py</code></td><td>the extracted source and its own <code>.venv</code></td></tr><tr><td><code>current.json</code>, <code>previous.json</code></td><td><code>Updater.switch</code>, <code>install_finish</code></td><td>which version runs, and the one before</td></tr><tr><td><code>update.json</code></td><td><code>Updater.switch</code>, <code>probation_passed</code>, <code>launcher.rollback</code></td><td><code>{"phase": "trial" \| "ok" \| "rolled_back", from, to, since, ...}</code></td></tr><tr><td><code>bad.json</code></td><td><code>launcher.rollback</code>, "Skip"</td><td>versions never to install again</td></tr><tr><td><code>install.json</code></td><td><code>install_finish</code></td><td>the Python and uv used, for the launcher and <code>core/mcp.py:command</code></td></tr><tr><td><code>launcher.json</code></td><td><code>launcher.run</code></td><td>the launcher's own record</td></tr><tr><td><code>call-line/</code></td><td><code>modules/calls/deploy.py</code></td><td>the Worker build folder</td></tr></tbody></table></div>
+<p>State files: <code>&lt;state&gt;/update-seen.json</code> (last <code>issued</code> per channel and for the yank list), <code>&lt;state&gt;/yank.json</code> (cached yank list), <code>&lt;state&gt;/update-ready.json</code> (a staged update waiting for its window).</p>
+<h2 id="the-updater">The updater</h2>
+<p><code>update/updater.py:Updater</code>:</p>
+<ul><li><code>check(channel)</code>: fetch <code>&lt;base&gt;/&lt;channel&gt;.json</code> (base <code>PAGES</code>, or <code>KUROOTO_UPDATE_BASE</code>), verify the signature, refuse a pointer whose <code>issued</code> is older than the last seen (anti-replay, <code>update-seen.json</code>), ignore versions not newer (<code>vtuple</code>) or listed in <code>bad.json</code>, check <code>yanked()</code> (signed <code>yank.json</code>, also anti-replayed; offline or 404 uses the cache), fetch and verify the manifest and require its version to match the pointer's.</li><li><code>_get</code> only allows <code>https://</code> or <code>http://127.0.0.1</code>.</li><li><code>stage(...)</code>: download into <code>versions/&lt;v&gt;.partial</code>, check sha256, extract with the leading folder stripped (no <code>..</code>, no absolute paths, <code>filter="data"</code>), <code>install_into()</code> builds the venv with <code>uv pip install --require-hashes -r requirements.lock</code> and the package with <code>--no-deps</code>, run <code>python -m kurooto selftest</code>, then <code>os.replace</code> to <code>versions/&lt;v&gt;</code>. Any error removes the partial folder.</li><li><code>switch(v)</code>, <code>probation_passed(v)</code> (phase <code>ok</code> after at least 300 s), <code>prune(keep=3)</code> (the three newest plus current and previous).</li></ul>
+<p><code>update/service.py:Updates</code> (created in <code>App.__init__</code>, started in <code>App.start</code>):</p>
+<ul><li>Settings: <code>updates.mode</code> (<code>night</code> | <code>ask</code> | <code>off</code>), <code>updates.channel</code>, <code>updates.window</code> (<code>["03:00", "05:00"]</code>), <code>updates.staged</code>, <code>updates.wait_hours</code> (48), <code>updates.exam_hold</code>.</li><li>Schedule: <code>updates:check</code> every 6 h; <code>updates.probation</code> about 5 minutes after a start on trial; a rollback notice.</li><li><code>check()</code>: emits <code>update_found</code>, then in order: <code>hold()</code> (staged wait or exams) <code>update_waiting</code>; <code>mode == off</code> (a note only); <code>held()</code> (feature holds registered in <code>Updates.holds</code>, e.g. exam season) <code>update_held</code>; <code>ask</code> (a Telegram message with <code>upd:&lt;v&gt;:now|later|skip</code> buttons, handled by <code>Updates.button</code>); otherwise stage in a thread and book <code>updates.apply</code> at a random time in the window.</li><li><code>apply_if_quiet()</code>: waits if held; retries in 20 minutes while AI jobs run or a call is live; re-checks the yank list; then <code>switch_to()</code>: <code>Updater.switch</code>, <code>update_switch</code> event, <code>app.request_restart()</code>.</li><li><code>end_probation()</code>: prunes and says "Kurooto updated".</li></ul>
+<p><code>kurooto update</code> (<code>cli.py:update</code>) checks and reports; <code>kurooto update --now</code> stages, switches and restarts at once, bypassing holds on purpose.</p>
+<h2 id="restart-and-rollback">Restart and rollback</h2>
+<ol><li><code>App.request_restart()</code> sets <code>restart_requested</code> and stops the daemon; <code>daemon.run</code> returns <code>RESTART = 75</code>.</li><li>The launcher (<code>update/launcher.py:run</code>) starts <code>versions/&lt;current&gt;/.venv/... -m kurooto run</code> again on exit 75, stops on 0 or 3 (3: another copy is already running), and treats anything else as a crash with back-off (5 s to 300 s).</li><li>While <code>update.json</code> says <code>trial</code> for this version, three crashes each within 300 s of starting call <code>rollback()</code>: the version goes into <code>bad.json</code>, <code>current.json</code> goes back to <code>previous.json</code>, <code>update.json</code> becomes <code>rolled_back</code>. <code>Updates.tell_rolled_back</code> tells the user on the next start.</li><li>After 300 s of running, probation passes (<code>phase: ok</code>).</li></ol>
+<p>Without the launcher (a development install), <code>daemon.supervise</code> restarts the daemon after crashes and on exit 75.</p>
+<h2 id="fresh-installs-installer">Fresh installs (<code>installer/</code>)</h2>
+<p><code>install.sh</code> / <code>install.ps1</code> check free space (2 GB), install a pinned uv and Python 3.12, download <code>bootstrap.py</code> from the site (or use <code>KUROOTO_SOURCE</code> for a local tree) and run it. <code>bootstrap.py</code> verifies the pointer and manifest with its own <code>PUBLIC_KEYS</code>, checks the tarball's sha256, builds <code>versions/&lt;v&gt;/.venv</code> from <code>requirements.lock</code>, runs <code>selftest</code>, then execs <code>kurooto install-finish</code>, which writes <code>current.json</code>, <code>previous.json</code>, <code>update.json</code> (phase <code>ok</code>), <code>install.json</code>, the launcher, the <code>kurooto</code> command shim (<code>~/.local/bin/kurooto</code>; on Windows <code>kurooto.cmd</code> and an uninstall registry entry), PATH changes, autostart and the app-menu entry (skipped with <code>KUROOTO_NO_AUTOSTART=1</code>). Running the installer again repairs an install.</p>
+<p>Differences from the updater worth knowing: <code>bootstrap.py</code> doesn't consult <code>yank.json</code> or the anti-replay record, and <code>install_finish</code> writes phase <code>ok</code>, so an upgrade through the installer has no probation and no rollback.</p>
+<h2 id="rehearsal">Rehearsal</h2>
+<p><code>tools/update_rehearsal.py</code> (CI job <code>update-rehearsal</code> on Linux, Windows and macOS) runs the whole path in a sandbox: a local site server, a throwaway key trusted through <code>KUROOTO_EXTRA_UPDATE_KEY</code>, release 0.1.0 installed with the real installer, 0.2.0 through <code>kurooto update --now</code>, 0.3.0 built with <code>--break-run</code> (it must roll back to 0.2.0 and land in <code>bad.json</code>), then "Up to date" and <code>kurooto uninstall</code>. Run it locally before changing anything in <code>update/</code>, <code>installer/</code> or <code>cli.py:install_finish</code>.</p>
+<h2 id="known-problems">Known problems</h2>
+<ul><li><code>update/service.py:Updates.held</code> has <code>self.clock = time.time</code> after its <code>return</code>, so <code>Updates</code> never gets a <code>clock</code> attribute. <code>Updates.hold</code> calls <code>self.clock()</code> when <code>updates.staged</code> is on and the release isn't critical, which raises <code>AttributeError</code> (not caught by <code>check()</code>). <code>tests/unit/test_quick_updates.py</code> sets <code>u.clock</code> by hand, hiding it. The assignment belongs in <code>__init__</code>.</li><li><code>docs/RELEASING.md</code> describes <code>build --critical</code> and <code>sign --critical</code> as different; in code both skip every hold.</li><li><code>update/launcher.py</code>'s docstring lists the phases as <code>trial | ok</code>; <code>rolled_back</code> is also written.</li></ul>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/release-and-updates.md">docs/wiki/dev/release-and-updates.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

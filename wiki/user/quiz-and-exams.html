@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz and exams · User wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="User wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>User wiki</strong>: <a href="index.html">Start</a> <a href="commands.html">Commands</a> <a href="getting-started.html">Getting started</a> <a href="ai-brains.html">AI brains</a> <a href="talking-to-kurooto.html">Talking to Kurooto</a> <a href="messages-it-sends.html">Messages Kurooto sends by itself</a> <a href="reminders-and-deadlines.html">Reminders and deadlines</a> <a href="check-ins-and-journal.html">Check-ins and journal</a> <a href="calls.html">Phone calls and the morning alarm</a> <a href="phone-app.html">Your phone</a> <a href="classes-and-timetable.html">Classes, timetable and calendar</a> <a href="quiz-and-exams.html" aria-current="page">Quiz and exams</a> <a href="books-and-study.html">Books and study</a> <a href="notes-and-concept-graph.html">Notes and the concept graph</a> <a href="skills-and-routines.html">Skills and routines</a> <a href="research.html">Research</a> <a href="google.html">Google: Classroom, Gmail, Calendar and Drive</a> <a href="teaching-kurooto.html">Teaching Kurooto about you</a> <a href="dashboard.html">The dashboard</a> <a href="your-computer.html">Your computer</a> <a href="updates-and-backups.html">Updates, backups and moving</a> <a href="privacy.html">Privacy: what stays and what leaves</a> <a href="add-ons.html">Add-ons, scripts and other programs</a> <a href="faq.html">FAQ</a> <a href="troubleshooting.html">Troubleshooting</a> <a href="glossary.html">Glossary</a> · <a href="../dev/index.html">Developer wiki</a></nav>
+<h1 id="quiz-and-exams">Quiz and exams</h1>
+<p>Practice questions from your own notes, spaced so you see each one again just before you'd forget it; a stronger routine in the two weeks before a quiz or exam; an optional exam-season mode for the whole exam period; revision packs as PDFs; and a hint ladder for problems you're stuck on.</p>
+<ul><li><a href="#quiz">Quiz</a></li><li><a href="#exam-mode">Exam mode</a></li><li><a href="#exam-season">Exam season (optional)</a></li><li><a href="#revision-packs">Revision packs</a></li><li><a href="#hint-ladder">Hint ladder</a></li></ul>
+<hr>
+<h2 id="quiz">Quiz</h2>
+<p><strong>What it does.</strong> Turns lists in your notes into questions, asks a few at a time on Telegram or on a call, and reschedules each by how well you knew it (items you know come back less often; ones you forgot come back tomorrow).</p>
+<p><strong>Turn it on.</strong> Dashboard → Features → Quiz (needs Telegram). With Deadlines on it follows your quizzes and exams; with Phone calls on it can quiz you by call; with Chat on your AI grades your answers.</p>
+<p><strong>Where the questions come from.</strong> Any note whose file name contains <code>exam-prep</code> or <code>quiz</code> (for example <code>linear-algebra/exam-prep.md</code>). Every bullet line under one of these headings is one question:</p>
+<pre><code>## Must know
+- The rank-nullity theorem: dim V = rank T + nullity T for T: V → W linear.
+- A matrix is invertible exactly when its determinant is non-zero.</code></pre>
+<p>Headings that count: <strong>Must know</strong>, <strong>Typical questions</strong>, <strong>Key results</strong>, <strong>Key theorems</strong>, <strong>Key definitions</strong>, <strong>Definitions</strong>, <strong>Theorems</strong>, <strong>Formulas</strong>. A bullet needs at least 12 characters. The note's folder name is the subject. <a href="../../wiki/user/google.html">Classroom → notes</a> keeps such an exam-prep note for each course, and <code>/exam-prep &lt;subject&gt;</code> (see <a href="../../wiki/user/books-and-study.html#the-source-mix">Books and study</a>) brings one up to date. Edit the note any time; new bullets join at the next quiz.</p>
+<p><strong>From Telegram.</strong></p>
+<div class="table-wrap"><table><thead><tr><th>You send</th><th>What happens</th></tr></thead><tbody><tr><td><code>/quiz</code></td><td>a session: the exam-mode subject first, else the subject with most questions due</td></tr><tr><td><code>/quiz la</code></td><td>a session on Linear Algebra</td></tr><tr><td><code>/quiz la here</code></td><td>on Telegram, even when quizzes would ring you</td></tr><tr><td><code>/quiz la call</code></td><td>a quiz call now (it waits out classes and other no-call times)</td></tr><tr><td><code>/quiz at 21:00 la</code>, <code>/quiz la tomorrow 8pm</code></td><td>a quiz check-in later: the first question arrives then (a call instead with <code>quiz.by_call</code> on, or <code>/quiz la call at 21:00</code>)</td></tr><tr><td><code>/quizstatus</code></td><td>items and how many are due, per subject, and any exam mode</td></tr><tr><td>"quiz me", "quiz me on topology", "test me on LA", "give me a quiz"</td><td>a session now</td></tr><tr><td>"quiz me by call", "call me for a quiz"</td><td>a quiz call</td></tr><tr><td>"quiz me at 9 tonight", "quiz me by call at 9"</td><td>a check-in later</td></tr></tbody></table></div>
+<p>With Phone calls on, <code>/quiz</code> first asks <strong>Here or by call?</strong> (buttons <strong>Here</strong> / <strong>By call</strong>). With <code>quiz.by_call</code> on as well, <code>/quiz</code> and "quiz me" call you straight away; add "here" to keep it on Telegram.</p>
+<p><strong>Answering.</strong> Reply to the question with your answer.</p>
+<ul><li>With Chat on, your AI gives the key idea and a grade from 0 to 5, and the next question follows.</li><li>Without Chat (or if the AI fails), Kurooto shows what your note says and you grade yourself: <strong>Forgot</strong> (0), <strong>Hard</strong> (3), <strong>Good</strong> (4), <strong>Easy</strong> (5).</li><li>A session is <code>quiz.per_session</code> questions (3; 6 in exam mode). It ends with "That's the session. /quiz for more." A session left unfinished is forgotten at midnight.</li></ul>
+<p><strong>The evening before a quiz or exam.</strong> From 19:00 (<code>quiz.offer_at</code>) the evening before something on your deadline list that's a quiz or exam: "Linear Algebra quiz is tomorrow at 10:00. Practise? 7 questions are due." with <strong>Quiz me now</strong>, <strong>Call me for a quiz</strong> (with Phone calls on) and <strong>Not tonight</strong>. On the day itself, if it's at least 2 hours away and wasn't offered yet, you get the same with <strong>No thanks</strong>. If you have no material for it yet, it says where to put some. Never during your night hours. Once per quiz or exam.</p>
+<p><strong>On calls.</strong> Say "quiz me" on any call for a spoken quiz: the assistant asks a question, listens, grades it and moves on. In exam mode the call's brief says how many questions are due. A missed quiz call becomes a message: "Missed the quiz call. /quiz la practises here instead."</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → Quiz)</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>quiz.per_session</code></td><td>3</td><td>questions per session</td></tr><tr><td><code>quiz.exam_per_session</code></td><td>6</td><td>questions per session in exam mode</td></tr><tr><td><code>quiz.offer_at</code></td><td><code>19:00</code></td><td>when the evening-before offer can come; empty turns the offer off</td></tr><tr><td><code>quiz.exam_daily</code></td><td>empty (off)</td><td>a time like <code>18:00</code> turns on a daily practice check-in in exam mode</td></tr><tr><td><code>quiz.by_call</code></td><td>off</td><td>on: <code>/quiz</code>, "quiz me" and quiz check-ins ring you (with Phone calls on)</td></tr><tr><td><code>quiz.call_min</code></td><td>10</td><td>how long a quiz call is meant to take, in minutes</td></tr></tbody></table></div>
+<p><strong>Messages it sends by itself.</strong> The evening-before offer (Less of this → Stop empties <code>quiz.offer_at</code>), exam mode's daily practice check-in, quiz calls in exam mode, and the "Quiz time" check-ins you set (those are your own and never held back). See <a href="../../wiki/user/messages-it-sends.html">Messages it sends</a>.</p>
+<p><strong>What leaves your computer.</strong> With Chat on, the question and your answer go to your AI to grade it. Otherwise nothing.</p>
+<p><strong>Turn it off / undo.</strong> Features → Quiz → Turn off; your progress stays in Kurooto's state folder (<code>quiz/</code>). <code>quiz.by_call</code> off brings back <strong>Here or by call?</strong>.</p>
+<h2 id="exam-mode">Exam mode</h2>
+<p><strong>What it does.</strong> Two weeks before each quiz or exam on your <a href="../../wiki/user/reminders-and-deadlines.html">deadline list</a>, that subject is in exam mode until the exam has passed. You're told once when it starts. While it's on:</p>
+<ul><li><code>/exam</code> (or "exam mode", "when's my next exam?", "when is my next quiz?") lists each subject's next quiz or exam with how many questions are due;</li><li>calls start knowing it, and a spoken quiz picks that subject;</li><li>quiz sessions are longer (<code>quiz.exam_per_session</code>), and items you know still come back at least once before the exam;</li><li>with <code>quiz.exam_daily</code> set, a practice check-in every day: "Exam mode: Linear Algebra midterm in 5 days. 9 questions to practise. Now?" with <strong>Quiz me now</strong>, <strong>Call me</strong> and <strong>Skip today</strong> (not the day before the exam, when the evening offer takes its place). With <code>quiz.by_call</code> on it calls instead.</li></ul>
+<p>Exams come from whatever feeds your deadline list: <code>/due</code>, your notes, Classroom, your calendar, recurring quizzes, the term note, a class pack.</p>
+<p><strong>Settings.</strong> <code>deadlines.exam_mode_days</code> (14; <code>0</code> turns exam mode off). The full deadline settings are in <a href="../../wiki/user/reminders-and-deadlines.html">Reminders and deadlines</a>.</p>
+<h2 id="exam-season">Exam season</h2>
+<p><strong>This is optional and off by default.</strong> It isn't part of the Starter or Everything choices in setup: turn it on by hand in Dashboard → Features → Exam season. It needs Deadlines.</p>
+<p><strong>What it does.</strong> One card for the whole exam period, on top of exam mode. It does nothing without exam dates: the exam periods in Subjects (<code>/term exams 2026-12-07 to 2026-12-18</code>, or your term note, a class pack) and the exams on your deadline list whose title says exam, midterm, final, mid-sem, end-sem, viva or oral. Quizzes and tests count only inside an exam period, unless you turn on <code>exam_season.quizzes</code>. A season runs from the day before its first exam to the end of its last; exam days up to three days apart are one season. You're told once when one starts, with what it will do ("Exam season: Mon 7 Dec to Fri 18 Dec, 5 exams. Until it's over: …").</p>
+<p><strong>Its parts.</strong> Each has its own switch: on the card in the dashboard's Features tab, with <code>/examseason</code> on Telegram (tap a part to switch it on or off), or in Settings → Exam season. All are on when you turn the feature on.</p>
+<div class="table-wrap"><table><thead><tr><th>Part (setting)</th><th>What it does</th></tr></thead><tbody><tr><td>Hold non-critical updates (<code>hold_updates</code>)</td><td>updates wait until the exams are over. A release marked critical still installs, and so does <code>kurooto update --now</code> or an Update tap.</td></tr><tr><td>Check the alarm every night (<code>alarm_check</code>)</td><td>every night of the period, at <code>night_at</code> (21:30), Kurooto checks that tomorrow's alarm will ring (with the Morning alarm on), and your call line when a leave-by call is set for tomorrow. It tries a safe fix first; if the alarm still might not ring: "… Set your phone's own alarm too." A morning exam with no alarm before it gets its own line: "No alarm is set for tomorrow, and the Linear Algebra final is at 09:00. /alarm 7:00 sets one."</td></tr><tr><td>Ask the evening before (<code>eve</code>)</td><td>once per exam, from <code>eve_at</code> (18:00) the evening before until 2 hours before it starts: "Tomorrow: Linear Algebra final exam at 09:00. Where is it, which seat? Calculator? ID card?" Reply in one line ("Hall B, seat 34, calculator, ID card"), tap <strong>Later</strong> for your next call, or answer in the phone app. If the exam's time isn't known it asks that too ("starts 14:00").</td></tr><tr><td>Alarm to leave on time (<code>leave_alarm</code>)</td><td>on the exam day, <code>leave_min</code> (45) minutes before it starts, or the time you said ("leave 8:10"). With Phone calls on it's a call that rings like the wake-up alarm (also on silent, also while this computer sleeps) and says where to go and what you said; <strong>Later</strong> rings again in 5 minutes, twice; a missed one also sends an urgent message. Without Phone calls it's an urgent message. "no alarm" in your answer turns it off for that exam.</td></tr><tr><td>Two-minute debrief (<code>debrief</code>)</td><td>half an hour after the exam ends (<code>exam_min</code>, 180 minutes after its start; the evening, when its time isn't known): "How did it go? What came up, what went well, what to fix before the next one." Your answer goes, as you said it, into the subject's course note (<code>&lt;subject&gt;/course.md</code>) under <strong>Exam debriefs</strong>, or into that day's daily note when the exam has no subject. <strong>Nothing new</strong> skips it. Asked up to 36 hours after, and open for 2 days.</td></tr><tr><td>No calls during an exam (<code>no_calls</code>)</td><td>from 15 minutes before an exam until <code>exam_min</code> after its start.</td></tr><tr><td>Only deadlines, quizzes and the alarm by day (<code>budget</code>)</td><td>during the season the <a href="../../wiki/user/messages-it-sends.html">daily message limit</a> tightens: only Deadlines, Quiz, the alarm and Exam season itself come during the day; everything else that comes by itself waits for the evening bundle. Your own reminders, approvals and anything urgent still come.</td></tr></tbody></table></div>
+<p><strong>The quiz call before an exam</strong> is off unless you pick it for that exam: the card (and <code>/examseason</code>, with Quiz and Phone calls on) has a <strong>Quiz call before …</strong> button per exam. Picked, Kurooto calls you for a quiz at <code>quiz_call_at</code> (19:00) the evening before, instead of the practice offer, and exam mode's daily practice may call with <code>quiz.by_call</code> on. For the season's other exams, practice stays a message.</p>
+<p><strong>From Telegram.</strong> <code>/examseason</code> or "exam season?" (also "show my exam season", "how's my exam season") shows the season, its exams with what you told Kurooto, and the parts that are on, with their switches.</p>
+<p><strong>On calls.</strong> On the exam day and the day before, every call's brief has the exam and what you said about it.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → Exam season)</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>exam_season.hold_updates</code>, <code>alarm_check</code>, <code>eve</code>, <code>leave_alarm</code>, <code>debrief</code>, <code>no_calls</code>, <code>budget</code></td><td>all on</td><td>the parts above</td></tr><tr><td><code>exam_season.night_at</code></td><td><code>21:30</code></td><td>when the nightly alarm check runs</td></tr><tr><td><code>exam_season.eve_at</code></td><td><code>18:00</code></td><td>when the evening-before question can come</td></tr><tr><td><code>exam_season.leave_min</code></td><td>45</td><td>minutes before the start for the leave alarm</td></tr><tr><td><code>exam_season.exam_min</code></td><td>180</td><td>how long an exam is taken to last</td></tr><tr><td><code>exam_season.quizzes</code></td><td>off</td><td>on: quizzes and tests outside an exam period count too</td></tr><tr><td><code>exam_season.quiz_call_at</code></td><td><code>19:00</code></td><td>when a picked quiz call rings the evening before</td></tr></tbody></table></div>
+<p><strong>What leaves your computer.</strong> With Phone calls on, the leave-by alarm's time, the exam and what you said about it go to your call line so it can ring, like any call. Nothing else.</p>
+<p><strong>Turn it off / undo.</strong> Features → Exam season → Turn off: its timers, leave-by alarms (also on your call line) and the update hold go at once, and calls during exams are allowed again. Or switch off just the part you don't want. Debriefs already written stay in your notes; your answers are kept in Kurooto's state folder (<code>exam_season.json</code>) for 30 days after each exam.</p>
+<h2 id="revision-packs">Revision packs</h2>
+<p><strong>What it does.</strong> <code>/pack</code> reads a subject's notes (course page, exam prep, lecture notes, solutions, and your books' pages in the <a href="../../wiki/user/books-and-study.html#the-source-mix">source mix</a>) and builds a 2 to 6 page revision pack: what's on it, definitions, theorems with their hypotheses, formulas, worked problems, pitfalls and a self-test with answers. It comes to Telegram as a PDF and is saved in your notes (<code>&lt;subject&gt;/revision-pack-&lt;date&gt;.tex</code> and <code>.pdf</code>; <code>revision-packs/</code> when the subject has no folder; your files folder when you set one).</p>
+<p><strong>Turn it on.</strong> It's part of Skills (needs Chat): Features → Skills.</p>
+<p><strong>From Telegram.</strong> <code>/pack linear algebra</code>, or say what it's for: <code>/pack linear algebra midterm friday</code>. It takes a few minutes. <code>/revision-pack</code> is the same skill. Your AI can also send you a pack you made before ("send me my linear algebra pack").</p>
+<p><strong>Making the PDF.</strong> Kurooto uses <strong>Tectonic</strong> (a small LaTeX engine) if it's installed, else your computer's own LaTeX (latexmk or pdflatex). With neither, the pack comes as a <code>.tex</code> file and a message asks <strong>Install Tectonic</strong> / <strong>Not now</strong>. Install fetches about 25 MB from Tectonic's official releases; the first PDF then takes a few minutes while it fetches about 50 MB of LaTeX packages into Kurooto's cache; later ones take seconds. After <strong>Not now</strong> it doesn't ask again for 30 days. If a pack doesn't compile, the AI gets one try to fix its LaTeX; otherwise you get the <code>.tex</code> with the first error line.</p>
+<p><strong>Packs before exams.</strong> With Deadlines on, the evening before a quiz or exam that has a subject (12 to 36 hours ahead, from 16:00) you're asked "Linear Algebra midterm is tomorrow 10:00. A revision pack for it tonight?" with <strong>Build it</strong> / <strong>No thanks</strong>, once per quiz or exam. With <code>skills.auto_pack</code> = <code>auto</code> it's built without asking and comes like a <code>/pack</code> (in the background, never ahead of your own requests).</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → Skills)</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>skills.auto_pack</code></td><td><code>ask</code></td><td><code>ask</code>: the Build it / No thanks question; <code>auto</code>: build it; <code>off</code>: never offer</td></tr><tr><td><code>skills.auto_pack_after</code></td><td><code>16:00</code></td><td>not before this time of day</td></tr></tbody></table></div>
+<p><strong>What leaves your computer.</strong> The notes and book excerpts the AI reads go to your AI. Tectonic's install and its LaTeX packages are downloaded from Tectonic's servers.</p>
+<p><strong>Turn it off / undo.</strong> <code>skills.auto_pack</code> = <code>off</code> stops the offers; packs already made stay where they are. Tectonic lives in Kurooto's own folder and goes with <code>kurooto uninstall</code> (see <a href="../../wiki/user/updates-and-backups.html">Updates and backups</a>).</p>
+<h2 id="hint-ladder">Hint ladder</h2>
+<p><strong>What it does.</strong> Stuck on a problem? You get one step at a time: <strong>the idea</strong> first, then <strong>the setup</strong>, then <strong>the key step</strong>. The full solution comes only when you ask for it. Every step names the lecture note the problem belongs to.</p>
+<p><strong>Turn it on.</strong> Features → Hint ladder (needs Subjects; uses your AI).</p>
+<p><strong>From Telegram.</strong></p>
+<ul><li>Send a photo of the problem with <code>/hint la</code> as the caption, or type it: <code>/hint la show that the trace is basis-free</code>. The subject's short name goes first (with only one subject, it's used anyway).</li><li><strong>Next hint</strong> (or reply "next", "more", "go on") gives the next step.</li><li>After the key step, <strong>Show the solution</strong> (or reply "solution", "answer", "show me the answer" to any hint) gives the full solution.</li></ul>
+<p><strong>The course's AI policy.</strong> The first time you use <code>/hint</code> for a subject, Kurooto asks what the course allows: <strong>Hints and full solutions</strong>, <strong>Hints only, no full solutions</strong>, <strong>No AI help</strong>, or your own words. Your answer becomes a line in the subject's course note: <code>AI policy: Hints only, no full solutions (your answer to Kurooto, 2026-10-20)</code>. After that it reads the line from the note, so change it there; a line you wrote yourself (<code>AI policy: ...</code>) counts too.</p>
+<ul><li>"No full solutions" or "hints only": the ladder ends at the key step.</li><li>"No AI help", "not allowed": no hints for that subject, and nothing is sent to the AI.</li></ul>
+<p><strong>How it's made.</strong> The AI works out the whole ladder once and Kurooto shows it a step at a time. An answer that doesn't come in steps is never passed on (it could give the solution away): you get "No hints this time" and can <code>/hint</code> again. If the photo can't be read, it asks you to send it sharper or typed. It's the shipped <code>hint</code> skill: copy it into your skills folder (<code>/skills copy hint</code>) to change how hints are written.</p>
+<p><strong>Limits.</strong> Photos need an AI that opens files itself (agy or Claude Code). With a Gemini key or another API service, type the problem instead.</p>
+<p><strong>What leaves your computer.</strong> The problem (photo or text), the subject's AI-policy line, and the notes the AI reads to find the lecture note go to your AI.</p>
+<p><strong>Turn it off / undo.</strong> Features → Hint ladder → Turn off. The "AI policy" lines stay in your course notes; delete them there if you like.</p>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/quiz-and-exams.md">docs/wiki/user/quiz-and-exams.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

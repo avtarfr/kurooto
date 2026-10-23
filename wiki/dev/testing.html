@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html">Architecture</a> <a href="repo-layout.html">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="modules.html">Feature modules</a> <a href="web.html">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="testing.html" aria-current="page">Testing</a> <a href="release-and-updates.html">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="testing">Testing</h1>
+<h2 id="running-the-tests">Running the tests</h2>
+<pre><code>uv sync --locked                    # Python 3.12+, the dev group (pytest, ruff)
+uv run pytest -m "not live"         # what CI runs; -q is the default (pyproject.toml addopts)
+uv run pytest tests/unit/test_jobs.py -k watchdog
+uv run ruff check . &amp;&amp; uv run ruff format --check .</code></pre>
+<ul><li><code>pyproject.toml [tool.pytest.ini_options]</code>: <code>testpaths = ["tests"]</code>, marker <code>live</code> ("needs real accounts or network; not run in CI"). Never write a test that needs a real account or the internet without that marker.</li><li>Some tests need Node: <code>tests/unit/test_static_js.py</code> (<code>node --check</code> on every dashboard script), <code>tests/unit/test_livefallback.py</code> (runs <code>tests/js/*.mjs</code>), <code>tests/unit/test_calls.py</code> (the Worker against the crypto vectors). They skip when <code>node</code> isn't on PATH.</li><li><code>tests/integration/</code> runs the real call-line Worker under <code>wrangler dev</code>. It needs Node and the Worker's packages (<code>npm ci --no-audit --no-fund --ignore-scripts</code> in <code>src/kurooto/data/worker</code>, then bundle the call page with <code>npx esbuild web/app.js --bundle --minify --format=esm --target=es2019 --outfile=public/app.js</code>), and skips on Windows or without them (<code>pytestmark</code> in each file).</li><li>Android: <code>android/build.sh --test</code> runs the crypto and speech tests on a plain JVM; <code>android/build.sh</code> builds a debug APK (needs the Android SDK).</li></ul>
+<h2 id="the-real-install-guard">The real-install guard</h2>
+<p><code>tests/isolation.py:start()</code> runs from <code>tests/conftest.py</code> before anything imports <code>kurooto</code>. It makes every test run as if on an empty computer and fails any test that touches the developer's real Kurooto:</p>
+<ul><li>A pretend home in a temporary folder: <code>HOME</code>, <code>USERPROFILE</code>, <code>XDG_*</code>, <code>APPDATA</code>, <code>LOCALAPPDATA</code> and <code>KUROOTO_HOME</code> (unless set for the run) point into it; <code>Path.home()</code> follows <code>HOME</code>; <code>PYTHON_KEYRING_BACKEND</code> is the null keyring. The autouse fixture <code>nowhere_real</code> gives <strong>each test</strong> its own fresh pretend home and sets <code>KUROOTO_SECRETS=file</code>.</li><li>Stand-ins first on PATH (<code>_stand_ins</code>): quiet <code>notify-send</code> / <code>osascript</code>, and <code>loginctl</code>, <code>systemctl</code>, <code>launchctl</code>, <code>kurooto</code> that refuse to do anything.</li><li>An audit hook (<code>sys.addaudithook(_hook)</code>) refuses and records: opening for write, creating, renaming, deleting or chmod-ing anything under the real install's folders and the places Kurooto changes outside them (<code>protected_paths</code>: the config/data/state/cache folders on every OS, systemd user units, autostart, the app menu, <code>~/.gemini</code>, <code>~/.local/bin/kurooto</code>, LaunchAgents, Start-menu shortcuts); opening a SQLite database there (read-only <code>mode=ro</code> URIs excepted); running the real <code>loginctl</code> / <code>systemctl</code> / <code>launchctl</code> / <code>kurooto</code>; connecting to the running dashboard's port (8770 and whatever the real <code>web.json</code> says); binding that port is refused so test servers move on.</li><li><code>pytest_runtest_makereport</code> turns any recorded violation into a failure of that test, whatever it asserted; the terminal summary prints "real-install guard" with violations and reads. Reads of protected folders are only counted.</li><li>Other autouse fixtures: <code>no_desktop_popups</code> (stand-ins first on PATH), <code>no_path_changes</code> (<code>core/pathfix.allowed</code> returns False), <code>calendar_day_checkins</code> (check-in days start at midnight in tests).</li></ul>
+<p>If the guard fires, the code under test computed a path without going through <code>core/paths.py:paths()</code> / <code>KUROOTO_HOME</code>, called a real system tool, or reached the real daemon. Fix the code, not the guard.</p>
+<h2 id="cli-runs-need-a-scratch-kurootohome">CLI runs need a scratch <code>KUROOTO_HOME</code></h2>
+<p>Outside pytest nothing protects a real install. <code>kurooto &lt;anything&gt;</code> from a source checkout, without <code>KUROOTO_HOME</code>, reads and writes the developer's real settings, secrets, scheduler and notes, can talk to the running daemon through <code>web.json</code>, and some commands change the system (autostart, PATH, agy's settings, the app menu). A development run once changed a live install's settings this way. Always:</p>
+<pre><code>export KUROOTO_HOME="$(mktemp -d)"        # or a fixed scratch folder you reuse
+uv run kurooto doctor
+uv run kurooto run                         # foreground daemon on the next free port, logs in $KUROOTO_HOME/state/logs</code></pre>
+<p>With <code>KUROOTO_HOME</code> set, secrets go to a file, the default notes folder is <code>$KUROOTO_HOME/workspace</code>, agy's settings are left alone (<code>providers/agy.py:tools_once</code> unless <code>KUROOTO_AGY_TOOLS=1</code>), and add-on/terminal launchers are redirected (<code>modules/terminal/launchers.py:outside</code>). Still avoid <code>autostart</code>, <code>install-finish</code>, <code>uninstall</code>, <code>export-skills</code>, <code>term --default</code>, <code>rotate</code> and anything that signs in, unless that is what you are testing in a VM. Set <code>KUROOTO_NO_AUTOSTART=1</code> and <code>KUROOTO_NO_BROWSER=1</code> for installer experiments (as <code>tools/update_rehearsal.py</code> does).</p>
+<h2 id="fakes">Fakes</h2>
+<div class="table-wrap"><table><thead><tr><th>Fake</th><th>Stands in for</th><th>Used by</th></tr></thead><tbody><tr><td><code>tests/fakes/telegram.py:FakeTelegram</code></td><td>the Bot API on localhost (records <code>sent</code>, serves <code>updates</code> and files, can fail per method, simulates a webhook)</td><td>the <code>env</code> fixture, most module tests</td></tr><tr><td><code>tests/fakes/openai.py:FakeOpenAI</code></td><td>an OpenAI-compatible API (modes ok, 429, 401, empty, 500; per-model modes)</td><td>brain and quota tests</td></tr><tr><td><code>tests/fakes/openai_tools.py</code></td><td>a scripted function-calling API</td><td>tool-loop tests, the call line's turn fallback</td></tr><tr><td><code>tests/fakes/ollama.py</code></td><td>Ollama <code>/api/tags</code>, <code>/api/chat</code></td><td>local models, confidential mail</td></tr><tr><td><code>tests/fakes/fake_agy.py</code></td><td>the <code>agy</code> CLI (<code>FAKE_AGY_MODE</code>: ok, prompt, denied, limit, auth, silent, slow, crash)</td><td><code>test_agy_fallback.py</code>, jobs</td></tr><tr><td><code>tests/fakes/fake_cli.py</code></td><td><code>claude -p --output-format json</code> (<code>FAKE_CLI_MODE</code>: ok, limit, auth)</td><td><code>test_claude.py</code></td></tr><tr><td><code>tests/fakes/fake_mcp_agent.py</code></td><td>an agent program that starts <code>kurooto mcp</code> and calls one tool</td><td><code>test_tools_mcp.py</code></td></tr><tr><td><code>tests/fakes/google.py</code></td><td>OAuth token endpoint (checks PKCE), Classroom, Drive, Gmail, Calendar, several accounts</td><td>Google tests</td></tr><tr><td><code>tests/fakes/cloud.py:FakeCloud</code></td><td>Gemini's token endpoint, ntfy, Web Push</td><td><code>tests/integration/</code></td></tr><tr><td><code>tests/js/fake-genai.mjs</code></td><td><code>@google/genai</code>'s Live API</td><td><code>tests/js/callpage.mjs</code></td></tr></tbody></table></div>
+<p>Brains accept a list as their executable (<code>Agy(exe=[sys.executable, "tests/fakes/fake_agy.py"])</code>), and <code>telegram.api_base</code> points the bot at the fake. Fixtures data: <code>tests/fixtures/call-vectors.json</code> (k1, t1, s1), <code>tests/fixtures/syscolors/</code>.</p>
+<h2 id="writing-a-test">Writing a test</h2>
+<pre><code>def test_something(env):                       # a paired app talking to a fake Telegram (tests/conftest.py:Env)
+    env.on("reminders")                        # App.enable, asserting it worked
+    reply = env.say("remind me in 5 min to stretch")
+    assert "I'll remind you" in reply
+    assert env.app.scheduler.jobs("reminders:")
+    text = env.press("rem:abcd:10")            # a button tap; returns the answerCallbackQuery text</code></pre>
+<ul><li>For code that doesn't need Telegram, build an app directly: <code>monkeypatch.setenv("KUROOTO_HOME", str(tmp_path)); app = App()</code>, and <code>app.close()</code> at the end.</li><li>Time: <code>core/scheduler.py:Scheduler(..., clock=...)</code> and <code>Quota.clock</code> take fake clocks; run due jobs with <code>await app.scheduler.tick()</code> (or <code>asyncio.run(...)</code>).</li><li>AI work: set <code>brain.main</code> to a fake (or monkeypatch <code>providers.build</code>), submit, then <code>app.jobs.run_next()</code> runs one job synchronously, including its then-action.</li><li>Scheduled actions: call them the way the scheduler does, <code>fn(payload)</code>, not <code>fn()</code>. Several real bugs (the Space keeper's weekly clean, the concept graph's nightly start) exist because tests called the method directly.</li><li>Cover each user-visible path: the command, the intent, the button, the tool, and the feature being off (<code>App.handle</code> answers "X is off").</li><li>Keep tests hermetic: no network (use a fake on 127.0.0.1), no sleeping on wall-clock time where a fake clock works.</li></ul>
+<h2 id="ci-githubworkflows">CI (<code>.github/workflows/</code>)</h2>
+<div class="table-wrap"><table><thead><tr><th>Workflow / job</th><th>What it runs</th></tr></thead><tbody><tr><td><code>ci.yml</code> <code>test</code></td><td>Linux, Windows, macOS x Python 3.12, 3.13: <code>uv sync --locked</code>, <code>ruff check</code>, <code>ruff format --check</code>, <code>pytest -m "not live"</code>, then <code>kurooto --version</code> and <code>kurooto doctor</code> as a smoke test</td></tr><tr><td><code>ci.yml</code> <code>call-line</code></td><td>Node 24, the Worker's packages, the bundled call page, <code>pytest tests/integration tests/unit/test_calls.py</code></td></tr><tr><td><code>ci.yml</code> <code>android</code></td><td><code>android/build.sh --test</code> (vectors), a debug build, Android lint <code>NewApi</code> / <code>InlinedApi</code> as errors, the debug APK as an artifact</td></tr><tr><td><code>ci.yml</code> <code>privacy</code></td><td><code>tools/privacy_scan.py --tree</code> and <code>--history</code> (with the <code>PRIVACY_DENYLIST</code> secret), gitleaks over the whole history</td></tr><tr><td><code>ci.yml</code> <code>update-rehearsal</code></td><td>Linux, Windows, macOS: <code>requirements.lock</code> matches <code>uv.lock</code>, then <code>tools/update_rehearsal.py</code> (install, update, rollback, uninstall with the real installer)</td></tr><tr><td><code>android-emulator.yml</code></td><td><code>android/smoke.sh</code> on emulators API 23 to 35 (android changes, weekly, or by hand)</td></tr><tr><td><code>spike-agy.yml</code>, <code>spike-gbrain.yml</code></td><td>manual one-off probes of agy and GBrain installs on three OSes</td></tr></tbody></table></div>
+<p>Actions are pinned by commit hash; keep them pinned when updating.</p>
+<h2 id="before-you-push">Before you push</h2>
+<pre><code>uv run ruff check . &amp;&amp; uv run ruff format --check .
+uv run pytest -m "not live"
+python3 tools/privacy_scan.py --staged         # the pre-commit hook does this (git config core.hooksPath tools/hooks)
+python3 tools/gen_settings_guide.py --check    # if you touched settings</code></pre>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/testing.md">docs/wiki/dev/testing.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

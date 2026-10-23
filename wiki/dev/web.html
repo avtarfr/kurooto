@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The web page: setup wizard, dashboard, local API · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html">Architecture</a> <a href="repo-layout.html">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="modules.html">Feature modules</a> <a href="web.html" aria-current="page">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="testing.html">Testing</a> <a href="release-and-updates.html">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="the-web-page-setup-wizard-dashboard-local-api">The web page: setup wizard, dashboard, local API</h1>
+<p>Everything a browser, the <code>kurooto</code> CLI and <code>kurooto mcp</code> say to the running daemon goes through one local HTTP server in <code>src/kurooto/web/</code>. There is no framework: it is the standard library's <code>http.server</code>.</p>
+<p>The user's view: <a href="../../wiki/user/dashboard.html">../user/dashboard.md</a>.</p>
+<h2 id="the-server-webserverpy">The server (<code>web/server.py</code>)</h2>
+<ul><li><code>start(app, port=None) -&gt; Server</code> is called by <code>daemon.py:serve</code>. <code>Server.__init__</code> builds a <code>ThreadingHTTPServer</code> (<code>daemon_threads = True</code>) with a <code>Handler(BaseHTTPRequestHandler)</code> defined as a closure, and <code>Server.start</code> runs <code>serve_forever</code> in a thread named <code>web</code>. It binds <strong>only</strong> <code>127.0.0.1</code>.</li><li>Port: <code>free_port(start)</code> tries <code>web.port</code> (default 8770) and the next 29 ports; none free raises <code>RuntimeError</code>. The chosen URL is written to <code>&lt;state&gt;/web.json</code> (<code>{port, url, started}</code>), which the CLI (<code>cli.py:wait_for_web</code>, <code>ask_running</code>), <code>top.py</code> and <code>core/aboutyou.py</code> read. <code>app.web_port</code> is set too (the Google OAuth redirect <code>http://127.0.0.1:&lt;port&gt;/oauth/google</code>, <code>modules/google.py</code>, and the alarm read it).</li><li><code>Server.stop()</code> sets <code>stopping</code>, stops <code>Live</code>, shuts the server down and deletes <code>&lt;state&gt;/tools-access.json</code> if it still holds this server's tools key.</li><li>Every response goes through <code>Handler._send</code>, which adds <code>Content-Security-Policy</code> (constant <code>CSP</code>: <code>default-src 'self'</code>, <code>script-src 'self'</code>, <code>frame-ancestors 'none'</code>, <code>form-action 'none'</code> ...), <code>X-Content-Type-Options: nosniff</code>, <code>Referrer-Policy: no-referrer</code>, <code>Cache-Control: no-store</code>. Because of the CSP, pages may not use inline scripts or load anything from another origin.</li><li>Static files: <code>static(name)</code> reads them with <code>importlib.resources</code>, only names matching <code>(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)</code>.</li><li><code>Server.fill(html)</code> substitutes <code>{{TOKEN}}</code>, <code>{{VERSION}}</code>, <code>{{PALETTE}}</code>, <code>{{LAYOUT}}</code> and injects the palette style and <code>/static/palette.js</code> / <code>/static/links.js</code> before <code>&lt;/head&gt;</code>.</li><li>Settings registered here: <code>web.port</code>, and the <code>look.*</code> section (<code>palette</code>, <code>theme_file</code>, <code>layout</code>, <code>projects</code>, <code>panes</code>, <code>hidden_features</code>, <code>links_in</code>).</li></ul>
+<h2 id="who-may-call-it">Who may call it</h2>
+<div class="table-wrap"><table><thead><tr><th>Check</th><th>Where</th><th>Applies to</th></tr></thead><tbody><tr><td>Host header must be <code>127.0.0.1:&lt;port&gt;</code> or <code>localhost:&lt;port&gt;</code> (DNS-rebinding guard)</td><td><code>Handler._host_ok</code></td><td>every GET and POST</td></tr><tr><td>Same OS account (Linux only: owner of the client socket from <code>/proc/net/tcp{,6}</code>, must be this uid or root; unknown is refused)</td><td><code>web/peer.py:same_user</code>, <code>peer_uid</code></td><td>every request except <code>/health</code> and <code>/static/*</code></td></tr><tr><td>Page token in header <code>X-Kurooto</code>, compared in constant time (<code>compare_digest</code>); <code>Origin</code> absent or one of the allowed hosts</td><td><code>Handler._authed</code></td><td>every <code>/api/*</code></td></tr><tr><td>Tools-only key in header <code>X-Kurooto-Tools</code>, no Origin, and only <code>/api/tools</code> and <code>/api/tools/call</code> (<code>TOOLS_ONLY</code>)</td><td><code>Handler._tools_authed</code></td><td><code>kurooto mcp</code></td></tr></tbody></table></div>
+<ul><li>The page token is the secret <code>web.token</code> (created with <code>secrets.token_urlsafe(24)</code> on first start, kept in the keychain or <code>secrets.json</code>, so it survives restarts). It is embedded in each served page as <code>&lt;meta name="kurooto-token"&gt;</code>; the JS sends it as <code>X-Kurooto</code>. The CLI reads the same secret directly (<code>cli.py:ask_running</code>).</li><li>The tools key is new at every start and written to <code>&lt;state&gt;/tools-access.json</code> (<code>core/mcp.py:access_file</code>).</li><li>There is no CSRF token: a cross-site page cannot set the custom header without a CORS preflight, which is never answered; the Origin check and <code>form-action 'none'</code> back that up.</li><li>Failures: GET without auth 401 <code>{"error":"no"}</code>; wrong Host 403; another account 403; any POST auth failure 403; body over 4 000 000 bytes 413; bad JSON 400.</li><li>Unauthenticated by design: <code>/health</code> (<code>{ok, version}</code>), <code>/static/*</code>, and <code>/oauth/google</code> (Host and same-user checked, plus the one-time OAuth <code>state</code>).</li></ul>
+<h2 id="routes">Routes</h2>
+<p>Non-API routes (<code>Handler.do_GET</code>): <code>/</code> (the wizard until the setting <code>setup.done</code>, then the dashboard), <code>/setup</code>, <code>/morning</code>, <code>/confidential</code> (local mail summaries), <code>/static/&lt;name&gt;</code>, <code>/oauth/google</code>, <code>/health</code>, and <code>/api/stream</code> (SSE; the token comes as <code>?t=</code> because <code>EventSource</code> can't send headers).</p>
+<p>API routes: <code>Handler</code> strips <code>/api/</code> and calls <code>web/api.py:Api.get(path, q)</code> or <code>Api.post(path, body)</code>, which both return <code>(status, dict)</code>. Each first delegates paths listed in <code>web/tools_api.py:GETS</code> / <code>POSTS</code>. Query strings are flattened to their first value; a non-dict JSON body becomes <code>{}</code>. Anything unmatched is 404.</p>
+<p>GET (in <code>Api.get</code>): <code>tools</code>, <code>job?id=</code>, <code>usage?days=</code> (tools_api); <code>jobs</code>, <code>term</code>, <code>health</code>, <code>sync/status</code>, <code>profile</code>, <code>note?id=</code>, <code>settings</code>, <code>look</code>, <code>events</code> (last 80), <code>board</code> (503 without <code>Live</code>), <code>state</code> (the wizard's whole state), <code>phone</code>, <code>power</code>, <code>aboutyou/profile</code>, <code>aboutyou?source=</code>, <code>research</code>, <code>progress</code>, <code>ask</code>, <code>ask/&lt;id&gt;</code>, <code>today</code> (<code>core/actions.py:today</code>), <code>morning</code> (<code>modules/daily.py:morning_view</code>), <code>mail/confidential?day=</code>, <code>books</code>.</p>
+<p>POST (in <code>Api.post</code>):</p>
+<div class="table-wrap"><table><thead><tr><th>Area</th><th>Paths</th></tr></thead><tbody><tr><td>tools_api</td><td><code>tools/call</code>, <code>say</code>, <code>job</code>, <code>call</code>, <code>call/list</code>, <code>call/cancel</code></td></tr><tr><td>AI</td><td><code>brain</code>, <code>brain/test</code>, <code>brain/models</code>, <code>jobs/cancel</code>, <code>tryit</code></td></tr><tr><td>features</td><td><code>modules/enable</code>, <code>modules/disable</code>, <code>modules/setup</code>, <code>modules/configure</code>, <code>modules/card</code></td></tr><tr><td>settings and you</td><td><code>settings</code>, <code>you</code>, <code>autostart</code>, <code>hardware/refresh</code>, <code>hardware/override</code>, <code>keys/gemini</code></td></tr><tr><td>setup</td><td><code>prereqs/install</code>, <code>prereqs/signin</code>, <code>telegram/token</code>, <code>telegram/poll</code>, <code>telegram/relink</code>, <code>telegram/webhook-off</code>, <code>setup/done</code></td></tr><tr><td>everyday</td><td><code>act</code>, <code>ask</code>, <code>ask/get</code>, <code>ask/pending</code>, <code>ask/answer</code>, <code>ask/expire</code>, <code>notify</code>, <code>send-file</code>, <code>open-note</code>, <code>open-url</code></td></tr><tr><td>health and sync</td><td><code>health/fix</code>, <code>sync/all</code>, <code>sync/status</code></td></tr><tr><td>power</td><td><code>power/stop</code>, <code>power/pause</code>, <code>power/resume</code>, <code>power/off</code></td></tr><tr><td>profile and about</td><td><code>profile/save</code>, <code>profile/restore</code>, <code>aboutyou/add</code>, <code>aboutyou/remove</code>, <code>aboutyou/profile</code>, <code>aboutyou/preview</code>, <code>aboutyou/merge</code></td></tr><tr><td>phone</td><td><code>phone/pair</code>, <code>phone/revoke</code>, <code>phone/test</code></td></tr><tr><td>terminals</td><td><code>term/&lt;name&gt;/attach</code>, <code>input</code>, <code>resize</code>, <code>leave</code>, <code>restart</code> (403 when Terminals is off)</td></tr><tr><td>other</td><td><code>research/save</code>, <code>research/preview</code>, <code>research/run</code>, <code>classpack/import</code>, <code>mail/confidential/settle</code>, <code>books/add</code></td></tr></tbody></table></div>
+<p><code>web/tools_api.py</code> is the API for agent tools and terminal commands: <code>say</code> routes text through <code>App.handle</code> with <code>Incoming(via="terminal")</code> (a bigger request becomes a job whose answer is fetched with <code>job</code>); <code>call</code>, <code>call/list</code>, <code>call/cancel</code> place and manage calls; <code>GET tools</code> also caches the list into <code>&lt;state&gt;/tools-list.json</code> for <code>kurooto mcp</code>.</p>
+<p>Long work runs through <code>Api._background(fn, then_enable=None)</code>: one slot (<code>_installing</code>), log lines into <code>Api.progress</code>, polled with <code>GET /api/progress</code>.</p>
+<h3 id="adding-a-route">Adding a route</h3>
+<ol><li>Add a branch in <code>Api.get</code> or <code>Api.post</code> (or in <code>tools_api.py</code>, also adding the name to <code>GETS</code>/<code>POSTS</code>). Return <code>(status, dict)</code>, usually <code>200, {"ok": ..., "message"|"error": ...}</code>.</li><li>Do not touch the auth in <code>server.py</code>: every <code>/api/</code> path already gets Host, same-user, token and Origin checks. Never add an unauthenticated route.</li><li>Guard feature routes with <code>self.app.modules.get(id)</code> and <code>self.app.is_on(id)</code>.</li><li>Run slow work with <code>self._background(fn)</code>; defer something that would kill the response (stopping) with a <code>threading.Timer</code>, as <code>power/stop</code> does.</li><li>Emit an event (<code>app.events.emit</code>) if the dashboard should see it live.</li><li>Test with <code>Api(app).get/post</code> directly or over HTTP like <code>tests/unit/test_web.py</code>.</li></ol>
+<h2 id="live-updates-sse">Live updates (SSE)</h2>
+<ul><li><code>Handler._stream</code>: <code>cid, q = server.live.add()</code>, then loops on <code>q.get(timeout=15)</code>, sends up to 50 messages per write as <code>data: &lt;json&gt;\n\n</code>, and a <code>: ping</code> comment on timeout. Always <code>live.drop(cid)</code> at the end.</li><li><code>web/live.py:Live</code>: one bounded queue per client (<code>Queue(maxsize=2000)</code>; a full queue drops the message). <code>push(msg, only=None)</code> fans out (<code>only</code> restricts to a set of client ids). On <code>add()</code> a client first gets <code>graph</code>, a <code>body</code> snapshot and <code>hello</code> (with its <code>cid</code>).</li><li><code>Live.__init__</code> calls <code>core/events.py:subscribe(self._event)</code>: every <code>Events.emit</code> is pushed as <code>{"t": "event", "cell": cell_of(kind), ...}</code> (<code>EVENT_CELL</code> maps event-kind prefixes to dashboard cells).</li><li><code>Live._loop</code> runs only while clients exist: a <code>Vitals.snapshot()</code> (<code>body</code>: machine vitals from <code>core/vitals.py</code>, feature cells, jobs, schedule, updates, power, processes) every 2 s, and the notes graph (<code>Graph.scan()</code>) every 5 s when notes changed. Errors emit <code>dashboard_error</code>.</li><li>Message types the page handles (<code>static/home.js:connect</code>): <code>graph</code>, <code>body</code>, <code>event</code>, <code>hello</code>, <code>pty</code>.</li><li>Terminals use no websockets: output arrives as <code>{"t":"pty","n":name,"d":&lt;base64&gt;,"replay":bool}</code> pushed only to the viewers (<code>modules/terminals.py</code>), and keystrokes go up as <code>POST /api/term/&lt;name&gt;/input</code> batched every 12 ms. xterm.js is vendored in <code>static/vendor/xterm/</code>.</li></ul>
+<h2 id="front-end-webstatic">Front end (<code>web/static/</code>)</h2>
+<ul><li>Pages: <code>setup.html</code> + <code>setup.js</code> (wizard), <code>home.html</code> + <code>home.js</code> + <code>home.css</code> (dashboard), <code>morning.html</code> + <code>morning.js</code>, <code>confidential.html</code> + <code>confidential.js</code>. Shared: <code>style.css</code>, <code>palette.js</code> (colour palette: polls <code>GET /api/look</code> every 30 s), <code>links.js</code> (external links through <code>POST /api/open-url</code> unless <code>look.links_in = here</code>), <code>aboutme.js</code>.</li><li>Plain scripts with <code>"use strict"</code>, no bundler, no framework, no modules. Each page has its own <code>TOKEN</code>, <code>$</code> and <code>api(path, body)</code> helper (GET without a body, JSON POST with one). <code>tests/unit/test_static_js.py</code> runs <code>node --check</code> on every file.</li><li>Dashboard tabs (<code>TABS</code> in <code>home.js</code>): today, activity, jobs, schedule, features, phone, research, about, settings, and terminals. Alt+letter shortcuts in <code>PKEY</code> (Alt+T Today, Alt+S Settings). Layouts <code>dense</code> and <code>roomy</code> (<code>look.layout</code>).</li><li>Ctrl+K (0.5.8): markup <code>#cmdk*</code> in <code>home.html</code>, logic in <code>home.js</code> (<code>VERBS</code>: ask, journal, note, remind, due, alarm, find, open; <code>cmdOpen</code>, <code>cmdGo</code>, ...). Every verb except <code>find</code>/<code>open</code> calls <code>POST /api/act</code>, the same path as the Today page. Note: <code>core/palette.py</code> is the colour palette and <code>core/shortcuts.py</code> is the app-menu launcher entry; neither is about keyboard shortcuts.</li></ul>
+<h2 id="the-today-page-and-actions-coreactionspy">The Today page and actions (<code>core/actions.py</code>)</h2>
+<p>An action is a function <code>fn(app, args) -&gt; dict</code> in <code>ACTIONS</code>: <code>journal.add</code>, <code>note.capture</code>, <code>reminder.add</code>, <code>reminder.cancel</code>, <code>reminder.snooze</code>, <code>deadline.add</code>, <code>deadline.done</code>, <code>deadline.move</code>, <code>alarm.set</code>, <code>alarm.skip</code>, <code>alarm.clear</code>, <code>alarm.daily</code>, <code>checkin.skip</code>, <code>checkin.defer</code>, <code>ask</code>, <code>question.answer</code>.</p>
+<p><code>act(app, name, args, via)</code> never raises: a <code>Problem</code> becomes <code>{"ok": False, "message"}</code>, any other exception becomes a sentence plus an <code>action_failed</code> event; success emits <code>action</code> and returns <code>{"ok": True, ...}</code>. Actions call the same code as the Telegram command and the AI tool (deadlines go through <code>core/tools.py:run_tool</code>, <code>ask</code> through <code>tools_api</code> <code>say</code>), so the three paths cannot drift. <code>_on(app, module, what)</code> refuses when the feature is off. <code>today(app)</code> assembles the page from <code>modules/daily.py:morning_view</code> plus reminders, deadlines, alarm state, check-ins, open questions, the journal and today's inbox. Tests: <code>tests/unit/test_actions.py</code>.</p>
+<p>To add an action: write <code>fn(app, args)</code> that calls the existing module method, add it to <code>ACTIONS</code>, add a button in <code>home.js:renderToday</code> (<code>data-act</code> / <code>data-args</code>) or a Ctrl+K verb, and a test.</p>
+<h2 id="the-wizard">The wizard</h2>
+<p><code>static/setup.js</code>: <code>STEPS = ["you", "computer", "brain", "about", "features", "telegram", "finish"]</code>, plus a hidden <code>restore</code> section ("I've used Kurooto before": <code>POST /api/profile/restore</code>). Each step saves through its own route and reloads <code>GET /api/state</code>. The brain list comes from <code>web/api.py:BRAIN_ORDER</code>; features from <code>MODULE_ORDER</code>, with <code>STARTER</code> pre-ticked. <code>finish()</code> runs <code>modules/setup</code> for chosen features that aren't ready, then <code>modules/enable</code>, <code>autostart</code> and <code>setup/done</code>. Secrets typed in the wizard go to <code>app.secrets.set</code> (keychain or <code>secrets.json</code>), never to <code>settings.json</code>.</p>
+<h2 id="how-a-module-shows-up-in-the-ui">How a module shows up in the UI</h2>
+<p>There is no per-module route registration. <code>web/api.py:Api._modules</code> and <code>_card</code> read these optional attributes:</p>
+<div class="table-wrap"><table><thead><tr><th>Attribute</th><th>Effect</th></tr></thead><tbody><tr><td><code>id</code>, <code>title</code>, <code>description</code>, <code>privacy</code>, <code>requires</code>, <code>ready()</code></td><td>the feature card</td></tr><tr><td><code>setup(progress)</code> -&gt; <code>(ok, msg)</code></td><td>a "Set up" button, run in the background by <code>modules/setup</code>; enables the feature on success</td></tr><tr><td><code>setup_form()</code> -&gt; <code>{intro, links, fields: [...], ...}</code> and <code>configure(values)</code> -&gt; <code>{ok, message, ...}</code></td><td>a form on the card, saved by <code>modules/configure</code> (example: <code>modules/notes_sync.py</code>)</td></tr><tr><td><code>card()</code> -&gt; <code>{lines, toggles}</code> and <code>card_action(act, value)</code></td><td>extra lines and switches while on (example: <code>modules/exam_season.py</code>)</td></tr><tr><td><code>processes</code>, <code>processes_intermittent</code></td><td>CPU and memory for the feature's dashboard cell (<code>web/live.py</code>)</td></tr><tr><td><code>health_check()</code></td><td>the Features tab's health line and Fix button (<code>core/health.py</code>)</td></tr><tr><td><code>addon</code> (set by <code>core/overlay.py:guard</code>)</td><td>listed under "Your add-ons"</td></tr></tbody></table></div>
+<p>Settings UI: <code>Api._settings</code> lists <code>Api.EDITABLE</code> sections (<code>you</code>, <code>notify</code>, <code>availability</code>, <code>updates</code>, <code>brain</code>, <code>ask</code>, <code>look</code>, <code>power</code>, <code>notes</code>, <code>files</code>) plus the section of every enabled module whose id is a settings section, rendered generically by value type. Some keys are hidden there (<code>telegram.api_base</code>, <code>allowed_users</code>, <code>chat_id</code>; <code>brain.base_urls</code>, <code>models</code>; <code>subjects.list</code>, <code>timetable</code>). <code>Api._set</code> checks the section is editable, canonicalises <code>you.timezone</code>, requires the new value to have the old value's type, saves, and emits <code>setting_changed</code>.</p>
+<p><code>MODULE_ORDER</code> must list exactly the catalog's ids: <code>tests/unit/test_dashboard.py: test_every_feature_is_listed_in_the_wizard_and_dashboard</code> enforces it.</p>
+<h2 id="known-rough-edges">Known rough edges</h2>
+<ul><li><code>Api._set</code> does not apply the hidden-key list, so with Telegram on, <code>POST /api/settings</code> can change <code>telegram.allowed_users</code>, <code>api_base</code> or <code>chat_id</code>; a bare section key (<code>"you"</code>) replaces the whole section. The caller is already authenticated as the same user, so this is a robustness issue rather than an exposure.</li><li><code>Live.stop()</code> does not call the unsubscribe function <code>subscribe()</code> returned: each stopped server leaves an events listener behind (visible in tests that start many servers).</li><li><code>do_POST</code> trusts <code>Content-Length</code> (a non-numeric value raises; a negative one reads to EOF).</li><li><code>setup.js</code> treats any 403 as "the page is out of date", though Host, account and Origin failures also give 403.</li></ul>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/web.md">docs/wiki/dev/web.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

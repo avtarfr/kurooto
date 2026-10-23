@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone calls, the call line and the phone app · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html">Architecture</a> <a href="repo-layout.html">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="modules.html">Feature modules</a> <a href="web.html">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html" aria-current="page">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="testing.html">Testing</a> <a href="release-and-updates.html">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="phone-calls-the-call-line-and-the-phone-app">Phone calls, the call line and the phone app</h1>
+<p>Phone calls (<code>modules/calls/</code>, class <code>Calls</code>, id <code>calls</code>) let the user talk to Kurooto by voice and let Kurooto ring the user's phone. Three parties are involved:</p>
+<ol><li><strong>The daemon</strong> on the user's computer (<code>modules/calls/*.py</code>).</li><li><strong>The call line</strong>: a Cloudflare Worker plus one Durable Object (<code>Line</code>), deployed to the user's own free Cloudflare account from <code>src/kurooto/data/worker/</code>. It is reachable from the internet; the computer is not.</li><li><strong>The phone</strong>: the Android app (<code>android/</code>) or the installable web app (any browser, including iPhones, which only get notifications).</li></ol>
+<p>Audio never passes through the computer or the Worker: the Worker mints a short-lived Gemini Live token and the call page talks to Google directly.</p>
+<p>The user's side of this is in <a href="../../wiki/user/calls.html">../user/calls.md</a> and <a href="../../wiki/user/phone-app.html">../user/phone-app.md</a>.</p>
+<h2 id="files">Files</h2>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody><tr><td><code>modules/calls/__init__.py</code></td><td><code>Calls</code>: settings, commands, placing and ringing, events from the line, relayed HTTP, transcripts</td></tr><tr><td><code>modules/calls/connector.py</code></td><td><code>Connector</code>: the outbound WebSocket to the Worker</td></tr><tr><td><code>modules/calls/deploy.py</code></td><td><code>deploy</code>, <code>Deployer</code>: building and deploying the Worker with wrangler</td></tr><tr><td><code>modules/calls/fallback.py</code></td><td><code>LiveHealth</code>, <code>VoiceTurns</code>, <code>TextCall</code>, <code>rotate</code>, <code>live_profile</code>: when Gemini Live fails</td></tr><tr><td><code>modules/calls/line.py</code></td><td>the shared crypto (k1, t1, s1, pair codes, VAPID keys)</td></tr><tr><td><code>modules/calls/phone.py</code></td><td><code>PhoneApp</code>: questions and approvals as phone notifications with answer buttons</td></tr><tr><td><code>modules/calls/review.py</code></td><td>the post-call look back and <code>/lessons</code> (0.5.8)</td></tr><tr><td><code>modules/calls/tools.py</code></td><td>the <code>Tool</code> dataclass (shared with <code>core/tools.py</code>) and notes helpers</td></tr><tr><td><code>data/worker/src/worker.js</code></td><td>the Worker: <code>fetch</code>, <code>scheduled</code>, Durable Object <code>class Line</code></td></tr><tr><td><code>data/worker/web/app.js</code>, <code>web/fallback.js</code></td><td>the call page source (bundled into <code>public/app.js</code> at deploy)</td></tr><tr><td><code>data/worker/public/</code></td><td><code>index.html</code>, <code>pair.html</code>/<code>pair.js</code>, <code>inbox.html</code>/<code>inbox.js</code>, <code>sw.js</code>, <code>worklet.js</code>, icons</td></tr><tr><td><code>data/worker/wrangler.template.toml</code>, <code>package.json</code>, <code>package-lock.json</code></td><td>Worker config and pinned packages</td></tr><tr><td><code>android/</code></td><td>the app (Java, no Gradle), <code>build.sh</code>, <code>smoke.sh</code>, <code>test/</code></td></tr></tbody></table></div>
+<h2 id="settings-and-secrets">Settings and secrets</h2>
+<p><code>register_defaults("calls", ...)</code> in <code>modules/calls/__init__.py</code>: <code>worker</code> (<code>{url, name, version}</code>; deploy also writes <code>account</code>, <code>hash</code>, <code>deployed</code>), <code>live_model</code>, <code>live_models</code>, <code>voice_by_model</code>, <code>voice_mode</code> (<code>auto</code> | <code>live</code> | <code>phone</code>), <code>voice_by_kind</code>, <code>turn_brain</code> (<code>gemini</code> | <code>local</code>), <code>text_model</code>, <code>voice</code>, <code>persona</code>, <code>ntfy_server</code> (<code>https://ntfy.sh</code>), <code>ring_s</code> (60), <code>later_min</code> (30), <code>realert_min</code> ([3, 6]), <code>notes_repo</code>, and for the look back <code>review</code> (true), <code>review_effort</code> (<code>high</code>), <code>review_brain</code> (<code>""</code> = main), <code>lessons_max</code> (12).</p>
+<p>Secrets (<code>Calls.SECRETS</code> and <code>deploy.ensure_secrets</code>): <code>calls.call_secret</code>, <code>calls.connector_secret</code>, <code>calls.ntfy_topic</code>, <code>calls.ntfy_key</code>, <code>calls.vapid_jwk</code>, <code>calls.vapid_public</code>; also <code>gemini.api_key</code> (required) and <code>calls.github_token</code> (set by Notes sync, <code>modules/notes_sync.py</code>, so the line can read notes while the computer is off).</p>
+<h2 id="deploying-the-line-modulescallsdeploypy">Deploying the line (<code>modules/calls/deploy.py</code>)</h2>
+<p><code>deploy(...)</code> runs <code>Deployer.run</code>:</p>
+<ol><li><code>prepare</code>: Node via <code>core/prereqs.py</code>; copy <code>FILES</code> from <code>data/worker</code> into <code>&lt;app&gt;/call-line</code> (<code>skip_built</code> leaves out <code>public/app.js</code> and <code>node_modules</code>); copy <code>data/kurooto.apk</code> (put into release builds by <code>tools/release.py build --apk</code>) to <code>public/kurooto.apk</code>; <code>npm ci --ignore-scripts</code> (skipped when the <code>.kurooto-lock</code> stamp matches the lockfile); esbuild bundles <code>web/app.js</code>.</li><li><code>sign_in</code>: <code>wrangler login --browser=false</code>, the URL opened in the user's browser. <code>wrangler_env</code> gives wrangler its own config home and strips <code>CLOUDFLARE_*</code>, <code>CF_*</code>, <code>WRANGLER_*</code> from the environment, so a developer's own Cloudflare login is never used or touched.</li><li><code>subdomain</code>: the account's workers.dev subdomain through the Cloudflare API (created as <code>k-&lt;hex&gt;</code> if missing).</li><li><code>write_config</code> / <code>render_toml</code>: fills <code>wrangler.template.toml</code>; the Worker name is <code>kurooto-&lt;hex&gt;</code> (<code>new_name</code>).</li><li><code>ensure_secrets</code>, <code>wrangler deploy</code>, <code>wrangler secret bulk</code>.</li><li>Save <code>calls.worker</code>, then poll <code>/health</code> (24 times, 5 s apart).</li></ol>
+<p>Redeploys: <code>fingerprint</code> hashes the Worker source and the values baked into it (time zone, <code>live_model</code>, <code>ntfy_server</code>, <code>notes_repo</code>, whether a GitHub token exists); <code>needs_redeploy</code> compares it with <code>calls.worker.hash</code>. <code>Calls._line_update</code> runs daily at 05:10 and redeploys unattended unless <code>updates.mode</code> is <code>off</code>.</p>
+<h2 id="the-connector-modulescallsconnectorpyconnector">The connector (<code>modules/calls/connector.py:Connector</code>)</h2>
+<ul><li>One outbound WebSocket to <code>wss://&lt;worker&gt;/connect</code> with header <code>x-connector-secret</code>; <code>max_size</code> 8 MB; the library's own pings off. Runs as <code>Calls.background(stop)</code>, started by <code>App.start_background</code>.</li><li>Heartbeat: text <code>"ping"</code> every <code>PING_S = 30</code> s; the Durable Object answers <code>"pong"</code> through <code>setWebSocketAutoResponse</code> without waking. Nothing heard for <code>DEAD_S = 75</code> s ends the session and redials.</li><li>Reconnect back-off 2 s doubling to 60 s; failures go to <code>app.presence.net_failed("line", e)</code>. Link state: <code>&lt;state&gt;/calls/link.json</code>.</li><li>Computer to Worker: <code>hello</code>, <code>state</code> (<code>Calls.state_message</code>: setup, tools, brief, schedule, texts, voices, presence hours ...; pushed every <code>STATE_S = 300</code> s or 1 s after <code>poke()</code>), <code>index</code> (the notes index, in parts, at most hourly), <code>reply</code> (answers to relayed requests), <code>admin</code> (operations).</li><li>Worker to computer: <code>welcome</code> (version, the offline queue, an away report), <code>request</code> (relayed HTTP), <code>admin-reply</code>, <code>event</code>.</li><li><code>admin(...)</code> / <code>admin_wait(...)</code> (from a thread; refuses on the event loop) / <code>admin_later(...)</code> (fire and forget; its True only means a socket existed).</li></ul>
+<h2 id="placing-a-call-and-ringing">Placing a call and ringing</h2>
+<ol><li><code>Calls.place(...)</code> checks <code>core/availability.py:Availability.call_block</code> (on a call, quiet / held calls, focus, night, then module blockers such as classes and calendar events) unless <code>alarm</code> or <code>force</code>. A blocked call is booked for <code>next_callable()</code> and the user is told.</li><li><code>Calls.schedule</code> books it with <code>scheduler.at(..., "calls.ring", key="calls:ring:&lt;key&gt;", grace_s=900)</code> and pokes the connector so the line has the schedule too.</li><li><code>Calls.ring</code>:</li><li>asks Calm first (<code>core/calm.py:Calm.call_ok</code>: by default one self-started call a day; the alarm and calls the user asked for are exempt). A refused call is held for the evening bundle as a line with a call link;</li><li>records it in <code>&lt;state&gt;/calls/rings.json</code>;</li><li>sends <code>admin_later("ring", ...)</code>: the Worker's <code>Line.ring</code> mints a ticket (2 h; 3 h for alarms), publishes a k1-sealed message to ntfy for paired Android devices, and sends an empty Web Push (VAPID) to every subscribed browser, whose service worker (<code>public/sw.js</code>) then fetches <code>/pending</code>;</li><li>also publishes to ntfy directly from the computer (<code>Calls.publish_ntfy</code>), in case the Worker's egress fails;</li><li>sends a Telegram notice with an Answer link (<code>Calls.link</code>, a <code>t1</code> ticket in the URL fragment), or an urgent "the call line isn't connected" notice;</li><li>schedules <code>calls.missed</code> at <code>ring_s + 30</code> s.</li><li><code>Calls._missed</code>: stops the ring (<code>stop-ring</code> and a direct ntfy stop), re-alerts at <code>realert_min</code> (not for alarms), and finally "Missed call" with Call back / In 30 min buttons; the owning module hears <code>call_outcome(..., "missed")</code>.</li><li><code>Calls._scheduled_ring</code> skips a late or missed one-off when a line exists, assuming the line's cron placed it.</li></ol>
+<p>There is no FCM. Android rings through an ntfy JSON stream held by <code>ListenService</code>; browsers through Web Push.</p>
+<p>When the computer is off, the Worker's cron (<code>Line.tick</code>, every minute) places scheduled calls itself (skipping ones more than 180 s late, holding non-alarm calls during a call), answers tools from the last brief, and queues tool calls, transcripts, events and answers until <code>welcome</code> replays them (<code>Calls.on_queue</code>).</p>
+<h2 id="during-a-call">During a call</h2>
+<ul><li>The call page (<code>web/app.js</code>, in <code>CallActivity</code>'s WebView or a browser) POSTs <code>/token</code>; <code>Line.token</code> mints a single-use ephemeral Live token (30 min expiry, 2 min to start) and emits <code>call_started</code> (stops the ring; <code>Calls.on_event</code> marks the ring answered and writes <code>&lt;state&gt;/calls/live.json</code>).</li><li>The Live session is configured from <code>Calls.config_template</code> (system instruction with each tool's hint, persona, learned lessons, transcription, context compression) and <code>Calls.texts</code>. Voice by kind: <code>Calls.voice_for</code>.</li><li>Tool calls: page to <code>/tool</code>, Worker to WebSocket, <code>Calls.handle_request</code> to <code>Calls.run_tool</code>. Tools are <code>Calls.tools()</code>: its own (<code>pending_items</code>, <code>search_notes</code>, <code>read_note</code>, <code>schedule_call</code>, <code>call_now</code>, <code>hold_calls</code>, <code>run_task</code> when Chat is on), <code>app.ask.call_tools()</code>, <code>core/tools.py:sync_tools</code>, and every enabled module's <code>call_tools()</code>. With the computer off, each tool's <code>offline</code> value decides: <code>brief</code> (answered from the last pushed brief), <code>queue</code> (done later), <code>needs</code> (the assistant says it can't).</li><li><code>/tasks</code> is polled for finished jobs and approvals; <code>Calls.on_call</code> keeps <code>availability.set_on_call</code> 90 s ahead (<code>ON_CALL_S</code>), so nothing else rings and updates wait.</li><li>What needs attention: <code>Calls.pending</code> merges every enabled module's <code>call_brief()</code> with <code>app.ask.call_brief()</code>.</li><li>Module hooks the calls module looks for (<code>hasattr</code> in <code>modules/calls/__init__.py</code>): <code>call_tools</code>, <code>call_brief</code>, <code>call_schedule</code>, <code>call_outcome</code>, <code>call_transcript</code>, <code>call_reschedule</code>. <code>Calls.agent_tools</code> gives unattended AI runs only <code>schedule_call</code> and <code>hold_calls</code>.</li><li>Relayed HTTP paths handled by <code>Calls.handle_request</code>: <code>/tool</code>, <code>/tasks</code>, <code>/answer</code>, <code>/transcript</code>, <code>/turn</code>, <code>/textcall</code>, <code>/upload</code> (1 MB per part, 50 MB total, into the notes inbox folder from <code>core/layout.py</code>).</li></ul>
+<h2 id="fallback-layers">Fallback layers</h2>
+<p><code>modules/calls/fallback.py</code> with <code>data/worker/web/fallback.js</code> (the page drives them):</p>
+<ol><li><strong>Live again</strong>: <code>rotate()</code> retries with <code>BACKOFF_MS = [0, 1000, 3000]</code>, moving through <code>calls.live_models</code>; <code>MID_CALL_RETRIES = 1</code> for a drop mid-call. <code>live_profile</code> adapts settings per model.</li><li><strong>Turn by turn</strong>: the phone's own speech recognition and TTS (<code>speechKind</code>: the Android bridge or Web Speech). Each turn goes to <code>/turn</code>, relayed to <code>VoiceTurns.answer</code> on the computer: a quick brain (Gemini <code>text_model</code>, or the local model with <code>turn_brain = local</code>), never an agent program, <code>TURN_S = 25</code>. With the computer off, the Worker's <code>Line.textTurn</code> uses Gemini directly with up to 4 tool rounds.</li><li><strong>Text on Telegram</strong>: <code>/text-call</code> to <code>/textcall</code> to <code>TextCall.start</code>; replies go through jobs (<code>then="calls.textcall_said"</code>), the conversation in <code>&lt;state&gt;/calls/textcalls.json</code>, ended after 20 min idle (<code>TEXT_IDLE_S</code>) or by the End button. While a text call is open, <code>App.handle</code> sends messages to it first (<code>calls.textcall.takes(msg)</code>).</li></ol>
+<p>Failures are counted in <code>&lt;state&gt;/calls/live-health.json</code> (<code>LiveHealth.record</code>) and reported by <code>Calls.doctor_checks</code>.</p>
+<h2 id="transcripts-and-the-look-back">Transcripts and the look back</h2>
+<ul><li><code>Calls.save_transcript(b)</code> writes <code>&lt;state&gt;/calls/transcripts/YYYY-MM-DD-HHMMSS.txt</code> (mode 0600) with a <code># &lt;purpose&gt; (layer)</code> header, calls the owning module's <code>call_transcript</code>, then <code>review.review</code>.</li><li><code>modules/calls/review.py:review(calls, lines, tools, purpose)</code>: when <code>calls.review</code> is on, the transcript has at least <code>MIN_LINES = 4</code> lines and <code>brain.main</code> is set, it submits</li></ul>
+<pre><code>  app.jobs.submit(prompt, title="Call review", effort=calls.review_effort, quiet=True, then="calls.reviewed",
+                  lane="bg", why="calls.review", brain=calls.review_brain or None)</code></pre>
+<p>with the transcript (last 24 000 chars), <code>Calls.tool_log</code> (last 60 tool uses) and the current lessons. Because it is a normal job with tools, the AI can do what the call missed (a reminder never set, a note never written).</p>
+<ul><li><code>reviewed(calls, job, result, payload)</code> (registered as the <code>calls.reviewed</code> then-action) reads the ```<code> </code>`<code>lessons </code>``<code> fence, </code>merge()<code>s it into the existing lessons (60% word overlap replaces an old one; capped at </code>lessons_max<code>), </code>save_lessons()<code> to </code>&lt;state&gt;/calls/lessons.md<code>, and notifies "After the call: ..." (Calm reason </code>calls.review`) unless nothing was done or learned.</li><li><code>lessons(app)</code> is read by <code>Calls.config_template</code>, so every later call is told them.</li><li><code>/lessons</code> (<code>Calls._cmd_lessons</code> to <code>review.command</code>): list, <code>/lessons forget N</code>, <code>/lessons clear</code>.</li><li>Because the review is a job not submitted by Chat, its prompt and answer are not recorded into the chat history (<code>Chat.owns</code>, checked in <code>core/jobs.py:Jobs._deliver</code>).</li></ul>
+<p>Other files in <code>&lt;state&gt;/calls/</code>: <code>rings.json</code>, <code>live.json</code>, <code>link.json</code>, <code>inbox.json</code>, <code>answer-nonces.json</code>, <code>live-health.json</code>, <code>textcalls.json</code>, <code>lessons.md</code>, <code>transcripts/</code>.</p>
+<h2 id="the-worker-dataworkersrcworkerjs">The Worker (<code>data/worker/src/worker.js</code>)</h2>
+<ul><li><code>export default {fetch, scheduled}</code> and the Durable Object <code>Line</code> (SQLite-backed, migration v1). Cron <code>* * * * *</code>.</li><li>Vars baked in at deploy: <code>OWNER_ID</code>, <code>TZ</code>, <code>PUBLIC_URL</code>, <code>VERSION</code>, <code>LIVE_MODEL</code>, <code>NTFY_SERVER</code>, <code>NOTES_REPO</code>. Secrets: <code>CALL_SECRET</code>, <code>CONNECTOR_SECRET</code>, <code>GEMINI_API_KEY</code>, <code>NTFY_TOPIC</code>, <code>NTFY_KEY</code>, <code>VAPID_JWK</code>, <code>VAPID_PUBLIC</code>, optional <code>GITHUB_TOKEN</code>.</li><li>Routes: top level <code>/health</code>, <code>/manifest.webmanifest</code>; the rest goes to <code>Line.fetch</code>. No auth: <code>/connect</code> (checked by the connector secret) and <code>/pair/claim</code>. Any valid key (device key <code>d1</code>, ticket <code>t1</code>, or a minted ticket): <code>/status</code>, <code>/token</code>, <code>/turn</code>, <code>/text-call</code>, <code>/call-report</code>, <code>/tool</code>, <code>/tasks</code>, <code>/transcript</code>, <code>/upload</code>. Paired devices only: <code>/pending</code>, <code>/answer</code>, <code>/app-call</code>, <code>/ring-reply</code>, <code>/push/subscribe</code>, <code>/device/key</code>.</li><li>Admin operations over the WebSocket: <code>ring</code>, <code>stop-ring</code>, <code>pair-code</code>, <code>devices</code>, <code>revoke</code>, <code>ticket</code>, <code>bye</code>, <code>notify</code>, <code>notify-clear</code>, <code>sealed-put</code>, <code>sealed-claim</code>.</li><li>Pinned packages in <code>package.json</code> / <code>package-lock.json</code> (<code>@google/genai</code>, esbuild, wrangler). CI installs them with <code>npm ci --ignore-scripts</code>.</li></ul>
+<h2 id="pairing">Pairing</h2>
+<ol><li><code>Calls.pair_start</code>: <code>line.pair_code()</code> (8 characters from <code>CODE_ALPHABET</code>) sent with <code>admin_wait("pair-code", minutes=15)</code>; the Worker keeps only its SHA-256 hash. The link <code>&lt;worker&gt;/pair#c=CODE</code> is shown as a QR (<code>segno</code>). Commands <code>/phone</code>, <code>/phones</code>, <code>/unpair</code>; dashboard <code>POST /api/phone/pair</code>, <code>phone/revoke</code>, <code>phone/test</code>.</li><li>The phone opens the link. <code>public/pair.js</code> either hands it to the Android app (<code>kurooto://pair</code> / <code>intent://</code> to <code>PairActivity</code>) or pairs the browser itself.</li><li><code>Line.claim</code> (single-use code, 30 failures an hour, at most 10 devices) returns a device key <code>d1.&lt;8 hex&gt;.&lt;64 hex&gt;</code> (the Worker stores only its hash), names, the ntfy topic and key (Android only) and the VAPID public key.</li><li>Browsers subscribe to Web Push (<code>/push/subscribe</code>); Android sends its P-256 public key to <code>/device/key</code> for sealed (s1) data.</li></ol>
+<p><code>kurooto rotate</code> (<code>cli.py</code> to <code>core/leave.py:rotate_command</code>, <code>rotate_line</code>): deletes the line keys (<code>LINE_KEYS</code>), makes new ones (<code>deploy.ensure_secrets</code>) and redeploys, restoring the old keys if that fails. The Worker's <code>Line.fresh</code> notices the new call secret and forgets devices, tickets and pair codes, so every phone pairs again. The Gemini key is not rotated.</p>
+<h2 id="crypto-and-the-shared-vectors">Crypto, and the shared vectors</h2>
+<p>All three implementations must agree byte for byte: Python <code>modules/calls/line.py</code>, the Worker (<code>sealK1</code>, <code>openK1</code>, <code>signedTicketOk</code> in <code>worker.js</code>), Java (<code>android/src/.../Crypto.java</code>, <code>Seal.java</code>).</p>
+<div class="table-wrap"><table><thead><tr><th>Name</th><th>Format</th></tr></thead><tbody><tr><td>k1</td><td>AES-256-GCM, 12-byte nonce: <code>"k1." + base64url(nonce ‖ ciphertext+tag)</code></td></tr><tr><td>t1</td><td><code>t1.&lt;expiry ms&gt;.&lt;hex HMAC-SHA256 with the call secret&gt;</code></td></tr><tr><td>d1</td><td>device keys <code>d1.&lt;id&gt;.&lt;secret&gt;</code></td></tr><tr><td>s1</td><td>ECDH P-256, HKDF-SHA256 (salt: the ephemeral public key, info <code>"kurooto s1"</code>) to an AES key, then k1</td></tr><tr><td>Web Push</td><td>VAPID ES256 JWT (<code>line.vapid_keys</code>, <code>worker.js:webPush</code>)</td></tr></tbody></table></div>
+<p><code>tests/fixtures/call-vectors.json</code> holds k1, t1 and s1 vectors, checked by <code>tests/unit/test_calls.py</code> (<code>test_k1_and_t1_match_the_shared_vectors</code>, and <code>test_the_worker_agrees_with_the_vectors</code> running <code>tests/js/vectors.mjs</code> in Node), <code>android/test/CryptoTest.java</code> (k1, s1; CI job <code>android</code>), and <code>tests/unit/test_lidsafe.py</code> (s1). Changing any format means changing all three and the vectors in one commit.</p>
+<h2 id="the-android-app-android">The Android app (<code>android/</code>)</h2>
+<ul><li>The package is named in <code>android/AndroidManifest.xml</code>; minSdk 23, target 35. Built without Gradle by <code>android/build.sh</code> (aapt2, javac <code>-source 8</code>, d8, zipalign, apksigner); versionCode from <code>pyproject.toml</code>. Release signing uses <code>KUROOTO_KEYSTORE</code> and <code>KUROOTO_KEYSTORE_PASS</code> on the maintainer's machine; otherwise a throwaway debug key. <code>build.sh --test</code> runs <code>test/CryptoTest.java</code> and <code>test/SpeechTest.java</code> on a plain JVM.</li><li>Components: <code>MainActivity</code> (the checklist: battery, notifications, full-screen calls), <code>PairActivity</code>, <code>CallActivity</code> (WebView with the <code>KurootoApp</code> JS bridge), <code>AnswerActivity</code>, <code>ShareActivity</code> (share to Kurooto), <code>ListenService</code> (foreground, type <code>remoteMessaging</code>, holds the ntfy stream), <code>BootReceiver</code>, <code>ActionReceiver</code>. Helpers: <code>Crypto</code>, <code>Seal</code>, <code>Line</code>, <code>Net</code>, <code>Prefs</code>, <code>Inbox</code>, <code>Speech</code>, <code>Tls</code> (adds ISRG Root X1 on API &lt; 25), <code>B64</code>.</li><li>CI: <code>ci.yml</code> job <code>android</code> (vectors, debug build, <code>NewApi</code>/<code>InlinedApi</code> lint as errors); <code>android-emulator.yml</code> runs <code>smoke.sh</code> on API 23 to 35.</li></ul>
+<h2 id="tests">Tests</h2>
+<ul><li><code>tests/integration/</code> runs the real Worker under <code>wrangler dev</code> with fakes for Google, ntfy and Web Push (<code>tests/fakes/cloud.py:FakeCloud</code>) and the real <code>Connector</code>: <code>test_call_line.py</code> (auth, pairing, tokens, tool relay, ringing with VAPID signature checks, uploads, transcripts, the offline queue and cron), <code>test_lidsafe_line.py</code>, <code>test_livefallback_line.py</code>, <code>test_phone_line.py</code>, <code>test_presence_line.py</code>, <code>test_rotate_line.py</code>. They need Node; CI's <code>call-line</code> job installs the Worker's packages and bundles the page first.</li><li>Unit: <code>tests/unit/test_calls.py</code>, <code>test_phone.py</code>, <code>test_livefallback.py</code> (runs <code>tests/js/fallback.mjs</code> and <code>tests/js/callpage.mjs</code>).</li></ul>
+<h2 id="known-problems-and-doc-mismatches">Known problems and doc mismatches</h2>
+<ul><li><code>worker.js</code>'s header and <code>docs/PRIVACY.md</code> say the Worker can't read the Android app's sealed answers, but the Worker holds <code>NTFY_KEY</code> (it seals with it in <code>publish</code> and hands it out in <code>Line.claim</code>). k1 protects against ntfy, not against the line. Only s1 data is opaque to the Worker.</li><li>"Transcripts stay on your computer" (<code>Calls.privacy</code>) does not hold while the computer is off: <code>Line.transcript</code> queues them in Durable Object storage until <code>welcome</code>.</li><li>Every ring is published to ntfy twice (Worker and <code>Calls.publish_ntfy</code>), including when no Android device is paired.</li><li><code>calls.missed</code> fires at <code>ring_s + 30</code> s, which stops an alarm ring after about 90 s while the Worker and app would ring an alarm for 5 minutes; <code>calls.ring_s</code> is never sent to the Worker or the app.</li><li><code>Calls.tool_log</code> is one list for all calls: tools from queued offline work or overlapping calls are attributed to the next transcript's review; turn-by-turn calls run tools through <code>core/tools.py:run_tool</code> and don't reach it.</li><li><code>docs/MANUAL.md</code> and <code>docs/SETTINGS_GUIDE.md</code> don't yet describe <code>calls.review*</code> or <code>/lessons</code>, and <code>docs/PRIVACY.md</code> doesn't say that the transcript and tool log go to the main (or review) AI after every call, or that lessons are part of the call setup pushed to the Worker and Gemini.</li><li><code>tests/fixtures/call-vectors.json</code> names <code>tests/unit/test_calls_line.py</code>, which doesn't exist.</li></ul>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/calls-and-phone.md">docs/wiki/dev/calls-and-phone.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>For AI coding agents · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html" aria-current="page">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html">Architecture</a> <a href="repo-layout.html">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="modules.html">Feature modules</a> <a href="web.html">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="testing.html">Testing</a> <a href="release-and-updates.html">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="for-ai-coding-agents">For AI coding agents</h1>
+<p>This page is for an AI agent (Claude Code, Antigravity, Copilot CLI or any other) changing Kurooto's code. If you are helping a person <strong>use</strong> Kurooto, read the repository's <code>AGENTS.md</code> instead.</p>
+<p>Kurooto runs unattended on people's own computers, holds their keys, reads their notes, rings their phones and updates itself from signed releases. Most of the rules below exist because a mistake reaches someone's real machine.</p>
+<h2 id="definition-of-done">Definition of done</h2>
+<p>A standing rule from the owner: <strong>no change to Kurooto is done until all of these match the code, updated in the same commit as the change</strong>:</p>
+<ol><li>the user wiki, <code>docs/wiki/user/</code> (the page for the feature, plus <code>commands.md</code>, <code>messages-it-sends.md</code>, <code>privacy.md</code>, <code>troubleshooting.md</code> or <code>glossary.md</code> when they're affected);</li><li>this developer wiki, <code>docs/wiki/dev/</code> (the area's page, and its known problems when you fix or find one);</li><li><code>/help</code>: the command list Telegram shows (<code>app.py:App.help</code>, each module's <code>commands()</code> help text and <code>help()</code>), and the <code>/</code> menu built from it;</li><li><code>CHANGELOG.md</code>, a line under the unreleased version;</li><li>the site pages <code>tools/release.py</code> publishes (<code>site_pages</code>: the landing page from <code>installer/index.html</code>, the privacy page (<code>docs/PRIVACY.md</code> rendered into <code>installer/privacy.html</code> between its <code>PRIVACY:START</code>/<code>PRIVACY:END</code> markers), the changelog page from <code>CHANGELOG.md</code>, the install scripts).</li></ol>
+<p>Also, when they apply: <code>docs/MANUAL.md</code> (with the Undo), <code>docs/PRIVACY.md</code>, <code>docs/SETTINGS_GUIDE.md</code> (regenerated with <code>tools/gen_settings_guide.py</code>), tests.</p>
+<h2 id="read-first">Read first</h2>
+<ol><li><a href="../../wiki/dev/architecture.html">architecture.md</a>: the daemon's pieces and the path of a message.</li><li><a href="../../wiki/dev/core.html">core.md</a>: the services you'll call (settings, scheduler, jobs, notify/Calm, ask, events, locks).</li><li><a href="../../wiki/dev/modules.html">modules.md</a>: how a feature is built, its lifecycle, and the module reference.</li><li>The page for the area you're touching: <a href="../../wiki/dev/brains.html">brains.md</a>, <a href="../../wiki/dev/web.html">web.md</a>, <a href="../../wiki/dev/calls-and-phone.html">calls-and-phone.md</a>, <a href="../../wiki/dev/concept-graph.html">concept-graph.md</a>, <a href="../../wiki/dev/release-and-updates.html">release-and-updates.md</a>.</li><li><a href="../../wiki/dev/testing.html">testing.md</a> and <a href="../../wiki/dev/conventions.html">conventions.md</a> before you write code.</li><li>The code you're changing, its tests, and its section in <code>docs/MANUAL.md</code>. The module and function docstrings are accurate and dense; read them rather than guessing.</li></ol>
+<h2 id="invariants-that-must-hold">Invariants that must hold</h2>
+<ul><li><strong>Every feature is off until the user turns it on</strong>, and turning it off stops it: <code>stop()</code> calls <code>super().stop()</code> and undoes what <code>start()</code> registered.</li><li><strong>Nothing leaves the computer unless a feature that is on says so</strong> in its <code>privacy</code> text and in <code>docs/PRIVACY.md</code>. No telemetry, no "phone home". Kurooto never sends mail or messages to anyone but its owner on its own.</li><li><strong>The user's notes are theirs</strong>: add, never reword or remove their text. Write notes with <code>core/tools.py:write_note_file</code>, place them with <code>core/layout.py</code>.</li><li><strong>Secrets only in <code>app.secrets</code></strong> (keychain or the owner-only file), never in settings, logs, events, notes, the reserve, prompts, argv or the diagnostics bundle.</li><li><strong>The AI's reach is <code>core/places.py</code></strong>: read and write roots shared by Kurooto's tools, agy's allow-list and Claude Code's per-run permissions. <code>kurooto</code> itself is never runnable from an AI request. Widening any of this changes what unattended AI can do to someone's files: it needs the owner's OK and makes agy ask the user again.</li><li><strong>Unattended AI runs can't ask follow-ups</strong>: they get <code>providers/context.py:headless_context</code>, the tools, and <code>ask_user</code> for questions. Don't add anything that would make an agent program prompt interactively.</li><li><strong>Every scheduled action takes the payload</strong>: <code>fn(payload)</code>. Long work starts a thread.</li><li><strong>Every message that comes by itself has a Calm reason</strong> (<code>why=</code>, an entry in <code>core/calm.py:REASONS</code>); direct answers use <code>why="asked"</code>.</li><li><strong>A failure in one feature never stops the others</strong>: catch at the boundary, emit <code>&lt;area&gt;_failed</code>, carry on.</li><li><strong>Settings defaults come from <code>register_defaults</code></strong> at import time; <code>docs/SETTINGS_GUIDE.md</code> is regenerated, not edited.</li><li><strong>Three implementations of the call crypto agree</strong> (Python <code>modules/calls/line.py</code>, <code>data/worker/src/worker.js</code>, Android <code>Crypto.java</code>/<code>Seal.java</code>) and <code>tests/fixtures/call-vectors.json</code> pins them. Change all four together or none.</li><li><strong>Signed releases are the owner's.</strong> Version bumps, <code>tools/release.py sign</code>, <code>yank</code> and <code>publish</code>, and the keys, are never yours to run.</li></ul>
+<h2 id="commands-to-run-before-finishing">Commands to run before finishing</h2>
+<pre><code>uv run ruff check .
+uv run ruff format --check .
+uv run pytest -m "not live"                    # the guard must report 0 violations
+python3 tools/privacy_scan.py --staged         # or --files &lt;the files you changed&gt;
+python3 tools/gen_settings_guide.py --check    # when settings changed (regenerate without --check)</code></pre>
+<p>Run the Node-backed tests too when you touched <code>web/static/</code>, <code>data/worker/</code> or <code>modules/calls/</code> (<code>tests/unit/test_static_js.py</code>, <code>test_livefallback.py</code>, <code>test_calls.py</code>, and <code>tests/integration/</code> if the Worker's packages are installed). Run <code>android/build.sh --test</code> when you touched the crypto.</p>
+<p>If you used the CLI at all, it was with <code>KUROOTO_HOME</code> set to a scratch folder (below).</p>
+<h2 id="never-do">Never do</h2>
+<ul><li><strong>Touch a real install.</strong> Don't run <code>kurooto</code> (or <code>python -m kurooto</code>, or code that builds <code>App()</code>) without <code>KUROOTO_HOME</code> pointing at a scratch folder. Without it the command reads and writes the developer's real settings, secrets, scheduler and notes, can reach the running daemon, and some commands change the system (autostart, PATH, agy's settings, the app menu). Don't edit anything under the real config, state or data folders, the notes folder, <code>~/.gemini</code>, systemd units, LaunchAgents or the registry. Don't connect to the running dashboard's port.</li><li><strong>Weaken the test guard</strong> (<code>tests/isolation.py</code>) or mark a test to skip it. A guard violation means the code computed a path outside <code>core/paths.py</code>, ran a real system tool, or reached the real daemon; fix that.</li><li><strong>Rebuild after signing.</strong> Once the owner has signed a release, <code>tools/release.py build</code> for that version must not run again and nothing in <code>SITE/releases/&lt;v&gt;/</code> may change: the signed manifest's checksums would stop matching and every update would fail. A problem means a new version or a yank, decided by the owner.</li><li><strong>Add an outward network call without declaring it</strong>: a new host or API needs the module's <code>privacy</code> text, a <code>docs/PRIVACY.md</code> entry, an off switch where it isn't the feature's whole point, and the owner's OK. Updates only fetch from <code>https://</code> or <code>http://127.0.0.1</code> (<code>update/updater.py:_get</code>); keep it that way.</li><li><strong>Inline secrets</strong>: no keys, tokens, passwords or real webhook/Worker URLs in code, tests, fixtures, docs, commit messages or logs. Tests use the fakes and obviously fake values (<code>"123:fake"</code>). Pass secrets to child processes by environment or file, never argv.</li><li><strong>Commit personal data</strong>: real names, emails, phone numbers, chat ids, home-folder paths from any machine. The privacy scanner blocks most of it; don't work around it.</li><li><strong>Change another program's settings silently.</strong> agy's settings are changed only after consent and with a backup (<code>providers/agy.py:allow_tools</code>); Claude Code's settings are never written. Follow those patterns.</li><li><strong>Send, delete, install or sign in on the user's behalf</strong> in code paths that don't ask first.</li><li><strong>Add dependencies or bump the version</strong> without being asked. A dependency means <code>uv.lock</code> and <code>requirements.lock</code> both change.</li><li><strong>Reformat files</strong> or make drive-by changes outside the task.</li></ul>
+<h2 id="working-style">Working style</h2>
+<ul><li>Read the code path end to end before changing it; the docstrings say why things are the way they are.</li><li>Keep diffs minimal. Match the surrounding style: plain-English comments, short user-facing messages.</li><li>Add or update tests in the same change. Test scheduled actions the way the scheduler calls them (<code>fn(payload)</code>).</li><li>Meet the <a href="#definition-of-done">definition of done</a>: user wiki, developer wiki, <code>/help</code>, <code>CHANGELOG.md</code> and the site pages, in the same commit as the code.</li><li>Don't commit unless asked; others may be working in the same tree.</li></ul>
+<h2 id="how-to-report">How to report</h2>
+<p>End with a short report for the person who asked:</p>
+<ul><li>what changed, by file, and why (one line each), including which wiki pages, <code>/help</code> text and changelog lines;</li><li>how it was verified: the exact commands and their results (tests passed/failed counts, ruff, the guard's line);</li><li>what you didn't do or couldn't verify (no Node, no Android SDK, a test skipped and why);</li><li>anything that needs the owner: a decision, a release step, a privacy change, a new dependency;</li><li>bugs you noticed outside the task, with <code>path:symbol</code>, rather than fixing them unasked.</li></ul>
+<p>Be plain about failures: a failing test or an unverified path is reported as such, not described as done.</p>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/agents.md">docs/wiki/dev/agents.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

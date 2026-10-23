@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Google: Classroom, Gmail, Calendar and Drive · User wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="User wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>User wiki</strong>: <a href="index.html">Start</a> <a href="commands.html">Commands</a> <a href="getting-started.html">Getting started</a> <a href="ai-brains.html">AI brains</a> <a href="talking-to-kurooto.html">Talking to Kurooto</a> <a href="messages-it-sends.html">Messages Kurooto sends by itself</a> <a href="reminders-and-deadlines.html">Reminders and deadlines</a> <a href="check-ins-and-journal.html">Check-ins and journal</a> <a href="calls.html">Phone calls and the morning alarm</a> <a href="phone-app.html">Your phone</a> <a href="classes-and-timetable.html">Classes, timetable and calendar</a> <a href="quiz-and-exams.html">Quiz and exams</a> <a href="books-and-study.html">Books and study</a> <a href="notes-and-concept-graph.html">Notes and the concept graph</a> <a href="skills-and-routines.html">Skills and routines</a> <a href="research.html">Research</a> <a href="google.html" aria-current="page">Google: Classroom, Gmail, Calendar and Drive</a> <a href="teaching-kurooto.html">Teaching Kurooto about you</a> <a href="dashboard.html">The dashboard</a> <a href="your-computer.html">Your computer</a> <a href="updates-and-backups.html">Updates, backups and moving</a> <a href="privacy.html">Privacy: what stays and what leaves</a> <a href="add-ons.html">Add-ons, scripts and other programs</a> <a href="faq.html">FAQ</a> <a href="troubleshooting.html">Troubleshooting</a> <a href="glossary.html">Glossary</a> · <a href="../dev/index.html">Developer wiki</a></nav>
+<h1 id="google-classroom-gmail-calendar-and-drive">Google: Classroom, Gmail, Calendar and Drive</h1>
+<p>Kurooto can read your Google Classroom, sort your Gmail into a digest, write email drafts, read your Google calendars, keep a calendar of planned time blocks, and put big files in your Google Drive. All of it uses <strong>your own Google sign-in through a free Google Cloud project that only you own</strong>. Setting that up takes 10 to 15 minutes, once. Each Google feature is off until you set it up, and each asks Google for only the permission it needs.</p>
+<p>If all you want is your timetable or calendar, you may not need any of this: the <a href="../../wiki/user/classes-and-timetable.html">Calendar</a> feature reads a calendar's private iCal link with no Google project at all.</p>
+<ul><li><a href="#why-your-own-google-project">Why your own Google project</a></li><li><a href="#setting-up-your-own-sign-in-step-by-step">Setting up your own sign-in, step by step</a></li><li><a href="#what-each-feature-asks-google-for">What each feature asks Google for</a></li><li><a href="#google-classroom-deadlines-and-posts-gmail-drafts">Google (Classroom deadlines and posts, Gmail drafts)</a></li><li><a href="#several-google-accounts">Several Google accounts</a></li><li><a href="#classroom--notes">Classroom → notes</a></li><li><a href="#mail-digest">Mail digest</a></li><li><a href="#email-reply-drafts">Email reply drafts</a></li><li><a href="#mail-digest-by-email">Mail digest by email</a></li><li><a href="#agent-plan-calendar">Agent plan calendar</a></li><li><a href="#google-calendar">Google Calendar</a></li><li><a href="#drive-upload">Drive upload</a></li><li><a href="#taking-access-away">Taking access away</a></li><li><a href="#when-something-goes-wrong">When something goes wrong</a></li></ul>
+<h2 id="why-your-own-google-project">Why your own Google project</h2>
+<p>Most apps sign you in to Google through the app maker's own registration, so the maker's servers hold your Google access. Kurooto doesn't do that. You make your own registration (an "OAuth client", see the <a href="../../wiki/user/glossary.html">glossary</a>) in a free Google Cloud project, and Kurooto on your computer signs in with it. Google sees your own project asking for your own data, and you say yes or no. Nobody else's server sits in between, and it costs nothing (no billing account is needed).</p>
+<p>The price is a one-time setup and a warning screen from Google ("Google hasn't verified this app") every time you sign in. That warning is about apps strangers publish; this one is yours.</p>
+<h2 id="setting-up-your-own-sign-in-step-by-step">Setting up your own sign-in, step by step</h2>
+<p>You do steps 1 to 6 in a browser, on any computer, with any Google account. Step 7 (signing in) has to happen on the computer Kurooto runs on, with the account whose Classroom, mail or calendar you want. A personal Google account is easiest; school accounts sometimes block apps like this (see <a href="#when-something-goes-wrong">When something goes wrong</a>).</p>
+<p>Google renames these screens now and then. If a button has a slightly different name, pick the nearest match: the order stays the same. The Google card in Kurooto (Dashboard → Features → Google, or the setup wizard) has the same steps, links to each page, and copy buttons for the values you need to paste.</p>
+<p><strong>1. Create the project.</strong> Open <a href="https://console.cloud.google.com/projectcreate">console.cloud.google.com/projectcreate</a>.</p>
+<ol><li>Project name: <code>Kurooto</code> (any name works; only you see it). Leave Organization or Location as it is.</li><li>Press <strong>Create</strong> and wait a few seconds.</li><li>Check that the project picker at the top of the page shows the new project. Every step below happens inside it.</li></ol>
+<p><strong>2. Turn on the APIs your features use.</strong> An API is a switch that lets your project talk to one Google product. Open the link for each feature you want, check the project name at the top, and press <strong>Enable</strong>. You can come back for more later.</p>
+<div class="table-wrap"><table><thead><tr><th>For</th><th>API</th><th>Link</th></tr></thead><tbody><tr><td>Google (Classroom deadlines and posts), Classroom → notes</td><td>Google Classroom API</td><td><a href="https://console.cloud.google.com/apis/library/classroom.googleapis.com">classroom.googleapis.com</a></td></tr><tr><td>Gmail drafts, Mail digest, Email reply drafts, Mail digest by email</td><td>Gmail API</td><td><a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com">gmail.googleapis.com</a></td></tr><tr><td>Classroom → notes (files attached to posts), Drive upload</td><td>Google Drive API</td><td><a href="https://console.cloud.google.com/apis/library/drive.googleapis.com">drive.googleapis.com</a></td></tr><tr><td>Agent plan calendar, Google Calendar</td><td>Google Calendar API</td><td><a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com">calendar-json.googleapis.com</a></td></tr></tbody></table></div>
+<p><strong>3. Branding: what Google's sign-in screen says about your app.</strong> Open <a href="https://console.cloud.google.com/auth/branding">Google Auth Platform → Branding</a>. The first time it says "Google Auth platform not configured yet": press <strong>Get started</strong>. A short form asks four things:</p>
+<ol><li>App Information: App name <code>Kurooto</code>; User support email: your own address. <strong>Next</strong>.</li><li>Audience: <strong>External</strong> (anyone with a Google account may sign in, which here means you). <strong>Next</strong>.</li><li>Contact Information: your own email address. <strong>Next</strong>.</li><li>Finish: tick "I agree to the Google API Services: User Data Policy", <strong>Continue</strong>, then <strong>Create</strong>.</li></ol>
+<p>Back on the Branding page, fill in the rest and press <strong>Save</strong> at the bottom:</p>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>What to put</th></tr></thead><tbody><tr><td>App name</td><td><code>Kurooto</code> (already there)</td></tr><tr><td>User support email</td><td>your own email (already there)</td></tr><tr><td>App logo</td><td>leave it empty (a logo needs Google's review)</td></tr><tr><td>Application home page</td><td><code>https://avtarfr.github.io/kurooto/</code></td></tr><tr><td>Application privacy policy link</td><td><code>https://avtarfr.github.io/kurooto/privacy.html</code></td></tr><tr><td>Application terms of service link</td><td>the home page again, or leave it empty</td></tr><tr><td>Authorized domains</td><td><strong>Add domain</strong>, then <code>avtarfr.github.io</code></td></tr><tr><td>Developer contact information</td><td>your own email</td></tr></tbody></table></div>
+<p>Why Kurooto's public pages: Google asks every app that's "in production" for a home page and a privacy policy on an authorized domain. They describe what Kurooto does with your data. Nothing is sent to that site.</p>
+<p><strong>4. Audience: publish the app.</strong> Open <a href="https://console.cloud.google.com/auth/audience">Google Auth Platform → Audience</a>. Publishing status says <strong>Testing</strong>: press <strong>Publish app</strong>, then <strong>Confirm</strong>. It becomes <strong>In production</strong>.</p>
+<p>Why this matters: in Testing, Google ends every sign-in after <strong>7 days</strong> (Kurooto would ask you to sign in again every week), and only accounts listed under Test users can sign in at all. In production your app stays <strong>unverified</strong>, which is fine for personal use: up to 100 people can ever sign in to an unverified app, and each sees the warning first. You don't need to submit it for verification; ignore that if Google suggests it. If you made the project with a school or work account and will only ever sign in with that organisation's accounts, <strong>Internal</strong> works too (no Publish step, no warning), if Google offers it.</p>
+<p><strong>5. Data access: nothing to do.</strong> The <a href="https://console.cloud.google.com/auth/scopes">Data access</a> page lists the permissions ("scopes") an app declares. Leave it empty: Kurooto asks for each permission when you set a feature up. If you add scopes here, Google may suggest verification; ignore it.</p>
+<p><strong>6. Clients: make your desktop client.</strong> Open <a href="https://console.cloud.google.com/auth/clients">Google Auth Platform → Clients</a>.</p>
+<ol><li><strong>Create client</strong>.</li><li>Application type: <strong>Desktop app</strong>. Name: <code>Kurooto</code>.</li><li><strong>Create</strong>. A window shows the client ID and secret: press <strong>Download JSON</strong> right away. Google shows the secret only this once. (Closed it? Open the client, press <strong>Add secret</strong>, and download again.)</li><li>In Kurooto: Dashboard → Features → Google → paste the file's contents into the box (or press the file button and choose the file) → <strong>Save</strong>. The setup wizard's Google card has the same box.</li></ol>
+<p>Keep this file to yourself, like a password. On its own it can't read your data (that also takes your sign-in), but it lets an app present itself as yours. Kurooto keeps it in your computer's keychain. Kurooto refuses a file for a "Web application" client (it must be a Desktop app) and a file without a client ID and secret.</p>
+<p><strong>7. Sign in.</strong> After Save, Kurooto opens Google's sign-in in your browser.</p>
+<ol><li>Pick the account whose Classroom, mail or calendar you want.</li><li>Google says <strong>"Google hasn't verified this app"</strong>. That's your own project, made minutes ago. Press <strong>Advanced</strong>, then <strong>Go to Kurooto (unsafe)</strong>. "Unsafe" only means Google hasn't reviewed it.</li><li>Google lists what Kurooto asks for. Leave every box ticked and press <strong>Continue</strong>.</li><li>The tab says "Signed in with Google as you@example.com (main)". Close it; the Google card in Kurooto turns on.</li></ol>
+<p><strong>Adding more Google features later.</strong> Each one needs one more permission. Turn on its API (step 2), press <strong>Save</strong> on its card in Dashboard → Features, and sign in again (step 7). Google lists the new permission and shows the warning screen again. When you're back, the feature turns on by itself. If you untick its box on Google's screen, that feature stays off and everything else keeps working. Google may call a permission "restricted" or "sensitive": that's Google's label for mail and Drive access, and it's fine for your own client.</p>
+<h2 id="what-each-feature-asks-google-for">What each feature asks Google for</h2>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>Google's permission</th><th>What Kurooto does with it</th></tr></thead><tbody><tr><td>Google (Classroom deadlines and posts)</td><td>see your Classroom courses, your coursework and announcements (read-only)</td><td>due dates into Deadlines, new announcements to Telegram. Changes nothing</td></tr><tr><td>Gmail drafts (part of the Google feature)</td><td>manage drafts and send email</td><td>writes drafts you asked for with <code>/draft</code>; never sends them</td></tr><tr><td>Classroom → notes</td><td>see your Classroom course materials; see and download your Google Drive files (read-only)</td><td>reads materials, coursework and announcements, and opens only the Drive files attached to or linked from a post. Changes nothing</td></tr><tr><td>Mail digest</td><td>read your email (read-only)</td><td>reads only the mail you choose; the rest it counts by sender, subject and labels, on your computer. Can't send, delete or mark anything</td></tr><tr><td>Email reply drafts</td><td>manage drafts and send email</td><td>writes reply drafts to mail in your digest; sends one only when you tap Send</td></tr><tr><td>Mail digest by email</td><td>send email on your behalf; see your email address</td><td>emails each digest to that account's own address and nobody else. Can't read your mail</td></tr><tr><td>Agent plan calendar</td><td>make secondary calendars and manage their events</td><td>makes one calendar of its own, "Agent plan", and writes only there. Can't see or change your other calendars</td></tr><tr><td>Google Calendar</td><td>see your calendars (read-only)</td><td>reads your own calendars and ones you subscribed to, two weeks ahead. Changes nothing</td></tr><tr><td>Drive upload</td><td>see, edit, create and delete only the Drive files it uses</td><td>makes one folder, "Kurooto", and uploads there the files you send yourself. Can't see your other files; shares nothing</td></tr><tr><td>Every account</td><td>see your email address</td><td>to tell your accounts apart ("school: you@school.example")</td></tr></tbody></table></div>
+<h2 id="google-classroom-deadlines-and-posts-gmail-drafts">Google (Classroom deadlines and posts, Gmail drafts)</h2>
+<p><strong>What it does.</strong> The base Google feature, which every other Google feature builds on.</p>
+<ul><li><strong>Classroom deadlines:</strong> every 3 hours it reads your active Classroom courses. Each assignment with a due date (from two days ago onward) goes onto your <a href="../../wiki/user/reminders-and-deadlines.html">deadline list</a> as "Course: assignment", and is marked done there when you hand it in on Classroom (turned in or returned).</li><li><strong>Classroom announcements:</strong> each new announcement comes to Telegram as "New in Linear Algebra: ..." (the first 400 characters) with an <strong>Open</strong> button to the post. The very first check only learns what's already there, so you don't get a flood of old posts.</li><li><strong>Gmail drafts</strong> (off by default): <code>/draft</code> writes an email draft into your Gmail. Kurooto never sends it; you open Gmail, check it and send it yourself.</li></ul>
+<p><strong>Turn it on.</strong> Do the <a href="#setting-up-your-own-sign-in-step-by-step">step-by-step setup</a> (Classroom API on), then Dashboard → Features → Google → paste the client file → Save → sign in. For drafts, also turn on the Gmail API, set <code>google.gmail_drafts</code> to <code>true</code> (Dashboard → Settings → google), and sign in again (Save on the card).</p>
+<p><strong>From Telegram.</strong></p>
+<ul><li><code>/classroom</code>: check Classroom now (deadlines and new posts).</li><li><code>/draft someone@example.com ask for an extension on problem set 3</code>: the AI writes the email (needs Chat on) and saves it as a draft. You get "Draft saved in Gmail: ... Open Gmail to check it and send it yourself."</li><li><code>/draft someone@example.com | Extension request | Dear ...</code>: subject and text written by you, saved as it is. No AI.</li><li><code>/draft</code> only exists while <code>google.gmail_drafts</code> is on.</li><li><code>/sync all</code> (or "sync everything") also checks Classroom, then Classroom → notes and the mail digest.</li></ul>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → google):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>google.classroom</code></td><td><code>true</code></td><td>read Classroom (deadlines and announcements)</td></tr><tr><td><code>google.classroom_every</code></td><td><code>every 3h</code></td><td>how often Classroom is checked</td></tr><tr><td><code>google.gmail_drafts</code></td><td><code>false</code></td><td>allow <code>/draft</code> (needs one more sign-in)</td></tr><tr><td><code>google.accounts</code></td><td><code>["main"]</code></td><td>your Google accounts by name (<a href="#several-google-accounts">below</a>)</td></tr><tr><td><code>google.use</code></td><td><code>{}</code></td><td>which account each feature uses; unset means main</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>Assignments without a due date, and ones due more than two days ago, aren't added.</li><li>A topic on your not-interested list (<code>/ignore</code>) is left off the deadline list like any other deadline.</li><li>"Less of this" on an announcement offers <strong>Fewer</strong> (at most one announcement a day; the rest wait for the evening bundle) or Stop. See <a href="../../wiki/user/messages-it-sends.html">messages-it-sends.md</a>.</li><li>If the sign-in expires or you remove Kurooto's access at Google, you get an urgent message: "Google sign-in expired ... the Google features are paused". Sign in again from Dashboard → Features → Google.</li></ul>
+<p><strong>What leaves your computer.</strong> Nothing new: Kurooto reads from Google with your own sign-in. Drafts are written into your own Gmail. The sign-in tokens stay in your computer's keychain.</p>
+<p><strong>Turn it off.</strong> Dashboard → Features → Google → Turn off. Features that build on it (reply drafts, digest by email) must be off first.</p>
+<h2 id="several-google-accounts">Several Google accounts</h2>
+<p><strong>What it does.</strong> Lets each Google feature use the account you choose: say the mail digest reads your school account while Drive upload uses your personal one. The first account you sign in with is <strong>main</strong>; every feature uses main unless you say otherwise. Each account signs in on its own (same Google Cloud project) and is asked only for what the features using it need.</p>
+<p><strong>On the dashboard.</strong> Each Google feature's card has a <strong>Which Google account</strong> box. It shows the account in use with its address. Leave it empty to keep it; type a new name (a short word like <code>school</code>) to add that account: Google's page opens with its account chooser, so pick the right one. Google Calendar can read several at once: <code>main, school</code> (press Save once for each account). Email reply drafts have no box: they always use the mail digest's account.</p>
+<p><strong>From Telegram.</strong></p>
+<ul><li><code>/google</code>: your accounts, each with its address and what uses it.</li><li><code>/google use mail school</code>: move a feature to another account. The feature names you can use: <code>classroom</code>, <code>drafts</code>, <code>mail</code>, <code>email</code> (digest by email), <code>calendar</code>, <code>plan</code> (or <code>blocks</code>), <code>drive</code>, <code>classroom_notes</code>. A new name adds an account. If that account hasn't given its OK yet, the feature pauses until you press Save on its card and sign in; the reply says so.</li><li><code>/google forget school</code>: forget that account's sign-in on this computer. Its features go back to main. (<code>main</code> can't be forgotten this way.)</li></ul>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>An account name is one short word: letters, digits and dashes, up to 24 characters.</li><li>Only Google Calendar takes several accounts; every other feature uses one.</li><li>Signing in to the same Google account under two names gets "That's the same Google account as your main one": the browser picked the account you were already signed in with. Save again and choose the other account.</li><li>If one account's sign-in expires, only the features using it pause, and the message names them.</li></ul>
+<p><strong>Turn it off / undo.</strong> <code>/google forget &lt;name&gt;</code>. To take the access away at Google too, open myaccount.google.com/connections while signed in to that account.</p>
+<h2 id="classroom--notes">Classroom → notes</h2>
+<p><strong>What it does.</strong> Three times a day (07:00, 13:00, 19:00) Kurooto reads what's new in your active Classroom courses: materials, coursework, announcements, and the Drive files your teachers attach or link. The AI then files each course into your notes, in the course's folder (it uses the matching subject from <a href="../../wiki/user/classes-and-timetable.html">Subjects</a> when there is one, else a folder named after the course):</p>
+<ul><li>a note per lecture or problem set (e.g. <code>linear-algebra/2026-10-20-eigenvalues.md</code>): what it covers, the teacher's post, the files, and links to your related notes;</li><li>the course page <code>linear-algebra/course.md</code>: lecture notes in order, coursework under Tasks, exams and announcements;</li><li>an always-current <code>linear-algebra/exam-prep.md</code> with Next assessment, Covered so far, Must know (what <a href="../../wiki/user/quiz-and-exams.html">Quiz</a> asks you), Typical questions and Gaps. Kurooto rewrites only the part between its two markers; anything you write above or below them stays.</li></ul>
+<p>Dates in posts (a midterm, a moved quiz) go into Deadlines; assignment due dates already arrive through the Google feature. It also keeps your notes' home page linked to your courses.</p>
+<p><strong>Turn it on.</strong> Needs the Google feature. Turn on the Drive API (and the Classroom API) in your project, then Dashboard → Features → Classroom → notes → Save → sign in again.</p>
+<p><strong>From Telegram.</strong></p>
+<ul><li><code>/classnotes</code>: check now and hand anything new to the AI ("Found 4 new item(s) in 2 course(s); the AI is filing them..."). <code>/sync all</code> does it too.</li><li><code>/classnotes courses</code>: your courses and the notes folder each goes to (or "skipped").</li><li><code>/classnotes skip chess</code>: leave out courses with "chess" in their name. <code>/classnotes unskip chess</code> undoes it.</li></ul>
+<p>When a batch is filed you get one line: "Classroom: filed 3 new items from Linear Algebra into linear-algebra/."</p>
+<p><strong>Files it reads.</strong></p>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>What happens</th></tr></thead><tbody><tr><td>Word, PowerPoint</td><td>read as text</td></tr><tr><td>Google Docs and Slides</td><td>exported as text</td></tr><tr><td>Google Sheets</td><td>exported as CSV</td></tr><tr><td>PDF</td><td>read when <code>pdftotext</code> (Poppler) is installed, or by an AI that opens files itself (agy, Claude Code)</td></tr><tr><td>Text files (.txt, .md, .tex, .csv and similar)</td><td>read as they are</td></tr><tr><td>Videos, audio, images, other Google file types</td><td>linked, not downloaded</td></tr><tr><td>Anything over <code>classroom_notes.max_file_mb</code> (30 MB)</td><td>linked, not downloaded</td></tr></tbody></table></div>
+<p>Files are kept in Kurooto's data folder, not your notes (or in your files folder, if you set <code>files.folder</code>; see <a href="../../wiki/user/notes-and-concept-graph.html">notes-and-concept-graph.md</a>). The AI reads up to about 60,000 characters of file text per request and can read more of a file when it needs to.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → classroom_notes):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>classroom_notes.at</code></td><td><code>daily 07:00,13:00,19:00</code></td><td>when it checks</td></tr><tr><td><code>classroom_notes.skip</code></td><td><code>[]</code></td><td>courses to leave out (words from their names); <code>/classnotes skip</code> fills it</td></tr><tr><td><code>classroom_notes.folders</code></td><td><code>{}</code></td><td>a course's exact name → the folder you want, e.g. <code>{"MA101 Linear Algebra (2026)": "linear-algebra"}</code></td></tr><tr><td><code>classroom_notes.files</code></td><td><code>true</code></td><td>download attached files and read their text</td></tr><tr><td><code>classroom_notes.max_file_mb</code></td><td><code>30</code></td><td>bigger files are only linked</td></tr><tr><td><code>classroom_notes.backfill_days</code></td><td><code>60</code></td><td>how far back it looks; older posts not edited since are left alone</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>Posts are handed to the AI eight at a time. If the AI fails, the batch waits and is tried again at the next check; after three failures you get one message ("the AI couldn't file the new posts ... I'll keep trying").</li><li>Posts about a topic on your not-interested list are only counted, not filed.</li><li>It's heavy work: on a laptop on battery (with the default battery saver) it waits for the charger. Past 70% of a free AI limit it waits for the reset. See <a href="../../wiki/user/your-computer.html">your-computer.md</a> and <a href="../../wiki/user/ai-brains.html">ai-brains.md</a>.</li><li>If the Drive or Classroom permission is missing, you get "Classroom → notes is paused: needs Google's OK ..." at most once a day until you Save on its card and sign in.</li></ul>
+<p><strong>What leaves your computer.</strong> Post text and the text of attached files go to the AI you picked, to write the notes. Nothing is changed in Classroom or Drive.</p>
+<p><strong>Turn it off.</strong> Dashboard → Features → Classroom → notes → Turn off. The notes stay.</p>
+<h2 id="mail-digest">Mail digest</h2>
+<p><strong>What it does.</strong> Twice a day (08:00 and 18:00) your new Gmail, sorted into <strong>Needs action</strong>, <strong>People</strong>, <strong>Courses</strong>, <strong>Opportunities</strong> and <strong>Admin</strong>, comes to you as one message (a busy check comes in parts, 20 mails each), with a copy in your notes (<code>mail/2026-10-20-0800.md</code>, linked from that day's journal). Deadlines it finds go into Deadlines; course news goes onto the course page. Gmail is only read: nothing is ever sent, deleted, archived or marked read.</p>
+<p><strong>You choose what it may read.</strong> Everything else is only counted, by sender, subject and labels, on your computer; its text never goes to the AI. Mail is read when it matches, in this order:</p>
+<div class="table-wrap"><table><thead><tr><th>Order</th><th>Rule</th><th>Result</th></tr></thead><tbody><tr><td>1</td><td>a topic on your not-interested list</td><td>only counted</td></tr><tr><td>2</td><td>on your never-read list (<code>/mail never</code>)</td><td>only counted</td></tr><tr><td>3</td><td>marked confidential in its subject or a label</td><td>only counted</td></tr><tr><td>4</td><td>a sender, domain or label you chose (<code>/mail read</code>)</td><td>read</td></tr><tr><td>5</td><td>matches your Gmail search (<code>/mail query</code>)</td><td>read (personal mail among it is only counted)</td></tr><tr><td>6</td><td>Promotions or Social</td><td>only counted</td></tr><tr><td>7</td><td>from your own organisation's domain (school or work account)</td><td>read (personal mail among it is only counted)</td></tr><tr><td>8</td><td>anything else</td><td>only counted</td></tr></tbody></table></div>
+<p>Then, for mail that's read, its whole text (footers and quoted replies too) is checked for confidentiality markings on your computer; a marked mail is dropped there and only counted. Chats, sent mail, drafts, spam and trash are never looked at.</p>
+<p>A personal Gmail account reads nothing until you choose something; the scheduled digest tells you how, at most once a day: "Mail digest: 12 new message(s), none from senders or labels you chose, so I only counted them...".</p>
+<p><strong>From Telegram.</strong></p>
+<ul><li><code>/mail</code>: check now ("Reading 5 new message(s) (12 only counted); the digest comes in a minute.").</li><li><code>/mail read @school.example</code> (a domain), <code>/mail read someone@example.com</code> (a sender), <code>/mail read label:Courses</code> (a Gmail label). <code>/mail unread ...</code> takes one off.</li><li><code>/mail never @office.example</code> keeps a sender, domain or label out altogether, even if chosen above. <code>/mail unnever ...</code> takes it off.</li><li><code>/mail query -category:promotions -category:social</code>: read all mail matching a Gmail search (any Gmail search words work: <code>label:Courses OR from:school.example</code>, <code>-category:forums</code>). <code>/mail query</code> shows it; <code>/mail query off</code> clears it.</li><li><code>/mail rules</code>: what it reads, the never-read list, and whether confidential mail is skipped.</li><li><code>/mail confidential</code>: dates found in confidential mail summarised on this computer (local mode only; below), titles and dates only, each with <strong>Add to Deadlines</strong> and <strong>Not needed</strong>.</li><li><code>/sync all</code> also runs the digest.</li></ul>
+<p><strong>Confidential mail is never read by the AI.</strong> School and work mail may fall under your institution's email policy. If a mail's subject, its text (all of it) or a Gmail label's name says "confidential", "do not forward", "restricted", "private and confidential", "privileged and confidential", "proprietary and confidential", or carries a standard footer ("intended solely for the addressee", "if you are not the intended recipient", "this e-mail and any attachments are confidential / may be privileged"), it's only counted, even from a sender or label you chose, and never gets an AI reply draft. Many institutional mails carry such a footer, so expect more of your mail to be only counted.</p>
+<p><strong>Optional: confidential mail summarised on this computer.</strong> Set <code>mail_digest.confidential</code> to <code>local</code> and turn on <a href="../../wiki/user/your-computer.html">Local AI models</a>. A model on this computer (Ollama) then reads marked mail instead of leaving it counted; the AI you picked still never sees it. The summary is kept only in Kurooto's data folder (<code>mail/confidential/&lt;date&gt;.md</code>, readable only by your user account): not in your notes, not on Telegram (which only says "Confidential (2): summarised on this computer; open the dashboard to read it"), not in Profile sync, and not in Backups unless you turn on <code>backups.confidential_mail</code>. Read it on the dashboard: Features → Mail digest → <strong>Confidential mail</strong>, which also lists the dates it found with <strong>Add to Deadlines</strong> / <strong>Not needed</strong>. Nothing is added to Deadlines until you tap. Limits: up to 15 such mails a check, three per request to the local model, each cut to its first 3,500 characters. Without a ready local model (off, not set up, or resting on battery) marked mail is only counted and you're told once.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → mail_digest):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>mail_digest.at</code></td><td><code>daily 08:00,18:00</code></td><td>when it checks</td></tr><tr><td><code>mail_digest.read</code></td><td><code>[]</code></td><td>your read rules; <code>/mail read</code> fills it</td></tr><tr><td><code>mail_digest.never_read</code></td><td><code>[]</code></td><td>your never-read list; <code>/mail never</code> fills it</td></tr><tr><td><code>mail_digest.own_domain</code></td><td><code>true</code></td><td>on a school or work account, read mail from your own domain</td></tr><tr><td><code>mail_digest.query</code></td><td>empty</td><td>a Gmail search whose matches are read</td></tr><tr><td><code>mail_digest.first_days</code></td><td><code>3</code></td><td>how far back the first check looks</td></tr><tr><td><code>mail_digest.max_messages</code></td><td><code>200</code></td><td>most mails looked at per check</td></tr><tr><td><code>mail_digest.save_note</code></td><td><code>true</code></td><td>keep a copy of each digest in your notes</td></tr><tr><td><code>mail_digest.skip_confidential</code></td><td><code>true</code></td><td>never read mail marked confidential</td></tr><tr><td><code>mail_digest.confidential_words</code></td><td>the markings above</td><td>regular expressions, any case; a space matches any spaces or line breaks</td></tr><tr><td><code>mail_digest.confidential</code></td><td><code>count</code></td><td><code>count</code> (only counted) or <code>local</code> (summarised on this computer)</td></tr><tr><td><code>mail_digest.local_model</code></td><td>empty</td><td>the Ollama model for local summaries; empty: Local AI models' helper</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>If the digest can't be written (the AI failed), you're told after the first and third failure; the mail waits for the next check.</li><li>"Less of this" on a digest offers <strong>Fewer</strong> (once a day, at the first time) or Stop (turns the feature off).</li><li>Kurooto keeps the sender, subject and a short excerpt of digested mail for 30 days, so a reply draft can answer it.</li></ul>
+<p><strong>What leaves your computer.</strong> The text of the mail you chose (and, with a query, the mail it matches) goes to the AI you picked. For everything else, only counts, on your computer.</p>
+<p><strong>Turn it off / undo.</strong> Dashboard → Features → Mail digest → Turn off. <code>/mail query off</code> goes back to only your <code>/mail read</code> rules and your own domain.</p>
+<h2 id="email-reply-drafts">Email reply drafts</h2>
+<p><strong>What it does.</strong> When the mail digest finds mail that needs your reply (a question or request to you), the AI writes a short reply in your voice into your Gmail Drafts and sends it to you as an approval with three buttons:</p>
+<div class="table-wrap"><table><thead><tr><th>Button</th><th>What it does</th></tr></thead><tbody><tr><td><strong>Send</strong></td><td>sends that draft from your Gmail</td></tr><tr><td><strong>Edit</strong></td><td>asks "What should change?"; reply with it ("say I can do 10am") and the AI rewrites the draft, then asks again. Answer "nothing" to keep it as it is</td></tr><tr><td><strong>Discard</strong></td><td>deletes just that draft</td></tr></tbody></table></div>
+<p><strong>Nothing is sent unless you tap Send.</strong> Unanswered, the draft stays in your Gmail Drafts; the question expires after 3 days. You can answer on Telegram, in the <a href="../../wiki/user/phone-app.html">phone app</a> or on a call.</p>
+<p><strong>Turn it on.</strong> Needs Google and the Mail digest. Dashboard → Features → Email reply drafts → Save → sign in (Google asks to "manage drafts and send email"). It always uses the mail digest's account.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → reply_drafts):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>reply_drafts.per_day</code></td><td><code>5</code></td><td>most drafts a day</td></tr><tr><td><code>reply_drafts.ask_days</code></td><td><code>3</code></td><td>how long the Send / Edit / Discard question stays open</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>Replies go only to the sender of a mail in your digest (or its reply-to address). Never to no-reply addresses, never to mail marked confidential (even in local mode), never to mail on your never-read list.</li><li>One open draft per mail.</li><li>If you sent or deleted the draft in Gmail yourself, tapping a button says it isn't there any more.</li><li>If Gmail doesn't take the tap (a hiccup, an expired sign-in), the question is asked again.</li></ul>
+<p><strong>What leaves your computer.</strong> The mail being answered goes to the AI (it was already in the digest); the draft is written into your Gmail; a reply leaves only when you tap Send.</p>
+<p><strong>Turn it off.</strong> Dashboard → Features → Email reply drafts → Turn off. Drafts already in Gmail stay there.</p>
+<h2 id="mail-digest-by-email">Mail digest by email</h2>
+<p><strong>What it does.</strong> Each mail digest also comes to your own inbox, sent from your Gmail to yourself, with the subject "Mail digest, Tue 20 Oct 18:00". With <a href="#several-google-accounts">several accounts</a> it can send from another account than the one the digest reads (a personal account while the digest reads a school one). It always goes to the sending account's own address; there's no way to give it another recipient.</p>
+<p><strong>Turn it on.</strong> Needs Google and the Mail digest. Dashboard → Features → Mail digest by email → Save → sign in (Google asks to "send email on your behalf" and to see your address).</p>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>A digest that mentions confidential material anywhere (beyond its own "Confidential: 2" count) isn't emailed: you get it on Telegram only, and a note saying so.</li><li>If Google didn't tell Kurooto your address, or sending fails, you're told (at most every 6 hours for the same reason).</li></ul>
+<p><strong>What leaves your computer.</strong> The digest's text, from your Gmail to your own inbox.</p>
+<p><strong>Turn it off.</strong> Dashboard → Features → Mail digest by email → Turn off.</p>
+<h2 id="agent-plan-calendar">Agent plan calendar</h2>
+<p><strong>What it does.</strong> Kurooto makes a calendar of its own, <strong>Agent plan</strong>, in your Google Calendar, for the time blocks it plans with you: the morning plan, or "block 2 to 4 for the problem set" on a call. Each block has a 5-minute reminder. It writes only to that calendar; Google's permission covers only calendars Kurooto makes, so it can't see or change your others.</p>
+<p><strong>Turn it on.</strong> Needs Google and the Calendar API. Dashboard → Features → Agent plan calendar → Save → sign in.</p>
+<p><strong>From Telegram.</strong></p>
+<ul><li><code>/blocks</code>: today's blocks.</li><li><code>/blocks add 14:00-15:30 problem set 4</code> (also <code>2pm-3:30pm</code>, <code>14:00 to 15:30</code>): add one.</li><li><code>/blocks clear</code>: remove today's blocks (only Kurooto's own).</li></ul>
+<p><strong>On calls.</strong> Agree to a time on a call ("let's do the problem set from 2 to 4") and the call puts the block in. Today's blocks are in the call's brief.</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → agent_plan):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>agent_plan.remind_min</code></td><td><code>5</code></td><td>Google's pop-up reminder before each block; 0 for none</td></tr><tr><td><code>agent_plan.name</code></td><td><code>Agent plan</code></td><td>the calendar's name</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong> A block must end after it starts, be at most 12 hours long, and fall between now and a month ahead. The same block twice is refused ("Already planned"). Hide or delete the calendar in Google Calendar any time; Kurooto makes a new one the next time it plans something. Moving the feature to another account (<code>/google use plan personal</code>) makes a new Agent plan calendar there. To see the blocks in Kurooto's own Calendar too, add the Agent plan calendar's private iCal link to Calendar.</p>
+<p><strong>What leaves your computer.</strong> Each block's title and time, into your own Google Calendar.</p>
+<p><strong>Turn it off.</strong> Dashboard → Features → Agent plan calendar → Turn off. The calendar stays in Google Calendar until you delete it there.</p>
+<h2 id="google-calendar">Google Calendar</h2>
+<p><strong>What it does.</strong> Lets the <a href="../../wiki/user/classes-and-timetable.html">Calendar</a> feature read your Google calendars through Google's own API instead of private iCal links: for school or work accounts that don't offer a "secret address in iCal format", and for reading two accounts at once. Everything Calendar does works the same: <code>/today</code>, <code>/cal</code>, no calls during events, <code>#focus</code> and <code>#nocall</code>, event reminders, class calendars, private events as "Busy (private)". It reads two weeks ahead and is read-only.</p>
+<p><strong>Turn it on.</strong> Needs Google and the Calendar API. Dashboard → Features → Google Calendar → Which Google account (<code>main</code>, <code>school</code>, or <code>main, school</code>) → Save → sign in (once per account). When Google says yes, Calendar turns on too.</p>
+<p><strong>What it reads.</strong> Your own calendars and ones you subscribed to (a class calendar, holidays). Left out: calendars other people share with you (a classmate's or a teacher's own calendar: their data), hidden calendars, and Kurooto's own Agent plan calendar (<code>/blocks</code> shows that).</p>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → google_calendar):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>google_calendar.skip</code></td><td><code>[]</code></td><td>calendars to leave out, by any part of their name, any case: <code>["Birthdays"]</code></td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong> A calendar you also added to Calendar as an iCal link comes twice: leave it out here with <code>google_calendar.skip</code>.</p>
+<p><strong>What leaves your computer.</strong> Nothing; Kurooto only reads from Google.</p>
+<p><strong>Turn it off.</strong> Dashboard → Features → Google Calendar → Turn off. Calendar keeps its iCal links, if you have any.</p>
+<h2 id="drive-upload">Drive upload</h2>
+<p><strong>What it does.</strong> Puts files you send yourself into a folder of Kurooto's own in your Google Drive, <strong>Kurooto</strong>, and sends you the link with an <strong>Open in Drive</strong> button. This is how files bigger than Telegram allows reach you.</p>
+<p><strong>Turn it on.</strong> Needs Google and the Drive API. Dashboard → Features → Drive upload → Save → sign in.</p>
+<p><strong>How files get there.</strong></p>
+<ul><li><code>kurooto send lecture.mp4 --to drive</code> from a terminal: uploaded and kept.</li><li>Ask your AI to send you a file "to Drive", on Telegram or on a call: uploaded and kept.</li><li><strong>Anything over Telegram's 50 MB</strong> (a file Kurooto or the AI sends you, a big study pack, several files sent at once that together pass the limit) goes there by itself, with <code>drive_upload.big_files</code> on. These are <strong>temporary</strong>: the message says "It's deleted from your Drive in 7 days". A daily clean-up at 04:10 deletes them when their days are up.</li><li>Big files go up in 8 MB pieces in the background: you first get "Uploading lecture.mp4 (212.4 MB) to your Google Drive; the link comes when it's done", then the link.</li></ul>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → drive_upload):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>drive_upload.folder</code></td><td><code>Kurooto</code></td><td>the folder's name in your Drive</td></tr><tr><td><code>drive_upload.big_files</code></td><td><code>true</code></td><td>files over 50 MB come as a Drive link instead of not at all</td></tr><tr><td><code>drive_upload.temp_days</code></td><td><code>7</code></td><td>days a too-big-for-Telegram upload is kept before it's deleted; 0 keeps them</td></tr></tbody></table></div>
+<p><strong>Limits and edge cases.</strong></p>
+<ul><li>Without Drive upload, a file over 50 MB isn't sent: "Telegram takes files up to 50 MB. Turn on Drive upload..."</li><li>To keep a temporary upload for good, the message says to move it out of the Kurooto folder. The safest way in this version is to make a copy in Drive (right-click → Make a copy) and move the copy, or set <code>drive_upload.temp_days</code> to <code>0</code> before it's uploaded.</li><li>Google's permission covers only files Kurooto makes, so it can't see the rest of your Drive. Nothing is shared: the link opens only for you (and whoever you share it with yourself, in Drive).</li><li>If the upload fails (sign-in expired, no space in Drive), you get "Couldn't upload ... to Drive" with the reason.</li></ul>
+<p><strong>What leaves your computer.</strong> The files you send, to your own Drive.</p>
+<p><strong>Turn it off.</strong> Dashboard → Features → Drive upload → Turn off. Files stay in Drive until you delete them.</p>
+<h2 id="taking-access-away">Taking access away</h2>
+<ul><li><strong>One feature:</strong> turn it off in Dashboard → Features. Its permission stays granted at Google until you withdraw it.</li><li><strong>One account on this computer:</strong> <code>/google forget &lt;name&gt;</code> (not main).</li><li><strong>At Google:</strong> <a href="https://myaccount.google.com/connections">myaccount.google.com/connections</a> → your project (Kurooto) → <strong>Delete all connections</strong>. Kurooto then asks you to sign in again.</li><li><strong>Everything, when leaving:</strong> <code>kurooto uninstall --revoke</code> revokes every Google account's sign-in for you (see <a href="../../wiki/user/updates-and-backups.html">updates-and-backups.md</a>).</li><li><strong>Delete the client:</strong> Clients page → tick it → <strong>Delete</strong> (restorable for 30 days).</li><li><strong>Delete the project:</strong> <a href="https://console.cloud.google.com/iam-admin/settings">console.cloud.google.com/iam-admin/settings</a> → <strong>Shut down</strong> → type the project ID. Google deletes it after 30 days.</li><li>Google deletes a client that hasn't been used for six months (it emails you a month before). If that happens, make a new one (step 6) and paste it in.</li><li>The Agent plan calendar and the Kurooto folder in Drive stay in your Google account until you delete them.</li></ul>
+<h2 id="when-something-goes-wrong">When something goes wrong</h2>
+<div class="table-wrap"><table><thead><tr><th>What you see</th><th>What to do</th></tr></thead><tbody><tr><td>"Access blocked: Kurooto has not completed the Google verification process"</td><td>The app is still in Testing and this account isn't a test user: Publish app (step 4).</td></tr><tr><td>"Access blocked: (your school) has blocked access" or "Error 400: admin_policy_enforced"</td><td>Your school's or employer's account doesn't allow unverified apps. Sign in with a personal account. For your timetable, use Calendar's private iCal link instead. Classroom has no way around it: ask your administrator, or leave it off.</td></tr><tr><td>"Error 400: redirect_uri_mismatch" or "unauthorized_client"</td><td>The client isn't a Desktop app. Make a Desktop app client (step 6) and paste that file.</td></tr><tr><td>"Error 401: invalid_client" or "deleted_client"</td><td>The file is from a client that was deleted or whose secret was replaced. Download a new file (Add secret, or a new client) and paste it.</td></tr><tr><td>"org_internal"</td><td>The project only lets its own organisation's accounts in. Use one of those, or set Audience to External.</td></tr><tr><td>"invalid_grant"</td><td>That sign-in code was already used or expired. Start the sign-in again from Kurooto.</td></tr><tr><td>"That isn't the JSON file Google gave you" / "That client is a Web application"</td><td>Paste the Desktop app client's downloaded file, whole.</td></tr><tr><td>Kurooto asks you to sign in again every week</td><td>The app is still in Testing: Publish app (step 4), then sign in once more.</td></tr><tr><td>A feature stays off after signing in ("access_denied", "Some boxes weren't ticked")</td><td>You pressed Cancel or unticked its permission. Press Save on its card and sign in again, leaving the boxes ticked. Check its API is on in your project.</td></tr><tr><td>An API "has not been used in project ... or it is disabled"</td><td>Turn that API on (step 2), wait a minute, try again.</td></tr><tr><td>The page after signing in "can't be reached" (127.0.0.1)</td><td>Sign in on the computer Kurooto runs on: Google sends you back to Kurooto there.</td></tr><tr><td>Google's screen says "Something went wrong"</td><td>Try again in a private window, signed in to one Google account only.</td></tr><tr><td>"Google sign-in expired ... the Google features are paused"</td><td>Dashboard → Features → Google → Save (signs in again). Every 7 days? Publish the app.</td></tr><tr><td>"Mail digest is paused: needs Google's OK" (or another feature)</td><td>Dashboard → Features → that feature → Save, sign in, leave its permission ticked.</td></tr><tr><td>"That's the same Google account as your main one"</td><td>The browser picked the account you were signed in with. Save on the card again and choose the other account in Google's chooser.</td></tr><tr><td>A feature says it needs your school Google account</td><td>That account's sign-in is missing or expired: Features → that feature → Save, pick that account. <code>/google</code> shows which account each feature uses.</td></tr><tr><td>The mail digest says it only counted my mail</td><td>It reads only what you chose: <code>/mail read @your-school.example</code> or <code>/mail read label:Name</code>. Mail marked confidential is always only counted (unless local mode).</td></tr><tr><td>"Confidential mail is only counted for now"</td><td>Local summaries need Local AI models on and ready (on a laptop they run on the charger).</td></tr><tr><td>The mail digest wasn't emailed</td><td>It mentioned confidential material (you got a note), or the sending account's address isn't known: Save on Mail digest by email and sign in again.</td></tr><tr><td>Classroom notes say a PDF wasn't read</td><td>Install Poppler (<code>pdftotext</code>), or use agy or Claude Code as your AI.</td></tr><tr><td>Classroom notes went to the wrong folder</td><td>Dashboard → Settings → <code>classroom_notes.folders</code>: <code>{"Exact course name": "folder-name"}</code>.</td></tr><tr><td>A Classroom file says "too large: open the link"</td><td>It's over <code>classroom_notes.max_file_mb</code> (30); raise it if you want it read.</td></tr><tr><td>A file over 50 MB didn't arrive</td><td>Turn on Drive upload; it then comes as a Drive link.</td></tr><tr><td><code>/draft</code> says Gmail drafts are off</td><td>Set <code>google.gmail_drafts</code> to <code>true</code>, turn on the Gmail API, Save on the Google card and sign in again.</td></tr></tbody></table></div>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/google.md">docs/wiki/user/google.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

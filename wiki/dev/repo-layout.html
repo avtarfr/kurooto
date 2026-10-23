@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Repository layout · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html">Architecture</a> <a href="repo-layout.html" aria-current="page">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="modules.html">Feature modules</a> <a href="web.html">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="testing.html">Testing</a> <a href="release-and-updates.html">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="repository-layout">Repository layout</h1>
+<p>One line per folder or important file. Paths are relative to the repository root.</p>
+<h2 id="top-level">Top level</h2>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>What it is</th></tr></thead><tbody><tr><td><code>README.md</code></td><td>the public front page: what Kurooto does, install, first steps, links to docs</td></tr><tr><td><code>AGENTS.md</code></td><td>a guide for AI agents helping a <strong>user</strong> install, set up and fix Kurooto (not for developing it; that's <a href="../../wiki/dev/agents.html">agents.md</a>)</td></tr><tr><td><code>CHANGELOG.md</code></td><td>user-facing changes per version, newest first, <code>(unreleased)</code> for work in progress</td></tr><tr><td><code>LICENSE</code>, <code>NOTICE</code></td><td>Apache-2.0</td></tr><tr><td><code>pyproject.toml</code></td><td>package metadata and <strong>the version</strong>, dependencies, the <code>kurooto</code> entry point (<code>kurooto.cli:main</code>), ruff and pytest config, hatch build (the APK as an artifact)</td></tr><tr><td><code>uv.lock</code></td><td>the locked development environment (<code>uv sync --locked</code>)</td></tr><tr><td><code>requirements.lock</code></td><td>hashed runtime requirements used by installs and updates (<code>--require-hashes</code>); must match <code>uv export</code></td></tr><tr><td><code>.github/workflows/</code></td><td>CI: <code>ci.yml</code> (tests, call line, Android, privacy, update rehearsal), <code>android-emulator.yml</code>, <code>spike-agy.yml</code>, <code>spike-gbrain.yml</code></td></tr><tr><td><code>.gitleaks.toml</code>, <code>.gitleaksignore</code></td><td>gitleaks configuration for the privacy job and hook</td></tr><tr><td><code>.gitignore</code></td><td>build output, venvs, <code>node_modules</code>, <code>.wrangler</code>, keys, <code>.env*</code>, the bundled <code>public/app.js</code>, <code>wrangler.toml</code>, the APK</td></tr><tr><td><code>src/kurooto/</code></td><td>the Python package (below)</td></tr><tr><td><code>tests/</code></td><td>pytest suite, fakes, JS tests, fixtures (below)</td></tr><tr><td><code>tools/</code></td><td>release, privacy scanner, settings guide generator, update rehearsal, git hooks (below)</td></tr><tr><td><code>installer/</code></td><td><code>install.sh</code>, <code>install.ps1</code>, <code>bootstrap.py</code> (verifies signed releases, builds the first version), <code>index.html</code> and <code>privacy.html</code> templates for the site</td></tr><tr><td><code>android/</code></td><td>the Android app (below)</td></tr><tr><td><code>docs/</code></td><td>user and maintainer documentation (below)</td></tr></tbody></table></div>
+<h2 id="srckurooto"><code>src/kurooto/</code></h2>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>What it is</th></tr></thead><tbody><tr><td><code>__init__.py</code></td><td><code>__version__</code> from the installed metadata</td></tr><tr><td><code>__main__.py</code></td><td><code>python -m kurooto</code> → <code>cli.main</code></td></tr><tr><td><code>cli.py</code></td><td>every <code>kurooto</code> subcommand (argparse in <code>main()</code>); talks to the daemon through the local API (<code>ask_running</code>)</td></tr><tr><td><code>daemon.py</code></td><td><code>run()</code> (the daemon), <code>serve()</code>, <code>supervise()</code>, logging setup, single-instance lock</td></tr><tr><td><code>app.py</code></td><td><code>App</code>: builds the core services and modules, <code>handle()</code> routes messages, <code>callback()</code> routes buttons, enable/disable</td></tr><tr><td><code>diagnostics.py</code></td><td><code>kurooto doctor</code> rows and the redacted diagnostics zip</td></tr><tr><td><code>top.py</code></td><td><code>kurooto top</code>, the terminal status board</td></tr><tr><td><code>watch.py</code></td><td><code>kurooto watch -- CMD</code> and the log follower for <code>kurooto logs -f</code></td></tr><tr><td><code>runlog.py</code></td><td><code>kurooto runlog</code>, experiment-run logs written into the notes</td></tr><tr><td><code>core/</code></td><td>shared services: settings, secrets, paths, scheduler, jobs, events, notify, Calm, ask, availability, power, presence, quota, health, tools, MCP, places, layout, the concept graph's engine, ... (<a href="../../wiki/dev/core.html">core.md</a>)</td></tr><tr><td><code>providers/</code></td><td>AI brains: <code>base.py</code> (interface), <code>agy.py</code>, <code>claude.py</code>, <code>openai_compat.py</code>, <code>effort.py</code>, <code>context.py</code>, registry in <code>__init__.py</code> (<a href="../../wiki/dev/brains.html">brains.md</a>)</td></tr><tr><td><code>modules/</code></td><td>one file (or package) per feature, <code>base.py</code> (the <code>Module</code> class), <code>catalog.py</code> (the list) (<a href="../../wiki/dev/modules.html">modules.md</a>)</td></tr><tr><td><code>modules/telegram/</code></td><td>the Telegram channel and a stdlib Bot API client (<code>api.py</code>)</td></tr><tr><td><code>modules/calls/</code></td><td>phone calls: connector, deploy, fallback, crypto (<code>line.py</code>), phone app channel, post-call review (<a href="../../wiki/dev/calls-and-phone.html">calls-and-phone.md</a>)</td></tr><tr><td><code>modules/terminal/</code></td><td>Kurooto Terminal (kitty, Windows Terminal, launchers, default terminal)</td></tr><tr><td><code>web/</code></td><td>the local HTTP server, API, live events, tools API, try-it; <code>web/static/</code> the pages and scripts (<a href="../../wiki/dev/web.html">web.md</a>)</td></tr><tr><td><code>update/</code></td><td><code>launcher.py</code> (stdlib-only, copied into the app folder), <code>updater.py</code>, <code>service.py</code>, <code>signing.py</code> (<a href="../../wiki/dev/release-and-updates.html">release-and-updates.md</a>)</td></tr><tr><td><code>data/</code></td><td>package data: <code>skills/&lt;name&gt;/SKILL.md</code> (shipped skills), <code>prompts/</code>, <code>prereqs.toml</code> (helper programs and their checksums), <code>ollama_models.toml</code> (models per hardware profile), <code>research_sources.json</code>, <code>worker/</code> (the call line's Worker source)</td></tr><tr><td><code>data/worker/</code></td><td><code>src/worker.js</code>, <code>web/app.js</code> + <code>web/fallback.js</code> (call page source), <code>public/</code> (static pages, service worker), <code>package.json</code> + <code>package-lock.json</code>, <code>wrangler.template.toml</code></td></tr></tbody></table></div>
+<h2 id="tests"><code>tests/</code></h2>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>What it is</th></tr></thead><tbody><tr><td><code>conftest.py</code></td><td>the <code>env</code> fixture (a paired app with a fake Telegram), autouse isolation fixtures, the guard's pytest hooks</td></tr><tr><td><code>isolation.py</code></td><td>the real-install guard: pretend home, stand-in programs, audit hook (<a href="../../wiki/dev/testing.html#the-real-install-guard">testing.md</a>)</td></tr><tr><td><code>unit/</code></td><td>about a hundred test files, roughly one per feature or core service</td></tr><tr><td><code>integration/</code></td><td>the call line under <code>wrangler dev</code> with fakes (needs Node and the Worker's packages)</td></tr><tr><td><code>fakes/</code></td><td>Telegram, OpenAI-style APIs, Ollama, agy, Claude Code, an MCP agent, Google, the cloud services the Worker uses</td></tr><tr><td><code>js/</code></td><td>Node tests for the call page, its fallback logic and the Worker's crypto</td></tr><tr><td><code>fixtures/</code></td><td><code>call-vectors.json</code> (crypto vectors shared by Python, the Worker and Java), <code>syscolors/</code></td></tr></tbody></table></div>
+<h2 id="tools"><code>tools/</code></h2>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>What it is</th></tr></thead><tbody><tr><td><code>release.py</code></td><td><code>keygen</code>, <code>build</code>, <code>sign</code>, <code>yank</code>, <code>publish</code> (<a href="../../wiki/dev/release-and-updates.html">release-and-updates.md</a>)</td></tr><tr><td><code>privacy_scan.py</code>, <code>privacy_allow.txt</code></td><td>the scanner for secrets and personal data, and the paths exempt from its pattern layer</td></tr><tr><td><code>gen_settings_guide.py</code></td><td>writes <code>docs/SETTINGS_GUIDE.md</code> from the code (<code>--check</code> for CI and tests)</td></tr><tr><td><code>update_rehearsal.py</code></td><td>installs, updates, rolls back and uninstalls with the real installer in a sandbox</td></tr><tr><td><code>hooks/pre-commit</code>, <code>hooks/pre-push</code></td><td>privacy scan and noreply identity checks (<code>git config core.hooksPath tools/hooks</code>)</td></tr></tbody></table></div>
+<h2 id="android"><code>android/</code></h2>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>What it is</th></tr></thead><tbody><tr><td><code>AndroidManifest.xml</code></td><td>the app package (see the manifest), minSdk 23, target 35, permissions, components</td></tr><tr><td><code>src/.../kurooto/*.java</code></td><td>activities (<code>MainActivity</code>, <code>PairActivity</code>, <code>CallActivity</code>, <code>AnswerActivity</code>, <code>ShareActivity</code>), <code>ListenService</code>, receivers, <code>Crypto</code>/<code>Seal</code> (k1/s1), <code>Line</code>/<code>Net</code> (HTTP), <code>Speech</code>, <code>Inbox</code>, <code>Prefs</code>, <code>Tls</code></td></tr><tr><td><code>res/</code>, <code>assets/isrgrootx1.der</code></td><td>icons; the Let's Encrypt root for old Android versions</td></tr><tr><td><code>build.sh</code></td><td>builds without Gradle (<code>--test</code> runs the JVM tests)</td></tr><tr><td><code>smoke.sh</code></td><td>emulator smoke test</td></tr><tr><td><code>test/</code></td><td><code>CryptoTest.java</code> (shared vectors), <code>SpeechTest.java</code></td></tr></tbody></table></div>
+<h2 id="docs"><code>docs/</code></h2>
+<div class="table-wrap"><table><thead><tr><th>Path</th><th>What it is</th></tr></thead><tbody><tr><td><code>MANUAL.md</code></td><td>the user manual: every feature, its setup, troubleshooting, and how to undo it</td></tr><tr><td><code>SETTINGS_GUIDE.md</code></td><td>every setting and default (generated; don't edit by hand)</td></tr><tr><td><code>PRIVACY.md</code></td><td>per feature, what leaves the computer and where it goes (rendered into the site's privacy page by <code>tools/release.py:privacy_page</code>)</td></tr><tr><td><code>RELEASING.md</code></td><td>the maintainer's release checklist</td></tr><tr><td><code>ROADMAP.md</code>, <code>REQUESTED.md</code></td><td>ideas not built; requests from users (struck through when done)</td></tr><tr><td><code>friend-test.md</code></td><td>a script for watching a first-time install</td></tr><tr><td><code>next/</code></td><td>working notes from earlier branches (<code>books.md</code>, <code>rehearsal.md</code>); historical</td></tr><tr><td><code>media/</code></td><td>screenshots and video for the README and site (left out of release builds)</td></tr><tr><td><code>wiki/dev/</code></td><td>this developer wiki</td></tr></tbody></table></div>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/repo-layout.md">docs/wiki/dev/repo-layout.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

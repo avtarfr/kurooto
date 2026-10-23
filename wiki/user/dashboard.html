@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The dashboard · User wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="User wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>User wiki</strong>: <a href="index.html">Start</a> <a href="commands.html">Commands</a> <a href="getting-started.html">Getting started</a> <a href="ai-brains.html">AI brains</a> <a href="talking-to-kurooto.html">Talking to Kurooto</a> <a href="messages-it-sends.html">Messages Kurooto sends by itself</a> <a href="reminders-and-deadlines.html">Reminders and deadlines</a> <a href="check-ins-and-journal.html">Check-ins and journal</a> <a href="calls.html">Phone calls and the morning alarm</a> <a href="phone-app.html">Your phone</a> <a href="classes-and-timetable.html">Classes, timetable and calendar</a> <a href="quiz-and-exams.html">Quiz and exams</a> <a href="books-and-study.html">Books and study</a> <a href="notes-and-concept-graph.html">Notes and the concept graph</a> <a href="skills-and-routines.html">Skills and routines</a> <a href="research.html">Research</a> <a href="google.html">Google: Classroom, Gmail, Calendar and Drive</a> <a href="teaching-kurooto.html">Teaching Kurooto about you</a> <a href="dashboard.html" aria-current="page">The dashboard</a> <a href="your-computer.html">Your computer</a> <a href="updates-and-backups.html">Updates, backups and moving</a> <a href="privacy.html">Privacy: what stays and what leaves</a> <a href="add-ons.html">Add-ons, scripts and other programs</a> <a href="faq.html">FAQ</a> <a href="troubleshooting.html">Troubleshooting</a> <a href="glossary.html">Glossary</a> · <a href="../dev/index.html">Developer wiki</a></nav>
+<h1 id="the-dashboard">The dashboard</h1>
+<p>The dashboard is a page on your own computer at <strong>http://127.0.0.1:8770</strong>. It shows what Kurooto is doing, lets you turn features on and off, change settings, pair a phone, and do everyday things (reminders, deadlines, the alarm, your journal) without Telegram. <code>kurooto open</code> opens it in your browser.</p>
+<p>This page covers the dashboard, the morning page, the colours, <code>kurooto top</code> (the same board in a terminal) and the two terminal features. For talking to Kurooto in general see <a href="../../wiki/user/talking-to-kurooto.html">talking-to-kurooto.md</a>.</p>
+<ul><li><a href="#opening-it">Opening it</a></li><li><a href="#two-layouts-dense-and-roomy">Two layouts: dense and roomy</a></li><li><a href="#the-board-dense-layout">The board (dense layout)</a></li><li><a href="#ctrlk-do-anything-from-anywhere">Ctrl+K: do anything from anywhere</a></li><li><a href="#the-pages">The pages</a></li><li><a href="#search-hiding-features-bigger-panes">Search, hiding features, bigger panes</a></li><li><a href="#links-to-other-sites">Links to other sites</a></li><li><a href="#the-morning-page">The morning page</a></li><li><a href="#colours">Colours</a></li><li><a href="#keyboard-shortcuts">Keyboard shortcuts</a></li><li><a href="#kurooto-top-the-board-in-a-terminal">kurooto top: the board in a terminal</a></li><li><a href="#terminals-in-the-dashboard">Terminals (in the dashboard)</a></li><li><a href="#kurooto-terminal-a-window-of-its-own">Kurooto Terminal (a window of its own)</a></li><li><a href="#when-something-looks-wrong">When something looks wrong</a></li></ul>
+<hr>
+<h2 id="opening-it">Opening it</h2>
+<ul><li>Go to <code>http://127.0.0.1:8770</code> in any browser, or run <code>kurooto open</code> (it prints the address too). <code>127.0.0.1</code> means "this computer".</li><li>If another program already uses port 8770, Kurooto takes the next free one (it tries 30 in a row). <code>kurooto paths</code> shows the state folder; <code>web.json</code> there says which port is in use. You can pick the starting port with the <code>web.port</code> setting (default <code>8770</code>; it isn't on the Settings page, so change it in <code>settings.json</code>, see <a href="#settings-alts">Settings</a>).</li><li>The <strong>setup</strong> link in the top bar goes back to the setup page (<code>/setup</code>), for example to add more AI accounts to <a href="../../wiki/user/teaching-kurooto.html">About you</a> or to restore a profile.</li><li>If Kurooto isn't running, the page can't load. Start it from your app menu (<strong>Kurooto</strong>) or with <code>kurooto on</code>.</li></ul>
+<p><strong>Who can open it.</strong> Only this computer: the page listens on 127.0.0.1 only. Every request needs a key that only the page Kurooto serves gets, requests from other websites are refused, and the page loads nothing from the internet. On Linux, where several people can be signed in at once, it also checks that the page and every request come from your own user account, and refuses them when it can't tell.</p>
+<h2 id="two-layouts-dense-and-roomy">Two layouts: dense and roomy</h2>
+<div class="table-wrap"><table><thead><tr><th>Layout</th><th>What it is</th><th>When you get it</th></tr></thead><tbody><tr><td><strong>dense</strong> (default)</td><td>one full-screen board with thin borders, each pane's name set into its top line; the pages open over the whole board</td><td>windows at least 1280 px wide and 600 px tall</td></tr><tr><td><strong>roomy</strong></td><td>the earlier layout: bigger panes and type, with the pages as tabs below</td><td>narrower windows get it by themselves; <code>look.layout</code> = <code>roomy</code> keeps it everywhere</td></tr></tbody></table></div>
+<p>Both have the same pages, the same Alt keys, the same search and the same way of hiding features.</p>
+<p><strong>Setting:</strong> <code>look.layout</code> (<code>dense</code> or <code>roomy</code>), Dashboard → Settings → Look. The change shows at once.</p>
+<h2 id="the-board-dense-layout">The board (dense layout)</h2>
+<p>Four panes: <strong>STATUS</strong> down the left, <strong>SYSTEMS</strong> and <strong>NOTES</strong> on top, <strong>TERMINAL</strong> below. A top bar shows Kurooto's name and version, a short status line ("12 features on · 0 AI request running · cpu 7%"), a <strong>needs a look</strong> badge when something isn't working, an <strong>update</strong> badge when a new version is ready, and the <strong>setup</strong> link.</p>
+<h3 id="status-this-computer">STATUS: this computer</h3>
+<p>A monitor like the program btop, the same as <a href="#kurooto-top-the-board-in-a-terminal"><code>kurooto top</code></a>:</p>
+<ul><li><strong>Header:</strong> the date and time, how long the computer has been up, today's event count, the battery (percent, time left, watts) or "ac", Kurooto's mode ("saving battery" or "paused …"), the update and health badges, and three buttons: <strong>pause 1h</strong> (or <strong>resume</strong> while paused), <strong>off</strong> and <strong>setup</strong>.</li><li><strong>CPU:</strong> a history graph, every core with its own little graph, speed, load, temperatures and fans (where the computer reports them).</li><li><strong>MEM:</strong> used, cached, available, swap. <strong>GPU:</strong> use, its memory, temperature, power and a graph (needs NVIDIA's <code>nvidia-smi</code>, or an AMD card on Linux; a sleeping laptop graphics card isn't woken to ask).</li><li><strong>NET:</strong> download above the line, upload below, and totals. <strong>DISKS:</strong> how full, reads and writes per second.</li><li><strong>PROCESSES:</strong> the busiest programs. Click <strong>cpu</strong> or <strong>mem</strong> in the header to sort (this browser remembers it). Kurooto's own processes are marked ✦.</li><li><strong>STUDY TODAY:</strong> minutes per subject, with the <a href="../../wiki/user/books-and-study.html">Study tracker</a> on.</li><li><strong>PROJECTS:</strong> your git folders with each one's last commit, what isn't pushed yet and what's changed. List the folders in <code>look.projects</code> (default empty: the repositories you gave <a href="../../wiki/user/research.html">Research</a>).</li></ul>
+<p><strong>pause 1h</strong> pauses Kurooto for an hour (Telegram still answers and keeps what you send; see <a href="../../wiki/user/your-computer.html">your-computer.md</a>). <strong>off</strong> asks first, then turns Kurooto off completely: it stops, won't start at sign-in, and your call line stops placing scheduled calls until you open Kurooto from your app menu or run <code>kurooto on</code>. The page then only says that Kurooto is off.</p>
+<h3 id="systems-the-features-as-living-cells">SYSTEMS: the features as living cells</h3>
+<p>Each feature that's on is a round cell around a beating core labelled with your assistant's name. Pulses run along the lines between the core and the cells as messages, reminders and AI answers come and go. The hours of the day run around the ring.</p>
+<ul><li><strong>A cell's words</strong> sit just outside it: its name and its figures. A feature that runs programs of its own shows their cpu and memory ("running · 2.1% · 140M"); one whose programs aren't running turns grey and dashed ("not running"); one whose programs only run now and then says "idle". Other features say what they did last ("last 4m ago") and when they run next ("next in 2h").</li><li><strong>Hover over a cell</strong> for its card: events in the last 2 minutes, its processes (cpu, memory, threads, uptime), the last event and the next scheduled time. On a very crowded ring a few labels may hide; the card always works.</li><li>The pane's top line says how many features are on, how many aren't running, Kurooto's own cpu and memory, and whether the call line is linked.</li></ul>
+<p><strong>The four corner panels:</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Corner</th><th>Shows</th></tr></thead><tbody><tr><td>top left: <strong>events</strong></td><td>the last five things that happened (newest first; fresh ones are bright)</td></tr><tr><td>top right: <strong>your AI</strong></td><td>requests running or waiting (title, effort, how long, status), the last few finished ones, the local models loaded and their memory, and how many things are scheduled with the next one</td></tr><tr><td>bottom left: <strong>today</strong></td><td>classes, calendar events, check-ins and calls still to come today ("now" when one is on), focus time and no-call holds</td></tr><tr><td>bottom right: <strong>due</strong></td><td>what's due and how soon; overdue ones in red, ones under 24 hours in a warmer colour; "deadlines are off" when the feature is off</td></tr></tbody></table></div>
+<p><strong>Folded panels and legends (new in 0.5.8).</strong> To keep the board calm, the four corner panels, the NOTES legend and the NOTES recent list are folded to their first line, with a count of what's hidden (<code>▸ 4</code>). Point at one and it opens while the pointer is over it. Press <strong>L</strong> to open all of them (or fold them all again). This browser remembers your choice; another browser starts folded.</p>
+<h3 id="notes-a-map-of-your-notes">NOTES: a map of your notes</h3>
+<p>Every note in your notes folder is a dot; links between notes are lines. Notes are grouped into coloured neighbourhoods by folder: each <code>sources/&lt;subject&gt;/</code> folder is one, <code>maps/</code> and <code>projects/</code> are the hub, and any other note joins the neighbourhood most of its links go to (or "Other Notes"). Grouping works best with the zettelkasten notes layout (see <a href="../../wiki/user/notes-and-concept-graph.html">notes-and-concept-graph.md</a>).</p>
+<div class="table-wrap"><table><thead><tr><th>To</th><th>Do</th></tr></thead><tbody><tr><td>See a note's details</td><td>point at it: title, path, links, words, when it was edited</td></tr><tr><td>Pin a note's card with its first lines</td><td>click it (click empty space to let go)</td></tr><tr><td>Open a note</td><td>double-click it (your default app for Markdown, or your own program: <code>notes.open_with</code>)</td></tr><tr><td>Zoom / move around</td><td>mouse wheel / drag empty space</td></tr><tr><td>Move a note</td><td>drag it</td></tr><tr><td>Find a note by name</td><td><code>/</code> or <strong>Alt+/</strong> (or Ctrl+K → <code>find</code>), type, <strong>Enter</strong> jumps to the first match, <strong>Esc</strong> closes</td></tr><tr><td>Highlight notes edited in the last day</td><td><strong>R</strong>, or the <strong>Recent</strong> button (or click the top-left "Recent" line). Notes edited in the last hour get a brighter ring</td></tr></tbody></table></div>
+<p>The pane's top line counts notes, links and neighbourhoods. The legend (top right) lists the neighbourhoods with their counts; the bottom-left list shows the notes you edited last. Both are folded until you point at them or press <strong>L</strong>.</p>
+<p><strong>Opening notes in your own program:</strong> Dashboard → Settings → Notes → <code>notes.open_with</code>, for example <code>kitty nvim {path}</code>, <code>code {path}</code> or <code>kurooto term -e nvim {path}</code>. <code>{path}</code> is the note (one argument even with spaces), <code>{folder}</code> your notes folder; without <code>{path}</code> the note goes at the end. It runs as a program with arguments, never through a shell, and the program must open its own window. If the program isn't there, the default app opens the note. Empty (the default) uses your default app.</p>
+<h3 id="terminal-plain-english-right-in-the-page">TERMINAL: plain English right in the page</h3>
+<p>The bottom pane's border holds its tabs. With the <a href="#terminals-in-the-dashboard">Terminals</a> feature on, there are real terminals for your AI's own program (agy or Claude Code, one tab for each that's installed), a shell and Kurooto's log. Without it, there's a <strong>+ terminals</strong> tab that explains the feature.</p>
+<p>The tab named after your assistant (<strong>kurooto</strong>) is always there: type to Kurooto as on Telegram. Quick requests ("push the evening check-in by 30 min", "what's due this week?", "no calls till 6") answer at once; anything bigger goes to your AI, and its answer prints here, not on Telegram. Its own words:</p>
+<div class="table-wrap"><table><thead><tr><th>Type</th><th>Does</th></tr></thead><tbody><tr><td><code>help</code></td><td>a short list of what works here</td></tr><tr><td><code>check</code></td><td>whether every feature that's on is working (✓ or ✗ with why)</td></tr><tr><td><code>jobs</code></td><td>your AI's latest requests</td></tr><tr><td><code>clear</code> or <strong>Ctrl+L</strong></td><td>a clean screen</td></tr><tr><td><strong>↑</strong> / <strong>↓</strong></td><td>what you typed before</td></tr></tbody></table></div>
+<p>An answer that takes longer than 30 minutes stops being waited for here; see it in the <strong>AI jobs</strong> page.</p>
+<p>The pane's border also lists the pages (today, activity, jobs, schedule, features, phone, research, you, settings), each with its key letter underlined, and a reminder of the keys.</p>
+<h2 id="ctrlk-do-anything-from-anywhere">Ctrl+K: do anything from anywhere</h2>
+<p><strong>Ctrl+K</strong> (⌘K on a Mac) opens one line at the top of the board, from wherever you are (except inside a terminal, where Ctrl+K belongs to the shell). Press it again, <strong>Esc</strong>, or click outside to close it.</p>
+<div class="table-wrap"><table><thead><tr><th>Type</th><th>Does</th><th>Example</th></tr></thead><tbody><tr><td><code>ask …</code> (or anything that isn't a verb)</td><td>sends it to Kurooto as if typed on Telegram</td><td><code>what's due this week?</code></td></tr><tr><td><code>journal …</code> (or <code>j …</code>)</td><td>adds a line to today's journal</td><td><code>j finished the lab report</code></td></tr><tr><td><code>note …</code> (or <code>. …</code>)</td><td>adds a line to today's inbox note</td><td><code>. look up Sylow theorems</code></td></tr><tr><td><code>remind &lt;when&gt; &lt;what&gt;</code> (or <code>! …</code>)</td><td>sets a reminder; the time comes first</td><td><code>remind 18:30 call mum</code>, <code>! in 20m tea</code></td></tr><tr><td><code>due &lt;what&gt; &lt;when&gt;</code></td><td>adds a deadline; the time comes last</td><td><code>due essay draft fri 17:00</code></td></tr><tr><td><code>alarm &lt;time&gt;</code></td><td>sets the wake-up alarm</td><td><code>alarm 7:30</code>, <code>alarm tomorrow 6:45</code></td></tr><tr><td><code>alarm skip [day]</code></td><td>skips a morning (tomorrow if you name none)</td><td><code>alarm skip friday</code></td></tr><tr><td><code>alarm off</code></td><td>turns off the next alarm</td><td></td></tr><tr><td><code>alarm daily &lt;time&gt;</code> / <code>alarm daily off</code></td><td>sets or turns off the daily alarm</td><td><code>alarm daily 7:00</code></td></tr><tr><td><code>find &lt;name&gt;</code></td><td>finds a note on the NOTES map</td><td><code>find eigenvalues</code></td></tr><tr><td><code>open &lt;page&gt;</code></td><td>opens a page: today, activity, jobs, schedule, features, phone, research, about, settings (the start of a name is enough)</td><td><code>open set</code></td></tr></tbody></table></div>
+<p>How it behaves:</p>
+<ul><li>As you type, a list shows what Enter would do. <strong>↑ / ↓</strong> pick a line, <strong>Enter</strong> does it, <strong>Tab</strong> puts the highlighted verb in front of what you typed.</li><li>A bare word is completed first: <code>re</code> then Enter gives <code>remind </code>, with a hint of what to type. With something after the verb, Enter runs it and the line clears for the next one.</li><li>What happened shows under the line ("Reminder set for 18:30", or why not). For an <code>ask</code> that goes to your AI, the answer arrives there too, with which AI answered, its effort and how long it took. It waits up to about 20 minutes; after that, look in the AI jobs page.</li><li>Times for <code>remind</code>: <code>18:30</code>, <code>6pm</code>, <code>in 20m</code>, <code>in 2 hours</code>, <code>tomorrow</code>, <code>tomorrow 9am</code>, <code>friday 9:00</code>. Times for <code>due</code>: a weekday with a time (<code>fri 17:00</code>), <code>tomorrow</code> (with or without a time), a date (<code>2026-11-02</code>, or <code>2026-11-02 17:00</code>) or <code>in 3 days</code>.</li><li>Every action is exactly the one the Telegram command and the AI's tool do, so they never disagree. A feature that's off says "… is off: turn it on in Features". The alarm needs <a href="../../wiki/user/calls.html">Phone calls</a>.</li></ul>
+<h2 id="the-pages">The pages</h2>
+<p>In the dense layout the pages open over the whole board: <strong>Alt</strong> plus the page's underlined letter, a click on its name in the TERMINAL pane's border, or Ctrl+K → <code>open</code>. <strong>Esc</strong> (or <strong>esc back</strong>, or a click on the page's name) goes back to the board. In the roomy layout they're tabs under the panes.</p>
+<div class="table-wrap"><table><thead><tr><th>Page</th><th>Key</th><th>What it's for</th></tr></thead><tbody><tr><td>Today</td><td>Alt+T</td><td>the day, with buttons</td></tr><tr><td>Activity</td><td>Alt+A</td><td>what happened, newest first (the last 80 events: names, counts and times, never message text)</td></tr><tr><td>AI jobs</td><td>Alt+J</td><td>AI requests: when, what, effort, how long, result, and <strong>Cancel</strong> on running or waiting ones</td></tr><tr><td>Schedule</td><td>Alt+C</td><td>everything scheduled: reminders, check-ins, calls, syncs, digests</td></tr><tr><td>Features</td><td>Alt+F</td><td>turn features on and off, set them up</td></tr><tr><td>Phone</td><td>Alt+P</td><td>your call line, pairing a phone, a test ring</td></tr><tr><td>Research</td><td>Alt+R</td><td>paper sources, the digest, project repositories</td></tr><tr><td>About you</td><td>Alt+Y</td><td>your profile, to read and edit</td></tr><tr><td>Settings</td><td>Alt+S</td><td>every setting you can change here</td></tr></tbody></table></div>
+<p>A link to <code>/#about</code> (what <code>/aboutme</code> on Telegram sends) opens the About you page directly; any page name works the same way (<code>/#settings</code>).</p>
+<h3 id="today-altt">Today (Alt+T)</h3>
+<p>The day, and the everyday things done right there.</p>
+<ul><li><strong>One box for anything</strong> at the top. Plain words go to Kurooto as if typed on Telegram (an AI answer shows which AI gave it and how long it took). <code>j …</code> adds a journal line, <code>. …</code> a line to today's inbox note, <code>! 18:30 call mum</code> a reminder (<code>! in 20m tea</code>, <code>! tomorrow 9am gym</code>; the time comes first). Press Enter or <strong>↵</strong>.</li><li><strong>Alarm</strong> (needs the Morning alarm): what's set, a box to set one ("7:30", "tomorrow 6:45"), <strong>skip tomorrow</strong>, <strong>turn this one off</strong>, and <strong>daily alarm…</strong> / <strong>change daily</strong> (asks for a time, or <code>off</code>).</li><li><strong>Classes:</strong> today's classes, "(skipping)" on ones you skip.</li><li><strong>Due:</strong> the next three weeks; <strong>done</strong> ticks one off (and the <code>- [ ]</code> box in your notes when it came from one), <strong>new date</strong> asks for a date ("tomorrow 23:59"). An add box takes "essay draft fri 17:00" (when it's due goes last).</li><li><strong>Reminders:</strong> each with <strong>+10 min</strong> and <strong>cancel</strong>.</li><li><strong>Check-ins:</strong> today's, with <strong>+30 min</strong> and <strong>skip</strong> while they're still to come.</li><li><strong>Waiting for you:</strong> open questions, with a button per answer and <strong>answer…</strong> for your own words.</li><li><strong>Journal:</strong> today's entries and a box; <strong>save</strong> (or Ctrl+Enter) adds a "Journal HH:MM" section to today's daily note. It also says how many lines went into the inbox note today.</li></ul>
+<p>A part whose feature is off says so with a link to Features. Every button does exactly what the command or the AI's tool does.</p>
+<p><strong>Where things go:</strong> journal lines go into today's daily note (<code>journal/&lt;date&gt;.md</code>, or <code>dailies/&lt;date&gt;.md</code> in the zettelkasten layout). <code>.</code> lines go into one inbox note per day, <code>inbox/&lt;date&gt;-captured.md</code>, one timed line each. This differs from <code>/note</code> on Telegram, which makes a new note per thought.</p>
+<h3 id="activity-ai-jobs-schedule">Activity, AI jobs, Schedule</h3>
+<ul><li><strong>Activity</strong> lists the last 80 events as they happen. Events never hold what you typed, only names, counts and times.</li><li><strong>AI jobs</strong> lists requests with <strong>Cancel</strong> on running and waiting ones (a running agent program is stopped with what it started). The same as <code>/jobs</code> on Telegram.</li><li><strong>Schedule</strong> lists what's coming with its time.</li></ul>
+<h3 id="features-altf">Features (Alt+F)</h3>
+<p>A card for every feature: what it does, what leaves your computer (in a different colour) and a button.</p>
+<div class="table-wrap"><table><thead><tr><th>Button or part</th><th>Does</th></tr></thead><tbody><tr><td><strong>Turn on</strong></td><td>turns it on (a feature that needs another one says which, e.g. "Skills needs Chat first")</td></tr><tr><td><strong>Turn off</strong></td><td>turns it off at once; its data stays. A feature others need says "turn off X first"</td></tr><tr><td><strong>Set up</strong></td><td>installs or connects what it needs, with a progress log; the result (✓ or ✗) stays on the card. Links in the log (such as Cloudflare's sign-in) are clickable</td></tr><tr><td>A form on the card</td><td>the detail it needs: a calendar link, a repository and token, a folder, Google's client file (paste it or pick the file), then <strong>Save</strong>. <strong>Copy</strong> buttons copy values for Google's setup pages</td></tr><tr><td><strong>Open Google sign-in</strong></td><td>appears after Save for Google features; sign in, and the card turns on by itself (it watches for up to 15 minutes)</td></tr><tr><td>Switches on a card</td><td>a feature's own parts, e.g. <a href="../../wiki/user/quiz-and-exams.html">Exam season</a>'s parts</td></tr><tr><td><strong>hide</strong> / <strong>unhide</strong></td><td>takes an off feature off this page (see <a href="#hiding-features">hiding features</a>)</td></tr><tr><td><strong>Needs a look</strong> box</td><td>at the top: what isn't working, with a <strong>Fix</strong> button where Kurooto can fix it (see <a href="../../wiki/user/your-computer.html">your-computer.md</a>)</td></tr></tbody></table></div>
+<p>The Phone calls card also lists its three steps (a Gemini key, a Cloudflare account, pairing) and has a box for the Gemini key. The Mail digest card links the <strong>Confidential mail</strong> page (mail summarised on this computer; see <a href="../../wiki/user/google.html">google.md</a>). Features from <a href="../../wiki/user/add-ons.html">your add-ons</a> are listed separately at the bottom, under "Your add-ons".</p>
+<h3 id="phone-altp">Phone (Alt+P)</h3>
+<p>Needs <a href="../../wiki/user/calls.html">Phone calls</a> on. It shows your call line's address and whether this computer is connected to it.</p>
+<ul><li><strong>Pair a phone:</strong> a QR code to scan with the phone. The page that opens offers the Android app or Add to Home Screen (iPhone), then pairing. The code works for 15 minutes; the page also shows the code and a link. <code>/phone</code> on Telegram does the same.</li><li><strong>Ring my phone (test):</strong> rings every paired phone (only while connected).</li><li><strong>Paired phones:</strong> name, kind, whether notifications are on, when it was paired, and <strong>Remove</strong>.</li></ul>
+<p>Details are in <a href="../../wiki/user/phone-app.html">phone-app.md</a>.</p>
+<h3 id="research-altr">Research (Alt+R)</h3>
+<p>What you work on, your paper sources (quick picks, arXiv fields, bioRxiv, medRxiv, PubMed, any journal's feed, with keywords and a <strong>Preview</strong>), the digest's schedule and size, <strong>Send a digest now</strong>, and the code repositories whose commits go into your project notes. All of it is explained in <a href="../../wiki/user/research.html">research.md</a>.</p>
+<h3 id="about-you-alty">About you (Alt+Y)</h3>
+<p>Your profile (<code>about-me/profile.md</code> in your notes), in an editor: <strong>Save</strong> keeps the previous version beside it (<code>profile-&lt;date&gt;.md</code>), <strong>Revert</strong> goes back to what's saved, and <strong>Preview In brief</strong> shows exactly the part that goes along with every AI request (the section under <code>## In brief</code>; a warning shows when there is none). With no profile yet, the page links to the setup page's About you step. See <a href="../../wiki/user/teaching-kurooto.html">teaching-kurooto.md</a>.</p>
+<h3 id="settings-alts">Settings (Alt+S)</h3>
+<p>Settings are grouped by section. The page shows the core sections (you, notifications, availability, updates, AI, questions, look, power, notes, files, and <strong>Starting</strong>) and the sections of each feature that's <strong>on</strong>. A feature's settings appear once you turn it on.</p>
+<ul><li><strong>Change one:</strong> tick a box, pick from a list, or type a value and leave the box (Tab or click elsewhere). It saves at once and says "Saved <code>section.key</code>". Lists and groups (like <code>["status"]</code> or <code>{"night": "23:15"}</code>) are typed as JSON; if what you typed isn't valid, it says so and saves nothing.</li><li><strong>Go back to a default:</strong> type the default value back (every default is in the <a href="https://github.com/avtarfr/kurooto/blob/main/docs/SETTINGS_GUIDE.md">settings guide</a>), or delete that line from <code>settings.json</code>.</li><li><strong>Starting</strong> has its own choice (when you log in, or on Linux when the computer starts) and says what it did.</li><li><strong>Settings not on the page</strong> (for example <code>quota.*</code>, <code>health.*</code>, <code>web.port</code>, <code>hardware.*</code>, <code>jobs.*</code>, <code>sources.*</code>) are changed in <code>settings.json</code> in Kurooto's settings folder (<code>kurooto paths</code> → config). It holds only what you changed; a dotted name like <code>brain.main</code> is <code>{"brain": {"main": "…"}}</code>. Restart Kurooto after editing the file by hand (<code>kurooto stop</code>, then <code>kurooto start</code>).</li><li>Secrets (keys, tokens) are never on this page or in <code>settings.json</code>.</li></ul>
+<h2 id="search-hiding-features-bigger-panes">Search, hiding features, bigger panes</h2>
+<h3 id="search">Search</h3>
+<p>Features and Settings each have a search box at the top. Press <strong>/</strong> or <strong>Ctrl+F</strong> while the page is open (Ctrl+F a second time is the browser's own find). It filters as you type, ignoring case; every word has to be found somewhere.</p>
+<ul><li>Features are found by name, description, privacy line and their settings. A card found only by a setting says which ("its settings: deadlines.ping_h").</li><li>Settings are found by section, name, help text and current value.</li><li>The words found are marked, with a count ("3 of 41 features"), or "nothing matches".</li><li><strong>Esc</strong> empties the box.</li></ul>
+<h3 id="hiding-features">Hiding features</h3>
+<p>A feature that's off has <strong>hide</strong> on its card: it leaves the Features page and nothing else changes (Telegram, the setup page and everything else still know it; it stays off). A feature that's on always shows. <strong>Show hidden (N)</strong> at the bottom lists hidden ones with <strong>Unhide</strong>, and a search still finds them, marked *hidden*. Turning a hidden feature on from a search unhides it.</p>
+<p><strong>Setting:</strong> <code>look.hidden_features</code> (default <code>[]</code>). *Undo:* Unhide, or empty the list.</p>
+<h3 id="bigger-panes-and-the-panes-menu-dense-layout">Bigger panes and the panes menu (dense layout)</h3>
+<ul><li><strong>Fill the board with one pane:</strong> click its name (⤢) or double-click its border. <strong>Esc</strong> or its name again brings the others back.</li><li><strong>panes ▾</strong>, in the board's top-right corner, hides STATUS, SYSTEMS, NOTES or TERMINAL (one always stays) and the others take the room. It also lists the pages with their keys, and <strong>show them all</strong>.</li><li>What's hidden is the setting <code>look.panes</code> (e.g. <code>["status"]</code>), so every browser shows the same. *Undo:* panes → show them all, or empty <code>look.panes</code>.</li><li>Only what's on screen is drawn, so a hidden pane costs nothing.</li></ul>
+<h2 id="links-to-other-sites">Links to other sites</h2>
+<p>Links to other sites (Google sign-in, a token page, Cloudflare, AI Studio, the guides) open in this computer's default browser, even when the dashboard is in another browser's app window. Kurooto's own pages stay where they are, and Ctrl-, Shift-, Alt- or ⌘-click still opens a link in the browser you're in. If the default browser can't be reached, the link opens here. On Linux and macOS a <code>$BROWSER</code> you've set is used.</p>
+<p><strong>Setting:</strong> <code>look.links_in</code>: <code>default</code> (the default browser) or <code>here</code> (the browser showing the page).</p>
+<h2 id="the-morning-page">The morning page</h2>
+<p><code>http://127.0.0.1:8770/morning</code> shows today's plan from your daily note ("## Plan for today"), with your classes (skipped ones marked), calendar, what's due soon, <strong>Time to start</strong> (from <a href="../../wiki/user/reminders-and-deadlines.html">Start-by dates</a>), check-ins, open questions, the next alarm and today's study hours. <strong>Open today's note</strong> opens the note itself. It is read-only and refreshes every 5 minutes.</p>
+<p>The <a href="../../wiki/user/calls.html">Morning alarm</a> opens it in your browser when it rings, if this computer is awake (<code>alarm.open_page</code>, default on). Without a plan yet it says so: with Chat on and the alarm set, one is drafted 20 minutes before the alarm.</p>
+<h2 id="colours">Colours</h2>
+<p>Kurooto's pages (setup, dashboard, morning page, and the terminal colours) come in three palettes:</p>
+<div class="table-wrap"><table><thead><tr><th>Palette</th><th>Looks</th></tr></thead><tbody><tr><td><strong>kuro</strong> (default)</td><td>deep greens</td></tr><tr><td><strong>rose</strong></td><td>the pinks of earlier versions</td></tr><tr><td><strong>system</strong></td><td>this computer's own accent colour and light or dark mode, followed as they change (within half a minute, without reloading)</td></tr></tbody></table></div>
+<p>Where <strong>system</strong> looks, best first: on Linux, Material You colours made from your wallpaper by matugen, then pywal, then KDE's accent colour, GNOME's (47 or later) and your GTK theme's; on Windows the accent colour and app mode (Settings → Personalization → Colors); on macOS the accent colour and appearance. When nothing is found, the pages look like kuro until something is. Dashboard → Settings → Look says what was found.</p>
+<p><strong>Your own colours file:</strong> <code>look.theme_file</code> = the full path of a kitty theme (lines like <code>background #1a1110</code>) or a matugen or pywal <code>colors.json</code>. It's used instead of the desktop's colours and switches the palette to system.</p>
+<p>Text always stays readable: a colour that would be hard to read on its background is made lighter or darker until it passes the WCAG AA contrast level (4.5:1). The dashboard is always dark; the setup and morning pages follow light or dark mode. Your call line's pages on the phone stay green.</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>look.palette</code></td><td><code>kuro</code></td><td><code>kuro</code>, <code>rose</code> or <code>system</code>; the dashboard reloads to take it</td></tr><tr><td><code>look.theme_file</code></td><td>empty</td><td>a colours file to use instead of the desktop's</td></tr></tbody></table></div>
+<p>Also on the setup page's "Your computer" step (<strong>Colours</strong>). *Leaves your computer:* nothing.</p>
+<h2 id="keyboard-shortcuts">Keyboard shortcuts</h2>
+<p>Shortcuts don't fire while you type in a box, and inside a terminal the terminal keeps its own keys (Alt+F is a word forward in a shell, Ctrl+K is the shell's). On a Mac, Option+letter in a text box types a character instead of opening a page.</p>
+<div class="table-wrap"><table><thead><tr><th>Keys</th><th>Does</th><th>Where</th></tr></thead><tbody><tr><td><strong>Ctrl+K</strong> / ⌘K</td><td>open or close the do-anything line</td><td>anywhere outside a terminal</td></tr><tr><td>↑ ↓, Tab, Enter, Esc</td><td>pick, complete, run, close (in the Ctrl+K line)</td><td>Ctrl+K</td></tr><tr><td><strong>Alt+T</strong></td><td>Today</td><td></td></tr><tr><td><strong>Alt+A</strong></td><td>Activity</td><td></td></tr><tr><td><strong>Alt+J</strong></td><td>AI jobs</td><td></td></tr><tr><td><strong>Alt+C</strong></td><td>Schedule</td><td></td></tr><tr><td><strong>Alt+F</strong></td><td>Features</td><td></td></tr><tr><td><strong>Alt+P</strong></td><td>Phone</td><td></td></tr><tr><td><strong>Alt+R</strong></td><td>Research</td><td></td></tr><tr><td><strong>Alt+Y</strong></td><td>About you</td><td></td></tr><tr><td><strong>Alt+S</strong></td><td>Settings</td><td></td></tr><tr><td>the same Alt key again</td><td>closes that page</td><td>dense layout</td></tr><tr><td><strong>Esc</strong></td><td>closes the panes menu, then the open page, then gives back the panes when one fills the board</td><td>dense layout</td></tr><tr><td><strong>Alt+1</strong> … <strong>Alt+9</strong></td><td>switch the terminal pane's tabs (roomy: the Terminals tab's)</td><td></td></tr><tr><td><strong>Alt+/</strong> or <strong>/</strong></td><td>find a note on the NOTES map (Enter jumps, Esc closes)</td><td><code>/</code> only outside Features and Settings</td></tr><tr><td><strong>/</strong> or <strong>Ctrl+F</strong></td><td>the search box</td><td>Features and Settings pages</td></tr><tr><td><strong>Esc</strong></td><td>empties the search box</td><td>Features and Settings</td></tr><tr><td><strong>L</strong></td><td>open or fold every corner panel and legend</td><td>the board</td></tr><tr><td><strong>R</strong></td><td>highlight notes edited in the last day (Recent)</td><td>the board</td></tr><tr><td><strong>Enter</strong></td><td>send</td><td>the kurooto chat tab, the Today box</td></tr><tr><td><strong>↑ / ↓</strong></td><td>earlier lines you typed</td><td>the kurooto chat tab</td></tr><tr><td><strong>Ctrl+L</strong></td><td>clear the chat tab</td><td>the kurooto chat tab</td></tr><tr><td><strong>Ctrl+Enter</strong> (⌘Enter)</td><td>save the journal entry</td><td>Today page</td></tr><tr><td>click a pane's name, or double-click its border</td><td>fill the board with it; again (or Esc) to go back</td><td>dense layout</td></tr></tbody></table></div>
+<h2 id="kurooto-top-the-board-in-a-terminal">kurooto top: the board in a terminal</h2>
+<p><code>kurooto top</code> shows the same board in any terminal (Windows 10 and later, macOS, Linux), laid out like btop: this computer (processor history and every core, speed, load, temperatures and fans, memory and swap, the graphics card, network down and up graphs, disks, the battery, the busiest processes) beside Kurooto (running or not, the battery mode, the call line and its heartbeat, Kurooto's own process and the features' programs, today, what's due, AI requests, what's next, study today, projects, recent events), with lights for Kurooto, Telegram and the call line, today's event count and a trace that beats with each event.</p>
+<div class="table-wrap"><table><thead><tr><th>Key</th><th>Does</th></tr></thead><tbody><tr><td><code>q</code> (or Esc, Ctrl+C)</td><td>quit</td></tr><tr><td><code>r</code></td><td>refresh now</td></tr><tr><td><code>c</code></td><td>sort processes by cpu</td></tr><tr><td><code>m</code></td><td>sort processes by memory</td></tr></tbody></table></div>
+<ul><li><code>kurooto top --once</code> prints one screen and exits (for scripts, or a terminal that can't redraw).</li><li>Its colours are your palette, in true colour where the terminal has it. <code>NO_COLOR=1 kurooto top</code> turns colours off.</li><li>What a computer can't tell is left out: most Windows and Mac computers give no temperatures or fans; live graphics-card figures need <code>nvidia-smi</code> (or an AMD card on Linux).</li><li>It only reads, so it's safe to run while Kurooto is busy.</li></ul>
+<p><code>kurooto logs</code> shows the end of Kurooto's log (<code>-n 200</code> for more lines); <code>kurooto logs -f</code> keeps following it (Ctrl+C stops).</p>
+<h2 id="terminals-in-the-dashboard">Terminals (in the dashboard)</h2>
+<p><strong>What it does.</strong> Real terminals inside the dashboard: your AI's own program (agy or Claude Code, started in your notes folder as you'd run it yourself; one tab for each that's installed, the one you use first), your usual shell (PowerShell on Windows), <code>kurooto ask</code> (plain English, like Telegram) and Kurooto's log.</p>
+<p><strong>Turn it on:</strong> Dashboard → Features → Terminals → Turn on. <strong>Only turn this on if you're the only person who uses this computer:</strong> anyone who can open your dashboard can type into these terminals.</p>
+<p><strong>Using them.</strong> In the dense layout they're tabs in the TERMINAL pane's border; in roomy, a <strong>Terminals</strong> tab. <strong>Alt+1</strong>, <strong>Alt+2</strong> … switch between them. Each starts the first time you open it. They keep running when you close the page and show where they were when you open it again. One that ended starts again when you press a key in it, or with <strong>restart</strong> (ends the program in that terminal and starts it again).</p>
+<p><strong>Limits.</strong> On Linux a terminal request from another user account is refused on purpose, and if the computer can't tell who is connecting (no <code>/proc/net/tcp</code>), terminals refuse everyone. What you type into your AI program's terminal goes to that program's service, as when you run it yourself.</p>
+<p><strong>What leaves your computer:</strong> nothing by itself.</p>
+<p><strong>Turn it off:</strong> Features → Terminals → Turn off (the terminals end).</p>
+<h2 id="kurooto-terminal-a-window-of-its-own">Kurooto Terminal (a window of its own)</h2>
+<p><strong>What it does.</strong> Kurooto in a real terminal window of its own, laid out like the dashboard's terminals: a tab each for your AI's own program (agy or Claude Code, started in your notes folder; whichever is installed if your AI is an API key), your shell, Kurooto chat (<code>kurooto ask</code>, with a <code>kurooto ❯</code> prompt; type plain English as on Telegram) and Kurooto's log, with <code>kurooto top</code> as a column on the left of the first tab. Everything is in Kurooto's colours.</p>
+<p><strong>Turn it on:</strong> Dashboard → Features → Kurooto Terminal. It then appears in your app menu (Start menu, Launchpad, your Linux launcher) as <strong>Kurooto Terminal</strong>. If there's no terminal program at all, <strong>Set up</strong> gets one.</p>
+<p><strong>Open it:</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody><tr><td><code>kurooto term</code></td><td>the whole window</td></tr><tr><td><code>kurooto term --shell</code></td><td>just your shell in Kurooto's colours (also <strong>Kurooto Shell</strong> in the Linux app menu, and Windows Terminal's <strong>Kurooto</strong> profile)</td></tr><tr><td><code>kurooto term -e CMD</code></td><td>one window in Kurooto's colours running CMD</td></tr><tr><td><code>kurooto term --print</code></td><td>shows what it would open, opens nothing</td></tr><tr><td><code>kurooto term --install</code></td><td>gets kitty and fish into Kurooto's own folder</td></tr><tr><td><code>kurooto term --default on/off/status</code></td><td>make it your default terminal, undo, or say whether it is</td></tr></tbody></table></div>
+<p><strong>Per system:</strong></p>
+<div class="table-wrap"><table><thead><tr><th></th><th>What it uses</th></tr></thead><tbody><tr><td>Linux, macOS</td><td><strong>kitty</strong>: yours if you have it, otherwise <code>kurooto term</code> offers once to get the official kitty into Kurooto's folder (about 45 MB, no admin, checksum checked). Tabs switch with Alt+1 to Alt+9 on Linux, Cmd+1 to Cmd+9 on a Mac. Your own <code>kitty.conf</code> is read first and never changed. Without kitty, each tab opens in a window of your usual terminal.</td></tr><tr><td>Windows</td><td><strong>Windows Terminal</strong> (built into Windows 11; free in the Microsoft Store for Windows 10). Turning the feature on adds Kurooto's profiles and colour scheme (no admin); chat, top, logs and your AI appear in Windows Terminal's new-tab menu. Without Windows Terminal, each tab opens in a console window.</td></tr><tr><td>The shell</td><td><strong>fish</strong> if you have it; otherwise <code>kurooto term</code> offers once to get the official fish into Kurooto's folder (Linux 3 MB; Mac the 17 MB fish app, not installed system-wide). If you say no, your own shell (PowerShell on Windows).</td></tr></tbody></table></div>
+<p><strong>Settings that matter</strong> (Dashboard → Settings → Kurooto Terminal, once it's on):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>terminal.tabs</code></td><td><code>["agent", "shell", "chat", "logs"]</code></td><td>the tabs, in order; <code>top</code> can be one too</td></tr><tr><td><code>terminal.top</code></td><td><code>left</code></td><td><code>left</code>: a column beside the first tab; <code>tab</code>: a tab of its own; <code>off</code></td></tr><tr><td><code>terminal.shell</code></td><td><code>auto</code></td><td>fish if you have it, else yours; or a program such as <code>zsh</code> or <code>pwsh</code></td></tr><tr><td><code>terminal.font_size</code></td><td><code>11</code></td><td>the font size</td></tr><tr><td><code>terminal.kitty</code></td><td>on</td><td>Linux and macOS: off uses your usual terminal, a window per tab</td></tr><tr><td><code>terminal.default</code></td><td>off</td><td>make Kurooto Terminal your default terminal</td></tr><tr><td><code>terminal.default_opens</code></td><td><code>shell</code></td><td>what "open a terminal" gives while it's your default: <code>shell</code> or <code>layout</code> (the whole window); <code>kurooto term</code> always opens the whole window</td></tr></tbody></table></div>
+<p><strong>Your default terminal</strong> (off unless you turn it on):</p>
+<div class="table-wrap"><table><thead><tr><th></th><th>What changes</th><th>Undo</th></tr></thead><tbody><tr><td>Linux</td><td>Kurooto Shell (or Kurooto Terminal with <code>default_opens</code> = <code>layout</code>) goes first in <code>~/.config/xdg-terminals.list</code>, which newer GNOME and many window managers use for "open a terminal". Your keys and window manager config aren't touched: bind a key to <code>kurooto term --shell</code> yourself.</td><td><code>terminal.default</code> off or <code>kurooto term --default off</code>: the list goes back exactly as it was (or just Kurooto's line comes out if you've changed the list since)</td></tr><tr><td>Windows</td><td>Windows Terminal's default profile becomes <strong>Kurooto</strong> (a backup of its <code>settings.json</code> is taken first)</td><td>the same: <code>settings.json</code> goes back from the backup, or just the default profile if you changed other things since</td></tr><tr><td>macOS</td><td>nothing to change: keep Kurooto Terminal (in your Applications folder) in the Dock</td><td>nothing to undo</td></tr></tbody></table></div>
+<p>Backups of anything Kurooto changed are in the state folder under <code>terminal/backups</code>.</p>
+<p><strong>What leaves your computer:</strong> nothing.</p>
+<p><strong>Turn it off:</strong> Features → Kurooto Terminal → Turn off. The app-menu entries and Windows Terminal profiles are removed and "default terminal" is undone. kitty or fish that Kurooto got stay in its folder until <code>kurooto uninstall</code>.</p>
+<h2 id="when-something-looks-wrong">When something looks wrong</h2>
+<div class="table-wrap"><table><thead><tr><th>What you see</th><th>What to do</th></tr></thead><tbody><tr><td>The page won't open</td><td>Is Kurooto running? Start it from the app menu or <code>kurooto on</code>, then <code>kurooto open</code>. If the port moved, <code>web.json</code> in the state folder says which one.</td></tr><tr><td>"reconnecting…" in a pane's top line</td><td>Kurooto stopped or is restarting; the page reconnects by itself.</td></tr><tr><td>"Kurooto didn't answer (is it running?)" on Today or Ctrl+K</td><td>the same: start it, then try again.</td></tr><tr><td>A feature's settings aren't on the Settings page</td><td>Turn the feature on first; its section then appears. Core settings not listed are changed in <code>settings.json</code>.</td></tr><tr><td>"That isn't valid; it wasn't saved"</td><td>A list or group must be valid JSON, e.g. <code>["pe"]</code> or <code>{"night": "23:15"}</code>.</td></tr><tr><td>"needs a look" badge</td><td>Click it (or open Features): the Needs a look box says what, with a Fix button where Kurooto can fix it.</td></tr><tr><td>Corner panels show only one line each</td><td>They're folded on purpose (0.5.8): point at one, or press <strong>L</strong> to open them all.</td></tr><tr><td>Ctrl+K does nothing</td><td>The cursor is inside a terminal (Ctrl+K belongs to the shell there): click the board first.</td></tr><tr><td>An Alt key types a character on a Mac</td><td>You're in a text box: click outside it first.</td></tr><tr><td>The NOTES map shows everything as "Other Notes"</td><td>Neighbourhoods come from <code>sources/&lt;subject&gt;/</code>, <code>maps/</code> and <code>projects/</code> folders (the zettelkasten layout); with other folders, notes join by their links.</td></tr><tr><td>Double-clicking a note opens the wrong program</td><td>Set <code>notes.open_with</code> (e.g. <code>code {path}</code>), or empty it for the default app.</td></tr><tr><td>The system palette doesn't use my colours</td><td>Settings → Look says what was found; changes show within half a minute. Point <code>look.theme_file</code> at a kitty theme or a matugen or pywal <code>colors.json</code>.</td></tr><tr><td>The Terminals tab says it's off, or a terminal won't type</td><td>Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose.</td></tr><tr><td>Kurooto Terminal opens separate windows instead of tabs</td><td>kitty (Linux, macOS) or Windows Terminal isn't there: <code>kurooto term --install</code>, or Windows Terminal from the Microsoft Store. <code>kurooto term --print</code> says what it found.</td></tr><tr><td>"kitty didn't start"</td><td>kitty needs a graphics driver with OpenGL 3.3 (some virtual machines lack it): set <code>terminal.kitty</code> off. kitty's own message is in <code>terminal/kitty.log</code> in the state folder.</td></tr><tr><td>Kurooto Terminal's tabs or colours look old in Windows Terminal</td><td>Close every Windows Terminal window and open it again.</td></tr></tbody></table></div>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/dashboard.md">docs/wiki/user/dashboard.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

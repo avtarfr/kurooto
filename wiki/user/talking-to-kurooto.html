@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Talking to Kurooto · User wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="User wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>User wiki</strong>: <a href="index.html">Start</a> <a href="commands.html">Commands</a> <a href="getting-started.html">Getting started</a> <a href="ai-brains.html">AI brains</a> <a href="talking-to-kurooto.html" aria-current="page">Talking to Kurooto</a> <a href="messages-it-sends.html">Messages Kurooto sends by itself</a> <a href="reminders-and-deadlines.html">Reminders and deadlines</a> <a href="check-ins-and-journal.html">Check-ins and journal</a> <a href="calls.html">Phone calls and the morning alarm</a> <a href="phone-app.html">Your phone</a> <a href="classes-and-timetable.html">Classes, timetable and calendar</a> <a href="quiz-and-exams.html">Quiz and exams</a> <a href="books-and-study.html">Books and study</a> <a href="notes-and-concept-graph.html">Notes and the concept graph</a> <a href="skills-and-routines.html">Skills and routines</a> <a href="research.html">Research</a> <a href="google.html">Google: Classroom, Gmail, Calendar and Drive</a> <a href="teaching-kurooto.html">Teaching Kurooto about you</a> <a href="dashboard.html">The dashboard</a> <a href="your-computer.html">Your computer</a> <a href="updates-and-backups.html">Updates, backups and moving</a> <a href="privacy.html">Privacy: what stays and what leaves</a> <a href="add-ons.html">Add-ons, scripts and other programs</a> <a href="faq.html">FAQ</a> <a href="troubleshooting.html">Troubleshooting</a> <a href="glossary.html">Glossary</a> · <a href="../dev/index.html">Developer wiki</a></nav>
+<h1 id="talking-to-kurooto">Talking to Kurooto</h1>
+<p>You talk to Kurooto through your own Telegram bot: plain sentences, <code>/commands</code>, voice messages, photos and files. Quick requests ("remind me at 9 to call mum") are done at once on your computer; anything else goes to your AI, which answers as a reply. The same requests work in the dashboard's Today page and Ctrl+K box (<a href="../../wiki/user/dashboard.html">dashboard.md</a>), on a phone call (<a href="../../wiki/user/calls.html">calls.md</a>) and in a terminal (<code>kurooto ask</code>).</p>
+<ul><li><a href="#your-bot">Your bot</a></li><li><a href="#what-happens-to-a-message">What happens to a message</a></li><li><a href="#chat-with-your-ai">Chat with your AI</a></li><li><a href="#questions-and-approvals">Questions and approvals</a></li><li><a href="#buttons">Buttons</a></li><li><a href="#status-pause-hold-and-focus">Status, pause, hold and focus</a></li><li><a href="#voice-notes">Voice notes</a></li><li><a href="#sending-files-and-photos">Sending files and photos</a></li><li><a href="#getting-files-from-kurooto">Getting files from Kurooto</a></li><li><a href="#other-core-commands">Other core commands</a></li><li><a href="#renaming-your-assistant">Renaming your assistant</a></li><li><a href="#from-a-terminal">From a terminal</a></li></ul>
+<h2 id="your-bot">Your bot</h2>
+<p><strong>What it does.</strong> Your own bot, made with @BotFather during setup (<a href="../../wiki/user/getting-started.html#6-telegram-connect-your-bot">getting-started.md</a>). It serves only the Telegram account that tapped the one-time pairing link, and only in a private chat; messages from anyone else, and from groups, are ignored.</p>
+<p><strong>The "/" menu.</strong> Typing <code>/</code> in the chat lists <code>/help</code>, the commands of the features you have on, <code>/q</code>, <code>/jobs</code>, <code>/aboutme</code>, <code>/calm</code>, <code>/why</code> (and <code>/sync</code> when Notes sync is off), then your skills. A skill with a dash in its name shows with <code>_</code>: <code>/term_setup</code> runs term-setup. Telegram shows at most 100. Kurooto updates the menu within a minute of a feature going on or off, and looks for new skills every 15 minutes.</p>
+<p><strong><code>/help</code></strong> (and <code>/start</code>) lists everything that works right now: the commands of each feature you have on, grouped by feature, Kurooto's own (<code>/q</code>, <code>/aboutme</code>, <code>/health</code>, <code>/calm</code>, <code>/why</code>, <code>/jobs</code>, <code>/sync</code>), every request it understands at once in plain words, and the features that are off. It ends with a link to this wiki. <strong><code>/help &lt;word&gt;</code></strong> searches everything, on or off: <code>/help call</code> shows Phone calls, its commands and how to turn it on. If Chat is off it says free text isn't sent to an AI. The full list is in <a href="../../wiki/user/commands.html">commands.md</a>.</p>
+<p><strong>While Kurooto is off or asleep.</strong> Telegram keeps your messages for about a day; Kurooto handles them when it's back. Telegram doesn't deliver Kurooto's messages while the computer sleeps; with Phone calls set up, your call line can say the computer went offline, and with Reminders with the lid shut your Android phone still gets reminders (<a href="../../wiki/user/calls.html">calls.md</a>).</p>
+<div class="table-wrap"><table><thead><tr><th>Setting (Settings → telegram)</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>telegram.menu</code></td><td><code>true</code></td><td>the bot's "/" menu follows your features; off removes the menu Kurooto set and leaves it alone from then on</td></tr><tr><td><code>telegram.silent_kinds</code></td><td><code>["call"]</code></td><td>kinds of message sent without a sound on Telegram (only while the phone app is paired, since the app rings)</td></tr><tr><td><code>telegram.chat_id</code>, <code>telegram.allowed_users</code></td><td>set when you pair</td><td>your chat and your account; don't change by hand</td></tr></tbody></table></div>
+<p><strong>What leaves your computer:</strong> your messages travel through Telegram's servers to your bot, and Kurooto's messages back the same way.</p>
+<h2 id="what-happens-to-a-message">What happens to a message</h2>
+<p>Kurooto looks at each message in this order and stops at the first match:</p>
+<ol><li><strong>A reply to one of its messages.</strong> Replying to a question answers it; replying to a check-in writes your journal; replying to an after-class question, a quest, an "Overdue?" question and so on goes to the feature that asked.</li><li><strong>A <code>/command</code>.</strong> <code>/journal</code> followed by a new line and text works too. A command of a feature that's off gets "X is off: Features → X → Turn on." (it never goes to the AI). A skill typed while Skills is off is answered the same way.</li><li><strong>A skill</strong> (<code>/journal</code>, <code>/study-log</code>, your own), when Skills is on. See <a href="../../wiki/user/skills-and-routines.html">skills-and-routines.md</a>.</li><li><strong>Files and photos</strong> (see <a href="#sending-files-and-photos">below</a>).</li><li><strong>A call that went on as text</strong> on Telegram: what you type is part of it until it ends.</li><li><strong>A plain-English request Kurooto understands instantly</strong> ("remind me in 20 minutes to take the pasta off", "what's due?", "no calls for 2 hours"). These run on your computer with no AI. Long messages (over 300 characters), and messages with several requests in one ("..., also ...", "... and then ...", two sentences), always go to the AI so it reads the whole thing. A question ("what...?", "when...?") only matches requests that answer questions. A phrasing you taught with the Wrong button goes first (<a href="../../wiki/user/teaching-kurooto.html">teaching-kurooto.md</a>).</li><li><strong>"sync everything"</strong> (or <code>sync all</code>, <code>/sync all</code>) runs every sync that's on.</li><li><strong>Chat:</strong> everything else goes to your AI.</li></ol>
+<p>With Chat off, step 8 replies "I can't answer free text yet: turn on Chat (it uses the AI you picked) in Settings. /help lists what works now."</p>
+<p>Every instant request is in <a href="../../wiki/user/commands.html#plain-english-requests-understood-instantly">commands.md</a>. If Kurooto misreads one, tap <strong>Wrong</strong> under its reply, or send <code>/wrong</code> (<a href="../../wiki/user/teaching-kurooto.html">teaching-kurooto.md</a>).</p>
+<h2 id="chat-with-your-ai">Chat with your AI</h2>
+<p><strong>What it does.</strong> Anything that isn't a command or an instant request goes to the AI you picked. Kurooto replies "On it." and the answer comes as a reply to your message. The AI can act too (add a reminder, a note, a deadline; read your notes and files): see <a href="../../wiki/user/ai-brains.html#what-the-ai-can-do-its-tools">ai-brains.md</a>.</p>
+<p><strong>Turn it on.</strong> Features → Chat with your AI (in Starter). Needs a working AI brain.</p>
+<p><strong>From Telegram:</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody><tr><td>any text</td><td>goes to the AI</td></tr><tr><td><code>high: ...</code>, <code>low: ...</code></td><td>choose how hard it thinks (<a href="../../wiki/user/ai-brains.html#how-hard-it-thinks-effort">effort</a>)</td></tr><tr><td><code>/new</code> or <code>/clear</code> (also just "new" or "clear")</td><td>start a fresh conversation: forgets the previous turns</td></tr><tr><td><code>/brain</code></td><td>which AI answers (main and fallback), and whether each is ready</td></tr><tr><td><code>/usage</code>, <code>/usage 14</code></td><td>AI requests per day (last 7 days, or the days you give, up to 60), limits hit, today's limits</td></tr><tr><td><code>/jobs</code>, <code>/jobs cancel &lt;id&gt;</code>, <code>/jobs cancel all</code></td><td>what's running and waiting, with Cancel buttons</td></tr></tbody></table></div>
+<p><strong>Memory of the conversation.</strong> Chat remembers your last few exchanges (up to 6, each cut to 1,200 characters) as long as the last one was within 2 hours; after 2 hours of quiet a new message starts fresh. Requests from a terminal start fresh every time. Background requests (digests, the look back) never become part of the chat.</p>
+<p><strong>Limits.</strong> Telegram messages hold about 4,000 characters, so long answers come in parts (at most six); answers over about 7,000 characters also come as a file. A request that's stuck for 10 minutes is stopped with a message.</p>
+<p><strong>What leaves your computer:</strong> what you ask, and the notes it reads, go to the AI you picked.</p>
+<p><strong>Turn it off:</strong> Features → Chat with your AI → Turn off. Instant requests and commands keep working; free text gets the "I can't answer free text yet" reply. Skills and the Nightly look back need Chat.</p>
+<h2 id="questions-and-approvals">Questions and approvals</h2>
+<p>This is always there; it isn't a feature you turn on. Sometimes Kurooto needs something only you know ("which chapter is Friday's quiz on?") or your OK before it does something ("send this reply?"). These come as:</p>
+<ul><li>a <strong>question</strong>: its answers as buttons, plus <strong>Later</strong>; or</li><li>an <strong>approval</strong>: <strong>Approve</strong> / <strong>Deny</strong>, or the asker's own choices (Send / Edit / Discard).</li></ul>
+<p>They come from any feature, from an AI request (your answer starts its follow-up) and from your own scripts (<code>kurooto ask-me</code>, <code>kurooto ask-approval</code>, see <a href="../../wiki/user/add-ons.html">add-ons.md</a>).</p>
+<p><strong>Answering:</strong></p>
+<ul><li>Tap a button, or <strong>reply</strong> to the message in your own words (photos and files in the reply are kept with the answer).</li><li>Or answer in the phone app, or on a call (open questions come up at the start of every call).</li><li>The first answer wins; answering again elsewhere tells you what was already answered ("That's no longer open").</li><li><strong>Later</strong> (or a reply "later", "not now", "ask me later", "on the next call") keeps it open for your next call.</li><li><strong>Nothing new</strong> (or "nothing", "skip", "nothing to add") is a real answer.</li><li>For Approve / Deny, a reply like "yes", "ok", "sure", "go ahead" approves; "no", "cancel", "stop", "don't" denies. Anything unclear is asked again. Nothing is ever approved for you.</li></ul>
+<p><strong><code>/q</code></strong> (or <code>/questions</code>) lists open questions (up to 8 at a time, oldest first) with their buttons; reply to one to answer it. <code>/status</code> says how many are open.</p>
+<p><strong>Expiry.</strong> An unanswered question expires after 48 hours (<code>ask.expire_hours</code>), or sooner when its asker stops waiting; then nothing happens ("That question expired"). Answered and expired questions are forgotten after 30 days (<code>ask.keep_days</code>).</p>
+<p><strong>What leaves your computer:</strong> the question goes wherever Kurooto reaches you (Telegram, the phone app, the desktop); open questions are part of the brief your call line keeps for calls while the computer is off.</p>
+<h2 id="buttons">Buttons</h2>
+<p>Most messages have buttons; each does exactly what the matching command does. A few that appear everywhere:</p>
+<div class="table-wrap"><table><thead><tr><th>Button</th><th>Does</th></tr></thead><tbody><tr><td><strong>Why?</strong></td><td>on a message that came by itself: which feature sent it, why, and the setting that controls it (<a href="../../wiki/user/messages-it-sends.html">messages-it-sends.md</a>)</td></tr><tr><td><strong>Less of this</strong></td><td>offers Stop / Fewer / Another time for that kind of message, each with Undo</td></tr><tr><td><strong>Wrong</strong></td><td>under a reply to a plain-English request or an AI answer: keeps it as a case to fix (<a href="../../wiki/user/teaching-kurooto.html">teaching-kurooto.md</a>)</td></tr><tr><td><strong>Later</strong></td><td>keeps a question for your next call</td></tr><tr><td><strong>Cancel</strong></td><td>under <code>/jobs</code>: stops that AI request</td></tr><tr><td><strong>Fix</strong></td><td>under <code>/health</code>: runs the safe fix for that problem</td></tr></tbody></table></div>
+<p>Tapping a button shows a short note at the top of the chat. A button from a feature you've since turned off says "that button is from a feature that's off now". A button on a question that was answered elsewhere does nothing new; <code>/q</code> shows what's still open.</p>
+<h2 id="status-pause-hold-and-focus">Status, pause, hold and focus</h2>
+<p><strong><code>/status</code></strong> (answers even while Telegram's own feature is off, e.g. from a terminal): whether calls are allowed or held and until when, focus, the next scheduled things, open questions, today's check-ins, what's due soon, the alarm, your last three AI requests, add-ons' own lines, and the features that are on.</p>
+<p><strong>Pause.</strong> <code>/pause</code> (until you resume), <code>/pause 2h</code>, <code>/pause until 18:00</code>; <code>/resume</code> wakes it. Also <code>kurooto pause 2h</code>, or <strong>Pause 1 h</strong> on the dashboard.</p>
+<ul><li>While paused nothing runs, but Telegram still answers. Anything you send gets "I'm paused until ...; I'll do this when I'm back. /resume wakes me now." and is kept; when it resumes, it's handled in order.</li><li>Only <code>/resume</code>, <code>/pause</code>, <code>/status</code> and <code>/help</code> work while paused.</li><li>Reminders due meanwhile arrive when it resumes. Your call line keeps placing scheduled calls, so the morning alarm still rings.</li><li>After <code>/resume</code> on a laptop on battery, heavy work still waits for the charger ("Back on; this laptop is on battery...").</li></ul>
+<p><strong>Hold calls.</strong> <code>/hold 18:00</code> or <code>/hold 2h</code> (no argument: one hour): no calls until then; messages still come. <code>/calls</code> lifts it ("Calls are allowed again (night hours and other holds still apply)"). Plain English: "no calls for 2 hours", "don't call me until 6pm", "hold calls for 30 min"; "calls are fine again". A day other than today ("no calls on Friday") goes to the AI, which works out the day.</p>
+<p><strong>Focus (do-not-disturb).</strong> <code>/focus 2h</code>, <code>/focus until 18:00</code>; <code>/focus off</code> (or <code>stop</code>, <code>end</code>) ends it; <code>/focus</code> alone says whether it's on. During focus, calls are held and messages that can wait are kept until it ends, then delivered together ("Focus off. 3 messages waited for you"). Approvals, calls, urgent messages and the alarm still come. Plain English: "focus for 2 hours", "do not disturb until 6pm", "dnd off", "focus done". A calendar event with <code>#focus</code> in its title or description is focus time too (<a href="../../wiki/user/reminders-and-deadlines.html">reminders-and-deadlines.md</a>).</p>
+<p><strong>The night.</strong> From 23:30 to 07:00 (<code>availability.night</code>), or from your bedtime to your alarm, Kurooto doesn't call you except for the alarm. Messages still arrive at night; mute the chat in Telegram if you don't want them to sound. See <a href="../../wiki/user/calls.html">calls.md</a>.</p>
+<h2 id="voice-notes">Voice notes</h2>
+<p><strong>What it does.</strong> Send your bot a voice message: it's written out ("Heard: ..."), then handled exactly like a typed message (a reminder, a question for the AI, a note). Mixed languages are kept as spoken. The recording is saved in your notes inbox.</p>
+<p><strong>Turn it on.</strong> Features → Voice notes. Needs a Gemini API key, even if another AI answers your messages. Without it: "Voice notes are off. Turn on Voice notes in Settings (it uses your free Gemini key)."</p>
+<p><strong>Limits.</strong> At most about 18 MB per voice note. A caption-less audio file with a file name (a recording you attach as a file) is treated as a file, not a voice note. If it can't be written out you get "Couldn't make out that voice note" with the reason.</p>
+<p><strong>Settings.</strong> <code>voice_notes.model</code> (<code>gemini-flash-latest</code>).</p>
+<p><strong>What leaves your computer:</strong> the recording goes to Google (Gemini, your key). On the free tier Google may use what you send to improve its products, so don't say anything you wouldn't type.</p>
+<p><strong>Turn it off:</strong> Features → Voice notes → Turn off.</p>
+<h2 id="sending-files-and-photos">Sending files and photos</h2>
+<p>Send a photo, PDF, document, video or audio file to your bot. It's downloaded into your notes' <code>inbox/</code> folder (or your files folder's inbox, when you set <code>files.folder</code>: see <a href="../../wiki/user/notes-and-concept-graph.html">notes-and-concept-graph.md</a>), named with the date and time. For a photo, the largest size is kept. The caption travels with it. Then:</p>
+<div class="table-wrap"><table><thead><tr><th>What you send</th><th>What happens</th></tr></thead><tbody><tr><td>a PDF with the caption <code>book for linear algebra</code></td><td>it becomes a book for that subject (<a href="../../wiki/user/books-and-study.html">books-and-study.md</a>)</td></tr><tr><td>a <code>.kurooto-course</code> file</td><td>a class pack to review (<a href="../../wiki/user/classes-and-timetable.html">classes-and-timetable.md</a>)</td></tr><tr><td>a photo with <code>/hint la</code> as the caption</td><td>the hint ladder (<a href="../../wiki/user/books-and-study.html">books-and-study.md</a>)</td></tr><tr><td>a file with <code>/note</code> as the caption</td><td>a quick note that links it</td></tr><tr><td>a file with a skill as the caption (<code>/add-to-notes</code>, <code>/study-log</code>)</td><td>the skill gets the file</td></tr><tr><td>a reply to a question, with files</td><td>the files are kept with your answer</td></tr><tr><td>any other file, with Files into notes on</td><td>"Saved; filing it into your notes…": with Chat on, the AI writes a note that says what it is and links it, in the right place, then replies where it went. Without Chat: "Saved to inbox/...".</td></tr><tr><td>a link on its own, with Skills on</td><td>filed into your notes by the <code>/add-to-notes</code> skill</td></tr></tbody></table></div>
+<p><strong>Limits.</strong> Telegram lets bots download files up to <strong>20 MB</strong>; a bigger file gets "Couldn't get that file: Telegram only lets bots download files up to 20 MB". Put bigger files into the folder yourself (for books: <code>/books folder &lt;subject&gt;</code>).</p>
+<p><strong>What leaves your computer:</strong> files are saved on this computer. With Chat on, the AI you picked reads them to file them.</p>
+<p><strong>Turn it off:</strong> Features → Files into notes. Files you send are still downloaded into the inbox, but nothing files them or tells you where they went (a caption then goes to Chat as plain text).</p>
+<h2 id="getting-files-from-kurooto">Getting files from Kurooto</h2>
+<p>Kurooto sends you files it made (revision packs, study packs, long answers), and the AI can send you files from your notes folder ("send me my linear algebra pack"), on calls too. From a terminal: <code>kurooto send report.pdf --caption "..."</code>.</p>
+<ul><li><strong>Up to 50 MB</strong> goes to Telegram (Telegram's limit for bots).</li><li><strong>Over 50 MB</strong>, with Drive upload on (<code>drive_upload.big_files</code>, default on), it goes to a Kurooto folder in your Google Drive and you get a link. These temporary uploads are deleted from Drive after <code>drive_upload.temp_days</code> (7) unless you move them out of the Kurooto folder. Without Drive upload: "... is N MB; Telegram takes files up to 50 MB. Turn on Drive upload to get bigger files as a Drive link." See <a href="../../wiki/user/google.html">google.md</a>.</li><li><strong>Three or more files at once</strong> come as one zip, so Telegram isn't flooded. Over 50 MB together they go to Drive (or are refused without Drive upload).</li><li><strong>During focus</strong> a file waits until focus ends.</li><li>The AI can only send files from your notes folder.</li></ul>
+<h2 id="other-core-commands">Other core commands</h2>
+<div class="table-wrap"><table><thead><tr><th>Command</th><th>Does</th></tr></thead><tbody><tr><td><code>/aboutme</code></td><td>the In-brief part of your profile (what goes along with every AI request) and a link to edit it on your computer (<a href="../../wiki/user/teaching-kurooto.html">teaching-kurooto.md</a>)</td></tr><tr><td><code>/health</code>, <code>/health now</code></td><td>what isn't working, with Fix buttons; <code>now</code> also checks online services (<a href="../../wiki/user/messages-it-sends.html#kurooto-keeps-itself-working">messages-it-sends.md</a>)</td></tr><tr><td><code>/calm</code>, <code>/why</code></td><td>the daily message limit and what's turned down; why the last message came (<a href="../../wiki/user/messages-it-sends.html">messages-it-sends.md</a>)</td></tr><tr><td><code>/sync</code></td><td>with Notes sync off: sync everything that's on. With Notes sync on, <code>/sync</code> syncs your notes and <code>/sync all</code> everything</td></tr></tbody></table></div>
+<h2 id="renaming-your-assistant">Renaming your assistant</h2>
+<p>Settings → you → <code>you.assistant_name</code>, or the setup page's first step. The new name is used everywhere at once, and the Telegram bot is renamed too; it says so once ("I'm Nova now."). Telegram limits how often a bot can be renamed: if it refuses, the message says the name shows in Kurooto's messages, the app and the dashboard anyway. The bot's @username can't change (that's set in @BotFather).</p>
+<h2 id="from-a-terminal">From a terminal</h2>
+<p><code>kurooto ask "what's due this week?"</code> handles plain English as on Telegram: quick things answer at once, bigger ones go to your AI and the answer prints in the terminal, not on Telegram. <code>kurooto ask</code> alone opens a prompt for one request after another. More, including <code>kurooto notify</code> and <code>kurooto ask-me</code> for your own scripts: <a href="../../wiki/user/add-ons.html">add-ons.md</a>.</p>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/talking-to-kurooto.md">docs/wiki/user/talking-to-kurooto.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

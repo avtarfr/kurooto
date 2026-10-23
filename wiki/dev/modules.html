@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature modules · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html">Architecture</a> <a href="repo-layout.html">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="modules.html" aria-current="page">Feature modules</a> <a href="web.html">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="testing.html">Testing</a> <a href="release-and-updates.html">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="feature-modules">Feature modules</h1>
+<p>Every feature is a <code>Module</code> subclass (<code>src/kurooto/modules/base.py</code>). All of them are instantiated at startup (<code>App.__init__</code> loops over <code>modules/catalog.py:CATALOG</code>), whether on or off; a feature is <strong>on</strong> when its id is in the setting <code>modules.enabled</code>. Nothing is on by default.</p>
+<p>What each feature does for the user is described in the user wiki (<a href="../../wiki/user/index.html">../user/index.md</a>); this page is about how they are built.</p>
+<h2 id="the-module-class">The Module class</h2>
+<p>Class attributes:</p>
+<div class="table-wrap"><table><thead><tr><th>Attribute</th><th>Meaning</th></tr></thead><tbody><tr><td><code>id</code></td><td>the feature's id: its settings section, scheduler key prefix (<code>&lt;id&gt;:</code>), action prefix (<code>&lt;id&gt;.</code>), Calm reason prefix</td></tr><tr><td><code>title</code>, <code>description</code></td><td>shown on the feature card</td></tr><tr><td><code>privacy</code></td><td>one or two plain sentences: what leaves the computer and where it goes. The default is "Stays on this computer.", so a module that sends anything must override it</td></tr><tr><td><code>requires</code></td><td>ids of features that must be on first (<code>App.enable</code> refuses otherwise; <code>App.disable</code> refuses to turn off something another feature requires)</td></tr><tr><td><code>extra</code></td><td>True: an add-on that ships with Kurooto: in no preset, listed apart under Features, on only by hand (Exam season)</td></tr><tr><td><code>heavy</code></td><td>True: its scheduled work and background task wait for the charger in battery saver mode (<code>core/power.py</code>)</td></tr><tr><td><code>processes</code>, <code>processes_intermittent</code></td><td>program names or command-line fragments to show CPU and memory for on the dashboard</td></tr><tr><td><code>defaults</code></td><td><strong>not used</strong>: nothing reads it. Register settings with <code>register_defaults</code> (below)</td></tr></tbody></table></div>
+<p>Methods on the base class:</p>
+<div class="table-wrap"><table><thead><tr><th>Method</th><th>Default</th><th>Called by</th></tr></thead><tbody><tr><td><code>commands() -&gt; [Command]</code></td><td><code>[]</code></td><td><code>App.handle</code> for <code>/name</code>; <code>help()</code>; the Telegram menu</td></tr><tr><td><code>callbacks() -&gt; {prefix: fn(ref, action) -&gt; str}</code></td><td><code>{}</code></td><td><code>App.callback</code> for buttons <code>"&lt;prefix&gt;:&lt;ref&gt;:&lt;action&gt;"</code></td></tr><tr><td>`replies() -&gt; {kind: fn(msg, ref) -&gt; str</td><td>None}`</td><td><code>{}</code></td><td><code>App.handle</code> when the user replies to a message sent with <code>map_kind=kind</code></td></tr><tr><td><code>intents() -&gt; [Intent]</code></td><td><code>[]</code></td><td><code>App.handle</code> for plain English</td></tr><tr><td><code>help() -&gt; [str]</code></td><td>one line per command</td><td><code>/help</code></td></tr><tr><td><code>ready() -&gt; (bool, why)</code></td><td><code>(True, "")</code></td><td><code>App.enable</code>, the feature card, Chat</td></tr><tr><td><code>start()</code></td><td>nothing</td><td>at startup for every enabled module, and on enable</td></tr><tr><td><code>stop()</code></td><td><code>scheduler.cancel_prefix(f"{id}:")</code></td><td>on disable. Override with <code>super().stop()</code></td></tr><tr><td><code>health() -&gt; (bool, why)</code></td><td><code>ready()</code></td><td><code>kurooto doctor</code></td></tr><tr><td>`health_check() -&gt; Check</td><td>None`</td><td><code>core/health_checks.py:builtin(self)</code></td><td>the daily health pass</td></tr><tr><td><code>setting(key, default)</code></td><td></td><td>reads <code>&lt;id&gt;.&lt;key&gt;</code></td></tr><tr><td><code>every(name, spec, fn, payload=None, **kw)</code></td><td></td><td>registers action <code>&lt;id&gt;.&lt;name&gt;</code> and recurring job <code>&lt;id&gt;:&lt;name&gt;</code></td></tr><tr><td><code>action(name, fn) -&gt; str</code></td><td></td><td>registers action <code>&lt;id&gt;.&lt;name&gt;</code></td></tr></tbody></table></div>
+<p>Optional hooks, found by <code>getattr</code>/<code>hasattr</code> where they are used:</p>
+<div class="table-wrap"><table><thead><tr><th>Hook</th><th>Used by</th><th>Purpose</th></tr></thead><tbody><tr><td><code>background(stop)</code> (async)</td><td><code>App.start_background</code>, <code>App._guard</code></td><td>a long-running task (Telegram polling, the call line, the study sampler). A crash emits <code>module_failed</code> and restarts it after 30 s</td></tr><tr><td><code>setup(progress) -&gt; (ok, msg)</code></td><td><code>web/api.py</code> (<code>modules/setup</code>), wizard</td><td>install or sign in what the feature needs; on success the feature is turned on</td></tr><tr><td><code>setup_form()</code>, <code>configure(values)</code></td><td><code>web/api.py</code></td><td>a form on the feature card</td></tr><tr><td><code>card()</code>, <code>card_action(act, value)</code></td><td><code>web/api.py</code></td><td>extra lines and switches on the card while on</td></tr><tr><td><code>call_tools() -&gt; [Tool]</code></td><td><code>modules/calls/__init__.py:Calls.tools</code>, <code>core/tools.py:agent_tools</code></td><td>tools on calls <strong>and</strong> in unattended AI runs</td></tr><tr><td><code>agent_tools() -&gt; [Tool]</code></td><td><code>core/tools.py:agent_tools</code></td><td>tools only for unattended AI runs</td></tr><tr><td><code>call_brief() -&gt; dict</code></td><td><code>Calls.pending</code></td><td>what needs attention, for calls</td></tr><tr><td><code>call_schedule</code>, <code>call_outcome</code>, <code>call_reschedule</code>, <code>call_transcript</code></td><td><code>modules/calls/__init__.py</code></td><td>a feature that places calls hears what happened</td></tr><tr><td><code>take_files(msg)</code></td><td><code>App.handle</code></td><td>files sent without a command (the first enabled module that has it wins)</td></tr><tr><td><code>shutdown()</code></td><td><code>App.close</code></td><td>last steps when the daemon stops (Notes sync pushes)</td></tr><tr><td><code>rest()</code></td><td><code>core/power.py</code></td><td>release resources in battery saver (local models unload)</td></tr><tr><td><code>sync_now()</code></td><td><code>core/syncall.py</code></td><td>part of "sync everything"</td></tr><tr><td><code>status_lines() -&gt; [str]</code></td><td>Telegram <code>/status</code></td><td>extra status lines</td></tr><tr><td><code>weekly_lines() -&gt; [str]</code></td><td><code>modules/weekly.py</code></td><td>lines in the weekly summary</td></tr><tr><td><code>doctor_checks() -&gt; [(name, ok, detail)]</code></td><td><code>diagnostics.py:more_checks</code></td><td>extra doctor rows</td></tr><tr><td><code>tunable</code></td><td><code>modules/retro.py</code></td><td>settings the nightly look back may propose to change</td></tr><tr><td><code>classify_intent(text, intents)</code></td><td><code>core/overlay.py:classify</code></td><td>add-ons only: pick an intent before the built-in patterns</td></tr></tbody></table></div>
+<p>Data classes (<code>modules/base.py</code>):</p>
+<ul><li><code>Incoming(text, via="telegram", message_id, files, reply_to, voice, respond)</code>; <code>msg.reply(text, buttons=None)</code>. <code>via</code> is <code>telegram</code>, <code>terminal</code> (<code>kurooto ask</code>), <code>setup</code> (the try-it box), <code>routine</code>, ...</li><li><code>Command(name, help, handler(msg, arg) -&gt; str | None, usage="")</code>. Return the reply text, or <code>None</code> if you replied yourself.</li><li><code>Intent(name, description, match(text) -&gt; dict | None, run(msg, slots) -&gt; str, questions=False)</code>. <code>questions=True</code> lets it answer questions ("what's due?"); otherwise text that looks like a question goes to the AI.</li><li><code>Tool</code> lives in <code>modules/calls/tools.py</code> (see <a href="../../wiki/dev/brains.html#tools-exposed-to-the-ai">brains.md</a>).</li></ul>
+<h2 id="lifecycle">Lifecycle</h2>
+<pre><code>App.__init__   cls(app) for every class in CATALOG         (no side effects here beyond registering
+               overlay.load(app)                            actions/hooks that must exist even when off)
+App.start      for each enabled module: m.start(); start_background(m)
+App.enable(id) requires on? -&gt; m.ready()? -&gt; modules.enabled += id -&gt; m.start() -&gt; start_background(m)
+               -&gt; event module_enabled
+App.disable    refuse if an enabled module requires it -&gt; m.stop() -&gt; stop_background(m)
+               -&gt; modules.enabled -= id -&gt; event module_disabled
+App.close      jobs.halt(); m.shutdown() for enabled modules; scheduler and jobs closed</code></pre>
+<p>Rules that follow from it:</p>
+<ul><li><code>__init__</code> runs for every feature, on or off, in tests and in CLI processes. Keep it cheap and free of I/O beyond setting attributes. Register in <code>__init__</code> only what must work while off: a scheduler action whose one-off jobs may outlive the feature being on (<code>Reminders.__init__</code> registers <code>reminders.fire</code>), a then-action whose job may finish after a restart (<code>Hints.__init__</code>).</li><li><code>start()</code> is called again whenever settings it depends on change in some paths (<code>modules/retro.py:_restart_owner</code>, health's <code>rearm</code> fix), so it must be idempotent: <code>scheduler.every</code> with the same key updates, <code>at(..., replace=False)</code> doesn't duplicate.</li><li><code>stop()</code> must call <code>super().stop()</code> (cancels <code>&lt;id&gt;:*</code> jobs), then undo anything else <code>start()</code> set up: hooks in <code>app.availability.blockers</code>, <code>app.ask.hooks</code>, <code>app.updates.holds</code>, notifier channels, event subscriptions. <code>modules/handwritten.py:Handwritten.stop</code> forgets the <code>super()</code> call and its scan keeps running after turn-off.</li><li>Every scheduled action is called as <code>fn(payload)</code>. A method without a parameter fails on every run (<code>modules/space.py:Space.run_clean</code>, <code>modules/integrate.py:Integrate.tick/garden/summary</code> today). Write <code>def x(self, p=None)</code>.</li><li>Long work in a scheduled action blocks the event loop: start a thread.</li></ul>
+<h2 id="settings">Settings</h2>
+<p>Declare at import time, in the module's file, under the module's id:</p>
+<pre><code>from kurooto.core.config import register_defaults
+
+register_defaults("pomodoro", {
+    "minutes": 25,          # how long one session lasts
+    "nudge": "daily 09:00", # when to suggest the first one; "" turns it off
+})</code></pre>
+<p>The comment on each line becomes the description in <code>docs/SETTINGS_GUIDE.md</code>; run <code>python tools/gen_settings_guide.py</code> after changing settings (<code>tests/unit/test_settings_guide.py</code> checks it). The dashboard's Settings tab shows every enabled module's section automatically, rendered by value type, and <code>POST /api/settings</code> refuses a value whose type differs from the current one. Read with <code>self.setting("minutes")</code>. Secrets go in <code>app.secrets</code>, never in settings.</p>
+<h2 id="messages-buttons-replies">Messages, buttons, replies</h2>
+<ul><li>Send with <code>self.app.notify(text, kind=..., buttons=..., map_kind=..., map_ref=..., why="&lt;id&gt;.&lt;reason&gt;", setting=..., about=..., item=...)</code>. <code>why="asked"</code> for a direct answer to something the user just did.</li><li>Every message that comes by itself needs a Calm reason: add an <code>R("&lt;id&gt;.&lt;reason&gt;", "plain words", setting="&lt;id&gt;.&lt;key&gt;", ...)</code> to <code>core/calm.py:REASONS</code> so Why? and Less of this work. See <a href="../../wiki/dev/core.html#notify-and-calm">core.md</a>.</li><li>Buttons: <code>[[("Label", f"{prefix}:{ref}:{action}")]]</code>, handled in <code>callbacks()[prefix]</code>; keep the data under 64 bytes.</li><li>Questions with a hook: <code>self.app.ask.ask(text, choices=[...], hook="&lt;id&gt;.&lt;name&gt;", source=self.id)</code> and <code>self.app.ask.hooks["&lt;id&gt;.&lt;name&gt;"] = fn(q, answer)</code>.</li><li>AI work: <code>self.app.jobs.submit(prompt, ..., then="&lt;id&gt;.&lt;name&gt;")</code> and <code>self.app.jobs.then_actions["&lt;id&gt;.&lt;name&gt;"] = fn(job, result, payload)</code> registered in <code>__init__</code> or <code>start()</code>. Background work: <code>background=True</code>, a <code>why</code>, and usually <code>quiet=True</code> with the then-action deciding what to say.</li><li>Events: <code>self.app.events.emit("&lt;id&gt;_&lt;what&gt;", ...)</code>, ids and counts only.</li><li>Notes: always through <code>core/layout.py</code> for paths and <code>core/tools.py:write_note_file</code> for writes; add to the user's notes, never reword or remove their text.</li></ul>
+<h2 id="a-worked-example">A worked example</h2>
+<p>A minimal "Pomodoro" feature: a command, an intent, a scheduled nudge, a button, a tool, a Calm reason.</p>
+<pre><code># src/kurooto/modules/pomodoro.py
+"""Pomodoro: "start a pomodoro" or /pomodoro starts a timed focus session; a message says when it ends."""
+
+from __future__ import annotations
+
+import datetime as dt
+import re
+
+from kurooto.core.clock import now
+from kurooto.core.config import register_defaults
+from kurooto.modules.base import Command, Incoming, Intent, Module
+from kurooto.modules.calls.tools import Tool, arg
+
+register_defaults("pomodoro", {
+    "minutes": 25,           # how long one session lasts
+    "nudge": "",             # e.g. "daily 09:00": suggest one then; "" for never
+})
+
+START = re.compile(r"^(start|begin) (a )?pomodoro$", re.I)
+
+
+class Pomodoro(Module):
+    id = "pomodoro"
+    title = "Pomodoro"
+    description = "Timed focus sessions: /pomodoro, or say start a pomodoro."
+    requires = ("telegram",)
+    # privacy stays the default: nothing leaves this computer
+
+    def __init__(self, app):
+        super().__init__(app)
+        # the one-off "session ends" job may fire after a restart, so its action exists from the start
+        app.scheduler.action("pomodoro.end", self._end)
+
+    def start(self):
+        spec = self.setting("nudge")
+        if spec:
+            self.every("nudge", spec, self._nudge)       # key pomodoro:nudge, action pomodoro.nudge
+
+    # ---- what it offers
+    def commands(self):
+        return [Command("pomodoro", "start a focus session", lambda msg, arg: self.begin(arg))]
+
+    def intents(self):
+        return [Intent("pomodoro", "start a focus session",
+                       match=lambda t: {} if START.match(t) else None,
+                       run=lambda msg, slots: self.begin(""))]
+
+    def callbacks(self):
+        return {"pom": self._button}
+
+    def call_tools(self):
+        return [Tool("start_pomodoro", "Start a focus session for the user.",
+                     lambda a: self.begin(a.get("minutes", "")),
+                     {"minutes": arg("length in minutes; empty for the default")},
+                     offline="queue", writes=True,
+                     hint="When they ask to focus for a while, call start_pomodoro.")]
+
+    # ---- the work
+    def begin(self, minutes: str) -&gt; str:
+        m = int(minutes) if str(minutes).strip().isdigit() else int(self.setting("minutes") or 25)
+        until = now() + dt.timedelta(minutes=m)
+        self.app.scheduler.at(until, "pomodoro.end", {"minutes": m}, key="pomodoro:end", module=self.id)
+        self.app.events.emit("pomodoro_started", minutes=m)
+        return f"Focus until {until:%H:%M}."
+
+    def _end(self, p: dict):                               # every action takes the payload
+        late = " (late: the computer was asleep)" if p.get("late_s") or p.get("missed") else ""
+        self.app.notify(f"Pomodoro done{late}.", kind="reminder", why="pomodoro.end",
+                        buttons=[[("Another", "pom:x:again")]])
+
+    def _nudge(self, p=None):
+        self.app.notify("Start a pomodoro?", why="pomodoro.nudge", setting="pomodoro.nudge",
+                        buttons=[[("Start", "pom:x:again")]])
+
+    def _button(self, ref: str, act: str) -&gt; str:
+        return self.begin("") if act == "again" else "unknown button"</code></pre>
+<p>Then, to make it a real feature:</p>
+<ol><li>Add <code>Pomodoro</code> to <code>modules/catalog.py:CATALOG</code> and <code>"pomodoro"</code> to <code>web/api.py:MODULE_ORDER</code> (same position; <code>tests/unit/test_dashboard.py</code> checks the two lists match).</li><li>Add the Calm reasons to <code>core/calm.py:REASONS</code>: <code>R("pomodoro.end", "the end of a focus session you started", exempt="own", stop=None)</code> and <code>R("pomodoro.nudge", "a suggestion to start a focus session", setting="pomodoro.nudge", stop=to("", "no nudges"))</code>.</li><li>If it should be checked daily, add a <code>Check</code> in <code>core/health_checks.py</code> (or return one from <code>health_check()</code>).</li><li>Meet the <a href="../../wiki/dev/conventions.html#definition-of-done">definition of done</a>: a page or section in the user wiki (<code>docs/wiki/user/</code>, and <code>commands.md</code> for the new command), the module reference below, <code>/help</code> (the <code>Command</code> help texts), a <code>CHANGELOG.md</code> line, the site pages; plus <code>docs/MANUAL.md</code> (with its undo), <code>docs/PRIVACY.md</code> if anything leaves the computer, and a regenerated <code>docs/SETTINGS_GUIDE.md</code>.</li><li>Tests, with the <code>env</code> fixture from <code>tests/conftest.py</code>:</li></ol>
+<pre><code>def test_pomodoro_starts_and_ends(env):
+    env.on("pomodoro")
+    assert "Focus until" in env.say("start a pomodoro")
+    job = env.app.scheduler.get("pomodoro:end")
+    env.app.modules["pomodoro"]._end(job.payload)
+    assert "Pomodoro done" in env.fake.texts()[-1]</code></pre>
+<h2 id="how-features-are-listed-and-turned-on">How features are listed and turned on</h2>
+<ul><li><code>modules/catalog.py:CATALOG</code> is the list of built-in classes (instantiation order; first-wins for duplicate tool names in <code>core/tools.py:agent_tools</code>).</li><li><code>web/api.py:MODULE_ORDER</code> is the order the wizard and the Features tab show; add-ons come after (<code>core/overlay.py:status(app)["modules"]</code>).</li><li><code>web/api.py:STARTER</code> (<code>telegram</code>, <code>chat</code>, <code>reminders</code>, <code>checkins</code>, <code>deadlines</code>) is the wizard's preset of ticked features. (Not to be confused with <code>providers/openai_compat.py:PRESETS</code>, which are AI services, or <code>core/layout.py:PRESETS</code>, which are notes layouts.)</li><li>Turning on: <code>App.enable(id)</code> from the wizard (<code>POST /api/modules/enable</code>, or <code>modules/setup</code> which runs <code>setup()</code> and then enables), the dashboard, Google sign-in (which enables the Google parts that became ready), or <code>modules/google.py:GooglePart</code> <code>with_modules</code>.</li><li>0.5.8 changes: Attendance is gone. <code>core/upgrade.py:drop_retired</code> (called from <code>App.start</code>) turns a retired feature off on an install that had it, resets its settings and cancels its jobs; class packs keep accepting the old <code>attendance</code> keys and drop them. Exam season is an add-on that ships with Kurooto: <code>Module.extra = True</code> keeps a feature out of every preset (setup.js leaves it out of "Everything") and lists it apart on the Features page (<code>/api/state</code> sends <code>extra</code>).</li><li><code>extra</code> versus <code>addon</code>: <code>extra</code> is an optional feature that comes with Kurooto; <code>addon</code> is set by <code>core/overlay.py</code> on features loaded from the user's own add-ons folder.</li></ul>
+<h2 id="add-ons-coreoverlaypy">Add-ons (<code>core/overlay.py</code>)</h2>
+<p>The "Your add-ons" feature (<code>modules/overlay.py:AddOns</code>, id <code>overlay</code>, settings <code>overlay.path</code>, <code>overlay.code</code>) lays a user's folder over Kurooto:</p>
+<ul><li><code>modules/*.py</code>: imported as <code>kurooto_addons.&lt;name&gt;</code> (files starting with <code>_</code> are helpers, imported by name). Every <code>Module</code> subclass defined in the file is instantiated; its <code>id</code> must match <code>[a-z][a-z0-9_]{1,39}</code> and not collide with an existing feature. Each is off until the user turns it on.</li><li><code>skills/&lt;name&gt;/SKILL.md</code>, <code>prompts/*.md</code>, <code>settings.json</code> (defaults between Kurooto's and the user's).</li><li><code>guard(app, m)</code> marks <code>m.addon = True</code> and wraps every method in <code>GUARDED</code> (commands, callbacks, replies, intents, help, call_tools, agent_tools, call_brief, classify_intent, status_lines, doctor_checks, health_check) plus <code>ready</code>, <code>health</code>, <code>start</code>, <code>stop</code>, <code>take_files</code>, so an exception is logged (<code>addon_failed</code>, shown by <code>/addons</code> and <code>kurooto doctor</code>) and the call returns a safe default.</li><li>Extra hooks only add-ons get: <code>classify_intent(text, intents)</code> (runs before the built-in patterns, with <code>classify_timeout</code> seconds, default 2, at most 10; answers under <code>MIN_CONFIDENCE = 0.6</code> fall through).</li><li>The folder can't be inside Kurooto's own folders (<code>inside_kurooto</code>), and updates never touch it.</li><li>Turning add-ons on changes <code>core/places.py:write_roots</code> (their <code>skills/</code>), which makes agy's consent question appear again.</li></ul>
+<h2 id="module-reference">Module reference</h2>
+<p>One line of purpose and the internals worth knowing. Commands are Telegram commands; "jobs" are scheduler keys (full table in <a href="../../wiki/dev/core.html#every-scheduled-job">core.md</a>); state is under <code>&lt;state&gt;</code> unless noted.</p>
+<h3 id="channels-and-conversation">Channels and conversation</h3>
+<ul><li><strong>telegram</strong> (<code>modules/telegram/__init__.py:Telegram</code>, <code>api.py:TelegramAPI</code>): the main channel. <code>background</code> long-polls <code>getUpdates</code> (timeout 50 s, <code>allowed_updates</code> message and callback_query), saving the offset to <code>telegram/offset.json</code> *before* handling each update (at-most-once). Back-off 5-120 s; 409 (another reader or a webhook) waits 30 s; 401 (revoked token) drops the <code>telegram</code> notifier channel until the module restarts. Pairing (<code>pair_start</code>, <code>pair_poll</code>): the token is checked with <code>getMe</code>, a one-hour code in a <code>t.me/&lt;bot&gt;?start=&lt;code&gt;</code> link, accepted only from a private chat; on success <code>telegram.chat_id</code> and <code>telegram.allowed_users = [from.id]</code>. Only <code>allowed_users</code> in a private chat are served; everyone else is ignored. While paused, messages go to <code>telegram/paused.jsonl</code> and are replayed by <code>replay_paused</code>. Files are downloaded into the notes inbox (20 MB Telegram download limit); voice goes to Voice notes. Sending: <code>api.send</code> splits at 3900 chars and sends at most 6 parts (longer text is cut; the job queue sends answers over 7000 chars as a file too); files via <code>sendDocument</code> (captions 1000 chars, no buttons). No 429 handling. <code>telegram/map.json</code> maps sent message ids to <code>{kind, ref}</code> for replies (capped at 3000). The <code>/</code> menu is synced from enabled features (<code>_menu_tick</code>). Commands <code>/pause</code>, <code>/resume</code>, <code>/status</code>, <code>/hold</code>, <code>/calls</code>, <code>/focus</code>; intents <code>hold_calls</code>, <code>calls_ok</code>, <code>focus</code>. Settings <code>telegram.chat_id</code>, <code>allowed_users</code>, <code>silent_kinds</code>, <code>api_base</code> (tests point it at <code>tests/fakes/telegram.py</code>), <code>menu</code>.</li><li><strong>chat</strong> (<code>modules/chat.py:Chat</code>): free text that isn't a command or intent becomes a job (<code>Chat.ask</code>). Within two hours, the last six turns are prepended. <code>Chat.mine</code> / <code>Chat.owns(jid)</code>: only Chat's own jobs are recorded into <code>chat/history.json</code> (see <a href="../../wiki/dev/core.html#jobs">core.md</a>); the set is in memory, so an answer finishing after a restart isn't recorded. Commands <code>/new</code>, <code>/clear</code>, <code>/brain</code>, <code>/usage</code>.</li><li><strong>cases</strong> (<code>modules/cases.py</code>): the Wrong button on answers and a store of requests that fell through; a monthly review can turn one into a test case and teach a phrasing, only if the whole suite still passes. <code>cases/cases.json</code>, never backed up. <code>kurooto cases export</code> writes a pytest file.</li><li><strong>voice_notes</strong> (<code>modules/voice_notes.py</code>): <code>transcribe()</code> posts audio to Gemini <code>generateContent</code>; used by Telegram. 18 MB limit.</li><li><strong>library</strong> (<code>modules/library.py</code>): <code>/note</code> into the inbox; <code>/prompts</code>, <code>/prompt</code> (the prompt library in <code>&lt;notes&gt;/prompts</code>).</li><li><strong>remember</strong> (<code>modules/remember.py</code>): "remember that ..." appended to <code>about-me/how-to-help-me.md</code> (health, money and credentials refused by <code>SENSITIVE</code>); <code>help_brief()</code> goes into every AI request's context.</li></ul>
+<h3 id="time-and-attention">Time and attention</h3>
+<ul><li><strong>reminders</strong> (<code>modules/reminders.py</code>): one-off <code>reminders:&lt;id&gt;</code> jobs (<code>reminders.fire</code>, registered in <code>__init__</code>), snooze buttons <code>rem</code>, cancel <code>remx</code>, tool <code>add_reminder</code>. Asks lidsafe whether the phone already said it.</li><li><strong>checkins</strong> (<code>modules/checkins.py</code>): evening/midday/night prompts by message or call, answers into the daily note; <code>checkins:plan</code> books the day's <code>checkins:&lt;name&gt;</code> jobs; call hooks <code>call_schedule</code>, <code>call_outcome</code>, <code>call_reschedule</code>, <code>call_transcript</code>. A check-in day starts at <code>checkins.day_starts</code> (05:00).</li><li><strong>deadlines</strong> (<code>modules/deadlines.py</code>): merges deadlines from manual entries, notes tasks, Classroom, the calendar, recurring quizzes and the term note; the hourly <code>deadlines:tick</code> chases them (24 h ping, 6 h call or urgent message, overdue check) and runs exam mode. Ids are hashes of title plus date. <code>deadlines.json</code> under the <code>deadlines</code> lock.</li><li><strong>startby</strong> (<code>modules/startby.py</code>): start-by dates from size estimates and free time; local arithmetic only.</li><li><strong>exam_season</strong> (<code>modules/exam_season.py</code>): one card for an exam period (update hold, alarm check, the eve question, leave-by alarm, debrief, no calls in exams, the Calm budget). Registers <code>app.updates.holds["exam_season"]</code> and an availability blocker; <code>budget_during_exams()</code> is read by Calm. An add-on since 0.5.8 (<code>extra = True</code>).</li><li><strong>alarm</strong> (<code>modules/alarm.py</code>, requires <code>calls</code>): the wake-up call is booked on the call line so it rings with the computer asleep; <code>alarm:plan</code> every 30 min; the morning plan drafted <code>prep_min</code> before; sets <code>app.availability.sleep</code>; mirrors to <code>reserve/alarm.md</code>.</li><li><strong>lidsafe</strong> (<code>modules/lidsafe.py</code>, requires <code>calls</code>): seals the next day's reminders for paired Android phones (s1) and hands them to the call line, so they arrive with the lid shut; whichever side is awake says each once.</li><li><strong>awake</strong> (<code>modules/awake.py</code>): holds a sleep inhibitor on mains power (<code>core/inhibit.py</code>).</li><li><strong>calendar</strong> (<code>modules/calendar.py</code>): iCal links (secret <code>calendar.ics</code>) and Google Calendar, recurrences expanded, private events masked; blocks calls during events, <code>#focus</code> and <code>#nocall</code>; <code>calendar:refresh</code> every 15 min.</li><li><strong>weekly</strong> (<code>modules/weekly.py</code>): Sunday summary from <code>events.jsonl</code> and modules' <code>weekly_lines</code>; optional review call.</li><li><strong>quests</strong> (<code>modules/quests.py</code>): one onboarding quest a day for a week, judged from the event log.</li></ul>
+<h3 id="study">Study</h3>
+<ul><li><strong>subjects</strong> (<code>modules/subjects.py</code>): subjects, timetable, holidays, exam periods, the term note (<code>modules/termnote.py</code> parser); a call blocker during classes; class packs layered under.</li><li><strong>classpacks</strong> (<code>modules/classpacks.py</code>, format in <code>modules/coursepack.py</code>): import/export a section's setup as a <code>.kurooto-course</code> file with a strict schema that refuses personal data.</li><li><strong>capture</strong> (<code>modules/capture.py</code>): after each class, a question about what was worth keeping; answers to the class log, a <code>study-log</code> skill job with Chat on.</li><li><strong>doubts</strong> (<code>modules/doubts.py</code>): a per-subject doubts list, sent before the next class.</li><li><strong>quiz</strong> (<code>modules/quiz.py</code>): spaced repetition over "must know" bullets in exam-prep notes; graded by the AI with Chat on; calls with Phone calls on. Tools <code>quiz_next</code>, <code>quiz_grade</code>, <code>schedule_quiz</code>.</li><li><strong>hints</strong> (<code>modules/hints.py</code>): a hint ladder for a problem, respecting a course's AI policy line.</li><li><strong>study</strong> (<code>modules/study.py</code>): minutes per subject from the focused window title (read and discarded), idle and lock aware (<code>core/idle.py</code>); Windows <code>GetForegroundWindow</code>, macOS System Events, Linux <code>hyprctl</code> / <code>swaymsg</code> / <code>xdotool</code>.</li><li><strong>skills</strong> (<code>modules/skills.py</code>): runs <code>SKILL.md</code> files (shipped <code>data/skills</code>, add-ons, prompts with <code>skill: true</code>, the user's own) as AI jobs; routines (<code>/every</code>), drafts (<code>/newskill</code>), LaTeX revision packs (Tectonic, <code>latexmk</code>, <code>pdflatex</code>), study packs, <code>send_file(s)</code> (over 50 MB goes to Drive upload).</li><li><strong>books</strong> and <strong>integrate</strong>: see <a href="../../wiki/dev/concept-graph.html">concept-graph.md</a>.</li><li><strong>handwritten</strong> (<code>modules/handwritten.py</code>): transcribes PDFs and photos from an inbox folder (local vision model or Gemini) into Markdown.</li></ul>
+<h3 id="notes-sync-and-safety">Notes, sync and safety</h3>
+<ul><li><strong>notes_sync</strong> (<code>modules/notes_sync.py</code>): git add/commit/fetch/rebase (or merge keeping both)/push to a private GitHub repository; refuses public repos; the token is passed through <code>GIT_CONFIG_*</code> environment variables, never argv; never force-pushes; pushes a couple of minutes after AI jobs (<code>notes_sync:soon</code>). Shares the repo with the call line.</li><li><strong>gbrain</strong> (<code>modules/gbrain.py</code>): the GBrain notes index (Bun + PGlite) in <code>&lt;data&gt;/gbrain</code>, synced every 15 min; "external" mode for the user's own GBrain; shares the <code>gbrain</code> lock with backups.</li><li><strong>local_models</strong> (<code>modules/local_models.py</code>): installs Ollama and the models the hardware profile suggests; wires the helper model into <code>brain.models.ollama</code> and <code>brain.classify</code>; <code>rest()</code> unloads models on battery.</li><li><strong>backups</strong> (<code>modules/backups.py</code>): a daily zip of config, data and state (notes, secrets, the GBrain index optional) to a folder the user picks; SQLite copied with the backup API; <code>kurooto restore</code>.</li><li><strong>profile</strong> (<code>modules/profile.py</code>, crypto in <code>core/profile.py</code>): the setup, encrypted with the user's passphrase, on a branch of a private repository; restore on a new computer.</li><li><strong>space</strong> (<code>modules/space.py</code>): the Space keeper (see <a href="../../wiki/dev/core.html#space-keeper">core.md</a>).</li><li><strong>overlay</strong>: add-ons (above).</li></ul>
+<h3 id="google">Google</h3>
+<p><code>modules/google.py:Google</code> is the sign-in hub (OAuth with PKCE through the user's own Desktop client; tokens in secret <code>google.tokens[.&lt;account&gt;]</code>; redirect to <code>http://127.0.0.1:&lt;port&gt;/oauth/google</code>) and Classroom/Gmail drafts. <code>GooglePart</code> subclasses each need their own scopes: <strong>classroom_notes</strong> (<code>google_classroom.py</code>, Classroom posts and Drive files filed into notes by an AI job), <strong>mail_digest</strong> / <strong>reply_drafts</strong> / <strong>digest_email</strong> (<code>google_mail.py</code>), <strong>agent_plan</strong> (<code>google_plan.py</code>, its own calendar of time blocks), <strong>google_calendar</strong> (<code>google_calendar.py</code>, read-only), <strong>drive_upload</strong> (<code>google_drive.py</code>, resumable uploads; temporary uploads expire after <code>drive_upload.temp_days</code>). <code>google_confidential.py</code> is a helper for summarising confidential mail with a local model. Any HTTP 401 is treated as a lost sign-in (the refresh token is dropped).</p>
+<h3 id="computer">Computer</h3>
+<ul><li><strong>calls</strong>: see <a href="../../wiki/dev/calls-and-phone.html">calls-and-phone.md</a>.</li><li><strong>terminals</strong> (<code>modules/terminals.py</code>): live PTYs behind the dashboard's Terminals tab (<code>UnixPty</code> via <code>os.openpty</code>, <code>WinPty</code> via pywinpty/ConPTY), 400 KB replay buffer, input 100 KB per request.</li><li><strong>terminal</strong> (<code>modules/terminal/</code>): Kurooto Terminal, a real terminal window (<code>kurooto term</code>): <code>plan.py</code> decides tabs, shell and terminal program; <code>kitty.py</code> (Linux, macOS) and <code>wt.py</code> (Windows Terminal fragment) draw it; <code>look.py</code> turns the palette into a terminal scheme; <code>launchers.py</code> adds app-menu entries; <code>defaults.py</code> (opt-in) makes it the default terminal and can undo exactly what it changed; <code>run.py</code> is the CLI.</li><li><strong>research</strong> (<code>modules/research.py</code>): a weekly papers digest (arXiv, bioRxiv, medRxiv, PubMed, feeds), daily project logs from git and <code>runs/</code>, and questions about idle projects.</li><li><strong>retro</strong> (<code>modules/retro.py</code>, requires <code>chat</code>): the nightly look back proposes setting, profile, skill and idea changes, each confirmed through <code>app.ask</code>; only settings in <code>TUNABLE</code> (and modules' <code>tunable</code>) may be proposed.</li><li><strong>files</strong> (<code>modules/files.py</code>): <code>take_files</code> for incoming files; with Chat on, an AI job files them.</li></ul>
+<p>Helpers that aren't modules: <code>modules/text.py</code> (time parsing, <code>too_complex</code>, <code>tidy</code>), <code>modules/daily.py</code> (the daily note, <code>run_skill</code>, <code>morning_view</code>), <code>modules/termnote.py</code>, <code>modules/recurring.py</code>, <code>modules/coursepack.py</code>, <code>modules/google_confidential.py</code>.</p>
+<h2 id="known-problems-as-of-this-writing">Known problems (as of this writing)</h2>
+<ul><li><code>modules/handwritten.py:Handwritten.stop</code> doesn't call <code>super().stop()</code>: <code>handwritten:scan</code> keeps running after the feature is turned off, and after a restart it is a <code>missing-action</code> (a <code>job_failed</code> event) every 15 minutes.</li><li><code>modules/space.py:Space.run_clean</code> and <code>modules/integrate.py:Integrate.tick</code> / <code>garden</code> / <code>summary</code> take no payload, so their scheduled runs fail (see <a href="../../wiki/dev/core.html#every-scheduled-job">core.md</a>).</li><li><code>modules/google.py:Google._draft</code> registers the <code>google.draft</code> then-action only when a draft is requested, so an AI-written draft whose job finishes after a restart is dropped.</li><li><code>modules/google.py:Google.api</code> and <code>modules/google_drive.py:DriveUpload._call</code> treat any HTTP 401 as a lost sign-in and delete the refresh token instead of refreshing once and retrying.</li><li><code>modules/google_drive.py:DriveUpload.expire</code> deletes temporary uploads with the current account and by file id, so after an account switch they are never deleted, and a file the user moved out of the folder is deleted anyway (the user-facing text says moving it keeps it).</li><li><code>modules/telegram/__init__.py:Telegram.run</code> drops the <code>telegram</code> notifier channel on a 401 and only <code>start()</code> registers it again, so after a new token works, outgoing messages stay off until the module restarts. <code>api.send</code> sends at most 6 parts of 3900 characters and silently drops the rest; there is no 429 handling.</li><li><code>modules/telegram/__init__.py</code>: <code>telegram.focus_end</code> is registered only inside the <code>/focus</code> handler, so a restart during focus leaves <code>telegram:focus-end</code> as a <code>missing-action</code> and the focus queue isn't flushed at its end.</li><li><code>modules/chat.py:Chat.mine</code> lives in memory: an answer that finishes after a restart isn't recorded into the history, and <code>list(self.mine)[-50:]</code> keeps an arbitrary 50 ids rather than the newest.</li><li><code>modules/hints.py:policy_kind</code> tests "no solutions" before "no AI", so a policy line saying both is read as hints allowed.</li><li><code>modules/research.py</code>: papers are marked seen before the AI-ranked digest is delivered; a failed digest loses them.</li><li><code>modules/capture.py</code> and <code>modules/checkins.py</code> declare no <code>privacy</code> and inherit "Stays on this computer.", though with Chat on their content goes to the AI. <code>modules/google_mail.py:MailDigest.privacy</code> says confidential mail is never read, but <code>mail_digest.confidential = "local"</code> has a local model read it.</li><li><code>modules/skills.py:compile_tex</code> passes <code>-no-shell-escape</code> to pdflatex but not to latexmk.</li><li><code>modules/calendar.py:Calendar.refresh</code> keeps the old copy only when every link failed; one failing link among several silently drops that link's events.</li><li><code>modules/classpacks.py</code>: <code>attendance_rules</code>, <code>attendance_rule</code> and <code>class_kind</code> have no callers once Attendance is removed.</li></ul>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/modules.md">docs/wiki/dev/modules.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy: what stays and what leaves · User wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="User wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>User wiki</strong>: <a href="index.html">Start</a> <a href="commands.html">Commands</a> <a href="getting-started.html">Getting started</a> <a href="ai-brains.html">AI brains</a> <a href="talking-to-kurooto.html">Talking to Kurooto</a> <a href="messages-it-sends.html">Messages Kurooto sends by itself</a> <a href="reminders-and-deadlines.html">Reminders and deadlines</a> <a href="check-ins-and-journal.html">Check-ins and journal</a> <a href="calls.html">Phone calls and the morning alarm</a> <a href="phone-app.html">Your phone</a> <a href="classes-and-timetable.html">Classes, timetable and calendar</a> <a href="quiz-and-exams.html">Quiz and exams</a> <a href="books-and-study.html">Books and study</a> <a href="notes-and-concept-graph.html">Notes and the concept graph</a> <a href="skills-and-routines.html">Skills and routines</a> <a href="research.html">Research</a> <a href="google.html">Google: Classroom, Gmail, Calendar and Drive</a> <a href="teaching-kurooto.html">Teaching Kurooto about you</a> <a href="dashboard.html">The dashboard</a> <a href="your-computer.html">Your computer</a> <a href="updates-and-backups.html">Updates, backups and moving</a> <a href="privacy.html" aria-current="page">Privacy: what stays and what leaves</a> <a href="add-ons.html">Add-ons, scripts and other programs</a> <a href="faq.html">FAQ</a> <a href="troubleshooting.html">Troubleshooting</a> <a href="glossary.html">Glossary</a> · <a href="../dev/index.html">Developer wiki</a></nav>
+<h1 id="privacy-what-stays-and-what-leaves">Privacy: what stays and what leaves</h1>
+<p>Kurooto runs on your own computer. <strong>Nothing is ever sent to Kurooto's author</strong>: no analytics, no crash reports, no "phone home". Everything that leaves your computer goes to a service you chose, under your own account, and only for a feature you turned on. Every feature is off until you turn it on, and each one says on its card in Dashboard → Features what it sends where.</p>
+<p>This page is the full list. Each feature's own page repeats its part under <strong>What leaves your computer</strong>.</p>
+<ul><li><a href="#the-principles">The principles</a></li><li><a href="#what-leaves-feature-by-feature">What leaves, feature by feature</a></li><li><a href="#features-that-send-nothing">Features that send nothing</a></li><li><a href="#free-ai-tiers-and-their-terms">Free AI tiers and their terms</a></li><li><a href="#what-stays-on-your-computer-and-where">What stays on your computer, and where</a></li><li><a href="#backups-profile-sync-and-the-diagnostics-zip">Backups, Profile sync and the diagnostics zip</a></li><li><a href="#things-kurooto-refuses-to-keep">Things Kurooto refuses to keep</a></li><li><a href="#what-the-ai-may-read-and-write-on-your-computer">What the AI may read and write on your computer</a></li><li><a href="#removing-your-data">Removing your data</a></li></ul>
+<h2 id="the-principles">The principles</h2>
+<ul><li><strong>It runs here.</strong> Your notes, journal, deadlines, reminders, call transcripts and settings live on your computer.</li><li><strong>Nothing to the author.</strong> The only thing Kurooto fetches from its own release site is updates and the list of withdrawn versions, both checked against a signature. Nothing about you goes the other way.</li><li><strong>Your own accounts.</strong> The AI, Telegram bot, call line (Cloudflare), Google project, GitHub repository and backup folder are all yours. Kurooto signs in to each as you; no middleman server holds your access.</li><li><strong>Nothing goes to anyone but you without your tap.</strong> Kurooto never emails, messages or shares on its own. An email reply is sent only when you tap <strong>Send</strong>; a class pack you make comes to your own Telegram for you to forward; approvals are never given for you.</li><li><strong>The AI sees only what a request needs.</strong> What you ask, the notes it reads to answer, what its tools return, and two short notes about you that go along with every request: the "In brief" part of your profile (<a href="../../wiki/user/teaching-kurooto.html">teaching-kurooto.md</a>) and your how-to-help-me note.</li><li><strong>Some things are never read by any cloud AI</strong>: mail marked confidential, calendar events marked private (only their time is kept), and anything Kurooto refuses to keep (below).</li></ul>
+<h2 id="what-leaves-feature-by-feature">What leaves, feature by feature</h2>
+<p>"The AI you picked" means the brain you chose (<a href="../../wiki/user/ai-brains.html">ai-brains.md</a>): Google for a Gemini key or agy, Anthropic for Claude Code, the service you entered for an OpenAI-compatible one, or nothing at all for local models.</p>
+<h3 id="talking-to-kurooto">Talking to Kurooto</h3>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>What leaves</th><th>Where to</th></tr></thead><tbody><tr><td>Telegram</td><td>your messages to the bot, its replies, files you send it</td><td>Telegram, to your own bot</td></tr><tr><td>Questions and approvals</td><td>each question or approval, wherever Kurooto reaches you; open ones are also in the brief your call line keeps</td><td>Telegram and your paired phones; desktop notifications stay here</td></tr><tr><td>Chat with your AI</td><td>what you ask; notes it reads to answer; what its tools return; your profile's "In brief" part and your how-to-help-me note</td><td>the AI you picked</td></tr><tr><td>Setup page: Try it now</td><td>what you type that isn't an instant request, like a Chat message; nothing goes to Telegram or your phone</td><td>the AI you picked</td></tr><tr><td>Voice notes</td><td>the recordings</td><td>Google (Gemini, your key)</td></tr><tr><td>Files into notes</td><td>with Chat on, the files you send, so the AI can file them</td><td>the AI you picked</td></tr><tr><td>Going offline and coming back (on by default)</td><td>the "going offline" and "back online" messages, and messages kept while the network was down</td><td>Telegram; with Phone calls, the phone app through your call line</td></tr><tr><td>Going offline, with Phone calls</td><td>your night and focus hours for the next day and the message's wording; only after you approve (asked once): your bot's token and chat id, so the line can say "offline since 22:10"</td><td>your own Cloudflare account (your call line)</td></tr><tr><td>Calm by default</td><td>nothing (see <a href="#what-stays-on-your-computer-and-where">What stays</a>)</td><td>stays here</td></tr><tr><td>Wrong button and test cases</td><td>nothing</td><td>stays here</td></tr></tbody></table></div>
+<h3 id="your-ai-and-what-it-learns">Your AI and what it learns</h3>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>What leaves</th><th>Where to</th></tr></thead><tbody><tr><td>About you</td><td>the reports you add stay on this computer; building the profile sends them to the AI once; afterwards its "In brief" part goes along with every AI request</td><td>the AI you picked</td></tr><tr><td>Remember</td><td>your how-to-help-me note goes along with every AI request</td><td>the AI you picked</td></tr><tr><td>Nightly look back</td><td>what happened today (what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out: <code>retro.transcripts</code>, <code>retro.journal</code>), your how-to-help-me note, the settings it may change; for a skill change you approved, that skill's text</td><td>the AI you picked</td></tr><tr><td>Skills</td><td>what you send with a skill and the notes it reads; for <code>/newskill</code>, your description and the names of your tools and skills</td><td>the AI you picked</td></tr><tr><td>Skills: revision packs</td><td>Tectonic, if you install it, downloads LaTeX packages; nothing of yours is sent</td><td>Tectonic's public package server</td></tr><tr><td>Skills: packs before exams</td><td>the same as <code>/pack</code>, only after you tap Build it (unless <code>skills.auto_pack</code> is <code>auto</code>)</td><td>the AI you picked</td></tr><tr><td>Study packs (<code>/studypack</code>)</td><td>nothing to your AI: Kurooto only collects files and fills in a prompt. The zip and the prompt come to your own Telegram (or as a Drive link when over 50 MB); you decide which other AI to give them to</td><td>Telegram (your bot); your Drive for big packs</td></tr><tr><td>Hint ladder</td><td>the problem (photo or text), the course's AI-policy line and the notes the AI reads; with "no AI help" in that line, nothing</td><td>the AI you picked</td></tr><tr><td>Quiz</td><td>with Chat on, the question from your notes and your answer, to grade it</td><td>the AI you picked</td></tr><tr><td>Concept graph</td><td>a few pages of a book's text at a time, and the titles and opening lines of related notes; the checks and matching run here</td><td>the AI you picked</td></tr><tr><td>Notes brain (GBrain)</td><td>on computers with a graphics card or Apple Silicon, nothing (the index is made here); on others, note text to make the index, unless you chose keyword-only</td><td>Google (Gemini, your key)</td></tr><tr><td>Notes brain: your own GBrain</td><td>whatever your own brain is set up to use; with <code>gbrain.agy_mcp</code> and your approval, agy may use its tools</td><td>your brain's own services; Google (agy)</td></tr></tbody></table></div>
+<h3 id="study">Study</h3>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>What leaves</th><th>Where to</th></tr></thead><tbody><tr><td>Check-ins</td><td>nothing; with check-ins by call and Chat on, what you said on the call, to write your journal and study logs</td><td>the AI you picked</td></tr><tr><td>After-class notes</td><td>nothing; with Chat on, your answer and the photos and files sent with it, for a study log</td><td>the AI you picked</td></tr><tr><td>Weekly summary</td><td>nothing; with the Sunday review call and Chat on, the call's transcript, to write the weekly review</td><td>the AI you picked</td></tr><tr><td>Handwritten notes</td><td>nothing when a model on this computer reads the pages; otherwise the scans and photos (unless <code>handwritten.cloud</code> is <code>false</code>: then they wait for a model here)</td><td>Google (Gemini, your key) only when nothing here reads them</td></tr><tr><td>Books and PDFs</td><td>nothing while reading (text layer, Tesseract and a local vision model all work here). Only with <code>books.gemini</code> on (off by default; books may be copyrighted): pictures of pages nothing here could read. When the AI writes notes: excerpts of your books, Classroom materials and notes, in the mix you chose</td><td>Google with <code>books.gemini</code>; the excerpts to the AI you picked</td></tr><tr><td>Books: <code>/books setup</code></td><td>installing Tesseract downloads it (winget or Homebrew; on Linux it opens the install page)</td><td>Microsoft's winget sources or Homebrew</td></tr><tr><td>Class packs</td><td>a pack you make: the section's courses, timetable, term dates, recurring quizzes and exams; never names, keys, notes or skills. Importing sends nothing</td><td>Telegram, to your own bot; you choose whom to forward it to</td></tr><tr><td>Exam season</td><td>nothing; with Phone calls on, the leave-by alarm (its time, the exam and what you said about the venue), and the exam in calls' brief that day and the day before</td><td>your call line; Google (Gemini Live) on the call</td></tr><tr><td>Research</td><td>your fields, keywords and searches (never your notes)</td><td>the sources you pick: arXiv, bioRxiv, medRxiv, PubMed, feeds (all public)</td></tr><tr><td>Research: "Remind me tomorrow" by call</td><td>the project's name, as the call's reason</td><td>your call line, like any call</td></tr><tr><td>Research: <code>kurooto watch</code></td><td>the command's name, exit code, run time and last lines (<code>--lines 0</code>: none)</td><td>Telegram, like any message</td></tr></tbody></table></div>
+<h3 id="calls-and-your-phone">Calls and your phone</h3>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>What leaves</th><th>Where to</th></tr></thead><tbody><tr><td>Phone calls (live voice)</td><td>call audio and what's said; the call's setup (your name, the assistant's name, which tools exist, the lessons from earlier calls)</td><td>Google (Gemini Live, your key)</td></tr><tr><td>Phone calls: while the computer is off</td><td>a short brief (what's due, today's classes and check-ins, open questions, quiz questions, the alarm), the steps for check-in, wake-up and Sunday calls with what they need, and your notes' titles, headings and first lines</td><td>your own Cloudflare account (your call line)</td></tr><tr><td>Phone calls: turn by turn</td><td>your speech, to your phone's speech recognizer (on Android 13+ with your language downloaded it stays on the phone; otherwise usually Google's, or Apple's on iPhone); the text of each turn</td><td>your phone's speech service; Google (Gemini, your key) or the model on your computer (<code>calls.turn_brain</code> = <code>local</code>)</td></tr><tr><td>Phone calls: text on Telegram</td><td>the call's conversation, as messages</td><td>Telegram and the AI you picked</td></tr><tr><td>Calls look back (after every call, <code>calls.review</code>)</td><td>the call's transcript and the tools it used, to do what slipped through and write lessons. The lessons are kept here and told to every later call</td><td>the AI you picked (<code>calls.review_brain</code>, empty: your main one); the lessons then go with each call to Gemini Live</td></tr><tr><td>Ringing and phone messages</td><td>"a call is ringing" messages and the questions and messages you send to the phone (<code>notify.app_kinds</code>), end-to-end encrypted</td><td>ntfy.sh (Android) or Apple/Google push (iPhone web app; the push itself is empty)</td></tr><tr><td>What's waiting for your phone</td><td>the text of open questions, approvals and messages for your phones (at most 40; gone after a day, or once answered or expired)</td><td>your call line</td></tr><tr><td>Morning alarm</td><td>the alarm time; with Chat on, the AI reads your notes to draft the day's plan, and the wake-up call's transcript to settle it</td><td>your call line; the AI you picked</td></tr><tr><td>Reminders with the lid shut</td><td>the next day's reminders and a morning line, each sealed with a key only your Android phone has (your call line sees only times and ids); each phone's public key. When the computer sleeps, the sealed copy goes out through ntfy.sh</td><td>your call line; ntfy.sh, still sealed</td></tr></tbody></table></div>
+<h3 id="notes-sync-and-backups">Notes, sync and backups</h3>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>What leaves</th><th>Where to</th></tr></thead><tbody><tr><td>Notes sync</td><td>your whole notes folder (conflict copies too)</td><td>your own private GitHub repository</td></tr><tr><td>Notes sync with Phone calls</td><td>read access to that repository, so calls can read notes while the computer is off</td><td>your call line's secret store</td></tr><tr><td>Backups</td><td>a zip of Kurooto's settings, data and state; your notes and keys only if you turn them on. Not encrypted</td><td>the folder you pick, and whatever cloud syncs that folder</td></tr><tr><td>Profile sync</td><td>your settings, passwords and keys, and saved state, all encrypted with your passphrase; only the save time, Kurooto's version, the kind of computer and a random id are in plain text</td><td>your own private GitHub repository</td></tr></tbody></table></div>
+<h3 id="google">Google</h3>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>What leaves</th><th>Where to</th></tr></thead><tbody><tr><td>Google (Classroom, Gmail drafts)</td><td>nothing new: Kurooto reads Classroom and writes drafts in your Gmail, with your own sign-in</td><td>Google</td></tr><tr><td>Classroom → notes</td><td>post text and the text of attached files, to write the notes</td><td>the AI you picked</td></tr><tr><td>Mail digest</td><td>the text of the mail you chose (senders, domains and labels you named; your own school or work domain; what your mail query matches, where personal mail is only counted). Everything else, mail marked confidential and your never-read list: only counted, here</td><td>the AI you picked</td></tr><tr><td>Mail digest, local confidential summaries</td><td>nothing: a model on this computer reads it; the summary stays in Kurooto's data folder</td><td>stays here</td></tr><tr><td>Email reply drafts</td><td>the draft, into your Gmail Drafts; sent only when you tap Send</td><td>Google (your Gmail)</td></tr><tr><td>Mail digest by email</td><td>each digest's text, to your own address only; not sent if it mentions confidential material</td><td>Google (your Gmail, to yourself)</td></tr><tr><td>Agent plan calendar</td><td>each block's title and time</td><td>your Google Calendar, in Kurooto's own calendar</td></tr><tr><td>Google Calendar</td><td>nothing; Kurooto only reads</td><td>(read from Google)</td></tr><tr><td>Drive upload</td><td>the files you send yourself, and files too big for Telegram</td><td>your Google Drive, Kurooto folder; nothing is shared</td></tr></tbody></table></div>
+<p>Details of each Google permission are in <a href="../../wiki/user/google.html#what-each-feature-asks-google-for">google.md</a>.</p>
+<h3 id="your-computer-and-setup">Your computer and setup</h3>
+<div class="table-wrap"><table><thead><tr><th>Feature</th><th>What leaves</th><th>Where to</th></tr></thead><tbody><tr><td>Updates</td><td>a request for the newest version and the withdrawn-versions list; nothing about you</td><td>Kurooto's public release site</td></tr><tr><td>Kurooto Terminal</td><td>nothing by itself; getting kitty or fish (only when you say yes) downloads them</td><td>their official releases</td></tr><tr><td>Terminals, and your AI's program in them</td><td>nothing by themselves; what you type to your AI's program goes to its service, as when you run it yourself</td><td>that program's service</td></tr><tr><td>Your add-ons</td><td>nothing by the feature; your add-ons' own code can send whatever it's written to send</td><td>wherever your add-ons send it</td></tr><tr><td>Diagnostics zip (<code>kurooto doctor --bundle</code>)</td><td>nothing: it's saved on this computer for you to look at and send yourself</td><td>stays here until you send it</td></tr><tr><td><code>kurooto uninstall --revoke</code></td><td>requests to delete your call line (Cloudflare), revoke each Google sign-in (Google), and clear your bot's webhook, waiting messages and command menu (Telegram)</td><td>those services</td></tr></tbody></table></div>
+<h2 id="features-that-send-nothing">Features that send nothing</h2>
+<p>These work entirely on your computer: Reminders, Deadlines (with recurring quizzes, the not-interested list and exam mode), Start-by dates, Subjects and timetable, Doubt queue, First-week quests, Calendar (it only reads your calendar's private link; event descriptions are read only for <code>#nocall</code>, <code>#focus</code> and <code>#private</code> and aren't kept; private events are kept only as "Busy (private)", not even told to your AI), Study tracker (window titles are read and thrown away; only minutes per subject are kept; the idle check never reads what you type), Quick notes and prompts, Local AI models, Stay awake on charger, Space keeper, the reserve (Markdown copies of Kurooto's state for AI programs, in the state folder), notes brain timelines and weekly checkup, <code>kurooto top</code>, <code>kurooto runlog</code>. Sync everything sends only what each sync's own feature sends.</p>
+<h2 id="free-ai-tiers-and-their-terms">Free AI tiers and their terms</h2>
+<p><strong>A free Gemini API key</strong> (Google AI Studio's free tier):</p>
+<ul><li>Google may use what you send and what it answers to improve its products, and human reviewers may read it. Don't say or type anything there you wouldn't want read.</li><li>You must be 18 or older.</li><li>In the EEA, the UK and Switzerland you need a paid key (billing on).</li><li>Phone calls and voice notes always use Gemini, whichever AI answers your messages (a turn-by-turn call can use the model on your computer instead).</li></ul>
+<p>On a paid key Google doesn't use what you send to improve its products. Or keep those features off, or use local models where they're offered.</p>
+<p><strong>Antigravity (agy):</strong> Kurooto runs Google's own agy program on your computer, signed in as you, and never touches its sign-in. Google's answers differ on whether other tools may start agy unattended, so there is some risk to your Google account; for tools like Kurooto, Google recommends a Gemini key.</p>
+<p><strong>Claude Code and OpenAI-compatible services</strong> work under their own terms and your own account. Claude Code gets its reach for each request only; nothing is saved in its own settings.</p>
+<h2 id="what-stays-on-your-computer-and-where">What stays on your computer, and where</h2>
+<p><code>kurooto paths</code> prints the folders. By default:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th>Windows</th><th>macOS</th><th>Linux</th></tr></thead><tbody><tr><td>Settings</td><td><code>%LOCALAPPDATA%\Kurooto\config</code></td><td><code>~/Library/Application Support/Kurooto/config</code></td><td><code>~/.config/kurooto</code></td></tr><tr><td>Data</td><td><code>%LOCALAPPDATA%\Kurooto\data</code></td><td><code>~/Library/Application Support/Kurooto/data</code></td><td><code>~/.local/share/kurooto/data</code></td></tr><tr><td>State and logs</td><td><code>%LOCALAPPDATA%\Kurooto\state</code></td><td><code>~/Library/Application Support/Kurooto/state</code>, logs in <code>~/Library/Logs/Kurooto</code></td><td><code>~/.local/state/kurooto</code></td></tr><tr><td>Your notes</td><td><code>Documents\Kurooto</code></td><td><code>~/Documents/Kurooto</code></td><td><code>~/Documents/Kurooto</code> (or <code>~/Kurooto</code>)</td></tr></tbody></table></div>
+<ul><li><strong>Secrets</strong> (bot token, API keys, Google sign-ins, call line keys, calendar links) are in your system's keychain: Windows Credential Manager, macOS Keychain, or the Secret Service on Linux. Where there is none (and when Kurooto starts at boot on Linux, while the keychain is still locked), they're in <code>secrets.json</code> in the settings folder, readable only by your user account. They're never written to logs.</li><li><strong>The state folder</strong> holds your check-ins, deadlines, AI requests and answers, call transcripts, the schedule, open questions (deleted 30 days after they're answered or expire, <code>ask.keep_days</code>), the record of messages that came by themselves (<code>calm.db</code>, kept 45 days: when, why, the setting, what it was about, the first 300 characters, whether you tapped it), test cases (<code>cases/</code>), the calls' lessons (<code>calls/lessons.md</code>), and earlier versions of notes the AI edited (<code>note-history/</code>, the last 20 per file).</li><li><strong>The data folder</strong> holds the About you reports (never synced), Classroom's downloaded files, books and their text, and confidential mail summaries (<code>mail/confidential/</code>, readable only by your user account).</li><li><strong>Mail copies:</strong> the text of mail chosen for the digest only until the digest is written; the sender, subject and a short excerpt of digested mail for 30 days, so a reply draft can answer it.</li><li><strong>The dashboard</strong> (<code>http://127.0.0.1:8770</code>) answers only this computer, needs a key only its own page gets, refuses other websites, and on Linux checks that each request comes from your own user account.</li></ul>
+<h2 id="backups-profile-sync-and-the-diagnostics-zip">Backups, Profile sync and the diagnostics zip</h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>Backups</th><th>Profile sync</th><th>Diagnostics zip</th></tr></thead><tbody><tr><td>Where it goes</td><td>the folder you pick</td><td>your private GitHub repository</td><td>stays on this computer until you send it</td></tr><tr><td>Encrypted</td><td>no</td><td>yes, with your passphrase (never stored)</td><td>no, but secrets are blanked</td></tr><tr><td>Settings</td><td>yes</td><td>yes</td><td>yes, with secrets, names, email and web addresses and folders blanked</td></tr><tr><td>Passwords and keys</td><td>only with <code>backups.secrets</code> (then anyone with the zip can use them)</td><td>yes, encrypted</td><td>never</td></tr><tr><td>State (deadlines, check-ins, routines, schedule)</td><td>yes</td><td>the parts worth keeping</td><td>only how things went (counts, never what was said)</td></tr><tr><td>AI requests and answers, transcripts</td><td>yes</td><td>no</td><td>no</td></tr><tr><td>Your notes</td><td>only with <code>backups.notes</code></td><td>no (Notes sync keeps them)</td><td>no</td></tr><tr><td>About you reports</td><td>yes</td><td>no</td><td>no</td></tr><tr><td>Confidential mail summaries</td><td>only with <code>backups.confidential_mail</code></td><td>no</td><td>no</td></tr><tr><td>Calm records</td><td>yes</td><td>no</td><td>no</td></tr><tr><td>Test cases</td><td>no</td><td>no</td><td>no</td></tr></tbody></table></div>
+<p>More on each: <a href="../../wiki/user/updates-and-backups.html">updates-and-backups.md</a>. Before you share a diagnostics zip, open it and look.</p>
+<h2 id="things-kurooto-refuses-to-keep">Things Kurooto refuses to keep</h2>
+<ul><li><strong>Remember</strong> won't store health, money or password details: they'd travel with every AI request. It says so and keeps nothing. Skills are told to keep health, money and other people's private details out of your notes too.</li><li><strong>Wrong button and test cases</strong> never keep long messages, several requests in one, or anything about health, money or passwords. Cases you didn't review are forgotten after 30 days.</li><li><strong>Mail marked confidential</strong> is never read by the AI you picked, never summarised by it, and never answered with an AI draft. Kurooto reads its text on your computer only to spot the marking, then drops it.</li><li><strong>Private calendar events</strong> keep only their time.</li><li><strong>Events</strong> (the activity log) record counts and request names, never what you typed or answered.</li></ul>
+<h2 id="what-the-ai-may-read-and-write-on-your-computer">What the AI may read and write on your computer</h2>
+<ul><li><strong>Read:</strong> your notes folder; your Documents, Downloads and Screenshots folders; Kurooto's copies of Classroom and mail; the reserve. Hidden files and folders (like <code>.git</code>) are left out, and a link that leads elsewhere is refused.</li><li><strong>Write:</strong> your notes folder, Classroom's course files folder, and (with add-ons on) your add-ons' <code>skills/</code>. Text files only. Documents and Downloads stay read-only.</li><li><strong>Your text:</strong> it adds notes and lines; it changes existing text only when you asked, one passage at a time, after keeping the previous version.</li><li><strong>The web:</strong> public pages, read only, a few MB at most; never this computer or your local network.</li><li>Everything it reads goes to the AI you picked, like the notes it reads to answer.</li></ul>
+<p>Details: <a href="../../wiki/user/ai-brains.html">ai-brains.md</a>.</p>
+<h2 id="removing-your-data">Removing your data</h2>
+<ul><li><strong>One feature:</strong> turn it off (Dashboard → Features). Its data stays until you delete it; your notes are never deleted.</li><li><strong>A paired phone:</strong> <code>/phones</code>, then <code>/unpair &lt;id&gt;</code>. A lost phone: <code>kurooto rotate</code> gives your call line new keys and forgets every paired phone (<a href="../../wiki/user/phone-app.html">phone-app.md</a>).</li><li><strong>Google access:</strong> <code>/google forget &lt;name&gt;</code>, or myaccount.google.com/connections (<a href="../../wiki/user/google.html#taking-access-away">google.md</a>).</li><li><strong>Leaving for good:</strong> <code>kurooto uninstall --revoke</code> first deletes your call line from your Cloudflare account, revokes each Google sign-in and clears your Telegram bot's webhook and menu, then removes Kurooto's keys from your keychain and Kurooto itself. Your notes folder is never deleted. It lists what's left for you: the GitHub token(s), the Gemini key, the Google Cloud project, Profile sync's <code>kurooto-profile</code> branch, the bot itself (<code>/deletebot</code> to @BotFather), backup zips in the folder you picked. Step by step: <a href="../../wiki/user/updates-and-backups.html">updates-and-backups.md</a>.</li></ul>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/privacy.md">docs/wiki/user/privacy.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

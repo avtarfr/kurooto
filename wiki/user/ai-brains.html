@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI brains · User wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="User wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>User wiki</strong>: <a href="index.html">Start</a> <a href="commands.html">Commands</a> <a href="getting-started.html">Getting started</a> <a href="ai-brains.html" aria-current="page">AI brains</a> <a href="talking-to-kurooto.html">Talking to Kurooto</a> <a href="messages-it-sends.html">Messages Kurooto sends by itself</a> <a href="reminders-and-deadlines.html">Reminders and deadlines</a> <a href="check-ins-and-journal.html">Check-ins and journal</a> <a href="calls.html">Phone calls and the morning alarm</a> <a href="phone-app.html">Your phone</a> <a href="classes-and-timetable.html">Classes, timetable and calendar</a> <a href="quiz-and-exams.html">Quiz and exams</a> <a href="books-and-study.html">Books and study</a> <a href="notes-and-concept-graph.html">Notes and the concept graph</a> <a href="skills-and-routines.html">Skills and routines</a> <a href="research.html">Research</a> <a href="google.html">Google: Classroom, Gmail, Calendar and Drive</a> <a href="teaching-kurooto.html">Teaching Kurooto about you</a> <a href="dashboard.html">The dashboard</a> <a href="your-computer.html">Your computer</a> <a href="updates-and-backups.html">Updates, backups and moving</a> <a href="privacy.html">Privacy: what stays and what leaves</a> <a href="add-ons.html">Add-ons, scripts and other programs</a> <a href="faq.html">FAQ</a> <a href="troubleshooting.html">Troubleshooting</a> <a href="glossary.html">Glossary</a> · <a href="../dev/index.html">Developer wiki</a></nav>
+<h1 id="ai-brains">AI brains</h1>
+<p>The "brain" is the AI that reads your messages and does tasks: answering questions, writing notes, filing files, running skills. Kurooto doesn't come with one; you pick one in the setup page's AI step, and you can change it any time (Dashboard → Settings → brain, or the setup page). Instant requests ("remind me at 9", "what's due?") never need the brain: they run on your computer without any AI.</p>
+<ul><li><a href="#the-brains-you-can-choose">The brains you can choose</a></li><li><a href="#main-and-fallback">Main and fallback</a></li><li><a href="#how-hard-it-thinks-effort">How hard it thinks (effort)</a></li><li><a href="#free-limits-and-the-reserve">Free limits and the reserve</a></li><li><a href="#what-the-ai-can-do-its-tools">What the AI can do (its tools)</a></li><li><a href="#ai-requests-and-the-queue-jobs">AI requests and the queue (/jobs)</a></li><li><a href="#what-goes-along-with-every-request">What goes along with every request</a></li><li><a href="#settings">Settings</a></li></ul>
+<h2 id="the-brains-you-can-choose">The brains you can choose</h2>
+<div class="table-wrap"><table><thead><tr><th>Brain</th><th>Cost</th><th>Good for</th><th>Setup</th></tr></thead><tbody><tr><td><strong>Antigravity (agy)</strong> (marked ★ on the setup page)</td><td>free with a Google account</td><td>Google's agent program, run on your computer: it can read your notes and act within strict limits. Higher limits than a free key.</td><td>Install agy → Open the sign-in window → sign in with Google → Test it</td></tr><tr><td><strong>Gemini API key</strong></td><td>free tier, or paid</td><td>the simplest, and the way Google recommends for tools like this. Also what phone calls, voice notes and the alarm always use.</td><td>Google AI Studio → Create API key → paste it (starts with <code>AIza</code>) → Save and test</td></tr><tr><td><strong>Claude Code</strong> (Advanced)</td><td>needs a paid Claude plan</td><td>if you already pay for Claude: the same reach as agy</td><td>Install → sign in with your Claude account → Test it</td></tr><tr><td><strong>Ollama on this computer</strong></td><td>free</td><td>private and offline, but much weaker; needs a good graphics card. Best as a helper next to another AI</td><td>Install Ollama → Test</td></tr><tr><td><strong>Another OpenAI-compatible service</strong></td><td>depends</td><td>any service that works like OpenAI's (OpenRouter, Groq, Together, LM Studio on this computer...)</td><td>its address (usually ends in <code>/v1</code>), key and model name</td></tr></tbody></table></div>
+<p><strong>About agy.</strong> Kurooto runs Google's official agy program on this computer, signed in as you, and never touches its sign-in token. Google's answers differ on whether other tools may start agy unattended, so there is some risk to your Google account. For tools like Kurooto, Google recommends a Gemini API key.</p>
+<p><strong>About a free Gemini key.</strong> On the free tier, Google may use what you send and what it answers to improve its products, and human reviewers may read it. You must be 18 or older. In the EEA, the UK and Switzerland you need a paid key (billing on). Free keys have small daily limits; the setup page warns that they run out quickly, so they're best kept for calls and voice notes, with agy or another brain for everything else. Phone calls and voice notes always go through Gemini, whichever AI answers your messages; if you don't want Google's free-tier terms there, use a paid key.</p>
+<p><strong>About Claude Code.</strong> Each request run by Claude Code gets only what Kurooto gives it, for that request: Kurooto's tools (and your own GBrain's, if you use one), reading your notes, course files, Documents, Downloads and Screenshots, writing in your notes, course-files and add-on skills folders, reading web pages, and harmless commands (<code>ls</code>, <code>cat</code>, <code>grep</code>, <code>find</code>, <code>git</code>, <code>latexmk</code>, <code>pdftotext</code>...). Anything else is refused, and the answer says what was refused. Nothing is saved in Claude Code's own settings, and your own Claude Code hooks, projects and history aren't used. The <code>kurooto</code> command itself never runs from a request. Models: <code>brain.models.claude</code> (default <code>haiku</code> for quick requests, <code>sonnet</code> for the rest).</p>
+<p><strong>Ollama</strong> runs models on your computer. Without a graphics card (or Apple Silicon) it's too slow to be your main brain. With <strong>Local AI models</strong> on (see <a href="../../wiki/user/your-computer.html">your-computer.md</a>), a small model on your computer answers the quick "how hard is this?" question and makes the notes index; your main brain still does the real work. A small model that can't use tools just answers without them.</p>
+<p><strong>Retired:</strong> Codex is no longer offered. If a setting named it, it's cleared, and the next request says to choose another AI in Settings → AI. An AI set up with an earlier version as "FreeLLMAPI" keeps working and shows as "Another OpenAI-compatible service".</p>
+<p><strong>Checking it works:</strong> <code>/brain</code> on Telegram lists the main and fallback brain and whether each is ready. The setup page's <strong>Test it</strong> asks the AI for a reply and says what to do if it fails:</p>
+<div class="table-wrap"><table><thead><tr><th>Brain</th><th>When the test fails</th></tr></thead><tbody><tr><td>Gemini key</td><td>Copy the key again from Google AI Studio (all of it; it starts with <code>AIza</code>). "Limit": wait a minute, or use a paid key.</td></tr><tr><td>agy, Claude Code</td><td>Open the sign-in window again, finish signing in, close it, test again.</td></tr><tr><td>Ollama</td><td>Make sure Ollama is running (open the Ollama app, or <code>ollama serve</code>), then test again.</td></tr><tr><td>Another service</td><td>Check the address (usually ends in <code>/v1</code>), the key and the model name.</td></tr></tbody></table></div>
+<h2 id="main-and-fallback">Main and fallback</h2>
+<ul><li><code>brain.main</code>: the AI that handles requests.</li><li><code>brain.fallback</code>: another one that takes over when the main one is at its limit, signed out, refused the request, failed or gave no answer. Empty means none. Set it in Dashboard → Settings → brain.</li></ul>
+<p>When the fallback answers, the answer says so in one line. Two more rules:</p>
+<ul><li><strong>A free Gemini key stretches further:</strong> when one Gemini model's free daily limit is used up, the next model of the same family answers (<code>gemini-flash-latest</code>, <code>gemini-flash-lite-latest</code>, <code>gemini-2.5-flash</code>, <code>gemini-2.5-flash-lite</code>). Smaller or older models answer less well, so the answer says which one it was: "(Answered with ...: ...'s free limit for today was used up.)"</li><li><strong>Last resort:</strong> if your main brain is a Gemini key and nothing else can answer, the request goes to an agent program (agy or Claude Code) that is installed and has worked on this computer before. The other way round never happens: an agent program doesn't fall back to your free Gemini key, because its limit is small and kept for calls.</li></ul>
+<h2 id="how-hard-it-thinks-effort">How hard it thinks (effort)</h2>
+<p>Each request runs at low, medium or high effort. Higher effort uses a stronger or slower model and is allowed more time.</p>
+<ul><li><strong>Choose it yourself:</strong> start a message with <code>low:</code>, <code>medium:</code> (or <code>med:</code>) or <code>high:</code>. Example: <code>high: derive the normal equations for least squares</code>.</li><li><strong>Otherwise Kurooto picks.</strong> Requests about notes, revision, summaries, explanations, derivations, proofs or exam prep always get high. Others are judged by the rules, your AI or a local model (<code>brain.classify</code>: <code>rules</code>, <code>main</code> or <code>ollama</code>; default <code>rules</code>), and medium is the default. Anything that changes, schedules or remembers something is never treated as a quick lookup.</li><li><strong>Time limits:</strong> a request is stopped after <code>brain.timeout_min</code> minutes: 10 for low, 15 for medium, 30 for high.</li></ul>
+<h2 id="free-limits-and-the-reserve">Free limits and the reserve</h2>
+<p>Free AI has a daily limit, and Google doesn't say how much is left. Kurooto counts requests itself and keeps the end of the day's limit for what you're waiting on: calls, voice notes, the morning plan and your own requests.</p>
+<ul><li><strong>It learns the limits.</strong> The first time a service answers "limit reached", Kurooto keeps the number it names or, when it names none, how many requests the day had. It learns when the limit comes back the same way; otherwise it assumes Google's day, which ends at midnight Pacific time (<code>/usage</code> shows that in your time). Each model of your Gemini key has its own limit, and agy has one (counted from agy's own logs, so runs you type yourself count too). Until a limit has been hit once, it isn't known and nothing waits.</li><li><strong>Background work waits past 70%.</strong> Once the day's count passes 70% of a known limit, work nobody is waiting for waits: the Classroom digest, the nightly look back, skill changes it suggests, research digests, and book and handwritten pages read by Gemini. The quick "how hard is this" question moves to the model on your computer or to the rules. Nothing is dropped: waiting work runs after the reset. Your own requests never wait; a used-up limit is tried last, after your fallback.</li><li><strong>One plain line instead of an error:</strong> "Google's free limit for today is used up, resets at 12:30; your calls and alarm still work." Calls use a different Gemini model with its own limit.</li><li><strong><code>/usage</code></strong> lists AI requests per day over the last 7 days (<code>/usage 14</code> for two weeks, up to 60), per brain, how often a limit was hit, today's limits ("143 of 250 requests (57%); background work waits from 175. Resets at 12:30.") and how many background requests wait for a reset. If agy is on this computer, it also counts agy's own runs from agy's logs (only counted; nothing in the logs is read out). Quick checks (how hard a request is, grading a quiz answer) and phone calls aren't counted. In a terminal: <code>kurooto usage [days]</code>. Needs Chat on.</li></ul>
+<div class="table-wrap"><table><thead><tr><th>Setting (in <code>settings.json</code>: not on the Settings page, see <a href="../../wiki/user/dashboard.html#settings-alts">Dashboard</a>)</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>quota.on</code></td><td><code>true</code></td><td><code>false</code>: background work never waits (counting and the plain line stay)</td></tr><tr><td><code>quota.background_pct</code></td><td><code>70</code></td><td>the share of a known daily limit after which background work waits</td></tr><tr><td><code>quota.limits</code></td><td><code>{}</code></td><td>your own numbers, which win over learned ones, e.g. <code>{"gemini:gemini-flash-latest": 250, "agy": 900}</code></td></tr><tr><td><code>quota.local</code></td><td><code>quick</code></td><td><code>quick</code>: only the "how hard" question moves to the local model; <code>background</code>: background work moves there too instead of waiting (a small model writes weaker digests); <code>off</code>: nothing moves</td></tr></tbody></table></div>
+<p>Only counts and times are kept (<code>quota.json</code> in Kurooto's state folder). Delete that file to forget what was learned.</p>
+<h2 id="what-the-ai-can-do-its-tools">What the AI can do (its tools)</h2>
+<p>Your AI doesn't only answer: it can act, the same way in Chat, on a phone call and in background requests. Each feature you turn on adds its own tools; a feature that's off has none. Examples: add a reminder, call you back later, hold calls, add a deadline or mark one done, log study time, create a note or add to one, tick a <code>- [ ]</code> task, edit a note when you ask, read your files and web pages, send you a file from your notes (over 50 MB as a Drive link, with Drive upload on), say how your syncs are doing ("what's the sync status?"), and ask you a question when it needs your answer.</p>
+<p><strong>What it may read and write</strong> (the same for Kurooto's own tools, agy and Claude Code):</p>
+<ul><li><strong>Read:</strong> your notes folder; your Documents, Downloads and Screenshots folders; Kurooto's copies of Classroom (course files) and mail (the digest's batches). Hidden files and folders (like <code>.git</code>) are left out, and a link leading anywhere else is refused.</li><li><strong>Write:</strong> your notes folder, the folder Classroom's course files go to, and (with Your add-ons on) your add-ons' <code>skills/</code>. Text files only (<code>.md</code>, <code>.txt</code>, <code>.tex</code>, <code>.bib</code>, <code>.csv</code>, <code>.json</code>, <code>.yaml</code>...). Documents and Downloads stay read-only.</li><li><strong>Your own text:</strong> it creates notes and adds to them. It changes existing text only with <code>edit_note</code>, when you asked, one exact passage at a time, and keeps the previous version first (Kurooto's state folder → <code>note-history/</code>, the last 20 per file).</li><li><strong>The web:</strong> a public page as plain text (at most a few MB); never this computer or your local network.</li><li><strong>Never:</strong> send anything to anyone but you, or run the <code>kurooto</code> command.</li></ul>
+<p>The AI is told to say plainly when it couldn't do something, never to claim it did. If it says it did something and nothing happened, tell it so and check <code>/jobs</code>.</p>
+<p><strong>agy's permission question.</strong> agy gets Kurooto's tools once: when you test agy on the setup page (the page lists what it allows), or, if you set agy up before, when you tap <strong>Approve</strong> on the question Kurooto asks. <strong>Deny</strong> means agy works without Kurooto's tools, and Kurooto asks again after 30 days at the earliest; it also asks before adding more later (for example when you turn on add-ons). Approving adds Kurooto's rules to agy's own settings file (a backup is kept in Kurooto's state folder → <code>backups/</code>; your own rules stay). To take them away: <code>agy mcp remove kurooto</code>, then delete Kurooto's lines from agy's settings (or put back the backup).</p>
+<p><strong>Your own agent programs</strong> can use the same tools: add <code>kurooto mcp</code> as an MCP server in any MCP client (it works while Kurooto is running). See <a href="../../wiki/user/add-ons.html">add-ons.md</a>.</p>
+<h2 id="ai-requests-and-the-queue-jobs">AI requests and the queue (/jobs)</h2>
+<p>Requests that may take minutes run in the background; Kurooto replies "On it." and the answer comes back as a reply to your message. Answers longer than about 7,000 characters also come as a file.</p>
+<ul><li><strong>Two lanes.</strong> Your own requests (Telegram, calls, the terminal, the dashboard) have their own lane and never wait behind background work (the morning plan, routines, automatic revision packs, digests).</li><li><strong><code>/jobs</code></strong> lists what's running and waiting, each with a <strong>Cancel</strong> button (and <strong>Cancel all</strong> when there are several), then the last few that finished with their effort, time and result. <code>/jobs cancel &lt;id&gt;</code> or <code>/jobs cancel all</code> from the keyboard; <code>kurooto jobs --cancel ID</code> in a terminal. A running agent program is stopped with everything it started.</li><li><strong>Stuck requests.</strong> A watchdog stops a request with no AI at work and no program running for <code>jobs.stuck_min</code> minutes (10), or one past its time limit: "It got stuck (nothing was happening), so I stopped it. Send it again to try once more."</li><li><strong>What failures say:</strong></li></ul>
+<div class="table-wrap"><table><thead><tr><th>Reply</th><th>Meaning</th></tr></thead><tbody><tr><td>"... isn't signed in any more (or its key stopped working)"</td><td>Open the setup page (<code>kurooto open</code>) → AI → sign in again.</td></tr><tr><td>"... has hit its usage limit for now"</td><td>Wait, or set a fallback (<code>brain.fallback</code>).</td></tr><tr><td>"The AI stopped without an answer: it tried something unattended runs aren't allowed to do"</td><td>Rephrase it, or do that part yourself.</td></tr><tr><td>"The AI gave no answer this time"</td><td>Try rephrasing.</td></tr><tr><td>"No answer in time; the request was stopped"</td><td>It ran past <code>brain.timeout_min</code>. Ask with <code>low:</code> or split it up.</td></tr></tbody></table></div>
+<p>When Kurooto stops (shutdown, update), running requests stop where they are and run again at the next start.</p>
+<h2 id="what-goes-along-with-every-request">What goes along with every request</h2>
+<p>Every request carries a short context: who you are, the time and time zone, where your notes are, and the rules (plain text, never reword your notes, never claim what it didn't do). Two things of yours go along too:</p>
+<ul><li>the <strong>In brief</strong> part of your profile (<code>about-me/profile.md</code>, the section under <code>## In brief</code>), built in the setup page's About you step; <code>/aboutme</code> shows it;</li><li>a short version of your <strong>how-to-help-me</strong> note (what you told it with <code>/remember</code>).</li></ul>
+<p>Both are yours to edit: see <a href="../../wiki/user/teaching-kurooto.html">teaching-kurooto.md</a>. Answers come in the language you write in (<code>you.language</code> = <code>follow</code>); set it to a language name, e.g. <code>German</code>, to always get that language.</p>
+<h2 id="settings">Settings</h2>
+<p>Dashboard → Settings → brain (and quota, jobs, you):</p>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Default</th><th>Effect</th></tr></thead><tbody><tr><td><code>brain.main</code></td><td>empty</td><td>the AI that handles requests: <code>agy</code>, <code>gemini</code>, <code>claude</code>, <code>ollama</code> or <code>custom</code></td></tr><tr><td><code>brain.fallback</code></td><td>empty</td><td>the AI that takes over when the main one can't answer</td></tr><tr><td><code>brain.classify</code></td><td><code>rules</code></td><td>who judges how hard a request is: <code>rules</code>, <code>main</code> or <code>ollama</code></td></tr><tr><td><code>brain.models</code></td><td><code>{}</code></td><td>models per brain and effort, e.g. <code>{"custom": {"low": "...", "medium": "...", "high": "..."}}</code>, <code>{"claude": {"high": "opus"}}</code> (in <code>settings.json</code>; hidden on the Settings page)</td></tr><tr><td><code>brain.base_urls</code></td><td><code>{}</code></td><td>override a preset's address (in <code>settings.json</code>; hidden on the Settings page)</td></tr><tr><td><code>brain.timeout_min.low</code> / <code>.medium</code> / <code>.high</code></td><td><code>10</code> / <code>15</code> / <code>30</code></td><td>minutes a request may run</td></tr><tr><td><code>brain.agy.io_mode</code></td><td><code>pipe</code></td><td>how Kurooto talks to agy (leave it unless agy gives no output)</td></tr><tr><td><code>jobs.stuck_min</code></td><td><code>10</code></td><td>minutes without progress before a request is stopped (in <code>settings.json</code>, not on the Settings page)</td></tr><tr><td><code>you.language</code></td><td><code>follow</code></td><td>answer in the language you write in, or always in the one named</td></tr></tbody></table></div>
+<p><strong>What leaves your computer:</strong> what you ask, and the notes and files the AI reads for it, go to the AI service you picked, under that service's terms. Ollama and an OpenAI-compatible server on your own computer keep it there. See <a href="../../wiki/user/privacy.html">privacy.md</a>.</p>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/ai-brains.md">docs/wiki/user/ai-brains.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>

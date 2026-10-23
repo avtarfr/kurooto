@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture · Developer wiki · Kurooto</title>
+<meta name="description" content="What Kurooto sends where: every feature is off until you turn it on, and nothing goes to its author.">
+<script>
+  // same theme switch (and stored choice) as avtarfr.github.io
+  try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* The palette of avtarfr.github.io, taken deeper: 玄 (kuro) is the dark, nearly black green. */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0B0F0A;
+  --bg-alt: #10150E;
+  --surface: #151B12;
+  --surface-raised: #1B2317;
+  --inset-bg: #070A06;
+  --border: #26311F;
+  --border-soft: #1C2518;
+  --border-focus: #7E9A52;
+  --text-bright: #F2EEE8;
+  --text: #DAD3C8;
+  --text-muted: #95A682;
+  --accent: #6B8A42;
+  --accent-text: #A6C07A;
+  --accent-contrast: #0A0E08;
+  --accent-hover: #7E9E52;
+  --accent-light: rgba(107, 138, 66, 0.14);
+  --accent-badge-border: rgba(107, 138, 66, 0.5);
+  --glow: rgba(107, 138, 66, 0.12);
+  --header-bg: rgba(11, 15, 10, 0.82);
+  --shadow-md: 0 10px 30px -12px rgba(0, 0, 0, 0.6);
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F2EC;
+  --bg-alt: #EAE6DD;
+  --surface: #FFFFFF;
+  --surface-raised: #EFEBE3;
+  --inset-bg: #ECE7DE;
+  --border: #D4CCBE;
+  --border-soft: #E2DBCF;
+  --border-focus: #3F5626;
+  --text-bright: #172012;
+  --text: #2F3A26;
+  --text-muted: #52624A;
+  --accent: #3F5626;
+  --accent-text: #3A4F22;
+  --accent-contrast: #F6F3EC;
+  --accent-hover: #4C672E;
+  --accent-light: rgba(63, 86, 38, 0.08);
+  --accent-badge-border: rgba(63, 86, 38, 0.4);
+  --glow: rgba(63, 86, 38, 0.08);
+  --header-bg: rgba(244, 242, 236, 0.85);
+  --shadow-md: 0 10px 30px -14px rgba(23, 32, 18, 0.25);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.68;
+  -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip;
+}
+main { flex: 1; }
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { color: var(--text-bright); }
+h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
+.container { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 200; background: var(--surface); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 100; background: var(--header-bg);
+  backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.nav-container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; font-size: 1rem; color: var(--text-bright); }
+.brand-mark {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-contrast); font-size: 0.78rem; font-weight: 700;
+}
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-links { display: flex; list-style: none; gap: 0.15rem; }
+.nav-links a { display: block; font-size: 0.86rem; font-weight: 500; color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: var(--radius-md); }
+.nav-links a:hover { color: var(--text-bright); background: var(--accent-light); }
+.theme-toggle-btn {
+  width: 34px; height: 34px; display: inline-grid; place-items: center; background: var(--surface-raised);
+  border: 1px solid var(--border); color: var(--text-bright); border-radius: var(--radius-md); cursor: pointer;
+}
+.theme-toggle-btn:hover { border-color: var(--border-focus); }
+.theme-toggle-btn svg { width: 16px; height: 16px; }
+[data-theme="light"] .icon-sun, :root:not([data-theme="light"]) .icon-moon { display: none; }
+
+.site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
+.site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
+
+
+/* the privacy page: docs/PRIVACY.md, made into HTML when the site is built (tools/release.py) */
+.prose { max-width: 860px; padding-top: 3rem; padding-bottom: 4rem; }
+.prose h1 { font-size: clamp(1.8rem, 1.3rem + 2vw, 2.4rem); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.3rem; letter-spacing: -0.01em; margin: 2.4rem 0 0.7rem; }
+.prose h3 { font-size: 1.05rem; margin: 1.8rem 0 0.5rem; }
+.prose p, .prose ul, .prose ol { margin-bottom: 0.9rem; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin-bottom: 0.3rem; }
+.prose strong { color: var(--text-bright); font-weight: 600; }
+.prose code { font-family: var(--font-mono); font-size: 0.82em; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0.05rem 0.3rem; }
+.prose a { text-decoration: underline; text-decoration-color: var(--accent-badge-border); text-underline-offset: 2px; }
+.table-wrap { overflow-x: auto; margin: 0 0 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.prose table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border-soft); }
+.prose th { color: var(--text-bright); font-weight: 600; background: var(--surface-raised); }
+.prose tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-bright); font-weight: 500; min-width: 9rem; }
+.updated { color: var(--text-muted); font-size: 0.84rem; }
+.prose pre { margin: 0 0 1.1rem; padding: 0.8rem 1rem; overflow-x: auto; background: var(--inset-bg); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.prose pre code { background: none; border: 0; padding: 0; font-size: 0.8rem; line-height: 1.55; }
+.prose blockquote { margin: 0 0 1rem; padding: 0.2rem 0 0.2rem 1rem; border-left: 3px solid var(--accent-badge-border); color: var(--text-muted); }
+.prose hr { border: 0; border-top: 1px solid var(--border-soft); margin: 2rem 0; }
+.prose h4 { font-size: 0.95rem; margin: 1.4rem 0 0.4rem; }
+.wiki-nav { font-size: 0.84rem; line-height: 1.9; margin: 0 0 1.8rem; padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); }
+.wiki-nav a { text-decoration: none; margin-right: 0.55rem; white-space: nowrap; }
+.wiki-nav a:hover { text-decoration: underline; }
+.wiki-nav a[aria-current="page"] { color: var(--text-bright); font-weight: 600; }
+@media (max-width: 560px) { .nav-links { display: none; } .container { padding: 0 1rem; } .prose th, .prose td { padding: 0.5rem; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container nav-container">
+    <a class="brand" href="../.././"><span class="brand-mark">K</span><span class="brand-name">Kurooto</span></a>
+    <div class="nav-right">
+      <ul class="nav-links">
+        <li><a href="../.././#install">Install</a></li>
+        <li><a href="../.././#features">Features</a></li>
+        <li><a href="../../wiki/index.html">Wiki</a></li>
+        <li><a href="../../changelog.html">Changelog</a></li>
+        <li><a href="../../ongoing.html">In progress</a></li>
+        <li><a href="https://github.com/avtarfr/kurooto">GitHub</a></li>
+      </ul>
+      <button class="theme-toggle-btn" type="button" aria-label="Switch light or dark theme" onclick="toggleTheme()">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <article class="container prose">
+<nav class="wiki-nav" aria-label="Developer wiki"><a class="wiki-home" href="../index.html">Wikis</a> · <strong>Developer wiki</strong>: <a href="index.html">Start</a> <a href="agents.html">For AI coding agents</a> <a href="conventions.html">Conventions</a> <a href="architecture.html" aria-current="page">Architecture</a> <a href="repo-layout.html">Repository layout</a> <a href="core.html">Core services</a> <a href="brains.html">Brains (AI providers)</a> <a href="modules.html">Feature modules</a> <a href="web.html">The web page: setup wizard, dashboard, local API</a> <a href="calls-and-phone.html">Phone calls, the call line and the phone app</a> <a href="concept-graph.html">Concept graph: books into the notes</a> <a href="testing.html">Testing</a> <a href="release-and-updates.html">Releases and self-updates</a> <a href="debugging.html">Debugging</a> · <a href="../user/index.html">User wiki</a></nav>
+<h1 id="architecture">Architecture</h1>
+<p>Kurooto is one long-running Python process (the daemon) per user, plus short-lived CLI processes that talk to it, a per-user Cloudflare Worker for phone calls, and an Android app. Everything the user has (settings, state, notes) stays on their computer unless a feature they turned on says otherwise.</p>
+<h2 id="the-pieces">The pieces</h2>
+<pre><code>                      ┌──────────────────────────── the daemon (kurooto run) ─────────────────────────────┐
+ Telegram Bot API ◀──▶│ modules/telegram  (background task: long polling)                                 │
+                      │        │ Incoming                                                                  │
+ Browser (127.0.0.1)◀▶│ web/server.py ── web/api.py, tools_api.py, live.py (SSE)                          │
+ kurooto CLI ────────▶│        │                                                                           │
+ kurooto mcp ────────▶│        ▼                                                                           │
+                      │ App.handle ──▶ ask / replies / commands / skills / files / intents / Chat          │
+                      │        │                                         │                                 │
+                      │        │                                         ▼                                 │
+                      │        │                          core/jobs.py (lanes you, bg, chk; worker threads)│
+                      │        │                                         │ providers.build                 │
+                      │        │                                         ▼                                 │
+                      │        │                agy / Claude Code (subprocess) · OpenAI-compatible (HTTP)  │
+                      │        │                    │ MCP: kurooto mcp ─▶ /api/tools/call      │ tool calls │
+                      │        │                    └──────────────▶ core/tools.py:run_tool ◀──┘            │
+                      │        ▼                                                                           │
+                      │ app.notify ─▶ core/calm.py ─▶ core/notify.py ─▶ channels: telegram, app, desktop   │
+                      │                                                                                    │
+                      │ core/scheduler.py (asyncio task) ── actions registered by modules and core         │
+                      │ core/power.py, core/presence.py (asyncio tasks)                                    │
+                      │ modules/calls: Connector (background task) ──WebSocket──▶ Cloudflare Worker ◀──▶ phone │
+                      └────────────────────────────────────────────────────────────────────────────────────┘
+                      state: settings.json · secrets (keychain/file) · schedule.db · jobs.db · calm.db · events.jsonl</code></pre>
+<p>Startup (<code>daemon.py:run</code>):</p>
+<ol><li><code>proc.ensure_user_path()</code>, <code>paths().ensure()</code>, <code>setup_logging()</code>.</li><li>Take the <code>daemon</code> file lock (<code>core/lock.py</code>, timeout 0; exit 3 "already running"), write <code>&lt;state&gt;/daemon.json</code>.</li><li><code>App(p)</code> (<code>app.py:App.__init__</code>): core services, every catalog module, add-ons. See <a href="../../wiki/dev/core.html">core.md</a>.</li><li>Small repairs: PATH (<code>core/pathfix.py</code>), launcher and service entries (<code>core/autostart.py:refresh</code>); remove <code>off.json</code>.</li><li><code>asyncio.run(main())</code> → <code>serve(app, stop)</code>: <code>App.start()</code> (one-time upgrade steps, time-zone fix, updates, ask, presence, agent export, the reserve, each enabled module's <code>start()</code> and background task, health, calm), then four tasks: <code>scheduler.run_forever</code>, <code>jobs.worker</code>, <code>power.watch</code>, <code>presence.watch</code>, plus the web server thread (<code>web/server.py:start</code>). Emit <code>started</code>.</li><li>On SIGINT/SIGTERM/SIGHUP (or Windows end-session): <code>presence.going_offline()</code>, cancel tasks, stop the web server, emit <code>stopped</code>; then <code>App.close()</code> (halt jobs, modules' <code>shutdown()</code>, close databases) and <code>daemon.end_children()</code> (<code>core/children.py:stop_all</code>). Exit 0, or 75 when an update asked for a restart.</li></ol>
+<p>Who starts the daemon: the launcher (<code>update/launcher.py</code>, installed in the app folder, started at sign-in by <code>core/autostart.py</code>) runs <code>versions/&lt;current&gt;/.venv/... -m kurooto run</code> and restarts it on exit 75 or after a crash (see <a href="../../wiki/dev/release-and-updates.html#restart-and-rollback">release-and-updates.md</a>). Without an installed launcher, <code>kurooto supervise</code> (<code>daemon.py:supervise</code>) does the crash restarts. <code>kurooto start</code> (<code>cli.py:start_background</code>) starts it detached.</p>
+<p>Threads and the event loop: the asyncio loop runs the scheduler (handlers are called on the loop thread), the job worker's polling, power, presence, every module's <code>background()</code> coroutine, and the call-line WebSocket. Blocking work runs in threads: each AI job (<code>Jobs._start</code>, one thread per lane), each Telegram update (<code>asyncio.to_thread</code>), each HTTP request (<code>ThreadingHTTPServer</code>), and the long scheduled jobs that start their own threads. Shared state is protected by <code>threading.Lock</code>s inside each service and by file locks across processes.</p>
+<h2 id="a-message-end-to-end">A message, end to end</h2>
+<p>What happens when the user types "what's due this week? and summarise my linear algebra notes" on Telegram.</p>
+<ol><li><strong>Telegram poll</strong> (<code>modules/telegram/__init__.py:Telegram.run</code>, a <code>background</code> coroutine started by <code>App.start_background</code>): <code>getUpdates</code> long poll; for each update the offset is saved (<code>telegram/offset.json</code>), then <code>asyncio.to_thread(self._update, api, u, allowed)</code>.</li><li><strong>Filter</strong> (<code>Telegram._update</code>): button taps from an allowed user go to <code>App.callback(data)</code>; messages must come from <code>telegram.allowed_users</code> in a private chat. While paused, they're queued to <code>telegram/paused.jsonl</code>. Files are downloaded into the notes inbox, voice notes transcribed (<code>modules/voice_notes.py</code>). A reply to one of Kurooto's messages is resolved through <code>telegram/map.json</code> into <code>reply_to = {"kind", "ref"}</code>. The result is an <code>Incoming(text, via="telegram", message_id, files, reply_to, voice, respond)</code> where <code>respond</code> sends straight back to this chat (<code>TelegramAPI.send</code>, replying to the message).</li><li><strong>Routing</strong> (<code>app.py:App.handle</code>), first match wins:</li><li>a reply to a question (<code>reply_to.kind == "ask"</code>) → <code>core/ask.py:Ask.reply</code>;</li><li>a reply to a module's message → that module's <code>replies()[kind]</code> (the phone app's copy is retracted);</li><li><code>/start</code>, <code>/help</code>, <code>/aboutme</code>, <code>/q</code>, <code>/health</code>, <code>/calm</code>, <code>/why</code>, <code>/jobs</code> (core);</li><li>a <code>/command</code> of an enabled module; a command of a disabled module answers "X is off: Features → X → Turn on" (except <code>ALWAYS = ("status",)</code>); a skill name when Skills is on (<code>modules/skills.py:Skills.typed</code>);</li><li>files: a PDF captioned "book for &lt;subject&gt;" → Books; a <code>.kurooto-course</code> file → Class packs; otherwise the first enabled module with <code>take_files</code>;</li><li>a text call in progress (<code>calls.textcall.takes</code>);</li><li>a phrasing taught through the Wrong button (<code>modules/cases.py:Cases.watch</code>);</li><li><strong>intents</strong>, only when the text isn't <code>too_complex</code> (<code>modules/text.py</code>: long, or several requests in one): first an add-on classifier (<code>core/overlay.py:classify</code>), then each enabled module's <code>intents()</code> in catalog order; a text that looks like a question only goes to intents with <code>questions=True</code>. An intent emits <code>intent</code> and replies with its <code>run()</code> result. Instant, no AI;</li><li>"sync everything" or <code>/sync</code> (<code>core/syncall.py</code>);</li><li><strong>Chat</strong> (<code>modules/chat.py:Chat.ask</code>) if on; otherwise "turn on Chat".</li></ol>
+<p>Our example has two requests in one message (<code>MULTI</code> matches "? and"), so <code>too_complex</code> sends it past the intents to Chat. "what's due this week?" alone would have been answered instantly by Deadlines' <code>show_due</code> intent.</p>
+<ol><li><strong>Chat</strong> builds the prompt (with the last few turns if the conversation is under two hours old), calls <code>app.jobs.submit(prompt, title, reply_to=message_id)</code>, remembers the job id in <code>Chat.mine</code>, and replies "On it."</li><li><strong>The queue</strong> (<code>core/jobs.py</code>): the job is a row in <code>jobs.db</code> (status <code>queued</code>, lane <code>you</code>). The worker's next <code>_tick</code> claims it and runs <code>Jobs._run</code> in the lane's thread:</li><li>effort: <code>providers/effort.py:pick</code> ("summarise ... notes" matches <code>NOTES</code> → <code>high</code>);</li><li>the brain chain: <code>brain.main</code>, <code>brain.fallback</code>, a last resort, rearranged by free limits (<code>core/quota.py:Quota.arrange</code>);</li><li>the <code>Task</code>: prompt, effort, timeout (<code>brain.timeout_min.high</code>), the headless context (<code>providers/context.py:headless_context</code>), the tools (<code>core/tools.py:agent_tools</code>) and the MCP command (<code>core/mcp.py:command</code>) with its environment (<code>run_env</code>: the daemon's URL and tools-only key).</li><li><strong>The brain</strong>:</li><li>agy or Claude Code: a subprocess in the notes folder (<code>core/proc.py:run</code>, or a PTY for agy). It starts <code>kurooto mcp</code> itself; each tool call travels <code>kurooto mcp</code> → <code>POST /api/tools/call</code> with <code>X-Kurooto-Tools</code> (<code>web/server.py:_tools_authed</code>) → <code>web/tools_api.py</code> → <code>core/tools.py:run_tool</code>. File access is limited by the per-brain allow-lists built from <code>core/places.py</code>.</li><li>an OpenAI-compatible API: <code>OpenAICompat.run</code> loops over function calls, calling <code>task.run_tool</code> → <code>core/tools.py:run_tool</code> directly in the daemon. Either way the tools are the same (<code>search_notes</code>, <code>read_note</code>, <code>read_file</code>, and the enabled modules' own, such as Deadlines' <code>add_deadline</code> or Reminders' <code>add_reminder</code>), and each use emits <code>tool_used</code>.</li><li><strong>Verdict and fallback</strong>: the brain returns a <code>Result</code>; a retryable verdict moves to the next brain; the job row is updated (<code>ok</code> / <code>failed</code>), an <code>attempts</code> row added, <code>job_done</code> emitted.</li><li><strong>Delivery</strong> (<code>Jobs._deliver</code>): <code>app.notify("[&lt;brain&gt; · high] &lt;title&gt;\n\n&lt;answer&gt;", kind="result", reply_to=&lt;message id&gt;, why="asked")</code>. <code>core/calm.py:Calm.decide</code> lets <code>asked</code> through untouched; <code>core/notify.py:Notifier._deliver</code> sends it to the Telegram channel (registered by <code>Telegram.start</code>), the phone app if <code>result</code> is in <code>notify.app_kinds</code>, the desktop if configured. A long answer is also attached as a file.</li><li><strong>After</strong>: because <code>Chat.owns(job_id)</code>, the turn is appended to <code>chat/history.json</code>; the then-action, if any, runs (<code>Jobs._after</code>). Notes sync, if on, schedules a push a couple of minutes after any <code>job_done</code>.</li></ol>
+<p>The same <code>App.handle</code> serves <code>kurooto ask</code> (<code>via="terminal"</code>, through <code>POST /api/say</code>), the setup page's try-it box (<code>via="setup"</code>, <code>web/tryit.py</code>), routines (<code>via="routine"</code>), and the dashboard's Ctrl+K "ask". Calls take a different path: the phone talks to Gemini Live directly and reaches the computer only for tools, transcripts and tasks (see <a href="../../wiki/dev/calls-and-phone.html">calls-and-phone.md</a>).</p>
+<h2 id="something-kurooto-does-by-itself">Something Kurooto does by itself</h2>
+<p>A reminder: <code>Reminders.add</code> books a one-off <code>reminders:&lt;id&gt;</code> job in <code>schedule.db</code>. At its time, <code>Scheduler.tick</code> asks <code>Power.hold</code> (the reminder's module isn't heavy, so it runs) and the <code>respect</code> gate (none), adds <code>late_s</code> if the laptop slept through it, and calls <code>Reminders._fire(payload)</code>, which calls <code>app.notify(..., kind="reminder", why="reminders.own")</code>. Calm sees an exempt reason and records it; focus time would queue it unless urgent; the notifier delivers it with snooze buttons. A tap comes back as <code>rem:&lt;ref&gt;:10</code> through <code>Telegram._update</code> → <code>App.callback</code> → <code>Reminders.callbacks()["rem"]</code>.</p>
+<h2 id="where-to-change-what">Where to change what</h2>
+<div class="table-wrap"><table><thead><tr><th>To change</th><th>Look at</th></tr></thead><tbody><tr><td>how text is routed</td><td><code>app.py:App.handle</code>, <code>modules/text.py</code></td></tr><tr><td>a feature</td><td>its module in <code>modules/</code>, its tests, <code>docs/MANUAL.md</code></td></tr><tr><td>which AI answers and how</td><td><code>providers/</code>, <code>core/jobs.py</code>, <code>core/quota.py</code></td></tr><tr><td>what the AI may touch</td><td><code>core/places.py</code>, <code>core/tools.py</code>, <code>providers/agy.py:wanted_rules</code>, <code>providers/claude.py:permissions</code></td></tr><tr><td>when messages arrive</td><td><code>core/notify.py</code>, <code>core/calm.py</code>, <code>core/availability.py</code>, <code>core/presence.py</code></td></tr><tr><td>scheduled work</td><td><code>core/scheduler.py</code>, the module's <code>start()</code></td></tr><tr><td>the dashboard</td><td><code>web/</code>, <code>web/static/</code></td></tr><tr><td>calls</td><td><code>modules/calls/</code>, <code>data/worker/</code>, <code>android/</code></td></tr><tr><td>installing and updating</td><td><code>installer/</code>, <code>update/</code>, <code>tools/release.py</code>, <code>cli.py:install_finish</code></td></tr></tbody></table></div>
+
+    <p class="updated">Made from <a href="https://github.com/avtarfr/kurooto/blob/main/docs/wiki/dev/architecture.md">docs/wiki/dev/architecture.md</a> when the site is built. Something wrong or missing? <a href="https://github.com/avtarfr/kurooto/issues">Open an issue</a>.</p>
+  </article>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <span>Kurooto · Apache-2.0 · © Sumangalam Avtar Sharma</span>
+    <span><a href="../../wiki/user/index.html">User wiki</a> · <a href="../../wiki/dev/index.html">Developer wiki</a> · <a href="../../changelog.html">Changelog</a> · <a href="../../ongoing.html">In progress &amp; beta</a> · <a href="../../privacy.html">Privacy</a> · <a href="https://github.com/avtarfr/kurooto">Source</a></span>
+  </div>
+</footer>
+
+<script>
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  }
+</script>
+</body>
+</html>
