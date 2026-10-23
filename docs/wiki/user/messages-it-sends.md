@@ -195,6 +195,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | exam season starting | Exam season | | list | | yes | |
 | the evening before an exam: where, seat, calculator, ID | Exam season | `exam_season.eve` | no more exam-eve questions | | | yes |
 | a two-minute debrief after an exam | Exam season | `exam_season.debrief` | no more debriefs | | yes | yes |
+| the evening question: did you cover today's revision topics? | Exam season | `exam_season.revision_ask` | no more revision questions | | | yes |
 
 ### Your day
 

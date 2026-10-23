@@ -296,6 +296,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `exam_season.alarm_check` | `true` | every night of the period: will tomorrow's alarm ring? |
+| `exam_season.block_min` | `60` | one revision block, in minutes (one topic each) |
 | `exam_season.budget` | `true` | only deadlines, quizzes and the alarm during the day; the rest waits for the evening bundle |
 | `exam_season.debrief` | `true` | after each exam: a two-minute debrief, into the subject's course note |
 | `exam_season.eve` | `true` | the evening before each exam: where is it, which seat, calculator, ID card? |
@@ -308,6 +309,10 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `exam_season.no_calls` | `true` | no calls during an exam |
 | `exam_season.quiz_call_at` | `"19:00"` | the evening before an exam you picked a quiz call for |
 | `exam_season.quizzes` | `false` | quizzes and tests outside an exam period count as exams too |
+| `exam_season.revision` | `true` | before each exam, its course's topics ranked and laid into your free time (/revise) |
+| `exam_season.revision_ask` | `true` | the evening: did you cover today's topics? (counts like a quiz answer) |
+| `exam_season.revision_days` | `14` | the revision plan starts this many days before each exam |
+| `exam_season.revision_share` | `50` | % of your free time (Start-by's, less commitments) revision blocks may take |
 
 ### `files`
 

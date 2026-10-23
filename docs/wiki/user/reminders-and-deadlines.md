@@ -336,6 +336,9 @@ tap. At most three such messages a day, and only when it's two or more days befo
 the deadline's own day-before message says it). When there isn't enough free time left, it says so. The first morning
 after you turn it on, one message lists what's to start now.
 
+With [Exam season](quiz-and-exams.md#the-revision-plan)'s revision plan on, the day's revision blocks are in the
+morning plan too, after what's to start ("Revise Jordan form, 10:00-11:00 · for Linear Algebra final exam").
+
 **Crunch weeks.** The Sunday [weekly summary](check-ins-and-journal.md#weekly-summary) flags weeks in the next four
 (`startby.crunch_weeks`) where the work due adds up to more than the free time: "Crunch weeks (an estimate): week of
 9 Nov: about 14 h of work, about 9 h free. Start some of it the week before." It also says what to start in the

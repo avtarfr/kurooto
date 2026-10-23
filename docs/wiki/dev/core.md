@@ -161,7 +161,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `deadlines.json`, `deadlines-recurring.json` | `modules/deadlines.py` |
 | `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json` | check-ins, capture, study |
 | `subjects/term-note.json`, `subjects/skip-<day>.json` | `modules/subjects.py` |
-| `exam_season.json`, `startby.json`, `quests.json`, `reminders-snooze.json` | those modules |
+| `exam_season.json`, `revision.json`, `startby.json`, `quests.json`, `reminders-snooze.json` | those modules (`revision.json`: Exam season's revision plan, `modules/revision.py`) |
 | `doubts/*.json`, `hints/<id>.json`, `quiz/<subject>.json`, `quiz/{session,offered}.json` | doubts, hints, quiz |
 | `retro.json`, `retro-state.json`, `observations.json`, `retro-skills/` | `modules/retro.py` |
 | `research-papers.json`, `research-logs.json` | `modules/research.py` |

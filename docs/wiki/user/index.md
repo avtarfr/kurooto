@@ -75,7 +75,7 @@ its commands with "X is off: Features → X → Turn on". Some features need ano
 | Class packs | share or import a section's timetable and dates | Telegram, Subjects | [Classes and timetable](classes-and-timetable.md) |
 | Doubt queue | doubts from class, brought back before the next one | Subjects | [Classes and timetable](classes-and-timetable.md) |
 | Quiz | spaced practice questions from your notes | Telegram | [Quiz and exams](quiz-and-exams.md) |
-| Exam season (optional) | one card for the whole exam period | Deadlines | [Quiz and exams](quiz-and-exams.md) |
+| Exam season (optional) | one card for the whole exam period, and a revision plan before each exam | Deadlines | [Quiz and exams](quiz-and-exams.md) |
 | Weekly summary | the week in numbers on Sundays | Telegram | [Check-ins and journal](check-ins-and-journal.md) |
 | First-week quests | one thing to try each day of your first week | | [Check-ins and journal](check-ins-and-journal.md) |
 | Files into notes | photos and PDFs you send go into your notes | Telegram | [Notes](notes-and-concept-graph.md) |
