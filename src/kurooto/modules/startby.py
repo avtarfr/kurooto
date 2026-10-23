@@ -384,9 +384,12 @@ class StartBy(Module):
         return "start now, it may not fit" if r["short"] else "start today"
 
     def line(self, r: dict, today: dt.date) -> str:
-        """ "Lab report: start today (due Fri 06 Nov, about 12 h (2-3 days))"."""
+        """ "Lab report (due Fri 06 Nov): start working on it today, about 12 h (2-3 days) of work". The date comes
+        first and "working on it" is said, so a call doesn't turn "start today" into "the quiz is today"."""
         due = when_text(r["due"].isoformat())
-        return f"{r['title']}: {self.when_words(r, today)} (due {due}, {size_text(r['hours'])})"
+        on = "on" if r.get("kind") == "exam" else "due"
+        work = self.when_words(r, today).replace("start ", "start working on it ", 1)
+        return f"{r['title']} ({on} {due}): {work}, {size_text(r['hours'])} of work"
 
     def morning_rows(self) -> list[dict]:
         """For the morning page: what to start, {"title", "when"}."""

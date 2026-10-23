@@ -305,6 +305,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   The `/` menu is synced from enabled features (`_menu_tick`). Commands `/pause`, `/resume`, `/status`, `/hold`,
   `/calls`, `/focus`; intents `hold_calls`, `calls_ok`, `focus`. Settings `telegram.chat_id`, `allowed_users`,
   `silent_kinds`, `api_base` (tests point it at `tests/fakes/telegram.py`), `menu`.
+- **deadlines** call tools (0.5.8): `remove_deadline` (status "ignored" via `_button(id, "drop")`, never reopened by
+  `_put`), `unignore_topic`; `upcoming()` leaves out exams already past; `full_title()` puts the subject's name in
+  front of a bare title; `subject_of()` checks every folder of a path and the note's own name; `_put` renames an item
+  when the same source finds it again under a fuller title.
 - **chat** (`modules/chat.py:Chat`): free text that isn't a command or intent becomes a job (`Chat.ask`), and so does
   a file nothing else took (`App.route`): its paths are added to the prompt for an agent program to open (no caption:
   "say what it is"); with Chat off, the reply names what to turn on. Within two hours, the last six turns are

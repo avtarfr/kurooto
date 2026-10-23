@@ -200,13 +200,22 @@ class Deadlines(Module):
         s = self._subjects()
         if not s:
             return None
-        if path and "/" in path:
-            folder = path.split("/")[0]
-            slug = s.resolve(folder) or s.resolve(folder.replace("-", " "))
-            if slug:
-                return slug
+        if path and "/" in path:  # any folder, or the note itself (maps/courses/bayesian-statistics.md)
+            for part in reversed(path.removesuffix(".md").split("/")):
+                slug = s.resolve(part) or s.resolve(part.replace("-", " "))
+                if slug:
+                    return slug
         found = s.find_in(title)
         return found[0] if len(found) == 1 else None
+
+    def full_title(self, it: dict) -> str:
+        """Its title, with the subject's name in front when the title doesn't say it ("Quiz" -> "Real Analysis II:
+        Quiz"): an unnamed "Quiz" on a call or a list is no use."""
+        name = self.subject_name(it.get("subject"))
+        title = it["title"]
+        if not name or name.lower() in title.lower() or (it.get("subject") or "") in title.lower():
+            return title
+        return f"{name}: {title}"
 
     def subject_name(self, slug: str | None) -> str:
         s = self._subjects()
@@ -283,7 +292,9 @@ class Deadlines(Module):
             it["aliases"].append(i)
         if due[:10] == it["due"][:10] and due[11:16] != "23:59" and it["due"][11:16] == "23:59":
             it["due"] = due  # a known time beats "end of the day"
-        if source not in it.setdefault("sources", [it["source"]]):
+        if source in it.setdefault("sources", [it["source"]]) and it["title"].lower() in title.lower() != it["title"]:
+            it["title"] = title  # the same thing, named better now ("Quiz" -> "Real Analysis II: Quiz")
+        if source not in it["sources"]:
             it["sources"].append(source)
         if subject and not it.get("subject"):
             it["subject"] = subject
@@ -868,6 +879,8 @@ class Deadlines(Module):
         skip = matcher(self.app)
         for i, it in self.items().items():
             h = hours_left(it["due"])
+            if it["kind"] == "exam" and h < 0:
+                continue  # a quiz or exam that's past is over, not overdue
             if it["status"] == "open" and -24 < h <= hours and not skip(it["title"]):
                 out.append((i, it, h))
         return sorted(out, key=lambda x: x[2])
@@ -1082,7 +1095,7 @@ class Deadlines(Module):
     # -------------------------------------------------------------------------------------- on calls
     def call_brief(self) -> dict:
         due = [
-            {"id": i, "what": it["title"], "due": human(h), "kind": it["kind"]}
+            {"id": i, "what": self.full_title(it), "due": human(h), "kind": it["kind"]}
             for i, it, h in self.upcoming(self.plan_hours())[:10]
         ]
         out: dict = {"due_soon": due} if due else {}
@@ -1097,14 +1110,27 @@ class Deadlines(Module):
     def call_tools(self):
         return [
             Tool(
+                "remove_deadline",
+                "Remove a deadline that isn't happening: cancelled, never real, or a mistake (its id is in "
+                "pending_items). It doesn't come back from where it came from (Classroom, a note, the recurring "
+                "table).",
+                lambda a: self._button(str(a.get("id", "")), "drop"),
+                {"id": arg()},
+                ("id",),
+                offline="queue",
+            ),
+            Tool(
                 "mark_deadline_done",
                 "Mark a deadline done (its id is in pending_items).",
                 lambda a: self._button(str(a.get("id", "")), "done"),
                 {"id": arg()},
                 ("id",),
                 offline="queue",
-                hint="mark_deadline_done when they say something is submitted or finished; add_deadline adds one; "
-                "move_deadline when it got a new date; ignore_topic when they don't care about something.",
+                hint="mark_deadline_done when they say something is submitted or finished; add_deadline adds one "
+                '("I have a quiz on Thursday" is a deadline, never something to remember); move_deadline when it got '
+                "a new date; remove_deadline when one is cancelled, not happening or wrong (\"I don't have that "
+                'quiz"); ignore_topic only for a kind of announcement they never want to hear about, never to remove '
+                "one deadline. Say what you did only after the tool answered.",
             ),
             Tool(
                 "add_deadline",
@@ -1127,6 +1153,14 @@ class Deadlines(Module):
                 "Put a topic on their not-interested list (deadlines about it are left out, digests only count it).",
                 lambda a: self._ignore(str(a.get("topic", ""))),
                 {"topic": arg("e.g. drama club")},
+                ("topic",),
+                offline="queue",
+            ),
+            Tool(
+                "unignore_topic",
+                "Take a topic off their not-interested list (when it was put there by mistake).",
+                lambda a: self._unignore(str(a.get("topic", ""))),
+                {"topic": arg()},
                 ("topic",),
                 offline="queue",
             ),

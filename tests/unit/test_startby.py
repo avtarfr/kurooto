@@ -127,12 +127,12 @@ def test_start_by_dates_work_back_from_classes_and_calendar(sb):
     assert ps["start"] == dt.date(2026, 11, 2) and ps["short"] == 0  # pushed back to Monday by the report
     assert app.modules["startby"].to_start() == [ps]  # only the problem set today
     assert app.modules["startby"].morning_lines() == [
-        "Problem set 4: start today (due Thu 05 Nov, about 3 h (an evening))"
+        "Problem set 4 (due Thu 05 Nov): start working on it today, about 3 h (an evening) of work"
     ]
     # the morning page and the wake-up call
     view = daily.morning_view(app)
     assert view["start"] == [{"title": "Problem set 4", "when": "start today · due Thu 05 Nov"}]
-    assert "Time to start (an estimate): Problem set 4: start today" in app.modules["alarm"].script()
+    assert "Time to start (an estimate): Problem set 4 (due Thu 05 Nov): start working on it today" in app.modules["alarm"].script()
     # a skipped class frees its time
     app.modules["subjects"].set_skip(["linear-algebra"], day=dt.date(2026, 11, 3))
     assert plan(sb)["Lab report: pendulum"]["start"] == dt.date(2026, 11, 3)
@@ -143,7 +143,7 @@ def test_not_enough_time_says_so(sb):
     add(sb, "Essay final", at(3, 12))  # 12 h by tomorrow noon: Mon 6 h + Tue morning 1.5 h
     r = plan(sb)["Essay final"]
     assert r["start"] == dt.date(2026, 11, 2) and r["short"] == 4.5 and r["free"] == 7.5
-    assert "start now, it may not fit" in sb.app.modules["startby"].morning_lines()[0]
+    assert "start working on it now, it may not fit" in sb.app.modules["startby"].morning_lines()[0]
 
 
 def test_done_ignored_and_far_away_deadlines_are_left_out(sb):
@@ -193,7 +193,7 @@ def test_three_messages_a_day_at_most_and_a_hello_on_the_first_pass(sb, clock):
         add(sb, f"Report {k}", at(3 + k, 23, 59))
     s._morning({})
     hello = sb.fake.texts()[-1]
-    assert "Start-by dates are on. Time to start now: Report 0: start" in hello and "/startby shows them all" in hello
+    assert "Start-by dates are on. Time to start now: Report 0 (due" in hello and "/startby shows them all" in hello
     sb.app.settings.set("startby.sizes.report", 100)  # far more than the free time: every essay starts now
     for k in "ABCD":
         add(sb, f"Essay {k}", at(5 + "ABCD".index(k), 23, 59))
@@ -264,24 +264,29 @@ def test_startby_command_intent_and_tools(sb):
     app = sb.app
     i = add(sb, "Lab report: pendulum", at(6, 23, 59))
     add(sb, "Problem set 4", at(2, 23, 59))
-    assert sb.say("/startby") == "Lab report: pendulum: start by Thu 05 Nov (due Fri 06 Nov, about 12 h (2-3 days))"
+    assert (
+        sb.say("/startby")
+        == "Lab report: pendulum (due Fri 06 Nov): start working on it by Thu 05 Nov, about 12 h (2-3 days) of work"
+    )
     texts = sb.fake.texts()[-3:]
     assert texts[0].startswith("Start-by dates, worked back from each deadline's size")
-    assert texts[1].startswith("Problem set 4: start today") and texts[2].startswith("Lab report: pendulum: start by")
+    assert texts[1].startswith("Problem set 4 (due") and texts[2].startswith("Lab report: pendulum (due")
     assert [b["text"] for b in last_buttons(sb)] == ["An hour", "An evening", "A day", "A week"]
-    assert sb.say("when should I start the lab report?").startswith("Lab report: pendulum: start by Thu 05 Nov")
-    assert "Problem set 4: start today" in sb.say("when should I start?")
+    assert sb.say("when should I start the lab report?").startswith(
+        "Lab report: pendulum (due Fri 06 Nov): start working on it by Thu 05 Nov"
+    )
+    assert "Problem set 4 (due Mon 02 Nov): start working on it today" in sb.say("when should I start?")
     assert sb.say("when do I start on the thesis?") == (
         "I don't have 'thesis' on the deadline list. /startby shows them all."
     )
     tools = {t.name: t for t in app.modules["startby"].call_tools()}
     out = tools["start_by"].run({})
-    assert f"[{i}] Lab report: pendulum: start by Thu 05 Nov" in out and tools["start_by"].writes is False
+    assert f"[{i}] Lab report: pendulum (due Fri 06 Nov): start working on it by Thu 05 Nov" in out and tools["start_by"].writes is False
     assert tools["set_work_size"].run({"id": i, "size": "a week"}).startswith("Lab report: pendulum: about 25 h")
     assert "couldn't read" in tools["set_work_size"].run({"id": i, "size": "soonish"})
     assert app.modules["startby"].call_brief()["time_to_start"] == [  # a week of work: from today
-        "Problem set 4: start today (due Mon 02 Nov, about 3 h (an evening))",
-        "Lab report: pendulum: start today (due Fri 06 Nov, about 25 h (a week))",
+        "Problem set 4 (due Mon 02 Nov): start working on it today, about 3 h (an evening) of work",
+        "Lab report: pendulum (due Fri 06 Nov): start working on it today, about 25 h (a week) of work",
     ]
     assert sb.press("sby:nope:3") == "That one is gone." and sb.press(f"sby:{i}:x") == "That button is out of date."
 

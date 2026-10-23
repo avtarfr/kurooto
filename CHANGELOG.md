@@ -66,6 +66,15 @@
   options (a prompt hidden in a mail or a web page could have used them). Searching is the AI programs' own job, and
   Kurooto compiles LaTeX itself: now without a `latexmkrc` from the notes folder (`-norc`), and TeX may only read and
   write beside the document.
+- **Calls change your lists properly**: "I don't have that quiz" removes it (a new `remove_deadline` tool; it doesn't
+  come back from Classroom, a note or the recurring table) instead of putting the subject on your not-interested list,
+  and "I have a quiz on Thursday" is a deadline, not something to remember. The look back after each call checks every
+  change you asked for against what the tools actually did, and fixes it with the right tool (including undoing a
+  wrong ignore with the new `unignore_topic`).
+- **A quiz that's past is over, not overdue**, and a quiz on a course page is never merged into another subject's
+  quiz on the same day (a course page's path names its subject). A bare "Quiz" gets its subject's name, everywhere.
+- **Start-by says what to start**: "POTA Quiz 2 (on Tue 27 Oct 10:00): start working on it today, about 2 h of work",
+  so a call no longer hears "start today" as "the quiz is today".
 - **Turning Phone calls off keeps the calls you booked**: they ring when it's back on; one that came due meanwhile
   isn't rung late, you're told about it instead (Reminders already keeps its own the same way).
 - **A bare number is a time, not minutes**: `/remind 9 gym` is the next 9:00 (morning or evening, whichever comes

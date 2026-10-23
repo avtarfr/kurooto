@@ -396,3 +396,10 @@ Each of these has **Why?** and **Less of this** buttons on Telegram ([messages-i
 | A recurring quiz is on the wrong week | Put a date it really happens on in the Next column of the recurring table. |
 | `/exam` says exam mode is turned off | `deadlines.exam_mode_days` is 0. Set it to 14. |
 | Start-by dates are too early or too late | Tap the right size on a deadline (`/startby`). If they're all off, change `startby.share` or `startby.window`. |
+
+## On a call
+
+Say "that quiz is cancelled" or "I don't have that quiz" and the call removes it for good (it doesn't come back from
+Classroom, a note or the recurring table); "I finished it" marks it done; "it moved to Friday" moves it. A quiz or exam
+whose time has passed is simply over: it's never listed as overdue. After every call, Kurooto looks back at what you
+asked for and fixes anything the call got wrong (see [Phone calls](calls.md)).

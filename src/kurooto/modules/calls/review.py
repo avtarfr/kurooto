@@ -12,6 +12,7 @@ at most calls.lessons_max of them: a new one that says the same as an old one re
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -74,6 +75,10 @@ def review(calls, lines: list[dict], tools: list[dict], purpose: str = "") -> st
         else "(none: no tool was used on this call)"
     )
     known = "\n".join(f"- {x}" for x in lessons(app)) or "(none yet)"
+    try:  # what's on their lists now, with the ids the tools take
+        state = json.dumps(calls.pending(), ensure_ascii=False, default=str)[:6000]
+    except Exception:  # a feature's brief failing mustn't stop the look back
+        state = "(couldn't be read)"
     prompt = f"""You are reviewing a phone call {name} (the voice assistant) just had with its user, to catch what
 slipped through and to make the next calls better. Speech recognition on calls is imperfect: read past garbled words.
 
@@ -85,14 +90,22 @@ The transcript:
 Tools the call used, with what they returned:
 {used}
 
+Their lists right now, with ids (deadlines, reminders, check-ins, calls):
+{state}
+
 What calls already know (don't repeat these):
 {known}
 
 Do this:
-1. Find everything the user asked for, or said that clearly needed doing, that the call didn't actually do: a request
-   it misheard, forgot, promised without a tool call, or a tool that failed. Do those now with your tools when they're
-   safe to do without asking (a reminder, a note, a deadline, a journal line, an answer they wanted). Anything that
-   sends a message, places a call, deletes or spends: don't do it, list it.
+1. Go through every change the user asked for on the call, one by one: something done or submitted, cancelled or not
+   happening, moved to a new date, added, renamed, a reminder or call set or changed. For each, check the tool log
+   above: did the right tool run, on the right item, and did it answer that it worked? The list right now shows the
+   result. Calls often say "done" when no tool ran, or use the wrong tool: ignore_topic or remember for "I don't have
+   that quiz" (that's remove_deadline), remember for "I have a quiz on Thursday" (that's add_deadline, or the existing
+   one is right). Fix each one now with the right tool (mark_deadline_done, remove_deadline, move_deadline,
+   add_deadline, reminders, unignore_topic to undo a wrong ignore_topic). Also do anything else they asked for that
+   slipped through (a reminder, a note, a journal line, an answer they wanted). Anything that sends a message, places a
+   call or spends: don't do it, list it.
 2. Think about how the call itself could have gone better (it misunderstood something, asked too much, missed a cue,
    talked too long, used the wrong tool). Write 0 to 3 lessons: short, general instructions for future calls, in the
    imperative ("When they say 'after class', ask when class ends before setting the reminder."). No names or details

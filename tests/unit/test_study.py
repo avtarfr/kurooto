@@ -11,6 +11,8 @@ import pytest
 
 from kurooto.core import notinterested as ni
 from kurooto.core.clock import now
+from kurooto.core.lock import Lock
+from kurooto.core.state import jsave
 from kurooto.modules import recurring
 from kurooto.modules.calls import deploy
 from kurooto.modules.deadlines import did, due_from, similar
@@ -443,3 +445,50 @@ def test_plain_english_variants_and_older_lists(study):
     study.press(f"dl:{i}:ignore")
     assert study.say(f"/due {(now() + dt.timedelta(days=2)):%Y-%m-%d} essay").startswith("Already on the list")
     assert dl.items()[i]["status"] == "open"  # you added it yourself after all
+
+
+# ------------------------------------------------- what a morning call got wrong (2026-10-23)
+def test_a_course_page_names_its_subject_so_its_quiz_isnt_merged_into_another_subjects(study):
+    import datetime as dt
+
+    dl = study.app.modules["deadlines"]
+    assert dl.subject_of("Quiz-04 (2026-10-22)", "maps/courses/topology.md") == "topology"
+    day = (dt.date.today() + dt.timedelta(days=5)).isoformat()
+    with Lock(study.app.paths.state, "deadlines"):
+        items = dl.items()
+        a, _ = dl._put(items, "Quiz", f"{day}T10:00:00", "recurring", kind="exam", subject="linear-algebra")
+        b, new = dl._put(items, "Quiz-04", f"{day}T23:59:00", "notes:x", kind="exam", note="maps/courses/topology.md")
+    assert new and a != b and items[b]["subject"] == "topology"
+
+
+def test_a_bare_quiz_title_gets_its_subject_and_a_past_quiz_is_over_not_overdue(study):
+    import datetime as dt
+
+    dl = study.app.modules["deadlines"]
+    day = (dt.date.today() + dt.timedelta(days=5)).isoformat()
+    with Lock(study.app.paths.state, "deadlines"):
+        items = dl.items()
+        i, _ = dl._put(items, "Quiz", f"{day}T10:00:00", "recurring", kind="exam", subject="linear-algebra")
+        j, _ = dl._put(
+            items, "Linear Algebra: Quiz", f"{day}T10:00:00", "recurring", kind="exam", subject="linear-algebra"
+        )
+        past = (dt.datetime.now() - dt.timedelta(hours=3)).replace(microsecond=0).isoformat()
+        k, _ = dl._put(items, "Topology quiz", past, "call", kind="exam", subject="topology")
+        jsave(dl.file, items)
+    assert i == j and dl.items()[i]["title"] == "Linear Algebra: Quiz"  # the fuller name from the same place wins
+    assert k not in [x for x, _, _ in dl.upcoming()]  # yesterday's quiz isn't "overdue"
+    assert dl.full_title({"title": "Quiz", "subject": "topology"}) == "Topology: Quiz"
+
+
+def test_a_call_can_remove_a_deadline_that_isnt_happening_and_it_stays_removed(study):
+    import datetime as dt
+
+    dl = study.app.modules["deadlines"]
+    due = dt.datetime.now() + dt.timedelta(days=3)
+    dl.add("Topology: Quiz", due, source="recurring", kind="exam", subject="topology")
+    i = next(k for k, it in dl.items().items() if it["title"] == "Topology: Quiz")
+    tool = next(t for t in dl.call_tools() if t.name == "remove_deadline")
+    assert "Dropped" in str(tool.run({"id": i}))
+    dl.add("Topology: Quiz", due, source="recurring", kind="exam", subject="topology")  # the next scan finds it again
+    assert all(it["status"] != "open" for it in dl.items().values() if it["title"] == "Topology: Quiz")
+    assert {"remove_deadline", "unignore_topic"} <= {t.name for t in dl.call_tools()}
