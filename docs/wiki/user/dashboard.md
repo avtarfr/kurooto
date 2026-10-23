@@ -644,3 +644,5 @@ happens; a dot along a nerve is something arriving (into the core) or Kurooto ac
 for no one feature; a grey dashed cell isn't running. In NOTES each dot is a note (bigger with more links), lines are
 links and colours are neighbourhoods (one per course or subject folder). It also says what Study mode is. `?` again
 or Esc closes it.
+
+**Processor numbers (0.5.21).** Every processor figure on the board is a share of the whole machine, over a steady window: the CPU total, each process in Processes, "kurooto" in the SYSTEMS header (Kurooto and every program it started: the AI reading your books, the call server, your terminals) and each feature cell's. 100% would be every core busy, so they add up and never pass 100%.

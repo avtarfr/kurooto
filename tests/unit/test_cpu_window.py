@@ -59,3 +59,31 @@ def test_process_use_is_a_share_of_the_whole_machine_over_a_steady_window(monkey
     clock[0] += 0.5
     procs["now"] = [_P(1, 5.0), _P(2, 18.0)]  # a reader half a second later gets the same numbers
     assert {r["pid"]: r["cpu"] for r in s.processes()} == rows
+
+
+def test_kurootos_own_figure_is_a_share_of_the_machine_not_of_one_core(monkeypatch):
+    from kurooto.web import live
+
+    CT = namedtuple("CT", "user system")
+    clock = [10.0]
+    times = {"t": 0.0}
+
+    class P:
+        pid = 7
+
+        def cpu_times(self):
+            return CT(times["t"], 0.0)
+
+        def create_time(self):
+            return 1.0
+
+    monkeypatch.setattr(live.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(live.psutil, "cpu_count", lambda logical=True: 16)
+    v = live.Vitals.__new__(live.Vitals)
+    assert v._share(P()) == 0.0  # the baseline
+    clock[0] += 2.0
+    times["t"] = 6.0  # three cores busy for 2 s: 300% of one core, 18.75% of a 16-thread machine
+    assert abs(v._share(P()) - 6.0 / (2.0 * 16)) < 1e-9
+    clock[0] += 0.5
+    times["t"] = 9.0
+    assert abs(v._share(P()) - 6.0 / (2.0 * 16)) < 1e-9  # inside the window: the same reading

@@ -353,17 +353,37 @@ class Vitals:
             mine.setdefault("awake", set()).add(holder.pid)
         return {"pids": own, "cells": mine, "watched": set(watch)}
 
+    def _share(self, p) -> float:
+        """One process's share of the whole machine (0..1, like the total and the process list), from its own cpu
+        times over at least two seconds and the same for every reader in between: cpu_percent() measured since the
+        last call, so one board refresh after another could read a 10 ms tick as 0.8% or a burst as 300% of a core."""
+        now = time.monotonic()
+        t = p.cpu_times()
+        used, born = (t.user or 0.0) + (t.system or 0.0), p.create_time()
+        seen = getattr(self, "_cpu_seen", None)
+        if seen is None:
+            seen = self._cpu_seen = {}
+        before = seen.get(p.pid)
+        if before and before[0] == born and now - before[1] < 2.0:
+            return before[3]  # inside the window: the last reading
+        share = 0.0
+        if before and before[0] == born and now > before[1]:
+            share = max(0.0, (used - before[2]) / ((now - before[1]) * (psutil.cpu_count() or 1)))
+        seen[p.pid] = (born, now, used, share)
+        return share
+
     def _sum(self, pids: set[int]) -> dict:
-        """cpu (1.0 = one core), memory, threads and uptime of these processes together; {} if none is running."""
+        """cpu (their share of the whole machine, 0..1, the scale the total and the process list use), memory, threads
+        and uptime of these processes together; {} if none is running."""
         cpu = mem = threads = 0
         started = None
         for pid in pids:
             try:
                 p = self._procs.get(pid)
-                if p is None:  # the same object each time: its cpu reading is the use since the last one
+                if p is None:
                     p = self._procs[pid] = psutil.Process(pid)
                 with p.oneshot():
-                    cpu += p.cpu_percent(None) / 100
+                    cpu += self._share(p)
                     mem += p.memory_info().rss
                     threads += p.num_threads()
                     started = min(started or p.create_time(), p.create_time())
