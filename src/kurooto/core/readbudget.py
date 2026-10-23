@@ -17,6 +17,9 @@ to the AI you read with by itself, so the reading never uses up what you need yo
   integrate.price_per_mtok.
 - **The model on this computer** (Ollama, or any service at 127.0.0.1): no budget; the battery rules apply as before.
 
+Each AI has its own record: when the bulk AI is at its limit and another one stands in (brain.fallback,
+providers/fallback.py), the batches it reads count on its own budget and its limits on its own number.
+
 A number in integrate.per_night is a hard ceiling on all of that. The night starts 5 hours before you usually wake
 (the alarm, else availability.night), so a 5-hour window the reading opened has reset when you get up; not before
 bedtime, and never later than integrate.at. A night runs from one night's start to the next.
@@ -350,20 +353,24 @@ class Budget:
             self._save(data)
 
     def seen(self, job, result) -> None:
-        """A concept-graph request came back: note a limit the bulk AI hit (also one the job's stand-in answered
-        for: core/jobs.py lists every limit in result.usage["limits"]), and what an API key's answer cost."""
+        """A concept-graph request came back: note each limit hit on the way, on the record of the AI that hit it
+        (the bulk AI's, and a stand-in's of its own: core/jobs.py lists every limit in result.usage["limits"]), and
+        what an API key's answer cost, on the AI that answered. A stand-in's reading never counts against the bulk
+        AI's budget, nor its limit against the bulk AI's number."""
         bid = self.bulk() or ""
-        if not bid:
-            return
         usage = getattr(result, "usage", None) or {}
-        hits = [h for h in usage.get("limits") or [] if isinstance(h, dict) and h.get("brain") == bid]
+        hits = [h for h in usage.get("limits") or [] if isinstance(h, dict) and h.get("brain")]
         verdict = str(getattr(getattr(result, "verdict", None), "value", ""))
-        if not hits and verdict == "rate_limited" and getattr(job, "brain", None) in (bid, None):
-            hits = [{"brain": bid, "retry_after_s": result.retry_after_s, "detail": result.detail}]
-        for h in hits[:1]:  # one request, one limit
-            self.hit(bid, h)
-        if getattr(job, "brain", None) == bid and verdict == "ok" and kind(self.brain(bid)) == "money":
-            self.spend(bid, cost_of(usage, self.setting("price_per_mtok")))
+        who = getattr(job, "brain", None) or bid
+        if not hits and verdict == "rate_limited" and who:
+            hits = [{"brain": who, "retry_after_s": result.retry_after_s, "detail": result.detail}]
+        done = set()
+        for h in hits:  # one limit per AI per request
+            if h["brain"] not in done:
+                done.add(h["brain"])
+                self.hit(h["brain"], h)
+        if who and verdict == "ok" and kind(self.brain(who)) == "money":
+            self.spend(who, cost_of(usage, self.setting("price_per_mtok")))
 
     def hit(self, bid: str, h: dict) -> dict | None:
         """The bulk AI hit a limit: which one (by how far away its reset is), halve the learned number (a weekly limit

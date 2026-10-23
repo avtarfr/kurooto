@@ -635,6 +635,8 @@ class Vitals:
                     "seconds": j.seconds,
                     "created": j.created,
                     "brain": j.brain,
+                    "model": j.model,  # the model that answered, and the run receipt (who decided, who answered)
+                    "receipt": j.receipt or "",
                 }
                 for j in jobs
             ],

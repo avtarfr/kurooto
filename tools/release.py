@@ -314,7 +314,17 @@ def app_pointers(site: Path, base: str, version: str, app: dict, channel: str, k
         print(f"android.json keeps the newer app (code {now}); android-{channel}.json names {app['versionName']}")
 
 
+def fresh_docs() -> None:
+    """Refuse to build a release whose generated docs are older than the code: the AI's own manual
+    (src/kurooto/data/ai-manual.md, tools/gen_ai_manual.py) and the settings guide."""
+    for tool, what in (("gen_ai_manual.py", "the AI's manual"), ("gen_settings_guide.py", "the settings guide")):
+        r = subprocess.run([sys.executable, str(ROOT / "tools" / tool), "--check"], capture_output=True, text=True)
+        if r.returncode != 0:
+            raise SystemExit(f"{what} is out of date: python tools/{tool}, then commit it. {r.stderr.strip()}")
+
+
 def build(site: Path, base: str, version: str | None, notes: str, break_run: bool, critical=False) -> str:
+    fresh_docs()
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "src"
         shutil.copytree(

@@ -100,9 +100,11 @@ class OpenAICompat(Brain):
     def chat(self, messages: list[dict], effort: str = "medium", timeout: float = 120) -> Result:
         res, msg, usage = self._turn(messages, effort, timeout)
         if res is not None:
+            res.model = res.model or self.models.get(effort) or self.models.get("medium") or ""
             return res
         text = (msg.get("content") or "").strip()
         out = Result(Verdict.OK if text else Verdict.EMPTY, text, msg["_secs"], usage=usage)
+        out.model = msg.get("_model") or self.models.get(effort) or self.models.get("medium") or ""
         return out
 
     def _turn(self, messages: list[dict], effort: str, timeout: float, tools: list | None = None, choice: str = ""):
@@ -164,6 +166,7 @@ class OpenAICompat(Brain):
         except (KeyError, IndexError, TypeError, AttributeError):
             return Result(Verdict.ERROR, "", secs, f"unexpected reply: {str(data)[:300]}"), {}, {}
         msg["_secs"] = secs
+        msg["_model"] = str(data.get("model") or model or "")  # the model that answered (the run receipt names it)
         return None, msg, data.get("usage") or {}
 
     def complete(self, prompt: str, system: str = "", effort: str = "low", timeout: int = 60) -> Result:
@@ -211,7 +214,9 @@ class OpenAICompat(Brain):
             if res is not None:
                 res.seconds = time.monotonic() - t0
                 res.usage = {**usage, "tool_calls": len(used)}
+                res.model = res.model or self.models.get(task.effort) or self.models.get("medium") or ""
                 return res
+            model = msg.get("_model") or ""
             for k, v in u.items():
                 if isinstance(v, int):
                     usage[k] = usage.get(k, 0) + v
@@ -223,7 +228,9 @@ class OpenAICompat(Brain):
                 usage.update(tool_calls=len(used), tools_used=sorted(set(used)))
                 if not text and calls:
                     return Result(Verdict.ERROR, "", time.monotonic() - t0, f"still calling tools after {rnd} rounds")
-                return Result(Verdict.OK if text else Verdict.EMPTY, text, time.monotonic() - t0, usage=usage)
+                return Result(
+                    Verdict.OK if text else Verdict.EMPTY, text, time.monotonic() - t0, usage=usage, model=model
+                )
             for i, c in enumerate(calls):
                 c["id"] = c.get("id") or f"call_{rnd}_{i}"  # some local servers leave it out
             msgs.append({"role": "assistant", "content": msg.get("content") or None, "tool_calls": calls})

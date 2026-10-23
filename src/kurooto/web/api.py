@@ -114,7 +114,7 @@ class Api:
 
     def _brains(self) -> list[dict]:
         rows, order = [], list(BRAIN_ORDER)
-        if "freellmapi" in (self.app.settings.get("brain.main"), self.app.settings.get("brain.fallback")):
+        if "freellmapi" in (self.app.settings.get("brain.main"), *providers.fallback.chosen(self.app)):
             order.append(("freellmapi", "Set up with an earlier version of Kurooto; it keeps working."))  # not offered
         for i, (bid, why) in enumerate(order):
             b = providers.build(self.app, bid)

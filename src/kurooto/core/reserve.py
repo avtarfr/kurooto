@@ -10,6 +10,9 @@ Files, in <state>/reserve/ (one more folder an AI may read: core/places.py):
     settings.md     every setting that differs from its default, and which features are on (never a secret)
     addons.md       your add-ons and whether each loaded
     agent-guide.md  what an AI program may read, write and run here, the tools it has, and the chat commands
+    ai-manual.md    how Kurooto works, for its AI (a copy of the shipped data/ai-manual.md)
+    self.md         what Kurooto is running here: version, AIs and models, features and their health, the last day's
+                    failures (core/selfdoc.py; written when it's out of date, not counted as a change here)
 
 They're rewritten when something changes and every 10 minutes (`kurooto reserve` does it now); a file is only
 written when its text changed, so nothing churns. Nothing here is ever read back by Kurooto.
@@ -159,6 +162,9 @@ def guide_md(app: App) -> str:
             f"- {folder(app) / 'calendar.md'}: the next two weeks",
             f"- {folder(app) / 'settings.md'}: settings and which features are on",
             f"- {folder(app) / 'addons.md'}: your add-ons",
+            f"- {folder(app) / 'self.md'}: what Kurooto is running (version, AIs and models, features and their "
+            "health, the last day's failures): read it for any question about Kurooto itself",
+            f"- {folder(app) / 'ai-manual.md'}: how Kurooto works and what you may and may not do",
             "",
             "## Chat commands",
             *[f"    {ln}" for ln in cmds[:80]],
@@ -173,7 +179,14 @@ BUILDERS = {
     "settings.md": settings_md,
     "addons.md": addons_md,
     "agent-guide.md": guide_md,
+    "ai-manual.md": lambda app: _manual(),
 }
+
+
+def _manual() -> str:
+    from kurooto.core.selfdoc import manual_text
+
+    return manual_text()
 
 
 def start(app: App) -> None:
@@ -206,4 +219,7 @@ def refresh(app: App) -> list[str]:
             text = f"# {name}\n\nCouldn't be written: {type(e).__name__}.\n"
         if write_if_changed(folder(app) / name, text):
             changed.append(name)
+    from kurooto.core import selfdoc  # self.md: written when out of date (it carries its own time)
+
+    selfdoc.refresh(app)
     return changed

@@ -421,7 +421,10 @@ def effort_plan(app: App, st: dict) -> tuple[dict, Change | None] | None:
 
 # --------------------------------------------------------------------------------------- fallbacks
 def _brains(app: App) -> tuple[str, str] | None:
-    m, f = app.settings.get("brain.main") or "", app.settings.get("brain.fallback") or ""
+    from kurooto.providers import fallback
+
+    m, picked = app.settings.get("brain.main") or "", fallback.chosen(app)  # brain.fallback: one AI or a list
+    f = picked[0] if picked else ""  # brain.fallback_first moves the first of them ahead of the main AI
     return (m, f) if m and f and m != f else None
 
 

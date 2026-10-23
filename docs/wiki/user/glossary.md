@@ -28,7 +28,7 @@ Words this wiki uses, in plain terms. Back to the [wiki's front page](index.md).
 | **Evening bundle** | One message at 20:00 listing what waited because the day's limit was reached (or because you chose "Another time"). |
 | **Exam mode** | Turns on by itself for a subject two weeks before its quiz or exam: more practice, calls know about it. |
 | **Exam season** | An optional feature (off, in no preset) for the whole exam period: alarm checks, exam-eve questions, an alarm to leave, debriefs. See [Quiz and exams](quiz-and-exams.md). |
-| **Fallback brain** | A second AI that answers when your main one hits its limit (`brain.fallback`). |
+| **Fallback brain** | A second AI that answers when your main one hits its limit (`brain.fallback`; or a list of them; with none picked, Claude Code and agy stand in for each other at a limit). |
 | **Feature** | One part of Kurooto you can turn on or off on the dashboard's Features page. Everything is off until you turn it on. |
 | **Fine-grained token** | A GitHub access key limited to one repository; Notes sync and Profile sync use one. |
 | **Focus** | Do-not-disturb: calls are held and messages that can wait are kept until it ends (`/focus 2h`). |
@@ -54,6 +54,7 @@ Words this wiki uses, in plain terms. Back to the [wiki's front page](index.md).
 | **Repository (repo)** | A folder kept with its full history on GitHub. Notes sync uses a private one. |
 | **Reserve, the** | Plain Markdown copies of Kurooto's state (alarm, deadlines, calendar, settings) that AI programs can read. Also: the end of the AI's free daily limit kept back for what you're waiting on. |
 | **Routine** | A command or request that runs on a schedule (`/every monday 9:00 /journal plan my week`). |
+| **self.md** | What Kurooto is running (version, AIs and models, features and their health, recent failures), kept for its AI to read before answering a question about Kurooto itself. |
 | **Setting** | A named option such as `deadlines.ping_h`, changed on the dashboard's Settings page. The part before the dot is the section. |
 | **Skill** | Ready-made instructions for your AI, run as a command (`/journal`, `/study-log`, `/pack`). See [Skills and routines](skills-and-routines.md). |
 | **Start-by date** | The day Kurooto estimates you should start working on a deadline, from its size and your free time. |

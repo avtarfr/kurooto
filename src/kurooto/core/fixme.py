@@ -11,9 +11,9 @@ A check with a fix (health's FIXES) gets its Fix button (health:<id>:fix); where
 `/fixme fix <id>` runs it. /fixme <words> ("/fixme the phone doesn't ring") matches the words against the rows too.
 /fixme now asks online services as well (like /health now); `kurooto fixme` always does.
 
-Your AI only explains, and only after: /fixme ai (or Ask my AI under the answer) sends the last answer to it, offered
-only when it looks like it works. The rule-based answer never waits for it. State: state/fixme.json (the last answer,
-for /fixme ai). Events: fixme.
+Your AI only explains, and only after: /fixme ai (or Ask my AI under the answer) sends the last answer to it, with
+what Kurooto is running (core/selfdoc.py: no contents, no secrets), offered only when it looks like it works. The
+rule-based answer never waits for it. State: state/fixme.json (the last answer, for /fixme ai). Events: fixme.
 """
 
 from __future__ import annotations
@@ -350,10 +350,14 @@ def explain(app: App, msg: Incoming | None = None) -> str:
     if not ok:
         return f"Your AI doesn't look like it works right now ({why}), so the rules' answer is all there is."
     asked = f' They said: "{last["text"]}".' if last.get("text") else ""
+    from kurooto.core import selfdoc  # what this Kurooto is running (no contents, no secrets: core/selfdoc.py)
+
+    running = selfdoc.refresh(app)[: selfdoc.CONTEXT_MAX]
     prompt = (
         f"{app.name}'s /fixme found the following by fixed rules, without an AI.{asked} Explain in a few plain "
         "sentences what is most likely wrong and which step to take first. Don't run commands or change settings; "
-        f"say if the rules' answer looks wrong.\n\n{last['answer']}"
+        f"say if the rules' answer looks wrong.\n\n{last['answer']}\n\nWhat {app.name} is running on this computer "
+        f"(use it to check the rules' answer):\n{running}"
     )
     terminal = msg is not None and msg.via not in TAPS
     reply = None if msg is None or terminal else msg.message_id

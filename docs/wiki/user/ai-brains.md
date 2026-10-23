@@ -74,15 +74,31 @@ page's **Test it** asks the AI for a reply and says what to do if it fails:
 - `brain.fallback`: another one that takes over when the main one is at its limit, signed out, refused the request,
   failed or gave no answer. Empty means none. Set it in Dashboard → Settings → brain.
 
-When the fallback answers, the answer says so in one line. Two more rules:
+When the fallback answers, the answer says so in one line. Three more rules:
+
+- **At a limit, the other AI answers (0.5.22).** When Claude Code hits its limit (its 5-hour window or the weekly
+  cap), the request goes to agy, and the other way round; a Gemini key you saved comes after them. The run receipt
+  says so: *Claude Code hit its limit; agy answered · 3.8-flash · medium · 40 s*. The AI at its limit is then skipped
+  until it resets (the time it said, like "resets 3pm"; otherwise half an hour, then an hour, up to 5 hours), so the
+  next requests go straight to the other one without waiting for a refusal. An AI only stands in once it has answered
+  on this computer (a request, or the setup page's test). That's the automatic order, used when you haven't picked a
+  fallback: `brain.fallback` can also be a list (`["agy", "gemini"]`), which then is the order, tried on any failure.
+  `brain.fallback_on` sets what moves a request on: `rate_limited` (the default), and also `auth` (signed out) and
+  `timeout` if you add them; `[]` turns the automatic order off. The
+  concept graph's reading and second looks move the same way, and what a stand-in reads counts on its own nightly
+  budget, not the other AI's. `/usage` and `/brain` show who is at a limit and until when.
+  Two things aren't a fallback: with the internet down, a request waits for it (the
+  [offline helper](your-computer.md#the-offline-helper)) instead of going to the next AI; and dreaming may learn that
+  your first fallback does better at some effort level and try it first there (`brain.fallback_first`, with Undo).
 
 - **A free Gemini key stretches further:** when one Gemini model's free daily limit is used up, the next model of the
   same family answers (`gemini-flash-latest`, `gemini-flash-lite-latest`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`).
   Smaller or older models answer less well, so the answer says which one it was: "(Answered with ...: ...'s free limit
   for today was used up.)"
 - **Last resort:** if your main brain is a Gemini key and nothing else can answer, the request goes to an agent
-  program (agy or Claude Code) that is installed and has worked on this computer before. The other way round never
-  happens: an agent program doesn't fall back to your free Gemini key, because its limit is small and kept for calls.
+  program (agy or Claude Code) that is installed and has worked on this computer before. The other way round happens
+  only at a limit, in the automatic order: a refusal, an empty answer or an error from an agent
+  program doesn't go to your free Gemini key, because its limit is small and kept for calls.
 
 ## How hard it thinks (effort)
 
@@ -198,7 +214,7 @@ your message. Answers longer than about 7,000 characters also come as a file.
 | Reply | Meaning |
 |---|---|
 | "... isn't signed in any more (or its key stopped working)" | Open the setup page (`kurooto open`) → AI → sign in again. |
-| "... has hit its usage limit for now" | Wait, or set a fallback (`brain.fallback`). |
+| "... has hit its usage limit for now" | The other AI program answers meanwhile if it's set up (no fallback picked, or `brain.fallback``); otherwise wait, or set a fallback (`brain.fallback`). |
 | "The AI stopped without an answer: it tried something unattended runs aren't allowed to do" | Rephrase it, or do that part yourself. |
 | "The AI gave no answer this time" | Try rephrasing. |
 | "No answer in time; the request was stopped" | It ran past `brain.timeout_min`. Ask with `low:` or split it up. |
@@ -211,12 +227,19 @@ When Kurooto stops (shutdown, update), running requests stop where they are and 
 Every answer from your AI ends with one short line, in italics on Telegram and as plain text in the dashboard and the
 terminal:
 
-*agy · medium · 42 s · 12% of today's limit · searched notes, wrote 1 note, set 1 reminder*
+*agy · 3.8-flash · medium · 42 s · 12% of today's limit · searched notes, wrote 1 note, set 1 reminder*
 
 It's built from Kurooto's own record of the run, never from the answer's words, so an AI that says "I've added it to
 your notes" without using a tool for it shows up: the line says what it did.
 
-- **Which AI and effort**: the one that answered (a fallback, if the main one couldn't), and how hard it thought.
+- **Which AI, which model and effort**: the one that answered (a fallback, if the main one couldn't), the model it
+  actually ran with, shortened (agy: the `--model` it was started with, `gemini-3.8-flash-medium` → `3.8-flash`;
+  Claude Code: the model it says it used, `claude-opus-4-5-...` → `opus-4.5`, or the one it was given), and how hard
+  it thought.
+- **Who decided**: when a small model picked the effort (`brain.classify`) and it isn't the one that answered, the
+  line starts with it: *decided by gemma4:e4b, answered by Claude Code · opus-4.5 · high · 2 min · ...*.
+- **Who stood in**: *Claude Code hit its limit; agy answered · ...*, or *Claude Code is at its limit until 15:00; agy
+  answered · ...* when the limited one was skipped.
 - **Time**: from the start of the run to the answer, fallback tries included.
 - **Share of today's limit**: only when Kurooto knows the limit (learned from a "limit reached" answer, or set in
   `quota.limits`); `/usage` shows them all.
@@ -226,7 +249,27 @@ your notes" without using a tool for it shows up: the line says what it did.
   was used but failed still counts.
 
 Failed requests get it too. Quiet background work that doesn't message you (the look back, the concept graph) gets
-none. Turn it off with `jobs.receipt` = `false` (Settings → AI jobs).
+none. Turn it off with `jobs.receipt` = `false` (Settings → AI jobs). `/jobs` and the dashboard's AI jobs page show the
+AI and model of each finished request too (the receipt is the result's tooltip there).
+
+## Your AI knows what's running
+
+Ask it "why didn't my alarm ring?", "which model answered that?" or "is Claude at its limit?" and it answers from the
+facts: Kurooto keeps a short page of what it's running, `self.md` in its reserve folder (state folder → `reserve/`),
+which your AI reads first for any question about Kurooto itself:
+
+- Kurooto's version and update channel, this computer's system and hardware profile;
+- the AIs set up, their models, the fallback order, any at a limit and until when, today's counts;
+- each feature that's on and whether its health check passes, and which are off;
+- the last day's failures, counted by kind (a request that hit a limit, a sync that failed: never what it was about);
+- where the log and settings are, and what to send to look further (`/health`, `/fixme`, `kurooto doctor`).
+
+It holds no messages, notes, request titles or secrets. It's written at start, every 10 minutes when something
+changed, and when it's read after the version, the features, the AI settings or the update channel changed. Beside it
+is a manual for the AI (how Kurooto works, what it may and may not do), shipped with each version. Your AI reads them
+with the tool `kurooto_self`; agent programs also get them as `kurooto://self` and `kurooto://manual` through `kurooto
+mcp`; `/fixme`'s **Ask my AI** sends `self.md` along. It goes to the AI you picked only with a question about Kurooto
+itself, never with your other requests.
 
 ## The plan line
 
@@ -262,14 +305,15 @@ Dashboard → Settings → brain (and quota, jobs, you):
 | Setting | Default | Effect |
 |---|---|---|
 | `brain.main` | empty | the AI that handles requests: `agy`, `gemini`, `claude`, `ollama` or `custom` |
-| `brain.fallback` | empty | the AI that takes over when the main one can't answer |
+| `brain.fallback` | empty | the AI that takes over when the main one can't answer, or a list of them in order (`["agy", "gemini"]`); empty: at a limit, the other agent program, then a Gemini key |
+| `brain.fallback_on` | `["rate_limited"]` | what moves a request on to the automatic order: `rate_limited`, `auth`, `timeout` (`[]`: off) |
 | `brain.classify` | `rules` | who judges how hard a request is: `rules`, `main` or `ollama` |
 | `brain.models` | `{}` | models per brain and effort, e.g. `{"custom": {"low": "...", "medium": "...", "high": "..."}}`, `{"claude": {"high": "opus"}}` |
 | `brain.base_urls` | `{}` | override a preset's address |
 | `brain.timeout_min.low` / `.medium` / `.high` | `10` / `15` / `30` | minutes a request may run |
 | `brain.agy.io_mode` | `pipe` | how Kurooto talks to agy (leave it unless agy gives no output) |
 | `jobs.stuck_min` | `10` | minutes without progress before a request is stopped (Settings → AI jobs) |
-| `jobs.receipt` | `true` | the run receipt: one quiet line under each answer saying which AI, effort, time, limit used and what it did |
+| `jobs.receipt` | `true` | the run receipt: one quiet line under each answer saying which AI and model, who decided, who stood in, effort, time, limit used and what it did |
 | `you.language` | `follow` | answer in the language you write in, or always in the one named |
 
 **What leaves your computer:** what you ask, and the notes and files the AI reads for it, go to the AI service you

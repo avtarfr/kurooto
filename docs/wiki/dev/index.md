@@ -27,6 +27,8 @@ Every claim points at code as `path:symbol` (paths under `src/kurooto/` unless t
    space keeper, hardware profiles, locks, Windows notes.
 4. [brains.md](brains.md): the brain interface, each provider, effort, fallback, the tools AI gets, MCP, allow-lists,
    adding a brain.
+   [self-manual.md](self-manual.md): what the AI is told about Kurooto itself (`self.md`, the shipped AI manual, the
+   `kurooto_self` tool and MCP resources) and the check that keeps the manual current each release.
 5. [modules.md](modules.md): writing a feature (with a worked example), lifecycle, listing and enabling, add-ons, and
    a reference of every module.
 6. [web.md](web.md): the HTTP server, auth, every API route, live events, the front end, the Today page actions.

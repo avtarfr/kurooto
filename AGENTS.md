@@ -76,6 +76,13 @@ Running the installer again repairs an installation.
 
 ## Where to look
 
+- **Start here: what it's running.** `self.md` in the state folder's `reserve/` (`kurooto paths` shows the state
+  folder): the version and update channel, this computer's hardware profile, the AIs and models set up (fallback
+  order, any at a limit and until when), each feature that's on and whether its health check passes, the last day's
+  failures by kind, and where the log and settings are. No messages or secrets. Beside it, `ai-manual.md`: how Kurooto
+  works and what an AI may and may not do. With `kurooto mcp` added to your MCP settings they're the resources
+  `kurooto://self` and `kurooto://manual`, and the tool `kurooto_self`. They're written at start and when something
+  changes; `kurooto reserve` writes them now.
 - **Settings:** `settings.json` in the settings folder (`kurooto paths`). Read it to understand the setup; change
   settings through the dashboard (Settings tab).
 - **Log:** `kurooto.log` in the logs folder (`kurooto logs` prints the end). The newest lines are at the end.
@@ -109,8 +116,12 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
 - **"The bot doesn't answer":** `kurooto doctor`. Turned off (`off.json` in the state folder) → ask, then
   `kurooto on`. Paused → `/resume` on Telegram or `kurooto resume`. Not running → `kurooto start`. The computer asleep → suggest the
   "Stay awake on charger" feature. Chat off → free text needs the Chat feature.
-- **"It says I'm at my limit":** free AI tiers have daily limits. Suggest setting a fallback AI in Settings
-  (`brain.fallback`), for example a Gemini key (free tier: see `docs/PRIVACY.md`).
+- **"It says I'm at my limit":** free AI tiers have daily limits. When both agy and Claude Code are set up (each has
+  answered once, the setup page's Test counts), one stands in for the other at a limit by itself
+  (unless `brain.fallback` names other AIs); `self.md` and `/usage` say who is waiting and until when. Otherwise suggest setting a
+  fallback AI in Settings (`brain.fallback`), for example a Gemini key (free tier: see `docs/PRIVACY.md`).
+- **"Which AI answered that?":** the last line under each answer (the run receipt) names the AI and model, and who
+  stood in; `kurooto jobs` lists the last few with their AI and model.
 - **"My phone doesn't ring":** in the Kurooto Android app, every checklist item should be ✓ (battery unrestricted,
   notifications, full-screen calls). On Samsung/Xiaomi/Oppo/Vivo/OnePlus/Huawei, take it off "sleeping apps". Then
   dashboard → Phone → "Ring my phone". iPhones only get notifications, not rings.

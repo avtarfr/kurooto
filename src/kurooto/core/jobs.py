@@ -55,7 +55,7 @@ from kurooto.core.state import owner_only
 from kurooto.core.tools import agent_tools, run_tool
 from kurooto.providers import effort as effort_mod
 from kurooto.providers.agy import Agy
-from kurooto.providers.base import Result, Task, Verdict
+from kurooto.providers.base import Result, Task, Verdict, short_model
 from kurooto.providers.context import headless_context
 
 if TYPE_CHECKING:
@@ -96,7 +96,7 @@ DENIED_HELP = Agy.denied_help  # what an AI that was refused says (providers/agy
 SHORT = {"agy": "agy", "gemini": "your Gemini key", "claude": "Claude Code"}
 NAMES = {**SHORT, "gemini": "Gemini", "ollama": "Ollama", "custom": "your AI service", "freellmapi": "your AI service"}
 GAVE_UP = "It waited for the internet connection"  # the start of the message when a request waited too long
-RECEIPT_MAX = 120  # the run receipt is one line, at most this long
+RECEIPT_MAX = 160  # the run receipt is one line, at most this long (who decided and answered, with models)
 # the run receipt's "what it did", from its tool log: a tool -> (what it did, the thing it counts; "" = said once)
 ACTS = {
     "search_notes": ("searched notes", ""),
@@ -162,6 +162,8 @@ class Job:
     lane: str = "you"
     not_before: float | None = None
     background: bool = False
+    model: str | None = None  # the model that answered (agy's --model, Claude Code's own report)
+    receipt: str | None = None  # the run receipt
 
 
 def _process(pid: int) -> str:
@@ -204,6 +206,7 @@ class Jobs:
         self.watchers: list = []
         self.steps: dict[str, list[dict]] = {}  # a running request's tool log (note_step), dropped when it ends
         self.recalled: dict[str, int] = {}  # a running request's remembered items (core/assembler.py), for its receipt
+        self.decided: dict[str, dict] = {}  # a running request's quick decision (its effort): who made it, its model
         if "background" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # older databases
             self._db.execute("alter table jobs add column background integer default 0")
         if "runner" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # which process runs it
@@ -226,11 +229,12 @@ class Jobs:
             ("corrected", "text"),
             ("held", "real"),
             ("held_until", "real"),
+            ("model", "text"),
         ):
             if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline;
                 # the AI it was pinned to; the run receipt; what picked its effort and your words when you said its
                 # answer missed (both for Dream RSI part three, core/tuning.py); when it first waited for the
-                # internet, and until when (core/helper.py)
+                # internet, and until when (core/helper.py); the model that answered
                 self._db.execute(f"alter table jobs add column {col} {kind}")
         self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
         self._lanes: dict[str, tuple[str, threading.Thread]] = {}  # lane -> (job, the thread running it)
@@ -318,7 +322,7 @@ class Jobs:
 
     @staticmethod
     def _job(r) -> Job:
-        return Job(*r[:9], bool(r[9]), *r[10:14], r[14] or "you", r[15], bool(r[16]))
+        return Job(*r[:9], bool(r[9]), *r[10:14], r[14] or "you", r[15], bool(r[16]), r[17], r[18])
 
     def get(self, jid: str) -> Job | None:
         row = self._read(f"select {self._cols} from jobs where id=?", (jid,))
@@ -374,7 +378,7 @@ class Jobs:
 
     _cols = (
         "id,title,prompt,effort_req,effort,status,verdict,brain,reply_to,quiet,created,seconds,result,started,lane,"
-        "not_before,background"
+        "not_before,background,model,receipt"
     )
 
     # queued, allowed on this power, not waiting for a free limit's reset (core/quota.py) nor for the internet
@@ -451,11 +455,12 @@ class Jobs:
                 pass
 
     # ------------------------------------------------------------------------------------- running
-    def _classifier(self, main):
+    def _classifier(self, main, jid: str | None = None):
         """Who answers "how hard is this": brain.classify's choice; the offline helper (core/helper.py) where the
-        rules would otherwise decide alone (rules, its limit kept for you, the internet down); else the rules (None)."""
+        rules would otherwise decide alone (rules, its limit kept for you or reached, the internet down); else the
+        rules (None). The run receipt names the model that decided (self.decided)."""
         helper = getattr(self.app, "helper", None)
-        quick = helper.classifier() if helper is not None else None
+        quick = self._helper_classifier(helper, jid)
         how = self.app.settings.get("brain.classify") or "rules"
         if how == "rules" or main is None or (helper is not None and helper.holds()):
             return quick
@@ -463,9 +468,33 @@ class Jobs:
         quota = self.app.quota
         if brain is not None and quota.wait_until(quota.pool(brain, "low")) is not None:  # its limit is kept for you
             brain = providers.local(self.app) if quota.setting("local") != "off" else None  # else the helper or rules
+        if brain is not None and providers.fallback.cooling(self.app, brain.id):  # at its limit: the helper or rules
+            return quick
         if brain is None or not brain.available()[0]:
             return quick
-        return lambda q: brain.complete(q, effort="low", timeout=30).text
+
+        def ask(q: str) -> str:
+            r = brain.complete(q, effort="low", timeout=30)
+            if jid and r.ok and r.text:
+                self.decided[jid] = {"brain": brain.id, "model": r.model, "who": who(brain, r.model, "low")}
+            return r.text
+
+        return ask
+
+    def _helper_classifier(self, helper, jid: str | None):
+        """The offline helper's "how hard is this" (None when it isn't ready), noting it as the one that decided."""
+        ask = helper.classifier() if helper is not None else None
+        if ask is None or not jid:
+            return ask
+
+        def decide(q: str) -> str:
+            word = ask(q)
+            if word:
+                tag = str(helper.model().get("tag") or "")
+                self.decided[jid] = {"brain": "helper", "model": tag, "who": who(None, tag, "low")}
+            return word
+
+        return decide
 
     def _run_safe(self, jid: str) -> None:
         """Run a job; a mistake anywhere ends it as failed (and tells you) instead of leaving it "running"."""
@@ -478,6 +507,7 @@ class Jobs:
             self._stops.pop(jid, None)
             self.steps.pop(jid, None)
             self.recalled.pop(jid, None)
+            self.decided.pop(jid, None)
             self.poke()
 
     def _run(self, jid: str) -> None:
@@ -485,7 +515,9 @@ class Jobs:
         stop = self._stops.get(jid) or threading.Event()
         s = self.app.settings
         main = providers.build(self.app, s.get("brain.main") or "")
-        fallback = providers.build(self.app, s.get("brain.fallback") or "")
+        chosen = providers.fallback.chosen(self.app)  # brain.fallback: one AI, or a list of them (yours, in order)
+        fallbacks = [b for k in chosen if (b := providers.build(self.app, k)) is not None]
+        fallback = fallbacks[0] if fallbacks else None
         want = (self._read("select brain_req from jobs where id=?", (jid,)) or [None])[0]
         if want:  # pinned to an AI (a role in the concept graph): another AI program stands in if it can't
             pinned = providers.build(self.app, want)
@@ -499,27 +531,29 @@ class Jobs:
                     None,
                 )
                 main, fallback = pinned, other or fallback
+                fallbacks = [other] if other is not None else fallbacks
         origin = None  # what picked the effort (providers/effort.py); none when it was asked for
         if job.effort_req in ("low", "medium", "high"):
             level = job.effort_req
         else:
-            level, origin = effort_mod.pick_with_origin(job.prompt, self._classifier(main))
+            level, origin = effort_mod.pick_with_origin(job.prompt, self._classifier(main, jid))
             if job.lane == "you":  # tuned while dreaming, for your own requests only (core/tuning.py)
                 level = effort_mod.tuned(level, origin, s.get("brain.effort_map"))
         self._mark(jid, effort_from=origin or "")
         minutes = (s.get("brain.timeout_min") or {}).get(level, 15)
         tools = agent_tools(self.app)
         text_only = bool(self._read("select text_only from jobs where id=?", (jid,))[0])
-        from kurooto.core import assembler  # what's remembered that your message refers to, within its budget
+        from kurooto.core import assembler, selfdoc  # what's remembered that your message refers to, within its budget
 
         memory, self.recalled[jid] = assembler.for_request(self.app, job)
+        extra = "\n\n".join(x for x in (memory, selfdoc.for_request(self.app, job.prompt)) if x)
         task = Task(
             prompt=job.prompt,
             effort=level,
             title=job.title,
             cwd=self.app.workspace,
             timeout_s=minutes * 60,
-            context=headless_context(self.app, memory),
+            context=headless_context(self.app, extra),
             tools=[] if text_only else tools,  # text-only work gets no tools (and agent programs no MCP)
             run_tool=lambda name, args: run_tool(self.app, name, args, tools, job=jid),
             mcp=None if text_only else mcp_command(),
@@ -528,12 +562,25 @@ class Jobs:
             on_process=lambda pid: self._mark(jid, proc=_process(pid)),
             stop=stop,
         )
-        chain = [b for b in (main, fallback) if b is not None]
+        chain = []
+        for b in (main, *fallbacks):  # the AIs you picked take over on any failure, as before
+            if b is not None and b.id not in {c.id for c in chain}:
+                chain.append(b)
         if not want and fallback is not None and level in (s.get("brain.fallback_first") or []):
             chain = [fallback, *[b for b in chain if b is not fallback]]  # tuned while dreaming (core/tuning.py)
         last = self._last_resort(main)
         if last is not None and last.id not in {b.id for b in chain}:
             chain.append(last)
+        # none picked: at a limit (brain.fallback_on) the automatic order takes over (providers/fallback.py)
+        auto = [] if chosen else providers.fallback.candidates(self.app, {b.id for b in chain})
+        chain += auto
+        auto_ids = {b.id for b in auto}
+        on = providers.fallback.triggers(self.app)
+        kept, skipped = providers.fallback.skip_cooling(self.app, chain)  # still at a limit: straight to the next
+        if any(b.id not in auto_ids or "rate_limited" in on for b in kept):  # ...when one that will run is left
+            chain = kept
+        else:
+            skipped = []
         chain, wait = self.app.quota.arrange(chain, level, job.background)  # free limits kept for you (core/quota.py)
         if wait is not None and not chain:
             self._defer(jid, wait)
@@ -552,9 +599,12 @@ class Jobs:
         tried = time.time()
         used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
         limits: list[dict] = []  # every limit hit on the way, also one a stand-in then answered for
+        moved = bool(skipped) and "rate_limited" in on  # a limit already moves this request on
         for i, brain in enumerate(chain):
             if stop.is_set():  # cancelled, or ended by the watchdog: it was told already
                 return
+            if brain.id in auto_ids and not moved:  # the automatic order: only at a limit (or what fallback_on says)
+                continue
             ok, why = brain.available()
             if not ok:
                 result, used = Result(Verdict.ERROR, detail=why), brain
@@ -580,12 +630,25 @@ class Jobs:
                 limits.append(
                     {"brain": brain.id, "retry_after_s": result.retry_after_s, "detail": result.detail[-500:]}
                 )
+                providers.fallback.cool(self.app, brain.id, result)  # skipped until its reset (or a back-off)
+            elif result.ok and providers.fallback.cooling(self.app, brain.id):
+                providers.fallback.clear(self.app, brain.id)  # it answered before the reset we thought
             if brain.kind == "cli" and result.ok:
                 brain.mark_worked(self.app)
-            if result.verdict not in RETRY:
+            if (
+                result.verdict in (Verdict.ERROR, Verdict.TIMEOUT)
+                and helper is not None
+                and not helper.here(brain)
+                and helper.lost(tried)
+            ):
+                break  # the connection went: the request waits for it (below); that's no fallback case
+            hand_on = result.verdict.value in on
+            moved = moved or hand_on
+            if result.verdict not in RETRY and not hand_on:
                 break
             first = first or (brain, result)
-            self._problem(brain, result, chain[i + 1] if i + 1 < len(chain) else None, level)
+            nxt = next((b for b in chain[i + 1 :] if b.id not in auto_ids or moved), None)
+            self._problem(brain, result, nxt, level)
         if limits:  # the follow-up sees them (the concept graph's reading budget: core/readbudget.py)
             result.usage = {**result.usage, "limits": limits}
         if wait is not None and not result.ok:  # moved to the model here, which couldn't: it waits for the reset
@@ -597,9 +660,13 @@ class Jobs:
             and helper is not None
             and not (used is not None and helper.here(used))
             and helper.lost(tried)
-        ):  # the connection went while it tried: it waits for it to come back
+        ):  # the connection went while it tried: it waits for it to come back (not another AI's turn)
             self._hold(jid, job)
             return
+        fell = ""  # who couldn't and who answered instead, for the run receipt
+        before = first[0] if first else skipped[0][0] if skipped else None
+        if used is not None and result.ok and before is not None and before is not used:
+            fell = handed(first, None if first else skipped[0], used)
         if last is not None and used is last and result.ok and first:
             note = f"(Answered with {SHORT.get(last.id, last.label)}: {_why(*first)}.)"
             result.usage = {**result.usage, "note": note}
@@ -615,11 +682,12 @@ class Jobs:
         ):
             result.detail = used.denied_help
         ok = result.ok
-        receipt = self._receipt(jid, used, level, time.time() - (job.started or time.time())) if used else None
+        took = time.time() - (job.started or time.time())
+        receipt = self._receipt(jid, used, level, took, result.model, fell) if used else None
         with self._lock:
             done = self._db.execute(
                 "update jobs set status=?, verdict=?, brain=?, effort=?, finished=?, seconds=?, result=?, detail=?, "
-                "receipt=?, proc=null, deadline=null where id=? and status='running'",
+                "receipt=?, model=?, proc=null, deadline=null where id=? and status='running'",
                 (
                     "ok" if ok else "failed",
                     result.verdict.value,
@@ -630,6 +698,7 @@ class Jobs:
                     result.text,
                     result.detail[:2000],
                     receipt,
+                    result.model or None,
                     jid,
                 ),
             ).rowcount
@@ -642,7 +711,9 @@ class Jobs:
             verdict=result.verdict.value,
             effort=level,
             brain=used.id if used else None,
+            model=result.model or None,
             seconds=round(result.seconds),
+            **({"fallback": True} if fell else {}),
         )
         self._after(self.get(jid), result, used)
 
@@ -723,9 +794,10 @@ class Jobs:
                     {"name": str(name)[:60], "args": json.dumps(args or {}, ensure_ascii=False, default=str)[:300]}
                 )
 
-    def _receipt(self, jid: str, used, level: str, seconds: float) -> str:
-        """The run receipt of a request that just ran: its AI, effort, time, the share of today's limit (when
-        core/quota.py knows the limit) and what it did from its tool log."""
+    def _receipt(self, jid: str, used, level: str, seconds: float, model: str = "", fell: str = "") -> str:
+        """The run receipt of a request that just ran: who decided and who answered (with their models; a fallback
+        says why), effort, time, the share of today's limit (when core/quota.py knows the limit) and what it did from
+        its tool log."""
         with self._lock:
             steps = list(self.steps.get(jid, ()))
         pct = None
@@ -734,7 +806,10 @@ class Jobs:
             pct = self.app.quota.status(pool)["pct"] if pool else None
         except Exception:  # a broken count never stops the answer
             pass
-        return receipt(used, level, seconds, pct, steps, self.recalled.get(jid, 0))
+        d = self.decided.get(jid) or {}
+        same = d.get("brain") == used.id and (d.get("model") or "") == (model or "")
+        decided = "" if same else d.get("who", "")  # the same model decided and answered: nothing to tell apart
+        return receipt(used, level, seconds, pct, steps, self.recalled.get(jid, 0), model, decided, fell)
 
     def receipt(self, jid: str) -> str:
         """A finished request's run receipt, to show under its answer ("" when jobs.receipt is off or no AI ran)."""
@@ -1055,6 +1130,8 @@ class Jobs:
         if done:
             lines += ["", "Last finished:"] + [
                 f"{j.status:7} {j.effort or '-':6} {f'{j.seconds:.0f}s' if j.seconds else '':>5}  {j.title}"
+                + (f" · {NAMES.get(j.brain, j.brain)}" if j.brain else "")
+                + (f" {short_model(j.model, j.effort or '')}" if j.brain and j.model else "")
                 + (f" ({j.verdict})" if j.status == "failed" and j.verdict else "")
                 for j in done
             ]
@@ -1092,8 +1169,8 @@ class Jobs:
 
 def public(j: Job) -> dict:
     """A job for the dashboard and `kurooto jobs`: what it is and how it's going (not what was asked or answered)."""
-    keys = ("id", "title", "status", "verdict", "effort", "seconds", "created", "started", "brain", "lane")
-    return {k: getattr(j, k) for k in keys}
+    keys = ("id", "title", "status", "verdict", "effort", "seconds", "created", "started", "brain", "lane", "model")
+    return {k: getattr(j, k) for k in keys} | {"receipt": j.receipt or ""}
 
 
 def _clock(ts: float) -> str:
@@ -1112,12 +1189,58 @@ def mcp_command() -> list[str]:
     return command()
 
 
-def receipt(brain, effort: str, seconds: float, pct: int | None, steps: list[dict], recalled: int = 0) -> str:
+def who(brain, model: str = "", effort: str = "") -> str:
+    """An AI and its model, short: "Claude Code opus-4.5", "agy 3.8-flash"; a model on this computer or behind an API
+    key by its model alone ("gemma4:e4b")."""
+    if brain is None:
+        return short_model(model, effort)
+    m = short_model(model, effort)
+    if brain.kind != "cli" and m:
+        return m
+    name = NAMES.get(brain.id, brain.label)
+    return f"{name} {m}" if m else name
+
+
+def handed(first: tuple | None, skipped: tuple | None, used) -> str:
+    """Why another AI answered, for the run receipt: "Claude Code hit its limit; agy answered", "Claude Code is at its
+    limit until 15:00; agy answered"."""
+    them = SHORT.get(used.id, NAMES.get(used.id, used.label))
+    if first is not None:
+        return f"{_why(*first)}; {them} answered"
+    brain, until = skipped
+    name = SHORT.get(brain.id, NAMES.get(brain.id, brain.label))
+    return f"{name} is at its limit until {_clock(until)}; {them} answered"
+
+
+def _clock(ts: float) -> str:
+    d = datetime.datetime.fromtimestamp(ts)
+    return f"{d:%H:%M}" if d.date() == datetime.date.today() else f"{d:%a %H:%M}"
+
+
+def receipt(
+    brain,
+    effort: str,
+    seconds: float,
+    pct: int | None,
+    steps: list[dict],
+    recalled: int = 0,
+    model: str = "",
+    decided: str = "",
+    fell: str = "",
+) -> str:
     """The run receipt: one line built from the run's own record, never from the answer's words, e.g.
-    "agy · medium · 42 s · 12% of today's limit · searched notes, wrote 1 note · used 2 remembered items". An agent
-    program may also work with tools of its own, which Kurooto doesn't see: with none of Kurooto's, it "did nothing
-    through Kurooto". recalled: how many remembered items it was told (core/assembler.py)."""
-    head = [NAMES.get(brain.id, brain.label), effort, _took(seconds)]
+    "agy · 3.8-flash · medium · 42 s · 12% of today's limit · searched notes, wrote 1 note · used 2 remembered items".
+    The model is the one it ran with (agy's --model, the one Claude Code says it used), shortened. decided: the model
+    that made the quick decision (the effort), when it isn't the one that answered ("decided by gemma4:e4b, answered
+    by Claude Code · opus-4.5 · ..."). fell: why another AI answered ("Claude Code hit its limit; agy answered"). An
+    agent program may also work with tools of its own, which Kurooto doesn't see: with none of Kurooto's, it "did
+    nothing through Kurooto". recalled: how many remembered items it was told (core/assembler.py)."""
+    name = NAMES.get(brain.id, brain.label)
+    lead = fell or name
+    if decided:
+        lead = f"decided by {decided}; {fell}" if fell else f"decided by {decided}, answered by {name}"
+    m = short_model(model, effort)
+    head = [lead, *([m] if m else []), effort, _took(seconds)]
     if pct is not None:
         head.append(f"{pct}% of today's limit")
     did = _did(steps) or ["did nothing" if brain.kind != "cli" else "did nothing through Kurooto"]
@@ -1126,7 +1249,9 @@ def receipt(brain, effort: str, seconds: float, pct: int | None, steps: list[dic
     while len(line) > RECEIPT_MAX and len(did) > 1:
         did = did[:-1]
         line = " · ".join(head) + " · " + ", ".join(did) + " and more" + tail
-    return line[:RECEIPT_MAX]
+    if len(line) > RECEIPT_MAX:  # long model names: what it did goes first, never half a word
+        line = " · ".join(head) + tail
+    return line if len(line) <= RECEIPT_MAX else line[: RECEIPT_MAX - 1] + "…"
 
 
 def _did(steps: list[dict]) -> list[str]:

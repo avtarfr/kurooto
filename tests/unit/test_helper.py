@@ -268,6 +268,51 @@ def test_a_request_that_finds_the_internet_gone_waits_and_is_told_once(remote, m
     assert said == 'No internet connection right now: "hello there" waits and runs as soon as it\'s back.'
 
 
+def test_a_lost_connection_waits_and_is_never_handed_to_a_fallback(remote, monkeypatch):
+    """With brains-self's fallbacks: an AI that fails because the internet went isn't followed by the next one."""
+    from kurooto import providers
+    from kurooto.providers.base import Brain, Result, Verdict
+    from kurooto.providers.openai_compat import OpenAICompat
+
+    env, ai = remote
+    app = env.app
+    tried = []
+
+    class Other(Brain):
+        id, label, kind = "agy", "agy", "api"
+
+        def available(self):
+            return True, ""
+
+        def run(self, task):
+            tried.append(task.prompt)
+            return Result(Verdict.OK, text="answered")
+
+    orig = providers.build
+    monkeypatch.setattr(providers, "build", lambda a, w: Other() if w == "agy" else orig(a, w))
+
+    def gone(self, path, body, timeout):
+        egress.seen("api.example.org", urllib.error.URLError(OSError("Network is unreachable")))
+        raise urllib.error.URLError(OSError("Network is unreachable"))
+
+    monkeypatch.setattr(OpenAICompat, "_post", gone)
+    app.settings.set("brain.fallback", ["agy"])
+    jid = app.jobs.submit("hello there", reply_to=None)
+    assert app.jobs.run_next() == jid
+    assert app.jobs.get(jid).status == "queued" and not tried  # held for the internet, agy not tried
+
+
+def test_the_receipt_says_the_helper_decided(remote, monkeypatch):
+    env, ai = remote
+    app = env.app
+    model = make_ready(app, monkeypatch)
+    model.rule = lambda p: "high"
+    app.settings.set("jobs.receipt", True)
+    jid = app.jobs.submit("what is a group")  # the rules aren't sure: the helper decides
+    assert app.jobs.run_next() == jid and app.jobs.get(jid).status == "ok"
+    assert app.jobs.receipt(jid).startswith(f"decided by {TAG}, answered by ")
+
+
 def test_one_that_waited_too_long_ends_with_a_message(remote):
     env, ai = remote
     app = env.app

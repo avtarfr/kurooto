@@ -218,7 +218,9 @@ class Integrate(Module):
     # --------------------------------------------------------------------------------------------------- roles
     def roles(self) -> tuple[str, str]:
         """(bulk AI, check AI): your choice, else agy and Claude Code when both are installed (they run side by side),
-        else the one there is for both, else your main AI."""
+        else the one there is for both, else your main AI. A role whose AI is at its limit (providers/fallback.py)
+        goes to the next one set up in the fallback order (brain.fallback, else the automatic one) until the reset,
+        so reading goes on, on that AI's own budget (core/readbudget.py keeps one per AI)."""
         want = self.setting("roles") or {}
         avail = []
         for k in providers.AGENT_PROGRAMS:
@@ -228,7 +230,15 @@ class Integrate(Module):
         main = self.app.settings.get("brain.main") or ""
         bulk = want.get("bulk") or (avail[0] if avail else main)
         check = want.get("check") or next((k for k in avail if k != bulk), bulk)
-        return bulk, check
+        return self.stand_in(bulk), self.stand_in(check)
+
+    def stand_in(self, bid: str) -> str:
+        """This role's AI, or while it waits for a limit's reset, the first other one set up in the fallback order."""
+        fb = providers.fallback
+        if not bid or "rate_limited" not in fb.triggers(self.app) or not fb.cooling(self.app, bid):
+            return bid
+        other = next((b.id for b in fb.candidates(self.app, {bid}) if not fb.cooling(self.app, b.id)), None)
+        return other or bid
 
     # ------------------------------------------------------------------------------------------------ sources
     def sources(self) -> list[str]:
@@ -1026,7 +1036,8 @@ class Integrate(Module):
             flagged=flagged,
             dropped=dropped,
         )
-        self.budget.count()
+        job = self.app.jobs.get(payload["job"]) if payload.get("job") else None
+        self.budget.count(job.brain if job is not None and job.brain else None)  # the AI that read it: its budget
         self.queue_garden([c.slug for c in core])
         graphmerge.fresh(self, [c.slug for c in core])
         self.app.events.emit("integrate_batch", book=self.key(b), batch=bid, **counts)

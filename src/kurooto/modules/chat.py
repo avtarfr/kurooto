@@ -152,14 +152,20 @@ class Chat(Module):
     def _brain(self, msg: Incoming, arg: str) -> str:
         s = self.app.settings
         out = []
-        for role in ("main", "fallback"):
-            which = s.get(f"brain.{role}")
+        roles = [("main", s.get("brain.main"))] + [("fallback", k) for k in providers.fallback.chosen(self.app)]
+        for role, which in roles:
             if not which:
                 continue
             b = providers.build(self.app, which)
             ok, why = b.available() if b else (False, "unknown")
             out.append(f"{role}: {providers.CHOICES.get(which, which)} ({'ready' if ok else why})")
-        return "\n".join(out) or "No AI brain is set up yet."
+        if not out:
+            return "No AI brain is set up yet."
+        if not providers.fallback.chosen(self.app) and providers.fallback.triggers(self.app):
+            auto = [b.id for b in providers.fallback.candidates(self.app, {s.get("brain.main") or ""})]
+            if auto:
+                out.append("at a limit: " + " → ".join(providers.fallback.name(b) for b in auto))
+        return "\n".join(out + limit_lines(self.app))
 
     def _usage(self, msg: Incoming, arg: str) -> str:
         days = int(arg) if arg.strip().isdigit() and 1 <= int(arg) <= 60 else 7
@@ -167,12 +173,28 @@ class Chat(Module):
         from kurooto.providers.agy import log_usage, log_usage_text  # (ws5) agy's own count, interactive use too
 
         # today's free limits: used, learned, when they reset (core/quota.py); the concept graph's reading budget
+        waiting = limit_lines(self.app)
         return (
             usage_text(self.app.jobs.usage(days), days)
             + log_usage_text(log_usage(days))
             + self.app.quota.text()
+            + ("\n" + "\n".join(waiting) if waiting else "")
             + reading(self.app)
         )
+
+
+def limit_lines(app) -> list[str]:
+    """The AIs skipped for a limit until its reset (providers/fallback.py), one line each."""
+    import datetime as dt
+
+    out = []
+    for bid, rec in providers.fallback.status(app).items():
+        when = dt.datetime.fromtimestamp(float(rec["until"]))
+        how = "as it said" if rec.get("src") == "said" else "a guess: it didn't say"
+        out.append(
+            f"{providers.fallback.name(bid)} is at its limit until {when:%a %H:%M} ({how}); others answer meanwhile."
+        )
+    return out
 
 
 def usage_text(rows: list[dict], days: int) -> str:

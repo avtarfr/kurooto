@@ -110,6 +110,10 @@ class Agy(Brain):
             )
         return f" (It can't use Kurooto's tools yet: {why}.)"
 
+    def model(self, effort: str) -> str:
+        """The model id a request at this effort runs with (`--model`)."""
+        return self.levels.get(effort, self.levels["medium"])[0]
+
     def _args(self, prompt: str, effort: str, minutes: int) -> list[str]:
         model, eff = self.levels.get(effort, self.levels["medium"])
         base = list(self.exe) if isinstance(self.exe, list) else [self.exe]  # a list: tests run a fake agy
@@ -139,6 +143,7 @@ class Agy(Brain):
             if long:
                 long[0].unlink(missing_ok=True)
         result = verdict(code, out, err, time.monotonic() - t0, minutes)
+        result.model = self.model(task.effort)  # the --model it ran with (the run receipt names it)
         self.metered(None, result)  # agy's day's limit (core/quota.py); its own logs count the model requests
         return result
 

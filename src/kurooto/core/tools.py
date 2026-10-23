@@ -9,7 +9,9 @@ sense in unattended work). Below, the ones that are always there:
 - files: read_file and list_files, read-only, inside the folders core/places.py names (your notes, Kurooto's copies
   of Classroom and mail, Documents, Downloads, Screenshots), links followed and checked, hidden files left out;
 - fetch_url: a web page as text (GET only; never this computer or a private network);
-- sync_status: when each sync last ran, how it went, and when it runs next.
+- sync_status: when each sync last ran, how it went, and when it runs next;
+- kurooto_self: what Kurooto is running here (version, AIs and models, features and their health, the last day's
+  failures) and, with part=manual, how it works (core/selfdoc.py).
 Tools say whether they write (Tool.writes): text-only requests get none at all. A tool that sets an alarm, places a
 call or does anything else on core/tap.py's list says so (Tool.guarded): outside a live call it waits for your Approve.
 """
@@ -670,7 +672,9 @@ def sync_tools(app: App) -> list[Tool]:
 
 def agent_tools(app: App) -> list[Tool]:
     """Every tool for unattended work: the notes tools, then each enabled feature's own."""
-    out = NoteTools(app).tools() + FileTools(app).tools() + sync_tools(app)
+    from kurooto.core import selfdoc  # kurooto_self: what Kurooto is running, for questions about itself
+
+    out = NoteTools(app).tools() + FileTools(app).tools() + sync_tools(app) + [selfdoc.tool(app)]
     seen = {t.name for t in out}
     sources = [("ask", getattr(getattr(app, "ask", None), "agent_tools", None))]  # ask_user: a question to them
     for m in app.enabled():
