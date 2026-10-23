@@ -387,7 +387,9 @@ follow-up) and from your own scripts (see [From a terminal or a script](#from-a-
 questions are part of the brief your call line keeps for calls while the computer is off.
 
 ### Chat with your AI
-Anything that isn't a command or an instant request goes to your AI; the answer comes back as a reply. Long answers
+Anything that isn't a command or an instant request goes to your AI; the answer comes back as a reply. A request that
+a feature that's off would understand ("wake me at 7" with the Morning alarm off) first gets **Turn on** (turns it on,
+with what it needs, and does the request) or **Not now** (your AI gets it instead); `turnon.offer` off skips that. Long answers
 arrive as a file. **A conversation:** each message carries your last 6 exchanges with the AI from the past 2 hours, so
 "and the second one?" works; after 2 hours quiet it starts afresh. Only chat's own answers count (a digest's or a
 research run's never turns up as something you said). `/new` (or `/clear`) starts a fresh conversation now. The last 10

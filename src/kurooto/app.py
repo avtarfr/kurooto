@@ -392,6 +392,10 @@ class App:
                         self.events.emit("intent", name=it.name)
                         msg.reply(it.run(msg, slots) or "Done.")
                         return
+            from kurooto.core import turnon  # a feature that's off would do it: [Turn on] [Not now]
+
+            if turnon.offer(self, msg, plain, mods, asks):
+                return
         from kurooto.core import syncall  # "sync everything", and /sync while Notes sync is off (core/syncall.py)
 
         if syncall.wanted(text) or text.lower().split("@")[0] == "/sync":
@@ -460,6 +464,10 @@ class App:
             from kurooto.core import infer
 
             return infer.undo(self, ref)
+        if prefix == "ton":  # Turn on / Not now under a request a feature that's off would do (core/turnon.py)
+            from kurooto.core import turnon
+
+            return turnon.button(self, ref, act)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:

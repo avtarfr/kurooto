@@ -16,8 +16,8 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - **Revision plan.** When exam season starts, a course's topics are ranked (no note, stub, weak recall, the rest)
   and laid over Start-by's free slots with the pages to read; the evening check-in asks "did you cover X?" and feeds
   the same recall score as the quiz. Plain arithmetic, no AI.
-- **Turn on from chat.** A message that needs a feature that's off ("wake me at 7") offers [Turn on] [Not now]; one
-  tap turns on it and what it needs, then does the original request.
+- ~~**Turn on from chat.** A message that needs a feature that's off ("wake me at 7") offers [Turn on] [Not now]; one
+  tap turns on it and what it needs, then does the original request.~~ (0.5.10)
 - **Run receipt.** Every AI answer ends with one grey line built from the tool log, not the answer's words: brain,
   effort, time, share of today's limit, and what it actually did ("did nothing" when it did nothing).
 - **/fixme that works when the AI is what broke.** Doctor's symptoms matched by rules to the manual's

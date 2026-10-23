@@ -723,6 +723,12 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `terminal.tabs` | `["agent", "shell", "chat", "logs"]` | in order; agent = your AI's own program, when it's installed |
 | `terminal.top` | `"left"` | kurooto top: "left" (a column beside the first tab), "tab" (a tab of its own) or "off" |
 
+### `turnon`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `turnon.offer` | `true` | a request a feature that's off understands: offer to turn it on |
+
 ### `updates`
 
 | Setting | Default | What it does |

@@ -630,6 +630,16 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/vitals.py` | CPU, memory, GPU, network, disk and battery samples for the board and `kurooto top` |
 | `core/zones.py` | old and new names of the same time zone |
 
+## Turn on from chat (`core/turnon.py`)
+
+At the end of `App.handle`'s instant requests, `turnon.offer(app, msg, plain, mods, asks)` asks every module that's
+off for an intent whose `match` takes the text (errors are skipped, `turnon_skipped`). Not ready (`Module.ready()`):
+says where to set it up. Otherwise the text waits in `<state>/turnon.json` (20, for 24 h) under a ref, and the reply
+carries `ton:<ref>:on` / `ton:<ref>:no` (routed by `App.callback`). `on` enables the module's `requires`, then the
+module, re-matches and runs the intent with an `Incoming` whose replies go out through `app.notify(..., why="asked")`;
+`no` hands it to Chat when that's on. Events `turnon_offered`, `turnon_done`. Setting `turnon.offer`. Tests:
+`tests/unit/test_turnon.py`.
+
 ## Setting up from what's said (`core/infer.py`)
 
 `infer.observe(app, text, via)` runs on every plain chat message (`App.handle`, before routing; it never consumes the

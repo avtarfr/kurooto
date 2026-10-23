@@ -2,6 +2,10 @@
 
 ## 0.5.10 (unreleased)
 
+- **Turn on from chat** (`turnon.offer`, on): a request a feature that's off would understand ("remind me in 5 min to
+  stretch" with Reminders off, "wake me at 7" with the alarm off) gets **Turn on** / **Not now** instead of going to
+  the AI. Turn on switches on that feature and what it needs, then does the request; Not now leaves it off and, with
+  Chat on, asks your AI. A feature that needs setting up first says where.
 - **Learns a phrasing when you say it again in other words** (`cases.learn_rephrased`, on; with Wrong button and test
   cases): a short request nothing understood, followed within 3 minutes by you saying it in words Kurooto does
   understand, is noted; the second time the same phrasing leads to the same request, it's learned (only if every test

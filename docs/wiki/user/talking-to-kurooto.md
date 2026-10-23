@@ -66,6 +66,10 @@ Kurooto looks at each message in this order and stops at the first match:
    messages with several requests in one ("..., also ...", "... and then ...", two sentences), always go to the AI so it
    reads the whole thing. A question ("what...?", "when...?") only matches requests that answer questions. A phrasing
    you taught with the Wrong button goes first ([teaching-kurooto.md](teaching-kurooto.md)).
+   **A request a feature that's off would understand** ("remind me in 5 min to stretch" with Reminders off) gets "That's
+   for Reminders, which is off. Turn it on and do it?" with **Turn on** (it turns on that feature, and what it needs,
+   then does the request) and **Not now** (it stays off; with Chat on, your AI gets the message instead). A feature
+   that needs setting up first says where. `turnon.offer` off goes back to sending these to the AI.
 7. **"sync everything"** (or `sync all`, `/sync all`) runs every sync that's on.
 8. **Chat:** everything else goes to your AI.
 
