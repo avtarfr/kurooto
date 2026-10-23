@@ -1,5 +1,8 @@
 """Link recall cards, part of the Quiz: the concept graph's links (a concept note's "- needs:: [[b]] — reason" lines,
-modules/integrate.py) become review cards. A card asks how two concepts relate ("How is Itô's lemma used in the
+modules/integrate.py) become review cards. Since 0.5.22 they also come from your course notes (lecture notes and course
+pages: a typed line like that, or "- [[b]]: a reason of five words or more"), and from the concepts the graph read
+out of Classroom files and handwritten notes (their course is the item's); new cards whose concepts you met in class
+in the last 14 days come first. A card asks how two concepts relate ("How is Itô's lemma used in the
 Fokker-Planck equation?"); you answer by replying in your own words, then see the link's reason and where to read
 (the book pages from the concept graph's "Seen in", the best match in the subject's own notes and Classroom files,
 core/sources.py), and grade yourself. Spacing and storage are the quiz's own (state/quiz/_links.json, Quiz.grade).
@@ -22,10 +25,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto.core import conceptgraph as cg
-from kurooto.core import sources
+from kurooto.core import layout, sources
 from kurooto.core.availability import ON_CALL
 from kurooto.core.clock import now
-from kurooto.core.graphwrite import RELATIONS
+from kurooto.core.graphwrite import RELATIONS, lint_reason
 from kurooto.core.state import jsave
 from kurooto.modules.base import Incoming
 
@@ -35,6 +38,8 @@ if TYPE_CHECKING:
 SUBJECT = "_links"  # the quiz file the cards live in (no subject's slug can start with "_")
 MOST = 5  # cards a day, whatever quiz.links_per_day says
 LINE = re.compile(r"^\s*[-*] (" + "|".join(RELATIONS) + r"):: \[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]\s*[—–-]+\s*(.+?)\s*$")
+PLAIN = re.compile(r"^\s*[-*] \[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]\s*(?::|[—–]|-)\s*(.+?)\s*$")  # "- [[b]]: reason"
+RECENT_DAYS = 14  # new cards about what you met in class this recently come first
 ASK = {  # relation -> the question, from the note that has the link (a) to its target (b)
     "needs": "Why does {a} need {b}?",
     "generalises": "How does {a} generalise {b}?",
@@ -85,37 +90,102 @@ class LinkCards:
 
     # ---------------------------------------------------------------------------------------------- the cards
     def links(self) -> dict[str, dict]:
-        """Every typed link between two concept notes: card id -> {a, b, relation, reason, text, subject}."""
+        """Every link with a reason between two notes: the concept notes' typed links, and your course notes' typed
+        links or "- [[b]]: reason" lines. Card id -> {a, b, relation, reason, text, subject, recent}."""
         notes, seen = cg.scan(self.app), self._seen()
+        course = self.course_notes(notes)
+        pool = {**notes, **{s: n for s, (n, _) in course.items()}}
+        by_name: dict[str, str] = {}
+        for s in sorted(notes):  # a card is about a concept: links go to concept notes only
+            by_name.setdefault(Path(s).name, s)
+        recent = self.recent(seen, course)
         out: dict[str, dict] = {}
-        for slug, n in notes.items():
+        for slug, n in pool.items():
             try:
                 lines = n.path.read_text(encoding="utf-8").splitlines()
             except (OSError, UnicodeDecodeError):
                 continue
             for ln in lines:
                 m = LINE.match(ln)
-                target = m[2].strip().removesuffix(".md") if m else ""
-                if not m or target == slug or target not in notes:
+                if m:
+                    rel, target, reason = m[1], m[2], m[3]
+                else:
+                    m = PLAIN.match(ln)
+                    if not m or lint_reason(m[2]):
+                        continue  # a link without a reason worth asking about
+                    rel, target, reason = "", m[1], m[2]
+                target = target.strip().removesuffix(".md")
+                target = target if target in notes else by_name.get(target, "") if "/" not in target else ""
+                if slug in course and target and not cg.concept_like(notes[target]):
+                    continue  # from your course notes, only links to a concept (not a lecture or the course page)
+                if not target or target == slug:
                     continue
                 a, b = n.title, notes[target].title
+                subject = course[slug][1] if slug in course else self.subject_of(seen, slug, target)
                 out[card_id(slug, target)] = {
                     "a": slug,
                     "b": target,
-                    "relation": m[1],
-                    "reason": m[3].rstrip("."),
+                    "relation": rel,
+                    "reason": reason.rstrip("."),
                     "names": [a, b],
-                    "text": ASK.get(m[1], "How does {a} relate to {b}?").format(a=a, b=b),
-                    "subject": self.subject_of(seen, slug, target),
+                    "text": ASK.get(rel, "How does {a} relate to {b}?").format(a=a, b=b),
+                    "subject": subject,
+                    "recent": slug in recent or target in recent,
                 }
         return out
 
+    def course_notes(self, concepts: dict) -> dict[str, tuple[cg.Note, str]]:
+        """Each subject's own notes (lecture notes, the course page, what Classroom filed), not the concept notes and
+        not the books' index notes: slug -> (note, subject)."""
+        subj = self.app.modules.get("subjects")
+        if subj is None or not self.app.is_on("subjects"):
+            return {}
+        lay = layout.of(self.app)
+        root = Path(self.app.workspace)
+        out: dict[str, tuple[cg.Note, str]] = {}
+        for s in subj.subjects():
+            folder = lay.path("subject", subject=s["slug"])
+            files = sorted(folder.rglob("*.md")) if folder.is_dir() else []
+            for f in [*files, lay.path("course", subject=s["slug"])]:
+                if not f.is_file() or root not in f.parents:
+                    continue
+                rel = f.relative_to(root)
+                if any(x.startswith(".") for x in rel.parts) or "books" in rel.parts[:-1]:
+                    continue
+                n = cg.read_note(root, f)
+                if n and n.slug not in concepts:
+                    out[n.slug] = (n, s["slug"])
+        return out
+
+    def recent(self, seen: dict, course: dict) -> set[str]:
+        """Notes met in class lately: concepts read from a Classroom file or handwritten notes dated in the last
+        RECENT_DAYS days, and dated course notes from then."""
+        cut = (dt.date.today() - dt.timedelta(days=RECENT_DAYS)).isoformat()
+        ig = self.app.modules.get("integrate")
+        items = ig.items() if ig is not None else {}
+        out = set()
+        for slug, rows in seen.items():
+            for r in rows or []:
+                if str((items.get(str(r.get("book"))) or {}).get("date") or "") >= cut:
+                    out.add(slug)
+        for slug, (n, _) in course.items():
+            m = re.match(r"\d{4}-\d{2}-\d{2}", n.path.name)
+            if m and m[0] >= cut:
+                out.add(slug)
+        return out
+
     def subject_of(self, seen: dict, *slugs: str) -> str:
-        """The subject of a concept: the book its pages came from, else its folder (the plain layout)."""
+        """The subject of a concept: the book its pages came from (or the class file or handwritten notes, read into
+        the graph), else its folder (the plain layout)."""
+        ig = self.app.modules.get("integrate")
+        items = ig.items() if ig is not None else {}
         for s in slugs:
             for r in seen.get(s) or []:
-                if "/" in str(r.get("book", "")):
-                    return str(r["book"]).split("/")[0]
+                book = str(r.get("book", ""))
+                if book in items and items[book].get("subject"):
+                    return str(items[book]["subject"])
+                if "/" in book:
+                    return book.split("/")[0]
         first = slugs[0].split("/")[0] if "/" in slugs[0] else ""
         return first if first and (Path(self.app.workspace) / first).is_dir() and first != "zettel" else ""
 
@@ -145,7 +215,12 @@ class LinkCards:
         """What's due: cards seen before first (the most overdue), then new ones."""
         today = dt.date.today().isoformat()
         due = [(k, v) for k, v in st["items"].items() if not v.get("gone") and v["due"] <= today]
-        due.sort(key=lambda kv: (kv[1]["reps"] == 0 and not kv[1]["history"], kv[1]["due"], kv[0]))
+
+        def order(kv):
+            new = kv[1]["reps"] == 0 and not kv[1]["history"]
+            return (new, new and not kv[1].get("recent"), kv[1]["due"], kv[0])  # new ones met in class lately first
+
+        due.sort(key=order)
         return due[0] if due else None
 
     def sent_today(self, st: dict) -> int:
@@ -223,7 +298,8 @@ class LinkCards:
             st.pop("open", None)
             self.save(st)
         a, b = self.names(it)
-        lines = [f"The note says: {a} {it['relation']} {b}: {it['reason']}."]
+        said = f"{a} {it['relation']} {b}" if it.get("relation") else f"{a} → {b}"
+        lines = [f"The note says: {said}: {it['reason']}."]
         look = self.where(it)
         if look:
             lines.append("Where to read: " + "; ".join(look) + ".")

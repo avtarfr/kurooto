@@ -247,3 +247,27 @@ def test_the_phone_apps_chat_gets_the_action_items_as_buttons_too(phone):  # noq
     code, got = calls.chat.take(body(app, "b" * 16, sealed=False, button=1, msg=m["id"]))
     assert code == 200 and got["note"].startswith("Added: Read the Brevik paper on drift")
     assert any(d["title"] == "Read the Brevik paper on drift" for d in app.modules["deadlines"].items().values())
+
+
+def test_the_weekly_summary_mentions_people_only_from_the_project_notes(env):
+    app = setup(env)
+    env.on("weekly")
+    tomorrow = dt.date.today() + dt.timedelta(days=1)
+    infer.observe(app, f"I meet my manager Mira Castell every {DAYS[tomorrow.weekday()]} at 10 about onboarding.")
+    note = research.project_note(app, "Onboarding")
+    today = dt.date.today().isoformat()
+    note.write_text(meetings.put(note.read_text(), f"minutes-{today}", "**Minutes**\n- went fine"), encoding="utf-8")
+    infer.observe(app, "I've started a project on glacier drift with Dr Sam Okafor.")
+    drift = research.project_note(app, "Glacier drift")
+    old = (dt.date.today() - dt.timedelta(days=30)).isoformat()
+    text = meetings.set_fields(drift.read_text(), meets="every Mon 09:00", met=old)
+    drift.write_text(text, encoding="utf-8")
+    line = meetings.week_line(app)
+    assert line.startswith("People (from your project notes): met Mira Castell (manager, Onboarding) ")
+    assert "next: " in line and f"Mira Castell {tomorrow:%a} 10:00" in line.split("next: ")[1]
+    assert "not met for a while: Dr Sam Okafor (last met" in line
+    assert line in app.modules["weekly"].summary()
+    n = len(env.fake.texts())
+    app.settings.set("weekly.people", False)
+    assert "People (" not in app.modules["weekly"].summary()
+    assert len(env.fake.texts()) == n  # a line in the summary, never a message of its own

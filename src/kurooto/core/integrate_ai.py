@@ -11,6 +11,8 @@ plain Python:
     same          "this is the existing note X" needs the names or the meaning to agree (the keyword and embedding
                   scores), or it goes to the second look
     relation      only the words in graphwrite.RELATIONS; two notes can't each generalise the other
+    notation      each symbol or convention the AI says the pages use (B_t, where 2π goes in a Fourier transform) needs
+                  a quote that is in those pages and holds the symbol; a row that fails is dropped (no second look)
 
 A concept that fails a check isn't written yet: it goes to a second AI (the other program when there are two, else the
 same one told to be strict) with only that item; if that doesn't confirm it, it's dropped.
@@ -26,7 +28,8 @@ from dataclasses import dataclass, field
 from kurooto.core import conceptgraph as cg
 from kurooto.core import graphwrite as gw
 
-PROMPT_VERSION = 1
+PROMPT_VERSION = 2  # 2 (0.5.22): notation per concept
+MAX_NOTATION = 4
 MAX_CORE = 14
 QUOTE_WORDS = 30
 
@@ -73,6 +76,9 @@ Answer with ONE JSON object and nothing else, in this shape:
   "quote": "a short exact quote from the text (at most 20 words) where it is defined or developed",
   "same_as": "slug of an existing note above if this is the same concept, else null",
   "update": "only when same_as is set: one to three sentences of what these pages add that the existing note may lack, else \\"\\"",
+  "notation": [{{"symbol": "the notation exactly as these pages write it, e.g. W_t, or a convention in a few words, e.g. 2\\pi in the exponent of the Fourier transform",
+                 "what": "what it stands for, in a few words",
+                 "quote": "a short exact quote from the text (at most 20 words) where it is used"}}],
   "links": [{{"target": "slug of an existing note, or the name of another concept in this answer",
               "relation": "needs|generalises|special-case-of|example-of|contrasts-with|equivalent-to|part-of|used-in",
               "reason": "one sentence naming the specific thing that connects them (a formula, a step, a property)",
@@ -86,6 +92,8 @@ Leave out concepts that are only mentioned. At most {max_core} core concepts.
 readable in the text, leave "formulas" empty.
 - A link needs a reason that would be false if the link were wrong. Never write "related to", "connected" or \
 "alignment". No link is better than a vague one.
+- notation: only the symbols and conventions these pages themselves use for the concept (at most 4), copied from the \
+text; [] when there are none worth noting.
 - same_as only when it is really the same idea (other words are fine). If it is a special case or a generalisation \
 of an existing note, give it its own note and link it with the right relation.
 """
@@ -172,6 +180,7 @@ class Proposed:
     links: list[Link]
     flags: list[str] = field(default_factory=list)  # what the checks found about the concept itself
     slug: str = ""  # its note, once known
+    notation: list[dict] = field(default_factory=list)  # [{"symbol", "what", "quote"}]: what these pages write
 
     @property
     def name_key(self) -> str:
@@ -209,6 +218,17 @@ def read_batch(data: dict | None) -> list[Proposed]:
             except (TypeError, ValueError):
                 pass
         same = raw.get("same_as")
+        notation = []
+        for n in raw.get("notation") or []:
+            if not isinstance(n, dict) or not str(n.get("symbol") or "").strip():
+                continue
+            notation.append(
+                {
+                    "symbol": re.sub(r"\s+", " ", str(n["symbol"])).strip()[:80],
+                    "what": re.sub(r"\s+", " ", str(n.get("what") or "")).strip()[:100],
+                    "quote": re.sub(r"\s+", " ", str(n.get("quote") or "")).strip()[:300],
+                }
+            )
         out.append(
             Proposed(
                 name=re.sub(r"\s+", " ", str(raw["name"])).strip()[:90],
@@ -223,6 +243,7 @@ def read_batch(data: dict | None) -> list[Proposed]:
                 same_as=str(same).strip().removesuffix(".md") if same and str(same).lower() != "null" else None,
                 update=re.sub(r"\s+", " ", str(raw.get("update") or "")).strip()[:600],
                 links=links,
+                notation=notation[:MAX_NOTATION],
             )
         )
     core = [c for c in out if c.role == "core"][:MAX_CORE]
@@ -301,6 +322,35 @@ def evidence_ok(c: Proposed, pages: dict[int, str]) -> bool:
     return bool(q) and q in hay
 
 
+def symbol_in(symbol: str, quote: str) -> bool:
+    """Is the notation in the quote? Its letters and digits, LaTeX commands left out (\\pi, \\hat: a PDF's text has the
+    characters, not the commands, and squash() drops those), are in the quote's; a convention in words needs half its
+    words there."""
+    q = squash(quote)
+    bare = re.sub(r"\\[a-zA-Z]+", " ", symbol)
+    ws = [w.lower() for w in re.findall(r"[A-Za-z]{3,}", bare)]
+    if len(ws) >= 2:  # a convention in words
+        return sum(w in q for w in ws) * 2 >= len(ws)
+    s = squash(bare)
+    return not s or s in q  # only commands (\\pi): the quote alone is checked
+
+
+def check_notation(c: Proposed, pages: dict[int, str]) -> int:
+    """Keep the notation rows whose quote is in the concept's pages (or the next ones) and holds the symbol. How many
+    were dropped."""
+    near = sorted({p + d for p in (c.pages or []) for d in (-1, 0, 1)})
+    hay = "".join(squash(pages.get(p, "")) for p in near)
+    keep = []
+    for n in c.notation:
+        q = squash(n.get("quote"))
+        words = len(str(n.get("quote") or "").split())
+        if q and 2 <= words <= QUOTE_WORDS * 2 and q in hay and symbol_in(n["symbol"], n["quote"]):
+            keep.append(n)
+    dropped = len(c.notation) - len(keep)
+    c.notation = keep
+    return dropped
+
+
 def check(
     concepts: list[Proposed], index: cg.Index, pages: dict[int, str], names: dict[str, str]
 ) -> tuple[list[Proposed], list[Item]]:
@@ -310,6 +360,7 @@ def check(
     nid = 0
     wider: set[tuple[str, str]] = set()  # (the more general note, the special case), from this batch's links
     for c in concepts:
+        check_notation(c, pages)
         if not evidence_ok(c, pages):
             c.flags.append("evidence")
             nid += 1

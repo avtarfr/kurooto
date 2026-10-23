@@ -213,7 +213,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `retro.json`, `retro-state.json` (also `routines` asked, added or declined, and `fixes` with their undo), `observations.json`, `retro-skills/` | `modules/retro.py` |
 | `research-papers.json`, `research-logs.json` | `modules/research.py` |
 | `books.json`, `gbrain.json`, `gbrain-checkup.json`, `gbrain/` | books, gbrain |
-| `integrate/` (`ledger.json`, `seen.json`, `chapters.json`, `garden.json`, `budget.json`, `pending/`, `undo/`, `vectors.db`) | `modules/integrate.py`, `core/conceptgraph.py`, `core/readbudget.py` |
+| `integrate/` (`ledger.json`, `seen.json`, `chapters.json`, `garden.json`, `budget.json`, `notation.json`, `made.json`, `dupes.json`, `pending/`, `undo/`, `vectors.db`) | `modules/integrate.py`, `core/conceptgraph.py`, `core/graphmerge.py`, `core/readbudget.py` |
 | `handwritten*.json`, `handwritten/<id>/` | `modules/handwritten.py` |
 | `handwritten-links.json`, `handwritten-undo/` | `modules/handwritten_links.py` |
 | `calendar.json` | `modules/calendar.py` |
@@ -413,6 +413,15 @@ jid = app.jobs.submit(
   never delivered, so they get none. Tests run with it off (`tests/conftest.py:no_receipts`);
   `tests/unit/test_receipt.py` turns it on. When the request was told remembered items (below), the line ends
   "· used N remembered items" (`receipt(..., recalled=)`; it stays when the line is shortened).
+- **Plan line** (0.5.22, `jobs.plan_line`): in `_run`, after `quota.arrange` and before the first brain runs,
+  `Jobs.plan_line(job, chain[0], level, recalled)` sends one line (`kind="info"`, `why="asked"`, `reply_to` the
+  request) when the job is lane `you`, not quiet, not background, the user isn't on a call
+  (`availability.on_call_until()`), and `Jobs.expected(brain, level)` (the median `seconds` of the last 9 ok lane-`you`
+  jobs on that brain and effort, None under `PLAN_SAMPLES` = 3) is over `PLAN_S` = 20. The words come from the prompt
+  before the run (after "Current request:"): "Opening the file you sent" (Chat's "Files they sent with it"), "Reading
+  the link" (`URL`), "Searching your notes" (`NOTES_CUE`), "going over N remembered items"; else "Thinking it through";
+  then "then answering (about <_took> with <SHORT or label>)." Calls' requests are quiet, so they never get one. Event
+  `job_plan_line`. Tests: `tests/unit/test_plan_line.py`.
 - **Memory in the context** (0.5.18): `_run` calls `core/assembler.py:for_request(app, job)` before building the
   `Task` and passes the block as `headless_context(app, extra)`; the count goes into `Jobs.recalled[jid]` for the
   receipt and is dropped with the tool log. Only lane `you`; never raises (`recall_failed`).
@@ -886,7 +895,7 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/autostart.py` | start at sign-in or boot, per OS; `refresh()` brings old installs' entries up to date |
 | `core/clock.py` | `now()` (local, naive), `parse_when()` for typed times |
 | `core/commands.py` | the command table and `/help`: `CORE`, `GROUPS`, `help()`, `find()` ([modules.md](modules.md#help-and-the-command-table-corecommandspy)) |
-| `core/conceptgraph.py`, `core/graphwrite.py`, `core/integrate_ai.py`, `core/segment.py`, `core/rerank.py`, `core/hubs.py`, `core/pdfread.py` | the concept graph ([concept-graph.md](concept-graph.md)) |
+| `core/conceptgraph.py`, `core/graphwrite.py`, `core/graphmerge.py`, `core/integrate_ai.py`, `core/segment.py`, `core/rerank.py`, `core/hubs.py`, `core/pdfread.py` | the concept graph ([concept-graph.md](concept-graph.md)) |
 | `core/desktop.py` | desktop notifications; text passed as arguments or environment, never pasted into script source |
 | `core/endsession.py` | Windows sign-out and shutdown messages |
 | `core/health.py`, `core/health_checks.py` | "Kurooto keeps itself working" ([debugging.md](debugging.md#health-kurooto-keeps-itself-working-corehealthpy-corehealth_checkspy)) |
@@ -999,6 +1008,13 @@ them the next evening, Calm reason `meetings.actions`), `not` (cancels the job o
 keys for `Meets:` briefs). `mtg` is a core prefix (`App.callback`, `tests/unit/test_buttons.py:CORE`). Events
 `meeting_notes`, `meeting_minutes`, `meeting_button` (counts only). Settings `meetings.minutes`, `meetings.after_h`.
 Tests: `tests/unit/test_meetings.py`.
+
+**People in the weekly summary** (0.5.22): `week_line(app, days=7)` is one line built only from project notes
+(`infer.projects_with`, de-duplicated by note and surname): "met" from the `minutes-YYYY-MM-DD` block keys
+(`MINUTES_DAY`) and `Last met:` dates in the window, "next" from `next_after()` within 7 days (sorted by time), and
+"not met for a while" for notes with a `Meets:` schedule whose `last_met()` is `QUIET_DAYS` (21) or more ago. "" when
+there's nothing. `modules/weekly.py:summary` adds it when `weekly.people` is on (a failure is `weekly_line_failed`);
+nothing else sends it.
 
 ## Keep or drop (`core/keep.py`)
 

@@ -124,3 +124,55 @@ def test_the_local_check_only_with_a_local_model_and_only_when_asked(cards, monk
     monkeypatch.setattr(lm, "api", api)
     assert lc.check(it, "drift") == "Partly: the drift is right, the diffusion is missing."
     assert asked[0][0] == "/api/generate" and asked[0][1]["model"] == "tiny:1b"
+
+
+# ------------------------------------------------------------------------- course notes and class files (0.5.22)
+def test_course_notes_links_with_a_reason_are_cards_too_and_class_material_comes_first(cards):
+    env, lc = cards
+    app = env.app
+    app.settings.set("subjects.list", [{"slug": SUBJ, "name": "Stochastic calculus", "aliases": []}])
+    env.on("subjects")
+    lecture = layout.path(app, "lecture", subject=SUBJ, date="2026-10-20", slug="diffusions")
+    lecture.write_text(
+        "# Diffusions\n\nFokker Planck from the lemma, done in class.\n\n"
+        "- used-in:: [[zettel/fokker-planck]] — the lecture derives the equation from the generator\n"
+        "- [[itos-lemma]]: the professor proved it with a second-order Taylor step\n"
+        "- [[zettel/fokker-planck]]: see\n",  # no reason worth asking: no card
+        encoding="utf-8",
+    )
+    found = lc.links()
+    lec = layout.rel(app, "lecture", subject=SUBJ, date="2026-10-20", slug="diffusions").removesuffix(".md")
+    mine = {(c["a"], c["b"]): c for c in found.values() if c["a"] == lec}
+    assert set(mine) == {(lec, "zettel/fokker-planck"), (lec, "zettel/itos-lemma")}
+    assert mine[(lec, "zettel/itos-lemma")]["text"] == "How does Diffusions relate to Itô's lemma?"
+    assert all(c["subject"] == SUBJ for c in mine.values())
+    # a concept read from a Classroom file this week: its course is the file's, and its new cards come first
+    jsave(
+        app.paths.state / "integrate" / "items.json",
+        {
+            "items": {
+                "classroom:abc": {"source": "classroom", "subject": "topology", "date": dt.date.today().isoformat()}
+            }
+        },
+    )
+    seen = jload(app.paths.state / "integrate" / "seen.json", {})
+    seen["zettel/fokker-planck"] = [{"book": "classroom:abc", "note": "x", "title": "Sheet 4", "batch": "1-3",
+                                     "pages": [1, 3], "source": "classroom", "unit": "slides"}]  # fmt: skip
+    jsave(app.paths.state / "integrate" / "seen.json", seen)
+    st = lc.state()
+    first = lc.next_card(st)[1]
+    assert first["recent"] and "fokker-planck" in first["b"] + first["a"]
+    assert lc.subject_of(seen, "zettel/fokker-planck") == "topology"
+
+
+def test_a_plain_link_card_says_which_two_notes_it_joins(cards):
+    env, lc = cards
+    it = {"a": "x/a", "b": "x/b", "relation": "", "reason": "a reason", "names": ["A", "B"], "text": "q"}
+    st = env.app.modules["quiz"].load(quiz_links.SUBJECT)
+    st["items"]["c1"] = {**it, "ef": 2.5, "interval": 0, "reps": 0, "due": "2000-01-01", "history": []}
+    lc.save(st)
+    from kurooto.modules.base import Incoming
+
+    got = []
+    lc.answer(Incoming("my answer", respond=lambda text, buttons=None: got.append(text)), "c1")
+    assert got[0].startswith("The note says: A → B: a reason.")

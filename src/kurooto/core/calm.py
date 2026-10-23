@@ -607,6 +607,12 @@ REASONS: dict[str, Reason] = {
         R("books.read", "a book that was read", setting="books.at"),
         R("space.cleaned", "the Space keeper cleaned off old files", setting="space.when"),
         R("integrate.summary", "what the concept graph did overnight", setting="integrate.at"),
+        R(
+            "integrate.duplicates",
+            "concept notes that look like the same concept (Merge / Keep both / Add alias)",
+            setting="integrate.duplicates",
+            stop=to(False, "no more questions about look-alike concept notes"),
+        ),
         R("gbrain.upkeep", "the notes brain's nightly upkeep didn't finish", setting="gbrain.upkeep"),
         R(
             "gbrain.checkup",

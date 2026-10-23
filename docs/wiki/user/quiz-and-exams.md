@@ -99,6 +99,18 @@ held back). See [Messages it sends](messages-it-sends.md).
 lemma used in Fokker-Planck?". You answer in your own words, see what the note says and where to read, and grade
 yourself. Spacing is the quiz's: a card you knew comes back later, one you forgot comes back tomorrow.
 
+**Where the cards come from.**
+- The concept notes' links, whatever the concept graph read them from: books, Classroom files, your handwritten notes.
+  A concept read from a class file belongs to that file's course.
+- Your course notes (with Subjects on): a lecture note or course page linking a concept note with a line like the
+  one above, or a plain
+  `- [[itos-lemma]]: the professor proved it with a second-order Taylor step` (a reason of five words or more; "see
+  also" or a bare link isn't asked about). That card asks "How does Diffusions relate to Itô's lemma?" and shows
+  "Diffusions → Itô's lemma" with your reason.
+
+New cards about what you met in class in the last 14 days (a concept from a class file dated then, or a dated lecture
+note) come before other new ones.
+
 **Turn it on.** It's part of Quiz. `/card` gives a card any time; for cards that come by themselves, `/cards on` (or
 `quiz.links` in Settings → Quiz).
 

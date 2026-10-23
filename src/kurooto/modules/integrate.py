@@ -23,6 +23,13 @@ nothing you wrote is changed. Each batch is one git commit when your notes are a
 Every day, the concepts the new reading touched, and notes with no links in, get a second pass against everything
 that's there now (the "garden"); the day's changes are one line on Telegram.
 
+Near-duplicate concepts (integrate.duplicates, core/graphmerge.py): each morning, up to three pairs of notes that look
+like one concept (the same name, a shared alias, or embeddings at least 0.92 alike) come as one question with Merge /
+Keep both / Add alias, each with Undo; /graph same asks now. Notation (integrate.notation): the bulk AI also says how
+the pages write each concept (B_t, W_t, where 2pi goes in a Fourier transform), with a quote; rows whose quote isn't
+in the pages are dropped, and when a second source writes it differently the note gets a "Notation" table in
+Kurooto's block.
+
 Which AI: integrate.roles {"bulk": "agy", "check": "claude"} (empty: chosen from what's installed; one program does
 both). The two run side by side. With no agent program, your main AI (a Gemini key, say) does both, at its limit.
 
@@ -34,7 +41,7 @@ integrate.at.
 State: <state>/integrate/ (ledger.json: "books" per book and "items" per other item; items.json: what was queued
 from Classroom and handwritten notes; texts/, seen.json, chapters.json, garden.json, stopped.json, budget.json,
 pending/, undo/, vectors.db). Command: /graph (status), /graph now (start), /graph stop (until the next night's start),
-/graph backfill classroom (read the Classroom files filed before).
+/graph backfill classroom (read the Classroom files filed before), /graph same (look-alike concept notes now).
 """
 
 from __future__ import annotations
@@ -50,9 +57,9 @@ from pathlib import Path
 
 from kurooto import providers
 from kurooto.core import conceptgraph as cg
+from kurooto.core import graphmerge, layout, proc, readbudget, segment
 from kurooto.core import graphwrite as gw
 from kurooto.core import integrate_ai as ai
-from kurooto.core import layout, proc, readbudget, segment
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
@@ -80,6 +87,8 @@ register_defaults(
         "order": "smallest",  # which books first: smallest (fewest pages: most books done soonest) | name
         "commit": True,  # one git commit per batch, when your notes are a repository
         "summary": True,  # one line each morning about what changed
+        "duplicates": True,  # each morning, up to 3 pairs of look-alike concept notes: Merge / Keep both / Add alias
+        "notation": True,  # a "Notation" table on a concept note when a second source writes it differently
     },
 )
 STALE_S = 3 * 3600  # a request that didn't come back in this long is asked again
@@ -194,6 +203,7 @@ class Integrate(Module):
             self.every("garden", "daily 06:20", self.garden)
         if self.setting("summary"):
             self.every("summary", "daily 07:10", self.summary)
+        self.every("duplicates", "daily 06:25", lambda p=None: graphmerge.night(self, p))
         jobs = self.app.jobs
         jobs.then_actions["integrate.done"] = self._done
         jobs.then_actions["integrate.checked"] = self._checked
@@ -879,6 +889,8 @@ class Integrate(Module):
         journal: dict[str, str | None] = {}
         counts = {"new": 0, "same": 0, "links": 0, "skipped": 0}
         seen = self.load("seen.json", {})
+        notation = self.load("notation.json", {}) or {}
+        made = self.load("made.json", {}) or {}
         core = [c for c in concepts if c.role == "core" and c.slug]
         names_by_slug = {c.slug: c for c in core}  # only what gets a note: a dropped concept is linked by nobody
 
@@ -906,6 +918,8 @@ class Integrate(Module):
                 entry["def"] = entry["def"] or prev.get("def", "")
                 entry["update"] = entry["update"] or prev.get("update", "")
             rows[:] = [r for r in rows if r is not prev] + [entry]
+            marks = self.add_notation(notation, c, entry, title, first, last)
+            table = self.notation_body(marks) if self.setting("notation") else ""
             lines = [
                 (lk.target, gw.link_line(lk.relation, lk.target, lk.reason))
                 for lk in c.links
@@ -922,17 +936,24 @@ class Integrate(Module):
                     f"Source: {title}{self.where({'pages': [first, last], **entry}, ',')}",
                 )
                 body = gw.put_block(body, "seen", self.seen_body(seen[c.slug]))
+                if table:
+                    body = gw.put_block(body, "notation", table)
                 if put(path, None, body):
+                    made[c.slug] = gw.outside_hash(body)  # what Kurooto wrote: a merge may move it (graphmerge)
                     counts["new"] += 1
                     counts["links"] += len(lines)
             else:
                 new, added = gw.add_links(old, lines)
                 new = gw.put_block(new, "seen", self.seen_body(seen[c.slug]))
+                if table:
+                    new = gw.put_block(new, "notation", table)
                 new = self.add_alias(new, c.name, c.aliases)
                 if new != old and put(path, old, new):
                     counts["same"] += 1
                     counts["links"] += added
         self.save("seen.json", seen)
+        self.save("notation.json", notation)
+        self.save("made.json", made)
         # the chapter note lists what it introduces
         chap = self.load("chapters.json", {})
         bk = chap.setdefault(self.key(b), {})
@@ -992,8 +1013,33 @@ class Integrate(Module):
         )
         self.budget.count()
         self.queue_garden([c.slug for c in core])
+        graphmerge.fresh(self, [c.slug for c in core])
         self.app.events.emit("integrate_batch", book=self.key(b), batch=bid, **counts)
         return counts
+
+    def add_notation(self, notation: dict, c: ai.Proposed, entry: dict, title: str, first: int, last: int) -> list:
+        """This batch's notation rows for a concept (checked already: integrate_ai.check_notation) in place of what the
+        same batch said before; the concept's rows from every source, in the table's order."""
+        mine = (entry["book"], entry["batch"])
+        rows = [r for r in notation.get(c.slug) or [] if (r["book"], r["batch"]) != mine]
+        label = f"{title}{self.where({**entry, 'pages': [first, last]}, ',')}"
+        have = {(r["book"], ai.squash(r["symbol"])) for r in rows}
+        for n in c.notation:
+            if (entry["book"], ai.squash(n["symbol"])) in have:
+                continue
+            have.add((entry["book"], ai.squash(n["symbol"])))
+            rows.append({"book": entry["book"], "batch": entry["batch"], "source": label, **n})
+        rows.sort(key=lambda r: (r.get("what", "").lower(), r["source"]))
+        if rows:
+            notation[c.slug] = rows
+        else:
+            notation.pop(c.slug, None)
+        return rows
+
+    @staticmethod
+    def notation_body(rows: list[dict]) -> str:
+        """The "Notation" table, when two sources write the concept differently ("" otherwise)."""
+        return gw.notation_table(rows)
 
     @staticmethod
     def with_aliases(front: str, name: str, aliases: list[str]) -> str:
@@ -1347,13 +1393,17 @@ class Integrate(Module):
         return True, f"{c['done']} batches done, {c['todo']} waiting"
 
     # ----------------------------------------------------------------------------------------------- command
+    def callbacks(self):
+        return {"dup": lambda ref, act: graphmerge.button(self, ref, act)}
+
     def commands(self):
         return [
             Command(
                 "graph",
-                "the concept graph: /graph, /graph now, /graph stop, /graph backfill classroom | handwritten | all",
+                "the concept graph: /graph, /graph now, /graph stop, /graph same (look-alike concept notes), "
+                "/graph backfill classroom | handwritten | all",
                 self._cmd,
-                usage="/graph [now | stop | backfill classroom | handwritten | all]",
+                usage="/graph [now | stop | same | backfill classroom | handwritten | all]",
             )
         ]
 
@@ -1365,6 +1415,12 @@ class Integrate(Module):
             if r.get("limit") in ("per_night", "cost", "hit"):
                 return "Nothing to start: " + " ".join(self.budget.lines())
             return "Started." if r.get("submitted") else f"Nothing to start ({r or 'already running'})."
+        if a in ("same", "duplicates", "dupes"):
+            text, buttons = graphmerge.ask_now(self)
+            if buttons and msg.respond:
+                msg.reply(text, buttons=buttons)
+                return None
+            return text
         if a.startswith("backfill"):
             what = a.split()[1:]
             if what == ["classroom"]:

@@ -614,3 +614,51 @@ def offers_due(app: App) -> int:
         )
         n += 1
     return n
+
+
+# ------------------------------------------------------------------------------------- the weekly summary
+MINUTES_DAY = re.compile(r"<!-- kurooto:minutes-(\d{4}-\d{2}-\d{2})\b")
+QUIET_DAYS = 21  # someone you meet every week, not met for this long, gets a mention
+
+
+def week_line(app: App, days: int = 7) -> str:
+    """One line for the weekly summary about the people in your project notes, only from what's logged there: who you
+    met this week (minutes or "Last met" in the note), who's next in the coming week, and anyone you meet regularly
+    ("Meets:") not met for QUIET_DAYS days. Never a message of its own. "" when there's nothing to say."""
+    from kurooto.core import infer
+
+    t = now().replace(tzinfo=None)
+    since = (t.date() - dt.timedelta(days=days - 1)).isoformat()
+    met: list[str] = []
+    nxt: list[tuple[dt.datetime, str]] = []
+    quiet: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for note, who, role in infer.projects_with(app):
+        key = (str(note), who.split()[-1].lower() if who.split() else who)
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            text = note.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        h = re.search(r"(?m)^# (.+)$", text)
+        project = (h[1].strip() if h else note.parent.name)[:40]
+        name = f"{who} ({role}, {project})" if role and role != "with" else f"{who} ({project})"
+        days_met = sorted({d for d in [*MINUTES_DAY.findall(text), *LAST_MET_ANY.findall(text)] if d >= since})
+        if days_met:
+            met.append(f"{name} {', '.join(f'{dt.date.fromisoformat(d):%a}' for d in days_met)}")
+        upcoming = next_after(app, note, t)
+        if upcoming is not None and upcoming - t <= dt.timedelta(days=7):
+            nxt.append((upcoming, f"{who} {upcoming:%a %H:%M}"))
+        last = last_met(text)
+        if schedule(text) and last and (t.date() - dt.date.fromisoformat(last)).days >= QUIET_DAYS:
+            quiet.append(f"{who} (last met {dt.date.fromisoformat(last):%d %b})")
+    parts = []
+    if met:
+        parts.append("met " + "; ".join(met))
+    if nxt:
+        parts.append("next: " + "; ".join(x for _, x in sorted(nxt)))
+    if quiet:
+        parts.append("not met for a while: " + "; ".join(quiet))
+    return ("People (from your project notes): " + ". ".join(parts) + ".") if parts else ""

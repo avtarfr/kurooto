@@ -2,6 +2,10 @@
 grades, study hours, journal days. Sent on Sundays (time in Settings) and on /week. Counted from the local event log;
 nothing leaves here.
 
+People (weekly.people, on): one line about the people in your project notes, only from what's logged there (minutes,
+"Last met", "Meets:"): who you met this week, who's next, anyone you meet regularly not met for three weeks. Never a
+message of its own (core/meetings.py:week_line).
+
 Optionally (Settings → Weekly summary → call) the summary is followed by a Sunday review call: the week in numbers,
 what went well and what didn't, anything Kurooto should do differently, and next week's deadlines and priorities.
 After it, with Chat on, the AI writes it up as a weekly review in your journal; without Chat, your words go there.
@@ -24,6 +28,7 @@ register_defaults(
     {
         "when": "weekly sun 19:00",  # when the week's summary comes ("weekly <day> HH:MM")
         "call": False,  # with Phone calls on: also a Sunday review call after the summary
+        "people": True,  # a line about who you met and meet next, only from your project notes' logged meetings
     },
 )
 REASON = "Sunday review"
@@ -88,6 +93,16 @@ class Weekly(Module):
         jd = self.journal_days(days)
         if jd:
             lines.append(f"Journal: {jd} of {days} days")
+        if self.setting("people"):
+            from kurooto.core import meetings
+
+            try:
+                people = meetings.week_line(self.app, days)
+            except Exception as e:
+                people = ""
+                self.app.events.emit("weekly_line_failed", module="meetings", error=str(e)[:200])
+            if people:
+                lines.append(people)
         for m in self.app.enabled():  # features with their own line (Study tracker, Research)
             if m.id != self.id and hasattr(m, "weekly_lines"):
                 try:

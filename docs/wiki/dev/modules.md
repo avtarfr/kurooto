@@ -519,6 +519,7 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   stored event has a `src` (`ics:<hash of the link>`, `google:<account>`); a source that fails keeps its rows from
   the last copy (`google_calendar.fetch` returns the failed accounts by name).
 - **weekly** (`modules/weekly.py`): Sunday summary from `events.jsonl` and modules' `weekly_lines`; optional review call.
+  `weekly.people` (on) adds `core/meetings.py:week_line` (people from project notes only; see core.md, Meetings).
 - **quests** (`modules/quests.py`): one onboarding quest a day for a week, judged from the event log.
 
 ### Study
@@ -576,6 +577,14 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   call, the night, any non-focus availability blocker such as a class) is clear. `quiz.links_check`: one sentence from
   the profile's helper model through `LocalModels.api("/api/generate")`, only with Local AI models on. `/card`
   (doesn't count toward the day), `/cards [on|off]`. Tests: `tests/unit/test_link_cards.py`.
+  Since 0.5.22 `links()` also reads each subject's own notes (`course_notes()`: the subject folder and course page,
+  Subjects on, not concept notes, not `books/`): `LINE` typed links, or `PLAIN` "- [[b]]: reason" lines whose reason
+  passes `graphwrite.lint_reason` (relation "", asked "How does A relate to B?", revealed "A → B: reason"); the target
+  must be a concept note (`conceptgraph.scan`, and `concept_like` for these), by slug or by bare name
+  (`[[itos-lemma]]`). `subject_of()` maps a `seen.json` row whose `book` is an item key
+  (`classroom:<hash>`, `handwritten:<hash>`) to that item's subject (`Integrate.items()`). `recent()`: concepts with a
+  seen row from an item dated in the last `RECENT_DAYS` (14), and dated course notes from then; cards touching one
+  carry `recent`, and `next_card` puts new recent cards before other new ones.
 - **hints** (`modules/hints.py`): a hint ladder for a problem, respecting a course's AI policy line.
 - **study** (`modules/study.py`): minutes per subject from the focused window title (read and discarded), idle and lock
   aware (`core/idle.py`); Windows `GetForegroundWindow`, macOS System Events, Linux `hyprctl` / `swaymsg` / `xdotool`.

@@ -111,6 +111,12 @@ limit when Kurooto knows it, and what it actually did, e.g. *agy · medium · 42
 notes, wrote 1 note*. "did nothing" means it used none of Kurooto's tools. See
 [ai-brains.md](ai-brains.md#the-run-receipt).
 
+**A line first, for a long answer.** When a request usually takes more than about 20 seconds on that AI (the median
+of your last ones at that effort, once there are three), one short line comes before the answer: "Searching your
+notes, then answering (about 40 s with agy)." It's a guess from what's known before the run (a file you sent, a link,
+words about your notes, things it remembers), not a promise. Never on a call, never for background work; turn it off
+with `jobs.plan_line` = `false`. See [ai-brains.md](ai-brains.md#the-plan-line).
+
 **Turn it on.** Features → Chat with your AI (in Starter). Needs a working AI brain.
 
 **From Telegram:**

@@ -59,9 +59,14 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   revocable link.
 - **CPU micro-helper.** A ~1 GB model for one-word decisions only (effort, intent, yes/no) on laptops without a
   graphics card, enabled only if a speed test passes, offered after week 2 when the free limit is being used up.
-- **Notation crosswalk.** When a concept appears in a second source, its notation and conventions are written side
-  by side (B_t vs W_t, Fourier 2π), quote-checked like every graph claim.
-- **Near-duplicate concepts.** "Wiener process" and "Brownian motion": Merge / Keep both / Add alias.
+- ~~**Notation crosswalk.** When a concept appears in a second source, its notation and conventions are written side
+  by side (B_t vs W_t, Fourier 2π), quote-checked like every graph claim.~~ (0.5.22: the bulk AI's answer gives each
+  concept's notation with a quote; a row whose quote isn't in the pages or doesn't hold the symbol is dropped; a
+  second source that writes it differently gives the note a Notation table in Kurooto's block; `integrate.notation`)
+- ~~**Near-duplicate concepts.** "Wiener process" and "Brownian motion": Merge / Keep both / Add alias.~~ (0.5.22: the
+  same name, a shared alias or embeddings at least 0.92 alike, one message a morning with up to three pairs; Merge
+  moves links, "Seen in", names and notation into one note and leaves the other a redirect, never deleting your text;
+  Undo on each answer; `/graph same`, `integrate.duplicates`)
 - ~~**Supervisor meeting brief.** (0.5.10 has the brief from the project note; still to come: a voice note becoming
   minutes, action items becoming deadlines.) The evening before a tagged meeting, a page from the project log since the last
   one; after it, a voice note becomes minutes, and action items become deadlines on a tap.~~ (0.5.20: for any
@@ -81,13 +86,17 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 
 ## From the skeptic review (2026-10-23)
 Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.
-- **Make the panel's ideas general**: link recall cards and ~~the revision plan~~ (0.5.16) also draw on course notes
-  and Classroom files, not only books; ~~the meeting brief is for any recurring meeting ("With: X", their role in your
-  own word: guide, manager, coach)~~ (0.5.20, with "Meets:", "Last met" and Next steps kept in Kurooto's block);
-  "check my attempt" becomes "check my draft" (essays, accounts working, code, proofs); missed-class catch-up works
-  without Classroom.
-- **A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking. Bedside
-  mode is an Android add-on.
+- **Make the panel's ideas general**: ~~link recall cards~~ (0.5.22: cards also from your course notes' links with a
+  reason and from concepts read out of Classroom files and handwritten notes, under their course; new cards about what
+  you met in class lately first) and ~~the revision plan~~ (0.5.16) also draw on course notes and Classroom files, not
+  only books; ~~the meeting brief is for any recurring meeting ("With: X", their role in your own word: guide,
+  manager, coach)~~ (0.5.20, with "Meets:", "Last met" and Next steps kept in Kurooto's block); "check my attempt"
+  becomes "check my draft" (essays, accounts working, code, proofs): still to come, as "Check my draft" isn't built in
+  any form yet (plan-next Wave 4, its own feature); ~~missed-class catch-up works without Classroom~~ (0.5.15: the task
+  and lecture note stub come without Classroom too).
+- **A Research add-on** for the narrow ones: ~~notation crosswalk~~ (0.5.22: a part of the concept graph that
+  only shows when two sources disagree, switched by `integrate.notation`, the Research add-on's switch for it), run compare, LaTeX tracker, proof
+  checking. Bedside mode is an Android add-on.
 - ~~**No college-term defaults**: the check-in times and Start-by's day window are learned from when you actually
   reply (with a notice and Undo), not 09:00-22:00; a first-run question (student, working, research, other) picks the
   features; public holidays come from your country's calendar.~~ (0.5.9: learned check-in times and window, "What do

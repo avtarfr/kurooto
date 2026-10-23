@@ -457,6 +457,10 @@ the share of today's limit when Kurooto knows it, and what it actually did with 
 through Kurooto"; "used 2 remembered items" when it was told what's
 [remembered](#memory-open-threads-and-whats-remembered)). Quiet background work gets none; `jobs.receipt` = `false`
 turns it off.
+**Plan line:** a text request of yours that usually takes more than 20 s on that AI (the median of your last ones at
+that effort, once there are three) gets one short line first: "Searching your notes, then answering (about 40 s with
+agy)." Guessed from what's known before the run (a file, a link, your notes mentioned, remembered items). Never on a
+call or for background work; `jobs.plan_line` = `false` turns it off.
 **Answers at your length** (`persona.register`, on): a short message (12 words or fewer) is answered briefly, a long
 one (80 or more) may get a full answer, and a voice note gets an answer worded to be said aloud. By your message's
 length only: nothing changes at night or partway through a conversation, and a length on your persona card wins.
@@ -921,7 +925,9 @@ questions", "Definitions", "Theorems", "Formulas", "Key results"). Classroom →
 - **Link recall cards**: the concept graph's links between notes as questions ("How is Itô's lemma used in
   Fokker-Planck?"). `/card` gives one; reply in your own words, then see the link's reason and where to read (book
   pages, the subject's own notes and Classroom files) and grade it **Forgot / Hard / Good / Easy**; the quiz's
-  spacing. `/cards on`: up to `links_per_day` (3, at most 5) a day at `links_at`, also in the phone app, never in a
+  spacing. Cards also come from your course notes (a lecture note or course page linking a concept note with a typed
+  link, or `- [[note]]:` and a reason of five words or more) and from concepts read out of Classroom files and handwritten notes (their
+  course is the file's); new cards about what you met in class in the last 14 days come first. `/cards on`: up to `links_per_day` (3, at most 5) a day at `links_at`, also in the phone app, never in a
   class, focus time or the night. `/cards`: how they're going.
 
 *Settings* (`quiz.*`): `per_session` (3), `exam_per_session` (6), `offer_at` (19:00; empty turns the evening offer
@@ -936,6 +942,9 @@ Every Sunday evening (`weekly.when`, Sunday 19:00): the week in numbers (request
 quiz, study hours, journal days), and what isn't working that could wait until then
 ([Kurooto keeps itself working](#kurooto-keeps-itself-working)). `/week` any time. With
 [Start-by dates](#start-by-dates) on, also crunch weeks ahead and what to start in the coming week.
+**People** (`weekly.people`, on): one line about the people in your project notes, only from what's logged there
+(minutes, "Last met", "Meets:"): who you met this week, who's next, and anyone you meet regularly but haven't met for
+three weeks. Never a message of its own; nobody is mentioned from chats or mail. *Undo:* `weekly.people` off.
 
 **Sunday review call** (optional, with Phone calls on; Settings → `weekly.call`): after the summary, a call of about
 15 minutes: the week in numbers and study hours per subject, what went well and what didn't, anything Kurooto should
@@ -2305,6 +2314,22 @@ against everything that's there now, and one line says what changed. `/graph` sh
 say how good the graph is: broken links, notes with no links in, vague reasons, and how many links go to the three
 busiest notes.
 
+**Look-alike concept notes** (`integrate.duplicates`, on). Each morning at 06:25, up to three pairs of concept notes
+that look like one concept come as one message: the same name, a name they share (an alias), or text that means nearly
+the same (embeddings at least 0.92 alike, where there are any). Lecture notes, course pages and books' notes are never
+paired. **Merge** keeps the first note (the one more notes link to) and moves into it the other's links, "Seen in"
+lines, names (as aliases) and notation, with a "Merged here" part; the other becomes a short redirect under its title.
+What you wrote in it stays; only a note Kurooto wrote all of, unchanged since, shrinks to the redirect, its text moved
+into the kept note. Links Kurooto wrote elsewhere follow, and new reading under the old name lands on the kept note.
+**Keep both** never asks about that pair again. **Add alias** keeps both and makes the second name an alias of the
+first, each linking the other as `equivalent-to`. Each has **Undo** (a note you changed since stays as it is, and it
+says so). A pair you don't answer comes back after two weeks; `/graph same` asks now.
+
+**Notation** (`integrate.notation`, on). The reading also notes how the pages write each concept (`B_t`, `W_t`, where
+the 2π goes in a Fourier transform), each with a quote that must be in those pages and hold the symbol, or the row is
+dropped. When a second source writes the concept differently, its note gets a **Notation** table (source, notation,
+what it stands for) in Kurooto's part of the note. One source, or sources that agree, give no table.
+
 **Which AI.** Picked for you by default (`integrate.roles` = `{"bulk": "", "check": ""}`): with both agy and Claude
 Code installed, agy does the bulk work and Claude Code the second look, side by side; with one, it does both; with
 none, your main AI does (a Gemini key's daily
@@ -2334,9 +2359,12 @@ the feature's card show tonight's budget, how it was decided and the last limit 
 | `integrate.garden`, `integrate.garden_per_day` | the daily second pass |
 | `integrate.embeddings` | auto, ollama, gemini or off |
 | `integrate.commit` | one git commit per batch |
+| `integrate.duplicates` | each morning, up to three look-alike concept notes with Merge / Keep both / Add alias |
+| `integrate.notation` | a Notation table when a second source writes a concept differently |
 
 **Undo.** `git revert` a batch's commit; each batch also keeps a before-copy of every file it changed in
-`<state>/integrate/undo/`. To stop it, turn the feature off in Features. To stop reading class materials (or
+`<state>/integrate/undo/`. A Merge, Keep both or Add alias: the Undo under its answer (their before-copies are in
+`<state>/integrate/dupes.json`); `integrate.duplicates` off stops the question. To stop it, turn the feature off in Features. To stop reading class materials (or
 handwritten notes), take them out of `integrate.sources` (or untick them on the card); what's queued waits.
 
 **Reading cost.** The vision model now reads a maths page again only when its text layer broke the equations into
