@@ -18,8 +18,11 @@ Standing plans, never struck through.
   local alarm and notification buttons are planned for 0.6.0.
 - **A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
   groups, with a link to the user wiki for the rest.
-- **Dreaming** (0.5.9 has the morning message of the night's work and the loose ends; still to come: consolidating
-  memory and spotting contradictions across notes): while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
+- **Dreaming** (0.5.9 has the morning message of the night's work and the loose ends; ~~consolidating memory and
+  spotting contradictions across notes~~ (0.5.22: duplicate gists and how-to-help-me lines, and lines that disagree
+  across how-to-help-me lines, notes, deadlines and GBrain's contradictions report, in the morning message with
+  Keep A / Keep B / Both true; nothing changes until a tap); still to come: folding what it learned into your profile
+  note): while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
   your journal), consolidates what it learned into memory and your profile, spots contradictions and loose ends, and
   tells you in the morning what it tidied.
 - **Dream RSI (self-improvement while dreaming)** (0.5.9 has the first part: each morning it replays your test cases
@@ -40,8 +43,10 @@ Standing plans, never struck through.
 - **Wiki-level documentation**: a user wiki and a developer wiki (for people and for AI agents), each a page on
   the site, covering every nook and cranny; one full read equips someone to use, develop and fix Kurooto (being
   written for 0.5.8).
-- **Use GBrain more**: weekly checkup and contradiction reports in chat, entity and timeline pages for courses,
-  queries during calls.
+- ~~**Use GBrain more**: weekly checkup and contradiction reports in chat, entity and timeline pages for courses,
+  queries during calls.~~ (0.5.22: `gbrain.checkup_line`, one weekly line from its doctor; its contradictions report
+  in Dreaming's morning section; `gbrain.course_pages`, each course page's key concepts and dated timeline; on calls
+  search_notes searches by meaning and note_timeline reads a course's or a note's timeline)
 - **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting).
 
 ## Done

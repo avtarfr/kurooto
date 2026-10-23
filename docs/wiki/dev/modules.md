@@ -614,7 +614,24 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   repository; refuses public repos; the token is passed through `GIT_CONFIG_*` environment variables, never argv; never
   force-pushes; pushes a couple of minutes after AI jobs (`notes_sync:soon`). Shares the repo with the call line.
 - **gbrain** (`modules/gbrain.py`): the GBrain notes index (Bun + PGlite) in `<data>/gbrain`, synced every 15 min;
-  "external" mode for the user's own GBrain; shares the `gbrain` lock with backups.
+  "external" mode for the user's own GBrain; shares the `gbrain` lock with backups. `run()` refuses `doctor` without
+  `--no-migrate` (any brain) and anything outside `EXTERNAL_OK` on an external one (`doctor` and `find-contradictions`
+  are in it). `nightly()` first writes course pages (`gbrain.course_pages`: `modules/coursepages.py:write_all`, its
+  key in the result only when a page changed), then timelines or the upkeep. The weekly job is `weekly()`:
+  `health_line()` (`gbrain.checkup_line`: `doctor --json --no-migrate --scope=brain`, `brain_checks_score` and the
+  first non-ignored warn/fail check, preferring its `top_issues` fix; event `gbrain_checkup_line`; Calm reason
+  `gbrain.checkup_line`; "" when busy) and `checkup(line)` (the advisor; its message starts with the line, so one
+  message). `contradictions()` (`gbrain.contradictions`): `find-contradictions --json --limit 20`, which only reads
+  the last stored probe run (Kurooto never runs `eval suspected-contradictions`), keeping `verdict == contradiction`
+  and severity above `low`; read by `modules/consolidate.py:gbrain_pairs`. `call_tools()`: `note_timeline` with a
+  call hint (search_notes, which `Calls._search` already routes to `GBrain.search`, says "by meaning" when it's on).
+- **coursepages** (`modules/coursepages.py`, not a feature): `write_all(app)` gives each subject's course page one
+  `graphwrite.put_block` block, key `course-overview` (`## <Name> at a glance`, classes from `Subjects.timetable()`,
+  `### Key concepts` = `conceptgraph.scan` notes the subject folder's notes link to most, own pages and dated lecture
+  notes left out, up to 10, and `### Timeline` = `- **YYYY-MM-DD** | lecture|deadline|exam|term note — ...` lines in
+  GBrain's timeline format, ±120 days, at most 40 nearest today). A missing page is made with the layout's
+  frontmatter; an existing one is written only when `graphwrite.guarded` holds. Event `course_pages` (`changed`).
+  Tests: `tests/unit/test_gbrain_more.py`.
 - **local_models** (`modules/local_models.py`): installs Ollama and the models the hardware profile suggests; wires the
   helper model into `brain.models.ollama` and `brain.classify`; `rest()` unloads models on battery.
 - **backups** (`modules/backups.py`): a daily zip of config, data and state (notes, secrets, the GBrain index optional)
@@ -703,6 +720,29 @@ arrives.
   under the course page's `## Concepts`; `no` is `notinterested.add_topic`; `open` is `opener.open_note`; `quiz` is
   `Quiz.start_session`; `less` applies a Calm `Change` (`dreaming.resurface` false) with an Undo button. Tests:
   `tests/unit/test_curious.py`.
+  Consolidating (`modules/consolidate.py`, `dreaming.consolidate`): `scan(app, ai)` runs at `dreaming:consolidate`
+  (`daily 04:45`, in a thread) and, when the last scan is over 20 h old, inline (rules only) before the morning
+  message. Sides (`Side`): `facts()` (`remember.kept_lines`), `gists()` and `note_lines()` (ledger rows of the last 30
+  days; a day or meeting row's lines re-read from its note by `lines_of`, the ledger's own `DAY_LINE`/`_meetings`
+  rules), `deadline_sides()` (open, -7..90 days; its value is the due date), `gbrain_pairs()`. `read(text, base)`
+  gives key terms (stemmed, stop words out), identifiers (`quiz#3`) and values by kind (`date`: ISO dates, "3 Nov",
+  weekdays as the next one on or after the line's day, today/tomorrow; `time`: clock times and "before 8"; `num`).
+  `_pairs` only pairs sides sharing two terms (an inverted index). `check(a, b)`: `dup` for two facts or two gists of
+  one kind and day (`same`: equal normalised text, or Jaccard ≥ 0.75 with equal values and ids); `clash` for pairs
+  without gists, not of one daily note, ids not disjoint, overlap ≥ 0.75 over the smaller set and a value kind both
+  give that differs (facts: date, time, num; otherwise date only, and a note side needs a scheduling word,
+  `SCHEDULE`); `near` (overlap ≥ 0.5) goes to `second_opinion()` (`dreaming.consolidate_ai`: `local` =
+  `providers.local`, `main` = `brain.main` unless its quota is kept, then local; never a gist; `AI_MAX` 8; one word
+  SAME / CLASH). New items (A = the older side by day then place) go to `<state>/dreaming-consolidate.json`
+  (`items`: ref, kind, why, `pair` = `ledger.mac` of both side ids, the sides' references; `decided`: pair → how;
+  `undo`): no gist words, only row ids. `section(app, send)` re-resolves each side (`resolve`; gone or changed: the
+  item goes), renders up to `dreaming.consolidate_max` with rows `(n: Keep A, dcn:<ref>:a)`, `b`, `both`, and on send
+  counts shows (an item already shown `SHOWN_MAX` = 2 times is decided `unanswered`). `button` (`dcn`): `both`
+  decides; `a`/`b` `_let_go` the other side: a fact `remember.remove_line`, a gist `Ledger.delete` with its payload
+  `Ledger.seal`ed into the Undo record, a deadline `Deadlines.move` to the kept note's single date, a note or GBrain
+  side unchanged (says where). The Undo (`dcn:<uid>:undo`) puts it back and forgets the decision (re-queuing the item
+  unless it was a gist). Events `dreaming_consolidate`, `dreaming_second_opinion`, `dreaming_settled`,
+  `dreaming_settle_undone`. `/dream check` is `consolidate.show`. Tests: `tests/unit/test_consolidate.py`.
 - **learning** (`modules/learning.py:Learning`, requires `chat`, `extra = True`): "Learns from its own work", four parts
   each behind a setting (`learning.search`, `skills`, `corrections`, `remember`; `part(name)` is the feature and the
   part both on) and a card toggle (`card`, `card_action`, `PARTS`).

@@ -19,10 +19,18 @@ as they are (one change a night, with Undo) and says so in one line. /dream poli
 Curious and remembering (dreaming.curious, dreaming.resurface; modules/curious.py): one line about a topic you asked
 about 3+ times this week with no note on it (Make a stub / Not interested), and one from a shared past, a note or quiz
 subject from 10-30 days ago or an anniversary (Open it / Less of this). Each at most once a day, among the loose ends.
+
+Consolidating (dreaming.consolidate, on; modules/consolidate.py): each night (04:45) it looks over what Kurooto
+remembers for the same thing kept twice (gists, its own how-to-help-me lines) and for lines that disagree (a
+how-to-help-me line, your recent notes, an open deadline, and the notes brain's contradictions report: a different
+date, time or number for the same thing). The morning message lists a few in one section, "Worth a look in what I
+remember", each with Keep A / Keep B / Both true; nothing changes until you tap, and each change has an Undo.
+/dream check looks now.
 """
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import re
 from pathlib import Path
@@ -31,7 +39,7 @@ from kurooto.core import policy
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
-from kurooto.modules import curious
+from kurooto.modules import consolidate, curious
 from kurooto.modules.base import Command, Module
 
 register_defaults(
@@ -60,13 +68,15 @@ class Dreaming(Module):
 
     def start(self):
         self.every("morning", self.setting("when") or "daily 07:30", self.morning)
+        self.every("consolidate", consolidate.WHEN, lambda p: asyncio.to_thread(consolidate.scan, self.app))
 
     def commands(self):
         return [
             Command(
                 "dream",
                 "what Kurooto did since the last morning message, and the loose ends, now; /dream policy: when its "
-                "own messages reach you, and what it tuned",
+                "own messages reach you, and what it tuned; /dream check: duplicates and lines that disagree in what "
+                "it remembers, now",
                 self._cmd,
             )
         ]
@@ -74,6 +84,13 @@ class Dreaming(Module):
     def _cmd(self, msg, arg: str) -> str | None:
         if arg.strip().lower() == "policy":
             return policy.show(self.app)
+        if arg.strip().lower() in ("check", "tidy", "consolidate"):
+            text = consolidate.show(self.app)
+            _t, buttons = consolidate.section(self.app, send=False)
+            if buttons and msg.respond:
+                msg.reply(text, buttons=buttons)
+                return None
+            return text
         text = self.report(send=False) or "Nothing happened overnight that's worth a line, and no loose ends."
         if self.buttons and msg.respond:  # the curious and resurfacing lines' buttons
             msg.reply(text, buttons=self.buttons)
@@ -81,7 +98,10 @@ class Dreaming(Module):
         return text
 
     def callbacks(self):
-        return {"drm": lambda ref, act: curious.button(self.app, ref, act)}
+        return {
+            "drm": lambda ref, act: curious.button(self.app, ref, act),
+            "dcn": lambda ref, act: consolidate.button(self.app, ref, act),  # Keep A / Keep B / Both true, Undo
+        }
 
     # ------------------------------------------------------------------------------------- the morning
     def morning(self, payload: dict | None = None) -> str:
@@ -257,16 +277,24 @@ class Dreaming(Module):
         did += learned
         ends += checked
         ends += self.curious_lines(send)
+        try:  # duplicates and lines that disagree in what's remembered (modules/consolidate.py)
+            tidy, tidy_buttons = consolidate.section(self.app, send)
+        except Exception as e:  # never at the cost of the morning message
+            self.app.events.emit("dreaming_check_failed", error=f"consolidate: {type(e).__name__}: {e}"[:200])
+            tidy, tidy_buttons = "", []
+        self.buttons = list(self.buttons or []) + tidy_buttons
         if send:
             st = {"at": now().isoformat()}
             prev = (jload(self.state_file, {}) or {}).get("passing")
             st["passing"] = passing if passing is not None else prev
             jsave(self.state_file, st)
-        if not did and not ends and not light:
+        if not did and not ends and not light and not tidy:
             return ""
         parts = [light] if light else []
         if did:
             parts.append("While you slept:\n" + "\n".join(f"- {x}" for x in did))
+        if tidy:
+            parts.append(tidy)
         if ends:
             parts.append("Loose ends:\n" + "\n".join(f"- {x}" for x in ends))
         text = "\n\n".join(parts)
@@ -274,5 +302,5 @@ class Dreaming(Module):
             buttons = [[("Not today", "rhy:lighter:no")]] if light else []
             buttons += list(undo or []) + list(self.buttons or [])  # Dream RSI's Undo, the curious lines' buttons
             self.app.notify(text, kind="result", title="Dreaming", why="dreaming.morning", buttons=buttons or None)
-        self.app.events.emit("dreaming_told", did=len(did), loose=len(ends), sent=send)
+        self.app.events.emit("dreaming_told", did=len(did), loose=len(ends), tidy=len(tidy_buttons), sent=send)
         return text

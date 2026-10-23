@@ -7,13 +7,21 @@ and offers /notes <question>. How the index is made depends on your computer:
     gemini   Google's embedding model with your free Gemini key (computers without one); note text goes to Google
     off      keyword search only; nothing leaves the computer
 
-Three more things it can do, each on its own switch in Settings:
+More things it can do, each on its own switch in Settings:
     timelines  (on)   nightly, dated log lines in your notes ("- **2026-10-19** | source — what happened") become
                       each note's timeline: /timeline <note>, and your AI can ask "when did I ...?"
+    course_pages (on) nightly, each course page (one per subject) gets a block of Kurooto's own: the course's key
+                      concepts and a dated timeline from the timetable, deadlines, key dates and lecture notes
+                      (modules/coursepages.py), so /timeline <course page> and your AI see the course as one page
     upkeep     (off)  nightly upkeep: GBrain's "dream" cycle, light steps only (links, facts, timelines, the index,
                       orphaned pages). Steps that would rewrite your note files or call an AI model are left out.
                       Heavy, so it waits for the charger.
+    checkup_line (on) once a week, one line on how the brain is (GBrain's doctor, read only, never migrating)
     checkup    (off)  a weekly checkup (GBrain's advisor); you get a message only when something needs a look.
+    contradictions (on) the brain's contradictions report (from `gbrain eval suspected-contradictions`, which you run
+                      yourself: it uses an AI model) joins Dreaming's "Worth a look" section with Keep A / Keep B /
+                      Both true (modules/consolidate.py). Kurooto only reads the last report.
+During calls, search_notes searches the brain by meaning and note_timeline reads a note's dated entries.
 The upkeep's steps are GBrain's own phase names (gbrain.upkeep_steps); add others (lint, sync, the repair steps,
 consolidate, edge_contradictions...) if you want them, knowing some rewrite note files or call the AI model GBrain is
 set up with. Kurooto never runs purge.
@@ -55,6 +63,9 @@ register_defaults(
         "timelines": True,  # nightly: dated log lines become timelines (no AI, nothing leaves the computer)
         "upkeep": False,  # nightly upkeep, light steps only (heavy: waits for the charger)
         "checkup": False,  # weekly checkup; a message only when something needs a look
+        "checkup_line": True,  # once a week, one line on how the notes brain is (its doctor, read only)
+        "course_pages": True,  # nightly: each course page gets its key concepts and a dated timeline (Kurooto's block)
+        "contradictions": True,  # its last contradictions report joins Dreaming's morning section (Keep A / Keep B)
         "nightly": "daily 03:00",
         "checkup_when": "weekly sun 19:30",
         "upkeep_steps": [],  # the upkeep's steps (GBrain's phase names); empty: the light ones (UPKEEP_STEPS)
@@ -94,7 +105,10 @@ PHASES = (
     "enrich_thin", "skillopt", "embed", "orphans", "schema-suggest",
 )  # fmt: skip
 # what Kurooto runs on a brain it doesn't own: reading it, adding pages, keeping a source in step, the nightly steps
-EXTERNAL_OK = {"query", "search", "timeline", "extract", "dream", "advisor", "import", "sync", "embed", "--version"}
+EXTERNAL_OK = {
+    "query", "search", "timeline", "extract", "dream", "advisor", "import", "sync", "embed", "--version", "doctor",
+    "find-contradictions",
+}  # fmt: skip
 ONLINE = ("sync", "embed", "query", "embeddings", "dream")  # steps that may reach its AI models (core/egress.py)
 BUSY = 75  # the exit code run() gives when the brain is busy (another step holds it)
 MIGRATIONS = ("pending_migration", "apply_migrations", "migration")
@@ -168,6 +182,8 @@ class GBrain(Module):
             return proc.Result(
                 1, "", f"Kurooto doesn't run `gbrain {args[0] if args else ''}` on a brain it doesn't own"
             )
+        if args and args[0] == "doctor" and "--no-migrate" not in args:  # doctor migrates unless told not to
+            return proc.Result(1, "", "Kurooto runs gbrain doctor only with --no-migrate")
         home = self.brain_home()
         if args and args[0] in ONLINE and (self.external() or self.embeddings() == "gemini"):
             egress.handed("GBrain", "Notes brain")  # its index is made with Gemini (or your own brain's models)
@@ -286,7 +302,7 @@ class GBrain(Module):
         self.every(
             "checkup",
             self.setting("checkup_when") or "weekly sun 19:30",
-            lambda p: self._spawn("checkup", self.checkup),
+            lambda p: self._spawn("checkup", self.weekly),
         )
 
     def _spawn(self, name: str, fn) -> bool:
@@ -300,10 +316,20 @@ class GBrain(Module):
 
     # ------------------------------------------------------------------------------------ the nightly work
     def nightly(self) -> dict:
-        """Timelines, then the upkeep, each only if it's on. The upkeep's own steps include the timelines."""
-        if not self.initialised() or not self.exe():
-            return {}
+        """The course pages, then timelines, then the upkeep, each only if it's on. The upkeep's own steps include
+        the timelines."""
         out = {}
+        if self.setting("course_pages"):
+            from kurooto.modules import coursepages
+
+            try:
+                n = coursepages.write_all(self.app)
+                if n:  # how many course pages changed
+                    out["course_pages"] = n
+            except Exception as e:  # one page that can't be written never stops the rest of the night
+                self.app.events.emit("course_pages_failed", error=f"{type(e).__name__}: {e}"[:200])
+        if not self.initialised() or not self.exe():
+            return out
         if self.setting("upkeep"):
             out["upkeep"] = self.upkeep()
         elif self.setting("timelines"):
@@ -360,8 +386,65 @@ class GBrain(Module):
         jsave(self.app.paths.state / "gbrain.json", state)
         return ok, status
 
-    def checkup(self) -> list[dict]:
-        """GBrain's advisor; a message (once a week at most) only if something is a warning or worse."""
+    def weekly(self) -> str:
+        """The weekly look: one line on how the brain is (checkup_line), and the advisor's findings (checkup). One
+        message: the findings carry the line when there are any. The line, or ""."""
+        if not self.initialised() or not self.exe():
+            return ""
+        line = self.health_line() if self.setting("checkup_line") else ""
+        found = self.checkup(line=line)
+        if line and not found:
+            self.app.notify(line, kind="info", why="gbrain.checkup_line")
+        return line
+
+    def _ignored(self, name: str) -> bool:
+        return any(str(name).startswith(str(x)) for x in self.setting("checkup_ignore") or [])
+
+    def health_line(self) -> str:
+        """GBrain's doctor (read only: --no-migrate, the brain's own checks) in one line: its score and the first
+        thing that needs a look. "" when the brain is busy (next week)."""
+        r = self.run("doctor", "--json", "--no-migrate", "--scope=brain", timeout=300, wait=600)
+        if r.code == BUSY:
+            return ""
+        rep = _json(r.out)
+        if rep is None:
+            self.app.events.emit("gbrain_checkup_line", ok=False)
+            return "Notes brain checkup: its doctor didn't answer this week; search still works."
+        checks = [c for c in rep.get("checks") or [] if isinstance(c, dict)]
+        bad = [c for c in checks if c.get("status") in ("warn", "fail") and not self._ignored(c.get("name") or "")]
+        score = rep.get("brain_checks_score", rep.get("health_score"))
+        scored = f" (score {score}/100)" if isinstance(score, (int, float)) else ""
+        self.app.events.emit("gbrain_checkup_line", ok=True, status=str(rep.get("status") or ""), items=len(bad))
+        if not bad:
+            return f"Notes brain checkup: all well{scored}, {len(checks)} checks passed."
+        names = {str(c.get("name")) for c in bad}
+        top = next((t for t in rep.get("top_issues") or [] if isinstance(t, dict) and t.get("name") in names), None)
+        first = re.sub(r"\s+", " ", str((top or {}).get("fix") or bad[0].get("message") or bad[0].get("name")))
+        first = first if len(first) <= 120 else first[:119].rstrip() + "…"
+        n = len(bad)
+        return f"Notes brain checkup{scored}: {n} thing{'s' if n != 1 else ''} to look at; first: {first}"
+
+    def contradictions(self) -> list[dict]:
+        """The last contradictions report's findings (GBrain's find-contradictions reads what's stored; it never
+        runs the probe, which uses an AI model): real disagreements of some weight only, no renamings or changes over
+        time. [] when off, not set up, busy or there's no report."""
+        if not self.setting("contradictions") or not self.initialised() or not self.exe():
+            return []
+        r = self.run("find-contradictions", "--json", "--limit", "20", timeout=120, wait=60)
+        rep = _json(r.out) if r.ok else None
+        found = [
+            f
+            for f in (rep or {}).get("contradictions") or []
+            if isinstance(f, dict)
+            and f.get("verdict", "contradiction") == "contradiction"
+            and f.get("severity") != "low"
+        ]
+        self.app.events.emit("gbrain_contradictions", ok=rep is not None, n=len(found))
+        return found
+
+    def checkup(self, line: str = "") -> list[dict]:
+        """GBrain's advisor; a message (once a week at most) only if something is a warning or worse. `line`: the
+        week's one line, which the message then starts with."""
         if not self.initialised() or not self.exe() or not self.setting("checkup"):
             return []
         r = self.run("advisor", "--json", timeout=600)  # exit 1 / 2 mean warnings / critical: the report is still there
@@ -391,9 +474,11 @@ class GBrain(Module):
             if any(f["id"] in MIGRATIONS for f in found) and not self.external():
                 buttons.insert(0, ("Update the brain", f"gbrain:{ref}:migrate"))
             self.app.notify(
-                f"Notes brain checkup: {len(found)} thing(s) need a look.\n" + "\n".join(lines),
+                (f"{line}\n" if line else "")
+                + f"Notes brain checkup: {len(found)} thing(s) need a look.\n"
+                + "\n".join(lines),
                 kind="info",
-                title="Notes brain checkup",
+                title=None if line else "Notes brain checkup",
                 buttons=[buttons],
                 why="gbrain.checkup",
             )
@@ -456,14 +541,28 @@ class GBrain(Module):
         return clip(self.timeline(arg), 3500)
 
     def agent_tools(self):
+        return [self._timeline_tool()]
+
+    def _timeline_tool(self, n: int = 6000, hint: str = "") -> Tool:
+        return Tool(
+            "note_timeline",
+            "The dated entries of one note (its '- **YYYY-MM-DD** | ...' log lines), oldest first. Good for "
+            "'when did I last ...?' once you know which note; slug like research/reading-group. A course page "
+            "has its course's timeline (classes, deadlines, lectures).",
+            lambda a: clip(self.timeline(str(a.get("slug", "")), str(a.get("since") or "")), n),
+            {"slug": arg(), "since": arg("only entries on or after YYYY-MM-DD (optional)")},
+            ("slug",),
+            hint=hint,
+            writes=False,
+        )
+
+    def call_tools(self):
+        """On calls: a note's (or a course's) timeline. search_notes (modules/calls) already searches this brain."""
         return [
-            Tool(
-                "note_timeline",
-                "The dated entries of one note (its '- **YYYY-MM-DD** | ...' log lines), oldest first. Good for "
-                "'when did I last ...?' once you know which note; slug like research/reading-group.",
-                lambda a: clip(self.timeline(str(a.get("slug", "")), str(a.get("since") or "")), 6000),
-                {"slug": arg(), "since": arg("only entries on or after YYYY-MM-DD (optional)")},
-                ("slug",),
+            self._timeline_tool(
+                hint="Their notes brain is on: search_notes finds by meaning, so pass whole questions ('when is the "
+                "stats quiz', 'what did I decide about the forcing'); note_timeline gives a note's or a course page's "
+                "dated entries (from a search_notes result's slug).",
             )
         ]
 

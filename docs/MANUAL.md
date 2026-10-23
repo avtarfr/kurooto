@@ -1075,11 +1075,16 @@ Search your notes by meaning (`/notes what is a compact space`), and your AI get
 every 15 minutes. On computers without a graphics card the index is made with Gemini (note text goes to Google) or
 keyword-only; with a graphics card or Apple Silicon it stays on your computer.
 
-Three more things, each with its own switch in Settings (`gbrain.*`):
+More things, each with its own switch in Settings (`gbrain.*`):
 - **Timelines** (on, `gbrain.timelines`): every night, dated log lines in your notes, written like
   `- **2026-10-19** | source — what happened`, become each note's timeline. `/timeline research/reading-group` shows
   one; your AI uses them for "when did I last ...?". Kurooto's own skills write their log lines this way. No AI is
   involved and nothing leaves your computer.
+- **Course pages** (on, `gbrain.course_pages`): every night each subject's course page gets one block of Kurooto's
+  own (`<!-- kurooto:course-overview -->`): its classes, key concepts (the concept notes its notes link to most) and a
+  dated timeline of its lecture notes, deadlines and the term note's key dates for it, in the timeline format, so
+  `/timeline stats/course` shows the course and your AI sees it as one page. Only the block is rewritten; a missing
+  course page is made. Rules only. *Undo:* turn it off; delete the block if you don't want it.
 - **Nightly upkeep** (off, `gbrain.upkeep`): GBrain's maintenance cycle at 03:00 (`gbrain.nightly`), light steps
   only: links, facts, timelines, the index, orphaned pages. Steps that would rewrite your note files or call an AI
   model are left out. It's heavy, so on a laptop it waits for the charger. If it fails you're told once (with where
@@ -1087,6 +1092,15 @@ Three more things, each with its own switch in Settings (`gbrain.*`):
 - **Weekly checkup** (off, `gbrain.checkup`): GBrain's own advisor, Sundays at 19:30 (`gbrain.checkup_when`). You get a
   message only when something is a warning or worse, with **Ignore these** (adds them to `gbrain.checkup_ignore`) and,
   when the brain needs a schema update, **Update the brain**.
+- **Weekly checkup line** (on, `gbrain.checkup_line`): at the same time, one line from GBrain's doctor (run read
+  only, never migrating): "Notes brain checkup: all well (score 95/100), 31 checks passed." or "... 2 things to look
+  at; first: run gbrain embed --stale". With the checkup's findings it opens that message instead. *Undo:* set it to
+  false, or Less of this.
+- **Contradictions** (on, `gbrain.contradictions`): the last report of GBrain's contradictions probe, if you ran it
+  (`gbrain eval suspected-contradictions`; it uses an AI model, so Kurooto never runs it), joins Dreaming's "Worth a
+  look" section with Keep A / Keep B / Both true. Both sides are your notes: nothing is changed.
+- **On calls:** search_notes searches the brain by meaning, and note_timeline reads a note's or a course page's
+  timeline.
 
 **Which steps the upkeep runs** (`gbrain.upkeep_steps`): empty means the light ones above. List GBrain's own phase
 names to choose, e.g. `["lint", "backlinks", "sync", "extract", "extract_facts", "consolidate",
@@ -1298,13 +1312,30 @@ last practised in a quiz then (those with an exam in two weeks first), or an ann
 or a repository's first commit, in whole months or years. **Open it** (or **Practise**) and **Less of this**.
 Each line comes at most once a day; the same topic or note not again for 30 days.
 
-**What leaves your computer.** Nothing: it reads Kurooto's own log, your requests' titles and your notes. What calls
-searched your notes for is kept 8 days at most (and `/forget` clears it).
+**Worth a look in what I remember** (`dreaming.consolidate`, on). Each night at 04:45 it looks for the same thing
+remembered twice (two gists of one kind from the same day, two of Kurooto's lines in your how-to-help-me note) and for
+lines that disagree (a how-to-help-me line against another or against your notes, two of your notes, a note against an
+open deadline, and, with the notes brain on, its contradictions report): the same thing, the same "Quiz 3", with a
+different date, weekday, time or number ("Quiz 3 is due Fri" and "Quiz 3 is due Mon"). Your daily notes and project
+meetings from the last 30 days are compared; a line that only says when you did something doesn't count. A few
+(`dreaming.consolidate_max`, 3) come as one section of the morning message, each with **Keep A**, **Keep B** and
+**Both true** (**Keep both** for a duplicate). Nothing changes until you tap: keeping one side takes the other out of
+your how-to-help-me note, drops the other gist, or moves the deadline to the date your note says, each with **Undo**;
+a line in your own notes is never changed (it says which note, for you to change). Both true isn't asked again; an
+item shown on two mornings without a tap is let go. `/dream check` looks now. Rules first; a pair that's close but
+not clear can get a second opinion (`dreaming.consolidate_ai`): `local` (the model on this computer, when there is
+one), `main` (your AI; only how-to-help-me lines and note lines, never a gist) or `off`, at most 8 a night.
+
+**What leaves your computer.** Nothing: it reads Kurooto's own log, its memory, your requests' titles and your notes.
+What calls searched your notes for is kept 8 days at most (and `/forget` clears it). With `dreaming.consolidate_ai` =
+`main`, the pairs it asks about go to your AI.
 
 **Undo.** Turn it off in Features; the concept graph's morning line comes on its own again. A tuned message rule:
 its **Undo** button, or remove the kind from `notify.calm.habituate`, `notify.calm.evening` or `notify.calm.windows`;
 `dreaming.tune_messages` = false stops the tuning. `dreaming.curious` or `dreaming.resurface` = false drops one line;
-a stub it made is a plain note you can delete; `/unignore <topic>` takes back Not interested.
+a stub it made is a plain note you can delete; `/unignore <topic>` takes back Not interested. A Keep A / Keep B: its
+**Undo** button (the line, the gist or the deadline's date comes back, and the pair is asked about again);
+`dreaming.consolidate` = false stops looking.
 
 ### Set up from what you say
 

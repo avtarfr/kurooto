@@ -319,6 +319,31 @@ why it isn't in the Starter set), creates the brain and reads your notes into it
 `- **2026-10-19** | source — what happened`, become that note's timeline. Kurooto's own skills and features write
 their log lines this way (journal, research project logs). No AI is involved and nothing leaves your computer.
 
+**Course pages** (`gbrain.course_pages`, on). Every night each subject's course page (`stats/course.md`, or
+`maps/courses/stats.md` in the zettelkasten layout) gets one block of Kurooto's own, between
+`<!-- kurooto:course-overview -->` and `<!-- /kurooto:course-overview -->`:
+
+```
+## Statistics at a glance
+Kept up to date by Kurooto each night; the rest of the page is yours.
+
+Classes: Mon 09:00-09:55, Wed 11:00-11:55.
+
+### Key concepts
+- [[stats/bayes-theorem|Bayes' theorem]]
+
+### Timeline
+- **2026-10-18** | lecture — [[stats/2026-10-18-priors|Lecture 4: priors]]
+- **2026-10-27** | deadline — Problem set 3 at 17:00
+```
+
+Key concepts are the concept notes the course's own notes link to most (up to 10). The timeline holds its lecture
+notes, its deadlines (done ones too) and the term note's key dates for it, 120 days back and ahead. Its lines are in
+the timeline format, so after the next night `/timeline stats/course` shows the course's timeline and your AI (and a
+call, through note_timeline) can ask it "what's coming up in stats?". Only the block is ever rewritten; a page that
+isn't there yet is made. Rules only, nothing leaves the computer. *Undo:* turn it off; the block stays until you
+delete it.
+
 **Nightly upkeep** (`gbrain.upkeep`, off). GBrain's maintenance at 03:00 with light steps only: backlinks, facts,
 the index and orphaned pages (timelines are part of it when it's on). Steps that would rewrite your note files or
 call an AI model are left out. It's heavy, so on a laptop it waits for the charger. If it fails you get one message
@@ -338,6 +363,21 @@ something is a warning or worse, listing up to 8 findings, with buttons:
   update. "The brain is busy" means try again later.
 
 A button on an old checkup says "That checkup is old; the next one comes on Sunday."
+
+**Weekly checkup line** (`gbrain.checkup_line`, on). At the same time, one line on how the brain is, from GBrain's
+doctor (read only: it never updates the brain's schema): "Notes brain checkup: all well (score 95/100), 31 checks
+passed." or "Notes brain checkup (score 85/100): 2 things to look at; first: run gbrain embed --stale". With the
+checkup above on and findings to show, the line opens that message instead of coming on its own. It has Calm's Why?
+and Less of this; *Undo:* `gbrain.checkup_line` = false.
+
+**Contradictions** (`gbrain.contradictions`, on). If you run GBrain's contradictions probe yourself (`gbrain eval
+suspected-contradictions`; it uses the AI model GBrain is set up with, so Kurooto never runs it), the real
+disagreements it found (not renamings, not things that changed over time) join Dreaming's "Worth a look in what I
+remember" section in the morning ([Dreaming](teaching-kurooto.md#dreaming)), with Keep A / Keep B / Both true. Both
+sides are your notes, so Kurooto only says where each one is; nothing is changed. Kurooto only reads the last report.
+
+**On calls.** With the notes brain on, a call's search_notes searches it by meaning (a whole question works: "when is
+the stats quiz?"), and note_timeline reads a note's or a course page's dated entries.
 
 **Your own GBrain.** If you already run GBrain yourself, Kurooto can use that brain instead of making its own:
 
@@ -365,6 +405,9 @@ MCP tools (asked first, with Approve / Deny); `gbrain.mcp_surface` (`full`, `sta
 | `gbrain.nightly` | `daily 03:00` | When timelines and upkeep run |
 | `gbrain.upkeep_steps` | `[]` | The upkeep's steps; empty = the light ones |
 | `gbrain.checkup` | off | The weekly checkup |
+| `gbrain.checkup_line` | on | One line a week on how the brain is |
+| `gbrain.course_pages` | on | Nightly key concepts and timeline on each course page |
+| `gbrain.contradictions` | on | Its contradictions report joins Dreaming's morning section |
 | `gbrain.checkup_when` | `weekly sun 19:30` | When it runs |
 | `gbrain.checkup_ignore` | a list | Findings the checkup leaves out |
 | `gbrain.managed` | on | Off: use your own GBrain |
