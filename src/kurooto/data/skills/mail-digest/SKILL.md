@@ -42,7 +42,7 @@ only counted under `Not read`. Grouped by what it asks of them:
 A line may end with the message's link.
 
 **Act on it.**
-- Deadlines and exam dates: add_deadline for each (title like "Lab report", due like "2026-11-02 17:00", subject: the
+- Deadlines and exam dates: add_deadline for each (title like "Lab report", due like "2026-11-02 17:00", course: the
   course the mail is about when you can tell, kind exam for a quiz or exam). No
   add_deadline tool: they stay under Dates only.
 - Mail about exams (an exam schedule or timetable, a quiz's date, a room, the syllabus, what to bring), including a

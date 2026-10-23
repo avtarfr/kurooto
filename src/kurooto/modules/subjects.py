@@ -21,7 +21,9 @@ Missed-class catch-up (subjects.catch_up, on): a class you skipped, or one that 
 alarm answered, "I'm awake", or your first message of the day), gets a catch-up task in Deadlines, due before that
 course's next class (else in 3 days), and a note for that lecture: the one you have for that day, else a short stub
 ("## What was covered") to fill in. One message lists them, with a **Went to ...** button on each (it takes the task
-back, and the stub if you haven't written in it). Rules only; nothing leaves the computer.
+back, and the stub if you haven't written in it). With Google Classroom on, the message and the stub list that day's
+posts for the course (title and link); posts that come later that day join the stub while it's as it was made. Rules
+only; nothing leaves the computer.
 """
 
 from __future__ import annotations
@@ -61,10 +63,18 @@ CATCH_UP_EVERY = "every 30m"  # classes that ended are looked at this often
 CATCH_UP_DAYS = 3  # with no next class in two weeks, the catch-up is due this many days on
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 AUTO_NOTE = {"kurooto": "terms/*.md", "zettelkasten": "maps/semester-*.md"}
+POSTS_HEAD = "## Classroom posts that day"  # in a catch-up's lecture stub, above...
+COVERED = "## What was covered"  # ...the part you fill in
 
 
 def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def posts_md(posts: list[dict]) -> str:
+    """Classroom posts as a list of links under POSTS_HEAD ("" for none)."""
+    rows = [f"- [{re.sub(r'[][]', '', p['title'])}]({p['url']})" if p["url"] else f"- {p['title']}" for p in posts]
+    return f"{POSTS_HEAD}\n\n" + "\n".join(rows) + "\n\n" if rows else ""
 
 
 class Subjects(Module):
@@ -330,6 +340,7 @@ class Subjects(Module):
         done = jload(self._catch_file(day), {}) or {}
         skipped, woke, looked = self.skipped(day), None, False
         lines, buttons = [], []
+        more = sum(self._more_posts(slug, day, it) for slug, it in done.items() if it.get("made"))
         for c in self.classes_on(day, include_skipped=True):
             slug = c.get("subject") or slugify(c["name"])
             if c["end_dt"] > t or slug in done:
@@ -342,8 +353,9 @@ class Subjects(Module):
             done[slug] = self._make_catch_up(c, slug, day, why)
             lines.append(f"{c['name']} ({c['start']}, {why}): {done[slug]['line']}")
             buttons.append([(f"Went to {c['name'][:24]}", f"cup:{day.isoformat()}|{slug}:went")])
-        if lines:
+        if lines or more:
             jsave(self._catch_file(day), done)
+        if lines:
             self.app.notify(
                 "Catch up on what you missed today:\n" + "\n".join(f"- {x}" for x in lines),
                 kind="info",
@@ -364,7 +376,7 @@ class Subjects(Module):
         root = Path(self.app.workspace)
         lecture = layout.path(self.app, "lecture", subject=slug, date=day.isoformat(), slug="missed-class")
         have = sorted(p for p in lecture.parent.glob(f"{day.isoformat()}-*.md") if p != lecture)
-        made = False
+        made, posts = False, self._posts(slug, day)
         if have:
             note = have[0]
         else:
@@ -376,7 +388,7 @@ class Subjects(Module):
                 )
                 note.write_text(
                     f"{head}# {c['name']}: {day:%a %d %b} (missed)\n\nYou missed this class ({why}). Fill this in "
-                    "from the slides, a friend's notes or the Classroom posts.\n\n## What was covered\n\n",
+                    f"from the slides, a friend's notes or the Classroom posts.\n\n{posts_md(posts)}{COVERED}\n\n",
                     encoding="utf-8",
                 )
                 made = True
@@ -391,13 +403,40 @@ class Subjects(Module):
             from kurooto.modules import deadlines
 
             did = deadlines.did(title, deadlines.iso(due))
+        line = f"catch-up due {due:%a %H:%M}, notes in [[{rel}]]"
+        if posts:  # what was handed out, when Classroom is on
+            line += "; on Classroom that day: " + ", ".join(f"{p['title']} {p['url']}".strip() for p in posts[:3])
+            line += f" and {len(posts) - 3} more" if len(posts) > 3 else ""
         return {
             "note": rel,
             "made": made,
             "size": note.stat().st_size if made else 0,
             "deadline": did,
-            "line": f"catch-up due {due:%a %H:%M}, notes in [[{rel}]]",
+            "posts": [p["url"] or p["title"] for p in posts],
+            "line": line,
         }
+
+    def _posts(self, slug: str, day: dt.date) -> list[dict]:
+        """That day's Classroom posts for the course ({at, title, url}); none without Classroom."""
+        from kurooto.modules import google_classroom
+
+        return google_classroom.posts_on(self.app, slug, day)
+
+    def _more_posts(self, slug: str, day: dt.date, it: dict) -> bool:
+        """Posts that came after the catch-up go into its stub too, while the stub is as it was made."""
+        note = Path(self.app.workspace) / f"{it['note']}.md"
+        if not note.is_file() or note.stat().st_size != it.get("size"):
+            return False
+        posts = self._posts(slug, day)
+        if not {p["url"] or p["title"] for p in posts} - set(it.get("posts", [])):
+            return False
+        old = note.read_text(encoding="utf-8")
+        i, j = old.find(POSTS_HEAD), old.find(COVERED)
+        if j < 0:
+            return False
+        note.write_text(old[: i if 0 <= i < j else j] + posts_md(posts) + old[j:], encoding="utf-8")
+        it["size"], it["posts"] = note.stat().st_size, [p["url"] or p["title"] for p in posts]
+        return True
 
     def _went(self, ref: str, act: str) -> str:
         """ "Went after all": the catch-up task goes, and the stub if it's as it was made."""

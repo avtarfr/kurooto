@@ -652,7 +652,9 @@ mark that day. Other features use the subjects: after-class notes, the quiz, the
 **Missed-class catch-up** (`subjects.catch_up`, on): a class you skipped, or one over before you were up (the alarm
 answered, "I'm awake", or your first message of the day), gets a catch-up task in Deadlines due when that course's
 next class starts (else in 3 days) and a lecture note for that day (yours, else a short stub to fill in). One message
-lists them; **Went to ...** takes one back (and the stub, if untouched).
+lists them; **Went to ...** takes one back (and the stub, if untouched). With Google Classroom on, the message and the
+stub also list that day's Classroom posts for the course (title and link); later posts that day join an untouched
+stub. Without Classroom, the rest works the same.
 
 **Term dates:** `/term ends 2026-12-04` (the last day of classes) and `/term exams 2026-12-07 to 2026-12-18` (an exam
 period; add as many as you need). On those days, after the term ends and on holidays there are no classes: no
@@ -1577,7 +1579,8 @@ branch on GitHub to remove it.
 
 ### Google (Classroom, Gmail drafts)
 Classroom assignments go into Deadlines (marked done when you hand them in); new posts in your courses come to
-Telegram. Gmail drafts: `/draft someone@example.com ask for an extension on problem set 3` (the AI writes it) or
+Telegram, and a class you missed gets that day's posts in its catch-up ([Subjects](#subjects-and-timetable)). Gmail
+drafts: `/draft someone@example.com ask for an extension on problem set 3` (the AI writes it) or
 `/draft someone@example.com | subject | the email`. **Kurooto never sends email by itself**: drafts wait in Gmail for
 you.
 
@@ -1783,8 +1786,10 @@ notes stay.
 ### Mail digest
 Twice a day (08:00 and 18:00) your new mail, sorted into **Needs action**, **People**, **Courses**,
 **Opportunities** and **Admin**, comes to you as a message (a busy check comes in parts, 20 mails each), with a copy
-in your notes (`mail/2026-10-20-0800.md`, linked from that day's journal). Deadlines it finds go into Deadlines;
-course news goes onto the course page.
+in your notes (`mail/2026-10-20-0800.md`, linked from that day's journal). Deadlines it finds go into Deadlines, on
+the course the mail is about ("Lab report" from your Physics of the Atmosphere teacher lands on that course; the AI's
+`add_deadline` takes the course, and a course it doesn't know is said, never guessed); course news goes onto the
+course page.
 
 **You choose what it may read.** Everything else is only counted, by its sender, subject and labels:
 - `/mail read @school.example` (a domain), `/mail read sam@example.org` (a sender), `/mail read label:Courses` (a

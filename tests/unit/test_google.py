@@ -187,6 +187,8 @@ def test_classroom_notes_fetches_posts_files_and_hands_them_to_the_ai(classroom,
     # m1, the welcome post, the midterm notice and three coursework items (the fake has no dates on those); not m0
     assert r == {"items": 6, "courses": 1, "not_interested": 1, "queued": 1}
     assert not any("/c2/" in p for _, p in g.requests)  # a skipped course isn't even read
+    kept = json.loads((app.paths.state / "classroom-posts.json").read_text())  # for missed-class catch-up
+    assert "material:m1" in kept["c1"]["posts"] and "announcement:a8" not in kept["c1"]["posts"] and "c2" not in kept
     batch = json.loads(next((cn.dir / "batches").glob("*.json")).read_text())
     assert batch["folder"] == "lin-alg" and batch["not_interested"] == 1
     m1 = next(i for i in batch["items"] if i["title"] == "Lecture 5: eigenvalues")

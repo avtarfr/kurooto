@@ -52,8 +52,8 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - **Check my attempt.** A photo of a proof (or a `.tex` derivation) before you submit: gaps marked, nothing
   rewritten; a course's AI policy can turn it off.
 - ~~**Missed-class catch-up.** Skipping a class makes a catch-up item with that day's Classroom posts and a note stub.~~
-  (0.5.14: a task due before the next class and a lecture note stub, also for classes you slept through; the
-  Classroom posts are still to come)
+  (0.5.14: a task due before the next class and a lecture note stub, also for classes you slept through; 0.5.15:
+  that day's Classroom posts in the message and the stub, and without Classroom it works the same)
 - **Bedside mode.** An old Android phone as a dock: clock, today, alarm, a talk button.
 - **Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.
 
@@ -70,10 +70,11 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   features; public holidays come from your country's calendar.~~ (0.5.9: learned check-in times and window, "What do
   you do?" in the wizard, holiday calendars)
 - **The phone app as a full chat channel** beside Telegram, for places where Telegram is blocked or little used.
-- **Small gaps**: `add_deadline` takes the course, so a mail's "Lab report" lands on the right course page; a
-  recurring fact said in chat becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look
-  back can propose routines and acts on data changes with Undo instead of waiting for a tap; project notes keep
-  "With:", "last met" and "## Next steps"; subject aliases are learned from how you name them.
+- **Small gaps**: ~~`add_deadline` takes the course, so a mail's "Lab report" lands on the right course page~~
+  (0.5.15: `course` by name or short name; an unknown one is said, never guessed); a recurring fact said in chat
+  becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look back can propose routines
+  and acts on data changes with Undo instead of waiting for a tap; project notes keep "With:", "last met" and
+  "## Next steps"; subject aliases are learned from how you name them.
 - ~~**Routines for people who aren't students**: gym, shifts, standups, tuition; they hold calls like a class does.~~
   (0.5.9: Commitments, `/busy`, also set up from what you say)
 - **Never without a tap**: setting or moving an alarm, placing calls, reading new mail senders, sending anything out,

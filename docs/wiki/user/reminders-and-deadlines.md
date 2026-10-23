@@ -161,6 +161,12 @@ Ctrl+K: `due essay draft fri 17:00`. The board's **due** corner shows the same l
 `mark_deadline_done`, `add_deadline`, `move_deadline`, `ignore_topic`, `add_recurring_quiz`. Done while the computer
 is off, they wait and run when it's back.
 
+**The course.** `add_deadline` takes the course by name or short name ("pota"), so a deadline the mail digest finds
+("Lab report due Wed" in a mail from your Physics of the Atmosphere teacher) lands on that course even when its title
+doesn't name it; lists show it as "Physics of the Atmosphere: Lab report". A course Kurooto doesn't know, or words
+naming two, isn't guessed: the answer says so and lists your courses, and the deadline goes on no course (unless its
+title names one).
+
 **How far ahead "due soon" looks** (`deadlines.plan_h`, 72 hours): what's due in that window goes into the wake-up
 call's plan, the morning page, the call brief, `/status` and "what's due soon?". Set `168` to plan a week ahead, `36`
 for little more than tomorrow. `/deadlines` and the chase don't change.

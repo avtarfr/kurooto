@@ -631,6 +631,8 @@ class Google(Module):
     def classroom_sync(self) -> dict:
         if not self.ready()[0] or not self.setting("classroom"):
             return {"skipped": True}
+        from kurooto.modules.google_classroom import remember_posts  # it imports this module
+
         seen_file = self.app.paths.state / "google-classroom.json"
         seen = jload(seen_file, {}) or {}
         first = not seen
@@ -659,6 +661,7 @@ class Google(Module):
                         if state in ("TURNED_IN", "RETURNED") and dl.mark_done(title, due):
                             out["done"] += 1
                 posts = acct.api("classroom", f"/courses/{cid}/announcements?pageSize=10").get("announcements", [])
+                remember_posts(self.app, c, [("coursework", w) for w in work] + [("announcement", a) for a in posts])
                 for a in posts:
                     key = f"a:{a['id']}"
                     if key in seen:

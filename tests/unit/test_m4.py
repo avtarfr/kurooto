@@ -306,11 +306,19 @@ def test_classroom_feeds_deadlines_and_posts(google):
     assert set(items) == {"Linear Algebra: Problem set 3", "Linear Algebra: Problem set 2"}
     assert items["Linear Algebra: Problem set 2"]["status"] == "done"
     assert items["Linear Algebra: Problem set 2"]["due"].endswith("T23:59:00")  # a date only: end of that day
+    at = f"{dt.datetime.now(dt.UTC):%Y-%m-%dT%H:%M:%SZ}"
     fake.posts["c1"].append(
-        {"id": "a2", "text": "Quiz moved to Friday", "alternateLink": "https://classroom.example.com/a2"}
+        {
+            "id": "a2",
+            "text": "Quiz moved to Friday",
+            "alternateLink": "https://classroom.example.com/a2",
+            "creationTime": at,
+        }
     )
     assert gm.classroom_sync()["posts"] == 1
     assert env.fake.texts()[-1] == "New in Linear Algebra: Quiz moved to Friday"
+    kept = json.loads((env.app.paths.state / "classroom-posts.json").read_text())["c1"]  # for missed-class catch-up
+    assert kept["name"] == "Linear Algebra" and kept["posts"]["announcement:a2"]["title"] == "Quiz moved to Friday"
 
 
 def test_expired_google_access_asks_to_sign_in_again(google):

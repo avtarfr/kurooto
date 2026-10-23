@@ -97,11 +97,17 @@ awake", or sent your first message of the day after it ended), gets:
   when that course's next class starts (with none in the next two weeks, in 3 days at 18:00);
 - a lecture note for that day: the one you already have, else a short one to fill in ("## What was covered").
 
+With Google Classroom on ([Google](google.md)), the message and the short note also list what was posted on Classroom
+that day for that course (title and link): "on Classroom that day: Slides: radiative transfer https://...". Posts
+that come later that day join the short note while you haven't written in it. Without Classroom it works the same,
+minus that list.
+
 One message lists them once the classes are over (it looks every 30 minutes), each with a **Went to ...** button for
 a class you did go to: it takes the task back, and the note too if you haven't written in it.
 
-**Settings.** `subjects.catch_up` (on). **What leaves your computer.** Nothing. **Undo:** **Went to ...**, or tick the
-task off in Deadlines; turning the setting off stops new ones.
+**Settings.** `subjects.catch_up` (on). **What leaves your computer.** Nothing (the Classroom posts come from what
+Kurooto already read). **Undo:** **Went to ...**, or tick the task off in Deadlines; turning the setting off stops new
+ones.
 
 ## Commitments (gym, shifts, standups)
 

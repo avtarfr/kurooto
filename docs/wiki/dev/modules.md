@@ -370,6 +370,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **deadlines** (`modules/deadlines.py`): merges deadlines from manual entries, notes tasks, Classroom, the calendar,
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,
   overdue check) and runs exam mode. Ids are hashes of title plus date. `deadlines.json` under the `deadlines` lock.
+  The `add_deadline` tool (and the `deadline.add` action) takes an optional `course` (`subject`, its old name, still
+  works): `Subjects.resolve()`, else the one subject `find_in()` names; unknown or naming two, the answer says so and
+  lists the courses, and the item gets no subject from it (`subject_of()` on the title still applies).
 - **deadlines** meeting brief: `meeting_briefs()` (`deadlines:meeting_brief`, `deadlines.meeting_brief` daily 20:00)
   takes open "Meeting: <who>" deadlines due tomorrow whose surname matches a project's `With:` person
   (`infer.projects_with`), builds `infer.brief(note, who, due)` (Log lines dated on or after `Last met`, else two
@@ -412,7 +415,13 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `catch_up()`, job `subjects:catch_up` every 30 min; classes over today that were skipped or ended before
   `woke_at(day)` (the first `message_in`, `alarm_up_now` or `call_answered` after `checkins.day_starts`) get a
   `deadlines.add(..., source="catch_up", kind="task")` due at the course's next class and a lecture stub; state
-  `subjects/catchup-<date>.json`; button `cup:<date>|<slug>:went`; Calm reason `subjects.catch_up`.
+  `subjects/catchup-<date>.json`; button `cup:<date>|<slug>:went`; Calm reason `subjects.catch_up`. With Classroom
+  on (`google` with `google.classroom`, or `classroom_notes`), `google_classroom.posts_on(app, slug, day)` gives that
+  day's posts of the courses filed under the subject (`classroom_notes.folders`, `classroom-notes/folders.json`, else
+  `course_subject()`, the longest subject name in the course's name) from `classroom-posts.json`
+  (`remember_posts`, called by `Google.classroom_sync` and `ClassroomNotes.fetch`); they end the message line and go
+  under `## Classroom posts that day` in the stub. Each run, `_more_posts` rewrites that list in a stub still the size
+  it was made (`size` and `posts` in the catch-up file), so posts that come later that day join it.
 - **commitments** (`modules/commitments.py:Commitments`): `commitments.items` rows `{name, days, start, end, calls}`;
   `on(day)` gives a day's with `start_dt`/`end_dt` (an end before the start runs into the next day); the call blocker
   `commitments` checks yesterday's and today's (night shifts); skips per day in `<state>/commitments/skip-<date>.json`;
