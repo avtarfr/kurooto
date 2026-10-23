@@ -67,10 +67,12 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   one; after it, a voice note becomes minutes, and action items become deadlines on a tap.~~ (0.5.20: for any
   meeting with someone a project note is With, weekly ones included; a voice note or typed note after it becomes
   minutes through your AI, and each action item is a deadline on a tap)
-- **Run compare.** `kurooto runlog diff A B` and `/runs compare`: config differences, code diff, metrics and loss
-  curves side by side, written to the project's notes.
-- **LaTeX writing tracker.** Nightly build of your `.tex` repos: errors, undefined references, missing citations
-  (BibTeX suggested, you approve), words added.
+- ~~**Run compare.** `kurooto runlog diff A B` and `/runs compare`: config differences, code diff, metrics and loss
+  curves side by side, written to the project's notes.~~ (0.5.22: in the Research add-on; `/runs` lists recent runs,
+  curves as a PNG with matplotlib, else sparklines)
+- ~~**LaTeX writing tracker.** Nightly build of your `.tex` repos: errors, undefined references, missing citations
+  (BibTeX suggested, you approve), words added.~~ (0.5.22: in the Research add-on; `/latex add` attaches a folder,
+  Tectonic or your own LaTeX builds into Kurooto's cache, one morning line when it broke or you wrote)
 - **Check my attempt.** A photo of a proof (or a `.tex` derivation) before you submit: gaps marked, nothing
   rewritten; a course's AI policy can turn it off.
 - ~~**Missed-class catch-up.** Skipping a class makes a catch-up item with that day's Classroom posts and a note stub.~~
@@ -86,8 +88,10 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   own word: guide, manager, coach)~~ (0.5.20, with "Meets:", "Last met" and Next steps kept in Kurooto's block);
   "check my attempt" becomes "check my draft" (essays, accounts working, code, proofs); missed-class catch-up works
   without Classroom.
-- **A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking. Bedside
-  mode is an Android add-on.
+- ~~**A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking.~~
+  (0.5.22: one card and one switch under Add-ons, with run compare and the LaTeX tracker; a feature joins it with
+  `bundle = "research_addon"`, which notation crosswalk and check my draft are to use) Bedside mode is an Android
+  add-on.
 - ~~**No college-term defaults**: the check-in times and Start-by's day window are learned from when you actually
   reply (with a notice and Undo), not 09:00-22:00; a first-run question (student, working, research, other) picks the
   features; public holidays come from your country's calendar.~~ (0.5.9: learned check-in times and window, "What do

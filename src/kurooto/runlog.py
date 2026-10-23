@@ -5,6 +5,7 @@
     kurooto runlog note [--run ID] TEXT                                      a line in the run's notes
     kurooto runlog end [--run ID] [--status ok|failed|interrupted]          finish it
     kurooto runlog ls [project]                                              the runs so far
+    kurooto runlog diff A B                                                  two runs side by side (Research add-on)
 
 Each run is a folder research/<project>/runs/<YYYYmmdd-HHMMSS>-<name>/ in your notes (where your notes layout keeps a
 project's runs):
@@ -459,6 +460,18 @@ def main(args) -> int:
             r = rl.end(args.status, args.run)
             print(f"{r['run']}: {r['status']} after {_took(r['seconds'])}. Notes: {r['dir']}")
             return 0
+        if args.action == "diff":
+            from kurooto import runcompare
+
+            s = rl.notes.settings
+            off = runcompare.on(s)
+            if off:
+                print(off)
+                return 2
+            r = runcompare.compare(rl, args.a, args.b, runcompare.repo_dirs(s), runcompare.project_for(s))
+            print(r["summary"])
+            print(f"In your notes: {r['note']}" + (f" (curves: {Path(r['png']).name})" if r["png"] else ""))
+            return 0
         if args.action == "ls":
             rows = rl.ls(args.project)
             for r in rows:
@@ -469,6 +482,13 @@ def main(args) -> int:
                 print("No runs yet.")
             return 0
     except (RunError, ValueError) as e:
+        print(f"runlog: {e}")
+        return 2
+    except Exception as e:
+        from kurooto.runcompare import CompareError
+
+        if not isinstance(e, CompareError):
+            raise
         print(f"runlog: {e}")
         return 2
     return 2

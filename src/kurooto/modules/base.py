@@ -76,6 +76,9 @@ class Module:
     telegram_only = False
     privacy = "Stays on this computer."
     extra = False  # an add-on that comes with Kurooto: in no preset ("Everything" too), listed apart, on only by hand
+    # the add-on bundle it lives in ("research_addon"): no card of its own, a switch on the bundle's card instead, and
+    # it comes on and goes off with the bundle (modules/research_addon.py)
+    bundle = ""
     heavy = False  # True: its scheduled work waits for the charger when the laptop is on battery ("saver" mode)
     # processes that are this feature's own work, by program name ("ollama") or a piece of the command line
     # ("bots/reply.js"): the dashboard's cell and `kurooto top` show their cpu, memory, uptime and threads, and the

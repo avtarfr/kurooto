@@ -534,6 +534,13 @@ REASONS: dict[str, Reason] = {
             fewer=_weekly("research.papers", "mon"),
         ),
         R(
+            "research_addon.latex",
+            "the LaTeX tracker's morning line: a build that broke, or words written",
+            many="LaTeX tracker lines",
+            setting="research_addon.latex",
+            stop=to(False, "the LaTeX tracker is off (its card switches it back on)"),
+        ),
+        R(
             "research.idle",
             "a question about a project with no commits for a while",
             many="questions about quiet projects",

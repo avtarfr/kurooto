@@ -11,6 +11,7 @@ that keeps up with your code, a log of experiment runs, and a message when a lon
 - [Experiment runs (kurooto runlog)](#experiment-runs-kurooto-runlog)
 - [Long jobs (kurooto watch)](#long-jobs-kurooto-watch)
 - [Research time in the study tracker](#research-time-in-the-study-tracker)
+- [The Research add-on: run compare and the LaTeX tracker](#the-research-add-on-run-compare-and-the-latex-tracker)
 - [Settings](#settings)
 - [What leaves your computer, and turning it off](#what-leaves-your-computer-and-turning-it-off)
 
@@ -235,6 +236,7 @@ kurooto runlog metric loss=0.31 acc=0.88 --step 100
 kurooto runlog note "diverged after step 800"
 kurooto runlog end                  # or: --status failed / --status interrupted
 kurooto runlog ls                   # the runs so far (ls my-model: one project's)
+kurooto runlog diff A B             # two runs side by side, into the notes (the Research add-on)
 ```
 
 | Command | Options |
@@ -317,6 +319,88 @@ repository folders count too.
 
 ---
 
+## The Research add-on: run compare and the LaTeX tracker
+
+**What it is.** The narrower research tools, kept out of the everyday student features in one bundle: **run compare**
+and the **LaTeX writing tracker** now, with more research tools joining it (notation crosswalk, check my draft). It's
+off until you turn it on, and it doesn't need the papers digest (the Research feature) to be on.
+
+**Turn it on:** Dashboard → Features → under **Add-ons**, **Research add-on** → **Turn on**. That one switch turns the
+whole group on. Its card then has a switch for each part (Run compare, LaTeX tracker, and each research tool in the
+bundle); a part you switch off stays off the next time you turn the add-on on. **Turn off** turns the whole group off;
+your notes and files stay as they are.
+
+### Run compare
+
+**What it does.** Puts two experiment runs (logged with `kurooto runlog`, `kurooto watch --log` or
+`kurooto.runlog.Run`) side by side, and writes the comparison into the project's notes:
+
+- **Config:** each key that differs (nested keys as `opt.lr`), and keys only one run has ("(not set)").
+- **Code:** the diff between the two runs' git commits (`git diff`, read-only: nothing is checked out or changed in
+  your repository), how many commits apart they are, and whether either run had uncommitted changes (its
+  `diff.patch`).
+- **Metrics:** each metric's last and lowest value in both runs, and the change (with the percentage).
+- **Curves:** each metric over the steps, both runs on one plot, as a picture when Kurooto's Python has matplotlib;
+  otherwise a sparkline per run (`loss A ▇▆▅▃▂▁ 1 → 0.2`), on one scale so the two compare at a glance.
+
+| Where | How |
+|---|---|
+| Telegram or the phone app | `/runs`: the ten most recent runs, numbered |
+| | `/runs compare 2 1`: those two (by number in `/runs`, or by id, or a unique piece of an id) |
+| | `/runs compare`: the last two runs of the newest run's project |
+| A terminal | `kurooto runlog diff 20261020-101500-lr-sweep 20261021-090000-lr-sweep` (pieces of the ids work too) |
+
+The answer is one line ("2 config changes (lr 0.001 → 0.01); my-model: 3f2a… → 9c1d… (2 commits after A), 1 file
+changed; loss 0.31 → 0.12 (-61%)") and where the comparison is. In your notes:
+
+- `research/<project>/runs/compare/<A>--<B>.md`: the whole comparison (and `<A>--<B>.png` beside it with matplotlib).
+- In the project's note, a block **Runs compared** with the last ten comparisons, newest first, each linked.
+
+Kurooto writes only inside its own marked blocks (`<!-- kurooto:run-compare -->`); comparing the same two runs again
+replaces that block, and your own text in these notes is never changed. Runs kept in a repository's `runs/` folder
+(of a repository you added with `/repos add`) can be compared too; their comparison goes to that repository's project.
+
+### The LaTeX writing tracker
+
+**What it does.** Every night it builds the LaTeX documents you attached and keeps what each build found:
+
+- **errors**, with the line they're on;
+- **undefined references** (`\ref` to a label that isn't there);
+- **missing citations** (`\cite` keys your `.bib` doesn't have);
+- **words written**: today's word count less yesterday's. The count is an estimate, like texcount's: the prose of the
+  document and the files it takes in with `\input`, `\include` or `\subfile`, without the preamble, comments, maths
+  or commands.
+
+In the morning, one line comes **only when something broke or you wrote something**, e.g. "LaTeX: thesis: 1 error:
+Undefined control sequence. (line 12); missing citation smith2020; +412 words. (/latex for the rest)". Quiet nights
+send nothing.
+
+**Attaching a document** (you have to type it; Kurooto never looks for LaTeX on your disk):
+
+| Command | What it does |
+|---|---|
+| `/latex add ~/papers/thesis` | Follows the document in that folder (the `.tex` with `\documentclass`; with several it picks `main.tex`, `thesis.tex` or `paper.tex`, or asks you to name it) |
+| `/latex add ~/papers/thesis chapter-draft.tex` | Follows that file |
+| `/latex` | Each document's last build: errors, undefined references, missing citations, words and the change |
+| `/latex build` | Builds them now; the result comes as a message |
+| `/latex remove ~/papers/thesis` | Stops following it (your files stay as they were) |
+| `/latex install` | Installs Tectonic when there's no LaTeX on this computer |
+
+**How it builds.** With **Tectonic** (the small LaTeX program revision packs use) in its safe mode, without shell
+escape; without Tectonic, with your computer's own LaTeX (`latexmk` or `pdflatex`, shell escape off). The build goes to
+Kurooto's own cache folder: no `.aux`, `.log` or `.pdf` appears in your folder. A build that takes over 15 minutes
+(`research_addon.latex_timeout_min`) is stopped and counts as an error. On battery, the nightly build (and its morning
+line) waits for the charger.
+
+**A BibTeX entry for a missing citation.** Under the morning line (or after `/latex`), **BibTeX for smith2020**
+asks your AI which work the key most likely is, from the key and the sentence it's cited in. The suggestion comes as
+a message with **Add to refs.bib** and **Discard**: nothing is written until you tap **Add**, and then the entry goes at
+the end of the `.bib` the document names (`\bibliography` or `\addbibresource`), with a comment saying your AI
+suggested it, so check it against the paper. A key that's in the `.bib` already is never added twice. This needs
+**Chat** on.
+
+---
+
 ## Settings
 
 Dashboard → Settings → research (most of these are also on the Research tab):
@@ -338,6 +422,13 @@ Dashboard → Settings → research (most of these are also on the Research tab)
 | `research.idle_when` | `daily 18:00` | When that's checked |
 | `research.remind_by_call` | on | "Remind me tomorrow" is a call (with Phone calls on) |
 | `research.repo_runs` | `runs` | The folder in each repository where scripts keep their runs; empty = don't read |
+| `research_addon.run_compare` | on | Run compare (a part of the Research add-on; its card switches it) |
+| `research_addon.latex` | on | The LaTeX tracker (a part of the Research add-on) |
+| `research_addon.latex_repos` | `[]` | The documents you attached with `/latex add` |
+| `research_addon.latex_when` | `daily 03:30` | When the nightly LaTeX build runs |
+| `research_addon.latex_morning` | `daily 08:00` | When the morning line comes (only when a build broke or you wrote) |
+| `research_addon.latex_timeout_min` | `15` | A build that takes longer is stopped and counts as an error |
+| `research_addon.members_off` | `[]` | Research tools in the bundle you switched off on its card |
 | `meetings.minutes` | on | Notes you send after a meeting become minutes through your AI ([Meetings](#meetings-with-someone-briefs-minutes-and-action-items)) |
 | `meetings.after_h` | `3` | Hours after a meeting's start that a voice note or a long typed note counts as notes from it |
 
@@ -350,8 +441,11 @@ feeds), all public; never your notes. With Chat on and the AI picking, the paper
 work on go to the AI you picked. Notes you send after a meeting go to the AI you picked, to be written up as minutes
 (a voice note goes to Google first to be written out, as any voice note does). Commit messages and runs stay on this
 computer. `kurooto watch` messages go through
-Telegram like any message.
+Telegram like any message. The Research add-on: run comparisons and LaTeX builds stay on this computer; Tectonic
+fetches LaTeX packages it lacks from its public server (nothing of yours is sent); a BibTeX suggestion, only when you
+tap for one, sends the citation key and the sentence it's in to the AI you picked.
 
 **Turn it off.** Features → Research → Turn off: no digests, logs or questions. Project notes and log lines stay.
 `research.save_note` = `false` stops the digest notes; take a search out of `research.feeds` to drop it; empty
-`research.repo_runs` stops reading runs (lines already in your notes stay).
+`research.repo_runs` stops reading runs (lines already in your notes stay). The Research add-on: Features → Research add-on →
+**Turn off** (or a part's switch on its card); comparisons in your notes and entries you added to a `.bib` stay.

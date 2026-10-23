@@ -281,6 +281,7 @@ No Stop; only Another time. When sent as urgent they always come.
 |---|---|---|---|---|---|---|
 | the new-papers digest | Research | `research.papers` | list | weekly | yes | |
 | a question about a project with no commits for a while | Research | `research.idle_days` | no more | half as often | yes | yes |
+| the LaTeX tracker's morning line: a build that broke, or words written | Research add-on | `research_addon.latex` | the LaTeX tracker off | | yes | |
 | a suggestion from the nightly look back | Nightly look back | `retro.when` | feature off | weekly | yes | yes |
 | a routine the look back saw in your records (Add / No) | Nightly look back | `retro.routines` | no more | | yes | yes |
 | a data fix the look back was sure of (two copies of one deadline), with Undo | Nightly look back | `retro.fixes` | no more | | yes | |

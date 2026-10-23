@@ -148,6 +148,8 @@ More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-a
 | `/feeds` | your research sources | Research |
 | `/topics add …`, `/topics remove …` | quick keywords searched across arXiv | Research |
 | `/repos`, `/repos add ~/code/my-model`, `/repos add ~/code/model_v2 as Climate model`, `/repos remove …` | repositories for project logs | Research |
+| `/runs`, `/runs compare 2 1`, `/runs compare` | recent experiment runs; two side by side in the project's notes (alone: the last two) | Research add-on |
+| `/latex`, `/latex add ~/papers/thesis [main.tex]`, `/latex build`, `/latex remove …`, `/latex install` | the LaTeX tracker: your documents' last build, attaching one, building now | Research add-on |
 
 More: [Notes and the concept graph](notes-and-concept-graph.md), [Skills and routines](skills-and-routines.md),
 [Research](research.md).
@@ -333,6 +335,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto call "reason"` (`--at 17:30`, `--alarm`, `--force`, `--list`, `--cancel <key>`) | ring your phone now or later |
 | `kurooto watch -- <command>` (`--lines N`, `--log <project>`) | run a long job; a message when it ends |
 | `kurooto runlog start \| metric \| note \| end \| ls` | log experiment runs into your notes |
+| `kurooto runlog diff A B` | two runs side by side (config, code, metrics, curves) into the project's notes (Research add-on) |
 | `kurooto idle away \| back` | for your idle tool: you've stepped away, or you're back |
 | `kurooto mcp` | Kurooto's tools for agent programs (an MCP server) |
 | `kurooto export-skills on \| off \| status` (`--to agy,agents,claude`) | your skills as /commands in agent programs |

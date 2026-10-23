@@ -71,7 +71,8 @@ GUARDED: dict[str, Guard] = {
     "repo.attach": Guard(
         "attach a code repository to a project",
         ("typed",),
-        "/repos add <folder> [as <project>]; repositories are never searched for on the disk",
+        "/repos add <folder> [as <project>], /latex add <folder> [main.tex] (Research add-on); repositories are never "
+        "searched for on the disk",
     ),
     "data.delete": Guard(
         "delete your data",

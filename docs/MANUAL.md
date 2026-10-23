@@ -2493,6 +2493,41 @@ so it can add metrics). If Kurooto isn't running, it shows on this computer only
 *Leaves:* your fields, keywords and searches go to the sources you pick (never your notes); `kurooto watch` sends its
 message through Telegram, like any message.
 
+**The Research add-on** (Features → Add-ons → **Research add-on**, off until you turn it on; it doesn't need Research
+itself on). One switch for the narrower research tools; its card has a switch for each part, and a part you switch
+off stays off when you turn the add-on on again. The research tools other features add (notation crosswalk, check my
+draft) join the same card.
+
+- **Run compare.** `/runs` lists the ten most recent runs, numbered; `/runs compare 2 1` (numbers, ids or a unique
+  piece of an id) or `kurooto runlog diff A B` puts two side by side; `/runs compare` alone takes the last two runs of
+  the newest run's project. It compares the config (changed keys, nested ones as `opt.lr`, and keys only one has), the
+  code (`git diff` between the runs' commits, read-only, with the commits apart and any uncommitted changes), the
+  metrics (last and lowest value, the change) and the curves (a PNG with matplotlib in Kurooto's Python, else a
+  sparkline per run on a shared scale). It goes to `research/<project>/runs/compare/<A>--<B>.md` (and the PNG beside
+  it), and a **Runs compared** block in the project's note lists the last ten, newest first. Kurooto writes only in its
+  own blocks (`<!-- kurooto:run-compare -->`); the same comparison again replaces its block. Runs kept in a
+  repository's `runs/` folder compare into that repository's project.
+- **LaTeX writing tracker.** `/latex add <folder> [main.tex]` (you type it; nothing is searched for) follows a
+  document; every night (`research_addon.latex_when`, 03:30) it's built with Tectonic (untrusted mode) or your own
+  LaTeX (`latexmk`/`pdflatex`, no shell escape) into Kurooto's cache, never your folder. The build's errors (with
+  lines), undefined references and missing citations are kept, and the words (prose of the document and the files it
+  `\input`s, `\include`s or `\subfile`s, no preamble, comments, maths or commands: an estimate) are counted per day.
+  At 08:00 (`research_addon.latex_morning`) one line comes only if a build broke or words were added, e.g. "LaTeX:
+  thesis: 1 error: Undefined control sequence. (line 12); missing citation smith2020; +412 words." `/latex` shows each
+  document's last build, `/latex build` builds now, `/latex remove <folder>` stops following one, `/latex install`
+  fetches Tectonic when there's no LaTeX. **BibTeX for <key>** (a button under the line, with Chat on) asks your AI
+  for an entry from the key and its sentence; it comes with **Add to <file>.bib** / **Discard**, and only **Add**
+  writes it, at the end of the `.bib` the document names, with a comment that your AI suggested it.
+  `research_addon.latex_timeout_min` (15) stops a long build. On battery the nightly build waits for the charger.
+
+*Settings:* `research_addon.run_compare`, `research_addon.latex` (the parts, on), `research_addon.latex_repos`,
+`research_addon.latex_when`, `research_addon.latex_morning`, `research_addon.latex_timeout_min`,
+`research_addon.members_off`.
+*Undo:* Features → Research add-on → Turn off (or a part's switch); comparisons in your notes and `.bib` entries you
+added stay (delete them as any text of yours).
+*Leaves:* run compare nothing; Tectonic fetches LaTeX packages it lacks from its public server; a BibTeX suggestion
+(only on your tap) sends the citation key and its sentence to the AI you picked.
+
 ### Terminals
 Real terminals in the dashboard's **Terminals** tab: the AI program you use (when your AI is agy or Claude
 Code), started in your notes folder as you'd run it yourself; your usual shell (PowerShell on Windows); `kurooto ask`
@@ -3602,6 +3637,10 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Classroom notes went to the wrong folder | Settings → `classroom_notes.folders`: `{"Exact course name": "folder-name"}`. |
 | Research: "repository folder missing" | You moved or deleted it: `/repos remove <folder>`, then `/repos add <new folder>`. |
 | Research: "isn't a git repository (no commits to follow)" | A note, not a problem: that project's folder has no git history yet, so its Log gets no commit lines. `git init` it (and commit) to follow it, or `/repos remove <folder>`. |
+| Research add-on: "the LaTeX tracker needs Tectonic or LaTeX" | No LaTeX program here: `/latex install` fetches Tectonic, or install TeX Live, MiKTeX or MacTeX. |
+| Research add-on: "LaTeX folder missing" | You moved or deleted it: `/latex remove <folder>`, then `/latex add <new folder>`. |
+| `/runs compare` says "matches N runs" | Give more of the id, or the numbers `/runs` shows. |
+| A run comparison has no code diff | The commit was rebased away or the repository moved; config and metrics are still compared. |
 | `kurooto watch` says "only shown on this computer" | Kurooto wasn't running: `kurooto start`. |
 | The Terminals tab says it's off, or a terminal won't type | Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose. |
 | `/term` says "Term note …: not found" | The path is relative to your notes folder (`terms/2026-autumn`, `maps/semester-*`); `/term note <path>` again, or `/term note off`. |

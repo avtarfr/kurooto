@@ -66,6 +66,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Learns from its own work | nothing to build its search index (it stays on this computer); the passages the AI finds when it searches it, with that request; to learn a skill, the finished request, its answer and its steps; to learn a lesson, your correction and the skill; to pick up facts, the day's requests (with the nightly look back) | the AI that takes second looks (`learning.brain`), else the AI you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI you picked |
 | Skills: revision packs | Tectonic, if you install it, downloads LaTeX packages; nothing of yours is sent | Tectonic's public package server |
+| Research add-on: LaTeX tracker | Tectonic, if it's installed, downloads LaTeX packages it lacks; nothing of yours is sent. **BibTeX for a key** (only when you tap it): the citation key and the sentence it's cited in | Tectonic's public package server; the AI you picked |
 | Skills: packs before exams | the same as `/pack`, only after you tap Build it (unless `skills.auto_pack` is `auto`) | the AI you picked |
 | Study packs (`/studypack`) | nothing to your AI: Kurooto only collects files and fills in a prompt. The zip and the prompt come to your own Telegram (or as a Drive link when over 50 MB); you decide which other AI to give them to | Telegram (your bot); your Drive for big packs |
 | Hint ladder | the problem (photo or text), the course's AI-policy line and the notes the AI reads; with "no AI help" in that line, nothing | the AI you picked |
@@ -154,7 +155,7 @@ private link; event descriptions are read only for `#nocall`, `#focus` and `#pri
 are kept only as "Busy (private)", not even told to your AI), Study tracker (window titles are read and thrown away;
 only minutes per subject are kept; the idle check never reads what you type), Quick notes and prompts, Local AI models,
 Stay awake on charger, Space keeper, the reserve (Markdown copies of Kurooto's state for AI programs, in the state
-folder), notes brain timelines and weekly checkup, `kurooto top`, `kurooto runlog`. Sync everything sends only what each
+folder), notes brain timelines and weekly checkup, `kurooto top`, `kurooto runlog` (and run compare). Sync everything sends only what each
 sync's own feature sends.
 
 ## Where requests go

@@ -740,7 +740,7 @@ function renderFeatures() {
   if (!chosen.size && !renderFeatures.seeded) state.modules.filter((m) => m.on || (restored ? restored.includes(m.id) : m.starter)).forEach((m) => chosen.add(m.id));
   if (!renderFeatures.seeded && phoneApp()) { chosen.add("calls"); if (!state.telegram.paired) chosen.delete("telegram"); }
   renderFeatures.seeded = true;  // only the first time: unticking everything must stay unticked
-  $("#features").replaceChildren(...state.modules.map((m) => {
+  $("#features").replaceChildren(...state.modules.filter((m) => !m.bundle).map((m) => { // a bundle's members come with it
     const box = el("input", { type: "checkbox", checked: chosen.has(m.id), onchange: (e) => {
       e.target.checked ? chosen.add(m.id) : chosen.delete(m.id);
       $$(".preset").forEach((p) => p.classList.toggle("on", p.dataset.preset === "custom"));

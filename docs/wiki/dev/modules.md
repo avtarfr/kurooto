@@ -19,6 +19,7 @@ Class attributes:
 | `requires` | ids of features that must be on first (`App.enable` refuses otherwise; `App.disable` refuses to turn off something another feature requires). `"telegram"` means somewhere to talk: Telegram or the phone app's chat (`calls`), via `app.py:met` |
 | `telegram_only` | `True` when `"telegram"` in `requires` means Telegram itself (Voice notes, Files into notes): the phone app doesn't stand in |
 | `extra` | True: an add-on that ships with Kurooto: in no preset, listed apart under Features, on only by hand (Exam season, Learns from its own work) |
+| `bundle` | the id of the add-on bundle it lives in (`"research_addon"`): no card or wizard entry of its own (`/api/state` sends `bundle`; home.js and setup.js leave it out), a switch on the bundle's card instead, and it comes on and goes off with the bundle |
 | `heavy` | True: its scheduled work and background task wait for the charger in battery saver mode (`core/power.py`) |
 | `processes`, `processes_intermittent` | program names or command-line fragments to show CPU and memory for on the dashboard |
 
@@ -127,9 +128,10 @@ App.__init__   cls(app) for every class in CATALOG         (no side effects here
                overlay.load(app)                            actions/hooks that must exist even when off)
 App.start      for each enabled module: m.start(); start_background(m)
 App.enable(id) requires on? -> m.ready()? -> modules.enabled += id -> m.start() -> start_background(m)
-               -> event module_enabled
-App.disable    refuse if an enabled module requires it -> m.stop() -> stop_background(m)
-               -> modules.enabled -= id -> event module_disabled
+               -> event module_enabled -> m.turned_on() if it has one (a bundle enables its members)
+App.disable    refuse if an enabled module requires it -> m.turned_off() if it has one and was on (a bundle
+               disables its members) -> m.stop() -> stop_background(m) -> modules.enabled -= id
+               -> event module_disabled
 App.close      jobs.halt(); m.shutdown() for enabled modules; scheduler and jobs closed
 ```
 
@@ -331,6 +333,13 @@ def test_pomodoro_starts_and_ends(env):
   (`/api/state` sends `extra`).
 - `extra` versus `addon`: `extra` is an optional feature that comes with Kurooto; `addon` is set by `core/overlay.py`
   on features loaded from the user's own add-ons folder.
+- Bundles (0.5.22): an `extra` feature can group others. `modules/research_addon.py:ResearchAddon` is the Research
+  add-on; a feature joins it with `bundle = "research_addon"` (and `extra = True`, and its id in `MODULE_ORDER` so
+  `/api/state` knows it). `ResearchAddon.members()` finds them; `turned_on()` enables each one not in
+  `research_addon.members_off`, `turned_off()` disables them; the card (`card()`/`card_action`) has a switch per own
+  part (`run_compare`, `latex`: settings) and per member (`m:<id>`: enables or disables it and keeps
+  `members_off`). `core/commands.py:_footer` leaves bundle members out of /help's off list and counts the other
+  `extra` features as "and N add-ons", so a new add-on doesn't push the one-message /help over Telegram's limit.
 
 ## Add-ons (`core/overlay.py`)
 
@@ -659,6 +668,28 @@ arrives.
   project logs from git and `runs/`, and questions about idle projects. `papers()` collects with `mark_seen=False` and
   marks them in `research-papers.json` once delivered: right after the plain digest, or in the `research.digest`
   then-action when the AI-picked one succeeded.
+- **research_addon** (`modules/research_addon.py`, `extra`, `heavy`): the Research add-on bundle (see "How
+  features are listed and turned on"). Run compare is `kurooto/runcompare.py` (no App needed, so `kurooto runlog
+  diff` runs it from `runlog.main` with `for_this_install()`; it refuses unless `research_addon` is on and its
+  `run_compare` part isn't off: `runcompare.on(settings)`): `all_runs` (runlog's state, then `<repo>/<research.repo_runs>`
+  folders), `find` (id, unique start or end, or the /runs number), `config_diff` over `flat` configs, `code_diff`
+  (read-only `git diff`/`rev-list`/`cat-file` between `meta.commit`s, in the repository `meta.cwd` is in; capped at
+  `CODE_DIFF_MAX`), `metric_rows` (last, lowest, change; `meta.last` when there's no metrics.jsonl), `curves_png`
+  (matplotlib with Agg when `has_matplotlib()`) or `spark_table`. `compare()` writes
+  `runs/compare/<A>--<B>.md` as one `run-compare` block (`core/graphwrite.py:put_block`, `guarded`) and keeps the
+  project note's `run-compare` block to the last `KEPT` lines. The LaTeX tracker is `modules/latex_tracker.py`:
+  `Tracker.attach` (only from `/latex add`, typed: `core/tap.py` `repo.attach`; `tests/unit/test_tap.py` watches
+  `research_addon.latex_repos`), `build` (Tectonic `--untrusted --keep-logs --outdir <cache>/latex/<key>`, else
+  `latexmk -norc ... -no-shell-escape` or `pdflatex` with `skills.TEX_ENV`; never writes into the user's folder),
+  `parse_log` (joins TeX's 79-column lines; `! ` errors with `l.N`, Tectonic's `error: file:line:` lines, LaTeX,
+  natbib and biblatex undefined references and citations, BibTeX's `.blg`), `count_words` (`tex_files` follows
+  `\input`/`\include`/`\subfile` inside the folder; `prose` drops the preamble, comments, maths and commands). State is
+  `research-latex.json`: per folder `words` by day (`KEEP_DAYS`), `last`/`prev` builds, a build counter `n` and
+  `reported` (the morning line tells each build once), and `_pending` (button refs for missing citations). Jobs:
+  `research_addon:latex` (`latex_when`) and `research_addon:morning` (`latex_morning`, `respect="quiet"`, Calm reason
+  `research_addon.latex`). Buttons `rlx:<ref>:bib` (submits a quiet text-only job with then-action
+  `research_addon.bibtex`; needs Chat), `rlx:<ref>:add` (`latex_tracker.add_entry` appends to the first existing `.bib`
+  the document names, never twice), `rlx:<ref>:no`.
 - **retro** (`modules/retro.py`, requires `chat`): the nightly look back proposes setting, profile, skill and idea
   changes, each confirmed through `app.ask`; only settings in `TUNABLE` (and modules' `tunable`) may be proposed. With
   Learns from its own work's `remember` part on (`Learning.picks_facts()`), `_run` appends `learning.REMEMBER_ASK` to

@@ -23,6 +23,10 @@ shows its message on this computer) and `kurooto reserve`. Every command is also
 
 ## Your add-ons
 
+(Not to be confused with the **add-ons that come with Kurooto**, listed apart on the Features page and off until you
+turn them on: Exam season, Learns from its own work, and the **Research add-on**, one switch for a group of research
+tools: [Research](research.md#the-research-add-on-run-compare-and-the-latex-tracker).)
+
 **What it does.** Lays a folder of yours over Kurooto: extra features, skills and prompts, and default settings. For
 example a private repository you cloned, so you can keep things for yourself while running the normal Kurooto.
 Updates never change this folder.

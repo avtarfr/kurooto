@@ -162,6 +162,9 @@ class App:
         m.start()
         self.start_background(m)
         self.events.emit("module_enabled", module=module_id)
+        on_hook = getattr(m, "turned_on", None)  # a bundle's members come on with it (modules/research_addon.py)
+        if on_hook:
+            on_hook()
         return True, f"{m.title} is on"
 
     def disable(self, module_id: str) -> tuple[bool, str]:
@@ -175,6 +178,9 @@ class App:
             return False, f"turn off {', '.join(users)} first; they use it"
         m = self.modules.get(module_id)
         if m:
+            off_hook = getattr(m, "turned_off", None)  # a bundle's members go off with it
+            if off_hook and module_id in on:
+                off_hook()
             m.stop()
             self.stop_background(m)
         self.settings.set(

@@ -39,6 +39,7 @@ from kurooto.modules.quiz import Quiz
 from kurooto.modules.remember import Remember
 from kurooto.modules.reminders import Reminders
 from kurooto.modules.research import Research
+from kurooto.modules.research_addon import ResearchAddon
 from kurooto.modules.retro import Retro
 from kurooto.modules.skills import Skills
 from kurooto.modules.space import Space
@@ -101,6 +102,7 @@ CATALOG = [
     Space,
     Study,
     Research,
+    ResearchAddon,
     Terminals,
     KurootoTerminal,
     AddOns,

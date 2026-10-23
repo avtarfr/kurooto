@@ -90,6 +90,7 @@ MODULE_ORDER = [
     "space",
     "study",
     "research",
+    "research_addon",
     "terminals",
     "terminal",
     "overlay",
@@ -155,6 +156,7 @@ class Api:
                     "form": m.setup_form() if hasattr(m, "setup_form") else None,
                     "addon": bool(getattr(m, "addon", False)),
                     "extra": bool(getattr(m, "extra", False)),
+                    "bundle": str(getattr(m, "bundle", "") or ""),  # in an add-on bundle: on its card
                     "card": self._card(m),
                 }
             )
