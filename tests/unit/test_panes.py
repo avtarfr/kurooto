@@ -83,3 +83,11 @@ def test_the_settings_are_lists_and_hiding_leaves_the_api_alone(env):
         assert [m["id"] for m in call(srv, "/api/state")[1]["modules"]] == before  # the API still lists every feature
     finally:
         srv.stop()
+
+
+def test_panels_and_legends_fold_and_open_on_hover_or_l(page):
+    _, js, _ = page
+    assert "let LEGENDS = false" in js and 'localStorage.getItem("kurooto.dash.legends")' in js
+    assert 'e.key === "l"' in js and '!document.activeElement.closest(".xterm")' in js  # not inside a terminal
+    assert "inside(this.mouse, this.openRects[key])" in js and "inside(this.mouse, this.legendRect)" in js
+    assert "l legends" in js  # the key is in the border

@@ -2,6 +2,10 @@
 
 ## 0.5.8 (unreleased)
 
+- **A calmer board**: the corner panels of SYSTEMS (events, your AI, today, due) and the NOTES legend and recent list
+  are folded to their first line (with how much more there is); one opens while the pointer is over it, and `L` opens
+  or folds them all (remembered in this browser).
+
 - **Study packs: the prompt comes on its own**, as a message next to the zip, ready to copy (it's still in the zip).
 - **Anything over Telegram's 50 MB comes as a Google Drive link** (with Drive upload on): study packs leave nothing
   out, several files sent at once aren't refused, and those uploads are deleted from your Drive after

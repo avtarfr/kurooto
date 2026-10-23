@@ -196,6 +196,18 @@ function fitCanvas(cv) {
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, w, h };
 }
 // text on a plate of background, so it stays readable over whatever moves behind it
+// The corner panels and legends are folded to their first line, for a calmer board: one opens while the pointer is
+// over it, and L opens (or folds) them all; the choice is remembered in this browser.
+let LEGENDS = false;
+try { LEGENDS = localStorage.getItem("kurooto.dash.legends") === "1"; } catch { /* fine */ }
+const inside = (m, r, pad = 6) => !!(m && r && m.x >= r.x0 - pad && m.x <= r.x1 + pad && m.y >= r.y0 - pad && m.y <= r.y1 + pad);
+window.addEventListener("keydown", (e) => {
+  if ((e.key === "l" || e.key === "L") && !e.altKey && !e.ctrlKey && !e.metaKey
+    && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName) && !document.activeElement.closest(".xterm")) {
+    LEGENDS = !LEGENDS;
+    try { localStorage.setItem("kurooto.dash.legends", LEGENDS ? "1" : "0"); } catch { /* fine */ }
+  }
+});
 function say(ctx, s, x, y, col, align = "left", font = `9px ${FONT}`) {
   ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
   const wd = ctx.measureText(s).width, x0 = align === "right" ? x - wd : align === "center" ? x - wd / 2 : x;
@@ -535,13 +547,20 @@ class Body {
     // a row is [text, colour] or [[title, tail], colour]: the title gives way so the tail (a time, a status) survives
     const fitRow = (s) => (Array.isArray(s) ? (s[0].length + s[1].length > cut ? s[0].slice(0, Math.max(4, cut - s[1].length - 1)) + "…" : s[0]) + s[1] : s.slice(0, cut));
     const rects = (this.panelRects = []); // where the corners' words are: the cells' labels keep clear of them
+    this.openRects = this.openRects || {};
     const block = (rows, x, align, fromTop) => {
+      const key = `${align}${fromTop ? "t" : "b"}`, open = LEGENDS || inside(this.mouse, this.openRects[key]);
+      if (!open && rows.length > 1) {
+        const more = rows.length - 1, head = [rows[0][0] + `  ▸ ${more}`, rows[0][1]];
+        rows = [head];
+      }
       const r = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
       rows.slice(0, 6).forEach(([s, col], i, arr) => {
         const y = fromTop ? 24 + i * lh : h - 20 - (arr.length - 1 - i) * lh, wd = say(ctx, fitRow(s), x, y, col, align), x0 = align === "right" ? x - wd : x;
         Object.assign(r, { x0: Math.min(r.x0, x0 - 2), x1: Math.max(r.x1, x0 + wd + 2), y0: Math.min(r.y0, y - 9), y1: Math.max(r.y1, y + 3) });
       });
       rects.push(r);
+      this.openRects[key] = r; // where the pointer keeps it open (the open panel's own area, once it's open)
     };
     // recent events, newest first
     const ev = [[feed.length ? "events" : "no events yet", dim]];
@@ -838,19 +857,31 @@ class Mind {
     const legend = [...(this.hoods || [])]
       .map(([k, v]) => [v.label, counts.get(k) || 0, v.color])
       .filter(([_, count]) => count > 0);
-    const lw = Math.max(...legend.map(([l, c]) => ctx.measureText(`${l} ${c}`).width)) + 26;
-    ctx.fillStyle = rgba(PAL.bg, 0.75); ctx.fillRect(w - lw - 10, 14, lw, legend.length * 15 + 6);
-    let y = 26;
-    for (const [label, count, col] of legend) {
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(w - lw - 1, y - 4, 3.5, 0, TAU); ctx.fill();
-      ctx.fillStyle = rgba(PAL.fg, 0.75); ctx.fillText(`${label} ${count}`, w - lw + 8, y); y += 15;
+    const legOpen = LEGENDS || inside(this.mouse, this.legendRect);
+    if (legOpen && legend.length) {
+      const lw = Math.max(...legend.map(([l, c]) => ctx.measureText(`${l} ${c}`).width)) + 26;
+      ctx.fillStyle = rgba(PAL.bg, 0.75); ctx.fillRect(w - lw - 10, 14, lw, legend.length * 15 + 6);
+      let y = 26;
+      for (const [label, count, col] of legend) {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(w - lw - 1, y - 4, 3.5, 0, TAU); ctx.fill();
+        ctx.fillStyle = rgba(PAL.fg, 0.75); ctx.fillText(`${label} ${count}`, w - lw + 8, y); y += 15;
+      }
+      this.legendRect = { x0: w - lw - 10, y0: 14, x1: w - 10, y1: 14 + legend.length * 15 + 6 };
+    } else if (legend.length) { // folded: a row of the neighbourhoods' colours and one word
+      const dots = legend.length * 9, tw = ctx.measureText("legend ▸").width, x1 = w - 12, x0 = x1 - dots - tw - 8;
+      legend.forEach(([, , col], i) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x0 + 4 + i * 9, 22, 3, 0, TAU); ctx.fill(); });
+      ctx.fillStyle = rgba(PAL.fg, 0.5); ctx.fillText("legend ▸", x0 + dots + 6, 26);
+      this.legendRect = { x0: x0 - 2, y0: 14, x1: x1 + 2, y1: 32 };
     }
     const hotHour = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 3600).length;
     const hotDay = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 86400).length;
     say(ctx, `Recent: ${this.showRecent ? "ON" : "OFF"} · [R] toggle (${hotHour}h / ${hotDay}d)`, 14, 26, this.showRecent ? PAL.peach : rgba(PAL.fg, 0.55), "left", `11px ${FONT}`);
     const recent = [...this.nodes.values()].sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 5);
-    recent.forEach((n, i) => say(ctx, `~ ${n.id.slice(-40)} · ${ago(nowS - (n.mtime || 0))} ago`, 14, h - 14 - i * 15,
+    const recOpen = LEGENDS || inside(this.mouse, this.recentRect);
+    const shown = recOpen ? recent : recent.slice(0, 1);
+    shown.forEach((n, i) => say(ctx, `~ ${n.id.slice(-40)} · ${ago(nowS - (n.mtime || 0))} ago${!recOpen && recent.length > 1 ? `  ▸ ${recent.length - 1}` : ""}`, 14, h - 14 - i * 15,
       rgba(i === 0 ? PAL.sand : PAL.fg, 0.72 - i * 0.11), "left", `11px ${FONT}`));
+    this.recentRect = { x0: 10, y0: h - 14 - (shown.length - 1) * 15 - 12, x1: 340, y1: h - 8 };
   }
   pick(x, y) { let best = null, bd = 14; for (const n of this.nodes.values()) { const S = this.toScreen(n, this.w, this.h), d = Math.hypot(S.x - x, S.y - y); if (d < bd) { bd = d; best = n; } } return best; }
   async showCard(n, pinned) {
@@ -877,6 +908,7 @@ class Mind {
       const n = this.pick(x, y);
       down = { x, y, n, vx: this.view.x, vy: this.view.y, moved: false }; if (n) this.dragging = n; });
     window.addEventListener("mousemove", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      this.mouse = x < 0 || y < 0 || x > r.width || y > r.height ? null : { x, y };
       if (down) { if (Math.hypot(x - down.x, y - down.y) > 3) down.moved = true;
         if (down.n) { const W = this.toWorld(x, y, this.w, this.h); down.n.x = W.x; down.n.y = W.y; this.alpha = Math.max(this.alpha, 0.2); }
         else if (down.moved) { this.autofit = false; this.view.x = down.vx + (x - down.x) / this.view.k; this.view.y = down.vy + (y - down.y) / this.view.k; } return; }
@@ -1154,7 +1186,7 @@ function renderNav() {
   if (!TERM.on) html += `<button class="tab off${dtab === "termsoff" ? " on" : ""}" data-dt="termsoff" title="a shell, your AI's program and the log, right here">+ terminals</button><span class="rule">─</span>`;
   if (isTerm) html += '<button class="tab" data-restart="1" title="end the program in this terminal and start it again">restart</button><span class="rule">─</span>';
   html += `<span class="rule">┤</span><span class="pages">${pageTabs()}</span><span class="rule">├</span>`;
-  html += `<span class="meta">alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note</span>`;
+  html += `<span class="meta">alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note · l legends</span>`;
   nav.innerHTML = html;
   nav.onclick = (e) => {
     if (e.target.closest(".t")) { maxPane("terminal"); return; }
