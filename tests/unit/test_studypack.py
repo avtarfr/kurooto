@@ -59,7 +59,7 @@ def test_a_study_pack_holds_the_notes_the_files_the_index_and_a_prompt(chat_on, 
         prompt = z.read("PROMPT.md").decode()
     assert "notes/sources/deep-learning/lecture-1.md" in names and "notes/zettel/equivariance.md" in names
     assert "notes/zettel/unrelated.md" not in names  # a note that doesn't touch the subject stays out
-    assert {"course-files/slides-1.pdf", "course-files/slides-2.PDF", "INDEX.md", "PROMPT.md"} <= names
+    assert {"class/slides-1.pdf", "class/slides-2.PDF", "INDEX.md", "PROMPT.md"} <= names
     assert not any("hidden" in n or "movie" in n for n in names)
     assert "What it's for: quiz on Thursday." in prompt and "Deep Learning" in prompt
     assert info["notes"] == 2 and info["files"] == 2 and not info["left_out"]
@@ -200,3 +200,95 @@ def test_temporary_drive_files_are_deleted_when_their_days_are_up(env, monkeypat
     d.temp_file.write_text(__import__("json").dumps(rows))
     assert d.expire() == 1 and deleted == [("/files/old1", "DELETE")]
     assert [r["id"] for r in __import__("json").loads(d.temp_file.read_text())] == ["new1"]
+
+
+# ------------------------------------------------------------------------------ a topic, class first
+def test_topics_come_from_what_follows_on_or_the_words_that_arent_filler():
+    assert studypack.topics_of("quiz on thermodynamics and radiation") == ["thermodynamics", "radiation"]
+    assert studypack.topics_of("upcoming quiz thermodynamics") == ["thermodynamics"]
+    assert studypack.topics_of("quiz on thursday") == [] and studypack.topics_of("midsem friday 9am") == []
+    assert studypack.topics_of("exam on lapse rate, convection for friday") == ["lapse rate", "convection"]
+    rx = studypack.pattern(["thermodynamics", "lapse rate"])
+    assert (
+        rx.search("the first law of Thermodynamic systems") and rx.search("dry lapse-rates") and not rx.search("lapse")
+    )
+
+
+def test_class_material_and_books_are_told_apart_by_length_and_title():
+    assert studypack.is_class("Phys_atmosphere_Lecture4.pdf", 23)
+    assert studypack.is_class("Complete_Physics_of_the_Atmosphere_Midsem_Notes.pdf", 57)
+    assert studypack.is_class("Radiative_Balance.pdf", 29)  # short: class, whatever it's called
+    assert not studypack.is_class("Physics of the Atmosphere and Climate -Salby.pdf", 717)
+    assert not studypack.is_class("salby_ch8.pdf", 63)  # a chapter of a book
+    assert not studypack.is_class("Thermal Physics of the Atmosphere ( PDFDrive ).pdf", 15)  # a book's sample
+    assert not studypack.is_class("Atmospheric Dynamics.pdf", 60)  # 41-80 pages, title says nothing: a book
+    assert studypack.is_class("handout.pdf", size=3 << 20) and not studypack.is_class("big.pdf", size=30 << 20)
+
+
+def seed_books(env):
+    """Physics of the Atmosphere: two lectures and a book Books has read, and notes."""
+    import json
+
+    app = env.app
+    env.on("subjects")
+    env.say("/subject add Physics of the Atmosphere (pota)")
+    src = app.workspace.parent / "pdfs"
+    src.mkdir()
+    store = app.paths.data / "book-text" / "physics-of-the-atmosphere"
+
+    def read(fid, fname, pages):
+        f = src / fname
+        f.write_bytes(b"%PDF " + fname.encode())
+        d = store / fid
+        (d / "pages").mkdir(parents=True)
+        for i, text in enumerate(pages, 1):
+            (d / "pages" / f"{i:05d}.md").write_text(text, encoding="utf-8")
+        (d / "meta.json").write_text(json.dumps({"file": str(f), "title": fid, "pages": len(pages)}), encoding="utf-8")
+
+    read("lecture-3", "Lecture3.pdf", ["Thermodynamics of dry air", "The first law, thermodynamic potentials"])
+    read("lecture-5", "Lecture 5 Radiation.pdf", ["Radiation fundamentals", "Planck's law"])
+    book = ["Preface"] * 100
+    book[29] = "# 2 Thermodynamics\nThe thermodynamic state and thermodynamics of moist air."
+    book[59] = "Clouds and radiation."
+    read("salby", "Physics of the Atmosphere -Salby.pdf", book)
+    ws = app.workspace
+    (ws / "zettel").mkdir()
+    (ws / "zettel" / "potential-temperature.md").write_text(
+        "# Potential temperature\n- derived from:: [[zettel/first-law-of-thermodynamics]]", "utf-8"
+    )
+    (ws / "zettel" / "planck-law.md").write_text("# Planck's law\nRadiation.", "utf-8")
+
+
+def test_a_topic_pack_takes_class_files_about_it_whole_and_only_the_books_pages_about_it(chat_on, env):
+    seed_books(env)
+    path, info = studypack.build(env.app, "physics-of-the-atmosphere", "POTA", "quiz on thermodynamics")
+    with zipfile.ZipFile(path) as z:
+        names = set(z.namelist())
+        book = z.read("books/salby-pages.md").decode()
+        index, prompt = z.read("INDEX.md").decode(), z.read("PROMPT.md").decode()
+    assert "class/Lecture3.pdf" in names and not any("Radiation" in n for n in names)  # the other lecture stays out
+    assert "<!-- page 30 -->" in book and "<!-- page 29 -->" in book and "page 60 -->" not in book
+    assert "notes/zettel/potential-temperature.md" in names and "notes/zettel/planck-law.md" not in names
+    assert index.index("Class material (first)") < index.index("## Books") and "pages 29-31 of 100" in index
+    assert "narrowed to **thermodynamics**" in prompt and "follow the class" in prompt
+    assert info["class"] == 1 and info["books"] == 1 and info["topics"] == ["thermodynamics"]
+    # without a topic the book stays out (its whole text would flood the other AI's context); the lectures go in
+    path, info = studypack.build(env.app, "physics-of-the-atmosphere", "POTA", "")
+    with zipfile.ZipFile(path) as z:
+        names, index = set(z.namelist()), z.read("INDEX.md").decode()
+    assert (
+        not any(n.startswith("books/") for n in names)
+        and {"class/Lecture3.pdf", "class/Lecture 5 Radiation.pdf"} <= names
+    )
+    assert "Books not packed whole" in index and "salby (100 pages): name a topic" in index and not info["left_out"]
+    with pytest.raises(ValueError, match="nothing about knitting"):
+        studypack.build(env.app, "physics-of-the-atmosphere", "POTA", topics=["knitting"])
+
+
+def test_the_command_narrows_to_a_topic_and_the_tool_takes_topics(chat_on, env):
+    seed_books(env)
+    out = env.say("/studypack pota quiz on thermodynamics")
+    assert out.startswith("On thermodynamics: 1 class files first, then 1 book extracts")
+    sk_mod = env.app.modules["skills"]
+    out = sk_mod._tool_study_pack({"subject": "pota", "topics": "thermodynamics, radiation"})
+    assert out.startswith("On thermodynamics, radiation: 2 class files")

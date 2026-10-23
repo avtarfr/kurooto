@@ -22,7 +22,7 @@ class Space(Module):
     def start(self):
         self.every("clean", self.setting("when") or "weekly sun 04:30", self.run_clean)
 
-    def run_clean(self) -> dict:
+    def run_clean(self, payload: dict | None = None) -> dict:
         if not self.app.is_on(self.id):
             return {}
         items = space.plan(self.app)

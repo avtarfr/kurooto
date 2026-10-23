@@ -245,7 +245,7 @@ class Integrate(Module):
 
         return cg.Index(cg.scan(self.app), emb, self._store if emb else None, make_reranker(self.app))
 
-    def tick(self) -> dict:
+    def tick(self, payload: dict | None = None) -> dict:
         """Ask for the next batch (one bulk request at a time per AI; second looks run beside it)."""
         if not self.app.is_on(self.id):
             return {}
@@ -669,7 +669,7 @@ class Integrate(Module):
             inbound |= {t for t in n.links if t != n.slug}
         return sorted(s for s in index.notes if s not in inbound)
 
-    def garden(self) -> dict:
+    def garden(self, payload: dict | None = None) -> dict:
         """The daily second pass: the notes the reading touched, then notes nothing links to, each against what's there
         now. One short request per note (to the check AI); the answer's links are checked the same way."""
         if not self.app.is_on(self.id) or not self.setting("garden"):
@@ -820,7 +820,7 @@ class Integrate(Module):
         c["todo"] = len(self.ready_batches())
         return c
 
-    def summary(self) -> str:
+    def summary(self, payload: dict | None = None) -> str:
         n = (self.load("ledger.json", {}).get("nights", {}) or {}).get(day(), {})
         if not n:
             return ""

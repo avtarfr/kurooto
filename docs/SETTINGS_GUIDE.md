@@ -176,12 +176,16 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `calls.later_min` | `30` | "Later" on a ringing call calls back after this long |
+| `calls.lessons_max` | `12` | the most lessons every call is told; a new one that says the same replaces the old |
 | `calls.live_model` | `"gemini-3.8-live"` | the Gemini Live voice model for calls |
 | `calls.live_models` | `["gemini-3.1-flash-live-preview", "gemini-2.5-flash-nativ…` | other Live models to try, in order, when the first one is down |
 | `calls.notes_repo` | `""` | owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off |
 | `calls.ntfy_server` | `"https://ntfy.sh"` | the push server the phone app listens to (change only if you run your own) |
 | `calls.persona` | `""` | extra words on how to talk on calls, e.g. "be brief and a bit cheeky" |
 | `calls.realert_min` | `[3, 6]` | a call you didn't answer rings again this many minutes after the first; [] = once |
+| `calls.review` | `true` | after every call, an AI request looks back at it: does what slipped through, keeps lessons |
+| `calls.review_brain` | `""` | which AI does the look back ("" = your main one) |
+| `calls.review_effort` | `"high"` | how hard that look back thinks (low, medium, high) |
 | `calls.ring_s` | `60` | how long a call rings before it counts as missed |
 | `calls.text_model` | `"gemini-flash-latest"` | the Gemini model for turn-by-turn calls (here, or on your call line) |
 | `calls.turn_brain` | `"gemini"` | answers turn-by-turn calls here: "gemini" (your key) or "local" (Local AI models) |

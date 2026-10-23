@@ -1086,7 +1086,10 @@ class Skills(Module):
         AI (core/studypack.py), sent here."""
         text = arg.strip()
         if not text:
-            return "Which subject? /studypack deep learning quiz on thursday (the rest says what it's for)"
+            return (
+                "Which subject? /studypack deep learning quiz on thursday (the rest says what it's for; name a topic "
+                "to narrow it: /studypack pota quiz on thermodynamics)"
+            )
         subj = self.app.modules.get("subjects")
         found = subj.find_in(text) if subj is not None and self.app.is_on("subjects") else []
         if found:
@@ -1100,13 +1103,13 @@ class Skills(Module):
             name = ""
         return self._send_study_pack(sid, name, aim, msg.message_id)
 
-    def _send_study_pack(self, subject: str, name: str, aim: str, reply_to=None) -> str:
+    def _send_study_pack(self, subject: str, name: str, aim: str, reply_to=None, topics=None) -> str:
         from kurooto.core import studypack
 
         drive = self.app.modules.get("drive_upload")
         big = drive is not None and self.app.is_on("drive_upload") and drive.setting("big_files")
         try:  # with Drive upload on nothing is left out: a pack over Telegram's 50 MB comes as a Drive link
-            zip_path, info = studypack.build(self.app, subject, name, aim, limit=None if big else -1)
+            zip_path, info = studypack.build(self.app, subject, name, aim, limit=None if big else -1, topics=topics)
         except ValueError as e:
             return str(e)
         title = name or subject.replace("-", " ").title()
@@ -1117,7 +1120,10 @@ class Skills(Module):
             ok and "telegram" in self.app.notifier.channels
         ):  # the prompt on its own, ready to copy (it's in the zip too)
             self.app.notify(
-                studypack.prompt_text(title, aim), kind="result", title=f"Prompt for the {title} pack", why="asked"
+                studypack.prompt_text(title, aim, info["topics"]),
+                kind="result",
+                title=f"Prompt for the {title} pack",
+                why="asked",
             )
         left = (
             f" {len(info['left_out'])} file(s) didn't fit in Telegram's 50 MB; INDEX.md lists them (Drive upload "
@@ -1125,6 +1131,11 @@ class Skills(Module):
             if info["left_out"]
             else ""
         )
+        if info["topics"]:
+            return (
+                f"On {', '.join(info['topics'])}: {info['class']} class files first, then {info['books']} book "
+                f"extracts (only their pages on it), and {info['notes']} notes, in one zip.{left} {said}"
+            )
         return f"{info['notes']} notes and {info['files']} course files in one zip.{left} {said}"
 
     def _pack(self, msg: Incoming, arg: str) -> str:
@@ -1329,6 +1340,10 @@ class Skills(Module):
                 {
                     "subject": arg("the subject, e.g. deep learning or its short name"),
                     "aim": arg("what it's for, e.g. quiz on Thursday, optional"),
+                    "topics": arg(
+                        "optional: the syllabus to narrow it to, comma-separated, e.g. thermodynamics, lapse rate; "
+                        "class material is put first and books give only their pages on it"
+                    ),
                 },
                 ("subject",),
                 offline="queue",
@@ -1366,7 +1381,10 @@ class Skills(Module):
         text = str(a.get("subject") or "").strip()
         subj = self.app.modules.get("subjects")
         sid = subj.resolve(text) if subj is not None and self.app.is_on("subjects") else None
-        return self._send_study_pack(sid or text, subj.name_of(sid) if sid else "", str(a.get("aim") or ""))
+        topics = [x.strip() for x in str(a.get("topics") or "").split(",") if x.strip()] or None
+        return self._send_study_pack(
+            sid or text, subj.name_of(sid) if sid else "", str(a.get("aim") or ""), topics=topics
+        )
 
 
 def dt_time(text: str) -> dt.time:

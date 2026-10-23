@@ -1,0 +1,596 @@
+# Core services
+
+`src/kurooto/core/` holds everything features share. `App.__init__` (`app.py`) builds the services in this order:
+`Paths` → `Settings` → `Secrets` → `Events` → `Availability` → `Scheduler` (with gates) → `Notifier` → `Power` →
+`AboutYou` → `Quota` → `Jobs` → `Updates` → `Ask` → `Presence` → `Health` → `Calm` → every module in the catalog →
+add-ons. Anything a module needs is reached through `self.app.<service>`.
+
+Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the-notes-layout) ·
+[files and folders](#files-and-folders) · [scheduler](#scheduler) · [scheduled jobs](#every-scheduled-job) ·
+[jobs](#jobs) · [events](#events) · [notify and Calm](#notify-and-calm) · [ask](#ask-questions-and-approvals) ·
+[availability](#availability) · [power](#power) · [presence](#presence) · [quota](#quota-free-ai-limits) ·
+[reserve](#the-reserve) · [space keeper](#space-keeper) · [hardware](#hardware-profiles) ·
+[processes](#running-programs) · [locks](#locks-and-atomic-writes) · [Windows](#windows-notes) ·
+[smaller pieces](#smaller-core-pieces)
+
+## Settings
+
+`core/config.py`.
+
+- Defaults: every section is declared by `register_defaults(section, dict)` at **import time** of the module that owns
+  it (e.g. `register_defaults("jobs", {"stuck_min": 10})` at the top of `core/jobs.py`). Calls for the same section
+  merge (`merge`). The `Module.defaults` class attribute in `modules/base.py` is not read by anything; use
+  `register_defaults`.
+- User overrides: `<config>/settings.json` holds only what the user changed. `Settings.all()` is
+  `merge(defaults, add-on layer, user)`, so a new default in an update reaches everyone who didn't change that key.
+- Add-on layer: `set_layer()` (called by `core/overlay.py:load`) lays an add-ons folder's `settings.json` between the
+  defaults and the user's file; it can't set `modules`, `overlay` or `profile` (`overlay.NO_DEFAULTS`).
+- API: `get("a.b.c", default)`, `set("a.b", value) -> old` (rewrites the user file with `jsave`), `reset("a.b")`
+  (drops the override). Dotted keys address nested dicts.
+- `Settings` reads the file on every `get`; there is no cache and no cross-process lock, so the CLI and the daemon can
+  overwrite each other's concurrent `set`. Change settings in the daemon (the API's `POST /api/settings` or a module
+  method), not by editing the file while it runs.
+- Sections and where they are registered (the full list with every key and default is generated into
+  `docs/SETTINGS_GUIDE.md` by `tools/gen_settings_guide.py`; `tests/unit/test_settings_guide.py` fails when it's stale,
+  so regenerate it after adding or changing a setting):
+
+| Section | Registered in |
+|---|---|
+| `you`, `modules` | `app.py` |
+| `brain` | `providers/__init__.py` |
+| `jobs` | `core/jobs.py` |
+| `notify` (`desktop`, `desktop_kinds`, `app_kinds`), `notify.calm`, `notify.presence` | `core/notify.py`, `core/calm.py`, `core/presence.py` |
+| `availability` | `core/availability.py` |
+| `ask` | `core/ask.py` |
+| `power` | `core/power.py` |
+| `quota` | `core/quota.py` |
+| `health` | `core/health.py` |
+| `hardware` | `core/hardware.py` |
+| `space` | `core/space.py` |
+| `notes`, `files` | `core/layout.py` |
+| `sources` | `core/sources.py` |
+| `agents` | `core/agent_export.py` |
+| `autostart` | `core/autostart.py` |
+| `web`, `look` | `web/server.py` |
+| `updates` | `update/service.py` |
+| one section per feature (`<module id>`) | the module's own file |
+
+Modules read their own section with `Module.setting(key)` (= `settings.get(f"{id}.{key}")`).
+
+## Secrets
+
+`core/secrets.py:Secrets`. Never in `settings.json`.
+
+- The OS keychain through `keyring` (service `kurooto`), else `<config>/secrets.json` (mode 0600).
+- The file is used when there is no usable keyring backend, when `KUROOTO_HOME` is set, when
+  `KUROOTO_SECRETS=file`, or when the marker `<config>/secrets-in-file` exists (`keep_in_file(True, names)`, used by
+  `core/autostart.py` when Kurooto starts at boot on Linux, before the keychain is unlocked).
+- API: `get(name)`, `set(name, value)`, `delete(name)`, `names()` (file only: the keychain can't be listed).
+- Names in use include `telegram.token`, `web.token`, `gemini.api_key`, `<brain>.api_key`, `google.client`,
+  `google.tokens[.<account>]`, `calendar.ics`, `calls.call_secret`, `calls.connector_secret`, `calls.ntfy_topic`,
+  `calls.ntfy_key`, `calls.vapid_jwk`, `calls.vapid_public`, `calls.github_token`, `notes_sync.token`,
+  `profile.token`, `profile.key`. `diagnostics.py:KNOWN_SECRETS` lists the ones the bundle redacts; add new names there.
+
+## Paths and the notes layout
+
+`core/paths.py:paths()` returns a frozen `Paths(config, data, state, logs, cache, app)`:
+
+| Root | Linux | macOS | Windows | `KUROOTO_HOME=H` |
+|---|---|---|---|---|
+| config | `$XDG_CONFIG_HOME/kurooto` | `~/Library/Application Support/Kurooto/config` | `%LOCALAPPDATA%\Kurooto\config` | `H/config` |
+| data | `$XDG_DATA_HOME/kurooto/data` | `.../Kurooto/data` | `%LOCALAPPDATA%\Kurooto\data` | `H/data` |
+| state | `$XDG_STATE_HOME/kurooto` | `.../Kurooto/state` | `%LOCALAPPDATA%\Kurooto\state` | `H/state` |
+| logs | `<state>/logs` | `~/Library/Logs/Kurooto` | `<state>\logs` | `H/state/logs` |
+| cache | `$XDG_CACHE_HOME/kurooto` | `~/Library/Caches/Kurooto` | `%LOCALAPPDATA%\Kurooto\cache` | `H/cache` |
+| app | `$XDG_DATA_HOME/kurooto/app` | `.../Kurooto/app` | `%LOCALAPPDATA%\Programs\Kurooto` | `H/app` |
+
+XDG variables are honoured only when absolute. `Paths.ensure()` creates them all. `KUROOTO_HOME` is the switch that
+keeps tests, portable installs and development runs away from a real install.
+
+The notes folder ("workspace") is `you.workspace`, else `~/Documents/Kurooto` (`app.py:default_workspace`; `H/workspace`
+under `KUROOTO_HOME`). Where each kind of note goes is decided only by `core/layout.py`: `KINDS` (daily, profile,
+how_to_help, inbox, course, lecture, concept, exam_prep, doubts, home, research, project, runs, ...), two `PRESETS`
+(`kurooto` and `zettelkasten`), per-kind overrides in `notes.paths`, and `files.folder` for binary files. Use
+`layout.path(app, kind, **fields)`, `layout.rel`, `layout.link`, `layout.file_dir`, `layout.frontmatter`; never build
+a notes path by hand. `Layout.check()` feeds `kurooto doctor`'s `notes layout` row.
+
+## Files and folders
+
+Everything Kurooto writes, by root. JSON files go through `core/state.py:jsave` unless noted. "Backup" is
+`modules/backups.py` (state is included except `SKIP_STATE`: `web.json`, `daemon.json`, `supervisor.json`, `off.json`,
+`pause.json`, `power-held.json`, `update-ready.json`, `backups.json`, `focus-queue.jsonl`, `profile.json`, and the
+folders `locks/`, `logs/`, `cases/`, plus `telegram/offset.json`, `telegram/pairing.json`, `calls/link.json`). "Profile"
+is the encrypted profile (`core/profile.py:KEEP`).
+
+### config/
+
+| File | Format | Owner |
+|---|---|---|
+| `settings.json` | JSON, user overrides only | `core/config.py:Settings` |
+| `secrets.json` | JSON, 0600, the keychain fallback | `core/secrets.py:Secrets` |
+| `secrets-in-file` | text marker | `Secrets.keep_in_file` |
+| `cloudflare/` | wrangler's own config home for the call line | `modules/calls/deploy.py:wrangler_env` |
+
+### state/ (core)
+
+| File | Format | Owner |
+|---|---|---|
+| `schedule.db` | SQLite, table `schedule` (WAL, 0600) | `core/scheduler.py:Scheduler` |
+| `jobs.db` | SQLite, tables `jobs`, `attempts` (WAL, 0600) | `core/jobs.py:Jobs` |
+| `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers; once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
+| `calm.db` | SQLite, table `sent`, kept 45 days | `core/calm.py:Calm` |
+| `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
+| `events.jsonl` | JSON lines, append-only, never trimmed | `core/events.py:Events` |
+| `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
+| `net-outbox.jsonl` | JSON lines: Telegram messages held while offline (rewritten with `write_text`) | `core/presence.py` |
+| `presence.json` | heartbeat, last stop, offline periods (15 days) | `core/presence.py:Presence` |
+| `ask/<qid>.json` | one question each, kept `ask.keep_days` after settling | `core/ask.py:Ask` |
+| `quiet.json`, `focus.json`, `oncall.json` | `{"until": iso, ...}` | `core/availability.py:Availability._set` |
+| `pause.json`, `off.json`, `power-held.json` | pause until, turned off, jobs held by power mode | `core/power.py:Power` |
+| `quota.json` | counts and learned limits per pool (no content) | `core/quota.py:Quota` |
+| `health.json` | last results, what was told | `core/health.py:Health` |
+| `hardware.json`, `model-sizes.json` | the machine as read once; registry sizes | `core/hardware.py:current` |
+| `daemon.json`, `supervisor.json` | `{pid, started}` | `daemon.py:run`, `supervise` |
+| `web.json` | `{port, url, started}` | `web/server.py` |
+| `tools-access.json`, `tools-list.json` | the tools-only key and URL; the last tool list | `web/server.py`, `web/tools_api.py`, `core/mcp.py` |
+| `reserve/*.md` | Markdown copies for AI programs | `core/reserve.py`, `modules/alarm.py:_mirror` |
+| `note-history/...` | earlier versions of notes the AI edited (20 each) | `core/tools.py:NoteTools` |
+| `sync-all.json` | the last "sync everything" | `core/syncall.py` |
+| `profile.json` | Profile sync state | `core/profile.py` |
+| `aboutyou.json` | About you state | `core/aboutyou.py` |
+| `agent-skills.json` | what was exported where | `core/agent_export.py` |
+| `upgrades.json` | one-time upgrade steps done | `core/upgrade.py` |
+| `update-ready.json`, `update-seen.json`, `yank.json` | staged update; anti-replay; yank cache | `update/service.py`, `update/updater.py` |
+| `<brain>-worked.json` | marker: this agent program has answered here | `providers/base.py:Brain.mark_worked` |
+| `agy-tools.json`, `backups/agy-settings-*.json` | what was granted to agy; backups of agy's settings | `providers/agy.py` |
+| `locks/<name>.lock` | file locks | `core/lock.py:Lock` |
+| `logs/` (Linux, Windows, `KUROOTO_HOME`) | `kurooto.log` | `daemon.py:setup_logging` |
+
+### state/ (features)
+
+| Path | Owner |
+|---|---|
+| `telegram/{offset,pairing,map,menu,name}.json`, `telegram/paused.jsonl` | `modules/telegram` |
+| `chat/history.json` (last 10 turns, 1200 chars each) | `modules/chat.py` |
+| `calls/{rings,live,link,inbox,answer-nonces,live-health,textcalls}.json`, `calls/lessons.md`, `calls/transcripts/*.txt` | `modules/calls` |
+| `alarm.json`, `alarm-last.json`, `alarm-skip.json`, `alarm-ringing.json` | `modules/alarm.py` |
+| `deadlines.json`, `deadlines-recurring.json` | `modules/deadlines.py` |
+| `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json` | check-ins, capture, study |
+| `subjects/term-note.json`, `subjects/skip-<day>.json` | `modules/subjects.py` |
+| `exam_season.json`, `startby.json`, `quests.json`, `reminders-snooze.json` | those modules |
+| `doubts/*.json`, `hints/<id>.json`, `quiz/<subject>.json`, `quiz/{session,offered}.json` | doubts, hints, quiz |
+| `retro.json`, `retro-state.json`, `observations.json`, `retro-skills/` | `modules/retro.py` |
+| `research-papers.json`, `research-logs.json` | `modules/research.py` |
+| `books.json`, `gbrain.json`, `gbrain-checkup.json`, `gbrain/` | books, gbrain |
+| `integrate/` (`ledger.json`, `seen.json`, `chapters.json`, `garden.json`, `pending/`, `undo/`, `vectors.db`) | `modules/integrate.py`, `core/conceptgraph.py` |
+| `handwritten*.json`, `handwritten/<id>/` | `modules/handwritten.py` |
+| `calendar.json` | `modules/calendar.py` |
+| `google-classroom.json`, `google-signin.json`, `google-needs-<part>` | `modules/google.py` |
+| `classroom-notes/`, `mail-digest/`, `reply-drafts/`, `digest-email-*`, `drive-upload.json`, `drive-temporary.json`, `agent-plan.json` | the Google parts |
+| `notes-sync.json`, `backups.json`, `ollama-ours.json` | notes sync, backups, local models |
+| `skills/{packs,auto-packs}.json`, `skills/drafts/`, `skills/tectonic-declined` | `modules/skills.py` |
+| `classpacks/active.json`, `classpacks/drafts/` | `modules/classpacks.py` |
+| `lidsafe/{held,waiting,said}.json` | `modules/lidsafe.py` |
+| `cases/cases.json` (never backed up or bundled) | `modules/cases.py` |
+| `terminal/` (kitty config, session, log, default-terminal record) | `modules/terminal` |
+
+### data/, cache/, app/, and outside
+
+- data: `about-you/*.md` (About you reports), `skills/routines.json`, `profile/` (encrypted profile working copy),
+  `books/`, `book-text/`, `book-brain/`, `gbrain/`, `classroom/<subject>/`, `classpacks/`, `mail/confidential/`,
+  `backups/skills/`, `kurooto-diagnostics-*.zip`.
+- cache (safe to delete; Space keeper prunes after `space.cache_days`): `books/`, `handwritten/`, `send/`,
+  `study-packs/`, `tectonic/`, installer downloads.
+- app: see [release-and-updates.md](release-and-updates.md#install-layout-srckurootoupdate).
+- Notes folder: daily notes, class logs, course and concept notes, `about-me/*`, `inbox/*`, `research/*`,
+  `kurooto/*`, `.gitignore` (Notes sync), `.kurooto/requests/` (agy handover, git-ignored).
+- Outside Kurooto's folders, only on purpose: autostart entries (`core/autostart.py`: HKCU `Run`, a LaunchAgents plist,
+  `~/.config/systemd/user/kurooto.service` or `~/.config/autostart/kurooto.desktop`), PATH edits (`core/pathfix.py`),
+  app-menu entries (`core/shortcuts.py`, `modules/terminal/launchers.py`), the Windows Terminal fragment
+  (`modules/terminal/wt.py`), the `kurooto` command shim (`cli.py:install_finish`), exported skills
+  (`core/agent_export.py`: `~/.claude/skills`, `~/.agents/skills`, `~/.gemini/antigravity-cli/skills`, only when the
+  user turns it on), agy's settings file (`providers/agy.py:allow_tools`, backed up first, consent asked). Each of these
+  is a place the test guard protects (`tests/isolation.py:protected_paths`).
+
+## Scheduler
+
+`core/scheduler.py:Scheduler`, SQLite `<state>/schedule.db`, so jobs survive restarts and sleep.
+
+- `action(name, fn)`: register a handler. **Every handler is called as `fn(payload)`** (a dict); it may be async. A
+  bound method that takes no argument fails with `TypeError` on every run. Write `def tick(self, p=None)` or wrap it
+  (`lambda p: self.tick()`).
+- `every(key, spec, action, payload=None, *, module="", misfire="coalesce", respect="none")`: a recurring job. Calling
+  it again with the same spec keeps the job's next run; a changed spec reschedules.
+- `at(when, action, payload=None, *, key=None, module="", replace=True, grace_s=43200, respect="none") -> key`: a
+  one-off. Naive datetimes are local time. `replace=False` leaves an existing key alone (a debounce).
+- `cancel(key)`, `cancel_prefix(prefix)`, `get(key)`, `jobs(prefix)`, `due()`.
+- Specs (`next_after`), in `you.timezone`: `every 10m`, `every 2h` (at least a minute), `hourly`,
+  `daily 05:00`, `daily 07:00,13:00,19:00`, `weekly sun 19:30`. A bad spec raises `ValueError`.
+- `run_forever(stop)` runs `tick()` and sleeps until the next job, at most 30 s, so clock jumps are noticed.
+  `_poke()` wakes it when a job is added.
+
+What `tick()` does with each due job, in order:
+
+1. **Hold** (`Scheduler.hold = Power.hold`): in saver or paused mode a job whose module may not run is pushed an hour and
+   recorded in `power-held.json`; `Power.release()` runs them the moment the mode allows. Jobs with `module=""` are held
+   only when paused.
+2. **Gate** (`respect`): `"quiet"` uses `Availability.quiet_gate`, which postpones to the end of **focus** time (not the
+   `quiet.json` "no calls" window, despite the name); `"call_block"` uses `Availability.call_gate` (no built-in job uses
+   it). Postponed jobs keep their key.
+3. **Misfire**: a one-off later than its `grace_s` gets `payload["missed"] = True`; later than 120 s gets
+   `payload["late_s"]`. A recurring job with `misfire="skip"` more than 120 s late doesn't run (no built-in job uses
+   `skip`); `coalesce` runs it once. Either way the next run is computed from now.
+4. **Run**: `outcome` is `ran`, `error` (the exception text goes to `last_result`), `missing-action` (nothing registered
+   under that action name: its module is off or never registered it), or `skipped`/`held`/`postponed`. One-offs are
+   deleted unless the handler rescheduled the same key.
+5. `on_result` = `App._job_done`, which emits `job_failed` for `error` and `missing-action`.
+
+Handlers run on the event loop thread. A slow synchronous handler (git, a zip, an HTTP call) blocks every other job and
+async task for its duration; long work should start a thread (`threading.Thread`, `asyncio.to_thread`) as
+`gbrain`, `books`, `retro`, `profile` and `handwritten` do.
+
+Keys are `"<module id>:<name>"` so `Module.stop()` (`cancel_prefix(f"{id}:")`) removes them; actions are
+`"<module id>.<name>"`. `Module.every()` and `Module.action()` build both. `LABELS` and `describe()` give the words
+`/status` and `kurooto top` show.
+
+## Every scheduled job
+
+Recurring (key → when; setting that controls it):
+
+| Key | When | Setting | Owner |
+|---|---|---|---|
+| `calm:tick` | every 5m | | `core/calm.py:Calm.start` |
+| `ask:sweep` | every 10m | | `core/ask.py:Ask.start` |
+| `reserve:refresh` | every 10m | | `core/reserve.py:start` |
+| `agents:export` | hourly (only while export is on) | `agents.export` | `core/agent_export.py` |
+| `health:daily` | daily 21:00 | `health.when` | `core/health.py:Health.start` |
+| `updates:check` | every 6h | | `update/service.py:Updates.start` |
+| `alarm:plan` | every 30m | | `modules/alarm.py` |
+| `backups:run`, `backups:catchup` | daily 03:30; hourly | `backups.when` | `modules/backups.py` |
+| `books:read` | daily 01:00 | `books.at` | `modules/books.py` |
+| `calendar:refresh` | every 15m | `calendar.refresh` | `modules/calendar.py` |
+| `calls:line_update` | daily 05:10 | | `modules/calls/__init__.py` |
+| `capture:plan` | daily 00:10 | | `modules/capture.py` |
+| `cases:review` | weekly sun 19:00 | `cases.review` | `modules/cases.py` |
+| `checkins:plan` | daily, `checkins.day_starts` + 5 min | `checkins.day_starts` | `modules/checkins.py` |
+| `deadlines:tick` | hourly | | `modules/deadlines.py` |
+| `doubts:before` | every 5m | | `modules/doubts.py` |
+| `exam_season:tick` | every 15m | | `modules/exam_season.py` |
+| `gbrain:sync`, `gbrain:nightly`, `gbrain:checkup` | every 15m; daily 03:00; weekly sun 19:30 | `gbrain.sync`, `gbrain.nightly`, `gbrain.checkup_when` | `modules/gbrain.py` |
+| `google:classroom` | every 3h | `google.classroom_every` | `modules/google.py` |
+| `classroom_notes:sync` | daily 07:00,13:00,19:00 | `classroom_notes.at` | `modules/google_classroom.py` |
+| `mail_digest:digest` | daily 08:00,18:00 | `mail_digest.at` | `modules/google_mail.py` |
+| `drive_upload:expire` | daily 04:10 | | `modules/google_drive.py` |
+| `handwritten:scan` | every 15m | `handwritten.every` | `modules/handwritten.py` |
+| `integrate:night`, `integrate:retry`, `integrate:garden`, `integrate:summary` | daily 01:30; every 3h; daily 06:20; daily 07:10 | `integrate.at`, `integrate.garden`, `integrate.summary` | `modules/integrate.py` |
+| `local_models:keepalive` | every 10m | | `modules/local_models.py` |
+| `notes_sync:sync` | every 10m | `notes_sync.every` | `modules/notes_sync.py` |
+| `profile:daily` | daily 04:40 | `profile.when` | `modules/profile.py` |
+| `quests:daily` | daily 18:00, respect quiet | `quests.when` | `modules/quests.py` |
+| `quiz:offers`, `quiz:exam_daily` | hourly; `daily <quiz.exam_daily>` if set | `quiz.exam_daily` | `modules/quiz.py` |
+| `research:papers`, `research:logs`, `research:idle` | weekly mon 08:00; daily 23:30; daily 18:00 (quiet) | `research.papers`, `research.log_when`, `research.idle_when` | `modules/research.py` |
+| `retro:nightly` | daily 23:50 | `retro.when` | `modules/retro.py` |
+| `skills:autopack`, `skills:routine:<id>` | every 30m; the user's `/every` spec | | `modules/skills.py` |
+| `space:clean` | weekly sun 04:30 | `space.when` | `modules/space.py` |
+| `startby:morning` | daily 08:00 (quiet) | `startby.when` | `modules/startby.py` |
+| `study:write` | `daily <study.daily_note>` (23:45) | `study.daily_note` | `modules/study.py` |
+| `subjects:term_note` | every 10m | | `modules/subjects.py` |
+| `weekly:summary` | weekly sun 19:00 | `weekly.when` | `modules/weekly.py` |
+
+One-offs (`at`), by key: `reminders:<id>` (`reminders.fire`, registered in `Reminders.__init__` so try-it reminders
+fire even before the feature is on), `alarm:ring` / `alarm:prep` / `alarm:awake`, `calls:ring:<key>`,
+`calls:missed:<since>`, `calls:realert:<first>`, `calls:task:<job>`, `calls:textcall:<cid>`, `checkins:<name>`,
+`checkins:unstick:<name>`, `checkins:deferred`, `capture:<subject>:<end>`, `calendar:focus:<end>`,
+`calendar:remind:*`, `google_calendar:refresh`, `quiz:checkin:<ts>`, `exam_season:leave:<id>`,
+`exam_season:night_again`, `health:after:<id>`, `health:recheck`, `integrate:soon`, `notes_sync:soon` (debounced after
+`job_done`), `profile:soon` (debounced after setting changes), `research:remind:<slug>`, `retro:after-reset`,
+`study:session-end`, `telegram:focus-end`, `books:now`, `books:resume`, `updates:apply`, `updates:probation`,
+`updates:rolled_back`, `upgrade:whats_new`. Profile restore re-books saved `reminders:`, `calls:ring:` and
+`alarm:ring` jobs (`core/profile.py`).
+
+Known problems: `space:clean`, `integrate:night`, `integrate:retry`, `integrate:garden` and `integrate:summary`
+register methods that take no payload and fail on every scheduled run (see [concept-graph.md](concept-graph.md#known-problems-as-of-this-writing));
+`telegram.focus_end` is only registered inside the `/focus` handler, so after a restart during focus the
+`telegram:focus-end` job is a `missing-action`; `handwritten.py:Handwritten.stop` doesn't call `super().stop()`, so
+`handwritten:scan` keeps running after the feature is turned off and becomes a `missing-action` every 15 minutes after
+a restart.
+
+## Jobs
+
+`core/jobs.py:Jobs`, SQLite `<state>/jobs.db`. The only way a feature should run a full AI request.
+
+```python
+jid = app.jobs.submit(
+    prompt, title=None, effort="auto",        # "low" | "medium" | "high" | "auto"
+    reply_to=None, quiet=False,               # quiet: no answer is sent (the then-action handles it)
+    then=None, then_payload=None,             # a follow-up registered in app.jobs.then_actions
+    background=False, text_only=False,        # background: waits for the charger and for kept free limits
+    why=None,                                 # a Calm reason for an answer that comes by itself
+    lane=None, brain=None,                    # lane "you" | "bg" | "chk"; pin to a brain id
+)
+```
+
+- Status: `queued` → `running` → `ok` | `failed`. Verdicts are `providers.base.Verdict`.
+- **Lanes** (`LANES = ("you", "bg", "chk")`): one job at a time per lane, so the user's own request never waits
+  behind background work. Unset, `background=True` goes to `bg`, everything else to `you`. `chk` is a second
+  background lane so two agent programs can work at once (the concept graph's check role, call reviews). The module
+  docstring still says "two lanes".
+- **Worker** (`Jobs.worker`, an asyncio task): `recover()` first (jobs left `running` by a dead process, identified by
+  `runner` = pid plus start time, go back to `queued`), then every 5 s or on `poke()`: `watchdog()`, and for each free
+  lane `_claim()` the oldest ready job and run it in a thread (`_start`). Nothing runs while paused; background jobs
+  only run in `normal` power mode (`_READY`).
+- **Effort**: a fixed `low`/`medium`/`high`, or `providers/effort.py:pick` (see [brains.md](brains.md#effort)).
+  Timeout per level: `brain.timeout_min`.
+- **Retries** are the fallback chain, not repeats: each brain in `[main, fallback, last resort]` (rearranged by
+  `Quota.arrange`) is tried once; `RETRY` verdicts move on. There's no automatic re-run of a failed job; features that
+  need one (the concept graph) count tries themselves.
+- **Deferral**: background work whose free limits are kept for the user goes back to `queued` with `not_before`
+  (`_defer`, event `job_deferred`); `resume()` clears it when a limit answers again.
+- **Watchdog** (`watchdog()`): a running job of this process with no AI process and no sign of life
+  (`_mark` updates `activity`) for `jobs.stuck_min` minutes ends `stuck`; one past its deadline (time limit plus the
+  brain's `grace_s` plus `GRACE_S = 120`) ends `timeout`. Ending kills the process tree (`proc.kill_tree`).
+- **Cancel**: `cancel(jid)`, `cancel_text("all")`, `/jobs`, `POST /api/jobs/cancel`, `kurooto jobs --cancel`.
+- **Delivery** (`_deliver`, unless `quiet`): `[<brain label> · <effort>] <title>` then the answer, through
+  `app.notify(kind="result", why=job.why or "asked", reply_to=...)`. Answers over `LONG = 7000` chars are also sent as
+  a file (`jobs/<id>-result.md`). Cases adds a Wrong button when on.
+- **Chat history** (0.5.8): after delivery, the answer is recorded into Chat's history only if
+  `chat.owns(job.id)` (`modules/chat.py:Chat.owns`, the set of job ids `Chat.ask` submitted). Digests, research,
+  call reviews and skills therefore never become "the conversation".
+- **Then-actions**: `app.jobs.then_actions[name] = fn(job, result, payload)`, run by `_after` after delivery, for
+  success and failure alike (check `result.ok`). A name not registered when the job finishes is skipped silently, so
+  register then-actions in `__init__` or `start()`, never lazily just before submitting (`modules/google.py` registers
+  `google.draft` lazily and loses drafts across a restart). Exceptions become `job_then_failed`.
+- **Shutdown**: `halt()` stops running jobs where they are; they stay `running` and `recover()` re-queues them at the
+  next start.
+- `usage(days)` (from `attempts`) feeds `/usage`; `public(job)` is what the dashboard and CLI may show (no prompt, no
+  answer).
+
+## Events
+
+`core/events.py`: `Events(state).emit(kind, **fields) -> dict` appends `{"ts": iso, "kind": kind, ...}` to
+`<state>/events.jsonl` (a field named `kind` is stored as `subkind`), then calls every `subscribe(cb)` listener in this
+process. `tail(n, kinds=None)` reads the file backwards. Writes are serialised by a thread lock only; CLI processes
+append to the same file but their events never reach the daemon's listeners. The file is not rotated.
+
+Consumers: the dashboard feed (`web/live.py`, `EVENT_CELL` prefix → cell), `/api/events`, the diagnostics bundle,
+the nightly look back (`modules/retro.py:evidence`), the weekly summary (`modules/weekly.py`), health
+(`core/health.py:Latest`, by byte offset), presence, quests, and subscribers in notes sync, profile, Telegram, the
+terminals and cases.
+
+Event kinds that something reads (not just the feed):
+
+| Kind | Read by |
+|---|---|
+| `setting_changed`, `module_enabled`, `module_disabled` | profile auto-save, Telegram rename, terminal sync, health |
+| `job_done` | notes sync (push after AI work), weekly, retro |
+| `job_failed` | weekly (note: it mixes scheduler failures into "AI requests failed") |
+| `message_in`, `intent` | weekly, retro, cases (`intent`) |
+| `question_asked`, `question_answered`, `question_later`, `question_expired` | retro |
+| `classroom_synced`, `notes_synced`, `calendar_synced`, `backup_done`, `profile_save`, `gbrain_sync`, `calls_link`, `calls_line_updated`, `power_mode` | health checks (`core/health_checks.py`) |
+| `reminder_set`, `reminder_fired`, `checkin_*`, `deadline_added`, `deadline_done`, `deadline_told`, `quiz_graded`, `quiz_session`, `doubt_added`, `study_session_start`, `remembered`, `skill_run` | weekly, quests, presence |
+
+Other kinds, by area (shown in the feed and counted by retro): lifecycle `started`, `stopped`, `module_failed`,
+`commands_failed`, `upgraded`, `brain_retired`; jobs `job_queued`, `job_crashed`, `job_deferred`, `job_cancelled`,
+`job_ended`, `job_then_failed`, `jobs_failed`, `tool_used`, `tool_failed`, `tools_failed`, `note_written`,
+`quota_limit`, `quota_back`, `quota_reserve`, `agy_tools`; messages `notified`, `notify_queued`, `notify_failed`,
+`notify_delayed`, `calm_*`, `presence_online`, `presence_offline`, `question_hook_failed`, `question_hook_missing`;
+power `power_pause`, `power_resume`, `power_off`; health `health_checked`, `health_fixed`, `health_told`,
+`health_failed`; updates `update_found`, `update_waiting`, `update_held`, `update_yanked`, `update_check_failed`,
+`update_failed`, `update_progress`, `update_switch`; Telegram `telegram_error`, `telegram_paired`, `telegram_menu_*`;
+calls `call_scheduled`, `call_rang`, `call_rang_offline`, `call_answered`, `call_missed`, `call_held`,
+`call_transcript`, `call_reviewed`, `call_review_failed`, `call_live_failed`, `call_fallback`, `calls_*`; concept graph
+`book_read`, `integrate_batch`, `integrate_refused`, `integrate_waiting`, `integrate_pruned`, `hubs_updated`; and one
+family per feature (`alarm_*`, `deadline_*`, `exam_*`, `study_*`, `quiz_*`, `skill_*`, `retro_*`, `google_*`,
+`mail_*`, `classroom_notes_*`, ...). Grep `events.emit("` to find the emitter of any kind.
+
+When you add an event: name it `<area>_<what happened>` in the past tense, keep fields to ids, counts and short error
+text (never message content, notes or secrets: the bundle and the feed show them), and if a health check should
+depend on it, list it in that check's `events` in `core/health_checks.py`.
+
+## Notify and Calm
+
+`core/notify.py:Notifier`; `app.notify(text, **kw)` is the one way to tell the user something.
+
+- `Message` fields: `text`, `title`, `buttons` (`[[("label", "prefix:ref:action" | {"url": ...}), ...]]`), `kind`
+  (`info` | `result` | `reminder` | `question` | `approval` | `deadline` | `call` | `update`), `urgent`, `reply_to`,
+  `map_kind` / `map_ref` (so a reply or button finds its handler: `Module.replies()[map_kind]`), `file`, and the Calm
+  envelope `why`, `setting`, `about`, `item`, `due`.
+- `send()`: Calm decides first (`Calm.decide`: `send`, `hold` or `stop`); during focus, non-urgent messages that aren't
+  `approval`/`call` go to `focus-queue.jsonl` (flushed by `flush_queue()` when focus ends); otherwise `_deliver()`:
+  Telegram (unless presence holds it because the network is down), the phone app for `notify.app_kinds`, the desktop
+  (`core/desktop.py`) for `notify.desktop_kinds` or when no other channel delivered. Emits `notified`.
+- Channels are registered by modules: `notifier.register("telegram", send, retract=None)`. `retract(map_kind, map_ref,
+  button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
+- Button data is `"<prefix>:<ref>:<action>"`; `App.callback` routes core prefixes (`calm`, `upd`, `ask`, `health`,
+  `job`) and then each enabled module's `callbacks()[prefix]`. Keep a module's prefixes unique and short (Telegram
+  limits callback data to 64 bytes).
+
+`core/calm.py:Calm`:
+
+- Every message that comes by itself carries `why=<reason id>`. Reasons are declared in `REASONS` (built with `R(id,
+  what, setting=..., stop=..., fewer=..., later=..., exempt=..., suggest=..., feature=...)`). A message with
+  `why="asked"` (`ASKED`) is an answer to the user and is never held, counted or buttoned; a message with no `why` is
+  sent and recorded as "No reason recorded".
+- Exempt (`EXEMPT`): `own` (reminders the user set), `alarm`, `approval`, `deadline` (due within `DEADLINE_H = 12`),
+  `urgent`, `security`, `bundle`.
+- The daily limit: `notify.calm.messages` (6) and `notify.calm.calls` (1, `Calm.call_ok`). Past it, messages are held
+  for the evening bundle at `notify.calm.evening_at` (20:00, sent by `calm:tick`). Per-kind user choices: `stopped`,
+  `evening`, `fewer`. Exam season tightens it (`modules/exam_season.py:budget_during_exams`).
+- On Telegram a counted message gets "Why?" and "Less of this" (`calm:<rid>:why|less`); `Less of this` offers Stop /
+  Fewer / Another time, each changing one setting (`Change`), with Undo. `/calm` and `/why` show the state.
+- Records: `calm.db` table `sent` (45 days). `notify.calm.on = false` turns all of it off.
+
+To add a message that comes by itself: pick a reason id `<module>.<what>`, add an `R(...)` to `REASONS` with the
+setting that controls it (so Less of this can change it), and pass `why=` (plus `about=`/`item=` when it concerns
+one thing) to `app.notify`. A message without a reason still works but can't be turned down.
+
+## Ask: questions and approvals
+
+`core/ask.py:Ask` (`app.ask`). Any feature, background job or script can ask the user and act on the answer.
+
+```python
+qid = app.ask.ask("Which chapter is the quiz on?", choices=["3", "4"], hook="study.quiz_topic",
+                  hook_payload={...}, expires="2d", source="study", why="study.quiz")
+app.ask.hooks["study.quiz_topic"] = lambda q, answer: "noted"   # register in __init__/start
+app.ask.approval("Send this draft?", hook="mail.send")             # Approve / Deny
+```
+
+- Delivered to Telegram (choices as buttons plus Later), the desktop, the phone app and the next call
+  (`call_brief`, `call_tools`). First answer wins. `Later` keeps it for the next call; "Nothing new" is an answer.
+- Each question is `<state>/ask/<id>.json`; unanswered ones expire after `ask.expire_hours` (48) (`sweep`, every 10 min,
+  `ask:sweep`); settled ones are kept `ask.keep_days` (30).
+- Hooks run once with the first answer; a hook not registered at that moment emits `question_hook_missing` and the
+  answer is kept. Built-in hook `ask.ai` starts an AI job from `hook_payload["prompt"]` with `{answer}` filled in.
+- Tools: `ask_user` for unattended AI (`agent_tools`), plus call tools to answer questions by voice.
+- CLI: `kurooto ask-me`, `kurooto ask-approval` (exit 0 approved, 1 denied, 2 timeout or not running) go through the
+  local API.
+
+## Availability
+
+`core/availability.py:Availability` (`app.availability`): when Kurooto may interrupt.
+
+- `quiet_until()` / `set_quiet()` (`quiet.json`, "no calls until"), `focus_until()` / `set_focus()` (`focus.json`
+  plus `focus:*` blockers; non-urgent messages wait), `on_call_until()` / `set_on_call()` (`oncall.json`, kept ahead by
+  Phone calls during a call), `night(t)` (`availability.night`: fixed hours, or from bedtime to the alarm when the alarm
+  provides `sleep` windows; `alarm_only`).
+- `blockers[name] = fn(t) -> (reason, until) | None`: modules add their own (classes from Subjects, calendar events,
+  exams). Names starting `focus:` count as focus.
+- `call_block(t) -> (reason, until)` checks on-call, quiet, focus, night, then blockers. `next_callable(t)` follows
+  chained blocks. `quiet_gate` / `call_gate` are the scheduler gates.
+- Settings: `availability.night`, `nocall_keyword` (`#nocall`), `nocall_calendar`, `focus_keyword` (`#focus`).
+
+## Power
+
+`core/power.py:Power` (`app.power`), mode recomputed every 30 s (`Power.watch`):
+
+- `normal`; `saver` (on battery with `power.on_battery = "saver"`, the default): modules with `heavy = True` and
+  background jobs wait, local models rest (`Module.rest()`); `paused` (`/pause`, `kurooto pause`, or
+  `on_battery = "pause"`): nothing runs except Telegram, which queues messages (`telegram/paused.jsonl`) and replays
+  them on resume.
+- `may_run(module)`, `hold(job)` / `release()` for the scheduler, `pause(minutes)`, `resume()`, `off(keep_calls)`
+  (`off.json`: no autostart until `kurooto on`).
+- `App.start_background` doesn't start a module's background task while `may_run` is false; `Power.apply` starts or
+  stops them as the mode changes.
+
+## Presence
+
+`core/presence.py:Presence`: "going offline" (`going_offline()`, at most `BYE_S = 2.5` s, called by `daemon.serve`
+before stopping; Windows sign-out through `core/endsession.py`) and "back online" (after sleep, detected as a clock jump
+between `TICK_S` ticks; after network outages). Messages that couldn't reach Telegram wait in `net-outbox.jsonl`
+(`hold`, `failed`, `flush_outbox`). `offline(start, end)` gives the offline periods health subtracts. Settings
+`notify.presence.*`. The call line reports outages the computer can't (`line_report`).
+
+## Quota (free AI limits)
+
+`core/quota.py:Quota` (`app.quota`): counts requests per pool (`pool_id`: `gemini:<model>` per model, `agy`, a
+brain id; local models have none), learns limits from 429 answers (`hints`), knows Google's day ends at midnight
+Pacific. Once a day's count passes `quota.background_pct` (70%) of a known limit, background work waits
+(`wait_until`, `arrange`); `used_up` pools go last for the user's own requests; `line()` is the one plain sentence when a
+limit is used up. Settings `quota.on`, `background_pct`, `limits` (user numbers win), `local` (`quick` |
+`background` | `off`). State `quota.json` holds counts only.
+
+## The reserve
+
+`core/reserve.py`: Markdown copies an AI program can read instead of running commands: `alarm.md`, `deadlines.md`,
+`calendar.md`, `settings.md` (non-default settings, never secrets), `addons.md`, `agent-guide.md`, in
+`<state>/reserve/`. Rewritten every 10 minutes (`reserve:refresh`), on change, and by `kurooto reserve`; a file is only
+written when its text changed (`write_if_changed`). Kurooto never reads them back. `<state>/reserve` is in
+`places.read_roots`, and the headless context points the AI at it.
+
+## Space keeper
+
+`core/space.py`: `plan(app) -> [Item]` lists Kurooto's own leftovers (old backup zips beyond `backups.keep` /
+`space.backups_max_gb` / `space.backups_max_age_days`, never the newest; cache files older than `space.cache_days`;
+log files over `space.log_mb`; finished jobs older than `space.jobs_days`; concept-graph `pending/` and `undo/` older
+than `space.undo_days`; diagnostics zips; extra program versions). `clean(app, items)` removes them. Run by the Space
+keeper feature (`space:clean`, `space.when`), `/space`, `kurooto space [--clean]`; `kurooto doctor` only reports.
+`low_disk(app)` feeds health. Never touches notes, books or user folders except Kurooto's own zips there.
+
+## Hardware profiles
+
+`core/hardware.py`: `detect()` reads OS, CPU, memory, GPUs (`nvidia-smi`, Windows/macOS/Linux probes), disk and
+battery; `current(app)` caches the machine in `hardware.json` and recomputes the recommendation each time.
+`profile(m)`: `light` (under 8 GB or no usable GPU), `apple-8` / `apple` (Apple Silicon, 16 GB+), `small-gpu`
+(NVIDIA 4-8 GB), `big-gpu` (8 GB+), `big-gpu-12` (12 GB+). `recommend()` picks Ollama models from
+`data/ollama_models.toml` (e.g. `helper-*` models, embeddings) and says plainly what an override goes past (`limits`).
+Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto hardware --profile P --add MODEL
+--install`. Used by Local AI models, the reranker and the dashboard.
+
+## Running programs
+
+- `core/proc.py:run(args, *, input=None, timeout=60, cwd=None, env=None, on_start=None) -> Result(code, out, err)`:
+  long text goes through stdin, npm `.cmd` shims run through node directly (`resolve_cmd_shim`), UTF-8 decoding, no
+  console window on Windows (`CREATE_NO_WINDOW`), a new session on POSIX, and the whole process tree killed on timeout
+  (`kill_tree`). `which(name, extra_dirs)` also looks in user install folders; `ensure_user_path()` adds
+  `~/.local/bin`, `~/.cargo/bin` and Homebrew to a short boot-time PATH. Use these instead of `subprocess` directly.
+- `core/children.py`: at shutdown `stop_all()` stops every process Kurooto started (SIGTERM, then a kill after
+  `GRACE_S = 5`), found as descendants and by session (`session(pid)` for PTY programs). Programs opened for the user on
+  purpose are excluded with `keep(pid)` (`core/opener.py`, Kurooto Terminal).
+- `core/opener.py`: opening a note in the user's editor and links in the browser, detached.
+
+## Locks and atomic writes
+
+- `core/state.py:jsave(path, obj, mode=0o600)`: temp file then `os.replace`; on Windows the rename is retried 10 times on
+  `PermissionError` (antivirus, indexer). `jload(path, default)` returns a copy of the default for a missing or broken
+  file. `owner_only(db)` sets 0600 on a database and its `-wal`/`-shm`.
+- `core/tools.py:write_note_file(f, text, create=False)`: the safe way to write a note (atomic, keeps CRLF, `create=True`
+  never overwrites). Several older writers still use `write_text` (the deadline tick in `modules/deadlines.py`,
+  `modules/remember.py`, `core/hubs.py`, parts of skills, retro, books); prefer `write_note_file` for anything in the
+  notes.
+- `core/lock.py:Lock(state, name, timeout=-1)`: a `filelock.FileLock` at `<state>/locks/<name>.lock`, shared by the
+  daemon and CLI processes. `timeout=0` fails at once (`Timeout`). Names in use include `daemon` (single instance),
+  `backups`, `gbrain` (shared by backups and gbrain), `notes-sync`, `profile`, `ask`, `deadlines`, `calendar`,
+  `exam_season`, `startby`, `study`, `books`, `handwritten`, `cases`, `google-token`, `telegram-map`,
+  `telegram-paused`, `calls-*`, `lidsafe*`, `classroom-notes*`, `mail-digest*`, `skills-routines`, `skills-packs`,
+  `ollama-pull`. Use a lock for any state file the CLI and the daemon may both write.
+
+## Windows notes
+
+- Paths: `%LOCALAPPDATA%\Kurooto` (not Roaming); the program in `%LOCALAPPDATA%\Programs\Kurooto`. Documents and
+  Downloads come from `SHGetKnownFolderPath` (OneDrive may have moved them; `core/places.py:_known_folder`).
+- Renames fail transiently while a scanner holds a file: always go through `jsave` / `write_note_file`.
+- Always pass `encoding="utf-8"` to text I/O; the default is a code page.
+- No console windows: `CREATE_NO_WINDOW` for helpers (`core/proc.py`, `daemon.supervise`), `DETACHED_PROCESS |
+  CREATE_NEW_PROCESS_GROUP` for programs that outlive the call (`cli.py:start_background`, `core/opener.py`). `pythonw.exe`
+  has no stdio: `core/mcp.py:_console` and `modules/terminal/plan.py` switch to `python.exe`.
+- Command lines are limited to about 32 000 characters and `cmd.exe` mangles `" & ^ %`: prompts go through stdin or a
+  file (`providers/agy.py:handover`, `ARG_LIMIT`; Claude Code's context file).
+- npm programs are `.cmd` shims: `proc.resolve_cmd_shim`.
+- PTYs: ConPTY through `pywinpty` (`providers/agy.py:run_pty`, `modules/terminals.py:WinPty`), `ptyprocess` elsewhere.
+- No signals: `loop.add_signal_handler` isn't available, so Ctrl+C arrives as `KeyboardInterrupt`
+  (`daemon.run`); sign-out and shutdown come through `core/endsession.py`.
+- File modes don't apply (`jsave` skips `chmod` on `nt`); secrets rely on the profile's ACLs or the Credential Manager.
+- The registry is used for autostart (`core/autostart.py`), PATH (`core/pathfix.py`) and the uninstall entry
+  (`cli.py:install_finish`).
+
+## Smaller core pieces
+
+| File | What it is |
+|---|---|
+| `core/aboutyou.py` | "About you": imports what other AI accounts know into `about-me/profile.md`; `AboutYou.brief()` for the headless context |
+| `core/actions.py` | the Today page and Ctrl+K actions ([web.md](web.md#the-today-page-and-actions-coreactionspy)) |
+| `core/agent_export.py` | skills as slash commands in agent programs (`agents.export`) |
+| `core/autostart.py` | start at sign-in or boot, per OS; `refresh()` brings old installs' entries up to date |
+| `core/clock.py` | `now()` (local, naive), `parse_when()` for typed times |
+| `core/conceptgraph.py`, `core/graphwrite.py`, `core/integrate_ai.py`, `core/segment.py`, `core/rerank.py`, `core/hubs.py`, `core/pdfread.py` | the concept graph ([concept-graph.md](concept-graph.md)) |
+| `core/desktop.py` | desktop notifications; text passed as arguments or environment, never pasted into script source |
+| `core/endsession.py` | Windows sign-out and shutdown messages |
+| `core/health.py`, `core/health_checks.py` | "Kurooto keeps itself working" ([debugging.md](debugging.md#health-kurooto-keeps-itself-working-corehealthpy-corehealth_checkspy)) |
+| `core/idle.py` | idle time and screen lock per OS (`kurooto idle away|back` for Wayland idle tools) |
+| `core/inhibit.py` | keeping the computer awake (Stay awake on charger, the alarm) |
+| `core/leave.py` | uninstall (`--revoke`) and `kurooto rotate` |
+| `core/mcp.py` | `kurooto mcp` ([brains.md](brains.md#how-agent-programs-get-them-kurooto-mcp)) |
+| `core/notinterested.py` | topics the user doesn't care about (`about-me/not-interested.md`) |
+| `core/overlay.py` | add-ons ([modules.md](modules.md#add-ons-coreoverlaypy)) |
+| `core/palette.py`, `core/syscolors.py` | the pages' colour palette, and the OS accent colour for the `system` palette |
+| `core/pathfix.py` | putting `~/.local/bin` on PATH (disabled in tests) |
+| `core/places.py` | the AI's read and write roots ([brains.md](brains.md#read-and-write-allow-lists)) |
+| `core/prereqs.py` | installing helper programs from `data/prereqs.toml`, checksum-checked, no admin where possible |
+| `core/profile.py` | Profile sync: the encrypted profile and restore |
+| `core/shortcuts.py` | the app-menu "Kurooto" entry |
+| `core/sources.py` | the book / Classroom / own-notes mix for note-writing skills |
+| `core/studypack.py` | a subject's notes and files as a zip with a prompt for another AI |
+| `core/syncall.py` | "sync everything" (`sync_now` on each module that has one) |
+| `core/upgrade.py` | one-time steps at the first start of a new version (`upgrades.json`), the "what's new" message |
+| `core/vitals.py` | CPU, memory, GPU, network, disk and battery samples for the board and `kurooto top` |
+| `core/zones.py` | old and new names of the same time zone |

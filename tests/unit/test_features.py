@@ -196,3 +196,13 @@ def test_help_lists_only_what_is_on(env):
     env.on("reminders")
     h = env.say("/help")
     assert "/reminders" in h and "/deadlines" not in h and "Chat is off" in h
+
+
+def test_help_lists_everything_on_says_what_is_off_finds_a_word_and_points_at_the_wiki(env):
+    env.on("reminders")
+    out = env.say("/help")
+    assert "Reminders:" in out and "/remind" in out and "Understood at once, in plain words:" in out
+    assert "Off right now" in out and "Phone calls" in out and "/wiki/" in out and "/help <word>" in out
+    found = env.say("/help call")
+    assert "Phone calls (off: turn it on in Features" in found and "/call" in found
+    assert env.say("/help zzzz").startswith('Nothing here matches "zzzz"')

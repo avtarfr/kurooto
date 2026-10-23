@@ -64,12 +64,10 @@ register_defaults(
         "later_min": 30,  # "Later" on a ringing call calls back after this long
         "realert_min": [3, 6],  # a call you didn't answer rings again this many minutes after the first; [] = once
         "notes_repo": "",  # owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off
-        # after every call a stronger AI request reads the transcript, does what slipped through and keeps lessons
-        # that every later call is told (review.py); review_brain: which AI ("" = your main one)
-        "review": True,
-        "review_effort": "high",
-        "review_brain": "",
-        "lessons_max": 12,
+        "review": True,  # after every call, an AI request looks back at it: does what slipped through, keeps lessons
+        "review_effort": "high",  # how hard that look back thinks (low, medium, high)
+        "review_brain": "",  # which AI does the look back ("" = your main one)
+        "lessons_max": 12,  # the most lessons every call is told; a new one that says the same replaces the old
     },
 )
 

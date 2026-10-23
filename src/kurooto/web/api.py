@@ -145,6 +145,7 @@ class Api:
                     "setup": hasattr(m, "setup"),
                     "form": m.setup_form() if hasattr(m, "setup_form") else None,
                     "addon": bool(getattr(m, "addon", False)),
+                    "extra": bool(getattr(m, "extra", False)),
                     "card": self._card(m),
                 }
             )

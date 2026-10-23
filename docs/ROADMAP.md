@@ -4,14 +4,6 @@ Ideas that aren't built yet. Nothing here is promised; each one ships as an opt-
 signed updates when it's ready.
 
 ## Next
-- **Learns from its own work.** In the spirit of Hermes Agent (Nous Research, MIT licence; any code adapted from
-  it keeps its copyright and permission notice):
-  - after a request that took many steps, Kurooto offers to save how it did it as a skill;
-  - it improves a skill when you correct its result;
-  - it can search its memory of past requests and calls;
-  - now and then it suggests what's worth remembering.
-
-  As everywhere in Kurooto, nothing changes without your tap.
 - **Your notes, your layout.** Choose where Kurooto writes: the daily note, subject folders, the inbox, your
   profile. It then fits an existing notes system instead of bringing its own.
 
@@ -60,6 +52,26 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - **Missed-class catch-up.** Skipping a class makes a catch-up item with that day's Classroom posts and a note stub.
 - **Bedside mode.** An old Android phone as a dock: clock, today, alarm, a talk button.
 - **Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.
+
+## From the skeptic review (2026-10-23)
+Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.
+- **Make the panel's ideas general**: link recall cards and the revision plan also draw on course notes and Classroom
+  files, not only books; the meeting brief is for any recurring meeting ("With: X", their role in your own word: guide,
+  manager, coach); "check my attempt" becomes "check my draft" (essays, accounts working, code, proofs); missed-class
+  catch-up works without Classroom.
+- **A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking. Bedside
+  mode is an Android add-on.
+- **No college-term defaults**: the check-in times and Start-by's day window are learned from when you actually reply
+  (with a notice and Undo), not 09:00-22:00; a first-run question (student, working, research, other) picks the
+  features; public holidays come from your country's calendar.
+- **The phone app as a full chat channel** beside Telegram, for places where Telegram is blocked or little used.
+- **Small gaps**: `add_deadline` takes the course, so a mail's "Lab report" lands on the right course page; a
+  recurring fact said in chat becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look
+  back can propose routines and acts on data changes with Undo instead of waiting for a tap; project notes keep
+  "With:", "last met" and "## Next steps"; subject aliases are learned from how you name them.
+- **Routines for people who aren't students**: gym, shifts, standups, tuition; they hold calls like a class does.
+- **Never without a tap**: setting or moving an alarm, placing calls, reading new mail senders, sending anything out,
+  attaching a code repository to a project. Repositories are never searched for on the disk.
 
 ## Ideas
 - **Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the

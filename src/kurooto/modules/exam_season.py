@@ -121,6 +121,7 @@ class ExamSeason(Module):
         "exam a question about where it is and an alarm to leave, a short debrief after it. Each part has a switch."
     )
     requires = ("deadlines",)
+    extra = True  # an add-on: turned on by hand, never by a preset
     privacy = (
         "Stays on this computer. With Phone calls on, the leave-by alarm (its time, the exam and what you said about "
         "the venue) goes to your call line so it can ring, like any call."

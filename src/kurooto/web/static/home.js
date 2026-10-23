@@ -1450,7 +1450,7 @@ function featuresFind(host) {
     mark(c, words);
   }
   for (const g of host.querySelectorAll(".feat")) g.classList.toggle("hidden", ![...g.children].some((c) => !c.classList.contains("hidden")));
-  const ah = host.querySelector(".addons-h"); if (ah) ah.classList.toggle("hidden", !!ah.nextElementSibling && ah.nextElementSibling.classList.contains("hidden"));
+  host.querySelectorAll(".addons-h").forEach((ah) => ah.classList.toggle("hidden", !!ah.nextElementSibling && ah.nextElementSibling.classList.contains("hidden")));
   const hb = host.querySelector(".hid-box"); if (hb) hb.classList.toggle("hidden", !!words.length);
   const nh = cards.filter((c) => c.classList.contains("hid")).length;
   findSay(host, q, n, cards.length, "features", nh ? ` · ${nh} hidden` : "");
@@ -1509,11 +1509,13 @@ async function renderFeatures(body) {
   const card = (m) => `<div class="card2 ${m.on ? "on" : ""}${hid(m) ? " hid hidden" : ""}" data-id="${m.id}" data-hay="${esc(hay(m))}">${hideBtn(m)}<b>${esc(m.title)}</b>${hid(m) ? ' <span class="tag-h">hidden</span>' : ""}<p>${esc(m.description)}</p><p style="color:var(--lav)">${esc(m.privacy)}</p>${m.id === "mail_digest" && m.on ? `<p><a href="/confidential" target="_blank" rel="noopener">Confidential mail (summarised on this computer)</a></p>` : ""}
     ${m.on ? `<button data-off="${m.id}">Turn off</button>` : m.ready ? `<button class="primary" data-on="${m.id}">Turn on</button>` : m.setup ? `<button class="primary" data-setup="${m.id}">Set up</button> <span class="d">${esc(m.why)}</span>` : `<span class="d">${esc(m.why)}</span>`}${calls(m)}${form(m)}${pieces(m)}${said[m.id] ? `<p class="${said[m.id].startsWith("✓") ? "ok2" : "bad2"}" style="font-weight:600">${esc(said[m.id])}</p>` : ""}<p class="find-why d hidden"></p></div>`;
   const addons = st.modules.filter((m) => m.addon); // features from your own add-ons folder (core/overlay.py)
+  const extras = st.modules.filter((m) => m.extra && !m.addon); // add-ons that come with Kurooto (Module.extra)
   const kept = $("#flog") ? $("#flog").innerHTML : ""; // what the last step said survives the re-render
   const hidden = st.modules.filter(hid);
   const hiddenBox = !hidden.length ? "" : `<div class="hid-box"><button class="linkish" data-showhidden="1">${SHOW_HIDDEN ? "close the hidden list" : `Show hidden (${hidden.length})`}</button>${SHOW_HIDDEN
     ? `<ul class="hid-list">${hidden.map((m) => `<li><b>${esc(m.title)}</b><span class="d">${esc(m.description)}</span><button data-unhide="${m.id}">Unhide</button></li>`).join("")}</ul>` : ""}</div>`;
-  body.innerHTML = `${findBar("features", "features")}${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon).map(card).join("")}</div>${addons.length
+  body.innerHTML = `${findBar("features", "features")}${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon && !m.extra).map(card).join("")}</div>${extras.length
+    ? `<p class="d addons-h">Add-ons: they come with Kurooto, and are off until you turn them on</p><div class="feat">${extras.map(card).join("")}</div>` : ""}${addons.length
     ? `<p class="d addons-h">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${addons.map(card).join("")}</div>` : ""}<div class="log" id="flog">${kept}</div>${hiddenBox}`;
   findWire(body, "features", typing);
   body.onsubmit = async (e) => {

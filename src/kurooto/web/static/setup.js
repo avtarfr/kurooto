@@ -582,7 +582,7 @@ function renderFeatures() {
       box.dispatchEvent(new Event("change"));
     } },
       el("label", {}, box, el("h3", {}, m.title)), el("p", {}, m.description),
-      m.starter ? el("div", { class: "star" }, "★ in Starter") : null, el("div", { class: "privacy" }, m.privacy),
+      m.starter ? el("div", { class: "star" }, "★ in Starter") : m.extra ? el("div", { class: "star" }, "add-on: only if you pick it") : null, el("div", { class: "privacy" }, m.privacy),
       m.setup && !m.ready && m.why ? el("p", { class: "note" }, m.why[0].toUpperCase() + m.why.slice(1) + ".") : null,
       m.form && chosen.has(m.id) && !m.ready ? setupForm(m) : null,
       m.form && chosen.has(m.id) && m.ready ? el("p", { class: "ok" }, "✓ Set up") : null,
@@ -916,7 +916,7 @@ document.addEventListener("click", async (e) => {
   else if (e.target.matches("[data-preset]")) {
     const p = e.target.dataset.preset;
     $$(".preset").forEach((b) => b.classList.toggle("on", b === e.target));
-    if (p !== "custom") { chosen = new Set(state.modules.filter((m) => p === "all" || m.starter).map((m) => m.id)); renderFeatures(); }
+    if (p !== "custom") { chosen = new Set(state.modules.filter((m) => (p === "all" && !m.extra) || m.starter).map((m) => m.id)); renderFeatures(); } // add-ons (m.extra): only by hand
   }
 });
 $("#tg-check").addEventListener("click", checkToken);

@@ -14,6 +14,30 @@
   out, several files sent at once aren't refused, and those uploads are deleted from your Drive after
   `drive_upload.temp_days` (7) unless you move them out of the Kurooto folder.
 
+- **The concept graph's own schedule works again**: its nightly start, 3-hourly retry, daily garden and morning
+  summary (and the Space keeper's weekly clean, and expiring temporary Drive uploads) failed on every run; only
+  `/graph now` and carrying on after a batch worked. A test now checks every scheduled job.
+- **`/help` knows all of Kurooto**: every command and plain-word request of the features you have on, grouped by
+  feature, the features that are off, and a link to the user wiki; `/help <word>` finds a command or feature, on or off.
+- **Two wikis**: a user wiki (every feature, command, setting, message and fix, in plain words) and a developer wiki
+  for people and AI agents (architecture, every subsystem, how to add a feature, tests, releases), in `docs/wiki/`.
+- **Exam season is an add-on**: listed apart under Features, off until you turn it on, and in no preset ("Everything"
+  leaves it out). If it was on, it stays on.
+- **Study packs never hold a whole book**: it would flood the other AI's context; name a topic to get a book's pages.
+- **Study packs for one topic, class first**: `/studypack pota quiz on thermodynamics` (or the AI's study_pack tool with
+  `topics`) takes only what's about it: class files that mention it, the pages of each book that do (as text, with the
+  page numbers), and the notes about it, including what the notes brain finds. Class material and books are told apart
+  by length (class notes are short; over 80 pages, or "Ch 8", "edition", a download site in the title, is a book),
+  since professors post books on Classroom too, and class material always comes first: in the zip (`class/`, then
+  `books/`, then `notes/`) and in the prompt, which says to follow the class where a book disagrees. Packs now also
+  hold what Books has read for the subject.
+- **Calls look back**: after every call a stronger AI request (`calls.review_effort`, high) reads the transcript and the
+  tools the call used, does what slipped through (a reminder it misheard, a note it promised), lists what needs you,
+  and keeps up to `calls.lessons_max` (12) lessons that every later call is told. `/lessons` lists them;
+  `/lessons forget 2` removes one. One message only when it fixed or learned something; `calls.review` off stops it.
+- **Chat remembers only the chat**: a digest's or research run's answer no longer turns up as "you said" in the
+  context of your next message.
+
 ## 0.5.7 (2026-10-23)
 
 - **Today page in the dashboard (Alt+T)**: one box for anything (plain words to Kurooto, `j` journal, `.` note, `!` a

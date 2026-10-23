@@ -279,7 +279,7 @@ class App:
             name, arg = (text[1:].split(None, 1) + ["", ""])[:2]  # "/journal\nmy day" works too
             name = name.split("@")[0].lower()
             if name in ("start", "help"):
-                msg.reply(self.help())
+                msg.reply(self.help(arg if name == "help" else ""))
                 return
             if name == "aboutme":  # your profile's In-brief part, and where to edit it (core/aboutyou.py)
                 msg.reply(self.about.for_chat())
@@ -439,20 +439,71 @@ class App:
                     return f"error: {e}"[:190]
         return "that button is from a feature that's off now"
 
-    def help(self) -> str:
-        lines = [f"{self.name}, your assistant. Plain English works; these commands do too:"]
-        for m in self.enabled():
-            lines += m.help()
-        lines.append("/q  open questions I asked you (reply to one to answer it)")
-        lines.append("/aboutme  what I know about you (your profile's In-brief part), and where to edit it")
-        lines.append("/health  what isn't working, with Fix buttons (/health now checks online too)")
-        lines.append("/calm  messages that come by themselves: today's count and limit; /why  why the last one came")
-        lines.append("/jobs  what the AI is working on and what waits, with Cancel buttons")
+    CORE_HELP = (
+        ("q", "open questions I asked you (reply to one to answer it)"),
+        ("aboutme", "what I know about you (your profile's In-brief part), and where to edit it"),
+        ("health", "what isn't working, with Fix buttons (/health now checks online too)"),
+        ("calm", "messages that come by themselves: today's count and limit"),
+        ("why", "why the last message that came by itself came"),
+        ("jobs", "what the AI is working on and what waits, with Cancel buttons"),
+        ("help", "this list; /help <word> finds a command or feature, on or off"),
+    )
+
+    def help(self, arg: str = "") -> str:
+        """/help: every command and instant request of the features that are on, the features that are off, and the
+        user wiki for the rest. /help <word>: what matches it, on or off (Kurooto knows all of itself)."""
+        from kurooto.update.updater import PAGES
+
+        wiki = f"{PAGES}/wiki/"
+        on = self.enabled()
+        word = (arg or "").strip().lower()
+        if word:
+            return self._help_find(word, wiki)
+        lines = [f"{self.name}, your assistant. Plain words work; so do these."]
+        for m in on:
+            cmds = m.help()
+            if cmds:
+                lines += ["", f"{m.title}:", *cmds]
+        lines += ["", "Kurooto itself:", *(f"/{n}  {h}" for n, h in self.CORE_HELP)]
         if not self.is_on("notes_sync"):
             lines.append("/sync  sync everything that's on (Classroom, calendar, research, notes brain)")
+        said = []
+        for m in on:
+            try:
+                said += [i.description for i in m.intents()]
+            except Exception:  # a feature's intents failing must not take /help down
+                continue
+        if said:
+            lines += ["", "Understood at once, in plain words:", *(f"- {d}" for d in dict.fromkeys(said))]
+        off = [m.title for m in self.modules.values() if m not in on and m.title]
+        if off:
+            lines += ["", f"Off right now ({len(off)}): " + ", ".join(off) + ". /help <name> says what one does."]
         if not self.is_on("chat"):
             lines.append("(Chat is off, so free text isn't sent to an AI.)")
+        lines += ["", f"Everything, with examples, settings and fixes: {wiki}"]
         return "\n".join(lines)
+
+    def _help_find(self, word: str, wiki: str) -> str:
+        on = self.enabled()
+        hits: list[str] = []
+        for n, h in self.CORE_HELP:
+            if word in n or word in h.lower():
+                hits.append(f"/{n}  {h}")
+        for m in self.modules.values():
+            state = "" if m in on else " (off: turn it on in Features, or say \"turn on " + m.title.lower() + '")'
+            about = f"{m.title} {m.description}".lower()
+            try:
+                cmds = [c for c in m.commands() if word in c.name or word in c.help.lower()]
+                said = [i.description for i in m.intents() if word in i.description.lower()]
+            except Exception:
+                cmds, said = [], []
+            if word in about or cmds or said:
+                hits.append(f"{m.title}{state}: {m.description}")
+                hits += [f"  /{c.name}  {c.help}" for c in cmds]
+                hits += [f"  - {d}" for d in said]
+        if not hits:
+            return f'Nothing here matches "{word}". The user wiki has everything: {wiki}'
+        return "\n".join([f'About "{word}":', *hits, "", f"More in the user wiki: {wiki}"])
 
     def _job_done(self, job, outcome: str, err: BaseException | None) -> None:
         if outcome in ("error", "missing-action"):

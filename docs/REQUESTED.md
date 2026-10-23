@@ -6,9 +6,32 @@ the rest are open. (Ideas nobody has asked for yet are in [ROADMAP.md](ROADMAP.m
 To ask for something: open an issue on GitHub, or tell your own Kurooto on Telegram: "add to the requested list: …".
 
 ## Open
+## Always
+Standing plans, never struck through.
+- **The site keeps up with every release**: the landing page, changelog, both wikis, the feature list and screenshots
+  are updated with each version, so what the site says is what Kurooto does.
+- **Kurooto knows itself**: every feature, command and setting is in `/help` and the wikis the day it ships.
+
+## Open
 - **Common features directly usable from the phone app** (and the rest of the dashboard plan:
-  check-in and quiz cards): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done; the app's Today screen, local alarm and
-  notification buttons are planned for 0.6.0.
+  check-in and quiz cards): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done; the app's Today screen,
+  local alarm and notification buttons are planned for 0.6.0.
+- **A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
+  groups, with a link to the user wiki for the rest.
+- **Learns from its own work, like Hermes Agent** (Nous Research, MIT licence; adapted code keeps its notice): after a
+  request that took many steps, how it did it is saved as a skill; a skill improves when you correct its result; it
+  searches its memory of past requests and calls; it suggests what's worth remembering.
+- **Dreaming**: while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
+  your journal), consolidates what it learned into memory and your profile, spots contradictions and loose ends, and
+  tells you in the morning what it tidied.
+- **Dream RSI (self-improvement while dreaming)**: the same night pass also looks at what went wrong (failed or
+  retried requests, your corrections, call lessons, answers that claimed what they didn't do), changes its own
+  prompts, skills and quiet settings to fix it, and keeps a change only if replaying the past cases goes better;
+  each change is listed with Undo. It improves the way it improves: the checks themselves are revised the same way.
+- **Set up from what it sees, not from settings**: one pass over chat and the journal (rules first, the AI only on a
+  hit) creates projects with whoever they're with ("got a project under Prof X": the project, its supervisor, and
+  meetings from then on), classes from "every Monday at 9 I have a lab", routines, a deadline's course, subject
+  aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.
 - **Mail about exams is read at once and turned into a schedule** (dates, rooms, what to prepare), not only digested.
 - **PDF, Word and PowerPoint to Markdown** with Microsoft's MarkItDown for books and Classroom files (needs a pip
   install, so it asks first).
@@ -19,8 +42,9 @@ To ask for something: open an issue on GitHub, or tell your own Kurooto on Teleg
 - **A legend for the dashboard's organic view**: what each blob, line, pulse and ring means, on the page itself (a
   hover card already explains a cell; a "?" key should explain the whole picture).
 - **Make the UI more intuitive**, and keep improving the setup wizard's elements.
-- **Wiki-level documentation**: one full read equips someone to develop Kurooto and fix bugs without an agent
-  (the manual covers use; the developer side is thin).
+- **Wiki-level documentation**: a user wiki and a developer wiki (for people and for AI agents), each a page on
+  the site, covering every nook and cranny; one full read equips someone to use, develop and fix Kurooto (being
+  written for 0.5.8).
 - **Use GBrain more**: weekly checkup and contradiction reports in chat, entity and timeline pages for courses,
   queries during calls.
 - **Local model on the graphics card without spilling onto the processor**: one model at a time and a size that fits.
@@ -29,6 +53,12 @@ To ask for something: open an issue on GitHub, or tell your own Kurooto on Teleg
 - **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~Drop attendance tracking entirely~~ (0.5.8; skipping a class still works). Exam season becomes an add-on, off by
+  default (0.5.8).
+- ~~After every call, a stronger model reads the transcript, does what slipped through and improves later calls~~
+  (0.5.8, `/lessons`)
+- ~~Study packs for one topic, with class material ahead of books~~ (0.5.8, `/studypack pota quiz on thermodynamics`)
+- ~~Chat context polluted by other requests' answers~~ (0.5.8)
 - ~~A Today page in the dashboard: alarm, due, reminders, check-ins, questions and journal with buttons, and one box for anything~~ (0.5.7)
 - ~~A free Gemini key tries the next model of the family when one's daily limit is used up~~ (0.5.7)
 - ~~Goodnight sets the wake-up alarm (it already did: /goodnight)~~ (0.5.4)

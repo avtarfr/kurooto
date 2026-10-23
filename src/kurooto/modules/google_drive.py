@@ -78,7 +78,7 @@ class DriveUpload(GooglePart):
         rows.append({"id": fid, "name": name, "delete_at": time.time() + days * 86400, "account": self.account})
         jsave(self.temp_file, rows[-500:])
 
-    def expire(self) -> int:
+    def expire(self, payload: dict | None = None) -> int:
         """Delete the temporary uploads whose days are up (a file you moved out of Kurooto's folder or deleted
         yourself is just forgotten). Returns how many went."""
         rows = jload(self.temp_file, []) or []
