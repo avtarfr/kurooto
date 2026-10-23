@@ -333,6 +333,7 @@ Mac, Option+letter in a text box types a character instead. Full details: [Dashb
 | **Esc** | close the panes menu, then the open page, then give back the panes when one fills the board | dense layout |
 | **Alt+1** … **Alt+9** | switch the terminal tabs | |
 | **Alt+/** or **/** | find a note on the NOTES map (Enter jumps, Esc closes) | `/` only outside Features and Settings |
+| **?** | what the board shows: the core, cells, nerves, notes' colours, and every key | not while typing |
 | **/** or **Ctrl+F** | the search box (Ctrl+F again is the browser's own) | Features and Settings |
 | **Esc** | empty the search box | Features and Settings |
 | **L** | open or fold every corner panel and legend (remembered in this browser) | the board |

@@ -548,3 +548,11 @@ removed and "default terminal" is undone. kitty or fish that Kurooto got stay in
 | Kurooto Terminal opens separate windows instead of tabs | kitty (Linux, macOS) or Windows Terminal isn't there: `kurooto term --install`, or Windows Terminal from the Microsoft Store. `kurooto term --print` says what it found. |
 | "kitty didn't start" | kitty needs a graphics driver with OpenGL 3.3 (some virtual machines lack it): set `terminal.kitty` off. kitty's own message is in `terminal/kitty.log` in the state folder. |
 | Kurooto Terminal's tabs or colours look old in Windows Terminal | Close every Windows Terminal window and open it again. |
+
+## What the board shows (?)
+
+Press `?` anywhere on the board (not while typing) for a card that explains it: the beating core is Kurooto itself
+(faster when busier); each cell is a feature that's on, breathing faster when busy and flashing when something
+happens; a dot along a nerve is something arriving (into the core) or Kurooto acting (out to a cell); a ripple is news
+for no one feature; a grey dashed cell isn't running. In NOTES each dot is a note (bigger with more links), lines are
+links and colours are neighbourhoods (one per course or subject folder). `?` again or Esc closes it.

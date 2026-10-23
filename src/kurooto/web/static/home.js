@@ -1189,7 +1189,7 @@ function renderNav() {
   if (!TERM.on) html += `<button class="tab off${dtab === "termsoff" ? " on" : ""}" data-dt="termsoff" title="a shell, your AI's program and the log, right here">+ terminals</button><span class="rule">─</span>`;
   if (isTerm) html += '<button class="tab" data-restart="1" title="end the program in this terminal and start it again">restart</button><span class="rule">─</span>';
   html += `<span class="rule">┤</span><span class="pages">${pageTabs()}</span><span class="rule">├</span>`;
-  html += `<span class="meta">ctrl+k do · alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note · l legends</span>`;
+  html += `<span class="meta">? what's this · ctrl+k do · alt+1..${terms.length} tabs · alt+f features · alt+s settings · alt+/ find note · l legends</span>`;
   nav.innerHTML = html;
   nav.onclick = (e) => {
     if (e.target.closest(".t")) { maxPane("terminal"); return; }
@@ -2046,6 +2046,13 @@ window.addEventListener("keydown", (e) => {
   list.addEventListener("mousedown", (e) => { const li = e.target.closest("li"); if (li) { e.preventDefault(); cmdGo(Number(li.dataset.i)); } });
   document.addEventListener("mousedown", (e) => { if (!e.target.closest("#cmdk")) cmdClose(); });
 })();
+// ? : what the board shows (the cells, the nerves, the notes' colours, the keys); ? again or Esc closes it
+window.addEventListener("keydown", (e) => {
+  const g = $("#guide"), typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) || inTerm(e.target);
+  if (e.key === "?" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); g.classList.toggle("hidden"); }
+  else if (e.key === "Escape" && !g.classList.contains("hidden")) { e.preventDefault(); e.stopImmediatePropagation(); g.classList.add("hidden"); }
+}, true);
+document.addEventListener("mousedown", (e) => { if (!e.target.closest("#guide")) $("#guide").classList.add("hidden"); });
 // after the window or a pane changes size: STATUS shows as many processes as fit, the terminal fills its pane
 function refit() {
   if (DENSE && last) renderStatus(last);

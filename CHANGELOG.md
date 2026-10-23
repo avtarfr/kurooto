@@ -13,6 +13,8 @@
 - **A calmer board**: the corner panels of SYSTEMS (events, your AI, today, due) and the NOTES legend and recent list
   are folded to their first line (with how much more there is); one opens while the pointer is over it, and `L` opens
   or folds them all (remembered in this browser).
+- **? explains the board**: what the core, the cells, the dots along the nerves and the ripples mean in SYSTEMS, what
+  the dots, lines and colours mean in NOTES, and every key.
 - **Ctrl+K from anywhere on the board**: one line for `ask`, `journal`, `note`, `remind 18:30 call mum`,
   `due essay fri 17:00`, `alarm 7:30` (or `skip`, `off`), `find` a note and `open` a page, plus the Today box's `j`,
   `.` and `!`. A bare word is completed, the result shows under the line, and an AI's answer arrives there too.

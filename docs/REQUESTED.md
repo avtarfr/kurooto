@@ -34,8 +34,6 @@ Standing plans, never struck through.
 - **Preview the organic blobs in the phone app**, as in the dashboard.
 - **A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
   Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.
-- **A legend for the dashboard's organic view**: what each blob, line, pulse and ring means, on the page itself (a
-  hover card already explains a cell; a "?" key should explain the whole picture).
 - **Make the UI more intuitive**, and keep improving the setup wizard's elements.
 - **Wiki-level documentation**: a user wiki and a developer wiki (for people and for AI agents), each a page on
   the site, covering every nook and cranny; one full read equips someone to use, develop and fix Kurooto (being
@@ -48,6 +46,7 @@ Standing plans, never struck through.
 - **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~A legend for the dashboard's organic view~~ (0.5.8: press ? on the board)
 - ~~Handwritten notes linked like any note~~ (0.5.8): a title from what's written, the subject and the lecture it
   was written in, links to the course page and the concepts on it, and its doubts kept findable (`/handwritten link`
   for older ones).

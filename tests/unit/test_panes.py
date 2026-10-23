@@ -99,3 +99,11 @@ def test_r_toggles_recent_only_with_the_notes_map_on_screen_and_not_while_typing
     assert 'paneShown("notes")' in line and "this.cv.getClientRects().length" in line
     rest = js[js.index(line) :][:400]
     assert '"SELECT"' in rest and "isContentEditable" in rest and '.closest(".xterm")' in rest
+
+
+def test_question_mark_explains_the_board(page):
+    html, js, css = page
+    assert 'id="guide"' in html and "The core" in html and "Each dot" in html and "neighbourhoods" in html
+    line = next(ln for ln in js.splitlines() if 'e.key === "?"' in ln)
+    assert "!typing" in line  # not while typing or in a terminal
+    assert "? what's this" in js and ".guide {" in css
