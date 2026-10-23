@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.6.0 (2026-10-24)
+
+**Your AI, more open about itself**
+- Every AI answer's last line names the model that answered (`agy · 3.8-flash`, `Claude Code · opus-4.5`), who picked
+  the effort if that was another model, and who stood in.
+- When Claude Code hits its 5-hour or weekly limit, agy answers instead, and the other way round, then a Gemini key;
+  the AI at its limit is skipped until it resets. `brain.fallback` can be a list.
+- Your AI knows what Kurooto is running: a live `self.md` (version, AIs and models, features and their health, recent
+  failures; no contents or secrets) and a manual that ships with every release, readable through `kurooto_self` and
+  `kurooto mcp`. A release can't be built while that manual or the settings guide is out of date.
+- Claude Code is named "Claude Code" everywhere ("Advanced" is only its group in setup).
+
+**The night does more**
+- Dreaming looks over what it remembers: the same thing kept twice, and lines that disagree (a different date, time or
+  number), come in the morning message with Keep A / Keep B / Both true and Undo; nothing changes until you tap.
+  `/dream check` looks now.
+- Dream RSI, part three: it also tunes the effort your requests get, which AI goes first when your main one keeps
+  hitting limits, and Start-by's sizes, by replaying what happened; one change a night with Undo, and a kind of change
+  you undid needs a clearer win next time. Optional: a fix for a skill that keeps going wrong, offered with Apply / No.
+- Notes brain: a weekly one-line checkup, its contradictions report in the morning message, course pages with key
+  concepts and a dated timeline (`/timeline`), and search by meaning plus timelines on calls.
+- Look-alike concept notes come as one morning question with Merge / Keep both / Add alias, each with Undo; a merge
+  never deletes your text (`/graph same`). Link cards also come from your course notes and class material.
+- Notation crosswalk: a concept a second source writes differently gets a quote-checked Notation table, whenever
+  the graph reads (a switch on the Concept graph card, `integrate.notation`).
+
+**Research add-on** (one switch under Features → Add-ons)
+- Run compare: `/runs compare` or `kurooto runlog diff A B` puts two runs side by side (config, code diff, metrics,
+  curves) in the project's notes.
+- LaTeX tracker: `/latex add <folder>` builds your paper nightly (errors, undefined references, missing citations,
+  words written), with one morning line when it broke or you wrote; a BibTeX suggestion only on a tap.
+- Check my draft: a photo, PDF, .tex, essay or code with "check this" gets gaps, unclear steps and errors marked at
+  lines, never rewritten; a course's AI policy (`/subject policy la allowed|hints|off`) turns it down or off.
+
+**More ways in**
+- Photo to dates: a photo of a notice or timetable with "dates" (or `/dates`) gets each deadline, exam and event as an
+  Add button, a timetable's classes in one tap; nothing is added without a tap.
+- Email in (`/mail in on`): mail you forward to your own +kurooto Gmail address, or label, is filed as a note with its
+  dates offered as buttons; only mail from you or senders you list.
+- Shared class calendars (`/cal subscribe <link> as <name>`), Quick ask (`kurooto ask --popup`, bound to a key in your
+  system's settings), Zotero (a button under each digest paper), `/notes pdf <course>` (a course's notes as one PDF).
+- Offline: on laptops without a graphics card, a small model on this computer (after a speed test) takes the quick
+  decisions; with no internet, quick questions get a short answer and other requests wait and run when it's back.
+  Nothing is dropped.
+
+**The phone**
+- The app opens on your day (Today), also while the computer is asleep, with +1 and Done; the wake-up alarm also rings
+  on the phone itself, and the call and the phone's alarm ring as one.
+- Done and Snooze on notifications; check-ins and quiz questions as cards you answer in place.
+- Widgets (Talk, and Talk with what's waiting), Quick note from a shortcut or a Quick Settings tile, the Material look
+  with the organic blobs behind the main screen.
+- Bedside mode: an old phone on a charger becomes a dim, warm-at-night clock with the next alarm and one big Talk
+  button that calls Kurooto, even locked; it can open by itself while charging.
+- Location reminders (off by default): "remind me when I reach the library to …", with Android's own proximity alerts.
+- iPhone: a "Tell Kurooto" Shortcut (Siri, Back Tap) with your own revocable link.
+- Fixed: rings never stopped by themselves, and removing a paired phone timed out.
+
+**The dashboard**
+- SYSTEMS is the board's centrepiece: a living membrane core, features as small neurons, tapered nerves. Point at a
+  feature for its card; click it (or Tab, Enter) for ping, sync now, quiet (with Undo), its settings or activity;
+  click the core for Ctrl+K; drag to turn, scroll to zoom.
+- Clearer setup and settings: settings with a few values are lists, "Saved" shows under the setting, features that are
+  on come first, setup shows your picks first.
+- `/help` always opens on its index (each group's commands and wiki page); `/help <group>` for detail.
+
+**Notes and add-ons**
+- `notes.links`: Kurooto can write markdown links instead of `[[wikilinks]]`, proposed by the Notes step.
+- Add-ons by link: `kurooto addons add <git url>` shows the add-on's card first and adds it only on your yes, pinned to
+  one commit; its code reaches only the hosts and programs on its card. Four generic add-ons (restic backups, desktop
+  helpers, your command words, handwriting from the cloud) are ready to publish.
+- Set up from what you say understands more (a thesis or supervisor, "on Mondays", "I go running every morning"); the
+  weekly summary has a People line from your project notes; a long answer is announced with one short line first.
+
 ## 0.5.21 (2026-10-23)
 
 - **Research shows on the notes map:** every research project is a named region in the accent colour, however small its
