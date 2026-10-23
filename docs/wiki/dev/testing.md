@@ -89,6 +89,12 @@ Brains accept a list as their executable (`Agy(exe=[sys.executable, "tests/fakes
 `telegram.api_base` points the bot at the fake. Fixtures data: `tests/fixtures/call-vectors.json` (k1, t1, s1),
 `tests/fixtures/syscolors/`.
 
+## Buttons
+
+`tests/unit/test_buttons.py` checks that every button the code sends (`("Label", "<prefix>:<ref>:<action>")`)
+has a handler: `App.callback`'s own prefixes or a module's `callbacks()`. A new button prefix needs its handler in
+the same change; a string that only looks like one (a scheduler key, log text) goes in `NOT_BUTTONS`.
+
 ## Writing a test
 
 ```python

@@ -41,9 +41,10 @@ Standing plans, never struck through.
 - **Local model on the graphics card without spilling onto the processor**: one model at a time and a size that fits.
 - **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting).
 - **Allow safe scripts for agents**: a way to allow named scripts (not a bare `python3`, which is a shell).
-- **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~Check that every button works after a restart~~ (0.5.8: every button's prefix has a handler, checked by a test;
+  one from a feature that's off says so)
 - ~~Mail digest formatting: shorter, grouped by what needs you~~ (0.5.8: Needs you, Dates, Courses, Worth knowing; about 15 lines)
 - ~~Mail about exams is read at once and turned into a schedule~~ (0.5.8: each exam of your subjects becomes a deadline with its time and room; details in the course note)
 - ~~A legend for the dashboard's organic view~~ (0.5.8: press ? on the board)
