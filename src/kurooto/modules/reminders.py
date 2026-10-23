@@ -188,7 +188,10 @@ class Reminders(Module):
                 except ValueError:
                     continue
                 return self.add(when, tidy_what(" ".join(parts[n:])) or "you asked me to remind you")
-        return "Usage: /remind 21:30 call mum   (or: tomorrow 7am gym, in 20m tea; a bare number is minutes: 20 tea)"
+        return (
+            "Usage: /remind 21:30 call mum   (or: tomorrow 7am gym, in 20m tea; a bare number is the hour: 9 gym is the "
+            "next 9:00)"
+        )
 
     def _list(self, msg: Incoming, arg: str) -> str | None:
         jobs = self.app.scheduler.jobs("reminders:")

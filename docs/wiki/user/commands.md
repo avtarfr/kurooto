@@ -54,7 +54,7 @@ More: [AI brains](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat
 
 | Command | What it does | Feature |
 |---|---|---|
-| `/remind 21:30 call mum`, `/remind tomorrow 7am gym`, `/remind in 20m tea`, `/remind fri 17:00 hand in form`, `/remind 2026-11-02 14:00 dentist` | a reminder (a bare number means minutes: write `9:00` or `9am`, not `9`) | Reminders |
+| `/remind 21:30 call mum`, `/remind tomorrow 7am gym`, `/remind in 20m tea`, `/remind fri 17:00 hand in form`, `/remind 2026-11-02 14:00 dentist` | a reminder (a bare number is the hour: `9` is the next 9:00; minutes need their unit: `20m`) | Reminders |
 | `/reminders` | your upcoming reminders, each with a Cancel button | Reminders |
 | `/deadlines` | what's due in the next two weeks | Deadlines |
 | `/due fri 17:00 essay draft`, `/due 2026-11-02 lab report` | add a deadline | Deadlines |

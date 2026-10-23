@@ -16,8 +16,11 @@ BASE = dt.datetime(2026, 10, 19, 17, 40)  # a Monday
         ("at 12am", dt.datetime(2026, 10, 20, 0, 0)),
         ("in 20 minutes", BASE + dt.timedelta(minutes=20)),
         ("30m", BASE + dt.timedelta(minutes=30)),
-        ("+45", BASE + dt.timedelta(minutes=45)),
-        ("45", BASE + dt.timedelta(minutes=45)),  # a bare number is minutes (/remind 20 tea)
+        ("+45m", BASE + dt.timedelta(minutes=45)),
+        ("9", BASE.replace(hour=21, minute=0)),  # a bare number is the hour, the next time the clock shows it
+        ("5", BASE.replace(hour=5, minute=0) + dt.timedelta(days=1)),  # 17:00 is gone: 5:00 tomorrow
+        ("12", BASE.replace(hour=0, minute=0) + dt.timedelta(days=1)),  # noon is gone: midnight
+        ("18", BASE.replace(hour=18, minute=0)),
         ("2h", BASE + dt.timedelta(hours=2)),
         ("in 3 days", BASE + dt.timedelta(days=3)),
         ("tomorrow 7am", dt.datetime(2026, 10, 20, 7, 0)),
@@ -42,3 +45,9 @@ def test_reads(text, want):
 def test_refuses(text):
     with pytest.raises(ValueError):
         parse_when(text, BASE)
+
+
+def test_minutes_need_their_unit():
+    for s in ("45", "+45", "in 45"):
+        with pytest.raises(ValueError):
+            parse_when(s, BASE)

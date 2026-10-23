@@ -66,6 +66,8 @@
   options (a prompt hidden in a mail or a web page could have used them). Searching is the AI programs' own job, and
   Kurooto compiles LaTeX itself: now without a `latexmkrc` from the notes folder (`-norc`), and TeX may only read and
   write beside the document.
+- **A bare number is a time, not minutes**: `/remind 9 gym` is the next 9:00 (morning or evening, whichever comes
+  first) and `/remind 18 gym` is 18:00; minutes need their unit (`20m`, `in 20 min`), and `/due` reads times the same way.
 - **Docs match the code**: the manual's term-note example no longer swallows the Concept graph, Space keeper and
   reserve sections, and it now covers `/new` and the chat's memory, the calls look back (`/lessons`), topic study
   packs, `drive_upload.temp_days`, Exam season as an add-on and the new `/help`; agy is the recommended brain

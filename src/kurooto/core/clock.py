@@ -46,15 +46,25 @@ def _hm(h: str, mi: str | None, ampm: str | None) -> tuple[int, int]:
 def parse_when(text: str, base: dt.datetime | None = None) -> dt.datetime:
     """'21:30', '9pm', 'in 20 minutes', '30m', '2h', '+45', 'in 3 days', 'tomorrow 7:00', 'mon 9am',
     '2026-11-02 14:00', '2026-11-02' (09:00) -> a local datetime in the future (times today roll to tomorrow).
-    A bare number is minutes from now ('20' is in 20 minutes, not 20:00). Raises ValueError if it can't read it."""
+    A bare number is a time of day: 1 to 12 the next time the clock shows it ('9' is 9:00 or 21:00, whichever comes
+    first), 0 and 13 to 23 that hour; a duration needs its unit ('20m', 'in 2 h'). Raises ValueError if it can't read
+    it."""
     base = base or now()
     s = re.sub(r"\s+", " ", (text or "").strip().lower())
     s = re.sub(r"^(at|on|by) ", "", s)
 
-    m = re.fullmatch(r"(?:in )?\+?(\d+) ?([a-z]+)?", s)
-    if m and (m[2] is None or m[2] in _UNITS):
-        unit = _UNITS.get(m[2] or "m")
-        return base + dt.timedelta(**{unit: int(m[1])})
+    m = re.fullmatch(r"(?:in )?\+?(\d+) ?([a-z]+)", s)
+    if m and m[2] in _UNITS:  # a duration says its unit: 20m, in 2 h, +3d
+        return base + dt.timedelta(**{_UNITS[m[2]]: int(m[1])})
+
+    m = re.fullmatch(r"\d{1,2}", s)
+    if m:  # a bare number is the hour: 1-12 the next time the clock shows it, 0 and 13-23 as they are
+        h = int(s)
+        if h > 23:
+            raise ValueError("a bare number is an hour; write minutes with their unit (45m)")
+        hours = [h % 12, h % 12 + 12] if 1 <= h <= 12 else [h]
+        times = [base.replace(hour=x, minute=0, second=0) for x in hours]
+        return min(t if t > base else t + dt.timedelta(days=1) for t in times)
 
     m = re.fullmatch(_TIME, s)
     if m and (m[2] or m[3] or len(m[1]) <= 2):

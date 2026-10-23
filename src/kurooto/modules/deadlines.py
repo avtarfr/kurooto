@@ -945,7 +945,10 @@ class Deadlines(Module):
                     continue
                 title = re.sub(r"^(?:00\s+|-\s+|:\s+)", "", " ".join(parts[n:])).strip()
                 return self.add(title, when)
-        return "Usage: /due fri 17:00 essay draft   (or: /due 2026-11-02 lab report; a bare number is minutes from now)"
+        return (
+            "Usage: /due fri 17:00 essay draft   (or: /due 2026-11-02 lab report; a bare number is the hour: 5 is the "
+            "next 5:00)"
+        )
 
     def _exam(self) -> str:
         days = self.setting("exam_mode_days") or 0
