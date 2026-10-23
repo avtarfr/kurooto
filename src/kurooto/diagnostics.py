@@ -43,6 +43,7 @@ KNOWN_SECRETS = [
     "calls.vapid_jwk",
     "calls.vapid_public",
     "calls.github_token",
+    "calls.ntfy_token",
     "notes_sync.token",
     "google.client",
     "google.tokens",

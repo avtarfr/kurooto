@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.12 (2026-10-23)
+
+- **Several alarms at once:** setting an alarm no longer replaces the one that's set. Each one you set (up to 10)
+  waits its turn and the next takes over once one has rung; your call line holds them all, so each rings with this
+  computer asleep. "Cancel my alarm" clears the next one, "cancel the 10:30 alarm" (`/alarm off 10:30`) that one,
+  "cancel all my alarms" (`/alarm off all`) every one you set; the daily alarm stays. `/alarm` lists them all.
+- **ntfy account token** (`kurooto ntfy-token`): ntfy.sh limits each internet address, and yours is shared (a campus,
+  your call line's Cloudflare one), so rings could be refused ("429 Too Many Requests") and the phone stayed silent.
+  With a free ntfy account's token, this computer and your call line publish as your account instead; a token ntfy
+  refuses falls back to publishing without one. Your call line is updated with it.
+- **Fix: calls know your local time.** A call was told the time without its zone and planned in UTC ("1:30 PM" at
+  17:00 IST); it's now told the time and zone, and the brief starts with the time now. A late wake-up call plans from
+  now and doesn't ask about classes that are already over.
+- **Dashboard:** the NOTES map's "Recent" button and its always-on label are gone; **R** still highlights notes
+  edited today, with a line while it's on.
+
 ## 0.5.11 (2026-10-23)
 
 - **Fix:** the dashboard's NOTES map stayed empty once a note had hundreds of links (a course map the concept graph

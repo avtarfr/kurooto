@@ -493,8 +493,9 @@ class Subjects(Module):
 
     # -------------------------------------------------------------------------------------- on calls
     def call_brief(self) -> dict:
-        cls = self.classes_on()
-        return {"classes_today": [f"{c['start']}-{c['end']} {c['name']}" for c in cls]} if cls else {}
+        cls, t = self.classes_on(), f"{now():%H:%M}"
+        over = lambda c: " (over)" if str(c["end"]) <= t else ""  # noqa: E731 (a late wake-up isn't asked about them)
+        return {"classes_today": [f"{c['start']}-{c['end']} {c['name']}{over(c)}" for c in cls]} if cls else {}
 
     def call_tools(self):
         return [

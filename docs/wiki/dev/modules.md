@@ -389,7 +389,12 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`).
 - **alarm** (`modules/alarm.py`, requires `calls`): the wake-up call is booked on the call line so it rings with the
   computer asleep; `alarm:plan` every 30 min; the morning plan drafted `prep_min` before; sets
-  `app.availability.sleep`; mirrors to `reserve/alarm.md`.
+  `app.availability.sleep`; mirrors to `reserve/alarm.md`. Alarms you set are a list (`alarm-set.json`, `mine()`, at
+  most `MAX_SET`); the scheduler holds one ring (`alarm:ring`), the soonest of that list and the daily alarm
+  (`_plan`); `_ring` drops the one ringing, `call_schedule()` sends every one still to come (`upcoming()`) to the
+  line, and `next_daily()` treats a morning with one of yours as had. `clear()` the next, `clear_at("HH:MM")`,
+  `clear_all()` (the daily alarm stays). `script()` opens with the current local time and only asks about classes
+  still to come.
 - **lidsafe** (`modules/lidsafe.py`, requires `calls`): seals the next day's reminders for paired Android phones (s1)
   and hands them to the call line, so they arrive with the lid shut; whichever side is awake says each once.
 - **awake** (`modules/awake.py`): holds a sleep inhibitor on mains power (`core/inhibit.py`).

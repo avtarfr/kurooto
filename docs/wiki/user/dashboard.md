@@ -124,7 +124,7 @@ notes layout (see [notes-and-concept-graph.md](notes-and-concept-graph.md)).
 | Zoom / move around | mouse wheel / drag empty space |
 | Move a note | drag it |
 | Find a note by name | `/` or **Alt+/** (or Ctrl+K → `find`), type, **Enter** jumps to the first match, **Esc** closes |
-| Highlight notes edited in the last day | **R**, or the **Recent** button (or click the top-left "Recent" line). Notes edited in the last hour get a brighter ring |
+| Highlight notes edited in the last day | **R** (again, or a click on the "Recent" line it shows, turns it off). Notes edited in the last hour get a brighter ring |
 
 The pane's top line counts notes, links and neighbourhoods. The legend (top right) lists the neighbourhoods with
 their counts; the bottom-left list shows the notes you edited last. Both are folded until you point at them or press

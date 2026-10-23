@@ -23,6 +23,7 @@ import json
 import re
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
@@ -371,8 +372,13 @@ class Calls(Module):
         self.app.notify(text, kind="result", title="From your call", why="calls.own")
         return "Sent on their chat."
 
+    def _zone(self) -> str:
+        from kurooto.core import zones
+
+        return zones.canonical(self.app.settings.get("you.timezone")) or "this computer's time zone"
+
     def pending(self) -> dict:
-        out: dict = {}
+        out: dict = {"now": f"{now():%A %d %B, %H:%M}, their local time ({self._zone()})"}
         for m in self.app.enabled():
             if hasattr(m, "call_brief"):
                 try:
@@ -386,7 +392,7 @@ class Calls(Module):
         upcoming = [f"{dt.datetime.fromtimestamp(c['at']):%H:%M} {c['reason']}" for c in self.schedule_list()[:5]]
         if upcoming:
             out["calls_planned"] = upcoming
-        return out or {"note": "nothing needs attention right now"}
+        return out if len(out) > 1 else {**out, "note": "nothing needs attention right now"}
 
     def _search(self, a: dict):
         q = str(a.get("query", ""))
@@ -530,24 +536,36 @@ class Calls(Module):
         return f"{self.worker_url()}/{'?' + q if q else ''}#{t}"
 
     def publish_ntfy(self, fields: dict) -> bool:
-        """Publish an encrypted k1 payload directly to ntfy from this computer."""
+        """Publish an encrypted k1 payload directly to ntfy from this computer. With an ntfy account token
+        (`kurooto ntfy-token`) ntfy counts its limits for your account, not for the internet address you share with
+        everyone else on it (a campus, a Cloudflare one); a token ntfy refuses falls back to publishing without."""
         topic = self.app.secrets.get("calls.ntfy_topic")
         key = self.app.secrets.get("calls.ntfy_key")
         server = (self.setting("ntfy_server") or "https://ntfy.sh").rstrip("/")
         if not topic or not key:
             return False
+        token = self.app.secrets.get("calls.ntfy_token") or ""
         try:
             sealed = line.seal_k1(key, json.dumps(fields))
-            req = urllib.request.Request(  # noqa: S310
-                f"{server}/",
-                data=json.dumps(
-                    {"topic": topic, "message": sealed, "priority": fields.get("priority", 3), "tags": ["k1"]}
-                ).encode(),
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=10) as r:  # noqa: S310
-                return r.status in (200, 201, 204)
+            body = json.dumps(
+                {"topic": topic, "message": sealed, "priority": fields.get("priority", 3), "tags": ["k1"]}
+            ).encode()
+            for auth in [token, ""] if token else [""]:
+                headers = {"Content-Type": "application/json", **({"Authorization": f"Bearer {auth}"} if auth else {})}
+                req = urllib.request.Request(  # noqa: S310
+                    f"{server}/",
+                    data=body,
+                    headers=headers,
+                    method="POST",
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=10) as r:  # noqa: S310
+                        return r.status in (200, 201, 204)
+                except urllib.error.HTTPError as e:
+                    if not (auth and e.code in (401, 403)):
+                        raise
+                    self.app.events.emit("calls_ntfy_token_refused", code=e.code)
+            return False
         except Exception as e:
             self.app.events.emit("calls_ntfy_publish_failed", error=str(e)[:200])
             return False
@@ -984,7 +1002,8 @@ class Calls(Module):
         whose = f"{you}'s" if you else "the user's"
         lines = [
             f"You are {self.app.name}, {whose} personal assistant, on a live voice call.",
-            "It is %%NOW%%.",
+            f"It is %%NOW%%, their local time ({self._zone()}). Say every time and plan the day in this local "
+            "time, counting from now: never UTC, never a time that has already passed today.",
             "Talk like a friend on a call: short and natural; never read out lists or markdown. Answer in the "
             "language they speak.",
             *[t.hint for t in tools if t.hint],

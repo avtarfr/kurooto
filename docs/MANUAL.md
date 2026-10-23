@@ -1311,13 +1311,15 @@ ends with **End the call**. The Live retries can't be turned off; `calls.live_mo
 ### Morning alarm
 Kurooto wakes you with a call. On the Android app it rings with your alarm sound on the alarm volume, so it rings even
 on silent. The call line places it, so it rings even if your computer is asleep. "wake me at 6:45", `/alarm 7:30`,
-`/alarm off`, the evening check-in call ("wake me at 7"), or a daily default (Settings → `alarm.daily`). Not
+`/alarm off`, the evening check-in call ("wake me at 7"), or a daily default (Settings → `alarm.daily`). Set several
+(up to 10): each waits its turn and your call line holds them all; "cancel my alarm" clears the next one, "cancel the
+10:30 alarm" (`/alarm off 10:30`) that one, "cancel all my alarms" (`/alarm off all`) every one you set. Not
 answered: it rings twice more, 5 minutes apart (`alarm.retries`). **Snooze** gives 10 minutes (`alarm.snooze_min`).
 Needs Phone calls.
 
 - **The daily alarm** (`alarm.daily`, on `alarm.days`) is always with your call line well before the night: the next
   one is sent as soon as one has rung (and at start, and after this computer wakes), so it rings even if the computer
-  sleeps all night. One alarm per morning: one you set for a morning replaces the daily one. **Skip a day:** "no alarm
+  sleeps all night. One you set for a morning replaces the daily one that morning. **Skip a day:** "no alarm
   tomorrow", "cancel Friday's alarm", `/alarm skip friday` (the daily alarm is back the day after); "cancel my alarm"
   skips the morning that's set. **Turn it off:** "turn my daily alarm off" or `/alarm daily off`; `/alarm daily 7:00`
   sets it. *Undo:* a skipped day can't be un-skipped; set that morning's alarm yourself ("wake me at 7 tomorrow").
@@ -1331,7 +1333,8 @@ Needs Phone calls.
   set an alarm.
 - **Your day, drafted:** with Chat on, 20 minutes before the alarm the AI drafts today's plan into today's daily note
   ("## Plan for today (draft …)": classes, what's due, a top 3, suggested blocks, and questions for you).
-- **The wake-up call** goes through that plan, asks which classes you're skipping and when to call you today (the
+- **The wake-up call** knows the time and your time zone, plans from now (a late wake-up isn't asked about classes
+  that are over), goes through that plan, asks which classes still to come you're skipping and when to call you today (the
   evening check-in, and a midday one if you want), and afterwards, with Chat on, settles "## Plan for today" in the
   daily note from what you said.
 - **The morning page:** at the alarm, if this computer is awake, it opens the morning page in your browser (today's

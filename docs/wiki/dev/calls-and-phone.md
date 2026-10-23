@@ -41,7 +41,10 @@ writes `account`, `hash`, `deployed`), `live_model`, `live_models`, `voice_by_mo
 `review` (true), `review_effort` (`high`), `review_brain` (`""` = main), `lessons_max` (12).
 
 Secrets (`Calls.SECRETS` and `deploy.ensure_secrets`): `calls.call_secret`, `calls.connector_secret`,
-`calls.ntfy_topic`, `calls.ntfy_key`, `calls.vapid_jwk`, `calls.vapid_public`; also `gemini.api_key` (required) and
+`calls.ntfy_topic`, `calls.ntfy_key`, `calls.vapid_jwk`, `calls.vapid_public`, `calls.ntfy_token` (optional, from
+`kurooto ntfy-token`: an ntfy account token, sent as `Authorization: Bearer` by `Calls.publish_ntfy` and the Worker's
+`publish()`, each retrying once without it on a 401/403; it moves ntfy's rate limits from the shared IP to the
+account); also `gemini.api_key` (required) and
 `calls.github_token` (set by Notes sync, `modules/notes_sync.py`, so the line can read notes while the computer is off).
 
 ## Deploying the line (`modules/calls/deploy.py`)
@@ -61,7 +64,7 @@ Secrets (`Calls.SECRETS` and `deploy.ensure_secrets`): `calls.call_secret`, `cal
 6. Save `calls.worker`, then poll `/health` (24 times, 5 s apart).
 
 Redeploys: `fingerprint` hashes the Worker source and the values baked into it (time zone, `live_model`,
-`ntfy_server`, `notes_repo`, whether a GitHub token exists); `needs_redeploy` compares it with `calls.worker.hash`.
+`ntfy_server`, `notes_repo`, whether a GitHub token exists, the ntfy token, hashed); `needs_redeploy` compares it with `calls.worker.hash`.
 `Calls._line_update` runs daily at 05:10 and redeploys unattended unless `updates.mode` is `off`.
 
 ## The connector (`modules/calls/connector.py:Connector`)
@@ -119,7 +122,9 @@ transcripts, events and answers until `welcome` replays them (`Calls.on_queue`).
   ephemeral Live token (30 min expiry, 2 min to start) and emits `call_started` (stops the ring; `Calls.on_event`
   marks the ring answered and writes `<state>/calls/live.json`).
 - The Live session is configured from `Calls.config_template` (system instruction with each tool's hint, persona,
-  learned lessons, transcription, context compression) and `Calls.texts`. Voice by kind: `Calls.voice_for`.
+  learned lessons, transcription, context compression) and `Calls.texts`. Its time line is `It is %%NOW%%, their
+  local time (<zone>)`, filled in by the Worker (`TZ`) or `fallback.py`; `pending()` starts with `now` too. Without
+  the zone named, a Live model once planned in UTC ("1:30 PM" at 17:00 IST). Voice by kind: `Calls.voice_for`.
 - Tool calls: page to `/tool`, Worker to WebSocket, `Calls.handle_request` to `Calls.run_tool`. Tools are
   `Calls.tools()`: its own (`pending_items`, `search_notes`, `read_note`, `schedule_call`, `call_now`, `hold_calls`,
   `run_task` when Chat is on), `app.ask.call_tools()`, `core/tools.py:sync_tools`, and every enabled module's
@@ -193,6 +198,7 @@ Other files in `<state>/calls/`: `rings.json`, `live.json`, `link.json`, `inbox.
 - `export default {fetch, scheduled}` and the Durable Object `Line` (SQLite-backed, migration v1). Cron `* * * * *`.
 - Vars baked in at deploy: `OWNER_ID`, `TZ`, `PUBLIC_URL`, `VERSION`, `LIVE_MODEL`, `NTFY_SERVER`, `NOTES_REPO`.
   Secrets: `CALL_SECRET`, `CONNECTOR_SECRET`, `GEMINI_API_KEY`, `NTFY_TOPIC`, `NTFY_KEY`, `VAPID_JWK`, `VAPID_PUBLIC`,
+  `NTFY_TOKEN` (always sent, empty without one, so clearing it clears the line's copy),
   optional `GITHUB_TOKEN`.
 - Routes: top level `/health`, `/manifest.webmanifest`; the rest goes to `Line.fetch`. No auth: `/connect` (checked by
   the connector secret) and `/pair/claim`. Any valid key (device key `d1`, ticket `t1`, or a minted ticket):

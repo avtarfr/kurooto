@@ -3,12 +3,15 @@ stream (so it rings on silent); answer and it says good morning and goes through
 your call line, so it rings even if this computer is asleep or off.
 
 Set it in plain English ("wake me at 6:45", "set my alarm for 7 tomorrow", "cancel my alarm"), with /alarm, on a
-call ("set my alarm for 7"), or as a daily default in Settings. Not answered: it rings again 5 minutes later, up to
+call ("set my alarm for 7"), or as a daily default in Settings. Set as many as you like (up to MAX_SET): each one you
+set is kept (alarm-set.json) and the soonest is the one that's set, the next taking its place once it has rung; your
+call line holds them all. "Cancel my alarm" turns off the next one, "cancel the 10:30 alarm" that one, "cancel all my
+alarms" every one you set (the daily alarm stays). Not answered: it rings again 5 minutes later, up to
 twice more. "Later" on the ringing call snoozes for 10 minutes.
 
 The daily alarm: the next one is always with your call line well before the night (planned as soon as one has rung,
-and again at start and after this computer wakes), so it rings even if this computer sleeps all night. One alarm per
-morning: an alarm you set for a morning replaces the daily one. "No alarm tomorrow" (or "cancel tomorrow's alarm",
+and again at start and after this computer wakes), so it rings even if this computer sleeps all night. An alarm
+you set for a morning replaces the daily one that morning. "No alarm tomorrow" (or "cancel tomorrow's alarm",
 "/alarm skip friday") skips one day and the daily alarm is back after it; "cancel my alarm" skips the one that's set;
 "turn my daily alarm off" (/alarm daily off) stops it, and "/alarm daily 7:00" sets it.
 
@@ -64,6 +67,7 @@ AWAKE_KEY = "alarm:awake"  # "I'm awake": the morning call, rung now (not the al
 PLAN_EVERY = "every 30m"  # the next daily alarm is checked this often too (and caught up after sleep)
 AWAKE_AFTER_MIN = 15  # keep_awake holds until this long after the alarm (repeat rings, the plan)
 AWAKE_BEFORE_H = 12  # ... from this long before it (a daily alarm set in the morning doesn't hold all day)
+MAX_SET = 10  # alarms you set yourself, kept at once (the daily one isn't counted)
 
 
 def _clock_time(text: str) -> str | None:
@@ -100,6 +104,10 @@ class Alarm(Module):
     @property
     def ringing_file(self):  # the ring in progress: its repeat count (planning the next day doesn't touch it)
         return self.app.paths.state / "alarm-ringing.json"
+
+    @property
+    def set_file(self):  # the alarms you set yourself that haven't rung: [{"at", "set_at"}], the soonest is the one set
+        return self.app.paths.state / "alarm-set.json"
 
     @property
     def skip_file(self):  # days the daily alarm doesn't ring ("no alarm tomorrow")
@@ -160,6 +168,34 @@ class Alarm(Module):
         j = self.app.scheduler.get(f"{self.id}:ring")
         return dt.datetime.fromtimestamp(j.next_run) if j else None
 
+    def mine(self) -> list[dict]:
+        """The alarms you set yourself that are still to come, soonest first: {"at": datetime, "set_at": str}."""
+        out, t = {}, now()
+        for a in (jload(self.set_file, {}) or {}).get("alarms", []):
+            try:
+                at = dt.datetime.fromisoformat(a["at"])
+            except (KeyError, ValueError, TypeError):
+                continue
+            if at > t:
+                out[at] = {"at": at, "set_at": a.get("set_at") or ""}
+        return [out[k] for k in sorted(out)]
+
+    def _mine_save(self, alarms: list[dict]) -> None:
+        keep = sorted(alarms, key=lambda a: a["at"])[:MAX_SET]
+        jsave(self.set_file, {"alarms": [{"at": a["at"].isoformat(), "set_at": a.get("set_at") or ""} for a in keep]})
+
+    def _mine_drop(self, test) -> list[dict]:
+        """Take the alarms you set that `test(at)` picks off the list. Returns them."""
+        alarms = self.mine()
+        gone = [a for a in alarms if test(a["at"])]
+        self._mine_save([a for a in alarms if a not in gone])
+        return gone
+
+    def upcoming(self) -> list[dt.datetime]:
+        """Every alarm still to ring: the one that's set, then the rest you set."""
+        at = self.next()
+        return sorted({*([at] if at and at > now() else []), *(a["at"] for a in self.mine())})
+
     # ------------------------------------------------------------------------------------ the daily alarm
     def skips(self) -> set[dt.date]:
         out = set()
@@ -185,10 +221,12 @@ class Alarm(Module):
             rang = dt.datetime.fromisoformat((jload(self.last_file, {}) or {})["at"])
         except (KeyError, ValueError, TypeError):
             rang = None
+        mine = [a["at"] for a in self.mine()]
         for add in range(9):
             day = t.date() + dt.timedelta(days=add)
             at = dt.datetime.combine(day, tm)
             had = rang is not None and rang.date() == day and rang >= at - dt.timedelta(hours=6)
+            had = had or any(m.date() == day and m >= at - dt.timedelta(hours=6) for m in mine)  # one you set
             if at > t and DAYS[day.weekday()] in days and day not in skip and not had:
                 return at
         return None
@@ -200,9 +238,12 @@ class Alarm(Module):
         if pending and pending <= now():
             return  # due: its ring runs (catching up after sleep) and plans the next one
         info = jload(self.file, {}) or {}
-        if pending and not info.get("daily"):
-            return
-        want = self.next_daily()
+        mine = self.mine()
+        if pending and not info.get("daily") and not (mine and mine[0]["at"] < pending):
+            return  # one you set stays (the rest you set wait their turn)
+        want, set_at = self.next_daily(), None
+        if mine and (want is None or mine[0]["at"] <= want):
+            want, set_at = mine[0]["at"], mine[0]["set_at"]
         if pending and want == pending:
             return
         if pending and not want:  # the daily alarm was turned off, or has no days left
@@ -213,10 +254,24 @@ class Alarm(Module):
             self.keep_awake()
             return
         if want:
-            self.set(want, daily=True)
+            self.set(want, daily=set_at is None, set_at=set_at)
 
-    def set(self, at: dt.datetime, daily: bool = False, tries: int = 0, first: bool = True) -> str:
-        """Set the alarm. first=False for a snooze or a repeat ring: no new plan, no morning page."""
+    def set(
+        self, at: dt.datetime, daily: bool = False, tries: int = 0, first: bool = True, set_at: str | None = None
+    ) -> str:
+        """Set an alarm. One you set joins the others you set; the soonest is the one set. first=False for a snooze
+        or a repeat ring: no new plan, no morning page. set_at: when you set it (an alarm's turn coming)."""
+        if first and not daily and set_at is None:  # you set it now
+            alarms = [a for a in self.mine() if a["at"] != at]
+            if len(alarms) >= MAX_SET:
+                return f'You have {MAX_SET} alarms set already: /alarm shows them, "cancel the 7:00 alarm" frees one.'
+            self._mine_save([*alarms, {"at": at, "set_at": now().isoformat()}])
+            pending = self.next()
+            info = jload(self.file, {}) or {}
+            if pending and now() < pending < at and not info.get("daily"):  # an earlier one stays set
+                self._poke()
+                self.app.events.emit("alarm_set", at=at.isoformat(), queued=True)
+                return f"Alarm set for {at:%a %d %b, %H:%M}. " + self._others(at)
         self.app.scheduler.at(
             at,
             "alarm.ring",
@@ -226,7 +281,7 @@ class Alarm(Module):
             grace_s=1800,
             respect="none",
         )
-        jsave(self.file, {"at": at.isoformat(), "daily": daily, "set_at": now().isoformat()})
+        jsave(self.file, {"at": at.isoformat(), "daily": daily, "set_at": set_at or now().isoformat()})
         mins = self.setting("prep_min") or 0
         if first and mins:
             when = max(at - dt.timedelta(minutes=mins), now() + dt.timedelta(minutes=1))
@@ -240,17 +295,27 @@ class Alarm(Module):
             )
         self._poke()
         self.app.events.emit("alarm_set", at=at.isoformat())
+        more = (" " + self._others(at)) if first and not daily and len(self.upcoming()) > 1 else ""
         if self.keep_awake() and first and not self.on_ac():
-            return f"Alarm set for {at:%a %d %b, %H:%M}. Plug this computer in: it stays awake until then."
-        return f"Alarm set for {at:%a %d %b, %H:%M}."
+            return f"Alarm set for {at:%a %d %b, %H:%M}. Plug this computer in: it stays awake until then.{more}"
+        return f"Alarm set for {at:%a %d %b, %H:%M}.{more}"
+
+    def _others(self, at: dt.datetime) -> str:
+        rest = [x for x in self.upcoming() if x != at]
+        if not rest:
+            return ""
+        return "Also set: " + ", ".join(f"{x:%a %H:%M}" for x in rest[:5]) + ("…" if len(rest) > 5 else "") + "."
 
     def clear(self) -> str:
         """ "Cancel my alarm": the one that's set. With a daily alarm, that morning is skipped (it would come back)."""
         at = self.next()
+        was_daily = bool((jload(self.file, {}) or {}).get("daily"))
         had = self.app.scheduler.cancel(f"{self.id}:ring")
         self.app.scheduler.cancel(f"{self.id}:prep")
         jsave(self.file, {})
-        if at and at > now() and self.setting("daily"):
+        if at:
+            self._mine_drop(lambda x: x == at)
+        if at and at > now() and self.setting("daily") and was_daily:
             self._skip_add(at.date())
         self._plan()
         self._poke()
@@ -258,6 +323,8 @@ class Alarm(Module):
         if not had:
             return "There was no alarm set."
         nxt = self.next()
+        if nxt and at and not (jload(self.file, {}) or {}).get("daily"):  # the next one you set takes its place
+            return f"Alarm off for {at:%a %d %b, %H:%M}. Next: {nxt:%a %d %b, %H:%M}. " + self._others(nxt)
         if nxt and at:
             return (
                 f'Alarm off for {at:%a %d %b}. Your daily alarm is back {nxt:%a %d %b, %H:%M} ("turn my daily '
@@ -265,9 +332,42 @@ class Alarm(Module):
             )
         return "Alarm off."
 
+    def clear_at(self, hhmm: str) -> str:
+        """ "Cancel the 10:30 alarm": the soonest alarm at that time of day."""
+        at = next((x for x in self.upcoming() if f"{x:%H:%M}" == hhmm), None)
+        if at is None:
+            have = self.upcoming()
+            return f"There's no alarm at {hhmm}." + (
+                " Set: " + ", ".join(f"{x:%a %H:%M}" for x in have[:5]) + "." if have else ""
+            )
+        if at == self.next():
+            return self.clear()
+        self._mine_drop(lambda x: x == at)
+        self._poke()
+        self.app.events.emit("alarm_cleared", at=at.isoformat())
+        return f"Alarm off for {at:%a %d %b, %H:%M}. " + self._others(at)
+
+    def clear_all(self) -> str:
+        """ "Cancel all my alarms": every one you set (the daily alarm stays; "turn my daily alarm off" stops it)."""
+        n = len(self._mine_drop(lambda x: True))
+        info = jload(self.file, {}) or {}
+        if self.next() and not info.get("daily"):
+            self.app.scheduler.cancel(f"{self.id}:ring")
+            self.app.scheduler.cancel(f"{self.id}:prep")
+            jsave(self.file, {})
+            n = max(n, 1)
+        self._plan()
+        self._poke()
+        self.keep_awake()
+        self.app.events.emit("alarm_cleared", all=True, n=n)
+        nxt = self.next()
+        out = f"All {n} alarm{'s' if n != 1 else ''} you set are off." if n else "You had no alarms set."
+        return out + (f" Your daily alarm stays: {nxt:%a %d %b, %H:%M}." if nxt else "")
+
     def skip(self, day: dt.date) -> str:
         """No alarm on that day (the daily one comes back after it)."""
         self._skip_add(day)
+        self._mine_drop(lambda x: x.date() == day)
         at = self.next()
         if at and at.date() == day and at > now():
             self.app.scheduler.cancel(f"{self.id}:ring")
@@ -362,7 +462,8 @@ class Alarm(Module):
 
     def script(self) -> str:
         """What the wake-up call goes through, with today's details."""
-        app, today = self.app, now().date()
+        app, t = self.app, now()
+        today = t.date()
         steps = []
         ck = app.modules.get("checkins")
         deferred = ck.deferred_steps() if ck is not None and app.is_on("checkins") else ""
@@ -377,9 +478,12 @@ class Alarm(Module):
         )
         if app.is_on("subjects"):
             cls = app.modules["subjects"].classes_on(today)
-            if cls:
-                names = ", ".join(f"{c['name']} ({c['start']})" for c in cls)
-                steps.append(f"Today's classes: {names}. Ask which they're skipping, if any (skip_class).")
+            later = [c for c in cls if str(c.get("start") or "") > f"{t:%H:%M}"]
+            if later:
+                names = ", ".join(f"{c['name']} ({c['start']})" for c in later)
+                steps.append(f"Classes still to come today: {names}. Ask which they're skipping, if any (skip_class).")
+            elif cls:  # a late wake-up: they can't have gone, so don't ask
+                steps.append("Today's classes are over already; don't ask whether they went.")
         if app.is_on("calendar"):
             evs = app.modules["calendar"].call_brief().get("calendar_today")
             if evs:
@@ -411,7 +515,10 @@ class Alarm(Module):
                 + " (change_checkin moves or skips it), and whether they want a midday check-in."
             )
         steps.append("Wish them a good day.")
-        head = "Wake-up call. Say good morning, briefly and warmly; they've just woken up, so keep it light."
+        head = (
+            "Wake-up call. Say good morning, briefly and warmly; they've just woken up, so keep it light. It's "
+            f"{t:%H:%M} now (their local time): plan from now on; anything planned earlier today is past."
+        )
         return "\n".join([head] + [f"{i}. {x}" for i, x in enumerate(steps, 1)])
 
     def call_reschedule(self, key: str, at: dt.datetime) -> str | None:
@@ -466,8 +573,11 @@ class Alarm(Module):
 
     def status(self) -> str:
         """What's set, in a sentence or two: the next alarm, the daily one, the days that are skipped."""
-        at, daily = self.next(), self.setting("daily")
-        lines = [f"Alarm: {at:%a %d %b, %H:%M}." if at else "No alarm set. /alarm 6:45 sets one."]
+        ups, daily = self.upcoming(), self.setting("daily")
+        if len(ups) > 1:
+            lines = ["Alarms: " + "; ".join(f"{x:%a %d %b, %H:%M}" for x in ups) + "."]
+        else:
+            lines = [f"Alarm: {ups[0]:%a %d %b, %H:%M}." if ups else "No alarm set. /alarm 6:45 sets one."]
         if daily:
             days = self.setting("days") or DAYS
             every = "every day" if len(days) == 7 else ", ".join(days)
@@ -495,6 +605,8 @@ class Alarm(Module):
         first = p.get("first", True)
         if j.get("at") and first:  # the night this alarm ends (snoozes and repeat rings keep the first one's)
             jsave(self.last_file, {k: j.get(k) for k in ("at", "daily", "set_at")})
+        if first:
+            self._mine_save(self.mine())  # the one ringing (and any that rang while this computer slept) leave the list
         if p.get("missed") or p.get("late_s"):  # this computer was asleep then; the call line rang it already
             self._plan(ringing=True)  # the next one goes to the line now
             return
@@ -507,12 +619,9 @@ class Alarm(Module):
 
     # --------------------------------------------------------------------------- what the call line hears
     def call_schedule(self) -> list[dict]:
-        at = self.next()
-        if not at:
-            return []
-        return [
-            {"at": int(at.timestamp()), "reason": self.setting("reason") or "Wake-up call", "alarm": True, "key": KEY}
-        ]
+        """Every alarm still to ring, so the line rings each one while this computer sleeps."""
+        why = self.setting("reason") or "Wake-up call"
+        return [{"at": int(at.timestamp()), "reason": why, "alarm": True, "key": KEY} for at in self.upcoming()]
 
     def call_outcome(self, key: str, outcome: str) -> bool:
         if key != KEY:
@@ -541,8 +650,9 @@ class Alarm(Module):
             Tool(
                 "set_alarm",
                 'Set the wake-up alarm (a call that rings like an alarm), e.g. "7:30" or "tomorrow 6:45"; '
-                '"off" clears the one that\'s set; "skip tomorrow" or "skip friday": no alarm that day (the daily '
-                'one comes back after); "daily 7:00" or "daily off": the daily alarm.',
+                '"off" clears the next one, "off 10:30" the one at 10:30, "off all" every one set (several can be '
+                'set: a new one doesn\'t replace the others); "skip tomorrow" or "skip friday": no alarm that day '
+                '(the daily one comes back after); "daily 7:00" or "daily off": the daily alarm.',
                 self._tool,
                 {"time": arg()},
                 ("time",),
@@ -573,15 +683,20 @@ class Alarm(Module):
         t = str(a.get("time", "")).strip()
         if re.fullmatch(r"(?i)off|none|cancel|clear", t):
             return self.clear()
+        if re.fullmatch(r"(?i)(?:off|cancel|clear) all|all off", t):
+            return self.clear_all()
         m = re.fullmatch(r"(?i)daily\s+(.+)", t)
         if m:
             if re.fullmatch(r"(?i)off|none|stop|no", m.group(1).strip()):
                 return self.set_daily(None)
             hhmm = _clock_time(m.group(1))
             return self.set_daily(hhmm) if hhmm else f"I couldn't read {m.group(1)!r}."
-        m = re.fullmatch(r"(?i)(?:skip|no alarm|none|off)\s+(?:on\s+)?(.+)", t)
+        m = re.fullmatch(r"(?i)(?:skip|no alarm|none|off|cancel|clear)\s+(?:on\s+)?(.+)", t)
         if m:
             day = self._day(m.group(1))
+            hhmm = None if day else _clock_time(m.group(1))
+            if hhmm:
+                return self.clear_at(hhmm)
             return self.skip(day) if day else f"I couldn't tell which day {m.group(1)!r} is."
         try:
             return self.set(parse_when(t).replace(tzinfo=None))
@@ -594,7 +709,7 @@ class Alarm(Module):
             Command(
                 "alarm",
                 "the wake-up call: /alarm 6:45, /alarm tomorrow 7, /alarm off, /alarm skip friday, "
-                "/alarm daily 7:00 (or daily off)",
+                "/alarm daily 7:00 (or daily off), /alarm off 10:30 (that one), /alarm off all",
                 self._cmd,
             )
         ]
@@ -609,6 +724,16 @@ class Alarm(Module):
             r"^(?:please )?(?:wake me(?: up)?|set (?:an |my |the )?alarm(?: for)?) (?:at |for |in )?(.+)$", re.I
         )
         off_pat = re.compile(r"^(?:cancel|turn off|delete|remove|clear|no) (?:my |the )?alarm\b", re.I)
+        all_off = re.compile(
+            r"^(?:please )?(?:cancel|turn off|delete|remove|clear) (?:all|every(?: one of)?) (?:of )?"
+            r"(?:my |the )?alarms?\b",
+            re.I,
+        )
+        off_at = re.compile(
+            r"^(?:please )?(?:cancel|turn off|delete|remove|clear) (?:my |the )?(?:alarm (?:at |for )?(?P<t>[\d:.]+"
+            r"(?: ?[ap]m)?)|(?P<u>[\d:.]+(?: ?[ap]m)?) alarm)$",
+            re.I,
+        )
         daily_off = re.compile(
             r"^(?:please )?(?:(?:turn|switch) (?:off )?(?:my |the )?daily alarm(?: off)?|(?:stop|disable|cancel|remove|"
             r"delete) (?:my |the )?daily alarm|no (?:more )?daily alarm)\b",
@@ -641,10 +766,19 @@ class Alarm(Module):
             t = text.strip().rstrip(".!")
             if daily_off.match(t):
                 return {"daily_off": True}
+            if all_off.match(t):
+                return {"all_off": True}
+            m = off_at.match(t)
+            hhmm = _clock_time((m.group("t") or m.group("u")).replace(".", ":")) if m else None
+            if hhmm:
+                return {"off_at": hhmm}
             m = skip_pat.match(t)
             words = next((g for g in m.group("a", "b", "c", "d") if g), "") if m else ""
             if m and words:
                 day = self._day(words)
+                hhmm = None if day else _clock_time(words.replace(".", ":"))
+                if hhmm:
+                    return {"off_at": hhmm}
                 return {"skip": day} if day else None
             if off_pat.match(t):
                 return {"off": True}
@@ -659,12 +793,22 @@ class Alarm(Module):
         def run(msg, sl):
             if sl.get("daily_off"):
                 return self.set_daily(None)
+            if sl.get("all_off"):
+                return self.clear_all()
+            if sl.get("off_at"):
+                return self.clear_at(sl["off_at"])
             if sl.get("skip"):
                 return self.skip(sl["skip"])
             return self.clear() if sl.get("off") else self.set(sl["at"])
 
         return [
-            Intent("alarm", "wake me at …, no alarm tomorrow, turn my daily alarm off", match, run),
+            Intent(
+                "alarm",
+                "wake me at …, cancel the 10:30 alarm, cancel all my alarms, no alarm tomorrow, turn my daily alarm "
+                "off",
+                match,
+                run,
+            ),
             Intent(
                 "alarm_status",
                 "do I have any alarms? when is my alarm?",

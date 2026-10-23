@@ -840,6 +840,54 @@ def profile_run(a) -> int | None:
         app.close()
 
 
+def ntfy_token(clear: bool) -> int:
+    """`kurooto ntfy-token`: keep an ntfy account token (typed without showing it, or KUROOTO_NTFY_TOKEN), checked
+    with ntfy first; then the call line is deployed again so it publishes with it too. --clear: without one again."""
+    import urllib.error
+    import urllib.request
+
+    from kurooto.app import App
+    from kurooto.modules.calls import deploy
+
+    app = App()
+    try:
+        if clear:
+            app.secrets.delete("calls.ntfy_token")
+            print("No ntfy token now: rings are published without one.")
+        else:
+            print("Make a free account at https://ntfy.sh/signup, then Account → Access tokens → Create a token.")
+            token = _secret("ntfy token (tk_...): ", "KUROOTO_NTFY_TOKEN").strip()
+            if not token:
+                print("No token given: nothing changed.")
+                return 1
+            server = (app.settings.get("calls.ntfy_server") or "https://ntfy.sh").rstrip("/")
+            req = urllib.request.Request(  # noqa: S310 (your ntfy server, https)
+                f"{server}/v1/account", headers={"Authorization": f"Bearer {token}"}
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+                    user = json.loads(r.read() or b"{}").get("username") or ""
+            except urllib.error.HTTPError as e:
+                print("ntfy didn't accept that token." if e.code in (401, 403) else f"ntfy answered HTTP {e.code}.")
+                return 1
+            except OSError as e:
+                print(f"Couldn't reach ntfy: {e}"[:200])
+                return 1
+            if not user or user == "*":
+                print("ntfy didn't take that as an account's token.")
+                return 1
+            app.secrets.set("calls.ntfy_token", token)
+            print(f"Kept: rings from this computer are published as {user}.")
+        if not deploy.needs_redeploy(app):
+            return 0
+        print("Your call line is deployed again with it (a minute or two)...")
+        ok, msg = deploy.deploy(app, progress=print)
+        print("Done." if ok else f"The call line couldn't be updated: {msg} (it tries again at 05:10).")
+        return 0 if ok else 1
+    finally:
+        app.close()
+
+
 def profile_restore(a) -> int:
     from kurooto.app import App
     from kurooto.core import profile as core
@@ -1851,6 +1899,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     ro = sub.add_parser("rotate", help="new keys for your call line (a lost phone, a backup that got out)")
     ro.add_argument("--yes", action="store_true", help="don't ask first (every paired phone has to pair again)")
+    nt = sub.add_parser("ntfy-token", help="an ntfy account token, so phone rings aren't refused for a shared address")
+    nt.add_argument("--clear", action="store_true", help="publish without a token again")
     home_parsers(sub)
     profile_parsers(sub)
     term_parsers(sub)
@@ -1959,6 +2009,8 @@ def main(argv: list[str] | None = None) -> int:
         return update(a.now)
     if a.cmd == "uninstall":
         return uninstall(a.keep_data, a.revoke)
+    if a.cmd == "ntfy-token":
+        return ntfy_token(a.clear)
     if a.cmd == "rotate":  # (revoke) core/leave.py; the running Kurooto makes the new pairing link
         from kurooto.core import leave
 

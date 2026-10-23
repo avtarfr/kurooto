@@ -80,7 +80,7 @@ More: [Reminders and deadlines](reminders-and-deadlines.md), [Check-ins and jour
 | `/phones` | your paired phones | Phone calls |
 | `/unpair <id>` | remove a paired phone | Phone calls |
 | `/lessons`, `/lessons forget 2`, `/lessons clear` | what calls have learned from looking back; forget one, or all | Phone calls |
-| `/alarm 6:45`, `/alarm tomorrow 7`, `/alarm off`, `/alarm skip friday`, `/alarm skip tomorrow`, `/alarm daily 7:00`, `/alarm daily off`, `/alarm` | the wake-up call; `/alarm` alone shows what's set | Morning alarm |
+| `/alarm 6:45`, `/alarm tomorrow 7`, `/alarm off`, `/alarm off 10:30`, `/alarm off all`, `/alarm skip friday`, `/alarm skip tomorrow`, `/alarm daily 7:00`, `/alarm daily off`, `/alarm` | the wake-up call; `/alarm` alone shows what's set | Morning alarm |
 
 More: [Phone calls](calls.md), [Phone app](phone-app.md).
 
@@ -223,7 +223,7 @@ the AI. A request that asks a question only matches the requests below that answ
 | "call me now", "ring me about the essay" | a call right away, even during a class or a `/hold` (you asked for it) | Phone calls |
 | "call me" with only a past time in it | asks when instead of booking | Phone calls |
 | "cancel that call", "cancel the 12:00 call" | cancels a booked call, or lists them with Cancel buttons | Phone calls |
-| "wake me at 6:45", "no alarm tomorrow", "cancel Friday's alarm", "cancel my alarm", "turn my daily alarm off" | the wake-up alarm | Morning alarm |
+| "wake me at 6:45", "no alarm tomorrow", "cancel Friday's alarm", "cancel my alarm", "cancel the 10:30 alarm", "cancel all my alarms", "turn my daily alarm off" | the wake-up alarm | Morning alarm |
 | "do I have any alarms?", "when is my alarm?" | the alarm that's set | Morning alarm |
 | "I'm awake", "I just woke up", "I'm up" | the morning call now, planned from the current time (with Morning alarm on) | Morning alarm |
 | "no calls for 2 hours", "don't call me until 6", "hold calls until 18:00" | no calls until then (a named other day goes to the AI) | Telegram |
@@ -305,6 +305,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto idle away \| back` | for your idle tool: you've stepped away, or you're back |
 | `kurooto mcp` | Kurooto's tools for agent programs (an MCP server) |
 | `kurooto export-skills on \| off \| status` (`--to agy,agents,claude`) | your skills as /commands in agent programs |
+| `kurooto ntfy-token` (`--clear`) | an ntfy account token, so your phone's rings aren't refused because many people share your internet address (asks for it without showing it, checks it with ntfy, then updates your call line) |
 | `kurooto reserve` | write Markdown copies of alarms, deadlines, calendar and settings for AI programs |
 | `kurooto cases [list \| check \| export \| forget <id \| all>]` (`--out`, `--all`) | test cases from the Wrong button |
 | `kurooto classpack check <file>`, `export --checked today [--from <note>] [--title …] [--elective …] [--out …]`, `import <file>` | class packs |

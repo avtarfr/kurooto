@@ -178,7 +178,7 @@ def test_keep_awake_until_the_alarm(calls, monkeypatch, no_kill):
     a.call_outcome("alarm:next", "missed")  # a repeat ring 5 minutes on: still held
     assert a.inhibitor.held()
     a.call_outcome("alarm:next", "answered")
-    a.clear()
+    a.clear_all()  # (it never rang here, so the 06:30 one is still to come: every alarm off)
     assert not a.inhibitor.held()
     # a daily alarm set in the morning doesn't hold all day: from 12 hours before
     clock.t = at(D, 8, 0)

@@ -30,8 +30,8 @@
 //     (/call-report) for `kurooto doctor`.
 // Vars: OWNER_ID, TZ, PUBLIC_URL, VERSION, LIVE_MODEL, NTFY_SERVER, NOTES_REPO (optional), GEMINI_BASE_URL and
 // TELEGRAM_API (tests).
-// Secrets: CALL_SECRET, CONNECTOR_SECRET, GEMINI_API_KEY, NTFY_TOPIC, NTFY_KEY, VAPID_JWK, VAPID_PUBLIC, and
-// GITHUB_TOKEN (optional: read-only access to the notes repo).
+// Secrets: CALL_SECRET, CONNECTOR_SECRET, GEMINI_API_KEY, NTFY_TOPIC, NTFY_KEY, VAPID_JWK, VAPID_PUBLIC, NTFY_TOKEN
+// (empty unless you gave one: an ntfy account's token) and GITHUB_TOKEN (optional: read-only access to the notes repo).
 import { GoogleGenAI } from '@google/genai';
 import { cleanHistory, cleanLines, googleError, spoken } from '../web/fallback.js';
 
@@ -103,14 +103,18 @@ async function webPush(env, sub) {
   return r.status;
 }
 
+// With NTFY_TOKEN (an ntfy account token) ntfy counts its limits for that account, not for Cloudflare's shared
+// addresses (a 429 there means the phone doesn't ring); a token ntfy refuses falls back to publishing without one.
 async function publish(env, fields) {
   if (!env.NTFY_TOPIC || !env.NTFY_KEY) return false;
   const message = await sealK1(env.NTFY_KEY, JSON.stringify(fields));
-  const r = await fetch((env.NTFY_SERVER || 'https://ntfy.sh').replace(/\/+$/, '') + '/', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ topic: env.NTFY_TOPIC, message, priority: fields.priority || 3, tags: ['k1'] }),
-  });
-  return r.ok;
+  const body = JSON.stringify({ topic: env.NTFY_TOPIC, message, priority: fields.priority || 3, tags: ['k1'] });
+  for (const token of env.NTFY_TOKEN ? [env.NTFY_TOKEN, ''] : ['']) {
+    const headers = { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) };
+    const r = await fetch((env.NTFY_SERVER || 'https://ntfy.sh').replace(/\/+$/, '') + '/', { method: 'POST', headers, body });
+    if (!(token && (r.status === 401 || r.status === 403))) return r.ok;
+  }
+  return false;
 }
 
 // Web Push to every device that has it on; drops subscriptions the push service says are gone.

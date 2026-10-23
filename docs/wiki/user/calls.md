@@ -344,15 +344,17 @@ so it rings even on silent. Your call line places it, so it rings even if your c
 
 | Command | Does |
 |---|---|
-| `/alarm` | What's set: the next alarm, the daily alarm and its days, skipped days. |
-| `/alarm 6:45`, `/alarm tomorrow 7`, `/alarm 7:30am` | Sets the alarm. |
-| `/alarm off` | Clears the alarm that's set. With a daily alarm, that morning is skipped and the daily one comes back after. |
+| `/alarm` | What's set: every alarm still to ring, the daily alarm and its days, skipped days. |
+| `/alarm 6:45`, `/alarm tomorrow 7`, `/alarm 7:30am` | Sets an alarm. Set as many as you like (up to 10): a new one doesn't replace the others. |
+| `/alarm off` | Clears the next alarm. With a daily alarm, that morning is skipped and the daily one comes back after. |
+| `/alarm off 10:30` | Clears the alarm at 10:30, leaving the others. |
+| `/alarm off all` | Clears every alarm you set; the daily alarm stays. |
 | `/alarm skip friday`, `/alarm skip tomorrow` | No alarm that day; the daily alarm is back the day after. |
 | `/alarm daily 7:00` | The daily alarm. |
 | `/alarm daily off` | Stops the daily alarm (an alarm you set for one morning stays). |
 
-**Plain English:** "wake me at 6:45", "wake me up at 7 tomorrow", "set my alarm for 7", "cancel my alarm", "no alarm
-tomorrow", "cancel Friday's alarm", "don't wake me on Saturday", "turn my daily alarm off", "do I have any alarms?",
+**Plain English:** "wake me at 6:45", "wake me up at 7 tomorrow", "set my alarm for 7", "cancel my alarm" (the next
+one), "cancel the 10:30 alarm", "cancel all my alarms", "no alarm tomorrow", "cancel Friday's alarm", "don't wake me on Saturday", "turn my daily alarm off", "do I have any alarms?",
 "when is my alarm?". On the evening check-in call: "wake me at 7". The `/goodnight 7:00` skill sets it too.
 "Tomorrow" said at 2 am means the coming morning (the day runs from `checkins.day_starts`, 05:00).
 
@@ -363,7 +365,9 @@ tomorrow", "cancel Friday's alarm", "don't wake me on Saturday", "turn my daily 
 - Not answered: rings again 5 minutes later, up to twice more (`alarm.retries`).
 - **Snooze** on the ringing phone: 10 minutes (`alarm.snooze_min`). "Call me back in ten minutes" on the call does the
   same.
-- One alarm per morning: one you set for a morning replaces the daily alarm.
+- Several alarms: each one you set waits its turn, and the next takes over once one has rung. Your call line holds
+  them all, so each rings even with this computer asleep. One you set for a morning replaces the daily alarm that
+  morning.
 - The daily alarm is always with your call line well before the night: the next one is sent as soon as one has rung,
   at start, after the computer wakes, and checked every 30 minutes.
 

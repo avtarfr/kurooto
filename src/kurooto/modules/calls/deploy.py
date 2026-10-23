@@ -139,6 +139,7 @@ def ensure_secrets(app) -> dict:
         "NTFY_KEY": sec.get("calls.ntfy_key"),
         "VAPID_JWK": sec.get("calls.vapid_jwk"),
         "VAPID_PUBLIC": sec.get("calls.vapid_public"),
+        "NTFY_TOKEN": sec.get("calls.ntfy_token") or "",  # always sent: clearing it must clear the line's copy too
         **({"GITHUB_TOKEN": sec.get("calls.github_token")} if sec.get("calls.github_token") else {}),
     }
 
@@ -415,6 +416,7 @@ def fingerprint(app) -> str:
         s.get("calls.ntfy_server") or "",
         s.get("calls.notes_repo") or "",
         "gh" if app.secrets.get("calls.github_token") else "",
+        app.secrets.get("calls.ntfy_token") or "",  # a new or cleared ntfy token goes to the line (hashed here)
     ]
     return hashlib.sha256("|".join(parts).encode()).hexdigest()[:16]
 

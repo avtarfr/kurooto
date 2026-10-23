@@ -677,11 +677,6 @@ class Mind {
   }
   meta() {
     $("#mind-meta").textContent = `${this.nodes.size} notes · ${this.links.length} links · ${new Set([...this.nodes.values()].map((n) => n.neighborhood)).size} neighborhoods`;
-    const btn = $("#mind-recent-btn");
-    if (btn) {
-      btn.textContent = this.showRecent ? "Recent: On" : "Recent: Off";
-      btn.classList.toggle("on", this.showRecent);
-    }
   }
   toggleRecent() {
     this.showRecent = !this.showRecent;
@@ -879,9 +874,11 @@ class Mind {
       ctx.fillStyle = rgba(PAL.fg, 0.5); ctx.fillText("legend ▸", x0 + dots + 6, 26);
       this.legendRect = { x0: x0 - 2, y0: 14, x1: x1 + 2, y1: 32 };
     }
-    const hotHour = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 3600).length;
-    const hotDay = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 86400).length;
-    say(ctx, `Recent: ${this.showRecent ? "ON" : "OFF"} · [R] toggle (${hotHour}h / ${hotDay}d)`, 14, 26, this.showRecent ? PAL.peach : rgba(PAL.fg, 0.55), "left", `11px ${FONT}`);
+    if (this.showRecent) { // only while it's on: R (or a click on this line) turns it off
+      const hotHour = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 3600).length;
+      const hotDay = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 86400).length;
+      say(ctx, `Recent: ${hotHour} in the last hour, ${hotDay} today · R: off`, 14, 26, PAL.peach, "left", `11px ${FONT}`);
+    }
     const recent = [...this.nodes.values()].sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 5);
     const recOpen = LEGENDS || inside(this.mouse, this.recentRect);
     const shown = recOpen ? recent : recent.slice(0, 1);
@@ -899,18 +896,11 @@ class Mind {
   openSearch() { const s = $("#mind-search"); s.classList.remove("hidden"); s.value = this.query; s.focus(); }
   wire() {
     const cv = this.cv; let down = null;
-    const recentBtn = $("#mind-recent-btn");
-    if (recentBtn) {
-      recentBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.toggleRecent();
-      });
-    }
     cv.addEventListener("wheel", (e) => { e.preventDefault(); this.autofit = false; const r = cv.getBoundingClientRect(), before = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
       this.view.k = clamp(this.view.k * Math.exp(-e.deltaY * 0.0015), 0.08, 6); const after = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
       this.view.x += after.x - before.x; this.view.y += after.y - before.y; }, { passive: false });
     cv.addEventListener("mousedown", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-      if (x < 240 && y < 40) { this.toggleRecent(); return; }
+      if (this.showRecent && x < 240 && y < 40) { this.toggleRecent(); return; }
       const n = this.pick(x, y);
       down = { x, y, n, vx: this.view.x, vy: this.view.y, moved: false }; if (n) this.dragging = n; });
     window.addEventListener("mousemove", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
