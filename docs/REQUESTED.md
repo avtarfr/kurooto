@@ -42,9 +42,12 @@ Standing plans, never struck through.
   hit) creates projects with whoever they're with ("got a project under Prof X": the project, its supervisor, and
   meetings from then on), classes from "every Monday at 9 I have a lab", routines, a deadline's course, subject
   aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.
-- **Preview the organic blobs in the phone app**, as in the dashboard.
-- **A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
-  Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.
+- ~~**Preview the organic blobs in the phone app**, as in the dashboard.~~ (0.6.0: behind the main screen, in the
+  palette or Material You's accents, still with "Remove animations" or battery saver)
+- ~~**A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
+  Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.~~ (0.6.0: the
+  0.5.16 look carried through the chat, with a top app bar, and the widgets; bottom navigation waits for the Today
+  screen)
 - **Make the UI more intuitive**, and keep improving the setup wizard's elements. (0.5.22: settings with a few values are lists, JSON
   settings shown whole, "Saved" under the setting changed, features that are on first, the setup page's features step
   shows your picks first with the rest folded, Telegram's card links to its setup step; Claude Code is named "Claude

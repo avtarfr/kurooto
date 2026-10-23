@@ -50,12 +50,12 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 
 - The app isn't on the Play Store: it's installed from your own computer's pairing page, Android asks you to allow
   that, and Play Protect may warn first.
-- It looks plain (no Material design yet), and has no home screen widget yet.
+- The home screen widgets show what's waiting for you, not what's due (that's Today, in the app).
 - Today, the phone's own copy of the wake-up alarm and Done / Snooze on notifications (0.6.0) are new and haven't been
   tried on many real phones yet. The phone's alarm knows only the alarms your computer last sent: one you set while the
   phone was offline reaches it when it's back online, and alarms less than 5 minutes apart ring on the phone as one.
-- Today's list is read-only apart from Done and +1 on what's due: check-ins, quiz cards and the rest of the dashboard
-  are still on the computer.
+- Today's list is read-only apart from Done and +1 on what's due (check-ins and quiz questions are cards under
+  Waiting for you); the rest of the dashboard is still on the computer.
 - Phone makers that close background apps hard can still delay rings; the app's checklist says what to change, but not
   every phone has been tried.
 

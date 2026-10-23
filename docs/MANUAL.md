@@ -2886,6 +2886,16 @@ ring a few minutes late. *Undo:* tap **Ring on this phone too** on Today's alarm
 reminder's Done takes it off your phones). A reminder sent with the lid shut gets Done, +10 min and +1 h kept on the
 phone. Tap the notification for the rest (Reply, Not mine).
 
+**Widgets, Quick note, the tile.** Two home screen widgets (long-press the home screen → Widgets → Kurooto): **Talk
+to Kurooto** (1x1) opens the chat ready to type; **Talk, and what's waiting** (2x1) also shows the newest question or
+message waiting for you (looked up every 30 minutes, when one arrives or is answered, and when you open the app).
+**Quick note**: long-press the app's icon (Android 7.1+), or add the **Quick note** tile to Quick Settings (Android 7+).
+Type a note and tap **Save to notes**: it goes to your notes' `inbox/` as `<date>-quick-note.md` like a shared file
+(with Chat on, the AI files it), and waits on your call line while the computer is off. A note that couldn't be sent
+stays in the box.
+*Undo:* remove the widget or the tile. *Leaves your computer:* nothing new; the note travels like a shared file, and
+the 2x1 widget asks your call line what's waiting as the app does.
+
 ### iPhone
 iPhones use Kurooto as a web app on the Home Screen (iOS 16.4 or newer).
 
@@ -3032,7 +3042,9 @@ use deep greens, like the website. If you liked the earlier pink and rose colour
 `look.palette` to `rose` and reload the page; `kuro` (the default) brings the greens back. The setup and morning pages
 follow your system's light or dark mode; the dashboard is always dark. Your call line's pages on the phone stay green.
 The Android app follows the phone instead: light or dark as the phone is set, in the wallpaper's colours on Android 12
-and newer (Material You), Kurooto's greens on older phones; its ringing screen is always dark.
+and newer (Material You), Kurooto's greens on older phones; its ringing screen is always dark. Its main screen has the
+dashboard's slowly moving blobs behind it; they stand still with the phone's **Remove animations** setting or in
+battery saver.
 
 Only your computer can open the dashboard; it needs a key that only this computer has. On Linux, where several people
 can be signed in to one computer at once, it also checks that the page and every request come from your own user

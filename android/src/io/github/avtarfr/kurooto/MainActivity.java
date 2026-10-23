@@ -28,7 +28,7 @@ import java.util.List;
 
 /** Pairing (first run), then: call Kurooto, chat with it (ChatActivity), what's waiting for you (questions,
  *  approvals, messages) and for your computer (the phone outbox), ringtones, a checklist of what the phone must
- *  allow, and updates. */
+ *  allow, and updates. The organic blobs (BlobView) move slowly behind it. */
 public class MainActivity extends Activity {
     static final int SDK = Build.VERSION.SDK_INT;
     static final String UPDATES = "https://avtarfr.github.io/kurooto/android.json";
@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
     }
 
     private void build() {
-        box = Ui.page(this);
+        box = Ui.page(this, new BlobView(this)); // the organic blobs behind it all (still with "Remove animations" on)
         if (Prefs.paired(this)) paired(); else unpaired();
     }
 
@@ -187,6 +187,7 @@ public class MainActivity extends Activity {
             h.post(() -> {
                 if (into != waiting) return;
                 if (!name.equals(Prefs.assistant(this))) { build(); return; } // renamed on the computer
+                if (items != null) TalkWidget.waiting(this, items); // the 2x1 widget, without asking the line again
                 if (items == null || items.length() == 0) return;
                 into.addView(Ui.heading(this, "Waiting for you"));
                 for (int i = items.length() - 1; i >= 0; i--) {

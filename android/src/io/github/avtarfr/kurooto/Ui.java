@@ -15,6 +15,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -31,6 +32,7 @@ import android.widget.TextView;
  *   card.addView(Ui.body(this, "..."));
  *   col.addView(card);
  *   col.addView(Ui.filled(this, "Send"));              // or tonal, outlined, flat
+ * A screen that isn't one scrolling page (the chat) starts with appBar(this, title, back) instead of a headline.
  * Every view comes with LinearLayout params (full width, a small gap above), so addView(v) is enough.
  */
 final class Ui {
@@ -66,15 +68,46 @@ final class Ui {
     // ---------- pages ----------
     /** A full-screen page, set as the activity's content: it scrolls, and keeps clear of the status and navigation
      *  bars (Android 15 draws apps behind them). Returns the column to fill. */
-    static LinearLayout page(Activity a) {
+    static LinearLayout page(Activity a) { return page(a, null); }
+
+    /** A page with a view behind it, filling the screen under the bars (the main screen's blobs, BlobView). */
+    static LinearLayout page(Activity a, View behind) {
         ScrollView sv = new ScrollView(a);
         sv.setFitsSystemWindows(true);
-        sv.setBackgroundColor(color(a, R.color.k_bg));
         LinearLayout col = column(a);
         col.setPadding(dp(a, 16), dp(a, 24), dp(a, 16), dp(a, 32));
         sv.addView(col, new ScrollView.LayoutParams(MATCH, WRAP));
-        a.setContentView(sv);
+        if (behind == null) {
+            sv.setBackgroundColor(color(a, R.color.k_bg));
+            a.setContentView(sv);
+        } else {
+            FrameLayout f = new FrameLayout(a);
+            f.setBackgroundColor(color(a, R.color.k_bg));
+            f.addView(behind, new FrameLayout.LayoutParams(MATCH, MATCH));
+            f.addView(sv, new FrameLayout.LayoutParams(MATCH, MATCH));
+            a.setContentView(f);
+        }
         return col;
+    }
+
+    /** A small top app bar (64dp): a back arrow when onBack is given, then the screen's title on one line. For a
+     *  screen that isn't a scrolling page (the chat); pages start with headline() instead. */
+    static LinearLayout appBar(Activity a, String title, View.OnClickListener onBack) {
+        LinearLayout bar = row(a);
+        bar.setMinimumHeight(dp(a, 64));
+        bar.setPadding(dp(a, 4), 0, dp(a, 16), 0);
+        if (onBack != null) {
+            ImageView back = icon(a, R.drawable.ic_back, color(a, R.color.k_fg));
+            back.setScaleType(ImageView.ScaleType.CENTER);
+            back.setBackground(ripple(color(a, R.color.k_fg), null, PILL));
+            back.setContentDescription("Back");
+            back.setOnClickListener(onBack);
+            bar.addView(back, new LinearLayout.LayoutParams(dp(a, 48), dp(a, 48)));
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, WRAP, 1);
+        lp.setMarginStart(dp(a, onBack != null ? 4 : 12));
+        bar.addView(lines(text(a, title, 22, false, color(a, R.color.k_fg)), 1), lp);
+        return bar;
     }
 
     /** The body of a dialog-themed activity (Kurooto.Dialog): it scrolls, padded like a Material dialog. */

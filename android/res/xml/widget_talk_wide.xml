@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the 2x1 widget: what's waiting is looked up every 30 minutes (Android's shortest), and at once when a question
+     arrives or is answered, or the app opens -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp" android:minHeight="40dp"
+    android:minResizeWidth="110dp"
+    android:targetCellWidth="2" android:targetCellHeight="1"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_talk_wide"
+    android:previewLayout="@layout/widget_talk_wide"
+    android:resizeMode="horizontal"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_wide_desc" />
