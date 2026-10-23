@@ -264,6 +264,13 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `doubts.before_min` | `30` | open doubts come this long before the subject's next class |
 | `doubts.recent_h` | `3` | a doubt naming no subject is for the class that's on, or ended this many hours ago |
 
+### `dreaming`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `dreaming.loose_ends` | `true` | also the loose ends: your open doubts, unlinked notes, broken links, tasks past due |
+| `dreaming.when` | `"daily 07:30"` | when the morning message comes (it covers everything since the last one) |
+
 ### `drive_upload`
 
 | Setting | Default | What it does |

@@ -902,7 +902,8 @@ class Integrate(Module):
             line += f"; {n['flagged']} doubtful, {n.get('dropped', 0)} dropped after a second look"
         if n.get("failed"):
             line += f"; {n['failed']} batches failed"
-        self.app.notify(line + ".", kind="result", title="Concept graph", why="integrate.summary")
+        if not self.app.is_on("dreaming"):  # Dreaming's morning message has it then (modules/dreaming.py)
+            self.app.notify(line + ".", kind="result", title="Concept graph", why="integrate.summary")
         return line
 
     def card(self) -> dict:

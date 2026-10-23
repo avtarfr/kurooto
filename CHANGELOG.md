@@ -9,6 +9,12 @@
   computer; nothing from other people's news or a "didn't"; each change in one line with Undo, and `/inferred` lists
   them (`/inferred undo <id>`). Never alarms, calls, mail or code repositories.
 
+- **Dreaming** (a feature, off until you turn it on): everything Kurooto did while you slept in one morning message
+  at `dreaming.when` (07:30): books read into your notes, links tidied, handwritten notes linked, lessons from calls,
+  skills and facts learned, things set up from what you said; then the loose ends worth a look: your own open doubts
+  from the last two weeks, notes nothing links to yet, links that point nowhere, tasks past due, AI requests that
+  failed. It reads Kurooto's own log and your notes, so it costs nothing; the concept graph's own morning line folds
+  into it. `/dream` shows it any time.
 - **A deadline keeps its course**: the AI's `add_deadline` takes the subject (and whether it's an exam), so a mail's
   "Lab report" lands on the course page, Start-by and exam mode even when its title doesn't name the course.
 

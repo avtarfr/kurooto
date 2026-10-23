@@ -1,0 +1,177 @@
+"""Dreaming: Kurooto's work while you sleep, told once in the morning. Reading books into your notes (the concept
+graph and its daily garden), the notes brain's upkeep, the look back after calls, skills and facts it learned,
+handwritten notes it linked, things it set up from what you said: one message at dreaming.when ("While you slept"),
+with the loose ends worth a look (your own open doubts, notes nothing links to yet, links that point nowhere, tasks
+past due, AI requests that failed). Nothing new runs: it gathers what the night did from the event log and the
+features' own state, so it costs nothing. While it's on, the concept graph's own morning line is folded into it.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import re
+from pathlib import Path
+
+from kurooto.core.clock import now
+from kurooto.core.config import register_defaults
+from kurooto.core.state import jload, jsave
+from kurooto.modules.base import Command, Module
+
+register_defaults(
+    "dreaming",
+    {
+        "when": "daily 07:30",  # when the morning message comes (it covers everything since the last one)
+        "loose_ends": True,  # also the loose ends: your open doubts, unlinked notes, broken links, tasks past due
+    },
+)
+DOUBT = re.compile(r"(?ms)^## Doubts\n(.*?)(?=^#|\Z)")
+
+
+class Dreaming(Module):
+    id = "dreaming"
+    title = "Dreaming"
+    description = (
+        "Everything Kurooto did while you slept (books read into your notes, links tidied, what it learned, notes it "
+        "linked) in one morning message, with the loose ends worth a look."
+    )
+    privacy = "Stays on this computer: it only reads Kurooto's own log and your notes."
+
+    @property
+    def state_file(self) -> Path:
+        return self.app.paths.state / "dreaming.json"
+
+    def start(self):
+        self.every("morning", self.setting("when") or "daily 07:30", self.morning)
+
+    def commands(self):
+        return [Command("dream", "what Kurooto did since the last morning message, and the loose ends, now", self._cmd)]
+
+    def _cmd(self, msg, arg: str) -> str:
+        return self.report(send=False) or "Nothing happened overnight that's worth a line, and no loose ends."
+
+    # ------------------------------------------------------------------------------------- the morning
+    def morning(self, payload: dict | None = None) -> str:
+        return self.report(send=True)
+
+    def since(self) -> dt.datetime:
+        last = (jload(self.state_file, {}) or {}).get("at")
+        floor = now() - dt.timedelta(hours=30)
+        return max(floor, dt.datetime.fromisoformat(last)) if last else now() - dt.timedelta(hours=20)
+
+    def events(self, since: dt.datetime) -> list[dict]:
+        out = []
+        for e in self.app.events.tail(20000):
+            try:
+                if dt.datetime.fromisoformat(e["ts"]) > since:  # after the last message (to the second)
+                    out.append(e)
+            except (KeyError, ValueError):
+                continue
+        return out
+
+    def night(self, ev: list[dict]) -> list[str]:
+        """What the night did, one line per kind of work (nothing for work that didn't happen)."""
+        k = lambda name: [e for e in ev if e.get("kind") == name]  # noqa: E731
+        out = []
+        books, batches = k("book_read"), k("integrate_batch")
+        if batches:
+            new = sum(int(e.get("new") or 0) for e in batches)
+            links = sum(int(e.get("links") or 0) for e in batches)
+            out.append(
+                f"Read {len(batches)} stretches of your books into your notes: {new} new concept notes, {links} links."
+            )
+        if books:
+            pages = sum(int(e.get("pages") or 0) for e in books)
+            out.append(f"Took in {len(books)} new book{'s' if len(books) != 1 else ''} ({pages} pages).")
+        pruned = sum(int(e.get("links") or 0) for e in k("integrate_pruned"))
+        if pruned:
+            out.append(f"Tidied {pruned} links that pointed at notes that are gone.")
+        hw = k("handwritten_linked")
+        if hw:
+            out.append(f"Linked {len(hw)} handwritten note{'s' if len(hw) != 1 else ''} to their lecture and concepts.")
+        up = [e for e in k("gbrain_upkeep") if e.get("ok")]
+        if up:
+            out.append("Your notes brain ran its upkeep (links, facts, timelines).")
+        lessons = sum(int(e.get("lessons") or 0) for e in k("call_reviewed"))
+        if lessons:
+            out.append(
+                f"Learned {lessons} lesson{'s' if lessons != 1 else ''} for calls from looking back at them (/lessons)."
+            )
+        learned = len(k("learning_skill_learned")) + len(k("learning_skill_improved"))
+        if learned:
+            out.append(
+                f"Learned or improved {learned} skill{'s' if learned != 1 else ''} from your requests (/learned)."
+            )
+        facts = sum(int(e.get("n") or 0) for e in k("learning_remembered"))
+        if facts:
+            out.append(f"Kept {facts} thing{'s' if facts != 1 else ''} you said in your how-to-help-me note.")
+        inferred = k("inferred")
+        if inferred:
+            out.append(
+                f"Set up {len(inferred)} thing{'s' if len(inferred) != 1 else ''} from what you said (/inferred)."
+            )
+        return out
+
+    def loose_ends(self, ev: list[dict]) -> list[str]:
+        if not self.setting("loose_ends"):
+            return []
+        out = []
+        doubts = self.open_doubts()
+        if doubts:
+            more = f" (and {len(doubts) - 2} more)" if len(doubts) > 2 else ""
+            out.append("Your open doubts: " + "; ".join(d[:90] for d in doubts[:2]) + more + ".")
+        ig = self.app.modules.get("integrate")
+        if ig is not None and self.app.is_on("integrate"):
+            try:
+                m = ig.metrics()
+            except Exception:  # a graph mid-write: next morning
+                m = {}
+            if m.get("broken"):
+                out.append(f"{m['broken']} links point at notes that don't exist (/graph).")
+            if m.get("no_links_in"):
+                out.append(f"{m['no_links_in']} notes nothing links to yet; the daily garden takes some each day.")
+        dl = self.app.modules.get("deadlines")
+        if dl is not None and self.app.is_on("deadlines"):
+            late = [it for _i, it, h in dl.upcoming(0) if h < 0 and it["kind"] != "exam"]
+            if late:
+                out.append(
+                    f"{len(late)} task{'s' if len(late) != 1 else ''} past due: {dl.full_title(late[0])}"
+                    + (" and more." if len(late) > 1 else ".")
+                )
+        failed = [e for e in ev if e.get("kind") == "job_failed"]
+        if failed:
+            out.append(f"{len(failed)} AI request{'s' if len(failed) != 1 else ''} failed overnight (/jobs).")
+        return out
+
+    def open_doubts(self) -> list[str]:
+        """Doubts you wrote in the last two weeks (handwritten notes' Doubts sections, "DOUBT:" lines in notes)."""
+        root = Path(self.app.workspace)
+        cutoff = now().timestamp() - 14 * 86400
+        out = []
+        for f in root.rglob("*.md"):
+            try:
+                if ".git" in f.parts or f.stat().st_mtime < cutoff:
+                    continue
+                text = f.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            for block in DOUBT.findall(text):
+                out += [ln.lstrip("-* ").strip() for ln in block.splitlines() if ln.strip().startswith(("-", "*"))]
+        return [d for d in dict.fromkeys(out) if d][:20]
+
+    def report(self, send: bool = True) -> str:
+        start = self.since()
+        ev = self.events(start)
+        did, ends = self.night(ev), self.loose_ends(ev)
+        jsave(self.state_file, {"at": now().isoformat()}) if send else None
+        if not did and not ends:
+            return ""
+        parts = []
+        if did:
+            parts.append("While you slept:\n" + "\n".join(f"- {x}" for x in did))
+        if ends:
+            parts.append("Loose ends:\n" + "\n".join(f"- {x}" for x in ends))
+        text = "\n\n".join(parts)
+        if send:
+            self.app.notify(text, kind="result", title="Dreaming", why="dreaming.morning")
+        self.app.events.emit("dreaming_told", did=len(did), loose=len(ends), sent=send)
+        return text

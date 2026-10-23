@@ -444,6 +444,13 @@ arrives.
   Learns from its own work's `remember` part on (`Learning.picks_facts()`), `_run` appends `learning.REMEMBER_ASK` to
   the instructions, adds `chats` (the day's own requests, `Learning.chats`) to the input, and hands the answer's
   `remember` list to `Learning.keep_facts`, which keeps them without a tap.
+- **dreaming** (`modules/dreaming.py:Dreaming`): `morning` (`dreaming:morning`, `dreaming.when`) builds one message
+  from the event log since the last one (`since()`: `<state>/dreaming.json`, at most 30 h back): `night()` counts
+  `integrate_batch`, `book_read`, `integrate_pruned`, `handwritten_linked`, `gbrain_upkeep`, `call_reviewed`,
+  `learning_skill_learned`/`_improved`, `learning_remembered`, `inferred`; `loose_ends()` reads open doubts (`## Doubts`
+  bullets in notes changed in 14 days), `Integrate.metrics()` (broken, no links in), past-due tasks
+  (`Deadlines.upcoming`), `job_failed` events. No AI. `Integrate.summary` doesn't send its own line while it's on.
+  `/dream` shows it without marking it sent. Calm reason `dreaming.morning`.
 - **learning** (`modules/learning.py:Learning`, requires `chat`, `extra = True`): "Learns from its own work", four parts
   each behind a setting (`learning.search`, `skills`, `corrections`, `remember`; `part(name)` is the feature and the
   part both on) and a card toggle (`card`, `card_action`, `PARTS`).

@@ -354,3 +354,18 @@ computer, with no AI. It never sets alarms, places calls, sends anything or atta
 
 `/inferred` lists what was set up, newest first; `/inferred undo <id>` (or the Undo button) takes one back. Turn it off
 with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`.
+
+## Dreaming
+
+Turn on **Dreaming** (Features) and Kurooto's night comes to you as one message in the morning (`dreaming.when`, 07:30
+by default) instead of several:
+
+- **While you slept:** how much of your books was read into your notes (new concept notes, links), new books taken in,
+  broken links tidied, handwritten notes linked, lessons the calls learned (`/lessons`), skills and facts learned
+  (`/learned`), things set up from what you said (`/inferred`).
+- **Loose ends:** your own open doubts from the last two weeks (the Doubts of your handwritten notes), notes nothing
+  links to yet, links that point at notes that don't exist, tasks past due, AI requests that failed overnight.
+
+Nothing new runs for it: it reads Kurooto's own log and your notes, so it uses no AI and nothing leaves the computer.
+A quiet night with no loose ends sends nothing. `/dream` shows the same any time. With it on, the concept graph's own
+morning line comes inside it. `dreaming.loose_ends` = false leaves the loose ends out.

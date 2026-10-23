@@ -18,7 +18,8 @@ Standing plans, never struck through.
   local alarm and notification buttons are planned for 0.6.0.
 - **A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
   groups, with a link to the user wiki for the rest.
-- **Dreaming**: while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
+- **Dreaming** (0.5.9 has the morning message of the night's work and the loose ends; still to come: consolidating
+  memory and spotting contradictions across notes): while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
   your journal), consolidates what it learned into memory and your profile, spots contradictions and loose ends, and
   tells you in the morning what it tidied.
 - **Dream RSI (self-improvement while dreaming)**: the same night pass also looks at what went wrong (failed or

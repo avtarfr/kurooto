@@ -22,7 +22,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Hint ladder](#hint-ladder) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
-    [Remember](#remember) · [Nightly look back](#nightly-look-back) · [Learns from its own work](#learns-from-its-own-work) ·
+    [Remember](#remember) · [Nightly look back](#nightly-look-back) · [Learns from its own work](#learns-from-its-own-work) · [Dreaming](#dreaming) · [Set up from what you say](#set-up-from-what-you-say) ·
     [Wrong button and test cases](#wrong-button-and-test-cases)
   - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) ·
     [Reminders with the lid shut](#reminders-with-the-lid-shut) · [Voice notes](#voice-notes) ·
@@ -1072,6 +1072,28 @@ keeps what it learned.
 *Leaves:* nothing to build the index. When the AI searches it, the passages it finds go to that AI with the request;
 learning a skill sends the request, its answer and steps, and a lesson your correction and the skill, to the
 second-look AI; picking up facts sends the day's requests to the AI the look back uses.
+
+### Dreaming
+
+**What it does.** Turned on (Features → Dreaming), everything Kurooto did while you slept comes as one message at
+`dreaming.when` (07:30): books read into your notes, links tidied, handwritten notes linked, lessons from calls,
+skills and facts learned, things set up from what you said; then the loose ends: your open doubts from the last two
+weeks, notes nothing links to yet, broken links, tasks past due, AI requests that failed. A quiet night sends nothing.
+`/dream` shows it any time.
+
+**What leaves your computer.** Nothing: it reads Kurooto's own log and your notes.
+
+**Undo.** Turn it off in Features; the concept graph's morning line comes on its own again.
+
+### Set up from what you say
+
+**What it does.** "I got a project under Prof X on <topic>" (in the chat or your journal) starts that project's note
+with "With: Prof X (supervisor)" and a Meetings section; "met X today, ..." adds a dated line there; "a meeting with X
+on Friday at 4" becomes a deadline; "every Monday at 9 I have a <subject> lab" puts the class in your timetable. Only
+what you say about yourself, by rules on this computer. Each change comes in one line with Undo; `/inferred` lists
+them. Settings `infer.on`, `infer.projects`, `infer.meetings`, `infer.classes`.
+
+**Undo.** The Undo button, or `/inferred undo <id>`; `infer.on` = false stops it.
 
 ### Wrong button and test cases
 When Kurooto gets a plain-English request wrong, tap **Wrong** under its reply (or under the AI's answer), or send
