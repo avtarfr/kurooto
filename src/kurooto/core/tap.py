@@ -77,8 +77,9 @@ GUARDED: dict[str, Guard] = {
     "data.delete": Guard(
         "delete your data",
         ("typed", "confirm", "button"),
-        "/forget 7d and /forget all (after Forget everything), /memory forget, /gists forget, Undo and Drop buttons; "
-        "the AI never deletes (a note it changes keeps its earlier version)",
+        "/forget 7d and /forget all (after Forget everything), /memory forget, /gists forget, Undo and Drop buttons, "
+        'Keep A / Keep B under the morning message\'s "Worth a look"; the AI never deletes (a note it changes keeps '
+        "its earlier version)",
     ),
 }
 

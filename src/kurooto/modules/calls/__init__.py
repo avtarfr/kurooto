@@ -413,7 +413,8 @@ class Calls(Module):
             ),
             Tool(
                 "search_notes",
-                "Search their notes (courses, plans, journal, anything they wrote).",
+                "Search their notes (courses, plans, journal, anything they wrote)"
+                + (" by meaning, through their notes brain: a whole question works." if on("gbrain") else "."),
                 self._search,
                 {"query": arg("what to look for, in plain words")},
                 ("query",),

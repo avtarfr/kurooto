@@ -63,6 +63,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | About you | the reports you add stay on this computer; building the profile sends them to the AI once; afterwards its "In brief" part goes along with every AI request | the AI you picked |
 | Remember | your how-to-help-me note goes along with every AI request | the AI you picked |
 | Nightly look back | what happened today (what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out: `retro.transcripts`, `retro.journal`), your how-to-help-me note, the settings it may change; for a skill change you approved, that skill's text | the AI you picked |
+| Dreaming: a second opinion (`dreaming.consolidate_ai` = `main` only; the default asks the model on this computer) | two lines that may say the same thing or disagree: how-to-help-me lines and lines of your notes, never a gist; at most 8 pairs a night | the AI you picked |
 | Learns from its own work | nothing to build its search index (it stays on this computer); the passages the AI finds when it searches it, with that request; to learn a skill, the finished request, its answer and its steps; to learn a lesson, your correction and the skill; to pick up facts, the day's requests (with the nightly look back) | the AI that takes second looks (`learning.brain`), else the AI you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI you picked |
 | Skills: revision packs | Tectonic, if you install it, downloads LaTeX packages; nothing of yours is sent | Tectonic's public package server |
@@ -156,7 +157,8 @@ private link; event descriptions are read only for `#nocall`, `#focus` and `#pri
 are kept only as "Busy (private)", not even told to your AI), Study tracker (window titles are read and thrown away;
 only minutes per subject are kept; the idle check never reads what you type), Quick notes and prompts, Local AI models,
 Stay awake on charger, Space keeper, the reserve (Markdown copies of Kurooto's state for AI programs, in the state
-folder), notes brain timelines and weekly checkup, `kurooto top`, `kurooto runlog` (and run compare). Sync everything sends only what each
+folder), notes brain timelines, course pages, weekly checkup and checkup line, Dreaming's consolidating (rules, and
+the model on this computer for a second opinion), `kurooto top`, `kurooto runlog` (and run compare). Sync everything sends only what each
 sync's own feature sends.
 
 ## Where requests go

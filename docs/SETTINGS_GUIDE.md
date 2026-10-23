@@ -286,6 +286,9 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `dreaming.consolidate` | `true` | duplicates and lines that disagree in what it remembers: Keep A / Keep B / Both true |
+| `dreaming.consolidate_ai` | `"local"` | a second opinion on near misses: local (this computer), main (your AI), off |
+| `dreaming.consolidate_max` | `3` | at most this many in one morning message; the rest wait for the next ones |
 | `dreaming.curious` | `true` | a topic you asked about 3+ times this week with no note on it: one line, Make a stub |
 | `dreaming.loose_ends` | `true` | also the loose ends: your open doubts, unlinked notes, broken links, tasks past due |
 | `dreaming.never_tune` | `["deadlines.reminder", "deadlines.call", "health.now", "a…` | kinds it never tunes (besides the alarm, your reminders and calls, deadlines under 12 hours) |
@@ -340,7 +343,10 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `gbrain.agy_mcp` | `false` | your own GBrain: agy gets its MCP tools too (asked first) |
 | `gbrain.checkup` | `false` | weekly checkup; a message only when something needs a look |
 | `gbrain.checkup_ignore` | `["backup_", "mcp_", "chronicle", "auto_chronicle", "unins…` | checkup findings starting with these words aren't reported |
+| `gbrain.checkup_line` | `true` | once a week, one line on how the notes brain is (its doctor, read only) |
 | `gbrain.checkup_when` | `"weekly sun 19:30"` | when the weekly notes-brain checkup runs |
+| `gbrain.contradictions` | `true` | its last contradictions report joins Dreaming's morning section (Keep A / Keep B) |
+| `gbrain.course_pages` | `true` | nightly: each course page gets its key concepts and a dated timeline (Kurooto's block) |
 | `gbrain.embeddings` | `"auto"` | where the notes brain gets its embeddings: auto, ollama, gemini or off |
 | `gbrain.exe` | `""` | your own GBrain: your gbrain program; empty: the one on your PATH |
 | `gbrain.home` | `""` | your own GBrain: its GBRAIN_HOME; empty: GBrain's default |

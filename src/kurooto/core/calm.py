@@ -621,6 +621,12 @@ REASONS: dict[str, Reason] = {
             setting="gbrain.checkup",
             stop=to(False, "no weekly checkup"),
         ),
+        R(
+            "gbrain.checkup_line",
+            "the notes brain's weekly one-line checkup",
+            setting="gbrain.checkup_line",
+            stop=to(False, "no weekly checkup line"),
+        ),
         R("notes_sync.clash", "notes that changed in two places at once"),
         R("notes_sync.failed", "Notes sync didn't work"),
         R("profile.failed", "Profile sync didn't work"),

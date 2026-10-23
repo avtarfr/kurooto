@@ -190,7 +190,8 @@ Each feature you turn on adds what calls can do; a feature that's off adds nothi
 | You can ask | Needs | Works while the computer is off |
 |---|---|---|
 | What needs my attention? (asked at the start of every call) | Phone calls | yes, from the last brief |
-| Search my notes; read a note | Phone calls | keyword search over titles and headings only; whole notes only with Notes sync on |
+| Search my notes; read a note (by meaning, with Notes brain on: "when is the stats quiz?") | Phone calls | keyword search over titles and headings only; whole notes only with Notes sync on |
+| A note's or a course's timeline ("what's coming up in stats?") | Notes brain | needs the computer |
 | Call me back later about something | Phone calls | yes (queued) |
 | Call me now | Phone calls | needs the computer |
 | No calls until a time, or lift a hold | Phone calls | yes (queued) |

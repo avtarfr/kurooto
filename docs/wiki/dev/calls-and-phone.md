@@ -221,6 +221,10 @@ Other files in `<state>/calls/`: `rings.json`, `live.json`, `link.json`, `inbox.
 `Calls.run_tool` through `modules/curious.py:searched`, kept 8 days for Dreaming's curious line; retention's `calls`
 kind clears it).
 
+With Notes brain on, `search_notes` (`Calls._search`) asks `GBrain.search` first (keyword search when it finds
+nothing or is busy), its description says "by meaning", and GBrain's `call_tools()` adds `note_timeline` with a hint
+that `config_template` puts in the call's instructions.
+
 ## The Worker (`data/worker/src/worker.js`)
 
 - `export default {fetch, scheduled}` and the Durable Object `Line` (SQLite-backed, migration v1). Cron `* * * * *`.

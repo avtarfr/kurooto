@@ -193,7 +193,7 @@ something you said in passing, and Kurooto's own schedule never do them by thems
 | Reading mail from a new sender, domain, label or search | only `/mail read`, `/mail query`, or Features → Mail digest |
 | Sending anything to someone else (mail, a message, publishing) | only your **Send** under a reply draft; nothing else sends to anyone but you |
 | Attaching a code repository to a project | only `/repos add <folder>`; repositories are never searched for on the disk |
-| Deleting your data | `/forget` (`/forget all` after a confirm button), `/memory forget`, `/gists forget`, Undo and Drop buttons; the AI never deletes (a note it changes keeps its earlier version) |
+| Deleting your data | `/forget` (`/forget all` after a confirm button), `/memory forget`, `/gists forget`, Undo and Drop buttons, Keep A / Keep B under the morning message's "Worth a look"; the AI never deletes (a note it changes keeps its earlier version) |
 
 **When your AI wants to.** On a call you're on the line, so the AI does what you asked and says so. Anywhere else (an
 AI request from the chat, a skill or routine, an agent program such as agy using Kurooto's tools) the AI can't set

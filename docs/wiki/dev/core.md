@@ -209,6 +209,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `chat/history.json` (last 10 turns, 1200 chars each) | `modules/chat.py` |
 | `calls/{rings,live,link,inbox,answer-nonces,live-health,textcalls}.json`, `calls/lessons.md`, `calls/transcripts/*.txt` (and `*.did.json`: what each call's tools did, for its gist; goes with the transcript) | `modules/calls`, `core/gists.py:note_call` |
 | `calls/searches.json` (what calls searched your notes for, 8 days at most), `dreaming-curious.json` (lines shown, settled, their buttons' offers, repositories' first commits) | `modules/curious.py` |
+| `dreaming-consolidate.json` (duplicates and disagreements waiting, by reference only; pairs settled by keyed hash; Undo records, a gist's words sealed with the ledger's key) | `modules/consolidate.py` |
 | `alarm.json`, `alarm-last.json`, `alarm-skip.json`, `alarm-ringing.json` | `modules/alarm.py` |
 | `deadlines.json`, `deadlines-recurring.json` | `modules/deadlines.py` |
 | `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json`, `study/timer.json` | check-ins, capture, study (`timer.json`: Study mode's timer) |
@@ -325,6 +326,7 @@ Recurring (key → when; setting that controls it):
 | `doubts:before` | every 5m | | `modules/doubts.py` |
 | `exam_season:tick` | every 15m | | `modules/exam_season.py` |
 | `gbrain:sync`, `gbrain:nightly`, `gbrain:checkup` | every 15m; daily 03:00; weekly sun 19:30 | `gbrain.sync`, `gbrain.nightly`, `gbrain.checkup_when` | `modules/gbrain.py` |
+| `dreaming:consolidate` | daily 04:45 | `dreaming.consolidate` | `modules/consolidate.py` |
 | `google:classroom` | every 3h | `google.classroom_every` | `modules/google.py` |
 | `classroom_notes:sync` | daily 07:00,13:00,19:00 | `classroom_notes.at` | `modules/google_classroom.py` |
 | `mail_digest:digest` | daily 08:00,18:00 | `mail_digest.at` | `modules/google_mail.py` |

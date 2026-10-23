@@ -499,8 +499,35 @@ of several. The day after an exam or a heavy day it starts with one line saying 
   this** turns these lines off, with Undo.
 
   Each comes at most once a day, and the same topic or note not again for 30 days.
+- **Worth a look in what I remember** (`dreaming.consolidate`, on): each night (04:45) it looks for the same thing
+  remembered twice and for lines that disagree, and lists a few (`dreaming.consolidate_max`, 3) as one short section:
 
-Nothing new runs for it: it reads Kurooto's own log and your notes, so it uses no AI and nothing leaves the computer.
+  ```
+  Worth a look in what I remember (nothing changes until you tap):
+  1. These disagree (different dates): A "Stats quiz 3 postponed, due 02 Nov now" (journal/2026-10-22.md, Thu 22 Oct);
+     B "Statistics: Stats quiz 3, due Fri 30 Oct" (your deadlines).
+  2. The same thing twice: A "No calls before 8" (about-me/how-to-help-me.md, 12 Oct); B "Don't call me before
+     8am" (about-me/how-to-help-me.md, 20 Oct).
+  ```
+
+  Each has **Keep A**, **Keep B** and **Both true** (**Keep both** for a duplicate). What's compared: gists (two of
+  the same kind from the same day that say the same thing), the lines Kurooto keeps in your how-to-help-me note, your
+  daily notes and project meetings from the last 30 days, your open deadlines, and, with the notes brain on, its
+  contradictions report. Two lines disagree when they're about the same thing (the same key words, the same "Quiz 3")
+  and give a different date, weekday, time or number ("Quiz 3 is due Fri" and "Quiz 3 is due Mon"); a line that only
+  says when you did something ("studied for quiz 3 on Thursday") doesn't count.
+
+  Nothing changes until you tap. Keeping one side takes the other out of your how-to-help-me note (a line Kurooto
+  wrote), drops the other gist, or moves the deadline to the date your note says; a line in your own notes is never
+  changed: Kurooto says which note it's in, for you to change. Every change has **Undo**. **Both true** keeps both and
+  the pair isn't asked about again; one shown on two mornings without a tap is let go. `/dream check` looks now.
+
+  It's rules first. A pair that's close but not clear can get a second opinion (`dreaming.consolidate_ai`): `local`
+  (the default) asks the model on this computer when Local AI models has one, `main` asks your own AI (only
+  how-to-help-me lines and note lines go to it, never a gist), `off` asks nobody; at most 8 a night.
+
+Apart from that second opinion, nothing new runs for it: it reads Kurooto's own log, its memory and your notes, so it
+uses no AI and nothing leaves the computer.
 A quiet night with no loose ends sends nothing. `/dream` shows the same any time. With it on, the concept graph's own
 morning line comes inside it. `dreaming.loose_ends` = false leaves the loose ends out (the curious and past lines have
 their own settings). What calls searched your notes for is kept 8 days at most, and `/forget` clears it.
