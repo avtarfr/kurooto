@@ -450,7 +450,9 @@ class Sampler:
         by_cpu = sorted(rows, key=lambda r: (-r["cpu"], -r["mem"]))[:n]
         picked = {r["pid"] for r in by_cpu}
         by_mem = [r for r in sorted(rows, key=lambda r: -r["mem"])[:n] if r["pid"] not in picked]
-        return by_cpu + by_mem
+        picked |= {r["pid"] for r in by_mem}
+        mine = [r for r in rows if r["own"] and r["pid"] not in picked]  # Kurooto's own are always listed
+        return by_cpu + by_mem + mine
 
 
 def own_pids(root: int | None) -> dict[int, str]:
