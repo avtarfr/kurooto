@@ -1134,9 +1134,16 @@ class Deadlines(Module):
             ),
             Tool(
                 "add_deadline",
-                'Add a deadline: what, and when it is due ("fri 23:59", "2026-11-02 17:00").',
+                'Add a deadline: what, and when it is due ("fri 23:59", "2026-11-02 17:00"). Give the subject when you '
+                "know it (a mail's course, a course page), so it lands on that course even when the title doesn't "
+                "name it; kind exam for a quiz or exam.",
                 self._tool_add,
-                {"title": arg(), "due": arg()},
+                {
+                    "title": arg(),
+                    "due": arg(),
+                    "subject": arg("optional: its subject or course, by name or short name"),
+                    "kind": {"type": "string", "enum": ["task", "exam"]},
+                },
                 ("title", "due"),
                 offline="queue",
             ),
@@ -1194,4 +1201,12 @@ class Deadlines(Module):
             due = parse_when(str(a.get("due", "")))
         except ValueError:
             return f"I couldn't read the date {a.get('due')!r}."
-        return self.add(str(a.get("title") or "untitled"), due.replace(tzinfo=None), source="call")
+        extra = {}
+        subj = self._subjects()
+        if a.get("subject") and subj is not None:
+            slug = subj.resolve(str(a["subject"])) or next(iter(subj.find_in(str(a["subject"]))), None)
+            if slug:
+                extra["subject"] = slug
+        if a.get("kind") in ("task", "exam"):
+            extra["kind"] = a["kind"]
+        return self.add(str(a.get("title") or "untitled"), due.replace(tzinfo=None), source="call", **extra)

@@ -9,6 +9,9 @@
   computer; nothing from other people's news or a "didn't"; each change in one line with Undo, and `/inferred` lists
   them (`/inferred undo <id>`). Never alarms, calls, mail or code repositories.
 
+- **A deadline keeps its course**: the AI's `add_deadline` takes the subject (and whether it's an exam), so a mail's
+  "Lab report" lands on the course page, Start-by and exam mode even when its title doesn't name the course.
+
 ## 0.5.8 (2026-10-23)
 
 - **Learns from its own work** (an optional add-on, in no preset; the idea from Hermes Agent, none of its code): a

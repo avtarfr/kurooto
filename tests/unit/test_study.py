@@ -492,3 +492,12 @@ def test_a_call_can_remove_a_deadline_that_isnt_happening_and_it_stays_removed(s
     dl.add("Topology: Quiz", due, source="recurring", kind="exam", subject="topology")  # the next scan finds it again
     assert all(it["status"] != "open" for it in dl.items().values() if it["title"] == "Topology: Quiz")
     assert {"remove_deadline", "unignore_topic"} <= {t.name for t in dl.call_tools()}
+
+
+def test_add_deadline_takes_the_course_and_kind_so_a_mails_lab_report_lands_on_it(study):
+    dl = study.app.modules["deadlines"]
+    tool = next(t for t in dl.call_tools() if t.name == "add_deadline")
+    tool.run({"title": "Lab report", "due": "2030-11-02 17:00", "subject": "topology", "kind": "task"})
+    tool.run({"title": "Midterm", "due": "2030-11-03 10:00", "subject": "la", "kind": "exam"})
+    got = {it["title"]: (it["subject"], it["kind"]) for it in dl.items().values()}
+    assert got["Lab report"] == ("topology", "task") and got["Midterm"] == ("linear-algebra", "exam")
