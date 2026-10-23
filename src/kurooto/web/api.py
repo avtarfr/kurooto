@@ -413,6 +413,14 @@ class Api:
             if not t or not self.app.is_on("terminals"):
                 return 403, {"error": "Terminals is off"}
             return t.handle(name, action, b)
+        if path == "stream/seen":  # the dashboard is in sight or not: nothing is computed for pages out of sight
+            live = getattr(self.app, "live", None)
+            try:
+                cid = int(b.get("cid") or 0)
+            except (TypeError, ValueError):
+                return 400, {"error": "bad cid"}
+            ok = live is not None and live.seen(cid, b.get("visible") is not False)
+            return 200, {"ok": ok}
         if path == "power/stop":  # stop the normal way (`kurooto restore`): shutdown hooks run; it starts at sign-in
             self.app.stop_reason = "stopped"  # for the "going offline" message (core/presence.py)
             threading.Timer(0.3, self.app.request_stop).start()  # answer first

@@ -11,6 +11,7 @@ Protection:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -107,7 +108,9 @@ class Server:
             def log_message(self, *a):
                 pass
 
-            def _send(self, code: int, body: bytes | dict | list, ctype: str = "application/json"):
+            def _send(
+                self, code: int, body: bytes | dict | list, ctype: str = "application/json", etag: str | None = None
+            ):
                 if isinstance(body, (dict, list)):
                     body = json.dumps(body, default=str).encode()
                 self.send_response(code)
@@ -116,7 +119,11 @@ class Server:
                 self.send_header("Content-Security-Policy", CSP)
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("Referrer-Policy", "no-referrer")
-                self.send_header("Cache-Control", "no-store")
+                if etag:  # a static file: kept by the browser, asked about each time (304 while it's the same)
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("ETag", etag)
+                else:  # pages (they hold the key) and the API: never kept
+                    self.send_header("Cache-Control", "no-store")
                 self.end_headers()
                 self.wfile.write(body)
 
@@ -166,7 +173,13 @@ class Server:
                     body = static(name)
                     if body is None:
                         return self._send(404, {"error": "not found"})
-                    return self._send(200, body, TYPES.get("." + name.rsplit(".", 1)[-1], "application/octet-stream"))
+                    ctype = TYPES.get("." + name.rsplit(".", 1)[-1], "application/octet-stream")
+                    # the browser keeps the dashboard's script (230 KB), styles and fonts, and what it compiled of
+                    # them, instead of fetching and compiling everything again on each load (0.6.1)
+                    tag = '"' + hashlib.sha1(body, usedforsecurity=False).hexdigest()[:20] + '"'
+                    if tag in [t.strip() for t in self.headers.get("If-None-Match", "").split(",")]:
+                        return self._send(304, b"", ctype, etag=tag)
+                    return self._send(200, body, ctype, etag=tag)
                 if path == "/oauth/google":  # Google's sign-in comes back here; the one-time state guards it
                     from urllib.parse import parse_qs
 

@@ -68,6 +68,7 @@ create table if not exists jobs (
     result text, detail text, then_action text, then_payload text
 );
 create index if not exists jobs_status on jobs(status, created);
+create index if not exists jobs_created on jobs(created);  -- recent(): the dashboard's every 2 s (0.6.1)
 create table if not exists attempts (job text, brain text, verdict text, at real, seconds real, tool_calls integer);
 create index if not exists attempts_at on attempts(at);
 """

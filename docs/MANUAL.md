@@ -3093,7 +3093,9 @@ copy of each file stays on your call line for a day (the key is only in the link
 that pulses when something happens; NOTES is a map of your notes and their links (click a note to read it). The tabs:
 **Activity** (what happened), **AI jobs**, **Schedule** (what's coming), **Features** (turn on/off, set up), **Phone**
 (your call line, pairing, a test ring), **About you** (your profile, to edit; `/#about` opens it), **Settings**
-(every setting, with what it means), and **Terminals** (when the [Terminals](#terminals) feature is on).
+(every setting, with what it means), and **Terminals** (when the [Terminals](#terminals) feature is on). Left open in
+a background tab or a minimised window, it costs next to nothing: Kurooto stops reading the computer and your notes
+for it until you look again.
 
 **Two designs** (Settings → Look → `look.design`, or the **classic look** / **new look** button). **new** (the default
 since 0.5.19) sets the page in a sans-serif typeface, Public Sans, that comes with Kurooto (nothing is fetched from the

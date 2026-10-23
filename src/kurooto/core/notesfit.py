@@ -21,6 +21,7 @@ in a notes folder that is a git repository the moves show up as renames.
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
 import hashlib
 import json
@@ -219,6 +220,36 @@ def scan(root, limit: int = MAX_FILES) -> Scan:
     return sc
 
 
+# the last folder read for the setup page's Notes step: (folder, what it was read from, the scan without its full
+# texts, its facts). Each visit read every note again: 0.2 s for 2,000 notes (0.6.1).
+_LAST: list = []
+
+
+def scanned(root) -> tuple[Scan, dict]:
+    """scan() and facts(), kept while the folder's notes stay the same: the same notes and folders, each note with the
+    same modification time and size. Only facts() reads the full texts, so the kept scan drops them."""
+    root = Path(os.path.expanduser(str(root)))
+    if not root.is_dir():
+        sc = scan(root)
+        return sc, facts(sc)
+    notes, dirs, cut = walk(root)
+    seen = []
+    for rel in notes:
+        try:
+            st = os.stat(os.path.join(root, rel))
+            seen.append((rel, st.st_mtime_ns, st.st_size))
+        except OSError:
+            seen.append((rel, None, None))
+    sig = (str(root), tuple(dirs), cut, tuple(seen))
+    if _LAST and _LAST[0] == sig:
+        return _LAST[1], copy.deepcopy(_LAST[2])
+    sc = scan(root)
+    fx = facts(sc)
+    sc.texts = {}
+    _LAST[:] = [sig, sc, fx]
+    return sc, copy.deepcopy(fx)
+
+
 def facts(sc: Scan) -> dict:
     """What the folder shows, in numbers (for the proposal and the setup page)."""
     top = Counter(n.split("/")[0] for n in sc.notes if "/" in n)
@@ -352,11 +383,12 @@ def choose_layout(sc: Scan, fx: dict) -> tuple[str, float, str]:
     return "kurooto", round(min(0.95, 0.5 + 0.15 * (ku - zk)), 2), f"Folders {said} are Kurooto's own"
 
 
-def propose(root, current: layout.Layout | None = None, sc: Scan | None = None) -> dict:
+def propose(root, current: layout.Layout | None = None, sc: Scan | None = None, fx: dict | None = None) -> dict:
     """notes.layout and a line per kind of note, each with a confidence (0 to 1) and why, the notes.paths that follow,
-    and a preview. `current` is the layout in use (its custom places outside the lines are kept)."""
+    and a preview. `current` is the layout in use (its custom places outside the lines are kept). `fx`: facts(sc),
+    when the caller has them (scanned())."""
     sc = sc or scan(root)
-    fx = facts(sc)
+    fx = facts(sc) if fx is None else fx
     preset, conf, why = choose_layout(sc, fx) if sc.exists and sc.notes else ("kurooto", 0.5, "The folder is empty")
     P = layout.PRESETS[preset]
     lines: list[dict] = []
@@ -990,7 +1022,7 @@ def view(app: App, folder: str | None = None) -> dict:
     """GET notes/fit: what the folder shows and the proposal, the layout in use, and the last move to undo."""
     root = _folder(app, folder)
     cur = layout.of(app)
-    out = propose(root, cur)
+    out = propose(root, cur, *scanned(root))
     out["workspace"] = str(app.workspace)
     out["other_folder"] = os.path.abspath(root) != os.path.abspath(app.workspace)
     out["in_use"] = {

@@ -23,9 +23,12 @@ own words and graded by you, up to five a day with quiz.links on.
 from __future__ import annotations
 
 import datetime as dt
+import fnmatch
 import hashlib
 import json
+import os
 import re
+from pathlib import Path
 
 from kurooto import providers
 from kurooto.core.clock import now, parse_when
@@ -35,6 +38,42 @@ from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
 from kurooto.modules.quiz_links import LinkCards
 from kurooto.modules.text import when_from
+
+
+def md_files(root: Path, keep=None) -> list[Path]:
+    """root.rglob("*.md") in the same order, without going into hidden folders (.git, .obsidian, .trash): nothing in
+    one is quiz material, and a notes folder's .git alone can hold tens of thousands of files (0.6.1: Study mode's
+    pane asks for this twice a request). keep(name): only the names it says yes to."""
+    match = re.compile(fnmatch.translate(os.path.normcase("*.md"))).match
+    entries: dict[str, list[os.DirEntry]] = {}
+    order = [str(root)]
+
+    def visit(d: str) -> None:  # Path.walk's top-down order: a folder, then its folders, then each one's own
+        try:
+            with os.scandir(d) as it:
+                entries[d] = list(it)
+        except OSError:
+            entries[d] = []
+            return
+        subs = []
+        for e in entries[d]:
+            try:
+                if e.is_dir(follow_symlinks=False) and not e.name.startswith("."):
+                    subs.append(e.path)
+            except OSError:
+                continue
+        order.extend(subs)
+        for sub in subs:
+            visit(sub)
+
+    visit(str(root))
+    return [
+        Path(d) / e.name
+        for d in order
+        for e in entries.get(d, [])
+        if match(os.path.normcase(e.name)) and (keep is None or keep(e.name))
+    ]
+
 
 register_defaults(
     "quiz",
@@ -116,7 +155,7 @@ class Quiz(Module):
         """subject -> note files with quiz material."""
         out: dict[str, list] = {}
         root = self.app.workspace
-        for p in root.rglob("*.md"):
+        for p in md_files(root, lambda n: "exam-prep" in n.lower() or "quiz" in n.lower()):  # as below
             name = p.stem.lower()
             if ("exam-prep" in name or "quiz" in name) and not any(
                 x.startswith(".") for x in p.relative_to(root).parts
