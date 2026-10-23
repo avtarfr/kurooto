@@ -168,6 +168,18 @@ once the [concept graph](notes-and-concept-graph.md) reads a book, hundreds of n
 lines, and before 0.5.19 it took every label and the map read as a list of book titles. The region names step back
 while you point at or search for a note.
 
+**Pointing at a note (0.6.1).** The note and the notes it links to (or that link to it) light up in full colour with
+their names raised above everything else, placed so they never overlap (up to 24 neighbours' names, the course
+pages, hubs and links you made first); everything else dims and the region names step aside. It eases in over
+about a tenth of a second (at once with reduced motion). The keyboard does the same: **Tab** to the map, then the
+**arrow keys** move to the linked note in that direction (or the nearest note that way), **Enter** opens it, **Esc**
+lets go.
+
+**"Seen in" links don't make hubs (0.6.1).** The links Kurooto writes to say where a concept was read (a concept
+note's "Seen in", a book's or class note's "Concepts in ..." list, a course page's "From the books") are still drawn,
+but they don't make a dot bigger or get its name shown first: a lecture note or a class post that many concepts were
+read from stays a normal-sized dot. Its card says how many such links it has: "3 links (+152 from reading)".
+
 **Research on the map (new in 0.5.21).** A research project's region is its folder's notes, the notes its index links
 to, and the topics its line in the research hub (`maps/research.md`, or your layout's research hub) links to, together
 with the lines indented under it. It's always named, however few notes its folder has: by its index note's title, or
@@ -180,6 +192,7 @@ unnamed ("Other Notes").
 | To | Do |
 |---|---|
 | See a note's details | point at it: title, path, links, words, when it was edited |
+| Walk the map with the keyboard | Tab to it, then the arrow keys; Enter opens the note, Esc lets go |
 | Pin a note's card with its first lines | click it (click empty space to let go) |
 | Open a note | double-click it (your default app for Markdown, or your own program: `notes.open_with`) |
 | Zoom / move around | mouse wheel / drag empty space |

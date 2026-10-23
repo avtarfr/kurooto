@@ -219,3 +219,54 @@ def test_the_layout_tells_the_map_where_research_is(tmp_path, monkeypatch):
         assert graph_layout(app) == {"research": "maps/research", "project": "projects/{project}/index"}
     finally:
         app.close()
+
+
+# ------------------------------------------------- provenance links (0.6.1): "Seen in" and reading lists size nothing
+PROVENANCE = """
+const ids = [], links = [];
+const add = (id, title) => ids.push([id, title]);
+add("maps/courses/atmos", "Physics of the Atmosphere");
+add("sources/atmos/2026-08-05-books", "Books");  // a class post whose textbook was read: every concept "Seen in" it
+add("sources/atmos/2026-08-12-lecture-2", "Lecture 2"); links.push(["maps/courses/atmos", "sources/atmos/2026-08-12-lecture-2"]);
+for (let i = 0; i < 155; i++) { add(`zettel/c${i}`, `Concept ${i}`); links.push([`zettel/c${i}`, "sources/atmos/2026-08-05-books", 1]); }
+links.push(["zettel/c1", "zettel/c2"], ["zettel/c1", "sources/atmos/2026-08-12-lecture-2"], ["sources/atmos/2026-08-05-books", "maps/courses/atmos"]);
+const nodes = new Map(ids.map(([id, title], i) => [id, { id, title, x: i, y: i, deg: 0, nb: new Set(), out: new Set(), snb: new Set() }]));
+for (const [a, b, via] of links) { const p = nodes.get(a), q = nodes.get(b); p.deg++; q.deg++; p.nb.add(b); q.nb.add(a); p.out.add(b); if (!via) { p.snb.add(b); q.snb.add(a); } }
+assignHoods(nodes);
+const post = nodes.get("sources/atmos/2026-08-05-books");
+console.log(JSON.stringify({ post: { deg: post.deg, sdeg: post.sdeg }, hood: nodes.get("zettel/c7").neighborhood,
+  ranked: rankLabels([...nodes.values()]).slice(0, 3).map((n) => n.id) }));
+"""
+
+
+def test_seen_in_links_keep_their_lines_but_dont_make_a_hub():
+    r = run(PROVENANCE)
+    assert r["post"] == {"deg": 156, "sdeg": 1}  # 155 "Seen in" links: drawn, but its dot is sized by the one you made
+    assert r["hood"] == "atmos"  # a concept still joins the course it was read in
+    assert "sources/atmos/2026-08-05-books" not in r["ranked"][1:]
+    assert r["ranked"][0] == "maps/courses/atmos"
+
+
+def test_the_notes_graph_marks_links_only_in_kuroots_provenance_blocks(tmp_path):
+    from kurooto.web.live import Graph
+
+    (tmp_path / "zettel").mkdir()
+    (tmp_path / "sources").mkdir()
+    (tmp_path / "sources" / "books-post.md").write_text("# Books\n", encoding="utf-8")
+    (tmp_path / "sources" / "lecture.md").write_text(
+        "# Lecture\n<!-- kurooto:material0a1b2c3d -->\n## Concepts in Slides\n[[zettel/ad]]\n"
+        "<!-- /kurooto:material0a1b2c3d -->\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "zettel" / "ad.md").write_text(
+        "# AD\nsee [[zettel/bp]]\n<!-- kurooto:seen -->\n## Seen in\n- [[sources/books-post|Books]] pp. 1–3\n"
+        "- [[zettel/bp]]\n<!-- /kurooto:seen -->\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "zettel" / "bp.md").write_text("# BP\n", encoding="utf-8")
+    g = Graph(tmp_path)
+    g.scan()
+    links = g.payload["links"]
+    assert ("zettel/ad", "zettel/bp") in links  # yours (also in the block): a link you'd follow
+    assert ("zettel/ad", "sources/books-post", 1) in links and ("sources/lecture", "zettel/ad", 1) in links
+    assert len(links) == 3

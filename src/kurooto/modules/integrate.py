@@ -8,7 +8,12 @@ filed again unchanged isn't read again and an edited one is. They share one queu
 books: the newest class material first (it's what you're studying now), then what /graph backfill classroom queued
 (the materials filed before 0.5.19, the oldest course first), then the books in their order. A copy of each item's text
 is kept in <state>/integrate/texts/, so moving the file doesn't lose it; its "Seen in" lines point at the note it was
-filed into (the lecture note Classroom → notes wrote, else the course page; the handwritten note itself).
+filed into (the lecture note Classroom → notes wrote, else the course page; the handwritten note itself). A textbook
+filed from Classroom (a course's "Books" post with the PDF attached: core/studypack.py:is_class says it's a book) gets
+a source note of its own instead, <subject>/books/<its title>.md, like a book's index note (0.6.1).
+
+After a restart (0.6.1): a batch whose request the restart lost is asked again at once (inflight, core/jobs.py:settled),
+and inside tonight's reading window the night carries on (resume).
 
 When a book has been read, its text is cut into batches that follow its sections (core/segment.py, 3 to 20 pages). For
 each batch, one AI request (the bulk AI) is shown the pages and the few existing notes that may be related (found with
@@ -125,6 +130,15 @@ def short(text: str, n: int) -> str:
     return t if len(t) <= n else t[: n - 1].rstrip() + "…"
 
 
+def h1(path: Path) -> str | None:
+    """A note's title (its first "# " heading), or None."""
+    try:
+        m = re.search(r"^# (.+)$", Path(path).read_text(encoding="utf-8", errors="replace"), re.M)
+    except OSError:
+        return None
+    return m[1].strip() if m else None
+
+
 def text_hash(text: str) -> str:
     """What an item is known by: the hash of its text with the spacing evened out (a file downloaded again unchanged
     is the same item; one with a word changed is a new one)."""
@@ -210,6 +224,11 @@ class Integrate(Module):
         self.every("retry", "every 3h", self.tick)  # carries on after a limit has reset
         self.every("plan", "hourly", self.plan_night)  # tonight's start, from when you wake (alarm, night hours)
         self.plan_night()
+        for step in (self.migrate_booklike, self.resume):  # (0.6.1) never in the way of the rest of start
+            try:  # textbooks filed from Classroom get a source note of their own; then requests a restart lost are
+                step()  # asked again, and tonight's reading carries on
+            except Exception as e:
+                self.app.events.emit("module_failed", module=self.id, error=f"{step.__name__}: {e}"[:300])
         if self.setting("garden"):
             self.every("garden", "daily 06:20", self.garden)
         if self.setting("summary"):
@@ -316,6 +335,8 @@ class Integrate(Module):
                 "added": now().isoformat(timespec="seconds"),
                 "backfill": backfill,
                 "order": order,
+                "kind": self.kind_for(source, title, text),
+                "moved": True,  # (0.6.1) its Seen in lines point at the right note from the start
             }
             self.save("items.json", data)
         self.app.events.emit("integrate_queued", source=source, subject=subject)
@@ -434,6 +455,194 @@ class Integrate(Module):
                     return self.rel(f)
         return self.rel(lay.path("course", subject=subject))
 
+    # ---------------------------------------------------------------------------- textbooks filed from Classroom
+    @staticmethod
+    def kind_for(source: str, title: str, text: str) -> str:
+        """ "book" for class material that is a textbook (a course's reading list with the PDF attached), else "class":
+        core/studypack.py:is_class, by length (more than 80 pages: a book; 40 or fewer: class material) and then what
+        the title says. A text with no pages of its own counts its parts (about a page each); slides are class
+        material unless the title says it's a book."""
+        if source != "classroom":
+            return "class"
+        from kurooto.core.studypack import is_class
+
+        pages, unit = split_pages(text)
+        n = len(pages) if unit in ("pages", "parts") else 0
+        return "class" if is_class(str(title or ""), n, 1) else "book"
+
+    def booklike(self, b: dict) -> bool:
+        """A Classroom item that is a textbook (kind_for; worked out once and kept in items.json)."""
+        if self.source_of(b) != "classroom":
+            return False
+        kind = b.get("kind")
+        if kind not in ("book", "class"):
+            try:
+                text = (self.dir / "texts" / f"{b['id']}.txt").read_text(encoding="utf-8")
+            except OSError:
+                return False
+            kind = b["kind"] = self.kind_for("classroom", b.get("title") or "", text)
+            self.set_item(b["key"], kind=kind)
+        return kind == "book"
+
+    def set_item(self, key: str, **kw) -> None:
+        with self.lock:
+            data = self.load("items.json", {}) or {}
+            it = (data.get("items") or {}).get(key)
+            if it is None:
+                return
+            it.update(kw)
+            self.save("items.json", data)
+
+    def book_note(self, b: dict) -> Path:
+        """A textbook filed from Classroom: the source note its concepts point to, like a book's index note:
+        <subject>/books/<its title>.md (layout "subject"). The same book read by Books already has one there: that
+        one. A note of that name that's yours or another item's: <title>-<hash6>.md. Chosen once (items.json
+        "source_note")."""
+        root = Path(self.app.workspace)
+        if b.get("source_note"):
+            return root / f"{b['source_note']}.md"
+        from kurooto.modules.books import START as BOOK_START
+        from kurooto.modules.books import slug
+
+        folder = layout.of(self.app).path("subject", subject=b["subject"]) / "books"
+        path = folder / f"{slug(self.title_of(b), 80)}.md"
+        if path.is_file():
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                text = ""
+            if BOOK_START not in text and f"item={b['key']}" not in text:
+                path = folder / f"{path.stem}-{b['id'][:6]}.md"
+        b["source_note"] = self.rel(path)
+        self.set_item(b["key"], source_note=b["source_note"])
+        return path
+
+    def source_block(self, b: dict, path: Path, chap: dict, names: dict[str, str]) -> str:
+        """Kurooto's part of a textbook's source note: what it is, where it was filed, what it introduced."""
+        lay = layout.of(self.app)
+        to = lambda t, label=None: lay.note_link(t, label, from_note=path)  # noqa: E731
+        pages, unit = self.item_text(b)
+        size = f"{len(pages)} {unit}" if unit != "parts" else "a text with no pages of its own"
+        course = lay.path("course", subject=b["subject"])
+        where = to(self.rel(course), h1(course)) if course.is_file() else b["subject"]
+        post = Path(self.app.workspace) / f"{b['note']}.md"
+        filed = f", filed with {to(b['note'], h1(post))}" if post.is_file() and post != course else ""
+        lines = [
+            f"A textbook from Classroom for {where} ({size}{filed}{', ' + b['date'] if b.get('date') else ''}).",
+            "Its concepts point here (Seen in), not to the class note it came with.",
+            "",
+            "## Concepts in this book",
+        ]
+        for rec in sorted(chap.values(), key=lambda r: r["first"]):
+            links = ", ".join(to(x, names.get(x)) for x in rec["concepts"]) or "(none new)"
+            at = self.where({"pages": [rec["first"], rec["last"]], "unit": unit}).strip()
+            head = " ".join(x for x in (at, rec.get("title") or "") if x)
+            lines.append(f"- {head}: {links}" if head else f"- {links}")
+        return "\n".join(lines)
+
+    def write_book_note(self, b: dict, put, linker) -> None:
+        """A textbook filed from Classroom: its source note (made, or Kurooto's block in it replaced), and one line
+        in the class note it came with pointing at it (the material block that used to list every concept)."""
+        path = self.stub(b)
+        chap = (self.load("chapters.json", {}) or {}).get(self.key(b), {})
+        names = {x: h1(Path(self.app.workspace) / f"{x}.md") for rec in chap.values() for x in rec["concepts"]}
+        title = self.title_of(b)
+        old = path.read_text(encoding="utf-8") if path.is_file() else None
+        from kurooto.modules.books import START as BOOK_START
+
+        if old is not None and BOOK_START in old:
+            pass  # the same book read by Books: its index note is Books' own (its concepts block is the book's)
+        else:
+            body = self.source_block(b, path, chap, names)
+            if old is None:
+                lay = layout.of(self.app)
+                front = lay.frontmatter(None, path, title=title, tags=["book", b["subject"]])
+                put(path, None, gw.put_block(f"{front}# {title}\n", "source", body, f"item={b['key']}"))
+            else:
+                new = gw.put_block(old, "source", body, f"item={b['key']}")
+                if new != old:
+                    put(path, old, new)
+        post = Path(self.app.workspace) / f"{b['note']}.md"
+        course = layout.of(self.app).path("course", subject=b["subject"])
+        if post.is_file() and post != course and post != path:
+            old = post.read_text(encoding="utf-8")
+            line = f"Textbook: {linker(post)(self.rel(path), title)} (its concepts are listed there)."
+            new = gw.put_block(old, f"material{b['id'][:8]}", line)
+            if new != old:
+                put(post, old, new)
+
+    def migrate_booklike(self) -> dict:
+        """(0.6.1) Textbooks filed from Classroom before 0.6.1 had their concepts' "Seen in" point at the class note
+        they came with (a reading list, say), which made that note a hub of hundreds of links. Each such item now gets
+        its own source note (book_note), and the "Seen in" blocks of its concepts point there; only Kurooto's blocks
+        change (guarded), each file's before-copy is kept in undo/<subject>-<id>-moved.json, and it's one git commit
+        per item. Runs at start; an item done is marked "moved", so it's once. {"items", "notes"} moved."""
+        out = {"items": 0, "notes": 0}
+        if not self.app.is_on(self.id):
+            return out
+        todo = [
+            it
+            for it in self.items().values()
+            if it.get("source") == "classroom" and not it.get("moved") and self.booklike(it)
+        ]
+        if not todo:
+            return out
+        with self.lock:
+            seen = self.load("seen.json", {}) or {}
+            for it in todo:
+                n = self.move_item(it, seen)
+                self.set_item(it["key"], moved=True)
+                if n is not None:
+                    out["items"] += 1
+                    out["notes"] += n
+            self.save("seen.json", seen)
+        if out["items"]:
+            self.app.events.emit("integrate_moved", **out)
+        return out
+
+    def move_item(self, it: dict, seen: dict) -> int | None:
+        """One textbook item's move (migrate_booklike): its rows in `seen` (changed in place) and its concepts' "Seen
+        in" blocks point at its source note, which is written. Notes changed, or None when nothing was written."""
+        root, lay, key = Path(self.app.workspace), layout.of(self.app), it["key"]
+        to = self.rel(self.book_note(it))
+        slugs = [s for s, rows in seen.items() if any(r.get("book") == key and r.get("note") != to for r in rows)]
+        done = self.entry(self.load("ledger.json", {}), it).get("batches", {})
+        if not slugs and not any((r or {}).get("state") == "done" for r in done.values()):
+            return None  # not read yet: its concepts will point at its own note
+        journal: dict[str, str | None] = {}
+
+        def put(path: Path, old: str | None, new: str) -> bool:
+            if old is not None and not gw.guarded(old, new).ok:
+                self.app.events.emit("integrate_refused", note=str(path.name), why="moving Seen in")
+                return False
+            journal[str(path)] = old
+            write_note_file(path, new, create=old is None)
+            return True
+
+        def linker(note: Path):
+            return lambda t, label=None: lay.note_link(t, label, from_note=note)
+
+        n = 0
+        for s in slugs:
+            for r in seen[s]:
+                if r.get("book") == key:
+                    r["note"] = to
+            path = root / f"{s}.md"
+            try:
+                old = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if re.search(r"<!-- kurooto:seen\b", old):
+                new = gw.put_block(old, "seen", self.seen_body(seen[s], linker(path)))
+                n += new != old and put(path, old, new)
+        self.write_book_note(it, put, linker)
+        if not journal:
+            return None
+        self.undo(it, "moved", journal)
+        title = short(self.title_of(it), 40)
+        self.commit(list(journal), f"graph: {title} is a textbook: its concepts' Seen in points at its own note")
+        return n
+
     def backfill_classroom(self) -> tuple[int, int]:
         """Queue the Classroom files filed before the graph read them (before 0.5.19): the oldest course first, each
         course's files oldest first, after what's filed from now on. Read within each night's budget like the rest.
@@ -534,7 +743,10 @@ class Integrate(Module):
 
     def stub(self, b: dict) -> Path:
         """The note an item's concepts point back to ("Seen in"): a book's index note; the note a class file was filed
-        into; the handwritten note itself."""
+        into, or, for a textbook filed from Classroom, a source note of its own (book_note); the handwritten note
+        itself."""
+        if self.booklike(b):  # a textbook filed from Classroom: a source note of its own, like a book's (0.6.1)
+            return self.book_note(b)
         if self.source_of(b) != "books":
             return Path(self.app.workspace) / f"{b['note']}.md"
         return layout.of(self.app).path("subject", subject=b["subject"]) / "books" / f"{b['id']}.md"
@@ -645,24 +857,39 @@ class Integrate(Module):
             self.save("ledger.json", led)
 
     def inflight(self) -> tuple[int, int]:
-        """(bulk requests out, second looks out); a request out for too long is forgotten (it will be asked again)."""
-        led = self.load("ledger.json", {})
-        bulk = chk = 0
-        changed = False
-        for bk in [*led.get("books", {}).values(), *led.get("items", {}).values()]:
-            for rec in bk.get("batches", {}).values():
-                if rec.get("state") in ("queued", "checking"):
+        """(bulk requests out, second looks out). A request out for too long (STALE_S) is forgotten, and so, at once,
+        is one whose job is gone from the job queue (a restart or an update cut it off before its answer was written,
+        say: core/jobs.py:settled); either is asked again."""
+        with self.lock:
+            led = self.load("ledger.json", {})
+            bulk = chk = 0
+            changed = False
+            for bk in [*led.get("books", {}).values(), *led.get("items", {}).values()]:
+                for rec in bk.get("batches", {}).values():
+                    if rec.get("state") not in ("queued", "checking"):
+                        continue
                     age = time.time() - (dt.datetime.fromisoformat(rec["at"]).timestamp() if rec.get("at") else 0)
-                    if age > STALE_S:
+                    if age > STALE_S or self.lost(rec):
+                        if rec["state"] == "checking" and rec.get("job"):  # its second look won't come: no leftovers
+                            (self.dir / "pending" / f"{rec['job']}.json").unlink(missing_ok=True)
                         rec["state"] = "pending"
+                        rec["why"] = "asked again: its request " + ("took too long" if age > STALE_S else "was lost")
                         changed = True
                     elif rec["state"] == "queued":
                         bulk += 1
                     else:
                         chk += 1
-        if changed:
-            self.save("ledger.json", led)
+            if changed:
+                self.save("ledger.json", led)
         return bulk, chk
+
+    def lost(self, rec: dict) -> bool:
+        """A queued or checking batch whose request no longer is in the job queue, and whose answer will never come:
+        Kurooto restarted (an update, a crash) after the job had ended but before its answer was written, or the job
+        is gone. One that a restart cut off mid-run isn't lost: the job queue runs it again (Jobs.recover)."""
+        jid = rec.get("check_job") if rec.get("state") == "checking" else rec.get("job")
+        settled = getattr(self.app.jobs, "settled", None)
+        return bool(jid) and settled is not None and settled(jid)
 
     # ---------------------------------------------------------------------------------------------------- tick
     def index(self, refresh: bool = True) -> cg.Index:
@@ -721,6 +948,20 @@ class Integrate(Module):
             self.app.scheduler.at(nxt[0], "integrate.soon", key=f"{self.id}:early", module=self.id)
         else:
             self.app.scheduler.cancel(f"{self.id}:early")
+
+    def resume(self) -> bool:
+        """Kurooto (re)started, after an update, say: batches whose requests the restart lost go back to pending at
+        once (inflight), and when it's inside tonight's reading window (Budget.window), not held by /graph stop,
+        nothing is in flight and the budget gate lets a batch go, the night carries on in a minute through the
+        nightly start's own path (integrate.soon: tick), instead of waiting for tomorrow's integrate.at. True when
+        that was booked."""
+        if not self.app.is_on(self.id):
+            return False
+        bulk, _ = self.inflight()
+        if bulk or self.stopped_until() or not self.budget.in_window() or self.budget.gate():
+            return False
+        self.app.scheduler.at(now() + dt.timedelta(minutes=1), "integrate.soon", key=f"{self.id}:soon", module=self.id)
+        return True
 
     def poke(self) -> None:
         """A book was read: carry on tonight (the schedule would only start it at integrate.at)."""
@@ -1027,6 +1268,8 @@ class Integrate(Module):
             new = gw.put_block(old, "concepts", self.chapter_body(bk, names_by_slug, index, linker(stub)))
             if new != old:
                 put(stub, old, new)
+        elif src == "classroom" and self.booklike(b):
+            self.write_book_note(b, put, linker)
         elif stub.is_file() and src == "classroom" and stub != course:
             # the lecture note it was filed into lists what it introduces, in a block of its own per file
             slugs = list(dict.fromkeys(x for rec in bk.values() for x in rec["concepts"]))

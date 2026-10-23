@@ -525,7 +525,7 @@ power `power_pause`, `power_resume`, `power_off`; health `health_checked`, `heal
 calls `call_scheduled`, `call_rang`, `call_rang_offline`, `call_answered`, `call_missed`, `call_held`,
 `call_transcript`, `call_reviewed`, `call_review_failed`, `call_live_failed`, `call_fallback`, `calls_*`; concept graph
 `book_read`, `integrate_batch`, `integrate_refused`, `integrate_waiting`, `integrate_limit`, `integrate_pruned`,
-`hubs_updated`; and one family per feature (`alarm_*`, `deadline_*`, `exam_*`, `study_*`, `quiz_*`, `skill_*`,
+`integrate_moved`, `hubs_updated`; and one family per feature (`alarm_*`, `deadline_*`, `exam_*`, `study_*`, `quiz_*`, `skill_*`,
 `retro_*`, `learning_*`, `google_*`, `mail_*`, `classroom_notes_*`, ...). Grep `events.emit("` to find the emitter of any kind.
 
 When you add an event: name it `<area>_<what happened>` in the past tense, keep fields to ids, counts and short error

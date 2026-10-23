@@ -90,6 +90,7 @@ LANES = ("you", "bg", "chk")  # your own requests; work nobody is waiting for; a
 # AI programs (agy and Claude Code) can each have a job running at once
 GRACE_S = 120  # the watchdog's grace past a try's time limit (and the brain's own grace)
 ACTIVE = ("queued", "running")
+FOLLOW_GRACE_S = 120  # (settled) a job that ended here this recently may still be on its way to its follow-up
 RETRY = (Verdict.RATE_LIMITED, Verdict.AUTH, Verdict.ERROR, Verdict.DENIED, Verdict.EMPTY)  # the next brain tries
 GEMINI_KEY = "gemini.api_key"  # also what calls and voice notes use
 MAX_STEPS = 200  # tool uses kept per running request (its tool log)
@@ -240,6 +241,7 @@ class Jobs:
                 # list of paths)
                 self._db.execute(f"alter table jobs add column {col} {kind}")
         self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
+        self._following: set[str] = set()  # jobs whose follow-up (then_action) is running in this process now
         self._lanes: dict[str, tuple[str, threading.Thread]] = {}  # lane -> (job, the thread running it)
 
     # ------------------------------------------------------------------------------------- the queue
@@ -334,6 +336,21 @@ class Jobs:
     def get(self, jid: str) -> Job | None:
         row = self._read(f"select {self._cols} from jobs where id=?", (jid,))
         return self._job(row) if row else None
+
+    def settled(self, jid: str) -> bool:
+        """Nothing more will come of this job: there's no such job (a database replaced or cleared), or it ended and
+        its follow-up (then_action) isn't running in this process, nor about to (it ended here in the last
+        FOLLOW_GRACE_S). A job a restart cut off while it ran is still "running" until the worker queues it again
+        (recover), so it isn't settled. What waits on a follow-up that never came (the concept graph's ledger after a
+        restart, modules/integrate.py) may give up on it."""
+        row = self._read("select status, runner, finished from jobs where id=?", (jid,))
+        if not row:
+            return True
+        status, runner, finished = row
+        if status in ACTIVE or jid in self._following:
+            return False
+        here = runner in (RUNNER, None)  # None: ended while it waited (a cancel), in whichever process did it
+        return not (here and finished and time.time() - float(finished) < FOLLOW_GRACE_S)
 
     def recent(self, n: int = 10) -> list[Job]:
         rows = self._read(f"select {self._cols} from jobs order by created desc limit ?", (n,), one=False)
@@ -732,10 +749,13 @@ class Jobs:
             self._deliver(job, result, used)
         then = self._read("select then_action, then_payload from jobs where id=?", (job.id,))
         if then and then[0] and then[0] in self.then_actions:
+            self._following.add(job.id)
             try:
                 self.then_actions[then[0]](job, result, json.loads(then[1] or "{}"))
             except Exception as e:
                 self.app.events.emit("job_then_failed", job=job.id, error=str(e)[:300])
+            finally:
+                self._following.discard(job.id)
         with self._lock:
             steps = self.steps.pop(job.id, [])
         if self.watchers:

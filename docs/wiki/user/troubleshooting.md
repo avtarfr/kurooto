@@ -205,6 +205,8 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | Notes sync: "a note was changed here and elsewhere at once" | `notes_sync.on_conflict` is `stop`. Merge it in the notes folder as the message says, or set it to `keep both`. |
 | Notes sync: "a merge or rebase is unfinished" | Finish it in the notes folder (`git status` says how); sync goes on by itself. |
 | "A sync is already running" | Wait for its summary. |
+| The concept graph stopped reading after an update or a restart in the night | From 0.6.1 it carries on by itself a minute after starting, inside tonight's reading window and budget. `/graph` says what's waiting; `/graph now` starts the next batch now (and lifts a `/graph stop`). |
+| A class post or lecture note is a huge dot on the notes map, linked from hundreds of concepts | Their "Seen in" links. From 0.6.1 they don't size a dot, and a textbook filed from Classroom gets a note of its own under `<subject>/books/` that its concepts point to (what was read before moves there when 0.6.1 first starts; `git revert` the `graph: <title> is a textbook` commit to undo). |
 | `/notes` or `/timeline` says the brain is busy | The nightly upkeep or a sync is using it; try again in a while. |
 | Notes brain: "can't find your gbrain" or "your brain's folder isn't there" | Your own GBrain: set `gbrain.exe` and `gbrain.home`, or set `gbrain.managed` back to `true`. |
 | The nightly upkeep didn't finish | Search still works. Its log is in the state folder (`gbrain/upkeep-<date>.log`); it tries again the next night. |

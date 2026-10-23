@@ -48,6 +48,7 @@ GROW = 1.5  # after a night that read its whole budget with no limit hit
 FLOOR = 5  # a limit never halves it below this
 MOST = 300  # the learned number never grows past this
 WINDOW_S = 5 * 3600  # Claude's usage window
+NIGHT_S = 6 * 3600  # with no known wake time, a night's reading window ends this long after integrate.at
 WEEKLY_S = 6 * 3600  # a reset further away than this: the weekly cap, not the 5-hour window
 WEEK_S = 7 * 86400
 TINY = 10  # under this many batches a night, a free key is the wrong AI for books
@@ -173,6 +174,22 @@ class Budget:
             if self.plan(day)[0] <= now:
                 return day.isoformat()
         return (now.date() - dt.timedelta(days=2)).isoformat()
+
+    def window(self, t: float | None = None) -> tuple[dt.datetime, dt.datetime]:
+        """(start, end) of the reading of the night `t` falls in: from that night's start until you wake (the alarm's
+        or the night hours' end), or, not knowing that, NIGHT_S after integrate.at. Kurooto starting inside it
+        carries on reading (modules/integrate.py:resume); outside it, the night's own start does."""
+        now = dt.datetime.fromtimestamp(self.clock() if t is None else t)
+        day = dt.date.fromisoformat(self.night(now.timestamp()))
+        start, latest = self.plan(day)
+        wake = self.sleep(day)[1]
+        end = wake if wake is not None and wake > start else latest + dt.timedelta(seconds=NIGHT_S)
+        return start, end
+
+    def in_window(self, t: float | None = None) -> bool:
+        start, end = self.window(t)
+        now = dt.datetime.fromtimestamp(self.clock() if t is None else t)
+        return start <= now < end
 
     def next_start(self) -> tuple[dt.datetime, dt.datetime] | None:
         """(start, latest) of the next night that hasn't started yet."""

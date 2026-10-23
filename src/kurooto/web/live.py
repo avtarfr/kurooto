@@ -31,6 +31,12 @@ if TYPE_CHECKING:
 
 SKIP_DIRS = {".git", ".obsidian", ".trash", "node_modules", ".kurooto"}
 LINK = re.compile(r"(?<!!)\[\[([^\]|#^]+)")
+# Kurooto's provenance blocks (core/graphwrite.py): a concept note's "Seen in" (where it was read), and the lists of
+# what reading added (a book's or a textbook's "Concepts in this book", a class note's "Concepts in <file>", a course
+# page's "From the books"). The map keeps their links but they don't make a note big or named first (home.js: via)
+PROVENANCE = re.compile(
+    r"<!-- kurooto:(?P<k>seen|concepts|books|source|material[0-9a-f]*)\b[^>]*-->.*?<!-- /kurooto:(?P=k) -->", re.S
+)
 # which feature an event belongs to, for the pulses in SYSTEMS
 EVENT_CELL = [
     ("message_in", "telegram"),
@@ -86,12 +92,15 @@ def note_info(path: Path, root: Path) -> dict | None:
     if not title:
         m = re.search(r"^# (.+)$", text, re.M)
         title = m.group(1).strip() if m else path.stem
+    own = {t.strip().removesuffix(".md") for t in LINK.findall(PROVENANCE.sub("", text))}
+    via = {t.strip().removesuffix(".md") for m in PROVENANCE.finditer(text) for t in LINK.findall(m.group(0))}
     return {
         "id": rel,
         "title": title[:80],
         "group": rel.split("/")[0] if "/" in rel else "root",
         "words": len(text.split()),
-        "targets": sorted({t.strip().removesuffix(".md") for t in LINK.findall(text)}),
+        "targets": sorted(own),
+        "via": sorted(via - own),  # links only in Kurooto's provenance blocks ("Seen in" and the like)
     }
 
 
@@ -196,19 +205,25 @@ class Graph:
         by_base, lower = {}, {k.lower(): k for k in self.infos}
         for k in self.infos:
             by_base.setdefault(k.split("/")[-1].lower(), k)
-        links = set()
+        links, via = set(), set()
         for k, info in self.infos.items():
             for t in info["targets"]:
                 dst = lower.get(t.lower()) or by_base.get(t.split("/")[-1].lower())
                 if dst and dst != k:
                     links.add((k, dst))
+            for t in info.get("via", ()):
+                dst = lower.get(t.lower()) or by_base.get(t.split("/")[-1].lower())
+                if dst and dst != k:
+                    via.add((k, dst))
+        via -= links
         nodes = [
             {"id": k, "title": i["title"], "group": i["group"], "words": i["words"], "mtime": self.mtimes.get(k, 0)}
             for k, i in self.infos.items()
         ]
         self.payload = {
             "nodes": nodes,
-            "links": sorted(links),
+            # [a, b] for a link you'd follow, [a, b, 1] for one only in a provenance block (it doesn't size a node)
+            "links": sorted(links) + [(a, b, 1) for a, b in sorted(via)],
             "changed": [] if first else changed,
             "version": self.payload["version"] + 1,
             "layout": self.lay,

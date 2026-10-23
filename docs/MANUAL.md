@@ -2477,7 +2477,12 @@ markers, and a write that would touch anything else is refused.
 - `classroom`: each file [Classroom → notes](#classroom--notes) files with real text (slides, handouts, PDFs,
   solutions, 1,500 characters or more; a one-line announcement isn't), with its course as the subject. The "Seen in"
   line points at the lecture note it was filed into (else the course page), and that lecture note gets a list of the
-  concepts the file introduced.
+  concepts the file introduced. A **textbook** filed from Classroom (0.6.1: a "Books" post with the PDF attached;
+  more than 80 pages, or a title that says edition, textbook or handbook, as study packs tell them apart) gets a note
+  of its own like a book's, `sources/<subject>/books/<its title>.md`, and its concepts' "Seen in" points there; the
+  class note it came with gets one line linking to it. Textbooks read before 0.6.1 move over the first time 0.6.1
+  starts (only Kurooto's "Seen in" blocks change; before-copies in `<state>/integrate/undo/<subject>-<id>-moved.json`
+  and one git commit per textbook, `graph: <title> is a textbook: ...`).
 - `handwritten` (add it to turn it on): your [handwritten notes](#handwritten-notes), once written out and linked;
   "Seen in" points at the handwritten note.
 
@@ -2545,6 +2550,12 @@ key: at most $0.50 a night (`integrate.max_cost_per_night`). The model on this c
 hours), so a 5-hour window it opens has reset when you get up; never later than `integrate.at`. `/graph`, `/usage` and
 the feature's card show tonight's budget, how it was decided and the last limit hit with its reset.
 
+**After a restart** (0.6.1: an update during the night, say). A batch whose request the restart cut off before its
+answer was written goes back in the queue at once (not 3 hours later), and when Kurooto starts inside tonight's
+reading window (the night's start until you wake, by your alarm or night hours; else 6 hours after `integrate.at`),
+the reading carries on a minute later, within tonight's budget and one bulk request at a time. `/graph stop` still
+holds it.
+
 | Setting | Does |
 |---|---|
 | `integrate.at` | when the night's work starts (it carries on batch after batch, and after each book is read) |
@@ -2560,8 +2571,8 @@ the feature's card show tonight's budget, how it was decided and the last limit 
 | `integrate.duplicates` | each morning, up to three look-alike concept notes with Merge / Keep both / Add alias |
 | `integrate.notation` | a Notation table when a second source writes a concept differently (a switch on the Concept graph card) |
 
-**Undo.** `git revert` a batch's commit; each batch also keeps a before-copy of every file it changed in
-`<state>/integrate/undo/`. A Merge, Keep both or Add alias: the Undo under its answer (their before-copies are in
+**Undo.** `git revert` a batch's commit (or a textbook's move, `graph: <title> is a textbook: ...`); each batch also
+keeps a before-copy of every file it changed in `<state>/integrate/undo/`. A Merge, Keep both or Add alias: the Undo under its answer (their before-copies are in
 `<state>/integrate/dupes.json`); `integrate.duplicates` off stops the question. To stop it, turn the feature off in Features. To stop reading class materials (or
 handwritten notes), take them out of `integrate.sources` (or untick them on the card); what's queued waits.
 
@@ -3140,7 +3151,12 @@ line):
   "Seen in" links come from reading the book, so it no longer crowds out everything else. A research project's
   region (since 0.5.21) also takes the notes its index links to and the topics its line in the research hub links
   to, and is always named, in the accent colour, however small its folder; concept notes join the course or project
-  most of their links come from (a tie goes to the course), so they no longer sit in one unnamed cloud. Double-click a note on the map to open it: in your default app for Markdown, or in your own program
+  most of their links come from (a tie goes to the course), so they no longer sit in one unnamed cloud. Pointing at a
+  note (0.6.1) lights it and its linked notes in full colour with their names on top, none overlapping, and dims the
+  rest; Tab to the map and the arrow keys do the same, Enter opens the note, Esc lets go. The links Kurooto writes to
+  say where a concept was read ("Seen in", "Concepts in ...", "From the books") are drawn but don't make a dot big
+  or named first, so a lecture note or class post many concepts were read from stays small; its card counts them
+  ("3 links (+152 from reading)"). Double-click a note on the map to open it: in your default app for Markdown, or in your own program
   with Settings → notes → `open_with`, e.g. `kitty nvim {path}`, `code {path}` or `kurooto term -e nvim {path}` (on
   every system; the program has to open its own window). It runs as a program with arguments, never through a shell;
   `{path}` is the note (one argument even with spaces), `{folder}` your notes folder, and without `{path}` the note
