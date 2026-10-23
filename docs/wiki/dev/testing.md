@@ -45,7 +45,8 @@ as if on an empty computer and fails any test that touches the developer's real 
 - `pytest_runtest_makereport` turns any recorded violation into a failure of that test, whatever it asserted; the
   terminal summary prints "real-install guard" with violations and reads. Reads of protected folders are only counted.
 - Other autouse fixtures: `no_desktop_popups` (stand-ins first on PATH), `no_path_changes` (`core/pathfix.allowed`
-  returns False), `calendar_day_checkins` (check-in days start at midnight in tests).
+  returns False), `calendar_day_checkins` (check-in days start at midnight in tests), `no_receipts` (`jobs.receipt`
+  off, so answers end with the AI's words; `tests/unit/test_receipt.py` turns it on).
 
 If the guard fires, the code under test computed a path without going through `core/paths.py:paths()` /
 `KUROOTO_HOME`, called a real system tool, or reached the real daemon. Fix the code, not the guard.

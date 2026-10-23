@@ -343,6 +343,18 @@ jid = app.jobs.submit(
 - **Delivery** (`_deliver`, unless `quiet`): `[<brain label> · <effort>] <title>` then the answer, through
   `app.notify(kind="result", why=job.why or "asked", reply_to=...)`. Answers over `LONG = 7000` chars are also sent as
   a file (`jobs/<id>-result.md`). Cases adds a Wrong button when on.
+- **Run receipt** (0.5.15): `_run` builds one line from the run's own record before the request's tool log is dropped
+  (`Jobs._receipt` → `receipt()`), and keeps it in the `receipt` column: the AI (`NAMES`), effort, time since it
+  started (fallback tries included), the share of today's limit when `Quota.status(pool)["pct"]` knows the limit, and
+  what it did from `Jobs.steps` (`_did`: each tool in `ACTS` becomes a phrase like "wrote 2 notes", the rest "used N
+  other tools"; none is "did nothing", or "did nothing through Kurooto" for an agent program, whose own tools Kurooto
+  doesn't see). At most `RECEIPT_MAX = 120` characters. `Jobs.receipt(jid)` gives it while `jobs.receipt` is on:
+  `_deliver` adds it as the message's last line and passes it as `Message.tail`, which the Telegram sender
+  (`TelegramAPI.send(tail=)`) marks italic with a message entity (UTF-16 offsets, no parse mode, so the answer needs
+  no escaping); other channels show it as plain text. `GET /api/job` (`web/tools_api.py:job`) appends it to `answer`
+  and returns it as `receipt`, so the terminal chat, `kurooto ask` and the dashboard show it too. Quiet requests are
+  never delivered, so they get none. Tests run with it off (`tests/conftest.py:no_receipts`);
+  `tests/unit/test_receipt.py` turns it on.
 - **Chat history** (0.5.8): after delivery, the answer is recorded into Chat's history only if
   `chat.owns(job.id)` (`modules/chat.py:Chat.owns`, the set of job ids `Chat.ask` submitted). Digests, research,
   call reviews and skills therefore never become "the conversation".
@@ -418,8 +430,9 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
 
 - `Message` fields: `text`, `title`, `buttons` (`[[("label", "prefix:ref:action" | {"url": ...}), ...]]`), `kind`
   (`info` | `result` | `reminder` | `question` | `approval` | `deadline` | `call` | `update`), `urgent`, `reply_to`,
-  `map_kind` / `map_ref` (so a reply or button finds its handler: `Module.replies()[map_kind]`), `file`, and the Calm
-  envelope `why`, `setting`, `about`, `item`, `due`.
+  `map_kind` / `map_ref` (so a reply or button finds its handler: `Module.replies()[map_kind]`), `file`, `tail` (the
+  text's own last line to show quietly: the run receipt, italic on Telegram), and the Calm envelope `why`, `setting`,
+  `about`, `item`, `due`.
 - `send()`: Calm decides first (`Calm.decide`: `send`, `hold` or `stop`); during focus, non-urgent messages that aren't
   `approval`/`call` go to `focus-queue.jsonl` (flushed by `flush_queue()` when focus ends); otherwise `_deliver()`:
   Telegram (unless presence holds it because the network is down), the phone app for `notify.app_kinds`, the desktop

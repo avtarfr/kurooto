@@ -437,6 +437,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `jobs.receipt` | `true` | a quiet last line under each answer: which AI, effort, time, limit used, what it did |
 | `jobs.stuck_min` | `10` | the watchdog: minutes with no AI at work and no program running |
 
 ### `keep`

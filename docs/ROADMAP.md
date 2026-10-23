@@ -18,8 +18,9 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   the same recall score as the quiz. Plain arithmetic, no AI.
 - ~~**Turn on from chat.** A message that needs a feature that's off ("wake me at 7") offers [Turn on] [Not now]; one
   tap turns on it and what it needs, then does the original request.~~ (0.5.10)
-- **Run receipt.** Every AI answer ends with one grey line built from the tool log, not the answer's words: brain,
-  effort, time, share of today's limit, and what it actually did ("did nothing" when it did nothing).
+- ~~**Run receipt.** Every AI answer ends with one grey line built from the tool log, not the answer's words: brain,
+  effort, time, share of today's limit, and what it actually did ("did nothing" when it did nothing).~~ (0.5.15:
+  italics on Telegram, plain text in the dashboard and the terminal; `jobs.receipt`)
 - ~~**/fixme that works when the AI is what broke.** Doctor's symptoms matched by rules to the manual's
   troubleshooting and a signed known-issues list shipped with releases; Fix buttons run `doctor --fix`; your AI only
   explains, if it answers.~~ (0.5.15: `/fixme`, `/fixme <what you see>` and `kurooto fixme`; Ask my AI only explains,

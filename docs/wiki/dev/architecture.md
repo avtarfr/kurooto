@@ -116,8 +116,9 @@ What happens when the user types "what's due this week? and summarise my linear 
    tool log (`Jobs.note_step`; agent programs' uses carry the request's id from `KUROOTO_JOB`).
 7. **Verdict and fallback**: the brain returns a `Result`; a retryable verdict moves to the next brain; the job row is
    updated (`ok` / `failed`), an `attempts` row added, `job_done` emitted.
-8. **Delivery** (`Jobs._deliver`): `app.notify("[<brain> · high] <title>\n\n<answer>", kind="result",
-   reply_to=<message id>, why="asked")`. `core/calm.py:Calm.decide` lets `asked` through untouched;
+8. **Delivery** (`Jobs._deliver`): `app.notify("[<brain> · high] <title>\n\n<answer>\n\n<run receipt>",
+   kind="result", reply_to=<message id>, why="asked", tail=<run receipt>)` (the receipt, e.g. "agy · high · 2 min ·
+   searched notes, wrote 1 note", is built in step 7 from the tool log; Telegram shows it in italics). `core/calm.py:Calm.decide` lets `asked` through untouched;
    `core/notify.py:Notifier._deliver` sends it to the Telegram channel (registered by `Telegram.start`), the phone app
    if `result` is in `notify.app_kinds`, the desktop if configured. A long answer is also attached as a file.
 9. **After**: because `Chat.owns(job_id)`, the turn is appended to `chat/history.json`; the then-action, if any, runs
