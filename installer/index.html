@@ -6,67 +6,98 @@
 <title>Kurooto: an assistant that fits your day</title>
 <meta name="description" content="Kurooto lives on your own computer, talks to you on Telegram and its phone app, calls you when it matters, and learns the hours you actually keep. Free, opt-in, Windows, macOS and Linux.">
 <meta name="theme-color" content="#0B0F0A">
+<script>document.documentElement.classList.add('js')</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
 :root {
-  /* the kuro palette: night */
   --kuro-0: #0B0F0A; --kuro-1: #10150E; --kuro-2: #151B12; --kuro-3: #1B2317; --kuro-4: #26311F;
   --bone: #F2EEE8; --bone-dim: #C9C2B6;
-  /* day */
   --day-0: #F4F2EC; --day-1: #EAE6DD; --day-2: #E1DBCF; --day-ink: #172012; --day-ink-2: #3D4A33; --day-accent: #3F5626;
-  /* the sun */
   --moss: #6B8A42; --moss-hi: #A6C07A; --moss-ink: #0A0E08;
+  --ground: var(--kuro-0); --ink: var(--bone); --accent: var(--moss);
   --display: "Libre Franklin", "Franklin Gothic Medium", system-ui, sans-serif;
   --text: "Source Serif 4", Georgia, serif;
-  --step-small: clamp(0.875rem, 0.84rem + 0.12vw, 0.9375rem);
+  --font-display: var(--display); --font-text: var(--text);
   --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
   --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
   --step-head: clamp(2.25rem, 1.4rem + 3.4vw, 4.25rem);
-  --step-hero: clamp(3rem, 1.2rem + 6.6vw, 7rem);
   --margin: clamp(16px, 3.4vw, 48px);
+  --rail: 0px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --gap: clamp(120px, 14vw, 200px);
 }
+@media (min-width: 1000px) { :root { --rail: 88px; } }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scrollbar-color: var(--moss) var(--kuro-1); }
+html { -webkit-text-size-adjust: 100%; scrollbar-color: var(--moss) var(--kuro-1); }
 body { background: var(--kuro-0); color: var(--bone); font-family: var(--text); font-size: var(--step-body); line-height: 1.55; overflow-x: clip; -webkit-font-smoothing: antialiased; }
 ::selection { background: var(--moss); color: var(--moss-ink); }
 a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1.5px; }
 img, video { display: block; max-width: 100%; }
 h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.035em; line-height: 0.95; text-wrap: balance; }
 :focus-visible { outline: 3px solid var(--moss-hi); outline-offset: 3px; border-radius: 999px; }
-.skip { position: absolute; left: -999px; top: 8px; background: var(--moss); color: var(--moss-ink); padding: 10px 18px; border-radius: 999px; font-family: var(--display); font-weight: 600; z-index: 50; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; background: rgba(242,238,232,0.1); padding: 1px 6px; border-radius: 6px; }
+.skip { position: absolute; left: -999px; top: 8px; background: var(--moss); color: var(--moss-ink); padding: 10px 18px; border-radius: 999px; font-family: var(--display); font-weight: 600; z-index: 80; }
 .skip:focus { left: 8px; }
-.wrap { padding-inline: var(--margin); max-width: 1680px; margin-inline: auto; }
+.wrap { padding-inline: calc(var(--margin) + var(--rail)); max-width: 1680px; margin-inline: auto; }
+
+/* ---------- boot: the name pops up like moles, then the page opens ---------- */
+.boot { position: fixed; inset: 0; z-index: 90; background: var(--kuro-0); display: none; place-items: center; cursor: pointer; }
+html.booting .boot { display: grid; }
+.boot .holes { display: flex; gap: clamp(4px, 0.8vw, 10px); align-items: flex-end; height: clamp(120px, 30vh, 280px); width: min(1100px, 92vw); overflow: hidden; }
+.boot .holes span { flex: 1; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 999px 999px 18px 18px; font-family: var(--display); font-weight: 700; font-size: clamp(2.4rem, 8vw, 8rem); letter-spacing: -0.04em; transform: translateY(102%); will-change: transform; }
+.boot .holes span:nth-child(odd) { background: var(--kuro-3); color: var(--bone); }
+.boot .holes span:nth-child(even) { background: var(--moss); color: var(--moss-ink); }
+.boot .ground { width: min(1100px, 92vw); height: 10px; border-radius: 999px; background: var(--kuro-3); margin-top: 10px; }
+.boot .skip-hint { position: absolute; bottom: 28px; left: 0; right: 0; text-align: center; font-family: var(--display); font-weight: 500; font-size: 0.9375rem; color: var(--bone-dim); }
 
 /* ---------- the bar ---------- */
-.bar { position: fixed; inset: 0 0 auto 0; z-index: 30; color: var(--bar-ink, var(--bone)); background: var(--bar-ground, var(--kuro-0)); transition: background-color 240ms ease, color 240ms ease; padding-top: env(safe-area-inset-top); }
+.bar { position: fixed; inset: 0 0 auto 0; z-index: 40; color: var(--bar-ink, var(--bone)); background: var(--bar-ground, var(--kuro-0)); transition: background-color 240ms ease, color 240ms ease; padding-top: env(safe-area-inset-top); }
 .bar .wrap { display: flex; align-items: center; gap: 1.5rem; height: 64px; }
 .mark { display: inline-flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 1.125rem; letter-spacing: -0.02em; text-decoration: none; }
 .mark i { width: 22px; height: 22px; border-radius: 50%; background: var(--moss); display: block; }
 .bar nav { margin-left: auto; display: flex; align-items: center; gap: clamp(0.75rem, 2vw, 1.75rem); font-family: var(--display); font-weight: 500; font-size: 0.9375rem; }
 .bar nav a { text-decoration: none; padding: 6px 2px; }
-.bar nav a:hover { text-decoration: underline; }
-.clock { font-family: var(--display); font-weight: 600; font-variant-numeric: tabular-nums; font-size: 0.9375rem; display: inline-flex; align-items: center; gap: 8px; }
-.clock .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--moss); }
-.clock .digits { display: inline-block; overflow: hidden; height: 1.3em; line-height: 1.3em; }
-.clock .digits span { display: block; }
+@media (hover: hover) and (pointer: fine) { .bar nav a:hover { text-decoration: underline; } }
+.bar nav .go-btn { background: var(--moss); color: var(--moss-ink); border-radius: 999px; padding: 9px 16px; font-weight: 600; transition: transform 160ms var(--ease-out); }
+.bar nav .go-btn:active { transform: scale(0.97); }
 @media (max-width: 760px) { .bar nav .wide { display: none; } }
 
-/* ---------- the sun: one circle, four scales ---------- */
-.sun { position: absolute; border-radius: 50%; background: var(--sun, var(--moss)); pointer-events: none; z-index: 0; will-change: transform; }
-section { position: relative; isolation: isolate; }
-section > .wrap, section > .inner { position: relative; z-index: 1; }
+/* ---------- the day line: time moving down the side, with the sun and the moon ---------- */
+.dayline { position: fixed; z-index: 35; pointer-events: none; color: var(--line-ink, var(--bone)); transition: color 400ms ease; }
+.dayline .track { position: absolute; background: currentColor; opacity: 0.28; border-radius: 3px; }
+.dayline .tick { position: absolute; font-family: var(--display); font-weight: 600; font-size: 0.8125rem; font-variant-numeric: tabular-nums; opacity: 0.7; }
+.dayline .marker { position: absolute; display: flex; align-items: center; gap: 10px; will-change: transform; }
+.dayline .body { position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--moss); transition: background-color 400ms ease; flex: none; overflow: hidden; }
+.dayline .body::after { content: ""; position: absolute; width: 26px; height: 26px; border-radius: 50%; background: var(--night-cut, var(--kuro-0)); top: -6px; left: 10px; transform: translate(24px, -22px); transition: transform 500ms var(--ease-out); }
+.dayline.is-night .body { background: var(--bone); }
+.dayline.is-night .body::after { transform: translate(0, 0); }
+.dayline .now { background: var(--line-ground, var(--kuro-0)); padding: 0 4px; border-radius: 4px; position: relative; z-index: 1; font-family: var(--display); font-weight: 700; font-size: 1rem; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+@media (min-width: 1000px) {
+  .dayline { top: 88px; bottom: 32px; right: 18px; width: 70px; }
+  .dayline .track { left: 14px; top: 0; bottom: 0; width: 3px; }
+  .dayline .tick { left: 26px; transform: translateY(-50%); white-space: nowrap; font-size: 0.75rem; }
+  .dayline .marker { left: 0; top: 0; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .dayline .now { margin-left: -2px; }
+}
+@media (max-width: 999px) {
+  .dayline { top: calc(64px + env(safe-area-inset-top)); left: 0; right: 0; height: 40px; background: var(--line-ground, var(--kuro-0)); transition: color 400ms ease, background-color 240ms ease; }
+  .dayline .track { left: 16px; right: 16px; top: 19px; height: 3px; }
+  .dayline .tick { display: none; }
+  .dayline .marker { top: 5px; left: 16px; }
+  .dayline .body { width: 22px; height: 22px; }
+  .dayline .body::after { width: 18px; height: 18px; top: -4px; left: 8px; }
+  .dayline .now { font-size: 0.875rem; }
+}
 
 /* ---------- hero: before dawn ---------- */
-.hero { background: var(--kuro-0); min-height: 100svh; padding-top: calc(64px + clamp(48px, 9vh, 120px)); overflow: hidden; }
-.hero .sun { width: 150vh; height: 150vh; right: -46vh; bottom: -88vh; }
-.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); grid-template-rows: auto 1fr; column-gap: 2rem; align-items: start; min-height: calc(100svh - 64px - clamp(48px, 9vh, 120px)); }
+.hero { background: var(--kuro-0); min-height: 100svh; padding-top: calc(64px + clamp(48px, 9vh, 120px)); overflow: hidden; position: relative; isolation: isolate; }
+.hero .sun { position: absolute; z-index: 0; border-radius: 50%; background: var(--moss); width: 150vh; height: 150vh; right: calc(-46vh + var(--rail)); bottom: -88vh; will-change: transform; }
+.hero .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); grid-template-rows: auto 1fr; column-gap: 2rem; min-height: calc(100svh - 64px - clamp(48px, 9vh, 120px)); }
 .hero h1 { grid-column: 1 / -1; font-size: clamp(3rem, 1rem + 6.2vw, 6.75rem); max-width: 11em; }
-.hero .lead { font-size: var(--step-lead); line-height: 1.4; max-width: 34ch; margin-top: 36px; color: var(--bone); }
+.hero h1 .w { display: inline-block; }
+.hero .lead { font-size: var(--step-lead); line-height: 1.4; max-width: 34ch; margin-top: 36px; }
 .who { margin-top: 40px; border: 0; }
 .who legend { font-family: var(--display); font-weight: 600; font-size: 1rem; margin-bottom: 14px; }
 .who .opts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -84,21 +115,74 @@ section > .wrap, section > .inner { position: relative; z-index: 1; }
 @media (hover: hover) and (pointer: fine) { .btn:hover { background: var(--moss-hi); } }
 .btn .o { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
 .btn.quiet { background: transparent; color: inherit; padding-inline: 6px; text-decoration: underline; }
-.stage { position: relative; align-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 16px; padding-bottom: clamp(24px, 7vh, 80px); }
-
-/* fragments of the product, at true size */
-.tg { width: min(440px, 100%); background: #17212B; color: #E8EEF3; border-radius: 16px 16px 16px 4px; padding: 16px 18px 12px; font-family: var(--display); font-weight: 500; font-size: 16px; line-height: 1.45; box-shadow: 0 18px 50px -20px rgba(0,0,0,0.6); /* taste-skill-ignore: a Telegram message, the product's own surface (data-ui) */ }
+.stage-msg { align-self: end; display: flex; justify-content: flex-end; padding-bottom: clamp(24px, 7vh, 80px); }
+.tg { width: min(440px, 100%); background: #17212B; color: #E8EEF3; border-radius: 16px 16px 16px 4px; padding: 16px 18px 12px; font-family: var(--display); font-weight: 500; font-size: 16px; line-height: 1.45; }
 .tg .who-line { font-weight: 700; color: #8FB46A; margin-bottom: 6px; }
 .tg p + p, .tg ul + p, .tg p + ul { margin-top: 8px; }
 .tg ul { padding-left: 18px; }
-.tg li { margin: 2px 0; }
 .tg .time { text-align: right; font-size: 15px; color: #8D9DAA; margin-top: 6px; }
-.hero .stage .tg { transform: translateY(var(--rise, 0px)); }
 
-/* ---------- your day: the live thing ---------- */
-.day { background: var(--day-0); color: var(--day-ink); padding-block: var(--gap); overflow: hidden; }
-.day .sun { width: 30vw; height: 30vw; right: -10vw; bottom: -16vw; }
-.day .wrap { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(32px, 6vw, 96px); }
+/* ---------- the day scene: one held screen, the hours pass over it ---------- */
+.scene { position: relative; }
+.scene > .scene-stage { position: relative; }
+html.js .scene.is-live { height: calc((var(--hold, 2) + 1) * 100svh); }
+html.js .scene.is-live > .scene-stage { position: sticky; top: 0; height: 100svh; overflow: clip; contain: layout paint; }
+.scene.is-live [data-move] { will-change: transform, opacity; }
+.sky { position: absolute; inset: 0; }
+.sky i { position: absolute; inset: 0; opacity: 0; }
+.sky .s-night { background: var(--kuro-0); opacity: 1; }
+.sky .s-dawn { background: var(--kuro-3); }
+.sky .s-day { background: var(--day-0); }
+.sky .s-noon { background: var(--day-1); }
+.sky .s-dusk { background: var(--kuro-2); }
+.sky .s-late { background: var(--kuro-1); }
+.orb { position: absolute; left: 0; top: 0; width: 44vmin; height: 44vmin; border-radius: 50%; background: var(--moss); }
+.moon { position: absolute; left: 0; top: 0; width: 26vmin; height: 26vmin; border-radius: 50%; background: var(--bone); overflow: hidden; }
+.moon::after { content: ""; position: absolute; width: 100%; height: 100%; border-radius: 50%; background: var(--kuro-1); left: 34%; top: -18%; }
+.chapters { position: relative; z-index: 2; }
+.ch { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: clamp(32px, 5vw, 80px); align-items: center; padding: calc(64px + 72px) calc(var(--margin) + var(--rail)) 72px; max-width: 1680px; margin-inline: auto; }
+.ch .hour { font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; font-size: clamp(3.5rem, 2rem + 6vw, 8.5rem); letter-spacing: -0.045em; line-height: 0.9; }
+.ch h2 { font-size: var(--step-head); margin-top: 18px; max-width: 10em; }
+.ch p { font-size: var(--step-lead); line-height: 1.4; margin-top: 22px; max-width: 32ch; }
+.ch.on-night { color: var(--bone); }
+.ch.on-day { color: var(--day-ink); }
+.ch.on-day .hour { color: var(--day-accent); }
+.ch.on-night .hour { color: var(--moss-hi); }
+.ch .vis { display: flex; justify-content: center; align-items: center; min-height: 0; }
+.phone { height: min(70svh, 640px); aspect-ratio: 1170 / 2532; border-radius: 34px; overflow: hidden; background: var(--kuro-0); }
+.phone img { width: 100%; height: 100%; object-fit: contain; }
+.screen { width: 100%; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; background: var(--kuro-0); }
+.screen img, .screen video { width: 100%; height: 100%; object-fit: contain; }
+.round { width: min(56vmin, 520px); aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: var(--kuro-0); display: grid; place-items: center; }
+.round video { width: 76%; height: 76%; object-fit: contain; }
+.cardstack { position: relative; width: min(340px, 90%); height: 260px; }
+.card { position: absolute; inset: 0 auto auto 0; width: 100%; background: #FBFAF6; color: #172012; border-radius: 20px; padding: 18px 20px; font-family: var(--display); font-weight: 500; font-size: 16px; line-height: 1.4; }
+.card .t { font-weight: 700; font-size: 18px; }
+.card .s { opacity: 0.85; margin-top: 2px; }
+.card .row { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 15px; }
+.card .pill { border-radius: 999px; padding: 3px 10px; background: rgba(107,138,66,0.22); font-weight: 600; }
+.card .bar2 { height: 10px; border-radius: 999px; background: rgba(23,32,18,0.12); margin-top: 12px; overflow: hidden; }
+.card .bar2 i { display: block; height: 100%; width: 57%; background: var(--moss); border-radius: 999px; }
+.card .rc { margin-top: 12px; font-weight: 600; text-decoration: underline; }
+.card .step { margin-top: 12px; font-family: var(--text); font-size: 15px; color: var(--day-ink-2); }
+/* the finished composition (no script, reduced motion, a failed CDN): the chapters one after another */
+.scene:not(.is-live) .sky, .scene:not(.is-live) .orb, .scene:not(.is-live) .moon { display: none; }
+.scene:not(.is-live) .ch:nth-child(odd) { background: var(--kuro-1); }
+.scene:not(.is-live) .ch:nth-child(even) { background: var(--day-0); }
+.scene:not(.is-live) .ch.on-day:nth-child(odd) { color: var(--bone); }
+.scene:not(.is-live) .ch.on-night:nth-child(even) { color: var(--day-ink); }
+.scene:not(.is-live) .ch { max-width: none; padding-block: var(--gap); }
+.scene:not(.is-live) .cardstack { height: auto; display: grid; gap: 10px; }
+.scene:not(.is-live) .card { position: relative; }
+.scene.is-live .ch { position: absolute; inset: 0; opacity: 0; visibility: hidden; pointer-events: none; }
+.scene.is-live .ch.is-on { pointer-events: auto; }
+.scene.is-live .ch:first-child { opacity: 1; visibility: visible; }
+.scene.is-live .chapters { position: absolute; inset: 0; }
+
+/* ---------- your day, live ---------- */
+.day { background: var(--day-0); color: var(--day-ink); padding-block: var(--gap) calc(var(--gap) * 0.55); position: relative; overflow: hidden; }
+.day .sun { position: absolute; border-radius: 50%; background: var(--moss); width: 30vw; height: 30vw; right: -10vw; bottom: -16vw; }
+.day .wrap { position: relative; display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(32px, 6vw, 96px); }
 .day h2 { font-size: var(--step-head); max-width: 8em; }
 .day .intro { margin-top: 28px; font-size: var(--step-lead); line-height: 1.4; max-width: 30ch; }
 .wake { margin-top: 48px; }
@@ -112,12 +196,7 @@ input[type=range]::-moz-range-thumb { width: 40px; height: 40px; border-radius: 
 input[type=range]:active::-webkit-slider-thumb { transform: scale(1.12); }
 .wake .ends { display: flex; justify-content: space-between; max-width: 520px; font-family: var(--display); font-weight: 500; font-size: 0.9375rem; color: var(--day-ink-2); }
 .wake .hint { margin-top: 18px; color: var(--day-ink-2); max-width: 44ch; }
-.ring { margin-top: 56px; display: flex; align-items: center; gap: 24px; }
-.ring .disc { flex: none; width: clamp(240px, 24vw, 340px); aspect-ratio: 3 / 2; border-radius: 28px; overflow: hidden; background: var(--kuro-0); }
-.ring .disc { position: relative; }
-.ring .disc img { position: absolute; width: 100%; max-width: none; height: auto; left: 0; top: -13%; }
-.ring p { max-width: 24ch; }
-.timeline { list-style: none; position: relative; }
+.timeline { list-style: none; }
 .timeline li { display: grid; grid-template-columns: 5.2ch minmax(0, 1fr); gap: 18px; padding: 14px 18px; border-radius: 22px; transition: background-color 300ms ease; }
 .timeline li + li { margin-top: 4px; }
 .timeline time { font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; font-size: 1.0625rem; padding-top: 2px; }
@@ -125,84 +204,18 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.12); }
 .timeline .what::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--day-accent); margin-top: 8px; }
 .timeline strong { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; }
 .timeline .k-missed { background: var(--day-1); }
-.timeline .k-missed .what::before { background: transparent; box-shadow: inset 0 0 0 3px var(--day-accent); }
+.timeline .k-missed .what::before { background: transparent; border: 3px solid var(--day-accent); box-sizing: border-box; }
 .timeline .k-night { background: var(--kuro-2); color: var(--bone); }
 .timeline .k-night .what::before { background: var(--bone); }
 .timeline .k-now { background: var(--moss); color: var(--moss-ink); }
 .timeline .k-now .what::before { background: var(--moss-ink); }
 
-/* ---------- one task, one day: four fields ---------- */
-.task h2 { position: absolute; top: clamp(28px, 4vw, 56px); left: var(--margin); z-index: 2; font-size: var(--step-head); max-width: 6em; color: var(--bone); }
-.fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-height: 92svh; }
-.field { position: relative; overflow: hidden; padding: clamp(24px, 2.4vw, 36px); display: flex; flex-direction: column; justify-content: flex-end; min-height: 92svh; }
-.field:nth-child(1) { background: var(--kuro-1); color: var(--bone); }
-.field:nth-child(2) { background: var(--day-1); color: var(--day-ink); }
-.field:nth-child(3) { background: var(--day-0); color: var(--day-ink); }
-.field:nth-child(4) { background: var(--kuro-3); color: var(--bone); }
-.field .sun { width: 150%; aspect-ratio: 1; height: auto; left: -25%; }
-.field:nth-child(1) .sun { top: 88%; --sun: var(--kuro-3); }
-.field:nth-child(2) .sun { top: 52%; --sun: var(--day-2); }
-.field:nth-child(3) .sun { top: 66%; --sun: var(--day-1); }
-.field:nth-child(4) .sun { top: 94%; --sun: var(--kuro-4); }
-.field .hour { font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; font-size: clamp(2.75rem, 1.6rem + 3.4vw, 5.5rem); letter-spacing: -0.04em; line-height: 1; position: relative; z-index: 1; }
-.field .clause { font-family: var(--display); font-weight: 600; font-size: clamp(1.375rem, 0.9rem + 1.1vw, 2rem); letter-spacing: -0.02em; line-height: 1.12; margin-top: 6px; max-width: 12ch; position: relative; z-index: 1; }
-.card { position: absolute; left: 50%; top: 38%; width: min(280px, 82%); transform: translate(-50%, var(--lift, 0px)); background: #FBFAF6; color: #172012; border-radius: 18px; padding: 16px 18px; font-family: var(--display); font-weight: 500; font-size: 15px; line-height: 1.4; z-index: 1; transition: transform 160ms var(--ease-out); }
-.field:nth-child(1) .card, .field:nth-child(4) .card { background: #1F2A19; color: #E9E5DD; }
-@media (hover: hover) and (pointer: fine) { .field:hover .card { --lift: -6px; } }
-.card .t { font-weight: 700; font-size: 16px; }
-.card .s { opacity: 0.85; margin-top: 2px; }
-.card .row { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 15px; }
-.card .pill { border-radius: 999px; padding: 3px 10px; background: rgba(107,138,66,0.22); font-weight: 600; }
-.card .bar2 { height: 8px; border-radius: 999px; background: rgba(23,32,18,0.12); margin-top: 10px; overflow: hidden; }
-.card .bar2 i { display: block; height: 100%; width: 57%; background: var(--moss); border-radius: 999px; transform-origin: left; }
-.card .rc { margin-top: 10px; font-weight: 600; text-decoration: underline; }
-
-/* ---------- showcase: the screens ---------- */
-.show { background: var(--day-1); color: var(--day-ink); padding-block: var(--gap) clamp(96px, 9vw, 140px); }
-.show .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 80px); align-items: center; }
-.iris { position: relative; aspect-ratio: 4 / 3; border-radius: 36px; overflow: hidden; background: var(--kuro-0); }
-.iris img { position: absolute; left: var(--x, 0%); top: var(--y, 0%); width: var(--w, 100%); height: auto; max-width: none; opacity: 0; transition: opacity 320ms ease; }
-.iris img.on { opacity: 1; }
-.show .side { display: flex; flex-direction: column; gap: 48px; justify-content: center; }
-.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
-.tabs button { font-family: var(--display); font-weight: 600; font-size: 1.0625rem; color: var(--day-ink-2); background: transparent; border: 0; border-radius: 999px; padding: 10px 16px; cursor: pointer; transition: background-color 200ms ease, color 200ms ease, transform 160ms var(--ease-out); }
-.tabs button[aria-selected="true"] { background: var(--day-ink); color: var(--day-0); }
-.tabs button:active { transform: scale(0.97); }
-@media (hover: hover) and (pointer: fine) { .tabs button[aria-selected="false"]:hover { background: var(--day-2); color: var(--day-ink); } }
-.show h2 { font-size: var(--step-head); max-width: 9em; }
-.show .desc { font-size: var(--step-lead); line-height: 1.4; margin-top: 28px; max-width: 34ch; }
-.show .desc + p { margin-top: 16px; max-width: 46ch; }
-.cells { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.cells a { display: flex; align-items: center; justify-content: center; min-height: 72px; border-radius: 999px; font-family: var(--display); font-weight: 600; text-decoration: none; text-align: center; padding: 0 18px; transition: transform 160ms var(--ease-out), background-color 200ms ease; }
-.cells a:first-child { background: var(--day-ink); color: var(--day-0); }
-.cells a:last-child { background: var(--day-2); color: var(--day-ink); }
-.cells a:active { transform: scale(0.97); }
-
-/* ---------- where it lives: inset panel at dusk ---------- */
-.lives { background: var(--kuro-2); }
-.panel { position: relative; color: var(--bone); padding: clamp(96px, 9vw, 140px) var(--margin) var(--gap); max-width: 1680px; margin-inline: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
-.panel h2 { font-size: var(--step-head); max-width: 10em; }
-.panel .orb { margin-top: 48px; width: min(34vw, 560px); aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: var(--kuro-0); display: grid; place-items: center; }
-.panel .orb video { width: 74%; height: 74%; object-fit: contain; }
-.panel .cols { padding-top: clamp(0px, 4vw, 40px); display: flex; flex-direction: column; gap: 56px; }
-.panel h3 { font-size: clamp(1.375rem, 1.1rem + 0.6vw, 1.75rem); letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 14px; }
-.panel ul { list-style: none; display: grid; gap: 10px; }
-.panel li { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 12px; }
-.panel li::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--moss); margin-top: 9px; }
-.panel .btn { align-self: flex-start; }
-.panel code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; background: rgba(242,238,232,0.1); padding: 1px 6px; border-radius: 6px; }
-.panel .cap { margin-top: 16px; max-width: 34ch; color: var(--bone-dim); }
-
 /* ---------- questions at night ---------- */
-.faq { background: var(--kuro-1); color: var(--bone); padding-block: clamp(96px, 10vw, 160px) clamp(96px, 9vw, 140px); }
+.faq { background: var(--kuro-1); color: var(--bone); padding-block: var(--gap) clamp(96px, 9vw, 140px); }
 .faq .wrap { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(24px, 4vw, 64px); align-items: start; }
 .faq .head { position: sticky; top: 112px; }
 .faq h2 { font-size: var(--step-head); max-width: 6em; }
 .faq .sub { margin-top: 20px; max-width: 26ch; }
-.faq .disc { margin-top: 40px; width: min(340px, 90%); aspect-ratio: 4 / 3; border-radius: 28px; overflow: hidden; background: var(--kuro-0); }
-.faq .disc { position: relative; }
-.faq .disc img { position: absolute; width: 100%; max-width: none; height: auto; left: 0; top: -16%; }
-.faq .disc + p { margin-top: 14px; max-width: 30ch; color: var(--bone-dim); }
 .qs { display: grid; gap: 8px; }
 .qs details { background: var(--kuro-3); border-radius: 28px; transition: background-color 260ms ease, color 260ms ease; }
 .qs details[open] { background: var(--moss); color: var(--moss-ink); }
@@ -214,17 +227,17 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.12); }
 details[open] .plus::after { transform: rotate(0deg); }
 .qs .a { padding: 0 28px 24px; max-width: 60ch; }
 .qs .a p + p { margin-top: 10px; }
-.qs code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; background: rgba(10,14,8,0.14); padding: 1px 6px; border-radius: 6px; }
+.qs details[open] code { background: rgba(10,14,8,0.14); }
 @media (hover: hover) and (pointer: fine) { .qs details:not([open]):hover { background: var(--kuro-4); } }
 
-/* ---------- the first step, already open ---------- */
-.go { background: var(--kuro-0); color: var(--bone); padding-block: clamp(96px, 10vw, 160px); overflow: hidden; }
-.go .sun { width: 64vw; height: 64vw; left: -18vw; bottom: -52vw; }
-.go .wrap { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 96px); align-items: center; }
+/* ---------- the first step, at night ---------- */
+.go { background: var(--kuro-0); color: var(--bone); padding-block: clamp(96px, 10vw, 160px); overflow: hidden; position: relative; isolation: isolate; }
+.go .sun { position: absolute; z-index: 0; border-radius: 50%; background: var(--moss); width: 64vw; height: 64vw; left: -18vw; bottom: -52vw; }
+.go .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 96px); align-items: center; }
 .go h2 { font-size: clamp(3.5rem, 1.5rem + 7vw, 8rem); line-height: 0.9; max-width: 6em; }
 .go .after { margin-top: 24px; max-width: 36ch; font-size: var(--step-lead); line-height: 1.4; }
-.install { justify-self: end; align-self: center; width: min(520px, 100%); background: var(--kuro-3); color: var(--bone); border-radius: 28px; padding: 28px; font-family: var(--display); }
-.install h3 { font-family: var(--display); font-size: 1.5rem; letter-spacing: -0.02em; }
+.install { justify-self: end; width: min(520px, 100%); background: var(--kuro-3); border-radius: 28px; padding: 28px; font-family: var(--display); }
+.install h3 { font-size: 1.5rem; letter-spacing: -0.02em; }
 .install .note { margin-top: 8px; font-family: var(--text); font-size: 16px; color: var(--bone-dim); line-height: 1.45; }
 .seg { margin-top: 20px; position: relative; display: grid; grid-template-columns: 1fr 1fr; background: var(--kuro-1); border-radius: 999px; padding: 4px; }
 .seg button { position: relative; z-index: 1; border: 0; background: transparent; color: var(--bone); font: 600 16px/1 var(--display); padding: 12px 10px; border-radius: 999px; cursor: pointer; transition: color 200ms ease, background-color 0ms; }
@@ -232,7 +245,7 @@ details[open] .plus::after { transform: rotate(0deg); }
 .seg .thumb { position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 999px; background: var(--bone); transition: transform 260ms var(--ease-out); }
 .seg[data-os="unix"] .thumb { transform: translateX(100%); }
 .line { margin-top: 14px; background: #050704; border-radius: 16px; padding: 14px 16px; color: #E9E5DD; min-height: 64px; white-space: normal; overflow-wrap: normal; }
-.line code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; line-height: 1.5; }
+.line code { background: none; padding: 0; font-size: 14px; line-height: 1.5; }
 .copy { margin-top: 14px; width: 100%; justify-content: center; font-size: 1.125rem; padding: 18px; }
 .copy .ok { display: none; }
 .copy.done .ok { display: inline; }
@@ -245,8 +258,8 @@ details[open] .plus::after { transform: rotate(0deg); }
 
 /* ---------- close ---------- */
 .foot { background: var(--kuro-0); color: var(--bone); padding-block: clamp(72px, 8vw, 120px) 40px; }
-.blocks { display: flex; align-items: flex-end; gap: 4px; height: clamp(120px, 30svh, 300px); margin-top: 72px; }
-.blocks span { flex: 1; display: flex; text-transform: uppercase; align-items: center; justify-content: center; border-radius: 999px 999px 18px 18px; font-family: var(--display); font-weight: 700; font-size: clamp(2.5rem, 8vw, 9rem); line-height: 0.8; padding-bottom: 0.12em; letter-spacing: -0.04em; transform-origin: bottom; }
+.blocks { display: flex; align-items: flex-end; gap: 4px; height: clamp(120px, 30svh, 300px); margin-top: 36px; }
+.blocks span { flex: 1; display: flex; text-transform: uppercase; align-items: center; justify-content: center; border-radius: 999px 999px 18px 18px; font-family: var(--display); font-weight: 700; font-size: clamp(2.5rem, 8vw, 9rem); line-height: 0.8; letter-spacing: -0.04em; transform-origin: bottom; }
 .blocks span:nth-child(odd) { background: var(--kuro-3); color: var(--bone); }
 .blocks span:nth-child(even) { background: var(--moss); color: var(--moss-ink); }
 .blocks span:nth-child(1) { height: 78%; } .blocks span:nth-child(2) { height: 100%; } .blocks span:nth-child(3) { height: 64%; }
@@ -256,50 +269,40 @@ details[open] .plus::after { transform: rotate(0deg); }
 .links h3 { font-size: 1.0625rem; letter-spacing: -0.01em; margin-bottom: 12px; line-height: 1.2; }
 .links ul { list-style: none; display: grid; gap: 8px; }
 .links a { text-decoration: none; }
-.links a:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) { .links a:hover { text-decoration: underline; } }
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+button, a, label, summary, [role="button"] { touch-action: manipulation; }
+button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: none; user-select: none; }
 .links .last p { color: var(--bone-dim); }
 .legal { margin-top: 32px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 0.9375rem; color: var(--bone-dim); }
 .legal .btn { padding: 12px 20px; font-size: 0.9375rem; }
 
-/* ---------- entrances ---------- */
-.js .hero h1 .w { display: inline-block; opacity: 0; transform: translateY(0.4em); }
-.js .hero h1.in .w { opacity: 1; transform: none; transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); transition-delay: calc(var(--i) * 70ms); }
-.js .hero .sun { transform: translateY(18vh); }
-.js .hero .sun.in { transform: translateY(0); transition: transform 1600ms var(--ease-out); }
-.js .hero .sun.live { transition: none; }
-
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  .js .hero h1 .w { opacity: 1 !important; transform: none !important; transition: opacity 200ms ease !important; }
-  .js .hero .sun { transform: none !important; }
-  .sun { will-change: auto; }
+  html.js .scene.is-live { height: auto; }
+  html.js .scene.is-live > .scene-stage { position: relative; height: auto; }
+  .hero .sun { will-change: auto; }
 }
-
-/* ---------- smaller screens ---------- */
 @media (max-width: 1000px) {
   .hero .wrap { grid-template-columns: minmax(0, 1fr); }
   .hero .sun { width: 150vw; height: 150vw; right: -40vw; bottom: -70vw; }
-  .stage { justify-content: flex-start; padding-bottom: 48px; }
-  .day .wrap, .show .wrap, .faq .wrap, .go .wrap { grid-template-columns: minmax(0, 1fr); }
-  .fields { grid-template-columns: minmax(0, 1fr); }
-  .field { min-height: 64svh; }
-  .task h2 { position: relative; top: 0; left: 0; background: var(--kuro-1); padding: 56px var(--margin) 0; max-width: none; }
-  .card { top: 18%; }
-  .panel { grid-template-columns: minmax(0, 1fr); }
-  .panel .orb { width: min(86vw, 520px); }
+  .stage-msg { justify-content: flex-start; padding-bottom: 48px; }
+  .ch { grid-template-columns: minmax(0, 1fr); gap: 24px; align-content: center; padding: calc(64px + 40px + 24px) var(--margin) 24px; }
+  .ch .hour { font-size: clamp(3rem, 15vw, 5rem); }
+  .ch h2 { font-size: clamp(1.75rem, 7vw, 2.5rem); margin-top: 10px; }
+  .ch p { font-size: 1.0625rem; margin-top: 12px; }
+  .phone { height: min(42svh, 400px); border-radius: 24px; }
+  .round { width: min(64vw, 320px); }
+  .cardstack { height: 210px; }
+  .day .wrap, .faq .wrap, .go .wrap { grid-template-columns: minmax(0, 1fr); }
   .faq .head { position: static; }
   .install { justify-self: stretch; width: 100%; }
-  .card { width: min(420px, 86%); }
-  .qs, .timeline, .show .side { width: 100%; }
   .links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .show .side { min-height: 0; }
+  .hero { padding-top: calc(64px + 40px + 40px); }
 }
 @media (max-width: 560px) {
   .hero h1 { font-size: 12vw; }
   .who label.big span { font-size: 1.1875rem; padding: 16px 24px; }
   .timeline li { grid-template-columns: 4.6ch minmax(0, 1fr); padding: 12px 14px; gap: 12px; }
-  .cells { grid-template-columns: minmax(0, 1fr); }
-  .cells a { min-height: 60px; }
   .blocks span { font-size: 9.5vw; }
 }
 </style>
@@ -307,27 +310,40 @@ details[open] .plus::after { transform: rotate(0deg); }
 <body>
 <a class="skip" href="#main">Skip to the page</a>
 
+<div class="boot" id="boot" aria-hidden="true">
+  <div>
+    <div class="holes"><span>K</span><span>U</span><span>R</span><span>O</span><span>O</span><span>T</span><span>O</span></div>
+    <div class="ground"></div>
+  </div>
+  <p class="skip-hint">Tap to skip</p>
+</div>
+
 <header class="bar" id="bar">
   <div class="wrap">
     <a class="mark" href="#top" aria-label="Kurooto, back to the top"><i></i>Kurooto</a>
     <nav aria-label="Main">
+      <a class="wide" href="#scene">A day</a>
       <a class="wide" href="#day">Your day</a>
-      <a class="wide" href="#screens">The screens</a>
       <a class="wide" href="#questions">Questions</a>
-      <a href="#install">Install</a>
-      <span class="clock" aria-hidden="true"><i class="dot"></i><span class="digits"><span id="clock">05:40</span></span></span>
+      <a class="go-btn" href="#install">Install</a>
     </nav>
   </div>
 </header>
 
+<div class="dayline" id="dayline" aria-hidden="true">
+  <div class="track"></div>
+  <span class="tick" style="top:0%">4:00</span><span class="tick" style="top:20%">8:00</span><span class="tick" style="top:40%">noon</span><span class="tick" style="top:60%">16:00</span><span class="tick" style="top:80%">20:00</span><span class="tick" style="top:100%">0:00</span>
+  <div class="marker" id="marker"><span class="body"></span><span class="now" id="now">04:00</span></div>
+</div>
+
 <main id="main">
-  <section class="hero" id="top" data-hour="05:40" data-bar="night">
+  <section class="hero" id="top" data-bar="night" aria-labelledby="h1">
     <div class="sun" id="hero-sun"></div>
     <div class="wrap">
       <h1 id="h1">An assistant that fits your day</h1>
       <div>
-        <p class="lead rise" style="--d:300ms">Kurooto lives on your own computer. It talks to you on Telegram and its phone app, calls you when it matters, and learns the hours you actually keep.</p>
-        <fieldset class="who rise" style="--d:420ms">
+        <p class="lead">Kurooto lives on your own computer. It talks to you on Telegram and its phone app, calls you when it matters, and learns the hours you actually keep.</p>
+        <fieldset class="who">
           <legend>Show me a day for</legend>
           <div class="opts">
             <label class="big"><input type="radio" name="who" value="student" checked><span>a research student</span></label>
@@ -335,13 +351,13 @@ details[open] .plus::after { transform: rotate(0deg); }
             <label><input type="radio" name="who" value="dev"><span>a tinkerer or developer</span></label>
           </div>
         </fieldset>
-        <div class="act rise" style="--d:540ms">
-          <a class="btn" href="#day"><i class="o"></i>Walk through a day</a>
+        <div class="act">
+          <a class="btn" href="#scene"><i class="o"></i>Live through a day</a>
           <a class="btn quiet" href="#install">or install the beta</a>
         </div>
       </div>
-      <div class="stage">
-        <div class="tg rise" style="--d:700ms" data-ui id="morning-msg">
+      <div class="stage-msg">
+        <div class="tg" data-ui>
           <div class="who-line">Kurooto</div>
           <p>While you slept:</p>
           <ul>
@@ -349,155 +365,104 @@ details[open] .plus::after { transform: rotate(0deg); }
             <li data-aud-text="m2">Linked last week's handwritten notes to their lecture.</li>
           </ul>
           <p>Loose ends:</p>
-          <ul>
-            <li data-aud-text="m3">Problem set 4 is due Friday 14:00. Start today: about 3 hours.</li>
-          </ul>
+          <ul><li data-aud-text="m3">Problem set 4 is due Friday 14:00. Start today: about 3 hours.</li></ul>
           <div class="time">07:30</div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="day" id="day" data-hour="07:00" data-bar="day" aria-labelledby="day-h">
-    <div class="sun" data-drift="0.18"></div>
+  <section class="scene" id="scene" data-scene="day" data-options='{"hold": 8}' aria-label="A day with Kurooto, from 04:00 to midnight">
+    <div class="scene-stage">
+      <div class="sky" aria-hidden="true"><i class="s-night"></i><i class="s-dawn"></i><i class="s-day"></i><i class="s-noon"></i><i class="s-dusk"></i><i class="s-late"></i></div>
+      <div class="orb" aria-hidden="true" data-move></div>
+      <div class="moon" aria-hidden="true" data-move></div>
+      <div class="chapters">
+        <article class="ch on-night" data-t="04:15">
+          <div><div class="hour">04:15</div><h2>While you sleep, it tidies up</h2><p>It reads your books into your notes, links what belongs together, and checks it hasn't got worse at what you taught it. One message in the morning says what it did.</p></div>
+          <div class="vis"><div class="tg" data-ui><div class="who-line">Kurooto</div><p>While you slept:</p><ul><li data-aud-text="m1">Read two chapters of your atmosphere book into your notes: 36 concept notes, 94 links.</li><li data-aud-text="m2">Linked last week's handwritten notes to their lecture.</li></ul><p>Loose ends:</p><ul><li data-aud-text="m3">Problem set 4 is due Friday 14:00. Start today: about 3 hours.</li></ul><div class="time">07:30</div></div></div>
+        </article>
+        <article class="ch on-night" data-t="07:00">
+          <div><div class="hour">07:00</div><h2>It calls to wake you</h2><p>A real call that rings like an alarm, even on silent. You talk the day through, and it plans it with you.</p></div>
+          <div class="vis"><div class="phone"><img src="media/phone-call.webp" width="1170" height="2532" alt="The phone's call page during a call with Kurooto: the conversation as text, with Hang up, Mute and Earpiece."></div></div>
+        </article>
+        <article class="ch on-day" data-t="09:00">
+          <div><div class="hour">09:00</div><h2>Quiet in class</h2><p>No calls during a class. Slept through one? A catch-up before the next and a lecture note to fill in, and nobody asks whether you went.</p></div>
+          <div class="vis"><div class="screen"><img src="media/morning.webp" width="2560" height="1662" alt="The morning page: today's plan from the daily note, with the day's classes, calendar, what's due soon and check-ins."></div></div>
+        </article>
+        <article class="ch on-day" data-t="13:00">
+          <div><div class="hour" data-task-hour>13:00</div><h2>One task, carried through the day</h2><p>It lands on your list, gets a start time, knows how far you got, and then it's off your mind.</p></div>
+          <div class="vis"><div class="cardstack" data-ui>
+            <div class="card" data-step="0"><div class="t" data-aud-text="c-title">Problem set 4</div><div class="s" data-aud-text="c-sub">Point Set Topology · from Classroom</div><div class="row"><span>Due</span><span data-aud-text="c-due">Fri 14:00</span></div><div class="step">07:00: it lands on your list.</div></div>
+            <div class="card" data-step="1"><div class="t" data-aud-text="c-title">Problem set 4</div><div class="s" data-aud-text="c-sub">Point Set Topology · from Classroom</div><div class="row"><span>Start by</span><span class="pill">today 13:00</span></div><div class="row"><span>About</span><span data-aud-text="c-size">3 hours</span></div><div class="step">13:00: it gets a start time.</div></div>
+            <div class="card" data-step="2"><div class="t" data-aud-text="c-title">Problem set 4</div><div class="s" data-aud-text="c-prog">4 of 7 done · "ps4 4/7"</div><div class="bar2"><i></i></div><div class="row"><span>Left</span><span data-aud-text="c-left">about 1 h 20 min</span></div><div class="step">18:00: it knows how far you got.</div></div>
+            <div class="card" data-step="3"><div class="t" data-aud-text="c-title">Problem set 4</div><div class="s">Done, ticked from your phone</div><div class="row"><span>Next</span><span data-aud-text="c-next">Topology quiz, Tue</span></div><div class="rc">Undo</div><div class="step">23:30: it's off your mind.</div></div>
+          </div></div>
+        </article>
+        <article class="ch on-day" data-t="16:00">
+          <div><div class="hour">16:00</div><h2>Your whole day on one screen</h2><p>The dashboard: your computer, every feature at work and your notes as a living map, on a page only this computer can open.</p></div>
+          <div class="vis"><div class="screen"><img src="media/dashboard.webp" width="3840" height="2160" alt="The dashboard: this computer on the left, Kurooto's features as cells around a beating core, the notes and their links on the right, and a terminal below."></div></div>
+        </article>
+        <article class="ch on-night" data-t="19:30">
+          <div><div class="hour">19:30</div><h2>It lives with you, not on a server</h2><p>Your computer, your Telegram bot, your own call line, your notes, the AI you pick. Every feature is off until you turn it on.</p></div>
+          <div class="vis"><div class="round"><video muted loop playsinline preload="none" poster="media/systems-poster.webp" data-play aria-label="The dashboard's Systems view: each feature is a cell around a beating core, and pulses run along the lines as messages, reminders and AI answers come and go."><source src="media/systems-loop.mp4" type="video/mp4"></video></div></div>
+        </article>
+        <article class="ch on-night" data-t="21:30">
+          <div><div class="hour">21:30</div><h2>A check-in before bed</h2><p>What got done? It moves to when you actually answer, and keeps what you said in your journal.</p></div>
+          <div class="vis"><div class="phone"><img src="media/chat-example-2.webp" width="1170" height="2532" alt="A chat with Kurooto: an AI answer about the Gibbs phenomenon, then the evening check-in, the reply, and the note that it was saved to the journal."></div></div>
+        </article>
+        <article class="ch on-night" data-t="23:30">
+          <div><div class="hour">23:30</div><h2>Quiet now</h2><p>No calls until your alarm. A daily limit on messages it starts by itself, and a "Less of this" on every one.</p></div>
+          <div class="vis"><div class="phone"><img src="media/phone-inbox.webp" width="1170" height="2532" alt="The phone's inbox: a call to answer and a question with answer buttons, a reply box and Later."></div></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="day" id="day" data-bar="day" aria-labelledby="day-h">
+    <div class="sun"></div>
     <div class="wrap">
       <div>
-        <h2 id="day-h" class="rise">A day that bends to you</h2>
-        <p class="intro rise" style="--d:90ms">Over the first weeks Kurooto learns when you're actually around, and its day moves to fit. Drag to when you wake.</p>
-        <div class="wake rise" style="--d:180ms">
+        <h2 id="day-h">A day that bends to you</h2>
+        <p class="intro">Over the first weeks Kurooto learns when you're actually around, and its day moves to fit. Drag to when you wake.</p>
+        <div class="wake">
           <p class="say"><label for="wake">I wake at</label> <output id="wake-out" for="wake">07:00</output></p>
           <input id="wake" type="range" min="300" max="1020" step="15" value="420" aria-valuetext="07:00">
           <div class="ends"><span>05:00</span><span>17:00</span></div>
           <p class="hint" id="wake-hint">Wake at 16:00 and watch what happens to the classes you slept through.</p>
         </div>
-        <div class="ring rise" style="--d:260ms"><div class="disc"><img src="media/phone-call.webp" width="1170" height="2532" loading="lazy" alt="The phone's call page during a call with Kurooto: the conversation as text, with Hang up, Mute and Earpiece."></div><p>The wake-up call is a real call: you talk it through, and it plans the day with you.</p></div>
       </div>
-      <ol class="timeline" id="timeline" aria-live="polite">
-        <li><time>06:40</time><div class="what"><span><strong>Drafts today's plan</strong> into your daily note: classes, what's due, a top three.</span></div></li>
-        <li class="k-now"><time>07:00</time><div class="what"><span><strong>Wake-up call.</strong> Your phone rings like an alarm, even on silent, and Kurooto goes through the plan with you.</span></div></li>
-        <li><time>08:00</time><div class="what"><span><strong>Time to start: Problem set 4.</strong> About 3 hours, so today is the day.</span></div></li>
-        <li><time>09:00</time><div class="what"><span><strong>Linear Algebra.</strong> No calls during class; afterwards it asks what was covered.</span></div></li>
-        <li><time>14:00</time><div class="what"><span><strong>Point Set Topology.</strong> No calls during class; afterwards it asks what was covered.</span></div></li>
-        <li><time>21:30</time><div class="what"><span><strong>Check-in before bed.</strong> What got done? It moves to when you actually answer.</span></div></li>
-        <li class="k-night"><time>23:00</time><div class="what"><span><strong>Quiet hours.</strong> No calls until your alarm.</span></div></li>
-        <li class="k-night"><time>04:15</time><div class="what"><span><strong>While you sleep</strong> it reads your books into your notes, tidies links, and checks it hasn't got worse at what you taught it.</span></div></li>
-      </ol>
+      <ol class="timeline" id="timeline" aria-live="polite"></ol>
     </div>
   </section>
 
-  <section class="task" id="task" data-hour="13:00" data-bar="night" aria-labelledby="task-h">
-    <h2 id="task-h" class="rise">One task, one day</h2>
-    <div class="fields">
-      <div class="field">
-        <div class="sun" data-drift="0.1"></div>
-        <div class="card rise" data-ui><div class="t" data-aud-text="c-title">Problem set 4</div><div class="s" data-aud-text="c-sub">Point Set Topology · from Classroom</div><div class="row"><span>Due</span><span data-aud-text="c-due">Fri 14:00</span></div></div>
-        <div class="hour">07:00</div><p class="clause">First it lands on your list.</p>
-      </div>
-      <div class="field">
-        <div class="sun" data-drift="0.1"></div>
-        <div class="card rise" style="--d:90ms" data-ui><div class="t" data-aud-text="c-title">Problem set 4</div><div class="s" data-aud-text="c-sub">Point Set Topology · from Classroom</div><div class="row"><span>Due</span><span data-aud-text="c-due">Fri 14:00</span></div><div class="row"><span>Start by</span><span class="pill">today 13:00</span></div><div class="row"><span>About</span><span data-aud-text="c-size">3 hours</span></div></div>
-        <div class="hour">13:00</div><p class="clause">Then it gets a start time.</p>
-      </div>
-      <div class="field">
-        <div class="sun" data-drift="0.1"></div>
-        <div class="card rise" style="--d:180ms" data-ui><div class="t" data-aud-text="c-title">Problem set 4</div><div class="s" data-aud-text="c-prog">4 of 7 done · "ps4 4/7"</div><div class="bar2"><i></i></div><div class="row"><span>Left</span><span data-aud-text="c-left">about 1 h 20 min</span></div></div>
-        <div class="hour">18:00</div><p class="clause">Then it knows how far you got.</p>
-      </div>
-      <div class="field">
-        <div class="sun" data-drift="0.1"></div>
-        <div class="card rise" style="--d:270ms" data-ui><div class="t" data-aud-text="c-title">Problem set 4</div><div class="s">Done, ticked from your phone</div><div class="row"><span>Next</span><span data-aud-text="c-next">Topology quiz, Tue</span></div><div class="rc">Undo</div></div>
-        <div class="hour">23:30</div><p class="clause">Then it's off your mind.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="show" id="screens" data-hour="16:00" data-bar="day" aria-labelledby="show-h">
-    <div class="wrap">
-      <div class="iris" id="iris">
-        <img class="on" src="media/dashboard.webp" width="3840" height="2160" alt="The dashboard's Systems view: Kurooto's features as cells around a beating core, with when each last ran." style="--w: 290%; --x: -88%; --y: -4%">
-        <img src="media/phone-inbox.webp" width="1170" height="2532" loading="lazy" alt="The phone's inbox: Kurooto is calling with an Answer button, and a question about Thursday's quiz with answer buttons." style="--w: 72%; --x: 14%; --y: -11%">
-        <img src="media/morning.webp" width="2560" height="1662" loading="lazy" alt="The morning page: today's plan from the daily note, beside the day's classes and what's due." style="--w: 175%; --x: -4%; --y: -6%">
-        <img src="media/setup-computer.webp" width="2880" height="2240" loading="lazy" alt="The setup page reading this computer: the graphics card, memory and free space it found, and what it recommends running here." style="--w: 106%; --x: -3%; --y: -6%">
-      </div>
-      <div class="side">
-        <div>
-          <h2 id="show-h" class="rise">The real screens</h2>
-          <div class="tabs" role="tablist" aria-label="Screens">
-            <button role="tab" aria-selected="true" data-tab="0">Dashboard</button>
-            <button role="tab" aria-selected="false" data-tab="1">Phone</button>
-            <button role="tab" aria-selected="false" data-tab="2">Morning</button>
-            <button role="tab" aria-selected="false" data-tab="3">Setup</button>
-          </div>
-          <p class="desc rise" style="--d:90ms" id="shot-desc">Your computer, every feature at work and your notes as a living map, on a page only this computer can open.</p>
-          <p class="rise" style="--d:160ms">Every screen here is Kurooto itself, with sample data for a student called Sam.</p>
-        </div>
-        <div class="cells rise" style="--d:220ms">
-          <a href="wiki/user/index.html">Read the user wiki</a>
-          <a href="changelog.html">What changed lately</a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="lives" id="lives" data-hour="19:30" data-bar="night" aria-labelledby="lives-h">
-    <div class="panel">
-      <div>
-        <h2 id="lives-h" class="rise">It lives with you, not on a server</h2>
-        <div class="orb"><video autoplay muted loop playsinline preload="none" poster="media/systems-poster.webp" aria-label="The dashboard's Systems view: each feature is a cell around a beating core, and pulses run along the lines as messages, reminders and AI answers come and go."><source src="media/systems-loop.mp4" type="video/mp4"></video></div>
-        <p class="cap">The Systems view: each feature pulses as it works.</p>
-      </div>
-      <div class="cols">
-        <div class="rise">
-          <h3>Your computer, your accounts</h3>
-          <ul>
-            <li>It runs on your own Windows, macOS or Linux machine, with no admin rights.</li>
-            <li>Your own Telegram bot, your own call line on your free Cloudflare account, your own notes folder.</li>
-            <li>You pick the AI: a free Gemini key, Antigravity, Claude Code, FreeLLMAPI, or local models.</li>
-          </ul>
-        </div>
-        <div class="rise" style="--d:90ms">
-          <h3>Quiet, and honest about itself</h3>
-          <ul>
-            <li>Every feature is off until you turn it on, and says what leaves your computer.</li>
-            <li>A daily limit on messages it starts by itself, and a "Less of this" on each one.</li>
-            <li>A one-line receipt under every AI answer: which AI, how long, what it actually did.</li>
-            <li><span>It remembers until you ask it to forget: <code>/forget 7d</code>.</span></li>
-          </ul>
-        </div>
-        <a class="btn rise" style="--d:160ms" href="privacy.html"><i class="o"></i>What leaves your computer</a>
-      </div>
-    </div>
-  </section>
-
-  <section class="faq" id="questions" data-hour="22:00" data-bar="night" aria-labelledby="faq-h">
+  <section class="faq" id="questions" data-bar="night" aria-labelledby="faq-h">
     <div class="wrap">
       <div class="head">
-        <h2 id="faq-h" class="rise">Before you try it</h2>
-        <p class="sub rise" style="--d:90ms">The honest answers, beta and all.</p>
-        <div class="disc rise" style="--d:160ms"><img src="media/chat-example-1.webp" width="1170" height="2532" loading="lazy" alt="A chat with Kurooto on Telegram: a reminder in two minutes, what's due this week, and the reminder arriving with +10 min and +1 h buttons."></div>
-        <p class="rise" style="--d:200ms">A real chat: reminders, what's due, and buttons to push them back.</p>
+        <h2 id="faq-h">Before you try it</h2>
+        <p class="sub">The honest answers, beta and all.</p>
       </div>
       <div class="qs">
-        <details name="q" open class="rise"><summary>Has it been tried on computers like mine?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Not many yet. It's used every day on one Linux laptop, and 1,571 automated tests run on Windows, macOS and Linux, but it's a beta that hasn't met many real PCs. That's exactly why trying it on yours helps.</p><p>If something goes wrong, <code>kurooto doctor</code> says what, and <code>kurooto doctor --bundle</code> makes a report you can send, with secrets taken out.</p></div></details>
-        <details name="q" class="rise" style="--d:60ms"><summary>What do I need?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>A computer you leave on most of the day, a Telegram account on your phone, and a Google account or a free Gemini key. Phone calls also need a free Cloudflare account; the setup page walks you through it. Android 6 and newer gets the app; an iPhone gets a web app.</p></div></details>
-        <details name="q" class="rise" style="--d:120ms"><summary>Does it cost anything?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>No. Kurooto is free and open source (Apache-2.0), and everything it uses has a free tier. If you pick a paid AI you already have, it uses your plan.</p></div></details>
-        <details name="q" class="rise" style="--d:180ms"><summary>Will it bother me?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Only as much as you let it. Every feature is opt-in, messages it starts by itself have a daily limit, each one has "Less of this", and it never calls in class, during focus or in your quiet hours. After ten days it asks which features you actually use.</p></div></details>
-        <details name="q" class="rise" style="--d:240ms"><summary>What leaves my computer?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Only what a feature you turned on needs, and each one says so before you turn it on: your messages go through Telegram, calls through Google's Gemini with your own key, rings through your own call line. The privacy page lists every place.</p></div></details>
-        <details name="q" class="rise" style="--d:300ms"><summary>How does it update?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>By itself, at night, from signed releases. If a new version keeps crashing it rolls back on its own. The beta gets each version the day it's signed; stable gets it once it has run on beta for a while.</p></div></details>
-        <details name="q" class="rise" style="--d:360ms"><summary>Something broke. Now what?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Send <code>/fixme</code>: it matches what's wrong to the fix by plain rules, so it works even when the AI is the part that broke. Then tell us on GitHub, with the bundle from <code>kurooto doctor --bundle</code>.</p></div></details>
-        <details name="q" class="rise" style="--d:420ms"><summary>Can I build on it?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Yes. Add-ons, skills and your own AI program all plug in; the developer wiki explains how it's built, for people and for AI agents, and AGENTS.md lets your own agent help you set it up.</p></div></details>
+        <details name="q" open><summary>Has it been tried on computers like mine?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Not many yet. It's used every day on one Linux laptop, and over 1,500 automated tests run on Windows, macOS and Linux, but it's a beta that hasn't met many real PCs. That's exactly why trying it on yours helps.</p><p>If something goes wrong, <code>kurooto doctor</code> says what, and <code>kurooto doctor --bundle</code> makes a report you can send, with secrets taken out.</p></div></details>
+        <details name="q"><summary>What do I need?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>A computer you leave on most of the day, a Telegram account on your phone, and a Google account or a free Gemini key. Phone calls also need a free Cloudflare account; the setup page walks you through it. Android 6 and newer gets the app; an iPhone gets a web app.</p></div></details>
+        <details name="q"><summary>Does it cost anything?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>No. Kurooto is free and open source (Apache-2.0), and everything it uses has a free tier. If you pick a paid AI you already have, it uses your plan.</p></div></details>
+        <details name="q"><summary>Will it bother me?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Only as much as you let it. Every feature is opt-in, messages it starts by itself have a daily limit, each one has "Less of this", and it never calls in class, during focus or in your quiet hours. After ten days it asks which features you actually use.</p></div></details>
+        <details name="q"><summary>What leaves my computer?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Only what a feature you turned on needs, and each one says so before you turn it on. It remembers until you ask it to forget: <code>/forget 7d</code>. The privacy page lists every place.</p></div></details>
+        <details name="q"><summary>How does it update?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>By itself, at night, from signed releases. If a new version keeps crashing it rolls back on its own. The beta gets each version the day it's signed.</p></div></details>
+        <details name="q"><summary>Something broke. Now what?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Send <code>/fixme</code>: it matches what's wrong to the fix by plain rules, so it works even when the AI is the part that broke. Then tell us on GitHub, with the bundle from <code>kurooto doctor --bundle</code>.</p></div></details>
+        <details name="q"><summary>Can I build on it?<i class="plus" aria-hidden="true"></i></summary><div class="a"><p>Yes. Add-ons, skills and your own AI program all plug in; the developer wiki explains how it's built, for people and for AI agents.</p></div></details>
       </div>
     </div>
   </section>
 
-  <section class="go" id="install" data-hour="23:30" data-bar="night" aria-labelledby="go-h">
+  <section class="go" id="install" data-bar="night" aria-labelledby="go-h">
     <div class="sun"></div>
     <div class="wrap">
       <div>
-        <h2 id="go-h" class="rise">Try it tonight</h2>
-        <p class="after rise" style="--d:90ms">Paste one line and a setup page opens in your browser. Turn on only what you want; nothing changes without a line saying so and an Undo.</p>
+        <h2 id="go-h">Try it tonight</h2>
+        <p class="after">Paste one line and a setup page opens in your browser. Turn on only what you want; nothing changes without a line saying so and an Undo.</p>
       </div>
-      <div class="install rise" style="--d:160ms" data-ui>
+      <div class="install" data-ui>
         <h3>Install the beta</h3>
         <p class="note">For people happy to experiment. Expect rough edges, and tell us what breaks.</p>
         <div class="seg" id="seg" data-os="win" role="group" aria-label="Your computer">
@@ -514,7 +479,7 @@ details[open] .plus::after { transform: rotate(0deg); }
   </section>
 </main>
 
-<footer class="foot" data-hour="04:15" data-bar="night">
+<footer class="foot" data-bar="night">
   <div class="wrap">
     <div class="links">
       <div><h3>Learn</h3><ul><li><a href="wiki/user/index.html">User wiki</a></li><li><a href="wiki/dev/index.html">Developer wiki</a></li><li><a href="https://github.com/avtarfr/kurooto/blob/main/docs/MANUAL.md">The manual</a></li></ul></div>
@@ -528,137 +493,237 @@ details[open] .plus::after { transform: rotate(0deg); }
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
 <script>
+/* the shared scroll stage (tasteskill scenes/stage.js, trimmed): native scroll, a held stage, a scrubbed timeline */
+(() => {
+  const html = document.documentElement, mq = (q) => matchMedia(q).matches;
+  const live = !!(window.gsap && window.ScrollTrigger);
+  if (live) gsap.registerPlugin(ScrollTrigger);
+  const Stage = { live, lenis: null, get reduced() { return mq('(prefers-reduced-motion: reduce)'); }, get touch() { return mq('(pointer: coarse)'); } };
+  Stage.smooth = ({ lerp = 0.12 } = {}) => {
+    if (!live || !window.Lenis || Stage.reduced || Stage.touch || Stage.lenis) return Stage.lenis;
+    const lenis = new Lenis({ lerp, smoothWheel: true, anchors: true, autoRaf: false });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add((t) => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0);
+    html.classList.add('is-smooth'); Stage.lenis = lenis; return lenis;
+  };
+  Stage.scene = (root, { hold = 2, build, onUpdate } = {}) => {
+    if (!root) return null;
+    const q = (s) => [...root.querySelectorAll(s)];
+    if (!live) { root.classList.add('is-rest'); return null; }
+    const mm = gsap.matchMedia();
+    mm.add({ motion: '(prefers-reduced-motion: no-preference)' }, (c) => {
+      if (!c.conditions.motion) { root.classList.add('is-rest'); return () => root.classList.remove('is-rest'); }
+      root.classList.add('is-live'); root.style.setProperty('--hold', hold);
+      const tl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: root, start: 'top top', end: 'bottom bottom', scrub: true, invalidateOnRefresh: true, onUpdate: (self) => onUpdate && onUpdate(self.progress) } });
+      build(tl, { root, q, phone: mq('(max-width: 999px)') });
+      if (tl.duration() < 1) tl.to({}, { duration: 1 - tl.duration() }, tl.duration());
+      return () => { root.classList.remove('is-live'); root.style.removeProperty('--hold'); };
+    });
+    return mm;
+  };
+  window.Stage = Stage;
+})();
+
 (function () {
-  var doc = document.documentElement;
-  doc.classList.add('js');
-  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var html = document.documentElement;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var G = window.gsap;
+  var EASE = 'expo.out';
 
-  /* the headline, word by word */
-  var h1 = $('#h1');
-  h1.innerHTML = h1.textContent.split(' ').map(function (w, i) { return '<span class="w" style="--i:' + i + '">' + w + '</span>'; }).join(' ');
-  var heroSun = $('#hero-sun');
-  requestAnimationFrame(function () { requestAnimationFrame(function () { h1.classList.add('in'); heroSun.classList.add('in'); }); });
-  setTimeout(function () { heroSun.classList.add('live'); drift(); }, 1700);
-
-  /* entrances: each part once, as its section arrives; the content is there all along, the move only plays on top */
-  var io = new IntersectionObserver(function (es) {
-    es.forEach(function (e) {
-      if (!e.isIntersecting) return;
-      io.unobserve(e.target);
-      if (reduce || !e.target.animate) return;
-      var el = e.target, d = parseFloat(getComputedStyle(el).getPropertyValue('--d')) || 0, card = el.classList.contains('card');
-      el.animate([
-        { opacity: 0, transform: card ? 'translate(-50%, 28px)' : 'translateY(28px)' },
-        { opacity: 1, transform: card ? 'translate(-50%, 0)' : 'none' }
-      ], { duration: 900, delay: d, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'backwards' });
-    });
-  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
-  $$('.rise').forEach(function (el) { var r = el.getBoundingClientRect(); if (r.top < innerHeight) { if (!reduce && el.animate) el.animate([{ opacity: 0, transform: el.classList.contains('card') ? 'translate(-50%, 28px)' : 'translateY(28px)' }, { opacity: 1, transform: el.classList.contains('card') ? 'translate(-50%, 0)' : 'none' }], { duration: 900, delay: parseFloat(getComputedStyle(el).getPropertyValue('--d')) || 0, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'backwards' }); } else io.observe(el); });
-  /* the wordmark's blocks grow from the ground as the close arrives (they're there all along without script) */
-  var blocks = $('#blocks');
-  if (!reduce && blocks.animate) new IntersectionObserver(function (es, o) {
-    es.forEach(function (e) {
-      if (!e.isIntersecting) return;
-      $$('span', blocks).forEach(function (b, i) {
-        b.animate([{ transform: 'scaleY(0.25)', opacity: 0.2 }, { transform: 'none', opacity: 1 }], { duration: 900, delay: i * 60, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'backwards' });
-      });
-      o.disconnect();
-    });
-  }, { threshold: 0.4 }).observe(blocks);
-  /* the signature: the screens open like an iris the first time they come into view */
-  var iris = $('#iris');
-  if (!reduce && iris.animate && iris.getBoundingClientRect().top > innerHeight) new IntersectionObserver(function (es, o) {
-    es.forEach(function (e) {
-      if (!e.isIntersecting) return;
-      o.disconnect();
-      iris.animate([{ clipPath: 'circle(0% at 50% 60%)' }, { clipPath: 'circle(75% at 50% 50%)' }], { duration: 1100, easing: 'cubic-bezier(0.77,0,0.175,1)', fill: 'backwards' });
-      $$('img', iris).forEach(function (im) { im.animate([{ transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 1400, easing: 'cubic-bezier(0.23,1,0.32,1)' }); });
-    });
-  }, { threshold: 0.35 }).observe(iris);
-
-  /* the page's hour: the clock in the bar rolls to each section's time, and the bar takes its sky */
-  var clock = $('#clock'), bar = $('#bar'), cur = clock.textContent;
-  var skies = { night: ['#0B0F0A', '#F2EEE8'], day: ['#F4F2EC', '#172012'], moss: ['#6B8A42', '#0A0E08'] };
-  function setHour(h, sky) {
-    var s = skies[sky] || skies.night;
-    bar.style.setProperty('--bar-ground', s[0]); bar.style.setProperty('--bar-ink', s[1]);
-    var meta = $('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', s[0]);
-    if (h === cur) return;
-    var up = h > cur; cur = h;
-    if (reduce || !clock.animate) { clock.textContent = h; return; }
-    clock.animate([{ transform: 'translateY(0)', opacity: 1 }, { transform: 'translateY(' + (up ? '-100%' : '100%') + ')', opacity: 0 }], { duration: 160, easing: 'cubic-bezier(0.23,1,0.32,1)' }).onfinish = function () {
-      clock.textContent = h;
-      clock.animate([{ transform: 'translateY(' + (up ? '100%' : '-100%') + ')', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 220, easing: 'cubic-bezier(0.23,1,0.32,1)' });
-    };
+  /* ---------- the boot: the name pops up and down like moles, then the page opens ---------- */
+  var seen = false; try { seen = sessionStorage.getItem('kurooto-boot') === '1'; } catch (e) {}
+  if (navigator.webdriver) seen = true;
+  function intro() {
+    var h1 = $('#h1');
+    h1.innerHTML = h1.textContent.split(' ').map(function (w) { return '<span class="w">' + w + '</span>'; }).join(' ');
+    if (!G || reduce) return;
+    G.from('#h1 .w', { yPercent: 70, opacity: 0, duration: 1.1, ease: EASE, stagger: 0.07 });
+    G.from('.hero .lead, .hero .who, .hero .act', { y: 30, opacity: 0, duration: 1, ease: EASE, stagger: 0.09, delay: 0.25 });
+    G.from('#hero-sun', { yPercent: 22, duration: 2.2, ease: 'power3.out' });
+    G.from('.hero .tg', { y: 60, opacity: 0, scale: 0.96, duration: 1.2, ease: EASE, delay: 0.5 });
   }
-  var hourIo = new IntersectionObserver(function (es) {
-    es.forEach(function (e) { if (e.isIntersecting) setHour(e.target.getAttribute('data-hour'), e.target.getAttribute('data-bar')); });
-  }, { rootMargin: '-64px 0px -85% 0px' });
-  $$('[data-hour]').forEach(function (el) { hourIo.observe(el); });
-
-  /* the sun drifts with the scroll: it rises in the hero, and each field's horizon moves */
-  var suns = $$('.sun[data-drift]'), ticking = false, msg = $('#morning-msg');
-  function drift() {
-    ticking = false;
-    if (reduce) return;
-    var vh = window.innerHeight, y = window.scrollY;
-    if (heroSun.classList.contains('live')) heroSun.style.transform = 'translateY(' + (-Math.min(y, vh) * 0.35) + 'px)';
-    if (msg) msg.style.setProperty('--rise', (-Math.min(y, vh) * 0.12) + 'px');
-    suns.forEach(function (s) {
-      var r = s.parentNode.getBoundingClientRect();
-      if (r.bottom < -200 || r.top > vh + 200) return;
-      var p = (vh - r.top) / (vh + r.height);
-      s.style.transform = 'translateY(' + ((0.5 - p) * vh * parseFloat(s.getAttribute('data-drift'))) + 'px)';
+  if (seen || reduce || !G) { intro(); }
+  else {
+    html.classList.add('booting');
+    var moles = $$('#boot .holes span'), boot = $('#boot'), done = false;
+    var tl = G.timeline({ onComplete: finish });
+    var order = [3, 0, 5, 2, 6, 1, 4, 5];
+    order.forEach(function (i, n) {
+      tl.to(moles[i], { y: '22%', duration: 0.13, ease: 'back.out(2.4)' }, n * 0.085)
+        .to(moles[i], { y: '102%', duration: 0.14, ease: 'power2.in' }, n * 0.085 + 0.16);
     });
-  }
-  if (!reduce) { addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(drift); } }, { passive: true }); drift(); }
-
-  /* who the page is for */
-  var AUD = {
-    student: {
-      m1: 'Read two chapters of your atmosphere book into your notes: 36 concept notes, 94 links.',
-      m2: "Linked last week's handwritten notes to their lecture.",
-      m3: 'Problem set 4 is due Friday 14:00. Start today: about 3 hours.',
-      'c-title': 'Problem set 4', 'c-sub': 'Point Set Topology · from Classroom', 'c-due': 'Fri 14:00', 'c-size': '3 hours',
-      'c-prog': '4 of 7 done · "ps4 4/7"', 'c-left': 'about 1 h 20 min', 'c-next': 'Topology quiz, Tue',
-      events: [
-        { t: 540, d: 55, what: 'Linear Algebra', kind: 'class' },
-        { t: 840, d: 55, what: 'Point Set Topology', kind: 'class' }
-      ],
-      start: 'Problem set 4', size: 'About 3 hours, so today is the day.'
-    },
-    life: {
-      m1: "Moved tomorrow's gym slot: your shift runs late on Thursdays.",
-      m2: 'Linked 4 loose notes to where they belong.',
-      m3: 'Renew passport: the form is due Monday. About an hour, so this weekend.',
-      'c-title': 'Renew passport', 'c-sub': 'From an email · the form and two photos', 'c-due': 'Mon 17:00', 'c-size': '1 hour',
-      'c-prog': '2 of 3 done · "passport 2/3"', 'c-left': 'about 20 min', 'c-next': 'Rent, the 1st',
-      events: [
-        { t: 540, d: 480, what: 'Work shift', kind: 'commit' },
-        { t: 1110, d: 60, what: 'Gym', kind: 'commit' }
-      ],
-      start: 'Renew passport', size: 'About an hour; it fits before your shift.'
-    },
-    dev: {
-      m1: "Ran tonight's research digest: 6 new papers on your topics, 2 worth a look.",
-      m2: "Your add-on's job ran three times, all fine.",
-      m3: 'Claude Code hit its limit at 02:10; agy answered instead.',
-      'c-title': 'Ship the arXiv add-on', 'c-sub': 'Your own add-on · from a chat message', 'c-due': 'Sun 23:59', 'c-size': '2 hours',
-      'c-prog': '3 of 5 done · "addon 3/5"', 'c-left': 'about 50 min', 'c-next': 'Review the PR, Mon',
-      events: [
-        { t: 600, d: 60, what: 'Research digest', kind: 'digest' },
-        { t: 1080, d: 120, what: 'Focus', kind: 'focus' }
-      ],
-      start: 'Ship the arXiv add-on', size: 'About 2 hours; your AI program can take the boring part.'
+    tl.to(moles, { y: '0%', duration: 0.42, ease: 'back.out(1.7)', stagger: 0.04 }, '+=0.02')
+      .to(moles, { y: '-6%', duration: 0.14, ease: 'power1.out', stagger: 0.025, yoyo: true, repeat: 1 }, '+=0.02')
+      .to(boot, { clipPath: 'inset(0 0 100% 0)', duration: 0.7, ease: 'power4.inOut' }, '+=0.12');
+    function finish() {
+      if (done) return; done = true;
+      html.classList.remove('booting');
+      try { sessionStorage.setItem('kurooto-boot', '1'); } catch (e) {}
+      intro();
+      if (window.ScrollTrigger) ScrollTrigger.refresh();
     }
+    function skip() { tl.progress(1); finish(); }
+    boot.addEventListener('click', skip);
+    addEventListener('keydown', skip, { once: true });
+    addEventListener('wheel', skip, { once: true, passive: true });
+    addEventListener('touchstart', skip, { once: true, passive: true });
+    addEventListener('scroll', skip, { once: true, passive: true });
+  }
+
+  /* ---------- the day scene ---------- */
+  var chapters = $$('#scene .ch'), N = chapters.length;
+  var times = chapters.map(function (c) { var t = c.getAttribute('data-t').split(':'); return +t[0] * 60 + +t[1]; });
+  var sceneMin = 0;
+  function sceneTime(p) { return 240 + p * (1440 - 240); }
+  var videos = $$('video[data-play]');
+  if (window.Stage && Stage.live) {
+    Stage.smooth();
+    Stage.scene($('#scene'), {
+      hold: 8,
+      onUpdate: function (p) {
+        sceneMin = sceneTime(p);
+        var idx = Math.min(N - 1, Math.floor(p * N));
+        videos.forEach(function (v) { var on = chapters[idx].contains(v); if (on && v.paused) v.play().catch(function () {}); else if (!on && !v.paused) v.pause(); });
+        var c = chapters[idx];
+        chapters.forEach(function (ch, i) { ch.classList.toggle('is-on', i === idx); });
+        bar.style.setProperty('--bar-ground', c.classList.contains('on-day') ? '#F4F2EC' : '#0B0F0A');
+        bar.style.setProperty('--bar-ink', c.classList.contains('on-day') ? '#172012' : '#F2EEE8');
+      },
+      build: function (tl, ctx) {
+        var q = ctx.q, slot = 1 / N, fade = slot * 0.16;
+        /* the sky crossfades with the hour */
+        var sky = { dawn: q('.s-dawn'), day: q('.s-day'), noon: q('.s-noon'), dusk: q('.s-dusk'), late: q('.s-late') };
+        /* the sky turns while the hours change over, never in the middle of one */
+        var turn = function (k) { return k / N - fade * 0.6; }, dur = fade * 1.2;
+        tl.to(sky.dawn, { opacity: 1, duration: dur }, turn(1))
+          .to(sky.day, { opacity: 1, duration: dur }, turn(2))
+          .to(sky.noon, { opacity: 1, duration: dur }, turn(3))
+          .to(sky.noon, { opacity: 0, duration: dur }, turn(4))
+          .to(sky.dusk, { opacity: 1, duration: dur }, turn(5))
+          .set(sky.day, { opacity: 0 }, turn(5) + dur)
+          .to(sky.late, { opacity: 1, duration: dur }, turn(6));
+        /* the sun's arc: up from the left horizon at dawn, over the top at noon, down on the right at dusk */
+        var vw = innerWidth, vh = innerHeight, d = Math.min(vw, vh) * (ctx.phone ? 0.3 : 0.44);
+        var orb = q('.orb')[0], moon = q('.moon')[0];
+        if (ctx.phone) { G.set([orb, moon], { width: d, height: d }); }
+        var x0 = ctx.phone ? vw * 0.55 : vw * 0.46, x1 = ctx.phone ? vw * 0.7 : vw * 0.66, x2 = ctx.phone ? vw * 0.85 : vw * 0.86;
+        G.set(orb, { x: x0, y: vh * 1.05 });
+        tl.to(orb, { x: x1, duration: 0.3, ease: 'sine.inOut' }, 0.1)
+          .to(orb, { y: ctx.phone ? vh * 0.06 : -d * 0.3, duration: 0.3, ease: 'sine.out' }, 0.1)
+          .to(orb, { x: x2, duration: 0.3, ease: 'sine.inOut' }, 0.4)
+          .to(orb, { y: vh * 1.05, duration: 0.3, ease: 'sine.in' }, 0.4);
+        G.set(moon, { x: ctx.phone ? vw * 0.62 : vw * 0.44, y: vh * 1.1 });
+        tl.to(moon, { y: ctx.phone ? vh * 0.08 : vh * 0.1, x: ctx.phone ? vw * 0.66 : vw * 0.47, duration: 0.25, ease: 'sine.out' }, 0.72);
+        /* each hour takes the screen in place */
+        chapters.forEach(function (c, i) {
+          var at = i * slot, txt = c.children[0], vis = c.children[1];
+          var start = at - fade * 0.6;
+          if (i > 0) {
+            tl.fromTo(c, { autoAlpha: 0 }, { autoAlpha: 1, duration: fade * 0.55 }, start + fade * 0.45)
+              .fromTo(txt, { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: fade * 1.4, ease: 'power3.out' }, start + fade * 0.7)
+              .fromTo(vis, { y: 100, scale: 0.92, clipPath: 'circle(6% at 50% 60%)' }, { y: 0, scale: 1, clipPath: 'circle(80% at 50% 50%)', duration: fade * 1.8, ease: 'power3.out' }, start + fade * 0.45);
+          }
+          if (i < N - 1) {
+            var leave = at + slot - fade * 0.6;
+            tl.to(c, { autoAlpha: 0, duration: fade * 0.5 }, leave)
+              .to(txt, { y: -60, opacity: 0, duration: fade * 0.5, ease: 'power2.in' }, leave - fade * 0.1)
+              .to(vis, { y: -80, scale: 0.96, duration: fade * 0.5, ease: 'power2.in' }, leave);
+          }
+        });
+        /* the task card moves through its day inside its own hour */
+        var taskCh = chapters[3], cards = $$('.card', taskCh), tHour = $('[data-task-hour]', taskCh);
+        var taskAt = 3 * slot, sub = (slot - fade * 2) / cards.length;
+        cards.forEach(function (card, j) {
+          if (j > 0) tl.fromTo(card, { autoAlpha: 0, y: 40, rotate: -2 }, { autoAlpha: 1, y: 0, rotate: 0, duration: sub * 0.5, ease: 'back.out(1.4)' }, taskAt + fade + j * sub);
+          if (j < cards.length - 1) tl.to(card, { autoAlpha: 0, y: -30, duration: sub * 0.4 }, taskAt + fade + (j + 1) * sub - sub * 0.2);
+        });
+        var taskHours = ['07:00', '13:00', '18:00', '23:30'];
+        tl.call(function () {}, null, taskAt);
+        ScrollTrigger.create({ trigger: ctx.root, start: 'top top', end: 'bottom bottom', onUpdate: function (s) {
+          var p = s.progress, k = Math.floor((p - taskAt - fade) / sub);
+          if (p >= taskAt && p < taskAt + slot) tHour.textContent = taskHours[Math.max(0, Math.min(3, k))];
+        } });
+        $$('.card', taskCh).forEach(function (card, j) { if (j > 0) G.set(card, { autoAlpha: 0 }); });
+      }
+    });
+  } else {
+    $('#scene').classList.add('is-rest');
+  }
+
+  /* ---------- the day line: the whole page is one day ---------- */
+  var line = $('#dayline'), marker = $('#marker'), now = $('#now'), bar = $('#bar');
+  var scene = $('#scene');
+  function fmt(m) { m = ((Math.round(m) % 1440) + 1440) % 1440; var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; }
+  function pageMinutes() {
+    var y = scrollY, top = scene.offsetTop, h = scene.offsetHeight - innerHeight, end = document.documentElement.scrollHeight - innerHeight;
+    if (!scene.classList.contains('is-live')) { var p = end > 0 ? y / end : 0; return 240 + p * 1440; }
+    if (y < top) return 240;
+    if (y <= top + h) return sceneTime((y - top) / Math.max(1, h));
+    var rest = Math.max(1, end - top - h);
+    return 1440 + ((y - top - h) / rest) * 240;
+  }
+  var lastTxt = '';
+  function paintLine() {
+    var m = pageMinutes(), frac = Math.min(1, Math.max(0, (m - 240) / 1440));
+    var desk = innerWidth >= 1000, box = line.getBoundingClientRect();
+    if (desk) marker.style.transform = 'translateY(' + (frac * (box.height) - 15) + 'px)';
+    else marker.style.transform = 'translateX(' + (frac * (box.width - 32 - 70)) + 'px)';
+    var t = fmt(m); if (t !== lastTxt) { now.textContent = t; lastTxt = t; }
+    var mm = ((m % 1440) + 1440) % 1440, night = mm < 360 || mm >= 1170;
+    line.classList.toggle('is-night', night);
+    var dayGround = m > 520 && m < 1150 && scene.classList.contains('is-live') && scrollY >= scene.offsetTop && scrollY <= scene.offsetTop + scene.offsetHeight - innerHeight;
+    var onDaySection = (function () { var d = $('#day').getBoundingClientRect(); return d.top < 120 && d.bottom > 120; })();
+    var light = dayGround || onDaySection;
+    line.style.setProperty('--line-ink', light ? '#172012' : '#F2EEE8');
+    line.style.setProperty('--line-ground', light ? '#F4F2EC' : '#0B0F0A');
+    line.style.setProperty('--night-cut', light ? '#F4F2EC' : '#0B0F0A');
+    if (!scene.contains(document.elementFromPoint(innerWidth / 2, 80))) {
+      bar.style.setProperty('--bar-ground', onDaySection ? '#F4F2EC' : '#0B0F0A');
+      bar.style.setProperty('--bar-ink', onDaySection ? '#172012' : '#F2EEE8');
+    }
+  }
+  var raf = false;
+  addEventListener('scroll', function () { if (!raf) { raf = true; requestAnimationFrame(function () { raf = false; paintLine(); }); } }, { passive: true });
+  addEventListener('resize', paintLine);
+  paintLine();
+
+  /* ---------- hero sun drifts as you leave ---------- */
+  if (G && window.ScrollTrigger && !reduce) G.to('#hero-sun', { yPercent: -18, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+
+  /* ---------- sections arrive (content is there without script; the move plays on top) ---------- */
+  if (G && window.ScrollTrigger && !reduce) {
+    ['#day', '#questions', '#install', '.foot'].forEach(function (sel) {
+      var el = $(sel); if (!el) return;
+      var parts = $$('h2, .intro, .wake, .timeline li, .sub, .qs details, .after, .install, .links > div', el);
+      ScrollTrigger.create({ trigger: el, start: 'top 78%', once: true, onEnter: function () {
+        G.fromTo(parts, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1, ease: EASE, stagger: 0.06 });
+      } });
+    });
+    ScrollTrigger.create({ trigger: '#blocks', start: 'top 85%', once: true, onEnter: function () {
+      G.fromTo('#blocks span', { yPercent: 70, scaleY: 0.3, opacity: 0.2 }, { yPercent: 0, scaleY: 1, opacity: 1, duration: 1, ease: 'back.out(1.5)', stagger: { each: 0.06, from: 'random' } });
+    } });
+  }
+
+  /* ---------- who the page is for ---------- */
+  var AUD = {
+    student: { m1: 'Read two chapters of your atmosphere book into your notes: 36 concept notes, 94 links.', m2: "Linked last week's handwritten notes to their lecture.", m3: 'Problem set 4 is due Friday 14:00. Start today: about 3 hours.',
+      'c-title': 'Problem set 4', 'c-sub': 'Point Set Topology · from Classroom', 'c-due': 'Fri 14:00', 'c-size': '3 hours', 'c-prog': '4 of 7 done · "ps4 4/7"', 'c-left': 'about 1 h 20 min', 'c-next': 'Topology quiz, Tue',
+      events: [{ t: 540, d: 55, what: 'Linear Algebra', kind: 'class' }, { t: 840, d: 55, what: 'Point Set Topology', kind: 'class' }], start: 'Problem set 4', size: 'About 3 hours, so today is the day.' },
+    life: { m1: "Moved tomorrow's gym slot: your shift runs late on Thursdays.", m2: 'Linked 4 loose notes to where they belong.', m3: 'Renew passport: the form is due Monday. About an hour, so this weekend.',
+      'c-title': 'Renew passport', 'c-sub': 'From an email · the form and two photos', 'c-due': 'Mon 17:00', 'c-size': '1 hour', 'c-prog': '2 of 3 done · "passport 2/3"', 'c-left': 'about 20 min', 'c-next': 'Rent, the 1st',
+      events: [{ t: 540, d: 480, what: 'Work shift', kind: 'commit' }, { t: 1110, d: 60, what: 'Gym', kind: 'commit' }], start: 'Renew passport', size: 'About an hour; it fits before your shift.' },
+    dev: { m1: "Ran tonight's research digest: 6 new papers on your topics, 2 worth a look.", m2: "Your add-on's job ran three times, all fine.", m3: 'Claude Code hit its limit at 02:10; agy answered instead.',
+      'c-title': 'Ship the arXiv add-on', 'c-sub': 'Your own add-on · from a chat message', 'c-due': 'Sun 23:59', 'c-size': '2 hours', 'c-prog': '3 of 5 done · "addon 3/5"', 'c-left': 'about 50 min', 'c-next': 'Review the PR, Mon',
+      events: [{ t: 600, d: 60, what: 'Research digest', kind: 'digest' }, { t: 1080, d: 120, what: 'Focus', kind: 'focus' }], start: 'Ship the arXiv add-on', size: 'About 2 hours; your AI program can take the boring part.' }
   };
   var who = 'student';
-  function fmt(m) { m = ((m % 1440) + 1440) % 1440; var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-
   function dayFor(w) {
     var a = AUD[who], out = [], missed = [];
     out.push({ t: w - 20, k: '', h: "<strong>Drafts today's plan</strong> into your daily note: " + (who === 'student' ? "classes, what's due, a top three." : "what's on, what's due, a top three.") });
@@ -667,36 +732,28 @@ details[open] .plus::after { transform: rotate(0deg); }
       if (e.kind === 'class') {
         if (e.t + e.d <= w) { missed.push(e.what); out.push({ t: e.t, k: 'k-missed', h: '<strong>Missed while you slept: ' + esc(e.what) + '.</strong> A catch-up task before the next class, and a lecture note to fill in. Nobody asks whether you went.' }); }
         else out.push({ t: e.t, k: '', h: '<strong>' + esc(e.what) + '.</strong> No calls during class; afterwards it asks what was covered.' });
-      } else if (e.kind === 'commit') {
-        if (e.t + e.d > w) out.push({ t: Math.max(e.t, w + 30), k: '', h: '<strong>' + esc(e.what) + '.</strong> Calls wait until it\'s over, like a class.' });
-      } else if (e.kind === 'digest') {
-        out.push({ t: Math.max(e.t, w + 90), k: '', h: '<strong>' + esc(e.what) + '.</strong> New papers on the topics you follow, picked for you.' });
-      } else {
-        out.push({ t: e.t, k: '', h: '<strong>' + esc(e.what) + '.</strong> "/focus 2h" holds everything that can wait.' });
-      }
+      } else if (e.kind === 'commit') { if (e.t + e.d > w) out.push({ t: Math.max(e.t, w + 30), k: '', h: '<strong>' + esc(e.what) + ".</strong> Calls wait until it's over, like a class." }); }
+      else if (e.kind === 'digest') out.push({ t: Math.max(e.t, w + 90), k: '', h: '<strong>' + esc(e.what) + '.</strong> New papers on the topics you follow, picked for you.' });
+      else out.push({ t: e.t, k: '', h: '<strong>' + esc(e.what) + '.</strong> "/focus 2h" holds everything that can wait.' });
     });
     if (w >= 660) out.push({ t: w + 10, k: '', h: '<strong>"I just woke up, reschedule my day."</strong> Your plan moves to start at ' + fmt(w + 30) + ', in order, breaks kept.' });
     out.push({ t: w + 60, k: '', h: '<strong>Time to start: ' + esc(a.start) + '.</strong> ' + esc(a.size) });
     out.push({ t: w + 14 * 60 + 30, k: '', h: '<strong>Check-in before bed.</strong> What got done? It moves to when you actually answer.' });
     out.push({ t: w + 16 * 60, k: 'k-night', h: '<strong>Quiet hours.</strong> No calls until your alarm.' });
     out.push({ t: w - 165, k: 'k-night', h: "<strong>While you sleep</strong> it reads your books into your notes, tidies links, and checks it hasn't got worse at what you taught it." });
-    var base = w + 16 * 60 - 1440; /* the day starts when you go to bed */
+    var base = w + 16 * 60 - 1440;
     out.sort(function (x, y) { return ((x.t - base + 2880) % 1440) - ((y.t - base + 2880) % 1440); });
     return { list: out, missed: missed };
   }
-
-  var tl = $('#timeline'), out = $('#wake-out'), range = $('#wake'), hint = $('#wake-hint');
+  var tl2 = $('#timeline'), out = $('#wake-out'), range = $('#wake'), hint = $('#wake-hint');
   function render(animate) {
     var w = +range.value, d = dayFor(w);
     out.textContent = fmt(w); range.setAttribute('aria-valuetext', fmt(w));
     var first = {};
-    if (animate && !reduce) $$('li', tl).forEach(function (li) { first[li.getAttribute('data-key')] = li.getBoundingClientRect().top; });
-    tl.innerHTML = d.list.map(function (e) {
-      var key = e.h.replace(/<[^>]+>/g, '').slice(0, 24);
-      return '<li class="' + e.k + '" data-key="' + esc(key) + '"><time>' + fmt(e.t) + '</time><div class="what"><span>' + e.h + '</span></div></li>';
-    }).join('');
+    if (animate && !reduce) $$('li', tl2).forEach(function (li) { first[li.getAttribute('data-key')] = li.getBoundingClientRect().top; });
+    tl2.innerHTML = d.list.map(function (e) { var key = e.h.replace(/<[^>]+>/g, '').slice(0, 24); return '<li class="' + e.k + '" data-key="' + esc(key) + '"><time>' + fmt(e.t) + '</time><div class="what"><span>' + e.h + '</span></div></li>'; }).join('');
     hint.textContent = d.missed.length ? 'You slept through ' + d.missed.join(' and ') + '. Kurooto noticed.' : (who === 'student' ? 'Wake at 16:00 and watch what happens to the classes you slept through.' : 'Wake late and your plan moves to start from when you are up.');
-    if (animate && !reduce) $$('li', tl).forEach(function (li, i) {
+    if (animate && !reduce) $$('li', tl2).forEach(function (li, i) {
       var k = li.getAttribute('data-key'), t0 = first[k], t1 = li.getBoundingClientRect().top;
       if (t0 === undefined) li.animate([{ opacity: 0, transform: 'scale(0.96) translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(0.23,1,0.32,1)', delay: i * 20 });
       else if (Math.abs(t0 - t1) > 1) li.animate([{ transform: 'translateY(' + (t0 - t1) + 'px)' }, { transform: 'none' }], { duration: 480, easing: 'cubic-bezier(0.77,0,0.175,1)' });
@@ -704,39 +761,19 @@ details[open] .plus::after { transform: rotate(0deg); }
   }
   var rq = false;
   range.addEventListener('input', function () { if (!rq) { rq = true; requestAnimationFrame(function () { rq = false; render(true); }); } });
-
   function applyWho() {
     var a = AUD[who];
     $$('[data-aud-text]').forEach(function (el) {
       var v = a[el.getAttribute('data-aud-text')]; if (v === undefined || el.textContent === v) return;
       if (reduce || !el.animate) { el.textContent = v; return; }
-      el.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(3px)' }], { duration: 140, easing: 'ease' }).onfinish = function () {
-        el.textContent = v; el.animate([{ opacity: 0, filter: 'blur(3px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 220, easing: 'ease' });
-      };
+      el.animate([{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(3px)' }], { duration: 140 }).onfinish = function () { el.textContent = v; el.animate([{ opacity: 0, filter: 'blur(3px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 220 }); };
     });
     render(true);
   }
   $$('input[name="who"]').forEach(function (r) { r.addEventListener('change', function () { who = r.value; applyWho(); }); });
   render(false);
 
-  /* the screens */
-  var DESC = [
-    'Your computer, every feature at work and your notes as a living map, on a page only this computer can open.',
-    'Kurooto calls your phone, rings like an alarm when you ask, and keeps its questions in an inbox you answer with a tap.',
-    'The day drafted before your alarm, beside your classes, calendar, deadlines and check-ins.',
-    'Setup reads your computer and recommends what to run on it and what to leave to the AI you pick.'
-  ];
-  var shots = $$('#iris img'), desc = $('#shot-desc');
-  $$('.tabs button').forEach(function (b) {
-    b.addEventListener('click', function () {
-      var i = +b.getAttribute('data-tab');
-      $$('.tabs button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
-      shots.forEach(function (im, j) { im.classList.toggle('on', j === i); });
-      desc.textContent = DESC[i];
-    });
-  });
-
-  /* install: one line per computer */
+  /* ---------- install ---------- */
   var CMDS = {
     win: { cmd: "$env:KUROOTO_CHANNEL='beta'; irm https://avtarfr.github.io/kurooto/install.ps1 | iex", where: 'PowerShell', hint: 'In PowerShell, not as administrator.' },
     unix: { cmd: 'curl -LsSf https://avtarfr.github.io/kurooto/install.sh | KUROOTO_CHANNEL=beta sh', where: 'a terminal', hint: 'In a terminal, on macOS or Linux.' }
@@ -745,27 +782,21 @@ details[open] .plus::after { transform: rotate(0deg); }
   function os(k) {
     seg.setAttribute('data-os', k);
     $$('button', seg).forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-os') === k ? 'true' : 'false'); });
-    cmd.innerHTML = esc(CMDS[k].cmd).replace(/\//g, '/<wbr>').replace(/ \| /g, ' <wbr>| '); $('#where').textContent = CMDS[k].where;
-    $('#where-hint').firstChild.nodeValue = CMDS[k].hint + ' ';
+    cmd.innerHTML = esc(CMDS[k].cmd).replace(/\//g, '/<wbr>').replace(/ \| /g, ' <wbr>| ');
+    $('#where').textContent = CMDS[k].where; $('#where-hint').firstChild.nodeValue = CMDS[k].hint + ' ';
     copy.classList.remove('done');
   }
   $$('button', seg).forEach(function (b) { b.addEventListener('click', function () { os(b.getAttribute('data-os')); }); });
   if (!/Win/.test(navigator.platform || navigator.userAgent)) os('unix');
   copy.addEventListener('click', function () {
     var t = CMDS[seg.getAttribute('data-os')].cmd;
-    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () {
-      copy.classList.add('done');
-    }).catch(function () {
-      var r = document.createRange(); r.selectNodeContents(cmd); var s = getSelection(); s.removeAllRanges(); s.addRange(r);
-    });
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { copy.classList.add('done'); })
+      .catch(function () { var r = document.createRange(); r.selectNodeContents(cmd); var s = getSelection(); s.removeAllRanges(); s.addRange(r); });
   });
 
-  /* the live versions */
   function channel(n) { return fetch(n + '.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { return (j.doc || j).version; }).catch(function () { return ''; }); }
-  Promise.all([channel('beta'), channel('stable')]).then(function (v) {
-    if (v[0]) $('#ver-beta').textContent = 'Beta ' + v[0];
-    if (v[1]) $('#ver-stable').textContent = 'Stable ' + v[1];
-  });
+  Promise.all([channel('beta'), channel('stable')]).then(function (v) { if (v[0]) $('#ver-beta').textContent = 'Beta ' + v[0]; if (v[1]) $('#ver-stable').textContent = 'Stable ' + v[1]; });
+  if (document.fonts) document.fonts.ready.then(function () { if (window.ScrollTrigger) ScrollTrigger.refresh(); paintLine(); });
 })();
 </script>
 </body>
