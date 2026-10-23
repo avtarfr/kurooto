@@ -171,10 +171,10 @@ what it means.
    brain is a 0.5 GB download, so it's yours to tick). **What do you do?** (Student, Working, Research, Something
    else) adds what suits it: a student gets subjects, start-by dates, the quiz, after-class notes, doubts and the
    weekly summary; working, commitments, start-by dates, the calendar and the weekly summary; research, the Research
-   feature, commitments, start-by dates and the weekly summary. **Everything** or **Pick myself** for more; the add-ons that come
-   with Kurooto (such as [Exam season](#exam-season)) are in no preset, only on when you pick them. Some features ask
-   for a detail right in their card (a calendar link, a repository); phone calls, voice notes and the alarm use your
-   Gemini key (they ask for one if you picked another AI).
+   feature, commitments, start-by dates and the weekly summary. **Everything** or **Pick myself** for more; the add-ons
+   that come with Kurooto (such as [Exam season](#exam-season)) are in no preset, only on when you pick them. Some
+   features ask for a detail right in their card (a calendar link, a repository); phone calls, voice notes and the alarm
+   use your Gemini key (they ask for one if you picked another AI).
 6. **Telegram:** make your own bot in two minutes:
    1. Open [@BotFather](https://t.me/BotFather) in Telegram, send `/newbot`, answer its two questions (a display name,
       then a username ending in `bot`).
@@ -389,17 +389,16 @@ questions are part of the brief your call line keeps for calls while the compute
 ### Chat with your AI
 Anything that isn't a command or an instant request goes to your AI; the answer comes back as a reply. A request that
 a feature that's off would understand ("wake me at 7" with the Morning alarm off) first gets **Turn on** (turns it on,
-with what it needs, and does the request) or **Not now** (your AI gets it instead); `turnon.offer` off skips that. Long answers
-arrive as a file. **A conversation:** each message carries your last 6 exchanges with the AI from the past 2 hours, so
-"and the second one?" works; after 2 hours quiet it starts afresh. Only chat's own answers count (a digest's or a
-research run's never turns up as something you said). `/new` (or `/clear`) starts a fresh conversation now. The last 10
-exchanges are kept in Kurooto's state folder (`chat/history.json`). `/brain` shows which AI answers and whether it
-works; `/jobs` what's running and waiting (with Cancel buttons; `/jobs cancel <id|all>`, `kurooto jobs --cancel ID`) and
-the last few; `/usage` how many AI requests ran each day and the limits hit. Your requests never wait behind background
-work (it has its own lane), and a request that's stuck (no AI at work for `jobs.stuck_min` minutes, 10) is stopped with
-a message.
-*Leaves:* what you ask, and notes it reads, go to the AI you picked; with a conversation going, your recent
-exchanges go along too.
+with what it needs, and does the request) or **Not now** (your AI gets it instead); `turnon.offer` off skips that. Long
+answers arrive as a file. **A conversation:** each message carries your last 6 exchanges with the AI from the past 2
+hours, so "and the second one?" works; after 2 hours quiet it starts afresh. Only chat's own answers count (a digest's
+or a research run's never turns up as something you said). `/new` (or `/clear`) starts a fresh conversation now. The
+last 10 exchanges are kept in Kurooto's state folder (`chat/history.json`). `/brain` shows which AI answers and whether
+it works; `/jobs` what's running and waiting (with Cancel buttons; `/jobs cancel <id|all>`, `kurooto jobs --cancel ID`)
+and the last few; `/usage` how many AI requests ran each day and the limits hit. Your requests never wait behind
+background work (it has its own lane), and a request that's stuck (no AI at work for `jobs.stuck_min` minutes, 10) is
+stopped with a message. *Leaves:* what you ask, and notes it reads, go to the AI you picked; with a conversation going,
+your recent exchanges go along too.
 
 ### Reminders
 "remind me at 9 to call mum", "remind me in 20 minutes to take the pasta off", `/remind tomorrow 7am gym`,
@@ -1137,8 +1136,9 @@ Next steps" and the last meeting's line; "every Monday at 9 I have a <subject> l
 the class in your timetable; "every Tuesday and Thursday at 7pm I go to the gym" or "I work a shift every weekend from
 9 to 5" adds a [commitment](#commitments) (an hour long unless you say the end; Commitments is turned on if it was
 off); "by POTA I mean Physics of the Atmosphere" or "I call stochastic calculus stoch" gives that subject the short
-name. Only what you say about yourself, by rules on this computer. Each change comes in one line with Undo; `/inferred` lists them. Settings
-`infer.on`, `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`, `infer.commitments`.
+name. Only what you say about yourself, by rules on this computer. Each change comes in one line with Undo; `/inferred`
+lists them. Settings `infer.on`, `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`,
+`infer.commitments`.
 
 **Undo.** The Undo button, or `/inferred undo <id>`; `infer.on` = false stops it.
 
