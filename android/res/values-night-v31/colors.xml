@@ -13,8 +13,8 @@
     <color name="k_on_primary_container">@android:color/system_accent1_100</color>
     <color name="k_tonal">@android:color/system_accent2_700</color>
     <color name="k_on_tonal">@android:color/system_accent2_100</color>
-    <color name="k_blob_1">@android:color/system_accent1_200</color>
-    <color name="k_blob_2">@android:color/system_accent2_200</color>
-    <color name="k_blob_3">@android:color/system_accent3_200</color>
-    <color name="k_blob_4">@android:color/system_accent1_400</color>
+    <!-- Systems and the Notes map (ViewsActivity): the views' accents from the wallpaper's colours -->
+    <color name="k_view_lav">@android:color/system_accent2_200</color>
+    <color name="k_view_peach">@android:color/system_accent3_200</color>
+    <color name="k_view_pink">@android:color/system_accent1_400</color>
 </resources>

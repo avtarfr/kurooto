@@ -47,7 +47,7 @@ public class TalkWidget extends AppWidgetProvider {
                 RemoteViews v = views(c, R.layout.widget_talk_wide);
                 v.setTextViewText(R.id.name, Prefs.assistant(c));
                 v.setTextViewText(R.id.line, line(c));
-                Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("tab", "inbox"); // what's waiting
                 v.setOnClickPendingIntent(R.id.info, PendingIntent.getActivity(c, 2, open, flags()));
                 m.updateAppWidget(wide, v);
             }

@@ -33,7 +33,7 @@ The user's side of this is in [../user/calls.md](../user/calls.md) and [../user/
 | `data/worker/web/app.js`, `web/fallback.js` | the call page source (bundled into `public/app.js` at deploy) |
 | `data/worker/public/` | `index.html`, `pair.html`/`pair.js`, `inbox.html`/`inbox.js`, `talk.html`/`talk.js` (the web app's chat, 0.5.18), `file.html`/`file.js` (a sealed file for the chat, 0.5.18), `settings.html` + `shortcut.js` (the Tell Kurooto recipe, 0.6.0) and `qr.js` (a QR maker), `sw.js`, `worklet.js`, icons |
 | `data/worker/wrangler.template.toml`, `package.json`, `package-lock.json` | Worker config and pinned packages |
-| `android/` | the app (Java, no Gradle), `build.sh`, `smoke.sh`, `test/` |
+| `android/` | the app (Java, its main screen in Kotlin and Compose; Gradle run by `build.sh`), `smoke.sh`, `test/` |
 
 ## Settings and secrets
 
@@ -388,8 +388,9 @@ comes back in the answer (`200 {"ok", "note"}`, `400` bad or not tappable, `410`
 the last fetch) first calls `Line.sendSealKey` (a no-op once `sealSent` matches; 0.6.1: before, only the stream's
 reconnect retried a failed send, and a stream can stay up for days, so a phone whose first send failed got no list),
 then opens the token with `Seal`, keeps it in `today.json` and hands `alarm` to `Alarms.update`.
-`TodayView` draws it on `MainActivity`'s first screen under Call and Chat (its own column; it re-draws when a fetch
-lands), with Done / +1 under a tapped deadline (`Chat.today`, waiting kind `today`).
+`TodayTab.kt` draws it on the main screen's Today tab under Call and Chat (`HomeState.today`; `Today.listener`
+re-reads it when a fetch lands), with Done / +1 under a tapped deadline (`MainActivity.dueAct` -> `Chat.today`, waiting
+kind `today`).
 
 **The alarm on the phone.** `Alarms.schedule` sets the next of the computer's times and a snooze tapped here
 (`AlarmPlan.next`, which leaves out the one that last rang here and anything within `SAME_S`, 5 minutes, of it) with
@@ -474,11 +475,14 @@ fetched, old}`); `Views.watch` posts `/view/watch`; unpairing deletes both (`Pre
 `shouldInterceptRequest` from the APK's assets (`views/*.html|js|css`, `fonts/*.woff2`) and anything else 404, so the
 page reaches nothing; no file or content access, no DOM storage, no new windows, Safe Browsing off (8+), no navigation,
 and no JavaScript interface: the app hands data in with `evaluateJavascript("KurootoView.take(...)")` (`{mode, snap,
-computer, reach, off, palette}`; the palette is the app's colours: `k_bg`, `k_fg`, `k_primary`, `k_blob_2..4`, `k_sand`,
-`k_rose`, `k_bad`, `k_card`). Systems: watch every 20 s, fetch every 4 s (20 s while the computer is asleep); notes:
-fetched when opened. A WebView older than Chrome 58 (`MIN_CHROME`) gets a message instead. `android/build.sh` copies
-`src/kurooto/web/static/views/*` to `assets/views/` and the Public Sans files to `assets/fonts/` at build time.
-For now `MainActivity` opens it from two rows (**Systems**, **Notes map**) under **Your computer**.
+computer, reach, off, palette}`; the palette is the app's colours: `k_bg`, `k_fg`, `k_primary`, `k_view_lav`, `k_view_pink`,
+`k_view_peach` (Material You's accents on 12+, `values-v31`), `k_sand`, `k_rose`, `k_bad`, `k_card`). Systems: watch every 20 s, fetch every 4 s (20 s while the computer is asleep); notes:
+fetched when opened. A WebView older than Chrome 58 (`MIN_CHROME`) gets a message instead. The Gradle task
+`kurootoViewAssets` copies `src/kurooto/web/static/views/*` to `assets/views/` and the Public Sans files to
+`assets/fonts/` at build time. The main screen's **Views** tab (`Home.kt` `TABS`, `Tab.opens`, the `ic_nav_views`
+icon) opens it; at its top two buttons, **Systems** and **Notes map**, switch between them (`show(mode)`: the page is
+loaded afresh, as it draws one kind), and it opens on the one looked at last (`Prefs.viewMode`) unless the extra `mode`
+says. With `demo` (debug and dev builds) it shows `Demo.view(kind)`, made-up copies of both, and fetches nothing.
 
 ## Tell Kurooto, the iPhone Shortcut (0.6.0)
 
@@ -550,14 +554,50 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 
 ## The Android app (`android/`)
 
-- The package is named in `android/AndroidManifest.xml`; minSdk 23, target 35. Built without Gradle by `android/build.sh` (aapt2, javac
-  `-source 8`, d8, zipalign, apksigner); versionCode from `pyproject.toml`. Release signing uses `KUROOTO_KEYSTORE` and
-  `KUROOTO_KEYSTORE_PASS` on the maintainer's machine (`tools/release.py sign --apk` sets them and builds from the
-  release's tarball; see [release-and-updates.md](release-and-updates.md#the-phone-app-sign---apk)); otherwise a
-  throwaway debug key. `build.sh --test` runs
-  `test/CryptoTest.java`, `test/SpeechTest.java`, `test/CardsPlacesTest.java` (`CardRules`, `PlaceRules`),
-  `test/TodayTest.java` (`Buttons`, `AlarmPlan`), `test/DockTest.java` and `test/ViewsTest.java` (`ViewSeal`) on a
-  plain JVM. `KUROOTO_APP_ID` (optional) renames the package for a test build that installs beside the real app.
+- The build (0.7.0): Gradle, run only through `android/build.sh`, which keeps the old contract (`tools/release.py sign
+  --apk` runs it with `KUROOTO_KEYSTORE` / `KUROOTO_KEYSTORE_PASS` / `KUROOTO_KEY_ALIAS` and takes
+  `android/build/kurooto.apk`; without a keystore it makes `kurooto-debug.apk`; see
+  [release-and-updates.md](release-and-updates.md#the-phone-app-sign---apk)). minSdk 23, target 35. Pinned: Gradle
+  8.14.6 (build.sh downloads `gradle-8.14.6-bin.zip` once and checks its SHA-256, hard-coded), AGP 8.13.2, Kotlin
+  2.3.21 with the Compose compiler plugin, Compose BOM 2026.06.01 (Compose 1.11.4), activity-compose 1.12.4,
+  compileSdk 36. material3 is **1.5.0-alpha18**, not the BOM's 1.4.0: 1.4.0 keeps the Expressive APIs
+  (`MaterialExpressiveTheme`, `MotionScheme.expressive()`, `ButtonGroup`, `SegmentedListItem`, `ToggleButton`,
+  `LoadingIndicator`, the wavy indicators, `MaterialShapes`, the emphasized type) internal or doesn't have them, and
+  alpha18 is the newest that builds with compileSdk 36 and AGP 8 (alpha19 on, like newer Compose, need compileSdk 37
+  and AGP 9.1).
+  - `android/settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `proguard-rules.pro`: one project (android/
+    itself) whose source sets point at the existing `src/` (Java and Kotlin), `res/`, `assets/` and
+    `AndroidManifest.xml` (no `package` or `<uses-sdk>` any more: Gradle sets the namespace and the SDK levels, and
+    the label through the `appLabel` placeholder). No wrapper jar is committed. The task `kurootoViewAssets`
+    (`ViewAssets`, added to every variant's assets with `addGeneratedSourceDirectory`) copies
+    `src/kurooto/web/static/views/*.{html,js,css}` to `assets/views/` and `static/fonts/public-sans-latin*.woff2` and
+    `OFL.txt` to `assets/fonts/` at build time, so the drawing code ViewsActivity serves has one copy in the repository.
+  - build.sh: `GRADLE_USER_HOME` defaults to `gradle-home` next to the SDK (`$ANDROID_HOME/../gradle-home`; one already
+    set wins), `ANDROID_USER_HOME` to a folder in it (nothing goes in `~`). Gradle runs with `--no-daemon`, its
+    project cache and Kotlin's folder in `build/` (Kotlin compiles in Gradle's process). versionCode and versionName
+    are computed as before (from `pyproject.toml`) and passed as `-PkurootoVersionCode` / `-PkurootoVersionName`;
+    `KUROOTO_APP_ID` (optional) becomes `-PkurootoAppId`, another application id for a test build (`--dev` adds
+    `.dev` to it).
+    Gradle makes an unsigned APK; build.sh zipaligns and signs it with apksigner as before. The debug key is
+    `kurooto-debug.keystore` in `GRADLE_USER_HOME`, so it outlives `android/build`.
+  - Release: R8 on, with `-keep class io.github.avtarfr.kurooto.** { *; }` (only the libraries shrink) and the
+    `@JavascriptInterface` methods kept; English resources only (`localeFilters`); no dependency block in the APK.
+    About 1.4 MB (0.6.x: 0.2 MB).
+  - `build.sh --dev`: build type `dev` (debuggable, `applicationIdSuffix ".dev"`, label "Kurooto dev"), so it installs
+    beside the real app; signed with the debug key: `build/kurooto-dev.apk`. Debug and dev builds compile
+    `src-demo/Demo.kt` (made-up Today, Inbox, checklist, an update and copies of Systems and the Notes map for
+    ViewsActivity, `Demo.view`; `Demo.ON` true); release builds compile
+    `src-nodemo/Demo.kt` (empty, `ON` false), so no sample data ships. MainActivity's extras in those builds: `demo`
+    (true: the tabs without pairing, with the sample data; Call, Chat, answers and Done / +1 only say "Demo"),
+    `palette` (a named palette instead of Material You, e.g. `kuro`), `hour` (a float: the sky at that hour); `tab`
+    (today, inbox, phone) works in every build. For example
+    `adb shell am start -n io.github.avtarfr.kurooto.dev/io.github.avtarfr.kurooto.MainActivity --ez demo true --es tab inbox`.
+  - `build.sh --lint`: Gradle's `lintRelease` with only `NewApi` and `InlinedApi` (Java and Kotlin), failing on any;
+    CI runs it. `build.sh --test` is unchanged (plain javac and java, no Gradle): `test/CryptoTest.java`,
+    `test/SpeechTest.java`, `test/CardsPlacesTest.java` (`CardRules`, `PlaceRules`), `test/TodayTest.java`
+    (`Buttons`, `AlarmPlan`), `test/DockTest.java` and `test/ViewsTest.java` (`ViewSeal`).
+  - CI (`ci.yml` job `android`, `android-emulator.yml`) sets `GRADLE_USER_HOME` to the runner's temp folder and needs
+    the network for Gradle's first run; `smoke.sh` is unchanged.
 - Bedside mode (0.6.0): `BedsideActivity` (theme `Kurooto.Call`, `showWhenLocked`, immersive): clock, date, next
   alarm (the first `alarm` call from `GET /upcoming`, or `AlarmManager.getNextAlarmClock()` if earlier), up to three
   calls (reasons hidden while a secure keyguard is locked), the waiting count, and the Talk button (`Line.callLink` then
@@ -570,9 +610,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   crosses midnight) plugging in, or the hours starting while charging, opens it: `startActivity` below Android 10, a
   full-screen notification on channel `bedside` (silent, `ID_BEDSIDE` 9) from 10. Opened that way (`auto`), unplugging
   closes it. While it's visible, `ListenService.ring` also starts `CallActivity` directly (with the screen kept on,
-  Android shows a full-screen intent only as a heads-up). `MainActivity` adds its section with
-  `BedsideActivity.settings(...)`; `MainActivity` with the extra `bedside` opens it (`smoke.sh` uses that).
-- Components: `MainActivity` (the checklist: battery, notifications, full-screen calls), `PairActivity`,
+  Android shows a full-screen intent only as a heads-up). Its settings are on the main screen's Phone tab
+  (`PhoneTab.kt`; the hours dialog is `BedsideActivity.hours`); `MainActivity` with the extra `bedside` opens it
+  (`smoke.sh` uses that).
+- Components: `MainActivity` (Kotlin, Compose: the tabs or pairing, below), `PairActivity`,
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
   the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
   device key so it can wait on the line),
@@ -580,13 +621,14 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `PlacesActivity` + `PlaceReceiver` (location reminders), `QuickNoteActivity`, `NoteTile`, `TalkWidget` /
   `TalkWideWidget` (below).
   Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Chat`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25),
-  `B64`, `Ui` (the look), `BlobView` (the main screen's background), `Dock` (bedside mode's rules), `Cards` + `CardRules` (check-in and quiz cards),
-  `Places` + `PlaceRules`; 0.6.0: `Today` and `TodayView` (the Today screen), `Alarms` and `AlarmPlan` (the phone's own
-  alarm), `Buttons` (quick notification buttons).
+  `B64`, `Ui` (the framework screens' look), `Dock` (bedside mode's rules), `CardRules` (check-in and quiz cards),
+  `Places` + `PlaceRules`; 0.6.0: `Today` (the Today list), `Alarms` and `AlarmPlan` (the phone's own alarm), `Buttons`
+  (quick notification buttons). 0.7.0, Kotlin: `MainActivity` + `HomeState`, `Home.kt`, `TodayTab.kt`, `InboxTab.kt`
+  (with `InboxCard`), `PhoneTab.kt`, `Kit.kt`, `Theme.kt`, `Sky.kt`, `Demo.kt`.
 - Check-in and quiz cards (0.6.0): `PhoneApp.item` adds `card` ("checkin" / "quiz", `phone.py:card_of`, from the
   map kind or the buttons' `chk:` / `qz:` / `ql:` data) to the item; the Worker stores items as they are, so `/pending`
-  has it (the ntfy push doesn't need it). `MainActivity.loadWaiting` hands such an item to `Cards.view` (answer box,
-  choices and buttons in rows by `CardRules.perRow`, drafts kept by item id while the process lives), which answers
+  has it (the ntfy push doesn't need it). The Inbox tab shows such an item as an `InboxCard` (answer box, choices and
+  buttons in rows by `CardRules.perRow`, drafts kept by item id while the process lives), which answers
   through `Line.answer` like `AnswerActivity` (sealed, single use, the outbox with the computer off) and re-reads the
   list 2.5 s after a delivered answer. Without a `card` field (an older computer) `CardRules.kind` goes by the text.
   `PhoneApp.answer` turns a reply's buttons (the quiz's self-grading) into the next phone item instead of dropping
@@ -606,8 +648,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - Widgets, Quick note and the tile (0.6.0), no laptop or Worker changes:
   - `TalkWidget` (1x1, `res/xml/widget_talk.xml`, layout `widget_talk.xml`) opens `ChatActivity` with the extra
     `type` (focus the box, keyboard up). `TalkWideWidget` (2x1, a subclass only because Android tells providers apart
-    by component) adds the newest item of `GET /pending` (`Line.waiting`, what MainActivity lists under "Waiting for
-    you"), kept in `Prefs.widgetLine`. It looks it up in `onUpdate` (`updatePeriodMillis` 30 min, `goAsync`), on
+    by component) adds the newest item of `GET /pending` (`Line.waiting`, what the Inbox tab lists), kept in `Prefs.widgetLine`. It looks it up in `onUpdate` (`updatePeriodMillis` 30 min, `goAsync`), on
     `TalkWidget.refreshSoon` (debounced 3 s: `Inbox.show`, `Inbox.cancel`, `Prefs.savePairing`), and takes
     MainActivity's own fetch through `TalkWidget.waiting(c, items)`; with no 2x1 placed nothing is fetched.
     `Prefs.forget` redraws them unpaired. The Today screen could feed the 2x1 the same way (`Prefs.setWidgetLine` +
@@ -626,7 +667,51 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `ListenService.chatNote` (the chat's notification) adds them as actions (0.6.0: with Done and the snoozes,
   `Buttons`), `ActionReceiver.CHAT_TAP` sends them with `Chat.tap` (the outbox when the computer is off) and shows the
   waiting or failed note, a +1 kept; one that went through comes back as a new chat message with the button again.
-- The look is Material 3 from the framework alone (no AndroidX or Material Components), views built in code:
+- The main screen (0.7.0) is Jetpack Compose with Material 3 Expressive. The other screens (`ChatActivity`,
+  `AnswerActivity`, `PlacesActivity`, `BedsideActivity`, `QuickNoteActivity`, `ShareActivity`, `CallActivity`,
+  `PairActivity`) are still framework views built by `Ui`, and everything else (services, receivers, calls, alarms,
+  crypto, notifications, widgets) stays framework Java:
+  - `MainActivity` (a `ComponentActivity`, edge to edge, `enableOnBackInvokedCallback` for the predictive back
+    gesture) holds `HomeState` (Compose state: paired, name, tab, today, waiting, queued, the status lines, update,
+    tick) and does what the screens ask (`refresh`, `pull`, `loadWaiting`, `requestCall`, `chat`, `dueAct`, `answer`,
+    `checks`, `pickTone`, `unpair`, `pair`, the update check); the composables only draw it. `tick` is bumped on resume
+    and after a setting changes, and what reads settings (the checklist, ringtones, bedside, the alarm toggle) reads it.
+    The tab survives rotation (`onSaveInstanceState`); the extra `tab` picks one.
+  - `Home.kt`: `Pairing` (unpaired) or `Tabs`: a `Scaffold` with Material 3 Expressive's `ShortNavigationBar` (Today,
+    Inbox with a `Badge` of what waits, Views, Phone), the tabs cross-fading with the motion scheme's fast effects spec (none
+    with "Remove animations", `LocalReducedMotion`), each tab's state kept by a `SaveableStateHolder`; Back on Inbox or
+    Phone goes to Today (`BackHandler`). `TABS` also takes a destination that opens another screen (`Tab.opens`):
+    **Views** opens `ViewsActivity` (Systems and the Notes map, above; with `demo` passed on), never selected itself. `TabPage`
+    is a tab's page: a `TwoRowsTopAppBar` sized as `LargeFlexibleTopAppBar` (the expanded title in
+    `displaySmallEmphasized`, Today's date in `displayMediumEmphasized`; it folds on scroll, `exitUntilCollapsed`),
+    `PullToRefreshBox` with the expressive `LoadingIndicator`, and a column at most 640dp wide that keeps clear of the
+    navigation bar and the keyboard.
+  - `TodayTab.kt` (the date as the title, the assistant's initial in a `MaterialShapes.Cookie9Sided`, Call and Chat
+    as a connected `ButtonGroup` of large buttons, then Today's sections: the alarm with its toggle, classes and events,
+    due with a still `LinearWavyProgressIndicator` for parts and Done / +1, reminders, threads, "N questions wait in
+    Inbox", "as of", the update button), `InboxTab.kt` (cards answered in place, the rest opening `AnswerActivity`,
+    what waits for your computer; a `SoftBurst` when nothing waits), `PhoneTab.kt` (the checklist with Fix, location
+    reminders, ringtones, bedside mode, this phone with Unpair behind a confirmation).
+  - `Kit.kt`: `Heading`, `Group` of `Item`s (Material 3 Expressive's `SegmentedListItem`: 2dp gaps, small inner
+    corners and large ones at the group's ends, a pressed row morphs; an on/off `Item` has a `ToggleButton` and switch
+    semantics), `ShapeBadge` (something inside a `MaterialShapes` polygon), `Footnote`, `Dim`, `Said` + `SaidLine`,
+    `KCard`, `rowColor()` (the surface, a little translucent over the sky). Containers with a translucent colour set
+    their `contentColor` themselves: such a colour has no matching "on" colour, and text would fall back to black.
+  - `Theme.kt`: `KurootoTheme(palette, dynamic)` is `MaterialExpressiveTheme` with `MotionScheme.expressive()` and the
+    expressive type scale (its emphasized display and headline styles a step bolder, semibold, as the phone's Roboto
+    reads medium as regular at display sizes). Material You on Android 12+, else a named palette from `Palettes.all`
+    ("kuro" now, with `colors.xml`'s values; another palette is one more entry). `LocalKurooto` adds Kurooto's ok and
+    bad colours.
+  - `Sky.kt`: the background behind the tabs and pairing, in the SYSTEMS view's language (`home.js`): the sky tinted by
+    the hour (keyframes, light and dark), two deep soft forms, a mesh of specks, the core as a membrane (three wobbling
+    rims and a nucleus, `home.js` `blob()`'s formula, breathing about every nine seconds) that crosses the top right
+    with the hour like the site's sun, six tapered nerves drifting like threads, and grain. Android 13+: one AGSL
+    `RuntimeShader` drawn at half resolution into an offscreen layer and scaled up (about 3 ms of GPU a frame on the
+    test phone); Android 12: the same from Canvas paths and gradients; 6 to 11: the same, still. About 14 frames a
+    second while the activity is started (`repeatOnLifecycle(STARTED)`), none otherwise, none with "Remove
+    animations". Strength 1 on Today and pairing, 0.35 on Inbox and Phone; Today's scroll moves it (parallax).
+- The framework screens' look is Material 3 from the framework alone (no AndroidX or Material Components), views
+  built in code:
   - Colours are resources named after Material 3's roles (`k_bg`, `k_card`, `k_fg`, `k_dim`, `k_primary`,
     `k_tonal`, `k_ok`, `k_bad`, ...): `res/values/colors.xml` is the web pages' light "kuro" palette, `values-night`
     the dark one, and `values-v31` / `values-night-v31` map Material You's `system_accent1_*` / `system_neutral*_*`
@@ -638,7 +723,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     always dark). `Base.Kurooto*` only pick the framework's light or dark `Theme.Material` parent.
   - `Ui.java` builds the views: `page(activity)` / `dialog(activity)` set the content and return the column to fill
     (`page` keeps clear of the system bars, which Android 15 draws over; `page(activity, behind)` puts a view behind
-    the scrolling column, full screen); `appBar(activity, title, onBack)` is the small top app bar for a screen that
+    the scrolling column, full screen; 0.7.0: `dialog` sets the window to 90% of the screen's width, at most 560dp,
+    because on Android 16 the dialog theme's minimum width didn't hold); `appBar(activity, title, onBack)` is the small top app bar for a screen that
     isn't one scrolling page (the chat: its root is `fitsSystemWindows`, so on Android 15 it keeps clear of the bars
     and the keyboard); `headline`, `title`, `heading` (a section, in
     the accent colour), `body`, `dim`, `small`, `status` + `ok()` / `bad()`; `card`, `list` + `item` (two-line rows),
@@ -650,12 +736,6 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `LinearLayout col = Ui.page(this);`.
   - The chat (`ChatActivity`) is built from `Ui` too: your messages on `k_primary_container`, Kurooto's on `k_card`,
     20dp corners, dp spacing, tonal buttons under a message, a pill-shaped box and a 56dp Send.
-  - `BlobView` is the main screen's background (`Ui.page(this, new BlobView(this))`): four blobs, each a closed
-    quadratic curve through 24 points whose radius is a sum of three slow sines (the dashboard's `blob()` in
-    `home.js`), filled with a `RadialGradient` (local matrix per frame, nothing allocated per frame) in `k_blob_1..4`
-    (the web palette's accent, lav, peach, pink; `system_accent1..3_*` on Android 12+), alpha 0.15 light / 0.22 dark.
-    About 20 frames a second while attached, shown and its window visible (`onWindowVisibilityChanged`,
-    `onVisibilityChanged`); one still frame when `Settings.Global.ANIMATOR_DURATION_SCALE` is 0 or in battery saver.
   - The launcher icon is `public/icon.svg`'s motif: on Android 8+ the adaptive `mipmap-anydpi-v26/ic_launcher.xml`
     (background `k_call_bg`, foreground `drawable/ic_launcher_fg.xml` with icon.svg's 24 units in the middle 72dp,
     monochrome `ic_launcher_mono.xml` for themed icons); on 6 and 7 the plain vector `mipmap/ic_launcher.xml`.

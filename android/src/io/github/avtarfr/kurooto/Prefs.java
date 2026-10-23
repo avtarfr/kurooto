@@ -114,6 +114,10 @@ final class Prefs {
     }
     static void setBedsideKeepOn(Context c, boolean on) { sp(c).edit().putBoolean("bedsideKeepOn", on).apply(); }
 
+    // Systems or the Notes map: the one the Views tab opens on (ViewsActivity)
+    static String viewMode(Context c) { return sp(c).getString("viewMode", "systems"); }
+    static void setViewMode(Context c, String mode) { sp(c).edit().putString("viewMode", mode).apply(); }
+
     static long lastUpdateCheck(Context c) { return sp(c).getLong("updateCheck", 0); }
     static void setUpdate(Context c, String name, String link) {
         sp(c).edit().putLong("updateCheck", System.currentTimeMillis()).putString("updateName", name).putString("updateLink", link).apply();

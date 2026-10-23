@@ -12,6 +12,8 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.view.Gravity;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
@@ -25,10 +27,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Systems or the Notes map (0.7.0, extra "mode": "systems" | "notes"): the dashboard's own drawing code
- * (src/kurooto/web/static/views/, copied into the app's assets by android/build.sh) in a WebView, with this phone's
- * copy (Views) handed in through KurootoView.take, and the app's colours, light or dark. Read-only: tap for a card,
- * drag, pinch.
+ * Systems or the Notes map (0.7.0): the dashboard's own drawing code (src/kurooto/web/static/views/, copied into the
+ * app's assets at build time, build.gradle.kts) in a WebView, with this phone's copy (Views) handed in through
+ * KurootoView.take, and the app's colours, light or dark. Read-only: tap for a card, drag, pinch. The main screen's
+ * Views tab opens it; Systems and Notes map at its top switch between the two, and it opens on the one you looked at
+ * last (extra "mode": "systems" | "notes" picks one). Extra "demo" (debug and dev builds only, Demo.ON): made-up
+ * copies of both, nothing fetched.
  * While Systems shows, the app tells your computer every WATCH_MS that it's watching and fetches a fresh copy every
  * POLL_MS (every WATCH_MS while the computer is asleep); the Notes map is fetched when it opens. With no network or the
  * computer asleep the last copy shows, "as of" its time.
@@ -47,14 +51,17 @@ public class ViewsActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());
     private WebView web;
     private String mode = "systems";
-    private boolean loaded, shown, busy;
+    private boolean loaded, shown, busy, demo;
+    private Button sysTab, notesTab;
     private long lastWatch;
     private JSONObject last; // what was kept or fetched last
     private String sent = ""; // the last thing handed to the page
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
-        mode = "notes".equals(getIntent().getStringExtra("mode")) ? "notes" : "systems";
+        String asked = getIntent().getStringExtra("mode");
+        mode = "notes".equals(asked != null ? asked : Prefs.viewMode(this)) ? "notes" : "systems";
+        demo = Demo.ON && getIntent().getBooleanExtra("demo", false);
         setTitle("notes".equals(mode) ? "Notes map" : "Systems");
         int v = chromeVersion();
         if (v > 0 && v < MIN_CHROME) { // too old to draw them: say what to update
@@ -101,13 +108,69 @@ public class ViewsActivity extends Activity {
                 return true;
             }
         });
-        FrameLayout page = new FrameLayout(this);
+        LinearLayout page = Ui.column(this);
         page.setFitsSystemWindows(true);
         page.setBackgroundColor(Ui.color(this, R.color.k_bg));
-        page.addView(web);
+        page.addView(tabs());
+        FrameLayout box = new FrameLayout(this);
+        box.addView(web);
+        page.addView(box, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
         setContentView(page);
-        last = Views.load(this, mode);
+        last = kept();
         web.loadUrl(PAGE);
+    }
+
+    /** Systems | Notes map: the two drawings, one tap apart. */
+    private LinearLayout tabs() {
+        LinearLayout row = Ui.row(this);
+        row.setGravity(Gravity.CENTER);
+        row.setPadding(Ui.dp(this, 16), Ui.dp(this, 8), Ui.dp(this, 16), 0);
+        sysTab = Ui.button(this, "Systems", 0, 0, 0);
+        notesTab = Ui.button(this, "Notes map", 0, 0, 0);
+        sysTab.setOnClickListener(v -> show("systems"));
+        notesTab.setOnClickListener(v -> show("notes"));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        lp.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
+        row.addView(sysTab, lp);
+        row.addView(notesTab, new LinearLayout.LayoutParams(lp));
+        paintTabs();
+        return row;
+    }
+
+    private void paintTabs() {
+        for (Button b : new Button[] {sysTab, notesTab}) {
+            boolean on = (b == notesTab) == "notes".equals(mode);
+            Button look = on ? Ui.tonal(this, "") : Ui.outlined(this, "");
+            b.setBackground(look.getBackground());
+            b.setTextColor(look.getTextColors());
+            b.setSelected(on);
+            b.setContentDescription((on ? "Showing " : "Show ") + b.getText());
+        }
+    }
+
+    /** The other drawing: the page starts afresh (it draws one kind), with what's kept of that one. */
+    private void show(String m) {
+        if (m.equals(mode) || web == null) return;
+        mode = m;
+        Prefs.setViewMode(this, m);
+        setTitle("notes".equals(mode) ? "Notes map" : "Systems");
+        paintTabs();
+        loaded = false;
+        sent = "";
+        last = kept();
+        web.loadUrl(PAGE);
+        h.removeCallbacks(tick);
+        lastWatch = 0;
+        if (shown) h.post(tick);
+    }
+
+    /** This phone's copy of the drawing shown (Demo's made-up one in demo). */
+    private JSONObject kept() {
+        if (demo) {
+            JSONObject d = Demo.INSTANCE.view(mode);
+            if (d != null) return d;
+        }
+        return Views.load(this, mode);
     }
 
     /** Only the views' own files, from the app's assets; anything else is refused, so nothing leaves the phone. */
@@ -152,7 +215,7 @@ public class ViewsActivity extends Activity {
     // The Notes map: fetched once each time it's opened.
     private final Runnable tick = new Runnable() {
         @Override public void run() {
-            if (!shown || web == null) return;
+            if (!shown || web == null || demo) return; // demo: nothing to fetch
             final boolean systems = "systems".equals(mode);
             final boolean ping = systems && System.currentTimeMillis() - lastWatch >= WATCH_MS;
             if (!busy) {
@@ -193,7 +256,7 @@ public class ViewsActivity extends Activity {
 
     /** The app's colours (light or dark, Material You's on Android 12+) under the names the drawing uses. */
     private String palette() {
-        int[] res = {R.color.k_bg, R.color.k_fg, R.color.k_primary, R.color.k_blob_2, R.color.k_blob_4, R.color.k_blob_3,
+        int[] res = {R.color.k_bg, R.color.k_fg, R.color.k_primary, R.color.k_view_lav, R.color.k_view_pink, R.color.k_view_peach,
                 R.color.k_sand, R.color.k_rose, R.color.k_bad, R.color.k_card};
         String[] names = {"bg", "fg", "accent", "lav", "pink", "peach", "sand", "rose", "bad", "panel"};
         StringBuilder s = new StringBuilder("{");

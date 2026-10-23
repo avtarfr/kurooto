@@ -70,7 +70,7 @@ final class Ui {
      *  bars (Android 15 draws apps behind them). Returns the column to fill. */
     static LinearLayout page(Activity a) { return page(a, null); }
 
-    /** A page with a view behind it, filling the screen under the bars (the main screen's blobs, BlobView). */
+    /** A page with a view behind it, filling the screen under the bars. */
     static LinearLayout page(Activity a, View behind) {
         ScrollView sv = new ScrollView(a);
         sv.setFitsSystemWindows(true);
@@ -117,6 +117,10 @@ final class Ui {
         col.setPadding(dp(a, 24), dp(a, 20), dp(a, 24), dp(a, 16));
         sv.addView(col, new ScrollView.LayoutParams(MATCH, WRAP));
         a.setContentView(sv);
+        // as wide as a Material dialog (most of a phone's width, at most 560dp), not shrunk to its words (0.7.0:
+        // on Android 16 the dialog theme's minimum width didn't hold, and the answer window came out a narrow strip)
+        android.util.DisplayMetrics m = a.getResources().getDisplayMetrics();
+        a.getWindow().setLayout(Math.min(Math.round(m.widthPixels * 0.9f), dp(a, 560)), android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         return col;
     }
 

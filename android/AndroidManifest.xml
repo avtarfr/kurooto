@@ -4,11 +4,9 @@
      answer buttons, chats with it like Telegram, shows your day (Today) and rings your wake-up alarm on the phone too,
      shares files and quick notes to your notes (a home screen widget, a launcher shortcut, a Quick Settings tile), and
      turns an old phone into a bedside dock (a dim clock with one button to talk). Works from Android 6.
-     Paired with your own call line by a one-time link from your computer; nothing personal is built into the app. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.github.avtarfr.kurooto">
-
-    <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35" />
+     Paired with your own call line by a one-time link from your computer; nothing personal is built into the app.
+     Gradle (build.gradle.kts) sets the package, the SDK levels and the app's label (the appLabel placeholder: "Kurooto", or "Kurooto dev"). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -39,13 +37,17 @@
 
     <application
         android:name=".App"
-        android:label="Kurooto"
+        android:label="${appLabel}"
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/Kurooto"
         android:allowBackup="false"
         android:usesCleartextTraffic="false">
 
-        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
+        <!-- the main screen (Compose): Today, Inbox and Phone under a navigation bar, or pairing; the predictive back
+             gesture (Android 14+; ignored before) -->
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:enableOnBackInvokedCallback="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -103,7 +105,7 @@
 
         <activity android:name=".ShareActivity"
             android:exported="true"
-            android:label="Kurooto"
+            android:label="${appLabel}"
             android:excludeFromRecents="true"
             android:theme="@style/Kurooto.Dialog">
             <intent-filter>

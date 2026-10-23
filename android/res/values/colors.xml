@@ -15,12 +15,11 @@
     <color name="k_on_primary_container">#1C2A0E</color>
     <color name="k_tonal">#E1E6D3</color>                 <!-- secondary container: tonal buttons -->
     <color name="k_on_tonal">#2F3A26</color>
-    <!-- the main screen's blobs (BlobView): the web pages' accent, lav, peach and pink -->
-    <color name="k_blob_1">#3F5626</color>
-    <color name="k_blob_2">#3E6E66</color>
-    <color name="k_blob_3">#8A6414</color>
-    <color name="k_blob_4">#9A4E33</color>
-    <!-- the web pages' sand and rose, for Systems and the Notes map (ViewsActivity hands the page these colours) -->
+    <!-- the web pages' lav, peach, pink, sand and rose, for Systems and the Notes map (ViewsActivity hands the page
+         these with the colours above; Material You's on Android 12+, values-v31) -->
+    <color name="k_view_lav">#3E6E66</color>
+    <color name="k_view_peach">#8A6414</color>
+    <color name="k_view_pink">#9A4E33</color>
     <color name="k_sand">#6E5A2E</color>
     <color name="k_rose">#6A5384</color>
     <color name="k_ok">#2E6B3F</color>
