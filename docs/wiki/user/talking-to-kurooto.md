@@ -249,6 +249,10 @@ together ("Focus off. 3 messages waited for you"). Approvals, calls, urgent mess
 English: "focus for 2 hours", "do not disturb until 6pm", "dnd off", "focus done". A calendar event with `#focus` in its
 title or description is focus time too ([reminders-and-deadlines.md](reminders-and-deadlines.md)).
 
+**Hooks.** "when I say gym, hold calls 90 min" (or "when I say lab, hold everything 2 h") makes "gym" on its own start
+that hold later; `/hooks` lists them, `/hooks drop gym` forgets one, and each step has Undo. Needs Commitments
+([classes-and-timetable.md](classes-and-timetable.md#commitments-gym-shifts-standups)).
+
 **The night.** From 23:30 to 07:00 (`availability.night`), or from your bedtime to your alarm, Kurooto doesn't call
 you except for the alarm. Messages still arrive at night; mute the chat in Telegram if you don't want them to sound.
 See [calls.md](calls.md).

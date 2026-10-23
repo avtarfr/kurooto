@@ -131,6 +131,7 @@ def button(app: App, ref: str, act: str) -> str:
 
 def _replier(app: App, p: dict):
     def reply(text, buttons=None):
+        buttons = buttons if buttons is not None else getattr(text, "buttons", None)  # an Answer's Undo
         return app.notify(text, kind="result", buttons=buttons, why="asked")
 
     return reply

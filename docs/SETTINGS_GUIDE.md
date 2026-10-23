@@ -232,6 +232,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `checkins.questions.evening` | `"How did today go? What got done, and what slipped?"` | the evening check-in's question |
 | `checkins.questions.midday` | `"How's the morning been? Anything to re-plan for the afte…` | the midday check-in's question |
 | `checkins.questions.night` | `"Before bed: anything else for your journal? What's first…` | the night check-in's question |
+| `checkins.reflect` | `true` | the evening check-in lists up to 3 things today's records show you did, asks about tomorrow |
 | `checkins.times.evening` | `"22:00"` | the evening check-in, the day in review (None: off) |
 | `checkins.times.midday` | `null` | the midday check-in (None: off; e.g. "13:00") |
 | `checkins.times.night` | `null` | the night check-in before bed (None: off; e.g. "23:15") |
@@ -251,6 +252,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `commitments.hooks` | `[]` | {"word": "gym", "hold": "calls" or "all", "minutes": 90}: "gym" alone starts that hold |
 | `commitments.items` | `[]` | {"name": "gym", "days": ["mon", "wed"], "start": "18:00", "end": "19:00", "calls": true} |
 | `commitments.no_calls` | `true` | no calls during a commitment (each one can opt out: /busy calls gym off) |
 

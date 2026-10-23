@@ -131,9 +131,27 @@ timetable, quizzes and tests in Deadlines. These aren't Skills' routines (`/ever
 
 **On calls.** Kurooto knows today's commitments and can mark one skipped when you say so.
 
-**Settings.** `commitments.items` (the list), `commitments.no_calls` (on: they hold calls).
+**Hooks: a word that starts a hold.** For the things that don't keep a timetable, give Kurooto a word:
 
-**What leaves your computer.** Nothing. **Undo:** `/busy remove <name>`, or turn it off in Features (the list stays).
+| You send | What happens |
+|---|---|
+| "when I say gym, hold calls 90 min" | keeps the hook: "Hook set: "gym" on its own holds calls for 90 min", with **Undo**. Nothing is held yet |
+| "when I say lab, hold everything 2 h" | "everything" is [focus](talking-to-kurooto.md#status-pause-hold-and-focus): calls wait, and messages that can wait are kept until it ends |
+| `gym` (the word on its own) | the hold starts now: "gym: no calls until 19:42. Messages still come. /calls lifts it.", with **Undo** (puts back what was there before). A longer hold already on is kept |
+| `/hooks` | your hooks |
+| `/hooks drop gym` | forgets one, with **Undo** |
+
+Only the word on its own starts it: "I'm off to the gym", "gym tomorrow" or "gym?" are ordinary messages. Saying the
+same "when I say gym, ..." again changes the hook (its Undo puts the old one back). A hook needs a length ("90 min",
+"2 h", "an hour") and calls or everything; without them, or with a word as common as "ok" or "done", Kurooto says how
+to put it and sets nothing. A hook only holds calls and messages for you: it never sets or moves an alarm and never
+sends anything to anyone.
+
+**Settings.** `commitments.items` (the list), `commitments.no_calls` (on: they hold calls), `commitments.hooks` (your
+hook words: `{"word": "gym", "hold": "calls", "minutes": 90}`, `"hold": "all"` for everything).
+
+**What leaves your computer.** Nothing. **Undo:** `/busy remove <name>`, `/hooks drop <word>`, or turn it off in
+Features (the lists stay).
 
 ## Term dates and holidays
 

@@ -26,6 +26,28 @@ per day. Once a week you get your week in numbers, and in your first week a smal
 Reply to the message (Telegram's Reply) and your answer goes into today's journal: "Saved to your journal
 (journal/2026-11-12.md)".
 
+**The day's reflection** (`checkins.reflect`, on). The evening check-in message also lists up to three things the
+day's records show you did, and asks one thing about tomorrow:
+
+```
+Evening check-in: How did today go? What got done, and what slipped?
+
+From today's records:
+- Problem set 3: done
+- send the glacier draft to Ortiz: done
+- Studied Linear Algebra 1.5 h
+
+What's first tomorrow?
+```
+
+Only records count, never a guess from what you wrote: a deadline marked done (Done, ticked in your notes, handed in on
+Classroom), an [open thread](talking-to-kurooto.md#open-threads-and-that-thing) closed as done, progress you gave on a
+deadline ("Essay draft: 4 of 7 done"), study time of 15 minutes or more for a subject, and classes whose after-class
+question you answered. In that order, three at most. Fewer happened: it lists what there is. Nothing recorded: no list
+at all, just the question. There's no streak, no score and nothing about what you didn't do. **Not tonight** under it
+ends the check-in for the day. Turn the reflection off with `checkins.reflect` (the message is then as before, with
+**Skip today**).
+
 **Turn it on.** Features → Check-ins. It needs Telegram. It's in the ★ Starter set. To turn on the night or midday
 one, give it a time: Dashboard → Settings → Check-ins → `times`, e.g. `"night": "23:15"`. Both are off until you do.
 
@@ -36,6 +58,7 @@ one, give it a time: Dashboard → Settings → Check-ins → `times`, e.g. `"ni
 | **In 30 min** | asks again 30 minutes later (a night check-in pushed past the end of the day moves to the morning instead) |
 | **Tomorrow morning** (night check-in only) | you're too tired: the rest moves to your wake-up call, or, with no alarm set, to a message in the morning |
 | **Skip today** | no more of that check-in today |
+| **Not tonight** (evening, with the reflection on) | the same as Skip today: the check-in is over for the day |
 
 **From Telegram.**
 
@@ -94,6 +117,7 @@ back half an hour, like **In 30 min** on Telegram) and **skip**.
 | `checkins.by_call` | off | with Phone calls on, check-ins are calls ([below](#check-ins-by-call)) |
 | `checkins.ai_notes` | on | with Chat on, after a check-in call the AI writes your journal and study logs |
 | `checkins.asleep_defers` | on | the night check-in call doesn't ring once you've gone to bed |
+| `checkins.reflect` | on | the evening check-in lists up to three things today's records show you did and asks what's first tomorrow |
 
 **What leaves your computer.** Nothing for message check-ins (your reply travels through Telegram to your own bot).
 By call, see below.
@@ -109,7 +133,8 @@ With [Phone calls](calls.md) on and `checkins.by_call` on, each check-in is a ph
 
 **Evening debrief** (5 to 8 minutes): how the day went; what each of today's classes covered (with the
 after-class questions you kept for this call); what slipped from today's plan; open questions; the study time
-Kurooto counted, and study away from the computer; a short quiz if a quiz or exam is in the next two weeks.
+Kurooto counted, and study away from the computer; a short quiz if a quiz or exam is in the next two weeks. With
+`checkins.reflect` on, it says back in one line what the day's records show you did (the same list as the message).
 
 **Night check-in** (3 to 5 minutes, if you turned it on): anything more for the journal, study logs still due,
 tomorrow's top priority and when to wake you (it sets the alarm), goodnight. With the night check-in off, the evening
@@ -294,6 +319,7 @@ Once a month, Calm may suggest turning off a kind of question you rarely answer,
 | No night check-in | It's off until you give it a time: Settings → Check-ins → `times`, e.g. `"night": "23:15"`. |
 | A night check-in I didn't want | Empty its time in `checkins.times`, or `/checkin night skip` for today. |
 | The night check-in didn't ring | The alarm was set and it was past your bedtime: it moved to the wake-up call (a message said so). `checkins.asleep_defers` off makes it always ring. |
+| The evening check-in didn't list something I did | It lists only what was recorded that day (a deadline marked done or given progress, a thread closed, 15+ minutes of study, an after-class answer), three at most. Mark the deadline Done, or `/threads done N`. |
 | A check-in call came as a message | The day's one call (`notify.calm.calls`) had come already, or a class, event, `/hold` or the night would have held it into the next day. `/calm calls 2` allows two calls. |
 | "skip Friday's check-in" went to the AI | Kurooto acts by itself only for today, tomorrow, the day after or a weekday name. |
 | "I missed your evening check-in" | The computer was off for more than 2 hours past the time. Reply to that message and it still goes into the journal. |

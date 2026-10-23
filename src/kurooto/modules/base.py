@@ -29,7 +29,20 @@ class Incoming:
     respond: Callable[..., Any] | None = None  # respond(text, buttons=None) -> message id
 
     def reply(self, text: str, buttons: list | None = None) -> Any:
+        buttons = buttons if buttons is not None else getattr(text, "buttons", None)  # an Answer brings its own
         return self.respond(text, buttons=buttons) if self.respond else None
+
+
+class Answer(str):
+    """An intent's answer that comes with buttons (an Undo): it's still the text, and Incoming.reply sends the
+    buttons with it, so a request can offer Undo without replying itself."""
+
+    buttons: list | None
+
+    def __new__(cls, text: str, buttons: list | None = None):
+        s = super().__new__(cls, text)
+        s.buttons = buttons
+        return s
 
 
 @dataclass

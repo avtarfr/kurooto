@@ -479,6 +479,12 @@ into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
 
 - **Turn on the night or midday one:** Settings → Check-ins → `times`, and give it a time, e.g. `"night": "23:15"`.
   Both are off until you do.
+- **The day's reflection** (`checkins.reflect`, on): the evening message lists up to three things the day's records
+  show you did ("Problem set 3: done", a thread closed, "Essay draft: 4 of 7 done", "Studied Linear Algebra 1.5 h", a
+  class whose after-class question you answered), then asks "What's first tomorrow?". Only records, never a guess from
+  what you wrote; fewer than three: what there is; nothing: no list. No streak, no score, nothing about what you
+  didn't do. **Not tonight** under it ends the check-in for the day (in place of Skip today). By call, the evening
+  debrief says the same list back in one line.
 - **It learns your times** (`checkins.learn_times`, on): a check-in you've answered on 5 or more of the last 14 days,
   and on 4 or more of them 30+ minutes from its time on the same side (moved, or replied late within 3 hours), moves
   to when you actually did it, with one line and **Undo**. Not again for two weeks; after an Undo, not for a month.
@@ -521,9 +527,10 @@ into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
 
 *Settings:* `checkins.times` (`evening`, `night`, `midday`; empty = off), `checkins.questions` (what each one asks),
 `checkins.by_call`, `checkins.journal`, `checkins.ai_notes` (default on: with Chat on, the AI writes the journal and
-study logs after a check-in call), `checkins.day_starts` (default `05:00`), `checkins.asleep_defers` (default on).
+study logs after a check-in call), `checkins.day_starts` (default `05:00`), `checkins.asleep_defers` (default on),
+`checkins.reflect` (default on).
 *Undo:* `checkins.day_starts` = `00:00` (calendar days, as before 0.3.0); `checkins.asleep_defers` off (the night
-check-in always rings).
+check-in always rings); `checkins.reflect` off (the evening message as before 0.5.20, with Skip today).
 *Leaves:* nothing; with check-ins by call and Chat on, what you said on the call goes to the AI to write your journal
 and study logs.
 
@@ -1220,9 +1227,18 @@ Kurooto knows today's commitments and can mark one skipped. Saying one in passin
 [Set up from what you say](#set-up-from-what-you-say)). Not to be confused with Skills' routines (`/every`), which run
 a skill on a schedule.
 
+**Hooks.** "when I say gym, hold calls 90 min" keeps a word; later "gym" on its own holds calls for 90 minutes, as
+`/hold` would ("gym: no calls until 19:42"). "when I say lab, hold everything 2 h" starts focus instead (calls and
+messages that can wait are held). Only the word alone does it: "I'm off to the gym" is an ordinary message. A longer
+hold already on is kept. `/hooks` lists them, `/hooks drop gym` forgets one. Setting, firing and dropping each come
+with **Undo** (firing's puts back the hold that was there before). Without a length or "calls"/"everything", or with
+a word like "ok", it says how to put it and sets nothing. A hook never sets or moves an alarm and sends nothing to
+anyone. *Setting:* `commitments.hooks`.
+
 **What leaves your computer.** Nothing.
 
-**Undo.** `/busy remove <name>`, or turn Commitments off in Features (the list stays for when you turn it on again).
+**Undo.** `/busy remove <name>`, `/hooks drop <word>`, or turn Commitments off in Features (the lists stay for when you
+turn it on again).
 
 ### Dreaming
 
@@ -3424,6 +3440,8 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | No night check-in | It's off until you give it a time: Settings → Check-ins → `times`, e.g. `"night": "23:15"`. |
 | A night check-in I didn't want | Empty its time in Settings → Check-ins → `times`, or `/checkin night skip` for today. |
 | The night check-in didn't ring | The alarm was set and it was past your bedtime: it moved to the wake-up call (the message says so). `checkins.asleep_defers` off makes it always ring. |
+| The evening check-in didn't list something I did | It lists only what was recorded that day (a deadline marked done or given progress, a thread closed, 15+ minutes of study, an after-class answer), three at most. Mark the deadline Done, or `/threads done N`. |
+| Saying "gym" did nothing | A hook fires only on the word alone, with Commitments on; `/hooks` lists the words. "gym?" or "gym later" are ordinary messages. |
 | "skip Friday's check-in" went to the AI | Kurooto acts by itself only for today, tomorrow, the day after or a weekday name; anything else (dates, "next week") goes to the AI. |
 | "Held a call until …" | A class, `/hold`, focus, a calendar event or the night was on. The call comes by itself when it ends; `/calls` lifts a `/hold`. Too many events hold calls? Set `calendar.nocall_events` to `tagged`. |
 | A call rang three times | It wasn't answered: repeats at +3 and +6 minutes. Answer, tap **Later**, or set `calls.realert_min` to `[]`. |

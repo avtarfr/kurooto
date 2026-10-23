@@ -27,6 +27,11 @@ Learned times (checkins.learn_times, on): when, over the last two weeks, you ans
 on 4 or more of them at a time 30 minutes or more from its setting, all on the same side (you moved it, or replied
 late to it), its time moves to when you actually did it (the middle of those times, to the quarter hour). One line
 says so, with Undo; a check-in isn't moved again for two weeks, and one you undid is left alone for a month.
+
+The day's reflection (checkins.reflect, on): the evening check-in message lists up to three things the day's records
+show you did (a deadline marked done or moved on, a thread closed, study time, a class you logged), never guessed from
+what you said, then asks one thing about tomorrow ("What's first tomorrow?"). Nothing recorded: no list. Not tonight
+under it ends the check-in for the day. Never a streak, a score or "you missed".
 """
 
 from __future__ import annotations
@@ -62,6 +67,7 @@ register_defaults(
         "day_starts": "05:00",  # a check-in day runs from here to here: a night check-in at 00:30 is the evening's
         "asleep_defers": True,  # by call, alarm set and you've gone to bed: the night check-in waits for the morning
         "learn_times": True,  # a check-in you keep moving or answering late moves to when you do it (with Undo)
+        "reflect": True,  # the evening check-in lists up to 3 things today's records show you did, asks about tomorrow
     },
 )
 NAMES = ("evening", "midday", "night")
@@ -72,6 +78,9 @@ ASLEEP_SET_H = 3  # an alarm you set yourself this recently means you've gone to
 DONE = ("answered", "skipped", "deferred")  # a check-in that's over for its day
 LEARN_DAYS, LEARN_MIN_DAYS, LEARN_OFF_DAYS, LEARN_GAP_MIN = 14, 5, 4, 30  # look back, answered, off, minutes off
 LEARN_LATE_H = 3  # a reply later than this after the check-in says nothing about when you'd like it
+REFLECT_N, REFLECT_STUDY_MIN = 3, 15  # the evening's "what you did today": at most this many, study this long or more
+TOMORROW = "What's first tomorrow?"
+OWN_RECORD = {"deadline", "study"}  # threads keyed to these are told from the deadline or the study time itself
 WORDS = re.compile(
     r"\b(evening|midday|night|bedtime|tonight'?s?|today'?s?|tomorrow'?s?|afternoon|lunch|(?:mon|tues|wednes|thurs|"
     r"fri|satur|sun)day'?s?)?\s*(check-?in|debrief|call)\b",
@@ -87,6 +96,11 @@ def _label(day: dt.date, today: dt.date) -> str:
     if day == today:
         return "today"
     return "tomorrow" if day == today + dt.timedelta(days=1) else f"on {day:%a %d %b}"
+
+
+def _span(seconds: float) -> str:
+    m = round(seconds / 60)
+    return f"{m} min" if m < 60 else f"{m / 60:.1f} h"
 
 
 def _name_in(low: str) -> str:
@@ -242,12 +256,19 @@ class Checkins(Module):
         else:
             q = (self.setting("questions") or {}).get(name) or "How's it going?"
             later = [("Tomorrow morning", f"chk:{name}|{day}:defer")] if name == "night" else []
+            skip = ("Skip today", f"chk:{name}|{day}:skip")
+            if name == "evening" and self.setting("reflect"):  # the day's reflection: what you did, one for tomorrow
+                did = self.done_today(dt.date.fromisoformat(day))
+                if did:  # nothing recorded: no list, never "you did nothing"
+                    q += "\n\nFrom today's records:" + "".join(f"\n- {x}" for x in did)
+                q += f"\n\n{TOMORROW}"
+                skip = ("Not tonight", f"chk:{name}|{day}:not")
             self.app.notify(
                 f"{name.title()} check-in: {q}\n\n(Reply to this message.)",
                 kind="question",
                 map_kind="checkin",
                 map_ref=f"{name}:{day}",
-                buttons=[[("In 30 min", f"chk:{name}|{day}:p30"), *later, ("Skip today", f"chk:{name}|{day}:skip")]],
+                buttons=[[("In 30 min", f"chk:{name}|{day}:p30"), *later, skip]],
                 why="checkins.question",
                 setting=f"checkins.times.{name}",
                 about=f"your {name} check-in",
@@ -628,6 +649,9 @@ class Checkins(Module):
                 return self.postpone(name, 30, d, via="button")
             if act == "defer":
                 return self.defer(name, d, via="button")
+            if act == "not":  # Not tonight, under the evening's reflection: over for the day, nothing more asked
+                self.skip(name, d, via="not_tonight")
+                return "OK, not tonight."
             if act == "now":
                 if not self._by_call():
                     return "Phone calls aren't on."
@@ -929,6 +953,63 @@ class Checkins(Module):
         done = {n for c in plan.values() for n in c.get("logged", [])}
         return [c["name"] for c in self._classes(day) if c["status"] in ("", "later") and c["name"] not in done]
 
+    def done_today(self, day: dt.date) -> list[str]:
+        """Up to three things the check-in day's records show you did, never guessed from your words: deadlines
+        marked done, threads closed, deadlines moved on ("ps3: 4 of 7 done"), study time, classes you logged after.
+        [] when nothing was recorded."""
+        app, out = self.app, []
+        lo = dt.datetime.combine(day, self._day_start())
+        hi = lo + dt.timedelta(days=1)
+
+        def within(stamp) -> bool:
+            try:
+                return lo <= dt.datetime.fromisoformat(str(stamp)).replace(tzinfo=None) < hi
+            except ValueError:
+                return False
+
+        def deadlines(progress: bool) -> list[str]:
+            if not app.is_on("deadlines"):
+                return []
+            items = app.modules["deadlines"].items().values()
+            if progress:
+                return [
+                    f"{it['title']}: {it['parts_done']} of {it['parts']} done"
+                    for it in items
+                    if it.get("status") == "open" and it.get("parts_done") and within(it.get("progress_at"))
+                ]
+            return [f"{it['title']}: done" for it in items if it.get("status") == "done" and within(it.get("done_at"))]
+
+        def closed() -> list[str]:
+            from kurooto.core import threads
+
+            rows = threads.closed_between(app, lo.timestamp(), hi.timestamp())
+            return [f"{r['text']}: done" for r in rows if str(r.get("key") or "").split(":")[0] not in OWN_RECORD]
+
+        def study() -> list[str]:
+            st = app.modules.get("study")
+            if st is None or not app.is_on("study"):
+                return []
+            spent = {k: v for k, v in st.totals(1, last=day).items() if v >= REFLECT_STUDY_MIN * 60}
+            rows = sorted(spent.items(), key=lambda kv: -kv[1])
+            return ["Studied " + ", ".join(f"{st.name_of(k)} {_span(v)}" for k, v in rows)] if rows else []
+
+        def classes() -> list[str]:
+            logged = [c["name"] for c in self._classes(day) if c["status"] == "answered"]
+            return [f"Logged what {' and '.join(logged)} covered"] if logged else []
+
+        for part, fn in (
+            ("done", lambda: deadlines(False)),
+            ("threads", closed),
+            ("progress", lambda: deadlines(True)),
+            ("study", study),
+            ("classes", classes),
+        ):
+            try:
+                out += fn()
+            except Exception as e:  # one record that can't be read never stops the check-in
+                app.events.emit("checkin_reflect_failed", part=part, error=f"{type(e).__name__}: {e}"[:200])
+        return out[:REFLECT_N]
+
     def _night_planned(self, day: dt.date) -> str | None:
         c = self.today(day).get("night") or {}
         return c.get("time") if c.get("status") == "planned" else None
@@ -969,6 +1050,12 @@ class Checkins(Module):
             head = "Night check-in: goodnight, about 3 to 5 minutes. Keep it gentle; they're about to sleep. " + later
             return "\n".join([head] + [f"{i}. {s}" for i, s in enumerate(steps, 1)])
         steps = ["Ask how today went."]
+        did = self.done_today(today) if self.setting("reflect") else []
+        if did:
+            steps.append(
+                f"From today's records they did: {'; '.join(did)}. Say these back in one line, plainly (no praise, "
+                "no score, nothing about what they didn't do)."
+            )
         classes = [c for c in self._classes(today) if c["status"] != "skipped"]
         if classes:
             names = ", ".join(f"{c['name']} ({c['start']})" for c in classes)

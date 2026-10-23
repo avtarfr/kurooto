@@ -71,7 +71,9 @@ Data classes (`modules/base.py`):
 - `Intent(name, description, match(text) -> dict | None, run(msg, slots) -> str, questions=False, examples=(),
   guarded="")`. `questions=True` lets it answer questions ("what's due?"); otherwise text that looks like a question
   goes to the AI. `examples`: what you'd say, as `/help` shows it (each must be taken by `match`; a test checks).
-  `guarded`: see [Never without a tap](#never-without-a-tap-coretappy).
+  `guarded`: see [Never without a tap](#never-without-a-tap-coretappy). To answer with buttons (an Undo), `run` returns
+  `Answer(text, buttons)` (`modules/base.py`, a `str`): `Incoming.reply` and Turn on's replier send its buttons, so
+  every place that runs an intent keeps them. A command handler can return one too.
 - `Tool` lives in `modules/calls/tools.py` (see [brains.md](brains.md#tools-exposed-to-the-ai)).
 
 ## Never without a tap (`core/tap.py`)
@@ -425,6 +427,14 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   events `checkin_time_learned`/`_unlearned`; Calm reason `checkins.learned`. A lighter day (`core/rhythm.py`):
   `_plan` moves the day's first check-in, when it's just been planned, `LATER_MIN` later (the entry keeps its own time
   under `lighter`; `learn()` skips such entries); `unlighten(day)` (Not today) puts it back unless you moved it since.
+  The day's reflection (`checkins.reflect`): `_fire` adds `done_today(day)` and `TOMORROW` to the evening message and
+  swaps Skip today for Not tonight (`chk:evening|<day>:not`, a skip with `via="not_tonight"`); the evening call script
+  gets a "say these back" step. `done_today` reads records only, in this order, at most `REFLECT_N` (3), over the
+  check-in day (`day_starts` to the next): deadlines with `status` done and `done_at` in the day (written by
+  `_status`, `mark_done` and a ticked notes task), `threads.closed_between()` rows closed as done (not those keyed
+  `deadline:`/`study:`, told from their own record), deadlines with `progress_at` in the day, study totals of
+  `REFLECT_STUDY_MIN` (15) min or more per subject (one line), and classes whose after-class question is `answered`.
+  Each part fails alone (`checkin_reflect_failed`). Nothing found: no list.
 - **deadlines** (`modules/deadlines.py`): merges deadlines from manual entries, notes tasks, Classroom, the calendar,
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,
   overdue check) and runs exam mode. Ids are hashes of title plus date. `deadlines.json` under the `deadlines` lock.
@@ -436,7 +446,8 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   (`infer.projects_with`), builds `infer.brief(note, who, due)` (Log lines dated on or after `Last met`, else two
   weeks; unchecked `## Next steps`; the newest `## Meetings` line), notifies once (`told` gets "briefed"; Calm reason
   `deadlines.meeting_brief`).
-- **deadlines** progress: `PROGRESS` patterns and the `deadline_progress` intent/tool set `parts`/`parts_done` on an
+- **deadlines** progress: `PROGRESS` patterns and the `deadline_progress` intent/tool set `parts`/`parts_done` (and
+  `progress_at`, for the evening reflection) on an
   open deadline found by `find_open()` (`similar()` on the title or the full title, the soonest due); `parts_text()`
   adds "(4/7)" to lists and the call brief; Start-by's `size_of()` scales `_whole_size()` by what's left.
 - **startby** (`modules/startby.py`): start-by dates from size estimates and free time; local arithmetic only.
@@ -509,7 +520,15 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `on(day)` gives a day's with `start_dt`/`end_dt` (an end before the start runs into the next day); the call blocker
   `commitments` checks yesterday's and today's (night shifts); skips per day in `<state>/commitments/skip-<date>.json`;
   `/busy` (add splits the words as the first split whose rest `parse_days` reads), intent `skip_commitment`, call tool
-  `skip_commitment`, brief `commitments_today`. Distinct from Skills' `/every` routines.
+  `skip_commitment`, brief `commitments_today`. Distinct from Skills' `/every` routines. Hooks: `commitments.hooks`
+  rows `{word, hold: "calls"|"all", minutes}`; intent `hook` (`questions=True`, since "when ..." reads as a question)
+  takes `HOOK` ("when/whenever/if I say W, hold calls|everything N") to `add_hook`, a bad one (no length, no kind, a
+  `NOT_HOOK` word) to a how-to line, and a message that is exactly a hook word (trailing `.`/`!` allowed, never `?`)
+  to `fire_hook`: `set_quiet` (calls) or `set_focus` plus `telegram.focus_end` (all), keeping a longer hold already
+  on. `/hooks`, `/hooks drop W`. Undo buttons `hook:<word>:unadd|undrop|unhold`; what they put back is in
+  `<state>/commitments/hooks-undo.json`; `unhold` only acts while the hold is still the one the hook set. Telegram's
+  `hold_calls` and `focus` intents skip `HOOK_SAID` so a hook sentence never holds now. Events `hook_added`,
+  `hook_fired`, `hook_dropped`, `hook_undone` (no words). Never an alarm (`core/tap.py`).
 - **classpacks** (`modules/classpacks.py`, format in `modules/coursepack.py`): import/export a section's setup as a
   `.kurooto-course` file with a strict schema that refuses personal data.
 - **capture** (`modules/capture.py`): after each class, a question about what was worth keeping; answers to the class log,

@@ -252,7 +252,7 @@ class Deadlines(Module):
         with Lock(self.app.paths.state, "deadlines"):
             items = self.items()
             it = items[i]
-            it["parts"], it["parts_done"] = total, done
+            it["parts"], it["parts_done"], it["progress_at"] = total, done, now().isoformat()
             jsave(self.file, items)
         self.app.events.emit("deadline_progress", done=done, total=total)
         from kurooto.core import threads  # started, not done: something you're in the middle of (core/threads.py)
@@ -414,7 +414,7 @@ class Deadlines(Module):
             j = self._resolve(items, did(title, iso(due)))
             if not j or items[j]["status"] != "open":
                 return False
-            items[j]["status"] = "done"
+            items[j]["status"], items[j]["done_at"] = "done", now().isoformat()
             jsave(self.file, items)
         self._after_status(j, items[j], "done")
         self.app.events.emit("deadline_done", source="sync")
@@ -486,6 +486,8 @@ class Deadlines(Module):
                     continue
                 if it["status"] == "open" and (nid in ticked or len(it.get("sources", [it["source"]])) == 1):
                     it["status"] = "done"  # ticked (or deleted) in the notes
+                    if nid in ticked:  # when, for the evening check-in's "what you did today"
+                        it["done_at"] = now().isoformat()
                 for k in ("note", "line", "note_id"):
                     it.pop(k, None)
             jsave(self.file, items)
@@ -882,6 +884,8 @@ class Deadlines(Module):
             if not j:
                 return None, None
             items[j]["status"] = status
+            if status == "done":  # when, for the evening check-in's "what you did today"
+                items[j]["done_at"] = now().isoformat()
             jsave(self.file, items)
         return j, self._after_status(j, items[j], status)
 

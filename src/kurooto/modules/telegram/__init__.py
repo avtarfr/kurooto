@@ -38,6 +38,7 @@ MENU_EVERY_S = 900  # skills can change without a feature going on or off: look 
 
 TOKEN = "telegram.token"  # noqa: S105 (the secret's name, not its value)
 PAIR_S = 3600  # a pairing link works for an hour
+HOOK_SAID = re.compile(r"\s*(?:when(?:ever)?|if)\s+i\s+(?:say|type|send|write)\b", re.I)  # a hook, not a hold now
 _START = re.compile(r"^/start(?:@\w+)?(?:\s+(\S+))?\s*$", re.I)  # "/start CODE", "/start@bot CODE", "/start"
 
 
@@ -627,6 +628,8 @@ class Telegram(Module):
         def hold(text: str):
             if not re.search(r"\b(no calls?|don'?t call(?: me)?|hold (?:the )?calls?|no ringing)\b", text, re.I):
                 return None
+            if HOOK_SAID.match(text):  # "when I say gym, hold calls 90 min": a hook (modules/commitments.py)
+                return None
             if another_day(text):  # "no calls on Friday": the AI works out the day
                 return None
             mins, tm = a_minutes(text), a_time(text)
@@ -641,6 +644,8 @@ class Telegram(Module):
 
         def focus(text: str):
             if not re.search(r"\b(focus|do not disturb|dnd)\b", text, re.I) or another_day(text):
+                return None
+            if HOOK_SAID.match(text):  # "when I say lab, focus 2 h": a hook (modules/commitments.py)
                 return None
             if re.search(r"\b(off|stop|end|done|over)\b", text, re.I):
                 return {"arg": "off"}

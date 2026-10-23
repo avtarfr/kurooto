@@ -90,6 +90,15 @@ def open_threads(app: App) -> list[dict]:
         return []
 
 
+def closed_between(app: App, lo: float, hi: float, how: str = "done") -> list[dict]:
+    """Threads closed this way in [lo, hi), oldest first (the evening check-in's "what you did today")."""
+    try:
+        rows = _all(app, how)
+    except ledger.Locked:
+        return []
+    return sorted([r for r in rows if lo <= float(r.get("closed_at") or 0) < hi], key=lambda r: r["closed_at"])
+
+
 def recent(app: App, since: float | None = None) -> list[dict]:
     """Threads opened or changed in the last 48 hours (any state), newest first."""
     edge = since if since is not None else time.time() - RECENT_S
