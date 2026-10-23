@@ -5,6 +5,7 @@ routine in the two weeks before a quiz or exam; an optional exam-season mode for
 as PDFs; and a hint ladder for problems you're stuck on.
 
 - [Quiz](#quiz)
+- [Link recall cards](#link-recall-cards)
 - [Exam mode](#exam-mode)
 - [Exam season (optional)](#exam-season)
 - [Revision packs](#revision-packs)
@@ -88,6 +89,60 @@ held back). See [Messages it sends](messages-it-sends.md).
 
 **Turn it off / undo.** Features → Quiz → Turn off; your progress stays in Kurooto's state folder (`quiz/`).
 `quiz.by_call` off brings back **Here or by call?**.
+
+## Link recall cards
+
+**What it does.** The links between your concept notes become questions. Each link the
+[concept graph](notes-and-concept-graph.md) writes (or one you write the same way), like
+`- used-in:: [[zettel/fokker-planck]] — its generator gives the drift and diffusion terms`, is a card: "How is Itô's
+lemma used in Fokker-Planck?". You answer in your own words, see what the note says and where to read, and grade
+yourself. Spacing is the quiz's: a card you knew comes back later, one you forgot comes back tomorrow.
+
+**Turn it on.** It's part of Quiz. `/card` gives a card any time; for cards that come by themselves, `/cards on` (or
+`quiz.links` in Settings → Quiz).
+
+**A card, step by step.**
+1. "Link card (Stochastic Calculus): How is Itô's lemma used in Fokker-Planck? Reply in your own words."
+2. Reply to it on Telegram, or with **Reply** in the phone app.
+3. You see the link's reason, then **Where to read**: the book pages where the two concepts are met (from the concept
+   graph's "Seen in"), and the best match in that subject's own notes and Classroom files.
+4. Grade it: **Forgot** (0), **Hard** (3), **Good** (4), **Easy** (5). After **Forgot**, the first place to read is
+   repeated. In the phone app the grade buttons come as their own message.
+
+**When they come.** With `quiz.links` on, up to `quiz.links_per_day` cards (3; never more than 5) at the times in
+`quiz.links_at` (11:00, 16:00 and 20:00), one at a time. They reach the phone app too (they're questions). Never during
+a class, focus time, a call or the night: a card that falls then comes 5 minutes after it ends (the same day). A card
+you haven't answered holds back the next one that day. Cards you've seen come before new ones.
+
+**From Telegram.**
+
+| You send | What happens |
+|---|---|
+| `/card` | a card now (it doesn't count toward the day's) |
+| `/cards` | how many cards, how many seen and due, how many you answered and got right this week |
+| `/cards on`, `/cards off` | cards by themselves on or off (`/card` works either way) |
+
+**Local check (optional).** With `quiz.links_check` on and [Local AI models](your-computer.md#local-ai-models) on, the small model on
+this computer says in one sentence how close your answer came, before you grade. It's never a cloud AI, and you still
+grade.
+
+**Settings that matter** (Dashboard → Settings → Quiz)
+
+| Setting | Default | Effect |
+|---|---|---|
+| `quiz.links` | off | link cards come by themselves |
+| `quiz.links_per_day` | 3 | the most a day (at most 5) |
+| `quiz.links_at` | `daily 11:00,16:00,20:00` | when one may come |
+| `quiz.links_check` | off | the local model's one-sentence check |
+
+**Messages it sends by itself.** The cards (Less of this → Stop turns `quiz.links` off; Fewer makes it one a day).
+
+**What leaves your computer.** Nothing: the cards, your answers and the local check stay here.
+
+**Turn it off / undo.** `/cards off`. What you graded stays in Kurooto's state folder (`quiz/_links.json`); a link you
+delete from your notes stops being asked.
+
+**Left out for now.** Papers from the research digest don't go through Books yet, so they don't get cards.
 
 ## Exam mode
 

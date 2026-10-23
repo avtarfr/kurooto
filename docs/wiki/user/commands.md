@@ -101,6 +101,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/doubt la why does the rank not change?`, `/doubts`, `/doubts la` | doubts for the next class | Doubt queue |
 | `/quiz`, `/quiz la`, `/quiz la call`, `/quiz la here`, `/quiz at 21:00 la`, `/quiz la tomorrow 8pm` | practice questions from your notes | Quiz |
 | `/quizstatus` | what's due to practise, per subject | Quiz |
+| `/card`, `/cards`, `/cards on`, `/cards off` | a link recall card now (how two of your concepts relate); how they're going; cards by themselves on or off | Quiz |
 | `/examseason` | exam season: dates, exams and parts (tap a part to switch it) | Exam season (optional) |
 | `/hint la` (with a photo, or the problem typed after it) | one hint at a time | Hint ladder |
 | `/pack linear algebra midterm` | a revision PDF from your notes | Skills |

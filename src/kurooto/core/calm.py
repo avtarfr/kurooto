@@ -310,6 +310,15 @@ REASONS: dict[str, Reason] = {
         ),
         R("quiz.call", "a quiz by call", setting="quiz.by_call", stop=to(False, "quizzes come as messages")),
         R(
+            "quiz.links",
+            "a link recall card: how two of your concepts relate",
+            many="link cards",
+            setting="quiz.links",
+            stop=to(False, "no more link cards by themselves (/card still gives one)"),
+            fewer=DAILY,
+            suggest=True,
+        ),
+        R(
             "packs.offer",
             "an offer to build a revision pack before an exam",
             many="revision pack offers",

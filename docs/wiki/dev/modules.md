@@ -434,7 +434,19 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   a `study-log` skill job with Chat on.
 - **doubts** (`modules/doubts.py`): a per-subject doubts list, sent before the next class.
 - **quiz** (`modules/quiz.py`): spaced repetition over "must know" bullets in exam-prep notes; graded by the AI with Chat
-  on; calls with Phone calls on. Tools `quiz_next`, `quiz_grade`, `schedule_quiz`.
+  on; calls with Phone calls on. Tools `quiz_next`, `quiz_grade`, `schedule_quiz`. Link recall cards
+  (`modules/quiz_links.py:LinkCards`, `Quiz.links`): every `- relation:: [[target]] — reason` line between two concept
+  notes (`conceptgraph.scan`) is a card in the quiz's own storage (`quiz/_links.json`, `Quiz.load` / `Quiz.grade`,
+  so the same SM-2-lite spacing and history), with `a`, `b`, `relation`, `reason`, `names`, `subject` (from
+  `integrate/seen.json`'s book key, else the note's folder) and `gone` for a link that's no longer there. Reply kind
+  `qlink`, buttons `ql:<id>:<0|3|4|5>`; the reveal's "Where to read" is the `seen.json` pages of both concepts plus
+  `sources.pick` over `sources.notes_material` (own notes, Classroom files). A reply from the phone app gets the grade
+  buttons as a new message (`why="asked"`): the app's reply note can't carry buttons. `LinkCards.tick` (`quiz:links` at
+  `quiz.links_at`, and `quiz:links:later` after a block) sends one with Calm reason `quiz.links` when `quiz.links` is
+  on, fewer than `links_per_day` (capped at `MOST = 5`) came today, the last one was answered, and `busy()` (focus, a
+  call, the night, any non-focus availability blocker such as a class) is clear. `quiz.links_check`: one sentence from
+  the profile's helper model through `LocalModels.api("/api/generate")`, only with Local AI models on. `/card`
+  (doesn't count toward the day), `/cards [on|off]`. Tests: `tests/unit/test_link_cards.py`.
 - **hints** (`modules/hints.py`): a hint ladder for a problem, respecting a course's AI policy line.
 - **study** (`modules/study.py`): minutes per subject from the focused window title (read and discarded), idle and lock
   aware (`core/idle.py`); Windows `GetForegroundWindow`, macOS System Events, Linux `hyprctl` / `swaymsg` / `xdotool`.

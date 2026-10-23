@@ -121,6 +121,8 @@ LABELS = {  # what scheduled work is, in a few words (/status, `kurooto top`)
     "notes_sync.soon": "notes sync",
     "profile.soon": "profile save",
     "quiz.exam_daily": "exam practice",
+    "quiz.links": "link recall card",
+    "quiz.links_later": "link recall card",
     "quiz.offers": "quiz offers",
     "research.idle": "quiet projects",
     "research.logs": "project logs",

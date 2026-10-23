@@ -13,6 +13,11 @@ and a short practice check-in comes every day.
                                too, it calls straight away: "/quiz [subject] here" keeps it on Telegram)
     /quiz [subject] call       a quiz call          /quiz at 21:00 [subject]   a quiz check-in later
     /quizstatus
+
+Link recall cards (modules/quiz_links.py): the concept graph's links between notes as review cards, answered in your
+own words and graded by you, up to five a day with quiz.links on.
+
+    /card                      a link card now            /cards [on|off]    how they're going (or turn them on, off)
 """
 
 from __future__ import annotations
@@ -28,6 +33,7 @@ from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
+from kurooto.modules.quiz_links import LinkCards
 from kurooto.modules.text import when_from
 
 register_defaults(
@@ -39,6 +45,10 @@ register_defaults(
         "exam_daily": "",  # in exam mode: a practice check-in every day at this time, e.g. "18:00" (empty: never)
         "by_call": False,  # /quiz, "quiz me" and quiz check-ins ring you (with Phone calls on); "here" keeps text
         "call_min": 10,  # how long a quiz call is meant to take
+        "links": False,  # link recall cards from the concept graph's links come by themselves (/card works anyway)
+        "links_per_day": 3,  # the most link cards a day (at most 5)
+        "links_at": "daily 11:00,16:00,20:00",  # when one may come (never in a class, focus time or the night)
+        "links_check": False,  # a local model (Local AI models) says how close your answer came; never a cloud AI
     },
 )
 SECTIONS = re.compile(
@@ -69,9 +79,13 @@ class Quiz(Module):
     title = "Quiz"
     description = (
         "Spaced-repetition questions from your notes, on Telegram or by call; offered the evening before quizzes and "
-        "exams, and more often in exam mode."
+        "exams, and more often in exam mode. Link recall cards turn the concept graph's links into questions too."
     )
     requires = ("telegram",)
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.links = LinkCards(self)  # link recall cards (modules/quiz_links.py)
 
     def _dir(self):
         return self.app.paths.state / "quiz"
@@ -88,6 +102,14 @@ class Quiz(Module):
                 self.every("exam_daily", f"daily {daily}", self._exam_daily)
             except ValueError:
                 self.app.events.emit("quiz_bad_setting", key="exam_daily")
+        self.action("links_later", self.links.tick)
+        if not self.setting("links"):
+            self.app.scheduler.cancel("quiz:links")
+        else:
+            try:
+                self.every("links", self.setting("links_at") or "daily 11:00,16:00,20:00", self.links.tick)
+            except ValueError:
+                self.app.events.emit("quiz_bad_setting", key="links_at")
 
     # ---------------------------------------------------------------------------------------- items
     def sources(self) -> dict[str, list]:
@@ -260,7 +282,7 @@ class Quiz(Module):
         return f"Grade {q}/5. Next time: {it['due']}."
 
     def replies(self):
-        return {"quiz": self._answer}
+        return {"quiz": self._answer, "qlink": self.links.answer}
 
     def _answer(self, msg: Incoming, ref: str) -> str | None:
         subj, _, iid = ref.partition("|")
@@ -304,7 +326,7 @@ class Quiz(Module):
             end = self._continue()
             return f"{out} {end}" if end else out
 
-        return {"qz": btn, "qo": self._offer_button}
+        return {"qz": btn, "qo": self._offer_button, "ql": self.links.button}
 
     # ---------------------------------------------------------------------------------------- by call
     def _calls_ok(self) -> bool:
@@ -472,6 +494,8 @@ class Quiz(Module):
         return [
             Command("quiz", "practise questions from your notes (/quiz subject, /quiz subject call)", self._cmd),
             Command("quizstatus", "what's due to practise", self._status),
+            Command("card", "a link recall card now: how two of your concepts relate", self.links.cmd_card),
+            Command("cards", "link recall cards: due, done, how you did (/cards on, /cards off)", self.links.cmd_cards),
         ]
 
     def _by_call(self, p: dict) -> bool:

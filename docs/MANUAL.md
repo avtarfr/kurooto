@@ -811,11 +811,17 @@ questions", "Definitions", "Theorems", "Formulas", "Key results"). Classroom →
   instead with `quiz.by_call` on, or "quiz me by call at 9"). In exam mode there's one every day (above).
 - On a call: "quiz me" runs a spoken quiz (it picks the exam subject unless you name one).
 - `/quizstatus`: items and what's due per subject, and exam mode.
+- **Link recall cards**: the concept graph's links between notes as questions ("How is Itô's lemma used in
+  Fokker-Planck?"). `/card` gives one; reply in your own words, then see the link's reason and where to read (book
+  pages, the subject's own notes and Classroom files) and grade it **Forgot / Hard / Good / Easy**; the quiz's
+  spacing. `/cards on`: up to `links_per_day` (3, at most 5) a day at `links_at`, also in the phone app, never in a
+  class, focus time or the night. `/cards`: how they're going.
 
 *Settings* (`quiz.*`): `per_session` (3), `exam_per_session` (6), `offer_at` (19:00; empty turns the evening offer
 off), `exam_daily` (off; a time like 18:00 turns on a daily exam-mode practice), `by_call` (off: `/quiz`, "quiz me"
-and quiz check-ins ring you when it's on), `call_min` (10).
-*Undo:* `quiz.by_call` off brings back **Here or by call?**.
+and quiz check-ins ring you when it's on), `call_min` (10), `links` (off), `links_per_day` (3), `links_at`
+(`daily 11:00,16:00,20:00`), `links_check` (off: a local model's one-sentence check of a link card answer).
+*Undo:* `quiz.by_call` off brings back **Here or by call?**; `/cards off` stops link cards.
 *Leaves:* with Chat on, the question and your answer go to the AI to grade it.
 
 ### Weekly summary
