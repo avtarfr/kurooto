@@ -5,7 +5,8 @@ A message that comes by itself carries its reason (why=, a reason id from core/c
 something you asked or did), the setting that controls it, and what it's about. Calm (core/calm.py) decides first: it
 may hold it for the evening bundle or, if you stopped that kind, drop it. Its Why? / Less of this buttons go to
 Telegram only; the phone app and the desktop get the plain message.
-Channels are registered by the modules that provide them (Telegram, the phone app); the desktop is built in.
+Channels are registered by the modules that provide them (Telegram, the phone app and its chat); the desktop is
+built in. An answer to something you wrote in the phone app's chat (reply_to "app:<id>") goes back to that chat only.
 A channel that keeps its own copy of a question (the phone app) also registers a retract handler: when that question
 is dealt with anywhere (answered on Telegram, a button tapped, expired), retract() takes its copy down.
 """
@@ -31,6 +32,7 @@ register_defaults(
         # the phone app: calls ring it, and questions and approvals come with answer buttons. Add "reminder",
         # "deadline", "result" or "info" to get those there too (they still go to Telegram as well).
         "app_kinds": ["call", "question", "approval"],
+        "app_chat": False,  # Kurooto's own messages (those not in app_kinds) also go to the phone app's chat
     },
 )
 
@@ -105,6 +107,11 @@ class Notifier:
     def _deliver(self, msg: Message) -> Any:
         s = self.app.settings
         ref = None
+        to_app = isinstance(msg.reply_to, str) and msg.reply_to.startswith("app:")  # (calls/chat.py)
+        if to_app and "chat" in self.channels:
+            return self._to_chat(msg)
+        if to_app:  # the chat is gone meanwhile (Phone calls turned off): Telegram gets it as a new message
+            msg = replace(msg, reply_to=None)
         pres = getattr(self.app, "presence", None)  # the network is down: Telegram gets it later (core/presence.py)
         tmsg = replace(msg, buttons=[*(msg.buttons or []), *msg.extra], extra=None) if msg.extra else msg
         if "telegram" in self.channels and not (pres is not None and pres.hold(tmsg)):
@@ -121,6 +128,11 @@ class Notifier:
                 self.channels["app"](msg)
             except Exception as e:
                 self.app.events.emit("notify_failed", channel="app", error=str(e)[:200])
+        elif "chat" in self.channels and s.get("notify.app_chat") and msg.kind != "call":
+            try:
+                self.channels["chat"](msg)
+            except Exception as e:
+                self.app.events.emit("notify_failed", channel="chat", error=str(e)[:200])
         no_other_channel = ref is None and "app" not in self.channels
         if s.get("notify.desktop") and (msg.kind in (s.get("notify.desktop_kinds") or []) or no_other_channel):
             desktop.notify(msg.title or self.app.name, msg.text, urgent=msg.urgent)
@@ -129,6 +141,18 @@ class Notifier:
         if calm is not None and msg.rid:
             calm.delivered(msg.rid, ref)
         return ref
+
+    def _to_chat(self, msg: Message) -> Any:
+        ref = None
+        try:
+            ref = self.channels["chat"](msg)
+        except Exception as e:
+            self.app.events.emit("notify_failed", channel="chat", error=str(e)[:200])
+        s = self.app.settings
+        if s.get("notify.desktop") and msg.kind in (s.get("notify.desktop_kinds") or []):
+            desktop.notify(msg.title or self.app.name, msg.text, urgent=msg.urgent)
+        self.app.events.emit("notified", kind=msg.kind, delivered=ref is not None, via="chat")
+        return None  # not a Telegram message id
 
     def flush_queue(self) -> int:
         """Deliver what waited during focus (called when focus ends)."""

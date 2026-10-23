@@ -29,8 +29,9 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Pairing (first run), then: call Kurooto, what's waiting for you (questions, approvals, messages), ringtones, a
- *  checklist of what the phone must allow, and updates. */
+/** Pairing (first run), then: call Kurooto, chat with it (ChatActivity), what's waiting for you (questions,
+ *  approvals, messages) and for your computer (the phone outbox), ringtones, a checklist of what the phone must
+ *  allow, and updates. */
 public class MainActivity extends Activity {
     static final int SDK = Build.VERSION.SDK_INT;
     static final String UPDATES = "https://avtarfr.github.io/kurooto/android.json";
@@ -110,6 +111,15 @@ public class MainActivity extends Activity {
         Button call = big("Call " + name, "#2e9d6a");
         call.setOnClickListener(v -> requestCall());
         box.addView(call);
+        Button chat = big("Chat with " + name, "#3a3150");
+        chat.setOnClickListener(v -> startActivity(new Intent(this, ChatActivity.class)));
+        box.addView(chat);
+        JSONArray queued = Chat.waiting(Chat.load(this));
+        if (queued.length() > 0) {
+            StringBuilder s = new StringBuilder("Waiting for your computer (on your call line):");
+            for (int i = 0; i < queued.length(); i++) s.append("\n· ").append(queued.optJSONObject(i).optString("label"));
+            box.addView(label(s.toString(), 14, false));
+        }
         status = label(getIntent().getBooleanExtra("justPaired", false) ? "Paired. You're all set." : "", 14, false);
         box.addView(status);
         waiting = new LinearLayout(this);

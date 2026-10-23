@@ -3,7 +3,8 @@
 You talk to Kurooto through your own Telegram bot: plain sentences, `/commands`, voice messages, photos and files.
 Quick requests ("remind me at 9 to call mum") are done at once on your computer; anything else goes to your AI, which
 answers as a reply. The same requests work in the dashboard's Today page and Ctrl+K box ([dashboard.md](dashboard.md)),
-on a phone call ([calls.md](calls.md)) and in a terminal (`kurooto ask`).
+on a phone call ([calls.md](calls.md)), in the phone app's chat, where Telegram is blocked or little used
+([phone-app.md](phone-app.md#chat-with-kurooto-in-the-app)), and in a terminal (`kurooto ask`).
 
 - [Your bot](#your-bot)
 - [What happens to a message](#what-happens-to-a-message)

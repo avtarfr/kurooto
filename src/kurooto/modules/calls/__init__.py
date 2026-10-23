@@ -17,6 +17,7 @@ the next model (calls.live_models), then turn by turn with the phone's own speec
 
 from __future__ import annotations
 
+import base64
 import datetime as dt
 import hashlib
 import json
@@ -35,6 +36,7 @@ from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls import line, review
+from kurooto.modules.calls.chat import PhoneChat
 from kurooto.modules.calls.connector import Connector
 from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, live_profile
 from kurooto.modules.calls.phone import PhoneApp
@@ -116,6 +118,7 @@ class Calls(Module):
         self.connector = Connector(self)
         self.finished: dict[str, dict] = {}  # call tasks done but not yet told on the call
         self.phone = PhoneApp(self)  # messages to the phone app, and the answers that come back
+        self.chat = PhoneChat(self)  # the phone app as a chat, beside Telegram (chat.py)
         self.live = LiveHealth(self)  # when Gemini Live won't take a call (fallback.py)
         self.turns = VoiceTurns(self)
         self.textcall = TextCall(self)
@@ -207,6 +210,7 @@ class Calls(Module):
             self, job, result, payload
         )
         self.app.notifier.register("app", self.phone.send, self.phone.retract)  # questions etc. (phone.py)
+        self.app.notifier.register("chat", self.chat.send)  # answers to what you typed in the app (chat.py)
 
     def stop(self):
         """Turned off: calls you booked are kept (not cancelled) and booked again when it's turned back on."""
@@ -219,6 +223,7 @@ class Calls(Module):
             jsave(self.parked_file, rows)
         super().stop()
         self.app.notifier.unregister("app")
+        self.app.notifier.unregister("chat")
 
     @property
     def parked_file(self):
@@ -935,26 +940,49 @@ class Calls(Module):
             self.textcall.start_late(m)
 
     def on_queue(self, items: list[dict]) -> None:
-        """What you asked for on calls while this computer was off: do it now."""
-        done = 0
+        """What waited on the call line while this computer was off, all at once (a call line from before 0.5.16;
+        newer ones hand it over one item at a time: Connector._drainer)."""
+        tools = 0
         for it in items:
-            try:
-                if it.get("kind") == "tool":
-                    self.run_tool(it.get("name", ""), it.get("args") or {}, str(it.get("since") or ""))
-                    done += 1
-                elif it.get("kind") == "transcript":
-                    self._transcript(json.loads(it.get("body") or "{}"))
-                elif it.get("kind") == "event":
-                    self.on_event(it)
-                elif it.get("kind") == "answer":  # answered on a phone while this computer was off
-                    status, out = self.phone.answer(it.get("body") or {})
-                    if status == 200 and out.get("note"):
-                        self.app.notify(f"Your answer from the phone: {out['note']}", kind="info", why="asked")
-            except Exception as e:
-                self.app.events.emit("calls_queue_failed", error=str(e)[:200])
-        if done:
+            self.take_queued(it)
+            tools += it.get("kind") == "tool"
+        self.queued_tools_done(tools)
+
+    def take_queued(self, it: dict) -> tuple[int, str]:
+        """One thing that waited on the call line: what you asked for on a call while this computer was off (a tool,
+        a transcript, an event), or what you did on your phone (the phone outbox: an answer, a chat message, a part
+        of a shared file). Returns its status and a short note for the phone."""
+        kind = it.get("kind")
+        try:
+            if kind == "tool":
+                self.run_tool(it.get("name", ""), it.get("args") or {}, str(it.get("since") or ""))
+            elif kind == "transcript":
+                self._transcript(json.loads(it.get("body") or "{}"))
+            elif kind == "event":
+                self.on_event(it)
+            elif kind == "answer":  # answered on a phone while this computer was off
+                status, out = self.phone.answer(it.get("body") or {})
+                if status == 200 and out.get("note"):
+                    self.app.notify(f"Your answer from the phone: {out['note']}", kind="info", why="asked")
+                return status, str(out.get("note") or "")
+            elif kind == "chat":  # typed in the app's chat (chat.py)
+                status, out = self.chat.take(it.get("body") or {})
+                return status, str(out.get("note") or "")
+            elif kind == "upload":  # a part of a file shared from the phone
+                q = urllib.parse.parse_qs(urllib.parse.urlsplit(str(it.get("search") or "")).query)
+                status, out = self._upload(q, base64.b64decode(it.get("body_b64") or ""))
+                return status, str(out.get("saved") or out.get("error") or "")
+            else:
+                return 400, "unknown"
+            return 200, ""
+        except Exception as e:
+            self.app.events.emit("calls_queue_failed", error=str(e)[:200])
+            return 500, f"{type(e).__name__}: {e}"[:200]
+
+    def queued_tools_done(self, n: int) -> None:
+        if n:
             self.app.notify(
-                f"Done what you asked for on a call while the computer was off ({done} item(s)).",
+                f"Done what you asked for on a call while the computer was off ({n} item(s)).",
                 kind="info",
                 why="asked",
             )
@@ -965,6 +993,8 @@ class Calls(Module):
             self.on_call()  # a live call uses these every few seconds
         if url.path == "/answer":
             return self.phone.answer(json.loads(body or b"{}"))
+        if url.path == "/chat":
+            return self.chat.take(json.loads(body or b"{}"))
         if url.path == "/tool":
             b = json.loads(body or b"{}")
             return 200, {
@@ -1194,6 +1224,7 @@ class Calls(Module):
         tools = self.tools()
         briefs = {t.name: t.name for t in tools if t.offline == "brief"}
         self.phone.flush()  # messages the line missed while it was down
+        self.chat.flush()
         return {
             "schedule": self.schedule_list(),
             "inbox": self.phone.inbox(),

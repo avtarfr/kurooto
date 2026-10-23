@@ -118,6 +118,7 @@ final class Line {
             if (r.code == -1) return new Answered(-1, false, "Couldn't reach your call line. Is this phone online?");
             JSONObject j = new JSONObject(r.body.isEmpty() ? "{}" : r.body);
             String note = j.optString("note", j.optString("error", r.ok() ? "Sent." : "That didn't go through (" + r.code + ")."));
+            if (j.optBoolean("queued")) Chat.waitFor(c, item, "answer", fields.optString("answer", fields.has("button") ? "a button" : "dismissed"));
             return new Answered(r.code, r.ok() && j.optBoolean("ok", true), note);
         } catch (Exception e) {
             return new Answered(0, false, "That didn't go through: " + e.getMessage());
@@ -137,26 +138,28 @@ final class Line {
         }
     }
 
-    /** Upload one file to your computer's notes inbox, in 512 KB parts, with a call link's ticket. */
-    static boolean upload(String link, String name, InputStream in, String note) {
+    static final int NOT_SENT = 0, WAITING = 1, SENT = 2;
+
+    /** Upload one file to your computer's notes inbox, in 512 KB parts, with this phone's key. With your computer
+     *  off, the call line keeps it (the phone outbox, up to 20 MB) and the answer is WAITING. */
+    static int upload(Context c, String name, InputStream in, String note) {
         try {
-            int hash = link.indexOf('#');
-            if (hash < 0) return false;
-            String key = link.substring(hash + 1);
-            Uri u = Uri.parse(link.substring(0, hash));
-            String base = u.getScheme() + "://" + u.getHost();
             byte[] all = Net.readAll(in);
             int size = 512 * 1024, parts = Math.max(1, (all.length + size - 1) / size);
             String id = UUID.randomUUID().toString().replace("-", "");
+            boolean queued = false;
             for (int p = 0; p < parts; p++) {
                 byte[] chunk = Arrays.copyOfRange(all, p * size, Math.min(all.length, (p + 1) * size));
-                String url = base + "/upload?name=" + URLEncoder.encode(name, "UTF-8") + "&note=" + URLEncoder.encode(note == null ? "" : note, "UTF-8")
+                String url = Prefs.url(c) + "/upload?name=" + URLEncoder.encode(name, "UTF-8") + "&note=" + URLEncoder.encode(note == null ? "" : note, "UTF-8")
                         + "&id=" + id + "&part=" + p + "&parts=" + parts;
-                if (!Net.request("POST", url, chunk, "application/octet-stream", key, 120000).ok()) return false;
+                Net.Reply r = Net.request("POST", url, chunk, "application/octet-stream", Prefs.device(c), 120000);
+                if (!r.ok()) return NOT_SENT;
+                queued |= r.body.contains("\"queued\":true");
             }
-            return true;
+            if (queued) Chat.waitFor(c, id, "file", name);
+            return queued ? WAITING : SENT;
         } catch (Exception e) {
-            return false;
+            return NOT_SENT;
         } finally {
             try { in.close(); } catch (Exception ignored) { }
         }

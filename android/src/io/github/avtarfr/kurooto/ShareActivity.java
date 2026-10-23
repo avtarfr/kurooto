@@ -20,7 +20,8 @@ import java.util.List;
 
 /**
  * "Share to Kurooto": files, photos, links and text from any app go to your computer's notes inbox (through your
- * call line, so the computer must be on). With Chat on, the AI files them and tells you where on Telegram.
+ * call line). With your computer off, the call line keeps them (up to 20 MB) until it's back. With Chat on, the AI
+ * files them and tells you where on Telegram.
  */
 public class ShareActivity extends Activity {
     private final Handler h = new Handler(Looper.getMainLooper());
@@ -44,25 +45,27 @@ public class ShareActivity extends Activity {
         final List<Uri> uris = streams(in);
         final String note = ((subject == null ? "" : subject + " ") + (text == null ? "" : text)).trim();
         new Thread(() -> {
-            h.post(() -> status.setText("Opening a line to your computer…"));
-            String link = Line.callLink(this);
-            if (link == null) { done("Couldn't reach your call line. Is this phone online?"); return; }
-            int ok = 0, total = uris.size();
+            int ok = 0, waiting = 0, total = uris.size();
             if (uris.isEmpty()) {
                 total = 1;
-                if (!note.isEmpty() && Line.upload(link, "shared-text.txt", new ByteArrayInputStream(note.getBytes(Crypto.UTF8)), "")) ok++;
+                int r = note.isEmpty() ? Line.NOT_SENT : Line.upload(this, "shared-text.txt", new ByteArrayInputStream(note.getBytes(Crypto.UTF8)), "");
+                if (r != Line.NOT_SENT) ok++;
+                if (r == Line.WAITING) waiting++;
             } else {
                 for (Uri u : uris) {
                     final String name = nameOf(u);
                     h.post(() -> status.setText("Uploading " + name + "…"));
                     try {
                         InputStream s = getContentResolver().openInputStream(u);
-                        if (s != null && Line.upload(link, name, s, note)) ok++;
+                        int r = s == null ? Line.NOT_SENT : Line.upload(this, name, s, note);
+                        if (r != Line.NOT_SENT) ok++;
+                        if (r == Line.WAITING) waiting++;
                     } catch (Exception ignored) { }
                 }
             }
-            done(ok == total ? "Sent. It's in your notes inbox; with Chat on, the AI files it and tells you where."
-                    : ok == 0 ? "Not sent: is your computer on and connected? (You can send it to your Telegram bot instead.)"
+            done(ok == total && waiting > 0 ? "Your computer is off: it waits on your call line and goes to your notes inbox when the computer is back."
+                    : ok == total ? "Sent. It's in your notes inbox; with Chat on, the AI files it and tells you where."
+                    : ok == 0 ? "Not sent: is this phone online? Your call line may also be full while your computer is off. (You can send it to your Telegram bot instead.)"
                     : "Sent " + ok + " of " + total + ".");
         }).start();
     }

@@ -44,8 +44,10 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - **Problem-set progress.** (0.5.10 has "ps3 4/7" in chat and on calls, shown in lists and Start-by, which plans from
   what's left; still to come: replying "4/7" to a deadline message, +1 on the phone.) Deadlines with parts (Q1–7):
   reply "4/7" or tap +1 on the phone; Start-by plans from what's left; the morning says "ps3 4/7, due Fri".
-- **Phone outbox.** Captures and taps made while the laptop sleeps wait on the call line and merge on wake; a home
-  screen widget and a capture tile (launcher shortcut on Android 6).
+- ~~**Phone outbox.** Captures and taps made while the laptop sleeps wait on the call line and merge on wake~~ (0.5.16:
+  chat messages, button taps, answers and shared files wait on the call line and reach the computer in order, each
+  once, and the phone hears when each went through); still to come: a home screen widget and a capture tile
+  (launcher shortcut on Android 6).
 - **iPhone Shortcut.** Pairing an iPhone ends with a ready "Tell Kurooto" Shortcut (Siri, Back Tap) with a
   revocable link.
 - **CPU micro-helper.** A ~1 GB model for one-word decisions only (effort, intent, yes/no) on laptops without a
@@ -80,7 +82,9 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   reply (with a notice and Undo), not 09:00-22:00; a first-run question (student, working, research, other) picks the
   features; public holidays come from your country's calendar.~~ (0.5.9: learned check-in times and window, "What do
   you do?" in the wizard, holiday calendars)
-- **The phone app as a full chat channel** beside Telegram, for places where Telegram is blocked or little used.
+- ~~**The phone app as a full chat channel** beside Telegram, for places where Telegram is blocked or little used.~~
+  (0.5.16: Android's chat, handled like a Telegram message with working buttons; `notify.app_chat` sends Kurooto's
+  own messages there too; the iPhone app's chat is still to come, on the same call-line API)
 - **Small gaps**: ~~`add_deadline` takes the course, so a mail's "Lab report" lands on the right course page~~
   (0.5.15: `course` by name or short name; an unknown one is said, never guessed); a recurring fact said in chat
   becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look back can propose routines
