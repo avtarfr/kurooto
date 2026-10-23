@@ -28,6 +28,7 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/health` | what isn't working, with Fix buttons; `/health now` also checks online services | [Messages it sends](messages-it-sends.md) |
 | `/calm` | messages that came by themselves today, the limit, what waits for the evening and what you turned down; `/calm 8` (messages a day), `/calm calls 2`, `/calm evening 21:00`, `/calm off`, `/calm on` | [Messages it sends](messages-it-sends.md) |
 | `/why` | why the last message that came by itself came | [Messages it sends](messages-it-sends.md) |
+| `/forget 7d` · `/forget 2w` · `/forget all` | forget what Kurooto kept of your conversations from the last 7 days (12h, 2w...) now, with a count per kind; `all` forgets everything after a **Forget everything** button; `/forget` alone says how long things are kept (`privacy.keep_days`, 30) | [Privacy](privacy.md#how-long-its-kept) |
 | `/sync` | with Notes sync off: sync everything that's on (with it on, see Notes sync below) | [Notes](notes-and-concept-graph.md) |
 
 ### Telegram feature

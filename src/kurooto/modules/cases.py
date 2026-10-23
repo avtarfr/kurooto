@@ -22,7 +22,8 @@ A taught phrasing is matched whole (case and punctuation aside) and goes first, 
 it stands for runs with today's time ("skip gym tomorrow" means tomorrow from now). Undo: /cases, Unlearn.
 
 Everything stays on this computer, in Kurooto's state folder (state/cases/), out of backups, Profile sync and
-`kurooto doctor --bundle`. Cases you didn't make test cases are forgotten after 30 days. Events carry no text.
+`kurooto doctor --bundle`. Cases you didn't make test cases are forgotten after privacy.keep_days (30; /forget does
+it now). Events carry no text.
 `kurooto cases` lists them; `kurooto cases export` writes the test cases as a pytest file that replays each one at its
 own time and settings (read it before you share it); `kurooto cases check` runs them here.
 """
@@ -57,7 +58,7 @@ register_defaults(
     {
         "button": True,  # a Wrong button under replies to plain-English requests (/wrong works either way)
         "fallthroughs": True,  # keep short requests no instant request understood (they went to the AI)
-        "keep_days": 30,  # cases you didn't make test cases are forgotten after this long
+        "keep_days": 0,  # cases you didn't make test cases are forgotten after this many days (0: privacy.keep_days)
         "review": "weekly sun 19:00",  # when the look back may show the phrasings that came up most...
         "review_days": 28,  # ...at most this often (about once a month)
         "review_max": 5,  # phrasings in one look back
@@ -228,9 +229,29 @@ class Store:
             self._cache = None
             return out
 
+    def forget(self, lo: float, hi: float) -> int:
+        """(retention) Forget the cases kept in [lo, hi) that you didn't make test cases. How many went."""
+
+        def when(c: dict) -> float | None:
+            try:
+                return dt.datetime.fromisoformat(str(c.get("at") or "")).timestamp()
+            except ValueError:
+                return None
+
+        with Lock(self.state, "cases"):
+            d = self.load()
+            gone = [
+                k for k, c in d["cases"].items() if c.get("status") != "test" and lo <= (when(c) or float("nan")) < hi
+            ]
+            if gone:
+                d["cases"] = {k: c for k, c in d["cases"].items() if k not in gone}
+                jsave(self.file, d)
+                self._cache = None
+        return len(gone)
+
     @staticmethod
-    def _prune(d: dict, keep_days: int) -> None:
-        cut = (now() - dt.timedelta(days=max(1, int(keep_days or 30)))).isoformat()
+    def _prune(d: dict, keep_days: float) -> None:
+        cut = (now() - dt.timedelta(days=keep_days)).isoformat() if keep_days and keep_days > 0 else ""
         cases = {k: c for k, c in d["cases"].items() if c.get("status") == "test" or str(c.get("at", "")) >= cut}
         if len(cases) > MAX_CASES:  # the oldest unreviewed go first
             new = sorted((c.get("at", ""), k) for k, c in cases.items() if c.get("status") != "test")
@@ -414,7 +435,7 @@ class Cases(Module):
             data["cases"][d["id"]] = c
             return dict(c)
 
-        c = self.store.change(put, self.setting("keep_days", 30))
+        c = self.store.change(put, self._keep_days())
         self.app.events.emit("case_kept", kind=c["kind"], did=c.get("did", ""), wrong=bool(c.get("wrong")))
         return c
 
@@ -731,10 +752,12 @@ class Cases(Module):
         data = self.store.load()
         r = self.suite()
         waiting = sum(1 for c in data["cases"].values() if c.get("status") != "test")
+        keep = self._keep_days()
         head = (
             f"Test cases: {len(r['pass']) + len(r['fail']) + len(r['skip'])} ({len(r['pass'])} pass, "
             f"{len(r['fail'])} fail, {len(r['skip'])} for features that are off). Waiting for review: {waiting} "
-            f"(kept {self._keep_days()} days). `kurooto cases` on your computer lists and exports them."
+            f"(kept {f'{keep:g} days' if keep else 'until you /forget them'}). `kurooto cases` on your computer "
+            "lists and exports them."
         )
         learned = data["learned"]
         if not learned:
@@ -769,8 +792,10 @@ class Cases(Module):
         )
 
     # ------------------------------------------------------------------------------------------ helpers
-    def _keep_days(self) -> int:
-        return int(self.setting("keep_days") or 30)
+    def _keep_days(self) -> float:
+        from kurooto.core import retention
+
+        return retention.days(self.app.settings, "cases")
 
     def _describe(self, name: str) -> str:
         for m in self.app.enabled():
@@ -918,7 +943,9 @@ def cli(action: str, ref: str = "", out: str = "", everything: bool = False) -> 
     from kurooto.core.paths import paths
 
     p = paths().ensure()
-    keep = Settings(p.config / "settings.json").get("cases.keep_days", 30)
+    from kurooto.core import retention
+
+    keep = retention.days(Settings(p.config / "settings.json"), "cases")
     store = Store(p.state)
     data = store.load()
     if action in ("", "list"):

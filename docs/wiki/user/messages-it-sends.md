@@ -89,8 +89,9 @@ records first.
 | `notify.calm.fewer` | `{}` | kinds limited to a number a day |
 
 **What leaves your computer:** nothing. The records stay in `calm.db` in Kurooto's state folder for 45 days: when,
-the reason, the setting, what it was about, the first 300 characters, and whether you tapped or answered it; a waiting
-message in full until its evening.
+the reason, the setting, what it was about, the first 300 characters (only for `privacy.keep_days`, 30:
+[privacy.md](privacy.md#how-long-its-kept)), and whether you tapped or answered it; a waiting message in full until its
+evening.
 
 **Turn it off / undo:** every Less-of-this choice and every Apply has an Undo button that puts that one setting back
 (a feature it turned off goes back on). `/calm` lists what's stopped, with a button to start each again. `/calm off`

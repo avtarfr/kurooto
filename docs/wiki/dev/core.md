@@ -9,7 +9,8 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 [files and folders](#files-and-folders) · [scheduler](#scheduler) · [scheduled jobs](#every-scheduled-job) ·
 [jobs](#jobs) · [events](#events) · [notify and Calm](#notify-and-calm) · [ask](#ask-questions-and-approvals) ·
 [availability](#availability) · [power](#power) · [presence](#presence) · [quota](#quota-free-ai-limits) ·
-[reserve](#the-reserve) · [space keeper](#space-keeper) · [hardware](#hardware-profiles) ·
+[reserve](#the-reserve) · [space keeper](#space-keeper) · [retention](#retention-and-forget) ·
+[hardware](#hardware-profiles) ·
 [processes](#running-programs) · [locks](#locks-and-atomic-writes) · [Windows](#windows-notes) ·
 [smaller pieces](#smaller-core-pieces)
 
@@ -117,14 +118,14 @@ is the encrypted profile (`core/profile.py:KEEP`).
 |---|---|---|
 | `schedule.db` | SQLite, table `schedule` (WAL, 0600) | `core/scheduler.py:Scheduler` |
 | `jobs.db` | SQLite, tables `jobs`, `attempts` (WAL, 0600) | `core/jobs.py:Jobs` |
-| `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers; once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
-| `calm.db` | SQLite, table `sent`, kept 45 days | `core/calm.py:Calm` |
+| `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers (kept `privacy.keep_days`); once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
+| `calm.db` | SQLite, table `sent`, kept 45 days (`text`/`title` only `privacy.keep_days`) | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
 | `net-outbox.jsonl` | JSON lines: Telegram messages held while offline (rewritten with `write_text`) | `core/presence.py` |
 | `presence.json` | heartbeat, last stop, offline periods (15 days) | `core/presence.py:Presence` |
-| `ask/<qid>.json` | one question each, kept `ask.keep_days` after settling | `core/ask.py:Ask` |
+| `ask/<qid>.json` | one question each, kept `ask.keep_days` (0: `privacy.keep_days`) after settling | `core/ask.py:Ask` |
 | `quiet.json`, `focus.json`, `oncall.json` | `{"until": iso, ...}` | `core/availability.py:Availability._set` |
 | `pause.json`, `off.json`, `power-held.json` | pause until, turned off, jobs held by power mode | `core/power.py:Power` |
 | `quota.json` | counts and learned limits per pool (no content) | `core/quota.py:Quota` |
@@ -245,6 +246,7 @@ Recurring (key → when; setting that controls it):
 |---|---|---|---|
 | `calm:tick` | every 5m | | `core/calm.py:Calm.start` |
 | `ask:sweep` | every 10m | | `core/ask.py:Ask.start` |
+| `retention:expire` | daily 04:15 | `privacy.keep_days` | `core/retention.py:start` |
 | `reserve:refresh` | every 10m | | `core/reserve.py:start` |
 | `agents:export` | hourly (only while export is on) | `agents.export` | `core/agent_export.py` |
 | `health:daily` | daily 21:00 | `health.when` | `core/health.py:Health.start` |
@@ -439,7 +441,8 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `evening`, `fewer`. Exam season tightens it (`modules/exam_season.py:budget_during_exams`).
 - On Telegram a counted message gets "Why?" and "Less of this" (`calm:<rid>:why|less`); `Less of this` offers Stop /
   Fewer / Another time, each changing one setting (`Change`), with Undo. `/calm` and `/why` show the state.
-- Records: `calm.db` table `sent` (45 days). `notify.calm.on = false` turns all of it off.
+- Records: `calm.db` table `sent` (45 days; `Calm.forget` blanks `text` and `title` after `privacy.keep_days`).
+  `notify.calm.on = false` turns all of it off.
 
 To add a message that comes by itself: pick a reason id `<module>.<what>`, add an `R(...)` to `REASONS` with the
 setting that controls it (so Less of this can change it), and pass `why=` (plus `about=`/`item=` when it concerns
@@ -466,7 +469,8 @@ app.ask.approval("Send this draft?", hook="mail.send")  # Approve / Deny
 - Delivered to Telegram (choices as buttons plus Later), the desktop, the phone app and the next call
   (`call_brief`, `call_tools`). First answer wins. `Later` keeps it for the next call; "Nothing new" is an answer.
 - Each question is `<state>/ask/<id>.json`; unanswered ones expire after `ask.expire_hours` (48) (`sweep`, every 10 min,
-  `ask:sweep`); settled ones are kept `ask.keep_days` (30).
+  `ask:sweep`); settled ones are kept `retention.days(settings, "ask")`: `ask.keep_days` when set, else
+  `privacy.keep_days` (30). `Ask.forget(lo, hi)` drops those settled in a stretch.
 - Hooks run once with the first answer; a hook not registered at that moment emits `question_hook_missing` and the
   answer is kept. Built-in hook `ask.ai` starts an AI job from `hook_payload["prompt"]` with `{answer}` filled in.
 - Tools: `ask_user` for unattended AI (`agent_tools`), plus call tools to answer questions by voice.
@@ -540,6 +544,36 @@ than `space.undo_days`; diagnostics zips; extra program versions). `clean(app, i
 keeper feature (`space:clean`, `space.when`), `/space`, `kurooto space [--clean]`; `kurooto doctor` only reports.
 `low_disk(app)` feeds health. `footprint(app)` lists the search index of past requests apart from the rest of the
 state folder. Never touches notes, books or user folders except Kurooto's own zips there.
+
+## Retention and /forget
+
+`core/retention.py`: what's kept of conversations goes after `privacy.keep_days` (30; 0 keeps). Kinds, each a function
+over a stretch `[lo, hi)` in epoch seconds (`STEPS`):
+
+| Kind | What | How |
+|---|---|---|
+| `calls` | `calls/transcripts/*.txt` (time from the file name, else mtime), finished `calls/textcalls.json` conversations | removed |
+| `requests` | finished jobs; `jobs/*-result.md` by mtime | `Jobs.forget`: `title='(forgotten)'`, `prompt=''`, `result`/`detail`/`then_payload` null; the row and `attempts` stay for `/usage` and the Space keeper |
+| `chats` | `chat/history.json` turns by `at` | removed |
+| `questions` | settled `ask/` files | `Ask.forget` |
+| `cases` | non-test cases by `at` | `cases.Store.forget` |
+| `messages` | `calm.db` rows not held | `Calm.forget` blanks `text`, `title` |
+| `index` | `learning/history.db` docs by `at` | `learning.forget` (`History.forget`; `prune` calls it) |
+| `logs` | every file in the logs folder | `trim_log`: lines by their `asctime`, continuation lines follow the stamped line; no stamps: by mtime. Rewritten in place (the handler keeps appending); emptied rotated copies are removed |
+
+- `forget(app, lo, hi=END, kinds)` runs each kind under its own try (`retention_failed`, `what=<kind>`) and returns
+  `{kind: n}`; `summary()` words it. `days(settings, section)` resolves `ask.keep_days` / `cases.keep_days` (0 means
+  follow `privacy.keep_days`); `cases.Cases._keep_days` and the `kurooto cases` CLI use it too.
+- `expire(app)` is `retention:expire` (daily 04:15, `misfire="coalesce"`, run in a thread): `forget(0, now -
+  keep_days)` for every kind, questions and cases with their own days. Emits `retention_expired` (counts only). Sends
+  nothing, so it has no Calm reason.
+- `/forget` is a core command (`App.handle` → `command`): `7d`, `2w`, `12h` (`span`) forget `[now - span, END)` at
+  once (`retention_forgot`); `all` replies with `fgt:<asked>:all` / `fgt:0:no` buttons (`App.callback` → `button`); the
+  first works for `CONFIRM_S` (10 min), then answers in the toast and with a `why="asked"` message.
+- Left alone on purpose: the notes folder (voice-note recordings are saved in its inbox), `events.jsonl` (metadata
+  only; features learn from it over weeks), open questions and text calls, test cases, the Worker's queue (handed
+  over and emptied at every `hello`, `data/worker/src/worker.js`). `Jobs.finished_since` skips forgotten rows so the
+  search index doesn't take them back.
 
 ## Hardware profiles
 

@@ -28,8 +28,10 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - **Egress ledger, enforced.** Every request Kurooto makes goes through one place that records host, feature and
   bytes and blocks hosts not listed in PRIVACY.md; `/egress` shows the week. Requests your AI program makes itself
   show as "handed to agy / Claude Code".
-- **Retention.** `privacy.keep_days` (30) expires transcripts, prompts, answers, audio and logs, also the call
-  line's queued copies; `/forget 7d`.
+- ~~**Retention.** `privacy.keep_days` (30) expires transcripts, prompts, answers, audio and logs, also the call
+  line's queued copies; `/forget 7d`.~~ (0.5.15: nightly, call transcripts, AI requests' words, chats, questions,
+  cases, sent messages' words, the search index and log lines; `/forget 7d`, `/forget all` with a confirm button.
+  Voice recordings stay, being in your notes; the call line's queue is emptied whenever the computer connects)
 - **Problem-set progress.** (0.5.10 has "ps3 4/7" in chat and on calls, shown in lists and Start-by, which plans from
   what's left; still to come: replying "4/7" to a deadline message, +1 on the phone.) Deadlines with parts (Q1–7):
   reply "4/7" or tap +1 on the phone; Start-by plans from what's left; the morning says "ps3 4/7, due Fri".

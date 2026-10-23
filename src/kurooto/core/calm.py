@@ -22,7 +22,8 @@ for kinds of questions you're meant to answer.
 
 notify.calm.on = false restores the old behaviour exactly: nothing held, no buttons, nothing recorded.
 What's recorded (state/calm.db, kept 45 days): when, the reason, the setting, what it was about, the first 300
-characters, and whether you tapped or answered it; a waiting message in full until its evening.
+characters (only privacy.keep_days, core/retention.py), and whether you tapped or answered it; a waiting message in
+full until its evening.
 """
 
 from __future__ import annotations
@@ -919,6 +920,16 @@ class Calm:
         keep = {k: v for k, v in undo.items() if float(v.get("at") or 0) >= cutoff}
         if len(keep) != len(undo):
             jsave(self.undo_file, keep)
+
+    def forget(self, lo: float, hi: float) -> int:
+        """(retention) The words of messages recorded in [lo, hi) go; when, why and whether you answered stay for
+        their 45 days. A message still waiting for the evening keeps its words until then. How many."""
+        with self._db() as db:
+            return db.execute(
+                "update sent set text='', title='' where ts>=? and ts<? and state!='held' "
+                "and (coalesce(text,'')!='' or coalesce(title,'')!='')",
+                (lo, hi),
+            ).rowcount
 
     # ------------------------------------------------------------------------------------------ Why?
     def title_of(self, feature: str) -> str:

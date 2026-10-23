@@ -137,8 +137,9 @@ They come from any feature, from an AI request (your answer starts its follow-up
 answer it. `/status` says how many are open.
 
 **Expiry.** An unanswered question expires after 48 hours (`ask.expire_hours`), or sooner when its asker stops waiting;
-then nothing happens ("That question expired"). Answered and expired questions are forgotten after 30 days
-(`ask.keep_days`).
+then nothing happens ("That question expired"). Answered and expired questions are forgotten after
+`privacy.keep_days` (30 days; `ask.keep_days` gives them their own), or now with `/forget`
+([privacy.md](privacy.md#how-long-its-kept)).
 
 **What leaves your computer:** the question goes wherever Kurooto reaches you (Telegram, the phone app, the desktop);
 open questions are part of the brief your call line keeps for calls while the computer is off.
@@ -263,6 +264,7 @@ notes folder ("send me my linear algebra pack"), on calls too. From a terminal: 
 | `/aboutme` | the In-brief part of your profile (what goes along with every AI request) and a link to edit it on your computer ([teaching-kurooto.md](teaching-kurooto.md)) |
 | `/health`, `/health now` | what isn't working, with Fix buttons; `now` also checks online services ([messages-it-sends.md](messages-it-sends.md#kurooto-keeps-itself-working)) |
 | `/calm`, `/why` | the daily message limit and what's turned down; why the last message came ([messages-it-sends.md](messages-it-sends.md)) |
+| `/forget 7d`, `/forget 2w`, `/forget all` | forget what Kurooto kept of the last 7 days (two weeks, or everything, after a confirm button) now; `/forget` alone says how long things are kept ([privacy.md](privacy.md#how-long-its-kept)) |
 | `/sync` | with Notes sync off: sync everything that's on. With Notes sync on, `/sync` syncs your notes and `/sync all` everything |
 
 ## Renaming your assistant
