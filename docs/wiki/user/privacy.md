@@ -65,6 +65,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Nightly look back | what happened today (what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out: `retro.transcripts`, `retro.journal`), your how-to-help-me note, the settings it may change; for a skill change you approved, that skill's text | the AI you picked |
 | Dreaming: a second opinion (`dreaming.consolidate_ai` = `main` only; the default asks the model on this computer) | two lines that may say the same thing or disagree: how-to-help-me lines and lines of your notes, never a gist; at most 8 pairs a night | the AI you picked |
 | Learns from its own work | nothing to build its search index (it stays on this computer); the passages the AI finds when it searches it, with that request; to learn a skill, the finished request, its answer and its steps; to learn a lesson, your correction and the skill; to pick up facts, the day's requests (with the nightly look back) | the AI that takes second looks (`learning.brain`), else the AI you picked |
+| Dreaming: proposed fixes to skills (`dreaming.propose_prompts`, off) | the skill that keeps going wrong and the requests that went wrong (what was asked and your words about it); tuning effort, AI order and Start-by sizes sends nothing | the AI that takes second looks (`learning.brain`), else the AI you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI you picked |
 | Skills: revision packs | Tectonic, if you install it, downloads LaTeX packages; nothing of yours is sent | Tectonic's public package server |
 | Research add-on: LaTeX tracker | Tectonic, if it's installed, downloads LaTeX packages it lacks; nothing of yours is sent. **BibTeX for a key** (only when you tap it): the citation key and the sentence it's cited in | Tectonic's public package server; the AI you picked |
@@ -245,7 +246,7 @@ default, keeps it until you `/forget` it:
 | What | Where (state folder) |
 |---|---|
 | Call transcripts, calls that went on as text, and what calls searched your notes for (8 days at most) | `calls/transcripts/`, `calls/textcalls.json`, `calls/searches.json` |
-| What you asked the AI and what it answered (the time, AI and effort stay, without the words, for `/usage`) | `jobs.db`, `jobs/*-result.md` |
+| What you asked the AI and what it answered, and your words when you said an answer missed (the time, AI and effort stay, without the words, for `/usage`) | `jobs.db`, `jobs/*-result.md` |
 | Chat's recent turns | `chat/history.json` |
 | Answered and expired questions (`ask.keep_days` gives them their own time) | `ask/` |
 | Wrong-button cases you didn't make test cases (`cases.keep_days` likewise) | `cases/` |

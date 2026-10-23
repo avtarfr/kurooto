@@ -1308,6 +1308,41 @@ none you answered." It never touches what always comes (the alarm, your reminder
 under 12 hours), kinds that can't wait, `dreaming.never_tune`, or what you set yourself, and after an Undo it leaves
 that kind alone for 30 days. `/dream policy` shows the rules and the last nights' decisions with their scores.
 
+**Tuning the rest of what it decides** (Dream RSI, part three). The same replay, on three more of its own decisions,
+each with its switch:
+
+- **Effort** (`dreaming.tune_effort`, on): the effort your own requests get, per what picked it (the quick check's
+  low, medium or high, or the study-from-notes rule): `brain.effort_map`. Scored on your requests of the last 45 days:
+  asked again within 15 minutes, marked **Wrong**, followed by "that's not what I asked" (or "you misunderstood", "no,
+  I meant ..."), ran out of time, and run time. A level a request didn't run at is estimated from the record (more
+  effort fixes half of the misses; less risks the answers that went well), so it moves one step at a time. A level
+  you type ("high: ...") is never changed, and background work keeps the quick check's pick.
+- **Which AI goes first** (`dreaming.tune_fallbacks`, on): with a fallback AI set, `brain.fallback_first` lists the
+  effort levels at which the fallback is tried before the main AI. Scored on every try recorded per AI: answers,
+  limits, sign-outs, timeouts and how long they took; an AI that wasn't tried counts as limited when it hit a limit in
+  the two hours before, else by its own record.
+- **Start-by sizes** (`dreaming.tune_sizing`, on): `startby.sizes` per kind of deadline, against how long they really
+  took: study time on the deadline's subject from its start-by date until you marked it done (shared with that
+  subject's other deadlines those days), half-done deadlines with parts ("4/7") extrapolated, and sizes you tapped.
+  A size you set yourself is never changed; exam sizes per subject are yours.
+
+Still **one change a night in all**: of everything that beats today's rules by its margin, the one that wins by the
+most goes in, with **Undo** and a line like "Learned while you slept: requests the quick check calls quick now get
+medium effort, not low; 6 of the last 13 were asked again, marked Wrong, corrected or ran out of time." The rest wait.
+
+**It improves the way it improves.** Each change's outcome is kept: still in place after two weeks is kept; undone
+(or put back by hand) is undone. A kind of change you undid needs a clearer win next time (the margin times 1 + the
+undone ones - half the kept ones, up to 4 times), and the thing it changed is left alone for 30 days. `/dream policy`
+shows every area, the last decisions and which kinds need a clearer win.
+
+**Proposed fixes to skills** (`dreaming.propose_prompts`, off). When one skill's answers were corrected, marked Wrong
+or asked again twice or more in two weeks, the night asks Learning's second-look AI for the skill with the failing
+step rewritten, and whether that fixes each of those cases. It's offered only when it fixes at least half of them
+(more after you said No to one), in the morning message with **Apply** and **No**; `/dream proposal` shows the whole
+proposed skill. It's never applied without your tap. Apply changes the skill with a before-copy (Undo in `/learned`)
+and replays your test cases; if one that passed goes wrong, the change is put back at once. No leaves that skill alone
+for 30 days.
+
 **Curious** (`dreaming.curious`, on). A topic you asked about 3 or more times this week (requests to the AI, what calls
 searched your notes for, quiz questions you got wrong) with no note on it, or only a stub, gets one line: "You've
 asked about the Fokker–Planck equation 3 times this week and there's no note on it. Want one?" **Make a stub** writes
@@ -1336,11 +1371,16 @@ one), `main` (your AI; only how-to-help-me lines and note lines, never a gist) o
 
 **What leaves your computer.** Nothing: it reads Kurooto's own log, its memory, your requests' titles and your notes.
 What calls searched your notes for is kept 8 days at most (and `/forget` clears it). With `dreaming.consolidate_ai` =
-`main`, the pairs it asks about go to your AI.
+`main`, the pairs it asks about go to your AI. With `dreaming.propose_prompts` on, a proposed fix sends the skill,
+the requests that went wrong and your words about them to Learning's second-look AI. Your "that's not what I asked"
+words are kept on that request and forgotten with it.
 
 **Undo.** Turn it off in Features; the concept graph's morning line comes on its own again. A tuned message rule:
 its **Undo** button, or remove the kind from `notify.calm.habituate`, `notify.calm.evening` or `notify.calm.windows`;
-`dreaming.tune_messages` = false stops the tuning. `dreaming.curious` or `dreaming.resurface` = false drops one line;
+`dreaming.tune_messages` = false stops the tuning. Effort, AI order and sizes: the morning line's **Undo**, or remove
+the entry from `brain.effort_map`, `brain.fallback_first` or `startby.sizes`; `dreaming.tune_effort`,
+`dreaming.tune_fallbacks` or `dreaming.tune_sizing` = false stops that area. An applied skill fix: Undo in `/learned`.
+`dreaming.curious` or `dreaming.resurface` = false drops one line;
 a stub it made is a plain note you can delete; `/unignore <topic>` takes back Not interested. A Keep A / Keep B: its
 **Undo** button (the line, the gist or the deadline's date comes back, and the pair is asked about again);
 `dreaming.consolidate` = false stops looking.
@@ -3576,6 +3616,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | "Your alarm ... might not ring" | Set your phone's own alarm for tonight, then: Phone calls set up and linked (`kurooto doctor`), a phone paired (Phone tab). The Fix button reconnects or plans the alarm again. |
 | A reminder didn't reach my phone while the lid was shut | `kurooto doctor`: the "Reminders with the lid shut" line says what your call line holds and for how many phones. "No phone can open them yet": update the Android app and open it once. Also check the app's checklist (notifications, **Battery: unrestricted**) and that the phone was online. Reminders set in the last seconds before the lid shut on a Mac come when it wakes. |
 | A message came only in the evening bundle, or not at all | More than `notify.calm.messages` (6) came by themselves that day, it's exam season, you chose Fewer, Another time or Stop for that kind, or Dreaming tuned that kind (`/dream policy`). `/why` on the next one (or its Why? button) says which; `/calm` lists what's turned down, with buttons to start it again. `/calm off` restores the old behaviour. |
+| Requests run at a different effort than before, the fallback AI answers first, or Start-by sizes changed | Dreaming tuned it from what was recorded (one change a night, said in the morning message). `/dream policy` shows what's tuned and why; the morning line's Undo puts it back, or remove the entry from `brain.effort_map`, `brain.fallback_first` or `startby.sizes`. `dreaming.tune_effort`, `tune_fallbacks` or `tune_sizing` = false stops that area. |
 | A check-in call came as a message instead | The day's call (`notify.calm.calls`, 1) had come already. `/calm calls 2` allows two. |
 | "Back online" every morning | Your laptop sleeps at night. Raise `notify.presence.after_min` past your night, or turn it off (`notify.presence.on` = `false`). |
 | No "going offline" when the laptop sleeps | That message comes from your call line: it needs Phone calls set up, and Telegram from the line needs your OK (`notify.presence.line_telegram`); or add `"app"` to `notify.presence.channels`. |

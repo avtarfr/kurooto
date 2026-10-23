@@ -15,6 +15,10 @@ requests it didn't understand and the Wrong taps since the last message (they wa
 Tuning its own messages (dreaming.tune_messages, on; Dream RSI part two, core/policy.py): before the message, it replays
 the messages it sent you by itself under a few variants of when they come, applies the best if it clearly beats things
 as they are (one change a night, with Undo) and says so in one line. /dream policy shows the rules and the decisions.
+Part three (core/tuning.py) weighs that against the effort your requests get, which AI goes first and Start-by's sizes
+(dreaming.tune_effort, tune_fallbacks, tune_sizing, on): still one change a night in all. With
+dreaming.propose_prompts (off), a fix for a skill that keeps going wrong is offered here with Apply and No
+(/dream proposal shows it).
 
 Curious and remembering (dreaming.curious, dreaming.resurface; modules/curious.py): one line about a topic you asked
 about 3+ times this week with no note on it (Make a stub / Not interested), and one from a shared past, a note or quiz
@@ -35,7 +39,7 @@ import datetime as dt
 import re
 from pathlib import Path
 
-from kurooto.core import policy
+from kurooto.core import policy, tuning
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
@@ -66,6 +70,10 @@ class Dreaming(Module):
     def state_file(self) -> Path:
         return self.app.paths.state / "dreaming.json"
 
+    def __init__(self, app):
+        super().__init__(app)
+        app.jobs.then_actions["dreaming.proposal"] = lambda job, result, p: tuning.proposal_ready(app, job, result, p)
+
     def start(self):
         self.every("morning", self.setting("when") or "daily 07:30", self.morning)
         self.every("consolidate", consolidate.WHEN, lambda p: asyncio.to_thread(consolidate.scan, self.app))
@@ -74,16 +82,19 @@ class Dreaming(Module):
         return [
             Command(
                 "dream",
-                "what Kurooto did since the last morning message, and the loose ends, now; /dream policy: when its "
-                "own messages reach you, and what it tuned; /dream check: duplicates and lines that disagree in what "
-                "it remembers, now",
+                "what Kurooto did since the last morning message, and the loose ends, now; /dream policy: what it "
+                "tunes while you sleep (when its messages reach you, effort, which AI first, Start-by sizes) and "
+                "what it changed; /dream proposal: a fix for a skill, waiting for Apply or No; /dream check: "
+                "duplicates and lines that disagree in what it remembers, now",
                 self._cmd,
             )
         ]
 
     def _cmd(self, msg, arg: str) -> str | None:
         if arg.strip().lower() == "policy":
-            return policy.show(self.app)
+            return policy.show(self.app) + "\n\n" + tuning.show(self.app)
+        if arg.strip().lower() == "proposal":
+            return tuning.show_proposal(self.app)
         if arg.strip().lower() in ("check", "tidy", "consolidate"):
             text = consolidate.show(self.app)
             _t, buttons = consolidate.section(self.app, send=False)
@@ -101,6 +112,7 @@ class Dreaming(Module):
         return {
             "drm": lambda ref, act: curious.button(self.app, ref, act),
             "dcn": lambda ref, act: consolidate.button(self.app, ref, act),  # Keep A / Keep B / Both true, Undo
+            "rsi": lambda ref, act: tuning.answer(self.app, ref, act),  # a proposed fix: Apply or No
         }
 
     # ------------------------------------------------------------------------------------- the morning
@@ -273,7 +285,7 @@ class Dreaming(Module):
         rh = getattr(self.app, "rhythm", None)
         light = rh.lighter_line(mark=send) if rh is not None else ""  # a lighter day (core/rhythm.py)
         checked, passing = self.self_check(ev)
-        learned, undo = policy.morning(self.app, send)  # Dream RSI part two: one line, with its Undo
+        learned, undo = tuning.morning(self.app, send)  # Dream RSI: tonight's one change (Undo), a proposed fix
         did += learned
         ends += checked
         ends += self.curious_lines(send)

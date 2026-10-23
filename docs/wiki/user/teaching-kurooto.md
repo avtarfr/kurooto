@@ -485,6 +485,31 @@ of several. The day after an exam or a heavy day it starts with one line saying 
   One change a night at most, never to what always comes or what you set yourself.
   [Messages it sends](messages-it-sends.md#calm-why-less-of-this-and-the-daily-limit) has the details; `/dream policy`
   shows the rules and the last decisions.
+- **Tuning the rest** (Dream RSI, part three): the same nightly replay on three more of its decisions, each with its
+  own switch, all on:
+  - **effort** (`dreaming.tune_effort`): how hard the AI thinks about your requests, per what picked it (the quick
+    check's low, medium or high, or the study-from-notes rule). It counts your requests of the last 45 days that you
+    asked again within 15 minutes, marked **Wrong**, followed with "that's not what I asked" (or "you misunderstood",
+    "no, I meant ..."), or that ran out of time, and how long they took. One step at a time; a level you type
+    ("high: ...") is never changed;
+  - **which AI goes first** (`dreaming.tune_fallbacks`): with a fallback AI set, at an effort level where your main AI
+    keeps hitting limits or timing out, the fallback is tried first (`brain.fallback_first`);
+  - **Start-by sizes** (`dreaming.tune_sizing`): how long each kind of deadline takes (`startby.sizes`), from the study
+    time on its subject between its start-by date and when you marked it done, "4/7" progress, and sizes you tapped.
+    A size you set yourself is never changed.
+
+  Today's rules are always among what it compares, and it changes something only when the replay clearly wins
+  (`dreaming.tune_margin`). Still one change a night across everything (messages included), said in the morning
+  message with **Undo**: "Learned while you slept: Start-by sizes a report at about 5 h (a day), not 12 h; the last 4
+  took about 5 h (4 from study time)."
+- **It improves the way it improves:** every change's outcome is kept. A kind of change you undid needs a clearer win
+  next time (up to four times the margin), one you kept earns some of that back, and what you undid is left alone for
+  30 days. `/dream policy` shows all of it.
+- **Proposed fixes to skills** (`dreaming.propose_prompts`, off): when a skill's answers were corrected, marked Wrong or
+  asked again twice or more in two weeks, the night asks Learning's second-look AI for the skill with the failing step
+  rewritten. If, by that AI's replay, it fixes at least half of those cases, the morning message offers it with
+  **Apply** and **No** (`/dream proposal` shows it whole). Nothing changes without your tap; Apply replays your test
+  cases and puts the skill back at once if one that passed goes wrong; Undo in `/learned`.
 - **Curious** (`dreaming.curious`, on): a topic you asked about 3 or more times this week (your requests to the AI,
   what calls searched your notes for, quiz questions you got wrong) with no note on it, or only a stub, gets one line:
   "You've asked about the Fokker–Planck equation 3 times this week and there's no note on it. Want one?" **Make a

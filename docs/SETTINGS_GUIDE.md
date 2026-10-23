@@ -150,7 +150,9 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `brain.agy.io_mode` | `"pipe"` | how Kurooto talks to agy: pipe, or a pseudo-terminal where pipes give no output |
 | `brain.base_urls` | `{}` | per brain, to override a preset's address |
 | `brain.classify` | `"rules"` | who judges how hard a request is: rules, main (your AI) or ollama |
+| `brain.effort_map` | `{}` | tuned while dreaming: {"low": "medium"} runs your requests rated low at medium effort |
 | `brain.fallback` | `""` | the AI that takes over when the main one is rate-limited or signed out (empty: none) |
+| `brain.fallback_first` | `[]` | tuned while dreaming: effort levels ("high") at which the fallback AI goes first |
 | `brain.main` | `""` | the AI that handles requests: agy, claude, gemini, ollama or custom |
 | `brain.models` | `{}` | per brain: {"custom": {"low": ..., "medium": ..., "high": ...}} |
 | `brain.timeout_min.high` | `30` | minutes a hard request may run before it's stopped |
@@ -292,10 +294,14 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `dreaming.curious` | `true` | a topic you asked about 3+ times this week with no note on it: one line, Make a stub |
 | `dreaming.loose_ends` | `true` | also the loose ends: your open doubts, unlinked notes, broken links, tasks past due |
 | `dreaming.never_tune` | `["deadlines.reminder", "deadlines.call", "health.now", "a…` | kinds it never tunes (besides the alarm, your reminders and calls, deadlines under 12 hours) |
+| `dreaming.propose_prompts` | `false` | propose a fix to a skill that keeps going wrong (Apply or No; never by itself) |
 | `dreaming.resurface` | `true` | one line from the past: a note or quiz subject from 10-30 days ago, or an anniversary |
 | `dreaming.self_check` | `true` | replay your test cases each morning and say which ones went wrong since yesterday |
+| `dreaming.tune_effort` | `true` | each night, replay your requests and tune the effort they get (one change, Undo) |
+| `dreaming.tune_fallbacks` | `true` | each night, replay every try per AI and tune which AI goes first at each effort |
 | `dreaming.tune_margin` | `3.0` | how much better (in the replay's score) a change must be than leaving things as they are |
 | `dreaming.tune_messages` | `true` | each night, replay the messages it sent you and tune when they come (one change, Undo) |
+| `dreaming.tune_sizing` | `true` | each night, compare Start-by's sizes with the time deadlines took and tune them |
 | `dreaming.when` | `"daily 07:30"` | when the morning message comes (it covers everything since the last one) |
 
 ### `drive_upload`

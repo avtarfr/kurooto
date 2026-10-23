@@ -100,7 +100,9 @@ that can't wait for the evening (practice offers, check-ins, doubt lists), the k
 (deadline reminders and calls among them), or anything you set yourself (stopped, fewer, the evening list, the limit,
 the night). It only moves messages that had something to answer, and it can't judge what it never sent. After an Undo
 it leaves that kind alone for 30 days. `/dream policy` shows the rules as they are and the last nights' decisions;
-`dreaming.tune_messages` = false turns it off.
+`dreaming.tune_messages` = false turns it off. The same night pass also tunes the effort your requests get, which AI
+goes first and Start-by's sizes ([Teaching Kurooto](teaching-kurooto.md)); all of them together still make at most one
+change a night.
 
 **Once a month**, Kurooto looks at the kind of question you answer least. If 8 or more came in 30 days and you answered
 a fifth of them or fewer: "In the last 30 days you answered 1 of 19 after-class questions. Turn them off? (Turns off
@@ -118,7 +120,7 @@ records first.
 | `/calm evening 21:00` | move the evening bundle |
 | `/calm off`, `/calm on` | turn Calm off (everything comes as it happens, no Why? buttons) or back on |
 | `/why` | why the last message that came by itself came, with Less of this |
-| `/dream policy` | when messages that come by themselves reach you, and what Dreaming tuned (with the replay's scores) |
+| `/dream policy` | when messages that come by themselves reach you, the effort, AI order and Start-by sizes it tunes, and what Dreaming changed (with the replay's scores) |
 
 **Settings** (Dashboard → Settings → notify → calm):
 
