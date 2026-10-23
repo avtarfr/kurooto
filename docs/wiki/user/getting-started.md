@@ -35,7 +35,7 @@ plugged in (see [Stay awake on charger](your-computer.md)).
 | Notes sync, Profile sync | a free GitHub account |
 | Backups | a folder on an external drive, or a folder your computer syncs to a cloud (Google Drive, OneDrive, iCloud Drive, Dropbox) |
 | Google Classroom, Gmail drafts, the mail digest, reply drafts, Google Calendar, Drive upload, the Agent plan calendar | your Google account and about 10 to 15 minutes in Google Cloud (free; see [google.md](google.md)) |
-| Revision packs as PDF | a small LaTeX engine (Tectonic); Kurooto offers to install it the first time |
+| Revision packs as PDF | a LaTeX engine: your own (TeX Live, MiKTeX, MacTeX), or Tectonic, a small one Kurooto offers to install the first time |
 | Claude Code as the AI | a paid Claude plan |
 
 Nothing costs money unless you choose a paid plan (a paid AI plan you already have, or a paid Gemini key).

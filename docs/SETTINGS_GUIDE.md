@@ -5,8 +5,11 @@ code, so it is complete; the notes on the left come from the comment beside each
 
 ## Where settings live, and how to change one
 
-- **The dashboard:** Settings (Alt+S), grouped by feature, with a search box. Changes apply at once; most are read
-  again the next time they're used, a few (marked in the dashboard) need `kurooto restart`.
+- **The dashboard:** Settings (Alt+S), grouped by feature, with a search box: the core sections (you, notify,
+  availability, updates, brain, ask, look, power, notes, files) and the features that are on. Changes apply at once;
+  most are read again the next time they're used. A few are read only when Kurooto starts (such as `web.port`): for
+  those, restart it with `kurooto stop`, then `kurooto start`. The other core sections (such as `quota`, `health`
+  and `sources`) aren't on that page yet: change them in the file.
 - **The file:** `settings.json` in Kurooto's config folder (Linux `~/.config/kurooto`, macOS
   `~/Library/Application Support/Kurooto/config`, Windows `%LOCALAPPDATA%\Kurooto\config`). It holds only what you changed; delete a
   line to go back to the default. A dotted name such as `brain.main` is the key `main` inside `brain`:
@@ -16,18 +19,20 @@ code, so it is complete; the notes on the left come from the comment beside each
 
 ## How an AI is allowed to act (permissions)
 
-Requests run by an agent program (agy, Codex, Claude Code) are unattended, so what they may do is decided in advance:
+Requests run by an agent program (agy, Claude Code) are unattended, so what they may do is decided in advance:
 
-| | agy | Claude Code (from 0.5.6) | Codex |
-|---|---|---|---|
-| Kurooto's tools (reminders, notes, calls, files) | allowed in agy's own settings, once | given for each request | given for each request |
-| Your own GBrain's tools (`gbrain.agy_mcp` on) | allowed in agy's own settings | given for each request | no |
-| Read | notes, course files, Classroom and mail copies, Documents, Downloads, Screenshots | the same | notes folder |
-| Write | notes folder, course files folder, your add-ons' skills | the same | none |
-| Harmless commands | `cat date echo file find git grep head jq latexmk ls mkdir pdftotext pwd rg sort stat tail tree uniq wc which` | the same | none |
-| Web pages | yes | yes | no |
-| `kurooto` itself | never | never | never |
-| Where it's kept | agy's `settings.json` (a backup is taken; your own rules stay) | nowhere: nothing is saved in Claude Code's settings | nowhere |
+| | agy | Claude Code (from 0.5.6) |
+|---|---|---|
+| Kurooto's tools (reminders, notes, calls, files) | allowed in agy's own settings, once | given for each request |
+| Your own GBrain's tools (`gbrain.agy_mcp` on) | allowed in agy's own settings | given for each request |
+| Read | notes, course files, Classroom and mail copies, Documents, Downloads, Screenshots | the same |
+| Write | notes folder, course files folder, your add-ons' skills | the same |
+| Harmless commands | `cat cd date echo file find git grep head jq latexmk ls mkdir pdftotext pwd rg sort stat tail tree uniq wc which` | the same |
+| Web pages | yes | yes |
+| `kurooto` itself | never | never |
+| Where it's kept | agy's `settings.json` (a backup is taken; your own rules stay) | nowhere: nothing is saved in Claude Code's settings |
+
+Codex is no longer offered (0.5.6): a setting that names it is cleared.
 
 A request that tries anything else is refused, and the answer says what was refused. To widen what agy may do, add a
 rule to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself; Kurooto never removes rules it
@@ -140,7 +145,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `brain.base_urls` | `{}` | per brain, to override a preset's address |
 | `brain.classify` | `"rules"` | who judges how hard a request is: rules, main (your AI) or ollama |
 | `brain.fallback` | `""` | the AI that takes over when the main one is rate-limited or signed out (empty: none) |
-| `brain.main` | `""` | the AI that handles requests: agy, codex, claude, gemini, ollama or custom |
+| `brain.main` | `""` | the AI that handles requests: agy, claude, gemini, ollama or custom |
 | `brain.models` | `{}` | per brain: {"custom": {"low": ..., "medium": ..., "high": ...}} |
 | `brain.timeout_min.high` | `30` | minutes a hard request may run before it's stopped |
 | `brain.timeout_min.low` | `10` | minutes a quick request may run before it's stopped |
@@ -218,9 +223,9 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `checkins.questions.evening` | `"How did today go? What got done, and what slipped?"` | the evening check-in's question |
 | `checkins.questions.midday` | `"How's the morning been? Anything to re-plan for the afte…` | the midday check-in's question |
 | `checkins.questions.night` | `"Before bed: anything else for your journal? What's first…` | the night check-in's question |
-| `checkins.times.evening` | `"22:00"` | None = off (night: e.g. "23:15") |
-| `checkins.times.midday` | `null` | None = off (night: e.g. "23:15") |
-| `checkins.times.night` | `null` | None = off (night: e.g. "23:15") |
+| `checkins.times.evening` | `"22:00"` | the evening check-in, the day in review (None: off) |
+| `checkins.times.midday` | `null` | the midday check-in (None: off; e.g. "13:00") |
+| `checkins.times.night` | `null` | the night check-in before bed (None: off; e.g. "23:15") |
 
 ### `classroom_notes`
 
@@ -244,7 +249,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `deadlines.horizon_days` | `30` | recurring quizzes become dated deadlines this far ahead |
 | `deadlines.max_files` | `3000` | the most notes read when looking for deadlines |
 | `deadlines.overdue_check` | `true` | after the due time: "Overdue?" with Done / New date / Drop |
-| `deadlines.ping_h` | `24` | hours between reminders for a deadline that's close |
+| `deadlines.ping_h` | `24` | hours before the due time for a deadline's first nudge (one message; closer than urgent_h it's urgent) |
 | `deadlines.plan_h` | `72` | "due soon": what's due this many hours ahead goes into the morning plan, /status and calls |
 | `deadlines.recurring` | `true` | recurring quizzes from kurooto/recurring.md |
 | `deadlines.scan_notes` | `true` | also find deadlines written in your notes |
@@ -415,8 +420,8 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `look.layout` | `"dense"` | dense (everything on one board) or roomy |
 | `look.links_in` | `"default"` | where links open: default is your default browser |
 | `look.palette` | `"kuro"` | the pages' colours (core/palette.py) |
-| `look.panes` | `[]` | which dashboard panes are shown (empty: all) |
-| `look.projects` | `[]` | projects pinned on the dashboard |
+| `look.panes` | `[]` | the dense board's hidden panes: status, systems, notes, terminal (empty: none hidden) |
+| `look.projects` | `[]` | folders of git repositories the PROJECTS box shows (empty: Research's repositories) |
 | `look.theme_file` | `""` | the pages' colours (core/palette.py) |
 
 ### `mail_digest`
@@ -569,7 +574,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `retro.journal` | `true` | read today's journal note |
-| `retro.max_proposals` | `3` | the most changes proposed in a weekly review |
+| `retro.max_proposals` | `3` | the most changes one look back proposes (it runs at retro.when: nightly by default) |
 | `retro.no_days` | `30` | how long a "No" keeps that idea away |
 | `retro.observe_days` | `7` | how long "Observe longer" (and /observe without a length) watches |
 | `retro.transcripts` | `true` | read today's call transcripts |
@@ -698,8 +703,8 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `weekly.call` | `false` | call: also a Sunday review call |
-| `weekly.when` | `"weekly sun 19:00"` | call: also a Sunday review call |
+| `weekly.call` | `false` | with Phone calls on: also a Sunday review call after the summary |
+| `weekly.when` | `"weekly sun 19:00"` | when the week's summary comes ("weekly <day> HH:MM") |
 
 ### `you`
 

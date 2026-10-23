@@ -39,6 +39,12 @@
   `/lessons forget 2` removes one. One message only when it fixed or learned something; `calls.review` off stops it.
 - **Chat remembers only the chat**: a digest's or research run's answer no longer turns up as "you said" in the
   context of your next message.
+- **Docs match the code**: the manual's term-note example no longer swallows the Concept graph, Space keeper and
+  reserve sections, and it now covers `/new` and the chat's memory, the calls look back (`/lessons`), topic study
+  packs, `drive_upload.temp_days`, Exam season as an add-on and the new `/help`; agy is the recommended brain
+  everywhere; the privacy page says the call line holds the Android app's message key, holds transcripts while the
+  computer is off, and that every call's transcript goes to your AI for the look back; the settings guide drops
+  Codex and `kurooto restart` and fixes six descriptions; RELEASING.md says never to rebuild after signing.
 
 ## 0.5.7 (2026-10-23)
 

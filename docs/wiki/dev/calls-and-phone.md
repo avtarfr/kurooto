@@ -250,17 +250,11 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 
 ## Known problems and doc mismatches
 
-- `worker.js`'s header and `docs/PRIVACY.md` say the Worker can't read the Android app's sealed answers, but the Worker
-  holds `NTFY_KEY` (it seals with it in `publish` and hands it out in `Line.claim`). k1 protects against ntfy, not
-  against the line. Only s1 data is opaque to the Worker.
-- "Transcripts stay on your computer" (`Calls.privacy`) does not hold while the computer is off: `Line.transcript`
-  queues them in Durable Object storage until `welcome`.
+- `Calls.privacy` (the feature card's text) still says "Transcripts stay here", which doesn't hold while the computer
+  is off (`Line.transcript` queues them in Durable Object storage until `welcome`) or for the look back (the
+  transcript goes to the AI). `docs/PRIVACY.md`, the MANUAL and the user wiki say both.
 - Every ring is published to ntfy twice (Worker and `Calls.publish_ntfy`), including when no Android device is paired.
 - `calls.missed` fires at `ring_s + 30` s, which stops an alarm ring after about 90 s while the Worker and app would
   ring an alarm for 5 minutes; `calls.ring_s` is never sent to the Worker or the app.
 - `Calls.tool_log` is one list for all calls: tools from queued offline work or overlapping calls are attributed to the
   next transcript's review; turn-by-turn calls run tools through `core/tools.py:run_tool` and don't reach it.
-- `docs/MANUAL.md` and `docs/SETTINGS_GUIDE.md` don't yet describe `calls.review*` or `/lessons`, and `docs/PRIVACY.md`
-  doesn't say that the transcript and tool log go to the main (or review) AI after every call, or that lessons are
-  part of the call setup pushed to the Worker and Gemini.
-- `tests/fixtures/call-vectors.json` names `tests/unit/test_calls_line.py`, which doesn't exist.

@@ -6,11 +6,13 @@
 //   - Calls: Gemini Live tokens are minted here with your Gemini key, so the audio goes between your phone and
 //     Google directly. What the call knows and can do (its instructions and tools) is pushed by your computer.
 //   - Ringing: your computer (or the cron below, when it's off) rings your paired devices: the Android app through
-//     ntfy (end-to-end encrypted with a key only your devices have), the web app through Web Push (no payload; it
-//     asks this Worker what's ringing). Not while you're on a call: those calls ring when it ends.
+//     ntfy (encrypted with NTFY_KEY, which your devices, your computer and this Worker hold: ntfy can't read it), the
+//     web app through Web Push (no payload; it asks this Worker what's ringing). Not while you're on a call: those
+//     calls ring when it ends.
 //   - Messages: questions and approvals (and other kinds, if you choose) reach your phones the same way; this keeps
 //     what's still open (the inbox) for the web app to list. Answers come back through /answer to your computer
-//     (the Android app's are sealed with the ntfy key, so this Worker can't read them), or wait here till it's back.
+//     (the Android app's are sealed with the ntfy key, which keeps them from ntfy but not from this Worker: it holds
+//     NTFY_KEY), or wait here till it's back.
 //   - While your computer is off: answers come from the brief it last pushed, notes from the index it pushed (and,
 //     with Notes sync, whole notes from your private GitHub repo); anything that needs the computer is queued.
 //   - Going offline: when your computer's link has been gone for a while (it's asleep, crashed or lost its network)

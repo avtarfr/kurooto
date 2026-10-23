@@ -35,7 +35,7 @@ NOTES = {  # settings whose source line has no comment: what they do
     "brain.agy.io_mode": "how Kurooto talks to agy: pipe, or a pseudo-terminal where pipes give no output",
     "brain.classify": "who judges how hard a request is: rules, main (your AI) or ollama",
     "brain.fallback": "the AI that takes over when the main one is rate-limited or signed out (empty: none)",
-    "brain.main": "the AI that handles requests: agy, codex, claude, gemini, ollama or custom",
+    "brain.main": "the AI that handles requests: agy, claude, gemini, ollama or custom",
     "brain.timeout_min.high": "minutes a hard request may run before it's stopped",
     "brain.timeout_min.low": "minutes a quick request may run before it's stopped",
     "brain.timeout_min.medium": "minutes a normal request may run before it's stopped",
@@ -61,7 +61,7 @@ NOTES = {  # settings whose source line has no comment: what they do
     "classroom_notes.at": "when new Classroom posts are fetched",
     "classroom_notes.max_file_mb": "Classroom files bigger than this (MB) aren't downloaded",
     "deadlines.max_files": "the most notes read when looking for deadlines",
-    "deadlines.ping_h": "hours between reminders for a deadline that's close",
+    "deadlines.ping_h": "hours before the due time for a deadline's first nudge (one message; closer than urgent_h it's urgent)",
     "deadlines.scan_notes": "also find deadlines written in your notes",
     "deadlines.urgent_h": "a deadline closer than this many hours is urgent",
     "drive_upload.big_files": "files over Telegram's 50 MB go to your Google Drive and you get a link",
@@ -87,8 +87,8 @@ NOTES = {  # settings whose source line has no comment: what they do
     "look.hidden_features": "features hidden from the Features list (they still run if on)",
     "look.layout": "dense (everything on one board) or roomy",
     "look.links_in": "where links open: default is your default browser",
-    "look.panes": "which dashboard panes are shown (empty: all)",
-    "look.projects": "projects pinned on the dashboard",
+    "look.panes": "the dense board's hidden panes: status, systems, notes, terminal (empty: none hidden)",
+    "look.projects": "folders of git repositories the PROJECTS box shows (empty: Research's repositories)",
     "mail_digest.at": "when mail digests run",
     "mail_digest.confidential": "what to do with confidential mail: count, hide or skip",
     "mail_digest.query": "an extra Gmail search the digest is limited to",
@@ -117,7 +117,7 @@ NOTES = {  # settings whose source line has no comment: what they do
     "research.endpoints.pubmed": "PubMed's API address (leave alone)",
     "research.log_when": "when commits are written into your project logs",
     "research.max_papers": "the most papers in a digest",
-    "retro.max_proposals": "the most changes proposed in a weekly review",
+    "retro.max_proposals": "the most changes one look back proposes (it runs at retro.when: nightly by default)",
     "sources.mix": "the source mix for books and notes: how much each kind counts in answers",
     "startby.sizes.exam": "days an exam takes to prepare for",
     "startby.sizes.other": "days other work takes",
@@ -153,8 +153,11 @@ code, so it is complete; the notes on the left come from the comment beside each
 
 ## Where settings live, and how to change one
 
-- **The dashboard:** Settings (Alt+S), grouped by feature, with a search box. Changes apply at once; most are read
-  again the next time they're used, a few (marked in the dashboard) need `kurooto restart`.
+- **The dashboard:** Settings (Alt+S), grouped by feature, with a search box: the core sections (you, notify,
+  availability, updates, brain, ask, look, power, notes, files) and the features that are on. Changes apply at once;
+  most are read again the next time they're used. A few are read only when Kurooto starts (such as `web.port`): for
+  those, restart it with `kurooto stop`, then `kurooto start`. The other core sections (such as `quota`, `health`
+  and `sources`) aren't on that page yet: change them in the file.
 - **The file:** `settings.json` in Kurooto's config folder (Linux `~/.config/kurooto`, macOS
   `~/Library/Application Support/Kurooto/config`, Windows `%LOCALAPPDATA%\\Kurooto\\config`). It holds only what you changed; delete a
   line to go back to the default. A dotted name such as `brain.main` is the key `main` inside `brain`:
@@ -164,18 +167,20 @@ code, so it is complete; the notes on the left come from the comment beside each
 
 ## How an AI is allowed to act (permissions)
 
-Requests run by an agent program (agy, Codex, Claude Code) are unattended, so what they may do is decided in advance:
+Requests run by an agent program (agy, Claude Code) are unattended, so what they may do is decided in advance:
 
-| | agy | Claude Code (from 0.5.6) | Codex |
-|---|---|---|---|
-| Kurooto's tools (reminders, notes, calls, files) | allowed in agy's own settings, once | given for each request | given for each request |
-| Your own GBrain's tools (`gbrain.agy_mcp` on) | allowed in agy's own settings | given for each request | no |
-| Read | notes, course files, Classroom and mail copies, Documents, Downloads, Screenshots | the same | notes folder |
-| Write | notes folder, course files folder, your add-ons' skills | the same | none |
-| Harmless commands | `cat date echo file find git grep head jq latexmk ls mkdir pdftotext pwd rg sort stat tail tree uniq wc which` | the same | none |
-| Web pages | yes | yes | no |
-| `kurooto` itself | never | never | never |
-| Where it's kept | agy's `settings.json` (a backup is taken; your own rules stay) | nowhere: nothing is saved in Claude Code's settings | nowhere |
+| | agy | Claude Code (from 0.5.6) |
+|---|---|---|
+| Kurooto's tools (reminders, notes, calls, files) | allowed in agy's own settings, once | given for each request |
+| Your own GBrain's tools (`gbrain.agy_mcp` on) | allowed in agy's own settings | given for each request |
+| Read | notes, course files, Classroom and mail copies, Documents, Downloads, Screenshots | the same |
+| Write | notes folder, course files folder, your add-ons' skills | the same |
+| Harmless commands | `cat cd date echo file find git grep head jq latexmk ls mkdir pdftotext pwd rg sort stat tail tree uniq wc which` | the same |
+| Web pages | yes | yes |
+| `kurooto` itself | never | never |
+| Where it's kept | agy's `settings.json` (a backup is taken; your own rules stay) | nowhere: nothing is saved in Claude Code's settings |
+
+Codex is no longer offered (0.5.6): a setting that names it is cleared.
 
 A request that tries anything else is refused, and the answer says what was refused. To widen what agy may do, add a
 rule to `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` yourself; Kurooto never removes rules it

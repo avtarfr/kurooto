@@ -1,5 +1,10 @@
 # Books and PDFs (branch w/books): notes for the coordinator
 
+> **Historical.** Coordinator notes from the 0.4.0 Books branch, kept for the record and not updated since. Books
+> has long been merged and registered; what's described here may no longer match the code. For how Books works
+> now, see the user wiki's [books-and-study.md](../wiki/user/books-and-study.md) and the developer wiki's
+> [modules.md](../wiki/dev/modules.md).
+
 The brief asked for the docs to be written in place, so MANUAL.md ("Books and PDFs" section, a TOC entry, two
 Troubleshooting rows), PRIVACY.md (two rows after Handwritten notes) and CHANGELOG.md ("## 0.4.0 (unreleased)" at the
 top) are edited directly, each in one contiguous block.

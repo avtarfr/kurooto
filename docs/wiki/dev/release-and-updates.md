@@ -160,5 +160,4 @@ installer, 0.2.0 through `kurooto update --now`, 0.3.0 built with `--break-run` 
   attribute. `Updates.hold` calls `self.clock()` when `updates.staged` is on and the release isn't critical, which raises
   `AttributeError` (not caught by `check()`). `tests/unit/test_quick_updates.py` sets `u.clock` by hand, hiding it. The
   assignment belongs in `__init__`.
-- `docs/RELEASING.md` describes `build --critical` and `sign --critical` as different; in code both skip every hold.
 - `update/launcher.py`'s docstring lists the phases as `trial | ok`; `rolled_back` is also written.
