@@ -537,7 +537,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 `modules/google.py:Google` is the sign-in hub (OAuth with PKCE through the user's own Desktop client; tokens in secret
 `google.tokens[.<account>]`; redirect to `http://127.0.0.1:<port>/oauth/google`) and Classroom/Gmail drafts.
 `GooglePart` subclasses each need their own scopes: **classroom_notes** (`google_classroom.py`, Classroom posts and
-Drive files filed into notes by an AI job), **mail_digest** / **reply_drafts** / **digest_email**
+Drive files filed into notes by an AI job; each `queue()` is a run in `classroom-notes/runs.json` (`left` batches,
+`filed` titles): `_filed` reports back with `_run_back` and the run's one message (`_tell_filed`, `LIST_MAX` titles)
+goes when nothing is left; a failed batch leaves its run and joins the next one, and a run older than `RUNS_DAYS` is
+let go at the next `queue()`), **mail_digest** / **reply_drafts** / **digest_email**
 (`google_mail.py`), **agent_plan** (`google_plan.py`, its own calendar of time blocks; `reschedule(start, by)` deletes today's blocks
 not done and plans them again from `start` (or each `by` later), keeping order, lengths and gaps up to `GAP_MAX`,
 dropping a repeated title, stopping at `LATEST_H`; `undo` in `agent-plan.json`; intent `reschedule_day`, call tool

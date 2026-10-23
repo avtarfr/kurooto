@@ -204,7 +204,9 @@ def test_classroom_notes_fetches_posts_files_and_hands_them_to_the_ai(classroom,
     prompt = json.dumps(ai.requests[-1])
     assert "Eigenvalues are roots" in prompt and "chapter 6 on diagonalisation" in prompt
     assert "Notes folder: lin-alg/" in prompt and "update_exam_prep" in prompt and "Pep rally" not in prompt
-    assert env.fake.texts()[-1] == "Classroom: filed 6 new items from Linear Algebra into lin-alg/."
+    filed = env.fake.texts()[-1]
+    assert filed.startswith("Classroom: filed 6 new items from Linear Algebra into lin-alg/:\n- Lecture 5: eigenvalues")
+    assert filed.count("\n- ") == 6 and "more" not in filed
     assert not list((cn.dir / "batches").glob("*.json"))
     assert cn.sync()["items"] == 0  # nothing new
     g.materials["c1"][0]["updateTime"] = "2099-01-01T00:00:00Z"  # edited post: filed again
@@ -238,6 +240,45 @@ def test_classroom_batches_are_retried_until_filed(classroom):
     cn.queue()
     run_jobs(env.app)
     assert not b.exists()
+
+
+def test_one_classroom_message_per_check_however_many_courses_and_batches(classroom):
+    env, g, ai, cn = classroom
+    g.courses.append({"id": "c3", "name": "Topology"})
+    g.materials["c3"] = []
+    g.posts["c3"] = [
+        {"id": f"t{i}", "text": f"Sheet {i}", "creationTime": RECENT, "updateTime": RECENT} for i in range(10)
+    ]
+    r = cn.sync()
+    assert r["courses"] == 2 and r["queued"] == 3  # Topology's 10 posts are two requests, Linear Algebra's one
+    n = len(env.fake.texts())
+    assert run_jobs(env.app) == 3
+    said = env.fake.texts()[n:]
+    assert len(said) == 1, said  # one message for the whole check, once all three are back
+    head, *lines = said[0].split("\n")
+    assert head == "Classroom: filed 16 new items into your notes:"
+    assert len(lines) == gc.LIST_MAX + 1 and lines[-1] == "- and 8 more" and "(Topology)" in said[0]
+    assert env.app.calm.last()["why"] == "classroom_notes.filed"
+    assert not (cn.dir / "runs.json").exists() or json.loads((cn.dir / "runs.json").read_text()) == {}
+
+
+def test_a_failed_classroom_batch_leaves_its_check_and_joins_the_next(classroom):
+    env, g, ai, cn = classroom
+    g.courses.append({"id": "c3", "name": "Topology"})
+    g.materials["c3"] = []
+    g.posts["c3"] = [{"id": "t1", "text": "Sheet 1", "creationTime": RECENT, "updateTime": RECENT}]
+    cn.sync()
+    runs = json.loads((cn.dir / "runs.json").read_text())
+    assert len(runs) == 1 and len(next(iter(runs.values()))["left"]) == 2
+    ai.mode = "500"
+    n = len(env.fake.texts())
+    run_jobs(env.app, 1)  # the first course's request fails...
+    ai.mode = "ok"
+    run_jobs(env.app, 1)  # ...the second is filed: the check is over, and says what it filed
+    assert len(env.fake.texts()) == n + 1 and env.fake.texts()[-1].startswith("Classroom: filed ")
+    assert cn.queue() == 1  # the failed one, in a run of its own
+    run_jobs(env.app)
+    assert len(env.fake.texts()) == n + 2 and env.fake.texts()[-1].startswith("Classroom: filed ")
 
 
 def test_classroom_command_and_courses(classroom):

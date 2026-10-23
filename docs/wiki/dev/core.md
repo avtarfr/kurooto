@@ -458,7 +458,7 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `map_kind` / `map_ref` (so a reply or button finds its handler: `Module.replies()[map_kind]`), `file`, `tail` (the
   text's own last line to show quietly: the run receipt, italic on Telegram), and the Calm envelope `why`, `setting`,
   `about`, `item`, `due`.
-- `send()`: Calm decides first (`Calm.decide`: `send`, `hold` or `stop`); during focus, non-urgent messages that aren't
+- `send()`: Calm decides first (`Calm.decide`: `send`, `hold`, `stop` or `folded`), then `release()`: during focus, non-urgent messages that aren't
   `approval`/`call` go to `focus-queue.jsonl` (flushed by `flush_queue()` when focus ends); otherwise `_deliver()`:
   Telegram (unless presence holds it because the network is down), the phone app for `notify.app_kinds`, the app's
   chat (`chat`) for the rest when `notify.app_chat` is on or `App.app_main()` (Telegram off, Phone calls on: Calm's
@@ -473,8 +473,10 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `core/presence.py:Presence.channels` uses `app` in place of `telegram` then. Files: `Message.file` to the chat
   becomes a link (`modules/calls/chat.py:PhoneChat.send_file`, see calls-and-phone.md); `Jobs._deliver` sends a long
   answer's file with the same `reply_to` as its text.
-- Channels are registered by modules: `notifier.register("telegram", send, retract=None)`. `retract(map_kind, map_ref,
-  button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
+- Channels are registered by modules: `notifier.register("telegram", send, retract=None, edit=None)`. `retract(map_kind,
+  map_ref, button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
+  `edit(ref, msg)` changes a Telegram message in place (Telegram registers `_edit`, which uses `TelegramAPI.edit(...,
+  strict=True)`); False when there's no editor or Telegram refused, so the caller can send a new message instead.
 - Button data is `"<prefix>:<ref>:<action>"`; `App.callback` routes core prefixes (`calm`, `upd`, `ask`, `health`,
   `fixme`, `job`, `inf`, `ton`, `keep`, `fgt`, `rhy`) and then each enabled module's `callbacks()[prefix]`. Keep a module's prefixes unique and short (Telegram
   limits callback data to 64 bytes).
@@ -486,7 +488,7 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `why="asked"` (`ASKED`) is an answer to the user and is never held, counted or buttoned; a message with no `why` is
   sent and recorded as "No reason recorded".
 - Exempt (`EXEMPT`): `own` (reminders the user set), `alarm`, `approval`, `deadline` (due within `DEADLINE_H = 12`),
-  `urgent`, `security`, `bundle`.
+  `urgent`, `security`, `bundle`, `limit` (the once-a-day line below).
 - The daily limit: `notify.calm.messages` (6) and `notify.calm.calls` (1, `Calm.call_ok`). Past it, messages are held
   for the evening bundle at `notify.calm.evening_at` (20:00, sent by `calm:tick`). Per-kind user choices: `stopped`,
   `evening`, `fewer`. Exam season tightens it (`modules/exam_season.py:budget_during_exams`). `Calm.day_limit()`
@@ -495,6 +497,20 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   Dreaming tunes (`core/policy.py`): `habituate` (kind → N: `Calm.ignored(why, t)`, the `streak()` of answerable
   records left unanswered, at least `IGNORED_H = 3` hours old, reaching N holds it as `held="habit"`) and `windows`
   (kind → `"HH:MM-HH:MM"`, `inside()`; outside it `held="window"`). Both are checked in `Calm._wait` after `fewer`.
+- The first `held="budget"` of a day calls `Calm._tell_limit`: one exempt message (`why="calm.limit"`, not counted;
+  `calm.json` `limit_told` keeps it to once a day; skipped when the limit is 0) with buttons
+  `calm:<YYYY-MM-DD>:flow|raise|fine` (`Calm._limit_button`). `flow` sets `calm.json` `flow_day` (`Calm.flowing()`:
+  `_wait` skips the budget check today) and `Calm.release()` sends today's budget holds in order through
+  `Notifier.release` (focus still applies; settled questions are dropped as in the bundle). `raise` applies a `Change`
+  doubling `notify.calm.messages` (Undo as usual) and `release(cap=day_limit())`. Other holds never bring the line.
+- `Reason.counted=False` (`updates.done`): never held by the daily limit, recorded with `budgeted=0`.
+  `Reason.fold=True` (`updates.done`): `Calm._fold` adds "(and N earlier today)" and, when an earlier one today has a
+  Telegram ref, edits that message (`Notifier.edit`) and returns `folded` (nothing new sent); otherwise the new text
+  goes out as a new message. Chosen over deleting the earlier ones: one call, no notification, and nothing to do for
+  channels without edit (the phone app's chat gets the new message with the note when there's no Telegram; with
+  Telegram it keeps the first notice only).
+- The bundle's head counts holds by `held` (`BUNDLED`): "N messages that waited, held by the daily limit of 6", or
+  "(3 held by the daily limit of 6; 1 because ...)" when mixed. `Calm.today()` adds `waiting_limit` and `flowing`.
 - On Telegram a counted message gets "Why?" and "Less of this" (`calm:<rid>:why|less`); `Less of this` offers Stop /
   Fewer / Another time, each changing one setting (`Change`), with Undo. `/calm` and `/why` show the state.
 - Records: `calm.db` table `sent` (45 days; `Calm.forget` blanks `text` and `title` after `privacy.keep_days`).

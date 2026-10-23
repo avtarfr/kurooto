@@ -36,8 +36,9 @@ do anything.
 - **Old versions are kept for going back.** The version you run, the one before, and one more stay installed; older
   ones are deleted.
 
-After a successful update (five minutes in, once the trial is over) you get one line: "Kurooto updated to X." An
-update's restart doesn't send a "going offline" message.
+After a successful update (five minutes in, once the trial is over) you get one line: "Kurooto updated to X." It
+doesn't count against Calm's daily limit, and several in one day fold into one: on Telegram the first line is changed to
+the newest, "Kurooto updated to X (and 2 earlier today)." An update's restart doesn't send a "going offline" message.
 
 **Choose how updates happen** (Dashboard → Settings → updates):
 

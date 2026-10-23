@@ -142,7 +142,8 @@ class TelegramAPI:
                 mid = self.call("sendDocument", params, files={"document": f}, timeout=300)["message_id"]
         return mid
 
-    def edit(self, chat_id, message_id: int, text: str, buttons: list | None = None) -> None:
+    def edit(self, chat_id, message_id: int, text: str, buttons: list | None = None, strict: bool = False) -> None:
+        """Change a message's text and buttons; strict: say so (TelegramError) when Telegram doesn't take it."""
         params = {
             "chat_id": chat_id,
             "message_id": message_id,
@@ -152,7 +153,8 @@ class TelegramAPI:
         try:
             self.call("editMessageText", params)
         except TelegramError:
-            pass
+            if strict:
+                raise
 
     def document(self, chat_id, path: str | Path, caption: str | None = None, reply_to=None) -> int:
         params: dict = {"chat_id": chat_id}

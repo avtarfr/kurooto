@@ -189,7 +189,7 @@ class Telegram(Module):
 
     # ------------------------------------------------------------------------------------ the channel
     def start(self):
-        self.app.notifier.register("telegram", self._send)
+        self.app.notifier.register("telegram", self._send, edit=self._edit)
         self.action("focus_end", lambda p: self.app.notifier.flush_queue())  # a /focus that ends after a restart
         from kurooto.core.events import subscribe
 
@@ -254,6 +254,15 @@ class Telegram(Module):
             self.map_set(mid, msg.map_kind, msg.map_ref)
         return mid
 
+    def _edit(self, ref, msg: Message) -> bool:
+        """Calm folding a notice into an earlier one (core/notify.py edit()): change that message in place."""
+        api, chat = self.api(), self.setting("chat_id")
+        if not api or not chat or not str(ref).isdigit():
+            return False
+        text = f"{msg.title}\n\n{msg.text}" if msg.title else msg.text
+        api.edit(chat, int(ref), text, buttons=msg.buttons, strict=True)
+        return True
+
     def map_set(self, message_id, kind: str, ref) -> None:
         """Remember what a sent message is about, so replies to it and its buttons find their way back."""
         with Lock(self.app.paths.state, "telegram-map"):
@@ -296,7 +305,7 @@ class Telegram(Module):
                 backoff = 5
                 self._net_seen(None)
                 if "telegram" not in self.app.notifier.channels:  # the token works again after a 401
-                    self.app.notifier.register("telegram", self._send)
+                    self.app.notifier.register("telegram", self._send, edit=self._edit)
             except TelegramError as e:
                 self._net_seen(None)  # Telegram answered: the network is fine
                 self.app.events.emit("telegram_error", code=e.code, error=e.description[:200])
@@ -441,7 +450,7 @@ class Telegram(Module):
         add("jobs", "what the AI is working on; cancel it")
         add("fixme", "what's wrong and what to do (no AI needed)")  # core/fixme.py
         add("aboutme", "what I know about you")
-        add("calm", "messages that come by themselves: today's count and limit")  # (calm) core/calm.py
+        add("calm", "messages that come by themselves: today's count, the limit and what waits")  # (calm) core/calm.py
         add("why", "why the last message came")
         add("keep", "what you use of each feature")  # core/keep.py
         add("forget", "forget what I kept of the last days")  # core/retention.py

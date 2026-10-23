@@ -12,6 +12,8 @@ moved deadlines) go into Deadlines; assignment due dates already arrive there th
 It asks Google for two permissions the Classroom deadlines don't need: course materials (read-only) and Google
 Drive (read-only, so it can open the files attached to posts; it opens nothing else). Downloaded files stay in
 Kurooto's own data folder, not in your notes. Posts about topics on your not-interested list are only counted.
+Each check that found something ends in one message, once the AI has filed all of it: what was filed, by title (the
+first eight, then "and N more"), whichever courses it came from.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ import json
 import re
 import shutil
 import urllib.parse
+import uuid
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
@@ -72,6 +75,8 @@ DRIVE_FOLDER = re.compile(r"drive\.google\.com/drive/(?:u/\d+/)?folders/([\w-]{2
 URL = re.compile(r"https?://[^\s<>\"'()\[\]]+")
 TEXT_EXT = {".txt", ".md", ".csv", ".tex", ".py", ".r", ".m", ".json"}
 PER_BATCH = 8  # items per AI request
+LIST_MAX = 8  # titles in the one message a check ends with; more are "and N more"
+RUNS_DAYS = 3  # a check whose requests never all came back is forgotten (and said, if anything was filed) after this
 BUDGET = 60_000  # characters of file text per request (more can be read with read_course_file)
 MAX_PROMPT = 90_000  # a whole batch, so it fits on any computer's command line for agent programs
 START = "<!-- kurooto:exam-prep"  # Kurooto's part of exam-prep.md starts with this line...
@@ -493,10 +498,12 @@ class ClassroomNotes(GooglePart):
         return clip("\n".join(x for x in lines if x is not None), MAX_PROMPT)
 
     def queue(self) -> int:
-        """Hand every batch that isn't already with the AI to it (failed ones are tried again)."""
-        n = 0
+        """Hand every batch that isn't already with the AI to it (failed ones are tried again). The batches handed
+        over together are one run: one message when they're all back (_filed)."""
+        run = "r" + uuid.uuid4().hex[:8]
         with Lock(self.app.paths.state, "classroom-notes-queue"):
             pend = jload(self.dir / "queued.json", {}) or {}
+            todo = []
             for b in sorted((self.dir / "batches").glob("*.json")):
                 job = self.app.jobs.get(pend.get(b.name, "")) if pend.get(b.name) else None
                 if job and job.status in ("queued", "running"):
@@ -505,17 +512,78 @@ class ClassroomNotes(GooglePart):
                 if not data.get("items"):
                     b.unlink(missing_ok=True)
                     continue
+                todo.append((b, data))
+            if todo:
+                self._run_start(run, [b.name for b, _ in todo])
+            for b, data in todo:
                 pend[b.name] = run_skill(
                     self.app,
                     "classroom-digest",
                     self.render(data),
                     title=f"Classroom → notes: {data['course']}",
                     then="classroom_notes.filed",
-                    payload={"batch": b.name},
+                    payload={"batch": b.name, "run": run},
                 )
-                n += 1
             jsave(self.dir / "queued.json", {k: v for k, v in pend.items() if (self.dir / "batches" / k).exists()})
-        return n
+        return len(todo)
+
+    # ------------------------------------------------------------------------------- one message a run
+    def _run_start(self, run: str, names: list[str]) -> None:
+        """A new run of batches. A batch handed over again leaves the run it was in before (a run it was the last
+        one of says what it filed now), and runs older than RUNS_DAYS are let go the same way."""
+        done = []
+        with Lock(self.app.paths.state, "classroom-notes-runs"):
+            runs = jload(self.dir / "runs.json", {}) or {}
+            old = (now() - dt.timedelta(days=RUNS_DAYS)).timestamp()
+            for rid, r in list(runs.items()):
+                r["left"] = [x for x in r.get("left", []) if x not in names]
+                if not r["left"] or float(r.get("at") or 0) < old:
+                    done.append(runs.pop(rid))
+            runs[run] = {"left": list(names), "filed": [], "at": now().timestamp()}
+            jsave(self.dir / "runs.json", runs)
+        for r in done:
+            self._tell_filed(r.get("filed") or [])
+
+    def _run_back(self, run: str | None, name: str, filed: dict | None) -> None:
+        """One batch of a run came back (filed: what it filed, None if the AI didn't manage); the run's message goes
+        once nothing of it is left with the AI."""
+        if not run:  # handed over before runs existed: its own message
+            self._tell_filed([filed] if filed else [])
+            return
+        with Lock(self.app.paths.state, "classroom-notes-runs"):
+            runs = jload(self.dir / "runs.json", {}) or {}
+            r = runs.get(run)
+            if r is None:
+                r = {"left": [], "filed": []}
+            if filed:
+                r["filed"] = [*r.get("filed", []), filed]
+            r["left"] = [x for x in r.get("left", []) if x != name]
+            if r["left"]:
+                runs[run] = r
+            else:
+                runs.pop(run, None)
+            jsave(self.dir / "runs.json", runs)
+        if not r["left"]:
+            self._tell_filed(r.get("filed") or [])
+
+    def _tell_filed(self, filed: list[dict]) -> None:
+        """The one message: what was filed, by title (LIST_MAX of them, then "and N more")."""
+        if not filed:
+            return
+        n = sum(len(f.get("titles") or []) for f in filed)
+        courses = list(dict.fromkeys(f["course"] for f in filed))
+        where = list(dict.fromkeys(f"{f['folder']}/" for f in filed))
+        head = f"Classroom: filed {n} new item{'s' if n != 1 else ''}"
+        head += f" from {courses[0]} into {where[0]}" if len(courses) == 1 and len(where) == 1 else " into your notes"
+        lines = [f"- {t}" + ("" if len(courses) == 1 else f" ({f['course']})") for f in filed for t in f["titles"]]
+        if len(lines) > LIST_MAX:
+            lines = [*lines[:LIST_MAX], f"- and {len(lines) - LIST_MAX} more"]
+        self.app.notify(
+            "\n".join([head + ":", *lines]),
+            kind="result",
+            why="classroom_notes.filed",
+            about=", ".join(courses)[:200],
+        )
 
     def _hubs(self) -> None:
         """Keep the home and research hubs linked to the courses (core/hubs.py); never fails the filing."""
@@ -529,22 +597,21 @@ class ClassroomNotes(GooglePart):
     def _filed(self, job, result, payload) -> None:
         b = self.dir / "batches" / str(payload.get("batch", "x")).replace("/", "")
         data = jload(b, {}) or {}
+        run = payload.get("run")
         if not data:
+            self._run_back(run, b.name, None)
             return
         if result.ok:
             b.unlink(missing_ok=True)
-            n = len(data.get("items", []))
-            self.app.notify(
-                f"Classroom: filed {n} new item{'s' if n != 1 else ''} from {data['course']} into {data['folder']}/.",
-                kind="result",
-                why="classroom_notes.filed",
-                about=data["course"],
-            )
-            self.app.events.emit("classroom_notes_filed", items=n)
+            items = data.get("items", [])
+            self.app.events.emit("classroom_notes_filed", items=len(items))
             self._hubs()
+            titles = [str(it.get("title") or "untitled")[:100] for it in items]
+            self._run_back(run, b.name, {"course": data["course"], "folder": data["folder"], "titles": titles})
             return
         data["tries"] = data.get("tries", 0) + 1
         jsave(b, data)
+        self._run_back(run, b.name, None)  # tried again with the next check's run
         self.app.events.emit("classroom_notes_not_filed", tries=data["tries"])
         if data["tries"] == 3:
             self.app.notify(
