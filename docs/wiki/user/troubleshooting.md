@@ -206,6 +206,11 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | "1 phrasing you taught no longer works" | `/cases`: Unlearn it, then teach it again with `/wrong <words>`. |
 | Research: "repository folder missing" | You moved or deleted it: `/repos remove <folder>`, then `/repos add <new folder>`. |
 | Research: "isn't a git repository (no commits to follow)" | Only a note. `git init` the folder to follow it, or `/repos remove` it. |
+| Research add-on: "the LaTeX tracker needs Tectonic or LaTeX" | There's no LaTeX program on this computer: `/latex install` fetches Tectonic, or install TeX Live, MiKTeX or MacTeX. |
+| Research add-on: "LaTeX folder missing" | You moved or deleted it: `/latex remove <folder>`, then `/latex add <new folder>`. |
+| `/latex add` says there are several documents | Name the one to follow: `/latex add <folder> main.tex`. |
+| `/runs compare` or `kurooto runlog diff` says "matches N runs" | Give more of the id, or use the numbers `/runs` shows. |
+| A run comparison has no code diff ("isn't in <repo> any more", "the repository isn't on this computer") | The commit was rebased away or the repository moved; the config and metrics are still compared. |
 | An arXiv search is refused | An unclosed bracket or quote in the query. |
 | No papers digest arrived | No new papers that week (it only says so when a source failed), or on battery it waits for the charger. |
 | `kurooto watch` says "only shown on this computer" | Kurooto wasn't running: `kurooto start`. |

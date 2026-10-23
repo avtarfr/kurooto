@@ -704,6 +704,18 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `research.topics` | `[]` | older setting: plain keywords searched across all of arXiv (still works) |
 | `research.window_days` | `7` | how far back each digest looks |
 
+### `research_addon`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `research_addon.latex` | `true` | the LaTeX tracker: a nightly build of the folders you attach with /latex add |
+| `research_addon.latex_morning` | `"daily 08:00"` | the one morning line (only when a build broke or you wrote something) |
+| `research_addon.latex_repos` | `[]` | [{"path": folder, "main": "main.tex"}]: only folders you attached with /latex add |
+| `research_addon.latex_timeout_min` | `15` | a build that takes longer is stopped and counts as an error |
+| `research_addon.latex_when` | `"daily 03:30"` | when the nightly LaTeX build runs |
+| `research_addon.members_off` | `[]` | features of the bundle you switched off on its card (they stay off when it's turned on) |
+| `research_addon.run_compare` | `true` | Run compare: /runs and `kurooto runlog diff A B` (a part of the Research add-on) |
+
 ### `retro`
 
 | Setting | Default | What it does |

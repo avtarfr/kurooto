@@ -87,7 +87,7 @@ GROUPS: tuple[Group, ...] = (
         ("sync",),
     ),
     Group("skills", "Skills and routines", "skills-and-routines", ("skills",)),
-    Group("research", "Research", "research", ("research",)),
+    Group("research", "Research", "research", ("research", "research_addon")),
     Group(
         "google",
         "Google",
@@ -228,9 +228,16 @@ def _footer(app: App) -> list[str]:
     out = []
     if app.app_main():
         out.append("You talk to me in the phone app's chat; Telegram is optional (Features → Telegram).")
-    off = [m.title for m in app.modules.values() if not app.is_on(m.id) and m.title]
+    offs = [m for m in app.modules.values() if not app.is_on(m.id) and m.title and not getattr(m, "bundle", "")]
+    off = [m.title for m in offs if not getattr(m, "extra", False)]
+    extras = len(offs) - len(off)  # add-ons that come with Kurooto: named in Features, counted here
     if off:
-        out.append(f"Off right now ({len(off)}): " + ", ".join(off) + ". /help <name> says what one does.")
+        out.append(
+            f"Off right now ({len(off)}): "
+            + ", ".join(off)
+            + (f"; and {extras} add-on{'s' if extras != 1 else ''}" if extras else "")
+            + ". /help <name> says what one does."
+        )
     if not app.is_on("chat"):
         out.append("(Chat is off, so free text isn't sent to an AI.)")
     out.append(f"Everything, with examples, settings and fixes: {wiki()}")

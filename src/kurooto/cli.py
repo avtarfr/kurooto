@@ -31,7 +31,7 @@ kurooto space [--clean]   what Kurooto takes, and cleaning off its own old backu
 kurooto hardware [--profile P] [--add MODEL] [--install]   what this computer suits; go past it and have it installed
 kurooto backup [--to F]  make a backup now · kurooto restore <zip>  put one back (stops, restores, starts)
 kurooto profile save|restore|status   your setup, encrypted in your private repository; restore on a new computer
-kurooto runlog start|metric|note|end|ls   log experiment runs into your notes (research/<project>/runs/)
+kurooto runlog start|metric|note|end|ls|diff   log experiment runs into your notes; diff compares two
 kurooto watch -- CMD...  run a long job; you get a message when it ends (exit code, time, last lines)
 kurooto autostart on|off|status|boot|login   start at sign-in or not; boot: before anyone logs in (Linux)
 kurooto idle away|back   for your idle tool (hypridle, swayidle): you've stepped away / you're back
@@ -611,6 +611,9 @@ def home_parsers(sub) -> None:
     en.add_argument("--run", default=None)
     ls = rsub.add_parser("ls", help="the runs so far")
     ls.add_argument("project", nargs="?")
+    df = rsub.add_parser("diff", help="two runs side by side, into the project's notes (Research add-on)")
+    df.add_argument("a", help="a run's id, a unique piece of it, or its number in /runs")
+    df.add_argument("b")
     w = sub.add_parser("watch", help="run a long job; you get a message when it ends: kurooto watch -- CMD ...")
     w.add_argument("--lines", type=int, default=10, help="how many of its last lines to send (0: none)")
     w.add_argument("--log", default="", metavar="PROJECT", help="also log it as a run of this research project")

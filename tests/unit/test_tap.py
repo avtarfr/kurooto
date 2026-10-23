@@ -19,6 +19,7 @@ SETTING_SINKS = {
     "mail_digest.query": "mail.read",
     "research.repos": "repo.attach",
     "research.projects": "repo.attach",
+    "research_addon.latex_repos": "repo.attach",
 }
 # what a tool gets for each argument (anything else: "test"; booleans: True)
 VALUES = {
