@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 DEFAULT = ".pytest-progress.json"
+_clock = time.time  # the real clock, taken before any test fakes time.time (a faked one froze the bar)
 
 
 def target() -> Path:
@@ -28,13 +29,13 @@ def target() -> Path:
 class _State:
     def __init__(self, path: Path):
         self.path = path
-        self.d = {"total": 0, "done": 0, "failed": [], "skipped": 0, "start": time.time(), "end": None, "now": ""}
+        self.d = {"total": 0, "done": 0, "failed": [], "skipped": 0, "start": _clock(), "end": None, "now": ""}
         self.last = 0.0
 
     def save(self, force: bool = False) -> None:
-        if not force and time.time() - self.last < 0.5:
+        if not force and _clock() - self.last < 0.5:
             return
-        self.last = time.time()
+        self.last = _clock()
         tmp = self.path.with_name(self.path.name + ".tmp")
         tmp.write_text(json.dumps(self.d), encoding="utf-8")
         tmp.replace(self.path)
@@ -74,7 +75,7 @@ def pytest_runtest_logreport(report):
 
 def pytest_sessionfinish(session, exitstatus):
     if _state:
-        _state.d["end"] = time.time()
+        _state.d["end"] = _clock()
         _state.d["exit"] = int(exitstatus)
         _state.save(force=True)
 
