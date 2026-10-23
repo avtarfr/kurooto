@@ -381,3 +381,5 @@ body.dense #sm-body { padding-top: 18px; }
 .sm-note .sm-nk { flex: none; width: 4.6em; }
 .sm-note .sm-t { flex: 1; min-width: 0; }
 .sm-note .r { margin-left: auto; flex: none; }
+
+#cpu-info .item { white-space: nowrap; }

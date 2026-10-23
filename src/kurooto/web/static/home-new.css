@@ -349,3 +349,6 @@ body[data-design="new"] .pw button { padding: 4px 12px; font: 13px var(--ui); }
   body[data-design="new"] .panes-menu, body[data-design="new"] .pane .card { transition: opacity 150ms ease; }
   @starting-style { body[data-design="new"] .panes-menu, body[data-design="new"] .pane .card { transform: none; } }
 }
+
+body[data-design="new"] #cpu-info { display: flex; flex-wrap: wrap; column-gap: 12px; row-gap: 2px; }
+body[data-design="new"] #cpu-info .item { white-space: nowrap; }

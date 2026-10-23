@@ -1242,7 +1242,7 @@ function renderBoard(m) {
   if (t.cpu != null) info.push(`<span class="k">cpu</span> ${temp(t.cpu)}`);
   if (t.disk != null) info.push(`<span class="k">disk</span> ${temp(t.disk)}`);
   if (s.fans && s.fans.length) info.push(`<span class="k">fans</span> <span class="v">${s.fans.join("/")}</span><span class="k"> rpm</span>`);
-  $("#cpu-info").innerHTML = info.join("  ");
+  $("#cpu-info").innerHTML = info.map((x) => `<span class="item">${x}</span>`).join(" "); // each reading stays in one piece when the row wraps
   // memory: used, cached, available, swap
   const mx = s.memx || {}, sw = s.swapx;
   $("#mem-meta").textContent = bytes(mx.total);
