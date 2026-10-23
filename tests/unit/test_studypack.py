@@ -2,6 +2,7 @@
 for another AI. Fakes only."""
 
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -292,3 +293,62 @@ def test_the_command_narrows_to_a_topic_and_the_tool_takes_topics(chat_on, env):
     sk_mod = env.app.modules["skills"]
     out = sk_mod._tool_study_pack({"subject": "pota", "topics": "thermodynamics, radiation"})
     assert out.startswith("On thermodynamics, radiation: 2 class files")
+
+
+def test_a_book_gives_its_chapters_on_the_topic_whole_before_scattered_pages(tmp_path):
+    d = tmp_path / "book"
+    (d / "pages").mkdir(parents=True)
+    for i in range(1, 61):
+        text = "Clouds and droplets" if i == 50 else ("convection here and convection there" if i in (5, 6) else "x")
+        (d / "pages" / f"{i:05d}.md").write_text(text, encoding="utf-8")
+    s = studypack.Source(None, "Book", 60, d, is_class=False)
+    s.chapters = [
+        [1, "CHAPTER NINE: Aerosol and cloud", 40, 55],
+        [2, "9.2 Droplet growth", 44, 48],
+        [1, "Other", 1, 39],
+    ]
+    pages = studypack.book_pages(s, studypack.pattern(["cloud", "convection"]))
+    assert set(range(40, 56)) <= set(pages)  # the matching chapter, whole
+    assert {4, 5, 6, 7} <= set(pages) and 30 not in pages  # and the pages that name it, with a page either side
+
+
+def test_readings_the_class_cites_come_first_and_match_a_book_by_its_name(tmp_path):
+    lecture = [
+        "Lecture 13\nReference\nSalby Chapter 2\nWallace and Hobbs Chapter 3 Section 3.2, 3.4\n"
+        "Physics of the Atmosphere and Climate relevant Chapter 1"
+    ]
+    cited = studypack.citations(lecture)
+    names = sorted((sorted(n), ch, secs) for n, ch, secs in cited)
+    assert (["salby"], 2, []) in names and (["hobbs", "wallace"], 3, ["3.2", "3.4"]) in names
+    assert not any("climate" in n or "relevant" in n for n, _, _ in names)  # what a book is about isn't its name
+    d = tmp_path / "wh"
+    (d / "pages").mkdir(parents=True)
+    pages = ["intro"] * 30
+    pages[9] = "3.2 The hydrostatic equation\ntext"
+    pages[14] = "3.4 Adiabatic processes\nmore"
+    pages[20] = "4.1 Radiation\nother"
+    for i, x in enumerate(pages, 1):
+        (d / "pages" / f"{i:05d}.md").write_text(x, encoding="utf-8")
+    wh = studypack.Source(
+        Path(tmp_path / "Atmospheric Science Wallace Hobbs.pdf"), "Atmospheric Science", 30, d, is_class=False
+    )
+    other = studypack.Source(Path(tmp_path / "Thermal Physics.pdf"), "Thermal Physics", 30, d, is_class=False)
+    rx = studypack.pattern(["knitting"])
+    assert studypack.book_tiers(wh, rx, cited)[0] == list(range(10, 16))  # sections 3.2 to 3.4
+    assert studypack.book_tiers(other, rx, cited)[0] == []  # not cited: no name in common
+
+
+def test_the_study_pack_prompt_is_a_note_you_can_edit(chat_on, env):
+    seed(env)
+    out = env.say("/studypack prompt")
+    f = studypack.prompt_file(env.app)
+    assert out.startswith("Made study-pack prompt:") and f.is_file() and "{name}" in f.read_text(encoding="utf-8")
+    f.write_text("<!-- mine -->\nExplain {name}{scope} like I'm five. {aim_text}. Keep $\\{x\\}$ as it is.\n", "utf-8")
+    path, info = studypack.build(env.app, "deep-learning", "Deep Learning", "quiz on convolutions")
+    with zipfile.ZipFile(path) as z:
+        prompt = z.read("PROMPT.md").decode()
+    assert prompt.startswith("Explain Deep Learning on convolutions like I'm five. quiz on convolutions.")
+    assert "mine" not in prompt and "$\\{x\\}$" in prompt
+    assert env.say("/studypack prompt").startswith("Your study-pack prompt:")  # it's there: not overwritten
+    assert "back to Kurooto's own" in env.say("/studypack prompt reset")
+    assert "Write advanced, rigorous study notes" in studypack.prompt_text("X", app=env.app)

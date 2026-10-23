@@ -221,7 +221,17 @@ material. Class material always comes first: in the zip (`class/`, then `books/`
 which tells the other AI to follow the class where a book disagrees. **A whole book never goes in**: it would flood
 the other AI's context. Without a topic, books are only listed in `INDEX.md`; name a topic to get their pages. A book
 Books hasn't read yet can't be cut to its pages, so it stays out too. The AI can do the same when you ask in plain
-words ("send me everything on thermodynamics for my POTA quiz"). The subject can be its name or a short name; your
+words ("send me everything on thermodynamics for my POTA quiz").
+
+Which pages of a book go in, in order: first the readings your class material cites ("Reference: Salby Chapter 2",
+"Wallace and Hobbs Chapter 3 Section 3.2, 3.3"), then whole chapters and sections whose titles name the topic (from
+the book's own bookmarks), then other pages that mention it, those mentioning it most first. All the books together
+keep to 250 pages, about what another AI can hold at once; `INDEX.md` lists what didn't fit. Lecture files Books hasn't
+read are judged by Classroom's text of them, and a file that's both in Classroom and in your books folder goes in once.
+
+**Your own prompt.** `/studypack prompt` puts the prompt every pack gives the other AI into your notes
+(`kurooto/study-pack-prompt.md`) to edit; `{name}`, `{topics}`, `{aim}` and the other words listed at its top are
+filled in for each pack. `/studypack prompt reset` brings Kurooto's back. The subject can be its name or a short name; your
 AI can make one for you too ("make me a study pack for statistics").
 
 **What's in the zip:**

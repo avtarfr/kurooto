@@ -48,6 +48,7 @@ KINDS: dict[str, tuple[str, tuple[str, ...]]] = {
     "not_interested": ("topics you don't care about", ()),
     "recurring": ("recurring quizzes and tests", ()),
     "ideas": ("ideas from the nightly look back", ()),
+    "study_pack_prompt": ("the prompt study packs give another AI (edit it to change what they ask for)", ()),
     "skills": ("your own skills (folder)", ()),
     "prompts": ("your prompt library (folder)", ()),
     "inbox": ("quick notes and captures (folder)", ()),
@@ -75,6 +76,7 @@ PRESETS: dict[str, dict[str, str]] = {
         "not_interested": "about-me/not-interested.md",
         "recurring": "kurooto/recurring.md",
         "ideas": "kurooto/ideas.md",
+        "study_pack_prompt": "kurooto/study-pack-prompt.md",
         "skills": "kurooto/skills",
         "prompts": "prompts",
         "inbox": "inbox",
@@ -100,6 +102,7 @@ PRESETS: dict[str, dict[str, str]] = {
         "not_interested": "master/not-interested.md",
         "recurring": "master/recurring-assessments.md",
         "ideas": "master/ideas.md",
+        "study_pack_prompt": "master/study-pack-prompt.md",
         "skills": "master/skills",
         "prompts": "prompts",
         "inbox": "inbox",
@@ -185,6 +188,7 @@ ZETTEL_TAGS = {
     "not_interested": ["master", "assistant"],
     "recurring": ["master", "assistant"],
     "ideas": ["master", "assistant"],
+    "study_pack_prompt": ["master", "assistant"],
     "profile": ["master", "about-me"],
 }
 

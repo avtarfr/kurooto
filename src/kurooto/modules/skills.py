@@ -1088,7 +1088,20 @@ class Skills(Module):
         if not text:
             return (
                 "Which subject? /studypack deep learning quiz on thursday (the rest says what it's for; name a topic "
-                "to narrow it: /studypack pota quiz on thermodynamics)"
+                "to narrow it: /studypack pota quiz on thermodynamics). /studypack prompt: edit what packs ask the AI."
+            )
+        m = re.fullmatch(r"prompt(?:\s+(reset|default))?", text, re.I)
+        if m:  # the prompt every pack gives the other AI, as a note of yours to edit
+            from kurooto.core import layout, studypack
+
+            f, made = studypack.make_prompt_file(self.app, reset=bool(m[1]))
+            where = layout.shown(self.app, f)
+            if m[1]:
+                return f"The study-pack prompt is back to Kurooto's own, in {where}."
+            return (
+                f"{'Made' if made else 'Your'} study-pack prompt: {where}. Edit it in your notes; every pack uses it "
+                "from now on ({name}, {topics} and {aim} are filled in; the note's top lists them all). "
+                "/studypack prompt reset puts Kurooto's back."
             )
         subj = self.app.modules.get("subjects")
         found = subj.find_in(text) if subj is not None and self.app.is_on("subjects") else []
@@ -1120,7 +1133,7 @@ class Skills(Module):
             ok and "telegram" in self.app.notifier.channels
         ):  # the prompt on its own, ready to copy (it's in the zip too)
             self.app.notify(
-                studypack.prompt_text(title, aim, info["topics"]),
+                studypack.prompt_text(title, aim, info["topics"], self.app),
                 kind="result",
                 title=f"Prompt for the {title} pack",
                 why="asked",

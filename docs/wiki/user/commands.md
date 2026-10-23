@@ -98,7 +98,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/examseason` | exam season: dates, exams and parts (tap a part to switch it) | Exam season (optional) |
 | `/hint la` (with a photo, or the problem typed after it) | one hint at a time | Hint ladder |
 | `/pack linear algebra midterm` | a revision PDF from your notes | Skills |
-| `/studypack <subject> [what it's for]`, e.g. `/studypack la quiz on eigenvalues` | a zip of a subject's materials, with a prompt for another AI sent as its own message; a topic narrows it, class material first; over 50 MB comes as a temporary Drive link | Skills |
+| `/studypack <subject> [what it's for]`, e.g. `/studypack la quiz on eigenvalues`; `/studypack prompt` (edit the prompt), `/studypack prompt reset` | a zip of a subject's materials, with a prompt for another AI sent as its own message; a topic narrows it, class material first; over 50 MB comes as a temporary Drive link | Skills |
 | `/study`, `/study week`, `/study la 50`, `/study stop` | study time; start or stop a session away from the computer | Study tracker |
 | `/studied 2h linear algebra` | log study time done away from the computer | Study tracker |
 | `/books`, `/books read now`, `/books read force` (also on battery), `/books stop`, `/books folder la`, `/books mix la book 30 classroom 30 own 40`, `/books mix la prefer own book classroom`, `/books mix la reset`, `/books setup` | your books and how far reading got; the source mix | Books and PDFs |

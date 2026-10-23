@@ -28,6 +28,7 @@ WANT = {  # kind, fields -> (kurooto, zettelkasten)
     ("not_interested", ()): ("about-me/not-interested.md", "master/not-interested.md"),
     ("recurring", ()): ("kurooto/recurring.md", "master/recurring-assessments.md"),
     ("ideas", ()): ("kurooto/ideas.md", "master/ideas.md"),
+    ("study_pack_prompt", ()): ("kurooto/study-pack-prompt.md", "master/study-pack-prompt.md"),
     ("skills", ()): ("kurooto/skills", "master/skills"),
     ("prompts", ()): ("prompts", "prompts"),
     ("inbox", ()): ("inbox", "inbox"),

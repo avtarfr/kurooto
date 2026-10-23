@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import re
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,7 +40,8 @@ MAX_ZIP = 48 * 1024 * 1024  # under Telegram's 50 MB, leaving room for the notes
 MAX_NOTE = 400 * 1024
 MAX_FILE = 40 * 1024 * 1024
 MAX_NOTES = 600  # notes read to find the ones that link to the subject
-MAX_BOOK_PAGES = 150  # a topic's pages from one book, at most
+MAX_BOOK_PAGES = 200  # a topic's pages from one book, at most (its matching chapters first)
+MAX_PACK_BOOK_PAGES = 250  # and from all the books together (about 900 KB of text), readings the class cites first
 FILE_TYPES = {".pdf", ".pptx", ".ppt", ".docx", ".doc", ".ipynb", ".txt", ".md", ".tex", ".py", ".csv", ".png", ".jpg"}
 
 CLASS_PAGES, BOOK_PAGES = 40, 80  # at most this long: class material; longer than this: a book
@@ -223,12 +224,37 @@ class Source:
     text_dir: Path | None = None  # Books' copy: pages/00001.md …
     base: Path | None = None  # the folder it came from (its place in the zip)
     is_class: bool = True
+    chapters: list = field(default_factory=list)  # Books' bookmarks: [level, title, first page, last page]
+    text_file: Path | None = None  # or Classroom's text of it (<file>.txt; a PDF's pages split by form feeds)
 
     def page_texts(self) -> list[str]:
         d = self.text_dir / "pages" if self.text_dir else None
-        if not d or not d.is_dir():
-            return []
-        return [p.read_text(encoding="utf-8", errors="replace") for p in sorted(d.glob("*.md"))]
+        if d and d.is_dir():
+            return [p.read_text(encoding="utf-8", errors="replace") for p in sorted(d.glob("*.md"))]
+        if self.text_file and self.text_file.is_file():
+            text = self.text_file.read_text(encoding="utf-8", errors="replace")
+            pages = text.split("\f") if "\f" in text else [text]
+            return pages[:-1] if len(pages) > 1 and not pages[-1].strip() else pages  # pdftotext ends with one
+        return []
+
+
+def sidecar(f: Path) -> Path | None:
+    """Classroom's text of a downloaded file, kept next to it as <name>.txt."""
+    s = f.with_name(f.name + ".txt")
+    return s if s.is_file() else None
+
+
+def words_of(name: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z]+\d*|\d+", name.lower()) if len(w) > 2 and not w.isdigit()}
+
+
+def same_doc(a: Source, b: Source) -> bool:
+    """Two copies of one file (Books' and Classroom's, maybe one a PDF of the other's slides): most of the name in
+    common, and the same number of pages where both are known."""
+    if a.pages and b.pages and a.pages != b.pages:
+        return False
+    wa, wb = words_of(f"{a.title} {a.path.name if a.path else ''}"), words_of(b.path.stem if b.path else b.title)
+    return len(wa & wb) >= 3 or (bool(wa & wb) and (wa <= wb or wb <= wa))
 
 
 def is_class(name: str, pages: int = 0, size: int = 0) -> bool:
@@ -286,13 +312,21 @@ def sources(app: App, subject: str) -> list[Source]:
             f if f and f.is_file() else None, title, int(m.get("pages") or 0), meta_f.parent, f.parent if f else None
         )
         s.is_class = is_class(f"{name} {title}", s.pages)
+        s.chapters = [c for c in m.get("chapters") or [] if isinstance(c, list) and len(c) >= 4]
         read[str(f.resolve()) if f else meta_f.parent.name] = s
     out = list(read.values())
-    base_of = {f: d for d in course_folders(app, subject) for f in course_files(app, subject) if d in f.parents}
-    for f in course_files(app, subject):
-        if str(f.resolve()) in read:
+    files = course_files(app, subject)
+    base_of = {f: d for d in course_folders(app, subject) for f in files if d in f.parents}
+    texts = {sidecar(f) for f in files} - {None}
+    for f in files:
+        if str(f.resolve()) in read or f in texts:  # a file's text (<name>.txt) belongs to the file, not a source
             continue
-        out.append(Source(f, f.stem, base=base_of.get(f, f.parent), is_class=is_class(f.name, size=f.stat().st_size)))
+        s = Source(f, f.stem, base=base_of.get(f, f.parent), text_file=sidecar(f))
+        s.pages = len(s.page_texts()) if f.suffix.lower() == ".pdf" and s.text_file else 0
+        s.is_class = is_class(f.name, s.pages, f.stat().st_size)
+        if any(same_doc(r, s) for r in read.values()):  # Books has it already (with better text)
+            continue
+        out.append(s)
 
     def newest(s: Source) -> float:
         try:
@@ -303,15 +337,138 @@ def sources(app: App, subject: str) -> list[Source]:
     return sorted(out, key=lambda s: (not s.is_class, newest(s), s.title))
 
 
-def book_pages(s: Source, rx: re.Pattern) -> list[int]:
-    """The pages of a book about the topic (1-based): a page that names it twice, or once in a heading, with the page
-    either side; at most MAX_BOOK_PAGES."""
+NUMBER_WORDS = (
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen".split()
+)
+STOP = {"and", "the", "for", "with", "from", "chapter", "section", "sections", "reference", "references", "reading"}
+# words that name what a book is about, not which book it is: a citation matches a book by a name (Salby, Hobbs)
+GENERIC = set(
+    """physics atmosphere atmospheric climate science sciences introduction introductory survey relevant potential
+    temperature mass stratification notes lecture lectures course text textbook book books edition vol volume part
+    advanced theory principles fundamentals thermal dynamics thermodynamics weather ocean earth planetary""".split()
+)
+CITE = re.compile(
+    r"(?P<book>[A-Za-z][A-Za-z.&' -]{1,40}?)[\s,:]+(?:chapter|ch\.?)\s*(?P<ch>\d{1,2})\b"
+    r"(?P<rest>(?:[\s,;:]*(?:and\s+)?(?:sections?|sec\.?|§)?\s*\d{1,2}(?:\.\d{1,2})+)*)",
+    re.I,
+)
+
+
+def citations(texts: list[str]) -> list[tuple[set[str], int, list[str]]]:
+    """The readings class material cites ("Reference: Salby Chapter 2", "Wallace and Hobbs Chapter 3 Section 3.2,
+    3.3"): (the book's name words, chapter, sections), once each."""
+    out: dict[tuple, tuple] = {}
+    for text in texts:
+        for m in CITE.finditer(" ".join(text.split())):
+            name = {w for w in words_of(m["book"]) if w not in STOP and w not in GENERIC}
+            if not name:
+                continue
+            secs = re.findall(r"\d{1,2}(?:\.\d{1,2})+", m["rest"] or "")
+            key = (frozenset(name), int(m["ch"]))
+            old = out.get(key, (name, int(m["ch"]), []))
+            out[key] = (name, int(m["ch"]), sorted(set(old[2]) | set(secs)))
+    return list(out.values())
+
+
+def chapter_span(s: Source, ch: int, secs: list[str]) -> list[int]:
+    """The pages of a chapter (or of just those sections) of a book: from its bookmarks when Books kept them, else
+    from the section numbers ("3.2 The hydrostatic equation") at the top of its pages."""
+    want = secs or [str(ch)]
+    pages: set[int] = set()
+    word = NUMBER_WORDS[ch] if ch < len(NUMBER_WORDS) else str(ch)
+
+    def marked(x: str) -> set[int]:
+        out: set[int] = set()
+        for _lvl, title, first, last, *_ in s.chapters:
+            tt = str(title).strip().lower()
+            whole = not secs and re.match(rf"chapter\s+({ch}|{word})\b", tt)
+            if whole or (secs and re.match(rf"{re.escape(x)}(\.|\s|$)", tt)):
+                try:
+                    out |= set(range(int(first), int(last) + 1))
+                except (TypeError, ValueError):
+                    continue
+        return out
+
+    for x in want:
+        got = marked(x)
+        while not got and secs and x.count(".") > 1:  # 1.2.1 isn't bookmarked: its section 1.2 is
+            x = x.rsplit(".", 1)[0]
+            got = marked(x)
+        pages |= got
+    if pages or s.chapters:
+        return sorted(pages)
     texts = s.page_texts()
+    # a section heading at the top of a page: "3.2 The hydrostatic equation" (a chapter: any "3.x Title")
+    want = [x if secs else f"{x}\\.\\d+" for x in (re.escape(y) for y in want)]
+    head = re.compile(r"(?m)^\s*(" + "|".join(want) + r")(\.\d+)*\s+[A-Z][a-z]")
+    tops = [i for i, t in enumerate(texts, 1) if head.search(t[:600])]
+    if not tops:
+        return []
+    lo, hi = min(tops), max(tops)
+    return list(range(lo, min(hi + 1, lo + 80)))  # a chapter, not the book: a cited span stays under 80 pages
+
+
+def book_tiers(s: Source, rx: re.Pattern, cited: list[tuple[set[str], int, list[str]]]) -> list[list[int]]:
+    """A book's pages on the topic in three tiers, most wanted first: [what class material cites from it, its chapters
+    or sections whose title names the topic (whole, from Books' bookmarks), other pages that name it twice or in a
+    heading (with a page either side), those naming it most first]."""
+    texts = s.page_texts()
+    n = len(texts)
+    mine = words_of(f"{s.title} {s.path.name if s.path else ''}")
+    tier0: list[int] = []
+    for name, ch, secs in cited:
+        if name & mine:
+            tier0 += chapter_span(s, ch, secs)
+    tier0 = [p for p in dict.fromkeys(tier0) if 1 <= p <= n]
+    seen = set(tier0)
+    covered: list[tuple[int, int]] = []
+    tier1: list[int] = []
+    for _lvl, title, first, last, *_ in sorted(s.chapters, key=lambda c: c[0]):  # chapters before their sections
+        try:
+            first, last = int(first), int(last)
+        except (TypeError, ValueError):
+            continue
+        if not hits(rx, str(title)) or any(a <= first and last <= b for a, b in covered):
+            continue
+        covered.append((first, last))
+        tier1 += [p for p in range(max(1, first), min(n, last) + 1) if p not in seen]
+    tier1 = list(dict.fromkeys(tier1))
+    seen |= set(tier1)
     keep: set[int] = set()
     for i, t in enumerate(texts, 1):
         if hits(rx, t) >= 2 or hits(rx, " ".join(re.findall(r"(?m)^#+ .*$|^[A-Z0-9 .:-]{6,}$", t))):
             keep |= {i - 1, i, i + 1}
-    return sorted(p for p in keep if 1 <= p <= len(texts))[:MAX_BOOK_PAGES]
+    tier2 = sorted((p for p in keep if 1 <= p <= n and p not in seen), key=lambda p: -hits(rx, texts[p - 1]))
+    return [tier0, tier1, tier2]
+
+
+def book_pages(s: Source, rx: re.Pattern, cited: list | None = None) -> list[int]:
+    """The pages of a book about the topic, most wanted first (book_tiers); at most MAX_BOOK_PAGES."""
+    t0, t1, t2 = book_tiers(s, rx, cited or [])
+    return (t0 + t1 + t2)[:MAX_BOOK_PAGES]
+
+
+def book_share(books: list[Source], rx: re.Pattern, cited: list | None = None) -> dict[int, tuple[list[int], int]]:
+    """Each book's pages within MAX_PACK_BOOK_PAGES for all of them, tier by tier across the books: first what class
+    material cites, then the chapters named for the topic, then an even share of the other pages (what a short book
+    doesn't need going to the longer ones). {id(book): (pages, how many on the topic didn't fit)}."""
+    tiers = {id(s): book_tiers(s, rx, cited or []) for s in books if s.page_texts()}
+    for k, (a, b, c) in tiers.items():  # one book's own limit
+        room = MAX_BOOK_PAGES
+        tiers[k] = [a[:room], b[: max(0, room - len(a))], c[: max(0, room - len(a) - len(b))]]
+    left = MAX_PACK_BOOK_PAGES
+    chosen: dict[int, list[int]] = {k: [] for k in tiers}
+    for tier in (0, 1):
+        for k in sorted(tiers, key=lambda k: len(tiers[k][tier])):
+            take = tiers[k][tier][:left]
+            chosen[k] += take
+            left -= len(take)
+    rest = sorted(tiers, key=lambda k: len(tiers[k][2]))
+    for i, k in enumerate(rest):
+        take = tiers[k][2][: left // max(1, len(rest) - i)]
+        chosen[k] += take
+        left -= len(take)
+    return {k: (sorted(chosen[k]), sum(len(x) for x in tiers[k]) - len(chosen[k])) for k in tiers}
 
 
 def ranges(pages: list[int]) -> str:
@@ -330,21 +487,74 @@ def ranges(pages: list[int]) -> str:
 
 
 # --------------------------------------------------------------------------------------------- pack
-def prompt_text(name: str, aim: str = "", topics: list[str] | None = None) -> str:
-    """The prompt for another AI, as it goes in PROMPT.md (and, on its own, in the chat next to the zip)."""
+PLACEHOLDERS = """<!--
+The prompt every study pack gives another AI, as it goes in PROMPT.md and in the message next to the zip. Edit it
+freely: packs use this file from now on (/studypack prompt reset puts the default back). These words are filled in:
+  {name}       the subject, e.g. Physics of the Atmosphere
+  {aim}        "What it's for: <your aim>." and a blank line, or nothing
+  {aim_text}   just your aim, e.g. quiz on thermodynamics
+  {topic}      ", narrowed to **<topics>**", or nothing
+  {topics}     the topics, e.g. thermodynamics, lapse rate (or nothing)
+  {book_note}  what the books/ folder holds
+  {scope}      " on <topics>", or " for this course"
+Lines inside these comment markers are left out.
+-->
+"""
+
+
+def prompt_file(app: App) -> Path:
+    from kurooto.core import layout
+
+    return layout.path(app, "study_pack_prompt")
+
+
+def prompt_template(app: App | None) -> str:
+    """Your own prompt (the study_pack_prompt note) when you made one, else Kurooto's."""
+    if app is not None:
+        try:
+            f = prompt_file(app)
+            if f.is_file():
+                text = re.sub(r"<!--.*?-->\s*", "", f.read_text(encoding="utf-8"), flags=re.S).strip()
+                if text:
+                    return text + "\n"
+        except OSError:
+            pass
+    return PROMPT
+
+
+def prompt_text(name: str, aim: str = "", topics: list[str] | None = None, app: App | None = None) -> str:
+    """The prompt for another AI, as it goes in PROMPT.md (and, on its own, in the chat next to the zip): your own
+    (prompt_file) when you made one."""
     if topics is None:
         topics = topics_of(aim)
-    aim = (aim.strip().rstrip(".") + ".\n\n") if aim.strip() else ""
+    aim_text = aim.strip().rstrip(".")
     shown = ", ".join(topics)
-    return PROMPT.format(
-        name=name,
-        aim=f"What it's for: {aim}" if aim else "",
-        topic=f", narrowed to **{shown}**" if topics else "",
-        book_note=" (only their pages on the topic, as text, with the page numbers)"
+    words = {
+        "name": name,
+        "aim": f"What it's for: {aim_text}.\n\n" if aim_text else "",
+        "aim_text": aim_text,
+        "topic": f", narrowed to **{shown}**" if topics else "",
+        "topics": shown,
+        "book_note": " (only their pages on the topic, as text, with the page numbers)"
         if topics
         else " (none: name a topic)",
-        scope=f" on {shown}" if topics else " for this course",
-    )
+        "scope": f" on {shown}" if topics else " for this course",
+    }
+    text = prompt_template(app)
+    for k, v in words.items():  # plain replacing: a LaTeX {x} in your prompt stays as it is
+        text = text.replace("{" + k + "}", v)
+    return text
+
+
+def make_prompt_file(app: App, reset: bool = False) -> tuple[Path, bool]:
+    """Write Kurooto's prompt as your study_pack_prompt note to edit (unless it's there and not reset). Returns (its
+    path, whether it was written now)."""
+    f = prompt_file(app)
+    if f.is_file() and not reset:
+        return f, False
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(PLACEHOLDERS + "\n" + PROMPT, encoding="utf-8")
+    return f, True
 
 
 def build(
@@ -399,11 +609,21 @@ def build(
             z.write(f, a)
             total += f.stat().st_size
             index["notes"].append(f"- {a}")
+        cited = citations([x for s in srcs if s.is_class for x in s.page_texts()]) if rx else []
+        share = book_share([s for s in srcs if not s.is_class], rx, cited) if rx else {}
         for s in srcs:
             where = "class" if s.is_class else "books"
             texts = s.page_texts() if rx else []
             if rx and not s.is_class and texts:  # a book: only its pages on the topic, as text
-                pages = book_pages(s, rx)
+                pages, cut = share.get(id(s), ([], 0))
+                if cut:
+                    out.append(
+                        (
+                            s.title,
+                            f"{cut} more pages on the topic: the books together keep to "
+                            f"{MAX_PACK_BOOK_PAGES} pages, what the other AI can hold at once",
+                        )
+                    )
                 if not pages:
                     continue
                 body = f"# {s.title}: pages {ranges(pages)}\n\n" + "\n\n".join(
@@ -422,9 +642,9 @@ def build(
                 why = "not read by Books yet, so its pages on the topic can't be picked" if rx else "name a topic"
                 whole.append(f"- {s.title}" + (f" ({s.pages} pages)" if s.pages else "") + f": {why}")
                 continue
-            if rx:  # class material: in if it's about the topic at all
-                about = hits(rx, s.title) or (sum(hits(rx, t) for t in texts) if texts else 0)
-                if not about:
+            if rx:  # class material: in if its title names the topic, or its text does twice
+                named = hits(rx, f"{s.title} {s.path.name if s.path else ''}")
+                if not named and (sum(hits(rx, t) for t in texts) if texts else 0) < 2:
                     continue
             if s.path is None:
                 continue
@@ -452,7 +672,7 @@ def build(
         if out:
             text += ["", "## Left out\n", *(f"- {n}: {why}" for n, why in out)]
         z.writestr("INDEX.md", "\n".join(text) + "\n")
-        z.writestr("PROMPT.md", prompt_text(name, aim, topics))
+        z.writestr("PROMPT.md", prompt_text(name, aim, topics, app))
     n_class, n_books = len(index["class"]), len(index["books"])
     if rx and not (index["notes"] or n_class or n_books):
         dest.unlink(missing_ok=True)

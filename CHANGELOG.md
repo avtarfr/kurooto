@@ -25,6 +25,13 @@
   for people and AI agents (architecture, every subsystem, how to add a feature, tests, releases), in `docs/wiki/`.
 - **Exam season is an add-on**: listed apart under Features, off until you turn it on, and in no preset ("Everything"
   leaves it out). If it was on, it stays on.
+- **Study packs pick a book's pages like a student would**: first the readings the class itself cites ("Reference:
+  Salby Chapter 2, Wallace and Hobbs Chapter 3 Section 3.2"), then whole chapters and sections whose titles name the
+  topic (from the book's bookmarks), then other pages about it; all the books together keep to 250 pages, what another
+  AI can hold. Lecture files Books hasn't read count too (Classroom's text of them), and a file that's both in Classroom and
+  in your books folder goes in once.
+- **Edit what study packs ask for**: `/studypack prompt` makes the prompt a note of yours (`kurooto/study-pack-prompt.md`)
+  with `{name}`, `{topics}` and `{aim}` filled in; every pack uses it; `/studypack prompt reset` puts Kurooto's back.
 - **Study packs never hold a whole book**: it would flood the other AI's context; name a topic to get a book's pages.
 - **Study packs for one topic, class first**: `/studypack pota quiz on thermodynamics` (or the AI's study_pack tool with
   `topics`) takes only what's about it: class files that mention it, the pages of each book that do (as text, with the
