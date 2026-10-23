@@ -7,6 +7,7 @@ setting. Keys are dotted: get("checkins.evening"), set("checkins.evening", "21:3
 from __future__ import annotations
 
 import copy
+import os
 from pathlib import Path
 
 from kurooto.core.state import jload, jsave
@@ -24,36 +25,58 @@ def merge(base: dict, over: dict | None) -> dict:
 
 # your add-ons' settings.json (core/overlay.py): defaults laid between Kurooto's own and yours
 _LAYER: dict = {}
+# bumped whenever the defaults or the layer change, so every Settings' cached merge is made again
+_GEN = [0]
 
 
 def set_layer(defaults: dict | None) -> None:
     """Defaults from your add-ons folder: over the registered ones, under your own settings."""
     _LAYER.clear()
     _LAYER.update(copy.deepcopy(defaults or {}))
+    _GEN[0] += 1
 
 
 def register_defaults(section: str, defaults: dict) -> None:
     """A module declares its settings and their defaults under its own section."""
     _DEFAULTS[section] = merge(_DEFAULTS.get(section, {}), defaults)
+    _GEN[0] += 1
 
 
 class Settings:
     def __init__(self, file: Path):
         self.file = Path(file)
+        # the merged settings and what they were made from: ((file's mtime, size, inode, _GEN), tree). Merging copies
+        # every default, and a dashboard request asks for settings a thousand times or more (0.6.1: 10 s a request).
+        self._cache: tuple | None = None
 
     def user(self) -> dict:
         return jload(self.file, {}) or {}
 
+    def _merged(self) -> dict:
+        """The merged tree, made again only when the file (changed here, by the CLI or by hand) or the defaults
+        changed. Shared: never hand it out, only copies of its parts."""
+        try:
+            st = os.stat(self.file)
+            key = (st.st_mtime_ns, st.st_size, st.st_ino, _GEN[0])
+        except OSError:
+            key = (None, None, None, _GEN[0])
+        c = self._cache
+        if c is not None and c[0] == key:
+            return c[1]
+        tree = merge(merge(_DEFAULTS, _LAYER) if _LAYER else _DEFAULTS, self.user())
+        self._cache = (key, tree)
+        return tree
+
     def all(self) -> dict:
-        return merge(merge(_DEFAULTS, _LAYER) if _LAYER else _DEFAULTS, self.user())
+        return copy.deepcopy(self._merged())
 
     def get(self, dotted: str, default=None):
-        cur = self.all()
+        cur = self._merged()
         for k in dotted.split("."):
             if not isinstance(cur, dict) or k not in cur:
                 return default
             cur = cur[k]
-        return cur
+        return copy.deepcopy(cur) if isinstance(cur, (dict, list)) else cur  # the caller may change what it gets
 
     def set(self, dotted: str, value):
         """Change one setting and return its previous value."""
@@ -68,6 +91,7 @@ class Settings:
             cur = nxt
         cur[keys[-1]] = value
         jsave(self.file, raw)
+        self._cache = None
         return old
 
     def reset(self, dotted: str) -> None:
@@ -82,3 +106,4 @@ class Settings:
         if keys[-1] in cur:
             del cur[keys[-1]]
             jsave(self.file, raw)
+            self._cache = None

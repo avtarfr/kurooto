@@ -8,6 +8,9 @@
 - **Today's events in time order:** your calendars' events came one calendar after another (23:00, 12:00, 19:30...);
   they're sorted now, all-day first, on the phone, the morning page, the wake-up call and "what's on today?". A block
   that began the night before says "until 06:00" instead of looking like tonight's.
+- **The dashboard and setup page are fast again:** each setting Kurooto looked up copied all of its settings, and a
+  page asked a thousand times or more, so the dashboard's Today took 3 to 9 seconds and the setup page's 5 to 13. Now
+  0.06 and 0.2 seconds. The concept graph's card also stopped re-splitting every queued book on each look.
 - **AGENTS.md** covers 0.6.0: Quick ask, add-ons by link, run compare, an empty Today, held requests and draft checks.
 
 ## 0.6.0 (2026-10-24)

@@ -68,6 +68,9 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
   PDF's bookmarks to level 2, kept by `Books.finish` in `meta["outline"]`, and `total` is the book's page count. A
   book whose ledger entry has `"plan": "text"` (set by `record()` for a book that had batches before 0.5.8) keeps the
   old cut: no outline, up to the last page read, so its batch ids don't change.
+  The result is kept in `Integrate._plans` per item, with what it was made from (the text file's mtime and size,
+  the batch size, and for a book the outline, page count and plan kind); 0.6.1, because the dashboard's card asks
+  for every queued item's batches on each request.
 - Tests: `tests/unit/test_segment.py`.
 
 ## 3. Candidates (`core/conceptgraph.py`, no AI)

@@ -31,8 +31,12 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
   defaults and the user's file; it can't set `modules`, `overlay` or `profile` (`overlay.NO_DEFAULTS`).
 - API: `get("a.b.c", default)`, `set("a.b", value) -> old` (rewrites the user file with `jsave`), `reset("a.b")`
   (drops the override). Dotted keys address nested dicts.
-- `Settings` reads the file on every `get`; there is no cache and no cross-process lock, so the CLI and the daemon can
-  overwrite each other's concurrent `set`. Change settings in the daemon (the API's `POST /api/settings` or a module
+- `Settings` keeps the merged tree (`_merged`) and makes it again only when the file's mtime, size or inode changed
+  (a `set` here, the CLI, a hand edit) or the defaults or layer did (`register_defaults` and `set_layer` bump `_GEN`).
+  `get` hands out a copy of a dict or list it returns, `all()` a copy of the whole tree, so callers may change what
+  they get. Before 0.6.1 every `get` merged and deep-copied everything (about 6 ms), and a dashboard request made a
+  thousand or more: 5 to 13 s for `/api/state` and `/api/today`. There is no cross-process lock, so the CLI and the
+  daemon can overwrite each other's concurrent `set`. Change settings in the daemon (the API's `POST /api/settings` or a module
   method), not by editing the file while it runs.
 - Sections and where they are registered (the full list with every key and default is generated into
   `docs/SETTINGS_GUIDE.md` by `tools/gen_settings_guide.py`; `tests/unit/test_settings_guide.py` fails when it's stale,

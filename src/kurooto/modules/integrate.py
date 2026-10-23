@@ -182,6 +182,9 @@ class Integrate(Module):
         self._index: cg.Index | None = None
         self._store: cg.VectorStore | None = None
         self.budget = readbudget.Budget(app, lambda: self.roles()[0])  # how much a night (integrate.per_night)
+        # each item's batches and what they were planned from (its text file, outline, size): planning splits the whole
+        # text, and the dashboard's card asks for every queued item's batches on each request (0.6.1)
+        self._plans: dict[str, tuple] = {}
 
     # ------------------------------------------------------------------------------------------------- places
     @property
@@ -523,20 +526,37 @@ class Integrate(Module):
         else from the page text), sized by integrate.batch_pages. A book whose batches began before 0.5.8 keeps the
         batches it began with (the ledger's "plan": "text": no bookmarks, up to the last page read), so nothing is
         asked twice. Anything else: its sections from its text, the same way."""
-        pages = self.pages_of(b)
-        if self.source_of(b) != "books":
-            total = max(pages) if pages else 0
-            return segment.batches(segment.sections(pages, [], total), total, int(self.setting("batch_pages") or 12))
-        meta = self.books.meta(b)
-        bk = (self.load("ledger.json", {}).get("books", {}) or {}).get(self.key(b), {}) or {}
-        outline: list[tuple[int, str, int]] = []
-        if bk.get("plan", "text" if bk.get("batches") else "outline") == "outline":
-            outline = [(int(lv), str(t), int(p)) for lv, t, p in meta.get("outline") or [] if p]
-            total = int(meta.get("pages") or 0) or (max(pages) if pages else 0)
+        books = self.source_of(b) == "books"
+        f = self.books.book_dir(b) / "text.md" if books else self.dir / "texts" / f"{b['id']}.txt"
+        try:
+            st = f.stat()
+            sig: tuple = (st.st_mtime_ns, st.st_size)
+        except OSError:
+            sig = ()
+        if not books:
+            size = int(self.setting("batch_pages") or 12)
+            made_from: tuple = (sig, size)
         else:
+            meta = self.books.meta(b)
+            bk = (self.load("ledger.json", {}).get("books", {}) or {}).get(self.key(b), {}) or {}
+            outline: list[tuple[int, str, int]] = []
+            by_outline = bk.get("plan", "text" if bk.get("batches") else "outline") == "outline"
+            if by_outline:
+                outline = [(int(lv), str(t), int(p)) for lv, t, p in meta.get("outline") or [] if p]
+            size = int(self.setting("batch_pages") or segment.TARGET)
+            made_from = (sig, size, by_outline, tuple(outline), int(meta.get("pages") or 0))
+        kept = self._plans.get(self.key(b))
+        if kept and kept[0] == made_from:
+            return list(kept[1])
+        pages = self.pages_of(b)
+        if not books:
             total = max(pages) if pages else 0
-        secs = segment.sections(pages, outline, total)
-        return segment.batches(secs, total, int(self.setting("batch_pages") or segment.TARGET))
+            out = segment.batches(segment.sections(pages, [], total), total, size)
+        else:
+            total = (made_from[4] if by_outline else 0) or (max(pages) if pages else 0)
+            out = segment.batches(segment.sections(pages, outline, total), total, size)
+        self._plans[self.key(b)] = (made_from, out)
+        return list(out)
 
     def ready_batches(self) -> list[tuple[dict, segment.Batch]]:
         """Every batch not done yet whose pages have all been read, in the order to do them: class material (newest
