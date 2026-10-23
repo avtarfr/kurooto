@@ -5,8 +5,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
@@ -31,6 +29,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -102,31 +101,42 @@ public class CallActivity extends Activity {
     }
 
     // ---------- ringing ----------
+    /** Who's calling and why, then Decline / Later / Answer along the bottom, in the call page's colours. */
     private void showRinging(String reason, boolean alarm) {
+        int fg = Ui.color(this, R.color.k_call_fg);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setGravity(Gravity.CENTER);
-        box.setPadding(48, 48, 48, 96);
-        box.setBackgroundColor(Color.parseColor("#14111a"));
-        TextView who = text(alarm ? "Good morning: wake-up call" : Prefs.assistant(this) + " is calling", 28, true);
-        TextView why = text(reason == null ? "" : reason, 18, false);
-        why.setPadding(0, 24, 0, 96);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setFitsSystemWindows(true);
+        box.setPadding(Ui.dp(this, 24), Ui.dp(this, 48), Ui.dp(this, 24), Ui.dp(this, 32));
+        box.setBackgroundColor(Ui.color(this, R.color.k_call_bg));
+        box.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
+        ImageView badge = Ui.icon(this, R.drawable.ic_stat, fg);
+        badge.setBackground(Ui.circle(Ui.color(this, R.color.k_call_go)));
+        int pad = Ui.dp(this, 26);
+        badge.setPadding(pad, pad, pad, pad);
+        box.addView(badge, new LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)));
+        TextView who = Ui.gap(Ui.text(this, alarm ? "Good morning: wake-up call" : Prefs.assistant(this) + " is calling", 28, false, fg), 24, 0);
+        who.setGravity(Gravity.CENTER);
+        TextView why = Ui.gap(Ui.text(this, reason == null ? "" : reason, 18, false, Ui.color(this, R.color.k_call_dim)), 12, 0);
+        why.setGravity(Gravity.CENTER);
         final String since = getIntent().getStringExtra("since");
-        Button decline = button("Decline", "#c0392b");
+        Button decline = button("Decline", R.color.k_call_stop);
         decline.setOnClickListener(v -> reply(since, "decline"));
-        Button later = button(alarm ? "Snooze" : "Later", "#3a3150");
+        Button later = button(alarm ? "Snooze" : "Later", R.color.k_call_quiet);
         later.setOnClickListener(v -> reply(since, "later"));
-        Button ok = button("Answer", "#2e9d6a");
+        Button ok = button("Answer", R.color.k_call_go);
         ok.setOnClickListener(v -> answer());
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER);
-        row.addView(decline, new LinearLayout.LayoutParams(0, 180, 1));
-        row.addView(new View(this), new LinearLayout.LayoutParams(24, 1));
-        row.addView(later, new LinearLayout.LayoutParams(0, 180, 1));
-        row.addView(new View(this), new LinearLayout.LayoutParams(24, 1));
-        row.addView(ok, new LinearLayout.LayoutParams(0, 180, 1));
+        row.addView(decline, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
+        row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
+        row.addView(later, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
+        row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
+        row.addView(ok, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
         box.addView(who);
         box.addView(why);
+        box.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
         box.addView(row, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         setContentView(box);
     }
@@ -137,22 +147,10 @@ public class CallActivity extends Activity {
         finish();
     }
 
-    private TextView text(String s, int sp, boolean bold) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(sp);
-        t.setTextColor(Color.parseColor("#ece8f2"));
-        t.setGravity(Gravity.CENTER);
-        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
-        return t;
-    }
-
-    private Button button(String s, String color) {
-        Button bt = new Button(this);
-        bt.setText(s);
-        bt.setTextSize(20);
-        bt.setTextColor(Color.WHITE);
-        bt.setBackgroundColor(Color.parseColor(color));
+    private Button button(String s, int fill) {
+        Button bt = Ui.button(this, s, Ui.color(this, fill), Ui.color(this, R.color.k_call_fg), 0);
+        bt.setTextSize(18);
+        bt.setPadding(Ui.dp(this, 8), 0, Ui.dp(this, 8), 0);
         return bt;
     }
 
@@ -198,7 +196,7 @@ public class CallActivity extends Activity {
             s.setJavaScriptEnabled(true);
             s.setDomStorageEnabled(true);
             s.setMediaPlaybackRequiresUserGesture(false);
-            web.setBackgroundColor(Color.parseColor("#14111a"));
+            web.setBackgroundColor(Ui.color(this, R.color.k_call_bg));
             web.addJavascriptInterface(new Bridge(), "KurootoApp");
             web.setWebViewClient(new WebViewClient());
             web.setWebChromeClient(new WebChromeClient() {

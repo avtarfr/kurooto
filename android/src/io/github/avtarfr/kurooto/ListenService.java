@@ -67,13 +67,13 @@ public class ListenService extends Service {
         ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(ID_CALL);
     }
 
-    /** A notification builder on every Android version (channels exist from 8.0). */
+    /** A notification builder on every Android version (channels exist from 8.0), in Kurooto's colour. */
     @SuppressWarnings("deprecation")
     static Notification.Builder builder(Context c, String channel) {
-        if (SDK >= 26) return new Notification.Builder(c, channel);
+        if (SDK >= 26) return Ui.tint(c, new Notification.Builder(c, channel));
         Notification.Builder b = new Notification.Builder(c);
         b.setPriority(CH_SERVICE.equals(channel) ? Notification.PRIORITY_MIN : Notification.PRIORITY_MAX);
-        return b;
+        return Ui.tint(c, b);
     }
 
     static void channels(Context c) {

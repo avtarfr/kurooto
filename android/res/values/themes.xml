@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kurooto's themes: framework Material (no AndroidX), light or dark as the system is. Base.* pick the light or dark
+     framework theme (values-night has the dark ones, values-v27 adds light navigation bar icons); the colours are
+     res/values*/colors.xml. Kurooto: full-screen pages. Kurooto.Dialog: the answer, pairing and share windows.
+     Kurooto.Call: the ringing screen and the call page, always dark like the call page. -->
+<resources>
+    <style name="Base.Kurooto" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Base.Kurooto.Dialog" parent="android:Theme.Material.Light.Dialog.NoActionBar" />
+
+    <style name="Kurooto" parent="Base.Kurooto">
+        <item name="android:colorPrimary">@color/k_primary</item>
+        <item name="android:colorPrimaryDark">@color/k_bg</item>
+        <item name="android:colorAccent">@color/k_primary</item>
+        <item name="android:colorControlNormal">@color/k_dim</item>
+        <item name="android:colorControlActivated">@color/k_primary</item>
+        <item name="android:colorBackground">@color/k_bg</item>
+        <item name="android:windowBackground">@color/k_bg</item>
+        <item name="android:textColorPrimary">@color/k_fg</item>
+        <item name="android:textColorSecondary">@color/k_dim</item>
+        <item name="android:textColorHint">@color/k_dim</item>
+        <item name="android:textColorLink">@color/k_primary</item>
+        <item name="android:statusBarColor">@color/k_bg</item>
+        <item name="android:navigationBarColor">@color/k_bg</item>
+        <item name="android:windowLightStatusBar">@bool/k_light</item>
+    </style>
+
+    <style name="Kurooto.Dialog" parent="Base.Kurooto.Dialog">
+        <item name="android:colorPrimary">@color/k_primary</item>
+        <item name="android:colorAccent">@color/k_primary</item>
+        <item name="android:colorControlNormal">@color/k_dim</item>
+        <item name="android:colorControlActivated">@color/k_primary</item>
+        <item name="android:colorBackground">@color/k_card</item>
+        <item name="android:windowBackground">@drawable/k_dialog</item>
+        <item name="android:textColorPrimary">@color/k_fg</item>
+        <item name="android:textColorSecondary">@color/k_dim</item>
+        <item name="android:textColorHint">@color/k_dim</item>
+        <item name="android:textColorLink">@color/k_primary</item>
+    </style>
+
+    <style name="Kurooto.Call" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/k_call_go</item>
+        <item name="android:colorPrimaryDark">@color/k_call_bg</item>
+        <item name="android:colorAccent">@color/k_call_go</item>
+        <item name="android:colorBackground">@color/k_call_bg</item>
+        <item name="android:windowBackground">@color/k_call_bg</item>
+        <item name="android:statusBarColor">@color/k_call_bg</item>
+        <item name="android:navigationBarColor">@color/k_call_bg</item>
+    </style>
+</resources>

@@ -255,7 +255,28 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - Components: `MainActivity` (the checklist: battery, notifications, full-screen calls), `PairActivity`,
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ShareActivity` (share to Kurooto),
   `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`.
-  Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25), `B64`.
+  Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25), `B64`,
+  `Ui` (the look).
+- The look is Material 3 from the framework alone (no AndroidX or Material Components), views built in code:
+  - Colours are resources named after Material 3's roles (`k_bg`, `k_card`, `k_fg`, `k_dim`, `k_primary`,
+    `k_tonal`, `k_ok`, `k_bad`, ...): `res/values/colors.xml` is the web pages' light "kuro" palette, `values-night`
+    the dark one, and `values-v31` / `values-night-v31` map Material You's `system_accent1_*` / `system_neutral*_*`
+    onto the same names on Android 12+. `k_call_*` (the ringing screen, from `call.css`) and `k_brand` (notifications)
+    never change. Light or dark follows the system (`-night`); Android 9 and older are light.
+  - Themes (`res/values/themes.xml`): `Kurooto` (full-screen pages, the app's default), `Kurooto.Dialog` (`AnswerActivity`,
+    `PairActivity`, `ShareActivity`: a 28dp-cornered card, `drawable/k_dialog.xml`) and `Kurooto.Call` (`CallActivity`,
+    always dark). `Base.Kurooto*` only pick the framework's light or dark `Theme.Material` parent.
+  - `Ui.java` builds the views: `page(activity)` / `dialog(activity)` set the content and return the column to fill
+    (`page` keeps clear of the system bars, which Android 15 draws over); `headline`, `title`, `heading` (a section, in
+    the accent colour), `body`, `dim`, `small`, `status` + `ok()` / `bad()`; `card`, `list` + `item` (two-line rows),
+    `tapCard`; buttons `filled`, `tonal`, `outlined`, `flat`, `large(b)`, `end(b)`, or `button(c, text, fill, ink,
+    stroke)`; `field(c, hint)`; `icon`; `busy(activity, title, text)` + `done(status, worked)` for a dialog that waits;
+    `tint(c, builder)` for notifications (`ListenService.builder` does it). Every view comes with full-width
+    LinearLayout params and a small gap above, so `col.addView(v)` is enough. A new screen: declare it with
+    `android:theme="@style/Kurooto"` (or leave it to the app's default) and start `onCreate` with
+    `LinearLayout col = Ui.page(this);`.
+  - Touch targets are 48dp at least (56dp for `large`, list rows 64dp). Use `Ui.color(c, R.color.k_*)`, never a
+    hard-coded colour, so dark mode and Material You keep working.
 - CI: `ci.yml` job `android` (vectors, debug build, `NewApi`/`InlinedApi` lint as errors);
   `android-emulator.yml` runs `smoke.sh` on API 23 to 35.
 

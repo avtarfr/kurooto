@@ -56,10 +56,16 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
    sleep" list in Settings → Battery, or calls may not ring.
 4. Test it: Dashboard → Phone → **Ring my phone (test)**.
 
-**The app's screen** shows what it's paired with, the checklist, **Waiting for you** (open questions and approvals),
-a **Call** button, the ringtone pickers (**Call ringtone** and **Wake-up alarm tone**; the alarm tone plays on the
-alarm volume), and **Unpair this phone**. It starts listening again by itself after the phone restarts or the app
-updates ("Listening for calls" stays as a quiet notification).
+**The app's screen**, top to bottom: the **Call** button, **Waiting for you** (open questions and approvals, one card
+each; tap one to answer it), the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), the
+**Ringtones** (**Call ringtone** and **Wake-up alarm tone**, each showing the tone it's set to; tap to change it. The
+alarm tone plays on the alarm volume), and **This phone** (what it's paired with, the app's version, and **Unpair this
+phone**). It starts listening again by itself after the phone restarts or the app updates ("Listening for calls" stays
+as a quiet notification).
+
+**Its look** follows the phone: light or dark as the phone is set, and on Android 12 and newer in your wallpaper's
+colours (Material You). Older phones get Kurooto's own greens. The ringing screen is always dark, like the call
+itself.
 
 **A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). What each does is in
 [Calls: Kurooto calling you](calls.md#kurooto-calling-you).
@@ -145,6 +151,8 @@ to type in.
 **Android:** in any app, Share → **Share to Kurooto** (one file or several). Each goes into your notes' `inbox/` (or
 your files folder's, if you set one). With Chat on, the AI files it where it belongs and tells you where; without
 Chat you get "Got <file> from your phone: saved to ...". Files can be up to 50 MB each. The computer has to be on.
+A small window shows the progress, then "Sent." in green or what went wrong in red, and closes by
+itself.
 
 ## Managing paired phones
 

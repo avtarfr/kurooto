@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the dark "kuro" palette (style.css); see values/colors.xml -->
+<resources>
+    <color name="k_bg">#0B0F0A</color>
+    <color name="k_card">#151B12</color>
+    <color name="k_card_high">#1F2A19</color>
+    <color name="k_fg">#DAD3C8</color>
+    <color name="k_dim">#95A682</color>
+    <color name="k_outline">#5E6B52</color>
+    <color name="k_primary">#A6C07A</color>
+    <color name="k_on_primary">#1C2A0E</color>
+    <color name="k_primary_container">#34481C</color>
+    <color name="k_on_primary_container">#D3E4B4</color>
+    <color name="k_tonal">#2A3522</color>
+    <color name="k_on_tonal">#DAD3C8</color>
+    <color name="k_ok">#8CCB98</color>
+    <color name="k_bad">#E8735A</color>
+</resources>
