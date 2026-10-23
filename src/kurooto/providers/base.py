@@ -117,7 +117,7 @@ class Brain:
         """Before a run: whatever this program needs from Kurooto first (agy: its tools and permissions, asked once)."""
 
     def worked_file(self, app):
-        return app.paths.state / f"{self.id}-worked.json"
+        return app.paths.state / f"{self.id.replace(':', '-')}-worked.json"  # "claude:work": no ":" (Windows)
 
     def has_worked(self, app) -> bool:
         """Has it answered on this computer before (a request, or the setup page's test)? Then it may stand in for

@@ -416,7 +416,7 @@ class Drafts(Module):
         if not result.ok:
             from kurooto.core.jobs import FRIENDLY
 
-            label = providers.CHOICES.get(job.brain or "", job.brain or "the AI")
+            label = providers.label(job.brain or "", job.brain or "the AI")
             d["status"] = "failed"
             self._save(d)
             tell(FRIENDLY.get(result.verdict, "It failed.").format(brain=label))

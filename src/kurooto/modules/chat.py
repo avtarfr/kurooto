@@ -44,7 +44,7 @@ class Chat(Module):
             return False, "pick an AI brain first"
         brain = providers.build(self.app, main)
         ok, why = brain.available() if brain else (False, "unknown brain")
-        return (True, "") if ok else (False, f"{providers.CHOICES.get(main, main)}: {why}")
+        return (True, "") if ok else (False, f"{providers.label(main, main)}: {why}")
 
     def ask(self, msg: Incoming) -> str:
         text = msg.text.strip()
@@ -158,9 +158,12 @@ class Chat(Module):
                 continue
             b = providers.build(self.app, which)
             ok, why = b.available() if b else (False, "unknown")
-            out.append(f"{role}: {providers.CHOICES.get(which, which)} ({'ready' if ok else why})")
+            out.append(f"{role}: {providers.label(which, which)} ({'ready' if ok else why})")
         if not out:
             return "No AI brain is set up yet."
+        extra = providers.claude_accounts.accounts(self.app)
+        if extra:
+            out.append("Claude accounts: Claude Code, " + ", ".join(a.label for a in extra))
         if not providers.fallback.chosen(self.app) and providers.fallback.triggers(self.app):
             auto = [b.id for b in providers.fallback.candidates(self.app, {s.get("brain.main") or ""})]
             if auto:
@@ -204,7 +207,7 @@ def usage_text(rows: list[dict], days: int) -> str:
     from kurooto.core.clock import now
 
     def label(brain: str) -> str:
-        return providers.CHOICES.get(brain, brain or "?")
+        return providers.label(brain, brain or "?")
 
     by_day: dict[str, list[dict]] = {}
     for r in rows:

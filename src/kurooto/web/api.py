@@ -244,6 +244,8 @@ class Api:
             return tools_api.get(self.app, path, q)
         if path == "addons":  # the add-ons by link, their cards and what's kept for Undo (core/addons.py)
             return 200, self._addons()
+        if path == "brain/claude-accounts":  # your extra Claude accounts (providers/claude_accounts.py)
+            return 200, {"accounts": providers.claude_accounts.rows(self.app), "terms": providers.claude_accounts.TERMS}
         if path == "jobs":  # what the AI is working on and what waits (core/jobs.py; `kurooto jobs`)
             from kurooto.core.jobs import public
 
@@ -313,6 +315,8 @@ class Api:
                 },
                 "brains": self._brains(),
                 "brain": {"main": s.get("brain.main"), "fallback": s.get("brain.fallback")},
+                "claude_accounts": providers.claude_accounts.rows(self.app),  # extra ones; terms: the note to show
+                "claude_terms": providers.claude_accounts.TERMS,
                 "modules": self._modules(),
                 "prereqs": self.prereqs.status(),
                 "room": self.prereqs.room(["ollama"] if models_gb else [], extra_gb=models_gb),  # ★ AI: a key
@@ -398,6 +402,8 @@ class Api:
             return tools_api.post(self.app, path, b)
         if path.startswith("addons/"):  # Features → Add-ons by link, `kurooto addons` (core/addons.py)
             return self._addons_post(path[len("addons/") :], b)
+        if path.startswith("brain/claude-accounts/"):  # the setup page's AI step, Settings → Claude accounts
+            return self._claude_accounts_post(path[len("brain/claude-accounts/") :], b)
         if path == "jobs/cancel":  # a Cancel button on the AI jobs page, `kurooto jobs --cancel ID|all` (core/jobs.py)
             ref = str(b.get("id") or "").strip()
             if not ref:
@@ -499,7 +505,7 @@ class Api:
             return 200, out
         if path == "brain":
             which = b.get("main", "")
-            if which and which not in providers.CHOICES:
+            if which and which not in providers.choices(self.app):
                 return 400, {"error": "unknown brain"}
             if b.get("key"):
                 self.app.secrets.set(f"{which}.api_key", b["key"].strip())
@@ -1042,18 +1048,18 @@ class Api:
     # pages).
     HIDDEN = {
         "telegram": {"api_base", "allowed_users", "chat_id"},
-        "brain": {"base_urls", "models"},
+        "brain": {"base_urls", "models", "claude_accounts"},  # the accounts: their own section (_claude_section)
         "subjects": {"list", "timetable"},
     }
 
     # settings that take one of a few values: Settings shows them as a list ([value, what it means], value first)
     CHOICES = {
-        "brain": lambda: {
-            "main": [[k, v] for k, v in providers.CHOICES.items()],
-            "fallback": [["", "none"], *[[k, v] for k, v in providers.CHOICES.items()]],
+        "brain": lambda self: {
+            "main": [[k, v] for k, v in providers.choices(self.app).items()],
+            "fallback": [["", "none"], *[[k, v] for k, v in providers.choices(self.app).items()]],
             "classify": [["rules", "rules: no AI"], ["main", "main: your AI"], ["ollama", "ollama: a local model"]],
         },
-        "updates": lambda: {
+        "updates": lambda self: {
             "mode": [
                 ["night", "night: installs between the window's hours"],
                 ["ask", "ask: a message with Update / Later"],
@@ -1061,7 +1067,7 @@ class Api:
             ],
             "channel": [["stable", "stable: older and steadier"], ["beta", "beta: every version the day it's signed"]],
         },
-        "power": lambda: {
+        "power": lambda self: {
             "on_battery": [
                 ["saver", "saver: heavy work waits for the charger"],
                 ["normal", "normal: as on the charger"],
@@ -1100,12 +1106,101 @@ class Api:
                         "choices": {"links": [["wiki", "[[wikilinks]]"], ["markdown", "markdown: [Name](path.md)"]]}
                     }
                 if sec in self.CHOICES:  # one of a few values: a list to pick from, not a box to type a word into
-                    extra = {**extra, "choices": {**self.CHOICES[sec](), **(extra.get("choices") or {})}}
+                    extra = {**extra, "choices": {**self.CHOICES[sec](self), **(extra.get("choices") or {})}}
                 out.append({"section": sec, "title": title, "values": vals, **extra})
         at = next((i + 1 for i, x in enumerate(out) if x["section"] == "power"), len(out))
         out.insert(at, self._autostart_section())  # Settings → Starting, after Power
         out.insert(at + 1, self._quick_ask_section())  # Settings → Quick ask: the command to bind to a key
+        ai = next((i + 1 for i, x in enumerate(out) if x["section"] == "brain"), len(out))
+        out.insert(ai, self._claude_section())  # Settings → Claude accounts, after the AI's own
         return {"sections": out}
+
+    def _claude_section(self) -> dict:
+        """Settings → Claude accounts: your usual sign-in, then each extra account with its name (changed through
+        POST /api/brain/claude-accounts/rename) and a Remove button (…/remove, after a yes). Added on the setup
+        page's AI step or with `kurooto ai add-claude`."""
+        ca = providers.claude_accounts
+        values: dict = {"claude": "your usual Claude sign-in"}
+        fixed: dict = {"claude": "your usual Claude sign-in (claude)"}
+        helps: dict = {
+            "claude": "Add another account on the setup page (AI → Claude Code → Add another Claude account) or with "
+            "`kurooto ai add-claude NAME`. Each is its own AI: use its id in brain.main or brain.fallback. " + ca.TERMS
+        }
+        for r in ca.rows(self.app):
+            values[r["key"]] = r["name"]
+            state = "working" if r["working"] else "not tested here yet"
+            if not r["folder_here"]:
+                state = "not signed in on this computer"
+            if r["limited_until"]:
+                state += f"; at its limit until {time.strftime('%a %H:%M', time.localtime(r['limited_until']))}"
+            helps[r["key"]] = (
+                f"{r['label']}, id {r['id']}: {state}. Type a new name to rename it (the id stays). Remove deletes "
+                "only Kurooto's sign-in folder for it."
+            )
+        return {
+            "section": "claude_accounts",
+            "title": "Claude accounts",
+            "values": values,
+            "fixed": fixed,
+            "help": helps,
+            "post": "brain/claude-accounts/rename",
+            "remove": "brain/claude-accounts/remove",
+        }
+
+    def _claude_accounts_post(self, action: str, b: dict) -> tuple[int, dict]:
+        """add {name} (makes its folder and opens its sign-in window), signin {id}, rename {id, name} or {key: name}
+        (Settings' rename box), remove {id, yes: true} (only after your yes: it deletes Kurooto's folder for it)."""
+        ca = providers.claude_accounts
+        try:
+            if action == "add":
+                acc = ca.add(self.app, str(b.get("name") or ""))
+                ok, msg = self.prereqs.open_signin("claude", env=ca.env(self.app, acc.key))
+                return 200, {
+                    "ok": True,
+                    "id": acc.id,
+                    "label": acc.label,
+                    "signin": ok,
+                    "message": f"Added {acc.label}. "
+                    + (msg if ok else msg + " Then sign in with your other Claude account, and test it."),
+                    "accounts": ca.rows(self.app),
+                }
+            if action == "signin":
+                acc = ca.get(self.app, str(b.get("id") or ""))
+                if acc is None:
+                    return 404, {"ok": False, "message": "No such Claude account."}
+                ca.ensure_folder(self.app, acc.key)
+                ok, msg = self.prereqs.open_signin("claude", env=ca.env(self.app, acc.key))
+                return 200, {"ok": ok, "message": msg}
+            if action == "rename":
+                if "id" in b:
+                    ref, name = str(b.get("id") or ""), str(b.get("name") or "")
+                else:  # Settings' box: {key: new name}
+                    pairs = [(k, v) for k, v in b.items() if isinstance(v, str)]
+                    if len(pairs) != 1:
+                        return 400, {"ok": False, "message": "Which account?"}
+                    ref, name = pairs[0]
+                acc = ca.rename(self.app, ref, name)
+                return 200, {
+                    "ok": True,
+                    "message": f"Renamed: {acc.label} (still {acc.id}).",
+                    "accounts": ca.rows(self.app),
+                }
+            if action == "remove":
+                if b.get("yes") is not True:
+                    return 400, {"ok": False, "message": "Removing needs your yes."}
+                acc, changed = ca.remove(self.app, str(b.get("id") or ""))
+                extra = f" Taken out of {', '.join(changed)}." if changed else ""
+                if "brain.main" in changed:
+                    extra += " It was your main AI: pick another in Settings → AI."
+                return 200, {
+                    "ok": True,
+                    "message": f"Removed {acc.label} and Kurooto's sign-in folder for it.{extra}",
+                    "accounts": ca.rows(self.app),
+                }
+        except ValueError as e:
+            said = str(e)
+            return 400, {"ok": False, "message": said[:1].upper() + said[1:] + "."}
+        return 404, {"ok": False, "message": "No such action."}
 
     @staticmethod
     def _quick_ask_section() -> dict:

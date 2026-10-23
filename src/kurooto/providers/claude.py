@@ -8,7 +8,8 @@ from inside a request. Nothing is saved in Claude Code's own settings, nor are i
 hooks or session history used: all of it is given for the run only, so there's nothing to undo.
 
 Settings: brain.models.claude {"low": "haiku", "medium": "sonnet", "high": "sonnet"} (any model name Claude Code
-takes), and your Claude sign-in (`claude` once, or Settings → AI → Test).
+takes), and your Claude sign-in (`claude` once, or Settings → AI → Test). An extra Claude account ("claude:work",
+providers/claude_accounts.py) is the same brain run with CLAUDE_CONFIG_DIR set to its own folder of Kurooto's.
 """
 
 from __future__ import annotations
@@ -206,13 +207,36 @@ class ClaudeCode(Brain):
     kind = "cli"
     grace_s = 120
 
-    def __init__(self, models: dict | None = None, exe: str | list[str] | None = None, app: App | None = None):
+    def __init__(
+        self,
+        models: dict | None = None,
+        exe: str | list[str] | None = None,
+        app: App | None = None,
+        account: str = "",
+        name: str = "",
+        config_dir: Path | None = None,
+    ):
         self.exe = exe or _which("claude", None)
         self.models = {**MODELS, **{k: v for k, v in (models or {}).items() if v}}
         self.app = app
+        self.config_dir = config_dir  # an extra account's own folder (CLAUDE_CONFIG_DIR); None: your usual sign-in
+        if account:  # an extra account: its own id, so its own limit, receipt line and "has worked"
+            self.id = f"claude:{account}"
+            self.label = f"Claude Code ({name or account})"
 
     def available(self):
-        return (True, "") if self.exe else (False, "Claude Code isn't installed")
+        if not self.exe:
+            return False, "Claude Code isn't installed"
+        if self.config_dir is not None and not Path(self.config_dir).is_dir():
+            return False, f"{self.label} isn't signed in on this computer (Settings → Claude accounts → Sign in)"
+        return True, ""
+
+    def env(self) -> dict | None:
+        """The environment of a run: an extra account's folder as CLAUDE_CONFIG_DIR (where its sign-in lives); None
+        for your usual sign-in, which runs exactly as before."""
+        if self.config_dir is None:
+            return None
+        return {**os.environ, "CLAUDE_CONFIG_DIR": str(self.config_dir)}
 
     def sees(self):
         return True, ""  # Claude Code reads a picture with its Read tool, where the request says it is
@@ -271,7 +295,12 @@ class ClaudeCode(Brain):
             egress.handed("Claude Code", "AI requests")  # what it sends to Anthropic, it sends itself
             t0 = time.monotonic()
             r = proc.run(
-                args, input=task.prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd, on_start=task.on_process
+                args,
+                input=task.prompt,
+                timeout=task.timeout_s + self.grace_s,
+                cwd=task.cwd,
+                env=self.env(),
+                on_start=task.on_process,
             )
             secs = time.monotonic() - t0
         result = self.verdict(r, secs, minutes)

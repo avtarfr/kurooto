@@ -61,12 +61,25 @@ NAMES = {"claude": "Claude", "agy": "agy", "gemini": "your Gemini key"}
 KINDS = {"window": "the 5-hour window", "week": "the weekly limit", "day": "the day's limit"}
 
 
+def _claude(bid: str) -> bool:
+    """Claude Code: your usual sign-in or an extra account ("claude:work"), each a plan with its own windows."""
+    from kurooto.providers.claude_accounts import is_claude
+
+    return is_claude(bid)
+
+
+def _name(bid: str) -> str:
+    from kurooto.providers import label
+
+    return label(bid)
+
+
 def kind(brain) -> str:
     """What limits a brain: "plan" (a subscription), "free" (a free Gemini key), "money" (an API key), "local" (a model
     on this computer) or "none" (no AI)."""
     if brain is None:
         return "none"
-    if brain.id in PLANS:
+    if brain.id in PLANS or _claude(brain.id):
         return "plan"
     local = getattr(brain, "local", None)
     if brain.id == "ollama" or (callable(local) and local()):
@@ -385,10 +398,10 @@ class Budget:
         retry = h.get("retry_after_s")
         retry = float(retry) if isinstance(retry, (int, float)) and retry > 0 else None
         hint = q.hints(detail, retry, t)
-        if bid != "claude" and q.daily(hint) is False:
+        if not _claude(bid) and q.daily(hint) is False:
             return None  # a per-minute limit (Google's): it passes by itself
         reset = t + retry if retry else hint.get("reset_at") or ((t + hint["retry_s"]) if hint.get("retry_s") else None)
-        if bid == "claude" or (bid not in ("agy", "gemini") and k == "plan"):
+        if _claude(bid) or (bid not in ("agy", "gemini") and k == "plan"):
             weekly = bool(re.search(r"\bweek", detail, re.I)) or (reset is not None and reset - t > WEEKLY_S)
             which = "week" if weekly else "window"
             reset = reset or t + (86400 if weekly else WINDOW_S)
@@ -442,7 +455,7 @@ class Budget:
         r = self.tonight(save=save)
         if r["kind"] == "none":
             return []
-        name = NAMES.get(r["brain"], r["brain"])
+        name = NAMES.get(r["brain"]) or _name(r["brain"])
         if r["cost"] is not None:
             head = (
                 f"Tonight's reading budget: ${r['cost']:.2f} ({r['how']}); ${r['spent']:.2f} spent, "

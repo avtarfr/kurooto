@@ -128,7 +128,8 @@ def daily(h: dict) -> bool | None:
 # ------------------------------------------------------------------------------------- limits and days
 def pool_id(brain: str, model: str | None = None, kind: str = "api") -> str | None:
     """Which limit a request counts against: each model of an API key has its own ("gemini:gemini-flash-latest");
-    an agent program (agy, Claude Code) has one; a model on this computer has none (None)."""
+    an agent program (agy, Claude Code, each extra Claude account: "claude:work") has one; a model on this computer
+    has none (None)."""
     if not brain or brain in LOCAL:
         return None
     return f"{brain}:{model}" if kind == "api" and model else brain
@@ -153,8 +154,10 @@ def day_end(pool: str, t: float) -> float:
 def label(pool: str) -> str:
     from kurooto import providers
 
+    if providers.claude_accounts.is_id(pool):  # an extra Claude account ("claude:work") is one limit of its own
+        return providers.label(pool)
     brain, _, model = pool.partition(":")
-    name = "Gemini key" if brain == "gemini" else "agy" if brain == "agy" else providers.CHOICES.get(brain, brain)
+    name = "Gemini key" if brain == "gemini" else "agy" if brain == "agy" else providers.label(brain, brain)
     return f"{name}, {model}" if model else name
 
 

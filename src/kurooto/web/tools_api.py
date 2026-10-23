@@ -119,7 +119,7 @@ def job(app: App, jid: str) -> tuple[int, dict]:
     if j.status in ("ok", "failed"):
         from kurooto import providers
 
-        label = providers.CHOICES.get(j.brain or "", j.brain or "the AI")
+        label = providers.label(j.brain or "", j.brain or "the AI")
         try:
             v = Verdict(j.verdict or "error")
         except ValueError:

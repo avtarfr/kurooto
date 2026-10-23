@@ -46,6 +46,9 @@ register_defaults(
         "memory": False,  # also the memory ledger (encrypted: it opens only where its key is, see backups.secrets)
     },
 )
+CLAUDE_ACCOUNTS = (
+    "claude-accounts"  # in the data folder: extra Claude accounts' sign-ins (providers/claude_accounts.py)
+)
 CONFIDENTIAL = ("mail", "confidential")  # in the data folder: only with backups.confidential_mail
 PREFIX = "kurooto-backup-"
 NAME = re.compile(r"kurooto-backup-(\d{8}-\d{6})\.zip")
@@ -133,6 +136,7 @@ def sources(
         "data",
         keep_dir=lambda parts: (
             parts[0] != SAFETY
+            and (secrets or parts[0] != CLAUDE_ACCOUNTS)  # extra Claude accounts' sign-ins: only with secrets
             and (index or parts[0] != "gbrain")
             and (confidential or tuple(parts[:2]) != CONFIDENTIAL)
         ),

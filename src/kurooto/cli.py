@@ -26,6 +26,8 @@ kurooto logs [-f]        the end of Kurooto's log (-f: keep showing new lines)
 kurooto sync [--no-wait | --status]   sync everything that's on, now (notes, Classroom, calendar, research, notes
                          brain, backup); --status: is one running, and how the last one went
 kurooto usage [DAYS]     AI requests per day, and agy's own count from its logs
+kurooto ai accounts | add-claude [NAME] | test ID | rename-claude NAME NEW | remove-claude NAME [--yes]
+                         extra Claude accounts, each its own AI ("claude:work") with its own sign-in and limits
 kurooto export-skills [on [--to agy,agents,claude] | off | status]   your skills as /commands in your agent programs
 kurooto space [--clean]   what Kurooto takes, and cleaning off its own old backups and leftovers
 kurooto hardware [--profile P] [--add MODEL] [--install]   what this computer suits; go past it and have it installed
@@ -1442,14 +1444,19 @@ def usage_cmd(days: int) -> int:
     free limits)."""
     from kurooto.app import App
     from kurooto.core.readbudget import usage_text as reading
-    from kurooto.modules.chat import usage_text
+    from kurooto.modules.chat import limit_lines, usage_text
     from kurooto.providers.agy import log_usage, log_usage_text
 
     days = days if 1 <= days <= 60 else 7
     app = App()
     try:
+        waiting = limit_lines(app)  # the AIs skipped for a limit until its reset, each by its own name
         print(
-            usage_text(app.jobs.usage(days), days) + log_usage_text(log_usage(days)) + app.quota.text() + reading(app)
+            usage_text(app.jobs.usage(days), days)
+            + log_usage_text(log_usage(days))
+            + app.quota.text()
+            + ("\n" + "\n".join(waiting) if waiting else "")
+            + reading(app)
         )
     finally:
         app.close()
@@ -1897,6 +1904,100 @@ def addons_run(a) -> int | None:
     return 0 if ok else 1
 
 
+def ai_parsers(sub) -> None:
+    ai = sub.add_parser("ai", help="your AIs: extra Claude accounts (list, add, test, rename, remove)")
+    asub = ai.add_subparsers(dest="ai_cmd")
+    asub.add_parser("accounts", help="your Claude accounts: the usual sign-in and the extra ones (the default)")
+    add = asub.add_parser("add-claude", help="add another Claude account and sign it in (in this terminal)")
+    add.add_argument("name", nargs="?", default="", help="a short name for it, e.g. work (default: numbered)")
+    te = asub.add_parser("test", help="ask an AI for a reply, e.g. kurooto ai test claude:work")
+    te.add_argument("id")
+    rn = asub.add_parser("rename-claude", help="give an extra Claude account another name (its id stays)")
+    rn.add_argument("name")
+    rn.add_argument("new")
+    rm = asub.add_parser("remove-claude", help="remove an extra Claude account and Kurooto's sign-in folder for it")
+    rm.add_argument("name")
+    rm.add_argument("--yes", action="store_true", help="without asking")
+
+
+def ai_run(a) -> int | None:
+    """Runs `kurooto ai ...`; None for any other command. Extra Claude accounts (providers/claude_accounts.py): the
+    settings file changes here, and a running Kurooto reads it again by itself."""
+    if a.cmd != "ai":
+        return None
+    import shutil
+    import subprocess
+
+    from kurooto.app import App
+    from kurooto.providers import claude_accounts as ca
+
+    app = App()
+    try:
+        cmd = a.ai_cmd or "accounts"
+        if cmd == "accounts":
+            print("claude                your usual Claude sign-in")
+            for r in ca.rows(app):
+                state = "working" if r["working"] else "not tested yet (kurooto ai test " + r["id"] + ")"
+                if not r["folder_here"]:
+                    state = "not signed in on this computer"
+                print(f"{r['id']:<21} {r['label']}: {state}")
+            if not ca.accounts(app):
+                print("No extra Claude accounts. kurooto ai add-claude NAME adds one.")
+            return 0
+        if cmd == "test":
+            from kurooto.web.api import Api
+
+            r = Api(app)._test(a.id)
+            print(("Working: " if r["ok"] else "Not working: ") + r["message"].removeprefix("Working: "))
+            return 0 if r["ok"] else 1
+        if cmd == "add-claude":
+            acc = ca.add(app, a.name)
+            print(f"Added {acc.label} (its id: {acc.id}). {ca.TERMS}")
+            exe = shutil.which("claude") or str(Path.home() / ".local" / "bin" / "claude")
+            env = {**os.environ, **ca.env(app, acc.key)}
+            if not Path(exe).exists():
+                print("Claude Code isn't installed: the setup page's AI step installs it. Then sign this account in:")
+                print(f"  kurooto setup brain, or: {ca.ENV}={ca.folder(app, acc.key)} claude")
+                return 0
+            if not sys.stdin.isatty():
+                print(f"Sign it in from a terminal: {ca.ENV}={ca.folder(app, acc.key)} claude  (then /exit)")
+                print(f"Then: kurooto ai test {acc.id}")
+                return 0
+            print("Claude Code starts here for this account: sign in with your other Claude account, then type /exit.")
+            subprocess.call([exe], env=env)
+            print(f"Now check it works: kurooto ai test {acc.id}")
+            return 0
+        if cmd == "rename-claude":
+            acc = ca.rename(app, a.name, a.new)
+            print(f"Renamed: {acc.label} (still {acc.id}).")
+            return 0
+        if cmd == "remove-claude":
+            acc = ca.get(app, a.name)
+            if acc is None:
+                raise ValueError(f"no Claude account called {a.name}")
+            if not a.yes:
+                if not sys.stdin.isatty():
+                    print("Not removed: run it again with --yes.", file=sys.stderr)
+                    return 1
+                try:
+                    ok = input(f"Remove {acc.label} and Kurooto's sign-in folder for it? Type yes: ").strip().lower()
+                except EOFError:
+                    ok = ""
+                if ok not in ("yes", "y"):
+                    print("Not removed.")
+                    return 1
+            acc, changed = ca.remove(app, acc.key)
+            print(f"Removed {acc.label}." + (f" Taken out of {', '.join(changed)}." if changed else ""))
+            return 0
+    except ValueError as e:
+        said = str(e)
+        print(said[:1].upper() + said[1:] + ".", file=sys.stderr)
+        return 1
+    finally:
+        app.close()
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     utf8_output()
     ap = argparse.ArgumentParser(prog="kurooto", description="Your assistant, on your own computer.")
@@ -1990,6 +2091,7 @@ def main(argv: list[str] | None = None) -> int:
     classpack_parsers(sub)
     jobs_parsers(sub)
     addons_parsers(sub)
+    ai_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = ws5_run(a) if done is None else done
@@ -2000,6 +2102,7 @@ def main(argv: list[str] | None = None) -> int:
     done = classpack_run(a) if done is None else done
     done = jobs_run(a) if done is None else done
     done = addons_run(a) if done is None else done
+    done = ai_run(a) if done is None else done
     if done is not None:
         return done
 

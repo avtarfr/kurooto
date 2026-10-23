@@ -165,7 +165,8 @@ its sign-in token. Google's answers differ on whether other tools may start agy 
 your Google account. For tools like Kurooto, Google recommends a Gemini API key.
 
 Every other AI service you pick (Claude Code, a custom OpenAI-compatible one) works under its own terms and your
-own account. Kurooto no longer offers FreeLLMAPI, which pools other providers' free tiers; one set up with an earlier
+own account. An extra Claude account (0.7.0) sends to Anthropic like your usual one; its sign-in stays in Kurooto's
+data folder (`claude-accounts/<name>/`, never read or copied by Kurooto, out of backups unless `backups.secrets`). Kurooto no longer offers FreeLLMAPI, which pools other providers' free tiers; one set up with an earlier
 version keeps working and shows as "Another OpenAI-compatible service".
 
 ## Google: what each permission allows

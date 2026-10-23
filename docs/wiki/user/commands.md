@@ -315,6 +315,10 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto logs`, `kurooto logs -f`, `kurooto logs -n 200` | the end of Kurooto's log; `-f` keeps following it |
 | `kurooto paths` | where settings, data, state, logs, cache and the program live |
 | `kurooto usage [days]` | AI requests per day, and agy's own count |
+| `kurooto ai accounts` | your Claude accounts: the usual sign-in and the extra ones ([two Claude accounts](ai-brains.md#two-claude-accounts)) |
+| `kurooto ai add-claude [name]` | add another Claude account and sign it in, in this terminal |
+| `kurooto ai test ID` | ask an AI for a reply, e.g. `kurooto ai test claude:work` |
+| `kurooto ai rename-claude NAME NEW` / `remove-claude NAME [--yes]` | rename an extra Claude account (its id stays) / remove it and Kurooto's sign-in folder for it (asks first) |
 | `kurooto jobs`, `kurooto jobs --cancel <id \| all>` | what the AI is working on; cancel |
 | `kurooto hardware`, `--profile <name>`, `--add <model>`, `--remove <model>`, `--add-prereq <id>`, `--remove-prereq <id>`, `--install` | what this computer suits, and going past it |
 | `kurooto space`, `kurooto space --clean` | what Kurooto takes and what can go |

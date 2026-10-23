@@ -252,7 +252,8 @@ const SHORT = { telegram: "telegram", chat: "chat", reminders: "reminders", chec
   skills: "skills", remember: "remember", terminals: "terminals", backups: "backups", google: "google" };
 const OUTBOUND = /fired|asked|told|notified|done|reply/;
 const BRAIN = { agy: "agy", claude: "claude", gemini: "gemini", ollama: "local AI" };
-const brainName = (b) => (b && BRAIN[b.id]) || "AI"; // agy, claude…; any other brain is "your AI"
+// agy, claude…; an extra Claude account by its name ("claude (work)"); any other brain is "your AI"
+const brainName = (b) => (b && (BRAIN[b.id] || (/^claude:/.test(b.id || "") ? `claude (${((b.label || "").match(/\((.*)\)$/) || [0, b.id.slice(7)])[1]})` : ""))) || "AI";
 
 // The SYSTEMS view is the board's control centre. The new design draws it as living tissue: the core is a membrane
 // (layered translucent rims round a brighter centre that carries the name; each heartbeat travels out through the
@@ -2378,7 +2379,8 @@ async function renderSettings(body) {
   const { sections } = await api("settings");
   if (stale(body, "settings")) return;
   // a section may offer choices for a setting (a list) and a line of help under it; "fixed" shows a value that can't
-  // change here, and "post" sends changes to the section's own request (Settings → Starting: /api/autostart)
+  // change here, and "post" sends changes to the section's own request (Settings → Starting: /api/autostart);
+  // "remove" puts a Remove button by each value that isn't fixed, which asks first (Settings → Claude accounts)
   const LAYOUTS = [["dense", "dense: one full-screen board (screens 1280 px wide or more)"], ["roomy", "roomy: bigger panes and type"]];
   const NOTES = [["kurooto", "kurooto: journal/, about-me/, a folder per subject"], ["zettelkasten", "zettelkasten: dailies/, master/, sources/, zettel/"]];
   const LINKS = [["default", "default: this computer's default browser"], ["here", "here: the browser showing this page"]];
@@ -2386,9 +2388,11 @@ async function renderSettings(body) {
     const k = key.split(".").slice(1).join("."), help = ((sec && sec.help) || {})[k], fixed = ((sec && sec.fixed) || {})[k];
     const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : key === "look.links_in" ? LINKS : null);
     const post = sec && sec.post ? ` data-post="${esc(sec.post)}"` : "";
+    const gone = !fixed && sec && sec.remove ? ` <button data-remove="${esc(k)}" data-remove-post="${esc(sec.remove)}">Remove</button>` : "";
     const html = fixed ? `<label><span>${esc(key)}</span><span class="fixed">${esc(fixed)}</span></label>`
       : choices ? `<label><span>${esc(key)}</span><select data-key="${key}"${post}>${(choices.some(([id]) => id === v) ? choices : [[v, String(v)], ...choices]) // a value not in the list stays shown, not silently the first
-        .map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>` : plain(key, v);
+        .map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>`
+      : typeof v === "string" && post ? `<label><span>${esc(key)}</span><input data-key="${key}"${post} value="${esc(v)}">${gone}</label>` : plain(key, v);
     return help ? html.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : html;
   };
   const plain = (key, v) => {
@@ -2419,6 +2423,14 @@ async function renderSettings(body) {
     line.textContent = text;
     clearTimeout(line.t);
     if (!bad) line.t = setTimeout(() => line.remove(), 4000);
+  };
+  body.onclick = async (e) => { // Remove (Settings → Claude accounts): only after a yes
+    const t = e.target; if (!t.dataset || !t.dataset.remove) return;
+    e.preventDefault();
+    if (!confirm(`Remove ${t.dataset.remove}? Kurooto's sign-in folder for it is deleted (nothing of yours); to use it again, add it and sign in again.`)) return;
+    const r = await api(t.dataset.removePost, { id: t.dataset.remove, yes: true });
+    say(t, r.message || r.error || (r.ok ? "Removed." : "That didn't work."), !r.ok);
+    if (r.ok) setTimeout(() => renderSettings(body), 1500);
   };
   body.onchange = async (e) => {
     const t = e.target; if (!t.dataset.key) return;

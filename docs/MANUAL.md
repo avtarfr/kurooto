@@ -298,7 +298,22 @@ who is waiting and until when. This is what happens with no fallback picked (`br
 pick (one AI, or a list such as `["agy", "gemini"]`, in order) replaces it and takes over on any failure, as before.
 `brain.fallback_on` (`["rate_limited"]`; add `auth`, `timeout`) sets what moves a request on. The concept graph's
 reading and second looks move the same way; a stand-in's batches count on its own nightly budget.
-*Undo:* `brain.fallback_on` = `[]`. `/usage` (with Chat on) lists AI requests per day over the last 7 days (`/usage 14` for two weeks), per
+*Undo:* `brain.fallback_on` = `[]`.
+
+**More than one Claude account** (0.7.0). With a second Claude subscription, sign it in as well: setup page → AI →
+Claude Code → **Add another Claude account** (a name such as `work`; a sign-in window opens for it: sign in with the
+other account, close it, then **Test it**), or `kurooto ai add-claude work` in a terminal. Each extra account is its
+own AI, `claude:work`, usable wherever an AI is named (`brain.main`, `brain.fallback`, `integrate.roles`): its own
+limits (one at its limit doesn't skip the other), its own line in the run receipt (*Claude Code hit its limit; Claude
+Code (work) answered · ...*), in `/brain`, `/usage`, `kurooto usage` and the AI's `self.md`. With no fallback
+picked, the other Claude account comes first at a limit: Claude Code → Claude Code (work) → agy → a Gemini key. Your
+usual sign-in (`claude`) is untouched; each extra account's sign-in lives in a folder of Kurooto's
+(`<data>/claude-accounts/<name>/`, Claude Code's `CLAUDE_CONFIG_DIR`), never read or copied by Kurooto and left out
+of backups unless `backups.secrets` is on. Models: `brain.models["claude:work"]`, else `brain.models.claude`.
+Using a second subscription to get around the first one's usage limits may not be allowed by Anthropic's terms; check them for your use.
+*Undo:* dashboard → Settings → Claude accounts → **Remove** (asks first; deletes only Kurooto's folder for it and takes
+it out of `brain.main` / `brain.fallback`), or `kurooto ai remove-claude work`. Rename there too (the id stays).
+ `/usage` (with Chat on) lists AI requests per day over the last 7 days (`/usage 14` for two weeks), per
 brain, and how often a limit was hit, from Kurooto's own request log; quick checks (how hard a request is, grading a
 quiz answer) and phone calls aren't counted. If agy is on this computer, `/usage` also counts **agy itself** from its
 own logs: every agy run, including the ones you type yourself, its model requests and the days it hit its limit (only

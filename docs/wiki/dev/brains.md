@@ -34,8 +34,12 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
   (`fallback.chosen()` reads both),
   `brain.agy.io_mode` (`pipe` | `pty`), `brain.models` (per brain: `{"low","medium","high"}` model names),
   `brain.base_urls` (per preset), `brain.timeout_min` (`{"low": 10, "medium": 15, "high": 30}`).
-- `CHOICES`: id to label, for every buildable brain.
-- `AGENT_PROGRAMS = ("agy", "claude")`: the CLI brains, in preference order.
+- `CHOICES`: id to label, for every buildable brain (static: extra Claude accounts aren't in it).
+- `label(bid, default=None)`: the name to show for any brain id, extra Claude accounts included ("Claude Code
+  (work)"). Use it instead of `CHOICES.get`. `choices(app)`: `CHOICES` with the extra accounts after `claude` (the
+  setup page's and Settings' lists, `POST /api/brain`'s check).
+- `AGENT_PROGRAMS = ("agy", "claude")`: the CLI brains, in preference order. `agent_programs(app)` adds the extra
+  Claude accounts after `claude` (the queue's pinned stand-in and `_last_resort`).
 - `RETIRED = {"codex": "Codex"}` and `drop_retired(app)`: clears `brain.main`/`brain.fallback` naming a retired brain
   at startup (`App.__init__`), emitting `brain_retired`.
 - `build(app, which)`: constructs a brain from settings and secrets and attaches the quota meter
@@ -99,6 +103,41 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 - Default models: `MODELS = {"low": "haiku", "medium": "sonnet", "high": "sonnet"}`, overridable through
   `brain.models.claude`.
 
+### Extra Claude accounts (`providers/claude_accounts.py`, 0.7.0)
+
+Claude Code keeps one sign-in per config folder: `CLAUDE_CONFIG_DIR` names the folder, and the sign-in lives in it
+(`.credentials.json` on Linux and Windows; on macOS a keychain item whose service name carries a hash of the folder
+path, so the sign-in window and every run must use the same absolute path: `folder()`). Checked against the shipped
+CLI's code, not guessed.
+
+- Setting `brain.claude_accounts` = `{"<key>": {"name": "..."}}` (hidden from the brain section; Settings shows its
+  own **Claude accounts** section, `Api._claude_section`). Brain id `claude:<key>`; the key (`KEY`, `[a-z0-9-]`, at
+  most 24) is made from the name at `add()`, or numbered (`claude:2`), and never changes: `rename()` changes only the
+  name, so settings naming the id keep working.
+- Folder: `<data>/claude-accounts/<key>/`, mode 0700. `providers._build` makes a `ClaudeCode(account=key, name=...,
+  config_dir=folder)`: `id` = `claude:<key>`, `label` = `Claude Code (<name>)`, models `brain.models["claude:<key>"]`
+  else `brain.models.claude`. `ClaudeCode.env()` adds `CLAUDE_CONFIG_DIR` for an extra account and returns `None`
+  (inherit, as before) for the usual sign-in. `available()` is false when the folder isn't here (a profile restored
+  elsewhere: sign in again).
+- Because the id differs, everything keyed by brain id is separate per account: `brain-limits.json` (`fallback.cool`,
+  `cooling`), the quota pool (`pool_id` gives `claude:<key>`; `quota.label` names it), `Brain.worked_file`
+  (`claude-<key>-worked.json`: no `:` in file names), the reading budget (`readbudget.kind` treats any Claude id as a
+  plan), the receipt (`brain.label`).
+- `fallback.auto(app)`: `AUTO` with the extra accounts after `claude`; when `brain.main` is a Claude id, the other
+  Claude ids go first. `order()` and `selfdoc` use it.
+- Sign-in: `Prereqs.open_signin("claude", env=...)` starts the usual sign-in window with the variable set (Linux:
+  `env VAR=... claude` in the terminal, and in `Popen`'s env; macOS: in the Terminal script; Windows: `$env:VAR=...`
+  in PowerShell).
+- API: `GET brain/claude-accounts`; `POST brain/claude-accounts/add {name}` (folder + sign-in window),
+  `.../signin {id}`, `.../rename {id, name}` or `{key: name}`, `.../remove {id, yes: true}` (deletes only that
+  folder, only inside `<data>/claude-accounts`, and scrubs `brain.main`, `brain.fallback`, `brain.classify`,
+  `brain.models`, the worked marker and the limit record). The setup state carries `claude_accounts` and
+  `claude_terms`. CLI: `kurooto ai accounts | add-claude [NAME] | test ID | rename-claude | remove-claude [--yes]`
+  (`cli.py:ai_run`).
+- Never read, copied or logged: Kurooto doesn't open the folder's files; `modules/backups.py` skips
+  `data/claude-accounts` unless `backups.secrets`; the encrypted profile's allow-list never had it.
+- Tests: `tests/unit/test_claude_accounts.py` (`tests/fakes/fake_cli.py`: `FAKE_CLI_LIMIT_FOR`, mode `whoami`).
+
 ### OpenAI-compatible (`providers/openai_compat.py:OpenAICompat`)
 
 - One class for every HTTP brain, configured by `PRESETS`: `gemini` (Google's OpenAI-compatible endpoint, with
@@ -145,7 +184,8 @@ Timeouts per level: `brain.timeout_min`.
 3. `_last_resort(main)`: only when main is `gemini`, the first agent program that is available and `has_worked()` is
    appended.
 4. The automatic order (0.6.0, `providers/fallback.py`), only when no fallback is picked: `candidates(app, skip)`
-   appends the brains of `AUTO = ("agy", "claude", "gemini")` not already in the chain and set up here (`ready()`:
+   appends the brains of `auto(app)` (`AUTO = ("agy", "claude", "gemini")`, extra Claude accounts after `claude`, and
+   the other Claude accounts first when main is one) not already in the chain and set up here (`ready()`:
    built, `available()`, and for a `cli` brain `has_worked()`). They are tried only after a failure whose verdict is in
    `brain.fallback_on` (`triggers()`, default `{"rate_limited"}`; also `auth`, `timeout`) happened in this request, or
    when a limited brain was skipped. `brain.fallback` is the one setting that holds an order (the nightly policy look

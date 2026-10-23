@@ -1,7 +1,8 @@
 """The AI brains Kurooto can use, and which one handles what.
 
 Settings:
-    brain.main       agy | claude | gemini | ollama | custom   (freellmapi: set up earlier, works as custom)
+    brain.main       agy | claude | gemini | ollama | custom   (freellmapi: set up earlier, works as custom), or an
+                     extra Claude account "claude:<key>" (providers/claude_accounts.py)
     brain.fallback   another of those, or a list of them in order, used when the main one can't answer ("": at a
                      limit, the other agent program then a Gemini key; providers/fallback.py, with brain.fallback_on)
     brain.classify   rules | main | ollama   (the quick "how hard is this" question)
@@ -14,6 +15,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from kurooto.core.config import register_defaults
+from kurooto.providers import claude_accounts as claude_accounts  # extra Claude accounts ("claude:work")
 from kurooto.providers import fallback as fallback  # brain.fallback's order and fallback_on
 from kurooto.providers.agy import Agy
 from kurooto.providers.base import Brain, Result, Task, Verdict
@@ -23,7 +25,19 @@ from kurooto.providers.openai_compat import PRESETS, OpenAICompat
 if TYPE_CHECKING:
     from kurooto.app import App
 
-__all__ = ["Brain", "Result", "Task", "Verdict", "build", "local", "sees", "CHOICES", "drop_retired"]
+__all__ = [
+    "Brain",
+    "Result",
+    "Task",
+    "Verdict",
+    "build",
+    "local",
+    "sees",
+    "CHOICES",
+    "drop_retired",
+    "label",
+    "choices",
+]
 
 register_defaults(
     "brain",
@@ -48,6 +62,39 @@ CHOICES = {
 
 
 AGENT_PROGRAMS = ("agy", "claude")  # the AI programs that run a request with tools of their own, in order of preference
+
+
+def label(bid: str | None, default: str | None = None) -> str:
+    """An AI's name to show: CHOICES' ("Claude Code"), an extra Claude account's ("Claude Code (work)"), else the
+    default (the id itself when none is given)."""
+    bid = bid or ""
+    if bid in CHOICES:
+        return CHOICES[bid]
+    if claude_accounts.is_id(bid):
+        return claude_accounts.label(bid)
+    return bid if default is None else default
+
+
+def choices(app: App) -> dict[str, str]:
+    """Every AI that can be picked here, id -> name: CHOICES, with your extra Claude accounts after Claude Code."""
+    out: dict[str, str] = {}
+    for k, v in CHOICES.items():
+        out[k] = v
+        if k == "claude":
+            out.update({a.id: a.label for a in claude_accounts.accounts(app)})
+    return out
+
+
+def agent_programs(app: App) -> list[str]:
+    """AGENT_PROGRAMS with your extra Claude accounts after Claude Code."""
+    out: list[str] = []
+    for k in AGENT_PROGRAMS:
+        out.append(k)
+        if k == "claude":
+            out += claude_accounts.ids(app)
+    return out
+
+
 RETIRED = {"codex": "Codex"}  # AIs Kurooto no longer offers: a setting that names one is cleared (drop_retired)
 
 
@@ -90,7 +137,7 @@ def sees(app: App) -> tuple[bool | None, str]:
     ok, why = brain.sees()
     if ok is False:
         return False, (
-            f"Your AI ({CHOICES.get(main, main)}) can't read pictures: {why}. Pick one that can in Settings → AI "
+            f"Your AI ({label(main)}) can't read pictures: {why}. Pick one that can in Settings → AI "
             "(agy, Claude Code, a Gemini key, or an Ollama model that reads pictures, like gemma3)."
         )
     return ok, why
@@ -113,6 +160,18 @@ def _build(app: App, which: str) -> Brain | None:
         return Agy(io_mode=s.get("brain.agy.io_mode") or "pipe", models=s.get("brain.models.agy") or None)
     if which == "claude":
         return ClaudeCode(models=(s.get("brain.models") or {}).get("claude"), app=app)
+    if claude_accounts.is_id(which):  # an extra Claude account: its own folder, its models or Claude Code's
+        acc = claude_accounts.get(app, which)
+        if acc is None:
+            return None
+        models = s.get("brain.models") or {}
+        return ClaudeCode(
+            models=models.get(which) or models.get("claude"),
+            app=app,
+            account=acc.key,
+            name=acc.name,
+            config_dir=claude_accounts.folder(app, acc.key),
+        )
     if which in PRESETS:
         return OpenAICompat(
             which,

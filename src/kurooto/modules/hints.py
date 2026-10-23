@@ -224,7 +224,7 @@ class Hints(Module):
         if not result.ok:
             from kurooto.core.jobs import FRIENDLY
 
-            label = providers.CHOICES.get(job.brain or "", job.brain or "the AI")
+            label = providers.label(job.brain or "", job.brain or "the AI")
             h["status"] = "failed"
             self._save(h)
             self.app.notify(FRIENDLY.get(result.verdict, "It failed.").format(brain=label), kind="result", why="asked")

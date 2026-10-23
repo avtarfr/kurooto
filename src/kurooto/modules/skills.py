@@ -663,7 +663,7 @@ class Skills(Module):
         """Like the usual answer, but tied to the skill: replying to it runs the skill again with your reply."""
         from kurooto.core.jobs import FRIENDLY, LONG, result_path
 
-        label = providers.CHOICES.get(job.brain or "", job.brain or "AI")
+        label = providers.label(job.brain or "", job.brain or "AI")
         head = f"[{label} · {job.effort or '?'}{'' if result.ok else ' · failed'}] {job.title}"
         body = (result.text if result.ok else FRIENDLY.get(result.verdict, "It failed.").format(brain=label)) + extra
         reply_to = int(job.reply_to) if job.reply_to and job.reply_to.isdigit() else job.reply_to
@@ -798,7 +798,7 @@ class Skills(Module):
         from kurooto.core.jobs import FRIENDLY
 
         if not result.ok:
-            label = providers.CHOICES.get(job.brain or "", job.brain or "AI")
+            label = providers.label(job.brain or "", job.brain or "AI")
             self.app.notify(
                 "I couldn't write that skill: " + FRIENDLY.get(result.verdict, "it failed.").format(brain=label),
                 kind="result",

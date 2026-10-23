@@ -160,11 +160,12 @@ README, and appear in Settings once their feature is on.
 | `brain.agy.io_mode` | `"pipe"` | how Kurooto talks to agy: pipe, or a pseudo-terminal where pipes give no output |
 | `brain.base_urls` | `{}` | per brain, to override a preset's address |
 | `brain.classify` | `"rules"` | who judges how hard a request is: rules, main (your AI) or ollama |
+| `brain.claude_accounts` | `{}` | extra Claude accounts, each its own AI "claude:<key>": {"work": {"name": "Work"}} |
 | `brain.effort_map` | `{}` | tuned while dreaming: {"low": "medium"} runs your requests rated low at medium effort |
 | `brain.fallback` | `""` | the AI that takes over when the main one can't answer, or a list of them in order; empty: at a limit (brain.fallback_on), the other agent program, then a Gemini key |
 | `brain.fallback_first` | `[]` | tuned while dreaming: effort levels ("high") at which your first fallback AI goes first |
 | `brain.fallback_on` | `["rate_limited"]` | what hands a request to the next AI: rate_limited, auth, timeout |
-| `brain.main` | `""` | the AI that handles requests: agy, claude, gemini, ollama or custom |
+| `brain.main` | `""` | the AI that handles requests: agy, claude, gemini, ollama or custom, or an extra Claude account (claude:<name>) |
 | `brain.models` | `{}` | per brain: {"custom": {"low": ..., "medium": ..., "high": ...}} |
 | `brain.timeout_min.high` | `30` | minutes a hard request may run before it's stopped |
 | `brain.timeout_min.low` | `10` | minutes a quick request may run before it's stopped |

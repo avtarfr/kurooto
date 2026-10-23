@@ -123,7 +123,7 @@ def checks(app, health: bool = True, net: bool = True) -> list[tuple[str, bool, 
     if main:
         b = providers.build(app, main)
         ok, why = b.available() if b else (False, "unknown brain")
-        out.append((f"AI: {providers.CHOICES.get(main, main)}", ok, why or "ready"))
+        out.append((f"AI: {providers.label(main, main)}", ok, why or "ready"))
     else:
         out.append(("AI", None, "none picked yet (open the setup page)"))
     for m in app.enabled():
