@@ -2988,10 +2988,18 @@ language is downloaded for on-device recognition (in the phone's language or spe
    apps" list in Settings → Battery, or calls may not ring.
 5. Test: dashboard → Phone → **Ring my phone**.
 
-The app looks for a new version each time you open it (at most every 2 minutes) and shows an **Update** button; it
-opens the download.
+**The app's screen** (0.7.0) has three tabs at the bottom: **Today** (the date, **Call** and **Chat**, your day),
+**Inbox** (check-in and quiz cards answered in place, questions, approvals and messages, and what's waiting for your
+computer; a number on the tab says how much waits for you) and **Phone** (the checklist, location reminders, ringtones,
+bedside mode, and this phone with **Unpair**). Pull a tab down to look again. It's Material 3 Expressive, in your
+wallpaper's colours on Android 12+, with a slow living background (a cell and its nerves, as the dashboard's SYSTEMS
+view, tinted by the hour) that holds still with **Remove animations** on. Other screens (the chat, answers, places,
+bedside mode) look as before.
 
-**Today** (0.6.0): under Call and Chat, your day as your computer last sent it ("As of 14:05"), also while it's off:
+The app looks for a new version each time you open it (at most every 2 minutes) and shows an **Update** button at the
+end of Today; it opens the download.
+
+**Today** (0.6.0): on the Today tab under Call and Chat, your day as your computer last sent it ("As of 14:05"), also while it's off:
 the alarm, classes and calendar events, what's due with parts done ("4/7"), reminders and open threads. Tap something
 due for **+1** and **Done** (as on Telegram; with the computer off they wait on your call line). The list goes to your
 call line sealed for each Android phone with a key only that phone has; the call line can't read it. Events are in
@@ -3004,7 +3012,8 @@ phone from it.
 Android's alarm clock, so it rings with Stop and Snooze even when your computer, your call line or the internet can't
 be reached. The call for the same alarm and the phone's alarm ring as one; the first Stop, Snooze or Answer counts for
 both (Stop turns the call down, Snooze snoozes it). Android 12+: allow exact alarms (the checklist's Fix), or it can
-ring a few minutes late. *Undo:* tap **Ring on this phone too** on Today's alarm card to turn the phone's copy off.
+ring a few minutes late. *Undo:* tap **Ring on this phone too** (**On** / **Off**) in Today's alarm group to turn the
+phone's copy off.
 
 **Buttons on notifications** (0.6.0): with `"reminder"` or `"deadline"` in `notify.app_kinds`, a reminder comes with
 **Done**, **+10 min**, **+1 h**, a deadline with **+1**, **Done**, **Snooze 3 h**: the same as on Telegram (a
@@ -3027,7 +3036,7 @@ call (the same call screen as the app's Call button), with **Chat** and **Close*
 screen, so Talk works on a locked phone; Chat asks you to unlock first, and with a PIN or pattern the calls' reasons
 stay hidden until you unlock. The screen dims by the hour: the phone's own brightness by day, lower from 20:00, as dim as
 it goes and in warm red-orange from 22:00 to 06:00 (tap the screen to brighten it for 15 s). A call or the wake-up call
-rings there full screen. Open it from the app's main screen (**Bedside mode** → **Open bedside mode**).
+rings there full screen. Open it from the app's **Phone** tab (**Bedside mode** → **Open bedside mode**).
 - **Open by itself while charging**: off by default; pick the hours (say 22:00 to 07:00). Plugging in within them, or
   the hours starting while it charges, opens it; unplugging closes it again. On Android 10 and newer it opens through a
   full-screen notification (by itself with the screen off; with the phone in use, tap the notice).

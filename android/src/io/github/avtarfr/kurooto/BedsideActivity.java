@@ -156,7 +156,7 @@ public class BedsideActivity extends Activity {
         next.setGravity(Gravity.CENTER_HORIZONTAL);
         col.addView(Ui.gap(next, 12, 0));
         waiting = centred(16);
-        waiting.setOnClickListener(v -> unlocked(new Intent(this, MainActivity.class)));
+        waiting.setOnClickListener(v -> unlocked(new Intent(this, MainActivity.class).putExtra("tab", "inbox")));
         col.addView(Ui.gap(waiting, 8, 0));
         col.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
 
@@ -374,25 +374,10 @@ public class BedsideActivity extends Activity {
         try { nm.notify(ID_BEDSIDE, b.build()); } catch (Exception ignored) { }
     }
 
-    // ---------- its settings, on the app's main screen ----------
+    // ---------- its settings, on the main screen's Phone tab ----------
     /** The "Bedside mode" section: open it, open by itself while charging (and when), keep the screen on. */
-    static void settings(final Activity a, LinearLayout box, final Runnable rebuild) {
-        box.addView(Ui.heading(a, "Bedside mode"));
-        LinearLayout list = Ui.list(a);
-        list.addView(Ui.item(a, "Open bedside mode", "A big clock, the next alarm and calls, and one button to talk. Dims at night.",
-                v -> a.startActivity(new Intent(a, BedsideActivity.class))));
-        list.addView(Ui.item(a, "Open by itself while charging",
-                Prefs.bedsideAuto(a) ? Prefs.bedsideFrom(a) + " to " + Prefs.bedsideTo(a) : "Off", v -> hours(a, rebuild)));
-        list.addView(Ui.item(a, "Keep the screen on while charging", Prefs.bedsideKeepOn(a) ? "On" : "Off", v -> {
-            Prefs.setBedsideKeepOn(a, !Prefs.bedsideKeepOn(a));
-            rebuild.run();
-        }));
-        box.addView(list);
-        box.addView(Ui.small(a, "An old phone on a charger by your bed works well. Talk works with the phone locked; leave the app "
-                + "listening (the checklist above) so wake-up calls ring there."));
-    }
-
-    private static void hours(final Activity a, final Runnable rebuild) {
+    /** "Open by itself while charging" on the main screen's Phone tab: pick the hours, or turn it off. */
+    static void hours(final Activity a, final Runnable rebuild) {
         if (!Prefs.bedsideAuto(a)) { pick(a, rebuild); return; }
         new AlertDialog.Builder(a).setTitle("Open by itself while charging")
                 .setItems(new String[]{"Change the hours", "Turn it off"}, (d, which) -> {

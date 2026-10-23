@@ -27,7 +27,9 @@ uv run ruff check . && uv run ruff format --check .
   and watch it from another terminal with `python3 tools/pytest_progress.py`: tests done of all, rate, time left, and
   each failure the moment it happens (`tools/pytest_progress.py`; `KUROOTO_TEST_PROGRESS` names another file).
 - Android: `android/build.sh --test` runs the crypto and speech tests on a plain JVM; `android/build.sh` builds a
-  debug APK (needs the Android SDK).
+  release-style APK signed with a debug key (needs the Android SDK, a JDK 17 and, the first time, the network for
+  Gradle); `--dev` a dev build that installs beside the real app (look at its screens with the `demo` extra, see
+  [calls-and-phone.md](calls-and-phone.md)); `--lint` the API-level lint.
 
 ## The real-install guard
 
@@ -133,7 +135,7 @@ def test_something(env):  # a paired app talking to a fake Telegram (tests/conft
 |---|---|
 | `ci.yml` `test` | Linux, Windows, macOS x Python 3.12, 3.13: `uv sync --locked`, `ruff check`, `ruff format --check`, `pytest -m "not live"`, then `kurooto --version` and `kurooto doctor` as a smoke test |
 | `ci.yml` `call-line` | Node 24, the Worker's packages, the bundled call page, `pytest tests/integration tests/unit/test_calls.py` |
-| `ci.yml` `android` | `android/build.sh --test` (vectors), a debug build, Android lint `NewApi` / `InlinedApi` as errors, the debug APK as an artifact |
+| `ci.yml` `android` | `android/build.sh --test` (vectors), a debug-signed build (Gradle, `GRADLE_USER_HOME` in the runner's temp), `build.sh --lint` (`NewApi` / `InlinedApi` as errors), the APK as an artifact |
 | `ci.yml` `privacy` | `tools/privacy_scan.py --tree` and `--history` (with the `PRIVACY_DENYLIST` secret), gitleaks over the whole history |
 | `ci.yml` `update-rehearsal` | Linux, Windows, macOS: `requirements.lock` matches `uv.lock`, then `tools/update_rehearsal.py` (install, update, rollback, uninstall with the real installer) |
 | `android-emulator.yml` | `android/smoke.sh` on emulators API 23 to 35 (android changes, weekly, or by hand) |

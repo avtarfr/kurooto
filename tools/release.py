@@ -118,13 +118,13 @@ PACKAGE = "io.github.avtarfr.kurooto"
 
 
 def android_source(android: Path) -> str:
-    """A fingerprint of the app's sources (android/ without its build output). sign --apk records it with the app, so
-    build can tell whether the app changed since it last shipped."""
+    """A fingerprint of the app's sources (android/ without its build output and Gradle's caches). sign --apk records
+    it with the app, so build can tell whether the app changed since it last shipped."""
     h = hashlib.sha256()
     files = [p for p in android.rglob("*") if p.is_file()]
     for f in sorted(files, key=lambda p: p.relative_to(android).as_posix()):
         rel = f.relative_to(android)
-        if rel.parts[0] == "build" or "__pycache__" in rel.parts:
+        if rel.parts[0] in ("build", ".gradle", ".kotlin") or "__pycache__" in rel.parts:
             continue
         h.update(rel.as_posix().encode() + b"\0" + f.read_bytes())
     return h.hexdigest()

@@ -18,6 +18,8 @@ jobs:
         api: [23, 26, 29, 33, 35]
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home # build.sh's Gradle and libraries (downloaded)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: build the app

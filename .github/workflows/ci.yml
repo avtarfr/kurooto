@@ -47,17 +47,17 @@ jobs:
   android:
     name: Android app (build for Android 6+, API-level lint, crypto vectors)
     runs-on: ubuntu-latest
+    env:
+      # build.sh downloads its pinned Gradle (checked by SHA-256) and the libraries here (needs the network)
+      GRADLE_USER_HOME: ${{ runner.temp }}/gradle-home
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: crypto test against the shared vectors (plain JVM)
         run: android/build.sh --test
       - name: build (debug-signed; release signing happens on the maintainer's machine)
         run: android/build.sh
-      - name: lint (any API used without a version check fails the build)
-        run: |
-          LINT=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/lint | sort -V | tail -1)
-          "$LINT" --sdk-home "$ANDROID_HOME" --check NewApi,InlinedApi --classpath android/build/classes \
-            --text stdout --exitcode android
+      - name: lint (any API used without a version check fails the build; Gradle's lint, Java and Kotlin)
+        run: android/build.sh --lint
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kurooto-debug-apk
