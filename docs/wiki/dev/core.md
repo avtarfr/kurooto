@@ -39,7 +39,7 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 | `you`, `modules` | `app.py` |
 | `brain` | `providers/__init__.py` |
 | `jobs` | `core/jobs.py` |
-| `notify` (`desktop`, `desktop_kinds`, `app_kinds`), `notify.calm`, `notify.presence` | `core/notify.py`, `core/calm.py`, `core/presence.py` |
+| `notify` (`desktop`, `desktop_kinds`, `app_kinds`, `app_chat`), `notify.calm`, `notify.presence` | `core/notify.py`, `core/calm.py`, `core/presence.py` |
 | `availability` | `core/availability.py` |
 | `ask` | `core/ask.py` |
 | `power` | `core/power.py` |
@@ -418,8 +418,19 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   envelope `why`, `setting`, `about`, `item`, `due`.
 - `send()`: Calm decides first (`Calm.decide`: `send`, `hold` or `stop`); during focus, non-urgent messages that aren't
   `approval`/`call` go to `focus-queue.jsonl` (flushed by `flush_queue()` when focus ends); otherwise `_deliver()`:
-  Telegram (unless presence holds it because the network is down), the phone app for `notify.app_kinds`, the desktop
-  (`core/desktop.py`) for `notify.desktop_kinds` or when no other channel delivered. Emits `notified`.
+  Telegram (unless presence holds it because the network is down), the phone app for `notify.app_kinds`, the app's
+  chat (`chat`) for the rest when `notify.app_chat` is on or `App.app_main()` (Telegram off, Phone calls on: Calm's
+  `extra` rows come along then), the desktop (`core/desktop.py`) for `notify.desktop_kinds` or when no other channel
+  delivered. A `reply_to` of `"app:<id>"` goes to the chat only. Emits `notified`.
+- Telegram is optional (0.5.19). `app.py:met(need, on, m)` is the requirement check `App.enable`, `App.disable`,
+  `core/turnon.py` and `core/profile.py` use: `"telegram"` in a module's `requires` means somewhere to talk, met by
+  Telegram or by `calls` (the phone app's chat) unless the module sets `telegram_only` (Voice notes, Files into notes).
+  `App.need_title` words it ("Telegram or the phone app (Phone calls)"). `App.basics()` hands Telegram's own commands
+  and intents (`/pause`, `/resume`, `/status`, `/hold`, `/calls`, `/focus`) to `App.handle` and `App.help` when
+  `app_main()`; `App.start` registers `telegram.focus_end` itself, so `/focus` ends without Telegram.
+  `core/presence.py:Presence.channels` uses `app` in place of `telegram` then. Files: `Message.file` to the chat
+  becomes a link (`modules/calls/chat.py:PhoneChat.send_file`, see calls-and-phone.md); `Jobs._deliver` sends a long
+  answer's file with the same `reply_to` as its text.
 - Channels are registered by modules: `notifier.register("telegram", send, retract=None)`. `retract(map_kind, map_ref,
   button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
 - Button data is `"<prefix>:<ref>:<action>"`; `App.callback` routes core prefixes (`calm`, `upd`, `ask`, `health`,

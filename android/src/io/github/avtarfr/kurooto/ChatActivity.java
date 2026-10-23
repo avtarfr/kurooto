@@ -26,6 +26,8 @@ import org.json.JSONObject;
  * handled like a Telegram message; the answers come back here (and as a notification when this screen isn't open).
  * Buttons under an answer work as on Telegram; Reply under a message that takes one answers it. With your computer
  * off, what you send waits on your call line ("Waiting for your computer") and goes to it when it's back.
+ * Without Telegram (0.5.19), this chat is where everything Kurooto says comes; a file comes as a button that opens a
+ * link (Google Drive, or a sealed copy on your call line for a day) in the browser.
  */
 public class ChatActivity extends Activity {
     static final int ID_NOTE = 9; // chat notifications (tag "chat")

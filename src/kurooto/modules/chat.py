@@ -3,11 +3,17 @@ comes back as a reply. Start a message with "high:" (or "low:") to choose how ha
 
 from __future__ import annotations
 
+import re
 import time
 
 from kurooto import providers
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
+
+SHARED_S = 2 * 3600  # files shared from the phone this recently are mentioned to the AI when you talk of a file
+SHARED_NOTE = "\n\n[Shared from their phone lately"
+REFERS = re.compile(r"\b(files?|pdfs?|photos?|pictures?|images?|docs?|documents?|screenshots?|attachments?|sent|shared|"
+                    r"uploaded)\b", re.I)  # fmt: skip
 
 
 class Chat(Module):
@@ -23,6 +29,10 @@ class Chat(Module):
 
     def owns(self, jid: str) -> bool:
         return jid in self.mine
+
+    def own(self, jid: str) -> None:
+        """A request made for you elsewhere (a file shared from the phone) becomes part of the conversation."""
+        self.mine = {*list(self.mine)[-50:], jid}
 
     @property
     def history_file(self):
@@ -45,6 +55,8 @@ class Chat(Module):
             text = (
                 f"{text}\n\n" if text else "They sent this with no words: say what it is, or answer what it asks.\n\n"
             ) + f"Files they sent with it (on this computer; open them to read them): {sent}"
+        elif REFERS.search(text):  # "summarise the PDF I just sent" from the phone app (calls/chat.py:shared)
+            text += self._shared_note()
 
         terminal = msg.via in ("terminal", "setup")
         history = jload(self.history_file, []) or []
@@ -69,6 +81,18 @@ class Chat(Module):
         self.mine = {*list(self.mine)[-50:], jid}
         return "On it."
 
+    def _shared_note(self) -> str:
+        rows = jload(self.app.paths.state / "calls" / "shared.json", []) or []
+        recent = [r for r in rows if isinstance(r, dict) and time.time() - r.get("at", 0) < SHARED_S][-5:]
+        if not recent:
+            return ""
+        files = "; ".join(f"{r.get('name')} at {r.get('path')}" + (f" (note: {r['note']})" if r.get("note") else "")
+                          for r in recent)  # fmt: skip
+        return (
+            f"{SHARED_NOTE}, newest last; if they mean one, open it there (gone from there: it was filed into "
+            f"their notes under a similar name): {files}]"
+        )
+
     def record_turn(self, prompt: str, reply: str) -> None:
         """Record a completed turn into chat history for context continuity."""
         if not reply or reply.startswith("I couldn't "):
@@ -77,6 +101,7 @@ class Chat(Module):
         user_text = prompt
         if "Current request:\n" in prompt:
             user_text = prompt.split("Current request:\n", 1)[1].strip()
+        user_text = user_text.split(SHARED_NOTE, 1)[0]
         history = jload(self.history_file, []) or []
         history.append(
             {

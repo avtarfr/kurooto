@@ -73,7 +73,8 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   you do?" in the wizard, holiday calendars)
 - ~~**The phone app as a full chat channel** beside Telegram, for places where Telegram is blocked or little used.~~
   (0.5.16: Android's chat, handled like a Telegram message with working buttons; `notify.app_chat` sends Kurooto's
-  own messages there too; the iPhone app's chat is still to come, on the same call-line API)
+  own messages there too) (0.5.19: the iPhone app's chat; Telegram is optional: setup offers the phone app instead,
+  and without Telegram everything comes to the chat, files as Drive links or a sealed copy on the call line)
 - **Small gaps**: `add_deadline` takes the course, so a mail's "Lab report" lands on the right course page; a
   recurring fact said in chat becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look
   back can propose routines and acts on data changes with Undo instead of waiting for a tap; project notes keep

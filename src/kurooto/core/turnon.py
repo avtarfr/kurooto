@@ -75,7 +75,10 @@ def offer(app: App, msg: Incoming, plain: str, mods: list[Module], asks: bool) -
         data = _load(app)
         data[ref] = {"module": m.id, "text": msg.text, "via": msg.via, "at": now().isoformat(timespec="seconds")}
         _save(app, data)
-    needs = [_title(app.modules[r]) for r in m.requires if r in app.modules and not app.is_on(r)]
+    from kurooto.app import met
+
+    on = set(app.settings.get("modules.enabled") or [])
+    needs = [_title(app.modules[r]) for r in m.requires if r in app.modules and not met(r, on, m)]
     also = f" (and {', '.join(needs)}, which it needs)" if needs else ""
     app.events.emit("turnon_offered", module=m.id, intent=it.name)
     msg.reply(
@@ -104,8 +107,10 @@ def button(app: App, ref: str, act: str) -> str:
                 reply(out)
             return "Asked your AI instead."
         return "OK, left as it is."
+    from kurooto.app import met
+
     for r in [*m.requires, m.id]:
-        if r in app.modules and not app.is_on(r):
+        if r in app.modules and not met(r, set(app.settings.get("modules.enabled") or []), m):
             ok, why = app.enable(r)
             if not ok:
                 return f"Couldn't turn on {_title(app.modules[r])}: {why}"[:190]

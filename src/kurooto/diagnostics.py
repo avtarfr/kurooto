@@ -168,9 +168,16 @@ def call_line(app, calls, running: bool) -> tuple[bool | None, str]:
 
 
 def more_checks(app) -> list[tuple[str, bool | None, str]]:
-    """Telegram answers (not only set up), your skills in agent programs, and what add-ons check themselves."""
+    """Telegram answers (not only set up), where Kurooto talks to you without it (the phone app's chat: Telegram is
+    optional), your skills in agent programs, and what add-ons check themselves."""
     out: list[tuple[str, bool | None, str]] = []
     tg = app.modules.get("telegram")
+    if not app.is_on("telegram"):  # a note either way, never a problem: Telegram is optional (0.5.19)
+        out.append(
+            ("talks to you", True, "in the phone app's chat (Telegram is optional)")
+            if app.is_on("calls")
+            else ("talks to you", None, "on this computer only: set up Telegram, or Phone calls and the phone app")
+        )
     if tg is not None and app.is_on("telegram") and tg.ready()[0]:
         try:
             me = tg.api().call("getMe", None, None, 8)

@@ -35,6 +35,7 @@ class VoiceNotes(Module):
     title = "Voice notes"
     description = "Send a voice message on Telegram: it's written out and handled like a typed message."
     requires = ("telegram",)
+    telegram_only = True  # voice messages come to your bot; the phone app has none
     privacy = (
         "The recording goes to Google (Gemini, your free key) to be written out; free-tier data may be used by Google."
     )

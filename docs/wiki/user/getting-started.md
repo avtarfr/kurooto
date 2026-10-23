@@ -1,7 +1,7 @@
 # Getting started
 
-Paste one line into a terminal, follow the setup page that opens, make a Telegram bot, then send `/help` to it. That
-takes 15 to 30 minutes the first time. This page walks through each step and says what to do when something looks
+Paste one line into a terminal, follow the setup page that opens, make a Telegram bot (or pair the Kurooto phone app
+instead), then send `/help` to it. That takes 15 to 30 minutes the first time. This page walks through each step and says what to do when something looks
 wrong.
 
 - [What you need](#what-you-need)
@@ -20,7 +20,7 @@ wrong.
 |---|---|
 | A computer with Windows 10 or 11, macOS 12 or newer, or Linux | Kurooto runs on it. No graphics card is needed: the AI runs in the cloud unless you choose otherwise. |
 | About 1 GB of free disk space, plus what your features need | The installer checks for at least 2 GB free. The setup page shows the total before installing anything, and Kurooto always leaves some space spare (it skips local AI models rather than fill your disk). |
-| Telegram on your phone or computer (free) | This is where you talk to Kurooto. |
+| Telegram on your phone or computer (free), or the Kurooto phone app | This is where you talk to Kurooto. The phone app instead of Telegram needs Phone calls (a free Gemini key and a free Cloudflare account); see [step 6](#6-chat-telegram-or-the-phone-app). |
 | A Google account (free) | For an AI brain: agy signs in with it, and a Gemini API key is made with it. |
 
 Kurooto only works while the computer is on and awake. If you want it reachable all day, leave the computer on and
@@ -201,9 +201,17 @@ Gemini key even if another AI answers your messages: a key box appears under the
 The Notes brain is a 0.5 GB download, so it's not in Starter. You can change any of this later on the dashboard
 (Features, Alt+F).
 
-### 6. Telegram: connect your bot
+### 6. Chat: Telegram or the phone app
 
-You talk to Kurooto through your own private bot. It takes about two minutes:
+Pick where you talk to Kurooto: **Telegram** (your own private bot) or **The Kurooto phone app instead**.
+
+**The phone app instead.** Its chat does what the bot does: commands, reminders, check-ins, questions with buttons,
+your AI's answers; files come as links. It needs Phone calls: tick it on the Features step and press **Set up now**
+(a free Gemini key, then your call line on a free Cloudflare account). Back here, **Pair my phone now** shows a QR code
+(or pair after **Finish setup**). Telegram can be added later from the dashboard. More:
+[Using the app instead of Telegram](phone-app.md#using-the-app-instead-of-telegram).
+
+**Telegram.** You talk to Kurooto through your own private bot. It takes about two minutes:
 
 1. In Telegram, open **@BotFather** (Telegram's official bot-maker, with the blue tick) and send `/newbot`.
 2. Answer its two questions: a display name, then a username ending in `bot`.
@@ -227,11 +235,12 @@ From then on the bot answers only your Telegram account; anyone else who finds i
 | "Another program is reading this bot's messages" | Maybe another Kurooto using the same bot. Stop the other one, or make a new bot with @BotFather. |
 | "Can't reach Telegram right now" | Check the internet; it keeps trying. |
 
-You can go on without Telegram and connect it later; this step stays marked **!** until then.
+You can go on without Telegram and connect it later; this step stays marked **!** until then (with the phone app
+picked: until Phone calls is set up).
 
 ### 7. Almost done
 
-The summary lists your AI, Telegram, the features you picked and your notes folder (by default `Documents/Kurooto`,
+The summary lists your AI, Telegram (or the phone app), the features you picked and your notes folder (by default `Documents/Kurooto`,
 or `~/Kurooto` on Linux without a Documents folder). Tick or untick **Start Kurooto when I sign in to this computer**
 (★ recommended), then **Finish setup**. Kurooto installs what your features need (with progress for each), turns them
 on, and starts. Anything that isn't ready is listed as "Not turned on yet" with the reason; finish it later from the

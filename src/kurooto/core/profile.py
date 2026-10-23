@@ -810,10 +810,13 @@ def _old_computer_notes(settings: dict) -> list[str]:
 
 
 def _features(app, wanted: list[str], report: dict, progress=print) -> None:
+    from kurooto.app import met
+
     live = app._loop is not None  # inside the running assistant (the setup page); else a `kurooto` command
     done: set[str] = set()
     for _ in range(2):  # twice: turning on "Your add-ons" can bring new features with it
-        for mid in list(app.modules):
+        first = "calls" if "telegram" not in wanted else ""  # the phone app's chat, before what needs somewhere to talk
+        for mid in sorted(app.modules, key=lambda x: x != first):
             if mid not in wanted or mid in done:
                 continue
             done.add(mid)
@@ -825,7 +828,7 @@ def _features(app, wanted: list[str], report: dict, progress=print) -> None:
                 ok, why = app.enable(mid)
             else:
                 on = list(app.settings.get("modules.enabled") or [])
-                missing = [r for r in m.requires if r not in on]
+                missing = [r for r in m.requires if not met(r, on, m)]  # the phone app's chat stands in for Telegram
                 if missing:
                     ok, why = False, "needs " + ", ".join(app.modules[r].title for r in missing if r in app.modules)
                 else:

@@ -34,7 +34,10 @@ def tidy_what(text: str) -> str:
 class Reminders(Module):
     id = "reminders"
     title = "Reminders"
-    description = 'Plain English: "remind me at 9 to call mum". They arrive on Telegram, even after the laptop slept.'
+    description = (
+        'Plain English: "remind me at 9 to call mum". They arrive on Telegram (or the phone app), even after the '
+        "laptop slept."
+    )
     requires = ("telegram",)
 
     def __init__(self, app):

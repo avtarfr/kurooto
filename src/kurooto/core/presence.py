@@ -137,7 +137,10 @@ class Presence:
             return 600.0
 
     def channels(self) -> list[str]:
-        return [c for c in (self.setting("channels") or []) if c in CHANNELS]
+        out = [c for c in (self.setting("channels") or []) if c in CHANNELS]
+        if "telegram" in out and getattr(self.app, "app_main", lambda: False)():  # no Telegram: the phone app says it
+            out = [c for c in out if c != "telegram"] + ([] if "app" in out else ["app"])
+        return out
 
     def _load(self) -> dict:
         return jload(self.file, {}) or {}

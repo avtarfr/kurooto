@@ -71,7 +71,7 @@ POST (in `Api.post`):
 | AI | `brain`, `brain/test`, `brain/models`, `jobs/cancel`, `tryit` |
 | features | `modules/enable`, `modules/disable`, `modules/setup`, `modules/configure`, `modules/card` |
 | settings and you | `settings`, `you`, `autostart`, `hardware/refresh`, `hardware/override`, `keys/gemini` |
-| setup | `prereqs/install`, `prereqs/signin`, `telegram/token`, `telegram/poll`, `telegram/relink`, `telegram/webhook-off`, `setup/done` |
+| setup | `prereqs/install`, `prereqs/signin`, `telegram/token`, `telegram/poll`, `telegram/relink`, `telegram/webhook-off`, `setup/channel` (`{"channel": "telegram" \| "app"}` into `setup.channel`; `GET state` returns it as `channel`), `setup/done` |
 | everyday | `act`, `ask`, `ask/get`, `ask/pending`, `ask/answer`, `ask/expire`, `notify`, `send-file`, `open-note`, `open-url` |
 | health and sync | `health/fix`, `sync/all`, `sync/status` |
 | power | `power/stop`, `power/pause`, `power/resume`, `power/off` |
@@ -160,8 +160,11 @@ To add an action: write `fn(app, args)` that calls the existing module method, a
 `static/setup.js`: `STEPS = ["you", "computer", "brain", "about", "features", "telegram", "finish"]`, plus a hidden
 `restore` section ("I've used Kurooto before": `POST /api/profile/restore`). Each step saves through its own route
 and reloads `GET /api/state`. The brain list comes from `web/api.py:BRAIN_ORDER`; features from `MODULE_ORDER`, with
-`STARTER` pre-ticked. `finish()` runs `modules/setup` for chosen features that aren't ready, then `modules/enable`,
-`autostart` and `setup/done`. Secrets typed in the wizard go to `app.secrets.set` (keychain or `secrets.json`),
+`STARTER` pre-ticked. The `telegram` step (labelled Chat) picks the channel first (`pickChannel`, `setup/channel`):
+Telegram's pairing, or the phone app instead (`renderAppChannel`: needs Phone calls set up on the features step; ticks
+`calls`, unticks `telegram`; **Pair my phone now** shows `pairBox`). `channelOk()` decides the step's "!" mark.
+`finish()` runs `modules/setup` for chosen features that aren't ready, then `modules/enable` (which turns `calls` on
+first when Telegram isn't chosen, so what needs somewhere to talk can follow), `autostart` and `setup/done`. Secrets typed in the wizard go to `app.secrets.set` (keychain or `secrets.json`),
 never to `settings.json`.
 
 ## How a module shows up in the UI

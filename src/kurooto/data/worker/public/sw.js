@@ -1,6 +1,6 @@
 // Kurooto's service worker: turns a push (it carries nothing) into a notification. It asks the call line what's
 // ringing or waiting, with this device's key: a call opens the call page, a question or message opens the inbox, and
-// so does a chat message from Kurooto (the newest few come with /pending as "chat").
+// a chat message from Kurooto opens the chat (/talk; the newest few come with /pending as "chat").
 function idb(mode, fn) {
   return new Promise(function (resolve) {
     try {
@@ -42,7 +42,7 @@ function showItem(items, name, chat) {
     var more = fresh.length > 1 ? ' (+' + (fresh.length - 1) + ' more)' : '';
     return idbPut('seen', JSON.stringify(seen.concat([it.id]).slice(-100))).then(function () {
       return self.registration.showNotification(it.title || name, {
-        body: String(it.text || '').slice(0, 300) + more, data: { link: '/inbox#' + it.id }, tag: 'kurooto-' + it.id,
+        body: String(it.text || '').slice(0, 300) + more, data: { link: it.kind === 'chat' ? '/talk' : '/inbox#' + it.id }, tag: 'kurooto-' + it.id,
         requireInteraction: it.kind === 'question' || it.kind === 'approval',
       });
     });

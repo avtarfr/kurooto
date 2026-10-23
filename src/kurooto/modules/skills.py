@@ -281,7 +281,8 @@ def skill_prompt(app: App, name: str, args: str = "", files=()) -> str | None:
 # ------------------------------------------------------------------------------------ files to you
 def send_file(app: App, path, caption: str = "", inside: list[Path] | None = None, to: str = "") -> tuple[bool, str]:
     """Send a file to your Telegram (up to 50 MB). `inside`: the folders it must be in (for the AI's tool). to="drive",
-    or a bigger file with Drive upload on: into your Google Drive instead, and you get the link."""
+    or a bigger file with Drive upload on: into your Google Drive instead, and you get the link. Without Telegram: a
+    link in the phone app's chat (calls/chat.py:send_file)."""
     try:
         p = Path(os.path.expanduser(str(path))).resolve(strict=True)
     except (OSError, RuntimeError):
@@ -299,6 +300,8 @@ def send_file(app: App, path, caption: str = "", inside: list[Path] | None = Non
         if not on:
             return False, "Drive upload is off: on this computer, dashboard → Features → Drive upload → Set up."
         return drive.send(p, caption, temporary=to != "drive")  # too big for Telegram: a link that lasts a few days
+    if app.app_main() and "chat" in app.notifier.channels:  # no Telegram: a link in the app's chat (calls/chat.py)
+        return app.modules["calls"].chat.send_file(p, caption.strip()[:900])
     if size > TELEGRAM_MAX:
         more = " Turn on Drive upload to get bigger files as a Drive link." if drive is not None else ""
         return False, f"{p.name} is {size / 1024 / 1024:.0f} MB; Telegram takes files up to 50 MB.{more}"

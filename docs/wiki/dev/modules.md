@@ -16,7 +16,8 @@ Class attributes:
 | `id` | the feature's id: its settings section, scheduler key prefix (`<id>:`), action prefix (`<id>.`), Calm reason prefix |
 | `title`, `description` | shown on the feature card |
 | `privacy` | one or two plain sentences: what leaves the computer and where it goes. The default is "Stays on this computer.", so a module that sends anything must override it |
-| `requires` | ids of features that must be on first (`App.enable` refuses otherwise; `App.disable` refuses to turn off something another feature requires) |
+| `requires` | ids of features that must be on first (`App.enable` refuses otherwise; `App.disable` refuses to turn off something another feature requires). `"telegram"` means somewhere to talk: Telegram or the phone app's chat (`calls`), via `app.py:met` |
+| `telegram_only` | `True` when `"telegram"` in `requires` means Telegram itself (Voice notes, Files into notes): the phone app doesn't stand in |
 | `extra` | True: an add-on that ships with Kurooto: in no preset, listed apart under Features, on only by hand (Exam season, Learns from its own work) |
 | `heavy` | True: its scheduled work and background task wait for the charger in battery saver mode (`core/power.py`) |
 | `processes`, `processes_intermittent` | program names or command-line fragments to show CPU and memory for on the dashboard |

@@ -167,7 +167,7 @@ public class MainActivity extends Activity {
             Prefs.forget(this);
             stopService(new Intent(this, ListenService.class));
             build();
-            status.setText("Unpaired here. Also remove it on your computer (Phone tab, or /phones on Telegram).");
+            status.setText("Unpaired here. Also remove it on your computer (the dashboard's Phone tab).");
         });
         box.addView(forget);
     }

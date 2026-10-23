@@ -520,7 +520,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `notify.app_chat` | `false` | Kurooto's own messages (those not in app_kinds) also go to the phone app's chat |
+| `notify.app_chat` | `false` | Kurooto's own messages (not app_kinds) also go to the app's chat; always without Telegram |
 | `notify.app_kinds` | `["call", "question", "approval"]` | which messages also reach your phone app |
 | `notify.calm.calls` | `1` | calls a day that come by themselves (the alarm and calls you asked for don't count) |
 | `notify.calm.evening` | `[]` | kinds that always wait for the evening bundle (Less of this → Another time) |

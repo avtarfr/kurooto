@@ -8,6 +8,9 @@
          P-256 between a fresh key and the phone's own (the phone made it; its private half never leaves it), HKDF-
          SHA256 (salt: the fresh public key, info "kurooto s1") to an AES-256 key, then k1 with that key:
          "s1." + base64url(fresh public key, 65 bytes uncompressed) + "." + the k1 token without its "k1."
+    f1   a file from this computer for the phone app's chat (0.5.19), kept on the call line for a day: AES-256-GCM
+         with a fresh key, the raw bytes nonce || ciphertext+tag; the key goes only in the link's #fragment, which
+         the call line's file page (public/file.js) opens in the phone's browser
 """
 
 from __future__ import annotations
@@ -54,6 +57,18 @@ def open_k1(key_b64: str, token: str) -> str | None:
     try:
         raw = unb64url(token[3:])
         return AESGCM(base64.b64decode(key_b64)).decrypt(raw[:12], raw[12:], None).decode()
+    except Exception:
+        return None
+
+
+def seal_f1(key: bytes, data: bytes, nonce: bytes | None = None) -> bytes:
+    nonce = nonce or os.urandom(12)
+    return nonce + AESGCM(key).encrypt(nonce, data, None)
+
+
+def open_f1(key: bytes, blob: bytes) -> bytes | None:
+    try:
+        return AESGCM(key).decrypt(blob[:12], blob[12:], None)
     except Exception:
         return None
 
