@@ -33,7 +33,7 @@ computer only.
 | After-class notes | nothing; with Chat on: your answer and the photos and files you sent with it, for the AI to write a study log | the AI service you picked |
 | Notes brain (GBrain) | nothing on computers with a graphics card or Apple Silicon (the index is made locally); on others, note text, to make the index. The nightly upkeep and timelines add nothing: the upkeep's index step sends note text to Google only if your index already uses Gemini. Kurooto turns off GBrain's own update check, so GBrain makes no calls to its release page | Google (Gemini, your key), unless you chose keyword-only |
 | Notes brain: your own GBrain (`gbrain.managed` = `false`) | nothing by Kurooto: it runs your gbrain program, which uses the embedding and AI models *your* brain is set up with (also for the upkeep steps you add, such as contradictions). With `gbrain.agy_mcp` and your approval, agy can use your brain's tools, so what it reads there goes to Google like the rest of agy's work | whatever your own brain is set up to use; Google (agy) with `gbrain.agy_mcp` |
-| Remember | your how-to-help-me note (`about-me/how-to-help-me.md`) goes along with every AI request, like the profile's "In brief" part; health, money and password details are refused, never stored | the AI service you picked |
+| Remember | your how-to-help-me note (`about-me/how-to-help-me.md`) goes along with every AI request, like the profile's "In brief" part; health, money and password details are refused, never stored. "Still true?" (`remember.recheck_days`, 90) is worked out on this computer: when each line Kurooto wrote last came up, kept by a hash of its words in the state folder | the AI service you picked |
 | Nightly look back | what happened (events: what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out), your how-to-help-me note and the values of the settings it may change; for a skill change you approved, that skill's text | the AI service you picked |
 | Learns from its own work (optional) | its search index of past requests, calls and chats is built and kept on this computer; when the AI searches it, the passages it finds go to that AI with the request; to learn a skill, the finished request, its answer and the steps it took; to learn a lesson, your correction and the skill; with the nightly look back, the day's requests, to pick out facts you stated (never health, money, passwords or other people's details) | the AI that takes second looks (`learning.brain`), else the AI service you picked |
 | Phone calls | call audio and what's said on calls; the call setup (your name, the assistant's name, which tools exist); for calls while the computer is off: a short brief (what's due, today's classes and check-ins, open questions, quiz questions, the alarm), the steps for check-in, wake-up and Sunday review calls with what they need (today's plan from your daily note, today's classes, study hours counted, the week's numbers), and your notes' titles, headings and first lines | Google (Gemini Live, your key); your own Cloudflare account (your call line) |
@@ -185,6 +185,16 @@ lines. `/forget 7d` forgets the last 7 days now; `/forget all` forgets everythin
 folder is never touched (a voice note's recording is saved there, so it stays), nor the event log, which holds times,
 counts and names but never what you typed or what was answered. Your call line holds a call's transcript only while
 the computer is off and hands it over when it's back. Backup zips you made before keep what they had.
+
+**Gists.** As the words of a call, an AI request or a chat fade (`privacy.keep_days`, `/forget`), it settles into one
+line of what it decided or did, made by rules on this computer from Kurooto's own records: for a call, what it was for
+and what its tools did (a reminder's time and wording, a deadline's title; never what a tool read); for an AI request
+of yours, its title (the first 80 characters of what you asked), how it ended and its run receipt, never the answer;
+for a chat turn, its request's name. A line that looks like a health, money or password detail keeps only its kind.
+Gists stay in Kurooto's state folder (`gists.jsonl`, never your notes or Profile sync; Backups include it like the
+rest of the state folder) for good, or `privacy.gist_days` days when you set it. `/gists forget 3` drops one, `/forget
+all` asks whether they go too, `privacy.keep_gist` = `false` makes none. Only with `privacy.gist_model` on and Local AI
+models on does a model on this computer read a call's transcript to add one sentence; a cloud AI never does.
 
 ## Your own code and terminals
 

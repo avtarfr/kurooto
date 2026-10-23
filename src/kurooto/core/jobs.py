@@ -309,6 +309,17 @@ class Jobs:
             one=False,
         )
 
+    def ending(self, lo: float, hi: float) -> list[tuple]:
+        """(gists) Your own requests forget() would blank in [lo, hi), before it does, oldest first: (title, status,
+        verdict, receipt, when). core/gists.py."""
+        return self._read(
+            "select title, status, coalesce(verdict, ''), coalesce(receipt, ''), coalesce(finished, created) from jobs "
+            "where status not in ('queued','running') and prompt != '' and coalesce(lane, 'you') = 'you' "
+            "and coalesce(finished, created) >= ? and coalesce(finished, created) < ? order by 5",
+            (lo, hi),
+            one=False,
+        )
+
     def forget(self, lo: float, hi: float) -> int:
         """(retention) Blank what was asked and answered in finished requests that ended in [lo, hi): the row stays,
         without its words, for /usage and the Space keeper. How many were forgotten (core/retention.py)."""

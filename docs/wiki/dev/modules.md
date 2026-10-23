@@ -349,7 +349,16 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **remember** (`modules/remember.py`): "remember that ..." appended to `about-me/how-to-help-me.md` (health, money and
   credentials refused by `SENSITIVE`); `help_brief()` goes into every AI request's context. `keep(app, fact, via,
   section)` is the one path for a fact (Remember's command, intent and call tool, and Learns from its own work's
-  facts); `remove_line()` takes a line Kurooto added out again, exactly as written (an Undo).
+  facts); `remove_line()` takes a line Kurooto added out again, exactly as written (an Undo). Rechecking:
+  `kept_lines()` is the dated `- fact (YYYY-MM-DD)` lines under `MANAGED` (`TOLD`, `PICKED`, `LEARNED`, the last
+  now defined here and imported by retro) keyed by `fact_key()` (hash of `_norm`, so an edit is a new line);
+  `Remember.recheck()` (`remember:recheck`, daily 18:30) seeds `seen` (from the line's date on the very first run,
+  else now), marks `used` from `came_up()` (most content words) over your own requests (`Jobs.finished_since`, lane
+  `you`, `learning.asked`) and the "You:" lines of transcripts since the last scan, `touch()` from `keep()` when a fact
+  is said again, then sends at most one "Still true?" (`why="remember.recheck"`, `map_kind="recheck"`) for the line
+  quiet longest past `remember.recheck_days`, at most `RECHECK_WEEK` (2) a week, `RECHECK_GAP_DAYS` (3) apart.
+  Buttons `rck:<key>:keep|change|forget`, `rck:<undo>:undo`; replies (`recheck`): yes/no or the new wording,
+  through `keep()`'s rules (`_change` → `_swap`). State `remember/recheck.json`.
 
 ### Time and attention
 

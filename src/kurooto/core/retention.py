@@ -21,6 +21,11 @@ the computer is off) is handed over and emptied each time the computer connects,
 Every day at 04:15 (or on waking, if the computer slept through it) what's older than keep_days goes. /forget 7d
 (2w, 12h) forgets the last stretch now; /forget all forgets everything, after a confirm button. Each says how many of
 each kind went. keep_days 0 keeps everything until you forget it.
+
+Nothing is simply dropped: like memory, a call, a request or a chat settles into a one-line gist of what it decided
+or did (core/gists.py, privacy.keep_gist), and the daily job lets its words fade only once that gist exists (a gist
+that couldn't be made keeps the words until the next night). /forget 7d still removes the words now and keeps the
+gists; /forget all asks whether the gists go too.
 """
 
 from __future__ import annotations
@@ -32,6 +37,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kurooto.core import gists
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
@@ -101,6 +107,7 @@ def _calls(app: App, lo: float, hi: float) -> int:
             t = _mtime(f)
         if _in(t, lo, hi):
             f.unlink(missing_ok=True)
+            gists.drop_did(f)
             n += 1
     tc = d / "textcalls.json"
     if tc.exists():
@@ -196,11 +203,26 @@ STEPS = {
 }
 
 
-def forget(app: App, lo: float, hi: float = END, kinds: tuple[str, ...] = tuple(KINDS)) -> dict[str, int]:
+def forget(
+    app: App,
+    lo: float,
+    hi: float = END,
+    kinds: tuple[str, ...] = tuple(KINDS),
+    gist: bool = True,
+    settle: bool = False,
+) -> dict[str, int]:
     """Forget what was kept from [lo, hi) (times in seconds), kind by kind; one kind failing never stops the rest.
-    {kind: how many}."""
+    gist: calls, requests and chats leave their gists first (core/gists.py; privacy.keep_gist). settle (the daily
+    job): a kind whose gists couldn't be made keeps its words until next time. {kind: how many}."""
     out: dict[str, int] = {}
     for kind in kinds:
+        if gist:
+            try:
+                gists.keep(app, kind, lo, hi)
+            except Exception as e:
+                app.events.emit("gist_failed", what=kind, error=f"{type(e).__name__}: {e}"[:300])
+                if settle:  # the words fade only once their gist exists
+                    continue
         try:
             out[kind] = int(STEPS[kind](app, lo, hi) or 0)
         except Exception as e:
@@ -215,12 +237,18 @@ def expire(app: App, now: float | None = None) -> dict[str, int]:
     out: dict[str, int] = {}
     keep = days(app.settings)
     if keep:
-        out = forget(app, 0, now - keep * 86400, tuple(k for k in KINDS if k not in ("questions", "cases")))
+        out = forget(
+            app, 0, now - keep * 86400, tuple(k for k in KINDS if k not in ("questions", "cases")), settle=True
+        )
     for kind in ("questions", "cases"):
         own = days(app.settings, "ask" if kind == "questions" else kind)
         if own:
             out.update(forget(app, 0, now - own * 86400, (kind,)))
     app.events.emit("retention_expired", **{k: v for k, v in out.items() if v})
+    try:
+        gists.expire(app, now)  # gists are kept for good unless you give them a time (privacy.gist_days)
+    except Exception as e:
+        app.events.emit("retention_failed", what="gists", error=f"{type(e).__name__}: {e}"[:300])
     return out
 
 
@@ -240,6 +268,15 @@ def span(arg: str) -> float | None:
 
 
 # ----------------------------------------------------------------------------------------------- /forget
+def gists_kept(app: App) -> str:
+    g = app.settings.get("privacy.gist_days")
+    return (
+        " As their words fade, calls, requests and chats settle into a one-line gist of what they decided, kept "
+        + (f"{g} days" if g else "until /forget all")
+        + " (/gists)."
+    )
+
+
 def command(app: App, arg: str) -> tuple[str, list | None]:
     """/forget 7d (2w, 12h): forget that much now. /forget all: everything, after a confirm button. /forget alone:
     what's kept and for how long."""
@@ -250,7 +287,14 @@ def command(app: App, arg: str) -> tuple[str, list | None]:
             "answered questions, cases, the words of messages I sent, the search index and the logs? Your notes "
             "stay. This can't be undone."
         )
-        return text, [[("Forget everything", f"fgt:{int(time.time())}:all"), ("Keep it", "fgt:0:no")]]
+        asked = int(time.time())
+        if gists.on(app) or gists.load(app):  # one line of what each decided (core/gists.py): keep those?
+            text += " The gists (one line of what each call or request decided, /gists) can stay or go too."
+            return text, [
+                [("Forget all, keep gists", f"fgt:{asked}:all"), ("Forget gists too", f"fgt:{asked}:gists")],
+                [("Keep it", "fgt:0:no")],
+            ]
+        return text, [[("Forget everything", f"fgt:{asked}:all"), ("Keep it", "fgt:0:no")]]
     secs = span(arg) if arg else None
     if secs is None:
         keep = days(app.settings)
@@ -258,7 +302,7 @@ def command(app: App, arg: str) -> tuple[str, list | None]:
         return (
             f"I keep call transcripts, AI requests and answers, chats, answered questions, cases and logs {kept}. "
             "/forget 7d forgets the last 7 days now (also 12h, 2w); /forget all forgets everything (it asks first). "
-            "Your notes are never touched.",
+            "Your notes are never touched." + (gists_kept(app) if gists.on(app) else ""),
             None,
         )
     out = summary(forget(app, time.time() - secs))
@@ -267,8 +311,9 @@ def command(app: App, arg: str) -> tuple[str, list | None]:
 
 
 def button(app: App, ref: str, act: str) -> str:
-    """The confirm buttons under /forget all ("fgt:<when asked>:all", "fgt:0:no")."""
-    if act != "all":
+    """The confirm buttons under /forget all ("fgt:<when asked>:all", "fgt:<when asked>:gists" (the gists go too),
+    "fgt:0:no")."""
+    if act not in ("all", "gists"):
         return "Kept."
     try:
         asked = float(ref)
@@ -276,8 +321,13 @@ def button(app: App, ref: str, act: str) -> str:
         asked = 0
     if time.time() - asked > CONFIRM_S:
         return "That button has run out; send /forget all again."
-    out = summary(forget(app, 0))
-    app.events.emit("retention_forgot", span="all")
+    out = summary(forget(app, 0, gist=act == "all"))
+    if act == "gists":
+        n = gists.clear(app)
+        if n:
+            gone = f"{n} gist{'s' if n != 1 else ''}"
+            out = f"{out[:-1]} and {gone}." if out.startswith("Forgot") else f"Forgot {gone}."
+    app.events.emit("retention_forgot", span="all" if act == "all" else "all+gists")
     app.notify(out, why="asked")
     return out[:190]
 

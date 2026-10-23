@@ -561,7 +561,10 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `privacy.gist_days` | `0` | gists go after this many days (0: kept for good, until you /forget all) |
+| `privacy.gist_model` | `false` | a model on this computer (Local AI models) adds a sentence to a call's gist |
 | `privacy.keep_days` | `0` | transcripts, AI requests and answers, chats and logs go after this many days (0: kept) |
+| `privacy.keep_gist` | `true` | as a conversation's words fade, it settles into one line of what it decided (/gists) |
 
 ### `profile`
 
@@ -599,6 +602,12 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `quota.limits` | `{}` | your own limits per AI, e.g. {"agy": 200} |
 | `quota.local` | `"quick"` | what the model on this computer does for the free limit: quick, background or off |
 | `quota.on` | `true` | keep part of the free AI limit for what you're waiting on |
+
+### `remember`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `remember.recheck_days` | `90` | a kept line that hasn't come up in this many days gets one "Still true?" (0: never) |
 
 ### `reply_drafts`
 

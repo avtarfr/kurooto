@@ -271,6 +271,7 @@ notes folder ("send me my linear algebra pack"), on calls too. From a terminal: 
 | `/health`, `/health now` | what isn't working, with Fix buttons; `now` also checks online services ([messages-it-sends.md](messages-it-sends.md#kurooto-keeps-itself-working)) |
 | `/calm`, `/why` | the daily message limit and what's turned down; why the last message came ([messages-it-sends.md](messages-it-sends.md)) |
 | `/forget 7d`, `/forget 2w`, `/forget all` | forget what Kurooto kept of the last 7 days (two weeks, or everything, after a confirm button) now; `/forget` alone says how long things are kept ([privacy.md](privacy.md#how-long-its-kept)) |
+| `/gists`, `/gists <words>` | the one-line gists your conversations settled into as their words faded ([privacy.md](privacy.md#gists-what-settles)) |
 | `/sync` | with Notes sync off: sync everything that's on. With Notes sync on, `/sync` syncs your notes and `/sync all` everything |
 
 ## Renaming your assistant

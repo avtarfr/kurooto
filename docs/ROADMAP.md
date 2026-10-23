@@ -85,6 +85,15 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 - **Never without a tap**: setting or moving an alarm, placing calls, reading new mail senders, sending anything out,
   attaching a code repository to a project. Repositories are never searched for on the disk.
 
+## Human-like (2026-10-23)
+- ~~**Gists before forgetting.** Conversations settle instead of vanishing: one line of what each call, request or chat
+  decided or did, from records, before its words fade.~~ (0.5.18: `privacy.keep_gist`, kept for good or
+  `privacy.gist_days`; `/gists`, `/gists forget 3`; `/forget all` asks about them; a local model only with
+  `privacy.gist_model`)
+- ~~**Rechecking memories.** A kept line that hasn't come up in 90 days gets one "Still true?" with Keep, Change and
+  Forget.~~ (0.5.18: `remember.recheck_days`, at most two a week, only Kurooto's own dated lines, Undo on Change and
+  Forget)
+
 ## Ideas
 - **Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
   rest.
