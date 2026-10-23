@@ -19,6 +19,20 @@
 - **Study packs keep to their course:** a note from another course's or project's folder came along when it merely
   linked the course (a project's book note in a Physics of the Atmosphere pack). It now comes only when it's about the
   topic you named.
+- **Official add-ons:** Machine backups (restic), Desktop helpers, Your command words and Handwriting from the cloud
+  are public repositories now, and one tap adds them: Features → Official add-ons → Add, `/addons official` on
+  Telegram, or `kurooto addons add <name>`. You still read each card and say yes, and each stays pinned to the commit
+  this Kurooto lists (an Official badge shows it). A newer Kurooto with a newer commit offers Update once, showing what
+  changes; `addons.official_updates` turns that message off.
+- **The concept graph picks up after a restart:** a batch whose request a restart cut off (an update in the night, say)
+  is asked again at once instead of three hours later, and inside tonight's reading window the reading carries on a
+  minute later, within the budget and `/graph stop`.
+- **Textbooks from Classroom get a note of their own** under `<subject>/books/`, and their concepts' "Seen in" points
+  there instead of turning the class post into a hub. Textbooks already read move over on the first start: only
+  Kurooto's blocks change, with before-copies and one commit per textbook.
+- **The notes map highlights properly:** pointing at a note, or choosing it with Tab and the arrow keys, lights it and
+  its linked notes in full colour with names that don't overlap, and dims the rest; "Seen in" and reading-list links
+  are drawn but no longer make a dot big.
 - **AGENTS.md** covers 0.6.0: Quick ask, add-ons by link, run compare, an empty Today, held requests and draft checks.
 
 ## 0.6.0 (2026-10-24)
