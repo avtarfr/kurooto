@@ -855,6 +855,7 @@ class Api:
             "shortcuts": None,
             "ntfy_token": bool(self.app.secrets.get("calls.ntfy_token")),
             "ntfy_limited": calls.ntfy_limited(),
+            "views": calls.setting("views") is True,  # Systems and the Notes map on the Android app (calls/views.py)
         }
         if calls.connector.connected:
             try:

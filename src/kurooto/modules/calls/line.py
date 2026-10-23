@@ -11,11 +11,15 @@
     f1   a file from this computer for the phone app's chat (0.5.18), kept on the call line for a day: AES-256-GCM
          with a fresh key, the raw bytes nonce || ciphertext+tag; the key goes only in the link's #fragment, which
          the call line's file page (public/file.js) opens in the phone's browser
+    v1   a view for the Android app (0.7.0: Systems, the Notes map; calls/views.py): the snapshot gzipped and sealed
+         once as f1 with a fresh key (the "blob"), and a head "v1 <kind> <rev> <key, base64url> <sha256 of the blob>"
+         sealed s1 for each phone; so the call line keeps one blob and a short head per phone and can open neither
 """
 
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
 import hmac
 import json
@@ -103,6 +107,32 @@ def open_s1(phone: ec.EllipticCurvePrivateKey, token: str) -> str | None:
         peer = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), epk)
         return open_k1(_s1_key(phone.exchange(ec.ECDH(), peer), epk), "k1." + parts[2])
     except ValueError:
+        return None
+
+
+def pack_v1(text: str, key: bytes | None = None, nonce: bytes | None = None) -> tuple[bytes, bytes]:
+    """(key, blob): the text gzipped (no timestamp, so the same text packs the same) and sealed f1 with a fresh key."""
+    key = key or os.urandom(32)
+    return key, seal_f1(key, gzip.compress(text.encode(), mtime=0), nonce)
+
+
+def head_v1(kind: str, rev: int, key: bytes, blob: bytes) -> str:
+    """What each phone gets sealed s1: which view, which hand-over, the blob's key and its digest."""
+    return f"v1 {kind} {int(rev)} {b64url(key)} {hashlib.sha256(blob).hexdigest()}"
+
+
+def open_v1(phone: ec.EllipticCurvePrivateKey, head_token: str, blob: bytes) -> tuple[str, int, str] | None:
+    """What the phone does (Views.java): (kind, rev, the text), or None if it isn't for this phone or was changed."""
+    head = open_s1(phone, head_token)
+    parts = (head or "").split(" ")
+    if len(parts) != 5 or parts[0] != "v1" or not parts[2].isdigit():
+        return None
+    if not hmac.compare_digest(hashlib.sha256(blob).hexdigest(), parts[4]):
+        return None
+    try:
+        plain = open_f1(unb64url(parts[3]), blob)
+        return (parts[1], int(parts[2]), gzip.decompress(plain).decode()) if plain is not None else None
+    except (ValueError, OSError, EOFError):
         return None
 
 

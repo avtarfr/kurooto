@@ -2,7 +2,8 @@
 network; nothing listens for the internet here). The Worker passes requests from calls (tools, finished tasks,
 transcripts, shared files) down it, and this answers them. Every 5 minutes, and whenever your scheduled calls
 change, it pushes what calls need while the computer is off: the call setup, a brief, and the upcoming calls; and
-with it the phone app's Today list, sealed for each Android phone, when that changed (today.py).
+with it the phone app's Today list, sealed for each Android phone, when that changed (today.py), and its Notes map
+(views.py, with calls.views on; Systems goes only while a phone watches it).
 
 What waited on the line while this computer was off (requests from calls, and what you did on your phone: answers,
 chat messages, shared files, the "phone outbox") is taken one item at a time, in order, each removed from the line
@@ -211,6 +212,10 @@ class Connector:
                 await self.calls.today.push(self)
             except Exception as e:
                 log.info("call line: the Today list didn't go: %s", e)
+            try:  # its Notes map (and, turned off, the line dropping its copies), with calls.views on (views.py)
+                await self.calls.views.push(self)
+            except Exception as e:
+                log.info("call line: the phone's views didn't go: %s", e)
         if time.time() - self.last_index > INDEX_S and self.calls.offline_notes():
             self.last_index = time.time()
             items = await asyncio.to_thread(self.calls.index_items)

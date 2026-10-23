@@ -54,6 +54,7 @@ final class Prefs {
                 .remove("widgetLine").remove("noteDraft").apply();
         Chat.forget(c); // the chat and what waited belong to that line
         Today.forget(c); // ... and so do the Today list and the alarms it set here
+        Views.forget(c); // ... and the copies of Systems and the Notes map
         Alarms.cancel(c);
         TalkWidget.draw(c);
     }

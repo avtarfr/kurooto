@@ -609,13 +609,7 @@ class Vitals:
         running = [j for j in jobs if j.status in ("queued", "running")]
         all_jobs = app.scheduler.jobs()
         b = self.board(recent, all_jobs)
-        by_id = {f["id"]: f for f in b["features"]}
-        cells = []
-        for m in app.modules.values():
-            on = app.is_on(m.id)
-            n = by_id.get(m.id, {}).get("events", 0)
-            act = min(1.0, n / 6) + (0.6 if m.id == "chat" and running else 0)
-            cells.append({"id": m.id, "title": m.title, "on": on, "act": min(1.0, act), "events": n})
+        cells = cells_of(app, b["features"], bool(running))
         sched = [
             {"key": j.key, "when": j.next_run, "what": j.label, "kind": j.kind, "module": j.module}
             for j in all_jobs[:40]
@@ -646,6 +640,19 @@ class Vitals:
             "procs": self.sampler.processes(own=own["pids"].get, n=30),
             **b,
         }
+
+
+def cells_of(app: App, features: list[dict], busy: bool) -> list[dict]:
+    """SYSTEMS' cells: every feature, on or not, and how busy it is (act, 0..1: its events in the last 2 minutes, and
+    Chat while an AI request runs or waits). The dashboard's, and the phone app's copy (modules/calls/views.py)."""
+    by_id = {f["id"]: f for f in features}
+    cells = []
+    for m in app.modules.values():
+        on = app.is_on(m.id)
+        n = by_id.get(m.id, {}).get("events", 0)
+        act = min(1.0, n / 6) + (0.6 if m.id == "chat" and busy else 0)
+        cells.append({"id": m.id, "title": m.title, "on": on, "act": min(1.0, act), "events": n})
+    return cells
 
 
 # --------------------------------------------------------------------------------------------- stream

@@ -42,6 +42,7 @@ from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, liv
 from kurooto.modules.calls.phone import PhoneApp
 from kurooto.modules.calls.today import PhoneToday
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
+from kurooto.modules.calls.views import PhoneViews
 from kurooto.modules.drafts import wants as wants_check
 from kurooto.modules.text import a_time, stale_time
 
@@ -74,6 +75,7 @@ register_defaults(
         "review_brain": "",  # which AI does the look back ("" = your main one)
         "lessons_max": 12,  # the most lessons every call is told; a new one that says the same replaces the old
         "today": True,  # the Android app's Today screen and its copy of your alarm, sealed for each phone (today.py)
+        "views": False,  # Systems and the Notes map on the Android app (notes' titles, features' health; views.py)
     },
 )
 
@@ -128,6 +130,8 @@ class Calls(Module):
         self.chat = PhoneChat(self)  # the phone app as a chat, beside Telegram (chat.py)
         self.today = PhoneToday(self)  # the app's Today screen and its copy of the alarm (today.py)
         self._unsub_today = None
+        self.views = PhoneViews(self)  # Systems and the Notes map on the app (views.py, calls.views)
+        self._unsub_views = None
         self.live = LiveHealth(self)  # when Gemini Live won't take a call (fallback.py)
         self.turns = VoiceTurns(self)
         self.textcall = TextCall(self)
@@ -225,6 +229,10 @@ class Calls(Module):
             from kurooto.core.events import subscribe
 
             self._unsub_today = subscribe(self.today.on_event)
+        if self._unsub_views is None:  # calls.views turned on or off: the call line hears soon (views.py)
+            from kurooto.core.events import subscribe
+
+            self._unsub_views = subscribe(self.views.on_event)
 
     def stop(self):
         """Turned off: calls you booked are kept (not cancelled) and booked again when it's turned back on."""
@@ -241,6 +249,9 @@ class Calls(Module):
         if self._unsub_today is not None:
             self._unsub_today()
             self._unsub_today = None
+        if self._unsub_views is not None:
+            self._unsub_views()
+            self._unsub_views = None
 
     @property
     def parked_file(self):
@@ -1028,6 +1039,8 @@ class Calls(Module):
             self.live.record(name, m)
         elif name == "text_call":  # a call handed to Telegram while this computer was off
             self.textcall.start_late(m)
+        elif name == "views_watch":  # the phone app has Systems open: fresh copies while it watches (views.py)
+            self.views.watch(m)
 
     def on_queue(self, items: list[dict]) -> None:
         """What waited on the call line while this computer was off, all at once (a call line from before 0.5.16;
@@ -1410,6 +1423,7 @@ class Calls(Module):
 
     def revoke(self, device_id: str) -> bool:
         # `device`, not `id`: that's the admin request's own (before 0.6.0 this waited for an answer that never came)
+        self.views.keys_at = 0.0  # the phones' keys are asked for again (views.py)
         return bool(self.connector.admin_wait("revoke", device=device_id).get("ok"))
 
     def shortcuts(self) -> list[dict]:

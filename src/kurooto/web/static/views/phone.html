@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- The phone app's Systems and Notes map (0.7.0): the dashboard's own drawing code (common.js, systems.js,
+     notesmap.js) in the Android app's WebView, with the data the app opened handed in by phone.js's KurootoView.take.
+     It loads nothing from anywhere (connect-src 'none'): the app serves these files from inside itself. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Kurooto</title>
+<link rel="stylesheet" href="phone.css">
+</head>
+<body class="phone" data-design="new">
+<header class="top">
+  <div class="row"><h1 id="what"></h1><span class="meta" id="meta"></span></div>
+  <div class="asof" id="asof" role="status"></div>
+</header>
+<canvas id="view" aria-label="the drawing"></canvas>
+<div id="card" class="card hidden" role="status" aria-live="polite"></div>
+<div id="sheet" class="card sheet hidden" role="status" aria-live="polite"></div>
+<p id="empty" class="empty hidden"></p>
+<script src="common.js"></script>
+<script src="systems.js"></script>
+<script src="notesmap.js"></script>
+<script src="phone.js"></script>
+</body>
+</html>

@@ -41,6 +41,11 @@
 //     sealed for each Android phone with that phone's own key ("s1", as above: this Worker can't open it), one copy
 //     per phone ("today-put"); a phone fetches its own from /today, with when it came, so it shows with the computer
 //     off. A changed list nudges the phones ("today" on ntfy).
+//   - Systems and the Notes map on the Android app (0.7.0, only with calls.views on): your computer seals each
+//     snapshot once with a fresh key and that key for each Android phone with the phone's own key ("v1": this Worker
+//     can open neither), and hands it over in parts ("view-put"); this keeps only the newest of each, and a phone
+//     fetches its own from /view. Systems is sent only while a phone watches it: the app says so every ~20 s
+//     (/view/watch), which this passes to your computer. Turned off, your computer says "off" and the copies go.
 //   - When Gemini Live won't take a call (web/fallback.js): the call page asks for a token for the next Live model
 //     (the list your computer pushed), then goes turn by turn (/turn: each turn to your computer's AI, or to a Gemini
 //     text model with your key here while the computer is off, with the same instructions and tools), then to
@@ -225,6 +230,12 @@ const SEALED_MAX = 40, SEALED_TRIES = 5, SEALED_BUSY_MS = 120e3, SEALED_KEEP_MS 
 const SEAL_TOKEN = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,2210}$/; // at most 2300 in all: fits ntfy sealed again
 const SEAL_KEY = /^B[A-Za-z0-9_-]{86}$/; // a phone's P-256 public key, 65 bytes uncompressed, base64url
 const TODAY_TOKEN = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,110000}$/; // the Today list sealed for one phone
+// the phone's views (0.7.0): which, a part's most (bytes), the most parts, a view's key sealed for one phone; a
+// phone's "watching Systems" reaches your computer at most this often
+const VIEW_KINDS = ['notes', 'systems'];
+const VIEW_PART = 96 * 1024, VIEW_PARTS = 24;
+const VIEW_KEY = /^s1\.B[A-Za-z0-9_-]{86}\.[A-Za-z0-9_-]{40,600}$/;
+const WATCH_MS = 5e3;
 // calls when Gemini Live won't (web/fallback.js): Live model ids; rounds of tool calls in one text turn; what a text
 // turn is told when your computer didn't push its own wording
 const MODEL_ID = /^[A-Za-z0-9][\w.-]{0,79}$/;
@@ -310,7 +321,10 @@ export class Line {
     const gen = (await sha256(`gen:${this.env.CALL_SECRET || ''}`)).slice(0, 16);
     if (this.gen === gen) return;
     const was = await this.store.get('gen');
-    if (was && was !== gen) await this.store.delete(['devices', 'tickets', 'paircodes', 'pairfail', 'tells']);
+    if (was && was !== gen) {
+      await this.store.delete(['devices', 'tickets', 'paircodes', 'pairfail', 'tells']);
+      await this.viewsDrop(); // sealed for phones that aren't paired any more
+    }
     if (was !== gen) await this.store.put('gen', gen);
     this.gen = gen;
   }
@@ -354,6 +368,26 @@ export class Line {
         const t = (await this.store.get('today')) || null;
         const mine = !!t && (t.devs || []).includes(who.id);
         return json({ today: mine ? (await this.store.get(`today:${who.id}`)) || null : null, at: mine ? t.at : null, off: !!t?.off, computer: this.online() ? 'online' : 'offline' });
+      }
+      if (p === '/view') { // this phone's copy of Systems or the Notes map: its sealed key and the sealed snapshot
+        const kind = url.searchParams.get('kind') || '';
+        if (!VIEW_KINDS.includes(kind)) return json({ error: 'which view?' }, 400);
+        const views = (await this.store.get('views')) || {};
+        const v = views[kind], key = v && v.keys ? v.keys[who.id] : null;
+        return json({ view: key ? { rev: v.rev, at: v.at, key, data: await this.viewData(kind, v) } : null, off: !!views.off, computer: this.online() ? 'online' : 'offline' });
+      }
+      if (p === '/view/watch' && req.method === 'POST') { // the app has Systems open: your computer sends it live
+        try { await req.arrayBuffer(); } catch { /* no body */ }
+        const views = (await this.store.get('views')) || {};
+        if (((await this.store.get('devices')) || {})[who.id]?.kind !== 'android') return json({ error: 'only the Android app shows these' }, 403);
+        if (views.off) return json({ ok: false, off: true, computer: this.online() ? 'online' : 'offline' });
+        this.watched = this.watched || {};
+        let told = false;
+        if (Date.now() - (this.watched[who.id] || 0) >= WATCH_MS) {
+          told = this.tell({ type: 'event', name: 'views_watch', device: who.id, kind: 'systems' }); // never queued: live or nothing
+          if (told) this.watched[who.id] = Date.now();
+        }
+        return json({ ok: true, told, computer: this.online() ? 'online' : 'offline' });
       }
       if (p === '/upcoming') { // bedside mode (Android, 0.6.0): the calls due in the next day, from the schedule pushed
         const now = Math.floor(Date.now() / 1000), names = (await this.store.get('names')) || {};
@@ -540,6 +574,8 @@ export class Line {
       delete d[dev];
       await this.store.put('devices', d);
       await this.store.delete(`today:${dev}`); // its Today copy goes with it
+      const views = await this.store.get('views'); // and its keys to the views
+      if (views) { for (const k of VIEW_KINDS) if (views[k]?.keys) delete views[k].keys[dev]; await this.store.put('views', views); }
       await this.tellDrop((t) => t.device === dev); // its Tell Kurooto link goes with it
       return { ok: had };
     }
@@ -564,6 +600,7 @@ export class Line {
     if (m.op === 'chat-say') return this.chatSay(m.msg || {}, m.assistant);
     if (m.op === 'file-put') return this.filePut(m);
     if (m.op === 'today-put') return this.todayPut(m);
+    if (m.op === 'view-put') return this.viewPut(m);
     return { error: 'unknown op' };
   }
 
@@ -1067,6 +1104,83 @@ export class Line {
       await this.toPhones({ title: 'stop', message: '', tags: ['stop', 'today'], time: Math.floor(Date.now() / 1000) }).catch(() => false);
     }
     return { ok: true, held: devs.length };
+  }
+
+  // ------------------------------------------------------------------------------------- the phone's views
+  // Systems or the Notes map from your computer, sealed there (v1), in parts in order from part 0 (which brings `size`
+  // and `keys`: the snapshot's key sealed for each Android phone). A newer rev replaces the one being received; when
+  // every part is here it replaces the kept one, whose parts go. Stored: `views` {off, notes, systems: {rev, parts,
+  // size, keys, at}, pend: {<kind>: the one coming in, with got and bytes}}, each part under `v:<kind>:<rev>:<n>`.
+  // off: calls.views was turned off: every copy goes.
+  async viewPut(m) {
+    if (m.off) {
+      await this.viewsDrop();
+      await this.store.put('views', { off: true });
+      return { ok: true, off: true };
+    }
+    const kind = String(m.view || ''), rev = Number(m.rev) || 0, part = Number(m.part), parts = Number(m.parts);
+    if (!VIEW_KINDS.includes(kind) || !Number.isInteger(part) || !Number.isInteger(parts) || parts < 1 || parts > VIEW_PARTS || part < 0 || part >= parts) return { error: 'bad part' };
+    const data = unb64(String(m.data || '').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''));
+    if (data.length > VIEW_PART) return { error: 'too big', note: 'A part is too big for your call line.' };
+    const views = (await this.store.get('views')) || {};
+    views.pend = views.pend || {};
+    if (part === 0) {
+      if (views[kind] && rev <= views[kind].rev) return { ok: false, stale: true };
+      const size = Number(m.size) || 0;
+      if (size < data.length || size > VIEW_PART * parts) return { error: 'bad size' };
+      if (views.pend[kind]) await this.viewParts(kind, views.pend[kind], true);
+      const devices = (await this.store.get('devices')) || {}, keys = {};
+      for (const [dev, tok] of Object.entries(m.keys && typeof m.keys === 'object' ? m.keys : {})) {
+        if (devices[dev]?.kind !== 'android' || !VIEW_KEY.test(String(tok)) || Object.keys(keys).length >= MAX_DEVICES) continue;
+        keys[dev] = String(tok);
+      }
+      views.pend[kind] = { rev, parts, size, keys, got: 0, bytes: 0 };
+    }
+    const p = views.pend[kind];
+    if (!p || p.rev !== rev || p.parts !== parts || p.got !== part) return { error: 'parts in order, from part 0' };
+    if (p.bytes + data.length > p.size) return { error: 'too big', note: 'Bigger than it said.' };
+    await this.store.put(`v:${kind}:${rev}:${part}`, data);
+    p.got += 1;
+    p.bytes += data.length;
+    let ready = false;
+    if (p.got === p.parts) {
+      if (p.bytes !== p.size) { await this.viewParts(kind, p, true); delete views.pend[kind]; await this.store.put('views', views); return { error: 'short', note: 'Some of it went missing.' }; }
+      if (views[kind]) await this.viewParts(kind, views[kind]);
+      views[kind] = { rev, parts, size: p.size, keys: p.keys, at: new Date().toISOString() };
+      delete views.pend[kind];
+      views.off = false;
+      ready = true;
+    }
+    await this.store.put('views', views);
+    return { ok: true, part, ready, held: ready ? Object.keys(views[kind].keys).length : undefined };
+  }
+
+  // delete a view's parts (all of them, or for one still coming in only those that came)
+  async viewParts(kind, v, partial = false) {
+    const n = partial ? v.got || 0 : v.parts;
+    for (let i = 0; i < n; i++) await this.store.delete(`v:${kind}:${v.rev}:${i}`);
+  }
+
+  async viewsDrop() {
+    const views = (await this.store.get('views')) || {};
+    for (const k of VIEW_KINDS) {
+      if (views[k]) await this.viewParts(k, views[k]);
+      if (views.pend && views.pend[k]) await this.viewParts(k, views.pend[k], true);
+    }
+    await this.store.delete('views');
+  }
+
+  // a kept view's sealed bytes, base64url
+  async viewData(kind, v) {
+    const out = new Uint8Array(v.size);
+    let at = 0;
+    for (let i = 0; i < v.parts; i++) {
+      const b = await this.store.get(`v:${kind}:${v.rev}:${i}`);
+      if (!b) return null;
+      out.set(b, at);
+      at += b.length;
+    }
+    return b64url(out);
   }
 
   // ------------------------------------------------------------------------------------- Tell Kurooto
