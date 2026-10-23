@@ -138,6 +138,28 @@ def hits(rx: re.Pattern | None, text: str) -> int:
 
 
 # -------------------------------------------------------------------------------------------- notes
+def _other_owners(app: App, subject: str) -> set[str]:
+    """The folder names of your other subjects and projects (their slugs, the subjects your books are under, the
+    folders in projects/): a note kept in one of those belongs there, so a link from it to this subject doesn't bring
+    it into this subject's pack (a project's book note linking the course it relates to)."""
+    out: set[str] = set()
+    subj = app.modules.get("subjects")
+    if subj is not None:
+        out |= {str(s.get("slug") or "") for s in subj.subjects()}
+    books = app.modules.get("books")
+    if books is not None:
+        try:
+            out |= {str(b.get("subject") or "") for b in books.library()}
+        except Exception:  # noqa: BLE001 - a pack without this filter beats no pack
+            pass
+    projects = Path(app.workspace) / "projects"
+    if projects.is_dir():
+        out |= {p.name for p in projects.iterdir() if p.is_dir()}
+    out.discard("")
+    out.discard(subject)
+    return out
+
+
 def note_files(app: App, subject: str, rx: re.Pattern | None = None) -> list[Path]:
     """The notes for a subject: anything in a folder named for it, its course map, and notes that link to those. With
     a topic: of those, the ones about it, and any other note about it (its name, a heading or a link names it, or its
@@ -155,12 +177,15 @@ def note_files(app: App, subject: str, rx: re.Pattern | None = None) -> list[Pat
         if subject in rel.parts[:-1] or rel.stem == subject:
             found[f] = None
     key = re.compile(r"\[\[[^\]]*" + re.escape(subject) + r"[^\]]*\]\]", re.I)
+    others = _other_owners(app, subject)
     for f in every[: MAX_NOTES * 4]:
         if f in found or len(found) >= MAX_NOTES:
             continue
         try:
             rel = f.relative_to(root)
             if _hidden(rel) or f.stat().st_size > MAX_NOTE:
+                continue
+            if others & set(rel.parts[:-1]):  # another course's or project's note that mentions this one (0.6.1)
                 continue
             if key.search(f.read_text(encoding="utf-8", errors="ignore")):
                 found[f] = None

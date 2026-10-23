@@ -66,6 +66,23 @@ def test_a_study_pack_holds_the_notes_the_files_the_index_and_a_prompt(chat_on, 
     assert info["notes"] == 2 and info["files"] == 2 and not info["left_out"]
 
 
+def test_another_courses_or_projects_note_that_links_this_course_stays_out(chat_on, env):
+    # 0.6.1: a project's book note linking the course it relates to came along in that course's pack
+    seed(env)
+    ws = env.app.workspace
+    env.say("/subject add Time Series (ts)")
+    (ws / "sources" / "time-series").mkdir(parents=True)
+    (ws / "sources" / "time-series" / "lecture-2.md").write_text(
+        "See [[sources/deep-learning/lecture-1]].", encoding="utf-8"
+    )
+    (ws / "projects" / "glacier").mkdir(parents=True)
+    (ws / "projects" / "glacier" / "index.md").write_text("Uses [[sources/deep-learning/lecture-1]].", encoding="utf-8")
+    path, _ = studypack.build(env.app, "deep-learning", "Deep Learning", "")
+    names = set(zipfile.ZipFile(path).namelist())
+    assert "notes/zettel/equivariance.md" in names  # a loose note that links the course still comes
+    assert "notes/sources/time-series/lecture-2.md" not in names and "notes/projects/glacier/index.md" not in names
+
+
 def test_a_pack_over_the_telegram_limit_leaves_files_out_and_says_so(chat_on, env, monkeypatch):
     seed(env)
     monkeypatch.setattr(studypack, "MAX_ZIP", 20)  # two small pdfs can't both fit after the notes

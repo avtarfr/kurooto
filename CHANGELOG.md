@@ -11,6 +11,9 @@
 - **The dashboard and setup page are fast again:** each setting Kurooto looked up copied all of its settings, and a
   page asked a thousand times or more, so the dashboard's Today took 3 to 9 seconds and the setup page's 5 to 13. Now
   0.06 and 0.2 seconds. The concept graph's card also stopped re-splitting every queued book on each look.
+- **Study packs keep to their course:** a note from another course's or project's folder came along when it merely
+  linked the course (a project's book note in a Physics of the Atmosphere pack). It now comes only when it's about the
+  topic you named.
 - **AGENTS.md** covers 0.6.0: Quick ask, add-ons by link, run compare, an empty Today, held requests and draft checks.
 
 ## 0.6.0 (2026-10-24)

@@ -214,6 +214,10 @@ focus and break timer: a focus holds calls and messages and logs its minutes her
 it to another AI (any chat AI that takes file uploads) and ask it for deeper study notes. Nothing here uses your own
 AI: Kurooto only collects files and fills in the prompt.
 
+**What goes in.** The subject's folders and course map, and other notes that link to them. A note kept in another
+course's or project's folder doesn't come along just because it links this course (0.6.1: a project's book note
+that mentioned the course did); with a topic, it comes if it's about the topic.
+
 **Turn it on.** It's part of Skills: Features → Skills.
 
 **From Telegram.** `/studypack linear algebra` for everything, or add what it's for: `/studypack la quiz on thursday`.
