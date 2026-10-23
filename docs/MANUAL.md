@@ -397,8 +397,9 @@ last 10 exchanges are kept in Kurooto's state folder (`chat/history.json`). `/br
 it works; `/jobs` what's running and waiting (with Cancel buttons; `/jobs cancel <id|all>`, `kurooto jobs --cancel ID`)
 and the last few; `/usage` how many AI requests ran each day and the limits hit. Your requests never wait behind
 background work (it has its own lane), and a request that's stuck (no AI at work for `jobs.stuck_min` minutes, 10) is
-stopped with a message. *Leaves:* what you ask, and notes it reads, go to the AI you picked; with a conversation going,
-your recent exchanges go along too.
+stopped with a message.
+*Leaves:* what you ask, and notes it reads, go to the AI you picked; with a conversation going, your recent
+exchanges go along too.
 
 ### Reminders
 "remind me at 9 to call mum", "remind me in 20 minutes to take the pasta off", `/remind tomorrow 7am gym`,
