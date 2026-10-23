@@ -897,7 +897,50 @@ def test_the_site_has_a_changelog_page_made_from_the_changelog(tmp_path):
     release.site_pages(tmp_path)
     page = (tmp_path / "changelog.html").read_text(encoding="utf-8")
     assert "<title>Changelog · Kurooto</title>" in page and "PRIVACY:START" not in page and "toggleTheme" in page
-    versions = re.findall(r"^## (\d+\.\d+\.\d+)", (root / "CHANGELOG.md").read_text(encoding="utf-8"), re.M)
-    assert versions and all(v in page for v in versions[:5])  # every version, newest first
+    text = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    versions = re.findall(r"^## (\d+\.\d+\.\d+) \(\d{4}", text, re.M)  # released ones, with a date
+    assert versions and all(v in page for v in versions[:5])  # every released version, newest first
     assert page.index(versions[0]) < page.index(versions[1])
+    assert "(unreleased)" not in page  # that's on the in-progress page
     assert 'href="changelog.html"' in (tmp_path / "index.html").read_text(encoding="utf-8")
+
+
+def test_the_site_has_both_wikis_and_an_in_progress_page_and_every_link_works(tmp_path):
+    import importlib.util
+    import json
+    import re
+
+    root = Path(__file__).resolve().parents[2]
+    spec = importlib.util.spec_from_file_location("kurooto_release", root / "tools" / "release.py")
+    release = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(release)
+    (tmp_path / "beta.json").write_text(json.dumps({"doc": {"version": "9.9.9"}}), encoding="utf-8")
+    release.site_pages(tmp_path)
+    for part in ("user", "dev"):
+        pages = sorted((root / "docs" / "wiki" / part).glob("*.md"))
+        assert pages and all((tmp_path / "wiki" / part / f"{f.stem}.html").is_file() for f in pages)
+    assert (tmp_path / "wiki" / "index.html").is_file() and (tmp_path / "roadmap.html").is_file()
+    ongoing = (tmp_path / "ongoing.html").read_text(encoding="utf-8")
+    assert "beta: <strong>9.9.9</strong>" in ongoing and 'id="being-built"' in ongoing and 'id="requested"' in ongoing
+    landing = (tmp_path / "index.html").read_text(encoding="utf-8")
+    for href in ("wiki/user/index.html", "wiki/dev/index.html", "changelog.html", "ongoing.html#channels"):
+        assert f'href="{href}"' in landing
+    calls = (tmp_path / "wiki" / "user" / "calls.html").read_text(encoding="utf-8")
+    assert 'href="../../changelog.html"' in calls and 'aria-current="page"' in calls  # the frame's links, one level up
+    broken = []
+    for f in tmp_path.rglob("*.html"):
+        for h in re.findall(r'href="([^"#]*)(?:#[^"]*)?"', f.read_text(encoding="utf-8")):
+            if h and not re.match(r"(https?:|mailto:)", h):
+                target = f.parent / h
+                if h.endswith("/") or h.endswith("./"):
+                    target = target / "index.html"
+                if not target.resolve().exists():
+                    broken.append((f.relative_to(tmp_path).as_posix(), h))
+    assert not broken, broken[:10]
+    # the converter: fenced code, numbered lists, comments dropped, wiki links made into pages
+    out = release.md_html(
+        "1. one\n2. two\n\n```\na < b\n```\n<!-- note -->\n[x](calls.md#on-a-call)",
+        link=lambda h: release.wiki_link("docs/wiki/user/index.md", h, 2),
+    )
+    assert "<ol><li>one</li><li>two</li></ol>" in out and "<pre><code>a &lt; b</code></pre>" in out
+    assert "note" not in out and 'href="../../wiki/user/calls.html#on-a-call"' in out
