@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.15 (2026-10-23)
+
+- **Retention** (`privacy.keep_days`, 30): what Kurooto keeps of your conversations is forgotten nightly: call
+  transcripts, what you asked the AI and its answers, chat turns, answered questions, cases, the words of messages it
+  sent, the search index and log lines. `/forget 7d` (12h, 2w) forgets the last stretch now with a count per kind;
+  `/forget all` asks first. Questions and cases follow it unless `ask.keep_days` / `cases.keep_days` is set. Your
+  notes folder is never touched.
+- **Run receipt:** every answer from your AI ends with one quiet line built from the run's own record, not its words:
+  which AI, the effort, how long, the share of today's limit when known, and what it actually did ("searched notes,
+  wrote 1 note"; "did nothing"). Italics on Telegram, plain text in the dashboard and the terminal; `jobs.receipt`
+  turns it off.
+- **/fixme, for when the AI is what broke:** `/fixme` (Telegram, the dashboard's terminal) and `kurooto fixme` (also
+  with Kurooto stopped) match each failing check by rules, with no AI, to its troubleshooting row and the signed
+  known-issues list of your version, with Fix buttons. `/fixme the phone doesn't ring` finds the rows for what you
+  see; Ask my AI explains only after, and only when your AI works.
+- **Keep or drop:** Kurooto counts, on your computer, what you use of each feature. On day 10 it sends one message
+  with Keep / Quiet / Off per feature, then monthly for features unused for 60 days that still run on a schedule.
+  Quiet keeps a feature working but stops its messages, Off turns it off; both have Undo, and nothing changes without
+  a tap. `/keep` shows the counts any time; `keep.ask` turns the questions off.
+- **ntfy token on the setup page and the Phone tab:** an optional field (checked with ntfy, then your call line is
+  updated by itself), and `/health` says when ntfy refused rings this week without one.
+- `add_deadline` takes the course ("pota", a course's name), so a deadline the mail digest finds lands on that
+  course; a course Kurooto doesn't know, or words naming two, is said in the answer, never guessed.
+- Missed-class catch-up lists that day's Classroom posts for the course (title and link) in its message and lecture
+  stub; posts that come later that day join a stub you haven't written in. Without Classroom it works as before.
+
 ## 0.5.14 (2026-10-23)
 
 - **Missed-class catch-up** (`subjects.catch_up`, on): a class you skipped, or one that was over before you were up
