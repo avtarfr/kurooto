@@ -1,0 +1,492 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-23T19:30:00+05:30",
+  "title": "Design System: Kurooto (public site)",
+  "extensions": {
+    "colorMeta": {
+      "kuro-0": {
+        "role": "neutral",
+        "displayName": "Kuro Ground",
+        "canonical": "#0B0F0A",
+        "oklch": "oklch(16.2% 0.012 139)",
+        "tonalRamp": [
+          "#090C08",
+          "#212620",
+          "#3C413B",
+          "#5A5F59",
+          "#7A7F78",
+          "#9BA099",
+          "#C0C6BF",
+          "#EAF1E9"
+        ]
+      },
+      "kuro-1": {
+        "role": "neutral",
+        "displayName": "Kuro Deep",
+        "canonical": "#10150E",
+        "oklch": "oklch(18.8% 0.016 137)",
+        "tonalRamp": [
+          "#080D07",
+          "#20261E",
+          "#3C423A",
+          "#5A6057",
+          "#798076",
+          "#9AA197",
+          "#BFC7BD",
+          "#EAF1E7"
+        ]
+      },
+      "kuro-2": {
+        "role": "neutral",
+        "displayName": "Kuro Mid",
+        "canonical": "#151B12",
+        "oklch": "oklch(21.3% 0.019 135)",
+        "tonalRamp": [
+          "#080D05",
+          "#20261D",
+          "#3B4238",
+          "#596055",
+          "#788075",
+          "#99A195",
+          "#BFC7BB",
+          "#E9F2E5"
+        ]
+      },
+      "kuro-3": {
+        "role": "neutral",
+        "displayName": "Kuro Raised",
+        "canonical": "#1B2317",
+        "oklch": "oklch(24.4% 0.025 135)",
+        "tonalRamp": [
+          "#070D04",
+          "#1F271B",
+          "#3A4336",
+          "#586153",
+          "#778172",
+          "#98A293",
+          "#BDC8B8",
+          "#E7F3E2"
+        ]
+      },
+      "kuro-4": {
+        "role": "neutral",
+        "displayName": "Kuro Lift",
+        "canonical": "#26311F",
+        "oklch": "oklch(29.7% 0.035 134)",
+        "tonalRamp": [
+          "#060E02",
+          "#1D2816",
+          "#384431",
+          "#56624E",
+          "#75826D",
+          "#96A48E",
+          "#BBC9B3",
+          "#E5F4DD"
+        ]
+      },
+      "bone": {
+        "role": "neutral",
+        "displayName": "Bone",
+        "canonical": "#F2EEE8",
+        "oklch": "oklch(95.1% 0.009 78)",
+        "tonalRamp": [
+          "#0D0B07",
+          "#26241F",
+          "#423F3A",
+          "#605D58",
+          "#807D77",
+          "#A19E98",
+          "#C7C3BE",
+          "#F2EEE8"
+        ]
+      },
+      "bone-dim": {
+        "role": "neutral",
+        "displayName": "Bone Dim",
+        "canonical": "#C9C2B6",
+        "oklch": "oklch(81.6% 0.018 81)",
+        "tonalRamp": [
+          "#0F0A04",
+          "#29231A",
+          "#453F35",
+          "#635D52",
+          "#837C71",
+          "#A49D92",
+          "#CAC3B7",
+          "#F5EEE1"
+        ]
+      },
+      "day-0": {
+        "role": "neutral",
+        "displayName": "Day Ground",
+        "canonical": "#F4F2EC",
+        "oklch": "oklch(96.1% 0.008 91)",
+        "tonalRamp": [
+          "#0C0B07",
+          "#252420",
+          "#41403B",
+          "#5F5D58",
+          "#7F7D78",
+          "#A09E99",
+          "#C6C4BE",
+          "#F0EEE8"
+        ]
+      },
+      "day-1": {
+        "role": "neutral",
+        "displayName": "Day Alt",
+        "canonical": "#EAE6DD",
+        "oklch": "oklch(92.6% 0.013 87)",
+        "tonalRamp": [
+          "#0D0B06",
+          "#27241D",
+          "#433F38",
+          "#615D56",
+          "#807D75",
+          "#A29E96",
+          "#C8C4BB",
+          "#F2EEE5"
+        ]
+      },
+      "day-2": {
+        "role": "neutral",
+        "displayName": "Day Well",
+        "canonical": "#E1DBCF",
+        "oklch": "oklch(89.3% 0.017 85)",
+        "tonalRamp": [
+          "#0F0B04",
+          "#28231A",
+          "#443F35",
+          "#625D53",
+          "#827D72",
+          "#A39E92",
+          "#C9C3B8",
+          "#F4EEE2"
+        ]
+      },
+      "day-ink": {
+        "role": "neutral",
+        "displayName": "Day Ink",
+        "canonical": "#172012",
+        "oklch": "oklch(23.0% 0.029 135)",
+        "tonalRamp": [
+          "#060E03",
+          "#1E2719",
+          "#394334",
+          "#576251",
+          "#768170",
+          "#97A391",
+          "#BCC9B6",
+          "#E6F3E0"
+        ]
+      },
+      "day-ink-2": {
+        "role": "neutral",
+        "displayName": "Day Ink 2",
+        "canonical": "#3D4A33",
+        "oklch": "oklch(39.1% 0.041 132)",
+        "tonalRamp": [
+          "#050E00",
+          "#1C2813",
+          "#38442E",
+          "#55634B",
+          "#74836A",
+          "#95A48A",
+          "#BACAAF",
+          "#E4F5D9"
+        ]
+      },
+      "day-accent": {
+        "role": "neutral",
+        "displayName": "Day Accent",
+        "canonical": "#3F5626",
+        "oklch": "oklch(42.2% 0.078 130)",
+        "tonalRamp": [
+          "#021000",
+          "#162B00",
+          "#314818",
+          "#4F6636",
+          "#6E8755",
+          "#8EA975",
+          "#B3CF9A",
+          "#DDFAC3"
+        ]
+      },
+      "moss": {
+        "role": "primary",
+        "displayName": "Moss Sun",
+        "canonical": "#6B8A42",
+        "oklch": "oklch(59.3% 0.106 128)",
+        "tonalRamp": [
+          "#001100",
+          "#132C00",
+          "#2E4900",
+          "#4B681F",
+          "#6A8941",
+          "#8BAB62",
+          "#B0D287",
+          "#D9FDB0"
+        ]
+      },
+      "moss-hi": {
+        "role": "primary",
+        "displayName": "Moss Light",
+        "canonical": "#A6C07A",
+        "oklch": "oklch(77.1% 0.098 125)",
+        "tonalRamp": [
+          "#041000",
+          "#192B00",
+          "#344800",
+          "#516722",
+          "#708743",
+          "#90A964",
+          "#B5D089",
+          "#DFFBB2"
+        ]
+      },
+      "moss-ink": {
+        "role": "primary",
+        "displayName": "Moss Ink",
+        "canonical": "#0A0E08",
+        "oklch": "oklch(15.7% 0.014 135)",
+        "tonalRamp": [
+          "#090D07",
+          "#21261F",
+          "#3D423A",
+          "#5A5F58",
+          "#7A7F77",
+          "#9BA098",
+          "#C0C6BD",
+          "#EAF1E7"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The hero line only; 12vw under 560px."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section h2s, a few words, 6-10em measure."
+      },
+      "hour": {
+        "displayName": "Hour",
+        "purpose": "Clock times on the task fields and the wake readout; tabular."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "h3s inside a field."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "The sentence under a headline, 30-36ch."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text, 44-60ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, tabs, chooser options, question summaries."
+      }
+    },
+    "shadows": [
+      {
+        "name": "product-fragment",
+        "value": "0 18px 50px -20px rgba(0,0,0,0.6)",
+        "purpose": "Only on the Telegram message fragment (data-ui), as the product's own chrome. Site surfaces are flat."
+      }
+    ],
+    "focus": [
+      {
+        "name": "focus-ring",
+        "value": "outline: 3px solid #A6C07A; outline-offset: 3px; border-radius: 999px",
+        "purpose": "Every focusable element on every ground."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Press scale, thumbs, rises, clock roll, sun rise."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.77, 0, 0.175, 1)",
+        "purpose": "The screens iris opening and timeline reflow."
+      },
+      {
+        "name": "press",
+        "value": "scale(0.97) over 160ms ease-out",
+        "purpose": "Every full-round control on :active."
+      },
+      {
+        "name": "sun-rise",
+        "value": "translateY(18vh) to 0 over 1600ms ease-out",
+        "purpose": "The hero sun on load; then scroll-linked drift."
+      },
+      {
+        "name": "clock-roll",
+        "value": "160ms out, 220ms in, vertical",
+        "purpose": "The bar clock changing hour."
+      },
+      {
+        "name": "iris",
+        "value": "clip-path circle(0% at 50% 60%) to circle(75%) over 1100ms in-out",
+        "purpose": "The screens mask, first time in view."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "all of the above fall back to still states",
+        "purpose": "prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "560px"
+      },
+      {
+        "name": "bar-links",
+        "value": "760px"
+      },
+      {
+        "name": "single-column",
+        "value": "1000px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action: moss, full round, optional leading dot.",
+      "html": "<button class=\"ds-btn\"><i class=\"ds-o\"></i>Walk through a day</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 10px; border: 0; border-radius: 999px; padding: 16px 28px; background: var(--moss, #6B8A42); color: var(--moss-ink, #0A0E08); font-family: var(--display, 'Libre Franklin', sans-serif); font-weight: 600; font-size: 1.0625rem; cursor: pointer; transition: transform 160ms cubic-bezier(0.23,1,0.32,1), background-color 200ms ease; } .ds-btn:hover { background: var(--moss-hi, #A6C07A); } .ds-btn:active { transform: scale(0.97); } .ds-btn:focus-visible { outline: 3px solid var(--moss-hi, #A6C07A); outline-offset: 3px; } .ds-o { width: 10px; height: 10px; border-radius: 50%; background: currentColor; display: block; }"
+    },
+    {
+      "name": "Chooser",
+      "kind": "chip",
+      "refersTo": "chooser-option",
+      "description": "Who the page is for: full-round radio options on night, the primary audience larger.",
+      "html": "<div class=\"ds-who\"><label class=\"big\"><input type=\"radio\" name=\"w\" checked><span>Research student</span></label><label><input type=\"radio\" name=\"w\"><span>Organising my life</span></label><label><input type=\"radio\" name=\"w\"><span>Tinkerer</span></label></div>",
+      "css": ".ds-who { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 24px; background: #0B0F0A; } .ds-who label { position: relative; cursor: pointer; } .ds-who input { position: absolute; opacity: 0; inset: 0; } .ds-who span { display: inline-block; border-radius: 999px; background: #1B2317; color: #F2EEE8; font-family: 'Libre Franklin', sans-serif; font-weight: 600; padding: 12px 20px; font-size: 1rem; transition: background-color 200ms ease, color 200ms ease; } .ds-who label.big span { font-size: 1.375rem; padding: 18px 30px; } .ds-who input:checked + span { background: #F2EEE8; color: #0B0F0A; } .ds-who input:not(:checked) + span:hover { background: #26311F; } .ds-who input:focus-visible + span { outline: 3px solid #A6C07A; outline-offset: 3px; }"
+    },
+    {
+      "name": "Navigation bar",
+      "kind": "nav",
+      "refersTo": "",
+      "description": "Fixed 64px bar: circle wordmark, links and the page's live clock; ground follows the section's sky.",
+      "html": "<header class=\"ds-bar\"><a class=\"ds-mark\" href=\"#\"><i></i>Kurooto</a><nav><a href=\"#\">Your day</a><a href=\"#\">Screens</a><a href=\"#\">Questions</a><a href=\"#\">Install</a><span class=\"ds-clock\"><i></i>05:40</span></nav></header>",
+      "css": ".ds-bar { display: flex; align-items: center; gap: 1.5rem; height: 64px; padding: 0 24px; background: #0B0F0A; color: #F2EEE8; } .ds-mark { display: inline-flex; align-items: center; gap: 10px; font-family: 'Libre Franklin', sans-serif; font-weight: 700; font-size: 1.125rem; letter-spacing: -0.02em; text-decoration: none; color: inherit; } .ds-mark i { width: 22px; height: 22px; border-radius: 50%; background: #6B8A42; display: block; } .ds-bar nav { margin-left: auto; display: flex; align-items: center; gap: 1.5rem; font-family: 'Libre Franklin', sans-serif; font-weight: 500; font-size: 0.9375rem; } .ds-bar nav a { color: inherit; text-decoration: none; padding: 6px 2px; } .ds-bar nav a:hover { text-decoration: underline; text-underline-offset: 0.2em; } .ds-clock { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-variant-numeric: tabular-nums; } .ds-clock i { width: 10px; height: 10px; border-radius: 50%; background: #6B8A42; display: block; }"
+    },
+    {
+      "name": "Day tabs",
+      "kind": "chip",
+      "refersTo": "tab-day",
+      "description": "Full-round tabs on a day field; selected is day ink.",
+      "html": "<div class=\"ds-tabs\"><button aria-selected=\"true\">Dashboard</button><button aria-selected=\"false\">Phone</button><button aria-selected=\"false\">Terminal</button></div>",
+      "css": ".ds-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 20px; background: #EAE6DD; } .ds-tabs button { font-family: 'Libre Franklin', sans-serif; font-weight: 600; font-size: 1.0625rem; color: #3D4A33; background: transparent; border: 0; border-radius: 999px; padding: 10px 16px; cursor: pointer; transition: background-color 200ms ease, color 200ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1); } .ds-tabs button[aria-selected=\"true\"] { background: #172012; color: #F4F2EC; } .ds-tabs button[aria-selected=\"false\"]:hover { background: #E1DBCF; color: #172012; } .ds-tabs button:active { transform: scale(0.97); } .ds-tabs button:focus-visible { outline: 3px solid #A6C07A; outline-offset: 3px; }"
+    },
+    {
+      "name": "Question",
+      "kind": "card",
+      "refersTo": "question",
+      "description": "Disclosure row on night; opens into moss.",
+      "html": "<div class=\"ds-qs\"><details open><summary>Has it been tried on many computers?<span class=\"ds-plus\"></span></summary><p>Not yet. It runs daily on one Linux laptop and is tested on Windows, macOS and Linux runners.</p></details><details><summary>What leaves my computer?<span class=\"ds-plus\"></span></summary><p>Only what a feature you turn on needs.</p></details></div>",
+      "css": ".ds-qs { display: grid; gap: 8px; padding: 20px; background: #10150E; color: #F2EEE8; } .ds-qs details { background: #1B2317; border-radius: 28px; transition: background-color 260ms ease, color 260ms ease; } .ds-qs details[open] { background: #6B8A42; color: #0A0E08; } .ds-qs details:not([open]):hover { background: #26311F; } .ds-qs summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 72px; padding: 18px 28px; font-family: 'Libre Franklin', sans-serif; font-weight: 600; font-size: 1.125rem; letter-spacing: -0.01em; } .ds-qs summary::-webkit-details-marker { display: none; } .ds-qs summary:focus-visible { outline: 3px solid #A6C07A; outline-offset: 3px; border-radius: 999px; } .ds-qs p { padding: 0 28px 24px; font-family: 'Source Serif 4', Georgia, serif; } .ds-plus { position: relative; width: 18px; height: 18px; flex: none; } .ds-plus::before, .ds-plus::after { content: ''; position: absolute; left: 0; top: 7.5px; width: 18px; height: 3px; border-radius: 3px; background: currentColor; transition: transform 240ms cubic-bezier(0.23,1,0.32,1); } .ds-plus::after { transform: rotate(90deg); } details[open] .ds-plus::after { transform: rotate(0deg); }"
+    },
+    {
+      "name": "Timeline",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "The day's rows: tabular time, dot bullet; missed is a hollow ring, night rows are kuro, now is moss.",
+      "html": "<ol class=\"ds-tl\"><li><time>07:00</time><span class=\"w\">Morning message</span></li><li class=\"missed\"><time>09:00</time><span class=\"w\">Catch up: Linear Algebra</span></li><li class=\"now\"><time>13:00</time><span class=\"w\">Start Problem set 4</span></li><li class=\"night\"><time>23:30</time><span class=\"w\">Dreaming</span></li></ol>",
+      "css": ".ds-tl { list-style: none; padding: 20px; background: #F4F2EC; color: #172012; font-family: 'Source Serif 4', Georgia, serif; } .ds-tl li { display: grid; grid-template-columns: 5.2ch 1fr; gap: 18px; padding: 14px 18px; border-radius: 22px; } .ds-tl li + li { margin-top: 4px; } .ds-tl time { font-family: 'Libre Franklin', sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; } .ds-tl .w { display: grid; grid-template-columns: 14px 1fr; gap: 12px; } .ds-tl .w::before { content: ''; width: 12px; height: 12px; border-radius: 50%; background: #3F5626; margin-top: 8px; } .ds-tl .missed { background: #EAE6DD; } .ds-tl .missed .w::before { background: transparent; box-shadow: inset 0 0 0 3px #3F5626; } .ds-tl .night { background: #151B12; color: #F2EEE8; } .ds-tl .night .w::before { background: #F2EEE8; } .ds-tl .now { background: #6B8A42; color: #0A0E08; } .ds-tl .now .w::before { background: #0A0E08; }"
+    },
+    {
+      "name": "Wake slider",
+      "kind": "input",
+      "refersTo": "",
+      "description": "Full-round track with a moss sun thumb.",
+      "html": "<div class=\"ds-wake\"><input type=\"range\" min=\"300\" max=\"720\" value=\"420\" aria-label=\"Wake time\"></div>",
+      "css": ".ds-wake { padding: 20px; background: #F4F2EC; } .ds-wake input { -webkit-appearance: none; appearance: none; width: 100%; max-width: 520px; height: 44px; background: transparent; cursor: pointer; } .ds-wake input::-webkit-slider-runnable-track { height: 14px; border-radius: 999px; background: #E1DBCF; } .ds-wake input::-moz-range-track { height: 14px; border-radius: 999px; background: #E1DBCF; } .ds-wake input::-webkit-slider-thumb { -webkit-appearance: none; width: 40px; height: 40px; margin-top: -13px; border-radius: 50%; background: #6B8A42; border: 0; transition: transform 160ms cubic-bezier(0.23,1,0.32,1); } .ds-wake input::-moz-range-thumb { width: 40px; height: 40px; border-radius: 50%; background: #6B8A42; border: 0; } .ds-wake input:active::-webkit-slider-thumb { transform: scale(1.12); } .ds-wake input:focus-visible { outline: 3px solid #A6C07A; outline-offset: 3px; border-radius: 999px; }"
+    },
+    {
+      "name": "Sun field",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "A flat field at an hour with the cropped sun behind its content.",
+      "html": "<section class=\"ds-field\"><div class=\"ds-sun\"></div><div class=\"ds-hour\">05:40</div><p class=\"ds-cl\">Before dawn</p></section>",
+      "css": ".ds-field { position: relative; overflow: hidden; isolation: isolate; min-height: 280px; padding: 28px; display: flex; flex-direction: column; justify-content: flex-end; background: #0B0F0A; color: #F2EEE8; } .ds-sun { position: absolute; z-index: -1; width: 150%; aspect-ratio: 1; left: -10%; top: 55%; border-radius: 50%; background: #6B8A42; pointer-events: none; } .ds-hour { font-family: 'Libre Franklin', sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 4rem; letter-spacing: -0.04em; line-height: 1; } .ds-cl { font-family: 'Libre Franklin', sans-serif; font-weight: 600; font-size: 1.5rem; letter-spacing: -0.02em; margin-top: 6px; }"
+    },
+    {
+      "name": "Install panel",
+      "kind": "card",
+      "refersTo": "install-panel",
+      "description": "Night panel with the OS toggle, the install line well and the copy button.",
+      "html": "<div class=\"ds-inst\"><h3>Install the beta</h3><div class=\"ds-seg\"><button aria-pressed=\"true\">Windows</button><button aria-pressed=\"false\">macOS / Linux</button></div><div class=\"ds-line\"><code>curl -fsSL .../install.sh | sh</code></div><button class=\"ds-copy\">Copy the line</button></div>",
+      "css": ".ds-inst { width: min(520px, 100%); background: #1B2317; color: #F2EEE8; border-radius: 28px; padding: 28px; font-family: 'Libre Franklin', sans-serif; } .ds-inst h3 { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.02em; } .ds-seg { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; background: #10150E; border-radius: 999px; padding: 4px; } .ds-seg button { border: 0; background: transparent; color: #F2EEE8; font: 600 16px/1 'Libre Franklin', sans-serif; padding: 12px 10px; border-radius: 999px; cursor: pointer; } .ds-seg button[aria-pressed=\"true\"] { background: #F2EEE8; color: #0A0E08; } .ds-seg button:focus-visible, .ds-copy:focus-visible { outline: 3px solid #A6C07A; outline-offset: 3px; } .ds-line { margin-top: 14px; background: #050704; border-radius: 16px; padding: 14px 16px; color: #E9E5DD; } .ds-line code { font-family: ui-monospace, Menlo, monospace; font-size: 14px; } .ds-copy { margin-top: 14px; width: 100%; border: 0; border-radius: 999px; padding: 18px; background: #6B8A42; color: #0A0E08; font: 600 1.125rem 'Libre Franklin', sans-serif; cursor: pointer; transition: transform 160ms cubic-bezier(0.23,1,0.32,1), background-color 200ms ease; } .ds-copy:hover { background: #A6C07A; } .ds-copy:active { transform: scale(0.97); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "One day, wake to sleep",
+    "overview": "The page is one day and the scroll is the clock. Each section is a flat field of colour at an hour: the hero is pre-dawn kuro, the live day is the light ground, the task runs across four fields from morning to night, the screens sit in afternoon light, and the questions and the install close the page at night. A fixed bar carries a live clock that rolls to each section's hour, and the bar's ground and ink switch to that section's sky.\n\nThere is one motif: the moss circle from Kurooto's own icon, used as the sun. It appears at four scales: a giant sun cropped off a section's edge (150vh in the hero, rising; setting under the install field), the image masks that show product screens, the full-round controls, and the small dot bullets. Pieces of the real product (a Telegram message, task cards, the install panel) sit on the fields at true size and are marked `data-ui`.\n\nDensity is low and the type is large. A bold grotesque does the talking in headings and controls; a text serif carries the sentences.",
+    "keyCharacteristics": [
+      "Full-bleed fields of flat colour, each one an hour; night is kuro, day is the light theme.",
+      "The moss circle is the single motif and the single action colour.",
+      "Libre Franklin 700 display with tight tracking; Source Serif 4 for reading.",
+      "Every control is fully round; containers are softly rounded; no hairline borders.",
+      "Motion follows the clock: rising sun, rolling clock digits, an iris opening on the screens."
+    ],
+    "rules": [
+      {
+        "name": "The One Sun Rule",
+        "body": "Moss marks the sun and the action, nothing else. A second accent hue is not part of this world.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sky Rule",
+        "body": "A section's ground is chosen by the hour it represents: kuro values for night, day values for day. Text on a field switches with it (bone on night, day-ink on day).",
+        "section": "colors"
+      },
+      {
+        "name": "The Tonal Sun Rule",
+        "body": "Inside the task fields the sun is drawn in the next tone of the field's own ground (kuro-3 on kuro-1, day-2 on day-1), so the motif stays present without competing with the moss action.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Voices Rule",
+        "body": "Libre Franklin speaks (headings, hours, controls); Source Serif 4 explains (leads, body, notes). Do not set paragraphs in the grotesque or controls in the serif.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Clock Rule",
+        "body": "Every time of day (bar clock, timeline, field hours, wake readout) uses tabular figures.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tone Not Shadow Rule",
+        "body": "To raise a surface, step its ground tone; never add a drop shadow to site surfaces.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** give every section an hour and a sky (night or day) so the bar clock and bar colour follow the scroll.",
+      "**Do** use the moss circle as the only motif, at the four scales: sun, mask, control, bullet.",
+      "**Do** make every control fully round and every focus state the 3px moss-hi ring.",
+      "**Do** raise surfaces by stepping tone (kuro-1 to kuro-3, kuro-3 to kuro-4 on hover).",
+      "**Do** show the product through real screens and true-size fragments marked `data-ui`.",
+      "**Do** honour reduced motion: the sun, rises, iris and clock roll all fall back to still states."
+    ],
+    "donts": [
+      "**Don't** introduce a second accent hue; moss is the sun and the action.",
+      "**Don't** divide space with hairline borders or rules; change the field or the tone instead.",
+      "**Don't** lay site content out as rows of equal feature cards; the four task fields are hours of one day, each holding one product fragment.",
+      "**Don't** add drop shadows to site surfaces; only product fragments may carry their own.",
+      "**Don't** set paragraphs in Libre Franklin or controls in Source Serif 4."
+    ]
+  }
+}
