@@ -94,7 +94,7 @@ register_defaults(
         "commit": True,  # one git commit per batch, when your notes are a repository
         "summary": True,  # one line each morning about what changed
         "duplicates": True,  # each morning, up to 3 pairs of look-alike concept notes: Merge / Keep both / Add alias
-        "notation": True,  # a Notation table when a second source writes a concept differently (Research add-on part)
+        "notation": True,  # a Notation table when a second source writes a concept differently (a switch on the card)
     },
 )
 STALE_S = 3 * 3600  # a request that didn't come back in this long is asked again
@@ -1063,8 +1063,9 @@ class Integrate(Module):
         return rows
 
     def notation_on(self) -> bool:
-        """Notation tables are a part of the Research add-on: its switch (integrate.notation) and the add-on itself."""
-        return bool(self.setting("notation")) and self.app.is_on("research_addon")
+        """Notation tables whenever the graph reads (books, class files, handwritten notes), unless
+        integrate.notation is off (a switch on this card and in Settings)."""
+        return bool(self.setting("notation"))
 
     @staticmethod
     def notation_body(rows: list[dict]) -> str:
@@ -1396,6 +1397,13 @@ class Integrate(Module):
                 ("handwritten", "Read your handwritten notes"),
             )
         ]
+        toggles.append(
+            {
+                "id": "notation",
+                "label": "Notation tables (when two sources write a concept differently)",
+                "on": self.notation_on(),
+            }
+        )
         if self.app.is_on("classroom_notes") and "classroom" in on:
             done = bool((self.load("items.json", {}) or {}).get("backfill", {}).get("classroom"))
             toggles.append(
@@ -1415,6 +1423,9 @@ class Integrate(Module):
             new = [x for x in SOURCES if (x in cur and x != k) or (x == k and value)]
             self.app.settings.set("integrate.sources", new)
             return f"Read into the graph: {', '.join(new) or 'nothing'}."
+        if act == "notation":
+            self.app.settings.set("integrate.notation", bool(value))
+            return "Notation tables: " + ("on." if value else "off.")
         if act == "backfill:classroom":
             return self.backfill_said(*self.backfill_classroom()) if value else "Already queued."
         return "There's no such switch."

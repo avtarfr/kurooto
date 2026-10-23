@@ -388,7 +388,7 @@ def test_one_switch_turns_the_group_on_and_off(env, monkeypatch):
     ok, _ = app.enable("research_addon")
     assert ok and app.is_on("notation_test")  # the member came on with it
     card = app.modules["research_addon"].card()
-    assert [t["id"] for t in card["toggles"]] == ["run_compare", "latex", "notation", "m:drafts", "m:notation_test"]
+    assert [t["id"] for t in card["toggles"]] == ["run_compare", "latex", "m:drafts", "m:notation_test"]
     m = app.modules["research_addon"]
     assert m.card_action("m:notation_test", False) == "Draft checker is off."
     assert app.settings.get("research_addon.members_off") == ["notation_test"]
@@ -404,17 +404,14 @@ def test_one_switch_turns_the_group_on_and_off(env, monkeypatch):
     assert env.say("/latex") == "The LaTeX tracker is off: switch it on on the Research add-on's card."
 
 
-def test_the_notation_crosswalk_is_a_part_switched_by_its_concept_graph_setting(env):
+def test_notation_tables_run_whenever_the_graph_reads_and_switch_on_its_own_card(env):
     app = env.app
-    m, ig = app.modules["research_addon"], app.modules["integrate"]
-    assert app.settings.get("integrate.notation") is True and not ig.notation_on()  # the add-on is off
-    app.enable("research_addon")
-    assert ig.notation_on()
-    assert any(ln.startswith("Notation crosswalk:") for ln in m.card()["lines"])
-    assert m.card_action("notation", False) == "Notation crosswalk: off."
+    ig = app.modules["integrate"]
+    assert app.settings.get("integrate.notation") is True and ig.notation_on()  # on without the Research add-on
+    assert "notation" not in [t["id"] for t in app.modules["research_addon"].card()["toggles"]]
+    assert ig.card_action("notation", False) == "Notation tables: off."
     assert app.settings.get("integrate.notation") is False and not ig.notation_on()
-    assert not any(ln.startswith("Notation crosswalk:") for ln in m.card()["lines"])
-    m.card_action("notation", True)
+    ig.card_action("notation", True)
     assert ig.notation_on()
 
 
