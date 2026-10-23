@@ -86,7 +86,9 @@ class Calls(Module):
     privacy = (
         "Call audio goes between your phone and Google (Gemini Live, your own key); calls turn by turn use your "
         "phone's own speech recognition instead. Your call line runs on your own Cloudflare account and keeps a short "
-        "brief for when this computer is off. Transcripts stay here."
+        "brief for when this computer is off. Transcripts are kept on this computer (the call line holds them only while "
+        "it's off); after each call the transcript and what the call did go to your chosen AI for the look back "
+        "(calls.review)."
     )
 
     def __init__(self, app):

@@ -363,7 +363,8 @@ def test_the_computers_own_latex_makes_the_pdf_when_tectonic_isnt_there(tmp_path
     fake.write_text(
         f"#!{sys.executable}\nimport sys, pathlib\n"
         "tex = pathlib.Path(sys.argv[-1])\n"
-        "tex.with_name('argv.txt').write_text(' '.join(sys.argv[1:]))\n"
+        "import os\n"
+        "tex.with_name('argv.txt').write_text(' '.join(sys.argv[1:]) + ' openin=' + os.environ.get('openin_any', ''))\n"
         "tex.with_suffix('.pdf').write_bytes(b'%PDF-1.4 fake')\n"
         "tex.with_suffix('.aux').write_text('x')\n"
         "tex.with_suffix('.log').write_text('x')\n",
@@ -378,7 +379,10 @@ def test_the_computers_own_latex_makes_the_pdf_when_tectonic_isnt_there(tmp_path
     ok, err = sk.compile_tex(env.app, f)
     assert ok, err
     assert f.with_suffix(".pdf").is_file()
-    assert "-no-shell-escape" in (tmp_path / "argv.txt").read_text().split()  # AI-written LaTeX never runs commands
+    argv = (tmp_path / "argv.txt").read_text().split()
+    assert "-no-shell-escape" in argv  # AI-written LaTeX never runs commands
+    assert "openin=p" in argv  # nor reads files outside its own folder into the PDF
+    assert engine != "latexmk" or "-norc" in argv  # nor gets Perl from a latexmkrc in the notes
     assert not f.with_suffix(".aux").exists() and not f.with_suffix(".log").exists()  # no litter next to the pdf
 
 

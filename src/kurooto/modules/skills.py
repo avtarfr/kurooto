@@ -472,6 +472,11 @@ def _tex_errors(res) -> str:
     return "\n".join(errs[:12])[:1500] or ("it took too long" if res.code is None else "it failed")
 
 
+# TeX may read and write only beside the document (and in TeX's own folders): LaTeX an AI wrote can't pull another
+# file of yours into the PDF. "p" is TeX Live's "paranoid"; MiKTeX ignores it and is no more open than that by default.
+TEX_ENV = {**os.environ, "openin_any": "p", "openout_any": "p"}
+
+
 def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
     """Make the PDF next to the .tex: with Tectonic (untrusted mode: no shell escape; the first run downloads the LaTeX
     packages it needs into Kurooto's cache folder, which takes a few minutes), else with the computer's own LaTeX
@@ -496,6 +501,7 @@ def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
             res = proc.run(
                 [
                     own,
+                    "-norc",  # no latexmkrc: one in the notes folder could be Perl an AI wrote there
                     "-pdf",
                     "-interaction=nonstopmode",
                     "-halt-on-error",
@@ -506,6 +512,7 @@ def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
                 ],
                 timeout=timeout,
                 cwd=tex.parent,
+                env=TEX_ENV,
             )
         else:  # twice, for the references and the table of contents
             for _ in range(2):
@@ -514,6 +521,7 @@ def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
                      f"-output-directory={tex.parent}", str(tex)],
                     timeout=timeout,
                     cwd=tex.parent,
+                    env=TEX_ENV,
                 )  # fmt: skip
                 if not res.ok:
                     break

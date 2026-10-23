@@ -37,7 +37,8 @@ through Gemini, whichever AI answers your messages; if you don't want Google's f
 **About Claude Code.** Each request run by Claude Code gets only what Kurooto gives it, for that request: Kurooto's
 tools (and your own GBrain's, if you use one), reading your notes, course files, Documents, Downloads and Screenshots,
 writing in your notes, course-files and add-on skills folders, reading web pages, and harmless commands (`ls`, `cat`,
-`grep`, `find`, `git`, `latexmk`, `pdftotext`...). Anything else is refused, and the answer says what was refused.
+`grep`, `ls`, `pdftotext`...; none that can start another program through its options, so not `find`, `git`,
+`latexmk`, `rg` or `sort`). Anything else is refused, and the answer says what was refused.
 Nothing is saved in Claude Code's own settings, and your own Claude Code hooks, projects and history aren't used. The
 `kurooto` command itself never runs from a request. Models: `brain.models.claude` (default `haiku` for quick
 requests, `sonnet` for the rest).

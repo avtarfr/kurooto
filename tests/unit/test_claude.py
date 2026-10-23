@@ -46,7 +46,10 @@ def test_a_run_may_write_in_notes_and_read_documents_but_not_write_there(app, tm
     notes = rule_path(app.workspace)
     assert f"Edit({notes}/**)" in p["allow"] and f"Read({notes}/**)" in p["allow"]
     assert not any(r.startswith("Edit(") and "Documents" in r for r in p["allow"])
-    assert "Bash(ls *)" in p["allow"] and "Bash(latexmk *)" in p["allow"]
+    assert "Bash(ls *)" in p["allow"]
+    # nothing that can start another program through its arguments (a prompt hidden in a mail mustn't run code)
+    for risky in ("latexmk", "find", "git", "rg", "sort"):
+        assert not any(r in (f"Bash({risky})", f"Bash({risky} *)") for r in p["allow"]), risky
     assert "WebFetch" in p["allow"] and "mcp__kurooto" in p["allow"]
     assert "Bash(kurooto *)" in p["deny"] and "Bash(kurooto)" in p["deny"]
     assert not any(r.startswith("Bash(sed") or r.startswith("Bash(rm") for r in p["allow"])

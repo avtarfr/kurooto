@@ -175,7 +175,7 @@ Requests run by an agent program (agy, Claude Code) are unattended, so what they
 | Your own GBrain's tools (`gbrain.agy_mcp` on) | allowed in agy's own settings | given for each request |
 | Read | notes, course files, Classroom and mail copies, Documents, Downloads, Screenshots | the same |
 | Write | notes folder, course files folder, your add-ons' skills | the same |
-| Harmless commands | `cat cd date echo file find git grep head jq latexmk ls mkdir pdftotext pwd rg sort stat tail tree uniq wc which` | the same |
+| Harmless commands | `cat cd date echo file grep head jq ls mkdir pdftotext pwd stat tail tree uniq wc which` | the same |
 | Web pages | yes | yes |
 | `kurooto` itself | never | never |
 | Where it's kept | agy's `settings.json` (a backup is taken; your own rules stay) | nowhere: nothing is saved in Claude Code's settings |

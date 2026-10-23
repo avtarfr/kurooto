@@ -61,6 +61,11 @@
   zip; `kurooto call` exits 2 when Kurooto isn't running, like `send`, `notify` and `ask-me`; the local page answers a
   bad `Content-Length` with 400; a stopped dashboard server stops listening to events; the settings guide no longer
   reads a module `defaults` attribute that nothing used (it's gone from `Module`).
+- **Unattended AI can't run code through a command's options**: the commands agy and Claude Code may run on their own
+  no longer include `find`, `git`, `latexmk`, `rg` or `sort`, each of which can start another program through its
+  options (a prompt hidden in a mail or a web page could have used them). Searching is the AI programs' own job, and
+  Kurooto compiles LaTeX itself: now without a `latexmkrc` from the notes folder (`-norc`), and TeX may only read and
+  write beside the document.
 - **Docs match the code**: the manual's term-note example no longer swallows the Concept graph, Space keeper and
   reserve sections, and it now covers `/new` and the chat's memory, the calls look back (`/lessons`), topic study
   packs, `drive_upload.temp_days`, Exam season as an add-on and the new `/help`; agy is the recommended brain

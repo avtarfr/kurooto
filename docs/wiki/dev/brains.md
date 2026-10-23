@@ -168,6 +168,13 @@ registration) goes through the installed launcher so it survives updates; on Win
 
 ## Read and write allow-lists
 
+`providers/agy.py:COMMANDS` holds only commands that can't start another program whatever their arguments: `find`
+(`-exec`), `git` (`-c`, aliases, a repo's config), `latexmk` (`-e`, a `latexmkrc`), `rg` (`--pre`) and `sort`
+(`--compress-program`) were removed in 0.5.8, because headless runs read untrusted text (mail, Classroom posts, web
+pages) and an injected instruction must not reach code execution. agy's rules have no argument patterns, so a command is
+either fully allowed or not listed. Kurooto compiles LaTeX itself (`modules/skills.py:compile_tex`): `-no-shell-escape`,
+`-norc`, and `TEX_ENV` (`openin_any`/`openout_any` = `p`) so TeX reads and writes only beside the document.
+
 `core/places.py` is the one source of truth for where the AI may go, used by Kurooto's own file tools, agy's
 allow-list and Claude Code's per-run permissions:
 

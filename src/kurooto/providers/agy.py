@@ -51,9 +51,13 @@ ALLOW = "mcp(kurooto/*)"  # agy's allow-list entry for every Kurooto tool
 GBRAIN_ALLOW = "mcp(gbrain/*)"  # every tool of your own GBrain's MCP server (gbrain.agy_mcp)
 # shell commands that only read or are harmless (agy's rules name a program, not its arguments, so sed is left out:
 # `sed -i` writes; and never `kurooto`, whose off/uninstall/restore must not run unattended)
+# commands an unattended AI may run: none of them can start another program, whatever its arguments (find -exec,
+# git -c or aliases, latexmk -e or a latexmkrc, rg --pre and sort --compress-program can, so they're not here: a
+# prompt hidden in a mail or a web page must not get a way to run code). Searching is the AI programs' own tools'
+# job, and Kurooto compiles LaTeX itself (skills.compile_tex).
 COMMANDS = (
-    "cat", "cd", "date", "echo", "file", "find", "git", "grep", "head", "jq", "latexmk", "ls", "mkdir", "pdftotext",
-    "pwd", "rg", "sort", "stat", "tail", "tree", "uniq", "wc", "which",
+    "cat", "cd", "date", "echo", "file", "grep", "head", "jq", "ls", "mkdir", "pdftotext",
+    "pwd", "stat", "tail", "tree", "uniq", "wc", "which",
 )  # fmt: skip
 NON_WORKSPACE = {"allowNonWorkspaceAccess": True, "nonWorkspaceFileAccess": "allow"}  # set only when absent
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[()][A-Z0-9]|\r")
