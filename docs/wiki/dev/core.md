@@ -637,7 +637,8 @@ off for an intent whose `match` takes the text (errors are skipped, `turnon_skip
 says where to set it up. Otherwise the text waits in `<state>/turnon.json` (20, for 24 h) under a ref, and the reply
 carries `ton:<ref>:on` / `ton:<ref>:no` (routed by `App.callback`). `on` enables the module's `requires`, then the
 module, re-matches and runs the intent with an `Incoming` whose replies go out through `app.notify(..., why="asked")`;
-`no` hands it to Chat when that's on. Events `turnon_offered`, `turnon_done`. Setting `turnon.offer`. Tests:
+`no` hands it to Chat when that's on. Only for `msg.via` in `BUTTONS` (telegram, app): the setup page's try-it box and
+terminals go on to the AI. Events `turnon_offered`, `turnon_done`. Setting `turnon.offer`. Tests:
 `tests/unit/test_turnon.py`.
 
 ## Setting up from what's said (`core/infer.py`)

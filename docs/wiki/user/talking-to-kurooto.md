@@ -69,7 +69,8 @@ Kurooto looks at each message in this order and stops at the first match:
    **A request a feature that's off would understand** ("remind me in 5 min to stretch" with Reminders off) gets "That's
    for Reminders, which is off. Turn it on and do it?" with **Turn on** (it turns on that feature, and what it needs,
    then does the request) and **Not now** (it stays off; with Chat on, your AI gets the message instead). A feature
-   that needs setting up first says where. `turnon.offer` off goes back to sending these to the AI.
+   that needs setting up first says where. On Telegram and the phone app only; `turnon.offer` off goes back to sending
+   these to the AI.
 7. **"sync everything"** (or `sync all`, `/sync all`) runs every sync that's on.
 8. **Chat:** everything else goes to your AI.
 

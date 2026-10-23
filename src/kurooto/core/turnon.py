@@ -1,7 +1,8 @@
 """Turn on from chat: a plain-English request that a feature that's off would understand ("wake me at 7" with the
 Morning alarm off) gets [Turn on] [Not now] instead of a guess. Turn on switches on that feature (and what it needs,
 when that's ready), then does the request; Not now leaves everything as it was and, with Chat on, asks your AI
-instead. A feature that needs setting up first says where. Setting turnon.offer (on).
+instead. A feature that needs setting up first says where. Setting turnon.offer (on). Only on Telegram and the phone
+app, where a button can be tapped; the setup page's try-it box and a terminal go on to the AI as before.
 
 The request waits for the tap in the state folder (turnon.json, the last 20, for a day), so a tap after a restart
 still works. Rules only: no AI, nothing leaves the computer.
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
 
 register_defaults("turnon", {"offer": True})  # a request a feature that's off understands: offer to turn it on
 FILE = "turnon.json"
+BUTTONS = ("telegram", "app")  # channels where a tap comes back; elsewhere (setup, a terminal) the AI answers as before
 KEEP, KEEP_H = 20, 24
 
 
@@ -57,7 +59,7 @@ def find(app: App, plain: str, mods: list[Module], asks: bool) -> tuple[Module, 
 
 def offer(app: App, msg: Incoming, plain: str, mods: list[Module], asks: bool) -> bool:
     """Offer to turn on the feature that would do this request. True when it answered."""
-    if not app.settings.get("turnon.offer", True):
+    if not app.settings.get("turnon.offer", True) or msg.via not in BUTTONS:
         return False
     got = find(app, plain, mods, asks)
     if got is None:
