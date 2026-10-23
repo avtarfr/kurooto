@@ -17,7 +17,7 @@ computer only.
 |---|---|---|
 | Telegram | your messages to the bot and its replies; files you send it | Telegram (to your own bot) |
 | Questions and approvals | the question or approval, wherever Kurooto reaches you; open ones are also in the brief your call line keeps (see Phone calls) | Telegram (your own bot) and your paired phones; desktop notifications stay on this computer |
-| Chat with your AI | what you ask; notes the AI reads to answer; what its tools return (a note's text, your reminders or deadlines); the short "In brief" part of your profile and your how-to-help-me note | the AI service you picked (Google for agy/Gemini, Anthropic for Claude Code, the service you entered for a custom one, or nothing for local models) |
+| Chat with your AI | what you ask; notes the AI reads to answer; what its tools return (a note's text, your reminders or deadlines); the short "In brief" part of your profile, your how-to-help-me note and your persona card (empty unless you write one) | the AI service you picked (Google for agy/Gemini, Anthropic for Claude Code, the service you entered for a custom one, or nothing for local models) |
 | Files into notes | with Chat on, the files you send, for the AI to file them | the AI service you picked |
 | Setup page: Try it now | what you type in the box that isn't an instant request (a reminder, a command), like a Chat message; nothing goes to Telegram or your phone | the AI service you picked |
 | Skills | what you send with a skill and the notes it reads; for `/newskill`, your description and the names of your tools and skills | the AI service you picked |

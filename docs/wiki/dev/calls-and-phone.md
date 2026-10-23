@@ -129,8 +129,8 @@ transcripts, events and answers until the computer takes them (`Calls.take_queue
 - The call page (`web/app.js`, in `CallActivity`'s WebView or a browser) POSTs `/token`; `Line.token` mints a single-use
   ephemeral Live token (30 min expiry, 2 min to start) and emits `call_started` (stops the ring; `Calls.on_event`
   marks the ring answered and writes `<state>/calls/live.json`).
-- The Live session is configured from `Calls.config_template` (system instruction with each tool's hint, persona,
-  learned lessons, transcription, context compression) and `Calls.texts`. Its time line is `It is %%NOW%%, their
+- The Live session is configured from `Calls.config_template` (system instruction with each tool's hint, the persona
+  card and boundaries rule from `core/persona.py`, `calls.persona` through the same `persona.clean`, learned lessons, transcription, context compression) and `Calls.texts`. Its time line is `It is %%NOW%%, their
   local time (<zone>)`, filled in by the Worker (`TZ`) or `fallback.py`; `pending()` starts with `now` too. Without
   the zone named, a Live model once planned in UTC ("1:30 PM" at 17:00 IST). Voice by kind: `Calls.voice_for`.
 - Tool calls: page to `/tool`, Worker to WebSocket, `Calls.handle_request` to `Calls.run_tool`. Tools are

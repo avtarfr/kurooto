@@ -314,6 +314,11 @@ class App:
             if name == "aboutme":  # your profile's In-brief part, and where to edit it (core/aboutyou.py)
                 msg.reply(self.about.for_chat())
                 return
+            if name == "persona":  # your persona card: show it, set a line, clear it (core/persona.py)
+                from kurooto.core import persona
+
+                msg.reply(persona.command(self, arg))
+                return
             if name in ("q", "questions"):  # open questions, with their buttons (core/ask.py)
                 out = self.ask.command(msg, arg.strip())
                 if out:
@@ -418,6 +423,12 @@ class App:
         calls = self.modules.get("calls")  # (livefallback) a call that went on as text: what you write is part of it
         if calls is not None and self.is_on("calls") and calls.textcall.takes(msg):
             return
+        from kurooto.core import persona  # health, relationship and money decisions: not its to make (core/persona.py)
+
+        said = persona.keeps(self, text) if text and not text.startswith("/") and not msg.files else None
+        if said:
+            msg.reply(said)
+            return
         plain = tidy(text)
         cases = self.modules.get("cases") if self.is_on("cases") else None  # (wrong) Wrong button, taught phrasings
         taught = cases.watch(msg, plain, mods) if cases is not None else None  # (request, slots), "ai" or None
@@ -446,6 +457,10 @@ class App:
                         self.keep.used(m.id, "intent", msg.via)
                         msg.reply(it.run(msg, slots) or "Done.")
                         return
+            from kurooto.core import repair  # two close readings: ask which, with both as buttons (core/repair.py)
+
+            if repair.offer(self, msg, plain, mods, asks):
+                return
             from kurooto.core import turnon  # a feature that's off would do it: [Turn on] [Not now]
 
             if turnon.offer(self, msg, plain, mods, asks):
@@ -535,6 +550,10 @@ class App:
             return self.keep.button(ref, act)
         if prefix == "rhy":  # Undo, Not today, I'm fine / Busy (core/rhythm.py)
             return self.rhythm.button(ref, act)
+        if prefix == "rpr":  # one of two readings, or Neither (core/repair.py)
+            from kurooto.core import repair
+
+            return repair.button(self, ref, act)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:
@@ -548,6 +567,7 @@ class App:
     CORE_HELP = (
         ("q", "open questions I asked you (reply to one to answer it)"),
         ("aboutme", "what I know about you (your profile's In-brief part), and where to edit it"),
+        ("persona", "your persona card: how I talk to you (/persona tone: plain, /persona clear)"),
         ("health", "what isn't working, with Fix buttons (/health now checks online too)"),
         ("fixme", "what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains"),
         ("calm", "messages that come by themselves: today's count and limit"),

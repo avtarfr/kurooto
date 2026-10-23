@@ -60,7 +60,7 @@ flattened to their first value; a non-dict JSON body becomes `{}`. Anything unma
 
 GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `jobs`, `term`, `health`, `sync/status`,
 `profile`, `note?id=`, `settings`, `look`, `events` (last 80), `board` (503 without `Live`), `state` (the wizard's
-whole state), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `research`, `progress`, `ask`, `ask/<id>`,
+whole state), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `persona`, `research`, `progress`, `ask`, `ask/<id>`,
 `today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `morning`
 (`modules/daily.py:morning_view`), `mail/confidential?day=`, `books`.
 
@@ -76,7 +76,7 @@ POST (in `Api.post`):
 | everyday | `act`, `ask`, `ask/get`, `ask/pending`, `ask/answer`, `ask/expire`, `notify`, `send-file`, `open-note`, `open-url` |
 | health and sync | `health/fix`, `sync/all`, `sync/status` |
 | power | `power/stop`, `power/pause`, `power/resume`, `power/off` |
-| profile and about | `profile/save`, `profile/restore`, `aboutyou/add`, `aboutyou/remove`, `aboutyou/profile`, `aboutyou/preview`, `aboutyou/merge` |
+| profile and about | `profile/save`, `profile/restore`, `aboutyou/add`, `aboutyou/remove`, `aboutyou/profile`, `aboutyou/preview`, `aboutyou/merge`, `persona` (`{values}`: the persona card, `core/persona.py:save`) |
 | phone | `phone/pair`, `phone/revoke`, `phone/test` |
 | terminals | `term/<name>/attach`, `input`, `resize`, `leave`, `restart` (403 when Terminals is off) |
 | other | `research/save`, `research/preview`, `research/run`, `classpack/import`, `mail/confidential/settle`, `books/add` |

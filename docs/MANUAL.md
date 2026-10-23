@@ -225,6 +225,16 @@ The reports themselves stay in Kurooto's private data folder (not your notes, ne
 rather not keep before adding a report. Come back any time with more accounts: open the setup page (`kurooto open`, then
 "setup") and go to About you. To teach it smaller things as you go, see [Remember](#remember).
 
+**Your persona card.** Four short lines on how Kurooto talks to you: what to call you, tone, length, things to avoid
+("plain and direct, no pep talk"). It starts empty (no name, voice or tone picked for you) and goes along with every
+AI request and every call, so the wording is the same on Telegram, the app and calls. Set it on the dashboard's
+**About you** tab (with a preview of what's sent), in Settings (`persona.call_me`, `tone`, `length`, `avoid`) or with
+`/persona tone: plain, no pep talk`; `/persona` shows it, `/persona clear [line]` clears it. It sets wording only: a
+part that would give Kurooto feelings ("say you missed me"), a backstory ("you grew up in Pune") or a relationship
+("be my girlfriend") is left out, and you're told which; the same rules apply to a hand-edited settings file and to
+`calls.persona`. *Leaves:* the card goes to the AI you picked and the call line's voice model, like the In brief.
+*Undo:* `/persona clear`.
+
 ## Your AI brain
 
 The "brain" is the AI that answers your messages and does tasks. You can change it any time (dashboard → Settings, or
@@ -406,8 +416,20 @@ dashboard and the terminal) built from the run's own record, not the answer's wo
 the share of today's limit when Kurooto knows it, and what it actually did with Kurooto's tools ("searched notes, wrote
 1 note"; "did nothing" when it used none; agy and Claude Code's own file tools aren't seen, so for them "did nothing
 through Kurooto"). Quiet background work gets none; `jobs.receipt` = `false` turns it off.
+**Answers at your length** (`persona.register`, on): a short message (12 words or fewer) is answered briefly, a long
+one (80 or more) may get a full answer, and a voice note gets an answer worded to be said aloud. By your message's
+length only: nothing changes at night or partway through a conversation, and a length on your persona card wins.
+**Boundaries** (`persona.boundaries`, on): decisions about your health, relationships and money are yours. "Should I
+stop my meds?", "should I break up with him?", "should I take the loan?" get one line at once, without the AI: it's
+not Kurooto's to decide, and who to ask (a doctor or pharmacist; someone you trust or a counsellor; a financial
+adviser). Every AI request and call is told the same rule. A fixed rule list, not the AI's judgement.
+**Two readings** (`repair.on`, on): a short message no instant request takes, but about equally close to two of them,
+gets 'Did you mean "..." or "..."?' with both as buttons and **Neither**, instead of a guess. On Telegram and the
+phone app; otherwise nothing changes. Picking the same one twice teaches the phrasing (with Wrong button and test
+cases on).
 *Leaves:* what you ask, and notes it reads, go to the AI you picked; with a conversation going, your recent
 exchanges go along too.
+*Undo:* `persona.register`, `persona.boundaries` or `repair.on` off brings back the old behaviour of each.
 
 ### Reminders
 "remind me at 9 to call mum", "remind me in 20 minutes to take the pasta off", `/remind tomorrow 7am gym`,
@@ -650,6 +672,16 @@ about 12 h (2-3 days) of work...", with the sizes to tap: at most three a day, a
 before the due date (closer than that, the deadline's own day-before nudge says it). When there isn't enough free
 time left, it says so. The first morning after you turn it on, one message lists what's to start now instead.
 
+**Negotiate, don't repeat** (`startby.negotiate`, on). When a deadline's reminder would come again (the six-hour one
+after the day-ahead one, one after a Snooze, the message after a missed deadline call, or one for a deadline whose
+"Time to start" came on an earlier day) and the deadline is slipping, you get a reshaped plan from your own Start-by
+plan instead: "Problem set 4 (due Tue 03 Nov 11:00): your Start-by plan has 2 h of it today, and about 1 h of today's
+free time is left. 1 h now, 1 h tomorrow?" with **Do that** (tomorrow's part gets a reminder at the start of
+tomorrow's first free time; with the Agent plan calendar on, both parts go in as blocks) and **Not today** (nothing
+more about it today). Slipping means this morning's plan put hours of it into today that what's left of today's free
+time no longer holds. One offer per deadline per day, in plain fixed words; then reminders come as before. On a
+deadline call the AI can offer the same plan once (`reshape_plan`, `reshape_answer`).
+
 **Crunch weeks.** The Sunday summary flags weeks in the next four (`startby.crunch_weeks`) where the work due adds up
 to more than the free time ("Crunch weeks (an estimate): week of 9 Nov: about 14 h of work, about 9 h free. Start
 some of it the week before."), and says what's to start in the coming week. "Any crunch weeks coming?" works any
@@ -661,10 +693,11 @@ and the sizes to tap; "when should I start the lab report?" answers for one.
 *Settings* (`startby.*`): `sizes` (hours: `problem_set` 3, `report` 12, `quiz` 2, `exam` 10, `other` 2),
 `exam_by_subject` (hours per subject, e.g. `{"linear-algebra": 25}`), `window` (`09:00-22:00`; an end before the
 start runs past midnight), `share` (40, %), `min_gap_min` (30), `horizon_days` (35), `when` (`daily 08:00`), `tell`
-(on: the message on a start-by day), `ask_exams` (on), `crunch_weeks` (4; 0: none).
+(on: the message on a start-by day), `ask_exams` (on), `crunch_weeks` (4; 0: none), `negotiate` (on: a reshaped plan
+instead of a repeated reminder).
 *Privacy:* stays on this computer.
 *Turn off:* Features → Start-by dates. Just the messages: `startby.tell` off; the exam question: `startby.ask_exams`
-off; crunch weeks: `startby.crunch_weeks` = 0.
+off; crunch weeks: `startby.crunch_weeks` = 0; reshaped plans: `startby.negotiate` off.
 *Undo:* turn it off: the morning plan and the Sunday summary are as before at once. The sizes you tapped stay (in
 `startby.json` in the state folder, and `startby.exam_by_subject`) for when you turn it on again; reset
 `startby.exam_by_subject` in Settings to forget the exam sizes.
@@ -1232,7 +1265,8 @@ due"), or tap **The AI**. That makes it a test case, and it teaches the phrasing
 taken as "what's due", at once, with today's time ("skip gym tmrw" taught as "skip gym tomorrow" always means the day
 after you say it). To teach one straight away: `/wrong what's due` (or `/wrong ai`) right after the reply. It also
 learns by itself when you say something again in other words (`cases.learn_rephrased`, on): a phrasing nothing
-understood, followed within 3 minutes by one it does, twice, is learned with a line and **Undo**.
+understood, followed within 3 minutes by one it does, twice, is learned with a line and **Undo**. The same goes for
+[two readings](#chat-with-your-ai): picking the same one twice for the same words teaches them, with **Undo**.
 
 Two rules keep this safe:
 - **A phrasing is learned only if every test case that passed before still passes with it.** If it would change what

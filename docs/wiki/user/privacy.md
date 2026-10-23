@@ -46,7 +46,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 |---|---|---|
 | Telegram | your messages to the bot, its replies, files you send it | Telegram, to your own bot |
 | Questions and approvals | each question or approval, wherever Kurooto reaches you; open ones are also in the brief your call line keeps | Telegram and your paired phones; desktop notifications stay here |
-| Chat with your AI | what you ask; notes it reads to answer; what its tools return; your profile's "In brief" part and your how-to-help-me note | the AI you picked |
+| Chat with your AI | what you ask; notes it reads to answer; what its tools return; your profile's "In brief" part, your how-to-help-me note and your persona card (empty unless you write one) | the AI you picked |
 | Setup page: Try it now | what you type that isn't an instant request, like a Chat message; nothing goes to Telegram or your phone | the AI you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
 | Files into notes | with Chat on, the files you send, so the AI can file them | the AI you picked |

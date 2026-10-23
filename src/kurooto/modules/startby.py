@@ -57,6 +57,7 @@ register_defaults(
         "tell": True,  # a message on a start-by day (only two days or more before the due date)
         "ask_exams": True,  # ask once per subject how long its exams take to prepare for
         "crunch_weeks": 4,  # the Sunday summary looks this many weeks ahead (0: no crunch weeks)
+        "negotiate": True,  # a reminder that would repeat for a slipping deadline: a reshaped plan instead, once a day
     },
 )
 DAY_H = 5  # "a day" of work, for sizes given in days
@@ -175,11 +176,12 @@ def free_slots(
 
 
 def allocate(
-    items: list[dict], slots: list[tuple[dt.datetime, dt.datetime]], share: float
+    items: list[dict], slots: list[tuple[dt.datetime, dt.datetime]], share: float, pieces: dict | None = None
 ) -> dict[str, tuple[dt.datetime | None, float]]:
     """As late as possible: latest due first, each item's hours (items: {"id", "due", "hours"}) go into the latest
     free time before its due time that a later one hasn't taken; `share` (0-1) of each free hour counts. Returns
-    {id: (where its work starts, or None if no time at all; the hours that didn't fit)}."""
+    {id: (where its work starts, or None if no time at all; the hours that didn't fit)}. `pieces`, when given, gets
+    where each item's hours went: {id: [(from, to, hours of work), ...]}."""
     free = [[s, e] for s, e in sorted(slots)]
     share = min(1.0, max(0.01, share))
     out: dict[str, tuple[dt.datetime | None, float]] = {}
@@ -198,6 +200,8 @@ def allocate(
             if top < e:
                 free.insert(k + 1, [top, e])
             need -= take
+            if pieces is not None and take > 0:
+                pieces.setdefault(it["id"], []).append((lo, top, take))
             first = lo
         out[it["id"]] = (first, max(0.0, need))
     return out
@@ -229,6 +233,7 @@ class StartBy(Module):
         self.every("morning", spec, self._morning, {"what": "start-by dates"}, respect="quiet")
         self.app.ask.hooks["startby.exam_size"] = lambda q, a: self._exam_answer(q.get("hook_payload") or {}, a)
         self.every("learn_window", "weekly sun 12:00", lambda p: self.learn_window())
+        self.action("moved", self._moved)  # (negotiate) the part you moved to tomorrow, at its time
 
     # ------------------------------------------------------------------------------ the learned window
     def learn_window(self) -> str:
@@ -395,8 +400,11 @@ class StartBy(Module):
         return rows
 
     # -------------------------------------------------------------------------------------- the plan
-    def compute(self, t0: dt.datetime | None = None, days: float | None = None) -> tuple[list[dict], list]:
-        """(every deadline in the next `days` with its size and start-by date, soonest due first; the free time)."""
+    def compute(
+        self, t0: dt.datetime | None = None, days: float | None = None, pieces: dict | None = None
+    ) -> tuple[list[dict], list]:
+        """(every deadline in the next `days` with its size and start-by date, soonest due first; the free time).
+        `pieces` gets where each one's hours went (allocate)."""
         t0 = t0 or now()
         days = days or max(1, int(self.setting("horizon_days") or 35))
         st = self._state()
@@ -414,7 +422,7 @@ class StartBy(Module):
                 began = dt.datetime.combine(r["since"], dt.time(0))
                 left *= max(0.0, min(1.0, (r["due"] - t0) / (r["due"] - began))) if r["due"] > began else 0
             work.append({"id": r["id"], "due": r["due"], "hours": left})
-        fits = allocate(work, slots, self._share())
+        fits = allocate(work, slots, self._share(), pieces)
         for r, w in zip(rows, work, strict=True):
             first, short = fits[r["id"]]
             r["start"] = first.date() if first else t0.date()
@@ -636,6 +644,156 @@ class StartBy(Module):
             return "I couldn't read that as a size. /startby exam <subject> 2-3 days sets it."
         return self.set_exam(slug, h)
 
+    # ------------------------------------------------------------------------ negotiate, don't repeat
+    def reshape(self, i: str, t0: dt.datetime | None = None) -> dict | None:
+        """A reshaped plan for a deadline that's slipping, from your own Start-by plan: the hours this morning's plan
+        put in today that no longer fit in what's left of today's free time, as some now and the rest tomorrow. None
+        when it isn't slipping, it's outside today's window, or there's no free time tomorrow before it's due."""
+        t0 = t0 or now()
+        today = t0.date()
+        a, b = parse_window(self.setting("window"))
+        morning, end = dt.datetime.combine(today, a), dt.datetime.combine(today, b)
+        if end <= morning:
+            end += dt.timedelta(days=1)
+        if not morning < t0 < end:
+            return None
+        pieces: dict = {}
+        rows, _ = self.compute(morning, pieces=pieces)
+        r = next((x for x in rows if x["id"] == i), None)
+        if r is None:
+            return None
+        planned = sum(h for lo, _, h in pieces.get(i, []) if morning <= lo < end)
+        free = overlap_h(self.slots(t0, end), t0, end) * self._share()
+        if planned < 0.5 or free >= planned - 0.25:
+            return None  # nothing planned today, or what's left of today still fits it
+        now_h = min(planned, int(free * 2) / 2)
+        later = -int(-(planned - now_h) * 2) / 2  # to the half hour, up
+        nxt = morning + dt.timedelta(days=1)
+        after = [s for s in self.slots(nxt, r["due"]) if s[0] >= nxt and s[0].date() == nxt.date()]
+        if not after or after[0][0] + dt.timedelta(hours=later) > r["due"]:
+            return None
+        return {**r, "planned": planned, "now": now_h, "later": later, "at": after[0][0]}
+
+    def reshape_text(self, x: dict) -> str:
+        """ "Topology quiz (on Tue 10 Nov 10:00): your Start-by plan has 2 h of it today, and about 1 h of today's
+        free time is left. 1 h now, 1 h tomorrow?" Plain, from your plan's numbers; no urgency added."""
+        on = "on" if x["kind"] == "exam" else "due"
+        head = f"{x['title']} ({on} {when_text(x['due'].isoformat())}): your Start-by plan has {hours(x['planned'])} h"
+        if x["now"] >= 0.5:
+            return (
+                f"{head} of it today, and about {hours(x['now'])} h of today's free time is left. "
+                f"{hours(x['now'])} h now, {hours(x['later'])} h tomorrow?"
+            )
+        return f"{head} of it today, and today's free time is used up. {hours(x['later'])} h tomorrow instead?"
+
+    def _take_offer(self, i: str) -> dict | None:
+        """The reshaped plan for today, noted as offered; None if there's none or one was offered today already."""
+        today = now().date().isoformat()
+        if ((self._state().get("reshape") or {}).get(i) or {}).get("day") == today:
+            return None
+        x = self.reshape(i)
+        if x is None:
+            return None
+        with Lock(self.app.paths.state, "startby", timeout=5):
+            st = self._state()
+            offers = {k: v for k, v in (st.get("reshape") or {}).items() if v.get("day") == today}
+            if i in offers:
+                return None
+            offers[i] = {"day": today, "state": "offered", "now": x["now"], "later": x["later"]}
+            offers[i]["at"] = x["at"].isoformat(timespec="minutes")
+            st["reshape"] = offers
+            jsave(self.file, st)
+        self.app.events.emit("startby_reshape_offered", now=x["now"], later=x["later"])
+        return x
+
+    def offer_reshape(self, i: str, again: bool = False) -> bool:
+        """(negotiate) Instead of a reminder that would repeat for a slipping deadline (modules/deadlines.py): the
+        reshaped plan, once a day per deadline, with [Do that] [Not today]. It repeats when that reminder came
+        before (`again`) or Start-by said "time to start" on an earlier day. True when it was offered."""
+        if not self.setting("negotiate"):
+            return False
+        since = (self._state().get("told") or {}).get(i)
+        if not again and not (since and since < now().date().isoformat()):
+            return False
+        x = self._take_offer(i)
+        if x is None:
+            return False
+        self.app.notify(
+            self.reshape_text(x),
+            kind="deadline",
+            title="Reshape the plan?",
+            buttons=[[("Do that", f"neg:{i}:yes"), ("Not today", f"neg:{i}:no")]],
+            why="startby.negotiate",
+            about=x["title"],
+            item=i,
+            due=x["due"].isoformat(),
+        )
+        return True
+
+    def reshape_answer(self, i: str, yes: bool) -> str:
+        """Do that: tomorrow's part gets a reminder at its time (and blocks in the Agent plan calendar when that's
+        on). Not today: nothing more about it today."""
+        today = now().date().isoformat()
+        with Lock(self.app.paths.state, "startby", timeout=5):
+            st = self._state()
+            rec = (st.get("reshape") or {}).get(i)
+            if not rec or rec.get("day") != today:
+                return "That offer was for another day."
+            if rec.get("state") != "offered":
+                return "Already answered."
+            rec["state"] = "done" if yes else "declined"
+            jsave(self.file, st)
+        self.app.events.emit("startby_reshape_" + ("done" if yes else "declined"))
+        if not yes:
+            return "OK, not today. I won't bring it up again today."
+        it = self._dl().items().get(i) or {}
+        at, later, now_h = dt.datetime.fromisoformat(rec["at"]), float(rec["later"]), float(rec["now"])
+        if later > 0:
+            self.app.scheduler.at(
+                at, "startby.moved", {"id": i, "hours": later}, key=f"startby:moved:{i}", module=self.id
+            )
+        said = (f"{hours(now_h)} h now, " if now_h >= 0.5 else "") + f"{hours(later)} h tomorrow from {at:%H:%M}"
+        plan = self.app.modules.get("agent_plan")
+        if plan is not None and self.app.is_on("agent_plan") and getattr(plan, "plan_ready", lambda: False)():
+            try:  # blocks in Kurooto's own calendar when you use it (modules/google_plan.py)
+                t = now()
+                if now_h >= 0.5:
+                    plan.plan_block(t, t + dt.timedelta(hours=now_h), it.get("title") or "Deadline")
+                plan.plan_block(at, at + dt.timedelta(hours=later), it.get("title") or "Deadline")
+                said += "; blocks are in your Agent plan calendar"
+            except Exception as e:
+                self.app.events.emit("startby_failed", error=f"blocks: {type(e).__name__}: {e}"[:200])
+        return f"OK: {said}. I'll remind you then."
+
+    def _moved(self, p: dict) -> None:
+        """Tomorrow's part of a reshaped plan, at its time (a reminder of what you agreed to)."""
+        i = str((p or {}).get("id") or "")
+        it = self._dl().items().get(i)
+        if not it or it.get("status") != "open":
+            return
+        self.app.notify(
+            f"{it['title']}: the {hours(float(p.get('hours') or 0))} h you moved to today. Due {when_text(it['due'])}.",
+            kind="deadline",
+            why="startby.moved",
+            about=it["title"],
+            item=i,
+            due=it["due"],
+        )
+
+    def _tool_reshape(self, a: dict) -> str:
+        i = self._dl()._resolve(self._dl().items(), str(a.get("id", ""))) or str(a.get("id", ""))
+        x = self._take_offer(i) if self.setting("negotiate") else None
+        if x is None:
+            return (
+                "Nothing to reshape for that one now: it still fits today, it was offered today already, or there's "
+                "no free time before it's due."
+            )
+        return self.reshape_text(x) + " (Offer it once; if they say yes call reshape_answer with yes, if no with no.)"
+
+    def _tool_reshape_answer(self, a: dict) -> str:
+        i = self._dl()._resolve(self._dl().items(), str(a.get("id", ""))) or str(a.get("id", ""))
+        return self.reshape_answer(i, str(a.get("answer", "")).strip().lower() in ("yes", "y", "do that", "ok"))
+
     # ------------------------------------------------------------------------------- your corrections
     def set_exam(self, slug: str, h: float) -> str:
         h = max(0.5, min(200.0, h))
@@ -669,7 +827,7 @@ class StartBy(Module):
         return f"{it['title']}: {size_text(h)} of work.{when}{extra}"
 
     def callbacks(self):
-        return {"sby": self._button}
+        return {"sby": self._button, "neg": lambda ref, act: self.reshape_answer(ref, act == "yes")}
 
     def _button(self, ref: str, act: str) -> str:
         if ref == "window" and act == "undo":
@@ -773,6 +931,28 @@ class StartBy(Module):
                 self._tool_size,
                 {"id": arg(), "size": arg()},
                 ("id", "size"),
+                offline="queue",
+                writes=True,
+            ),
+            Tool(
+                "reshape_plan",
+                "For a deadline they're behind on (its id from start_by): a reshaped plan from their own Start-by "
+                "plan, e.g. '1 h now, 1 h tomorrow', to offer once. Says so when there's none.",
+                self._tool_reshape,
+                {"id": arg()},
+                ("id",),
+                offline="needs",
+                writes=False,
+                hint="On a deadline call, if they're behind, offer reshape_plan's plan once, calmly; never press or "
+                "repeat it. Then reshape_answer with yes or no.",
+            ),
+            Tool(
+                "reshape_answer",
+                "Their answer to the reshaped plan (id from start_by): 'yes' (tomorrow's part gets a reminder) or "
+                "'no' (not today).",
+                self._tool_reshape_answer,
+                {"id": arg(), "answer": arg()},
+                ("id", "answer"),
                 offline="queue",
                 writes=True,
             ),

@@ -62,6 +62,11 @@ class Chat(Module):
             prompt = "\n".join(conv)
         else:
             prompt = text
+        from kurooto.core import persona  # (register) a short message, a short answer; a voice note, spoken style
+
+        style = persona.register_line(self.app, msg.text.strip(), voice=msg.voice, files=bool(msg.files))
+        if style:
+            prompt = f"{prompt}\n\n{style}"  # last, so a "high:" prefix still comes first
 
         title = msg.text.strip()[:80] or (msg.files[0].name if msg.files else "")
         jid = self.app.jobs.submit(prompt, title=title, reply_to=None if terminal else msg.message_id, quiet=terminal)
@@ -74,7 +79,9 @@ class Chat(Module):
         if not reply or reply.startswith("I couldn't "):
             return
         # Extract the user's actual prompt if wrapped in history
-        user_text = prompt
+        from kurooto.core.persona import strip_register
+
+        user_text = prompt = strip_register(prompt)
         if "Current request:\n" in prompt:
             user_text = prompt.split("Current request:\n", 1)[1].strip()
         history = jload(self.history_file, []) or []

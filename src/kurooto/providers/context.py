@@ -49,6 +49,11 @@ def headless_context(app: App, extra: str = "") -> str:
         lines.append(
             f"How they like to be helped ({help_rel(app)} in their notes; follow it, their requests win):\n{helps}"
         )
+    from kurooto.core import persona  # your persona card and the boundaries it keeps (core/persona.py)
+
+    for part in (persona.card_text(app), persona.rule(app)):
+        if part:
+            lines.append(part)
     where = layout.describe(app)  # their own notes layout and files folder, if they chose one (core/layout.py)
     if where:
         lines.append(where)

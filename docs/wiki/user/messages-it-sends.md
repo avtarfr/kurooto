@@ -178,6 +178,7 @@ suggestion may offer to turn off.
 | a reminder before a calendar event | Calendar | `calendar.remind_min` | you set it |
 | a reminder you asked for about a project ("Remind me tomorrow") | Research | | you asked |
 | a reminder your call line couldn't get to your phone while the computer slept | Reminders with the lid shut | | your own reminder |
+| the part of a deadline's work you moved to today (you tapped **Do that** on a reshaped plan) | Start-by dates | | you agreed to it |
 | your wake-up alarm | Morning alarm | | alarm |
 | the alarm to leave for an exam | Exam season | `exam_season.leave_alarm` | alarm |
 | the nightly alarm check during exams | Exam season | `exam_season.alarm_check` | alarm |
@@ -209,6 +210,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | "Overdue?" after a deadline passed (Done / New date / Drop) | Deadlines | `deadlines.overdue_check` | no more "Overdue?" | | yes | yes |
 | exam mode starting for a quiz or exam | Deadlines | `deadlines.exam_mode_days` | list | | yes | |
 | "Time to start: ..." (a start-by date, an estimate) | Start-by dates | `startby.tell` | no more (`/startby` still shows them) | | yes | |
+| a reshaped plan instead of the same reminder again ("1 h now, 1 h tomorrow?" with Do that / Not today) | Start-by dates | `startby.negotiate` | no more reshaped plans; reminders come as before | | yes | |
 | how long a subject's exams take to prepare for | Start-by dates | `startby.ask_exams` | no more of these | | yes | yes |
 | the evening before a quiz or exam, an offer to practise | Quiz | `quiz.offer_at` | no more offers (`/quiz` still works) | | | yes |
 | exam mode's daily practice check-in | Quiz | `quiz.exam_daily` | no daily practice | | | yes |
@@ -291,6 +293,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | a call your call line placed while this computer was off | | list | yes |
 | a call that waits for a better time ("Held a call until 18:02 (class: Linear Algebra)") | | list | yes |
 | what Kurooto fixed and learned looking back at a call | `calls.review` | list | yes |
+| a phrasing learned because you picked the same one of two readings twice (with Undo) | `cases.learn` | list | yes |
 | the monthly look at what you rarely answer | `notify.calm.monthly` | no more monthly suggestions | |
 | day 10, then monthly: what you use of each feature, with Keep / Quiet / Off | `keep.ask` | no more of these questions | yes |
 

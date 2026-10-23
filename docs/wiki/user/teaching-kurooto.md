@@ -1,14 +1,15 @@
 # Teaching Kurooto about you
 
-Kurooto gets better at helping you in six ways, and you can see and change every one of them:
+Kurooto gets better at helping you in seven ways, and you can see and change every one of them:
 
 | What | What it keeps | Where | Goes along with |
 |---|---|---|---|
 | [About you](#about-you-your-profile) | a profile built from what your other AI accounts know about you | `about-me/profile.md` in your notes | every AI request (its **In brief** part only, up to 2,500 characters) |
+| [Your persona card](#your-persona-card) | what to call you, tone, length, things to avoid (empty to start) | Settings (`persona.*`) | every AI request and every call |
 | [Remember](#remember) | how you like to be helped, in your words | `about-me/how-to-help-me.md` in your notes | every AI request (a short version, up to 1,500 characters) |
 | [Nightly look back](#nightly-look-back) | suggestions you approve: settings, lines for the note above, skill changes, ideas | your settings, that note, your skills, `kurooto/ideas.md` | |
 | [Learns from its own work](#learns-from-its-own-work) (optional) | a search of past requests, calls and chats; skills from requests that took many steps; lessons from your corrections; facts you state | Kurooto's state folder (the search index); your skills; that note | requests that search it (the passages found) |
-| [Wrong button and test cases](#wrong-button-and-test-cases) | requests it got wrong, and your words for things | Kurooto's state folder | instant requests on Telegram |
+| [Wrong button and test cases](#wrong-button-and-test-cases) | requests it got wrong, your words for things, the reading you picked | Kurooto's state folder | instant requests on Telegram |
 | [Call lessons](#call-lessons) | how calls could go better | Kurooto's state folder | every call |
 
 Nothing changes without your say: the look back asks before every change, taught phrasings need your tap, and the
@@ -65,6 +66,38 @@ part goes with every AI request. The reports stay in Kurooto's private data fold
 remove anything you'd rather not keep before adding a report.
 
 **Undo.** Edit or delete `about-me/profile.md`; delete its `## In brief` section to stop sending it.
+
+---
+
+## Your persona card
+
+**What it does.** Four short lines on how Kurooto talks to you: **what to call you**, **tone**, **length** and
+**things to avoid** ("plain and direct, no pep talk", "short unless I ask for detail", "emojis"). They go along with
+every AI request and every call, so it words things the same way on Telegram, the phone app and calls.
+
+**It starts empty.** No name, voice or tone is picked for you; empty means plain answers.
+
+**Where to set it.** The dashboard's **About you** tab (Persona card, with a preview of exactly what's sent), Settings
+→ persona, or Telegram:
+
+| You send | What happens |
+|---|---|
+| `/persona` | shows the card |
+| `/persona tone: plain, no pep talk` | sets one line (several lines in one message work: `call me: Sam` on the next) |
+| `/persona clear tone` · `/persona clear` | clears one line, or the whole card |
+
+The lines are `call me`, `tone`, `length` and `avoid`, up to 200 characters each.
+
+**It sets wording only.** Kurooto has no feelings, backstory or life of its own, so a part of a line that asks for
+one is left out, and you're told which: "Left out "say you missed me" (saying it missed you)". That covers feelings
+("tell me you love talking to me", "I'm so happy to see you"), a backstory ("you grew up in Pune", "you're 23"), and
+a relationship or being human ("be my girlfriend", "pretend you're human"). A tone like "friendly" or "dry humour"
+is fine. The same rules apply to a card edited by hand in the settings file, and to `calls.persona`.
+
+**What leaves your computer.** The card goes to the AI you picked with each request, and to your call line's voice
+model with each call, like your profile's In brief.
+
+**Undo.** `/persona clear`, or empty the lines on the About you tab.
 
 ---
 
@@ -263,6 +296,14 @@ plate" taken as "what's due").
   same request, it's learned, under the same two rules below: "You said "whats on my plate" and then "what's due this
   week" 2 times, so: Learned: ...", with **Undo**.
 
+<a id="two-readings"></a>**Two readings.** When no instant request takes a short message but two of them are about
+equally close to it ("whats my plan" between "what's my plan today" and "what's my day plan"), Kurooto asks with both
+as buttons instead of guessing (see [talking-to-kurooto.md](talking-to-kurooto.md#what-happens-to-a-message)). Tap
+one and it runs. The second time you pick the same request for the same words, they're learned, under the same two
+rules below: "You picked "what's my day plan" for "whats my plan" 2 times, so: Learned: ...", with **Undo**. A
+phrasing that's a test case already is taken as it says, without asking. Needs this feature on to learn; the question
+itself works either way (`repair.on`).
+
 From then on that phrasing is taken as the request you named, at once, with today's time ("skip gym tmrw" taught as
 "skip gym tomorrow" always means the day after you say it). A taught phrasing is matched whole (capitals and
 punctuation aside) and goes before the usual patterns.
@@ -305,6 +346,7 @@ punctuation aside) and goes before the usual patterns.
 | `cases.review_max` | `5` | phrasings in one list |
 | `cases.learn` | on | off keeps test cases without teaching anything |
 | `cases.learn_rephrased` | on | learn a phrasing you twice said again in other words within 3 minutes |
+| `repair.on` | on | ask with both readings as buttons when two requests are about equally close |
 
 **Limits.** At most 500 cases and 200 taught phrasings. If a taught phrasing stops working (its feature changed or
 went off), it goes to the AI as before, and `/health` (and `kurooto doctor`) says so.
@@ -335,6 +377,7 @@ Each has **Why?** and **Less of this** on Telegram ([messages-it-sends.md](messa
 | "Suggestion: ..." with Apply / Observe longer / No | the nightly look back (`retro.when`) | Stop; Fewer makes it weekly |
 | "What I found about ..." | a watch you or the look back started ended | (an answer to what you asked) |
 | "Look back: phrasings that came up most..." | the monthly review of cases (`cases.review_days`) | Fewer makes it half as often |
+| "You picked ... for ... 2 times, so: Learned ..." with Undo | the same reading picked twice (`cases.learn`) | |
 | "What I fixed and learned looking back at a call" | the call look back (`calls.review`) | |
 | "Learned a skill: /..." or "Improved a skill: /..." with Undo | Learns from its own work (`learning.skills`) | Stop; Fewer makes it one a day |
 | "Lesson for /...: ..." with Undo | a correction of a skill's answer (`learning.corrections`) | Stop |
