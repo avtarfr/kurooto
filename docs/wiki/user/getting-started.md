@@ -93,10 +93,21 @@ The install then keeps following beta (the setting `updates.channel` becomes `be
 
 ## The setup wizard, step by step
 
-The setup page saves as you go: close it and come back any time (`kurooto open`, or the dashboard). The steps are
-listed down the left on a wide screen, or as numbered dots on a phone; tap any step to open it. A step you passed but
-didn't finish (an AI that doesn't answer yet, Telegram not connected) shows **!** instead of a tick. Words with a
-dotted underline (API key, token, repository, webhook...) explain themselves when you tap them.
+The setup page saves as you go: close it and come back any time (`kurooto setup`, or **setup** in the dashboard's
+corner), and it opens on the first step you haven't finished. The steps are listed down the left on a wide screen, or
+as numbered dots on a phone; tap any step to open it. Finished steps have a tick, skipped ones a dash, and a step you
+passed but didn't finish (an AI that doesn't answer yet) shows **!**. Words with a dotted underline (API key, token,
+repository, webhook...) explain themselves when you tap them.
+
+**Skip for now.** Every step except **You** and **AI** has a **Skip for now** button: Kurooto needs your name and an AI
+that answers, the rest can wait. Skipped steps aren't forgotten: the dashboard lists them under **Features → Finish
+setting up** (the corner link then says **finish setup (2)**, say), `kurooto doctor` shows each as a note, and each
+links back to its step (`kurooto setup about` opens About you). A step leaves that list once it's done, wherever you
+did it.
+
+Kurooto also notes how long you spend on each step and whether you finished or skipped it, so someone helping you can
+see where setup got stuck. That stays on this computer; it's only in the zip `kurooto doctor --bundle` saves for you
+(see [your-computer.md](your-computer.md#checking-that-it-works-diagnostics)), never what you typed.
 
 If a button says "Kurooto isn't answering", Kurooto stopped or is restarting: start it from your app menu (or run
 `kurooto on`), then press the button again; what you typed is kept. "This page is out of date" means Kurooto
@@ -170,7 +181,8 @@ that into Kurooto once:
    **Preview In brief** shows the part that goes along with every AI request.
 
 The reports stay in Kurooto's private folder (not your notes, never synced); building the profile sends them to the AI
-you picked. **Next** skips this step. More: [teaching-kurooto.md](teaching-kurooto.md).
+you picked. **Skip for now** (or Next with no reports added) skips this step. More:
+[teaching-kurooto.md](teaching-kurooto.md).
 
 ### 5. Features: what should it do?
 
@@ -200,6 +212,11 @@ Gemini key even if another AI answers your messages: a key box appears under the
 
 The Notes brain is a 0.5 GB download, so it's not in Starter. You can change any of this later on the dashboard
 (Features, Alt+F).
+
+**How many messages a day.** Above the cards, one line says it plainly: "Kurooto sends at most 6 messages a day on its
+own; the rest wait for one evening bundle at 20:00. Your own reminders, alarms and approvals always come." Change the
+number in the box beside it (`notify.calm.messages`); more about the limit in
+[messages-it-sends.md](messages-it-sends.md#calm-why-less-of-this-and-the-daily-limit).
 
 ### 6. Chat: Telegram or the phone app
 
@@ -235,12 +252,13 @@ From then on the bot answers only your Telegram account; anyone else who finds i
 | "Another program is reading this bot's messages" | Maybe another Kurooto using the same bot. Stop the other one, or make a new bot with @BotFather. |
 | "Can't reach Telegram right now" | Check the internet; it keeps trying. |
 
-You can go on without Telegram and connect it later; this step stays marked **!** until then (with the phone app
-picked: until Phone calls is set up).
+You can **Skip for now** and connect it later (Next without a connection skips it too); the step waits on the
+dashboard's Finish setting up list until Telegram is paired or, with the phone app picked, Phone calls is set up.
 
 ### 7. Almost done
 
-The summary lists your AI, Telegram (or the phone app), the features you picked and your notes folder (by default `Documents/Kurooto`,
+The summary lists your AI, Telegram (or the phone app), the features you picked, the steps you skipped (each with
+**Go back to it**) and your notes folder (by default `Documents/Kurooto`,
 or `~/Kurooto` on Linux without a Documents folder). Tick or untick **Start Kurooto when I sign in to this computer**
 (★ recommended), then **Finish setup**. Kurooto installs what your features need (with progress for each), turns them
 on, and starts. Anything that isn't ready is listed as "Not turned on yet" with the reason; finish it later from the

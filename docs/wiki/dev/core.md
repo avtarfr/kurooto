@@ -131,6 +131,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `gists.jsonl` | (0.5.17 only) the gists before the ledger; moved into it and removed on first use | `core/gists.py:_move` |
 | `dream-policy.json` | the day of the last tuning round and the last 30 decisions with their replay scores | `core/policy.py:tune` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
+| `setup.json` | the setup page's steps: `steps.<id>` = `{status: done\|skipped\|open, seconds, visits, left_at}`, and `chosen` (the features ticked before the page was closed) | `core/setupsteps.py` |
 | `rhythm.json` | usual quiet hours, the last learned change and its Undo, lighter-day and absence marks, quiet week | `core/rhythm.py:Rhythm` |
 | `repair.json` | two-readings questions waiting for a tap (20, for 24 h) | `core/repair.py` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |

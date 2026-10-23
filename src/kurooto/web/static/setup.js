@@ -1,4 +1,5 @@
-// The setup wizard: six short steps, each saved as you go, so closing the page and coming back is fine.
+// The setup wizard: six short steps, each saved as you go, so closing the page and coming back is fine. Kurooto keeps
+// where you are (core/setupsteps.py): each step finished, skipped for now or not yet, and the time spent on it.
 "use strict";
 const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s, el = document) => el.querySelector(s);
@@ -11,6 +12,7 @@ let state = null;
 let step = 0;
 let chosen = new Set();
 let role = null;  // "What do you do?" on the features step: Starter plus what suits it (api.py ROLES)
+let shownAt = Date.now();  // when this step was opened: the time spent on it goes to Kurooto when you leave it
 
 async function api(path, body) {
   let r;
@@ -126,18 +128,24 @@ function show(i) {
   $$("section").forEach((s) => s.classList.toggle("on", s.dataset.step === STEPS[step]));
   // the steps: a row on phones, a rail with what each is for on wide screens; any of them can be opened
   // (a step passed but not finished, like an AI that doesn't answer yet, shows "!" instead of a tick)
+  // (finished, skipped for now or not yet: as Kurooto keeps it, so reopening the page shows the same)
   const brain = state && state.brains.find((b) => b.id === state.brain.main);
   const open = { brain: state && !(brain && brain.ready), telegram: state && !channelOk() };
+  const marks = (state && state.setup && state.setup.steps) || {};
   $("#steps").replaceChildren(...LABELS.map((l, j) => {
-    const todo = j < step && open[STEPS[j]], hint = todo ? "not finished yet" : HINTS[j];
-    return el("li", { class: j === step ? "on" : todo ? "todo" : j < step ? "done" : "" },
+    const st = (marks[STEPS[j]] || {}).status || "";
+    const todo = j !== step && open[STEPS[j]] && (st === "done" || st === "open");
+    const skipped = !todo && st === "skipped", done = !todo && st === "done";
+    const hint = todo ? "not finished yet" : skipped ? "skipped for now" : HINTS[j];
+    return el("li", { class: j === step ? "on" : todo ? "todo" : skipped ? "skipped" : done ? "done" : "" },
       el("button", { type: "button", title: `${l}: ${hint.toLowerCase()}`, "aria-current": j === step ? "step" : false, onclick: () => go(j) },
-        el("span", { class: "n" }, todo ? "!" : j < step ? "✓" : String(j + 1)), el("span", { class: "lbl" }, l, el("small", {}, hint))));
+        el("span", { class: "n" }, todo ? "!" : done ? "✓" : skipped ? "–" : String(j + 1)), el("span", { class: "lbl" }, l, el("small", {}, hint))));
   }));
   const sec = $(`section[data-step="${STEPS[step]}"]`);
   if (!$(".eyebrow", sec)) sec.prepend(el("p", { class: "eyebrow" }));
   $(".eyebrow", sec).textContent = `Step ${step + 1} of ${STEPS.length}`;
-  try { localStorage.setItem("kurooto.setup.step", String(step)); } catch { /* private mode */ }
+  shownAt = Date.now();
+  if (STEPS[step] === "features") renderCalm();
   ({ computer: renderComputer, brain: renderBrains, about: renderAbout, features: renderFeatures, telegram: renderTelegram, finish: renderFinish }[STEPS[step]] || (() => {}))();
   navHint();
   gloss(sec);
@@ -149,14 +157,14 @@ function navHint() {
   const nav = $(`section[data-step="${STEPS[step]}"] .nav`);
   if (!nav || !state) return;
   let hint = $(".nav-hint", nav);
-  if (!hint) { hint = el("span", { class: "nav-hint" }); nav.lastElementChild.before(hint); }
+  if (!hint) { hint = el("span", { class: "nav-hint" }); ($("[data-skip]", nav) || nav.lastElementChild).before(hint); }
   const brain = state.brains.find((b) => b.id === state.brain.main);
   hint.textContent = {
     brain: brain && brain.ready ? "" : "Not working yet? You can go on and finish it later: this page opens again from the dashboard.",
-    about: "Optional: Next skips it.",
+    about: "Optional.",
     features: `${chosen.size} of ${state.modules.length} on.`,
-    telegram: channelOk() ? "" : state.channel === "app" ? "Phone calls isn't set up yet? You can go on and finish it later."
-      : "Not connected yet? You can go on and connect it later.",
+    telegram: channelOk() ? "" : state.channel === "app" ? "Phone calls isn't set up yet? Skip it for now and finish it later."
+      : "Not connected yet? Skip it for now: the dashboard keeps a way back here.",
   }[STEPS[step]] || "";
 }
 
@@ -169,14 +177,34 @@ function channelOk() {
   return phoneApp() ? !!(c && c.ready && (chosen.has("calls") || c.on)) : state.telegram.paired;
 }
 
-// Leaving a step saves what it holds (Next, Back or a step in the list alike).
-async function go(i) {
+// Leaving a step saves what it holds (Next, Back, Skip for now or a step in the list alike), and tells Kurooto how it
+// was left: forward (Next, or a later step in the list) finishes it, unless its work isn't done (an AI that doesn't
+// answer stays open; Telegram not connected counts as skipped); Skip for now skips it; going back leaves it as it was.
+async function go(i, how) {
   if (STEPS[step] === "you" && i > step && !checkYou()) return;
   if (STEPS[step] === "you") await saveYou();
   if (STEPS[step] === "brain" && state.brain.main) await api("brain", { main: state.brain.main });
+  await mark(how || (i > step ? "next" : "leave"));
   await refresh();
   show(i);
 }
+
+// How long this step was open, and how it was left (core/setupsteps.py). It stays on this computer.
+function stepNote(how) {
+  const seconds = Math.round((Date.now() - shownAt) / 1000);
+  shownAt = Date.now();
+  return { step: STEPS[step], how, seconds, chosen: renderFeatures.seeded ? [...chosen] : undefined };
+}
+async function mark(how) {
+  try { await api("setup/step", stepNote(how)); } catch { /* the bar at the top says what to do */ }
+}
+// Closing the page counts the time too (where people stall), without changing what the step was.
+window.addEventListener("pagehide", () => {
+  try {
+    fetch("/api/setup/step", { method: "POST", keepalive: true, headers: { "X-Kurooto": TOKEN, "Content-Type": "application/json" },
+      body: JSON.stringify(stepNote("leave")) }).catch(() => {});
+  } catch { /* closing anyway */ }
+});
 
 // ---------------------------------------------------------------------------------------------- you
 // The time zone: picked from today's names (Kurooto's list, core/zones.py) as you type; a name it doesn't know is said
@@ -576,6 +604,27 @@ async function addReport(label, text) {
 
 // ------------------------------------------------------------------------------------------ features
 const NEEDS_GEMINI = ["calls", "voice_notes", "alarm"];
+
+// Calm's daily limit (core/calm.py, notify.calm.messages), said in one line, with the number to change it.
+function renderCalm() {
+  const c = state.calm, box = $("#calm-box");
+  box.hidden = !(c && c.on);
+  if (box.hidden) return;
+  const input = $("#calm-messages");
+  if (document.activeElement !== input) input.value = c.messages;
+  calmLine(c.messages);
+}
+function calmLine(n) {
+  $("#calm-line").textContent = `Kurooto sends at most ${n} message${n === 1 ? "" : "s"} a day on its own; the rest wait for one ` +
+    `evening bundle at ${state.calm.evening_at || "20:00"}. Your own reminders, alarms and approvals always come.`;
+}
+$("#calm-messages").addEventListener("change", async (e) => {
+  const n = Math.max(0, Math.min(50, Math.round(Number(e.target.value)) || 0));
+  e.target.value = n;
+  await api("settings", { key: "notify.calm.messages", value: n });
+  state.calm.messages = n;
+  calmLine(n);
+});
 function renderFeatures() {
   if (!chosen.size && !renderFeatures.seeded) state.modules.filter((m) => m.on || (restored ? restored.includes(m.id) : m.starter)).forEach((m) => chosen.add(m.id));
   if (!renderFeatures.seeded && phoneApp()) { chosen.add("calls"); if (!state.telegram.paired) chosen.delete("telegram"); }
@@ -882,7 +931,9 @@ function renderFinish() {
     phoneApp() ? row(channelOk(), "The phone app", channelOk() ? "its chat instead of Telegram; pair your phone after Finish if you haven't" : "Phone calls isn't set up yet", STEPS.indexOf("features"))
       : row(state.telegram.paired, "Telegram", state.telegram.paired ? "connected" : "not connected yet", STEPS.indexOf("telegram")),
     row(true, "Features", titles.join(", ") || "none: you can turn some on later"),
-    row(true, "Your notes folder", el("code", {}, state.workspace)));
+    row(true, "Your notes folder", el("code", {}, state.workspace)),
+    ...state.setup.left.filter((x) => x.id !== "telegram").map((x) =>
+      row(false, x.title, `skipped for now (${x.what}); it waits on the dashboard, under Finish setting up`, STEPS.indexOf(x.id))));
   gloss($("#summary"));
 }
 
@@ -967,11 +1018,12 @@ async function restore() {
 $("#pr-open").addEventListener("click", showRestore);
 $("#pr-back").addEventListener("click", () => show(0));
 $("#pr-go").addEventListener("click", restore);
-$("#pr-next").addEventListener("click", async () => { await refresh(); show(STEPS.indexOf("computer")); });
+$("#pr-next").addEventListener("click", async () => { await mark("next"); await refresh(); show(STEPS.indexOf("computer")); });
 
 // ---------------------------------------------------------------------------------------------- start
 document.addEventListener("click", async (e) => {
   if (e.target.matches("[data-next]")) await go(step + 1);
+  else if (e.target.matches("[data-skip]")) await go(step + 1, "skip");
   else if (e.target.matches("[data-back]")) await go(step - 1);
   else if (e.target.matches("[data-preset]")) {
     const p = e.target.dataset.preset;
@@ -1004,7 +1056,12 @@ $("#finish").addEventListener("click", finish);
   $("#name").value = state.you.name || "";
   $("#tz").value = state.you.timezone || state.computer_zone || Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   $("#aname").value = state.you.assistant_name || "Kurooto";
-  let saved = 0;
-  try { saved = Number(localStorage.getItem("kurooto.setup.step") || 0); } catch { /* fine */ }
-  show(location.hash === "#about" ? STEPS.indexOf("about") : state.setup_done ? 0 : saved); // /aboutme links to #about
+  // a step named in the address (/aboutme links to #about; the dashboard's Finish setting up to each step), else the
+  // first step not finished yet, as Kurooto kept it
+  const asked = location.hash.slice(1);
+  if (!state.setup_done && Array.isArray(state.setup.chosen)) {  // the features ticked before the page was closed
+    chosen = new Set(state.setup.chosen);
+    renderFeatures.seeded = true;
+  }
+  show(STEPS.includes(asked) ? STEPS.indexOf(asked) : Math.max(0, STEPS.indexOf(state.setup.resume)));
 })();

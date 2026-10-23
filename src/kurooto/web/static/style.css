@@ -196,6 +196,10 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
 .wizard .box label { max-width: 680px; }
 .steps li.todo button { color: var(--fg); border-color: var(--warn); }
 .steps li.todo .n { color: var(--warn); border-color: var(--warn); font-weight: 700; }
+.steps li.skipped .n { border-style: dashed; }
+.wizard .calm { margin-bottom: 18px; }
+.wizard .calm label.inline { display: flex; align-items: center; gap: 10px; }
+.wizard .calm input[type=number] { width: 6em; margin-top: 0; }
 .wizard .field-note { display: block; margin-top: 6px; font-size: 13px; font-weight: 400; color: var(--dim); }
 .wizard #you-msg:empty, .wizard .nav-hint:empty { display: none; }
 .wizard .nav-hint { flex: 1; text-align: right; font-size: 13px; color: var(--dim); }

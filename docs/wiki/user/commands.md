@@ -280,6 +280,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto stop` | stop it for now (it starts again at sign-in) |
 | `kurooto pause [2h \| 18:00]`, `kurooto resume` | pause it (the same as `/pause`), and wake it |
 | `kurooto open` | open the setup page or dashboard |
+| `kurooto setup [STEP]` | open the setup page where you left off, or at one step (`about`, `telegram`…) |
 | `kurooto autostart on \| off \| status \| boot \| login` | start at sign-in or not; `boot` starts it before anyone logs in (Linux) |
 | `kurooto run`, `kurooto supervise` | run it in this window; run it and restart it if it crashes (for troubleshooting) |
 

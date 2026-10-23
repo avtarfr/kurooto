@@ -1,0 +1,31 @@
+name: An idea or a request
+description: Something Kurooto should do, or do differently.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        First look at [REQUESTED.md](https://github.com/avtarfr/kurooto/blob/main/docs/REQUESTED.md): what people
+        have asked for, open and done. If it's there, add to that request's issue instead of opening a new one.
+        Ideas nobody has asked for yet are in [ROADMAP.md](https://github.com/avtarfr/kurooto/blob/main/docs/ROADMAP.md),
+        and what doesn't work yet is in
+        [What it can't do yet](https://github.com/avtarfr/kurooto/blob/main/docs/wiki/user/what-it-cant-do-yet.md).
+
+        You can also ask your own Kurooto: "add to the requested list: ...".
+  - type: textarea
+    id: what
+    attributes:
+      label: What you'd like
+      description: What it should do, in your own words. An example of a day when you'd use it helps.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What you do today instead, and what's annoying about it.
+  - type: input
+    id: version
+    attributes:
+      label: Kurooto version and system (optional)
+      placeholder: "0.5.19 on Windows 11"

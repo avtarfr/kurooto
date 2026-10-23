@@ -33,7 +33,8 @@ two terminal features. For talking to Kurooto in general see [talking-to-kurooto
   shows the state folder; `web.json` there says which port is in use. You can pick the starting port with the
   `web.port` setting (default `8770`; Settings → Dashboard, then restart Kurooto).
 - The **setup** link in the top bar goes back to the setup page (`/setup`), for example to add more AI accounts to
-  [About you](teaching-kurooto.md) or to restore a profile.
+  [About you](teaching-kurooto.md) or to restore a profile. While setup steps you skipped are waiting, it says
+  **finish setup (N)** and opens the first of them.
 - If Kurooto isn't running, the page can't load. Start it from your app menu (**Kurooto**) or with `kurooto on`.
 
 **Who can open it.** Only this computer: the page listens on 127.0.0.1 only. Every request needs a key that only the
@@ -304,6 +305,7 @@ A card for every feature: what it does, what leaves your computer (in a differen
 | **Open Google sign-in** | appears after Save for Google features; sign in, and the card turns on by itself (it watches for up to 15 minutes) |
 | Switches on a card | a feature's own parts, e.g. [Exam season](quiz-and-exams.md)'s parts |
 | **hide** / **unhide** | takes an off feature off this page (see [hiding features](#hiding-features)) |
+| **Finish setting up** box | at the top: the setup steps you skipped for now, each a link back to its step on the setup page (see [getting-started.md](getting-started.md#the-setup-wizard-step-by-step)); a step leaves the box once it's done |
 | **Needs a look** box | at the top: what isn't working, with a **Fix** button where Kurooto can fix it (see [your-computer.md](your-computer.md)) |
 
 The Phone calls card also lists its three steps (a Gemini key, a Cloudflare account, pairing) and has a box for the

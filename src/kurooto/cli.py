@@ -3,6 +3,7 @@
 kurooto --version
 kurooto paths            where settings, data and logs live on this machine
 kurooto doctor [--json]  check that everything Kurooto needs is in place (exit code = number of problems)
+kurooto setup [STEP]     open the setup page where you left off (or at one step: about, telegram…)
 kurooto fixme [WORDS]    what's wrong and what to do, matched by rules (no AI): the troubleshooting page, known issues
 kurooto off / on         turn Kurooto off completely (no start at sign-in) / back on
 kurooto pause [2h|18:00] / resume   pause it (Telegram says "paused" and keeps what you send) / wake it
@@ -1834,6 +1835,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("supervise", help="run it and restart it if it crashes")
     sub.add_parser("start", help="start it in the background now")
     sub.add_parser("open", help="open the setup page or dashboard")
+    se = sub.add_parser("setup", help="open the setup page where you left off (or at one step)")
+    se.add_argument("step", nargs="?", default="", help="you, computer, brain, about, features, telegram or finish")
     au = sub.add_parser("autostart", help="start at sign-in, or not (boot: before anyone logs in, on Linux)")
     au.add_argument("state", choices=["on", "off", "status", "boot", "login"])
     sub.add_parser("stop", help="stop it (it starts again at sign-in; `off` keeps it off)")
@@ -1938,13 +1941,20 @@ def main(argv: list[str] | None = None) -> int:
         return supervise()
     if a.cmd == "start":
         return start_and_say()
-    if a.cmd == "open":
+    if a.cmd in ("open", "setup"):
         import webbrowser
 
+        from kurooto.core.setupsteps import STEPS
+
+        if a.cmd == "setup" and a.step and a.step not in STEPS:
+            print(f"Not a setup step: {a.step} ({', '.join(STEPS)}).", file=sys.stderr)
+            return 2
         url = wait_for_web()
         if not url:
             print("Kurooto isn't running yet; start it with: kurooto start")
             return 1
+        if a.cmd == "setup":  # the page itself lands on the first step not finished (core/setupsteps.py)
+            url += "setup" + (f"#{a.step}" if a.step else "")
         if os.environ.get("KUROOTO_NO_BROWSER") != "1":
             webbrowser.open(url)
         print(url)
