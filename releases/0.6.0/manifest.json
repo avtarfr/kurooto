@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.6.0",
+  "notes": "Every answer names its AI and model, fallback between AIs at their limits, a self-manual the AI reads; the night checks memory and tunes itself; Research add-on; photo to dates, mail in, offline mode; the phone app opens on your day with widgets and a bedside mode; SYSTEMS core on the dashboard",
+  "created": 1792786731.5815253,
+  "files": {
+   "kurooto-0.6.0.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.6.0/kurooto-0.6.0.tar.gz",
+    "sha256": "18cb834af5a20b4d35e9e2c041ac1f29d88f79c0420185e8fe0288433fa7a222",
+    "size": 3075841
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.6.0/kurooto.apk",
+   "sha256": "35f431fb6a20d3cd31265d2cf772f0fab8d195cceb37bf9fc43279a3bfa568f2",
+   "size": 124902,
+   "versionCode": 60009,
+   "versionName": "0.6.0",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "f39764eb273cd4d1ec1321e3eed04c08f5f02436eef964c7f7943609ee164150"
+  }
+ },
+ "sig": "aBSagQ6LYNbjtCR1sDiQMeGpIHqJ+uFbZpiDRvcKD1LJifIeGXr7Ad12o/qKZQk213NGyjXRugUU5mv1nFdhDA=="
+}
