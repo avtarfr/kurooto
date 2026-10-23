@@ -338,7 +338,12 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `/remind` and `/due` use `core/clock.py:parse_when`, where a bare number is minutes.
 - **checkins** (`modules/checkins.py`): evening/midday/night prompts by message or call, answers into the daily note;
   `checkins:plan` books the day's `checkins:<name>` jobs; call hooks `call_schedule`, `call_outcome`,
-  `call_reschedule`, `call_transcript`. A check-in day starts at `checkins.day_starts` (05:00).
+  `call_reschedule`, `call_transcript`. A check-in day starts at `checkins.day_starts` (05:00). `learn()`
+  (`checkins:learn`, daily 12:00, `checkins.learn_times`) reads the last 14 days' plans (`<state>/checkins/<day>.json`;
+  `answered_at` is written on a reply and on an answered call; a moved entry counts at its moved time), and with
+  `LEARN_MIN_DAYS` answered and `LEARN_OFF_DAYS` 30+ min off on one side sets `checkins.times.<name>` to the median,
+  rounded to 15 min; `<state>/checkins/learned.json` keeps from/to/at/undone; button prefix `chkl:<name>:undo`;
+  events `checkin_time_learned`/`_unlearned`; Calm reason `checkins.learned`.
 - **deadlines** (`modules/deadlines.py`): merges deadlines from manual entries, notes tasks, Classroom, the calendar,
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,
   overdue check) and runs exam mode. Ids are hashes of title plus date. `deadlines.json` under the `deadlines` lock.

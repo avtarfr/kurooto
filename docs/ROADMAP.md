@@ -61,9 +61,9 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   catch-up works without Classroom.
 - **A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking. Bedside
   mode is an Android add-on.
-- **No college-term defaults**: the check-in times and Start-by's day window are learned from when you actually reply
-  (with a notice and Undo), not 09:00-22:00; a first-run question (student, working, research, other) picks the
-  features; public holidays come from your country's calendar.
+- **No college-term defaults** (0.5.9 has the check-in times): the check-in times and Start-by's day window are
+  learned from when you actually reply (with a notice and Undo), not 09:00-22:00; a first-run question (student,
+  working, research, other) picks the features; public holidays come from your country's calendar.
 - **The phone app as a full chat channel** beside Telegram, for places where Telegram is blocked or little used.
 - **Small gaps**: `add_deadline` takes the course, so a mail's "Lab report" lands on the right course page; a
   recurring fact said in chat becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look

@@ -221,6 +221,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `checkins.by_call` | `false` | with Phone calls on: the check-in is a call (a missed call falls back to Telegram) |
 | `checkins.day_starts` | `"05:00"` | a check-in day runs from here to here: a night check-in at 00:30 is the evening's |
 | `checkins.journal` | `true` | add each check-in's answer to your journal |
+| `checkins.learn_times` | `true` | a check-in you keep moving or answering late moves to when you do it (with Undo) |
 | `checkins.questions.evening` | `"How did today go? What got done, and what slipped?"` | the evening check-in's question |
 | `checkins.questions.midday` | `"How's the morning been? Anything to re-plan for the afte…` | the midday check-in's question |
 | `checkins.questions.night` | `"Before bed: anything else for your journal? What's first…` | the night check-in's question |

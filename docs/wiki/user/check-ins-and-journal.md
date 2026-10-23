@@ -54,6 +54,12 @@ one, give it a time: Dashboard → Settings → Check-ins → `times`, e.g. `"ni
 A day Kurooto can't pin down ("yesterday", "next week", a date) goes to your AI instead of being guessed. "call me" in
 the sentence is about a call, not a check-in.
 
+**It learns your times** (`checkins.learn_times`, on). When, over the last two weeks, you answered a check-in on at
+least 5 days and on 4 or more of them 30 minutes or more away from its time, always on the same side (you moved it,
+or replied late but within 3 hours), its time moves to when you actually did it, to the quarter hour: "Your evening
+check-in is at 23:00 from now on, not 22:00: on 5 of the last 6 days you did it around then", with **Undo**. It isn't
+moved again for two weeks, and one you undid is left alone for a month.
+
 **The check-in day runs from 05:00 to 05:00** (`checkins.day_starts`). A night check-in at 00:30, or one you push past
 midnight, still belongs to the evening before: its journal entry and study logs go to that day. Still up at 1 am,
 "move the evening check-in to 21:00" means the coming evening, and "skip the night check-in" skips the coming night's

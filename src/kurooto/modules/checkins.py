@@ -19,6 +19,11 @@ midnight, still belongs to the evening before: its journal and study logs go to 
 Gone to bed: with the alarm set, a night check-in call that comes after your bedtime (or within a few hours of you
 setting the alarm yourself) doesn't ring; it moves to the wake-up call, and a message offers Call me now or Skip
 (checkins.asleep_defers).
+
+Learned times (checkins.learn_times, on): when, over the last two weeks, you answered a check-in on at least 5 days and
+on 4 or more of them at a time 30 minutes or more from its setting, all on the same side (you moved it, or replied
+late to it), its time moves to when you actually did it (the middle of those times, to the quarter hour). One line
+says so, with Undo; a check-in isn't moved again for two weeks, and one you undid is left alone for a month.
 """
 
 from __future__ import annotations
@@ -53,6 +58,7 @@ register_defaults(
         "ai_notes": True,  # with Chat on: after a check-in call, the AI writes your journal and study logs
         "day_starts": "05:00",  # a check-in day runs from here to here: a night check-in at 00:30 is the evening's
         "asleep_defers": True,  # by call, alarm set and you've gone to bed: the night check-in waits for the morning
+        "learn_times": True,  # a check-in you keep moving or answering late moves to when you do it (with Undo)
     },
 )
 NAMES = ("evening", "midday", "night")
@@ -61,6 +67,8 @@ STUCK_MIN = 15  # a check-in call with no outcome after this long becomes a mess
 GRACE_S = 2 * 3600  # a check-in this late still asks (past it: "I missed your check-in")
 ASLEEP_SET_H = 3  # an alarm you set yourself this recently means you've gone to bed
 DONE = ("answered", "skipped", "deferred")  # a check-in that's over for its day
+LEARN_DAYS, LEARN_MIN_DAYS, LEARN_OFF_DAYS, LEARN_GAP_MIN = 14, 5, 4, 30  # look back, answered, off, minutes off
+LEARN_LATE_H = 3  # a reply later than this after the check-in says nothing about when you'd like it
 WORDS = re.compile(
     r"\b(evening|midday|night|bedtime|tonight'?s?|today'?s?|tomorrow'?s?|afternoon|lunch|(?:mon|tues|wednes|thurs|"
     r"fri|satur|sun)day'?s?)?\s*(check-?in|debrief|call)\b",
@@ -104,6 +112,7 @@ class Checkins(Module):
         self.every("plan", f"daily {plan_at:%H:%M}", self._plan)
         self.app.jobs.then_actions["checkins.notes_done"] = self._notes_done
         self._plan({})
+        self.every("learn", "daily 12:00", lambda p: self.learn())
 
     # ------------------------------------------------------------------------------- the check-in day
     def _day_start(self) -> dt.time:
@@ -354,6 +363,7 @@ class Checkins(Module):
         plan = self.today(dt.date.fromisoformat(day))
         if name in plan:
             plan[name]["status"] = "answered"
+            plan[name]["answered_at"] = now().isoformat(timespec="seconds")
             self._save(plan, dt.date.fromisoformat(day))
         self.app.events.emit("checkin_answered", name=name, chars=len(msg.text), via="telegram")
         if not self.setting("journal"):
@@ -511,6 +521,74 @@ class Checkins(Module):
             why="asked",  # you put it off to this morning
         )
 
+    # ------------------------------------------------------------------------------- learned times
+    def _minutes(self, t: dt.datetime, day: dt.date) -> int:
+        """Minutes from the start of a check-in day (so 00:30 after a 22:00 evening counts as later, not earlier)."""
+        return int((t - dt.datetime.combine(day, self._day_start())).total_seconds() // 60)
+
+    def learn(self) -> list[str]:
+        """Move a check-in you keep doing at another time to that time (with Undo). Returns the lines told."""
+        if not self.setting("learn_times"):
+            return []
+        state_f = self.app.paths.state / "checkins" / "learned.json"
+        state = jload(state_f, {}) or {}
+        today, told = self.day_of(), []
+        times = dict(self.setting("times") or {})
+        for name in NAMES:
+            cur = times.get(name)
+            last = state.get(name) or {}
+            wait = dt.timedelta(days=30 if last.get("undone") else LEARN_DAYS)
+            if not cur or (last.get("at") and now() - dt.datetime.fromisoformat(last["at"]) < wait):
+                continue
+            actual = []
+            for k in range(1, LEARN_DAYS + 1):
+                d = today - dt.timedelta(days=k)
+                e = self.today(d).get(name) or {}
+                if e.get("status") != "answered":
+                    continue
+                at = self.at(d, e.get("time") or cur)  # moved: the time it was moved to
+                if e.get("answered_at") and not e.get("moved"):
+                    a = dt.datetime.fromisoformat(e["answered_at"]).replace(tzinfo=None)
+                    at = a if dt.timedelta(0) <= a - at <= dt.timedelta(hours=LEARN_LATE_H) else at
+                actual.append(self._minutes(at, d))
+            if len(actual) < LEARN_MIN_DAYS:
+                continue
+            base = self._minutes(self.at(today, cur), today)
+            off = [m for m in actual if abs(m - base) >= LEARN_GAP_MIN]
+            if len(off) < LEARN_OFF_DAYS or not (all(m > base for m in off) or all(m < base for m in off)):
+                continue
+            mid = int(round(sorted(off)[len(off) // 2] / 15) * 15)
+            new = f"{dt.datetime.combine(today, self._day_start()) + dt.timedelta(minutes=mid):%H:%M}"
+            if new == cur:
+                continue
+            times[name] = new
+            self.app.settings.set("checkins.times", times)
+            state[name] = {"at": now().isoformat(timespec="seconds"), "from": cur, "to": new}
+            jsave(state_f, state)
+            line = (
+                f"Your {name} check-in is at {new} from now on, not {cur}: on {len(off)} of the last "
+                f"{len(actual)} days you did it around then."
+            )
+            self.app.events.emit("checkin_time_learned", name=name, from_time=cur, to_time=new, days=len(off))
+            self.app.notify(line, kind="info", why="checkins.learned", buttons=[[("Undo", f"chkl:{name}:undo")]])
+            told.append(line)
+        return told
+
+    def _learn_button(self, name: str, act: str) -> str:
+        state_f = self.app.paths.state / "checkins" / "learned.json"
+        state = jload(state_f, {}) or {}
+        last = state.get(name)
+        if act != "undo" or not last or last.get("undone"):
+            return "Nothing to undo."
+        times = dict(self.setting("times") or {})
+        if times.get(name) == last["to"]:
+            times[name] = last["from"]
+            self.app.settings.set("checkins.times", times)
+        state[name] = {**last, "undone": True, "at": now().isoformat(timespec="seconds")}
+        jsave(state_f, state)
+        self.app.events.emit("checkin_time_unlearned", name=name)
+        return f"Back to {last['from']}; I'll leave the {name} check-in's time alone."
+
     # ------------------------------------------------------------------------------------- buttons
     def callbacks(self):
         def btn(ref: str, act: str) -> str:
@@ -528,7 +606,7 @@ class Checkins(Module):
                 return "Calling you now."
             return self.skip(name, d, via="button")
 
-        return {"chk": btn}
+        return {"chk": btn, "chkl": self._learn_button}
 
     def commands(self):
         return [
@@ -641,7 +719,7 @@ class Checkins(Module):
         d = dt.date.fromisoformat(day)
         self.app.scheduler.cancel(f"checkins:unstick:{name}")
         if outcome == "answered":
-            self._status(name, d, "answered")
+            self._status(name, d, "answered", answered_at=now().isoformat(timespec="seconds"))
         elif outcome == "later":  # "Later" on the ringing phone: the same check-in, half an hour on
             calls = self.app.modules.get("calls")
             self.postpone(name, (calls.setting("later_min") if calls else None) or 30, d, via="call")

@@ -409,6 +409,9 @@ into your journal (`journal/YYYY-MM-DD.md` in your notes folder).
 
 - **Turn on the night or midday one:** Settings → Check-ins → `times`, and give it a time, e.g. `"night": "23:15"`.
   Both are off until you do.
+- **It learns your times** (`checkins.learn_times`, on): a check-in you've answered on 5 or more of the last 14 days,
+  and on 4 or more of them 30+ minutes from its time on the same side (moved, or replied late within 3 hours), moves
+  to when you actually did it, with one line and **Undo**. Not again for two weeks; after an Undo, not for a month.
 - **Change one in plain English:** "move tonight's check-in to 21:30", "push the check-in by 30 min", "skip the night
   check-in". Other days work too: "skip Friday's check-in", "move tomorrow's check-in to 9". A day Kurooto can't pin
   down ("yesterday", "next week", a date) goes to the AI instead of guessing.

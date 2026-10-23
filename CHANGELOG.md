@@ -14,6 +14,10 @@
   or "skipping gym today" frees that day, `/busy calls gym off` lets calls through. Said in passing ("every Tuesday
   and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5") it's set up for you
   (`infer.commitments`), with Undo; that turns Commitments on if it was off, and Undo turns it off again.
+- **Check-ins learn your times** (`checkins.learn_times`, on): a check-in you keep moving, or answering late, moves
+  to when you actually do it. On 5+ answered days in the last two weeks with 4+ of them 30 minutes or more off on the
+  same side, its time becomes the middle of those, to the quarter hour; one line says so, with Undo. Not again for two
+  weeks, and one you undid is left alone for a month. The first step away from college-term defaults.
 - **Short names for subjects from what you say**: "by POTA I mean Physics of the Atmosphere", "LA is short for linear
   algebra", "I call stochastic calculus stoch" add that short name to the subject (`infer.aliases`), with Undo, so
   "POTA quiz friday" lands on the right course from then on. Only for your subjects, and never a name that's taken.
