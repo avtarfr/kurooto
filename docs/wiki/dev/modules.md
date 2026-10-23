@@ -1014,6 +1014,22 @@ arrives.
     the section `PICKED`; one message with an Undo per fact.
   - Calm reasons `learning.skill`, `learning.lesson`, `learning.remember`; events `learning_*`, `history_searched`.
 - **files** (`modules/files.py`): `take_files` for incoming files; with Chat on, an AI job files them.
+- **projects** (`modules/projects.py:Projects`, 0.7.0, Help with your project) and the whole `/project` family:
+  `command(app, msg, arg)` (`App.handle` sends every `/project` here; the module registers no command of its own):
+  nothing or `list` → `listing()` (every source's project with its folder, "set up from it" for a repoproject folder,
+  `helps` / `off` and its checks while the feature is on, then the GitHub repositories set up with `/project add`,
+  which are Kurooto's read-only copies); `add`, `update`, `refresh` → `core/repoproject.py:command`; `help on|off
+  <name>` (into `projects.help`), `help <name> <what>`, `checks <name> <command>|off` (into `projects.checks`, with
+  `suggest_checks()`) → `Projects.help_cmd`, only while the feature is on. `kurooto project list|add|update|help|checks`
+  types the same (`cli.project_run`). The intent `project_help` ("help with my thesis: ...", "in my thesis project,
+  ..."; "in my <name> ..." only for a known project); "set up my project from github.com/..." is repoproject's, in
+  `App.handle`. `sources()` merges `SOURCES`: `own_folders` (`projects.folders`), `repo_projects` (repoproject's
+  records that are local folders, by project name), `research_repos` (`research.repos` named by `research.projects`,
+  skipping anything under `<data>/repos`: repoproject's GitHub copies, which it also puts in `research.repos` for the
+  commit log), `latex_documents` (`research_addon.latex_repos`); another feature or an add-on appends its own
+  `fn(app) -> {name: folder}`. `start_help()` refuses a project not switched on, one already busy
+  (`scratch.busy`), then `scratch.create(...)` (a worktree for a repository) and `proposals.submit(...)` at
+  `projects.effort`. The rest is core: [architecture.md](architecture.md#scratch-folders-and-proposals).
 
 Helpers that aren't modules: `modules/text.py` (time parsing, `too_complex`, `tidy`), `modules/daily.py` (the daily
 note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py`, `modules/coursepack.py`,

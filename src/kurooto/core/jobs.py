@@ -52,7 +52,7 @@ from kurooto.core import proc
 from kurooto.core.config import register_defaults
 from kurooto.core.mcp import ENV_JOB, command, run_env
 from kurooto.core.state import owner_only
-from kurooto.core.tools import agent_tools, run_tool
+from kurooto.core.tools import run_tool, tools_for
 from kurooto.providers import effort as effort_mod
 from kurooto.providers.agy import Agy
 from kurooto.providers.base import Result, Task, Verdict, short_model
@@ -233,6 +233,7 @@ class Jobs:
             ("held_until", "real"),
             ("model", "text"),
             ("images", "text"),
+            ("scratch", "text"),
         ):
             if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline;
                 # the AI it was pinned to; the run receipt; what picked its effort and your words when you said its
@@ -261,6 +262,7 @@ class Jobs:
         brain: str | None = None,
         offline: bool = False,
         images: list | None = None,
+        scratch: str | None = None,
     ) -> str:
         """Queue an AI request. background=True: work nobody is waiting for, which waits for the charger when the
         laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools).
@@ -271,15 +273,16 @@ class Jobs:
         it can't.
         offline: the internet is down and the caller told you it waits (modules/chat.py): it waits from now.
         images: pictures it looks at (paths): an API brain gets them with the request; the prompt says where they are
-        for agent programs, which open them."""
+        for agent programs, which open them.
+        scratch: the id of the scratch folder it works in (core/scratch.py): it may write there and nowhere else."""
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
         lane = lane if lane in LANES else ("bg" if background else "you")
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"
-                "background,text_only,why,lane,brain_req,held,held_until,images) "
-                "values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "background,text_only,why,lane,brain_req,held,held_until,images,scratch) "
+                "values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     jid,
                     (title or prompt_clean.split("\n")[0])[:80],
@@ -298,6 +301,7 @@ class Jobs:
                     time.time() if offline else None,
                     time.time() + 120 if offline else None,  # core/helper.py:RETRY_S
                     json.dumps([str(p) for p in images]) if images else None,
+                    scratch,
                 ),
             )
         self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean), lane=lane)
@@ -332,6 +336,15 @@ class Jobs:
     @staticmethod
     def _job(r) -> Job:
         return Job(*r[:9], bool(r[9]), *r[10:14], r[14] or "you", r[15], bool(r[16]), r[17], r[18])
+
+    def scratch_of(self, jid: str) -> str | None:
+        """The scratch folder this request works in (core/scratch.py), or None."""
+        row = self._read("select scratch from jobs where id=?", (str(jid),))
+        return row[0] if row and row[0] else None
+
+    def set_scratch(self, jid: str, sid: str) -> None:
+        with self._lock:
+            self._db.execute("update jobs set scratch=? where id=?", (sid, jid))
 
     def get(self, jid: str) -> Job | None:
         row = self._read(f"select {self._cols} from jobs where id=?", (jid,))
@@ -565,18 +578,26 @@ class Jobs:
                 level = effort_mod.tuned(level, origin, s.get("brain.effort_map"))
         self._mark(jid, effort_from=origin or "")
         minutes = (s.get("brain.timeout_min") or {}).get(level, 15)
-        tools = agent_tools(self.app)
+        tools = tools_for(self.app, jid)  # in a scratch folder: writing only there (core/scratch.py)
         text_only, pics = self._read("select text_only, images from jobs where id=?", (jid,))
         text_only = bool(text_only)
-        from kurooto.core import assembler, selfdoc  # what's remembered that your message refers to, within its budget
+        from kurooto.core import assembler, scratch, selfdoc  # what's remembered that your message refers to
 
+        sc = scratch.for_job(self.app, jid)
+        sc = sc if sc is not None and not sc.lazy else None  # a change request: it writes in its scratch folder only
         memory, self.recalled[jid] = assembler.for_request(self.app, job)
-        extra = "\n\n".join(x for x in (memory, selfdoc.for_request(self.app, job.prompt)) if x)
+        extra = "\n\n".join(
+            x
+            for x in (memory, selfdoc.for_request(self.app, job.prompt), scratch.context(self.app, sc) if sc else "")
+            if x
+        )
         task = Task(
             prompt=job.prompt,
             effort=level,
             title=job.title,
-            cwd=self.app.workspace,
+            cwd=sc.work if sc is not None else self.app.workspace,
+            scratch=sc.work if sc is not None else None,
+            reads=[sc.src] if sc is not None else [],
             timeout_s=minutes * 60,
             context=headless_context(self.app, extra),
             tools=[] if text_only else tools,  # text-only work gets no tools (and agent programs no MCP)
@@ -623,6 +644,7 @@ class Jobs:
         if chain:
             self.plan_line(job, chain[0], level, self.recalled.get(jid, 0))
         tried = time.time()
+        before = scratch.fingerprint(self.app, sc) if sc is not None else None  # what changed outside it, after
         used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
         limits: list[dict] = []  # every limit hit on the way, also one a stand-in then answered for
         moved = bool(skipped) and "rate_limited" in on  # a limit already moves this request on
@@ -677,6 +699,11 @@ class Jobs:
             self._problem(brain, result, nxt, level)
         if limits:  # the follow-up sees them (the concept graph's reading budget: core/readbudget.py)
             result.usage = {**result.usage, "limits": limits}
+        if sc is not None and before is not None:
+            try:
+                scratch.audit(self.app, sc, before)
+            except Exception as e:  # never at the cost of the answer
+                self.app.events.emit("scratch_audit_failed", job=jid, error=f"{type(e).__name__}: {e}"[:200])
         if wait is not None and not result.ok:  # moved to the model here, which couldn't: it waits for the reset
             self._defer(jid, wait)
             return

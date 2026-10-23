@@ -374,8 +374,12 @@ feature that's off has none. Nothing is sent to anyone but you.
   updates replace). Text files only (`.md`, `.txt`, `.tex`, `.bib`, `.csv`, `.json`, `.yaml`, ...). Documents and
   Downloads stay read-only.
 - **Your text:** it creates notes and files and adds to them; it changes existing text only with `edit_note`, when you
-  asked, one exact passage at a time, and keeps the previous version first (Kurooto's state folder →
-  `note-history/`, the last 20 per file). With Notes sync on, your repository's history has every version too.
+  asked, one exact passage at a time, and (0.7.0) that change becomes a **proposal** you apply: see [Proposals and
+  scratch folders](#proposals-and-scratch-folders). With `proposals.notes_edits` off it changes the note directly and
+  keeps the previous version first (Kurooto's state folder → `note-history/`, the last 20 per file). With Notes sync
+  on, your repository's history has every version too.
+- **Change requests** (Help with your project, a change to your notes you asked for, a fix Dreaming proposes): the AI
+  may write in its own scratch folder only, and the change reaches your files as a proposal (below).
 - **The web:** a public page as plain text (GET only, at most a few MB); never this computer or your local network.
 
 - **API brains** (a Gemini key, Ollama, another OpenAI-compatible service) call the tools directly. A model that can't
@@ -409,6 +413,46 @@ from agy: `agy mcp remove kurooto`, and delete Kurooto's lines from agy's settin
 state folder → `backups/`).
 *Leaves your computer:* nothing new. What a tool returns (a note's text, your deadlines) goes to the AI you picked,
 like the notes it reads.
+
+### Proposals and scratch folders
+
+The AI may think, draft and write freely, but only in a scratch folder of its own (Kurooto's state folder →
+`scratch/<id>`): a git worktree on a new branch `kurooto/<id>` for a git repository, a mirror that fills as files
+change for anything else (your notes, a folder that isn't git, a skill). For that request it may write there and
+nowhere else; it reads as always, plus the project. When it ends, Kurooto compares the folder with the original and
+sends a **proposal**: a title, a few lines, the files changed and the diff (inside the message up to
+`proposals.inline_lines` lines, else as a file; the dashboard's **Proposals** page, `/proposals` in the browser,
+shows it whole and coloured), with **Apply**, **Change** and **Discard**.
+
+- **Apply** (a tap only: `proposal.apply` in "never without a tap"; typed: `/proposals apply <id>`): notes and folders
+  are written, their earlier versions kept (Kurooto's state folder → `proposals/<id>/before/`); a git repository gets
+  one commit on your current branch, made without touching anything else of yours, never pushed. Refused, saying why,
+  when a file changed since, when you have uncommitted changes in the same files, or when the repository is on no
+  branch or mid-merge. **Undo** afterwards: the earlier versions back, or a revert commit.
+- **Change**: say what to change; the AI works again in the same scratch folder and the proposal comes back.
+- **Discard**: the scratch folder is deleted; nothing of yours changed.
+- A proposal that deletes files says so first ("It deletes 2 files: ...", red on the dashboard). Nothing is deleted
+  from your files except by an applied proposal.
+- `/proposals` lists what's waiting and what you applied lately (with Undo); `/proposals <number>` shows one.
+- Work nobody was waiting for (a fix Dreaming proposes at night) isn't told one by one: it's in the morning message
+  (Dreaming's, or with Dreaming off a "Waiting for your OK" message at `proposals.morning`), through Calm.
+- Asking in plain words for a change to your notes ("tidy my LA notes' headings", "add a summary to this lecture
+  note") runs in a scratch copy of your notes and comes as a proposal.
+- How each AI is kept in the scratch folder: API brains only have Kurooto's tools, which write there and refuse (and
+  report) anything else; Claude Code gets per-run permissions that allow editing only there and deny reading keys and
+  passwords; agy runs in it with its Kurooto tools confined the same way, but its own allow-list is one settings file
+  for every run, so its built-in file tools keep their usual folders: if anything in the original changed while it
+  worked, the proposal names it.
+- Never part of a scratch folder or a proposal: keys and passwords (`.env`, `*.pem`, `*.key`, `id_rsa*`,
+  `credentials*.json` ...), `.git`, and in notes any hidden file. A proposal is at most `proposals.max_kb` (400) KB of
+  diff and `proposals.max_files` (60) files.
+- Settings (`proposals.*`): `notes_edits` (true), `keep_days` (7: an unanswered proposal and its scratch folder go),
+  `max_kb`, `max_files`, `inline_lines` (30), `morning` (daily 07:30).
+
+*Turn it off:* `proposals.notes_edits` = false (edit_note changes notes directly, as before 0.7.0); Help with your
+project is a feature of its own. *Undo:* the Undo button after Apply, or `/proposals undo <id>`.
+*Leaves your computer:* nothing new: the files the AI reads or writes in its scratch folder go to the AI you picked,
+as any request's do; checks have no network.
 
 ## Features
 
@@ -1040,6 +1084,34 @@ Send a photo or PDF to your bot: it's saved in your notes folder's `inbox/` (or 
 (a note that describes and links it, in the right place). The caption tells it what it's for. With Skills on, a link
 sent on its own is filed the same way (the `/add-to-notes` skill).
 
+### Help with your project
+The AI works on a project of yours (a thesis in LaTeX, code, a report) in a scratch folder, and what it did comes back
+as a proposal ([Proposals and scratch folders](#proposals-and-scratch-folders)). Turn it on in Features, then let it
+help per project: none can until you say so.
+
+- Projects: the folders set up with `/project add <folder> [as <name>]` (a project from its repository, below; typed
+  only: attaching a folder is in "never without a tap"), Research's repositories (`/repos add <folder> [as
+  <project>]`, `research.projects` names them), the LaTeX documents you attached (`/latex add`) and `projects.folders`
+  (Settings). A project set up from a GitHub address is listed, but Kurooto's copy is read only: the AI helps only in
+  a folder of yours.
+- `/project` lists them all (one command for setting up, updating and help); `/project help on <name>` / `off`; `/project help <name> <what to do>`, or say it: "in my
+  thesis add footnotes to chapter 2 citing refs.bib", "help with my thesis: fix the failing test". One request at a
+  time per project.
+- A git repository gets a worktree on a new branch from your current commit (your uncommitted changes aren't in it);
+  Apply makes one commit on your current branch, never a push. Any other folder gets a mirror; Apply writes the files,
+  with Undo.
+- **Checks** (`/project checks <name> <command>`; `off`; with no command it shows a suggestion: latexmk for a LaTeX
+  folder, pytest, npm test, cargo test, make test): after the AI's changes Kurooto runs it in the scratch folder, with
+  a time limit (`projects.check_timeout_s`, 300) and no network, in a sandbox that can write only there (bubblewrap on
+  Linux, macOS's sandbox-exec) and doesn't see Kurooto's settings or your key folders; the proposal says passed or
+  failed. Without a sandbox (Windows, Linux without `bwrap`) checks don't run, and the proposal says so. The AI can
+  run them too (`run_checks`) while it works.
+- Settings (`projects.*`): `folders`, `help` (the projects it may help with), `checks`, `check_timeout_s`, `effort`
+  (high).
+
+*Turn it off:* Features → Help with your project, or `/project help off <name>` for one. *Leaves your computer:* the
+files the AI needs from the project go to the AI you picked, as any request does; nothing is pushed or sent.
+
 ### Skills
 Ready-made instructions for your AI, one command each. Type `/<skill>` and what it's about; the answer comes back as a
 reply, and you can **reply to that answer** to carry on (answer its questions, ask for a change). Files you send with
@@ -1454,10 +1526,12 @@ shows every area, the last decisions and which kinds need a clearer win.
 **Proposed fixes to skills** (`dreaming.propose_prompts`, off). When one skill's answers were corrected, marked Wrong
 or asked again twice or more in two weeks, the night asks Learning's second-look AI for the skill with the failing
 step rewritten, and whether that fixes each of those cases. It's offered only when it fixes at least half of them
-(more after you said No to one), in the morning message with **Apply** and **No**; `/dream proposal` shows the whole
-proposed skill. It's never applied without your tap. Apply changes the skill with a before-copy (Undo in `/learned`)
-and replays your test cases; if one that passed goes wrong, the change is put back at once. No leaves that skill alone
-for 30 days.
+(more after you said No to one), in the morning message as a proposal (0.7.0: [Proposals and scratch
+folders](#proposals-and-scratch-folders)) with **Apply**, **Change** and **Discard**; `/dream proposal` shows the whole
+proposed skill and `/proposals` its diff. It's never applied without your tap. Apply changes the skill with a
+before-copy (Undo in `/learned`, or Undo under the proposal) and replays your test cases; if one that passed goes
+wrong, the change is put back at once. Change has the AI rework it in a scratch folder. Discard (or No on a message
+from before 0.7.0) leaves that skill alone for 30 days.
 
 **Curious** (`dreaming.curious`, on). A topic you asked about 3 or more times this week (requests to the AI, what calls
 searched your notes for, quiz questions you got wrong) with no note on it, or only a stub, gets one line: "You've

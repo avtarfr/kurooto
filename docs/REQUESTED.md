@@ -43,7 +43,8 @@ Standing plans, never struck through.
   each change is listed with Undo. It improves the way it improves: the checks themselves are revised the same way.~~
   (0.6.0: the night pass also tunes effort, AI order and Start-by sizes by replay, one change a night with Undo; a
   skill that keeps going wrong gets a proposed fix gated by the AI's replay of those cases and your test cases, Apply
-  or No, `dreaming.propose_prompts`; each change's outcome is kept and a kind you undid needs a clearer win)
+  or No, `dreaming.propose_prompts`; each change's outcome is kept and a kind you undid needs a clearer win) (0.7.0:
+  that fix is a proposal with its diff, Apply / Change / Discard, Change reworking it in a scratch folder)
 - ~~**Set up from what it sees, not from settings** (0.5.9 has projects with their supervisor, meetings, classes,
   commitments like the gym or a shift, a mail deadline's course and subjects' short names): one pass over chat and the journal (rules first, the AI only on a
   hit) creates projects with whoever they're with ("got a project under Prof X": the project, its supervisor, and

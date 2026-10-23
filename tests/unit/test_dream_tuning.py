@@ -340,11 +340,17 @@ def test_a_skill_that_keeps_going_wrong_gets_a_proposal_never_applied_by_itself(
         "A fix for /journal, which went wrong 3 times lately: the title carries the date. It fixes 2 of them by the "
         "AI's own replay; /dream proposal shows it."
     ]
-    assert buttons == [[("Apply", f"rsi:{p['pid']}:apply"), ("No", f"rsi:{p['pid']}:no")]]
+    prop = p["prop"]  # 0.7.0: a proposal (core/proposals.py), with the diff and Apply / Change / Discard
+    assert buttons == [[("Apply", f"prop:{prop}:apply"), ("Change", f"prop:{prop}:change"),
+                        ("Discard", f"prop:{prop}:discard")]]  # fmt: skip
     assert "Put the date in the title." in env.say("/dream proposal")
-    assert env.press(f"rsi:{p['pid']}:apply").startswith("Changed /journal")
+    from kurooto.core import proposals
+
+    assert "+Put the date in the title." in proposals.diff_text(app, proposals.get(app, prop))
+    assert proposals.get(app, prop)["night"] and prop in env.say("/proposals")
+    assert env.press(f"prop:{prop}:apply").startswith("Changed /journal")
     assert "Put the date in the title." in load_skill(app, "journal").body
-    assert tuning.proposal(app) is None
+    assert tuning.proposal(app) is None and proposals.get(app, prop)["status"] == "applied"
     d = tuning._load(app)["decisions"][-1]
     assert d["area"] == "prompts" and d["applied"] and tuning.live(app, d)
 

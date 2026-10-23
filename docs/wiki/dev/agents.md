@@ -43,11 +43,14 @@ Also, when they apply: `docs/MANUAL.md` (with the Undo), `docs/PRIVACY.md`, `doc
 - **Nothing leaves the computer unless a feature that is on says so** in its `privacy` text and in `docs/PRIVACY.md`.
   No telemetry, no "phone home". Kurooto never sends mail or messages to anyone but its owner on its own.
 - **The user's notes are theirs**: add, never reword or remove their text. Write notes with
-  `core/tools.py:write_note_file`, place them with `core/layout.py`.
+  `core/tools.py:write_note_file`, place them with `core/layout.py`. A change to their text, or to any file of a
+  project, is made by the AI in a scratch folder and reaches them only as a proposal they apply
+  (`core/scratch.py`, `core/proposals.py`; [architecture.md](architecture.md#scratch-folders-and-proposals)).
 - **Secrets only in `app.secrets`** (keychain or the owner-only file), never in settings, logs, events, notes, the
   reserve, prompts, argv or the diagnostics bundle.
 - **The AI's reach is `core/places.py`**: read and write roots shared by Kurooto's tools, agy's allow-list and Claude
-  Code's per-run permissions. `kurooto` itself is never runnable from an AI request. Widening any of this changes what
+  Code's per-run permissions. A change request's write root is its scratch folder alone (`write_roots(app,
+  scratch=...)`). `kurooto` itself is never runnable from an AI request. Widening any of this changes what
   unattended AI can do to someone's files: it needs the owner's OK and makes agy ask the user again.
 - **Unattended AI runs can't ask follow-ups**: they get `providers/context.py:headless_context`, the tools, and
   `ask_user` for questions. Don't add anything that would make an agent program prompt interactively.

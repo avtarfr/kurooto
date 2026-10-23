@@ -167,7 +167,9 @@ concept graph, and its dated milestones as buttons.
 | Setup page → Research | "A project's repository (optional)" |
 | A terminal | `kurooto project add <address or folder> [--as <name>]`; `kurooto project` lists them |
 
-`/project` lists the projects set up this way; `/project update <name>` reads one again.
+`/project` lists your projects, these with the rest; `/project update <name>` reads one again. With [Help with your
+project](proposals.md) on, the AI can work on one set up from a folder of yours (`/project help on <name>`); a GitHub
+address's copy is Kurooto's own and read only.
 
 **Getting it.** A GitHub address is copied into Kurooto's data folder (`<data>/repos/<owner>__<name>`): only the
 default branch, its last 50 commits, and of its files only the ones worth reading: documentation, manifests,

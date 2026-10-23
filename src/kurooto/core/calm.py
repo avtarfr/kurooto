@@ -111,6 +111,7 @@ TITLES = {  # features that aren't modules
     "keep": "Keep or drop",
     "rhythm": "Your rhythm",
     "local_helper": "Offline helper",
+    "proposals": "Proposals (the AI's changes waiting for your OK)",
 }
 
 
@@ -687,6 +688,16 @@ REASONS: dict[str, Reason] = {
             stop=to(False, "no more offers of the offline helper (/helper on sets it up any time)"),
         ),
         R("dreaming.morning", "what Kurooto did while you slept, and the loose ends", setting="dreaming.when"),
+        R(
+            "proposals.morning",
+            "changes the AI proposed during the night, waiting for your OK (Apply, Change, Discard)",
+            setting="proposals.morning",
+        ),
+        R(
+            "proposals.night",
+            "a change the AI worked on with nobody waiting for it (told in the morning, as a proposal)",
+            setting="proposals.morning",
+        ),
         R(
             "infer.done",
             "something set up from what you said (a project, a class, a quiz, a routine)",

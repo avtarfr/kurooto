@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 from kurooto.core.clock import now, parse_when
 from kurooto.core.jobs import FRIENDLY
 from kurooto.core.state import jsave
-from kurooto.core.tools import agent_tools, describe, run_tool
+from kurooto.core.tools import describe, run_tool, tools_for
 from kurooto.modules.base import Incoming
 from kurooto.providers.base import Verdict
 
@@ -36,11 +36,13 @@ def get(app: App, path: str, q: dict) -> tuple[int, dict]:
     if path == "tools":
         from kurooto.core.mcp import tools_cache
 
-        listed = [describe(t) for t in agent_tools(app)]
-        try:
-            jsave(tools_cache(app.paths), listed)  # what `kurooto mcp` lists while Kurooto is off
-        except OSError:
-            pass
+        of = str(q.get("job") or "")[:40] or None  # an AI request's own tools (a change request's write its folder)
+        listed = [describe(t) for t in tools_for(app, of)]
+        if of is None:
+            try:
+                jsave(tools_cache(app.paths), listed)  # what `kurooto mcp` lists while Kurooto is off
+            except OSError:
+                pass
         return 200, {"tools": listed}
     if path == "job":
         return job(app, str(q.get("id", "")))
@@ -64,13 +66,13 @@ def get(app: App, path: str, q: dict) -> tuple[int, dict]:
 def post(app: App, path: str, b: dict) -> tuple[int, dict]:
     if path == "tools/call":
         name, args = str(b.get("name") or ""), b.get("args")
-        tools = agent_tools(app)
+        of = str(b.get("job") or "")[:40] or None  # an agent program's request: the tool use is one of its steps
+        tools = tools_for(app, of)  # in a change request: writing only in its scratch folder (core/scratch.py)
         if not any(t.name == name for t in tools):
             return 404, {"ok": False, "error": f"There's no {name} tool (that feature may be off)."}
         if args is not None and not isinstance(args, dict):
             return 400, {"ok": False, "error": "args must be an object"}
         via = b.get("via") if b.get("via") in ("mcp", "dashboard", "terminal") else "api"
-        of = str(b.get("job") or "")[:40] or None  # an agent program's request: the tool use is one of its steps
         return 200, {"ok": True, "result": run_tool(app, name, args or {}, tools, via=via, job=of)}
     if path == "say":
         return say(app, str(b.get("text") or ""))

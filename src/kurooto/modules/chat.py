@@ -85,6 +85,12 @@ class Chat(Module):
             quick = helper.offline_reply(msg.text, files=bool(msg.files))
             if quick:
                 return quick
+        if not msg.files:  # "tidy my LA notes' headings": done in a scratch folder, comes as a proposal
+            from kurooto.core import proposals
+
+            said = proposals.notes_request(self.app, msg, msg.text.strip())
+            if said:
+                return said
         title = msg.text.strip()[:80] or (msg.files[0].name if msg.files else "")
         waits = helper is not None and helper.holds() and not helper.here(self._main())  # said here, not again
         jid = self.app.jobs.submit(

@@ -30,6 +30,11 @@ LIMIT = 3900  # characters per message (Telegram takes 4096)
 CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (("q", "questions"), "open questions I asked you (reply to one to answer it)"),
     (("jobs",), "what the AI is working on and what waits, with Cancel buttons"),
+    (
+        ("proposals",),
+        "the AI's changes to your files waiting for your OK (Apply, Change, Discard); /proposals <number> shows one "
+        "with its diff; /proposals apply|discard|undo <id>",
+    ),
     (("threads",), 'what you\'re in the middle of, with Done, Drop and Undo; also "did I finish that thing?"'),
     (("help", "start"), "this list; /help <group> shows one group in full, /help <word> finds a command or feature"),
     (("aboutme",), "what I know about you (your profile's In-brief part), and where to edit it"),
@@ -56,8 +61,10 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (("notes",), "pdf <course>: a course's notes as one PDF; /notes pdf template: a copy of the template to edit"),
     (
         ("project",),
-        "a project set up from its repository: /project add <github address | folder> [as <name>], /project update "
-        '<name>, /project lists them; also "set up my project from github.com/owner/name"',
+        "your projects: /project lists them; /project add <github address | folder> [as <name>] sets one up from its "
+        "repository, /project update <name>; /project help on|off <name>, /project help <name> <what to do> (a "
+        'proposal comes back), /project checks <name> <command>|off; also "set up my project from '
+        'github.com/owner/name", "help with my thesis: fix the failing test"',
     ),
 )
 SYNC = (("sync",), "sync everything that's on (Classroom, calendar, research, notes brain)")  # while Notes sync is off
@@ -79,6 +86,12 @@ CORE_SAY: tuple[tuple[str, str, tuple[str, ...], str], ...] = (
         "infer.on",
     ),
     ("research", "meeting minutes", ("about the meeting with Prof Ortiz: we fixed the forcing",), "chat"),
+    (
+        "projects",
+        "a project from its repository",
+        ("set up my project from github.com/ana-ruiz/glacier-flow",),
+        "repo_projects.on",
+    ),
 )
 
 
@@ -118,8 +131,9 @@ GROUPS: tuple[Group, ...] = (
         ("library", "gbrain", "notes_sync", "integrate", "files"),
         ("sync", "notes"),
     ),
+    Group("projects", "Projects and proposals", "proposals", ("projects",), ("project", "proposals")),
     Group("skills", "Skills and routines", "skills-and-routines", ("skills",)),
-    Group("research", "Research", "research", ("research", "research_addon"), ("project",)),
+    Group("research", "Research", "research", ("research", "research_addon")),
     Group(
         "google",
         "Google",

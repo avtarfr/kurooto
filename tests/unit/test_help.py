@@ -140,7 +140,7 @@ def test_help_on_telegram_and_in_the_phone_app_is_the_same(env):
 def test_every_plain_english_request_is_in_help_and_understood(env):
     """Every feature's request (its examples) and every one Kurooto understands by itself (CORE_SAY) is in /help, and
     each of Kurooto's own examples is taken by what /help says takes it."""
-    from kurooto.core import infer, ledger, meetings, syncall, threads
+    from kurooto.core import infer, ledger, meetings, repoproject, syncall, threads
 
     app = env.app
     everything(app)
@@ -157,6 +157,7 @@ def test_every_plain_english_request_is_in_help_and_understood(env):
         "sync": syncall.wanted,
         "set up from what you say": lambda t: bool(infer.observe(app, t)),
         "meeting minutes": lambda t: bool(meetings.EXPLICIT.search(t)),
+        "a project from its repository": lambda t: repoproject.asked(t) is not None,
     }
     for key, what, examples, _needs in commands.CORE_SAY:
         assert commands.find_group(key) is not None, key

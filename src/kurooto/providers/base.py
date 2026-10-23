@@ -43,6 +43,8 @@ class Task:
     stop: Any = None  # a threading.Event set when the request is cancelled or stopped: no more steps after it
     images: list = field(default_factory=list)  # pictures to look at (paths): API brains get them with the request,
     # agent programs open them where the prompt says they are (Photo to dates: modules/photodates.py)
+    scratch: Path | None = None  # a change request's scratch folder (core/scratch.py): the one place it may write
+    reads: list = field(default_factory=list)  # what it may read besides the usual folders (the original, read-only)
 
 
 @dataclass

@@ -494,6 +494,15 @@ read-only and refreshes every 5 minutes.
 The [Morning alarm](calls.md) opens it in your browser when it rings, if this computer is awake (`alarm.open_page`,
 default on). Without a plan yet it says so: with Chat on and the alarm set, one is drafted 20 minutes before the alarm.
 
+## The Proposals page
+
+`http://127.0.0.1:8770/proposals` (the **proposals** link at the top of the dashboard, and on the Help with your
+project card) lists every change the AI proposed and is waiting for your OK: its title and summary, the files, whether
+its checks passed, and the whole diff, coloured (added lines green, removed red). A proposal that deletes files says so
+in red at the top. **Apply**, **Discard**, and **Change** with a box for what you want different; applied ones keep an
+**Undo**. With Help with your project on, a box at the top asks the AI to work on one of your projects (those you let
+it help with). [Projects and proposals](proposals.md) has the details.
+
 ## Colours
 
 Kurooto's pages (setup, dashboard, morning page, and the terminal colours) come in three palettes of its own, and

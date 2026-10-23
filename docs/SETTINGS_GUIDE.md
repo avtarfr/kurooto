@@ -702,6 +702,27 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `profile.repo` | `""` | owner/name of a private GitHub repository; empty: the one Notes sync uses |
 | `profile.when` | `"daily 04:40"` | when your profile is saved |
 
+### `projects`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `projects.check_timeout_s` | `300` | a check is stopped after this many seconds |
+| `projects.checks` | `{}` | project name -> the command that checks it (its tests, a LaTeX build); none until you set one |
+| `projects.effort` | `"high"` | how hard the AI thinks about project work (low, medium, high, auto) |
+| `projects.folders` | `{}` | project name -> folder, for more projects of yours (/project add <folder> keeps its own list) |
+| `projects.help` | `[]` | the projects the AI may help with (/project help on <name>); none until you say so |
+
+### `proposals`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `proposals.inline_lines` | `30` | a diff up to this many lines comes inside the message; a longer one as a file |
+| `proposals.keep_days` | `7` | a proposal nobody answered goes after this many days, with its scratch folder |
+| `proposals.max_files` | `60` | nor one that touches more files than this |
+| `proposals.max_kb` | `400` | a bigger change isn't proposed (ask for a smaller part) |
+| `proposals.morning` | `"daily 07:30"` | the night's proposals, told then when Dreaming is off (else in Dreaming's message) |
+| `proposals.notes_edits` | `true` | a change to text already in your notes becomes a proposal (Apply / Change / Discard) |
+
 ### `quests`
 
 | Setting | Default | What it does |

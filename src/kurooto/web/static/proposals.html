@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en" data-palette="{{PALETTE}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="kurooto-token" content="{{TOKEN}}">
+<meta name="referrer" content="no-referrer">
+<title>Proposals · Kurooto</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  .props { max-width: 1000px; margin: 0 auto; padding: 24px 18px 60px; }
+  .props h1 { font-size: 24px; margin: 4px 0 4px; }
+  .props .note { color: var(--dim); margin: 0 0 16px; }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; margin-bottom: 16px; }
+  .box h2 { margin: 0 0 6px; text-transform: none; letter-spacing: 0; font-size: 17px; color: var(--fg); }
+  .box .meta { color: var(--dim); font-size: 13px; margin-bottom: 8px; }
+  .dels { color: var(--bad); border: 1px solid var(--bad); padding: 6px 10px; margin: 8px 0; font-weight: 600; }
+  .warn { color: var(--warn); margin: 6px 0; }
+  .sum { white-space: pre-wrap; margin: 6px 0 10px; }
+  .files { font: 13px var(--mono); margin: 0 0 10px; padding-left: 18px; }
+  .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .acts textarea { flex: 1 1 100%; min-height: 60px; }
+  pre.diff { font: 13px/1.45 var(--mono); overflow-x: auto; border: 1px solid var(--line); padding: 8px 0; margin: 8px 0 0; max-height: 70vh; }
+  pre.diff span { display: block; padding: 0 10px; white-space: pre; }
+  pre.diff .add { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+  pre.diff .del { background: color-mix(in srgb, var(--bad) 16%, transparent); }
+  pre.diff .hunk { color: var(--lav); }
+  pre.diff .file { color: var(--peach); font-weight: 600; margin-top: 6px; }
+  .said { color: var(--accent-text); min-height: 1.4em; }
+  .empty { color: var(--dim); }
+  details summary { cursor: pointer; color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="props">
+  <header>
+    <div class="brand">KUROOTO <span class="ver">{{VERSION}}</span></div>
+    <a href="/">dashboard</a>
+  </header>
+  <h1>Proposals</h1>
+  <p class="note">Changes the AI made in its scratch folder, waiting for your OK. Nothing of yours changes until you tap
+    Apply: notes and folders keep their earlier versions (Undo puts them back); a git repository gets one commit on
+    your current branch, never a push (Undo reverts it).</p>
+  <div class="box" id="ask" hidden>
+    <h2>Help with a project</h2>
+    <div class="acts"><select id="ask-project" aria-label="project"></select>
+      <textarea id="ask-what" placeholder="What should the AI do? e.g. add footnotes to chapter 2 citing refs.bib"></textarea>
+      <button class="primary" id="ask-go">Ask</button></div>
+    <p class="note" id="ask-off"></p>
+  </div>
+  <p class="said" id="said" aria-live="polite"></p>
+  <div id="list"><p class="empty">Loading…</p></div>
+  <details class="box"><summary>Applied and discarded lately</summary><div id="done"></div></details>
+</div>
+<script src="/static/proposals.js"></script>
+</body>
+</html>

@@ -14,7 +14,7 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 | Symbol | What it is |
 |---|---|
 | `Verdict` (StrEnum) | `ok`, `empty`, `denied`, `rate_limited`, `auth`, `timeout`, `error`, `cancelled`, `stuck`. Every brain maps its failures onto these; the queue decides retries from them. |
-| `Task` (dataclass) | One request: `prompt`, `effort`, `title`, `cwd` (the notes folder), `timeout_s`, `context` (the headless preamble), `tools` + `run_tool` (for API brains), `mcp` + `mcp_env` (for agent programs), `text_only`, `on_process(pid)`, `stop` (a `threading.Event`), `images` (pictures to look at, paths: `OpenAICompat` sends them with the request as `image_url` data URLs; agent programs open them where the prompt says). |
+| `Task` (dataclass) | One request: `prompt`, `effort`, `title`, `cwd` (the notes folder, or a change request's scratch folder), `scratch` (a change request's scratch folder: the one place it may write), `reads` (the original, read-only), `timeout_s`, `context` (the headless preamble), `tools` + `run_tool` (for API brains), `mcp` + `mcp_env` (for agent programs), `text_only`, `on_process(pid)`, `stop` (a `threading.Event`), `images` (pictures to look at, paths: `OpenAICompat` sends them with the request as `image_url` data URLs; agent programs open them where the prompt says). |
 | `Result` (dataclass) | `verdict`, `text`, `seconds`, `detail` (log only, never shown raw), `retry_after_s`, `usage` (dict; keys used: `note`, `limit`, `tool_calls`, `tools_used`, `cost`, `denied`, `prompt_tokens` / `completion_tokens` (OpenAI-compatible), and `limits`, which the queue adds: every limit hit while trying the chain), `model` (the model that answered, as the brain knows it: agy's `--model`, Claude Code's `modelUsage`, the OpenAI-compatible response's `model`; set on failures too). `.ok` is `verdict == OK`. |
 | `short_model(model, effort="")` | A model id for the run receipt: no vendor prefix, date or `-latest`, versions dotted (`claude-opus-4-5-20251101` → `opus-4.5`), and no effort suffix when it equals the effort shown (`gemini-3.8-flash-medium` at medium → `3.8-flash`). |
 | `Brain` | Base class. Attributes `id`, `label`, `kind` (`"api"` or `"cli"`), `meter`, `denied_help`. Methods `available() -> (bool, why)`, `run(task) -> Result`, `complete(prompt, system, effort, timeout) -> Result`, and for CLI brains `prepare(app)`, `has_worked(app)` / `mark_worked(app)` (a `<state>/<id>-worked.json` marker), `after_test(app)`, and `sees() -> (True | False | None, why)`: can it read pictures (agy and Claude Code: yes; `OpenAICompat`: Gemini yes, Ollama asks `/api/show` for the model's `vision` capability and caches it in `_SEES`, others `None` = try). `providers.sees(app)` answers for `brain.main` with the sentence to show. |
@@ -76,6 +76,11 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
   (`consent_answer`). With `KUROOTO_HOME` set (tests, portable copies) it does nothing unless
   `KUROOTO_AGY_TOOLS=1`.
 - Usage counting: `log_usage()` / `log_requests_since()` read agy's own logs, so interactive agy use counts too.
+- A change request runs agy with the scratch folder as its working folder (`Task.cwd`), and its Kurooto tools are the
+  confined set (`KUROOTO_JOB` reaches `kurooto mcp`, which lists and calls `tools_for(app, job)`). Nothing is added to
+  agy's allow-list for scratch folders (that would ask every agy user again), and the allow-list can't be narrowed per
+  run, so agy's built-in file tools keep the usual write roots; `core/scratch.py:audit` reports what changed in the
+  original while it ran, in the proposal.
 
 ### Claude Code (`providers/claude.py:ClaudeCode`)
 
@@ -90,6 +95,11 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
   `WebFetch`, `WebSearch`, `mcp__kurooto`, `mcp__gbrain` when applicable; `deny` always holds `Bash(kurooto)` and
   `Bash(kurooto *)`.
 - Text-only requests get `--tools ""` and no MCP config.
+- A change request (`Task.scratch` set, [architecture.md](architecture.md#scratch-folders-and-proposals)): `Edit` is
+  allowed for the scratch folder only (`write_roots(app, scratch=...)`), `Edit` of the original and of every usual
+  write root is in `deny`, `Read` of `core/scratch.py:SECRETS` is denied in every read root (and `Edit` of them in the
+  scratch folder), `SCRATCH_NO` (`mkdir`, `echo`) and agents.scripts are left out, and no GBrain server is given.
+  `--add-dir` covers the original and the scratch folder; the run's cwd is the scratch folder.
 - `ClaudeCode.verdict()` parses the last JSON line (`type == "result"`): `is_error` goes through `_fail()`
   (`RATE_LIMIT` or `PLAN_LIMIT`: "5-hour limit reached", "You've hit your limit", "Weekly limit reached" are
   `RATE_LIMITED`); `permission_denials` with no text becomes `DENIED`. At a limit `limited()` reads the reset

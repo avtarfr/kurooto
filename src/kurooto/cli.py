@@ -2019,14 +2019,23 @@ def ai_run(a) -> int | None:
 
 
 def project_parsers(sub) -> None:
-    pj = sub.add_parser("project", help="a project set up from its repository: add, update, list (core/repoproject.py)")
+    pj = sub.add_parser(
+        "project", help="your projects: list, add or update from a repository, the AI's help, checks (projects.py)"
+    )
     psub = pj.add_subparsers(dest="project_cmd")
-    psub.add_parser("list", help="the projects set up from repositories (the default)")
+    psub.add_parser("list", help="your projects, from every source (the default)")
     add = psub.add_parser("add", help="set a project up from a GitHub address or a folder (read, never run)")
     add.add_argument("target", help="github.com/owner/name (https or git@ form) or a folder's full path")
     add.add_argument("--as", dest="name", default="", help="the project's name (default: what the repository says)")
     up = psub.add_parser("update", help="read a project's repository again")
     up.add_argument("target", help="the project's name, or its repository")
+    hp = psub.add_parser(
+        "help", help="on|off <name>: let the AI help with a project or not; <name> <what to do>: a proposal comes back"
+    )
+    hp.add_argument("words", nargs="+", help='"on thesis", "off thesis" or "thesis add footnotes to chapter 2"')
+    ck = psub.add_parser("checks", help="<name> [<command> | off]: what runs after the AI's changes (tests, a build)")
+    ck.add_argument("name", help="the project's name")
+    ck.add_argument("command", nargs="*", help='e.g. "make test"; off removes it; nothing shows it')
 
 
 def project_run(a) -> int | None:
@@ -2035,7 +2044,12 @@ def project_run(a) -> int | None:
     if a.cmd != "project":
         return None
     cmd = a.project_cmd or "list"
-    text = "/project" if cmd == "list" else f'/project {cmd} "{a.target}"'
+    if cmd == "help":
+        text = "/project help " + " ".join(a.words)
+    elif cmd == "checks":
+        text = " ".join(["/project checks", a.name, *a.command])
+    else:
+        text = "/project" if cmd == "list" else f'/project {cmd} "{a.target}"'
     if cmd == "add" and a.name.strip():
         text += f" as {a.name.strip()}"
     r = say(text)

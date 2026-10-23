@@ -98,6 +98,9 @@ class App:
         from kurooto.core import tap  # never without a tap: an AI's alarm or call runs on Approve (core/tap.py)
 
         self.ask.hooks[tap.HOOK] = lambda q, answer: tap.approved(self, q, answer)
+        from kurooto.core import proposals  # the AI's changes to your files wait as proposals (core/proposals.py)
+
+        proposals.attach(self)
         from kurooto import providers
 
         providers.drop_retired(self)  # an AI that's no longer offered (Codex) isn't left as the main one
@@ -357,6 +360,12 @@ class App:
             infer.start(self)
         except Exception as e:
             self.events.emit("module_failed", module="infer", error=f"{type(e).__name__}: {e}"[:300])
+        try:
+            from kurooto.core import proposals  # scratch folders cleaned, the night's proposals in the morning
+
+            proposals.start(self)
+        except Exception as e:
+            self.events.emit("module_failed", module="proposals", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
     def handle(self, msg: Incoming, also: list[Module] | None = None) -> None:
@@ -427,10 +436,16 @@ class App:
 
                 msg.reply(infer.command(self, arg))
                 return
-            if name == "project":  # a project set up from its repository: /project add <address> (core/repoproject.py)
-                from kurooto.core import repoproject
+            if name == "project":  # your projects: set up from a repository (core/repoproject.py), the AI's help as
+                from kurooto.modules import projects  # proposals, checks (modules/projects.py): one /project
 
-                msg.reply(repoproject.command(self, arg))
+                msg.reply(projects.command(self, msg, arg))
+                return
+            if name == "proposals":  # the AI's changes waiting for your OK: Apply / Change / Discard
+                from kurooto.core import proposals
+
+                text, buttons = proposals.command(self, arg)
+                msg.reply(text, buttons=buttons)
                 return
             if name == "jobs":  # what the AI is working on and what waits, with Cancel buttons (core/jobs.py)
                 text, buttons = self.jobs.command(arg)
@@ -685,6 +700,10 @@ class App:
             return fixme.button(self, ref, act)
         if prefix == "job":  # a Cancel button under /jobs (core/jobs.py)
             return self.jobs.button(ref, act)
+        if prefix == "prop":  # Apply / Change / Discard / Undo / Show under a proposal (core/proposals.py)
+            from kurooto.core import proposals
+
+            return proposals.button(self, ref, act)
         if prefix == "fgt":  # Forget everything / Keep it under /forget all (core/retention.py)
             from kurooto.core import retention
 

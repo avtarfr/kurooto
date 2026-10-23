@@ -533,9 +533,11 @@ of several. The day after an exam or a heavy day it starts with one line saying 
   30 days. `/dream policy` shows all of it.
 - **Proposed fixes to skills** (`dreaming.propose_prompts`, off): when a skill's answers were corrected, marked Wrong or
   asked again twice or more in two weeks, the night asks Learning's second-look AI for the skill with the failing step
-  rewritten. If, by that AI's replay, it fixes at least half of those cases, the morning message offers it with
-  **Apply** and **No** (`/dream proposal` shows it whole). Nothing changes without your tap; Apply replays your test
-  cases and puts the skill back at once if one that passed goes wrong; Undo in `/learned`.
+  rewritten. If, by that AI's replay, it fixes at least half of those cases, the morning message offers it as a
+  [proposal](proposals.md) with **Apply**, **Change** and **Discard** (`/dream proposal` shows it whole, `/proposals`
+  as a diff). Nothing changes without your tap; Apply replays your test cases and puts the skill back at once if one
+  that passed goes wrong; Undo in `/learned`. Change has the AI rework it in a scratch folder; Discard leaves that
+  skill alone for 30 days.
 - **Curious** (`dreaming.curious`, on): a topic you asked about 3 or more times this week (your requests to the AI,
   what calls searched your notes for, quiz questions you got wrong) with no note on it, or only a stub, gets one line:
   "You've asked about the Fokker–Planck equation 3 times this week and there's no note on it. Want one?" **Make a

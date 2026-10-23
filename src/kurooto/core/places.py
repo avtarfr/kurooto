@@ -1,5 +1,9 @@
 """Where the AI may look on this computer, the same for Kurooto's own tools and for agy's allow-list.
 
+A change request (Help with your project, a change to your notes you asked for, a fix Dreaming proposes) is different:
+it may write in its own scratch folder only (core/scratch.py; write_roots(app, scratch=...)), and read as always plus
+the original. What it wrote reaches your files only as a proposal you apply (core/proposals.py).
+
 Reading: your notes folder, Kurooto's copies of Classroom and mail (its data folders), your Documents and Downloads,
 and your Screenshots folder if there is one. Writing: your notes folder (all of it), your files folder (files.folder,
 if you set one), the folder Classroom's course files go to, and your add-ons' skills/ when "Your add-ons" is on (never
@@ -103,9 +107,13 @@ def files_folder(app: App) -> Path | None:
     return Path(os.path.abspath(root)) if root else None
 
 
-def write_roots(app: App) -> list[Path]:
-    """Every folder the AI may write in, absolute, without repeats."""
+def write_roots(app: App, scratch: Path | None = None) -> list[Path]:
+    """Every folder the AI may write in, absolute, without repeats. A change request (core/scratch.py) may write in
+    its scratch folder and nowhere else: then that's the one folder."""
     from kurooto.core import overlay
+
+    if scratch is not None:
+        return [Path(os.path.abspath(scratch))]
 
     roots = [
         notes_root(app),
@@ -116,8 +124,9 @@ def write_roots(app: App) -> list[Path]:
     return list(dict.fromkeys(Path(os.path.abspath(p)) for p in roots))
 
 
-def read_roots(app: App) -> list[Path]:
-    """Every folder the AI may read, absolute, without repeats (some may not exist yet)."""
+def read_roots(app: App, extra: list[Path] | tuple = ()) -> list[Path]:
+    """Every folder the AI may read, absolute, without repeats (some may not exist yet). extra: a change request's
+    original and scratch folder (core/scratch.py)."""
     roots = [
         notes_root(app),
         course_files(app),  # Classroom's course files (google_classroom)
@@ -131,6 +140,7 @@ def read_roots(app: App) -> list[Path]:
         screenshots(),
     ]
     roots += write_roots(app)  # what it may write, it may read
+    roots += list(extra)
     return list(dict.fromkeys(Path(os.path.abspath(p)) for p in roots if p))
 
 

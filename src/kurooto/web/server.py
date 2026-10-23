@@ -160,6 +160,9 @@ class Server:
                 if path == "/morning":  # the morning page (rhythm): today's plan, opened by the alarm
                     html = server.fill((static("morning.html") or b"").decode())
                     return self._send(200, html.encode(), TYPES[".html"])
+                if path == "/proposals":  # the AI's changes waiting for your OK, with diffs (core/proposals.py)
+                    html = server.fill((static("proposals.html") or b"").decode())
+                    return self._send(200, html.encode(), TYPES[".html"])
                 if path == "/confidential":  # confidential mail summarised on this computer (google): read-only
                     html = server.fill((static("confidential.html") or b"").decode())
                     return self._send(200, html.encode(), TYPES[".html"])
