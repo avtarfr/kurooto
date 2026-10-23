@@ -108,7 +108,7 @@ html[data-now="dusk"] .hero { --hero-ground: var(--kuro-2); --sun-bottom: -106vh
 html[data-now="night"] .hero .sun { background: var(--bone); }
 html[data-now="night"] .hero .sun::after { opacity: 1; }
 .air { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; }
-@media (prefers-reduced-motion: no-preference) { .hero .tg { animation: drift 7s var(--ease-in-out, ease-in-out) infinite alternate; } }
+@media (prefers-reduced-motion: no-preference) { .hero .tg { animation: drift 9s var(--ease-in-out, ease-in-out) infinite alternate; } }
 @keyframes drift { from { translate: 0 -6px; } to { translate: 0 8px; } }
 .hero .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); grid-template-rows: auto 1fr; column-gap: 2rem; min-height: calc(100svh - 64px - clamp(48px, 9vh, 120px)); }
 .hero h1 { grid-column: 1 / -1; font-size: clamp(3rem, 1rem + 6.2vw, 6.75rem); max-width: 11em; }
@@ -389,7 +389,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     </div>
   </section>
 
-  <section class="scene" id="scene" data-scene="day" data-options='{"hold": 8}' aria-label="A day with Kurooto, from 04:00 to midnight">
+  <section class="scene" id="scene" data-scene="day" data-options='{"hold": 11}' aria-label="A day with Kurooto, from 04:00 to midnight">
     <div class="scene-stage">
       <div class="sky" aria-hidden="true"><i class="s-night"></i><i class="s-dawn"></i><i class="s-day"></i><i class="s-noon"></i><i class="s-dusk"></i><i class="s-late"></i></div>
       <div class="orb" aria-hidden="true" data-move></div>
@@ -520,9 +520,9 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
   const live = !!(window.gsap && window.ScrollTrigger);
   if (live) gsap.registerPlugin(ScrollTrigger);
   const Stage = { live, lenis: null, get reduced() { return mq('(prefers-reduced-motion: reduce)'); }, get touch() { return mq('(pointer: coarse)'); } };
-  Stage.smooth = ({ lerp = 0.12 } = {}) => {
+  Stage.smooth = ({ lerp = 0.075 } = {}) => {
     if (!live || !window.Lenis || Stage.reduced || Stage.touch || Stage.lenis) return Stage.lenis;
-    const lenis = new Lenis({ lerp, smoothWheel: true, anchors: true, autoRaf: false });
+    const lenis = new Lenis({ lerp, wheelMultiplier: 0.85, touchMultiplier: 0.9, smoothWheel: true, anchors: true, autoRaf: false });
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add((t) => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0);
     html.classList.add('is-smooth'); Stage.lenis = lenis; return lenis;
@@ -561,9 +561,9 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     h1.innerHTML = h1.textContent.split(' ').map(function (w) { return '<span class="w">' + w + '</span>'; }).join(' ');
     if (!G || reduce) return;
     G.from('#h1 .w', { yPercent: 70, opacity: 0, duration: 1.1, ease: EASE, stagger: 0.07 });
-    G.from('.hero .lead, .hero .who, .hero .act', { y: 30, opacity: 0, duration: 1, ease: EASE, stagger: 0.09, delay: 0.25 });
+    G.from('.hero .lead, .hero .who, .hero .act', { y: 30, opacity: 0, duration: 1.4, ease: EASE, stagger: 0.12, delay: 0.3 });
     G.from('#hero-sun', { yPercent: 22, duration: 2.2, ease: 'power3.out' });
-    G.from('.hero .tg', { y: 60, opacity: 0, scale: 0.96, duration: 1.2, ease: EASE, delay: 0.5 });
+    G.from('.hero .tg', { y: 60, opacity: 0, scale: 0.96, duration: 1.6, ease: EASE, delay: 0.6 });
   }
   if (seen || reduce || !G) { intro(); }
   else {
@@ -572,12 +572,12 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     var tl = G.timeline({ onComplete: finish });
     var order = [3, 0, 5, 2, 6, 1, 4, 5];
     order.forEach(function (i, n) {
-      tl.to(moles[i], { y: '22%', duration: 0.13, ease: 'back.out(2.4)' }, n * 0.085)
-        .to(moles[i], { y: '102%', duration: 0.14, ease: 'power2.in' }, n * 0.085 + 0.16);
+      tl.to(moles[i], { y: '22%', duration: 0.19, ease: 'back.out(2.4)' }, n * 0.12)
+        .to(moles[i], { y: '102%', duration: 0.2, ease: 'power2.in' }, n * 0.12 + 0.24);
     });
-    tl.to(moles, { y: '0%', duration: 0.42, ease: 'back.out(1.7)', stagger: 0.04 }, '+=0.02')
-      .to(moles, { y: '-6%', duration: 0.14, ease: 'power1.out', stagger: 0.025, yoyo: true, repeat: 1 }, '+=0.02')
-      .to(boot, { clipPath: 'inset(0 0 100% 0)', duration: 0.7, ease: 'power4.inOut' }, '+=0.12');
+    tl.to(moles, { y: '0%', duration: 0.55, ease: 'back.out(1.7)', stagger: 0.04 }, '+=0.02')
+      .to(moles, { y: '-6%', duration: 0.2, ease: 'power1.out', stagger: 0.035, yoyo: true, repeat: 1 }, '+=0.02')
+      .to(boot, { clipPath: 'inset(0 0 100% 0)', duration: 0.9, ease: 'power4.inOut' }, '+=0.12');
     function finish() {
       if (done) return; done = true;
       html.classList.remove('booting');
@@ -602,7 +602,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
   if (window.Stage && Stage.live) {
     Stage.smooth();
     Stage.scene($('#scene'), {
-      hold: 8,
+      hold: 11,
       onUpdate: function (p) {
         sceneMin = sceneTime(p);
         var idx = Math.min(N - 1, Math.floor(p * N));
@@ -726,7 +726,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     var cv = $('#air'); if (!cv || reduce) return;
     var cx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), W = 0, H = 0, dots = [], lastY = scrollY, push = 0, run = true;
     function size() { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var n = W < 700 ? 22 : 46; dots = []; for (var i = 0; i < n; i++) dots.push({ x: Math.random() * W, y: Math.random() * H, r: 0.8 + Math.random() * 1.8, v: 0.12 + Math.random() * 0.3, s: Math.random() * 6.28, k: Math.random() }); }
+      var n = W < 700 ? 22 : 46; dots = []; for (var i = 0; i < n; i++) dots.push({ x: Math.random() * W, y: Math.random() * H, r: 0.8 + Math.random() * 1.8, v: 0.07 + Math.random() * 0.18, s: Math.random() * 6.28, k: Math.random() }); }
     size(); addEventListener('resize', size);
     document.addEventListener('visibilitychange', function () { run = !document.hidden; if (run) requestAnimationFrame(frame); });
     function frame(t) {
@@ -761,7 +761,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
       var el = $(sel); if (!el) return;
       var parts = $$('h2, .intro, .wake, .timeline li, .sub, .qs details, .after, .install, .links > div', el);
       ScrollTrigger.create({ trigger: el, start: 'top 78%', once: true, onEnter: function () {
-        G.fromTo(parts, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1, ease: EASE, stagger: 0.06 });
+        G.fromTo(parts, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1.3, ease: EASE, stagger: 0.08 });
       } });
     });
     ScrollTrigger.create({ trigger: '#blocks', start: 'top 85%', once: true, onEnter: function () {
