@@ -30,8 +30,9 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   show as "handed to agy / Claude Code".
 - **Retention.** `privacy.keep_days` (30) expires transcripts, prompts, answers, audio and logs, also the call
   line's queued copies; `/forget 7d`.
-- **Problem-set progress.** Deadlines with parts (Q1–7): reply "4/7" or tap +1 on the phone; Start-by plans from
-  what's left; the morning says "ps3 4/7, due Fri".
+- **Problem-set progress.** (0.5.10 has "ps3 4/7" in chat and on calls, shown in lists and Start-by, which plans from
+  what's left; still to come: replying "4/7" to a deadline message, +1 on the phone.) Deadlines with parts (Q1–7):
+  reply "4/7" or tap +1 on the phone; Start-by plans from what's left; the morning says "ps3 4/7, due Fri".
 - **Phone outbox.** Captures and taps made while the laptop sleeps wait on the call line and merge on wake; a home
   screen widget and a capture tile (launcher shortcut on Android 6).
 - **iPhone Shortcut.** Pairing an iPhone ends with a ready "Tell Kurooto" Shortcut (Siri, Back Tap) with a

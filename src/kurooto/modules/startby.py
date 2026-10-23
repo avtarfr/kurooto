@@ -320,7 +320,14 @@ class StartBy(Module):
             return 0.4
 
     def size_of(self, i: str, it: dict, st: dict | None = None) -> tuple[float, str, bool]:
-        """(hours of work, what kind it is, whether that's a guess)."""
+        """(hours of work left, what kind it is, whether that's a guess). Parts done ("ps3 4/7") take their share."""
+        h, kind, guessed = self._whole_size(i, it, st)
+        total, done = it.get("parts") or 0, it.get("parts_done") or 0
+        if total and 0 < done <= total:
+            h = max(0.25, h * (total - done) / total) if done < total else 0.25
+        return h, kind, guessed
+
+    def _whole_size(self, i: str, it: dict, st: dict | None = None) -> tuple[float, str, bool]:
         kind = kind_of(it["title"], it.get("kind", "task"))
         mine = ((st if st is not None else self._state()).get("sizes") or {}).get(i)
         if mine:
@@ -383,6 +390,7 @@ class StartBy(Module):
                 continue
             h, kind, guessed = self.size_of(i, it, st)
             row = {"id": i, "title": it["title"], "subject": it.get("subject"), "due": due, "kind": kind}
+            row["parts"] = f" ({it.get('parts_done', 0)}/{it['parts']})" if it.get("parts") else ""
             rows.append({**row, "hours": h, "guessed": guessed})
         return rows
 
@@ -461,7 +469,7 @@ class StartBy(Module):
         due = when_text(r["due"].isoformat())
         on = "on" if r.get("kind") == "exam" else "due"
         work = self.when_words(r, today).replace("start ", "start working on it ", 1)
-        return f"{r['title']} ({on} {due}): {work}, {size_text(r['hours'])} of work"
+        return f"{r['title']}{r.get('parts', '')} ({on} {due}): {work}, {size_text(r['hours'])} of work"
 
     def morning_rows(self) -> list[dict]:
         """For the morning page: what to start, {"title", "when"}."""

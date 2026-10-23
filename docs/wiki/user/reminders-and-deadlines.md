@@ -127,6 +127,7 @@ midsem, endsem, viva, oral, test or assessment counts as an exam: it can't be "d
 | `what's due this week?` | the next 7 days |
 | `what's due soon?` | the next `deadlines.plan_h` hours (3 days) |
 | `/status` | includes "Due in the next 3 days" |
+| `ps3 4/7` · `problem set 3 4 of 7 done` · `did 4 of 7 on the stats problem set` | how much of it is done: "Problem set 3: 4/7, 3 to go, due Fri 17:00". The lists show "(4/7)", and [Start-by](#start-by-dates-and-crunch-weeks) plans from what's left (3/7 of its size). Only for a deadline on your list; at 7/7 it reminds you to tap **Done** once it's handed in |
 
 If you add something that's already on the list, Kurooto says "Already on the list" and keeps one copy (if you had
 dropped it, adding it yourself brings it back).

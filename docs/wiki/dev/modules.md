@@ -370,6 +370,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **deadlines** (`modules/deadlines.py`): merges deadlines from manual entries, notes tasks, Classroom, the calendar,
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,
   overdue check) and runs exam mode. Ids are hashes of title plus date. `deadlines.json` under the `deadlines` lock.
+- **deadlines** progress: `PROGRESS` patterns and the `deadline_progress` intent/tool set `parts`/`parts_done` on an
+  open deadline found by `find_open()` (`similar()` on the title or the full title, the soonest due); `parts_text()`
+  adds "(4/7)" to lists and the call brief; Start-by's `size_of()` scales `_whole_size()` by what's left.
 - **startby** (`modules/startby.py`): start-by dates from size estimates and free time; local arithmetic only.
   `learn_window()` (`startby:learn_window`, weekly sun 12:00, `startby.learn_window`) reads `message_in` events of the
   last 21 days (a day turns at 04:00), and with 7+ days of 3+ messages sets `startby.window` from the medians of the

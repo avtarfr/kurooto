@@ -2,6 +2,9 @@
 
 ## 0.5.10 (unreleased)
 
+- **Problem-set progress**: "ps3 4/7" or "did 4 of 7 on the stats problem set" keeps how much of a deadline is done;
+  lists, the call brief and Start-by lines show "(4/7)", and Start-by plans from what's left. On a call too
+  (`deadline_progress`).
 - **Turn on from chat** (`turnon.offer`, on): a request a feature that's off would understand ("remind me in 5 min to
   stretch" with Reminders off, "wake me at 7" with the alarm off) gets **Turn on** / **Not now** instead of going to
   the AI. Turn on switches on that feature and what it needs, then does the request; Not now leaves it off and, with

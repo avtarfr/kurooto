@@ -475,6 +475,9 @@ One list of what's due, from:
 The same thing from two places (say Classroom, your calendar and a task in your notes) is kept once; a known time
 beats "end of the day". Topics on your not-interested list are left out.
 
+**How much is done:** "ps3 4/7" (or "did 4 of 7 on the stats problem set") keeps a deadline's parts done. The lists
+and calls show "(4/7)", and Start-by plans from what's left. On a call, the AI uses the same (`deadline_progress`).
+
 **The chase**, for things you hand in:
 - a day before: a message with **Done / Not mine / Snooze 3 h**;
 - six hours before: with Phone calls on, **a call** ("is it done, or how will you finish it?"). It waits out

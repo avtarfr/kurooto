@@ -140,6 +140,24 @@ def due_from(date: str, rest: str) -> str:
     return f"{date}T{h:02d}:{min(int(tm[2]), 59):02d}:00"
 
 
+PROGRESS = (
+    re.compile(
+        r"(?i)^(?:i'?ve\s+|i\s+have\s+)?(?:done\s+|finished\s+)?(?P<what>[a-z][\w &'-]{1,60}?)\s*[:,-]?\s+"
+        r"(?P<a>\d{1,2})\s*(?:/|of|out of)\s*(?P<b>\d{1,2})(?:\s+(?:done|finished|questions|parts|problems))?\s*$"
+    ),
+    re.compile(
+        r"(?i)^(?:i\s+)?(?:did|done|finished|have done|'ve done)\s+(?P<a>\d{1,2})\s*(?:/|of|out of)\s*(?P<b>\d{1,2})"
+        r"(?:\s+(?:questions|parts|problems))?\s+(?:on|in|of|for|from)\s+(?:the\s+|my\s+)?(?P<what>.{2,60}?)\s*$"
+    ),
+)
+
+
+def parts_text(it: dict) -> str:
+    """ " (4/7)" for a deadline with parts done, else ""."""
+    total = it.get("parts")
+    return f" ({it.get('parts_done', 0)}/{total})" if total else ""
+
+
 def similar(a: str, b: str, drop: set[str] | frozenset = frozenset()) -> bool:
     """Do two titles name the same thing? ("Linear Algebra: Problem set 3" and "Problem set 3": yes; "Quiz 2" and
     "Quiz 3": no.) `drop` holds words that don't count, like the subject's name."""
@@ -207,6 +225,39 @@ class Deadlines(Module):
                     return slug
         found = s.find_in(title)
         return found[0] if len(found) == 1 else None
+
+    def find_open(self, words: str) -> tuple[str, dict] | None:
+        """The open deadline these words name (the soonest due when several do)."""
+        words = words.strip().rstrip(".!?")
+        s = self._subjects()
+        drop = {w for w in re.findall(r"[a-z]+", (s.name_of(s.resolve(words) or "") if s else "").lower())}
+        found = [
+            (i, it)
+            for i, it, _h in self.upcoming(24 * 60)
+            if similar(words, it["title"]) or similar(words, self.full_title(it), drop)
+        ]
+        return min(found, key=lambda x: x[1]["due"]) if found else None
+
+    def progress(self, words: str, done: int, total: int) -> str:
+        """ "ps3 4/7": how much of a deadline with parts is done; Start-by plans from what's left."""
+        if total < 1 or not 0 <= done <= total or total > 99:
+            return "Say it as done/total, e.g. ps3 4/7."
+        got = self.find_open(words)
+        if got is None:
+            return f'Which deadline is "{words.strip()}"? /deadlines lists them.'
+        i, _ = got
+        with Lock(self.app.paths.state, "deadlines"):
+            items = self.items()
+            it = items[i]
+            it["parts"], it["parts_done"] = total, done
+            jsave(self.file, items)
+        self.app.events.emit("deadline_progress", done=done, total=total)
+        left = (
+            "all done: tap Done on it in /deadlines once it's handed in"
+            if done == total
+            else f"{total - done} to go, due {when_text(it['due'])}"
+        )
+        return f"{self.full_title(it)}: {done}/{total}, {left}."
 
     def full_title(self, it: dict) -> str:
         """Its title, with the subject's name in front when the title doesn't say it ("Quiz" -> "Real Analysis II:
@@ -945,7 +996,7 @@ class Deadlines(Module):
             return "Nothing due in the next two weeks that I know of."
         for i, it, h in up[:12]:
             buttons = None if it["kind"] == "exam" else [[("Done", f"dl:{i}:done"), ("Not mine", f"dl:{i}:ignore")]]
-            msg.reply(f"{human(h)} · {it['title']}", buttons=buttons)
+            msg.reply(f"{human(h)} · {it['title']}{parts_text(it)}", buttons=buttons)
         return None
 
     def _due(self, msg: Incoming, arg: str) -> str:
@@ -1051,7 +1102,17 @@ class Deadlines(Module):
 
         def run_show(msg, s):
             up = self.upcoming(s["hours"])
-            return "\n".join(f"{human(h)} · {it['title']}" for _, it, h in up[:15]) or "Nothing due in that time."
+            return (
+                "\n".join(f"{human(h)} · {it['title']}{parts_text(it)}" for _, it, h in up[:15])
+                or "Nothing due in that time."
+            )
+
+        def progress(text: str):
+            for rx in PROGRESS:
+                m = rx.match(text.strip().rstrip(".!"))
+                if m and int(m["b"]) >= 1 and int(m["a"]) <= int(m["b"]) and self.find_open(m["what"]):
+                    return {"what": m["what"], "done": int(m["a"]), "total": int(m["b"])}
+            return None
 
         def ignore(text: str):
             m = IGNORE.match(text.strip().rstrip(".!"))
@@ -1090,12 +1151,18 @@ class Deadlines(Module):
                 questions=True,
             ),
             Intent("add_recurring", "<subject> has a quiz every <day>", recur, run_recur),
+            Intent(
+                "deadline_progress",
+                "how much of a problem set is done: ps3 4/7",
+                progress,
+                lambda m, s: self.progress(s["what"], s["done"], s["total"]),
+            ),
         ]
 
     # -------------------------------------------------------------------------------------- on calls
     def call_brief(self) -> dict:
         due = [
-            {"id": i, "what": self.full_title(it), "due": human(h), "kind": it["kind"]}
+            {"id": i, "what": self.full_title(it) + parts_text(it), "due": human(h), "kind": it["kind"]}
             for i, it, h in self.upcoming(self.plan_hours())[:10]
         ]
         out: dict = {"due_soon": due} if due else {}
@@ -1117,6 +1184,15 @@ class Deadlines(Module):
                 lambda a: self._button(str(a.get("id", "")), "drop"),
                 {"id": arg()},
                 ("id",),
+                offline="queue",
+            ),
+            Tool(
+                "deadline_progress",
+                "How many parts of a deadline (a problem set's questions) are done: done of total. Start-by plans "
+                "from what's left.",
+                lambda a: self._tool_progress(a),
+                {"id": arg(), "done": arg("parts done so far"), "total": arg("parts in all")},
+                ("id", "done", "total"),
                 offline="queue",
             ),
             Tool(
@@ -1195,6 +1271,15 @@ class Deadlines(Module):
                 offline="queue",
             ),
         ]
+
+    def _tool_progress(self, a: dict) -> str:
+        it = self.items().get(str(a.get("id", "")))
+        if it is None:
+            return "No deadline with that id."
+        try:
+            return self.progress(it["title"], int(a.get("done")), int(a.get("total")))
+        except (TypeError, ValueError):
+            return "done and total are numbers."
 
     def _tool_add(self, a: dict) -> str:
         try:
