@@ -131,6 +131,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `pause.json`, `off.json`, `power-held.json` | pause until, turned off, jobs held by power mode | `core/power.py:Power` |
 | `quota.json` | counts and learned limits per pool (no content) | `core/quota.py:Quota` |
 | `health.json` | last results, what was told | `core/health.py:Health` |
+| `fixme.json` | the last `/fixme` answer, for `/fixme ai` | `core/fixme.py:answer` |
 | `hardware.json`, `model-sizes.json` | the machine as read once; registry sizes | `core/hardware.py:current` |
 | `daemon.json`, `supervisor.json` | `{pid, started}` | `daemon.py:run`, `supervise` |
 | `web.json` | `{port, url, started}` | `web/server.py` |
@@ -399,7 +400,7 @@ Other kinds, by area (shown in the feed and counted by retro): lifecycle `starte
 `quota_limit`, `quota_back`, `quota_reserve`, `agy_tools`; messages `notified`, `notify_queued`, `notify_failed`,
 `notify_delayed`, `calm_*`, `keep_asked`, `keep_answer`, `keep_failed`, `presence_online`, `presence_offline`, `question_hook_failed`, `question_hook_missing`;
 power `power_pause`, `power_resume`, `power_off`; health `health_checked`, `health_fixed`, `health_told`,
-`health_failed`; updates `update_found`, `update_waiting`, `update_held`, `update_yanked`, `update_check_failed`,
+`health_failed`, `fixme`; updates `update_found`, `update_waiting`, `update_held`, `update_yanked`, `update_check_failed`,
 `update_failed`, `update_progress`, `update_switch`; Telegram `telegram_error`, `telegram_paired`, `telegram_menu_*`;
 calls `call_scheduled`, `call_rang`, `call_rang_offline`, `call_answered`, `call_missed`, `call_held`,
 `call_transcript`, `call_reviewed`, `call_review_failed`, `call_live_failed`, `call_fallback`, `calls_*`; concept graph
@@ -426,7 +427,7 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
 - Channels are registered by modules: `notifier.register("telegram", send, retract=None)`. `retract(map_kind, map_ref,
   button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
 - Button data is `"<prefix>:<ref>:<action>"`; `App.callback` routes core prefixes (`calm`, `upd`, `ask`, `health`,
-  `job`, `inf`, `ton`, `keep`) and then each enabled module's `callbacks()[prefix]`. Keep a module's prefixes unique and short (Telegram
+  `fixme`, `job`, `inf`, `ton`, `keep`) and then each enabled module's `callbacks()[prefix]`. Keep a module's prefixes unique and short (Telegram
   limits callback data to 64 bytes).
 
 `core/calm.py:Calm`:
@@ -614,6 +615,7 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/desktop.py` | desktop notifications; text passed as arguments or environment, never pasted into script source |
 | `core/endsession.py` | Windows sign-out and shutdown messages |
 | `core/health.py`, `core/health_checks.py` | "Kurooto keeps itself working" ([debugging.md](debugging.md#health-kurooto-keeps-itself-working-corehealthpy-corehealth_checkspy)) |
+| `core/fixme.py` | `/fixme`: failing checks matched by rules to the troubleshooting page and known issues ([debugging.md](debugging.md#fixme-corefixmepy)) |
 | `core/idle.py` | idle time and screen lock per OS (`kurooto idle away|back` for Wayland idle tools) |
 | `core/inhibit.py` | keeping the computer awake (Stay awake on charger, the alarm) |
 | `core/leave.py` | uninstall (`--revoke`) and `kurooto rotate` |

@@ -3,6 +3,7 @@
 kurooto --version
 kurooto paths            where settings, data and logs live on this machine
 kurooto doctor [--json]  check that everything Kurooto needs is in place (exit code = number of problems)
+kurooto fixme [WORDS]    what's wrong and what to do, matched by rules (no AI): the troubleshooting page, known issues
 kurooto off / on         turn Kurooto off completely (no start at sign-in) / back on
 kurooto pause [2h|18:00] / resume   pause it (Telegram says "paused" and keeps what you send) / wake it
 kurooto notify [--title T] [--kind K] [--urgent] [--button "Label=prefix:ref:action"]... [--click URL]
@@ -1826,6 +1827,8 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument(
         "--fix", metavar="ID", help="run the fix a problem offers (the id doctor shows), in the running Kurooto"
     )
+    fx = sub.add_parser("fixme", help="what's wrong and what to do, matched by rules (no AI needed)")
+    fx.add_argument("words", nargs="*", help="what you see, e.g. the phone doesn't ring")
     sub.add_parser("run", help="run the assistant in this window")
     sub.add_parser("supervise", help="run it and restart it if it crashes")
     sub.add_parser("start", help="start it in the background now")
@@ -1920,6 +1923,10 @@ def main(argv: list[str] | None = None) -> int:
             print(r.get("message", ""))
             return 0 if r.get("ok") else 1
         return doctor(a.json, a.bundle)
+    if a.cmd == "fixme":  # (core/fixme.py) works with Kurooto stopped, and when the AI is what broke
+        from kurooto.core import fixme
+
+        return fixme.cli(" ".join(a.words))
     if a.cmd == "run":
         from kurooto.daemon import run
 

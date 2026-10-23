@@ -20,9 +20,10 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   tap turns on it and what it needs, then does the original request.~~ (0.5.10)
 - **Run receipt.** Every AI answer ends with one grey line built from the tool log, not the answer's words: brain,
   effort, time, share of today's limit, and what it actually did ("did nothing" when it did nothing).
-- **/fixme that works when the AI is what broke.** Doctor's symptoms matched by rules to the manual's
+- ~~**/fixme that works when the AI is what broke.** Doctor's symptoms matched by rules to the manual's
   troubleshooting and a signed known-issues list shipped with releases; Fix buttons run `doctor --fix`; your AI only
-  explains, if it answers.
+  explains, if it answers.~~ (0.5.15: `/fixme`, `/fixme <what you see>` and `kurooto fixme`; Ask my AI only explains,
+  after)
 - ~~**Keep or drop.** A local count of what you actually use per feature; on day 10, Keep / Quiet / Off per feature,
   then monthly for features unused for 60 days that still run jobs. Never switched off without asking.~~ (0.5.15:
   `/keep`; Quiet uses Calm's stopped list, Off the usual turn-off, both with Undo)

@@ -420,8 +420,8 @@ class Telegram(Module):
 
     # ----------------------------------------------------------------------------- the "/" menu
     def menu(self) -> list[dict]:
-        """Telegram's "/" menu: /help, every enabled feature's commands, /q, /aboutme, /sync, then your skills (with
-        "_" for "-": /term_setup runs term-setup). Names Telegram can't show are left out; at most 100."""
+        """Telegram's "/" menu: /help, every enabled feature's commands, /q, /jobs, /fixme, /aboutme, /sync, then your
+        skills (with "_" for "-": /term_setup runs term-setup). Names Telegram can't show are left out; at most 100."""
         out: dict[str, str] = {}
 
         def add(name: str, text: str) -> None:
@@ -439,6 +439,7 @@ class Telegram(Module):
                 self.app.events.emit("telegram_menu_failed", module=m.id, error=str(e)[:200])
         add("q", "open questions I asked you")
         add("jobs", "what the AI is working on; cancel it")
+        add("fixme", "what's wrong and what to do (no AI needed)")  # core/fixme.py
         add("aboutme", "what I know about you")
         add("calm", "messages that come by themselves: today's count and limit")  # (calm) core/calm.py
         add("why", "why the last message came")
