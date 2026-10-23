@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.6.1",
+  "notes": "Dashboard and setup page fast again; Today reaches every phone; the concept graph resumes after a restart and textbooks get their own note; official add-ons; Dreaming fills in your profile with your say; set up from your chats and journal in one pass",
+  "created": 1792797512.8071127,
+  "files": {
+   "kurooto-0.6.1.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.6.1/kurooto-0.6.1.tar.gz",
+    "sha256": "64aea5b98f386a667e84679e866c1f231e7979390a289bd86928d965c5f9a262",
+    "size": 3143513
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.6.1/kurooto.apk",
+   "sha256": "f8904e2dc39b3c06d710120c11e1c8bf78c1de183255e0c636a3419fa4bd5ec1",
+   "size": 124902,
+   "versionCode": 60019,
+   "versionName": "0.6.1",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "7895a46139057e250f5b14b2d5b69e42b9fe76423e73704f0d32f0151947efae"
+  }
+ },
+ "sig": "lhlLlly9jg5uBQU959uv/oV/KVPFUCwPywRMEHa3xnI5Sf+GZALWFShxTVIRchJTaCkmQLtlDK0UG1iPSI5uDQ=="
+}
