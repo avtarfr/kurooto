@@ -282,6 +282,8 @@ No Stop; only Another time. When sent as urgent they always come.
 | the new-papers digest | Research | `research.papers` | list | weekly | yes | |
 | a question about a project with no commits for a while | Research | `research.idle_days` | no more | half as often | yes | yes |
 | a suggestion from the nightly look back | Nightly look back | `retro.when` | feature off | weekly | yes | yes |
+| a routine the look back saw in your records (Add / No) | Nightly look back | `retro.routines` | no more | | yes | yes |
+| a data fix the look back was sure of (two copies of one deadline), with Undo | Nightly look back | `retro.fixes` | no more | | yes | |
 | a skill learned or improved from a request that took many steps | Learns from its own work | `learning.skills` | no more learned skills | one a day | yes | |
 | a lesson a skill took from your correction | Learns from its own work | `learning.corrections` | no more lessons | | yes | |
 | facts from your chats and calls kept in your how-to-help-me note | Learns from its own work | `learning.remember` | nothing kept by itself | | yes | |

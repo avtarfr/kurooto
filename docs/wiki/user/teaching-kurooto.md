@@ -7,7 +7,7 @@ Kurooto gets better at helping you in seven ways, and you can see and change eve
 | [About you](#about-you-your-profile) | a profile built from what your other AI accounts know about you | `about-me/profile.md` in your notes | every AI request (its **In brief** part only, up to 2,500 characters) |
 | [Your persona card](#your-persona-card) | what to call you, tone, length, things to avoid (empty to start) | Settings (`persona.*`) | every AI request and every call |
 | [Remember](#remember) | how you like to be helped, in your words | `about-me/how-to-help-me.md` in your notes | every AI request (a short version, up to 1,500 characters) |
-| [Nightly look back](#nightly-look-back) | suggestions you approve: settings, lines for the note above, skill changes, ideas | your settings, that note, your skills, `kurooto/ideas.md` | |
+| [Nightly look back](#nightly-look-back) | suggestions you approve: settings, lines for the note above, skill changes, ideas, routines from your records; data fixes it is sure of, with Undo | your settings, that note, your skills, `kurooto/ideas.md`, your commitments, your deadlines | |
 | [Learns from its own work](#learns-from-its-own-work) (optional) | a search of past requests, calls and chats; skills from requests that took many steps; lessons from your corrections; facts you state | Kurooto's state folder (the search index); your skills; that note | requests that search it (the passages found) |
 | [Wrong button and test cases](#wrong-button-and-test-cases) | requests it got wrong, your words for things, the reading you picked | Kurooto's state folder | instant requests on Telegram |
 | [Call lessons](#call-lessons) | how calls could go better | Kurooto's state folder | every call |
@@ -170,7 +170,22 @@ ledger reads them when they change.
 ## Nightly look back
 
 **What it does.** Once a day (23:50) the AI looks at how the day went and suggests at most three small improvements,
-each with the evidence behind it. Nothing changes without your tap.
+each with the evidence behind it. Nothing changes without your tap, except data fixes it is sure of (below), which
+it makes and tells you with **Undo**.
+
+**Before the AI, by rules on this computer:**
+- **Routines it sees in your records.** The same thing at the same time of the week on 3 or more different weeks (in
+  the last six): a study session for one course, or calls held with `/hold`. If it isn't a commitment or a class
+  yet, one message a night: "From your records: you started studying Linear Algebra around Tue 18:00 on 3 different
+  weeks. Add it as a routine (study linear algebra, Tue 18:00–19:30), so calls wait then?" with **Add** / **No**.
+  **Add** makes it one of your [commitments](classes-and-timetable.md#commitments-gym-shifts-standups) (how long it
+  usually took, else an hour; Commitments is turned on if it was off). **No** keeps it away for 30 days.
+- **Data fixes it is sure of**, made at once with one line and **Undo**: two copies of one deadline (Classroom's and
+  the one you said, or yours moved onto Classroom's day) become one, when they're due the same day, from different
+  places, for the same course, with the same words and numbers. The one kept is the one Classroom (or your notes)
+  brings back; it takes the other's time if it only had "end of the day", and the copy's buttons still work.
+  "Problem set 3" and "Problem set 3 prep" are left alone. Anything that sends, an alarm or a call still waits for
+  your tap.
 
 **Turn it on.** Features → Nightly look back. It needs Telegram and Chat.
 
@@ -221,6 +236,9 @@ with the finding (or that there wasn't enough to go on).
 | `retro.no_days` | `30` | how long a No keeps an idea away |
 | `retro.transcripts` | on | read today's call transcripts |
 | `retro.journal` | on | read today's journal |
+| `retro.routines` | on | ask about a routine it sees in your records |
+| `retro.routine_weeks` | `3` | on how many different weeks the same thing has to happen |
+| `retro.fixes` | on | make data fixes it is sure of (two copies of one deadline), with Undo |
 
 How it thinks is the `retro` skill: put your own copy in `kurooto/skills/retro/SKILL.md` to change it (it isn't a
 command).
@@ -430,14 +448,19 @@ up what they imply, then tells you in one line with an Undo button.
 | "I have a meeting with Ortiz on Friday at 4" | adds "Meeting: Prof Lena Ortiz" to your deadlines, so it's planned around and reminded; the evening before (`deadlines.meeting_brief`, 20:00) a **meeting brief** comes: what the project's Log has since you last met, its open "## Next steps" (`- [ ]` lines) and the last meeting's line |
 | "Every Monday at 9 I have a linear algebra lab" | puts the class in your timetable (55 minutes unless you say the end; only for a subject you have) |
 | "By POTA I mean Physics of the Atmosphere", "LA is short for linear algebra", "I call stochastic calculus stoch" | gives that subject the short name, so "POTA quiz friday" lands on it (only your subjects; never a name another one has) |
-| "Every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5" | adds it to your [commitments](classes-and-timetable.md#commitments-gym-shifts-standups) (an hour unless you say the end), so calls wait for it; turns Commitments on if it was off |
+| "Every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5", "gym Tue Thu 7am" | adds it to your [commitments](classes-and-timetable.md#commitments-gym-shifts-standups) (an hour unless you say the end), so calls wait for it; turns Commitments on if it was off. The short way needs two days or more (or "every", or "on Tuesdays") and a clock time like `7am` or `19:00`: "dentist Tue 7am" is a one-off, so nothing is set up |
+| "I have lab every Thursday 2-5" (no course named) | adds "lab" to your commitments, Thu 14:00–17:00, and says how to make it a class instead (`/class thu 14:00-17:00 <course>`) |
+| "There's a quiz on Linear Algebra every Monday at 10", "LA has a test every other Friday from 2026-10-30" | adds the row to your [recurring quizzes](reminders-and-deadlines.md) table, so each one becomes a deadline. Only when the course, the day and (every other week) a date are all said; a message that is only that request ("la has a quiz every thursday") is answered by the request itself, which asks for what's missing |
+| "LA problem set" in one message and "LA notes" in another, when Linear Algebra is the only subject whose initials are LA | takes "LA" as Linear Algebra's short name ("you've called it that twice"). Only names written in capitals, two messages within 60 days, and never one that fits two subjects or is a common word (OK, PM, PDF) |
 
 It only acts on what you say about yourself: "my friend got a project", "I didn't get it" or "maybe I'll ask" set
-nothing up, and a line is looked at once even when it reaches both the chat and the journal. It works by rules on this
+nothing up, and a line is looked at once even when it reaches both the chat and the journal. A question sets up
+nothing, with or without its question mark: "do I have lab every Thursday", "is there a quiz every Monday". It works by rules on this
 computer, with no AI. It never sets alarms, places calls, sends anything or attaches code (`/repos add` does that).
 
 `/inferred` lists what was set up, newest first; `/inferred undo <id>` (or the Undo button) takes one back. Turn it off
-with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`, `infer.commitments`.
+with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`, `infer.commitments`,
+`infer.quizzes`, `infer.short_names`.
 
 ## Dreaming
 

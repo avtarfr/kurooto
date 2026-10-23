@@ -10,6 +10,14 @@ Kurooto's questions, today's call transcripts and journal, and the settings it m
     idea      something new Kurooto could do for you, added to kurooto/ideas.md in your notes
 "No" drops that idea for 30 days. "Observe longer" watches it for a week first ("observe 14" for 14 days).
 
+Before the AI, rules (nothing leaves the computer) look at the records themselves:
+    routines  the same thing at the same time of the week on 3+ different weeks (a study session for one course, calls
+              held with /hold) that isn't a commitment or a class yet: one message with Add / No (Add makes it a
+              commitment, so calls wait then)
+    fixes     data fixes it is sure of, made at once with one line and Undo (core/tap.py BY_ITSELF): two copies of one
+              deadline (Classroom's and the one you said) become one. Anything outward, an alarm or a call still
+              waits for your tap.
+
 You can steer it: /observe whether I study better before noon for 2 weeks (or say it, or ask on a call), /observing
 lists what's being watched, each with Stop and +7 days (watch a week longer) buttons. When the watching ends, the
 next look back tells you what it found.
@@ -47,6 +55,9 @@ register_defaults(
         "no_days": 30,  # how long a "No" keeps that idea away
         "transcripts": True,  # read today's call transcripts
         "journal": True,  # read today's journal note
+        "routines": True,  # propose a routine it sees in the records (the same thing at the same time, 3+ weeks)
+        "routine_weeks": 3,  # on this many different weeks
+        "fixes": True,  # make data fixes it is sure of (two copies of one deadline become one), with Undo
     },
 )
 # The settings it may propose changing, with what they mean. The meaning says the type: "time HH:MM" (add "or null"
@@ -64,6 +75,12 @@ TUNABLE = {
 }
 ALIASES = {"config": "setting", "settings": "setting", "build": "idea", "feature": "idea", "line": "profile"}
 CHOICES = ["Apply", "Observe longer", "No"]
+ROUTINE_CHOICES = ["Add", "No"]
+SEEN = {"study_session_start", "study_session_end", "calls_held"}  # the records a routine can be seen in
+SEEN_WEEKS = 6  # how far back the records are read for routines
+FROM = {"manual": "what you said", "call": "a call", "inferred": "what you said", "classroom": "Classroom",
+        "mail": "mail", "calendar": "your calendar", "term-note": "your term note", "recurring": "the recurring "
+        "quizzes", "catch_up": "a missed class"}  # fmt: skip
 IDEAS_NOTE = "kurooto/ideas.md"  # in the default notes layout; layout.path(app, "ideas") is where it is
 IDEAS_INTRO = (
     "# Ideas\n\nThings {name} could do for you, from the nightly look back (you approved each one). Tick one off, "
@@ -204,6 +221,7 @@ class Retro(Module):
         ask = getattr(app, "ask", None)
         if ask is not None:  # questions (core/ask.py): the answer can come from Telegram, the phone app or a call
             ask.hooks["retro.answer"] = self._hook
+            ask.hooks["retro.routine"] = lambda q, a: self.routine_answer(q.get("hook_payload") or {}, a)
 
     def _hook(self, q: dict, answer: str) -> str:
         return self.answer(str((q.get("hook_payload") or {}).get("pid", "")), answer)
@@ -233,6 +251,10 @@ class Retro(Module):
             self._running.release()
 
     def _run(self, start: str | None = None, nightly: bool = False) -> int:
+        try:  # rules first, with or without the AI: routines in the records, data fixes it is sure of
+            self.records()
+        except Exception as e:
+            self.app.events.emit("retro_failed", reason=f"records: {type(e).__name__}: {e}"[:200])
         brain = providers.build(self.app, self.app.settings.get("brain.main") or "")
         if not brain or not brain.available()[0]:
             return 0
@@ -553,7 +575,7 @@ class Retro(Module):
         )
 
     def callbacks(self):
-        return {"retro": self._button, "obs": self._obs_button}
+        return {"retro": self._button, "obs": self._obs_button, "rfx": self._fix_button}
 
     def _button(self, pid: str, act: str) -> str:
         words = {"yes": "Apply", "observe": "Observe longer", "no": "No", "save": "Save", "discard": "Discard"}
@@ -657,6 +679,193 @@ class Retro(Module):
                 m.start()
             except Exception as e:
                 self.app.events.emit("module_failed", module=m.id, error=f"{type(e).__name__}: {e}"[:300])
+
+    # ------------------------------------------------------------------------ rules: routines and data fixes
+    def records(self) -> tuple[int, int]:
+        """What the records show by themselves: (routines asked about, data fixes made)."""
+        fixed = len(self.fix_data()) if self.setting("fixes") else 0
+        asked = self.propose_routines() if self.setting("routines") else 0
+        return asked, fixed
+
+    def fix_data(self) -> list[str]:
+        """Data fixes it is sure of, made now, each told in one line with Undo (only kinds in core/tap.py's
+        BY_ITSELF): two copies of one deadline become one."""
+        from kurooto.core.tap import BY_ITSELF
+
+        dl = self.app.modules.get("deadlines")
+        if dl is None or not self.app.is_on("deadlines") or "deadline.merge" not in BY_ITSELF:
+            return []
+        from kurooto.modules.deadlines import when_text
+
+        told = []
+        for keep, copy in dl.duplicates()[:10]:
+            items = dl.items()
+            k, c = items.get(keep), items.get(copy)
+            undo = dl.merge(keep, copy) if k and c else None
+            if not undo:
+                continue
+            srcs = [*undo["sources"], *c.get("sources", [c["source"]])]
+            came = list(dict.fromkeys(FROM.get(x, "your notes" if x.startswith("notes") else x) for x in srcs))
+            line = (
+                f"{k['title']} (due {when_text(dl.items()[keep]['due'])}) was on your list twice, from "
+                f"{' and '.join(came[:3])}; I kept one."
+            )
+            fid = uuid.uuid4().hex[:6]
+            state = self._state()
+            fix = {"id": fid, "kind": "deadline.merge", "line": line, "undo": undo, "undone": False}
+            state["fixes"] = [*state["fixes"], {**fix, "at": now().isoformat(timespec="minutes")}][-50:]
+            self._save_state(state)
+            buttons = [[("Undo", f"rfx:{fid}:undo")]]
+            self.app.notify(line, kind="info", title="Tidied", why="retro.fixed", buttons=buttons)
+            self.app.events.emit("retro_fixed", kind="deadline.merge")
+            told.append(line)
+        return told
+
+    def undo_fix(self, fid: str) -> str:
+        state = self._state()
+        f = next((x for x in state["fixes"] if x["id"] == fid), None)
+        if f is None:
+            return "That fix isn't remembered any more."
+        if f.get("undone"):
+            return "Undone already."
+        dl = self.app.modules.get("deadlines")
+        if f["kind"] != "deadline.merge" or dl is None or not dl.unmerge(f["undo"]):
+            return "Couldn't undo it: that deadline changed since."
+        f["undone"] = True
+        self._save_state(state)
+        self.app.events.emit("retro_fix_undone", kind=f["kind"])
+        return "Undone: both copies are back."
+
+    def _fix_button(self, fid: str, act: str) -> str:
+        return self.undo_fix(fid) if act == "undo" else "ok"
+
+    def routines_seen(self) -> list[dict]:
+        """The same thing at the same time of the week (to the half hour) on routine_weeks different weeks or more,
+        in the last SEEN_WEEKS weeks of records: a study session for one course, calls held with /hold. Each as
+        {name, days, start, end, weeks, what}, the end from how long it usually took (an hour if unknown)."""
+        need = max(2, int(self.setting("routine_weeks") or 3))
+        since = now() - dt.timedelta(weeks=max(SEEN_WEEKS, need))
+        subj = self.app.modules.get("subjects")
+        runs: list[dict] = []
+        for e in self.app.events.tail(20000, kinds=SEEN):
+            try:
+                t = dt.datetime.fromisoformat(str(e["ts"])).replace(tzinfo=None)
+            except (KeyError, ValueError):
+                continue
+            if t < since:
+                continue
+            if e["kind"] == "study_session_start" and e.get("subject"):
+                course = subj.name_of(e["subject"]) if subj is not None else str(e["subject"])
+                runs.append({"name": f"study {course.lower()}", "what": f"you started studying {course}", "t": t,
+                             "min": float(e.get("planned") or 0), "subject": e["subject"]})  # fmt: skip
+            elif e["kind"] == "study_session_end":
+                last = next((r for r in reversed(runs) if r.get("subject") == e.get("subject")), None)
+                if last is not None and not last["min"]:
+                    last["min"] = float(e.get("minutes") or 0)
+            elif e["kind"] == "calls_held" and e.get("until"):
+                try:
+                    until = dt.datetime.fromisoformat(str(e["until"])).replace(tzinfo=None)
+                except ValueError:
+                    continue
+                runs.append({"name": "quiet time", "what": "you held calls", "t": t,
+                             "min": (until - t).total_seconds() / 60})  # fmt: skip
+        slots: dict[tuple, dict] = {}
+        for r in runs:
+            half = round((r["t"].hour * 60 + r["t"].minute) / 30) * 30 % (24 * 60)
+            start = f"{half // 60:02d}:{half % 60:02d}"
+            s = slots.setdefault((r["name"], r["t"].weekday(), start), {"weeks": set(), "min": [], "what": r["what"]})
+            s["weeks"].add(r["t"].isocalendar()[:2])
+            if r["min"] > 0:
+                s["min"].append(r["min"])
+        found: dict[tuple, dict] = {}
+        for (name, wd, start), s in sorted(slots.items(), key=lambda x: (x[0][0], x[0][2], x[0][1])):
+            if len(s["weeks"]) < need:
+                continue
+            mins = statistics.median(s["min"]) if s["min"] else 60
+            mins = max(15, min(240, round(mins / 15) * 15))
+            end = dt.datetime.combine(dt.date.today(), dt.time.fromisoformat(start)) + dt.timedelta(minutes=mins)
+            from kurooto.modules.commitments import DAYS
+
+            f = found.setdefault((name, start), {"name": name, "days": [], "start": start, "end": f"{end:%H:%M}",
+                                                 "weeks": 0, "what": s["what"]})  # fmt: skip
+            f["days"].append(DAYS[wd])
+            f["weeks"] = max(f["weeks"], len(s["weeks"]))
+        return list(found.values())
+
+    def _covered(self, r: dict) -> bool:
+        """A commitment or a class at that time already (or a commitment with that name)."""
+        mod = self.app.modules.get("commitments")
+        for c in mod.items() if mod is not None else []:
+            if c["name"].lower() == r["name"] or (
+                set(c["days"]) & set(r["days"]) and c["start"] <= r["start"] < c["end"]
+            ):
+                return True
+        subj = self.app.modules.get("subjects")
+        if subj is not None and self.app.is_on("subjects"):
+            for c in subj.timetable():
+                if c["day"] in r["days"] and c["start"] <= r["start"] < c["end"]:
+                    return True
+        return False
+
+    def propose_routines(self) -> int:
+        """Ask about one routine seen in the records a night (Add / No); never one declined in the last no_days."""
+        ask = getattr(self.app, "ask", None)
+        if ask is None or "commitments" not in self.app.modules:
+            return 0
+        from kurooto.modules.commitments import days_text
+
+        state = self._state()
+        cutoff = (now() - dt.timedelta(days=int(self.setting("no_days") or 30))).isoformat()
+        for r in self.routines_seen():
+            key = f"{r['name']}|{','.join(r['days'])}|{r['start']}"
+            had = state["routines"].get(key)
+            if self._covered(r) or (had and (had["status"] != "no" or had["at"] >= cutoff)):
+                continue
+            when = f"{days_text(r['days'])} {r['start']}"
+            ask.ask(
+                f"From your records: {r['what']} around {when} on {r['weeks']} different weeks. Add it as a routine "
+                f"({r['name']}, {when}–{r['end']}), so calls wait then?",
+                choices=ROUTINE_CHOICES,
+                hook="retro.routine",
+                hook_payload={"key": key, **{k: r[k] for k in ("name", "days", "start", "end")}},
+                expires=dt.timedelta(days=3),
+                source="retro",
+                title="Routine",
+                why="retro.routine",
+            )
+            state["routines"][key] = {"status": "asked", "at": now().isoformat(timespec="minutes")}
+            self._save_state(state)
+            self.app.events.emit("retro_routine_proposed", days=len(r["days"]))
+            return 1
+        return 0
+
+    def routine_answer(self, r: dict, answer: str) -> str:
+        """Add: it becomes a commitment (Commitments is turned on if it was off). No: not asked again for no_days."""
+        a = str(answer or "").strip().lower()
+        state = self._state()
+        key = str(r.get("key") or "")
+        if not a.startswith(("add", "yes", "ok", "sure")):
+            state["routines"][key] = {"status": "no", "at": now().isoformat(timespec="minutes")}
+            self._save_state(state)
+            self.app.events.emit("retro_routine_answer", answer="no")
+            return f"OK, I won't suggest that again for {int(self.setting('no_days') or 30)} days."
+        mod = self.app.modules.get("commitments")
+        if mod is None:
+            return "Commitments isn't there; nothing added."
+        if not self.app.is_on("commitments"):
+            ok, why = self.app.enable("commitments")
+            if not ok:
+                return f"Couldn't turn on Commitments: {why}"
+        from kurooto.modules.commitments import days_text
+
+        row = mod.add(str(r["name"]), list(r["days"]), str(r["start"]), str(r["end"]))
+        state["routines"][key] = {"status": "added", "at": now().isoformat(timespec="minutes")}
+        self._save_state(state)
+        self.app.events.emit("retro_routine_answer", answer="add")
+        return (
+            f"Added {row['name']} to your commitments: {days_text(row['days'])} {row['start']}–{row['end']}; calls "
+            f"wait then. /busy remove {row['name']} takes it back."
+        )
 
     # ------------------------------------------------------------------------------------ skill changes
     def _skill_path(self, name: str) -> tuple[Path | None, Path]:
@@ -922,9 +1131,12 @@ class Retro(Module):
         s = jload(self.state_file, {}) or {}
         s.setdefault("rejected", [])
         s.setdefault("applied", [])
+        s.setdefault("routines", {})  # "name|days|start" -> {status: asked, added or no; at}
+        s.setdefault("fixes", [])  # data fixes made by itself, with what Undo needs
         return s
 
     def _save_state(self, s: dict) -> None:
         s["rejected"] = s["rejected"][-200:]
         s["applied"] = s["applied"][-50:]
+        s["routines"] = dict(list(s.get("routines", {}).items())[-200:])
         jsave(self.state_file, s)

@@ -95,6 +95,10 @@ When your code does one of these, tag it:
 - anything that does it by itself (a schedule, `core/infer.py`, the look back): don't. Ask with
   `app.ask.approval(...)` and act in the hook.
 
+The other side is `BY_ITSELF`: the data fixes the nightly look back makes without a tap, each told in one line with
+Undo (`deadline.merge`, `Retro.fix_data`). A new one goes there first; `tests/unit/test_retro_records.py` checks that
+none of them is a guarded action.
+
 `tests/unit/test_tap.py` runs every tool (as on a call, and unattended via `ai`, `mcp`, `api`) and every request's
 examples on Telegram with every feature on, with the guarded actions replaced by recorders (`Alarm.set`...,
 `Calls.place/schedule/ring`, the `mail_digest.read`/`query` and `research.repos`/`projects` settings, Gmail's
@@ -541,6 +545,15 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `<state>/commitments/hooks-undo.json`; `unhold` only acts while the hold is still the one the hook set. Telegram's
   `hold_calls` and `focus` intents skip `HOOK_SAID` so a hook sentence never holds now. Events `hook_added`,
   `hook_fired`, `hook_dropped`, `hook_undone` (no words). Never an alarm (`core/tap.py`).
+- **subjects** short names from use (0.5.20): `short_names_used(text)` finds `SHORT` tokens (2-5 capitals, not
+  `NOT_SHORT`, not resolving already) whose lower case is in exactly one subject's `initials()` (all words, without
+  `MINOR` words, and without `ROMAN` numerals too); the first use is kept in `<state>/subjects-short-names.json`, a
+  second within `SHORT_DAYS` (60) returns it (and forgets it) for `core/infer.py` to add with Undo.
+- **deadlines** copies (0.5.20): `duplicates()` pairs open items due the same day with no source in common, compatible
+  subjects, equal `NUM` sets and equal title words (less `STOP` and the subject's words); the kept one is the one with
+  a source other than `manual`/`call`/`inferred`. `merge(keep, copy)` moves the copy's id and aliases into the kept
+  one's `aliases` (`_resolve` finds it), joins `sources`, fills `subject`/`link`/`note`/`line`/`parts`, takes a known
+  time over 23:59, cancels the copy's ring; `unmerge(undo)` reverses it.
 - **classpacks** (`modules/classpacks.py`, format in `modules/coursepack.py`): import/export a section's setup as a
   `.kurooto-course` file with a strict schema that refuses personal data.
 - **capture** (`modules/capture.py`): after each class, a question about what was worth keeping; answers to the class log,
@@ -647,7 +660,15 @@ arrives.
   changes, each confirmed through `app.ask`; only settings in `TUNABLE` (and modules' `tunable`) may be proposed. With
   Learns from its own work's `remember` part on (`Learning.picks_facts()`), `_run` appends `learning.REMEMBER_ASK` to
   the instructions, adds `chats` (the day's own requests, `Learning.chats`) to the input, and hands the answer's
-  `remember` list to `Learning.keep_facts`, which keeps them without a tap.
+  `remember` list to `Learning.keep_facts`, which keeps them without a tap. Before the AI (and without it), `_run`
+  calls `records()`: `fix_data()` (`retro.fixes`) merges `Deadlines.duplicates()` pairs with `Deadlines.merge` and
+  notifies each with `rfx:<id>:undo` (`undo_fix` -> `Deadlines.unmerge`; Calm reason `retro.fixed`; kept in
+  `retro-state.json` `fixes`); `propose_routines()` (`retro.routines`) takes `routines_seen()` (the `SEEN` events of
+  the last `SEEN_WEEKS` weeks, `study_session_start`/`_end` and `calls_held`, by name, weekday and half hour, kept when
+  on `retro.routine_weeks` different ISO weeks; days with the same name and start join; the end is the median length
+  to 15 min, an hour if unknown), skips any `_covered()` by a commitment or class or asked/added/declined in
+  `retro-state.json` `routines`, and asks one a night with `app.ask.ask(..., hook="retro.routine")` (Add / No; Calm
+  reason `retro.routine`); `routine_answer` adds it with `Commitments.add`, turning the feature on if needed.
 - **dreaming** (`modules/dreaming.py:Dreaming`): `morning` (`dreaming:morning`, `dreaming.when`) builds one message
   from the event log since the last one (`since()`: `<state>/dreaming.json`, at most 30 h back): `night()` counts
   `integrate_batch`, `book_read`, `integrate_pruned`, `handwritten_linked`, `gbrain_upkeep`, `call_reviewed`,

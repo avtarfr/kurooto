@@ -9,13 +9,20 @@ comes in one line with Undo, and /inferred lists them (/inferred undo <id>).
            also becomes a deadline ("Meeting: Prof Lena Ortiz"), so it's planned around and reminded
     "every Monday at 9 I have a Linear Algebra lab" / "I have an LA tutorial every wed at 14:00"
         -> a class in the timetable (for a subject you have; it holds calls), 55 minutes unless the end is said
-    "every Tuesday and Thursday at 7pm I go to the gym" / "I work a shift every weekend from 9 to 5"
+    "every Tuesday and Thursday at 7pm I go to the gym" / "I work a shift every weekend from 9 to 5" / "gym Tue Thu
+    7am" / "I have lab every Thursday 2-5" (a lab, tutorial or class with no course named)
         -> a commitment (Commitments, turned on if it was off; it holds calls), an hour unless the end is said
+    "there's a quiz on Linear Algebra every Monday" / "LA has a test every other Friday from 2026-10-30"
+        -> a row in the recurring quizzes table (Deadlines), when the course, the day and (every other week) the date
+           are all said; a message that is only that request is the add_recurring request's (it asks what's missing)
     "by POTA I mean Physics of the Atmosphere" / "LA is short for linear algebra" / "I call stochastic calculus stoch"
         -> a short name for that subject, so "POTA quiz friday" lands on it
+    "LA problem set" in two messages, when Linear Algebra is the only subject with those initials
+        -> "LA" as Linear Algebra's short name (modules/subjects.py counts the uses)
 
 Never by itself: alarms, calls, mail, anything outward, or a code repository (a project gets code only by /repos add).
-Each line is looked at once, wherever it was said (a check-in answer reaches both the chat and the journal).
+Each line is looked at once, wherever it was said (a check-in answer reaches both the chat and the journal). A question
+("is there a quiz every Monday?", "do I have lab on Thursdays") sets up nothing.
 """
 
 from __future__ import annotations
@@ -45,6 +52,8 @@ register_defaults(
         "classes": True,  # "every Monday at 9 I have a <subject> lab": a class in the timetable
         "aliases": True,  # "by POTA I mean Physics of the Atmosphere": a short name for that subject
         "commitments": True,  # "every Tuesday at 7pm I go to the gym": a commitment (it holds calls like a class)
+        "quizzes": True,  # "there's a quiz on Linear Algebra every Monday": a row in the recurring quizzes table
+        "short_names": True,  # "LA" for Linear Algebra after two messages call it that (it fits only that one)
     },
 )
 
@@ -54,6 +63,10 @@ DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 TITLE = r"(?i:prof(?:essor)?\.?|dr\.?|sir|ma'?am|mr\.?|mrs\.?|ms\.?)"
 NAME = r"[A-Z][\w'-]+(?:\s+[A-Z][\w'-]+){0,3}"
 FIRST = re.compile(r"(?i)\b(?:i|i've|i'd|i'm|we|we've|we're)\b")
+ASKS = re.compile(
+    r"(?i)^\s*(?:what|when|why|how|who|where|which|(?:do|does|did|can|could|should|would|will|shall|am|is|are|was|"
+    r"were|have|has)\s+(?:i|we|you|he|she|they|it|there|my|our|the|a|an)\b)"
+)  # a question, with or without its "?" ("do I have lab every Thursday"; not "did 3 LA problems")
 NOT = re.compile(r"(?i)\b(?:not|didn't|don't|never|no longer|haven't|hasn't|won't|wasn't|isn't|if|maybe|might)\b")
 PROJECT = re.compile(
     r"(?i)\b(?:i|i've|i have|i'm|i am|we|we've)\b[^.!?\n]{0,40}?\b(?:got|get|getting|started|starting|joined|"
@@ -112,6 +125,27 @@ REGULAR = (
     re.compile(r"(?i)\b(?:i|we)\s+" + ACT + RWHAT + r"\s+(?:on\s+)?every\s+" + DAYSET + r"\s*,?\s*" + SPAN),
 )
 NOT_REGULAR = re.compile(r"(?i)\b(?:class|classes|lab|lecture|tutorial|seminar|section|exam|quiz|test|deadline)\b")
+BARE = {"lab": "lab", "labs": "lab", "tutorial": "tutorial", "tutorials": "tutorial", "seminar": "seminar",
+        "seminars": "seminar", "lecture": "lecture", "lectures": "lecture", "section": "section"}  # fmt: skip
+AMPM = r"(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|\d{1,2}:\d{2})"  # a time said plainly enough to stand on its own
+TERSE = re.compile(  # "gym Tue Thu 7am", "swimming on saturdays 8am-9am", "standup every weekday 10:00"
+    r"(?i)^\s*(?P<what>[a-z][\w' -]{1,30}?)\s+(?P<every>on\s+|every\s+)?(?P<days>week\s?days?|weekends?|"
+    + WD
+    + r"(?:\s*(?:,|and|&|/)?\s*"
+    + WD
+    + r")*)\s*,?\s+(?:at\s+|from\s+)?(?P<s>"
+    + AMPM
+    + r")(?:\s*(?:-|–|to|till|until)\s*(?P<e>"
+    + AMPM
+    + r"))?\s*[.!]?\s*$"
+)
+NOT_TERSE = re.compile(
+    r"(?i)\b(?:remind|call|ring|wake|alarm|skip|skipping|move|cancel|meet|meeting|due|deadline|exam|quiz|test|"
+    r"mail|email|text|send|book|buy|pay)\b"
+)  # a request, a deadline or a one-off: not a routine
+TERSE_NOT_FIRST = {"every", "each", "on", "at", "from", "i", "we", "you", "he", "she", "they", "my", "our", "and",
+                   "also", "so", "it", "this", "that", "next", "last", "see", "till", "until"}  # fmt: skip
+QUIZ = re.compile(r"(?i)\b(?:quiz(?:zes)?|class tests?|tests?|vivas?|assessments?|worksheets?)\b")
 ABBR = r"[\"'“]?(?P<a>[A-Za-z][\w.&+-]{1,19})[\"'”]?"
 SUBJ = r"(?P<n>[^.,;!?\n\"”]{2,60}?)"
 ALIAS = (
@@ -359,20 +393,79 @@ def _alias(app: App, sentence: str) -> dict | None:
         slug = subj.resolve(said) or (found[0] if len(found) == 1 else None)
         if not slug:
             return None
-        items = [dict(x) for x in subj.setting("list") or []]
-        mine = next((x for x in items if x["slug"] == slug), None)
-        made = mine is None
-        if made:  # a subject from the term note or a class pack: yours now holds its short names
-            mine = {"name": subj.name_of(slug), "slug": slug, "aliases": []}
-            items.append(mine)
-        mine["aliases"] = [*mine.get("aliases", []), alias]
-        app.settings.set("subjects.list", items)
         return {
             "kind": "alias",
             "line": f'Took "{m["a"].strip(".")}" as {subj.name_of(slug)} from now on.',
-            "undo": {"alias": alias, "slug": slug, "made": made},
+            "undo": _add_alias(app, subj, alias, slug),
         }
     return None
+
+
+def _add_alias(app: App, subj, alias: str, slug: str) -> dict:
+    """Add a short name to a subject (a term note's or a class pack's becomes yours to hold it). Returns its undo."""
+    items = [dict(x) for x in subj.setting("list") or []]
+    mine = next((x for x in items if x["slug"] == slug), None)
+    made = mine is None
+    if made:  # a subject from the term note or a class pack: yours now holds its short names
+        mine = {"name": subj.name_of(slug), "slug": slug, "aliases": []}
+        items.append(mine)
+    mine["aliases"] = [*mine.get("aliases", []), alias]
+    app.settings.set("subjects.list", items)
+    return {"alias": alias, "slug": slug, "made": made}
+
+
+def _short_names(app: App, text: str) -> list[dict]:
+    """Short names you've used in two messages for the one subject they fit (modules/subjects.py counts them)."""
+    subj = app.modules.get("subjects")
+    if subj is None or not app.is_on("subjects"):
+        return []
+    out = []
+    for short, slug in subj.short_names_used(text):
+        out.append(
+            {
+                "kind": "alias",
+                "line": f'Took "{short}" as {subj.name_of(slug)} from now on (you\'ve called it that twice).',
+                "undo": _add_alias(app, subj, short.lower(), slug),
+            }
+        )
+    return out
+
+
+# -------------------------------------------------------------------------------------- recurring quizzes
+def _request(app: App, text: str) -> bool:
+    """Is the whole message a "<subject> has a quiz every <day>" request? Then that request answers it (it asks for
+    what's missing), not this."""
+    from kurooto.modules.text import tidy, too_complex
+
+    dl = app.modules.get("deadlines")
+    plain = tidy(text)
+    if dl is None or not app.is_on("deadlines") or too_complex(plain):
+        return False
+    return any(i.name == "add_recurring" and i.match(plain) is not None for i in dl.intents())
+
+
+def _quiz(app: App, sentence: str) -> dict | None:
+    dl, subj = app.modules.get("deadlines"), app.modules.get("subjects")
+    if dl is None or subj is None or not app.is_on("deadlines") or not app.is_on("subjects"):
+        return None
+    if NOT.search(sentence) or not QUIZ.search(sentence) or re.search(r"(?i)\b(?:remind|call|skip)\b", sentence):
+        return None
+    from kurooto.modules import recurring
+
+    rule = recurring.read_rule(sentence)
+    found = subj.find_in(sentence)
+    if not rule or not rule["day"] or (rule["every"] > 1 and not rule["next"]) or len(found) != 1:
+        return None  # not sure of the course, the day or the week: the request asks, a passing line doesn't
+    if any(r["key"] == f"{found[0]}|{rule['what'].lower()}" for r in dl.recurring_rows()):
+        return None  # known already
+    out = dl.add_recurring(found[0], rule["what"], rule["every"], rule["day"], rule["time"], rule["next"])
+    if out.startswith("One question") or " already in " in out:
+        return None
+    return {
+        "kind": "quiz",
+        "line": f"Added to your recurring quizzes ({recurring.note_rel(app)}): {out}",
+        "undo": {"recurring": {"subject": found[0], "what": rule["what"]}},
+    }
 
 
 # ---------------------------------------------------------------------------------------- commitments
@@ -381,25 +474,35 @@ def _commitment(app: App, sentence: str) -> dict | None:
         return None
     from kurooto.modules import commitments as rt
 
-    for rx in REGULAR:
-        m = rx.search(sentence)
+    subj = app.modules.get("subjects") if app.is_on("subjects") else None
+    t = TERSE.match(sentence)
+    if t:  # "gym Tue Thu 7am": a routine only with two days or more, "every" or "on Tuesdays" (else a one-off)
+        what, days = t["what"].strip(" -"), t["days"].lower()
+        many = len(re.findall(WD, days)) > 1 or "every" in (t["every"] or "").lower() or re.search(r"days\b", days)
+        if not many and "week" not in days or NOT_TERSE.search(what) or len(what.split()) > 3:
+            t = None
+        elif what.split()[0].lower() in TERSE_NOT_FIRST:
+            t = None
+        elif subj is not None and subj.find_in(what):
+            t = None  # a course's name: a class, said this way it isn't sure enough
+    for m in [t] if t else [rx.search(sentence) for rx in REGULAR]:
         if not m:
             continue
         what = (m["what"] or "").strip(" -")
-        if NOT_REGULAR.search(what):
+        bare = BARE.get(what.lower()) if not (subj is not None and subj.find_in(sentence)) else None
+        if NOT_REGULAR.search(what) and not bare:
             return None  # a class or a test: the classes rule or the deadlines, not a commitment
-        name = what.lower() or {"work": "work", "train": "training", "volunteer": "volunteering"}.get(
-            m["verb"].lower(), ""
-        )
-        d = re.sub(r"s\b", "", m["days"].lower().replace("week ", "week"))
+        verb = m["verb"].lower() if "verb" in m.groupdict() and m["verb"] else ""
+        name = bare or what.lower() or {"work": "work", "train": "training", "volunteer": "volunteering"}.get(verb, "")
+        d = re.sub(r"s\b", "", m["days"].lower().replace("week ", "week").replace("/", " "))
         days = list(rt.DAYS) if d in ("day", "morning", "evening", "night") else rt.parse_days(d)
         start = _hm(m["s"])
         if not name or not days or not start:
             return None
         end = _hm(m["e"]) if m["e"] else None
         if not end:
-            t = dt.datetime.combine(dt.date.today(), dt.time.fromisoformat(start)) + dt.timedelta(hours=1)
-            end = f"{t:%H:%M}"
+            later = dt.datetime.combine(dt.date.today(), dt.time.fromisoformat(start)) + dt.timedelta(hours=1)
+            end = f"{later:%H:%M}"
         mod = app.modules["commitments"]
         if any(r["name"].lower() == name for r in mod.items()):
             return None  # known already
@@ -410,11 +513,10 @@ def _commitment(app: App, sentence: str) -> dict | None:
                 return None
             enabled = True
         row = mod.add(name, days, start, end)
-        return {
-            "kind": "commitment",
-            "line": f"Added {name} to your commitments: {rt.days_text(days)} {start}–{end}; calls wait while it's on.",
-            "undo": {"commitment": row, "enabled": enabled},
-        }
+        line = f"Added {name} to your commitments: {rt.days_text(days)} {start}–{end}; calls wait while it's on."
+        if bare:  # "I have lab every Thursday 2-5": no course named, so a routine
+            line += f" No course was named; /class {days[0]} {start}-{end} <course> makes it a class."
+        return {"kind": "commitment", "line": line, "undo": {"commitment": row, "enabled": enabled}}
     return None
 
 
@@ -426,15 +528,18 @@ def observe(app: App, text: str, via: str = "chat") -> list[str]:
     told = []
     with Lock(app.paths.state, "infer", timeout=5):
         data = _load(app)
+        asked = via != "journal" and _request(app, text)  # "LA has a quiz every thursday": the request does it
+        heard = []
         for sentence in _sentences(text):
             k = _key(sentence)
-            if k in data["seen"] or len(sentence) < 12 or sentence.endswith("?"):  # a question states nothing
-                continue
+            if k in data["seen"] or len(sentence) < 12 or sentence.endswith("?") or ASKS.match(sentence):
+                continue  # seen already, or a question: a question states nothing
             data["seen"].append(k)
+            heard.append(sentence)
             parts = (("projects", _project), ("meetings", _meeting), ("classes", _class), ("aliases", _alias),
-                     ("commitments", _commitment))  # fmt: skip
+                     ("quizzes", _quiz), ("commitments", _commitment))  # fmt: skip
             for part, fn in parts:
-                if not _on(app, part):
+                if not _on(app, part) or (part == "quizzes" and asked):
                     continue
                 try:
                     got = fn(app, sentence)
@@ -446,6 +551,14 @@ def observe(app: App, text: str, via: str = "chat") -> list[str]:
                     data["items"].append(got)
                     told.append(got)
                     break
+        if heard and _on(app, "short_names"):  # once per message, after what it states is set up
+            try:
+                for got in _short_names(app, " ".join(heard)):
+                    got.update(id=uuid.uuid4().hex[:6], at=time.time(), via=via, undone=False)
+                    data["items"].append(got)
+                    told.append(got)
+            except Exception as e:
+                app.events.emit("infer_failed", part="short_names", error=f"{type(e).__name__}: {e}"[:200])
         _save(app, data)
     for got in told:
         app.events.emit("inferred", kind=got["kind"], via=via)
@@ -498,6 +611,10 @@ def undo(app: App, iid: str) -> str:
                 app.settings.set("commitments.items", [r for r in mod.setting("items") or [] if r != row])
                 if u.get("enabled") and not mod.items():
                     app.disable("commitments")
+        elif "recurring" in u:
+            dl = app.modules.get("deadlines")
+            if dl is not None:
+                dl.remove_recurring(u["recurring"]["subject"], u["recurring"]["what"])
         elif "deadline" in u:
             dl = app.modules.get("deadlines")
             if dl is not None:
