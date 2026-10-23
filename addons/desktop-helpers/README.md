@@ -11,7 +11,7 @@ Small things around Kurooto's alarm and messages on a desktop computer:
 ## Add it
 
 ```
-kurooto addons add <this repository's git address> --ref v1.0.0
+kurooto addons add https://github.com/avtarfr/kurooto-desktop-helpers --ref v1.0.0
 ```
 
 or Dashboard → Features → **Add-ons by link**; read the card, Add, then turn on **Desktop helpers**. It needs KDE

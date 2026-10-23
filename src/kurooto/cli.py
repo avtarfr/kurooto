@@ -1818,13 +1818,14 @@ def jobs_run(a) -> int | None:
         app.close()
 
 
-# ------------------------------------------- `kurooto addons [add|update|remove|undo|show]` (core/addons.py)
+# ------------------------------- `kurooto addons [add|update|remove|undo|show|official]` (core/addons.py, official.py)
 def addons_parsers(sub) -> None:
     ad = sub.add_parser("addons", help="add-ons by link: add one from its git address, update, remove, undo")
     asub = ad.add_subparsers(dest="addons_cmd")
     asub.add_parser("list", help="the add-ons added by link, and whether each loaded (the default)")
+    asub.add_parser("official", help="the official add-ons: what each does and needs, and whether you have it")
     add = asub.add_parser("add", help="look at an add-on's card, then add it if you say yes")
-    add.add_argument("url", help="its git address: https://..., git@host:path, or a folder")
+    add.add_argument("url", help="its git address (https://..., git@host:path, a folder) or an official one's name")
     add.add_argument("--ref", default="", help="a tag, branch or commit (default: the newest commit); it's pinned")
     add.add_argument("--yes", action="store_true", help="add it after showing the card, without asking")
     up = asub.add_parser("update", help="what a newer commit changes, then update if you say yes")
@@ -1854,15 +1855,24 @@ def addons_run(a) -> int | None:
     Kurooto is then told to load them again."""
     if a.cmd != "addons":
         return None
-    from kurooto.core import addons
+    from kurooto.core import addons, official
 
     p = paths()
     cmd = a.addons_cmd or "list"
     try:
+        if cmd == "official":
+            print("Official add-ons: each pinned to one commit; you read its card before anything is added.")
+            print("\n".join(official.lines(p)))
+            print("Add one: kurooto addons add <name>. Update one: kurooto addons update <name>.")
+            return 0
         if cmd == "list":
             rows = addons.listing(p)
             for r in rows:
                 state = f"didn't load: {r['problem']}" if r["problem"] else "ok"
+                if r.get("official"):
+                    state += f", official {r['official']}"
+                if r.get("official_update"):
+                    state += f", official {r['official_update']} ready: kurooto addons update {r['name']}"
                 print(f"{r['name']:<24} {r['commit'][:12]}  {r['url']}  ({state})")
             if not rows:
                 print("No add-ons by link. kurooto addons add <git url> looks at one first.")
@@ -1874,7 +1884,17 @@ def addons_run(a) -> int | None:
             ok, msg = (addons.remove if cmd == "remove" else addons.undo)(p, a.name)
             print(msg)
         else:
-            out = addons.fetch(p, a.url, a.ref.strip()) if cmd == "add" else addons.check_update(p, a.name, a.ref)
+            by_name = cmd == "add" and not any(c in a.url for c in "/:\\") and official.find(a.url)
+            if by_name:  # an official one, by its name (core/official.py)
+                if a.ref.strip():
+                    print("An official add-on comes at the commit Kurooto lists; give its git address to pick "
+                          "another (it isn't marked official then).", file=sys.stderr)  # fmt: skip
+                    return 1
+                out = official.fetch(p, a.url)
+            elif cmd == "add":
+                out = addons.fetch(p, a.url, a.ref.strip())
+            else:
+                out = addons.check_update(p, a.name, a.ref)
             if out.get("same"):
                 print(f"{a.name} is at the newest commit already ({out['commit'][:12]}).")
                 return 0

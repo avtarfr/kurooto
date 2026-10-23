@@ -64,7 +64,7 @@ API routes: `Handler` strips `/api/` and calls `web/api.py:Api.get(path, q)` or 
 return `(status, dict)`. Each first delegates paths listed in `web/tools_api.py:GETS` / `POSTS`. Query strings are
 flattened to their first value; a non-dict JSON body becomes `{}`. Anything unmatched is 404.
 
-GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `addons` (the add-ons by link: `linked` rows with their card and text, `kept` for Undo), `jobs`, `term`, `health`, `sync/status`,
+GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `addons` (the add-ons by link: `linked` rows with their card and text, `kept` for Undo, `official`: the official list with what you have of each), `jobs`, `term`, `health`, `sync/status`,
 `profile`, `note?id=`, `settings`, `look`, `events` (last 80), `board` (503 without `Live`), `state` (the wizard's
 whole state, with `setup` and `calm` below), `setup` (`core/setupsteps.py:view`: each step's status, `resume`, `left`), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `persona`, `research`, `progress`, `ask`, `ask/<id>`,
 `today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `morning`
@@ -78,7 +78,7 @@ POST (in `Api.post`):
 | tools_api | `tools/call`, `say`, `job`, `call`, `call/list`, `call/cancel` |
 | AI | `brain`, `brain/test`, `brain/models`, `jobs/cancel`, `tryit` |
 | features | `modules/enable`, `modules/disable`, `modules/setup`, `modules/configure`, `modules/card` |
-| add-ons by link | `addons/look` (`{url, ref}`: clone and the card, `{token, card, text}`), `addons/add` and `addons/update` (`{token, code}`: `code` true is the "I trust this code" box, needed when it runs code), `addons/check` (`{name}`: a newer commit's card and `changes_text`, or `same`), `addons/drop`, `addons/remove`, `addons/undo` (`{name}`), `addons/reload` (`kurooto addons` after its change); each change reloads them (`overlay.reload_linked`) and returns `modules` |
+| add-ons by link | `addons/look` (`{url, ref}`: clone and the card, `{token, card, text}`; `{official: name}`: an official add-on's, at its pinned commit), `addons/add` and `addons/update` (`{token, code}`: `code` true is the "I trust this code" box, needed when it runs code), `addons/check` (`{name}`: a newer commit's card and `changes_text`, or `same`), `addons/drop`, `addons/remove`, `addons/undo` (`{name}`), `addons/reload` (`kurooto addons` after its change); each change reloads them (`overlay.reload_linked`) and returns `modules` |
 | settings and you | `settings`, `you`, `autostart`, `hardware/refresh`, `hardware/override`, `keys/gemini` |
 | setup | `prereqs/install`, `prereqs/signin`, `telegram/token`, `telegram/poll`, `telegram/relink`, `telegram/webhook-off`, `setup/channel` (`{"channel": "telegram" \| "app"}` into `setup.channel`; `GET state` returns it as `channel`), `setup/step` (`{step, how: next\|skip\|leave, seconds, chosen}`; 400 for an unknown step or skipping a required one), `setup/done`, `notes/fit/preview` (`{layout, lines, folder}`: preview, problems, the move plan with its `digest`), `notes/fit/apply` (the same plus `digest`), `notes/fit/undo` (`{id?}`); these three answer 200 with `ok: false` and `error` for a refusal, so the page can say it |
 | everyday | `act`, `ask`, `ask/get`, `ask/pending`, `ask/answer`, `ask/expire`, `notify`, `send-file`, `open-note`, `open-url` |
@@ -333,7 +333,7 @@ There is no per-module route registration. `web/api.py:Api._modules` and `_card`
 | `processes`, `processes_intermittent` | CPU and memory for the feature's dashboard cell (`web/live.py`) |
 | `health_check()` | the Features tab's health line and Fix button (`core/health.py`) |
 | `addon` (set by `core/overlay.py:guard`) | listed under "Your add-ons" |
-| `linked` (set by `core/overlay.py:held`) | listed under "Add-ons by link" (home.js `linkBlock`, with the link box, the waiting card, each add-on's Check for update and Remove, and Undo) |
+| `linked` (set by `core/overlay.py:held`) | listed under "Add-ons by link" (home.js `linkBlock`, with the link box, the waiting card, each add-on's Check for update and Remove, and Undo); above it `officialBlock`: GET `addons`'s `official` rows (`core/official.py`), each with the Official badge and Add, Update to vX or Check for update and Remove (official ones aren't repeated among the linked rows) |
 
 Settings UI: `Api._settings` lists `Api.EDITABLE` sections (`you`, `notify`, `availability`, `updates`, `brain`, `ask`,
 `look`, `power`, `notes`, `files`, `quota`, `health`, `jobs`, `sources`, `agents`, `hardware`, `web`, `date_offers`; titled from

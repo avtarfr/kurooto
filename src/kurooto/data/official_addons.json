@@ -1,0 +1,49 @@
+{
+  "about": "Official add-ons (core/official.py): published from addons/ in Kurooto's repository, each pinned to one commit. Shipped inside Kurooto, so a release's signature covers this list. A newer pinned commit goes in 'commit' (with 'tag'), and the one before it into 'earlier', so those who have it are offered the update.",
+  "addons": [
+    {
+      "name": "restic-backups",
+      "title": "Machine backups (restic)",
+      "line": "Backs up the folders you name with restic on a schedule, thins out old snapshots and checks the repository.",
+      "needs": "restic installed, and a restic repository (made once: /restic init after Set up)",
+      "url": "https://github.com/avtarfr/kurooto-restic-backups",
+      "tag": "v1.0.0",
+      "commit": "6c03e7019608892533ba72e6bdfe51ef4b8d81c2",
+      "earlier": [],
+      "source": "addons/restic-backups"
+    },
+    {
+      "name": "desktop-helpers",
+      "title": "Desktop helpers",
+      "line": "At the alarm, rings your phone through KDE Connect and wakes the screen; pings the phone for the kinds of messages you pick.",
+      "needs": "KDE Connect paired with your phone, or a Hyprland, Sway or X11 session",
+      "url": "https://github.com/avtarfr/kurooto-desktop-helpers",
+      "tag": "v1.0.0",
+      "commit": "3462b5733e6ee586947781ad944c06ad0acc1fae",
+      "earlier": [],
+      "source": "addons/desktop-helpers"
+    },
+    {
+      "name": "habits",
+      "title": "Your command words",
+      "line": "Short words of your own for the commands and requests you type often: /j for /journal.",
+      "needs": "nothing",
+      "url": "https://github.com/avtarfr/kurooto-command-words",
+      "tag": "v1.0.0",
+      "commit": "d18cb4df8d21dbb7cff4d624782e74e5bc9bcfeb",
+      "earlier": [],
+      "source": "addons/habits"
+    },
+    {
+      "name": "handwriting-pull",
+      "title": "Handwriting from the cloud",
+      "line": "Copies new handwritten pages from a cloud folder with rclone into Handwritten notes' folder every 2 hours.",
+      "needs": "rclone set up with your cloud (rclone config), and Handwritten notes on",
+      "url": "https://github.com/avtarfr/kurooto-handwriting-pull",
+      "tag": "v1.0.0",
+      "commit": "20b324403daae3999dd5e822a2a4b47f6a80417a",
+      "earlier": [],
+      "source": "addons/handwriting-pull"
+    }
+  ]
+}

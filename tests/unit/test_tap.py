@@ -6,7 +6,7 @@ an unattended AI run never reaches one: it gets an Approve / Deny, and only Appr
 import pytest
 
 from kurooto.app import App
-from kurooto.core import ledger, retention, tap
+from kurooto.core import addons, ledger, retention, tap
 from kurooto.core.config import Settings
 from kurooto.core.tools import agent_tools, run_tool
 from kurooto.modules.alarm import Alarm
@@ -61,6 +61,7 @@ def hits(monkeypatch):
     for name in ("place", "schedule", "ring"):
         monkeypatch.setattr(Calls, name, stand_in("call.place"))
     monkeypatch.setattr(retention, "forget", stand_in("data.delete"))
+    monkeypatch.setattr(addons, "install", stand_in("addon.install"))
     monkeypatch.setattr(ledger, "forget", stand_in("data.delete"))
     real_set, real_api = Settings.set, Google.api
 
@@ -120,6 +121,8 @@ def test_the_table_names_each_action_and_how_it_is_approved():
         assert g.what and g.where and g.ways, action
         assert set(g.ways) <= set(tap.WAYS), action
     assert "call" not in tap.GUARDED["send.out"].ways  # sending out always waits for a tap, on a call too
+    for prefix, action in tap.BUTTONS.items():  # a button that does a guarded action: a way the table allows
+        assert action in tap.GUARDED and "button" in tap.GUARDED[action].ways, prefix
 
 
 def test_every_tool_that_acts_says_so(app, hits):

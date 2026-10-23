@@ -7,7 +7,7 @@ Backups feature zips Kurooto's settings and data; this backs up the rest of your
 ## Add it
 
 ```
-kurooto addons add <this repository's git address> --ref v1.0.0
+kurooto addons add https://github.com/avtarfr/kurooto-restic-backups --ref v1.0.0
 ```
 
 or Dashboard → Features → **Add-ons by link**. You see its card first (below); nothing is added until you say yes.

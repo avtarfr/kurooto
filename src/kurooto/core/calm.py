@@ -661,6 +661,12 @@ REASONS: dict[str, Reason] = {
         R("updates.done", "Kurooto updated itself", setting="updates.mode", counted=False, fold=True),
         R("updates.rolled_back", "an update that was undone because it kept crashing", setting="updates.mode"),
         R("updates.whats_new", "what's new after an update"),
+        R(
+            "addons.official_update",
+            "a newer official add-on you have came with Kurooto (it waits for your yes)",
+            setting="addons.official_updates",
+            stop=to(False, "no more of these (Features and /addons still offer Update)"),
+        ),
         R("calls.line_update", "your call line couldn't be updated", setting="updates.mode"),
         R("calls.rang_offline", "a call your call line placed while this computer was off"),
         R("calls.held", "a call that waits for a better time"),

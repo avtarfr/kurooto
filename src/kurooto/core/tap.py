@@ -75,10 +75,11 @@ GUARDED: dict[str, Guard] = {
         "searched for on the disk",
     ),
     "addon.install": Guard(
-        "add or update an add-on by link (code that runs inside Kurooto)",
+        "add or update an add-on by link (code that runs inside Kurooto), official ones too",
         ("typed", "button"),
-        "`kurooto addons add|update` after its card (yes typed, or --yes), Features → Add-ons by link (Add or Update "
-        "after the card, with the box for code ticked); never by the AI, a request or a schedule",
+        "`kurooto addons add|update` after its card (yes typed, or --yes; `add <name>` for an official one), Features "
+        "→ Add-ons (Add or Update after the card, with the box for code ticked), /addons's Add and Update buttons "
+        "(the card comes as a message; only its Add / Update button adds); never by the AI, a request or a schedule",
     ),
     "data.delete": Guard(
         "delete your data",
@@ -87,6 +88,13 @@ GUARDED: dict[str, Guard] = {
         'Keep A / Keep B under the morning message\'s "Worth a look"; the AI never deletes (a note it changes keeps '
         "its earlier version)",
     ),
+}
+
+
+# Buttons that perform a guarded action (their prefix -> the action): each needs "button" among its ways
+# (tests/unit/test_tap.py). oad: an official add-on's Add / Update (core/official.py)
+BUTTONS: dict[str, str] = {
+    "oad": "addon.install",
 }
 
 

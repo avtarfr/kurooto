@@ -21,6 +21,24 @@ def test_there_are_the_four_generic_add_ons():
     assert NAMES == ["desktop-helpers", "habits", "handwriting-pull", "restic-backups"]
 
 
+def test_the_official_list_matches_the_folders():
+    """data/official_addons.json (core/official.py) names each folder here, with its manifest's title and version as
+    the tag, a public repository on github.com and one pinned commit."""
+    from kurooto.core import official
+
+    listed = official.catalog()
+    assert sorted(e["name"] for e in listed) == NAMES
+    for e in listed:
+        man = addons.read_manifest(ROOT / e["name"])
+        assert e["source"] == f"addons/{e['name']}", e["name"]
+        assert e["title"] == man["title"], e["name"]
+        assert e["tag"] == f"v{man['version']}", (e["name"], "a new version: publish it and update the list")
+        assert e["url"].startswith("https://github.com/") and addons.check_url(e["url"]) == e["url"]
+        assert addons.SHA.fullmatch(e["commit"]) and e["commit"] not in e["earlier"]
+        assert e["line"] and e["needs"]
+        assert official.find(e["name"])["commit"] == e["commit"]
+
+
 @pytest.mark.parametrize("name", NAMES)
 def test_each_loads_by_link_with_exactly_its_card(name, tmp_path, monkeypatch):
     monkeypatch.setenv("KUROOTO_HOME", str(tmp_path / "home"))

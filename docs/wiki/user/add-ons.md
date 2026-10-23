@@ -6,6 +6,7 @@ a terminal; none of it needs you to be a programmer, except writing a Python add
 
 - [Your add-ons (your own features, skills and prompts)](#your-add-ons)
 - [Add-ons by link (someone else's, from a git address)](#add-ons-by-link)
+- [Official add-ons (published with Kurooto, one tap to add)](#official-add-ons)
 - [Scripts and programs talking to Kurooto](#scripts-and-programs-talking-to-kurooto)
   - [kurooto notify](#kurooto-notify-send-yourself-a-message) ·
     [kurooto send](#kurooto-send-send-yourself-a-file) · [kurooto note](#kurooto-note-a-quick-note) ·
@@ -130,11 +131,49 @@ without asking (after printing the card), for when you've read it. A running Kur
 **What leaves your computer:** git fetches the add-on from the address you gave (counted as handed to git); after
 that, only what its card says, and what the programs it may start send by themselves.
 
-**Ready to add:** `addons/` in Kurooto's own repository holds four, each to be published as a repository of its own:
-Machine backups (restic), Desktop helpers (KDE Connect at the alarm, screen wake), Your command words (`/j` for
-`/journal`) and Handwriting from the cloud (rclone). Each README there has its card.
+**Ready to add:** the [official add-ons](#official-add-ons) below.
 
 **Writing one** (for developers): [modules.md in the developer wiki](../dev/modules.md#add-ons-by-link-coreaddonspy-corefencepy).
+
+---
+
+## Official add-ons
+
+**What they are.** Add-ons published with Kurooto, each a public repository of its own. Kurooto carries a list of
+them (inside Kurooto itself, so each release's signature covers it), each pinned to one commit.
+
+| Add-on | Name | What it does | Needs | Repository |
+|---|---|---|---|---|
+| Machine backups (restic) | `restic-backups` | backs up the folders you name with restic on a schedule, thins out old snapshots, checks the repository | restic, and a restic repository | [kurooto-restic-backups](https://github.com/avtarfr/kurooto-restic-backups) |
+| Desktop helpers | `desktop-helpers` | at the alarm, rings your phone through KDE Connect and wakes the screen; pings the phone for the kinds of messages you pick; `/findphone` | KDE Connect paired with your phone, or a Hyprland, Sway or X11 session | [kurooto-desktop-helpers](https://github.com/avtarfr/kurooto-desktop-helpers) |
+| Your command words | `habits` | your own short words for commands and requests: `/j had a good day` for `/journal had a good day` | nothing | [kurooto-command-words](https://github.com/avtarfr/kurooto-command-words) |
+| Handwriting from the cloud | `handwriting-pull` | copies new handwritten pages from a cloud folder with rclone every 2 hours, skipping metered connections | rclone set up with your cloud, and Handwritten notes on | [kurooto-handwriting-pull](https://github.com/avtarfr/kurooto-handwriting-pull) |
+
+**What "Official" means.** In Kurooto's list and at the commit it pins (each one's `v1.0.0` for now). One you add
+from the list, or by hand from the same address at that commit, gets the **Official** badge. The same add-on at another
+commit, or from a copy of its repository somewhere else (a fork), doesn't. Official doesn't mean a sandbox: these run
+Python inside Kurooto like any add-on by link, held to their cards.
+
+**Add one:**
+
+- Dashboard → Features → **Official add-ons** → **Add**: its card shows, tick "I trust this code", then **Add**.
+- Telegram: `/addons official` (or `/addons`) lists them with an **Add** button under each. Tapping it sends the card
+  as a message, with **Add, I trust its code** and **Don't**. Only the second tap adds it.
+- A terminal: `kurooto addons official` lists them; `kurooto addons add habits` (its name, or its repository's:
+  `command-words`) shows the card and asks. `--ref` isn't taken with a name: to pick another commit, give the address
+  (it isn't marked official then).
+
+After adding, it's an ordinary add-on by link: its feature is off until you turn it on (Features), and **Remove** and
+**Undo** work as above.
+
+**Updates come with Kurooto.** When a newer Kurooto pins a newer commit of one you have, a message says so once, with
+a **Look** button, and **Update to vX** shows on the dashboard and under `/addons` (`kurooto addons` says so too).
+Looking shows what changes and its card again; only **Update** (or yes in a terminal) updates it. Nothing updates by
+itself. `addons.official_updates` off: no message (the buttons stay).
+
+**What leaves your computer:** git fetches the add-on from github.com when you add or update one (counted in
+`/egress` as handed to git). None of the four reaches a host on the internet itself; restic and rclone, which they may
+start, reach your own backup repository and cloud.
 
 ---
 
@@ -350,3 +389,4 @@ writes them now. AI programs may read this folder, never write to it, and Kuroot
 | "The add-on X may only reach the hosts on its card" | Its code asked for a host it didn't declare: it's refused on purpose. Tell its author; a newer version that declares it shows the host when you update. |
 | "may only start the programs on its card" | The same for a program. |
 | `kurooto addons add`: "couldn't clone it" | Check the address; a private repository needs your git sign-in set up (Kurooto never asks for a password). |
+| An add-on isn't marked **Official** | It came from another address (a fork) or is at another commit than the one Kurooto lists. Remove it, then Add it from Official add-ons (or `kurooto addons add <name>`). |

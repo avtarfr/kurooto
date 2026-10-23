@@ -189,7 +189,7 @@ You never do these by yourself. A tool that would is turned into an Approve / De
 | `mail.read` | read mail from a new sender, domain, label or search | typed, button |
 | `send.out` | send something to someone else (mail, a message, publishing) | approval |
 | `repo.attach` | attach a code repository to a project | typed |
-| `addon.install` | add or update an add-on by link (code that runs inside Kurooto) | typed, button |
+| `addon.install` | add or update an add-on by link (code that runs inside Kurooto), official ones too | typed, button |
 | `data.delete` | delete your data | typed, confirm, button |
 
 Done without a tap (sure, only the user's own data, said in one line with Undo):
@@ -197,8 +197,8 @@ Done without a tap (sure, only the user's own data, said in one line with Undo):
 
 ## Settings
 
-517 settings in 76 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
+518 settings in 76 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
 
-`addons` (1), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (15), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (8), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
+`addons` (2), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (15), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (8), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
 
-<!-- settings fingerprint: c97f05555ea487ee -->
+<!-- settings fingerprint: 7c7e2a234e1c4e65 -->

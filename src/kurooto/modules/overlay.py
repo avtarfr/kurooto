@@ -1,7 +1,8 @@
 """Your add-ons: your own extra features, skills, prompts and default settings from a folder of yours (for example a
 private repository you cloned), laid over Kurooto when you turn this on. The add-on features appear in the dashboard
 under "Your add-ons", each off until you turn it on. What the folder may hold, and how a broken add-on is kept from
-stopping Kurooto: core/overlay.py. /addons lists what loaded and what didn't.
+stopping Kurooto: core/overlay.py. /addons lists what loaded and what didn't, and the official add-ons with Add
+buttons (core/official.py; /addons official lists only those).
 
 It runs the Python files in the folder's modules/ with Kurooto's access to this computer, so only use add-ons you
 wrote or trust. Updates never change the folder; turning this off unloads the add-ons.
@@ -13,7 +14,7 @@ from pathlib import Path
 
 from kurooto.core import overlay
 from kurooto.core.config import register_defaults
-from kurooto.modules.base import Command, Incoming, Module
+from kurooto.modules.base import Answer, Command, Incoming, Module
 
 register_defaults(
     "overlay",
@@ -102,11 +103,24 @@ class AddOns(Module):
     def commands(self):
         return [
             Command(
-                "addons", "your add-ons (your folder's and those added by link): what loaded, what didn't", self._cmd
+                "addons",
+                "your add-ons (your folder's and those added by link): what loaded, what didn't; the official ones "
+                "with Add buttons (/addons official: just those)",
+                self._cmd,
             )
         ]
 
     def _cmd(self, msg: Incoming, arg: str) -> str:
+        from kurooto.core import official
+
+        head = "Official add-ons (each pinned to one commit; you read its card before anything is added):"
+        listed = [head, *official.lines(self.app.paths)]
+        tap = official.buttons(self.app.paths) or None  # Add, Update: the card comes first (core/official.py)
+        if arg.strip().lower() == "official":
+            return Answer("\n".join(listed), tap)
+        return Answer(self._text() + "\n\n" + "\n".join(listed), tap)
+
+    def _text(self) -> str:
         st = overlay.status(self.app)
         linked = self.linked_lines()
         if not st.get("path"):
@@ -141,5 +155,12 @@ class AddOns(Module):
                 for mid in row.get("modules") or []
                 if (m := self.app.modules.get(mid))
             ]
-            rows.append(f"• {name} at {str(row.get('commit', ''))[:12]}: {', '.join(feats) or 'no features'}")
+            off = " (official)" if self._official(name, row) else ""
+            rows.append(f"• {name}{off} at {str(row.get('commit', ''))[:12]}: {', '.join(feats) or 'no features'}")
         return rows
+
+    def _official(self, name: str, row: dict) -> bool:
+        from kurooto.core import addons, official
+
+        rec = addons.installed(self.app.paths).get(name) or {}
+        return official.match(rec.get("url", ""), rec.get("commit", ""), name) is not None

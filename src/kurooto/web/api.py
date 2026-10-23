@@ -165,7 +165,7 @@ class Api:
         return out
 
     def _addons(self) -> dict:
-        from kurooto.core import addons, overlay
+        from kurooto.core import addons, official, overlay
 
         st = overlay.status(self.app).get("linked") or {}
         rows = []
@@ -182,15 +182,19 @@ class Api:
             "on": self.app.settings.get("addons.on", True) is not False,
             "linked": rows,
             "kept": list(kept.values()),
+            "official": official.rows(self.app.paths),  # Kurooto's official list, with what you have of each
         }
 
     def _addons_post(self, action: str, b: dict) -> tuple[int, dict]:
-        """look (a link's card), add (yes to a card), check (an update's card), update (yes to it), remove, undo,
-        drop (no to a card), reload (after `kurooto addons` changed them). Only you, by a button or the terminal."""
-        from kurooto.core import addons, overlay
+        """look (a link's card, or an official one's by {"official": name}), add (yes to a card), check (an update's
+        card), update (yes to it), remove, undo, drop (no to a card), reload (after `kurooto addons` changed them).
+        Only you, by a button or the terminal."""
+        from kurooto.core import addons, official, overlay
 
         p = self.app.paths
         try:
+            if action == "look" and b.get("official"):  # Features → Add-ons → Official add-ons → Add
+                return 200, {"ok": True, **official.fetch(p, str(b["official"]))}
             if action == "look":
                 out = addons.fetch(p, str(b.get("url") or ""), str(b.get("ref") or "").strip())
                 return 200, {"ok": True, **out}

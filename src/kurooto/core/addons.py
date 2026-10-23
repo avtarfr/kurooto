@@ -13,6 +13,10 @@ someone published as a git repository. Nothing of it runs before you've seen its
     loadable(paths)            what core/overlay.py loads at start: each add-on whose files are still exactly the ones
                                you agreed to (a digest of every file), else it's skipped with the reason
 
+Official add-ons (core/official.py): the ones in Kurooto's own list, at the commit it pins; fetch(..., pin=commit)
+checks out that commit, the card says "Official", and check_update moves one at an earlier official commit to the
+newer one a newer Kurooto pins (still with the card and your yes).
+
 The manifest, kurooto-addon.json at the repository's top (docs/wiki/dev/modules.md has the full format):
 
     {"name": "restic-backups", "title": "...", "description": "...", "version": "1.0.0", "kurooto": ">=0.6.0",
@@ -53,6 +57,7 @@ register_defaults(
     "addons",
     {
         "on": True,  # load the add-ons you added by link (kurooto addons add); False: none load from the next start
+        "official_updates": True,  # say once when Kurooto brings a newer official add-on you have; never updated alone
     },
 )
 
@@ -259,8 +264,12 @@ def card(d: Path, manifest: dict, url: str = "", commit: str = "", ref: str = ""
     why = fits(manifest)
     if why:
         warnings.append(why)
+    from kurooto.core import official
+
+    off = official.match(url, commit, manifest["name"]) if url and commit else None
     return {
         **manifest,
+        "official": off["tag"] if off else "",  # in Kurooto's official list, at its pinned commit (core/official.py)
         "url": url,
         "ref": ref,
         "commit": commit,
@@ -284,6 +293,8 @@ def card_text(c: dict) -> str:
         at = f" at {c['commit'][:12]}" if c.get("commit") else ""
         lines.append(f"From {c['url']}{at}{' (' + c['ref'] + ')' if c.get('ref') else ''}; it stays at that commit "
                      "until you update it.")  # fmt: skip
+    if c.get("official"):
+        lines.append(f"Official: in this Kurooto's list of official add-ons, at its {c['official']} commit.")
     adds = []
     if c["features"]:
         adds.append("features " + ", ".join(c["features"]))
@@ -482,13 +493,14 @@ def _rmtree(d: Path) -> None:
 
 
 # ----------------------------------------------------------------------------------------- add and update
-def fetch(p: Paths, url: str, ref: str = "", kind: str = "add", name: str = "") -> dict:
-    """Clone and make the card; nothing is added. {token, card, text, changes?}. Raises AddonError."""
+def fetch(p: Paths, url: str, ref: str = "", kind: str = "add", name: str = "", pin: str = "") -> dict:
+    """Clone and make the card; nothing is added. {token, card, text, changes?}. Raises AddonError. pin: the commit
+    to check out (an official add-on's, core/official.py), with ref kept only as its label (its tag)."""
     url = check_url(url)
     tok = uuid.uuid4().hex[:12]
     dest = _staging(p) / tok
     try:
-        commit = _clone(p, url, ref, dest)
+        commit = _clone(p, url, pin or ref, dest)
         m = read_manifest(dest)
         if kind == "update" and m["name"] != name:
             raise AddonError(f"its name changed from {name} to {m['name']}: remove it and add it again")
@@ -515,11 +527,18 @@ def fetch(p: Paths, url: str, ref: str = "", kind: str = "add", name: str = "") 
 
 
 def check_update(p: Paths, name: str, ref: str | None = None) -> dict:
-    """A newer commit's card and changes, waiting for your answer; {"same": True} when there's nothing newer."""
+    """A newer commit's card and changes, waiting for your answer; {"same": True} when there's nothing newer. An
+    official add-on at an earlier official commit goes to the commit this Kurooto pins (core/official.py)."""
+    from kurooto.core import official
+
     rec = installed(p).get(name)
     if not rec:
         raise AddonError(f"there's no add-on {name} (kurooto addons lists them)")
-    out = fetch(p, rec["url"], (rec.get("ref") or "") if ref is None else ref, kind="update", name=name)
+    e = official.update_for(rec) if ref is None else None
+    if e is not None:
+        out = fetch(p, rec["url"], e["tag"], kind="update", name=name, pin=e["commit"])
+    else:
+        out = fetch(p, rec["url"], (rec.get("ref") or "") if ref is None else ref, kind="update", name=name)
     if out["card"]["commit"] == rec["commit"]:
         drop(p, out["token"])
         return {"same": True, "commit": rec["commit"]}
@@ -689,6 +708,11 @@ def listing(p: Paths) -> list[dict]:
             c = card(f, rec["manifest"], rec["url"], rec["commit"], rec.get("ref") or "") if f.is_dir() else None
         except AddonError:
             c = None
+        from kurooto.core import official
+
+        off = official.match(rec["url"], rec["commit"], name=rec["name"])
+        up = official.update_for(rec)
         out.append({**{k: rec[k] for k in ("name", "url", "ref", "commit", "added", "updated")},
-                    "title": rec["manifest"]["title"], "problem": problem, "card": c})  # fmt: skip
+                    "title": rec["manifest"]["title"], "problem": problem, "card": c,
+                    "official": off["tag"] if off else "", "official_update": up["tag"] if up else ""})  # fmt: skip
     return out

@@ -16,7 +16,7 @@ taken as a word.
 ## Add it
 
 ```
-kurooto addons add <this repository's git address> --ref v1.0.0
+kurooto addons add https://github.com/avtarfr/kurooto-command-words --ref v1.0.0
 ```
 
 or Dashboard → Features → **Add-ons by link**; read the card, Add, then turn on **Your command words**.

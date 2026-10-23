@@ -42,6 +42,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Course notes as one PDF](#course-notes-as-one-pdf) ·
     [Study tracker](#study-tracker) · [Research](#research) · [Terminals](#terminals) ·
     [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) · [Add-ons by link](#add-ons-by-link) ·
+    [Official add-ons](#official-add-ons) ·
     [From a terminal or a script](#from-a-terminal-or-a-script) ·
     [The reserve](#the-reserve-markdown-copies-of-kurootos-state-for-ai-programs)
 - [Your phone](#your-phone)
@@ -2902,11 +2903,28 @@ you turn it on.
 `kurooto addons update <name>` (**Check for update**) shows what a newer commit changes (files, and what's new on the
 card) and its card again, then asks again. `kurooto addons remove <name>` (**Remove**) moves it aside; `kurooto addons
 undo <name>` (**Undo**) puts it back, or the version before an update. `kurooto addons` lists them, `kurooto addons
-show <name>` shows a card. `addons.on` off loads none of them. The four generic add-ons in Kurooto's `addons/` folder
-(restic backups, desktop helpers, your command words, handwriting from the cloud) are ready to add this way once
-they're published.
+show <name>` shows a card. `addons.on` off loads none of them.
 
-*Leaves your computer:* git fetches the add-on from the address you give; after that, what its card says.
+### Official add-ons
+Four add-ons published from Kurooto's own repository, each a public repository on GitHub: **Machine backups (restic)**
+(`restic-backups`), **Desktop helpers** (`desktop-helpers`), **Your command words** (`habits`) and **Handwriting from
+the cloud** (`handwriting-pull`). Kurooto ships a list of them, each pinned to one commit (its `v1.0.0` tag's), so the
+list is covered by the release's signature. **Official** means exactly that: in this list and at that commit. One you
+add from the list, or by hand from the same address at that commit, is marked Official; another commit or a fork
+isn't.
+
+Add one with Dashboard → Features → **Official add-ons** → **Add**, `/addons official` on Telegram (an **Add** button
+under each), or `kurooto addons add <name>` (`kurooto addons official` lists them). It's the same card and yes as any
+add-on by link: the card comes first (with a line saying it's official), and only **Add** (on Telegram "Add, I trust
+its code") adds it. After that it's an ordinary add-on by link: off until you turn its feature on, Remove and Undo as
+above.
+
+When a newer Kurooto pins a newer commit of one you have, a message says so once (`addons.official_updates`, on), and
+**Update to vX** shows on the dashboard and under `/addons`. The update is the usual one: what changes, its card again,
+your yes. Nothing updates by itself.
+
+*Leaves your computer:* git fetches the add-on from the address you give (an official one from github.com); after
+that, what its card says.
 
 ### From a terminal or a script
 Scripts and other tools on your computer can reach you through Kurooto (Telegram, the phone app, the desktop, however
@@ -4022,6 +4040,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Telegram's "/" menu is out of date | It updates within a minute of a feature going on or off, and every quarter of an hour for skills; `telegram.menu` off and on again sets it within a minute. |
 | Your add-ons: a problem in `kurooto doctor` | `/addons` shows which file and the error. Fix it, then restart Kurooto (`kurooto stop`, `kurooto start`). |
 | An add-on by link didn't load: "its files changed since you agreed to its card" | `kurooto addons update <name>` (or remove it and add it again). |
+| An add-on isn't marked **Official** | It came from another address (a fork) or is at another commit than the one Kurooto lists. Remove it, then Add it from Official add-ons (or `kurooto addons add <name>`). |
 | "The add-on X may only reach the hosts on its card" / "start the programs on its card" | Refused on purpose: it asked for something its card doesn't say. A newer version that declares it shows it when you update. |
 | Something else | `kurooto doctor --bundle` and send the zip to whoever is helping you (see below). |
 

@@ -410,3 +410,4 @@ body.dense #sm-body { padding-top: 18px; }
 /* Add-ons by link: the card you read before adding one (home.js linkBlock) */
 .al-card { white-space: pre-wrap; font: inherit; font-size: 13px; margin: 6px 0; }
 .al-row, .al-pending { margin: 8px 0; }
+.card2 .tag-off { margin-left: 6px; padding: 0 5px; border: 1px solid var(--ok); border-radius: 2px; color: var(--ok); font: 11px var(--mono); vertical-align: 1px; } /* an official add-on (home.js officialBlock) */

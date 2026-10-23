@@ -59,9 +59,10 @@ Standing plans, never struck through.
   queries during calls.~~ (0.6.0: `gbrain.checkup_line`, one weekly line from its doctor; its contradictions report
   in Dreaming's morning section; `gbrain.course_pages`, each course page's key concepts and dated timeline; on calls
   search_notes searches by meaning and note_timeline reads a course's or a note's timeline)
-- **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting). (0.6.0: all four
-  are ready in `addons/` with manifests, tests and READMEs, to add by link; left: publishing each as its own
-  repository)
+- ~~**Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting).~~ (0.6.0: all four
+  are ready in `addons/` with manifests, tests and READMEs, to add by link; 0.6.1: each published as its own
+  repository and offered as an official add-on, pinned to its commit: Features → Official add-ons → Add,
+  `/addons official`, `kurooto addons add <name>`)
 
 ## Done
 - ~~**Set up from what it sees, not from settings**: one pass over chat and the journal creates projects with whoever
