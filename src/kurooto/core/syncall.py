@@ -141,3 +141,23 @@ def start(app: App, notify: bool = True) -> tuple[bool, str]:
     threading.Thread(target=work, name="sync-all", daemon=True).start()
     names = ", ".join(label for _, label in todo)
     return True, f"Syncing {names}. I'll send one line each when it's done."
+
+
+def start_one(app: App, mid: str) -> tuple[bool, str]:
+    """Sync one feature now, in the background (the dashboard's SYSTEMS: a cell's "sync now"). (False, why) when it
+    has no sync, is off, or a sync is already running. Its end is the event sync_one (cell, ok, detail)."""
+    label = dict(steps(app)).get(mid)
+    if label is None:
+        return False, "That feature has nothing to sync."
+    if not _lock.acquire(blocking=False):
+        return False, "A sync is already running."
+
+    def work():
+        try:
+            ok, detail = _safe(app, mid)
+            app.events.emit("sync_one", cell=mid, ok=ok, detail=detail)
+        finally:
+            _lock.release()
+
+    threading.Thread(target=work, name=f"sync-{mid}", daemon=True).start()
+    return True, f"Syncing {label}."

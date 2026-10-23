@@ -108,7 +108,30 @@ around the ring.
   running"); one whose programs only run now and then says "idle". Other features say what they did last ("last 4m
   ago") and when they run next ("next in 2h").
 - **Hover over a cell** for its card: events in the last 2 minutes, its processes (cpu, memory, threads, uptime), the
-  last event and the next scheduled time. On a very crowded ring a few labels may hide; the card always works.
+  last event and the next scheduled time. Its nerve lights up and it swells a little. On a very crowded ring a few
+  labels may hide; the card always works.
+- **In the new design (0.5.21)** SYSTEMS is the largest pane on the board and looks alive: the core is a soft membrane
+  with rims that each heartbeat runs out through, every feature is a small neuron whose branches grow with how busy it
+  was over the last two minutes (oldest to newest, clockwise), and the nerves are tapered fibres, thick at the core
+  and fine at the cell, that flash where a pulse arrives. Classic keeps its round cells and plain lines.
+
+**Using it (both designs, new in 0.5.21):**
+
+| To | Do |
+|---|---|
+| See what a feature is doing | point at its cell |
+| Open its menu | click its cell, or Tab to it and press **Enter** (arrow keys move round the ring; **Esc** closes) |
+| Send a pulse to it and back | **ping** in its menu (nothing happens to the feature: it only shows the motion) |
+| Sync just that feature | **sync now** in its menu (notes sync, Classroom, calendar, research, the notes brain, backups) |
+| Stop it messaging you, but keep it working | **quiet** in its menu; **undo** brings its messages back (it's the same as Calm's "Less of this") |
+| Change its settings | **settings** in its menu: the Features page opens with its card |
+| See everything it did | **activity** in its menu: the Activity page shows only that feature (**show everything** goes back) |
+| Do something (Ctrl+K) | click the core |
+| Turn the ring, zoom in | drag anywhere on the pane; scroll on it (dense layout). Both spring back when you let go |
+
+With "reduce motion" set on your computer the cells and the core hold still (pulses still show what happens), and the
+turn and zoom don't spring. A screen reader finds the features as a list of buttons, one per cell, each saying what
+the cell shows.
 - The pane's top line says how many features are on, how many aren't running, Kurooto's own cpu and memory, and
   whether the call line is linked.
 
