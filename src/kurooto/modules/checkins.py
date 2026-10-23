@@ -715,7 +715,15 @@ class Checkins(Module):
                 return self.postpone(s["name"], s["mins"], day, via="intent")
             return self.move(s["name"], s["time"], day, via="intent")
 
-        return [Intent("move_checkin", "move, postpone or skip a check-in", match, run)]
+        return [
+            Intent(
+                "move_checkin",
+                "move, postpone or skip a check-in",
+                match,
+                run,
+                examples=("move the evening check-in to 21:30", "skip the evening check-in"),
+            )
+        ]
 
     # -------------------------------------------------------------------------------------- by call
     def _by_call(self) -> bool:

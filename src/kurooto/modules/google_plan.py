@@ -386,7 +386,15 @@ class AgentPlan(GooglePart):
         def run(msg, sl):
             return self._tool_reschedule({"start": sl["from"], "by": sl["by"]})
 
-        return [Intent("reschedule_day", "reschedule my day, push my day by 2 hours, replan from 19:00", match, run)]
+        return [
+            Intent(
+                "reschedule_day",
+                "reschedule my day, push my day by 2 hours, replan from 19:00",
+                match,
+                run,
+                examples=("push my day by 2 hours", "reschedule my day"),
+            )
+        ]
 
     def call_brief(self) -> dict:
         day = (jload(self.file, {}) or {}).get("days", {}).get(now().date().isoformat()) or []

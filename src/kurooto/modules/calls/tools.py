@@ -27,6 +27,12 @@ class Tool:
     offline: str = "needs"  # needs | queue | brief
     hint: str = ""  # one line for the call's instructions: when to use it
     writes: bool | None = None  # True: it changes something; False: it only reads (agent programs are told so)
+    # "never without a tap" (core/tap.py): the guarded action it performs ("alarm.set", "call.place", ...). Outside a
+    # live call it isn't run: you get Approve / Deny first. guard_if: only when this says so for the arguments (a quiz
+    # that rings). asks: the tool itself only asks you (a reply draft's Send / Edit / Discard), so nothing to gate.
+    guarded: str = ""
+    guard_if: Callable[[dict], bool] | None = None
+    asks: bool = False
 
     def declaration(self) -> dict:
         return {

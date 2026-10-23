@@ -49,6 +49,8 @@ class Intent:
     match: Callable[[str], dict | None]  # text -> slots, or None if it isn't this request
     run: Callable[[Incoming, dict], str]
     questions: bool = False  # True: it answers questions ("what's due?"); False: questions go to the AI
+    examples: tuple[str, ...] = ()  # what you'd say, as /help shows it ("wake me at 6:45")
+    guarded: str = ""  # the "never without a tap" action it performs (core/tap.py), e.g. "alarm.set"
 
 
 class Module:

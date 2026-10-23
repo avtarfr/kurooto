@@ -886,7 +886,13 @@ class Retro(Module):
             return {"what": what, "days": days} if len(what) > 3 else None
 
         return [
-            Intent("observe", "watch something for a while", match, lambda m, s: self.observe(s["what"], s["days"]))
+            Intent(
+                "observe",
+                "watch something for a while",
+                match,
+                lambda m, s: self.observe(s["what"], s["days"]),
+                examples=("observe whether I sleep better for 2 weeks",),
+            )
         ]
 
     def help(self):

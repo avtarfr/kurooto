@@ -224,6 +224,7 @@ class Commitments(Module):
                 "skipping a commitment (the gym today, tomorrow's shift)",
                 match,
                 lambda m, s: self._skip(self.find(s["name"]), True, s["day"]),
+                examples=("skipping the gym today",),
             )
         ]
 

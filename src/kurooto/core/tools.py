@@ -10,7 +10,8 @@ sense in unattended work). Below, the ones that are always there:
   of Classroom and mail, Documents, Downloads, Screenshots), links followed and checked, hidden files left out;
 - fetch_url: a web page as text (GET only; never this computer or a private network);
 - sync_status: when each sync last ran, how it went, and when it runs next.
-Tools say whether they write (Tool.writes): text-only requests get none at all.
+Tools say whether they write (Tool.writes): text-only requests get none at all. A tool that sets an alarm, places a
+call or does anything else on core/tap.py's list says so (Tool.guarded): outside a live call it waits for your Approve.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kurooto.core import egress, places
+from kurooto.core import egress, places, tap
 from kurooto.core.state import jload
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search
 
@@ -697,6 +698,9 @@ def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, v
     missing = [k for k in tool.required if args.get(k) is None or not str(args.get(k)).strip()]
     if missing:
         return f"{name} needs: {', '.join(missing)}."
+    guarded = tap.action_of(tool, args)
+    if guarded and via not in tap.DIRECT:  # never without a tap: an alarm, a call... waits for Approve (core/tap.py)
+        return tap.ask_first(app, tool, guarded, args, via=via, job=job)
     app.events.emit("tool_used", name=name, via=via)
     keep = getattr(app, "keep", None)
     if via == "call" and keep is not None:  # a call that went on as text: counted like a live call's (core/keep.py)

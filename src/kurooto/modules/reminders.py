@@ -170,7 +170,15 @@ class Reminders(Module):
                 )
             return self.add(s["when"], s["what"])
 
-        return [Intent("remind", "set a reminder", match, run)]
+        return [
+            Intent(
+                "remind",
+                "set a reminder",
+                match,
+                run,
+                examples=("remind me at 9 to call mum", "remind me in 20 minutes to take the tea off"),
+            )
+        ]
 
     def commands(self):
         return [

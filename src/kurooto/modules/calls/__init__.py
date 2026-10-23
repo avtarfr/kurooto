@@ -382,6 +382,7 @@ class Calls(Module):
                 ("when", "reason"),
                 offline="queue",
                 hint="schedule_call calls them back later; hold_calls stops calls until a time.",
+                guarded="call.place",
             ),
             Tool(
                 "call_now",
@@ -390,6 +391,7 @@ class Calls(Module):
                 {"reason": arg("what the call is for, optional")},
                 (),
                 hint="Use call_now to ring their phone immediately.",
+                guarded="call.place",
             ),
             Tool(
                 "hold_calls",
@@ -1457,6 +1459,8 @@ class Calls(Module):
                 "call me at/in … (about …)",
                 match,
                 lambda msg, sl: self.schedule(sl["at"], sl["reason"], why="calls.own"),
+                examples=("call me at 17:30 about the essay", "call me in 20 minutes"),
+                guarded="call.place",
             ),
             Intent(
                 "call_when",
@@ -1466,12 +1470,21 @@ class Calls(Module):
                     f"When should I call? I didn't book one: the {sl['said']} in that is about what "
                     'didn\'t happen or what was planned. Say "call me now" or "call me at 4:30".'
                 ),
+                examples=("call me, I didn't wake up at 7",),
             ),
             Intent(
                 "call_now",
                 "call me now",
                 match_now,
                 lambda msg, sl: self.place(sl["reason"], force=True, why="calls.own"),
+                examples=("call me now",),
+                guarded="call.place",
             ),
-            Intent("cancel_call", "cancel that call, cancel the 12:00 call", match_cancel, self.cancel_by_words),
+            Intent(
+                "cancel_call",
+                "cancel that call, cancel the 12:00 call",
+                match_cancel,
+                self.cancel_by_words,
+                examples=("cancel the 12:00 call", "cancel that call"),
+            ),
         ]

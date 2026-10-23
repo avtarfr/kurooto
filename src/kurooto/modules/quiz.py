@@ -559,7 +559,16 @@ class Quiz(Module):
             out = self.start_session(p["subject"])
             return out + (' (Say "quiz me by call" for a call.)' if self._calls_ok() else "")
 
-        return [Intent("quiz_me", "quiz me [on X] [by call] [at 9]", match, run)]
+        return [
+            Intent(
+                "quiz_me",
+                "quiz me [on X] [by call] [at 9]",
+                match,
+                run,
+                examples=("quiz me", "quiz me on la by call at 9"),
+                guarded="call.place",  # "by call" rings
+            )
+        ]
 
     # -------------------------------------------------------------------------------------- on calls
     def call_brief(self) -> dict:
@@ -593,6 +602,10 @@ class Quiz(Module):
                 {"when": arg(), "subject": arg(), "by_call": {"type": "boolean"}},
                 ("when",),
                 offline="queue",
+                guarded="call.place",
+                guard_if=lambda a: (
+                    bool(self.setting("by_call") if a.get("by_call") is None else a.get("by_call")) and self._calls_ok()
+                ),
             ),
         ]
 

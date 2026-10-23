@@ -278,7 +278,7 @@ def test_help_lists_only_what_is_on(env):
 def test_help_lists_everything_on_says_what_is_off_finds_a_word_and_points_at_the_wiki(env):
     env.on("reminders")
     out = env.say("/help")
-    assert "Reminders:" in out and "/remind" in out and "Understood at once, in plain words:" in out
+    assert "Reminders and deadlines (more: " in out and "/remind" in out and '"remind me at 9 to call mum"' in out
     assert "Off right now" in out and "Phone calls" in out and "/wiki/" in out and "/help <word>" in out
     n = len(env.fake.texts())
     env.say("/help call")

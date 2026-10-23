@@ -972,8 +972,20 @@ class Skills(Module):
             return "Filing it into your notes…"
 
         return [
-            Intent("routine", "do something on a schedule", match, lambda m, s: self.add_routine(s["text"])),
-            Intent("file_link", "a link on its own: filed into the notes", link, file_link),
+            Intent(
+                "routine",
+                "do something on a schedule",
+                match,
+                lambda m, s: self.add_routine(s["text"]),
+                examples=("every monday at 9 plan my week",),
+            ),
+            Intent(
+                "file_link",
+                "a link on its own: filed into the notes",
+                link,
+                file_link,
+                examples=("https://arxiv.org/abs/2401.00001",),
+            ),
         ]
 
     # ---------------------------------------------------------------------------------- revision packs

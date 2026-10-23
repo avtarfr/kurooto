@@ -83,6 +83,9 @@ class App:
         from kurooto.providers.agy import consent_answer  # may agy use Kurooto's tools? (asked once, providers/agy.py)
 
         self.ask.hooks["agy.tools"] = lambda q, answer: consent_answer(self, q, answer)
+        from kurooto.core import tap  # never without a tap: an AI's alarm or call runs on Approve (core/tap.py)
+
+        self.ask.hooks[tap.HOOK] = lambda q, answer: tap.approved(self, q, answer)
         from kurooto import providers
 
         providers.drop_retired(self)  # an AI that's no longer offered (Codex) isn't left as the main one
@@ -347,8 +350,9 @@ class App:
         if text.startswith("/"):
             name, arg = (text[1:].split(None, 1) + ["", ""])[:2]  # "/journal\nmy day" works too
             name = name.split("@")[0].lower()
-            if name in ("start", "help"):
-                msg.reply(self.help(arg if name == "help" else ""))
+            if name in ("start", "help"):  # the command table, by group (core/commands.py)
+                for part in self.help_parts(arg if name == "help" else ""):
+                    msg.reply(part)
                 return
             if name == "aboutme":  # your profile's In-brief part, and where to edit it (core/aboutyou.py)
                 msg.reply(self.about.for_chat())
@@ -629,86 +633,16 @@ class App:
                     return f"error: {e}"[:190]
         return "that button is from a feature that's off now"
 
-    CORE_HELP = (
-        ("q", "open questions I asked you (reply to one to answer it)"),
-        ("aboutme", "what I know about you (your profile's In-brief part), and where to edit it"),
-        ("persona", "your persona card: how I talk to you (/persona tone: plain, /persona clear)"),
-        ("health", "what isn't working, with Fix buttons (/health now checks online too)"),
-        ("fixme", "what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains"),
-        ("calm", "messages that come by themselves: today's count and limit"),
-        ("why", "why the last message that came by itself came"),
-        ("jobs", "what the AI is working on and what waits, with Cancel buttons"),
-        ("keep", "what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off"),
-        ("inferred", "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>"),
-        ("forget", "forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all"),
-        ("egress", "where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked"),
-        ("gists", "one line of what each forgotten call or request decided; /gists <words> finds them"),
-        (
-            "memory",
-            'what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I '
-            'last talk to Prof Ortiz?", "what was I doing last Thursday?"',
-        ),
-        ("threads", 'what you\'re in the middle of, with Done, Drop and Undo; also "did I finish that thing?"'),
-        ("help", "this list; /help <word> finds a command or feature, on or off"),
-    )
-
     def help(self, arg: str = "") -> str:
-        """/help: every command and instant request of the features that are on, the features that are off, and the
-        user wiki for the rest. /help <word>: what matches it, on or off (Kurooto knows all of itself)."""
-        from kurooto.update.updater import PAGES
+        """/help as one text (core/commands.py makes it; the chat gets help_parts(), one message each)."""
+        return "\n\n".join(self.help_parts(arg))
 
-        wiki = f"{PAGES}/wiki/"
-        on = self.enabled()
-        word = (arg or "").strip().lower()
-        if word:
-            return self._help_find(word, wiki)
-        lines = [f"{self.name}, your assistant. Plain words work; so do these."]
-        for m in on + self.basics():  # Telegram's /pause, /focus... answer in the phone app's chat without it
-            cmds = m.help()
-            if cmds:
-                lines += ["", "Pause, focus and calls:" if m in self.basics() else f"{m.title}:", *cmds]
-        lines += ["", "Kurooto itself:", *(f"/{n}  {h}" for n, h in self.CORE_HELP)]
-        if not self.is_on("notes_sync"):
-            lines.append("/sync  sync everything that's on (Classroom, calendar, research, notes brain)")
-        said = []
-        for m in on + self.basics():
-            try:
-                said += [i.description for i in m.intents()]
-            except Exception as e:  # a feature's intents failing must not take /help down
-                self.events.emit("module_failed", module=m.id, error=f"in /help: {e}"[:300])
-        if said:
-            lines += ["", "Understood at once, in plain words:", *(f"- {d}" for d in dict.fromkeys(said))]
-        off = [m.title for m in self.modules.values() if m not in on and m.title]
-        if self.app_main():
-            lines += ["", "You talk to me in the phone app's chat; Telegram is optional (Features → Telegram)."]
-        if off:
-            lines += ["", f"Off right now ({len(off)}): " + ", ".join(off) + ". /help <name> says what one does."]
-        if not self.is_on("chat"):
-            lines.append("(Chat is off, so free text isn't sent to an AI.)")
-        lines += ["", f"Everything, with examples, settings and fixes: {wiki}"]
-        return "\n".join(lines)
+    def help_parts(self, arg: str = "") -> list[str]:
+        """/help: the commands and plain words of the features that are on, by group, with the user wiki's page for
+        each; /help <group>, /help all, /help <word> (core/commands.py). Each part fits one Telegram message."""
+        from kurooto.core import commands
 
-    def _help_find(self, word: str, wiki: str) -> str:
-        on = self.enabled()
-        hits: list[str] = []
-        for n, h in self.CORE_HELP:
-            if word in n or word in h.lower():
-                hits.append(f"/{n}  {h}")
-        for m in self.modules.values():
-            state = "" if m in on else ' (off: turn it on in Features, or say "turn on ' + m.title.lower() + '")'
-            about = f"{m.title} {m.description}".lower()
-            try:
-                cmds = [c for c in m.commands() if word in c.name or word in c.help.lower()]
-                said = [i.description for i in m.intents() if word in i.description.lower()]
-            except Exception:
-                cmds, said = [], []
-            if word in about or cmds or said:
-                hits.append(f"{m.title}{state}: {m.description}")
-                hits += [f"  /{c.name}  {c.help}" for c in cmds]
-                hits += [f"  - {d}" for d in said]
-        if not hits:
-            return f'Nothing here matches "{word}". The user wiki has everything: {wiki}'
-        return "\n".join([f'About "{word}":', *hits, "", f"More in the user wiki: {wiki}"])
+        return commands.help(self, arg)
 
     def _job_done(self, job, outcome: str, err: BaseException | None) -> None:
         if outcome in ("error", "missing-action"):

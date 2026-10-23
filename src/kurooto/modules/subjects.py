@@ -661,6 +661,7 @@ class Subjects(Module):
                 "skipping a class (today, tomorrow or on a weekday)",
                 match,
                 lambda m, s: self._skip(s["slugs"][0], True, s["day"]),
+                examples=("skipping la today", "I'm skipping la on friday"),
             )
         ]
 

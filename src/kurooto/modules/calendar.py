@@ -576,6 +576,7 @@ class Calendar(Module):
                 match,
                 lambda msg, s: self.agenda(self.now().date() + dt.timedelta(days=1 if s["tomorrow"] else 0)),
                 questions=True,
+                examples=("what's on today?", "what's on tomorrow?"),
             )
         ]
 

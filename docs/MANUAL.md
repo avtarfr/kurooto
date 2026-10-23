@@ -365,10 +365,13 @@ its data stays unless you delete it. Each section says what leaves your computer
 full list.
 
 Plain English works for many things ("remind me at 9 to call mum", "move tonight's check-in to 21:30", "skip Friday's
-check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` lists everything:
-the commands and plain-English requests of the features you have on, grouped by feature, Kurooto's own commands
-(`/q`, `/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/jobs`) and the features that are off. `/help <word>` finds a
-command or feature, on or off (`/help quiz`, `/help alarm`).
+check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` lists everything, in groups
+(Talking, Reminders and deadlines, Calls and phone, Notes, Privacy and memory, Settings and upkeep, ...), each with its
+page in the user wiki: the commands of the features you have on with what each does, Kurooto's own commands (`/q`,
+`/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/jobs`), what you can just say, and the features that are off. When
+that's more than one Telegram message it sends a short index instead; `/help <group>` (`/help calls`) shows one group
+in full and `/help all` every group, one message each. `/help <word>` finds a command or feature, on or off
+(`/help quiz`, `/help alarm`). The phone app's chat answers `/help` the same way.
 
 ### Telegram
 Your own bot, which only answers you. Optional when the phone app is paired (see [Without Telegram](#without-telegram)). Commands: `/status` (what's going on: whether calls are held, focus, what's
@@ -398,6 +401,14 @@ follow-up) and from your own scripts (see [From a terminal or a script](#from-a-
   again; nothing is ever approved for you.
 - Questions you don't answer expire after two days (or when their asker stops waiting); then nothing happens.
 - `/q` lists the open ones with their buttons; `/status` says how many are waiting.
+
+**Never without your tap.** Setting or moving an alarm, placing a call, reading mail from a new sender, sending
+anything to someone else, attaching a code repository to a project and deleting your data happen only when you asked
+for them yourself (a command, a plain-English request, on a call) or tapped to approve them. Your AI can't do them by
+itself: outside a call, an AI request (or an agent program using Kurooto's tools) that wants to set the alarm or book a
+call gets a **Your OK first** approval ("An AI request wants to set, move or clear an alarm: set_alarm (time: 7:30).
+Do it?"), and it happens only on **Approve**. Things set up from what you say in passing never include these. The
+whole list, with how each is approved, is in the user wiki: Talking to Kurooto → Never without your tap.
 
 *Settings:* `ask.expire_hours` (default 48: how long an unanswered question stays open), `ask.keep_days` (default
 0: answered ones are kept as long as `privacy.keep_days` when set, else 30 days; see [Forgetting](#forgetting-how-long-conversations-are-kept)).

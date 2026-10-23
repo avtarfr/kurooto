@@ -150,11 +150,18 @@ Timeouts per level: `brain.timeout_min`.
 
 `run_tool(app, name, args, tools, via, job=None)` validates `required`, emits `tool_used` / `tool_failed`, notes the
 use in the request's tool log when `job` is given (`Jobs.note_step`, see [core.md](core.md#jobs)), and never raises: an
-error comes back as a sentence. Text-only jobs get no tools at all (`Jobs._run`: `tools=[] if text_only`).
+error comes back as a sentence. Text-only jobs get no tools at all (`Jobs._run`: `tools=[] if text_only`). A guarded
+tool (`Tool.guarded`, see [modules.md](modules.md#never-without-a-tap-coretappy)) isn't run unless `via` is in
+`tap.DIRECT` (`"call"`: a live call, or one that went on as text): `tap.ask_first()` makes an Approve / Deny
+(`source="tap"`, hook `tap.tool`, one per tool and arguments) and the AI is told it waits; Approve runs the tool
+(`tap.approved`). `via` from the local API is only ever `mcp`, `dashboard`, `terminal` or `api`, so a program with the
+tools-only key can't claim a call.
 
 The `Tool` dataclass lives in `modules/calls/tools.py` (shared with calls): `name`, `description`, `run(args)`,
 `params` (JSON schema per argument; build with `arg()`), `required`, `offline` (`needs` | `queue` | `brief`, what a call
-does when the computer is off), `hint`, `writes` (True/False/None; MCP turns it into `readOnlyHint`).
+does when the computer is off), `hint`, `writes` (True/False/None; MCP turns it into `readOnlyHint`), and for "never
+without a tap" `guarded` (an action in `core/tap.py:GUARDED`), `guard_if(args)` (guarded only when it says so) and
+`asks` (the tool itself only asks, like `draft_reply`).
 
 ### How agent programs get them: `kurooto mcp`
 

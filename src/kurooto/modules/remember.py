@@ -483,7 +483,15 @@ class Remember(Module):
             m = REMEMBER.match(text)
             return {"fact": m["fact"]} if m and not re.match(r"(?i)to\b", m["fact"]) else None
 
-        return [Intent("remember", "remember how you like to be helped", match, lambda m, s: self.remember(s["fact"]))]
+        return [
+            Intent(
+                "remember",
+                "remember how you like to be helped",
+                match,
+                lambda m, s: self.remember(s["fact"]),
+                examples=("remember that I hate calls before 8",),
+            )
+        ]
 
     def help(self):
         return ['"remember that …", /remember']

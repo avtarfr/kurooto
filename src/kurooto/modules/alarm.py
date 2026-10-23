@@ -673,6 +673,7 @@ class Alarm(Module):
                 ("time",),
                 offline="queue",
                 hint="set_alarm sets the wake-up call; in an evening call, ask when to wake them and set it.",
+                guarded="alarm.set",
             ),
             Tool(
                 "get_alarm",
@@ -870,6 +871,8 @@ class Alarm(Module):
                 "off",
                 match,
                 run,
+                examples=("wake me at 6:45", "no alarm tomorrow", "cancel all my alarms", "turn my daily alarm off"),
+                guarded="alarm.set",
             ),
             Intent(
                 "alarm_status",
@@ -877,12 +880,15 @@ class Alarm(Module):
                 lambda text: {"ask": True} if asking(text) else None,
                 lambda msg, sl: self.status(),
                 questions=True,
+                examples=("when is my alarm?", "do I have any alarms?"),
             ),
             Intent(
                 "up_now",
                 "I'm awake, I just woke up (the morning call now)",
                 lambda text: {"text": text} if up_now(text) else None,
                 lambda msg, sl: self.up(sl["text"]),
+                examples=("I'm awake", "I just woke up"),
+                guarded="call.place",  # the morning call, now
             ),
         ]
 

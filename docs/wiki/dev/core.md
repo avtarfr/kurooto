@@ -831,6 +831,7 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/agent_export.py` | skills as slash commands in agent programs (`agents.export`) |
 | `core/autostart.py` | start at sign-in or boot, per OS; `refresh()` brings old installs' entries up to date |
 | `core/clock.py` | `now()` (local, naive), `parse_when()` for typed times |
+| `core/commands.py` | the command table and `/help`: `CORE`, `GROUPS`, `help()`, `find()` ([modules.md](modules.md#help-and-the-command-table-corecommandspy)) |
 | `core/conceptgraph.py`, `core/graphwrite.py`, `core/integrate_ai.py`, `core/segment.py`, `core/rerank.py`, `core/hubs.py`, `core/pdfread.py` | the concept graph ([concept-graph.md](concept-graph.md)) |
 | `core/desktop.py` | desktop notifications; text passed as arguments or environment, never pasted into script source |
 | `core/endsession.py` | Windows sign-out and shutdown messages |
@@ -850,6 +851,7 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/profile.py` | Profile sync: the encrypted profile and restore |
 | `core/shortcuts.py` | the app-menu "Kurooto" entry |
 | `core/sources.py` | the book / Classroom / own-notes mix for note-writing skills |
+| `core/tap.py` | never without a tap: `GUARDED`, `WAYS`, `ask_first()` and `approved()` for guarded tools ([modules.md](modules.md#never-without-a-tap-coretappy)) |
 | `core/studypack.py` | a subject's notes and files as a zip with a prompt for another AI. `sources()` merges Books' reads (`book-text/<subject>/*/meta.json`, bookmarks in `chapters`) with Classroom's files and their `<file>.txt` (pages split on form feeds), dropping copies (`same_doc`); `is_class()` tells class material from books by length and title; with topics, `book_tiers()` ranks a book's pages (cited readings from `citations()`, then title-matching chapters, then hit pages) and `book_share()` fits all books into `MAX_PACK_BOOK_PAGES`; the prompt is `prompt_text()`, from the user's `study_pack_prompt` note when there is one |
 | `core/syncall.py` | "sync everything" (`sync_now` on each module that has one) |
 | `core/upgrade.py` | one-time steps at the first start of a new version (`upgrades.json`), the "what's new" message |
@@ -897,7 +899,7 @@ for <subject>", "I call <subject> X") adds a short name to a `subjects.list` ent
 only in the term note or a class pack), refused for `NOT_ALIAS` words and for any name a subject already has. Each sentence is keyed
 (`_key`, sha256 of the normalised text) and looked at once. Changes are kept in `<state>/inferred.json` (`items` with
 their `undo` data, `seen`); `undo()` reverses one (a note it made and nobody touched is deleted; otherwise only its own
-line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `CORE_HELP`. Calm reason
+line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `core/commands.py:CORE`. Calm reason
 `infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`, `aliases`, `commitments`. Tests: `tests/unit/test_infer.py`.
 
 ## Keep or drop (`core/keep.py`)
@@ -922,7 +924,7 @@ Quiet is `quiet_change()`: a Calm `Change` adding the feature's non-exempt, stop
 `notify.calm.stopped` (offered only while Calm is on and something is left to stop). Off is `Change(module=id)`
 (`App.disable`; not offered when another enabled feature requires it). Both go through `Calm.apply`, so Undo is
 `calm:<uid>:undo`. Calls a quiet feature places aren't stopped (`Calm.call_ok` doesn't read the stopped list).
-`/keep` (`Keep.command`, in `App.handle` and `CORE_HELP`): counts for 30 days, `/keep <1-90>`, `/keep <feature>`
+`/keep` (`Keep.command`, in `App.handle` and `core/commands.py:CORE`): counts for 30 days, `/keep <1-90>`, `/keep <feature>`
 with its row. Events `keep_asked`, `keep_answer`, `keep_failed`. Tests: `tests/unit/test_keep.py`.
 
 ## Your rhythm (`core/rhythm.py`)

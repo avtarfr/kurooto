@@ -4,7 +4,8 @@ Everything you can type, in one place: Telegram commands, the plain-English requ
 the `kurooto` terminal commands, and the dashboard's keyboard shortcuts. Each row links to the page that explains it.
 
 - On Telegram, typing `/` shows a menu of the commands of the features you have on, plus your skills. `/help` lists
-  the same with a line each.
+  the same in groups, with a line each and what you can just say; when that's longer than one message it sends an
+  index, and `/help <group>` (`/help calls`) shows one group in full, `/help all` every group.
 - A command of a feature that's off answers "X is off: Features → X → Turn on" and does nothing else.
 - Commands work in any case (`/Remind` is `/remind`), and `/remind@yourbot` works in a group-style chat too.
 - Most commands take the rest of the line as their argument; `/journal` followed by a new line works as well.
@@ -23,7 +24,7 @@ These belong to Kurooto itself and answer whichever features are on.
 |---|---|---|
 | `/dream` | what Kurooto did since the last morning message, and the loose ends; `/dream policy`: when messages that come by themselves reach you, and what it tuned | Dreaming |
 | `/inferred` · `/inferred undo <id>` | what was set up from what you said (a project, a meeting, a class), and taking one back | Kurooto itself |
-| `/help`, `/start` | everything I can do: the commands and plain-word requests of the features you have on, the features that are off, and a link to this wiki; `/help <word>` finds a command or feature, on or off | [Talking to Kurooto](talking-to-kurooto.md) |
+| `/help`, `/start` | everything I can do, in groups, each with its page in this wiki: the commands and plain-word requests of the features you have on, the features that are off; an index when that's more than one message. `/help <group>` (talking, reminders, classes, study, quiz, calls, checkins, notes, skills, research, google, teaching, privacy, settings) shows one group in full, `/help all` every group, `/help <word>` finds a command or feature, on or off | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/status` | what's going on: calls held or allowed, focus, what's coming up, open questions, today's check-ins, what's due soon, the alarm, recent AI requests, the features that are on (answers even with Telegram off, from a terminal) | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/q` (or `/questions`) | the open questions Kurooto asked you, each with its buttons; reply to one to answer it | [Talking to Kurooto](talking-to-kurooto.md#questions-and-approvals) |
 | `/jobs` | what the AI is working on and what waits, with Cancel buttons, and the last few that finished; `/jobs cancel <id>` or `/jobs cancel all` | [AI brains](ai-brains.md) |
@@ -402,6 +403,9 @@ The Today box takes the same `j`, `.` and `!` shortcuts. A bare verb is complete
 
 ## How this list was checked
 
-Every Telegram command above comes from the code's command list (each feature's `commands()` and Kurooto's own
-`/help`, `/start`, `/q`, `/aboutme`, `/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/jobs`), every plain-English row from each feature's
-instant requests, and every terminal command from `kurooto --help`.
+Every Telegram command above comes from the code's command list (each feature's `commands()` and Kurooto's own, in
+`core/commands.py`), every plain-English row from each feature's instant requests (their examples are what `/help`
+shows), and every terminal command from `kurooto --help`. A test fails when a command isn't in `/help`.
+
+Some of these never happen without your tap (an alarm, a call, a new mail sender, anything sent out, a repository,
+deleting your data): [Never without your tap](talking-to-kurooto.md#never-without-your-tap).

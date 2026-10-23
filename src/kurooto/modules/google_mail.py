@@ -926,6 +926,8 @@ class ReplyDrafts(GooglePart):
                     "why": arg("one line: why it needs a reply"),
                 },
                 ("message_id", "text"),
+                guarded="send.out",
+                asks=True,  # it only drafts: sending waits for your Send
             )
         ]
 

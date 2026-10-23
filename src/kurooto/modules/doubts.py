@@ -300,8 +300,16 @@ class Doubts(Module):
                 "a doubt from class, for the next one",
                 add,
                 lambda m, s: self.take(m, s["what"]) or "It's saved once you tap its subject.",
+                examples=("I have a doubt about why the rank doesn't change in la",),
             ),
-            Intent("show_doubts", "my open doubts", show, lambda m, s: self._list(m, s["s"]), questions=True),
+            Intent(
+                "show_doubts",
+                "my open doubts",
+                show,
+                lambda m, s: self._list(m, s["s"]),
+                questions=True,
+                examples=("what are my doubts?", "show my doubts"),
+            ),
         ]
 
     def help(self):

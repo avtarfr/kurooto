@@ -898,13 +898,21 @@ class StartBy(Module):
             return self.crunch_text(weeks) if weeks else "No crunch weeks ahead that I can see (an estimate)."
 
         return [
-            Intent("start_by", "when should I start X", when_start, run_when, questions=True),
+            Intent(
+                "start_by",
+                "when should I start X",
+                when_start,
+                run_when,
+                questions=True,
+                examples=("when should I start the essay?",),
+            ),
             Intent(
                 "crunch_weeks",
                 "crunch weeks ahead",
                 lambda t: {} if CRUNCH.search(t) else None,
                 run_crunch,
                 questions=True,
+                examples=("any crunch weeks ahead?",),
             ),
         ]
 
