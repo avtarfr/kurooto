@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.18 (2026-10-23)
+
+- **Telegram is optional:** setup offers the Kurooto phone app instead, and its chat gets everything Kurooto sends,
+  buttons included. Files come to the chat as links: Google Drive, or a sealed copy on your call line for a day. The
+  iPhone web app has a chat page; `/pause`, `/status`, `/focus`, `/hold` and `/calls` work there; "summarise the PDF I
+  just sent" finds a file you shared from your phone; `kurooto doctor` no longer counts a missing Telegram as a problem.
+- **Memory ledger:** everything Kurooto remembers in one store, always encrypted with a key in your keychain. `/memory`
+  finds, forgets and exports it; "when did I last talk to Prof X?" and "what was I doing last Thursday?" are answered
+  from it. Not in backups unless `backups.memory` is on.
+- **Open threads:** what you say you'll do, in messages or on calls, and tasks you start. `/threads` has Done, Drop and
+  Undo; "did I finish that thing?" asks once if two match and never acts on a guess.
+- **Remembered context:** an AI reply gets only the remembered items your message refers to, up to about 600 tokens,
+  and the receipt says "used N remembered items". Calls see your open threads.
+- **A persona card you write** (`/persona`, the About you tab): what to call you, tone, length, things to avoid.
+  Empty to start; it sets wording only.
+- **Negotiate, don't repeat:** a slipping deadline gets a reshaped plan from your own Start-by plan ("1 h now, 1 h
+  tomorrow?") instead of the same reminder again, once a day, on Telegram, the app and calls.
+- **Two readings:** when a message is about equally close to two requests, both come as buttons; picking the same one
+  twice teaches the phrasing.
+- **Boundaries:** health, relationship and money decisions get one line saying they're yours and who to ask.
+- **Answers at your length:** a short message gets a short answer; a voice note gets a spoken-style reply
+  (`persona.register`).
+- **Study mode:** the dashboard keeps only your notes and studying (Alt+M, `/study mode on|off`).
+- **Fix:** "Set up from what you say" no longer treats questions as statements.
+
 ## 0.5.17 (2026-10-23)
 
 - **Gists:** as a conversation's words fade (`privacy.keep_days`, `/forget`), it settles into a one-line gist of what

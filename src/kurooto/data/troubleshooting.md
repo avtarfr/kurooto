@@ -8,7 +8,7 @@ problems:
    it. It works by rules, with no AI, so it answers when the AI is what broke (`kurooto fixme` also with Kurooto
    stopped). `/fixme the phone doesn't ring` finds the rows for what you see; **Ask my AI** (or `/fixme ai`) has your AI
    explain, if it works.
-2. **`/health`** on Telegram: what isn't working, with **Fix** buttons (`/health now` also checks online services).
+2. **`/health`** on Telegram (or in the phone app's chat): what isn't working, with **Fix** buttons (`/health now` also checks online services).
 3. **`kurooto doctor`** in a terminal: every check, one line each; `kurooto doctor --fix <id>` runs a fix.
 4. **`/why`** when a message surprised you, and **`/calm`** when one didn't come.
 
@@ -48,6 +48,10 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | "Voice notes are off" | Turn on Voice notes (Features); it needs a Gemini key. |
 | "Couldn't get that file" (a big file) | Telegram lets bots fetch files up to 20 MB. Put the file into your notes or files folder yourself. |
 | "… Telegram takes files up to 50 MB" when Kurooto sends you something | Turn on [Drive upload](google.md): bigger files then come as a Google Drive link. |
+| I don't want Telegram | Pick **The Kurooto phone app instead** on the setup page's Chat step (it needs Phone calls), or turn Telegram off in Features once Phone calls is on: everything then comes to the app's chat ([phone-app.md](phone-app.md#using-the-app-instead-of-telegram)). |
+| "X needs Telegram or the phone app (Phone calls) first" | That feature sends you things: connect Telegram, or set up Phone calls and pair the app. |
+| "Voice notes needs Telegram first" with the phone app | Voice notes and Files into notes are about what you send the bot; they need Telegram itself. Share files to the app instead. |
+| `kurooto doctor` says "talks to you: on this computer only" | Neither Telegram nor Phone calls is on, so messages only pop up on this computer. Set one up (a note, not a problem). |
 
 ## The AI
 
@@ -143,6 +147,10 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | "Your call line is holding as much as it can for your computer" | The phone outbox is full (100 things, 20 MB of files). Wait till the computer is back, or use Telegram. |
 | The app's chat says "Your call line doesn't have the chat yet" | Your computer runs an older Kurooto, or its call line wasn't redeployed yet. Update Kurooto; it redeploys the line by itself (or Features → Phone calls → set up again). |
 | No answer in the app's chat, but Telegram works | Answers to what you wrote in the app come back to the app. Is the app's notification category "Messages" on? Open the chat: it catches up from your call line. |
+| A file in the chat says "stays on your computer" | Your call line wasn't connected, or the file is over 10 MB. Turn on [Drive upload](google.md) to get files as a Drive link, or open it on the computer at the path shown. |
+| A file link says "This file is gone" | Copies on your call line last a day. Ask for it again (or turn on Drive upload, whose links last `drive_upload.temp_days`). |
+| "This link doesn't open the file" | The link was cut short (copied by hand?). Open it from the chat's button. |
+| No Chat button on the iPhone app | Your call line is older: update Kurooto on the computer; it redeploys the line. Or open `<your call line>/talk`. |
 
 ## Classes and study
 
