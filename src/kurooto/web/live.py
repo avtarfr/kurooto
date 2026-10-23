@@ -3,7 +3,7 @@ disks, battery, processes, each with a short history), each feature's activity, 
 notes graph (notes and their [[links]] in your notes folder), and Kurooto's side of the dense board (Vitals.board():
 each feature's own programs, the call line, today, what's due, the AI's corner, study today, projects, today's events;
 `kurooto top` reads it from GET /api/board). Pushed to open pages over a server-sent-events stream; nothing is
-computed while no page is open."""
+computed while no page is open, or while every open page is out of sight (Live.seen)."""
 
 from __future__ import annotations
 
@@ -162,16 +162,21 @@ class Graph:
     def scan(self) -> bool:
         """Re-read changed notes. Returns True if the graph changed."""
         new, files = {}, {}
-        for dirpath, dirs, names in os.walk(self.root):
+        root = str(self.root)
+        for dirpath, dirs, names in os.walk(root):
             dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+            # each note's id as plain strings: Path objects for every note made this most of a page's work (0.6.1)
+            rel = os.path.relpath(dirpath, root)
+            prefix = "" if rel == "." else rel.replace(os.sep, "/") + "/"
             for n in names:
                 if n.endswith(".md"):
-                    p = Path(dirpath) / n
+                    full = os.path.join(dirpath, n)
+                    key = prefix + (n[:-3] if n != ".md" else n)  # as Path.with_suffix("") has it
                     try:
-                        new[p.relative_to(self.root).with_suffix("").as_posix()] = p.stat().st_mtime
-                        files[p.relative_to(self.root).with_suffix("").as_posix()] = p
+                        new[key] = os.stat(full).st_mtime
                     except OSError:
                         continue
+                    files[key] = full
             if len(new) > 5000:
                 break
         changed = [k for k, m in new.items() if self.mtimes.get(k) != m]
@@ -182,7 +187,7 @@ class Graph:
             return False
         self._lay_seen = dict(self.lay)
         for k in changed:
-            info = note_info(files[k], self.root)
+            info = note_info(Path(files[k]), self.root)
             if info:
                 self.infos[k] = info
         for k in removed:
@@ -218,7 +223,7 @@ class Graph:
         if not f:
             return {}
         try:
-            text = f.read_text(encoding="utf-8", errors="replace")
+            text = Path(f).read_text(encoding="utf-8", errors="replace")
         except OSError:
             return {}
         dirs = ["projects/", "research/"]
@@ -655,10 +660,14 @@ class Live:
     def __init__(self, app: App):
         self.app = app
         self.clients: dict[int, queue.Queue] = {}
+        # pages open but out of sight (another tab, a minimised window; static/home.js says so): while every page is,
+        # nothing is read or computed (a dashboard left open in a tab kept the daemon at 15-30% of a core, 0.6.1)
+        self.hidden: set[int] = set()
         self.lock = threading.Lock()
         self.graph = Graph(app.workspace)
         self.vitals = Vitals(app)
         self._stop = threading.Event()
+        self._wake = threading.Event()  # a page came back into sight: a fresh reading now, not in up to 2 s
         self._unsub = events_mod.subscribe(self._event)
         threading.Thread(target=self._loop, name="live", daemon=True).start()
 
@@ -693,14 +702,33 @@ class Live:
     def drop(self, cid: int) -> None:
         with self.lock:
             self.clients.pop(cid, None)
+            self.hidden.discard(cid)
         terms = self.app.modules.get("terminals")
         if terms is not None:
             terms.page_gone(cid)
 
+    def seen(self, cid: int, visible: bool) -> bool:
+        """A page says whether it's in sight (POST /api/stream/seen). False if there's no such page."""
+        with self.lock:
+            if cid not in self.clients:
+                return False
+            if visible:
+                self.hidden.discard(cid)
+            else:
+                self.hidden.add(cid)
+        if visible:
+            self._wake.set()
+        return True
+
+    def watched(self) -> bool:
+        """Some open page is in sight."""
+        with self.lock:
+            return any(cid not in self.hidden for cid in self.clients)
+
     def _loop(self) -> None:
         last_graph = 0.0
         while not self._stop.is_set():
-            if self.clients:
+            if self.watched():
                 try:
                     if time.monotonic() - last_graph > 5:
                         last_graph = time.monotonic()
@@ -711,8 +739,10 @@ class Live:
                     self.push(self.vitals.snapshot())
                 except Exception as e:
                     self.app.events.emit("dashboard_error", error=str(e)[:200])
-            self._stop.wait(2)
+            self._wake.wait(2)
+            self._wake.clear()
 
     def stop(self) -> None:
         self._stop.set()
+        self._wake.set()
         self._unsub()  # a stopped server's pages get no more events

@@ -185,6 +185,8 @@ class Integrate(Module):
         # each item's batches and what they were planned from (its text file, outline, size): planning splits the whole
         # text, and the dashboard's card asks for every queued item's batches on each request (0.6.1)
         self._plans: dict[str, tuple] = {}
+        # each book's page numbers that have text, and what they were read from (its text file's mtime, size, inode)
+        self._have: dict[str, tuple] = {}
 
     # ------------------------------------------------------------------------------------------------- places
     @property
@@ -496,6 +498,22 @@ class Integrate(Module):
         parts = PAGE_MARK.split(text)
         return {int(parts[i]): parts[i + 1].strip() for i in range(1, len(parts) - 1, 2)}
 
+    def pages_read(self, b: dict) -> set[int]:
+        """A book's page numbers that have text: pages_of's, kept while its text file stays the same (the dashboard's
+        card asks for every book's on each request, 0.6.1)."""
+        f = self.books.book_dir(b) / "text.md"
+        try:
+            st = f.stat()
+        except OSError:
+            return set()
+        sig = (st.st_mtime_ns, st.st_size, st.st_ino)
+        kept = self._have.get(str(f))
+        if kept and kept[0] == sig:
+            return set(kept[1])
+        pages = frozenset(self.pages_of(b))
+        self._have[str(f)] = (sig, pages)
+        return set(pages)
+
     def item_text(self, b: dict) -> tuple[dict[int, str], str]:
         """An item's pages and what they are (pages, slides or parts), from the copy of its text."""
         try:
@@ -521,11 +539,12 @@ class Integrate(Module):
             return Path(self.app.workspace) / f"{b['note']}.md"
         return layout.of(self.app).path("subject", subject=b["subject"]) / "books" / f"{b['id']}.md"
 
-    def plan(self, b: dict) -> list[segment.Batch]:
+    def plan(self, b: dict, led: dict | None = None) -> list[segment.Batch]:
         """The batches of a book, over all its pages: its sections (from its bookmarks, as the chapter list has them,
         else from the page text), sized by integrate.batch_pages. A book whose batches began before 0.5.8 keeps the
         batches it began with (the ledger's "plan": "text": no bookmarks, up to the last page read), so nothing is
-        asked twice. Anything else: its sections from its text, the same way."""
+        asked twice. Anything else: its sections from its text, the same way. `led`: the ledger, when the caller has
+        just read it (ready_batches: reading it again for every book was half the dashboard's request, 0.6.1)."""
         books = self.source_of(b) == "books"
         f = self.books.book_dir(b) / "text.md" if books else self.dir / "texts" / f"{b['id']}.txt"
         try:
@@ -538,7 +557,8 @@ class Integrate(Module):
             made_from: tuple = (sig, size)
         else:
             meta = self.books.meta(b)
-            bk = (self.load("ledger.json", {}).get("books", {}) or {}).get(self.key(b), {}) or {}
+            led = self.load("ledger.json", {}) if led is None else led
+            bk = (led.get("books", {}) or {}).get(self.key(b), {}) or {}
             outline: list[tuple[int, str, int]] = []
             by_outline = bk.get("plan", "text" if bk.get("batches") else "outline") == "outline"
             if by_outline:
@@ -566,30 +586,29 @@ class Integrate(Module):
         out = []
         for it in self.queued_items():
             done_batches = self.entry(led, it).get("batches", {})
-            for bt in self.plan(it):
+            for bt in self.plan(it, led):
                 if (done_batches.get(bt.id, {}) or {}).get("state") not in ("done", "failed", "queued", "checking"):
                     out.append((it, bt))
         if not self.reads("books"):
             return out
         first = [str(x) for x in self.setting("first") or []]
-        metas = {self.key(b): self.books.meta(b) for b in self.books.library()}
+        library = self.books.library()
+        metas = {self.key(b): self.books.meta(b) for b in library}
         smallest = str(self.setting("order") or "smallest") == "smallest"
 
         def rank(b: dict):
             pages = int(metas[self.key(b)].get("pages") or 0) if smallest else 0
             return (b["subject"] not in first, pages, b["subject"], b["id"])
 
-        for b in sorted(self.books.library(), key=rank):
+        for b in sorted(library, key=rank):
             meta = metas[self.key(b)]
             if not meta.get("pages") or not meta.get("done"):
                 continue
             # a page is ready when its text is there; one the reader skipped (waiting for OCR, say) doesn't hold its
             # batch back once the book's reading pass is over ("done" counts pages read, not the last page number)
-            have = set(self.pages_of(b)) | (
-                {int(n) for n in meta.get("skipped") or {}} if meta.get("finished") else set()
-            )
+            have = self.pages_read(b) | ({int(n) for n in meta.get("skipped") or {}} if meta.get("finished") else set())
             done_batches = (led.get("books", {}).get(self.key(b), {}) or {}).get("batches", {})
-            for bt in self.plan(b):
+            for bt in self.plan(b, led):
                 rec = done_batches.get(bt.id, {})
                 if rec.get("state") in ("done", "failed", "queued", "checking"):
                     continue

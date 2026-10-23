@@ -41,6 +41,9 @@ class _P:
         self.info = {"name": f"p{pid}", "memory_info": MI(1000 * pid), "num_threads": 1,
                      "cpu_times": CT(cpu_s, 0.0), "create_time": born}  # fmt: skip
 
+    def as_dict(self, attrs):  # the listed rows' name and threads (Sampler.processes)
+        return {a: self.info[a] for a in attrs}
+
 
 def test_process_use_is_a_share_of_the_whole_machine_over_a_steady_window(monkeypatch):
     clock = [50.0]

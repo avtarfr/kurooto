@@ -15,6 +15,19 @@ from kurooto.core.state import jload, jsave
 _DEFAULTS: dict = {}
 
 
+def _copy(x):
+    """A deep copy of a settings value: dicts, lists and plain values the quick way (copy.deepcopy took most of a
+    dashboard request's time, 0.6.1), anything else through copy.deepcopy."""
+    t = type(x)
+    if t is dict:
+        return {k: _copy(v) for k, v in x.items()}
+    if t is list:
+        return [_copy(v) for v in x]
+    if x is None or t in (str, int, float, bool):
+        return x
+    return copy.deepcopy(x)
+
+
 def merge(base: dict, over: dict | None) -> dict:
     """A deep copy of `base` with `over` laid on top; nested dicts merge, anything else replaces."""
     out = copy.deepcopy(base)
@@ -68,7 +81,7 @@ class Settings:
         return tree
 
     def all(self) -> dict:
-        return copy.deepcopy(self._merged())
+        return _copy(self._merged())
 
     def get(self, dotted: str, default=None):
         cur = self._merged()
@@ -76,7 +89,7 @@ class Settings:
             if not isinstance(cur, dict) or k not in cur:
                 return default
             cur = cur[k]
-        return copy.deepcopy(cur) if isinstance(cur, (dict, list)) else cur  # the caller may change what it gets
+        return _copy(cur) if isinstance(cur, (dict, list)) else cur  # the caller may change what it gets
 
     def set(self, dotted: str, value):
         """Change one setting and return its previous value."""

@@ -655,7 +655,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   a `study-log` skill job with Chat on.
 - **doubts** (`modules/doubts.py`): a per-subject doubts list, sent before the next class.
 - **quiz** (`modules/quiz.py`): spaced repetition over "must know" bullets in exam-prep notes; graded by the AI with Chat
-  on; calls with Phone calls on. Tools `quiz_next`, `quiz_grade`, `schedule_quiz`. Link recall cards
+  on; calls with Phone calls on. `sources()` finds the notes with `md_files(root, keep)`: `rglob("*.md")`'s files in
+  its order, without going into hidden folders (a notes folder's `.git` was walked twice per Study-pane request
+  before 0.6.1) and building paths only for the names `keep` takes. Tools `quiz_next`, `quiz_grade`, `schedule_quiz`. Link recall cards
   (`modules/quiz_links.py:LinkCards`, `Quiz.links`): every `- relation:: [[target]] — reason` line between two concept
   notes (`conceptgraph.scan`) is a card in the quiz's own storage (`quiz/_links.json`, `Quiz.load` / `Quiz.grade`,
   so the same SM-2-lite spacing and history), with `a`, `b`, `relation`, `reason`, `names`, `subject` (from

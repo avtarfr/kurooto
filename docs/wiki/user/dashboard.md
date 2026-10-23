@@ -37,6 +37,8 @@ two terminal features. For talking to Kurooto in general see [talking-to-kurooto
   [About you](teaching-kurooto.md) or to restore a profile. While setup steps you skipped are waiting, it says
   **finish setup (N)** and opens the first of them.
 - If Kurooto isn't running, the page can't load. Start it from your app menu (**Kurooto**) or with `kurooto on`.
+- Leaving it open costs little: while the dashboard is in a background tab or a minimised window, Kurooto stops
+  reading the computer and your notes for it, and catches up the moment you look again.
 
 **Who can open it.** Only this computer: the page listens on 127.0.0.1 only. Every request needs a key that only the
 page Kurooto serves gets, requests from other websites are refused, and the page loads nothing from the internet. On

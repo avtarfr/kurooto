@@ -34,7 +34,8 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 - `Settings` keeps the merged tree (`_merged`) and makes it again only when the file's mtime, size or inode changed
   (a `set` here, the CLI, a hand edit) or the defaults or layer did (`register_defaults` and `set_layer` bump `_GEN`).
   `get` hands out a copy of a dict or list it returns, `all()` a copy of the whole tree, so callers may change what
-  they get. Before 0.6.1 every `get` merged and deep-copied everything (about 6 ms), and a dashboard request made a
+  they get. The copies are made by `config._copy` (dicts, lists and plain values directly, anything else through
+  `copy.deepcopy`), several times quicker than `copy.deepcopy` (0.6.1). Before 0.6.1 every `get` merged and deep-copied everything (about 6 ms), and a dashboard request made a
   thousand or more: 5 to 13 s for `/api/state` and `/api/today`. There is no cross-process lock, so the CLI and the
   daemon can overwrite each other's concurrent `set`. Change settings in the daemon (the API's `POST /api/settings` or a module
   method), not by editing the file while it runs.
@@ -140,6 +141,10 @@ whole place when the date isn't one part of it).
   the notes move back, the folders it made go if empty; `undo_app` restores `notes.layout`, `notes.paths` and `notes.links`.
 - Another folder than `you.workspace`: `apply` only switches `you.workspace` and the settings; nothing moves between
   folders.
+- `scanned(root)` (0.6.1) is what `GET notes/fit` uses: `scan()` and `facts()` kept for the last folder asked about,
+  while its notes stay the same (the same notes and folders from `walk()`, each note with the same mtime and size).
+  The kept scan drops the full texts (only `facts()` reads them) and each call gets a copy of the facts. A 2,271-note
+  folder: 180 ms read afresh, 15 ms kept. `preview`, `apply` and `undo` still `scan()` afresh.
 
 Tests: `tests/unit/test_notesfit.py` (fixture folders in Kurooto's layout, Obsidian-style, zettelkasten and mixed).
 

@@ -657,6 +657,23 @@ def test_a_book_with_a_skipped_page_still_finishes_its_last_batch(world):
     assert [bt.id for _, bt in env.integrate.ready_batches()] == ["1-6"]
 
 
+def test_ready_batches_see_new_pages_though_each_books_pages_are_kept(world):
+    """pages_read keeps a book's page numbers while its text file stays the same (0.6.1); a page read since counts at
+    once, and the ledger handed to plan() gives the same batches as reading it there."""
+    env = world
+    d = env.app.modules["books"].book_dir(env.book)
+    full = (d / "text.md").read_text(encoding="utf-8")
+    cut = full[: full.index('<a id="p-6">')]
+    (d / "text.md").write_text(cut, encoding="utf-8")
+    assert env.integrate.pages_read(env.book) == {1, 2, 3, 4, 5}
+    assert env.integrate.ready_batches() == []  # page 6 not read yet: the one batch (1-6) waits
+    (d / "text.md").write_text(full, encoding="utf-8")
+    assert env.integrate.pages_read(env.book) == {1, 2, 3, 4, 5, 6}
+    assert [bt.id for _, bt in env.integrate.ready_batches()] == ["1-6"]
+    led = env.integrate.load("ledger.json", {})
+    assert env.integrate.plan(env.book, led) == env.integrate.plan(env.book)
+
+
 def test_batches_follow_the_bookmarks_but_a_book_already_begun_keeps_its_batches(world):
     env = world
     env.app.settings.set("integrate.batch_pages", 3)

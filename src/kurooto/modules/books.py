@@ -326,6 +326,13 @@ class Books(Module):
     def library(self) -> list[dict]:
         """Every book: {"subject", "path", "id"} across all subdirectories."""
         out = []
+        known: dict[str, str | None] = {}  # each folder name's subject, once a listing (0.6.1: a dashboard request)
+
+        def subject_of(text: str) -> str | None:
+            if text not in known:
+                known[text] = self.subject_of(text)
+            return known[text]
+
         for root, pattern in self.roots():
             if not root.is_dir():
                 continue
@@ -333,7 +340,7 @@ class Books(Module):
                 d = sub / "books" if pattern == "*/books" else sub
                 if not d.is_dir():
                     continue
-                default_subj = self.subject_of(sub.name) or slug(sub.name, 80)
+                default_subj = subject_of(sub.name) or slug(sub.name, 80)
                 for f in sorted(x for x in d.rglob("*") if x.suffix.lower() == ".pdf"):
                     if f.is_file() and not any(part.startswith(".") for part in f.relative_to(d).parts):
                         rel_parts = f.relative_to(d).parts[:-1]
@@ -341,7 +348,7 @@ class Books(Module):
                         sub_matched = False
                         if rel_parts:
                             for idx, part in enumerate(rel_parts):
-                                s = self.subject_of(part)
+                                s = subject_of(part)
                                 if s and s != slug(part, 80):
                                     subj = s
                                     rem = rel_parts[idx + 1 :]
@@ -359,7 +366,7 @@ class Books(Module):
                         out.append({"subject": subj, "path": f, "id": bid})
             for f in sorted(x for x in root.glob("*") if x.suffix.lower() == ".pdf"):
                 if f.is_file() and not f.name.startswith("."):
-                    subj = self.subject_of(f.stem) or "books"
+                    subj = subject_of(f.stem) or "books"
                     out.append({"subject": subj, "path": f, "id": slug(f.stem)})
         return out
 

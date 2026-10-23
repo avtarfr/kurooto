@@ -417,7 +417,10 @@ class Sampler:
         fresh = self._procs is None or now - self._procs[0] >= 2.0
         seen: dict[int, tuple[float, float]] = {}
         ncpu = psutil.cpu_count() or 1
-        for p in psutil.process_iter(["name", "memory_info", "num_threads", "cpu_times", "create_time"]):
+        procs: dict[int, psutil.Process] = {}
+        # what ranks them (processor, memory) for every process; the name and threads only for those listed (0.6.1:
+        # reading all five for some 500 processes every 2 seconds was most of the dashboard's own work)
+        for p in psutil.process_iter(["memory_info", "cpu_times", "create_time"]):
             if p.pid == 0:  # Windows' idle process counts the idle time of every core
                 continue
             if fresh:
@@ -433,14 +436,15 @@ class Sampler:
             cpu = self._share.get(p.pid, 0.0)
             mi = p.info.get("memory_info")
             mem = getattr(mi, "rss", 0) or 0
+            procs[p.pid] = p
             rows.append(
                 {
                     "pid": p.pid,
-                    "name": (p.info.get("name") or "?")[:40],
+                    "name": "?",
                     "cpu": round(cpu, 4),
                     "mem": mem,
                     "mem_pct": round(mem / total, 4),
-                    "threads": p.info.get("num_threads"),
+                    "threads": None,
                     "own": own(p.pid) if own else None,
                 }
             )
@@ -452,7 +456,14 @@ class Sampler:
         by_mem = [r for r in sorted(rows, key=lambda r: -r["mem"])[:n] if r["pid"] not in picked]
         picked |= {r["pid"] for r in by_mem}
         mine = [r for r in rows if r["own"] and r["pid"] not in picked]  # Kurooto's own are always listed
-        return by_cpu + by_mem + mine
+        out = by_cpu + by_mem + mine
+        for r in out:
+            try:
+                d = procs[r["pid"]].as_dict(["name", "num_threads"])  # None for what it may not read
+            except psutil.Error:  # gone since
+                continue
+            r["name"], r["threads"] = (d.get("name") or "?")[:40], d.get("num_threads")
+        return out
 
 
 def own_pids(root: int | None) -> dict[int, str]:

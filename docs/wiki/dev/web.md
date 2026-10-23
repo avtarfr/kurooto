@@ -18,8 +18,12 @@ The user's view: [../user/dashboard.md](../user/dashboard.md).
   still holds this server's tools key.
 - Every response goes through `Handler._send`, which adds `Content-Security-Policy` (constant `CSP`:
   `default-src 'self'`, `script-src 'self'`, `frame-ancestors 'none'`, `form-action 'none'` ...),
-  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. Because of the CSP,
-  pages may not use inline scripts or load anything from another origin.
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and `Cache-Control: no-store` for pages (they
+  hold the key) and the API. Static files (0.6.1) get `Cache-Control: no-cache` and an `ETag` (the first 20 hex digits
+  of the file's SHA-1, worked out per request), and a matching `If-None-Match` gets a bodyless 304: the browser keeps
+  `home.js` (230 KB), the styles, fonts and xterm, and what it compiled of them, and asks again on each load, so an
+  update's new file is never missed. Nothing is compressed: on 127.0.0.1 it would cost more than it saves. Because
+  of the CSP, pages may not use inline scripts or load anything from another origin.
 - Static files: `static(name)` reads them with `importlib.resources`, only names matching
   `(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)` or `fonts/[a-z0-9_-]+\.woff2` (served as `font/woff2`).
 - `Server.fill(html)` substitutes `{{TOKEN}}`, `{{VERSION}}`, `{{PALETTE}}`, `{{LAYOUT}}`, `{{DESIGN}}` (`look.design`,
@@ -83,6 +87,7 @@ POST (in `Api.post`):
 | profile and about | `profile/save`, `profile/restore`, `aboutyou/add`, `aboutyou/remove`, `aboutyou/profile`, `aboutyou/preview`, `aboutyou/merge`, `persona` (`{values}`: the persona card, `core/persona.py:save`) |
 | phone | `phone/pair`, `phone/revoke`, `phone/test` |
 | terminals | `term/<name>/attach`, `input`, `resize`, `leave`, `restart` (403 when Terminals is off) |
+| live stream | `stream/seen` (`{cid, visible}`: the dashboard is in sight or not, `Live.seen`; `ok: false` for no such page, 400 for a cid that isn't a number) |
 | other | `research/save`, `research/preview`, `research/run`, `classpack/import`, `mail/confidential/settle`, `books/add` |
 
 `web/tools_api.py` is the API for agent tools and terminal commands: `say` routes text through `App.handle` with
@@ -114,9 +119,20 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
 - `Live.__init__` calls `core/events.py:subscribe(self._event)`: every `Events.emit` is pushed as
   `{"t": "event", "cell": cell_of(kind), ...}` (`EVENT_CELL` maps event-kind prefixes to dashboard cells).
   `Live.stop()` unsubscribes it.
-- `Live._loop` runs only while clients exist: a `Vitals.snapshot()` (`body`: machine vitals from `core/vitals.py`,
-  feature cells, jobs, schedule, updates, power, processes) every 2 s, and the notes graph (`Graph.scan()`) every
-  5 s when notes changed. Errors emit `dashboard_error`.
+- `Live._loop` runs only while a page is open and in sight (`Live.watched()`): a `Vitals.snapshot()` (`body`: machine
+  vitals from `core/vitals.py`, feature cells, jobs, schedule, updates, power, processes) every 2 s, and the notes
+  graph (`Graph.scan()`) every 5 s when notes changed. Errors emit `dashboard_error`.
+- Out of sight (0.6.1): `static/home.js` posts `stream/seen` `{cid, visible: !document.hidden}` on every
+  `visibilitychange` (and on `hello` if it starts hidden). `Live.seen(cid, visible)` keeps `Live.hidden`; while every
+  open page is hidden the loop reads nothing (a dashboard left in a background tab kept the daemon at 13-30% of a
+  core). Coming back sets `_wake`, so the loop takes a reading at once instead of within 2 s. Events and terminal
+  output are still pushed to hidden pages; a new page counts as in sight; `drop` forgets its `hidden` entry.
+- What one turn costs (0.6.1, a 2,271-note folder, ~500 processes): `snapshot()` about 30 ms, mostly the process
+  list; `Graph.scan()` about 11 ms when nothing changed (it names notes with plain strings: a `Path` per note made it
+  145 ms); the loop as a whole about 2.5% of one core with a page in sight (6% before, plus the 0.6.0 settings cost),
+  0% with every page hidden. `Sampler.processes` (`core/vitals.py`) reads memory, cpu times and start time for every
+  process and the name and thread count only for the rows it lists (`as_dict(["name", "num_threads"])`), which halves
+  it. `jobs.recent()` uses the `jobs_created` index (it sorted the whole table, 20 ms with 900 jobs).
 - Message types the page handles (`static/home.js:connect`): `graph`, `body`, `event`, `hello`, `pty`.
 - NOTES names (0.5.19): the pure part of `home.js` between `// -- the pure part` and `// -- end of the pure part`
   (`noteRole`, `hoodOf`, `assignHoods`, `rankLabels`, `regionSpots`; no DOM, so `tests/unit/test_notes_labels.py`

@@ -2680,6 +2680,10 @@ function smTick() {
 
 // ------------------------------------------------------------------------------------------------ wiring
 let body, mind;
+// out of sight (another tab, a minimised window), the page says so and Kurooto stops reading the machine and the notes
+// for it; back in sight, a fresh reading comes at once (web/live.py: Live.seen)
+const saySeen = () => { if (TERM.cid) api("stream/seen", { cid: TERM.cid, visible: !document.hidden }).catch(() => {}); };
+document.addEventListener("visibilitychange", saySeen);
 function connect() {
   const es = new EventSource(`/api/stream?t=${encodeURIComponent(TOKEN)}`);
   es.onmessage = (ev) => {
@@ -2697,7 +2701,7 @@ function connect() {
       else if (m.kind === "setting_changed" && m.key === "look.design") loadDesign(); // changed somewhere else
       else if (STUDY && /^(study|deadline|quiz|setting_changed)/.test(m.kind)) smSoon();
     }
-    else if (m.t === "hello") { TERM.cid = m.cid; if (TERM.shown) termAttach(TERM.shown); }
+    else if (m.t === "hello") { TERM.cid = m.cid; if (TERM.shown) termAttach(TERM.shown); if (document.hidden) saySeen(); }
     else if (m.t === "pty") { termData(m); if (!TERM.live.has(m.n)) { TERM.live.add(m.n); if (DENSE) renderNav(); } }
   };
   es.onerror = () => { (DENSE ? $("#sys-meta") : $("#meta")).textContent = "reconnecting…"; };

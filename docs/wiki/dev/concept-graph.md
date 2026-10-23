@@ -70,7 +70,11 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
   old cut: no outline, up to the last page read, so its batch ids don't change.
   The result is kept in `Integrate._plans` per item, with what it was made from (the text file's mtime and size,
   the batch size, and for a book the outline, page count and plan kind); 0.6.1, because the dashboard's card asks
-  for every queued item's batches on each request.
+  for every queued item's batches on each request. `ready_batches` reads the ledger once and hands it to
+  `plan(b, led)` (it was read again per book: 89 reads of a 137 KB file a request), lists the library once, and takes
+  each book's pages with text from `pages_read(b)`, kept in `Integrate._have` per text file while its mtime, size and
+  inode stay the same. With these the Features card (`GET /api/state`) went from 0.26 s to 0.06 s warm; the first
+  request after a start still plans every item (about 1 s for 200).
 - Tests: `tests/unit/test_segment.py`.
 
 ## 3. Candidates (`core/conceptgraph.py`, no AI)
