@@ -48,7 +48,7 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 
 - The app isn't on the Play Store: it's installed from your own computer's pairing page, Android asks you to allow
   that, and Play Protect may warn first.
-- It looks plain (no Material design yet), and has no home screen widget or Today screen yet.
+- It has no Today screen yet (the widgets show what's waiting for you, not what's due).
 - Phone makers that close background apps hard can still delay rings; the app's checklist says what to change, but not
   every phone has been tried.
 

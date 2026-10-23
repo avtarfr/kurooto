@@ -53,8 +53,9 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   Fri")
 - ~~**Phone outbox.** Captures and taps made while the laptop sleeps wait on the call line and merge on wake~~ (0.5.16:
   chat messages, button taps, answers and shared files wait on the call line and reach the computer in order, each
-  once, and the phone hears when each went through); still to come: a home screen widget and a capture tile
-  (launcher shortcut on Android 6).
+  once, and the phone hears when each went through); ~~still to come: a home screen widget and a capture tile
+  (launcher shortcut on Android 6)~~ (0.6.0: Talk widgets 1x1 and 2x1, a Quick note launcher shortcut on 7.1+ and a
+  Quick Settings tile on 7+; Android 6 gets the widgets).
 - **iPhone Shortcut.** Pairing an iPhone ends with a ready "Tell Kurooto" Shortcut (Siri, Back Tap) with a
   revocable link.
 - **CPU micro-helper.** A ~1 GB model for one-word decisions only (effort, intent, yes/no) on laptops without a

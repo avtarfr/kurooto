@@ -17,6 +17,7 @@ Telegram. It can replace Telegram entirely: see [Using the app instead of Telegr
 - [Using the app instead of Telegram](#using-the-app-instead-of-telegram)
 - [Files from your computer](#files-from-your-computer)
 - [Sharing files to your notes](#sharing-files-to-your-notes)
+- [Widgets, Quick note and the tile](#widgets-quick-note-and-the-tile)
 - [When your computer is off](#when-your-computer-is-off)
 - [Managing paired phones](#managing-paired-phones)
 - [A lost phone, or keys that got out](#a-lost-phone-or-keys-that-got-out)
@@ -75,7 +76,10 @@ notification).
 
 **Its look** follows the phone: light or dark as the phone is set, and on Android 12 and newer in your wallpaper's
 colours (Material You). Older phones get Kurooto's own greens. The ringing screen is always dark, like the call
-itself. The app's icon is the call line's: a white handset in a green circle (on Android 13 and newer it follows
+itself. Every screen has the same cards, rounded buttons and type sizes; the chat has a bar at the top with a back
+arrow. Behind the main screen a few soft blobs in the same colours drift and change shape slowly, as on the dashboard
+and the website. They stop moving when the app isn't on screen, and stand still with **Remove animations** on (Settings
+→ Accessibility) or in battery saver. The app's icon is the call line's: a white handset in a green circle (on Android 13 and newer it follows
 themed icons if you use them).
 
 **A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). On Android 12 and
@@ -239,6 +243,30 @@ Chat you get "Got <file> from your phone: saved to ...". Files can be up to 50 M
 your call line (below). Then ask about it in the chat: "summarise the PDF I just sent" works for
 files shared in the last two hours (your AI is told their names and where they are).
 
+## Widgets, Quick note and the tile
+
+Android only. None of these need setting up beyond pairing; each opens the app's own screens.
+
+| What | Where to add it | What it does |
+|---|---|---|
+| **Talk to Kurooto** widget (1x1) | Home screen: long-press an empty spot → Widgets → Kurooto | One tap opens the chat with the keyboard up, ready to type (use your keyboard's microphone to speak). |
+| **Talk, and what's waiting** widget (2x1) | The same list | The same Talk button, and beside it the newest question or message waiting for you ("2 waiting: ..."), or "Nothing waiting for you". Tap the text to open the app. |
+| **Quick note** shortcut (Android 7.1+) | Long-press Kurooto's app icon; drag it out to make its own icon | A small box: type a note, tap **Save to notes**. |
+| **Quick note** tile (Android 7+) | Pull down Quick Settings → the pencil (edit) → drag **Quick note** in | The same box. On a locked phone it asks you to unlock first. |
+
+**Where a quick note goes.** Into your notes' `inbox/` on your computer as `<date>-quick-note.md`, the same way a
+shared file does: with Chat on, the AI files it where it belongs and tells you where; without Chat you get "Got
+quick-note.md from your phone: saved to ...". With the computer off the note waits on your call line and goes to the
+inbox when the computer is back ("Your computer is off: the note waits on your call line ..."). If it couldn't be sent
+(no internet), it stays in the box, also after you close it, until you tap **Save to notes** again.
+
+**What the 2x1 widget shows** is what the main screen lists under **Waiting for you**. It looks again every 30 minutes,
+when a question arrives or is answered, and each time you open the app. It shows the message's text on your home
+screen, like a notification would. Use the 1x1 widget if you'd rather not.
+
+Android 6 has the widgets but no shortcut or tile (those came with Android 7). Removing a widget or the tile is the
+undo: nothing else changes.
+
 ## When your computer is off
 
 What you do on the phone while your computer sleeps isn't lost: chat messages, button taps, answers to questions
@@ -300,7 +328,9 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
   your phones, your computer and your call line hold, and over an encrypted connection from an iPhone. Kurooto's
   answers go back like questions do. Your call line keeps the chat's last 50 messages, each for at most 3 days, so a
   phone can catch up while the computer is off.
-- Files you share go from the phone through your call line to your computer.
+- Files you share and quick notes go from the phone through your call line to your computer.
+- The 2x1 widget asks your call line what's waiting (as the app's main screen does); nothing else leaves the phone for
+  the widgets or the tile.
 - Files from your computer for the chat (where Telegram would get a document): with Drive upload on, to your own Google
   Drive; otherwise a copy on your call line for a day, encrypted on your computer. The key is only in the link, which
   travels inside the chat message, so the copy is as private as the chat itself; ntfy never sees either.

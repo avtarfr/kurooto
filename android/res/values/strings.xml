@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- the few texts Android needs as resources (widget names, the launcher shortcut, the tile); the app's screens build
+     their text in code -->
+<resources>
+    <string name="widget_talk">Talk to Kurooto</string>
+    <string name="widget_talk_desc">One tap opens the chat, ready to type.</string>
+    <string name="widget_wide">Talk, and what\'s waiting</string>
+    <string name="widget_wide_desc">The chat in one tap, and the newest question or message waiting for you.</string>
+    <string name="widget_nothing">Nothing waiting for you</string>
+    <string name="note_short">Quick note</string>
+    <string name="note_long">Quick note to your notes</string>
+</resources>

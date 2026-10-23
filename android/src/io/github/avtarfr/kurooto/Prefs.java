@@ -46,11 +46,14 @@ final class Prefs {
                 .putString("since", "")
                 .putString("sealSent", "") // a new pairing is a new device on the call line: it needs the key again
                 .apply();
+        TalkWidget.refreshSoon(c);
     }
 
     static void forget(Context c) {
-        sp(c).edit().remove("url").remove("device").remove("topic").remove("ntfyKey").remove("since").remove("sealSent").apply();
+        sp(c).edit().remove("url").remove("device").remove("topic").remove("ntfyKey").remove("since").remove("sealSent")
+                .remove("widgetLine").remove("noteDraft").apply();
         Chat.forget(c); // the chat and what waited belong to that line
+        TalkWidget.draw(c);
     }
 
     /** This phone's id on the call line (the "<id>" in its key "d1.<id>.<secret>"), or "". */
@@ -88,6 +91,14 @@ final class Prefs {
     /** Chosen ringtones (content URIs as strings; empty = the phone's default). */
     static String tone(Context c, boolean alarm) { return sp(c).getString(alarm ? "alarmTone" : "callTone", ""); }
     static void setTone(Context c, boolean alarm, String uri) { sp(c).edit().putString(alarm ? "alarmTone" : "callTone", uri == null ? "" : uri).apply(); }
+
+    /** What the 2x1 widget says is waiting for you ("" until it has looked). */
+    static String widgetLine(Context c) { return sp(c).getString("widgetLine", ""); }
+    static void setWidgetLine(Context c, String s) { sp(c).edit().putString("widgetLine", s).apply(); }
+
+    /** A quick note that wasn't sent yet (kept until it is). */
+    static String noteDraft(Context c) { return sp(c).getString("noteDraft", ""); }
+    static void setNoteDraft(Context c, String s) { sp(c).edit().putString("noteDraft", s == null ? "" : s).apply(); }
 
     static long lastUpdateCheck(Context c) { return sp(c).getLong("updateCheck", 0); }
     static void setUpdate(Context c, String name, String link) {

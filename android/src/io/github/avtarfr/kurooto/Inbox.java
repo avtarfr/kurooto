@@ -90,6 +90,7 @@ final class Inbox {
         }
         if (it.optBoolean("later") && n < 3) b.addAction(new Notification.Action.Builder(null, "Later", act(c, it, ActionReceiver.ANSWER, "later", "answer", "later")).build());
         nm(c).notify(id, ID, b.build());
+        TalkWidget.refreshSoon(c);
     }
 
     /** Reply: typed in the notification (Android 7+, with the choices offered), else the answer window. */
@@ -110,7 +111,10 @@ final class Inbox {
         return new Notification.Action.Builder(null, "Reply", open(c, it, "reply")).build();
     }
 
-    static void cancel(Context c, String id) { nm(c).cancel(id, ID); }
+    static void cancel(Context c, String id) {
+        nm(c).cancel(id, ID);
+        TalkWidget.refreshSoon(c); // answered here or somewhere else: the 2x1 widget looks again
+    }
 
     static void cancel(Context c, JSONArray ids) {
         for (int i = 0; ids != null && i < ids.length(); i++) cancel(c, ids.optString(i));

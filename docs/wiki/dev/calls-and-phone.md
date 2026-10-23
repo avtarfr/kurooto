@@ -375,9 +375,27 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
   the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
   device key so it can wait on the line),
-  `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`.
+  `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`,
+  `QuickNoteActivity`, `NoteTile`, `TalkWidget` / `TalkWideWidget` (below).
   Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Chat`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25),
-  `B64`, `Ui` (the look).
+  `B64`, `Ui` (the look), `BlobView` (the main screen's background).
+- Widgets, Quick note and the tile (0.6.0), no laptop or Worker changes:
+  - `TalkWidget` (1x1, `res/xml/widget_talk.xml`, layout `widget_talk.xml`) opens `ChatActivity` with the extra
+    `type` (focus the box, keyboard up). `TalkWideWidget` (2x1, a subclass only because Android tells providers apart
+    by component) adds the newest item of `GET /pending` (`Line.waiting`, what MainActivity lists under "Waiting for
+    you"), kept in `Prefs.widgetLine`. It looks it up in `onUpdate` (`updatePeriodMillis` 30 min, `goAsync`), on
+    `TalkWidget.refreshSoon` (debounced 3 s: `Inbox.show`, `Inbox.cancel`, `Prefs.savePairing`), and takes
+    MainActivity's own fetch through `TalkWidget.waiting(c, items)`; with no 2x1 placed nothing is fetched.
+    `Prefs.forget` redraws them unpaired. A Today screen can feed the 2x1 the same way (`Prefs.setWidgetLine` +
+    `TalkWidget.draw`). Colours are the `k_*` resources, so the widgets follow light/dark and Material You;
+    `drawable-v31/k_widget.xml` takes the launcher's corner radius.
+  - `QuickNoteActivity` (`Kurooto.Dialog`, exported so every launcher can open the static shortcut; it sends only on
+    Save) uploads the note as `quick-note.md` with `Line.upload`, exactly as `ShareActivity` does with shared text: the
+    computer's `Calls._upload` saves it to the notes inbox, the phone outbox holds it while the computer is off
+    (`Line.WAITING`, `Chat.waitFor`). An unsent note stays in `Prefs.noteDraft`. Opened by the static shortcut
+    (`res/xml/shortcuts.xml`, `android.app.shortcuts` meta-data on MainActivity; launchers before 7.1 ignore it) and
+    `NoteTile` (`TileService`, API 24, `@TargetApi(24)`; `startActivityAndCollapse(PendingIntent)` on 14+, the
+    Intent form below; `unlockAndRun` when locked).
 - Counting buttons (0.5.20, a deadline's **+1**): `Inbox.counts(button)` is a label `+<n>` (the Worker passes only
   labels). `Inbox.send` shows such an item again after a tap that went through or waits on the line (`setOnlyAlertOnce`,
   the answer's note as its text) instead of `done()`; the computer keeps the item open for it (`PhoneApp._button`).
@@ -394,7 +412,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `PairActivity`, `ShareActivity`: a 28dp-cornered card, `drawable/k_dialog.xml`) and `Kurooto.Call` (`CallActivity`,
     always dark). `Base.Kurooto*` only pick the framework's light or dark `Theme.Material` parent.
   - `Ui.java` builds the views: `page(activity)` / `dialog(activity)` set the content and return the column to fill
-    (`page` keeps clear of the system bars, which Android 15 draws over); `headline`, `title`, `heading` (a section, in
+    (`page` keeps clear of the system bars, which Android 15 draws over; `page(activity, behind)` puts a view behind
+    the scrolling column, full screen); `appBar(activity, title, onBack)` is the small top app bar for a screen that
+    isn't one scrolling page (the chat: its root is `fitsSystemWindows`, so on Android 15 it keeps clear of the bars
+    and the keyboard); `headline`, `title`, `heading` (a section, in
     the accent colour), `body`, `dim`, `small`, `status` + `ok()` / `bad()`; `card`, `list` + `item` (two-line rows),
     `tapCard`; buttons `filled`, `tonal`, `outlined`, `flat`, `large(b)`, `end(b)`, or `button(c, text, fill, ink,
     stroke)`; `field(c, hint)`; `icon`; `busy(activity, title, text)` + `done(status, worked)` for a dialog that waits;
@@ -402,6 +423,14 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     LinearLayout params and a small gap above, so `col.addView(v)` is enough. A new screen: declare it with
     `android:theme="@style/Kurooto"` (or leave it to the app's default) and start `onCreate` with
     `LinearLayout col = Ui.page(this);`.
+  - The chat (`ChatActivity`) is built from `Ui` too: your messages on `k_primary_container`, Kurooto's on `k_card`,
+    20dp corners, dp spacing, tonal buttons under a message, a pill-shaped box and a 56dp Send.
+  - `BlobView` is the main screen's background (`Ui.page(this, new BlobView(this))`): four blobs, each a closed
+    quadratic curve through 24 points whose radius is a sum of three slow sines (the dashboard's `blob()` in
+    `home.js`), filled with a `RadialGradient` (local matrix per frame, nothing allocated per frame) in `k_blob_1..4`
+    (the web palette's accent, lav, peach, pink; `system_accent1..3_*` on Android 12+), alpha 0.15 light / 0.22 dark.
+    About 20 frames a second while attached, shown and its window visible (`onWindowVisibilityChanged`,
+    `onVisibilityChanged`); one still frame when `Settings.Global.ANIMATOR_DURATION_SCALE` is 0 or in battery saver.
   - The launcher icon is `public/icon.svg`'s motif: on Android 8+ the adaptive `mipmap-anydpi-v26/ic_launcher.xml`
     (background `k_call_bg`, foreground `drawable/ic_launcher_fg.xml` with icon.svg's 24 units in the middle 72dp,
     monochrome `ic_launcher_mono.xml` for themed icons); on 6 and 7 the plain vector `mipmap/ic_launcher.xml`.
