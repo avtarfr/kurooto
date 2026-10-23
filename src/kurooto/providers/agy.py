@@ -59,6 +59,13 @@ COMMANDS = (
     "cat", "cd", "date", "echo", "file", "grep", "head", "jq", "ls", "mkdir", "pdftotext",
     "pwd", "stat", "tail", "tree", "uniq", "wc", "which",
 )  # fmt: skip
+# programs that run whatever they're given: never allowed as "a script" (agents.scripts)
+INTERPRETERS = {
+    "sh", "bash", "zsh", "fish", "dash", "ksh", "csh", "tcsh", "python", "python2", "python3", "pypy", "node", "deno",
+    "bun", "perl", "ruby", "php", "lua", "tclsh", "env", "sudo", "su", "doas", "pkexec", "xargs", "nohup", "timeout",
+    "nice", "exec", "pwsh", "powershell", "cmd", "osascript", "awk", "gawk", "mawk", "sed", "find", "git", "make",
+    "npm", "npx", "uv", "uvx", "pip", "pip3", "docker", "podman", "ssh", "kurooto",
+}  # fmt: skip
 NON_WORKSPACE = {"allowNonWorkspaceAccess": True, "nonWorkspaceFileAccess": "allow"}  # set only when absent
 ANSI = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[()][A-Z0-9]|\r")
 
@@ -250,12 +257,32 @@ def settings_file() -> Path:
     return Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
 
 
+def safe_scripts(app) -> list[tuple[Path, str | None]]:
+    """Your own scripts your AI programs may run (agents.scripts): (full path, the bare name when it's on PATH as
+    that same file). Left out: a path that isn't absolute, not an executable file, or a shell or interpreter."""
+    import shutil
+
+    out = []
+    for raw in (app.settings.get("agents.scripts") if app is not None else None) or []:
+        f = Path(os.path.expanduser(str(raw)))
+        if not f.is_absolute() or not f.is_file() or not os.access(f, os.X_OK):
+            continue
+        if f.name.lower() in INTERPRETERS or f.stem.lower() in INTERPRETERS:
+            continue
+        on_path = shutil.which(f.name)
+        same = on_path and Path(on_path).resolve() == f.resolve()
+        out.append((f, f.name if same else None))
+    return out
+
+
 def wanted_rules(app: App) -> list[str]:
     """agy's allow-list entries Kurooto adds: its tools, harmless commands, what it may read (core/places.py: the same
     folders Kurooto's own read_file tool may), writing in the notes folder, and the web."""
     from kurooto.core.places import read_roots, write_roots
 
     rules = [ALLOW, *(f"command({c})" for c in COMMANDS)]
+    for f, name in safe_scripts(app):  # your own scripts (agents.scripts), by full path and by name
+        rules += [f"command({f})", *([f"command({name})"] if name else [])]
     rules += [f"read_file({p})" for p in read_roots(app)]
     rules += [f"write_file({p})" for p in write_roots(app)]
     if gbrain_mcp(app):

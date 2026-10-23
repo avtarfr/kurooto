@@ -40,6 +40,9 @@ register_defaults(
     {
         "export": [],  # where your skills go as slash commands: "agy", "agents" (Copilot CLI and others), "claude"
         "prefix": "",  # put before every exported skill's name, e.g. "k-" for /k-journal
+        # your own scripts your AI programs may run unattended (full paths; each does one thing): not shells or
+        # interpreters (bash, python, node...), which would run anything
+        "scripts": [],
     },
 )
 

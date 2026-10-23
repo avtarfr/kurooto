@@ -61,7 +61,7 @@ def rule_path(p: Path | str) -> str:
 
 def permissions(app: App | None, task: Task) -> tuple[dict, list[str]]:
     """The run's permissions ({"permissions": ...} for `--settings`) and the folders outside the notes it reads."""
-    from kurooto.providers.agy import COMMANDS, gbrain_mcp
+    from kurooto.providers.agy import COMMANDS, gbrain_mcp, safe_scripts
 
     allow: list[str] = []
     dirs: list[Path] = []
@@ -77,6 +77,8 @@ def permissions(app: App | None, task: Task) -> tuple[dict, list[str]]:
         allow += [f"Read({rule_path(task.cwd)}/**)"]
     for c in COMMANDS:
         allow += [f"Bash({c})", f"Bash({c} *)"]
+    for f, name in safe_scripts(app) if app is not None else []:  # your own scripts (agents.scripts)
+        allow += [f"Bash({f})", f"Bash({f} *)", *([f"Bash({name})", f"Bash({name} *)"] if name else [])]
     allow += ["WebFetch", "WebSearch"]
     if task.mcp:
         allow.append("mcp__kurooto")

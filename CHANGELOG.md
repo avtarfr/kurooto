@@ -84,6 +84,8 @@
   zip; `kurooto call` exits 2 when Kurooto isn't running, like `send`, `notify` and `ask-me`; the local page answers a
   bad `Content-Length` with 400; a stopped dashboard server stops listening to events; the settings guide no longer
   reads a module `defaults` attribute that nothing used (it's gone from `Module`).
+- **Your own scripts for your AI programs**: list them in `agents.scripts` (full paths) and agy and Claude Code may
+  run them unattended, by path or by name; a shell or interpreter (bash, python, node...) is never accepted there.
 - **Unattended AI can't run code through a command's options**: the commands agy and Claude Code may run on their own
   no longer include `find`, `git`, `latexmk`, `rg` or `sort`, each of which can start another program through its
   options (a prompt hidden in a mail or a web page could have used them). Searching is the AI programs' own job, and

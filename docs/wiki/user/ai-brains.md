@@ -39,6 +39,11 @@ tools (and your own GBrain's, if you use one), reading your notes, course files,
 writing in your notes, course-files and add-on skills folders, reading web pages, and harmless commands (`ls`, `cat`,
 `grep`, `ls`, `pdftotext`...; none that can start another program through its options, so not `find`, `git`,
 `latexmk`, `rg` or `sort`). Anything else is refused, and the answer says what was refused.
+
+**Your own scripts.** To let your AI programs run a script of yours unattended (one that does one thing, such as
+`make-figures`), put its full path in `agents.scripts` (Settings → Skills in other AI programs, or settings.json). It's
+allowed by its path, and by its name when it's on your PATH. Shells and interpreters (`bash`, `python`, `node`...) are
+never accepted there: they would run anything.
 Nothing is saved in Claude Code's own settings, and your own Claude Code hooks, projects and history aren't used. The
 `kurooto` command itself never runs from a request. Models: `brain.models.claude` (default `haiku` for quick
 requests, `sonnet` for the rest).

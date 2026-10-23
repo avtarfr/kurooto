@@ -60,6 +60,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 |---|---|---|
 | `agents.export` | `[]` | where your skills go as slash commands: "agy", "agents" (Copilot CLI and others), "claude" |
 | `agents.prefix` | `""` | put before every exported skill's name, e.g. "k-" for /k-journal |
+| `agents.scripts` | `[]` |  |
 
 ### `alarm`
 

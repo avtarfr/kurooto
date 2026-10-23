@@ -140,3 +140,22 @@ def test_your_own_gbrain_goes_to_claude_like_it_goes_to_agy(app, tmp_path, monke
     assert servers["gbrain"]["args"][-2:] == ["--surface", "starter"]
     assert servers["gbrain"]["env"] == {"GBRAIN_HOME": str(tmp_path / "brain")}
     assert "mcp__gbrain" in permissions(app, task)[0]["permissions"]["allow"]
+
+
+def test_your_own_scripts_are_allowed_by_path_but_never_a_shell_or_interpreter(app, tmp_path):
+    from kurooto.providers.agy import safe_scripts, wanted_rules
+
+    mine = tmp_path / "make-figures"
+    mine.write_text("#!/bin/sh\necho ok\n")
+    mine.chmod(0o755)
+    shell = tmp_path / "bash"
+    shell.write_text("#!/bin/sh\n")
+    shell.chmod(0o755)
+    plain = tmp_path / "notes.txt"
+    plain.write_text("x")
+    app.settings.set("agents.scripts", [str(mine), str(shell), str(plain), "relative/script"])
+    assert [f for f, _ in safe_scripts(app)] == [mine]  # an interpreter, a file that won't run, a relative path: no
+    cfg, _ = permissions(app, Task(prompt="x", cwd=app.workspace))
+    assert f"Bash({mine})" in cfg["permissions"]["allow"] and f"Bash({mine} *)" in cfg["permissions"]["allow"]
+    assert not any(str(shell) in r or str(plain) in r for r in cfg["permissions"]["allow"])
+    assert f"command({mine})" in wanted_rules(app)

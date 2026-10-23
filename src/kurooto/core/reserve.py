@@ -121,7 +121,7 @@ def addons_md(app: App) -> str:
 def guide_md(app: App) -> str:
     from kurooto.core.places import read_roots, write_roots
     from kurooto.core.tools import agent_tools
-    from kurooto.providers.agy import COMMANDS
+    from kurooto.providers.agy import COMMANDS, safe_scripts
 
     reads = "\n".join(f"- {p}" for p in read_roots(app))
     writes = "\n".join(f"- {p}" for p in write_roots(app))
@@ -144,6 +144,11 @@ def guide_md(app: App) -> str:
             "",
             "## Commands it may run",
             ", ".join(COMMANDS) + ". Never `kurooto` itself, and no inline scripts.",
+            *(
+                [f"Your own scripts (full path): {', '.join(str(f) for f, _ in safe_scripts(app))}."]
+                if safe_scripts(app)
+                else []
+            ),
             "",
             "## Kurooto's tools (already connected; call them, don't look for them)",
             *tools,

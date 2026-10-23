@@ -40,9 +40,10 @@ Standing plans, never struck through.
   queries during calls.
 - **Local model on the graphics card without spilling onto the processor**: one model at a time and a size that fits.
 - **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting).
-- **Allow safe scripts for agents**: a way to allow named scripts (not a bare `python3`, which is a shell).
 
 ## Done
+- ~~Allow safe scripts for agents: named scripts, not a bare `python3`~~ (0.5.8: `agents.scripts`, full paths;
+  shells and interpreters refused)
 - ~~Check that every button works after a restart~~ (0.5.8: every button's prefix has a handler, checked by a test;
   one from a feature that's off says so)
 - ~~Mail digest formatting: shorter, grouped by what needs you~~ (0.5.8: Needs you, Dates, Courses, Worth knowing; about 15 lines)
