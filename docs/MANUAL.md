@@ -2933,6 +2933,20 @@ in it; the phone app gets the waiting questions one by one at that time. A call 
 check-in comes as a message instead, anything else waits in the bundle with a **Call now** link. After 20:00,
 messages come as they are.
 
+**You're told when the limit starts holding.** The first time a day a message waits because of the limit, one line
+comes at once (Telegram and the phone app's chat): "That's today's 6 messages that came by themselves. The rest wait
+for the evening bundle at 20:00, which lists each one." Its buttons: **Send them as they come today** (the limit is off
+for the rest of today; what waited comes now, in order), **Raise to 12** (`notify.calm.messages` doubled, with
+**Undo**; what waited comes now, up to the new limit) and **Fine**. At most once a day, only for the daily limit (not
+exam season, a quiet week or a kind you moved to the evening), and not when the limit is 0. The bundle's first line
+says how many waited and why: "4 messages that waited, held by the daily limit of 6". `/calm` shows today's count, the
+limit, and how many wait (and how many of those the limit held).
+
+**Update notices don't count**, and several in a day fold into one: on Telegram the first is changed in place to the
+newest ("Kurooto updated to 0.5.19 (and 2 earlier today)."); where it can't be changed, the newest comes as a new
+message with that line. **Classroom → notes sends one message per check**, listing what was filed by title (eight,
+then "and N more").
+
 **Never held, never stopped:** the alarm (and the alarm to leave for an exam, and "tonight's alarm might not ring"),
 approvals, your own reminders (reminders, calls you asked for, quiz times and study sessions you set, calendar event
 reminders), a deadline less than 12 hours away (also its call), anything urgent (Kurooto can't work until you act:

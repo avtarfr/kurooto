@@ -37,9 +37,22 @@ The phone app, the desktop and calls get the plain message, without these button
 **The daily limit.** At most **6 messages and 1 call a day** come by themselves (`notify.calm.messages`,
 `notify.calm.calls`). Past that:
 
+- **the first time a day the limit holds a message, you're told at once**, in one line on Telegram and in the phone
+  app's chat: "That's today's 6 messages that came by themselves. The rest wait for the evening bundle at 20:00, which
+  lists each one." It has three buttons:
+  - **Send them as they come today**: the limit is off for the rest of today, and what it held so far comes now, in
+    the order it came (with Why? and Less of this). Tomorrow the limit holds again.
+  - **Raise to 12**: `notify.calm.messages` doubles (6 to 12), with **Undo**; what waited comes now, up to the new
+    limit.
+  - **Fine**: nothing changes; they come at 20:00.
+
+  It comes at most once a day, and only for the daily limit: messages held for exam season, a quiet week, Another
+  time, Fewer or the per-kind rules below don't bring it. With `notify.calm.messages` = 0 it doesn't come (you chose
+  that). It isn't counted.
 - messages wait for **one evening bundle** at 20:00 (`notify.calm.evening_at`): one Telegram message, "This evening's
-  bundle: 4 messages that waited", each item numbered, with each item's buttons numbered to match ("2: Nothing new").
-  Long bundles come in parts. Files that waited follow it.
+  bundle: 4 messages that waited, held by the daily limit of 6" (or, when there were several reasons, "(3 held by the
+  daily limit of 6; 1 because you asked for these in the evening)"), each item numbered, with each item's buttons
+  numbered to match ("2: Nothing new"). Long bundles come in parts. Files that waited follow it.
 - a question that waits is still open meanwhile (`/q`, and on your next call). If it's answered before 20:00 it isn't
   in the bundle. Replying to the bundle answers its question when it's the only one in it. The phone app gets the
   waiting questions one by one at bundle time.
@@ -53,6 +66,15 @@ calendar event reminders); a deadline less than 12 hours away (and its call); an
 you act: a sign-in that ended, crashes); a newly paired device on your call line; the evening bundle itself. These
 have no Less of this. Answers to what you asked or did (AI answers, `/sync`, a skill you ran, a button you tapped)
 aren't counted at all.
+
+**Update notices aren't counted either** ("Kurooto updated to 0.5.19."), and several in one day fold into one: on
+Telegram the first one is changed in place to the newest, "Kurooto updated to 0.5.19 (and 2 earlier today).", so three
+overnight updates leave one message. Where the first can't be changed (no Telegram, or it was deleted), the newest
+comes as a new message with the same "(and 2 earlier today)". They still have Why? and Less of this.
+
+**Classroom → notes sends one message per check**, once the AI has filed everything that check found, whichever
+courses it came from: "Classroom: filed 9 new items into your notes:" and the items by title (the first eight, then
+"and 1 more").
 
 **Exam season.** With [Exam season](quiz-and-exams.md) turned on and its "Only deadlines, quizzes and the alarm by day"
 part on, during the exam period only Deadlines, Quiz, the alarm and Exam season itself come during the day; everything
@@ -90,7 +112,7 @@ records first.
 
 | Command | Does |
 |---|---|
-| `/calm` | today's count ("2 of 6 messages and 0 of 1 calls"), how many wait for the bundle, what you stopped or moved to the evening (and what waits after some go unanswered, or outside its hours), with **Start ... again** buttons |
+| `/calm` | today's count ("2 of 6 messages and 0 of 1 calls", or "the limit is off today" after Send them as they come today), how many wait for the bundle and how many of those the daily limit held, what you stopped or moved to the evening (and what waits after some go unanswered, or outside its hours), with **Start ... again** buttons |
 | `/calm 8` | allow 8 messages a day |
 | `/calm calls 2` | allow 2 calls a day |
 | `/calm evening 21:00` | move the evening bundle |
@@ -188,6 +210,7 @@ suggestion may offer to turn off.
 | whether agy may use Kurooto's tools | the AI | | approval |
 | whether your call line may say when this computer is offline (keep your bot's token) | Online and offline messages | | approval |
 | the evening bundle | Calm | `notify.calm.evening_at` | it is the bundle |
+| "That's today's 6 messages that came by themselves" (once a day, when the limit starts holding) | Calm | `notify.calm.messages` | it tells you about the limit |
 
 ### Problems Kurooto needs you for
 
@@ -245,7 +268,7 @@ No Stop; only Another time. When sent as urgent they always come.
 |---|---|---|---|---|---|
 | a new announcement in a Classroom course | Google | `google.classroom` | list | one a day | yes |
 | a Google feature paused until you set it up again | Google | | list | | yes |
-| Classroom posts filed into your notes | Classroom → notes | `classroom_notes.at` | list | one a day | yes |
+| Classroom posts filed into your notes (one message per check) | Classroom → notes | `classroom_notes.at` | list | one a day | yes |
 | Classroom posts the AI couldn't file (after three failures) | Classroom → notes | | list | | yes |
 | your mail digest (08:00 and 18:00) | Mail digest | `mail_digest.at` | feature off | once a day | yes |
 | what the mail digest may read (until you choose) | Mail digest | `mail_digest.read` | list | | yes |
@@ -286,7 +309,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | something stopped working that could make you miss a deadline or exam in the next 48 hours (with Fix) | `health.on` | list | yes |
 | things that stopped working and need a look (with the weekly summary, or Sundays) | `health.on` | list | yes |
 | an update that couldn't be prepared | `updates.mode` | list | yes |
-| Kurooto updated itself | `updates.mode` | list | yes |
+| Kurooto updated itself (not counted; several a day fold into one) | `updates.mode` | list | yes |
 | an update that was undone because it kept crashing | `updates.mode` | list | yes |
 | what's new after an update | | list | yes |
 | your call line couldn't be updated | `updates.mode` | list | yes |

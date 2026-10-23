@@ -12,6 +12,8 @@ notify.app_chat on, Why? / Less of this included; a file (a long answer, `kuroot
 (calls/chat.py: Google Drive with Drive upload on, else a sealed copy on your call line).
 A channel that keeps its own copy of a question (the phone app) also registers a retract handler: when that question
 is dealt with anywhere (answered on Telegram, a button tapped, expired), retract() takes its copy down.
+A channel that can change a message it sent (Telegram) registers an edit handler: Calm folds several notices of one
+kind a day (updates.done) into the first one with edit().
 """
 
 from __future__ import annotations
@@ -66,6 +68,7 @@ class Message:
 
 Sender = Callable[[Message], Any]  # returns the channel's message id, or None
 Retractor = Callable[[str | None, str | None, str | None], Any]  # (map_kind, map_ref, button data)
+Editor = Callable[[Any, Message], Any]  # (the channel's message id, the new message): truthy when changed
 
 
 class Notifier:
@@ -73,16 +76,33 @@ class Notifier:
         self.app = app
         self.channels: dict[str, Sender] = {}
         self.retractors: dict[str, Retractor] = {}
+        self.editors: dict[str, Editor] = {}
         self.queue_file = app.paths.state / "focus-queue.jsonl"
 
-    def register(self, name: str, send: Sender, retract: Retractor | None = None) -> None:
+    def register(self, name: str, send: Sender, retract: Retractor | None = None, edit: Editor | None = None) -> None:
         self.channels[name] = send
         if retract:
             self.retractors[name] = retract
+        if edit:
+            self.editors[name] = edit
 
     def unregister(self, name: str) -> None:
         self.channels.pop(name, None)
         self.retractors.pop(name, None)
+        self.editors.pop(name, None)
+
+    def edit(self, ref, msg: Message) -> bool:
+        """Change a Telegram message Kurooto sent (its id) to this one, Why? / Less of this included. False when
+        there's no Telegram or it didn't take the change (the message is gone, the network is down)."""
+        fn = self.editors.get("telegram")
+        if fn is None or ref is None:
+            return False
+        tmsg = replace(msg, buttons=[*(msg.buttons or []), *msg.extra], extra=None) if msg.extra else msg
+        try:
+            return bool(fn(ref, tmsg))
+        except Exception as e:
+            self.app.events.emit("notify_failed", channel="telegram", error=f"edit: {e}"[:200])
+            return False
 
     def retract(self, map_kind: str | None = None, map_ref: str | None = None, button: str | None = None) -> None:
         """Something Kurooto asked was dealt with: channels take their copy of it down. Name it by the map_kind and
@@ -100,6 +120,10 @@ class Notifier:
         calm = getattr(self.app, "calm", None)
         if calm is not None and calm.decide(msg) != "send":
             return None
+        return self.release(msg)
+
+    def release(self, msg: Message) -> Any:
+        """Past Calm: queue it during focus, else deliver it now (Calm's Send them as they come uses this too)."""
         if not msg.urgent and msg.kind not in URGENT_KINDS and self.app.availability.focus_until():
             with open(self.queue_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps({**msg.__dict__, "buttons": msg.buttons}, ensure_ascii=False, default=str) + "\n")

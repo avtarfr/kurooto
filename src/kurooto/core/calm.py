@@ -12,7 +12,15 @@ The daily limit (notify.calm.messages, 6; notify.calm.calls, 1): past it, messag
 (notify.calm.evening_at, 20:00); a call past it isn't placed and waits there as a line with a call link. After that
 time, messages come as they are. Never held, never stoppable: the alarm, approvals, your own reminders, a deadline less
 than 12 hours away, and anything urgent (Kurooto can't work until you act). Answers to what you asked or did aren't
-counted at all.
+counted at all, and neither are update notices (updates.done): several in a day fold into one (on Telegram the first is
+changed in place to the newest, "and 2 earlier today"; where it can't be changed, the newest comes with that line).
+
+The first time a day the limit holds a message, one line says so at once (exempt, uncounted), with three buttons:
+Send them as they come today (the limit is off for the rest of the day, and what it held goes out now, in order),
+Raise to 12 (notify.calm.messages doubled, with Undo; held ones go out up to the new limit) and Fine. Only the daily
+limit's holds bring it; exam season, a quiet week and the per-kind rules below have their own reasons. The evening
+bundle's first line says how many waited and why ("held by the daily limit of 6"); /calm shows today's count, the
+limit and how many wait.
 
 Two more per-kind rules, which Dreaming tunes by itself (core/policy.py, Dream RSI part two), each with Undo:
 notify.calm.habituate (kind -> N: after N in a row you left unanswered, these wait for the evening bundle until you
@@ -88,6 +96,7 @@ EXEMPT = {
     "urgent": "Kurooto can't do its job until you act on it",
     "security": "it's about who can reach your call line",
     "bundle": "it's the evening bundle itself",
+    "limit": "it says the day's limit was reached, once a day",
 }
 TITLES = {  # features that aren't modules
     "ai": "The AI",
@@ -130,6 +139,8 @@ class Reason:
     exempt: str = ""  # one of EXEMPT: never held, never stopped
     suggest: bool = False  # a question you're meant to answer: the monthly suggestion may offer to stop it
     feature: str = ""
+    counted: bool = True  # False: not counted against the daily limit, and never held by it
+    fold: bool = False  # several in a day fold into one (Calm._fold)
 
     @property
     def owner(self) -> str:
@@ -275,6 +286,14 @@ REASONS: dict[str, Reason] = {
             setting="notify.calm.evening_at",
             exempt="bundle",
             stop=None,
+        ),
+        R(
+            "calm.limit",
+            "the day's limit was reached, so the rest wait for the evening bundle",
+            setting="notify.calm.messages",
+            exempt="limit",
+            stop=None,
+            later=False,
         ),
         R("ai.limit", "the AI you picked hit a limit or was signed out", setting="brain.fallback", stop=None),
         R("google.signin", "a Google sign-in ended, so what uses it is paused", stop=None),
@@ -578,7 +597,7 @@ REASONS: dict[str, Reason] = {
         R("health.digest", "things that stopped working and need a look", setting="health.on"),
         R("updates.available", "a new version to install (updates.mode is ask)", setting="updates.mode", stop=None),
         R("updates.failed", "an update that couldn't be prepared", setting="updates.mode"),
-        R("updates.done", "Kurooto updated itself", setting="updates.mode"),
+        R("updates.done", "Kurooto updated itself", setting="updates.mode", counted=False, fold=True),
         R("updates.rolled_back", "an update that was undone because it kept crashing", setting="updates.mode"),
         R("updates.whats_new", "what's new after an update"),
         R("calls.line_update", "your call line couldn't be updated", setting="updates.mode"),
@@ -708,14 +727,22 @@ class Calm:
         day = now().date().isoformat()
         with self._db() as db:
             waiting = int(db.execute("select count(*) from sent where state='held'").fetchone()[0])
+            by_limit = int(db.execute("select count(*) from sent where state='held' and held='budget'").fetchone()[0])
         return {
             "messages": self._count(day),
             "messages_max": self.day_limit(),
             "calls": self._count(day, kind="ring"),
             "calls_max": self.limit("calls", 1),
             "waiting": waiting,
+            "waiting_limit": by_limit,  # of those, held by the daily limit
+            "flowing": self.flowing(),  # Send them as they come today: the limit is off today
             "evening_at": f"{self.evening_at():%H:%M}",
         }
+
+    def flowing(self, t: dt.datetime | None = None) -> bool:
+        """You tapped Send them as they come today: the daily limit holds nothing more today."""
+        day = (t or now()).date().isoformat()
+        return (jload(self.state_file, {}) or {}).get("flow_day") == day
 
     # ------------------------------------------------------------------------------------------ deciding
     def reason(self, why: str | None) -> Reason | None:
@@ -752,7 +779,7 @@ class Calm:
             return None
         return tuple(b["keep"]) if b else None
 
-    def _wait(self, why: str, feature: str, t: dt.datetime) -> str:
+    def _wait(self, why: str, feature: str, t: dt.datetime, counted: bool = True) -> str:
         """Why a message waits for the evening bundle ("" if it goes now)."""
         keep = self.exam_keep()
         if keep is not None and feature not in keep:
@@ -773,7 +800,7 @@ class Calm:
         window = (self.s("windows") or {}).get(why)
         if window and not inside(window, t):
             return "window"
-        if self._count(t.date().isoformat()) >= self.day_limit():
+        if counted and self._count(t.date().isoformat()) >= self.day_limit() and not self.flowing(t):
             return "budget"
         return ""
 
@@ -829,7 +856,8 @@ class Calm:
             self._insert({**rec, "state": "stopped"})
             self.app.events.emit("calm_stopped", why=msg.why)
             return "stop"
-        wait = self._wait(msg.why, rec["feature"], t)
+        counted = r is None or r.counted
+        wait = self._wait(msg.why, rec["feature"], t, counted)
         if wait:
             body = {k: v for k, v in msg.__dict__.items() if k not in ("rid", "extra")}
             body["buttons"] = _jsonable(msg.buttons)
@@ -837,10 +865,106 @@ class Calm:
                 {**rec, "state": "held", "held": wait, "msg": json.dumps(body, ensure_ascii=False, default=str)}
             )
             self.app.events.emit("calm_held", why=msg.why, held=wait)
+            if wait == "budget":
+                self._tell_limit(t)
             return "hold"
-        self._insert({**rec, "state": "sent", "budgeted": 1})
         msg.extra = [[("Why?", f"calm:{msg.rid}:why"), ("Less of this", f"calm:{msg.rid}:less")]]
+        if r is not None and r.fold and self._fold(msg, rec):
+            return "folded"
+        self._insert({**rec, "state": "sent", "budgeted": 1 if counted else 0})
         return "send"
+
+    def _fold(self, msg: Message, rec: dict) -> bool:
+        """A kind that folds (updates.done) came earlier today: this one says "(and N earlier today)". On Telegram the
+        first of them is changed in place to it (True: nothing new is sent); otherwise it comes as a new message."""
+        with self._db() as db:
+            rows = db.execute(
+                "select ref from sent where day=? and why=? and state='sent' order by ts, rowid",
+                (rec["day"], rec["why"]),
+            ).fetchall()
+        if not rows:
+            return False
+        msg.text = f"{msg.text.rstrip().rstrip('.')} (and {len(rows)} earlier today)."
+        rec["text"] = msg.text[:300]
+        ref = next((x[0] for x in rows if x[0]), None)
+        if ref is None or not self.app.notifier.edit(ref, msg):
+            return False
+        self._insert({**rec, "state": "sent", "budgeted": 0, "ref": ref})
+        self.app.events.emit("calm_folded", why=rec["why"], earlier=len(rows))
+        return True
+
+    def _tell_limit(self, t: dt.datetime) -> None:
+        """The first message the daily limit holds today: one line says so at once, with what you can do. Never
+        fails the message it's about."""
+        day = t.date().isoformat()
+        try:
+            with self._lock:
+                st = jload(self.state_file, {}) or {}
+                if st.get("limit_told") == day:
+                    return
+                st["limit_told"] = day
+                jsave(self.state_file, st)
+            lim, n = self.day_limit(), self.limit("messages", 6)
+            if lim <= 0:  # nothing by itself during the day is what you chose
+                return
+            came = "messages that came by themselves" if lim != 1 else "message that came by itself"
+            text = (
+                f"That's today's {lim} {came}. The rest wait for the evening bundle at "
+                f"{self.evening_at(t.date()):%H:%M}, which lists each one."
+            )
+            if lim != n:
+                text += f" (Today is a lighter day: half the usual {n}.)"
+            self.app.notify(
+                text,
+                kind="info",
+                why="calm.limit",
+                buttons=[
+                    [("Send them as they come today", f"calm:{day}:flow")],
+                    [(f"Raise to {n * 2}", f"calm:{day}:raise"), ("Fine", f"calm:{day}:fine")],
+                ],
+            )
+            self.app.events.emit("calm_limit_told", limit=lim)
+        except Exception as e:
+            self.app.events.emit("calm_failed", error=f"limit notice: {type(e).__name__}: {e}"[:200])
+
+    def release(self, cap: int | None = None) -> int:
+        """Today's messages the daily limit held go out now, in the order they came, with Why? and Less of this
+        (cap: only while today's count is under it). A question dealt with meanwhile doesn't. How many went."""
+        from kurooto.core.ask import OPEN
+        from kurooto.core.notify import Message
+
+        day = now().date().isoformat()
+        with self._db() as db:
+            rows = db.execute(
+                "select * from sent where state='held' and held='budget' and day=? order by ts, rowid", (day,)
+            ).fetchall()
+        n = 0
+        for rec in (dict(x) for x in rows):
+            if cap is not None and self._count(day) >= cap:
+                break
+            if rec.get("map_kind") == "ask":
+                q = self.app.ask.get(rec.get("map_ref") or "")
+                if not q or q.get("status") not in OPEN:
+                    with self._db() as db:
+                        db.execute("update sent set state='settled', msg=null where id=?", (rec["id"],))
+                    continue
+            try:
+                body = json.loads(rec.get("msg") or "{}")
+                m = Message(**{k: v for k, v in body.items() if k in Message.__dataclass_fields__})
+            except (ValueError, TypeError):
+                m = Message(rec.get("text") or "", kind=rec.get("kind") or "info")
+            with self._db() as db:
+                db.execute("update sent set state='sent', budgeted=1, msg=null where id=?", (rec["id"],))
+            m.rid = rec["id"]
+            m.extra = [[("Why?", f"calm:{m.rid}:why"), ("Less of this", f"calm:{m.rid}:less")]]
+            try:
+                self.app.notifier.release(m)
+            except Exception as e:
+                self.app.events.emit("calm_failed", error=f"release: {type(e).__name__}: {e}"[:200])
+            n += 1
+        if n:
+            self.app.events.emit("calm_released", items=n)
+        return n
 
     def delivered(self, rid: str, ref) -> None:
         """The Telegram message id, so Why? and Less of this can answer under it."""
@@ -996,10 +1120,17 @@ class Calm:
         if not items:
             return 0
         exams = any(rec.get("held") == "exams" for rec, _ in items)
-        lim = self.limit("messages", 6)
+        lim = self.day_limit()
+        held: dict[str, int] = {}
+        for rec, _ in items:
+            held[rec.get("held") or ""] = held.get(rec.get("held") or "", 0) + 1
+        why = {k: BUNDLED.get(k, "over the limit").format(lim=lim) for k in held}
         head = f"This evening's bundle: {len(items)} message{'s' if len(items) != 1 else ''} that waited"
-        head += " (exam season: during the day only deadlines, quizzes and the alarm come)" if exams else ""
-        head += f". {lim} a day come by themselves; /calm changes it."
+        if len(held) == 1:
+            head += f", {why[next(iter(held))]}"
+        else:
+            head += " (" + "; ".join(f"{n} {why[k]}" for k, n in held.items()) + ")"
+        head += ". /calm changes the limit."
         parts: list[tuple[list[str], list, list]] = [([head], [], [])]
         for i, (_rec, m) in enumerate(items, 1):
             body = f"{m.title}: {m.text}" if m.title else m.text
@@ -1204,6 +1335,8 @@ class Calm:
             return text[:190]
         if act in ("apply", "no", "unstop"):
             return self._by_reason(ref, act)
+        if act in ("flow", "raise", "fine"):
+            return self._limit_button(ref, act)
         rec = self.get(ref)
         if rec is None:
             return self.why_text(None)[:190]
@@ -1222,6 +1355,33 @@ class Calm:
         if not ok:
             return said[:190]
         self._say(f"Done: {said}.", [[("Undo", f"calm:{uid}:undo")]], rec)
+        return f"Done: {said}."[:190]
+
+    def _limit_button(self, day: str, act: str) -> str:
+        """The buttons under the line that says the day's limit was reached."""
+        if act == "fine":
+            return f"OK, they come at {self.evening_at():%H:%M}."
+        if act == "flow":
+            if day != now().date().isoformat():
+                return "That was about an earlier day; today's limit holds as usual."
+            with self._lock:
+                st = jload(self.state_file, {}) or {}
+                st["flow_day"] = day
+                jsave(self.state_file, st)
+            self.app.events.emit("calm_flow", day=day)
+            n = self.release()
+            said = f"Today they come as they happen{f'; the {n} that waited are below' if n else ''}."
+            return said[:190]
+        n = self.limit("messages", 6)
+        if n <= 0:
+            return "There's no limit to raise: /calm 6 sets one."
+        c = Change(f"up to {n * 2} messages a day by themselves (was {n})", key="notify.calm.messages", value=n * 2)
+        ok, said, uid = self.apply(c, "calm.limit")
+        if not ok:
+            return said[:190]
+        out = self.release(cap=self.day_limit()) if day == now().date().isoformat() else 0
+        more = f" {out} that waited come now." if out else ""
+        self._say(f"Done: {said}.{more}", [[("Undo", f"calm:{uid}:undo")]])
         return f"Done: {said}."[:190]
 
     def _say(self, text: str, buttons, rec: dict | None = None) -> None:
@@ -1350,10 +1510,13 @@ class Calm:
         if not self.on():
             return "Calm is off: everything comes as it happens. /calm on turns it on.", None
         t = self.today()
+        of = "messages (the limit is off today)" if t["flowing"] else f"of {t['messages_max']} messages"
+        held = f", {t['waiting_limit']} of them held by the daily limit" if t["waiting_limit"] else ""
         lines = [
-            f"Today: {t['messages']} of {t['messages_max']} messages and {t['calls']} of {t['calls_max']} calls "
-            f"that came by themselves; {t['waiting']} waiting for the evening bundle ({t['evening_at']}).",
-            "Always come: the alarm, approvals, your own reminders, deadlines under 12 hours, anything urgent.",
+            f"Today: {t['messages']} {of} and {t['calls']} of {t['calls_max']} calls that came by themselves; "
+            f"{t['waiting']} waiting for the evening bundle ({t['evening_at']}){held}.",
+            "Always come: the alarm, approvals, your own reminders, deadlines under 12 hours, anything urgent. "
+            "Update notices aren't counted.",
         ]
         if self.exam_keep() is not None:
             lines.append("Exam season: during the day only deadlines, quizzes and the alarm come.")
@@ -1402,10 +1565,21 @@ class Calm:
 
 HELD = {
     "budget": "the day's limit was reached",
+    "quiet": "you asked for a quiet week",
     "fewer": "you asked for fewer of these",
     "evening": "you asked for these in the evening",
     "exams": "exam season",
     "calls": "the day's call was used",
     "habit": "you hadn't answered the last few of these",
     "window": "it came outside the hours set for these",
+}
+BUNDLED = {  # the bundle's first line: why they waited
+    "budget": "held by the daily limit of {lim}",
+    "fewer": "because you asked for fewer of these",
+    "evening": "because you asked for these in the evening",
+    "exams": "because of exam season (during the day only deadlines, quizzes and the alarm come)",
+    "calls": "because the day's call was used",
+    "habit": "because you hadn't answered the last few of these",
+    "window": "because they came outside the hours set for them",
+    "quiet": "because of your quiet week",
 }

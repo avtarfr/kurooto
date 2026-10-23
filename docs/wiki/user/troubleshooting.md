@@ -75,7 +75,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 
 | What you see | What to do |
 |---|---|
-| A message came only in the evening bundle, or not at all | More than `notify.calm.messages` (6) came by themselves that day, it's exam season, or you chose Fewer, Another time or Stop for that kind. `/why` on the next one says which; `/calm` lists what's turned down, with buttons to start it again. `/calm off` brings back the old behaviour. |
+| A message came only in the evening bundle, or not at all | More than `notify.calm.messages` (6) came by themselves that day, it's exam season, or you chose Fewer, Another time or Stop for that kind. The first time a day the limit holds one, a line says so with **Send them as they come today** and **Raise to 12**; the bundle's first line says why they waited. `/why` on the next one says which; `/calm` lists what's turned down, with buttons to start it again. `/calm off` brings back the old behaviour. |
 | A check-in or deadline call came as a message instead | The day's one call that comes by itself (`notify.calm.calls`) had come already. `/calm calls 2` allows two. |
 | "Back online" every morning | Your laptop sleeps at night. Raise `notify.presence.after_min` past your night, or set `notify.presence.on` to `false`. |
 | No "going offline" when the laptop sleeps | That message comes from your call line: it needs Phone calls set up and your OK for it to use Telegram (`notify.presence.line_telegram`), or add `"app"` to `notify.presence.channels`. |

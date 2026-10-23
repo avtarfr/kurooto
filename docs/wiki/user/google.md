@@ -253,7 +253,9 @@ that day's posts in its catch-up.
 - `/classnotes courses`: your courses and the notes folder each goes to (or "skipped").
 - `/classnotes skip chess`: leave out courses with "chess" in their name. `/classnotes unskip chess` undoes it.
 
-When a batch is filed you get one line: "Classroom: filed 3 new items from Linear Algebra into linear-algebra/."
+Each check ends in one message, once the AI has filed everything it found, whichever courses it came from:
+"Classroom: filed 3 new items from Linear Algebra into linear-algebra/:" and the items by title (the first eight, then
+"and N more"). A batch the AI couldn't file is tried again with the next check and is in that check's message.
 
 **Files it reads.**
 

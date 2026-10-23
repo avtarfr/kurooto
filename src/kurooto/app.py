@@ -635,7 +635,7 @@ class App:
         ("persona", "your persona card: how I talk to you (/persona tone: plain, /persona clear)"),
         ("health", "what isn't working, with Fix buttons (/health now checks online too)"),
         ("fixme", "what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains"),
-        ("calm", "messages that come by themselves: today's count and limit"),
+        ("calm", "messages that come by themselves: today's count, the limit and what waits"),
         ("why", "why the last message that came by itself came"),
         ("jobs", "what the AI is working on and what waits, with Cancel buttons"),
         ("keep", "what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off"),

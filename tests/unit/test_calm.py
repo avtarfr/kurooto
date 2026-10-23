@@ -255,15 +255,16 @@ def test_the_daily_limit_holds_the_rest_for_one_evening_bundle(clock):
         "handwritten.done",
         "books.read",
         "notes_sync.clash",
-        "updates.done",
+        "space.cleaned",
     ]
     for k in kinds:
         assert c.say(f"About {k}.", why=k) is not None
     assert c.calm.today()["messages"] == 6
     n = len(c.sent())
     assert c.say("Seventh: new papers.", why="research.papers") is None
+    assert len(c.sent()) == n + 1 and c.last()["text"].startswith("That's today's 6 messages")  # said once, at once
     qid = after_class(c)  # a question waits too; it stays open for /q and the next call
-    assert len(c.sent()) == n and app.ask.get(qid)["status"] == "open"
+    assert len(c.sent()) == n + 1 and app.ask.get(qid)["status"] == "open"
     assert c.calm.today()["waiting"] == 2
     gone = after_class(c, "Topology")  # answered before the evening (/q): it isn't in the bundle
     app.ask.answer(gone, "Nothing new", "telegram")
@@ -272,7 +273,7 @@ def test_the_daily_limit_holds_the_rest_for_one_evening_bundle(clock):
     c.t = at(MON, 20, 2)
     assert c.calm.tick() == {"bundled": 2, "suggested": None}
     b = c.last()
-    assert b["text"].startswith("This evening's bundle: 2 messages that waited. 6 a day come by themselves;")
+    assert b["text"].startswith("This evening's bundle: 2 messages that waited, held by the daily limit of 6.")
     assert "\n\n1. Seventh: new papers.\n\n2. After class: How was Linear Algebra?" in b["text"]
     assert c.labels(b) == ["2: Nothing new", "2: Later"]
     assert c.calm.tick() == {}  # once a day
@@ -321,6 +322,102 @@ def json_labels(rec: dict) -> list[str]:
     import json
 
     return json.loads(rec.get("buttons") or "[]")
+
+
+# ------------------------------------------------------------------- saying so when the limit starts holding
+def test_the_limit_says_so_once_a_day_and_only_for_its_own_holds(clock):
+    c, app = clock, clock.app
+    app.settings.set("notify.calm.messages", 2)
+    for i in range(2):
+        assert c.say(f"Papers {i}.", why="research.papers") is not None
+    n = len(c.sent())
+    assert c.say("Papers 2.", why="research.papers") is None
+    told = c.last()
+    assert len(c.sent()) == n + 1 and told["text"] == (
+        "That's today's 2 messages that came by themselves. The rest wait for the evening bundle at 20:00, "
+        "which lists each one."
+    )
+    assert c.labels(told) == ["Send them as they come today", "Raise to 4", "Fine"]
+    rec = c.calm.last()
+    assert (rec["why"], rec["exempt"], rec["budgeted"]) == ("calm.limit", "limit", 0)
+    assert c.say("Papers 3.", why="research.papers") is None and len(c.sent()) == n + 1  # once a day
+    assert c.env.press(c.data("Fine", told)) == "OK, they come at 20:00."
+    assert c.calm.today()["waiting_limit"] == 2 and "2 of them held by the daily limit" in c.env.say("/calm")
+    # another day: a hold for another reason (Another time, exam season, a quiet week) doesn't bring it
+    c.t = at(MON + dt.timedelta(days=1), 10)
+    app.settings.set("notify.calm.evening", ["books.read"])
+    n = len(c.sent())
+    assert c.say("A book was read.", why="books.read") is None and len(c.sent()) == n
+    # the bundle says how many waited and why
+    c.t = at(MON + dt.timedelta(days=1), 20, 1)
+    c.calm.tick()
+    assert c.last()["text"].startswith(
+        "This evening's bundle: 3 messages that waited (2 held by the daily limit of 2; "
+        "1 because you asked for these in the evening). /calm changes the limit."
+    )
+
+
+def test_send_them_as_they_come_today_sends_whats_held_in_order_and_holds_nothing_more(clock):
+    c, app = with_subjects(clock), clock.app
+    app.settings.set("notify.calm.messages", 1)
+    c.say("First.", why="research.papers")
+    assert c.say("Second.", why="books.read") is None
+    told = c.last()
+    qid = after_class(c)  # a question waits too
+    assert c.say("Third.", why="space.cleaned") is None
+    n = len(c.sent())
+    toast = c.env.press(c.data("Send them as they come today", told))
+    assert toast == "Today they come as they happen; the 3 that waited are below."
+    out = [p["text"] for p in c.sent()[n:]]
+    assert out[0] == "Second." and out[1].startswith("After class\n\nHow was Linear Algebra?") and out[2] == "Third."
+    assert c.labels(c.sent()[n])[-2:] == ["Why?", "Less of this"]
+    assert app.ask.get(qid)["status"] == "open" and c.calm.today()["waiting"] == 0
+    assert c.say("Fourth.", why="research.papers") is not None  # nothing more is held today
+    assert c.calm.today()["flowing"] and "messages (the limit is off today)" in c.env.say("/calm")
+    assert c.env.press(c.data("Send them as they come today", told)).startswith("Today they come")  # again: harmless
+    c.t = at(MON + dt.timedelta(days=1), 9)  # the next day the limit holds again
+    assert c.say("Fifth.", why="research.papers") is not None and c.say("Sixth.", why="books.read") is None
+    assert c.env.press(c.data("Send them as they come today", told)).startswith("That was about an earlier day")
+
+
+def test_raise_doubles_the_limit_with_undo(clock):
+    c, app = clock, clock.app
+    app.settings.set("notify.calm.messages", 2)
+    for i in range(5):
+        c.say(f"Papers {i}.", why="research.papers")
+    told = next(p for p in c.sent() if p["text"].startswith("That's today's"))
+    n = len(c.sent())
+    assert c.env.press(c.data("Raise to 4", told)) == "Done: up to 4 messages a day by themselves (was 2)."
+    assert app.settings.get("notify.calm.messages") == 4
+    out = [p["text"] for p in c.sent()[n:]]
+    assert out[:2] == ["Papers 2.", "Papers 3."]  # up to the new limit, in order
+    assert out[2] == "Done: up to 4 messages a day by themselves (was 2). 2 that waited come now."
+    assert c.calm.today()["waiting"] == 1 and c.calm.today()["messages"] == 4
+    c.env.press(c.data("Undo"))
+    assert app.settings.get("notify.calm.messages") == 2
+
+
+def test_update_notices_dont_count_and_fold_into_one(clock):
+    c, app = clock, clock.app
+    app.settings.set("notify.calm.messages", 1)
+    first = c.say("Kurooto updated to 0.5.15.", kind="update", why="updates.done")
+    assert first is not None and c.calm.today()["messages"] == 0
+    n = len(c.sent())
+    assert c.say("Kurooto updated to 0.5.16.", kind="update", why="updates.done") is None  # folded: nothing new
+    assert c.say("Kurooto updated to 0.5.17.", kind="update", why="updates.done") is None
+    edits = [p for m, p in c.env.fake.sent if m == "editMessageText"]
+    assert len(c.sent()) == n and [e["message_id"] for e in edits] == [first, first]
+    assert edits[-1]["text"] == "Kurooto updated to 0.5.17 (and 2 earlier today)."
+    assert [b["text"] for row in edits[-1]["reply_markup"]["inline_keyboard"] for b in row] == ["Why?", "Less of this"]
+    assert c.calm.today()["messages"] == 0
+    assert c.say("New papers.", why="research.papers") is not None  # the day's one is still there
+    # where the first can't be changed (no Telegram to edit), the newest comes with the same line
+    app.notifier.editors.clear()
+    assert c.say("Kurooto updated to 0.5.18.", kind="update", why="updates.done") is not None
+    assert c.last()["text"] == "Kurooto updated to 0.5.18 (and 3 earlier today)."
+    c.t = at(MON + dt.timedelta(days=1), 9)  # a new day starts afresh
+    c.say("Kurooto updated to 0.5.19.", kind="update", why="updates.done")
+    assert c.last()["text"] == "Kurooto updated to 0.5.19."
 
 
 # ------------------------------------------------------------------------------------------- calls
@@ -384,7 +481,7 @@ def test_exam_season_tightens_the_day_to_deadlines_quizzes_and_the_alarm(clock):
     assert "Exam season: during the day only deadlines, quizzes and the alarm come." in c.env.say("/calm")
     c.t = at(dt.date(2026, 11, 4), 20, 5)
     assert c.calm.tick()["bundled"] == 1
-    assert "(exam season: during the day only deadlines, quizzes and the alarm come)" in c.last()["text"]
+    assert "because of exam season (during the day only deadlines, quizzes and the alarm come)" in c.last()["text"]
     assert c.say("More papers.", why="research.papers") is None  # after the bundle too: until the next one
     # the part has its own switch on the card
     assert "budget" in es_mod.PIECES
@@ -451,8 +548,8 @@ def test_the_phone_app_and_the_desktop_get_the_plain_message(clock):
     assert c.labels()[-2:] == ["Why?", "Less of this"]
     assert got[-1].text == "New papers." and got[-1].buttons is None
     app.settings.set("notify.calm.messages", 1)
-    after_class(c)  # held: the app doesn't get it now...
-    assert got[-1].text == "New papers."
+    after_class(c)  # held: the app doesn't get it now (only the line saying the limit was reached)...
+    assert got[-2].text == "New papers." and got[-1].text.startswith("That's today's 1 message that came by itself.")
     c.t = at(MON, 20, 1)
     c.calm.tick()
     assert got[-2].text.startswith("This evening's bundle")  # ...but on its own at the bundle, with its own buttons
