@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.21",
+  "notes": "Research shows on the notes map, the pairing page serves the current phone app, processor numbers on one scale.",
+  "created": 1792779284.5498385,
+  "files": {
+   "kurooto-0.5.21.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.21/kurooto-0.5.21.tar.gz",
+    "sha256": "1cd6e5b58aada9bb317061766c7b84d109499741a8abbd19e76e4be27107bd01",
+    "size": 2671490
+   }
+  }
+ },
+ "sig": "GHoY7jUO4tawwIh4nUi26yUbA3tnqJ+9YVmIwgqcnkcokoRNhy46LtZEv4rJD2NHiaYE0idlsP9Bh6SjThnUAQ=="
+}
