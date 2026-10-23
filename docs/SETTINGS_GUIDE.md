@@ -446,6 +446,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `integrate.roles.bulk` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
 | `integrate.roles.check` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
 | `integrate.share_pct` | `60` | a subscription's usage window (or a free key's day): the most of it reading takes |
+| `integrate.sources` | `["books", "classroom"]` | what's read into the graph: books, classroom (filed files), handwritten |
 | `integrate.summary` | `true` | one line each morning about what changed |
 
 ### `jobs`

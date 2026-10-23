@@ -30,11 +30,29 @@ PROMPT_VERSION = 1
 MAX_CORE = 14
 QUOTE_WORDS = 30
 
-BATCH_PROMPT = """You are building a Zettelkasten (a web of small linked concept notes) from a reference book, one \
+BOOK_HEAD = """You are building a Zettelkasten (a web of small linked concept notes) from a reference book, one \
 batch of pages at a time. Be exact and economical: a few well-made notes with real links beat many weak ones.
 
 Book: {book} (subject: {subject}). Pages {first}-{last} (page numbers are the PDF's own). Sections: {sections}.
+"""
+HEADS = {  # what the pages are, for each source (modules/integrate.py SOURCES); a book's is the one above
+    "books": BOOK_HEAD,
+    "classroom": """You are building a Zettelkasten (a web of small linked concept notes) from a student's course \
+material (lecture slides, a handout, notes or solutions their teacher shared), one part at a time. Be exact and \
+economical: a few well-made notes with real links beat many weak ones.
 
+Course material: {book} (subject: {subject}). Parts {first}-{last} (marked [p. n] below: {unit}). Sections: {sections}.
+""",
+    "handwritten": """You are building a Zettelkasten (a web of small linked concept notes) from a student's own \
+handwritten notes (written out from a scan), one part at a time. Be exact and economical: a few well-made notes with \
+real links beat many weak ones. A slip in the handwriting is not a new concept.
+
+Handwritten notes: {book} (subject: {subject}). Parts {first}-{last} (marked [p. n] below: {unit}). Sections: {sections}.
+""",
+}
+BATCH_PROMPT = (
+    BOOK_HEAD
+    + """
 Notes that already exist and may be related (use their slug in same_as and in links; do not make a second note for a \
 concept that is already here):
 {cards}
@@ -71,6 +89,7 @@ readable in the text, leave "formulas" empty.
 - same_as only when it is really the same idea (other words are fine). If it is a special case or a generalisation \
 of an existing note, give it its own note and link it with the right relation.
 """
+)
 
 CHECK_PROMPT = """You are checking proposals for a Zettelkasten (linked concept notes made from a book). For each item below \
 decide whether to keep it. Be strict: when the evidence doesn't clearly support it, drop it. Use only the evidence shown.
@@ -232,8 +251,21 @@ def page_text(pages: dict[int, str], first: int, last: int, limit: int = 40000) 
     return "\n".join(out)
 
 
-def batch_prompt(book: str, subject: str, first: int, last: int, sections: str, cards: str, text: str) -> str:
-    return BATCH_PROMPT.format(
+def batch_prompt(
+    book: str,
+    subject: str,
+    first: int,
+    last: int,
+    sections: str,
+    cards: str,
+    text: str,
+    source: str = "books",
+    unit: str = "parts of the text",
+) -> str:
+    """The bulk request for one batch. `source` says what the pages are (a book, course material, handwritten notes):
+    only the opening differs; the answer asked for and its rules are the same."""
+    tmpl = BATCH_PROMPT if source == "books" else HEADS.get(source, HEADS["classroom"]) + BATCH_PROMPT[len(BOOK_HEAD) :]
+    return tmpl.format(
         book=book,
         subject=subject,
         first=first,
@@ -242,6 +274,7 @@ def batch_prompt(book: str, subject: str, first: int, last: int, sections: str, 
         cards=cards,
         text=text,
         max_core=MAX_CORE,
+        unit=unit,
     )
 
 

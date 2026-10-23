@@ -441,8 +441,8 @@ things". With Notes sync off, plain `/sync` does the same.
 
 ## Concept graph
 
-**What it does.** When a book has been read (see [Books and study](books-and-study.md)), its concepts are woven into
-your notes:
+**What it does.** When a book has been read (see [Books and study](books-and-study.md)), or Classroom has filed a
+lecture's slides or handouts into your notes, its concepts are woven into your notes:
 - a **concept note** for each new concept (its definition, formulas, links, and where it came from);
 - **typed links** to notes you already have, each with a relation and a one-sentence reason, e.g.
   `- special-case-of:: [[linear-algebra/eigenvalues]] — the diagonal case of the spectral theorem`;
@@ -456,6 +456,30 @@ that would touch anything else is refused.
 
 The relation words are: `needs`, `generalises`, `special-case-of`, `example-of`, `contrasts-with`, `equivalent-to`,
 `part-of`, `used-in`.
+
+**What gets read** (`integrate.sources`, default `["books", "classroom"]`):
+- `books`: each book Books and PDFs has read.
+- `classroom`: each file [Classroom → notes](google.md) files with real text: lecture slides, handouts, PDFs,
+  solutions, 1,500 characters or more (a one-line announcement isn't read). Its course is the subject, so its concept
+  notes go where that course's do. The "Seen in" line points at the lecture note the file was filed into (else the
+  course page), and that lecture note gets a "Concepts in <file>" list of its own.
+- `handwritten` (add it to turn it on): your [handwritten notes](books-and-study.md#handwritten-notes), once written
+  out and linked; "Seen in" points at the handwritten note. Notes with no subject are left out.
+
+Each item is read **once**: it's known by the hash of its text, so the same file filed again (downloaded a second
+time, say) isn't read again, and an edited one is. Class files and handwritten notes are cut the same way as books:
+a PDF by its pages, slides by slide, anything else in parts of about 3,000 characters; "Seen in" gives pages or
+slides, not parts. A copy of each item's text is kept in Kurooto's state folder (`integrate/texts/`).
+
+**One queue, one budget.** Books and the rest share the queue and the night's budget (below): the newest class
+material first, since it's what you're studying now, then the books in their order. `/graph` shows what's waiting by
+source: "Waiting to be read: 2 books, 5 class files, 1 handwritten." The feature's card on the dashboard has a switch
+for each source.
+
+**Class files filed before 0.5.19** aren't read on their own: that would be a whole semester in one night.
+`/graph backfill classroom` (or **Also read the Classroom files filed before** on the card) queues them: the oldest
+course first, each course's files in date order, after whatever is filed from now on, so they're read night by night
+within the budget. It finds them in the folder Classroom → notes downloads to; run it again and it queues nothing new.
 
 **Turn it on.** Features → **Concept graph**. Needs **Books and PDFs** on (and at least one book read). It works best
 with an agent program (agy or Claude Code) installed; see "Which AI" below.
@@ -554,6 +578,7 @@ ago"). See [Dreaming](teaching-kurooto.md#dreaming).
 | `/graph` | The state: batches done, waiting and failed; which AI does the bulk work and the second look; today's AI requests and cost; tonight's reading budget, how it was decided and the last limit hit; and the quality numbers below |
 | `/graph now` | Starts the next batch now ("Started.", or "Nothing to start" and why: tonight's budget is read, or the AI's limit hasn't reset) |
 | `/graph stop` | Starts no new batches until the next night's start ("Stopped: no new batches until its usual start, Thu 01:30"); it holds through a restart, and `/graph now` goes on sooner |
+| `/graph backfill classroom` | Queues the Classroom files filed before 0.5.19, the oldest course first ("Queued 12 Classroom files from 3 courses, the oldest course first. They're read within each night's budget, after what's filed from now on.") |
 
 The quality numbers in `/graph`: how many concepts and links, **broken** links, notes with **no links in**, links
 with a **vague reason**, and the share of all links that go to the three busiest notes (a high share means a few hub
@@ -576,6 +601,7 @@ skipped.
 | `integrate.roles` | `{"bulk": "", "check": ""}` | The AI for the bulk work and the second look; empty = chosen for you |
 | `integrate.batch_pages` | `12` | About how many pages per request |
 | `integrate.per_night` | `auto` | Batches a night: `auto` (fitted to your AI by itself) or a number (a hard ceiling) |
+| `integrate.sources` | `["books", "classroom"]` | What's read into the graph: `books`, `classroom`, `handwritten` |
 | `integrate.share_pct` | `60` | The most of a subscription's usage window (or a free key's day) the reading takes |
 | `integrate.max_cost_per_night` | `0.5` | An API key: the most a night's reading may cost (USD) |
 | `integrate.price_per_mtok` | `{"in": 2.0, "out": 8.0}` | An API key that reports no cost: its USD per million tokens, for the estimate |
@@ -595,12 +621,15 @@ skipped.
   next night's start (`integrate.at`). To stop it for longer, turn the feature off.
 - Page numbers are the PDF's own (page 1 is the first page of the file, often the cover).
 
-**What leaves your computer.** A few pages of a book's text at a time, and the titles and opening lines of the related
-notes, go to the AI you picked, like any request. The matching, the checks and the reranker run on this computer.
+**What leaves your computer.** A few pages of a book's text (or of a class file, or of your handwritten notes when
+you add them) at a time, and the titles and opening lines of the related notes, go to the AI you picked, like any
+request. The matching, the checks and the reranker run on this computer.
 
 **Turn it off / undo.**
 - Features → Concept graph → Turn off stops it. Notes already written stay.
 - `git revert <commit>` undoes one batch (each batch is one commit, named like
-  `books: <title> pp. 41-52 (+3 notes, +7 links, 2 updated)`).
+  `books: <title> pp. 41-52 (+3 notes, +7 links, 2 updated)`, or `classroom: <file> (...)`).
+- Take `classroom` (or `handwritten`) out of `integrate.sources`, or untick it on the card, to stop reading it; what
+  was queued waits until it's back.
 - Each batch also keeps a before-copy of every file it changed in Kurooto's state folder, `integrate/undo/` (the last
   60 batches; the [Space keeper](updates-and-backups.md) removes copies older than 30 days).

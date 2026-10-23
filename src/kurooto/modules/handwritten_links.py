@@ -11,6 +11,8 @@ for older transcriptions with /handwritten link, the note gets:
                       lecture note, the course page, and the concept notes the pages cover, each `- [[path]]: reason`
     a ## Doubts list  what you marked "DOUBT: ..." or "???", with the page, so it can be found
     the course page   lists it under its lecture (or under "Handwritten notes"), in a block of Kurooto's own
+    the graph         with "handwritten" in integrate.sources, the transcription is then read into the concept graph
+                      like a book (modules/integrate.py)
 
 Candidates come from the concept graph's own search (core/conceptgraph.py, no AI); one request to the check AI (the
 concept graph's second-look AI when that's on, else your main AI) gives the title, the subject when the time doesn't
@@ -514,10 +516,23 @@ class Linker:
                 b["concepts"] += got["concepts"]
                 b["titles"].append(got["title"])
             self.save(st)
+        if got:
+            self.to_graph(note, got)
         if got and not batch:
             self.app.notify(got["line"], kind="result", why="handwritten.linked", about=note.name)
         elif batch:
             self.finish(batch)
+
+    def to_graph(self, note: Path, got: dict) -> None:
+        """After linking, the transcription is read into the concept graph like a book when integrate.sources has
+        "handwritten" (modules/integrate.py); never fails the linking."""
+        ig = self.app.modules.get("integrate")
+        if ig is None or not self.app.is_on("integrate") or not got.get("subject"):
+            return
+        try:
+            ig.take_handwritten(note, got["subject"], got["title"], got.get("day") or "")
+        except Exception as e:
+            self.app.events.emit("integrate_queue_failed", source="handwritten", error=str(e)[:200])
 
     def finish(self, batch: str) -> None:
         """When the last note of a /handwritten link run is done: one message for them all."""
@@ -657,7 +672,14 @@ class Linker:
             line += f"; {len(qs)} doubt{'s' if len(qs) != 1 else ''} listed"
         line += ". /handwritten undo takes it back."
         self.app.events.emit("handwritten_linked", concepts=concepts, lecture=lec is not None, doubts=len(qs))
-        return {"title": title, "lecture": lec is not None, "concepts": concepts, "line": line}
+        return {
+            "title": title,
+            "lecture": lec is not None,
+            "concepts": concepts,
+            "line": line,
+            "subject": subject,
+            "day": day,
+        }
 
     def course_body(self, subject: str, st: dict) -> str:
         """The course page's list: notes under the lecture they belong to, then the rest."""

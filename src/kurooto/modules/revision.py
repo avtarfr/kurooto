@@ -351,6 +351,9 @@ class Revision:
             seen = cache.setdefault("seen", integ.load("seen.json", {}) or {})
             for r in seen.get(self._rel(t["note"])) or []:
                 a, z = r["pages"]
+                if r.get("unit") in ("parts", "slides"):  # a class file or handwritten notes (integrate.sources)
+                    graph.append(r["title"] if r["unit"] == "parts" else f"{r['title']}, slides {a}-{z}")
+                    continue
                 graph.append(f"{r['title']}, p. {a}" if a == z else f"{r['title']}, pp. {a}-{z}")
         books = []
         for s in cache["sources"][slug] if rx else []:

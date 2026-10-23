@@ -319,6 +319,12 @@ Notes written out before 0.5.8 get the same with `/handwritten link` (once: a no
 skipped, so running it again changes nothing). Every change keeps a before-copy; `/handwritten undo` puts the last
 linking back (a file you edited since is left as it is).
 
+**Into the concept graph (opt-in).** Add `"handwritten"` to `integrate.sources` (or tick "Read your handwritten notes"
+on the Concept graph card) and each linked note is then read into the
+[concept graph](notes-and-concept-graph.md#concept-graph) like a book: its concepts become notes (or lines on the ones
+you have) whose "Seen in" points back at the handwritten note. Each note is read once; a page you change on your
+tablet is read again. Notes with no subject are left out.
+
 **From Telegram.**
 
 | Command | What it does |

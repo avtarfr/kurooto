@@ -5,7 +5,8 @@ reasons, "Seen in" lists with page numbers, and per-batch summaries. Two feature
 
 - **Books** (`modules/books.py:Books`, id `books`, `heavy = True`): reads PDFs into page text.
 - **Concept graph** (`modules/integrate.py:Integrate`, id `integrate`, `requires = ("books",)`, `heavy = True`):
-  everything after that.
+  everything after that, for books and (0.5.19) the other sources in `integrate.sources`: Classroom files and
+  handwritten notes (see [Sources beyond books](#sources-beyond-books-0519)).
 
 Helpers: `core/segment.py` (sections and batches), `core/conceptgraph.py` (existing notes, candidates, embeddings; no
 AI), `core/rerank.py` (local yes/no reranker), `core/integrate_ai.py` (prompts, parsing, checks), `core/graphwrite.py`
@@ -90,6 +91,54 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
   `data/ollama_models.toml`). `Reranker.score_one` asks `/api/generate` for one token with `logprobs` and uses
   P(yes)/(P(yes)+P(no)); three failures in a row mark it `dead`. It is used in the same-as check and the garden;
   `submit_batch` asks for candidates with `rerank=False`.
+
+## Sources beyond books (0.5.19)
+
+`integrate.sources` (default `["books", "classroom"]`; `SOURCES = ("books", "classroom", "handwritten")`,
+`Integrate.sources()` / `reads(src)`) says what goes through the same pipeline. Everything that isn't a book is an
+**item**: a dict in `items.json` that stands in for the book dict `b` everywhere (`source_of(b)` is `b["source"]`, or
+`"books"` when absent, so book dicts from `Books.library()` work unchanged).
+
+- **Queueing** (`Integrate.queue_item(source, text, subject, title, note, date, course, backfill, order)`): refuses
+  when the feature is off, the source isn't read, the subject isn't a folder slug, or the text is shorter than
+  `MIN_CHARS[source]` (classroom 1,500, handwritten 800). The key is `"<source>:<sha256[:16]>"` of the
+  whitespace-collapsed text (`text_hash`): a key already in `items.json` is never queued again (read once; an edited
+  file hashes differently and is a new item). The text is copied to `texts/<hash16>.txt`.
+- **Classroom** (`ClassroomNotes._filed` → `_to_graph` → `Integrate.take_classroom(batch)`, after the digest job
+  succeeded, so its lecture notes exist): every file in the batch with `chars` and text (`ClassroomNotes.file_text`),
+  and a post whose own text is at least 1,500 characters. `source_note(subject, post title, date, names)` finds the
+  note it was filed into: `layout.path("lecture", subject, date, slugify(post title))` if it exists, else the newest
+  dated note in the lecture folder whose text (Kurooto's blocks stripped) contains the file's slugified title as a
+  whole slug, else the course page.
+- **Handwritten** (`Linker.done` → `Linker.to_graph` → `Integrate.take_handwritten(note, subject, title, day)`, after
+  a successful `apply`, which now also returns `subject` and `day`): the transcription between the handwritten markers
+  (`handwritten_links.parts`); notes with no subject are skipped. "Seen in" points at the handwritten note.
+- **Backfill** (`Integrate.backfill_classroom()`, `/graph backfill classroom`, the card's `backfill:classroom` switch):
+  scans `ClassroomNotes.files_dir` (and the legacy `<data>/classroom`) for the course folders in
+  `classroom-notes/folders.json` and `classroom_notes.folders`; reads each file's `.txt` sidecar (or a text file
+  itself); takes the date and title from the download name (`<date>-<slug>-<fid6>.<ext>`). Queued with
+  `backfill=True` and an increasing `order`: courses by their oldest file, files by date. Stamps
+  `items.json["backfill"]["classroom"]`.
+- **Pages** (`split_pages(text)` → `(pages, unit)`): form feeds (pdftotext) → `pages`; `--- slide N ---` (the .pptx
+  writer in `google_classroom._xml_text`) → `slides`; else paragraphs packed to about `PART_CHARS` (3,000) → `parts`.
+  `plan()` runs `segment.sections(pages, [], total)` and `segment.batches` on them like a book with no bookmarks.
+- **Order** (`ready_batches`): `queued_items()` first (fresh items newest first by `(date, added)`; then backfill
+  items by `order`), then the books as before (only when `"books"` is read). One queue, so one bulk request at a time
+  and one `Budget.gate()` for all.
+- **Prompt**: `integrate_ai.batch_prompt(..., source, unit)`; a book's prompt is `BATCH_PROMPT` unchanged
+  (`BOOK_HEAD` + body); the others swap the head for `HEADS[source]` ("Course material: ...", "Handwritten notes:
+  ...").
+- **Writes**: the same `write()`. Seen rows of an item carry `source` and `unit`; `seen_body` prints `pp.` for pages,
+  `slides a–z` for slides, nothing for parts, and the "Added from" lines under `SEEN_HEAD[source]` ("### Added from
+  the books" unchanged). A Classroom item whose note isn't the course page gets a `material<hash8>` block, "## Concepts
+  in <file>" (a key per file, since several files share a lecture note). The course page's "From the books" block and
+  a book's `concepts` block are books only. Commits are `classroom: <title> (+N notes, ...)`.
+- **Ledger**: items go under `ledger.json["items"][key]`, books stay under `["books"]` (no migration: the books'
+  shape is unchanged). `section(b)`, `entry(led, b)`, `inflight()` and `counts()` cover both.
+- **Status**: `waiting()` / `waiting_line()` count items with a ready batch per source ("Waiting to be read: 2 books,
+  5 class files, 1 handwritten."), in `/graph` and the card. The card's toggles: `source:<name>` (sets
+  `integrate.sources`) and `backfill:classroom` (`card_action`).
+- Readers of `seen.json` rows outside the module (`quiz_links.where`, `revision`) print slides or nothing for parts.
 
 ## 4. The AI batch (`modules/integrate.py`, `core/integrate_ai.py`)
 
@@ -176,9 +225,11 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 
 | File | Content |
 |---|---|
-| `ledger.json` | `{"books": {"<subject>/<id>": {"batches": {"<first>-<last>": {state, at, job, tries, why, check_job, concepts, flagged, dropped, commit, new, same, links, skipped}}}}, "nights": {"YYYY-MM-DD": {requests, cost, batches, new, links, updated, flagged, dropped, failed, garden}}}` (30 nights kept) |
-| `seen.json` | `{slug: [{book, note, title, batch, pages, update, def}]}` |
-| `chapters.json` | `{bookkey: {batchid: {first, last, title, concepts}}}` |
+| `ledger.json` | `{"books": {"<subject>/<id>": {"batches": {"<first>-<last>": {state, at, job, tries, why, check_job, concepts, flagged, dropped, commit, new, same, links, skipped}}}}, "nights": {"YYYY-MM-DD": {requests, cost, batches, new, links, updated, flagged, dropped, failed, garden}}}` (30 nights kept); `"items": {"<source>:<hash16>": {...the same...}}` for the rest |
+| `seen.json` | `{slug: [{book, note, title, batch, pages, update, def, source?, unit?}]}` (`book` is the item key for an item) |
+| `chapters.json` | `{bookkey or itemkey: {batchid: {first, last, title, concepts}}}` |
+| `items.json` | `{"items": {"<source>:<hash16>": {source, key, id, subject, title, course, note, date, added, backfill, order}}, "backfill": {"classroom": "<when>"}}` |
+| `texts/<hash16>.txt` | the copy of an item's text that's read |
 | `garden.json` | `{"queue": [slugs], "last": {slug: date}}` |
 | `budget.json` | `{"brains": {"<bulk AI>": {learned, why, capacity, capacity_at, capacity_kind, hold_until, last_hit: {at, kind, reset, fit}, done: [batch times, 8 days], night, nights: {"<morning date>": {kind, batches, cost, how, used, spent, hit}}}}}` (30 nights kept) |
 | `pending/<jobid>.json` | a batch waiting for its second look |
@@ -252,18 +303,20 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
 
 - `register_defaults("integrate", ...)`: `at`, `roles`, `batch_pages` (12), `per_night` (`"auto"` or a ceiling),
   `share_pct` (60), `max_cost_per_night` (0.5), `price_per_mtok` (`{"in": 2.0, "out": 8.0}`), `garden`,
-  `garden_per_day` (40), `embeddings` (auto), `rerank` (auto), `rerank_model`, `first`, `order` (smallest), `commit`,
-  `summary`.
+  `garden_per_day` (40), `embeddings` (auto), `rerank` (auto), `rerank_model`, `sources` (`["books", "classroom"]`),
+  `first`, `order` (smallest), `commit`, `summary`.
 - `/graph` (`Integrate._cmd`): state, counts, tonight's budget and the last limit (`Budget.lines`), `metrics()` (broken
   links, notes with no links in, boilerplate reasons, top-3 share, name collisions), today's cost; `/graph now` lifts a stop and runs
   `tick()` (and says the budget's lines when it may not start); `/graph stop` (`Integrate.hold`; not `stop`, which is
   turning the feature off) writes `stopped.json` with the next `integrate.at` time and cancels `integrate:soon`;
   `tick()` starts nothing before then, whoever calls it (the night, retry, plan and early jobs, `poke`, `_done`), and a
-  restart keeps it.
+  restart keeps it. `/graph backfill classroom` runs `backfill_classroom()` and says what it queued
+  (`backfill_said`).
 - No intents.
 - The links are read back as review cards by the Quiz (`modules/quiz_links.py`, see [modules.md](modules.md)), with
   `seen.json`'s pages for "Where to read"; nothing there writes to the notes.
-- Tests: `tests/unit/test_integrate.py`, `test_readbudget.py`, `test_books.py`, `test_segment.py`, `test_hubs.py`,
+- Tests: `tests/unit/test_integrate.py`, `test_integrate_sources.py` (Classroom, handwritten, backfill, the split),
+  `test_readbudget.py`, `test_books.py`, `test_segment.py`, `test_hubs.py`,
   `test_rerank_hardware.py`.
 
 ## Known problems (as of this writing)

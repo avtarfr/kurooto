@@ -1905,6 +1905,10 @@ files (agy). Videos and images are linked, not downloaded. The first check goes 
 - `/classnotes skip chess` leaves out courses with "chess" in their name; `/classnotes unskip chess` undoes it.
 - Posts about a topic on your not-interested list (`/ignore`) are only counted.
 - If the AI fails, the posts wait and are tried again at the next check; after three failures you get a message.
+- **Into the concept graph.** Once filed, each file with real text (slides, handouts, PDFs, solutions: 1,500
+  characters or more, so not a one-line announcement) is read into the [concept graph](#concept-graph-books-into-linked-notes)
+  like a book: its concepts become notes whose "Seen in" points at the lecture note it was filed into. Files filed
+  before 0.5.19: `/graph backfill classroom`.
 
 *Settings:* `classroom_notes.at` (when), `classroom_notes.folders` (a course's exact name → the folder you want),
 `classroom_notes.files` (download attached files), `classroom_notes.max_file_mb` (30),
@@ -2092,7 +2096,8 @@ Nothing you wrote is changed. `/handwritten link` does the same, once, for notes
 failed): every transcription with no Links section yet, one message when they're all done; run twice, nothing changes.
 `/handwritten undo` puts back the files the last linking changed (a before-copy is kept in Kurooto's state folder,
 `handwritten-undo/`; a file you edited since is left as it is). `handwritten.link` = `false` turns linking off. The
-note's text goes to that AI, like any request.
+note's text goes to that AI, like any request. With `"handwritten"` in `integrate.sources`, a linked note is then read
+into the [concept graph](#concept-graph-books-into-linked-notes) too.
 
 *Undo:* Features → Handwritten notes off; the notes and copies stay. `handwritten.local` = `false` goes back to Gemini
 for everything. `/handwritten undo` takes back the last linking; `handwritten.link` = `false` stops linking.
@@ -2172,6 +2177,25 @@ list on each concept with the book and pages, and, in the book's own note, which
 introduces. Your own text is never changed: Kurooto adds lines and keeps its parts inside `<!-- kurooto:... -->`
 markers, and a write that would touch anything else is refused.
 
+**What gets read** (`integrate.sources`, default `["books", "classroom"]`):
+- `books`: each book Books and PDFs has read.
+- `classroom`: each file [Classroom → notes](#classroom--notes) files with real text (slides, handouts, PDFs,
+  solutions, 1,500 characters or more; a one-line announcement isn't), with its course as the subject. The "Seen in"
+  line points at the lecture note it was filed into (else the course page), and that lecture note gets a list of the
+  concepts the file introduced.
+- `handwritten` (add it to turn it on): your [handwritten notes](#handwritten-notes), once written out and linked;
+  "Seen in" points at the handwritten note.
+
+Each item is read once: it's known by the hash of its text, so a file filed again unchanged isn't read again, and an
+edited one is. Everything shares one queue and one night's budget: the newest class material first (it's what you're
+studying now), then the books in their order. `/graph` says what's waiting ("Waiting to be read: 2 books, 5 class
+files, 1 handwritten."). The feature's card has a switch for each source.
+
+**Files filed before 0.5.19** aren't read on their own (that would be a whole semester at once). `/graph backfill
+classroom`, or "Also read the Classroom files filed before" on the card, queues them: the oldest course first, each
+course's files in date order, after what's filed from now on, read night by night within the budget. Run again, it
+queues nothing new.
+
 **How a batch goes.**
 1. The book is cut into batches of about 12 pages that follow its sections (numbered headings and the running headers
    at the top of pages; a margin note such as "Section 9.1" is never taken for a heading).
@@ -2216,13 +2240,15 @@ the feature's card show tonight's budget, how it was decided and the last limit 
 | `integrate.per_night` | batches a night: `auto` (fitted to your AI) or a number (a hard ceiling) |
 | `integrate.share_pct` | the most of a subscription's usage window (or a free key's day) the reading takes (60) |
 | `integrate.max_cost_per_night`, `integrate.price_per_mtok` | an API key's money budget a night (0.50 USD), and its prices when it reports no cost |
+| `integrate.sources` | what's read: `books`, `classroom`, `handwritten` (default `["books", "classroom"]`) |
 | `integrate.first` | subjects to do first |
 | `integrate.garden`, `integrate.garden_per_day` | the daily second pass |
 | `integrate.embeddings` | auto, ollama, gemini or off |
 | `integrate.commit` | one git commit per batch |
 
 **Undo.** `git revert` a batch's commit; each batch also keeps a before-copy of every file it changed in
-`<state>/integrate/undo/`. To stop it, turn the feature off in Features.
+`<state>/integrate/undo/`. To stop it, turn the feature off in Features. To stop reading class materials (or
+handwritten notes), take them out of `integrate.sources` (or untick them on the card); what's queued waits.
 
 **Reading cost.** The vision model now reads a maths page again only when its text layer broke the equations into
 pieces (`books.latex` = `maths`); `all` reads every maths page, `never` none.

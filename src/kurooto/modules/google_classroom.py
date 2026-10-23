@@ -12,6 +12,8 @@ moved deadlines) go into Deadlines; assignment due dates already arrive there th
 It asks Google for two permissions the Classroom deadlines don't need: course materials (read-only) and Google
 Drive (read-only, so it can open the files attached to posts; it opens nothing else). Downloaded files stay in
 Kurooto's own data folder, not in your notes. Posts about topics on your not-interested list are only counted.
+Once filed, the files with real text (slides, handouts, PDFs, solutions) are read into the concept graph like a book
+(modules/integrate.py, integrate.sources).
 """
 
 from __future__ import annotations
@@ -526,6 +528,17 @@ class ClassroomNotes(GooglePart):
         except Exception as e:
             self.app.events.emit("hubs_failed", error=str(e)[:200])
 
+    def _to_graph(self, data: dict) -> None:
+        """The files just filed, with real text, are read into the concept graph like a book (modules/integrate.py,
+        integrate.sources); never fails the filing."""
+        ig = self.app.modules.get("integrate")
+        if ig is None or not self.app.is_on("integrate"):
+            return
+        try:
+            ig.take_classroom(data)
+        except Exception as e:
+            self.app.events.emit("integrate_queue_failed", source="classroom", error=str(e)[:200])
+
     def _filed(self, job, result, payload) -> None:
         b = self.dir / "batches" / str(payload.get("batch", "x")).replace("/", "")
         data = jload(b, {}) or {}
@@ -542,6 +555,7 @@ class ClassroomNotes(GooglePart):
             )
             self.app.events.emit("classroom_notes_filed", items=n)
             self._hubs()
+            self._to_graph(data)
             return
         data["tries"] = data.get("tries", 0) + 1
         jsave(b, data)

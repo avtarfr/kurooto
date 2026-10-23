@@ -497,7 +497,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   the user's own) as AI jobs; routines (`/every`), drafts (`/newskill`), LaTeX revision packs (Tectonic `--untrusted`,
   else `latexmk` or `pdflatex` with `-no-shell-escape`: the AI wrote the LaTeX), study packs, `send_file(s)` (over
   50 MB goes to Drive upload).
-- **books** and **integrate**: see [concept-graph.md](concept-graph.md).
+- **books** and **integrate**: see [concept-graph.md](concept-graph.md). Since 0.5.19 `integrate` also reads the
+  Classroom files `classroom_notes` files (`ClassroomNotes._to_graph` → `Integrate.take_classroom`) and, with
+  `"handwritten"` in `integrate.sources`, linked handwritten notes (`Linker.to_graph` → `Integrate.take_handwritten`),
+  in one queue with the books: [concept-graph.md](concept-graph.md#sources-beyond-books-0519).
 - **handwritten** (`modules/handwritten.py`): transcribes PDFs and photos from an inbox folder (local vision model or
   Gemini) into Markdown; `stop()` cancels its `handwritten:scan` job and halts a scan in progress. Then `modules/handwritten_links.py` (`Linker`, `hw.linker`) links the note like any other:
   `_file` calls `linker.submit(note, src)`, which works out when the pages were written (`written_times`: the PDF's
