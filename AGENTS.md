@@ -46,6 +46,7 @@ words, one step at a time, and let them do the clicking in their browser.
 | `kurooto ask-me "question" [--choices "a\|b"] [--wait [--timeout MIN]]` | asks the person something on Telegram, their phone or the next call; prints the id, or the answer with `--wait` | yes, when you need their input |
 | `kurooto ask-approval "question" [--timeout MIN]` | asks for Approve / Deny and waits: exit 0 yes, 1 no, 2 timeout or not running | yes; use it before anything that needs their OK |
 | `kurooto ask "plain English"` | the same as a message on Telegram; quick things answer at once, bigger ones go to their AI and print here | yes, for what they asked you to do |
+| `kurooto ask --popup` / `kurooto ask --shortcut` | a small window to type one request in / a Quick ask entry in their app menu, which they bind to a key in their system's settings | yes; the key binding is theirs to set |
 | `kurooto call "reason" [--at TIME]` | rings their phone (needs Phone calls); waits out classes, holds and the night unless `--force` | yes, when they asked to be called |
 | `kurooto send FILE [--caption T]` | sends them a file on Telegram (up to 50 MB) | yes, a file they asked for |
 | `kurooto note [--title T] TEXT` | saves a quick note in their notes' inbox (or what's piped in) | yes, when they asked |
@@ -56,6 +57,10 @@ words, one step at a time, and let them do the clicking in their browser.
 | `kurooto sync` | runs every sync that's on and prints one line each (needs Kurooto running) | yes |
 | `kurooto mcp` | Kurooto's tools for you, as an MCP server on stdin/stdout (add it to your MCP settings) | yes |
 | `kurooto runlog …`, `kurooto watch -- CMD` | log experiment runs into their notes; message them when a long job ends | yes, when they asked |
+| `kurooto runlog diff A B` | two runs side by side (config, code diff, metrics, curves) in the project's notes (Research add-on) | yes, when they asked |
+| `kurooto addons` / `kurooto addons show NAME` | the add-ons added by link and whether each loaded / one add-on's card | yes |
+| `kurooto addons add URL [--ref TAG]` | shows an add-on's card (what it does, the hosts and programs it may reach), then adds it pinned to one commit if they say yes | **ask first**; it runs someone else's code. Never pass `--yes` for them: they read the card |
+| `kurooto addons update NAME` / `remove NAME` / `undo NAME` | what a newer commit changes, then update on a yes / take it away / put back what the last remove or update took | ask first |
 | `kurooto backup [--to FOLDER]` | makes a backup zip now | yes; ask before `--to` a folder they didn't pick |
 | `kurooto profile status` | what the encrypted profile holds and when it was saved | yes |
 | `kurooto profile save` | saves the profile now (the first time it asks for a repository and a passphrase) | yes, when set up; never type a passphrase for them |
@@ -122,6 +127,20 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
   fallback AI in Settings (`brain.fallback`), for example a Gemini key (free tier: see `docs/PRIVACY.md`).
 - **"Which AI answered that?":** the last line under each answer (the run receipt) names the AI and model, and who
   stood in; `kurooto jobs` lists the last few with their AI and model.
+- **"Today is empty on my phone"** (the app says "Nothing here yet"): the phone seals Today with its own key, which
+  it gives the call line after pairing. Open the app once with the internet on (from 0.6.1 that sends the key again if
+  it never arrived; on 0.6.0, swipe the app away and open it again). It shows within a minute or two while the
+  computer is on. "Turned off on your computer" means `calls.today` is off. A call line from before 0.6.0 says so on
+  the screen; the computer updates it by itself.
+- **"Requests are waiting":** with no internet, Kurooto keeps requests and runs them when it's back (`kurooto jobs`
+  shows them as held); quick questions get a short answer from the offline helper if it's on (`/helper` on Telegram
+  shows its state and speed test). Nothing is dropped; don't resend them.
+- **"Add this add-on":** `kurooto addons add <git url>` and let the person read the card before they say yes. Four
+  more (restic backups, desktop helpers, command words, handwriting from the cloud) sit in `addons/` in Kurooto's
+  repository, not yet published as repositories of their own; `docs/wiki/user/add-ons.md` describes them. An add-on
+  reaches only the hosts and programs on its card.
+- **"It won't check my draft":** a course's AI policy (`/subject policy <course> allowed|hints|off`) can turn checks
+  down to hints or off. Draft checks mark gaps and errors at their lines and never rewrite the work; don't offer to.
 - **"My phone doesn't ring":** in the Kurooto Android app, every checklist item should be ✓ (battery unrestricted,
   notifications, full-screen calls). On Samsung/Xiaomi/Oppo/Vivo/OnePlus/Huawei, take it off "sleeping apps". Then
   dashboard → Phone → "Ring my phone". iPhones only get notifications, not rings.
@@ -139,6 +158,15 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
   says which). They need a key that's embedded in the page Kurooto serves; you can't call the API without it, and
   shouldn't try.
 - Every feature is a module, off until turned on. The full list with what each needs is in `docs/MANUAL.md`.
+- What the night changes waits for a tap: Dreaming's duplicate and conflicting memories (Keep A / Keep B / Both
+  true), look-alike concept notes (Merge / Keep both / Add alias), Dream RSI's one change a night, all with Undo. Don't
+  apply them for the person by editing files.
+- Location reminders, email in, shared class calendars and the Research add-on are off until the person turns them
+  on. Location reminders use Android's own proximity alerts for places saved in the app; Kurooto doesn't track where
+  the phone is.
+- The phone app (Android 6 and up) shows Today, widgets, Quick note and a bedside mode; an old phone on a charger can
+  be a bedside clock. iPhones use the Home Screen web app and a "Tell Kurooto" Shortcut whose link the person can
+  revoke from the dashboard.
 - Updates install themselves at night by default, signed and with automatic rollback.
 - On battery (`power.on_battery`, default `saver`) heavy work waits for the charger on purpose; Telegram keeps working.
 - The notes folder is plain Markdown files; Kurooto never deletes it, and its notes tools only create, add to and

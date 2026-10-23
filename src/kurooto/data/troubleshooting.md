@@ -144,6 +144,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 |---|---|
 | The phone didn't ring, and `/status` or the log shows "429 Too Many Requests" from ntfy | ntfy.sh limits each internet address, and you share yours (a campus, and your call line's Cloudflare one). Make a free ntfy.sh account and paste its token on the dashboard's Phone tab (or `kurooto ntfy-token`): ntfy then counts your account instead. `/health` says when this happened. |
 | The phone doesn't ring | Is every item on the app's checklist ticked? **Battery: unrestricted**, and Kurooto off any "sleeping apps" list (Samsung, Xiaomi, Oppo, Vivo, OnePlus, Huawei). Then dashboard → Phone → **Ring my phone**. |
+| Today says "Nothing here yet" on one phone, but another phone has it | That phone's key didn't reach your call line when it paired. Open the app with the internet on (0.6.1 sends it again; on 0.6.0 swipe the app away and open it again); the list comes within a minute or two while the computer is on. |
 | Android won't install the app | Allow installing unknown apps for your browser when asked; for Play Protect, "More details" → "Install anyway". |
 | iPhone gets no notifications | Open Kurooto from the Home Screen (not Safari), turn notifications on in it, iOS 16.4 or newer, and Settings → Notifications → Kurooto. |
 | Questions don't show on the phone | Is `question` in `notify.app_kinds`? On Android, is the "Questions and approvals" notification category on? Is the computer connected to your call line? |

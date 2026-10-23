@@ -186,7 +186,7 @@ public class ListenService extends Service {
         while (running) {
             String topic = Prefs.topic(this);
             if (topic.isEmpty() || !Prefs.paired(this)) { sleep(30); continue; }
-            Line.sendSealKey(this); // so your computer can seal reminders for this phone (once; tried again on reconnects)
+            Line.sendSealKey(this); // so your computer can seal reminders for this phone (once; tried again on reconnects and by Today.fetch)
             if (System.currentTimeMillis() - Today.fetchedAt(this) > 5 * 60_000) Today.fetch(this); // a nudge missed?
             HttpURLConnection c = null;
             try {

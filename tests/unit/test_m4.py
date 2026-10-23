@@ -136,6 +136,43 @@ def test_ics_parsing_and_recurrence(calendar):
     assert c.call_brief()["calendar_today"][0].startswith("12:00–13:00")
 
 
+def test_day_sorted_and_last_nights_block(tmp_path):
+    # two calendars' events come one file after the other; a day lists them by time, all-day first, and a block from
+    # the night before says when it ends rather than looking like tonight's
+    from types import SimpleNamespace
+
+    from kurooto.core.state import jsave
+
+    day = dt.date(2026, 10, 24)
+    at = lambda d, h: dt.datetime.combine(d, dt.time(h), BERLIN).isoformat()  # noqa: E731
+    ev = lambda t, a, b, all_day=False: {"title": t, "start": a, "end": b, "all_day": all_day}  # noqa: E731
+    yday, tmrw = day - dt.timedelta(days=1), day + dt.timedelta(days=1)
+    f = tmp_path / "calendar.json"
+    jsave(
+        f,
+        {
+            "events": [
+                ev("Sleep", at(yday, 23), at(day, 6)),
+                ev("Lunch", at(day, 12), at(day, 13)),
+                ev("Sleep", at(day, 23), at(tmrw, 6)),
+                ev("Club", at(day, 21), at(day, 22)),
+                ev("Fest", at(day, 0), at(tmrw, 0), all_day=True),
+            ]
+        },
+    )
+    fake = SimpleNamespace(file=f, tz=lambda: BERLIN)
+    a = dt.datetime.combine(day, dt.time(0), BERLIN)
+    evs = cal_mod.Calendar.events(fake, a, a + dt.timedelta(days=1))
+    assert [cal_mod.Calendar.line(e, day) for e in evs] == [
+        "all day  Fest",
+        "until 06:00  Sleep",
+        "12:00–13:00  Lunch",
+        "21:00–22:00  Club",
+        "23:00–06:00  Sleep",
+    ]
+    assert cal_mod.Calendar.line(evs[1]) == "23:00–06:00  Sleep"  # without a day, as before
+
+
 def test_until_and_zone_fallbacks():
     assert cal_mod.fix_until("FREQ=WEEKLY;UNTIL=20261231") == "FREQ=WEEKLY;UNTIL=20261231T235959Z"
     assert cal_mod.fix_until("FREQ=DAILY;UNTIL=20261231T100000") == "FREQ=DAILY;UNTIL=20261231T100000Z"

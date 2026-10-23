@@ -381,7 +381,9 @@ this device's token | null, "at": when it came | null, "off", "computer": "onlin
 comes back in the answer (`200 {"ok", "note"}`, `400` bad or not tappable, `410` gone or not open).
 
 **The app.** `Today.fetch` (on opening, on the `today` nudge, when the ntfy stream reconnects more than 5 minutes after
-the last fetch) opens the token with `Seal`, keeps it in `today.json` and hands `alarm` to `Alarms.update`.
+the last fetch) first calls `Line.sendSealKey` (a no-op once `sealSent` matches; 0.6.1: before, only the stream's
+reconnect retried a failed send, and a stream can stay up for days, so a phone whose first send failed got no list),
+then opens the token with `Seal`, keeps it in `today.json` and hands `alarm` to `Alarms.update`.
 `TodayView` draws it on `MainActivity`'s first screen under Call and Chat (its own column; it re-draws when a fetch
 lands), with Done / +1 under a tapped deadline (`Chat.today`, waiting kind `today`).
 

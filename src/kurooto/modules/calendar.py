@@ -415,7 +415,7 @@ class Calendar(Module):
             f = dt.datetime.fromisoformat(e["end"]).astimezone(tz)
             if s < end and f > start:
                 out.append({**e, "start_dt": s, "end_dt": f})
-        return out
+        return sorted(out, key=lambda e: (not e.get("all_day"), e["start_dt"]))  # each calendar's file comes in turn
 
     def day(self, d: dt.date) -> list[dict]:
         a = dt.datetime.combine(d, dt.time(0), self.tz())
@@ -595,17 +595,19 @@ class Calendar(Module):
 
     # -------------------------------------------------------------------------------- telling you
     @staticmethod
-    def line(e: dict) -> str:
+    def line(e: dict, d: dt.date | None = None) -> str:
         whose = f" (from {e['from']})" if e.get("from") else ""  # a calendar you subscribed to
         if e["all_day"]:
             return f"all day  {e['title']}{whose}"
         loc = f" ({e['location']})" if e.get("location") else ""
+        if d is not None and e["start_dt"].date() < d:  # began the day before (last night's block): when it ends
+            return f"until {e['end_dt']:%H:%M}  {e['title']}{loc}{whose}"
         return f"{e['start_dt']:%H:%M}–{e['end_dt']:%H:%M}  {e['title']}{loc}{whose}"
 
     def agenda(self, d: dt.date) -> str:
         evs, today = self.day(d), self.now().date()
         label = "Today" if d == today else "Tomorrow" if d == today + dt.timedelta(days=1) else f"{d:%a %d %b}"
-        return f"{label}:\n" + "\n".join(self.line(e) for e in evs) if evs else f"{label}: nothing in your calendar."
+        return f"{label}:\n" + "\n".join(self.line(e, d) for e in evs) if evs else f"{label}: nothing in your calendar."
 
     def commands(self):
         return [
@@ -707,8 +709,9 @@ class Calendar(Module):
         ]
 
     def call_brief(self) -> dict:
-        evs = self.day(self.now().date())
-        return {"calendar_today": [self.line(e) for e in evs]} if evs else {}
+        d = self.now().date()
+        evs = self.day(d)
+        return {"calendar_today": [self.line(e, d) for e in evs]} if evs else {}
 
     # ------------------------------------------------------------------------------------- setup
     def setup_form(self) -> dict:

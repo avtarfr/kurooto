@@ -306,7 +306,8 @@ the dashboard's Today page, as your computer last sent them.
 - **When it's from:** "As of 14:05" (when your call line got it), and "your computer is off" when it is. It shows
   with the computer asleep or off, and with no internet on the phone (the copy the app last fetched).
 - **Alarm:** the next one, the daily alarm, and **Ring on this phone too** (see below).
-- **Classes and events:** today's classes (a class you're skipping says so) and your calendar.
+- **Classes and events:** today's classes (a class you're skipping says so) and your calendar, in time order (all-day
+  events first). Something that began the night before shows when it ends: "until 06:00  Busy".
 - **Due:** what's due, soonest first, with parts done ("4/7 · due tomorrow"). Tap one for **+1** and **Done**: the same
   as those buttons on the deadline's Telegram message. With the computer off, the tap waits on your call line and
   counts when it's back; "Waiting for your computer" lists it meanwhile. Quizzes and exams have no buttons.
@@ -316,6 +317,10 @@ the dashboard's Today page, as your computer last sent them.
 Your computer sends a new list within seconds of a change on it (a deadline done on Telegram, an alarm set) and looks
 for changes every 5 minutes; the phone fetches it when it's told, when you open the app, and when it reconnects. Turn it off with `calls.today` (Dashboard → Settings → calls): the app then says "Turned off
 on your computer" and no alarm is set on the phone from it.
+
+**"Nothing here yet"** means your call line has no copy for this phone yet. The app gives the call line its key
+after pairing, and the list follows within a minute or two while your computer is on. If that send failed (no
+internet just then), opening the app tries again (0.6.1; on 0.6.0, swipe the app away and open it again).
 
 **iPhone and browsers** don't get Today: it's sealed with a key only the Android app has.
 

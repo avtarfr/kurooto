@@ -54,6 +54,9 @@ final class Today {
      *  can't be reached (what was kept stays). Call off the main thread. */
     static boolean fetch(Context c) {
         if (!Prefs.paired(c)) return false;
+        // the key the list is sealed with: sent once per pairing, and that send can fail (0.6.1: the app open retries
+        // it here, not only a reconnect of the listening stream, which can stay up for days)
+        Line.sendSealKey(c);
         Net.Reply r = Net.request("GET", Prefs.url(c) + "/today", null, null, Prefs.device(c), 20000);
         JSONObject d = load(c);
         try {

@@ -2994,7 +2994,9 @@ opens the download.
 **Today** (0.6.0): under Call and Chat, your day as your computer last sent it ("As of 14:05"), also while it's off:
 the alarm, classes and calendar events, what's due with parts done ("4/7"), reminders and open threads. Tap something
 due for **+1** and **Done** (as on Telegram; with the computer off they wait on your call line). The list goes to your
-call line sealed for each Android phone with a key only that phone has; the call line can't read it.
+call line sealed for each Android phone with a key only that phone has; the call line can't read it. Events are in
+time order, and one that began the night before says "until 06:00" (0.6.1). "Nothing here yet" on one phone: open
+the app with the internet on, which sends its key again (0.6.1).
 *Setting:* `calls.today` (on). *Undo:* `calls.today` off: the call line drops its copies, and no alarm is set on the
 phone from it.
 

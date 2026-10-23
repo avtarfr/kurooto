@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1 (unreleased)
+
+- **Today reaches every phone:** a phone whose key didn't reach your call line when it paired (no internet just then)
+  showed "Nothing here yet" until its connection happened to drop, which can take days. Opening the app now sends the
+  key again.
+- **Today's events in time order:** your calendars' events came one calendar after another (23:00, 12:00, 19:30...);
+  they're sorted now, all-day first, on the phone, the morning page, the wake-up call and "what's on today?". A block
+  that began the night before says "until 06:00" instead of looking like tonight's.
+- **AGENTS.md** covers 0.6.0: Quick ask, add-ons by link, run compare, an empty Today, held requests and draft checks.
+
 ## 0.6.0 (2026-10-24)
 
 **Your AI, more open about itself**
