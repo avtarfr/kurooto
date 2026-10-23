@@ -306,6 +306,6 @@ def test_health_check_and_off_by_default(env, clock):
     env.on("startby")
     c = next(c for c in env.app.health.checks() if c.id == "startby")
     assert isinstance(c, Check) and c.events == ("startby_planned",) and c.every_h == 30
-    assert [j.key for j in env.app.scheduler.jobs("startby:")] == ["startby:morning"]
+    assert sorted(j.key for j in env.app.scheduler.jobs("startby:")) == ["startby:learn_window", "startby:morning"]
     env.app.disable("startby")
     assert env.app.scheduler.jobs("startby:") == []
