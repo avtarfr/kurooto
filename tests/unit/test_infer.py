@@ -45,7 +45,9 @@ def test_meetings_with_a_project_person_are_logged_and_one_ahead_becomes_a_deadl
     assert who == "Dr Sam Okafor" and "Project with Dr Sam Okafor" in note.read_text()
     told = infer.observe(app, "Met Okafor today and we agreed on the forcing experiments.")
     assert told and "Logged a meeting" in told[0]
-    assert f"- {dt.date.today():%Y-%m-%d}: Met Okafor today and we agreed on the forcing experiments." in note.read_text()
+    assert (
+        f"- {dt.date.today():%Y-%m-%d}: Met Okafor today and we agreed on the forcing experiments." in note.read_text()
+    )
     told = infer.observe(app, "I have a meeting with Okafor tomorrow at 4pm.")
     assert told and "Meeting: Dr Sam Okafor" in told[0]
     assert any(d["title"] == "Meeting: Dr Sam Okafor" for d in app.modules["deadlines"].items().values())
