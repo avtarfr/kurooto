@@ -378,6 +378,24 @@ aren't over. An alarm set for a nap counts from when you set it. Without an alar
 the alarm does, and with no alarm set nothing holds calls overnight (a reminder call you set for 02:00 rings at 02:00).
 Off (the default) is the safe choice.
 
+**Night hours that fit you** (`availability.learn_night`, on). Once a day Kurooto looks at the last three weeks of
+when you were around (your messages, buttons you tapped, calls you answered, "I'm awake") and finds each day's long
+quiet stretch. With 7 or more, the middle of when they start and end (to the half hour) are your usual quiet hours.
+If they're an hour or more from the night hours, the night hours move there, with one line and **Undo**: "Quiet hours
+at night (no calls) now run from 08:00 to 16:00, not 23:30 to 07:00: that's when you've been quiet on 12 of the last
+21 days." Nights that run into the afternoon are fine. At most once a week; night hours you set yourself are never
+changed, and after Undo it leaves them alone for a month. Only those two times are kept: it's when you're around,
+nothing more.
+
+**Mornings move with them** (`availability.learn_morning`, on), in the same line, unless you set them yourself: the
+check-in day turns two hours before you're usually up (`checkins.day_starts`), Dreaming's morning message comes half an
+hour after (`dreaming.when`), and Start-by's "Time to start" an hour after (`startby.when`). A night check-in put off
+to the morning already comes at the end of the night hours.
+
+**No alarm set?** (`alarm.suggest`, on). Within the hour before your usual bedtime, with no alarm for the coming
+morning: "You usually wake around 16:30; set an alarm?" with **Set 16:30** and **Not tonight**. At most once a day, and
+it never sets one by itself.
+
 **Your day, drafted.** With Chat on, 20 minutes before the alarm (`alarm.prep_min`) the AI drafts today's plan into
 today's daily note under "## Plan for today (draft …)": classes, what's due, a top 3, suggested blocks, questions for
 you (the `morning-prep` skill). It runs once a day and never holds up your own requests.
@@ -417,6 +435,9 @@ awake until then." The hold ends by itself, even if Kurooto stops; the screen ca
 | `alarm.open_page` | `true` | Open the morning page at the alarm. |
 | `alarm.notes` | `true` | The wake-up call goes into the daily note. |
 | `alarm.keep_awake` | `false` | Keep the computer awake until the alarm. |
+| `alarm.suggest` | `true` | Before your usual bedtime with no alarm set, suggest your usual time once. |
+| `availability.learn_night` | `true` | Move the night hours to when you're usually quiet (with Undo; never ones you set). |
+| `availability.learn_morning` | `true` | The check-in day, the morning message and "Time to start" follow them. |
 | `availability.night` | `{"enabled": true, "from": "23:30", "to": "07:00", "alarm_only": false}` | The fixed night hours; `enabled` false: no night at all; `alarm_only` true: only bedtime to the alarm holds calls. |
 
 **Limits and edge cases.**

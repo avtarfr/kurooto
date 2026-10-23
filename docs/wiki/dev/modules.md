@@ -367,7 +367,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `answered_at` is written on a reply and on an answered call; a moved entry counts at its moved time), and with
   `LEARN_MIN_DAYS` answered and `LEARN_OFF_DAYS` 30+ min off on one side sets `checkins.times.<name>` to the median,
   rounded to 15 min; `<state>/checkins/learned.json` keeps from/to/at/undone; button prefix `chkl:<name>:undo`;
-  events `checkin_time_learned`/`_unlearned`; Calm reason `checkins.learned`.
+  events `checkin_time_learned`/`_unlearned`; Calm reason `checkins.learned`. A lighter day (`core/rhythm.py`):
+  `_plan` moves the day's first check-in, when it's just been planned, `LATER_MIN` later (the entry keeps its own time
+  under `lighter`; `learn()` skips such entries); `unlighten(day)` (Not today) puts it back unless you moved it since.
 - **deadlines** (`modules/deadlines.py`): merges deadlines from manual entries, notes tasks, Classroom, the calendar,
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,
   overdue check) and runs exam mode. Ids are hashes of title plus date. `deadlines.json` under the `deadlines` lock.
@@ -398,7 +400,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   (`_plan`); `_ring` drops the one ringing, `call_schedule()` sends every one still to come (`upcoming()`) to the
   line, and `next_daily()` treats a morning with one of yours as had. `clear()` the next, `clear_at("HH:MM")`,
   `clear_all()` (the daily alarm stays). `script()` opens with the current local time and only asks about classes
-  still to come.
+  still to come. `suggest()` (`alarm:suggest`, every 30 min, `alarm.suggest`): within `SUGGEST_MIN` of the usual
+  bedtime (`app.rhythm.usual_hours()`), with nothing in `upcoming()` or `next_daily()` up to 3 h past the usual wake,
+  one message once per bedtime date (`<state>/alarm-suggest.json`), Calm reason `alarm.suggest`, buttons
+  `alm:<YYYYmmddHHMM>:set` (calls `set()`) and `alm:suggest:no`; event `alarm_suggested`. It never sets one itself.
 - **lidsafe** (`modules/lidsafe.py`, requires `calls`): seals the next day's reminders for paired Android phones (s1)
   and hands them to the call line, so they arrive with the lid shut; whichever side is awake says each once.
 - **awake** (`modules/awake.py`): holds a sleep inhibitor on mains power (`core/inhibit.py`).
@@ -518,6 +523,7 @@ arrives.
   `learning_skill_learned`/`_improved`, `learning_remembered`, `inferred`; `loose_ends()` reads open doubts (`## Doubts`
   bullets in notes changed in 14 days), `Integrate.metrics()` (broken, no links in), past-due tasks
   (`Deadlines.upcoming`), `job_failed` events. No AI. `Integrate.summary` doesn't send its own line while it's on.
+  On a lighter day `report()` starts with `app.rhythm.lighter_line(mark=send)` and adds `rhy:lighter:no` (Not today).
   `/dream` shows it without marking it sent. Calm reason `dreaming.morning`. `self_check(ev)` (`dreaming.self_check`):
   counts `case_kept` events (missed vs `wrong`), then with Cases on runs `cases.suite()` and reports test cases in
   `fail` whose id was in the stored `passing` list (`<state>/dreaming.json`), emitting `dreaming_regressed`; only the

@@ -85,6 +85,15 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 - **Never without a tap**: setting or moving an alarm, placing calls, reading new mail senders, sending anything out,
   attaching a code repository to a project. Repositories are never searched for on the disk.
 
+## Human-like (2026-10-23)
+- ~~**Your real body clock**: the night hours move to when you're actually quiet (nights into the afternoon too), the
+  morning things follow, and the alarm suggests your usual time when none is set.~~ (0.5.18: `availability.learn_night`
+  and `learn_morning`, `alarm.suggest`, with Undo; never ones you set)
+- ~~**Lighter days after heavy ones**: after an exam or a long study day, fewer messages, the first check-in later, and
+  one line in the morning with Not today.~~ (0.5.18: `notify.calm.lighter_after`)
+- ~~**Noticing absence**: two days without a word from you brings one gentle message, never a call, with I'm fine /
+  Busy, quiet for a week.~~ (0.5.18: `availability.absence_days`)
+
 ## Ideas
 - **Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
   rest.

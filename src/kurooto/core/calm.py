@@ -15,7 +15,9 @@ than 12 hours away, and anything urgent (Kurooto can't work until you act). Answ
 counted at all.
 
 During exam season (modules/exam_season.py, its "budget" part), only deadlines, quizzes, the alarm and exam season
-itself come during the day; the rest waits for the evening.
+itself come during the day; the rest waits for the evening. On a lighter day after an exam or a heavy one
+(core/rhythm.py, notify.calm.lighter_after) the daily limit is half; in a quiet week you asked for, whatever can wait
+waits for each evening's bundle.
 
 Once a month, from the same records: "you answered 1 of 19 after-class questions: turn them off?" (Apply / No), only
 for kinds of questions you're meant to answer.
@@ -91,6 +93,7 @@ TITLES = {  # features that aren't modules
     "presence": "Online and offline messages",
     "reply_drafts": "Reply drafts",
     "keep": "Keep or drop",
+    "rhythm": "Your rhythm",
 }
 
 
@@ -371,6 +374,33 @@ REASONS: dict[str, Reason] = {
         R("checkins.moved", "a check-in call that moved to another time", setting="checkins.by_call"),
         R("startby.window", "Start-by's day window moved to when you're up", setting="startby.learn_window"),
         R(
+            "rhythm.night",
+            "the night hours (and mornings) moved to when you're usually quiet",
+            setting="availability.learn_night",
+            stop=to(False, "the night hours stay where they are"),
+        ),
+        R(
+            "rhythm.lighter",
+            "a lighter day after an exam or a heavy day",
+            setting="notify.calm.lighter_after",
+            stop=to(False, "no more lighter days"),
+            later=False,
+        ),
+        R(
+            "rhythm.absence",
+            "a check after days of not hearing from you",
+            setting="availability.absence_days",
+            stop=to(0, "no more of these"),
+            later=False,
+        ),
+        R(
+            "alarm.suggest",
+            "an alarm suggested before your usual bedtime, with none set",
+            setting="alarm.suggest",
+            stop=to(False, "no more alarm suggestions"),
+            later=False,
+        ),
+        R(
             "cases.rephrased",
             "a phrasing learned because you said it again in other words",
             setting="cases.learn_rephrased",
@@ -559,6 +589,12 @@ class Calm:
         except (TypeError, ValueError):
             return default
 
+    def day_limit(self) -> int:
+        """notify.calm.messages, halved on a lighter day after an exam or a heavy one (core/rhythm.py)."""
+        n = self.limit("messages", 6)
+        rh = getattr(self.app, "rhythm", None)
+        return rh.lighter_limit(n) if rh is not None else n
+
     def evening_at(self, day: dt.date | None = None) -> dt.datetime:
         try:
             t = dt.time.fromisoformat(str(self.s("evening_at", "20:00")).strip().zfill(5))
@@ -609,7 +645,7 @@ class Calm:
             waiting = int(db.execute("select count(*) from sent where state='held'").fetchone()[0])
         return {
             "messages": self._count(day),
-            "messages_max": self.limit("messages", 6),
+            "messages_max": self.day_limit(),
             "calls": self._count(day, kind="ring"),
             "calls_max": self.limit("calls", 1),
             "waiting": waiting,
@@ -656,6 +692,9 @@ class Calm:
         keep = self.exam_keep()
         if keep is not None and feature not in keep:
             return "exams"  # even after this evening's bundle: until the next one
+        rh = getattr(self.app, "rhythm", None)
+        if rh is not None and rh.quiet_week(t):
+            return "quiet"  # Busy, quiet for a week (core/rhythm.py): each evening's bundle
         if t >= self.evening_at(t.date()):
             return ""
         if why in (self.s("evening") or []):
@@ -663,7 +702,7 @@ class Calm:
         cap = (self.s("fewer") or {}).get(why)
         if cap is not None and self._count(t.date().isoformat(), why=why) >= int(cap):
             return "fewer"
-        if self._count(t.date().isoformat()) >= self.limit("messages", 6):
+        if self._count(t.date().isoformat()) >= self.day_limit():
             return "budget"
         return ""
 

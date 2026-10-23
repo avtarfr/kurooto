@@ -2,7 +2,7 @@
 
 `src/kurooto/core/` holds everything features share. `App.__init__` (`app.py`) builds the services in this order:
 `Paths` → `Settings` → `Secrets` → `Events` → `Availability` → `Scheduler` (with gates) → `Notifier` → `Power` →
-`AboutYou` → `Quota` → `Jobs` → `Updates` → `Ask` → `Presence` → `Health` → `Calm` → `Keep` → every module in the catalog →
+`AboutYou` → `Quota` → `Jobs` → `Updates` → `Ask` → `Presence` → `Health` → `Calm` → `Keep` → `Rhythm` → every module in the catalog →
 add-ons. Anything a module needs is reached through `self.app.<service>`.
 
 Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the-notes-layout) ·
@@ -12,7 +12,8 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 [reserve](#the-reserve) · [space keeper](#space-keeper) · [retention](#retention-and-forget) ·
 [hardware](#hardware-profiles) ·
 [processes](#running-programs) · [locks](#locks-and-atomic-writes) · [Windows](#windows-notes) ·
-[smaller pieces](#smaller-core-pieces) · [keep or drop](#keep-or-drop-corekeeppy)
+[smaller pieces](#smaller-core-pieces) · [keep or drop](#keep-or-drop-corekeeppy) ·
+[your rhythm](#your-rhythm-corerhythmpy)
 
 ## Settings
 
@@ -123,6 +124,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `calm.db` | SQLite, table `sent`, kept 45 days (`text`/`title` only `privacy.keep_days`) | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
+| `rhythm.json` | usual quiet hours, the last learned change and its Undo, lighter-day and absence marks, quiet week | `core/rhythm.py:Rhythm` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
 | `net-outbox.jsonl` | JSON lines: Telegram messages held while offline (rewritten with `write_text`) | `core/presence.py` |
@@ -250,6 +252,7 @@ Recurring (key → when; setting that controls it):
 |---|---|---|---|
 | `calm:tick` | every 5m | | `core/calm.py:Calm.start` |
 | `keep:tick` | daily 12:00 (respects quiet) | `keep.ask` | `core/keep.py:Keep.start` |
+| `rhythm:tick` | every 30m | `availability.learn_night`, `notify.calm.lighter_after`, `availability.absence_days` | `core/rhythm.py:Rhythm.start` |
 | `ask:sweep` | every 10m | | `core/ask.py:Ask.start` |
 | `retention:expire` | daily 04:15 | `privacy.keep_days` | `core/retention.py:start` |
 | `reserve:refresh` | every 10m | | `core/reserve.py:start` |
@@ -257,6 +260,7 @@ Recurring (key → when; setting that controls it):
 | `health:daily` | daily 21:00 | `health.when` | `core/health.py:Health.start` |
 | `updates:check` | every 6h | | `update/service.py:Updates.start` |
 | `alarm:plan` | every 30m | | `modules/alarm.py` |
+| `alarm:suggest` | every 30m | `alarm.suggest` | `modules/alarm.py` |
 | `backups:run`, `backups:catchup` | daily 03:30; hourly | `backups.when` | `modules/backups.py` |
 | `books:read` | daily 01:00 | `books.at` | `modules/books.py` |
 | `calendar:refresh` | every 15m | `calendar.refresh` | `modules/calendar.py` |
@@ -405,6 +409,7 @@ Event kinds that something reads (not just the feed):
 | `setting_changed`, `module_enabled`, `module_disabled` | profile auto-save, Telegram rename, terminal sync, health |
 | `job_done` | notes sync (push after AI work), weekly (AI requests answered and failed, by its `ok`), retro |
 | `message_in`, `intent` | weekly, retro, cases (`intent`) |
+| `message_in`, `button_tapped` (emitted by `App.callback`, prefix only), `call_answered`, `alarm_up_now` | `core/rhythm.py` (when you're around, absence) |
 | `question_asked`, `question_answered`, `question_later`, `question_expired` | retro |
 | `classroom_synced`, `notes_synced`, `calendar_synced`, `backup_done`, `profile_save`, `gbrain_sync`, `calls_link`, `calls_line_updated`, `power_mode` | health checks (`core/health_checks.py`) |
 | `reminder_set`, `reminder_fired`, `checkin_*`, `deadline_added`, `deadline_done`, `deadline_told`, `quiz_graded`, `quiz_session`, `doubt_added`, `study_session_start`, `remembered`, `skill_run` | weekly, quests, presence |
@@ -413,7 +418,7 @@ Other kinds, by area (shown in the feed and counted by retro): lifecycle `starte
 `commands_failed`, `upgraded`, `brain_retired`; jobs `job_queued`, `job_crashed`, `job_deferred`, `job_cancelled`,
 `job_ended`, `job_then_failed`, `jobs_failed`, `tool_used`, `tool_failed`, `tools_failed`, `note_written`,
 `quota_limit`, `quota_back`, `quota_reserve`, `agy_tools`; messages `notified`, `notify_queued`, `notify_failed`,
-`notify_delayed`, `calm_*`, `keep_asked`, `keep_answer`, `keep_failed`, `presence_online`, `presence_offline`, `question_hook_failed`, `question_hook_missing`;
+`notify_delayed`, `calm_*`, `rhythm_*`, `keep_asked`, `keep_answer`, `keep_failed`, `presence_online`, `presence_offline`, `question_hook_failed`, `question_hook_missing`;
 power `power_pause`, `power_resume`, `power_off`; health `health_checked`, `health_fixed`, `health_told`,
 `health_failed`, `fixme`; updates `update_found`, `update_waiting`, `update_held`, `update_yanked`, `update_check_failed`,
 `update_failed`, `update_progress`, `update_switch`; Telegram `telegram_error`, `telegram_paired`, `telegram_menu_*`;
@@ -443,7 +448,7 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
 - Channels are registered by modules: `notifier.register("telegram", send, retract=None)`. `retract(map_kind, map_ref,
   button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
 - Button data is `"<prefix>:<ref>:<action>"`; `App.callback` routes core prefixes (`calm`, `upd`, `ask`, `health`,
-  `fixme`, `job`, `inf`, `ton`, `keep`, `fgt`) and then each enabled module's `callbacks()[prefix]`. Keep a module's prefixes unique and short (Telegram
+  `fixme`, `job`, `inf`, `ton`, `keep`, `fgt`, `rhy`) and then each enabled module's `callbacks()[prefix]`. Keep a module's prefixes unique and short (Telegram
   limits callback data to 64 bytes).
 
 `core/calm.py:Calm`:
@@ -456,7 +461,9 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `urgent`, `security`, `bundle`.
 - The daily limit: `notify.calm.messages` (6) and `notify.calm.calls` (1, `Calm.call_ok`). Past it, messages are held
   for the evening bundle at `notify.calm.evening_at` (20:00, sent by `calm:tick`). Per-kind user choices: `stopped`,
-  `evening`, `fewer`. Exam season tightens it (`modules/exam_season.py:budget_during_exams`).
+  `evening`, `fewer`. Exam season tightens it (`modules/exam_season.py:budget_during_exams`). `Calm.day_limit()`
+  is the messages limit after `Rhythm.lighter_limit` (half on a lighter day); `_wait` holds with `"quiet"` during a
+  quiet week (`Rhythm.quiet_week`), like `"exams"`, past the evening too.
 - On Telegram a counted message gets "Why?" and "Less of this" (`calm:<rid>:why|less`); `Less of this` offers Stop /
   Fewer / Another time, each changing one setting (`Change`), with Undo. `/calm` and `/why` show the state.
 - Records: `calm.db` table `sent` (45 days; `Calm.forget` blanks `text` and `title` after `privacy.keep_days`).
@@ -507,7 +514,8 @@ app.ask.approval("Send this draft?", hook="mail.send")  # Approve / Deny
   exams). Names starting `focus:` count as focus.
 - `call_block(t) -> (reason, until)` checks on-call, quiet, focus, night, then blockers. `next_callable(t)` follows
   chained blocks. `quiet_gate` / `call_gate` are the scheduler gates.
-- Settings: `availability.night`, `nocall_keyword` (`#nocall`), `nocall_calendar`, `focus_keyword` (`#focus`).
+- Settings: `availability.night`, `nocall_keyword` (`#nocall`), `nocall_calendar`, `focus_keyword` (`#focus`);
+  `learn_night`, `learn_morning`, `absence_days` belong to `core/rhythm.py`, which may move `availability.night`.
 
 ## Power
 
@@ -736,3 +744,34 @@ Quiet is `quiet_change()`: a Calm `Change` adding the feature's non-exempt, stop
 `calm:<uid>:undo`. Calls a quiet feature places aren't stopped (`Calm.call_ok` doesn't read the stopped list).
 `/keep` (`Keep.command`, in `App.handle` and `CORE_HELP`): counts for 30 days, `/keep <1-90>`, `/keep <feature>`
 with its row. Events `keep_asked`, `keep_answer`, `keep_failed`. Tests: `tests/unit/test_keep.py`.
+
+## Your rhythm (`core/rhythm.py`)
+
+`app.rhythm` (`Rhythm`), started after Keep; `rhythm:tick` every 30 min runs, outside the night, `learn()` once a day
+(`looked` in `<state>/rhythm.json`) and `tell_lighter()`, and `absence()` always (it checks the night itself). Errors go
+to `rhythm_failed` per part. Rules only, no AI.
+
+- **Quiet hours.** `usual()` reads `ACTIVE` events (`message_in`, `button_tapped`, `call_answered`, `alarm_up_now`) of
+  `LEARN_DAYS = 21`, keeps per wake date the longest gap of `QUIET_MIN_H`–`QUIET_MAX_H` (4–16 h), skipping a gap that
+  ends within `BACK_MIN` of Kurooto coming back online (`Presence.offline`), and with `LEARN_NIGHTS = 7` or more takes
+  the circular middle (`middle()`) of starts and ends, rounded to 30 min, within `NIGHT_MIN_H`–`NIGHT_MAX_H` and an end
+  between `WAKE_FROM` and `WAKE_TO` (03:00–18:00). Stored as `usual` (the alarm's `suggest()` reads it via
+  `usual_hours()`). `learn()` (`availability.learn_night`) moves `availability.night.from/to` when either end is
+  `LEARN_GAP_MIN` (60) off, and with `availability.learn_morning` the `MORNING` settings (`checkins.day_starts` wake −
+  2 h, `dreaming.when` wake + 30 min, `startby.when` wake + 1 h, only single `daily HH:MM` specs); never a key the user
+  set (`_yours`: a user value other than the last learned one). Cooldown `AGAIN_DAYS` (7), `UNDONE_DAYS` (30) after
+  Undo. Changed modules are restarted (`_restart`: `Module.start()`, so `every` jobs take the new spec). One message,
+  Calm reason `rhythm.night`, `rhy:night:undo` (restores each key it still holds, `Settings.reset` where there was no
+  user value). Event `rhythm_night_learned`, `rhythm_night_undone`.
+- **Lighter days.** `lighter(day)` (`notify.calm.lighter_after`): the previous check-in day (from `checkins.day_starts`)
+  had an `exam` deadline (`open` or `done`) due in it, or `HEAVY_H` (8) study hours on its date (`Study.totals`).
+  Used by `Calm.day_limit` (`lighter_limit`), `Checkins._plan` (first check-in `LATER_MIN` later) and the morning line
+  `lighter_line(mark)` (Dreaming's report when it's on, else `tell_lighter()`, Calm reason `rhythm.lighter`), once a
+  day (`lighter_told`). `rhy:lighter:no` sets `not_today` and calls `Checkins.unlighten`. Events `rhythm_lighter`,
+  `rhythm_lighter_cancelled`.
+- **Absence.** `absence()` (`availability.absence_days`, 2): `last_seen()` that many days back, Kurooto offline less
+  than half of it, not night/focus/quiet/paused/quiet week, and not already asked for this `seen`: one question, Calm
+  reason `rhythm.absence`, `rhy:absence:fine|busy`. Busy: `Availability.set_quiet` a week and `quiet_until` in state
+  (`quiet_week()`); its reply (`why="asked"`) has `rhy:quiet:undo`. Events `rhythm_absence_asked`, `rhythm_quiet_week`.
+
+Tests: `tests/unit/test_rhythm_learn.py`.

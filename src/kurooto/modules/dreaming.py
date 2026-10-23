@@ -3,7 +3,9 @@ graph and its daily garden), the notes brain's upkeep, the look back after calls
 handwritten notes it linked, things it set up from what you said: one message at dreaming.when ("While you slept"),
 with the loose ends worth a look (your own open doubts, notes nothing links to yet, links that point nowhere, tasks
 past due, AI requests that failed). Nothing new runs: it gathers what the night did from the event log and the
-features' own state, so it costs nothing. While it's on, the concept graph's own morning line is folded into it.
+features' own state, so it costs nothing. While it's on, the concept graph's own morning line is folded into it. The
+day after an exam or a heavy day it starts with one line saying the day will be lighter, with Not today; dreaming.when
+follows when you're usually up once that's learned (core/rhythm.py).
 
 The self-check (dreaming.self_check, on; the first part of Dream RSI): each morning it replays your test cases (Wrong
 button and test cases, modules/cases.py) and says which ones that went right yesterday go wrong now, after an update
@@ -202,6 +204,8 @@ class Dreaming(Module):
         start = self.since()
         ev = self.events(start)
         did, ends = self.night(ev), self.loose_ends(ev)
+        rh = getattr(self.app, "rhythm", None)
+        light = rh.lighter_line(mark=send) if rh is not None else ""  # a lighter day (core/rhythm.py)
         checked, passing = self.self_check(ev)
         ends += checked
         if send:
@@ -209,15 +213,16 @@ class Dreaming(Module):
             prev = (jload(self.state_file, {}) or {}).get("passing")
             st["passing"] = passing if passing is not None else prev
             jsave(self.state_file, st)
-        if not did and not ends:
+        if not did and not ends and not light:
             return ""
-        parts = []
+        parts = [light] if light else []
         if did:
             parts.append("While you slept:\n" + "\n".join(f"- {x}" for x in did))
         if ends:
             parts.append("Loose ends:\n" + "\n".join(f"- {x}" for x in ends))
         text = "\n\n".join(parts)
         if send:
-            self.app.notify(text, kind="result", title="Dreaming", why="dreaming.morning")
+            buttons = [[("Not today", "rhy:lighter:no")]] if light else None
+            self.app.notify(text, kind="result", title="Dreaming", why="dreaming.morning", buttons=buttons)
         self.app.events.emit("dreaming_told", did=len(did), loose=len(ends), sent=send)
         return text

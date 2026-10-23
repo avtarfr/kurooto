@@ -87,6 +87,9 @@ class App:
         from kurooto.core.keep import Keep  # what you use of each feature; day 10 and monthly: Keep, Quiet or Off
 
         self.keep = Keep(self)
+        from kurooto.core.rhythm import Rhythm  # when you're around, lighter days, noticing absence (core/rhythm.py)
+
+        self.rhythm = Rhythm(self)
         self.stop_reason = ""  # why it's stopping, for the "going offline" message ("stopped", "turned off")
         self.restart_requested = False
         self._stop = None  # the daemon's stop event, so an update can ask for a restart
@@ -263,6 +266,10 @@ class App:
             self.keep.start()  # day 10, then monthly: features you don't use (core/keep.py)
         except Exception as e:
             self.events.emit("module_failed", module="keep", error=f"{type(e).__name__}: {e}"[:300])
+        try:
+            self.rhythm.start()  # quiet hours learned, lighter days, absence (core/rhythm.py)
+        except Exception as e:
+            self.events.emit("module_failed", module="rhythm", error=f"{type(e).__name__}: {e}"[:300])
         try:
             from kurooto.core import retention  # what's older than privacy.keep_days goes, daily (core/retention.py)
 
@@ -484,6 +491,7 @@ class App:
         prefix, ref, act = (data.split(":", 2) + ["", ""])[:3]
         self.notifier.retract(button=data)  # the phone app's copy of that message goes (core/notify.py)
         self.calm.touched(button=data)  # (calm) you tapped it: answered (core/calm.py)
+        self.events.emit("button_tapped", prefix=prefix)  # you're around (core/rhythm.py)
         if prefix == "calm":  # Why? / Less of this / Undo / the monthly suggestion (core/calm.py)
             return self.calm.button(ref, act)
         if prefix == "upd":
@@ -512,6 +520,8 @@ class App:
             return turnon.button(self, ref, act)
         if prefix == "keep":  # Keep / Quiet / Off under the day-10 and monthly question (core/keep.py)
             return self.keep.button(ref, act)
+        if prefix == "rhy":  # Undo, Not today, I'm fine / Busy (core/rhythm.py)
+            return self.rhythm.button(ref, act)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:

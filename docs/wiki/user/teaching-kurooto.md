@@ -16,6 +16,10 @@ two notes are yours to edit (your edits win). The one exception is the optional 
 turn on by hand: it acts, tells you in one line each time, and every change has an Undo. Paths are the default notes layout's; in the zettelkasten layout the
 `about-me/` notes are in `master/` and `kurooto/ideas.md` is `master/ideas.md`.
 
+Some times it also learns by rules alone, each told in one line with **Undo**: check-in times
+([check-ins-and-journal.md](check-ins-and-journal.md)), Start-by's day window, and your quiet hours at night and the
+morning things that follow them ([calls.md](calls.md#morning-alarm)). Settings you set yourself are never changed.
+
 ---
 
 ## About you (your profile)
@@ -365,7 +369,9 @@ with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.class
 ## Dreaming
 
 Turn on **Dreaming** (Features) and Kurooto's night comes to you as one message in the morning (`dreaming.when`, 07:30
-by default) instead of several:
+by default, or half an hour after you're usually up once that's learned, [calls.md](calls.md#morning-alarm)) instead
+of several. The day after an exam or a heavy day it starts with one line saying the day will be lighter, with
+**Not today**:
 
 - **While you slept:** how much of your books was read into your notes (new concept notes, links), new books taken in,
   broken links tidied, handwritten notes linked, lessons the calls learned (`/lessons`), skills and facts learned
