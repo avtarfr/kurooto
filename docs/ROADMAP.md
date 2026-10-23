@@ -58,8 +58,10 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   (launcher shortcut on Android 6).
 - **iPhone Shortcut.** Pairing an iPhone ends with a ready "Tell Kurooto" Shortcut (Siri, Back Tap) with a
   revocable link.
-- **CPU micro-helper.** A ~1 GB model for one-word decisions only (effort, intent, yes/no) on laptops without a
-  graphics card, enabled only if a speed test passes, offered after week 2 when the free limit is being used up.
+- ~~**CPU micro-helper.** A ~1 GB model for one-word decisions only (effort, intent, yes/no) on laptops without a
+  graphics card, enabled only if a speed test passes, offered after week 2 when the free limit is being used up.~~
+  (0.5.22: the offline helper, `qwen2.5:1.5b-instruct` through Ollama, `/helper`; offered also when the internet often
+  drops)
 - **Notation crosswalk.** When a concept appears in a second source, its notation and conventions are written side
   by side (B_t vs W_t, Fourier 2π), quote-checked like every graph claim.
 - **Near-duplicate concepts.** "Wiener process" and "Brownian motion": Merge / Keep both / Add alias.
@@ -146,8 +148,8 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   them, and a change is kept only if it's better, one at a time, with Undo. After part two has proven itself.~~
   (0.5.22: `dreaming.tune_effort`, `tune_fallbacks`, `tune_sizing`, one change a night across all areas, outcome-based
   trust in the margin, `/dream policy`)
-- **Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
-  rest.
+- ~~**Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
+  rest.~~ (0.5.22: known from Kurooto's own traffic; requests wait and run when it's back, told once, never dropped)
 - **An email-in address.** Forward a notice or a receipt to your own call line, and it's filed in your notes or
   becomes a deadline.
 - **Zotero.** A paper from the research digest goes into Zotero with one tap, and reading notes link to it.

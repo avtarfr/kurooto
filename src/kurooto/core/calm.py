@@ -110,6 +110,7 @@ TITLES = {  # features that aren't modules
     "reply_drafts": "Reply drafts",
     "keep": "Keep or drop",
     "rhythm": "Your rhythm",
+    "local_helper": "Offline helper",
 }
 
 
@@ -644,6 +645,13 @@ REASONS: dict[str, Reason] = {
         R("calls.held", "a call that waits for a better time"),
         R("calls.review", "what Kurooto fixed and learned looking back at a call", setting="calls.review"),
         R("local_models.spill", "a local model that doesn't fit your graphics card", setting="local_models"),
+        R(
+            "local_helper.offer",
+            "an offer of the offline helper, a small model on this computer, when the free AI limit ran short or the "
+            "internet often dropped",
+            setting="local_helper.offer",
+            stop=to(False, "no more offers of the offline helper (/helper on sets it up any time)"),
+        ),
         R("dreaming.morning", "what Kurooto did while you slept, and the loose ends", setting="dreaming.when"),
         R(
             "infer.done",

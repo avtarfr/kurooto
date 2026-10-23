@@ -112,7 +112,9 @@ The user's view (choosing an AI, limits, fallbacks): [../user/ai-brains.md](../u
 2. Anything matching `NOTES` (notes, revision, explain, derive, proof...) is `high`.
 3. Otherwise a classifier, if `brain.classify` isn't `rules` (`Jobs._classifier`): the main brain or another one
    answers `QUESTION + prompt` at low effort with a 30 s timeout. If that brain's limit is kept for the user, it moves
-   to the local model (unless `quota.local = off`) or falls back to the rules.
+   to the local model (unless `quota.local = off`) or falls back to the rules. Where the rules would decide alone
+   (`rules`, no brain left, or the internet down), the offline helper decides when it's ready
+   (`core/helper.py:Helper.classifier`, see [core.md](core.md#the-offline-helper-corehelperpy)).
 4. Default `medium`. A `low` answer is raised to `medium` when the prompt contains an action word (`ACTS`).
 
 Timeouts per level: `brain.timeout_min`.

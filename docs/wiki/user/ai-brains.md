@@ -93,8 +93,9 @@ time.
   normal equations for least squares`.
 - **Otherwise Kurooto picks.** Requests about notes, revision, summaries, explanations, derivations, proofs or exam prep
   always get high. Others are judged by the rules, your AI or a local model (`brain.classify`: `rules`, `main` or
-  `ollama`; default `rules`), and medium is the default. Anything that changes, schedules or remembers something is
-  never treated as a quick lookup.
+  `ollama`; default `rules`), and medium is the default. With the [offline helper](your-computer.md#the-offline-helper)
+  on, it judges where the rules would otherwise decide alone. Anything that changes, schedules or remembers something
+  is never treated as a quick lookup.
 - **Time limits:** a request is stopped after `brain.timeout_min` minutes: 10 for low, 15 for medium, 30 for high.
 
 ## Free limits and the reserve
@@ -187,6 +188,10 @@ your message. Answers longer than about 7,000 characters also come as a file.
 - **Stuck requests.** A watchdog stops a request with no AI at work and no program running for `jobs.stuck_min`
   minutes (10), or one past its time limit: "It got stuck (nothing was happening), so I stopped it. Send it again to try
   once more."
+- **No internet.** A request that needs it waits instead of failing ("No internet connection right now: it waits and
+  runs as soon as it's back"), runs when the connection is back, and its answer says it waited; after 24 hours it ends
+  with a message. `/jobs` shows it as waiting for the internet connection. See
+  [the offline helper](your-computer.md#the-offline-helper).
 - **The run receipt.** See below.
 - **What failures say:**
 
@@ -197,6 +202,7 @@ your message. Answers longer than about 7,000 characters also come as a file.
 | "The AI stopped without an answer: it tried something unattended runs aren't allowed to do" | Rephrase it, or do that part yourself. |
 | "The AI gave no answer this time" | Try rephrasing. |
 | "No answer in time; the request was stopped" | It ran past `brain.timeout_min`. Ask with `low:` or split it up. |
+| "It waited for the internet connection for 24 h and didn't run" | The internet stayed down. Send it again once you're online. |
 
 When Kurooto stops (shutdown, update), running requests stop where they are and run again at the next start.
 

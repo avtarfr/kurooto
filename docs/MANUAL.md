@@ -21,7 +21,9 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Quiz](#quiz) · [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Hint ladder](#hint-ladder) ·
-    [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
+    [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) ·
+    [The offline helper](#the-offline-helper) ·
+    [After-class notes](#after-class-notes) ·
     [Remember](#remember) · [Nightly look back](#nightly-look-back) · [Learns from its own work](#learns-from-its-own-work) · [Dreaming](#dreaming) · [Set up from what you say](#set-up-from-what-you-say) ·
     [Meetings: minutes and action items](#meetings-minutes-and-action-items) ·
     [Wrong button and test cases](#wrong-button-and-test-cases)
@@ -1140,6 +1142,30 @@ backup in its state folder, `backups/`).
 Small AI models on your computer (through [Ollama](https://ollama.com)), picked for its graphics card, for quick
 decisions and the notes index: private and offline. Not offered on computers without a graphics card or Apple
 Silicon. `/models`.
+
+### The offline helper
+On a laptop without a graphics card, a small model on the processor (`qwen2.5:1.5b-instruct`, about 1 GB, through
+Ollama) takes the quick decisions: how hard a request is, which instant request a short message means when no pattern
+is sure, and whether a short reply to "Still true?" is a yes or a no. Your AI still writes the answers. `/helper on`
+sets it up: Ollama if needed, a check that there's room, the download, then a speed test (the middle of three
+one-word answers within 1.5 s). Too slow here, it stays off and its model is removed again. `/helper` shows how it's
+doing, `/helper test` times it again, `/helper off` turns it off.
+
+**When the internet is down** (with or without the helper): a quick question to Chat is answered by the helper, with
+a line saying so; everything else waits ("No internet connection right now: it waits and runs as soon as it's
+back"), runs when the connection is back (one line says what's running now) and its answer says it waited. After 24
+hours a request that's still waiting ends with a message; nothing is dropped silently. Plain-English requests and an
+AI on this computer work as always. Kurooto knows from its own traffic (Telegram, your call line, its requests to
+two or more services failing); it pings nothing else.
+
+**Offered once**, two weeks after Kurooto started on this computer, on a computer without a graphics card for local
+models, when your free AI limit ran short on 3 of the last 14 days or the internet dropped 3 times in that time:
+**Install** / **Not now** (asked once more a month later at most).
+
+*Settings:* `local_helper.on`, `model`, `max_s`, `timeout_s`, `offline`, `hold_h`, `offer`.
+*Undo:* `/helper off` (the model stays in Ollama: `ollama rm qwen2.5:1.5b-instruct` removes it); `local_helper.offline`
+= `false` makes requests fail as before when the internet is down.
+*Leaves:* only the model's download, made by Ollama from its registry.
 
 ### After-class notes
 A couple of minutes after each class in your timetable ends, Kurooto asks what was worth keeping. Answer with a line

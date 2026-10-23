@@ -458,6 +458,10 @@ class Remember(Module):
             return self._button(ref, "keep")
         if low in NO:
             return self._forget(x)
+        helper = getattr(self.app, "helper", None)  # "yeah, still" / "not really": the offline helper reads it
+        said = helper.yes_no("Is this still true?", text) if helper is not None else None
+        if said is not None:
+            return self._button(ref, "keep") if said else self._forget(x)
         return self._change(x, text)
 
     def callbacks(self):

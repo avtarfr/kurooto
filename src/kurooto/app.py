@@ -109,6 +109,9 @@ class App:
         from kurooto.core.rhythm import Rhythm  # when you're around, lighter days, noticing absence (core/rhythm.py)
 
         self.rhythm = Rhythm(self)
+        from kurooto.core.helper import Helper  # the offline helper: quick decisions here, waiting for the internet
+
+        self.helper = Helper(self)
         self.stop_reason = ""  # why it's stopping, for the "going offline" message ("stopped", "turned off")
         self.restart_requested = False
         self._stop = None  # the daemon's stop event, so an update can ask for a restart
@@ -320,6 +323,10 @@ class App:
         except Exception as e:
             self.events.emit("module_failed", module="rhythm", error=f"{type(e).__name__}: {e}"[:300])
         try:
+            self.helper.start()  # the offline helper: the internet down or back, and its offer (core/helper.py)
+        except Exception as e:
+            self.events.emit("module_failed", module="local_helper", error=f"{type(e).__name__}: {e}"[:300])
+        try:
             from kurooto.core import retention  # what's older than privacy.keep_days goes, daily (core/retention.py)
 
             retention.start(self)
@@ -409,6 +416,9 @@ class App:
                 from kurooto.core import egress
 
                 msg.reply(egress.command(self, arg))
+                return
+            if name == "helper":  # the offline helper: /helper, /helper on, off, test (core/helper.py)
+                msg.reply(self.helper.command(arg))
                 return
             if name == "forget":  # forget the last 7 days (or all) of what's kept now (core/retention.py)
                 from kurooto.core import retention
@@ -543,6 +553,10 @@ class App:
                         return
             from kurooto.core import repair  # two close readings: ask which, with both as buttons (core/repair.py)
 
+            near = repair.readings(plain, mods, asks) if self.helper.ready() else []
+            hit = self.helper.pick(plain, near) if near else None  # the offline helper picks one (core/helper.py)
+            if hit is not None and repair.run(self, hit, msg, via="helper"):
+                return
             if repair.offer(self, msg, plain, mods, asks):
                 return
             from kurooto.core import turnon  # a feature that's off would do it: [Turn on] [Not now]
@@ -647,6 +661,8 @@ class App:
             return self.keep.button(ref, act)
         if prefix == "rhy":  # Undo, Not today, I'm fine / Busy (core/rhythm.py)
             return self.rhythm.button(ref, act)
+        if prefix == "lh":  # Install / Not now under the offline helper's offer (core/helper.py)
+            return self.helper.button(ref, act)
         if prefix == "rpr":  # one of two readings, or Neither (core/repair.py)
             from kurooto.core import repair
 

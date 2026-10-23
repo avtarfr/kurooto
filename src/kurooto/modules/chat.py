@@ -80,11 +80,24 @@ class Chat(Module):
         if style:
             prompt = f"{prompt}\n\n{style}"  # last, so a "high:" prefix still comes first
 
+        helper = getattr(self.app, "helper", None)  # the internet down: the offline helper (core/helper.py)
+        if helper is not None and not recent:
+            quick = helper.offline_reply(msg.text, files=bool(msg.files))
+            if quick:
+                return quick
         title = msg.text.strip()[:80] or (msg.files[0].name if msg.files else "")
-        jid = self.app.jobs.submit(prompt, title=title, reply_to=None if terminal else msg.message_id, quiet=terminal)
+        waits = helper is not None and helper.holds() and not helper.here(self._main())  # said here, not again
+        jid = self.app.jobs.submit(
+            prompt, title=title, reply_to=None if terminal else msg.message_id, quiet=terminal, offline=waits
+        )
         msg.job = jid
         self.mine = {*list(self.mine)[-50:], jid}
-        return "On it."
+        return helper.waiting_line() if waits else "On it."
+
+    def _main(self):
+        from kurooto import providers
+
+        return providers.build(self.app, self.app.settings.get("brain.main") or "")
 
     def _shared_note(self) -> str:
         rows = jload(self.app.paths.state / "calls" / "shared.json", []) or []

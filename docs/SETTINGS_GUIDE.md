@@ -499,6 +499,18 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `lidsafe.reminders` | `true` | your reminders |
 | `lidsafe.today` | `true` | a morning line on your phone: the day's first class and what's due that day |
 
+### `local_helper`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `local_helper.hold_h` | `24` | a request waits this many hours for the connection, then says it couldn't run |
+| `local_helper.max_s` | `1.5` | its speed test: a one-word answer must come within this many seconds, or it stays off |
+| `local_helper.model` | `""` | its Ollama model; empty: the one in ollama_models.toml (cpu-helper, about 1 GB) |
+| `local_helper.offer` | `true` | after two weeks, offer it once when the free AI limit runs short or the internet often drops |
+| `local_helper.offline` | `true` | with the internet down: quick things answered here, AI requests wait until it's back |
+| `local_helper.on` | `false` | the offline helper: a small model on this computer for quick decisions (/helper on sets it up) |
+| `local_helper.timeout_s` | `4` | a quick decision waits this long for it, then the rules decide |
+
 ### `look`
 
 | Setting | Default | What it does |

@@ -13,6 +13,7 @@ your hardware allows, where its files are, and how to check that it's healthy.
 - [Starting at boot](#starting-at-boot)
 - [Hardware profiles](#hardware-profiles)
 - [Local AI models](#local-ai-models)
+- [The offline helper](#the-offline-helper)
 - [Where things are](#where-things-are)
 - [The reserve](#the-reserve)
 - [Checking that it works (diagnostics)](#checking-that-it-works-diagnostics)
@@ -244,6 +245,48 @@ size and what it's for.
 if you like).
 
 [Voice notes](talking-to-kurooto.md) don't use local models: they use your Gemini key.
+
+---
+
+## The offline helper
+
+**What it does.** On a laptop without a graphics card, a small model on the processor (about 1 GB, through Ollama)
+takes the quick decisions: how hard a request is, which instant request a short message means when no pattern is
+sure, and whether a short reply to "Still true?" means yes or no. Your AI still writes the answers. With the internet
+down, it also answers quick questions itself.
+
+**When the internet is down** (this works with or without the helper):
+
+- A quick question to Chat is answered by the helper, with a line saying the offline helper answered.
+- Everything else waits: "No internet connection right now: it waits and runs as soon as it's back." When the
+  connection comes back, one line says what's running now, and each answer says it waited.
+- A request that waited 24 hours (`local_helper.hold_h`) ends with a message saying so. Nothing is dropped silently.
+- Plain-English requests (reminders, deadlines, "what's due") work as always: they never needed the internet.
+- An AI on this computer (Ollama as your main AI) keeps answering as usual.
+
+Kurooto knows the internet is down from its own traffic: Telegram and your call line not answering, or its requests
+to two or more places failing. It doesn't ping anything else to find out. When only Telegram stops answering and
+other services still do, that's Telegram, not the internet: a request waits a couple of minutes at most, then runs.
+
+**Turn it on.** `/helper on`, or **Install** when it's offered. It installs Ollama if needed, checks there's room,
+downloads the model, then times a few one-word answers: if the middle one takes more than 1.5 seconds
+(`local_helper.max_s`), it's too slow to help here, stays off and its model is removed again. `/helper` shows how it's
+doing, `/helper test` times it again.
+
+**When it's offered.** Once, two weeks after Kurooto started on this computer, if your free AI limit ran short on 3 of
+the last 14 days or the internet dropped 3 times in that time, and only on a computer without a graphics card for
+local models: one message with **Install** and **Not now**. Not now asks once more a month later at most;
+`local_helper.offer` off stops it.
+
+**Settings** (`local_helper.*`): `on`, `model` (empty: the table's choice, `qwen2.5:1.5b-instruct`), `max_s` (1.5),
+`timeout_s` (4: a decision that takes longer is left to the rules), `offline` (on: the waiting described above; off:
+requests fail as before when the internet is down), `hold_h` (24), `offer` (on).
+
+**What leaves your computer.** Only the one download, which Ollama makes from its own registry. The helper's decisions
+and answers stay here.
+
+**Turn it off.** `/helper off`. The model stays in Ollama (remove it with `ollama rm qwen2.5:1.5b-instruct` if you
+like).
 
 ---
 

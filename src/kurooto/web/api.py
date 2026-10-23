@@ -901,6 +901,7 @@ class Api:
         "notes",
         "files",
         "quota",
+        "local_helper",
         "health",
         "jobs",
         "sources",
@@ -911,6 +912,7 @@ class Api:
     # the core sections' titles where the section's name alone says little
     TITLES = {
         "quota": "AI limits",
+        "local_helper": "Offline helper",
         "health": "Health checks",
         "jobs": "AI jobs",
         "sources": "Sources for answers",
@@ -954,7 +956,7 @@ class Api:
     def _settings(self) -> dict:
         """Every setting you can change: the core sections (not the list of features that are on, which Features
         changes, nor Starting's, which has its own row) plus each enabled feature's own."""
-        from kurooto.core import agent_export, hardware, health, jobs, quota, sources  # noqa: F401 (their defaults)
+        from kurooto.core import agent_export, hardware, health, helper, jobs, quota, sources  # noqa: F401 (defaults)
         from kurooto.core.palette import settings_choices as look_choices
 
         allv = self.app.settings.all()

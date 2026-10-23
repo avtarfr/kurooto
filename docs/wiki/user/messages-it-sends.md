@@ -325,6 +325,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | a phrasing learned because you picked the same one of two readings twice (with Undo) | `cases.learn` | list | yes |
 | the monthly look at what you rarely answer | `notify.calm.monthly` | no more monthly suggestions | |
 | day 10, then monthly: what you use of each feature, with Keep / Quiet / Off | `keep.ask` | no more of these questions | yes |
+| after two weeks, once: the offline helper, when your free AI limit ran short or the internet often dropped (Install / Not now) | `local_helper.offer` | no more offers of the offline helper | yes |
 
 Also by itself, but not counted as above:
 
