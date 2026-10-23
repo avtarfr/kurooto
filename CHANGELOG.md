@@ -16,6 +16,15 @@
 - **Attendance and standing is gone**, and class packs no longer carry attendance rules: `/skip` still works (without
   the warning), and class packs made earlier still import.
 
+- **Handwritten notes are linked like any other note**: after each transcription, a real title from what's written
+  (the scan's file name stays as an alias), the subject and lecture from when the pages were written (the PDF's dates
+  and your timetable: during a class or that evening, it's that class) or from what they say, the subject's tag and
+  `course:` in the header, a `## Links` list after the transcription (that day's lecture, the course page and the
+  concept notes it covers, each with a reason; candidates from the concept graph's search, one request to the check
+  AI) and a `## Doubts` list of what you marked "DOUBT:" or "???", with the page. The course page lists it under its
+  lecture. One line says what it did; `/handwritten undo` puts it back, `/handwritten link` links the notes written
+  out before (once), `handwritten.link` turns it off. The note's text goes to that AI for the linking.
+
 - **The concept graph's own schedule works again**: its nightly start, 3-hourly retry, daily garden and morning
   summary (and the Space keeper's weekly clean, and expiring temporary Drive uploads) failed on every run; only
   `/graph now` and carrying on after a batch worked. A test now checks every scheduled job.

@@ -186,6 +186,10 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   candidates and `LINK_NOTES_PROMPT` as a job (`lane="chk"`, `effort="low"`, `then="integrate.linked"`).
   `_linked` keeps a link only with an existing target, a valid relation, a reason that passes lint and confidence at
   least 0.5.
+- Handwritten notes use the same flow outside this module (`modules/handwritten_links.py`, see
+  [modules.md](modules.md)): `integrate.index()` for candidates when the concept graph is on, one job on the check AI
+  (`lane="chk"`, `then="handwritten.linked"`), the same checks on the answer (existing target, `lint_reason`,
+  confidence ≥ 0.5), plain `- [[path]]: reason` lines in a `kurooto:linked` block.
 - `integrate:summary` ("daily 07:10") sends one line with Calm reason `integrate.summary`.
 - `integrate:night` (`integrate.at`, "daily 01:30") and `integrate:retry` ("every 3h") call `tick`.
 

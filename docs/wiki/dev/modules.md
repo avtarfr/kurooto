@@ -377,7 +377,21 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   50 MB goes to Drive upload).
 - **books** and **integrate**: see [concept-graph.md](concept-graph.md).
 - **handwritten** (`modules/handwritten.py`): transcribes PDFs and photos from an inbox folder (local vision model or
-  Gemini) into Markdown. `stop()` cancels its `handwritten:scan` job and halts a scan in progress.
+  Gemini) into Markdown; `stop()` cancels its `handwritten:scan` job and halts a scan in progress. Then `modules/handwritten_links.py` (`Linker`, `hw.linker`) links the note like any other:
+  `_file` calls `linker.submit(note, src)`, which works out when the pages were written (`written_times`: the PDF's
+  CreationDate/ModDate, a stamp in the scan's name, the file's mtime) and the class by time (`class_for`: during a
+  class ±10 min, else the last class that ended earlier that day, via `subjects.classes_on`), gets candidates from
+  `conceptgraph.Index.candidates` (`integrate.index()` when the concept graph is on, else a keyword-only index), and
+  queues one job (`lane="chk"`, brain = `integrate.roles()[1]` or `brain.main`, `then="handwritten.linked"`,
+  registered in `__init__`). `Linker.done`/`apply` then: title (only when the heading still looks like the file name
+  and nothing of the user's is above the marker), subject (a "during" class wins, else the AI's slug, else the class
+  before), header (`aliases`, `tags`, `course:`), a `<!-- kurooto:linked -->` block right after the closing marker with
+  `## Links` (lecture, course page, AI-picked concepts: must exist, `graphwrite.lint_reason`, confidence ≥ 0.5, at most
+  12) and `## Doubts`, the course page's `<!-- kurooto:handwritten-notes -->` block (`graphwrite.put_block`, checked by
+  `guarded`). `yours()` must be unchanged or nothing is written. Before-copies per run in `<state>/handwritten-undo/`
+  (last 60; `/handwritten undo` restores only files still as written); `/handwritten link` (`link_all`) queues every
+  transcription without a Links section as one batch (one message at the end), skipping ones already queued. State:
+  `<state>/handwritten-links.json`. Tests: `tests/unit/test_handwritten_links.py`.
 
 ### Notes, sync and safety
 

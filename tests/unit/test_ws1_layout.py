@@ -332,6 +332,7 @@ def test_no_binary_lands_in_the_notes_when_files_folder_is_set(zk, ai, monkeypat
         app.secrets.set("gemini.api_key", "k")
         app.settings.set("voice_notes.api_base", cloud.base)
         cloud.transcript = "# Eigenvalues\n\n$$Av = \\lambda v$$"
+        app.settings.set("handwritten.link", False)  # its linking job would come before the pack's below
         env.on("handwritten")
         hw = app.modules["handwritten"]
         assert hw.folder() == files / "handwritten-inbox"

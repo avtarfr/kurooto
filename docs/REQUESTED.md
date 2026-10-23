@@ -33,8 +33,6 @@ Standing plans, never struck through.
   meetings from then on), classes from "every Monday at 9 I have a lab", routines, a deadline's course, subject
   aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.
 - **Mail about exams is read at once and turned into a schedule** (dates, rooms, what to prepare), not only digested.
-- **Handwritten notes linked like any note** (0.5.8): a title from what's written, the subject and the lecture it
-  was written in, links to the course page and the concepts on it, and its doubts kept findable.
 - **Mail digest formatting**: shorter, grouped by what needs you.
 - **Preview the organic blobs in the phone app**, as in the dashboard.
 - **A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
@@ -53,6 +51,9 @@ Standing plans, never struck through.
 - **Check that every button works after a restart** (buttons on older messages once did nothing).
 
 ## Done
+- ~~Handwritten notes linked like any note~~ (0.5.8): a title from what's written, the subject and the lecture it
+  was written in, links to the course page and the concepts on it, and its doubts kept findable (`/handwritten link`
+  for older ones).
 - ~~PDF, Word and PowerPoint to Markdown with MarkItDown~~ (dropped: Books already reads PDFs page by page, with
   OCR for scans, and Classroom keeps text of Office files; the slow part of reading is the AI, not the conversion)
 - ~~Drop attendance tracking entirely~~ (0.5.8; skipping a class still works). Exam season becomes an add-on, off by

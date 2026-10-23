@@ -293,6 +293,28 @@ message saying why.
 change the original on your tablet, the same note is written again between the markers; what you wrote around them
 stays. Machine transcriptions aren't checked: look at the original for anything that matters.
 
+**Linked like any other note.** Once a note is written out, one request to your AI (the concept graph's second-look AI
+when that's on, else your main AI) links it into the rest of your notes, and you get one line: "Linked your
+handwritten notes 'Phase change thermodynamics' to POTA lecture 20 and 9 concepts".
+- **A real title.** When the heading is still the scan's file name ("21 October 2026_261021_105812"), it becomes a
+  title from what's written, and the old name stays as an alias. A heading you changed, or anything you wrote above
+  the transcription, is left alone.
+- **The subject and the lecture.** Kurooto looks at when the pages were written (the PDF's own dates, a time stamp in
+  the file's name, else the file's time) and at your timetable: written during a class, or later that day, the notes
+  belong to that class. Otherwise the AI picks the subject from what the pages say, against your subjects' course
+  pages. The note's header gets the subject's tag and `course: <slug>`.
+- **`## Links`** right after the transcription's closing marker, in a block of Kurooto's own
+  (`<!-- kurooto:linked -->`): that day's lecture note, the course page and the concept notes the pages cover, each
+  as `- [[path]]: reason`. The candidates come from the concept graph's own search (no AI); the AI picks the ones that
+  really relate and says why. A link to a note that doesn't exist, or with a vague reason, is never written.
+- **`## Doubts`**: lines you marked `DOUBT: …` or `???`, with their page, so you find them before the next class.
+- **The course page** lists the note under its lecture (or under "Handwritten notes" when no lecture matched), in a
+  `<!-- kurooto:handwritten-notes -->` block. Your own text there isn't touched.
+
+Notes written out before 0.5.8 get the same with `/handwritten link` (once: a note that has a Links section is
+skipped, so running it again changes nothing). Every change keeps a before-copy; `/handwritten undo` puts the last
+linking back (a file you edited since is left as it is).
+
 **From Telegram.**
 
 | Command | What it does |
@@ -300,6 +322,8 @@ stays. Machine transcriptions aren't checked: look at the original for anything 
 | `/handwritten` | writes out what's waiting now (PDFs too, without waiting for the night) |
 | `/handwritten status` | how far it got, and files it couldn't do |
 | `/handwritten retry` | tries the files that failed again |
+| `/handwritten link` | links every written-out note that has no Links section yet (one message when they're done) |
+| `/handwritten undo` | takes back the last linking (the note and the course page as they were) |
 
 **Settings that matter** (Dashboard → Settings → Handwritten notes)
 
@@ -314,9 +338,13 @@ stays. Machine transcriptions aren't checked: look at the original for anything 
 | `handwritten.max_pages` | 60 | pages written out per PDF |
 | `handwritten.keep_original` | `copy` | `copy` (next to the note, or in your files folder) or `link` (leave it where it is) |
 | `handwritten.dpi` | 110 | how sharp the page pictures are |
+| `handwritten.link` | on | link each written-out note to its lecture, course page and concept notes (one AI request) |
 
 **What leaves your computer.** Nothing when a model here reads the pages. Otherwise the pages go to Google (Gemini, your
-key); on the free tier Google may use them to improve its products.
+key); on the free tier Google may use them to improve its products. For the linking, the written-out text, the titles
+and opening lines of the notes it may relate to, and your subjects' names go to the AI you picked, like any request
+(nothing leaves when that's a model on this computer; `handwritten.link` = `false`: no linking).
 
 **Turn it off / undo.** Features → Handwritten notes → Turn off; the notes and copies stay. `handwritten.local` =
-`false` sends everything to Gemini instead.
+`false` sends everything to Gemini instead. `/handwritten undo` takes back the last linking; `handwritten.link` =
+`false` stops linking.

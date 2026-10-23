@@ -1797,7 +1797,7 @@ Drop a PDF or photo of handwritten pages into a folder (by default `handwritten-
 a Markdown note with the maths in LaTeX, saved in `handwritten/` next to a copy of the original (the copy goes to your
 files folder when you set one; `handwritten.keep_original` = `link` makes no copy and links to the file where it is).
 It looks every 15 minutes; `/handwritten` does it now, `/handwritten status` says how far it got, `/handwritten retry`
-tries files that failed again.
+tries files that failed again. Each note is then linked to its lecture, course page and concepts (below).
 
 **Who reads the pages.** With Local models on, a model on your computer: the vision model on 12 GB graphics cards, or
 on 8 GB cards the helper model (gemma4:e4b reads handwriting too); `handwritten.local_model` names another Ollama model
@@ -1813,8 +1813,30 @@ them on your computer: they wait for a model here.
 change the original on your tablet, the same note is written again between the markers; what you wrote around them
 stays. Machine transcriptions aren't checked: look at the original for anything that matters.
 
+**Linked like any other note.** After each note is written out, one request to your AI (the concept graph's
+second-look AI when that's on, else your main AI) links it in, and you get one line, e.g. "Linked your handwritten
+notes 'Phase change thermodynamics' to POTA lecture 20 and 9 concepts":
+- **A real title** from what's written, when the heading is still the scan's file name ("21 October 2026_261021_
+  105812"); the old name stays as an alias. A heading you changed, or text you wrote above the transcription, is left.
+- **The subject and the lecture.** From when the pages were written (the PDF's own dates, a time stamp in the file's
+  name, else the file's time) against your timetable: written during a class, or later that day, it's that class's;
+  otherwise the AI picks the subject from what the pages say against your course pages. The note gets the subject's
+  tag and `course: <slug>` in its header.
+- **`## Links` and `## Doubts`** right after the closing marker, in a block of Kurooto's own
+  (`<!-- kurooto:linked -->`): that day's lecture note, the course page and the concept notes the pages cover, each
+  `- [[path]]: reason`; what you marked `DOUBT: …` or `???`, with its page. Every link points at a note that exists;
+  candidates come from the concept graph's own search, and vague reasons are dropped.
+- **The course page** lists it under its lecture (or under "Handwritten notes"), in a `<!-- kurooto:handwritten-notes
+  -->` block.
+
+Nothing you wrote is changed. `/handwritten link` does the same, once, for notes written out before (or whose linking
+failed): every transcription with no Links section yet, one message when they're all done; run twice, nothing changes.
+`/handwritten undo` puts back the files the last linking changed (a before-copy is kept in Kurooto's state folder,
+`handwritten-undo/`; a file you edited since is left as it is). `handwritten.link` = `false` turns linking off. The
+note's text goes to that AI, like any request.
+
 *Undo:* Features → Handwritten notes off; the notes and copies stay. `handwritten.local` = `false` goes back to Gemini
-for everything.
+for everything. `/handwritten undo` takes back the last linking; `handwritten.link` = `false` stops linking.
 
 ### Books and PDFs
 Your reference books and other PDFs, per subject, read at night into text your AI uses when it writes your course
@@ -2864,6 +2886,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The nightly upkeep didn't finish | Search still works. Its log is in the state folder (`gbrain/upkeep-<date>.log`); it tries again the next night. Turn it off with `gbrain.upkeep`. |
 | Notes brain: "can't find your gbrain" or "your brain's folder isn't there" | Your own GBrain: set `gbrain.exe` to the full path of your gbrain program and `gbrain.home` to its `GBRAIN_HOME` (or set `gbrain.managed` back to `true`). |
 | A handwritten PDF isn't written out | PDFs read on this computer wait for the night on the charger (`/handwritten` starts it now; `/handwritten status` says where it is). It also waits while the graphics card is busy. "Can't be drawn": install Poppler's PDF tools. |
+| A handwritten note has no Links section | Linking needs an AI (AI brain) and `handwritten.link` on; if the AI's answer was unusable nothing was written. `/handwritten link` tries every note without one again. |
 | /notes or /timeline says the brain is busy | The nightly upkeep (or a sync) is using it; try again in a while. |
 | Phone calls: "not connected to your call line" | Is this computer online? It reconnects by itself within a minute. Still not: Features → Phone calls → Set up (redeploys). |
 | Cloudflare sign-in didn't finish | Press Set up again; the sign-in link is also shown in the progress log. |
