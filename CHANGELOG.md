@@ -26,6 +26,9 @@
   it to Starter (a student: subjects, start-by dates, quiz, after-class notes, doubts, the weekly summary; working:
   commitments, start-by dates, the calendar, the weekly summary; research: the Research feature, commitments, start-by
   dates, the weekly summary). Every card can still be unticked.
+- **Holiday calendars** (`/cal holidays Holidays in <country>`, `calendar.holiday_calendars`): the all-day events of
+  your country's public holiday calendar (or any calendar you name) are days without classes, so no after-class
+  questions and nothing held for classes, with no dates to type in.
 - **Short names for subjects from what you say**: "by POTA I mean Physics of the Atmosphere", "LA is short for linear
   algebra", "I call stochastic calculus stoch" add that short name to the subject (`infer.aliases`), with Undo, so
   "POTA quiz friday" lands on the right course from then on. Only for your subjects, and never a name that's taken.

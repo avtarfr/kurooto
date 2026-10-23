@@ -304,6 +304,22 @@ names one of your subjects ("Linear Algebra lecture") gets the [after-class ques
 
 A timetable class at the same time isn't counted twice. Needs Calendar (or Google Calendar) and Subjects.
 
+## Holiday calendars
+
+**What it does.** Public holidays without typing dates in: add your country's holiday calendar to Calendar (Google
+Calendar: Other calendars → Browse calendars of interest → Holidays → your country; then that calendar's iCal link
+in Calendar's setup) and mark it. Its all-day events become holidays: no classes those days, no after-class
+questions, nothing held for classes. Timed events in it aren't holidays. It reads as far ahead as Calendar does
+(`calendar.days`, 14).
+
+| Command | What it does |
+|---|---|
+| `/cal holidays` | which calendars mark holidays now, and the names of all your calendars |
+| `/cal holidays Holidays in India` | all-day events in calendars whose name contains that are holidays (several with commas) |
+| `/cal holidays none` | no calendar marks holidays |
+
+Setting `calendar.holiday_calendars`. Holidays you list yourself (`subjects.holidays`) and the term note's still count.
+
 ## Class packs
 
 **What it does.** One person turns the section's setup into a small file; everyone else sends it to their own Kurooto

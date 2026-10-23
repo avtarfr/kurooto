@@ -647,7 +647,10 @@ mark that day. Other features use the subjects: after-class notes, the quiz, the
 **Term dates:** `/term ends 2026-12-04` (the last day of classes) and `/term exams 2026-12-07 to 2026-12-18` (an exam
 period; add as many as you need). On those days, after the term ends and on holidays there are no classes: no
 after-class questions, and the timetable doesn't hold calls. `/term` shows them, `/term clear` removes them.
-Holidays are a list of dates in Settings (`subjects.holidays`, e.g. `["2026-12-25"]`).
+Holidays are a list of dates in Settings (`subjects.holidays`, e.g. `["2026-12-25"]`), and, with Calendar on, the
+all-day events of your holiday calendars: add your country's public holiday calendar to Calendar (in Google
+Calendar: Other calendars → Browse calendars of interest → Holidays, then its iCal link) and send `/cal holidays
+Holidays` (any part of its name; `/cal holidays none` stops it).
 
 **The term note: your timetable and key dates, read live.** Instead of typing classes and dates in, keep them in a
 note and point Kurooto at it: `/term note terms/2026-autumn` (`/term-setup` writes such a note). Kurooto reads it
@@ -1418,6 +1421,9 @@ that calendar, so it's kept in your computer's keychain.
   your day's classes (morning call, evening debrief, dashboard), and one whose title names a subject ("Linear Algebra
   lecture") gets the [after-class](#after-class-notes) question. `/cal classes` lists your calendars' names;
   `/cal classes none` stops it. A timetable class at the same time isn't counted twice.
+- **Holiday calendars:** `/cal holidays Holidays in India` (any part of the name; several with commas) makes the
+  all-day events of those calendars holidays: no classes those days, so no after-class questions and no calls held
+  for classes. Timed events in them aren't holidays. `/cal holidays` lists them; `/cal holidays none` stops it.
 
 *Settings:* `availability.nocall_keyword` (`#nocall`), `availability.nocall_calendar` (`no call`),
 `availability.focus_keyword` (`#focus`), `calendar.mask_private` (on), `calendar.private_keyword` (`#private`),
@@ -1883,6 +1889,7 @@ Drive until you delete them; temporary ones are no longer deleted for you).
 | Google Calendar | Calendar reads Google's API; turns Calendar on | Features → Google Calendar → Turn off |
 | Private events as Busy | titles of private events aren't kept or told | `calendar.mask_private` = `false` |
 | Class calendars | those calendars' events are classes (no calls, after-class question) | `/cal classes none` |
+| Holiday calendars | those calendars' all-day events are days without classes | `/cal holidays none` |
 | Mail digest by email | each digest also emailed to yourself | Features → Mail digest by email → Turn off |
 | Drive upload | a Kurooto folder in your Drive; files over 50 MB go there | Features → Drive upload → Turn off; delete the folder in Drive |
 

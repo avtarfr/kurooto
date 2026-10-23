@@ -46,6 +46,7 @@ register_defaults(
         "mask_private": True,  # private events: "Busy (private)", nothing else kept
         "private_keyword": "#private",  # in a title or description: private too
         "class_calendars": [],  # names (any part, any case) of calendars whose events are classes, e.g. ["Timetable"]
+        "holiday_calendars": [],  # names of calendars whose all-day events are holidays (no classes), e.g. ["Holidays"]
     },
 )
 BUSY = "Busy (private)"
@@ -361,10 +362,32 @@ class Calendar(Module):
             out["private"] = True
         if calname and any(c and c in calname for c in self.class_calendars()):
             out["class"] = True
+        if calname and any(c and c in calname for c in self._names("holiday_calendars")):
+            out["holiday"] = True
         return out
 
     def class_calendars(self) -> list[str]:
-        return [str(c).strip().lower() for c in self.setting("class_calendars") or [] if str(c).strip()]
+        return self._names("class_calendars")
+
+    def _names(self, key: str) -> list[str]:
+        return [str(c).strip().lower() for c in self.setting(key) or [] if str(c).strip()]
+
+    def holiday_dates(self) -> set[str]:
+        """The days of all-day events in your holiday calendars (calendar.holiday_calendars), as far ahead as the
+        calendar is read (calendar.days): Subjects counts them as holidays, so there are no classes those days."""
+        if not self._names("holiday_calendars"):
+            return set()
+        today = self.now().date()
+        a = dt.datetime.combine(today - dt.timedelta(days=1), dt.time(0), self.tz())
+        out = set()
+        for e in self.events(a, a + dt.timedelta(days=int(self.setting("days") or 14) + 2)):
+            if not e.get("holiday") or not e.get("all_day"):
+                continue
+            d, last = e["start_dt"].date(), e["end_dt"].date()
+            while d < last or d == e["start_dt"].date():
+                out.add(d.isoformat())
+                d += dt.timedelta(days=1)
+        return out
 
     def classes(self, day: dt.date) -> list[dict]:
         """A day's events from your class calendars, shaped like timetable classes (Subjects counts them as
@@ -482,9 +505,10 @@ class Calendar(Module):
             Command("today", "today's calendar", lambda m, a: self.agenda(self.now().date())),
             Command(
                 "cal",
-                "the next 7 days of your calendar; /cal classes Timetable: events in that calendar are classes",
+                "the next 7 days of your calendar; /cal classes Timetable: events in that calendar are classes; "
+                "/cal holidays Holidays: its all-day events are days without classes",
                 self._week,
-                usage="/cal [classes <calendar names, comma-separated> | classes none]",
+                usage="/cal [classes|holidays <calendar names, comma-separated> | classes|holidays none]",
             ),
         ]
 
@@ -502,10 +526,32 @@ class Calendar(Module):
             return "No calendar counts as classes now."
         return f"Events in {', '.join(chosen)} count as classes now (no calls then; in your day's classes).{known}"
 
+    def _holidays_cmd(self, arg: str) -> str:
+        names = (jload(self.file, {}) or {}).get("calendars") or []
+        known = f"\nYour calendars: {', '.join(names)}." if names else ""
+        if not arg:
+            now_ = ", ".join(self.setting("holiday_calendars") or []) or "none"
+            return (
+                f"Holiday calendars: {now_}. Set them: /cal holidays Holidays in India (or /cal holidays none).{known}"
+            )
+        chosen = [] if arg.lower() in ("none", "off", "-") else [x.strip() for x in arg.split(",") if x.strip()][:10]
+        self.app.settings.set("calendar.holiday_calendars", chosen)
+        self.app.events.emit("holiday_calendars_set", n=len(chosen))
+        self.refresh()
+        if not chosen:
+            return "No calendar marks holidays now."
+        n = len(self.holiday_dates())
+        return (
+            f"All-day events in {', '.join(chosen)} are holidays now: no classes, no after-class questions "
+            f"({n} in the next {self.setting('days') or 14} days).{known}"
+        )
+
     def _week(self, msg: Incoming, arg: str) -> str:
         word, _, rest = arg.strip().partition(" ")
         if word.lower() == "classes":
             return self._classes_cmd(rest.strip())
+        if word.lower() == "holidays":
+            return self._holidays_cmd(rest.strip())
         days = [self.now().date() + dt.timedelta(days=i) for i in range(7)]
         return "\n\n".join(self.agenda(d) for d in days if self.day(d)) or "Nothing in the next 7 days."
 

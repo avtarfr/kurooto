@@ -158,6 +158,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 |---|---|---|
 | `calendar.class_calendars` | `[]` | names (any part, any case) of calendars whose events are classes, e.g. ["Timetable"] |
 | `calendar.days` | `14` | how many days ahead Kurooto reads your calendar |
+| `calendar.holiday_calendars` | `[]` | names of calendars whose all-day events are holidays (no classes), e.g. ["Holidays"] |
 | `calendar.mask_private` | `true` | private events: "Busy (private)", nothing else kept |
 | `calendar.no_calls_in_events` | `true` | no calls while a calendar event is on |
 | `calendar.nocall_events` | `"all"` | "all": every timed event holds calls; "tagged": #nocall ones, "no call" calendars |

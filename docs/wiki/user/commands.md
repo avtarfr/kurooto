@@ -166,7 +166,7 @@ sent with it (as the caption) go along; reply to the answer to carry on. In the 
 | `/mail`, `/mail read @school.example`, `/mail unread …`, `/mail never …`, `/mail unnever …`, `/mail query …`, `/mail query off`, `/mail rules`, `/mail confidential` | your mail digest now, and what it may read | Mail digest |
 | `/blocks`, `/blocks add 14:00-15:30 problem set`, `/blocks clear` | today's planned time blocks | Agent plan calendar |
 | `/today` | today's calendar | Calendar |
-| `/cal`, `/cal classes Timetable`, `/cal classes none` | the next 7 days; which calendars hold classes | Calendar |
+| `/cal`, `/cal classes Timetable`, `/cal classes none`, `/cal holidays Holidays`, `/cal holidays none` | the next 7 days; which calendars hold classes; which mark holidays | Calendar |
 
 More: [Google](google.md), [Classes and timetable](classes-and-timetable.md#calendar).
 

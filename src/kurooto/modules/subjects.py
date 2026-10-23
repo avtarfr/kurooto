@@ -193,7 +193,10 @@ class Subjects(Module):
         return rows
 
     def holidays(self) -> list[str]:
-        return sorted({*(self.setting("holidays") or []), *self.term()["holidays"]})
+        """Yours (subjects.holidays), the term note's, and your holiday calendars' (Calendar: /cal holidays)."""
+        cal = self.app.modules.get("calendar")
+        from_cal = cal.holiday_dates() if cal is not None and self.app.is_on("calendar") else set()
+        return sorted({*(self.setting("holidays") or []), *self.term()["holidays"], *from_cal})
 
     def exam_periods(self) -> list[list[str]]:
         out = [list(p) for p in self.setting("exam_periods") or [] if isinstance(p, (list, tuple)) and len(p) == 2]
