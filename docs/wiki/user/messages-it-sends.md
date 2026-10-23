@@ -321,6 +321,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | Kurooto updated itself (not counted; several a day fold into one) | `updates.mode` | list | yes |
 | an update that was undone because it kept crashing | `updates.mode` | list | yes |
 | what's new after an update | | list | yes |
+| once per version: a newer official add-on you have came with Kurooto (Look shows what changes; nothing updates without your yes) | `addons.official_updates` | no more of these (Update still shows on the dashboard and under /addons) | yes |
 | your call line couldn't be updated | `updates.mode` | list | yes |
 | a call your call line placed while this computer was off | | list | yes |
 | a call that waits for a better time ("Held a call until 18:02 (class: Linear Algebra)") | | list | yes |

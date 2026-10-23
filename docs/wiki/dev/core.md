@@ -371,7 +371,8 @@ fire even before the feature is on), `alarm:ring` / `alarm:prep` / `alarm:awake`
 start moved earlier for an early wake, set by `integrate:plan`), `notes_sync:soon` (debounced after
 `job_done`), `profile:soon` (debounced after setting changes), `research:remind:<slug>`, `retro:after-reset`,
 `study:session-end`, `study:timer`, `telegram:focus-end`, `books:now`, `books:resume`, `updates:apply`,
-`updates:probation`, `updates:rolled_back`, `upgrade:whats_new`. Profile restore re-books saved `reminders:`,
+`updates:probation`, `updates:rolled_back`, `upgrade:whats_new`, `addons:official_offer` (2 minutes after a start
+that brought a newer official add-on you have: `core/official.py`). Profile restore re-books saved `reminders:`,
 `calls:ring:` and `alarm:ring` jobs (`core/profile.py`).
 
 Every scheduled action takes the job's payload (`tests/unit/test_scheduled_actions.py` checks it).
@@ -990,6 +991,7 @@ the offline helper (`core/helper.py`) offers it on computers whose profile has n
 | `core/notinterested.py` | topics the user doesn't care about (`about-me/not-interested.md`) |
 | `core/overlay.py` | add-ons: your folder's, and loading the add-ons by link ([modules.md](modules.md#add-ons-coreoverlaypy)) |
 | `core/addons.py` | add-ons by link: fetch at a pinned commit, the card, consent, update with what changes, remove and undo ([modules.md](modules.md#add-ons-by-link-coreaddonspy-corefencepy)) |
+| `core/official.py` | official add-ons: the shipped list (`data/official_addons.json`), what counts as official, Add / Update buttons (`oad:`), the once-per-commit update offer ([modules.md](modules.md#official-add-ons-coreofficialpy)) |
 | `core/fence.py` | the fence around add-ons by link: only the hosts and programs on their card (an audit hook) |
 | `core/palette.py`, `core/syscolors.py` | the pages' colour palette, and the OS accent colour for the `system` palette |
 | `core/pathfix.py` | putting `~/.local/bin` on PATH (disabled in tests) |

@@ -46,7 +46,8 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 Add-ons by link (`kurooto addons add <git url>`, Features → Add-ons by link) come from someone else's repository at a
 pinned commit, after you've read their card; `addons.on` turns them all off. Their settings are listed in each one's
-README, and appear in Settings once their feature is on.
+README, and appear in Settings once their feature is on. Official add-ons (`kurooto addons official`) are add-ons by
+link from Kurooto's own list, each at the commit it pins; `addons.official_updates` says when a newer one comes.
 
 ## Every setting
 
@@ -55,6 +56,7 @@ README, and appear in Settings once their feature is on.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `addons.official_updates` | `true` | say once when Kurooto brings a newer official add-on you have; never updated alone |
 | `addons.on` | `true` | load the add-ons you added by link (kurooto addons add); False: none load from the next start |
 
 ### `agent_plan`

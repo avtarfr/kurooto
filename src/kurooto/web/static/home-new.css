@@ -293,6 +293,7 @@ body[data-design="new"] .card2.health { border: 0; border-radius: 10px; backgrou
 body[data-design="new"] :is(#ov-body, .tab-body) .feat .card2 .hide-f { font-size: 12px; border-color: transparent; background: none; color: var(--dim); } /* quiet: not every card's loudest thing */
 body[data-design="new"] :is(#ov-body, .tab-body) .feat .card2 .hide-f:is(:hover, :focus-visible) { border-color: var(--rule); color: var(--fg); }
 body[data-design="new"] .card2 .tag-h { border: 0; border-radius: 999px; padding: 1px 8px; background: color-mix(in srgb, var(--warn) 14%, transparent); font-size: 11.5px; }
+body[data-design="new"] .card2 .tag-off { border: 0; border-radius: 999px; padding: 1px 8px; background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--fg); font-size: 11.5px; }
 
 /* search on Features and Settings */
 body[data-design="new"] .find { padding: 2px 0 12px; margin-bottom: 8px; background: var(--panel); }

@@ -2179,6 +2179,13 @@ async function renderFeatures(body) {
     }
     if (t.dataset.showhidden) { SHOW_HIDDEN = !SHOW_HIDDEN; renderFeatures(body); return; }
     if (t.dataset.gotoSetup) { location.href = `/setup#${t.dataset.gotoSetup}`; return; } // set up on the setup page's own step
+    if (t.dataset.aloff) { // an official add-on: its card first, at the commit Kurooto pins (core/official.py)
+      t.disabled = true; flog.textContent = "Fetching its card…";
+      const r = await api("addons/look", { official: t.dataset.aloff });
+      flog.textContent = r.ok ? "" : r.message;
+      if (r.ok) AL_CARD = { ...r, kind: "add" };
+      renderFeatures(body); return;
+    }
     if (t.dataset.alcheck) { // a newer commit's card and what it changes
       t.disabled = true; flog.textContent = `Looking for a newer commit of ${t.dataset.alcheck}…`;
       const r = await api("addons/check", { name: t.dataset.alcheck });
@@ -2219,21 +2226,38 @@ async function renderFeatures(body) {
 // A git address, then its card (what it adds, may reach and start, whether it runs code) before anything is added;
 // each added one with Check for update (what changes, then its card again) and Remove (Undo puts it back).
 let AL_CARD = null; // the card waiting for an answer: {token, text, changes_text?, card, kind: add|update}
+// Official add-ons (core/official.py): Kurooto's own list, each at the commit it pins. Add fetches its card first (the
+// same card and yes as any add-on by link); Update when a newer Kurooto pins a newer commit of one you have.
+function officialBlock(al) {
+  const linked = Object.fromEntries((al.linked || []).map((r) => [r.name, r]));
+  const rows = (al.official || []).map((o) => {
+    const r = linked[o.name], mine = o.have === "official" || o.have === "update";
+    const btn = o.have === "" ? `<button class="primary" data-aloff="${esc(o.name)}">Add</button>`
+      : o.have === "other" ? `<span class="d">You have an add-on of this name from another address or commit, so it isn't marked official.</span>`
+      : `${o.have === "update" ? `<button class="primary" data-alcheck="${esc(o.name)}">Update to ${esc(o.tag)}</button>` : `<button data-alcheck="${esc(o.name)}">Check for update</button>`} <button data-alremove="${esc(o.name)}">Remove</button>`;
+    return `<div class="card2 al-row${mine ? " on" : ""}"><b>${esc(o.title)}</b> <span class="tag-off" title="in Kurooto's official list, at the commit it pins">Official</span>${mine ? ' <span class="d">added</span>' : ""}
+      <p>${esc(o.line)}</p><p class="d">Needs: ${esc(o.needs)} · <a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.url.replace(/^https:\/\//, ""))}</a> · ${esc(o.tag)} (${esc(o.commit.slice(0, 12))})</p>
+      ${mine && r && r.problem ? `<p class="bad2">Didn't load: ${esc(r.problem)}</p>` : ""}<p>${btn}</p></div>`;
+  }).join("");
+  return rows ? `<p class="d addons-h">Official add-ons: published with Kurooto, each pinned to one commit; you read its card before anything is added</p><div class="feat">${rows}</div>` : "";
+}
 function linkBlock(al, featureCards) {
-  const rows = (al.linked || []).map((r) => `<div class="card2 al-row"><b>${esc(r.title)}</b> <span class="d">${esc(r.name)} · ${esc(String(r.commit).slice(0, 12))} · ${esc(r.url)}</span>
+  const mine = new Set((al.official || []).filter((o) => o.have === "official" || o.have === "update").map((o) => o.name)); // shown with the official ones
+  const rows = (al.linked || []).filter((r) => !mine.has(r.name)).map((r) => `<div class="card2 al-row"><b>${esc(r.title)}</b> <span class="d">${esc(r.name)} · ${esc(String(r.commit).slice(0, 12))} · ${esc(r.url)}</span>
     ${r.problem ? `<p class="bad2">Didn't load: ${esc(r.problem)}</p>` : ""}
     <p><button data-alcheck="${esc(r.name)}">Check for update</button> <button data-alremove="${esc(r.name)}">Remove</button></p></div>`).join("");
   const have = new Set((al.linked || []).map((r) => r.name));
   const undo = (al.kept || []).map((k) => `<p class="d">${esc(k.name)}: ${k.why === "removed" && !have.has(k.name) ? "removed" : "an earlier version is kept"} · <button data-alundo="${esc(k.name)}">Undo</button></p>`).join("");
   const c = AL_CARD;
-  const pending = !c ? "" : `<div class="card2 al-pending"><b>${c.kind === "update" ? "What this update brings" : "Its card: read it before adding"}</b>
+  const pending = !c ? "" : `<div class="card2 al-pending"><b>${c.kind === "update" ? "What this update brings" : "Its card: read it before adding"}</b>${c.card && c.card.official ? ' <span class="tag-off">Official</span>' : ""}
     ${c.changes_text ? `<div class="al-card">${esc(c.changes_text)}</div>` : ""}<div class="al-card">${esc(c.text)}</div>
     ${c.card && c.card.code && c.card.code.length ? `<label><input type="checkbox" data-alcode> I trust this code: it runs inside Kurooto with its access to this computer</label>` : ""}
     <p><button class="primary" data-aladd="${esc(c.token)}">${c.kind === "update" ? "Update" : "Add"}</button> <button data-aldrop="${esc(c.token)}">Don't</button></p></div>`;
-  return `<p class="d addons-h">Add-ons by link: made by others, each pinned to one commit; you read its card before anything is added</p>
+  const offPending = c && c.card && c.card.official; // an official one's card shows under the official list
+  return `${officialBlock(al)}${offPending ? pending : ""}<p class="d addons-h">Add-ons by link: made by others, each pinned to one commit; you read its card before anything is added</p>
     <div class="feat"><div class="card2 al-row"><b>Add one from its git address</b><form class="sf" data-addlink><label>Git address<input name="url" placeholder="https://github.com/someone/kurooto-habits" autocomplete="off" spellcheck="false"></label>
     <label>Tag, branch or commit (optional: the newest commit, pinned)<input name="ref" autocomplete="off" spellcheck="false"></label><button class="primary" type="submit">Look at it</button></form>${undo}</div>${rows}</div>
-    ${pending}${featureCards ? `<div class="feat">${featureCards}</div>` : ""}`;
+    ${offPending ? "" : pending}${featureCards ? `<div class="feat">${featureCards}</div>` : ""}`;
 }
 // escaped text with its web addresses as links (the Cloudflare sign-in page shows up in a setup log)
 const linkify = (text) => text.split(/(https?:\/\/[^\s<>"]+)/g).map((part, i) => (i % 2

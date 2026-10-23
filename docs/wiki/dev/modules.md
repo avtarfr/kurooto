@@ -82,7 +82,8 @@ Data classes (`modules/base.py`):
 Setting or moving an alarm, placing a call, reading mail from a new sender, sending anything out, attaching a code
 repository to a project and deleting the user's data happen only when the user asked (typed, said, on a live call) or
 tapped. `core/tap.py:GUARDED` names each action (`alarm.set`, `call.place`, `mail.read`, `send.out`, `repo.attach`,
-`addon.install` (adding or updating an add-on by link: the terminal or a dashboard button, never a tool or request),
+`addon.install` (adding or updating an add-on by link, official ones too: the terminal, a dashboard button or an
+`oad:` button, never a tool or request),
 `data.delete`), the ways that approve it (`WAYS`: `typed`, `said`, `call`, `button`, `approval`, `confirm`) and where it
 happens.
 
@@ -94,6 +95,7 @@ When your code does one of these, tag it:
   waits for the tap). The action must allow `call` (or `approval` with `asks`).
 - a plain-English request: `Intent(..., guarded="call.place")`; its action must allow `said`.
 - a command: nothing to tag (typing it is the request), but add it to `GUARDED[...].where`.
+- a button: its prefix in `BUTTONS` (`"oad": "addon.install"`), and the action must allow `button`.
 - anything that does it by itself (a schedule, `core/infer.py`, the look back): don't. Ask with
   `app.ask.approval(...)` and act in the hook.
 
@@ -104,7 +106,7 @@ none of them is a guarded action.
 `tests/unit/test_tap.py` runs every tool (as on a call, and unattended via `ai`, `mcp`, `api`) and every request's
 examples on Telegram with every feature on, with the guarded actions replaced by recorders (`Alarm.set`...,
 `Calls.place/schedule/ring`, the `mail_digest.read`/`query` and `research.repos`/`projects` settings, Gmail's
-`/send`, `retention.forget`, `ledger.forget`). It fails when one reaches an action it isn't tagged with, when a tag's
+`/send`, `retention.forget`, `ledger.forget`, `addons.install`). It fails when one reaches an action it isn't tagged with, when a tag's
 way isn't allowed, or when an unattended run reaches one at all. A new guarded action: add it to `GUARDED`, its
 recorder to the test's `hits` fixture, and the user wiki's table (talking-to-kurooto.md, "Never without your tap").
 
@@ -422,9 +424,41 @@ no `settings.json`), plus a manifest at the top:
   function, ctypes, or an allowed program that goes online by itself get past it; it's a fence, the card and consent
   are the line.
 
-Ready-made ones to publish live in `addons/<name>/` (restic-backups, desktop-helpers, habits, handwriting-pull), each
+The published ones' sources live in `addons/<name>/` (restic-backups, desktop-helpers, habits, handwriting-pull), each
 with its manifest, README and tests; `addons/conftest.py:load_addon` adds one by link in a test (a git repo made from
-a copy), and `tests/unit/test_addon_packages.py` checks each loads with exactly its card.
+a copy), and `tests/unit/test_addon_packages.py` checks each loads with exactly its card and that the official list
+matches the folders.
+
+### Official add-ons (`core/official.py`)
+
+`src/kurooto/data/official_addons.json` is the list, shipped in the package (so the release's signature covers it):
+per add-on `name` (the manifest's), `title`, `line`, `needs`, `url` (its public repository), `tag`, `commit` (pinned),
+`earlier` (commits pinned by older Kurootos) and `source` (`addons/<name>`). `test_addon_packages.py` checks names,
+titles and that `tag` is `v` + the folder's manifest version.
+
+- **Official** = `match(url, commit, name)`: the same repository (`_repo` folds `https://github.com/o/r`, `.git`, a
+  trailing `/`, the ssh address and case into one spelling) at the pinned commit. `card()` stores it as
+  `card["official"]` (the tag, or ""), `card_text` adds an "Official:" line, `listing()` adds `official` and
+  `official_update`. Nothing is stored in the record: it's worked out from the list each time, so a fork, another
+  commit or a newer list changes it.
+- **Adding** (`fetch(p, word)`, `word` a name or the repository's name, `find`): `addons.fetch(p, url, tag,
+  pin=commit)`: the clone checks out the pinned commit (the tag is the record's `ref`, a label), then the usual card
+  and `install` with your yes.
+- **Updates** (`update_for(rec)`): the record's commit is in the entry's `earlier` and isn't the pinned one. Then
+  `addons.check_update(p, name)` (with no `--ref`) goes to the pinned commit with the tag as ref, with `changes()` as
+  usual. `start(app)` (from `App.start`) schedules `offer` 2 minutes on when there's one to tell: one message through
+  Calm (`why="addons.official_update"`, setting `addons.official_updates`) with a `Look: <title>` button per add-on
+  (`oad:<name>:check`), once per pinned commit (`<state>/official-addons.json`).
+- **Buttons** (`button(app, ref, act)`, routed from `App.callback`'s `oad` prefix, so they work with Your add-ons off):
+  `oad:<name>:look` / `:check` fetch aside (`_aside`, a thread) and send the card as a message with
+  `oad:<token>:yes` ("Add, I trust its code" when it runs code) and `oad:<token>:no`; `yes` is `install(..., via="button")`
+  then `overlay.reload_linked`. `tap.BUTTONS` tags `oad` as `addon.install`.
+- **Where it shows:** `/addons` and `/addons official` (`modules/overlay.py:_cmd`, an `Answer` with an Add or Update
+  button per add-on: `official.buttons`), the dashboard (GET `addons` → `official`: `rows()` with `have` `""`,
+  `official`, `update` or `other`; home.js `officialBlock`; POST `addons/look` `{official: name}`), the CLI
+  (`kurooto addons official`, `add <name>` refusing `--ref`, the list's `official` marks).
+- **A new version:** publish the folder to its repository, tag it, then in the JSON move `commit` into `earlier` and
+  set the new `tag` and `commit` (`addons/README.md`).
 
 ## Module reference
 

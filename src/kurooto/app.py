@@ -280,6 +280,12 @@ class App:
             zones.settle(self)
         except Exception as e:
             self.events.emit("module_failed", module="zones", error=f"{type(e).__name__}: {e}"[:300])
+        try:  # a newer official add-on came with this version: said once, never applied by itself (core/official.py)
+            from kurooto.core import official
+
+            official.start(self)
+        except Exception as e:
+            self.events.emit("module_failed", module="addons", error=f"{type(e).__name__}: {e}"[:300])
         try:
             self.updates.start()
         except Exception as e:
@@ -686,6 +692,10 @@ class App:
             from kurooto.core import repair
 
             return repair.button(self, ref, act)
+        if prefix == "oad":  # an official add-on's Add / Update, then yes or no to its card (core/official.py)
+            from kurooto.core import official
+
+            return official.button(self, ref, act)
         if prefix == "dof":  # Add / Add all / None under dates from a photo, a mail or a class calendar
             from kurooto.core import dateoffers
 

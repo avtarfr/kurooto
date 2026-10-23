@@ -12,7 +12,7 @@ notes. It's for when that cloud folder isn't synced to this computer already.
 ## Add it
 
 ```
-kurooto addons add <this repository's git address> --ref v1.0.0
+kurooto addons add https://github.com/avtarfr/kurooto-handwriting-pull --ref v1.0.0
 ```
 
 or Dashboard → Features → **Add-ons by link**; read the card, Add. Set up your cloud in rclone first
