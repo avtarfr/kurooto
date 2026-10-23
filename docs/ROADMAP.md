@@ -97,27 +97,27 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 
 ## Human-like (2026-10-23)
 - ~~**Gists before forgetting.** Conversations settle instead of vanishing: one line of what each call, request or chat
-  decided or did, from records, before its words fade.~~ (0.5.18: `privacy.keep_gist`, kept for good or
+  decided or did, from records, before its words fade.~~ (0.5.17: `privacy.keep_gist`, kept for good or
   `privacy.gist_days`; `/gists`, `/gists forget 3`; `/forget all` asks about them; a local model only with
   `privacy.gist_model`)
 - ~~**Rechecking memories.** A kept line that hasn't come up in 90 days gets one "Still true?" with Keep, Change and
-  Forget.~~ (0.5.18: `remember.recheck_days`, at most two a week, only Kurooto's own dated lines, Undo on Change and
+  Forget.~~ (0.5.17: `remember.recheck_days`, at most two a week, only Kurooto's own dated lines, Undo on Change and
   Forget)
 - ~~**Your real body clock**: the night hours move to when you're actually quiet (nights into the afternoon too), the
-  morning things follow, and the alarm suggests your usual time when none is set.~~ (0.5.18: `availability.learn_night`
+  morning things follow, and the alarm suggests your usual time when none is set.~~ (0.5.17: `availability.learn_night`
   and `learn_morning`, `alarm.suggest`, with Undo; never ones you set)
 - ~~**Lighter days after heavy ones**: after an exam or a long study day, fewer messages, the first check-in later, and
-  one line in the morning with Not today.~~ (0.5.18: `notify.calm.lighter_after`)
+  one line in the morning with Not today.~~ (0.5.17: `notify.calm.lighter_after`)
 - ~~**Noticing absence**: two days without a word from you brings one gentle message, never a call, with I'm fine /
-  Busy, quiet for a week.~~ (0.5.18: `availability.absence_days`)
+  Busy, quiet for a week.~~ (0.5.17: `availability.absence_days`)
 - ~~**Dream RSI, part two: it learns when to reach you.** Each night it replays the messages it sent by itself under a
   few variants of when they come, keeps today's rules as a candidate, and applies the best only if it clearly wins, one
-  change a night with Undo; a kind you keep ignoring fades to the evening bundle.~~ (0.5.18: `notify.calm.habituate`
+  change a night with Undo; a kind you keep ignoring fades to the evening bundle.~~ (0.5.17: `notify.calm.habituate`
   and `notify.calm.windows`, the nightly replay in Dreaming, `/dream policy`)
 - ~~**Curious**: a topic you asked about 3+ times this week with no note gets one morning line, with Make a stub and
-  Not interested.~~ (0.5.18: `dreaming.curious`, rules only)
+  Not interested.~~ (0.5.17: `dreaming.curious`, rules only)
 - ~~**Remembering**: one morning line from a shared past, a note or quiz subject from 10-30 days ago (exam subjects
-  first) or a project's anniversary, with Open it and Less of this.~~ (0.5.18: `dreaming.resurface`)
+  first) or a project's anniversary, with Open it and Less of this.~~ (0.5.17: `dreaming.resurface`)
 
 ## Ideas
 - **Dream RSI, part three.** The nightly replay that tunes when messages come (part two) applied to Kurooto's

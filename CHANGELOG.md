@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.17 (2026-10-23)
+
+- **Gists:** as a conversation's words fade (`privacy.keep_days`, `/forget`), it settles into a one-line gist of what
+  it decided or did; `/gists` finds them; `/forget all` asks whether they go too.
+- **Still true?** Remember asks about a line it kept that hasn't come up in 90 days (Keep / Change / Forget, with Undo;
+  `remember.recheck_days`).
+- **Quiet hours that fit you:** the night hours move to when you're usually quiet, including nights into the
+  afternoon, with Undo. The check-in day, the morning message and "Time to start" follow (`availability.learn_night`,
+  `learn_morning`). No alarm set? Before your usual bedtime it suggests your usual time once, and never sets it
+  (`alarm.suggest`).
+- **Lighter days:** after an exam or a long study day, fewer messages, the first check-in an hour later and a morning
+  line with Not today (`notify.calm.lighter_after`).
+- **Two days without a word** brings one gentle message, never a call, with I'm fine / Busy, quiet for a week
+  (`availability.absence_days`).
+- **Dream RSI, part two:** each night Dreaming replays the messages Kurooto sent by itself (the last 45 days) under a
+  few variants of when they come. It applies the best one only if it clearly beats things as they are, one change a
+  night, with Undo, and says so in the morning message (`dreaming.tune_messages`, `dreaming.tune_margin`,
+  `dreaming.never_tune`). `/dream policy` shows the rules and the last nights' decisions with their replay scores.
+- **Getting used to things:** `notify.calm.habituate` lets a kind you keep ignoring wait for the evening bundle until
+  you answer one; `notify.calm.windows` lets a kind come only at certain hours.
+- **Dreaming is curious:** a topic you asked about 3+ times this week with no note gets one morning line, with Make a
+  stub (linked from the course page) and Not interested (`dreaming.curious`).
+- **Dreaming remembers:** one morning line from a shared past (a note or quiz subject from 10–30 days ago, exam
+  subjects first, or a project's anniversary), with Open it and Less of this (`dreaming.resurface`). What calls
+  searched your notes for is kept 8 days at most, and `/forget` clears it.
+
 ## 0.5.16 (2026-10-23)
 
 - **Chat in the Android app:** a chat with Kurooto that works like Telegram (commands, plain words, your AI, buttons,
