@@ -99,7 +99,11 @@ under `KUROOTO_HOME`). Where each kind of note goes is decided only by `core/lay
 how_to_help, inbox, course, lecture, concept, exam_prep, doubts, home, research, project, runs, ...), two `PRESETS`
 (`kurooto` and `zettelkasten`), per-kind overrides in `notes.paths`, and `files.folder` for binary files. Use
 `layout.path(app, kind, **fields)`, `layout.rel`, `layout.link`, `layout.file_dir`, `layout.frontmatter`; never build
-a notes path by hand. `Layout.check()` feeds `kurooto doctor`'s `notes layout` row. Templates may use `{year}`,
+a notes path by hand. Links between notes go through `layout.note_link(app, target, label, from_note=)` (0.5.22):
+`notes.links` "wiki" gives `[[target|label]]`, "markdown" gives `[label](rel/path.md)` relative to `from_note` (else
+the notes root; spaces `%20`). Read links back with `layout.link_targets(text, from_rel)` / `Layout.note_targets`,
+which take both styles; never match `[[` by hand, so a switch can't break a reader. `describe()` tells the AI the
+markdown style. `Layout.check()` feeds `kurooto doctor`'s `notes layout` row. Templates may use `{year}`,
 `{month}` and `{day}` too (`Layout._fields` derives them from `date`; `translate` maps `journal/<YYYY-MM-DD>` to the
 whole place when the date isn't one part of it).
 
@@ -108,7 +112,8 @@ whole place when the date isn't one part of it).
   links from the first `SAMPLE` 3,000) and `facts()` counts top-level folders, daily-note shapes (`daily_shape`:
   `Daily Notes/{date}.md`, `{year}/{month}/{day}.md`), wikilinks against markdown links (with or without `.md`) and
   header keys.
-- `propose(root, current)` picks the preset (`choose_layout`: zettelkasten folders and `id`+`aliases` headers against
+- `propose(root, current)` proposes `link_style` (`notes.links`, from the scan's link counts; nothing found keeps
+  the one in use) and picks the preset (`choose_layout`: zettelkasten folders and `id`+`aliases` headers against
   kurooto folders) and one line per `LINES` kind (daily, inbox, subject, concept, project) with `confidence` (0 to 1),
   `why` and `found`. `paths_from(preset, lines)` adds the places that follow (course, lecture, class log, exam prep,
   doubts under the subject folder; note under the inbox; runs beside a `{project}/index.md`) and drops what equals
@@ -128,7 +133,7 @@ whole place when the date isn't one part of it).
   folders it emptied and writes `<state>/notes-moves/<stamp>.json` (moves, edits with their old text and the new
   text's sha256, folders made and removed, settings before and after). A failure halfway puts back what was done.
   `undo(state_dir)` reverses the newest log: an edited file whose sha changed since is left (a problem is reported),
-  the notes move back, the folders it made go if empty; `undo_app` restores `notes.layout` and `notes.paths`.
+  the notes move back, the folders it made go if empty; `undo_app` restores `notes.layout`, `notes.paths` and `notes.links`.
 - Another folder than `you.workspace`: `apply` only switches `you.workspace` and the settings; nothing moves between
   folders.
 

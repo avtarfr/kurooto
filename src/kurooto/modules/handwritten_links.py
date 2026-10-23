@@ -596,6 +596,11 @@ class Linker:
         # the links
         lines: list[str] = []
         name = slugs[subject]["name"] if subject else ""
+        lay = layout.of(self.app)
+
+        def to(target: str) -> str:  # a link from this note, in your link style (notes.links)
+            return lay.note_link(target, None, from_note=note)
+
         if lec is not None:
             on = dt.date.fromisoformat(day)
             if guess and guess.get("subject") == subject:
@@ -603,9 +608,9 @@ class Linker:
                 why = f"written {how} the {name} class on {on:%a %d %b}, the lecture these pages go with"
             else:
                 why = f"the {name} lecture of {on:%a %d %b}, the day these pages were written"
-            lines.append(f"- [[{self.rel(lec)}]]: {why}")
+            lines.append(f"- {to(self.rel(lec))}: {why}")
         if course is not None:
-            lines.append(f"- [[{self.rel(course)}]]: the course page of {name}, the subject these pages belong to")
+            lines.append(f"- {to(self.rel(course))}: the course page of {name}, the subject these pages belong to")
         index_slugs = {self.rel(x) for x in (lec, course) if x is not None} | {me}
         concepts = 0
         seen: set[str] = set()
@@ -623,7 +628,7 @@ class Linker:
             if ".." in Path(t).parts or gw.lint_reason(reason) or conf < 0.5 or concepts >= MAX_LINKS:
                 continue
             seen.add(t)
-            lines.append(f"- [[{t}]]: {reason}")
+            lines.append(f"- {to(t)}: {reason}")
             concepts += 1
         qs = doubts(body)
         block = "## Links\n" + ("\n".join(lines) if lines else "(nothing in your notes matched yet)")
@@ -685,10 +690,16 @@ class Linker:
         """The course page's list: notes under the lecture they belong to, then the rest."""
         by_lec: dict[str, list[str]] = {}
         loose: list[str] = []
+        lay = layout.of(self.app)
+        course = lay.path("course", subject=subject)
+
+        def to(target: str, label: str) -> str:  # a link from the course page, in your link style
+            return lay.note_link(target, label, from_note=course)
+
         for rel, rec in sorted(st["notes"].items(), key=lambda kv: (kv[1].get("day") or "", kv[0])):
             if rec.get("subject") != subject or not (self.root / f"{rel}.md").is_file():
                 continue
-            item = f"[[{rel}|{rec.get('title') or Path(rel).name}]]"
+            item = to(rel, rec.get("title") or Path(rel).name)
             lec = rec.get("lecture") or ""
             if lec and (self.root / f"{lec}.md").is_file():
                 by_lec.setdefault(lec, []).append(item)
@@ -697,7 +708,7 @@ class Linker:
         out = ["## Handwritten notes"]
         for lec, items in by_lec.items():
             n = cg.read_note(self.root, self.root / f"{lec}.md")
-            out.append(f"- [[{lec}|{n.title if n else Path(lec).name}]]: {', '.join(items)}")
+            out.append(f"- {to(lec, n.title if n else Path(lec).name)}: {', '.join(items)}")
         out += [f"- {x}" for x in loose]
         return "\n".join(out)
 

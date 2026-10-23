@@ -60,6 +60,11 @@ from kurooto.core.tools import write_note_file
 from kurooto.modules.base import Command, Incoming, Module
 from kurooto.providers.base import Verdict
 
+
+def _wiki(target: str, label: str | None = None) -> str:
+    return layout.render_link("wiki", target, label)
+
+
 register_defaults(
     "integrate",
     {
@@ -893,8 +898,15 @@ class Integrate(Module):
             write_note_file(path, new, create=old is None)
             return True
 
+        style = lay.note_style
+
+        def linker(note: Path):
+            """Links written into `note`, in your link style (notes.links)."""
+            return lambda target, label=None: lay.note_link(target, label, from_note=note)
+
         for c in core:
             path = root / f"{c.slug}.md"
+            here = f"{c.slug}.md"
             entry = {"book": self.key(b), "note": stub_slug, "title": title, "batch": bid, "pages": [first, last]}
             if src != "books":
                 entry |= {"source": src, "unit": self.item_text(b)[1]}
@@ -907,7 +919,7 @@ class Integrate(Module):
                 entry["update"] = entry["update"] or prev.get("update", "")
             rows[:] = [r for r in rows if r is not prev] + [entry]
             lines = [
-                (lk.target, gw.link_line(lk.relation, lk.target, lk.reason))
+                (lk.target, gw.link_line(lk.relation, lk.target, lk.reason, style, here))
                 for lk in c.links
                 if lk.target != c.slug and (lk.target in index.notes or lk.target in names_by_slug)
             ]
@@ -921,13 +933,13 @@ class Integrate(Module):
                     [ln for _, ln in lines],
                     f"Source: {title}{self.where({'pages': [first, last], **entry}, ',')}",
                 )
-                body = gw.put_block(body, "seen", self.seen_body(seen[c.slug]))
+                body = gw.put_block(body, "seen", self.seen_body(seen[c.slug], linker(path)))
                 if put(path, None, body):
                     counts["new"] += 1
                     counts["links"] += len(lines)
             else:
-                new, added = gw.add_links(old, lines)
-                new = gw.put_block(new, "seen", self.seen_body(seen[c.slug]))
+                new, added = gw.add_links(old, lines, here)
+                new = gw.put_block(new, "seen", self.seen_body(seen[c.slug], linker(path)))
                 new = self.add_alias(new, c.name, c.aliases)
                 if new != old and put(path, old, new):
                     counts["same"] += 1
@@ -941,13 +953,14 @@ class Integrate(Module):
         course = lay.path("course", subject=b["subject"])
         if stub.is_file() and src == "books":
             old = stub.read_text(encoding="utf-8")
-            new = gw.put_block(old, "concepts", self.chapter_body(bk, names_by_slug, index))
+            new = gw.put_block(old, "concepts", self.chapter_body(bk, names_by_slug, index, linker(stub)))
             if new != old:
                 put(stub, old, new)
         elif stub.is_file() and src == "classroom" and stub != course:
             # the lecture note it was filed into lists what it introduces, in a block of its own per file
             slugs = list(dict.fromkeys(x for rec in bk.values() for x in rec["concepts"]))
-            body = f"## Concepts in {title}\n" + (", ".join(f"[[{x}]]" for x in slugs) or "(none new)")
+            to = linker(stub)
+            body = f"## Concepts in {title}\n" + (", ".join(to(x) for x in slugs) or "(none new)")
             old = stub.read_text(encoding="utf-8")
             new = gw.put_block(old, f"material{b['id'][:8]}", body)
             if new != old:
@@ -965,8 +978,9 @@ class Integrate(Module):
                     for x in slugs
                     if x in index.notes or x in names_by_slug
                 }
+                to = linker(course)
                 body = "## From the books\n" + "\n".join(
-                    f"- [[{x}|{n}]]" for x, n in sorted(names.items(), key=lambda kv: kv[1].lower())
+                    f"- {to(x, n)}" for x, n in sorted(names.items(), key=lambda kv: kv[1].lower())
                 )
                 old = course.read_text(encoding="utf-8")
                 new = gw.put_block(old, "books", body)
@@ -1034,10 +1048,12 @@ class Integrate(Module):
         return f"{sep} pp. {a}–{z}" if unit == "pages" else f"{sep} slides {a}–{z}" if unit == "slides" else ""
 
     @classmethod
-    def seen_body(cls, rows: list[dict]) -> str:
+    def seen_body(cls, rows: list[dict], link=None) -> str:
+        """The "Seen in" block; `link(target, label)` writes a link (default: [[wikilinks]])."""
+        link = link or _wiki
         rows = sorted(rows, key=lambda r: (r["book"], r["pages"][0]))
         lines = ["## Seen in"]
-        lines += dict.fromkeys(f"- [[{r['note']}|{r['title']}]]{cls.where(r)}" for r in rows)
+        lines += dict.fromkeys(f"- {link(r['note'], r['title'])}{cls.where(r)}" for r in rows)
         for src, head in SEEN_HEAD.items():
             ups = [r for r in rows if r.get("update") and (r.get("source") or "books") == src]
             if ups:
@@ -1046,10 +1062,11 @@ class Integrate(Module):
         return "\n".join(lines)
 
     @staticmethod
-    def chapter_body(bk: dict, names: dict, index: cg.Index) -> str:
+    def chapter_body(bk: dict, names: dict, index: cg.Index, link=None) -> str:
+        link = link or _wiki
         lines = ["## Concepts in this book"]
         for rec in sorted(bk.values(), key=lambda r: r["first"]):
-            links = ", ".join(f"[[{s}]]" for s in rec["concepts"]) or "(none new)"
+            links = ", ".join(link(s) for s in rec["concepts"]) or "(none new)"
             lines.append(f"- pp. {rec['first']}–{rec['last']}{(' ' + rec['title']) if rec['title'] else ''}: {links}")
         return "\n".join(lines)
 
@@ -1155,10 +1172,10 @@ class Integrate(Module):
             except OSError:
                 continue
             keep = []
+            here = n.slug + ".md"
             for ln in old.split("\n"):
-                m = gw.LINK_LINE.match(ln) and gw.WIKILINK.search(ln)
-                t = m[1].strip().removesuffix(".md") if m else ""
-                if m and t not in every and Path(t).name not in names:
+                t = gw.line_target(ln, here)  # a typed link line, [[wikilink]] or markdown
+                if t and t not in every and Path(t).name not in names:
                     fixed += 1
                     continue
                 keep.append(ln)
@@ -1191,11 +1208,11 @@ class Integrate(Module):
             except (TypeError, ValueError):
                 conf = 0.5
             if t in index.notes and t != s and rel in gw.RELATIONS and not gw.lint_reason(reason) and conf >= 0.5:
-                lines.append((t, gw.link_line(rel, t, reason)))
+                lines.append((t, gw.link_line(rel, t, reason, layout.of(self.app).note_style, f"{s}.md")))
         if not lines:
             return
         old = path.read_text(encoding="utf-8")
-        new, n = gw.add_links(old, lines)
+        new, n = gw.add_links(old, lines, f"{s}.md")
         if n and gw.guarded(old, new).ok:
             write_note_file(path, new)
             self.bump_night(links=n, garden=1)
@@ -1213,7 +1230,7 @@ class Integrate(Module):
         indeg: dict[str, int] = {}
         for n in index.notes.values():
             text = n.path.read_text(encoding="utf-8", errors="ignore")
-            for t in gw.targets(text):
+            for t in gw.targets(text, n.slug + ".md"):
                 total += 1
                 indeg[t] = indeg.get(t, 0) + 1
                 if t not in every and t not in base:

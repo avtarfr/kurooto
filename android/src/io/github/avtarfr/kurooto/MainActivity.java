@@ -147,6 +147,12 @@ public class MainActivity extends Activity {
                     + "\"Unrestricted\" or \"No restrictions\" and take it off any \"sleeping apps\" list, or calls may not ring."));
         }
 
+        box.addView(Ui.heading(this, "Location reminders"));
+        LinearLayout places = Ui.list(this);
+        places.addView(Ui.item(this, "Places", Places.on(this) ? "On: " + Places.places(this).length() + " saved" : "Off",
+                v -> startActivity(new Intent(this, PlacesActivity.class))));
+        box.addView(places);
+
         box.addView(Ui.heading(this, "Ringtones"));
         LinearLayout tones = Ui.list(this);
         tones.addView(Ui.item(this, "Call ringtone", toneName(false), v -> pickTone(false)));
@@ -184,11 +190,14 @@ public class MainActivity extends Activity {
                 for (int i = items.length() - 1; i >= 0; i--) {
                     final JSONObject it = items.optJSONObject(i);
                     if (it == null) continue;
+                    if (Places.adopt(this, it)) continue; // a place reminder the notification missed
+                    if (Cards.is(it)) { into.addView(Cards.view(this, it, this::build)); continue; } // check-in, quiz: answered here
                     LinearLayout card = Ui.tapCard(this, v -> startActivity(new Intent(this, AnswerActivity.class).putExtra("item", it.toString())));
                     card.addView(Ui.text(this, it.optString("title", "Kurooto"), 14, true, Ui.color(this, R.color.k_primary)));
                     card.addView(Ui.lines(Ui.body(this, Inbox.text(it)), 3));
                     into.addView(card);
                 }
+                if (into.getChildCount() == 1) into.removeAllViews(); // only place reminders: nothing to show
             });
         }).start();
     }

@@ -199,6 +199,11 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
 .steps li.todo .n { color: var(--warn); border-color: var(--warn); font-weight: 700; }
 .steps li.skipped .n { border-style: dashed; }
 .wizard .calm { margin-bottom: 18px; }
+.wizard .more-features { margin-top: 18px; }
+.wizard .more-features > summary { width: fit-content; min-height: 40px; padding: 9px 16px; border: 1px solid var(--line); border-radius: var(--rc);
+  font-weight: 500; cursor: pointer; }
+.wizard .more-features > summary:hover { border-color: var(--hover); }
+.wizard .more-features[open] > summary { margin-bottom: 12px; }
 .wizard .calm label.inline { display: flex; align-items: center; gap: 10px; }
 .wizard .calm input[type=number] { width: 6em; margin-top: 0; }
 .wizard .field-note { display: block; margin-top: 6px; font-size: 13px; font-weight: 400; color: var(--dim); }

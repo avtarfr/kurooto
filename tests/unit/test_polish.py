@@ -123,3 +123,18 @@ def test_the_dashboard_renders_fixed_and_posted_settings():
     js = (Path(__file__).parents[2] / "src/kurooto/web/static/home.js").read_text()
     assert "sec.fixed" in js and "data-post" in js and "t.dataset.post" in js and "r.when" in js
     assert 'key === "notes.layout" ? NOTES' in js  # the notes layout is picked from a list, like the palette
+
+
+# ------------------------------------------------------------------------------------- Settings: lists, not words
+def test_settings_that_take_one_of_a_few_values_come_as_lists(app):
+    """Your AI, its fallback, how requests are judged, updates and battery are picked from a list on the page (a
+    word typed wrong there used to be saved as it was); Claude Code is named without the setup page's "Advanced"."""
+    code, body = Api(app).get("settings")
+    assert code == 200
+    by = {s["section"]: s for s in body["sections"]}
+    brain = by["brain"]["choices"]
+    assert ["claude", "Claude Code"] in brain["main"] and ["", "none"] == brain["fallback"][0]
+    assert [c[0] for c in brain["classify"]] == ["rules", "main", "ollama"]
+    assert [c[0] for c in by["updates"]["choices"]["channel"]] == ["stable", "beta"]
+    assert [c[0] for c in by["updates"]["choices"]["mode"]] == ["night", "ask", "off"]
+    assert [c[0] for c in by["power"]["choices"]["on_battery"]] == ["saver", "normal", "pause"]

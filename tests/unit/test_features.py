@@ -277,9 +277,12 @@ def test_help_lists_only_what_is_on(env):
 
 def test_help_lists_everything_on_says_what_is_off_finds_a_word_and_points_at_the_wiki(env):
     env.on("reminders")
-    out = env.say("/help")
-    assert "Reminders and deadlines (more: " in out and "/remind" in out and '"remind me at 9 to call mum"' in out
-    assert "Off right now" in out and "Phone calls" in out and "/wiki/" in out and "/help <word>" in out
+    out = env.say("/help")  # too long for one message (0.5.22): the index of groups, each with /help <group>
+    assert "Reminders and deadlines (/help reminders; " in out and "/remind" in out
+    assert "Off right now" in out and "Phone calls" in out and "/wiki/" in out and "/help <group>" in out
+    out = env.say("/help reminders")
+    assert "Reminders and deadlines (more: " in out and '"remind me at 9 to call mum"' in out
+    assert '"remind me when I reach the library to return the book"' in out
     n = len(env.fake.texts())
     env.say("/help call")
     found = "\n".join(env.fake.texts()[n:])  # a long answer comes in several messages

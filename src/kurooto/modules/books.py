@@ -664,7 +664,7 @@ class Books(Module):
         how = ", ".join(f"{SAID.get(k, k)} {v}" for k, v in sorted(meta["routes"].items(), key=lambda kv: -kv[1]))
         course = lay.path("course", subject=b["subject"])
         if course.exists():
-            where = f"[[{lay.link('course', subject=b['subject'])}]]"
+            where = lay.note_link(lay.link("course", subject=b["subject"]), from_note=note)
         else:
             # Check for project hubs or research maps (e.g. projects/<subfolder>/index, maps/research)
             s = b["subject"].lower().strip()
@@ -677,10 +677,11 @@ class Books(Module):
                 ws / "maps" / f"{s}.md",
             ]:
                 if cand.is_file():
-                    hub = f"[[{cand.relative_to(ws).with_suffix('')}]]"
+                    hub = lay.note_link(cand.relative_to(ws).with_suffix("").as_posix(), from_note=note)
                     break
             if hub:
-                where = f"{hub} · [[maps/research]]" if (ws / "maps" / "research.md").is_file() else hub
+                research = lay.note_link("maps/research", from_note=note)
+                where = f"{hub} · {research}" if (ws / "maps" / "research.md").is_file() else hub
             else:
                 where = f"{b['subject']}"
         rows = [

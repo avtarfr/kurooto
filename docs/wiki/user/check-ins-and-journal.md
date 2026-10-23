@@ -24,7 +24,9 @@ per day. Once a week you get your week in numbers, and in your first week a smal
 | **midday** | off | "How's the morning been? Anything to re-plan for the afternoon?" |
 
 Reply to the message (Telegram's Reply) and your answer goes into today's journal: "Saved to your journal
-(journal/2026-11-12.md)".
+(journal/2026-11-12.md)". In the Android app it's a card under **Waiting for you**: type how it went and tap **Send**,
+or tap its buttons; with the computer asleep the answer waits on your call line
+([phone-app.md](phone-app.md#check-in-and-quiz-cards)).
 
 **The day's reflection** (`checkins.reflect`, on). The evening check-in message also lists up to three things the
 day's records show you did, and asks one thing about tomorrow:

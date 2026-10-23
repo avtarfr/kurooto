@@ -927,6 +927,30 @@ class Api:
         "subjects": {"list", "timetable"},
     }
 
+    # settings that take one of a few values: Settings shows them as a list ([value, what it means], value first)
+    CHOICES = {
+        "brain": lambda: {
+            "main": [[k, v] for k, v in providers.CHOICES.items()],
+            "fallback": [["", "none"], *[[k, v] for k, v in providers.CHOICES.items()]],
+            "classify": [["rules", "rules: no AI"], ["main", "main: your AI"], ["ollama", "ollama: a local model"]],
+        },
+        "updates": lambda: {
+            "mode": [
+                ["night", "night: installs between the window's hours"],
+                ["ask", "ask: a message with Update / Later"],
+                ["off", "off: only a note in the dashboard"],
+            ],
+            "channel": [["stable", "stable: older and steadier"], ["beta", "beta: every version the day it's signed"]],
+        },
+        "power": lambda: {
+            "on_battery": [
+                ["saver", "saver: heavy work waits for the charger"],
+                ["normal", "normal: as on the charger"],
+                ["pause", "pause: nothing runs on battery"],
+            ],
+        },
+    }
+
     def _settings(self) -> dict:
         """Every setting you can change: the core sections (not the list of features that are on, which Features
         changes, nor Starting's, which has its own row) plus each enabled feature's own."""
@@ -942,7 +966,14 @@ class Api:
             vals = {k: v for k, v in (allv.get(sec) or {}).items() if k not in self.HIDDEN.get(sec, set())}
             if vals:
                 title = self.app.modules[sec].title if sec in self.app.modules else self.TITLES.get(sec, sec.title())
-                out.append({"section": sec, "title": title, "values": vals, **look_choices(self.app, sec)})
+                extra = look_choices(self.app, sec)
+                if sec == "notes":  # notes.links is one of two (core/layout.py)
+                    extra = {
+                        "choices": {"links": [["wiki", "[[wikilinks]]"], ["markdown", "markdown: [Name](path.md)"]]}
+                    }
+                if sec in self.CHOICES:  # one of a few values: a list to pick from, not a box to type a word into
+                    extra = {**extra, "choices": {**self.CHOICES[sec](), **(extra.get("choices") or {})}}
+                out.append({"section": sec, "title": title, "values": vals, **extra})
         at = next((i + 1 for i, x in enumerate(out) if x["section"] == "power"), len(out))
         out.insert(at, self._autostart_section())  # Settings → Starting, after Power
         return {"sections": out}
@@ -977,6 +1008,8 @@ class Api:
             return 400, {"error": wrong}
         if key == "look.design" and value not in DESIGNS:  # the dashboard's design (web/server.py)
             return 400, {"error": f"look.design is one of: {', '.join(DESIGNS)}"}
+        if key == "notes.links" and value not in ("wiki", "markdown"):  # how notes link (core/layout.py)
+            return 400, {"error": "notes.links is wiki or markdown"}
         part = key.split(".")[1] if "." in key else ""
         # a whole section at once would take the hidden ones too, so only section.key
         if not part or (sec not in self.EDITABLE and not self.app.is_on(sec)) or part in self.HIDDEN.get(sec, set()):

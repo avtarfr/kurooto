@@ -55,21 +55,24 @@ def ensure(app: App) -> list[str]:
         )
         did.append("home note")
     text = home.read_text(encoding="utf-8")
+    have = set(lay.note_targets(text, home))  # what the home note links already, in either link style
     lines = []
-    link_research = f"[[{lay.link('research')}|Research]]"
-    if link_research not in text:
-        lines.append(("Hubs", f"- {link_research}"))
-    back_home = f"[[{lay.link('home')}|Home]]"
+    research_t, home_t = lay.link("research"), lay.link("home")
+    if research_t not in have:
+        lines.append(("Hubs", f"- {lay.note_link(research_t, 'Research', from_note=home)}"))
     for slug, name in _subjects(app):
         course = lay.path("course", subject=slug)
         if not course.is_file():
             continue
-        link = f"[[{lay.link('course', subject=slug)}|{name}]]"
-        if link not in text:
-            lines.append(("Courses", f"- {link}"))
+        target = lay.link("course", subject=slug)
+        if target not in have:
+            lines.append(("Courses", f"- {lay.note_link(target, name, from_note=home)}"))
         ctext = course.read_text(encoding="utf-8", errors="replace")
-        if "kurooto:hubs" not in ctext and lay.link("home") not in ctext:
-            back = BACK.format(home=back_home, research=link_research)
+        if "kurooto:hubs" not in ctext and home_t not in lay.note_targets(ctext, course):
+            back = BACK.format(
+                home=lay.note_link(home_t, "Home", from_note=course),
+                research=lay.note_link(research_t, "Research", from_note=course),
+            )
             course.write_text(ctext.rstrip("\n") + "\n\n" + back + "\n", encoding="utf-8")
             did.append(f"{slug} course page")
     for section, line in lines:

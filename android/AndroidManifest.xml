@@ -19,6 +19,10 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- location reminders (Places, off by default): asked for only when you turn them on in the app -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <!-- turn-by-turn calls use the phone's own speech recognizer and voice: Android 11+ only lets the app see them
          when it says so here -->
@@ -106,5 +110,11 @@
         </receiver>
 
         <receiver android:name=".ActionReceiver" android:exported="false" />
+
+        <!-- location reminders: your saved places, and Android's alert when you reach one -->
+        <activity android:name=".PlacesActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <receiver android:name=".PlaceReceiver" android:exported="false" />
     </application>
 </manifest>

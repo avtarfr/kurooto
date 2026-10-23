@@ -28,7 +28,7 @@ class Fake:
 
 
 class Agent(Fake):
-    id, label, kind = "claude", "Claude Code (Advanced)", "cli"
+    id, label, kind = "claude", "Claude Code", "cli"
 
     def prepare(self, app):
         pass

@@ -277,7 +277,11 @@ def test_apply_and_undo_put_everything_back(tmp_path):
     # the plan from the new places finds nothing more to do
     assert notesfit.plan(root, new, new).moves == []
     u = notesfit.undo(state)
-    assert u["ok"] and u["moved_back"] == 4 and u["before"] == {"notes.layout": "kurooto", "notes.paths": {}}
+    assert (
+        u["ok"]
+        and u["moved_back"] == 4
+        and u["before"] == {"notes.layout": "kurooto", "notes.paths": {}, "notes.links": "wiki"}
+    )
     assert snapshot(root) == before
     assert not (root / "Courses").exists() and not (root / "Inbox").exists()
     assert notesfit.last(state) is None

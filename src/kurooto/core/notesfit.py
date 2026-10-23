@@ -399,6 +399,8 @@ def propose(root, current: layout.Layout | None = None, sc: Scan | None = None) 
     cur_paths = current.custom() if current is not None else {}
     paths = merged_paths(preset, chosen, cur_paths)
     said = notes_about(fx)
+    style = link_style(fx, current)
+    cur_links = current.note_style if current is not None else "wiki"
     return {
         **fx,
         "layout": preset,
@@ -408,9 +410,25 @@ def propose(root, current: layout.Layout | None = None, sc: Scan | None = None) 
         "paths": paths,
         "preview": preview(preset, paths, sc.root),
         "said": said,
-        "current": {"layout": current.preset, "paths": cur_paths} if current is not None else None,
-        "same": current is not None and current.preset == preset and cur_paths == paths,
+        "link_style": style,
+        "current": {"layout": current.preset, "paths": cur_paths, "links": cur_links} if current is not None else None,
+        "same": current is not None and current.preset == preset and cur_paths == paths and cur_links == style["value"],
     }
+
+
+def link_style(fx: dict, current: layout.Layout | None = None) -> dict:
+    """notes.links from how the notes link: {"value": "wiki" | "markdown", "confidence", "why", "found"}. Nothing to
+    go by: the style in use stays."""
+    lk = fx["links"]
+    n = lk["wikilinks"] + lk["markdown"]
+    if lk["style"] == "markdown":
+        return {"value": "markdown", "confidence": lk["confidence"], "found": True,
+                "why": f"{lk['markdown']} of {n} links between notes are markdown links"}  # fmt: skip
+    if lk["style"] == "wikilinks":
+        return {"value": "wiki", "confidence": lk["confidence"], "found": True,
+                "why": f"{lk['wikilinks']} of {n} links between notes are [[wikilinks]]"}  # fmt: skip
+    cur = current.note_style if current is not None else "wiki"
+    return {"value": cur, "confidence": 0.5, "found": False, "why": "no links between notes found: the style in use"}
 
 
 def notes_about(fx: dict) -> list[str]:
@@ -420,11 +438,11 @@ def notes_about(fx: dict) -> list[str]:
     if lk["style"] == "markdown":
         ext = "with .md" if lk["with_md"] >= lk["without_md"] else "without .md"
         out.append(
-            f"Your notes link with markdown links ({ext}). Kurooto writes [[wikilinks]] to note paths; Obsidian and "
-            "most Markdown editors follow both."
+            f"Your notes link with markdown links ({ext}). Kurooto can write its links the same way (Links: "
+            "markdown), as [Name](path.md) relative to the note."
         )
     elif lk["style"] == "wikilinks":
-        out.append("Your notes link with [[wikilinks]], as Kurooto does.")
+        out.append("Your notes link with [[wikilinks]], as Kurooto does by default.")
     keys = [k for k, _ in fx["frontmatter"]["keys"]]
     if keys:
         out.append(f"Headers in your notes use: {', '.join(keys[:8])}.")
@@ -489,8 +507,11 @@ class _Values:
         return self.values.get(key, default)
 
 
-def layout_for(root, preset: str, paths: dict, base: layout.Layout | None = None) -> layout.Layout:
+def layout_for(
+    root, preset: str, paths: dict, base: layout.Layout | None = None, links: str | None = None
+) -> layout.Layout:
     v = {"notes.layout": preset, "notes.paths": dict(paths or {})}
+    v["notes.links"] = links if links in layout.NOTE_STYLES else (base.note_style if base is not None else "wiki")
     if base is not None:
         v["files.folder"] = base._get("files.folder") or ""
         v["files.links"] = base._get("files.links") or ""
@@ -629,8 +650,11 @@ def _spans(text: str, ours: bool, hub: bool) -> list[tuple[int, int]]:
         return [(0, len(text))]
     out = [(m.start(), m.end()) for m in BLOCK.finditer(text)]
     out += [(m.start(), m.end()) for m in ONE_LINE.finditer(text)]
-    if hub:  # the lists hubs.py keeps: "- [[target|Name]]" lines
-        out += [(m.start(), m.end()) for m in re.finditer(r"^- \[\[[^\]\n]+\]\][ \t]*$", text, re.M)]
+    if hub:  # the lists hubs.py keeps: "- [[target|Name]]" or "- [Name](target.md)" lines
+        out += [
+            (m.start(), m.end())
+            for m in re.finditer(r"^- (?:\[\[[^\]\n]+\]\]|\[[^\]\n]*\]\([^)\n]+\))[ \t]*$", text, re.M)
+        ]
     return out
 
 
@@ -720,8 +744,8 @@ def plan(root, old: layout.Layout, new: layout.Layout, sc: Scan | None = None) -
     p = Plan(
         root=root,
         git=(root / ".git").exists(),
-        before={"notes.layout": old.preset, "notes.paths": old.custom()},
-        after={"notes.layout": new.preset, "notes.paths": new.custom()},
+        before={"notes.layout": old.preset, "notes.paths": old.custom(), "notes.links": old.note_style},
+        after=new_after(new),
     )
     if not root.is_dir():
         return p
@@ -969,7 +993,12 @@ def view(app: App, folder: str | None = None) -> dict:
     out = propose(root, cur)
     out["workspace"] = str(app.workspace)
     out["other_folder"] = os.path.abspath(root) != os.path.abspath(app.workspace)
-    out["in_use"] = {"layout": cur.preset, "paths": cur.custom(), "lines": {k: cur.template(k) for k, _ in LINES}}
+    out["in_use"] = {
+        "layout": cur.preset,
+        "paths": cur.custom(),
+        "links": cur.note_style,
+        "lines": {k: cur.template(k) for k, _ in LINES},
+    }
     out["presets"] = {p: {k: layout.PRESETS[p][k] for k, _ in LINES} for p in layout.PRESETS}
     out["undo"] = last(app.paths.state)
     return out
@@ -980,7 +1009,10 @@ def _new(app: App, b: dict) -> tuple[Path, layout.Layout, layout.Layout, bool]:
     root = _folder(app, b.get("folder"))
     cur = layout.of(app)
     paths = merged_paths(preset, lines, cur.custom())
-    new = layout_for(root, preset, paths, cur)
+    links = str(b.get("links") or "").strip().lower()
+    if links and links not in layout.NOTE_STYLES:
+        raise ValueError("links: wiki or markdown")
+    new = layout_for(root, preset, paths, cur, links or None)
     other = os.path.abspath(root) != os.path.abspath(app.workspace)
     return root, cur, new, other
 
@@ -992,7 +1024,7 @@ def check(app: App, b: dict) -> dict:
         return {"ok": False, "error": f"{root} isn't a folder"}
     old = layout_for(root, cur.preset, cur.custom(), cur)
     p = plan(root, old, new) if not other else Plan(root=root, before={}, after={})
-    p.after = {"notes.layout": new.preset, "notes.paths": new.custom()}
+    p.after = new_after(new)
     return {
         "ok": True,
         "problems": new.check(),
@@ -1001,6 +1033,7 @@ def check(app: App, b: dict) -> dict:
         "other_folder": other,
         "layout": new.preset,
         "paths": new.custom(),
+        "links": new.note_style,
     }
 
 
@@ -1025,21 +1058,29 @@ def apply(app: App, b: dict) -> dict:
         result = apply_plan(p, app.paths.state, str(b.get("digest") or ""))
     s.set("notes.layout", new.preset)
     s.set("notes.paths", new.custom())
+    s.set("notes.links", new.note_style)
     app.events.emit("setting_changed", key="notes.layout")
     if result["moved"]:
         app.events.emit("notes_moved", moved=result["moved"], id=result["id"])
-    return {"ok": True, **result, "layout": new.preset, "paths": new.custom(), "workspace": str(app.workspace)}
+    return {
+        "ok": True,
+        **result,
+        "layout": new.preset,
+        "paths": new.custom(),
+        "links": new.note_style,
+        "workspace": str(app.workspace),
+    }
 
 
 def new_after(new: layout.Layout) -> dict:
-    return {"notes.layout": new.preset, "notes.paths": new.custom()}
+    return {"notes.layout": new.preset, "notes.paths": new.custom(), "notes.links": new.note_style}
 
 
 def undo_app(app: App, log_id: str = "") -> dict:
     """POST notes/fit/undo: the notes back, and the layout settings as they were before the move."""
     r = undo(app.paths.state, log_id)
     before = r.pop("before")
-    for k in ("notes.layout", "notes.paths"):
+    for k in ("notes.layout", "notes.paths", "notes.links"):
         if k in before:
             app.settings.set(k, before[k])
     app.events.emit("setting_changed", key="notes.layout")

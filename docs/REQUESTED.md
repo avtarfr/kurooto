@@ -14,7 +14,8 @@ Standing plans, never struck through.
 
 ## Open
 - **Common features directly usable from the phone app** (and the rest of the dashboard plan:
-  check-in and quiz cards): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done; the app's Today screen,
+  ~~check-in and quiz cards~~ (0.5.22: answered on the app's main screen with an answer box and their buttons, through
+  the phone outbox while the laptop sleeps)): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done; the app's Today screen,
   local alarm and notification buttons are planned for 0.6.0.
 - **A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
   groups, with a link to the user wiki for the rest.
@@ -36,7 +37,10 @@ Standing plans, never struck through.
 - **Preview the organic blobs in the phone app**, as in the dashboard.
 - **A better-looking phone app (Material design)**: Material 3 look and components (colour from the wallpaper on
   Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.
-- **Make the UI more intuitive**, and keep improving the setup wizard's elements.
+- **Make the UI more intuitive**, and keep improving the setup wizard's elements. (0.5.22: settings with a few values are lists, JSON
+  settings shown whole, "Saved" under the setting changed, features that are on first, the setup page's features step
+  shows your picks first with the rest folded, Telegram's card links to its setup step; Claude Code is named "Claude
+  Code" everywhere)
 - **Wiki-level documentation**: a user wiki and a developer wiki (for people and for AI agents), each a page on
   the site, covering every nook and cranny; one full read equips someone to use, develop and fix Kurooto (being
   written for 0.5.8).

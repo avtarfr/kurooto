@@ -13,6 +13,11 @@ question (app.ask, via "app"), presses the button you tapped, or goes to the fea
 
 The call line keeps a copy of what's open (at most 40 items, each gone after a day or once it's dealt with
 anywhere) so the iPhone app can list it while this computer is off.
+
+Cards (0.5.22): a check-in or quiz question carries "card" ("checkin" / "quiz"), and the Android app shows it on its
+main screen as a card with an answer box and its buttons. A reply whose answer comes with buttons (the quiz's Forgot /
+Hard / Good / Easy) can't put them in the reply note, so they come as the next message: the next card. A "place"
+message (a location reminder, modules/reminders.py) is kept by the Android app, not shown as a question.
 """
 
 from __future__ import annotations
@@ -25,13 +30,12 @@ import uuid
 from typing import TYPE_CHECKING
 
 from kurooto.core.lock import Lock
-from kurooto.core.notify import counts
+from kurooto.core.notify import Message, counts
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Incoming
 from kurooto.modules.calls import line
 
 if TYPE_CHECKING:
-    from kurooto.core.notify import Message
     from kurooto.modules.calls import Calls
 
 MAX_ITEMS = 40
@@ -46,6 +50,22 @@ GONE = "That's no longer open: it was answered somewhere else, or it expired."
 def _clip(s: str, n: int) -> str:
     s = str(s or "")
     return s if len(s) <= n else s[: n - 1] + "…"
+
+
+# What the phone app shows as an answerable card on its main screen (0.5.22): the check-in, and quiz questions with
+# their self-grading. Told by what the message is about, or by its buttons' data (a grading message has no map).
+CARDS = {"checkin": "checkin", "quiz": "quiz", "qlink": "quiz"}
+CARD_BUTTONS = {"chk": "checkin", "qz": "quiz", "ql": "quiz"}
+
+
+def card_of(map_kind: str | None, data: list[str]) -> str:
+    """ "checkin", "quiz" or "" for a message about `map_kind` with these buttons' data."""
+    if map_kind in CARDS:
+        return CARDS[map_kind]
+    for d in data:
+        if isinstance(d, str) and d.partition(":")[0] in CARD_BUTTONS:
+            return CARD_BUTTONS[d.partition(":")[0]]
+    return ""
 
 
 class PhoneApp:
@@ -127,6 +147,9 @@ class PhoneApp:
         it["_data"] = data[:4]  # stays here: the phone answers with the button's number, never its data
         if msg.map_kind:
             it["_map"] = [msg.map_kind, str(msg.map_ref or "")]
+        card = card_of(msg.map_kind, data)
+        if card:
+            it["card"] = card
         return it
 
     @staticmethod
@@ -246,14 +269,22 @@ class PhoneApp:
         if not it.get("_map"):
             return 400, {"ok": False, "note": "That message doesn't take a reply."}
         said: list[str] = []
+        more: list[tuple[str, list]] = []  # what came with buttons (the quiz's Forgot / Hard / Good / Easy)
+
+        def respond(t, buttons=None):
+            if buttons:
+                more.append((str(t), buttons))
+            else:
+                said.append(str(t))
+
         mk, ref = it["_map"]
-        msg = Incoming(
-            text, via="app", reply_to={"kind": mk, "ref": ref}, respond=lambda t, buttons=None: said.append(t)
-        )
-        self.app.handle(msg)
+        self.app.handle(Incoming(text, via="app", reply_to={"kind": mk, "ref": ref}, respond=respond))
         self._remove(lambda i: i["id"] == item_id)
+        for t, buttons in more:  # a reply note can't carry buttons: they come as the next message (a card in the app)
+            self.send(Message(t, title=it.get("title"), buttons=buttons, kind="question"))
         self.app.events.emit("phone_answered", kind=it["kind"], ok=True)
-        return 200, {"ok": True, "note": _clip(" ".join(said) or "Sent.", 300)}
+        note = " ".join(said) or ("The rest is in the next message." if more else "Sent.")
+        return 200, {"ok": True, "note": _clip(note, 300)}
 
     def _button(self, it: dict, n) -> tuple[int, dict]:
         data = it.get("_data") or []

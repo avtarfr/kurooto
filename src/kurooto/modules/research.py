@@ -215,9 +215,10 @@ def ensure_project(workspace, project: str, assistant: str = "Kurooto", repos: l
             encoding="utf-8",
         )
     hub = ensure_hub(lay, assistant)
-    link = f"[[{lay.link('project', project=slug(project))}|{project}]]"
+    target = lay.link("project", project=slug(project))
+    link = lay.note_link(target, project, from_note=hub)  # in your link style (notes.links)
     text = hub.read_text(encoding="utf-8")
-    if link not in text:
+    if target not in lay.note_targets(text, hub):
         hub.write_text(add_to_section(text, "Projects", f"- {link} (since {now():%Y-%m-%d})"), encoding="utf-8")
     return note
 

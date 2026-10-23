@@ -26,6 +26,7 @@ from kurooto.core import sources
 from kurooto.core.availability import ON_CALL
 from kurooto.core.clock import now
 from kurooto.core.graphwrite import RELATIONS
+from kurooto.core.layout import link_targets
 from kurooto.core.state import jsave
 from kurooto.modules.base import Incoming
 
@@ -34,7 +35,9 @@ if TYPE_CHECKING:
 
 SUBJECT = "_links"  # the quiz file the cards live in (no subject's slug can start with "_")
 MOST = 5  # cards a day, whatever quiz.links_per_day says
-LINE = re.compile(r"^\s*[-*] (" + "|".join(RELATIONS) + r"):: \[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]\s*[—–-]+\s*(.+?)\s*$")
+LINE = re.compile(  # a [[wikilink]] or a [markdown](link.md) (notes.links), then its reason
+    r"^\s*[-*] (" + "|".join(RELATIONS) + r"):: (\[\[[^\]]+\]\]|\[[^\]\n]*\]\([^)\n]+\))\s*[—–-]+\s*(.+?)\s*$"
+)
 ASK = {  # relation -> the question, from the note that has the link (a) to its target (b)
     "needs": "Why does {a} need {b}?",
     "generalises": "How does {a} generalise {b}?",
@@ -95,7 +98,8 @@ class LinkCards:
                 continue
             for ln in lines:
                 m = LINE.match(ln)
-                target = m[2].strip().removesuffix(".md") if m else ""
+                found = link_targets(m[2], slug + ".md") if m else []
+                target = found[0] if found else ""
                 if not m or target == slug or target not in notes:
                     continue
                 a, b = n.title, notes[target].title
@@ -260,7 +264,7 @@ class LinkCards:
             own, cls = sources.notes_material(self.app, subject)
             ws = sources.words(" ".join(self.names(it)))
             for items in (own, cls):
-                mine = [e for e in items if f"[[{it['a']}" not in e.cite and f"[[{it['b']}" not in e.cite]
+                mine = [e for e in items if not {it["a"], it["b"]} & set(link_targets(e.cite))]
                 best = sources.pick(mine, ws, 6000) if ws else []
                 if best:
                     out.append(best[0].cite)

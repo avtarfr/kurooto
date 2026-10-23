@@ -8,8 +8,9 @@ signed updates when it's ready.
   profile. It then fits an existing notes system instead of bringing its own.~~ (0.5.20: the setup page's Notes step,
   also Settings → notes and `kurooto setup notes`, reads the folder without AI (daily-note names and folder, link
   style, header keys, subject folders, inbox) and proposes `notes.layout` + `notes.paths` with a confidence per line
-  and a preview; Kurooto's own notes move as one plan shown first, with Undo from a move log. Not yet: writing
-  markdown links instead of wikilinks for folders that use them.)
+  and a preview; Kurooto's own notes move as one plan shown first, with Undo from a move log. ~~Not yet: writing
+  markdown links instead of wikilinks for folders that use them.~~ (0.5.22: `notes.links` wiki or markdown, proposed
+  by the Notes step; every reader takes both))
 
 ## From the ideation panel (2026-10-23)
 Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argued these out; the most backed first.
@@ -152,7 +153,9 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   pulled out.
 - **Shared class lists.** Friends in the same course can opt in to share deadlines and exam dates.
 - **Quick-ask hotkey.** A small prompt window on the desktop, on every system.
-- **Location reminders on Android.** "When I reach the library", without draining the battery.
+- ~~**Location reminders on Android.** "When I reach the library", without draining the battery.~~ (0.5.22:
+  `reminders.places` and the app's Places, both off by default; places saved on the phone by name, Android's proximity
+  alerts without Play services, the battery cost said before location is asked for; only names leave the computer)
 - **Course notes to PDF.** A LaTeX template for course notes.
 
 ## More human (2026-10-23)

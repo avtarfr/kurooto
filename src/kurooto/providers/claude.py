@@ -118,7 +118,7 @@ def mcp_servers(app: App | None, task: Task) -> dict:
 
 class ClaudeCode(Brain):
     id = "claude"
-    label = "Claude Code (Advanced)"
+    label = "Claude Code"  # the brain's name everywhere; "Advanced" is only the setup page's grouping (web/api.py)
     kind = "cli"
     grace_s = 120
 

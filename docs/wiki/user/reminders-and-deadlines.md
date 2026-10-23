@@ -57,6 +57,35 @@ sets it (a reminder *message*; ask for a call if you want it to ring, see [calls
 your next day's reminders are part of the brief your call line keeps. With
 [Reminders with the lid shut](calls.md) on, your Android phone gets them at their time even when the computer sleeps.
 
+### At a place (location reminders)
+
+"Remind me when I reach the library to return the book": the Android app reminds you when you get there. Off by
+default, on two switches: **Settings → Reminders → places** on the computer, and **Places** in the phone app (which
+asks to use the phone's location only then, and says the battery cost first).
+
+| You say | What happens |
+|---|---|
+| `remind me when I reach the library to return the book` | once, the next time you arrive at "library" |
+| `remind me when I get home: water the plants` | once, at "home" |
+| `remind me whenever I'm at the gym to stretch` | every time you arrive at "gym" |
+
+How it works:
+- **Places live on the phone.** In the app: Places → Turn on location reminders → type a name → **Save this place**
+  while you're standing there (no map). A place counts within 150 m of where you saved it.
+- **Your computer only knows the name.** The reminder goes to the app as the place's name and the text. A reminder
+  for a place the app hasn't saved yet waits under **Waiting for a place**, with "I'm here: save it as library".
+  "The library", "library" and "my library" are the same place.
+- **You can add reminders in the app too**: each place has a "Remind me here to…" box, once or every time.
+- **When it comes:** a notification "At library: return the book" when you arrive from somewhere else (not while you
+  stay there, and not twice within 20 minutes). A once reminder is gone after it's said.
+- **Battery.** Android checks where you are a few times an hour while the app is in the background, mostly from Wi-Fi
+  and the phone network (the GPS isn't kept on), more often near a saved place. The cost is small, and a reminder
+  can come a few minutes after you arrive.
+- **Android 10 and newer** ask a second time for "Allow all the time": without it, reminders only come while the app
+  is open. Android 6 to 9 ask once.
+- It works with the computer off: once the reminder is on the phone, the phone does the rest. No Google Play services
+  needed. Not on iPhone.
+
 **Limits and edge cases.**
 - **The computer was asleep or off at the time:** the reminder comes as soon as Kurooto runs again, marked
   "Reminder (late: the computer was asleep): ...". Nothing is dropped. With Reminders with the lid shut on, the
@@ -77,7 +106,8 @@ your next day's reminders are part of the brief your call line keeps. With
 - **Cancel** with the button under `/reminders` or on the Today page. "Already gone" means it fired or was cancelled.
 - The snooze buttons work for the last 200 reminders that fired; older ones say "That reminder is gone".
 
-**What leaves your computer.** The reminder goes through Telegram to your own bot. With Reminders with the lid shut
+**What leaves your computer.** The reminder goes through Telegram to your own bot. A location reminder goes to your
+phone app through your call line (the place's name and the text); where your places are never leaves the phone. With Reminders with the lid shut
 on, the next day's reminders go to your call line sealed for your phone (it can read only their times).
 
 **Turn it off.** Features → Reminders → Turn off. Nothing reminds you while it's off, but the reminders you had set
