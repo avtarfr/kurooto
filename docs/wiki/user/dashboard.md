@@ -10,6 +10,7 @@ two terminal features. For talking to Kurooto in general see [talking-to-kurooto
 - [Opening it](#opening-it)
 - [Two layouts: dense and roomy](#two-layouts-dense-and-roomy)
 - [The board (dense layout)](#the-board-dense-layout)
+- [Study mode](#study-mode)
 - [Ctrl+K: do anything from anywhere](#ctrlk-do-anything-from-anywhere)
 - [The pages](#the-pages)
 - [Search, hiding features, bigger panes](#search-hiding-features-bigger-panes)
@@ -159,6 +160,48 @@ An answer that takes longer than 30 minutes stops being waited for here; see it 
 The pane's border also lists the pages (today, activity, jobs, schedule, features, phone, research, you, settings),
 each with its key letter underlined, and a reminder of the keys.
 
+## Study mode
+
+A calm board for studying: only your notes and the things that help you study. Everything else (STATUS, SYSTEMS,
+the terminal, the panes menu) waits, untouched, and comes back exactly as it was when you leave.
+
+**Switch it on or off:** **study** in the board's top-right corner (roomy layout: in the top bar; it reads **leave
+study** while it's on), **Alt+M**, Ctrl+K → `study on` / `study off`, or from Telegram or the kurooto tab
+`/study mode on` / `/study mode off` (plain words work too: "study mode", "leave study mode"). The page follows at
+once wherever you switch it. It stays on across reloads and in every browser (the setting `look.study_mode`).
+
+What it shows:
+
+- **NOTES**, large on the left: the map, with the chosen subject's notes lit and fitted to the pane. The note you
+  pick from the list is centred with its first lines; double-click opens it.
+- **STUDY**, on the right:
+  - **Timer:** pick a subject, then **start**. A focus (25 minutes, `study.focus_min`) is focus time: calls and
+    messages that can wait are held until it ends, and its minutes are logged to that subject in the
+    [Study tracker](books-and-study.md#study-tracker). Then a break (5 minutes, `study.break_min`); after it the next
+    focus waits for you. **pause** keeps what's left (the minutes so far are logged), **resume** goes on, **reset**
+    ends it. The digits show in the tab's title while it runs. It keeps time with the page closed, and Telegram says
+    when a focus or a break ends.
+  - **then leave Study mode:** tick it and Study mode ends when the focus ends, instead of a break
+    (`study.timer_ends_mode`).
+  - **Today:** minutes per subject.
+  - **Due:** quizzes and exams (marked *exam*) and tasks in the next two weeks, and what's time to start
+    ([Start-by dates](reminders-and-deadlines.md)).
+  - **Recall:** with [Quiz](quiz-and-exams.md) on, up to three cards due for the subject from its exam-prep notes;
+    click one to see it. `/quiz <subject>` practises them.
+  - **Notes:** the subject's course page, exam prep, doubts and class log, then its lecture and concept notes, newest
+    first (wherever your notes layout keeps them).
+
+| Setting | Default | Effect |
+|---|---|---|
+| `look.study_mode` | off | the board is in Study mode |
+| `study.focus_min` | `25` | minutes of focus |
+| `study.break_min` | `5` | minutes of break |
+| `study.timer_ends_mode` | off | Study mode ends with the focus |
+
+The timer needs the Study tracker (and Subjects); without it, Study mode still shows your notes and what's due. A
+focus never shortens a `/focus` of yours that lasts longer. `/study stop` (or "done studying") during a focus ends the
+timer and logs the time. *Undo:* leave Study mode; reset the timer.
+
 ## Ctrl+K: do anything from anywhere
 
 **Ctrl+K** (⌘K on a Mac) opens one line at the top of the board, from wherever you are (except inside a terminal,
@@ -177,6 +220,7 @@ where Ctrl+K belongs to the shell). Press it again, **Esc**, or click outside to
 | `alarm daily <time>` / `alarm daily off` | sets or turns off the daily alarm | `alarm daily 7:00` |
 | `find <name>` | finds a note on the NOTES map | `find eigenvalues` |
 | `open <page>` | opens a page: today, activity, jobs, schedule, features, phone, research, about, settings (the start of a name is enough) | `open set` |
+| `study on` / `study off` | [Study mode](#study-mode) | `study on` |
 
 How it behaves:
 
@@ -416,7 +460,8 @@ a page.
 | **Alt+S** | Settings | |
 | the same Alt key again | closes that page | dense layout |
 | **Esc** | closes the panes menu, then the open page, then gives back the panes when one fills the board | dense layout |
-| **Alt+1** … **Alt+9** | switch the terminal pane's tabs (roomy: the Terminals tab's) | |
+| **Alt+M** | Study mode on or off | anywhere outside a terminal |
+| **Alt+1** … **Alt+9** | switch the terminal pane's tabs (roomy: the Terminals tab's) | not in Study mode |
 | **Alt+/** or **/** | find a note on the NOTES map (Enter jumps, Esc closes) | `/` only outside Features and Settings |
 | **/** or **Ctrl+F** | the search box | Features and Settings pages |
 | **Esc** | empties the search box | Features and Settings |
@@ -558,4 +603,5 @@ Press `?` anywhere on the board (not while typing) for a card that explains it: 
 (faster when busier); each cell is a feature that's on, breathing faster when busy and flashing when something
 happens; a dot along a nerve is something arriving (into the core) or Kurooto acting (out to a cell); a ripple is news
 for no one feature; a grey dashed cell isn't running. In NOTES each dot is a note (bigger with more links), lines are
-links and colours are neighbourhoods (one per course or subject folder). `?` again or Esc closes it.
+links and colours are neighbourhoods (one per course or subject folder). It also says what Study mode is. `?` again
+or Esc closes it.

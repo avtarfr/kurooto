@@ -8,18 +8,19 @@
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="/static/home.css">
 </head>
-<body class="home" data-layout="{{LAYOUT}}">
+<body class="home" data-layout="{{LAYOUT}}" data-study="{{STUDY}}">
 <header class="bar">
   <div class="brand">KUROOTO <span class="ver" id="ver">{{VERSION}}</span></div>
   <div class="meta" id="meta">connecting…</div>
-  <div class="right"><span id="health-badge" class="badge hidden" title=""></span><span id="update-badge" class="badge hidden"></span><a href="/setup">setup</a></div>
+  <div class="right"><span id="health-badge" class="badge hidden" title=""></span><span id="update-badge" class="badge hidden"></span><button class="study-tg" data-study-toggle title="Study mode: your notes, a study timer and what's due (Alt+M)">study</button><a href="/setup">setup</a></div>
 </header>
 <main class="grid">
-  <div class="panes-ctl" id="panes-ctl"><button id="panes-btn" aria-haspopup="true" aria-expanded="false" title="show, hide or enlarge the panes; the pages">panes ▾</button><div class="panes-menu hidden" id="panes-menu"></div></div>
+  <div class="panes-ctl" id="panes-ctl"><button id="study-btn" data-study-toggle title="Study mode: your notes, a study timer and what's due (Alt+M)">study</button><button id="panes-btn" aria-haspopup="true" aria-expanded="false" title="show, hide or enlarge the panes; the pages">panes ▾</button><div class="panes-menu hidden" id="panes-menu"></div></div>
   <section class="pane" id="pane-status" data-pane="status"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">STATUS<i class="mx"></i></span><span class="meta" id="status-meta"></span></h3><div id="status"></div></section>
   <section class="pane" id="pane-systems" data-pane="systems"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">SYSTEMS<i class="mx"></i></span><span class="meta" id="sys-meta"></span></h3><canvas id="body"></canvas><div id="body-card" class="card hidden"></div></section>
   <section class="pane" id="pane-vault" data-pane="notes"><h3><span class="t" title="fill the board with it (or double-click its border); Esc or a click again: back">NOTES<i class="mx"></i></span><span class="meta" id="mind-meta"></span></h3><canvas id="mind"></canvas>
     <input id="mind-search" class="hidden" placeholder="find a note…  (Enter: go · Esc: close)" spellcheck="false"><div id="mind-card" class="card hidden"></div></section>
+  <section class="pane" id="pane-study" aria-label="study"><h3><span class="t">STUDY</span></h3><div id="sm-body" class="board sm"></div></section>
   <section class="pane wide" id="pane-tabs" data-pane="terminal">
     <nav class="tabs" id="tabs"></nav>
     <div class="tab-body" id="tab-body"></div>
@@ -35,8 +36,10 @@
 <h4>NOTES</h4>
 <p><b>Each dot</b> is a note, bigger the more links it has; <b>lines</b> are links. <b>Colours</b> are neighbourhoods: each course or subject folder is one, maps and projects are the hub, and any other note joins the one most of its links go to.</p>
 <p><b>R</b> lights up notes changed lately; <b>/</b> finds a note; double-click opens it; drag to move, scroll to zoom. Point at anything for its card.</p>
-<p class="keys">? this card · L legends · R recent · / find a note · Ctrl+K do something · Alt+T today · Alt+F features · Alt+S settings · Esc closes</p></div>
-<div id="cmdk" class="cmdk hidden" role="dialog" aria-label="do something"><input id="cmdk-in" placeholder="ask · journal · note · remind · due · alarm · find · open   (Esc closes)" spellcheck="true" autocomplete="off"><ul id="cmdk-list" role="listbox"></ul><p id="cmdk-said" aria-live="polite"></p></div>
+<h4>STUDY MODE</h4>
+<p><b>Alt+M</b> (or <b>study</b> in the corner) keeps only your notes and studying: the map large, a focus and break timer that holds calls and messages and logs the time to the subject, today's study, what's due and the subject's notes. Alt+M again puts the board back as it was.</p>
+<p class="keys">? this card · L legends · R recent · / find a note · Ctrl+K do something · Alt+M study mode · Alt+T today · Alt+F features · Alt+S settings · Esc closes</p></div>
+<div id="cmdk" class="cmdk hidden" role="dialog" aria-label="do something"><input id="cmdk-in" placeholder="ask · journal · note · remind · due · alarm · find · open · study   (Esc closes)" spellcheck="true" autocomplete="off"><ul id="cmdk-list" role="listbox"></ul><p id="cmdk-said" aria-live="polite"></p></div>
 <script src="/static/aboutme.js"></script>
 <script src="/static/home.js?v=clean7"></script>
 </body>

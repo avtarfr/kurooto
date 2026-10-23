@@ -267,6 +267,10 @@ class Api:
             from kurooto.core import actions
 
             return 200, actions.today(self.app)
+        if path == "study":  # the dashboard's Study mode, for one subject (core/actions.py)
+            from kurooto.core import actions
+
+            return 200, actions.study_view(self.app, q.get("subject"))
         if path == "morning":  # the morning page (rhythm)
             from kurooto.modules.daily import morning_view
 

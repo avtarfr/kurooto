@@ -477,6 +477,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `look.palette` | `"kuro"` | the pages' colours (core/palette.py) |
 | `look.panes` | `[]` | the dense board's hidden panes: status, systems, notes, terminal (empty: none hidden) |
 | `look.projects` | `[]` | folders of git repositories the PROJECTS box shows (empty: Research's repositories) |
+| `look.study_mode` | `false` | the dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, /study mode) |
 | `look.theme_file` | `""` | the pages' colours (core/palette.py) |
 
 ### `mail_digest`
@@ -696,11 +697,14 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `study.break_min` | `5` | Study mode's timer: minutes of break after each focus |
 | `study.daily_note` | `"23:45"` | the day's hours go into your daily note at this time; None = don't |
+| `study.focus_min` | `25` | Study mode's timer: minutes of focus (calls and messages wait; the time is logged) |
 | `study.idle_min` | `5` | minutes without activity before study time stops counting |
 | `study.keywords` | `{}` | {subject slug: [words]} |
 | `study.research_paths` | `[]` | words or folders: a window naming one counts as Research |
 | `study.sample_s` | `30` | seconds between looks at the active window |
+| `study.timer_ends_mode` | `false` | when a focus ends, Study mode ends too (look.study_mode), instead of a break |
 
 ### `subjects`
 

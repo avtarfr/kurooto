@@ -22,10 +22,10 @@ The user's view: [../user/dashboard.md](../user/dashboard.md).
   pages may not use inline scripts or load anything from another origin.
 - Static files: `static(name)` reads them with `importlib.resources`, only names matching
   `(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)`.
-- `Server.fill(html)` substitutes `{{TOKEN}}`, `{{VERSION}}`, `{{PALETTE}}`, `{{LAYOUT}}` and injects the palette
-  style and `/static/palette.js` / `/static/links.js` before `</head>`.
+- `Server.fill(html)` substitutes `{{TOKEN}}`, `{{VERSION}}`, `{{PALETTE}}`, `{{LAYOUT}}`, `{{STUDY}}` and injects the
+  palette style and `/static/palette.js` / `/static/links.js` before `</head>`.
 - Settings registered here: `web.port`, and the `look.*` section (`palette`, `theme_file`, `layout`, `projects`,
-  `panes`, `hidden_features`, `links_in`).
+  `panes`, `hidden_features`, `links_in`, `study_mode`).
 
 ## Who may call it
 
@@ -61,7 +61,8 @@ flattened to their first value; a non-dict JSON body becomes `{}`. Anything unma
 GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `jobs`, `term`, `health`, `sync/status`,
 `profile`, `note?id=`, `settings`, `look`, `events` (last 80), `board` (503 without `Live`), `state` (the wizard's
 whole state), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `research`, `progress`, `ask`, `ask/<id>`,
-`today` (`core/actions.py:today`), `morning` (`modules/daily.py:morning_view`), `mail/confidential?day=`, `books`.
+`today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `morning`
+(`modules/daily.py:morning_view`), `mail/confidential?day=`, `books`.
 
 POST (in `Api.post`):
 
@@ -134,16 +135,40 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   and terminals. Alt+letter shortcuts in `PKEY` (Alt+T Today, Alt+S Settings). Layouts `dense` and `roomy`
   (`look.layout`).
 - Ctrl+K (0.5.8): markup `#cmdk*` in `home.html`, logic in `home.js` (`VERBS`: ask, journal, note, remind, due, alarm,
-  find, open; `cmdOpen`, `cmdGo`, ...). Every verb except `find`/`open` calls `POST /api/act`, the same path as the
-  Today page. Note: `core/palette.py` is the colour palette and `core/shortcuts.py` is the app-menu launcher entry;
-  neither is about keyboard shortcuts.
+  find, open, study; `cmdOpen`, `cmdGo`, ...). Every verb except `find`/`open`/`study` calls `POST /api/act`, the same
+  path as the Today page (`study` calls `setStudy`). Note: `core/palette.py` is the colour palette and
+  `core/shortcuts.py` is the app-menu launcher entry; neither is about keyboard shortcuts.
+
+- Study mode (`home.js:setStudy`, Alt+M, `#study-btn` in `.panes-ctl`, `.study-tg` in the roomy bar, Ctrl+K `study`):
+  `body.study`; `applyPanes` gives the grid `"notes study"` and `shownPanes`/`paneShown` answer only NOTES, while
+  `HIDE`, `MAX`, `dtab` and the terminals stay as they were; an open page is closed and reopened on the way out
+  (`SM.page`), so leaving restores the board exactly. The STUDY pane (`#pane-study`, `smBuild`, `smDraw`, `smTick`)
+  polls `GET /api/study` every 30 s and after `study_*`, `deadline_*`, `quiz_*` and `setting_changed` events, and acts
+  through `POST /api/act` (`study.timer`). `Mind.only` lights the subject's notes and `fit()` frames them;
+  `Mind.goTo(node)` centres a note. Entering and leaving replay `@keyframes sm-in` on the panes that show (`.grid.swap`,
+  320 ms, `cubic-bezier(0.23, 1, 0.32, 1)`; none with `prefers-reduced-motion`). The page starts in the mode
+  `look.study_mode` holds (`data-study`, filled by `Server.fill`) and follows the `study_mode` event, so
+  `/study mode on|off` elsewhere switches it live.
 
 ## The Today page and actions (`core/actions.py`)
 
 An action is a function `fn(app, args) -> dict` in `ACTIONS`: `journal.add`, `note.capture`, `reminder.add`,
 `reminder.cancel`, `reminder.snooze`, `deadline.add` (`{title, when, course?}`), `deadline.done`, `deadline.move`,
 `alarm.set`, `alarm.skip`, `alarm.clear`, `alarm.daily`, `checkin.skip`, `checkin.postpone` (`Checkins.postpone`, the
-Today page's **+30 min**), `checkin.defer` (to tomorrow morning), `ask`, `question.answer`.
+Today page's **+30 min**), `checkin.defer` (to tomorrow morning), `ask`, `question.answer`, `study.mode` (`{on}`:
+`study_mode`, which `/study mode on|off` and its intent call too: it sets `look.study_mode` and emits `study_mode`),
+`study.timer` (`{do: start|pause|reset, subject}`: `modules/study.py:Study.timer_start`, `timer_pause`,
+`timer_reset`).
+
+Study mode's timer (`modules/study.py`, state `<state>/study/timer.json`): a focus writes a study session marked
+`timer` (so the window sampler doesn't count twice, and a stop by hand ends the timer: `stop_session`), sets focus
+time with `Availability.set_focus` unless a longer focus already holds, and schedules `study.timer_end` (key
+`study:timer`). Its end logs the session (capped at its length), clears only the focus it set and flushes the queued
+messages (`_focus_end`), then starts the break, or with `study.timer_ends_mode` turns Study mode off. A break's end
+leaves the next focus waiting. `study_view(app, subject)` assembles the pane: subjects, the timer, today's totals,
+`Deadlines.upcoming(336)` with kinds, `StartBy.morning_rows`, `Quiz.due` cards, and `subject_notes` (the subject's
+course, exam-prep, doubts and class-log pages from `core/layout.py`, then the notes in its folder, and in the
+zettelkasten layout concept notes tagged with it). Tests: `tests/unit/test_study_mode.py`.
 
 `act(app, name, args, via)` never raises: a `Problem` becomes `{"ok": False, "message"}`, any other exception becomes
 a sentence plus an `action_failed` event; success emits `action` and returns `{"ok": True, ...}`. Actions call the
