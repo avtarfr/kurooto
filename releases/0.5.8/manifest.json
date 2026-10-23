@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.8",
+  "notes": "Calls fix what they got wrong, topic study packs, /help and two wikis, Learns from its own work, handwritten notes linked, reading budget fits your plan, ~50 fixes",
+  "created": 1792725364.7219005,
+  "files": {
+   "kurooto-0.5.8.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.8/kurooto-0.5.8.tar.gz",
+    "sha256": "3b4c69c055e14bf582c2096a0b19fbf2dc5605da436194c2a9633bdc3c02fb1c",
+    "size": 2067447
+   }
+  }
+ },
+ "sig": "wXPoaFE3PZHDJx9j10uxK5tgOHK7Z4S3hILfw46kLhMqfoIwwYofOfyETN8Aw3FA421bg0a1oYs2i6qBxkPYBA=="
+}

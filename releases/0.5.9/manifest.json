@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.9",
+  "notes": "Sets itself up from what you say, Dreaming with a self-check, Commitments (/busy), check-in times and Start-by window learned, What do you do? in setup, holiday calendars, local models stay on the graphics card",
+  "created": 1792727641.8138852,
+  "files": {
+   "kurooto-0.5.9.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.9/kurooto-0.5.9.tar.gz",
+    "sha256": "7ba59709a3e435fc49d179a454f248231a6c4817945185dc0f80ce206c13fcdd",
+    "size": 2104697
+   }
+  }
+ },
+ "sig": "s4NkdEDCpbyWdOA9fGTjqGTrAgk/SkRQoRJZQ0o1a+jIcWwotlRZj4bG/1vanVZzxrar2KnPfThGmw4s7roOCQ=="
+}

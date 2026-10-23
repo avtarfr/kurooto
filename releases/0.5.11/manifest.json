@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.5.11",
+  "notes": "Fix: the dashboard's NOTES map stayed empty once a note had hundreds of links; it now lays out and fits a big notes folder.",
+  "created": 1792754472.720859,
+  "files": {
+   "kurooto-0.5.11.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.5.11/kurooto-0.5.11.tar.gz",
+    "sha256": "8d217b4fdd8b9e29e05c853049c3e18491935d83b5079534a539e6002c0fceeb",
+    "size": 2114028
+   }
+  }
+ },
+ "sig": "wxGP/s/VbNBC06MtwvKvab9Nb+Fp6t746y36fMazzNJ+krUXBxKqDy6v+868AoeqJ1fS7OYl2pkqZVweclMUDw=="
+}
