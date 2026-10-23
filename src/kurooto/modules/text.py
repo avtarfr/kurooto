@@ -46,6 +46,7 @@ AWAKE = re.compile(
 )
 STILL_UP = re.compile(r"\b(?:still|can'?t sleep|cannot sleep|couldn'?t sleep|not (?:yet )?(?:awake|up))\b", re.I)
 ALSO = re.compile(r"\b(?:also|plus|and then|after that|btw|by the way)\b", re.I)
+REPLAN = re.compile(r"\b(?:re-?schedule|re-?plan|shift|push|move)\b.*\b(?:day|plan|schedule|blocks?)\b", re.I)
 
 
 WEEKDAY = re.compile(r"\b(mon|tues|wednes|thurs|fri|satur|sun)day\b", re.I)
@@ -125,8 +126,8 @@ def stale_time(text: str) -> str | None:
 
 def up_now(text: str) -> bool:
     """ "I'm awake", "I just woke up", "I'm up" (also with "call me if you need to …"): up now, nothing else asked
-    for at a time, not "I'm still up" or "don't call"."""
-    if not AWAKE.search(text) or STILL_UP.search(text) or NEG.search(text) or ALSO.search(text):
+    for at a time, not "I'm still up" or "don't call", and not "I just woke up, reschedule my day" (Agent plan)."""
+    if not AWAKE.search(text) or STILL_UP.search(text) or NEG.search(text) or ALSO.search(text) or REPLAN.search(text):
         return False
     return not (another_day(text) or _time_match(text) or re.search(r"\bin\s+(?:\d|an?\b|half\b)", text, re.I))
 

@@ -208,7 +208,7 @@ Each feature you turn on adds what calls can do; a feature that's off adds nothi
 | Remember how I like to be helped | Remember | yes (queued) |
 | Keep an eye on something for a while | Nightly look back | yes (queued) |
 | The week in numbers; the Sunday review's steps | Weekly summary | the review's steps from the last brief; the numbers need the computer |
-| Block time in the Agent plan calendar | Agent plan calendar | yes (queued) |
+| Block time in the Agent plan calendar; reschedule or push the day | Agent plan calendar | yes (queued) |
 | Send me a file, several files, or a study pack | Skills | yes (queued) |
 
 "Queued" means it's saved on your call line and done as soon as the computer is back; you then get "Done what you

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.13 (2026-10-23)
+
+- **Reschedule my day** (Agent plan calendar): "reschedule my day", "I just woke up, reschedule my day", "reschedule
+  my day from 19:00", "push my day by 2 hours", `/blocks shift`, or on a call (`reschedule_day`). Today's blocks you
+  haven't done move to start from now or that time, in order, each as long as it was, the breaks between them kept
+  (up to 45 minutes); starting over takes the ones you slept through, pushing only the ones not over. A block planned
+  twice keeps its first (a call had booked one again), one that would end after 03:00 is named instead, and the new
+  plan goes in the daily note. `/blocks undo` puts it back.
+- **Fix:** "alarm at 16:36" said during 16:36 rang tomorrow; it rings now.
+
 ## 0.5.12 (2026-10-23)
 
 - **Several alarms at once:** setting an alarm no longer replaces the one that's set. Each one you set (up to 10)

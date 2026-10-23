@@ -70,6 +70,14 @@ AWAKE_BEFORE_H = 12  # ... from this long before it (a daily alarm set in the mo
 MAX_SET = 10  # alarms you set yourself, kept at once (the daily one isn't counted)
 
 
+def _this_minute(at: dt.datetime) -> dt.datetime:
+    """ "Alarm at 16:36" said at 16:36:20: that's now (in a few seconds), not tomorrow at 16:36."""
+    t = now()
+    if dt.timedelta(0) <= t - (at - dt.timedelta(days=1)) < dt.timedelta(minutes=1):
+        return t + dt.timedelta(seconds=15)
+    return at
+
+
 def _clock_time(text: str) -> str | None:
     """A time of day as written ("6:30", "7", "6:30am", "18:00") -> "HH:MM"; None if it isn't one."""
     m = re.fullmatch(r"(?:at )?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", text.strip().lower())
@@ -699,7 +707,7 @@ class Alarm(Module):
                 return self.clear_at(hhmm)
             return self.skip(day) if day else f"I couldn't tell which day {m.group(1)!r} is."
         try:
-            return self.set(parse_when(t).replace(tzinfo=None))
+            return self.set(_this_minute(parse_when(t).replace(tzinfo=None)))
         except ValueError:
             return f"I couldn't read {t!r}."
 
@@ -786,7 +794,7 @@ class Alarm(Module):
             if not m:
                 return None
             try:
-                return {"at": parse_when(m.group(1)).replace(tzinfo=None)}
+                return {"at": _this_minute(parse_when(m.group(1)).replace(tzinfo=None))}
             except ValueError:
                 return None
 

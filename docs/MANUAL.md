@@ -1848,6 +1848,11 @@ the morning plan, or "block 2 to 4 for the problem set" on a call. It writes onl
 for it covers only calendars Kurooto makes, so it can't see or change your others. Each block has a 5-minute
 reminder (`agent_plan.remind_min`; 0 for none).
 - `/blocks` shows today's blocks; `/blocks add 14:00-15:30 problem set 4` adds one; `/blocks clear` removes today's.
+- **Reschedule the day:** "reschedule my day", "I just woke up, reschedule my day", "push my day by 2 hours",
+  `/blocks shift [19:00 | by 2 hours]`, or on a call. Today's blocks not done move to start from now (or that time),
+  in order, the same lengths, breaks kept (up to 45 minutes); starting over takes the ones you slept through, pushing
+  only the ones not over. A block planned twice keeps its first. The new plan goes in the daily note. *Undo:*
+  `/blocks undo`.
 - Hide or delete the calendar in Google Calendar any time; Kurooto makes a new one the next time it plans something.
 - To see the blocks in Kurooto's own Calendar feature too, add the Agent plan calendar's private iCal link there.
 

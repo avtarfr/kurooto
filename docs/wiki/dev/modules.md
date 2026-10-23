@@ -468,7 +468,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 `google.tokens[.<account>]`; redirect to `http://127.0.0.1:<port>/oauth/google`) and Classroom/Gmail drafts.
 `GooglePart` subclasses each need their own scopes: **classroom_notes** (`google_classroom.py`, Classroom posts and
 Drive files filed into notes by an AI job), **mail_digest** / **reply_drafts** / **digest_email**
-(`google_mail.py`), **agent_plan** (`google_plan.py`, its own calendar of time blocks), **google_calendar**
+(`google_mail.py`), **agent_plan** (`google_plan.py`, its own calendar of time blocks; `reschedule(start, by)` deletes today's blocks
+not done and plans them again from `start` (or each `by` later), keeping order, lengths and gaps up to `GAP_MAX`,
+dropping a repeated title, stopping at `LATEST_H`; `undo` in `agent-plan.json`; intent `reschedule_day`, call tool
+`reschedule_day`), **google_calendar**
 (`google_calendar.py`, read-only), **drive_upload** (`google_drive.py`, resumable uploads; temporary uploads expire
 after `drive_upload.temp_days`: `expire` deletes each as the account recorded with it, and only while the file's
 `parents` still hold the Kurooto folder it went into; a moved, trashed or unknown-folder one is forgotten, not deleted). `google_confidential.py` is a helper for summarising confidential mail with a local

@@ -455,6 +455,14 @@ your others.
 - `/blocks`: today's blocks.
 - `/blocks add 14:00-15:30 problem set 4` (also `2pm-3:30pm`, `14:00 to 15:30`): add one.
 - `/blocks clear`: remove today's blocks (only Kurooto's own).
+- `/blocks shift [19:00]`, `/blocks shift by 2 hours`: reschedule the day (below); `/blocks undo` puts it back.
+
+**Reschedule the day.** "Reschedule my day", "I just woke up, reschedule my day", "reschedule my day from 19:00",
+"push my day by 2 hours", `/blocks shift [19:00]`, `/blocks shift by 2 hours`, or on a call: today's blocks you
+haven't done move to start from now (or the time you give), in their order, each as long as it was, with the breaks
+between them kept (up to 45 minutes). Starting over takes the blocks you slept through too; pushing by some time moves
+only the ones not over yet. A block planned twice keeps its first; one that would end after 03:00 is left out and
+named. The new plan also goes in today's daily note. `/blocks undo` puts them back.
 
 **On calls.** Agree to a time on a call ("let's do the problem set from 2 to 4") and the call puts the block in.
 Today's blocks are in the call's brief.

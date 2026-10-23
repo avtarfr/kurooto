@@ -164,7 +164,7 @@ sent with it (as the caption) go along; reply to the answer to carry on. In the 
 | `/google`, `/google use mail school`, `/google forget school` | your Google accounts and which feature uses which (features: `classroom`, `drafts`, `mail`, `email`, `calendar`, `plan`, `drive`, `classroom_notes`) | Google |
 | `/classnotes`, `/classnotes courses`, `/classnotes skip chess`, `/classnotes unskip chess` | file new Classroom posts into your notes now | Classroom → notes |
 | `/mail`, `/mail read @school.example`, `/mail unread …`, `/mail never …`, `/mail unnever …`, `/mail query …`, `/mail query off`, `/mail rules`, `/mail confidential` | your mail digest now, and what it may read | Mail digest |
-| `/blocks`, `/blocks add 14:00-15:30 problem set`, `/blocks clear` | today's planned time blocks | Agent plan calendar |
+| `/blocks`, `/blocks add 14:00-15:30 problem set`, `/blocks shift [19:00]`, `/blocks shift by 2 hours`, `/blocks undo`, `/blocks clear` | today's planned time blocks; shift reschedules the day | Agent plan calendar |
 | `/today` | today's calendar | Calendar |
 | `/cal`, `/cal classes Timetable`, `/cal classes none`, `/cal holidays Holidays`, `/cal holidays none` | the next 7 days; which calendars hold classes; which mark holidays | Calendar |
 
@@ -225,6 +225,7 @@ the AI. A request that asks a question only matches the requests below that answ
 | "cancel that call", "cancel the 12:00 call" | cancels a booked call, or lists them with Cancel buttons | Phone calls |
 | "wake me at 6:45", "no alarm tomorrow", "cancel Friday's alarm", "cancel my alarm", "cancel the 10:30 alarm", "cancel all my alarms", "turn my daily alarm off" | the wake-up alarm | Morning alarm |
 | "do I have any alarms?", "when is my alarm?" | the alarm that's set | Morning alarm |
+| "reschedule my day", "I just woke up, reschedule my day", "reschedule my day from 19:00", "push my day by 2 hours" | today's blocks not done, moved to start from then (`/blocks undo` puts them back) | Agent plan calendar |
 | "I'm awake", "I just woke up", "I'm up" | the morning call now, planned from the current time (with Morning alarm on) | Morning alarm |
 | "no calls for 2 hours", "don't call me until 6", "hold calls until 18:00" | no calls until then (a named other day goes to the AI) | Telegram |
 | "calls are fine again" | allow calls again | Telegram |
