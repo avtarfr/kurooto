@@ -229,6 +229,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | Message | Feature | Setting | Stop | Fewer | Later | Monthly |
 |---|---|---|---|---|---|---|
 | a reminder a day before something on your deadline list is due (Done / Not mine / Snooze 3 h) | Deadlines | `deadlines.ping_h` | no more day-ahead reminders; the last few hours' ones still come | | yes | |
+| deadlines and exams in a class calendar you subscribed to, with Add buttons | Calendar | `calendar.shared_offer` | they only show as events, without Add buttons | | yes | |
 | the call a few hours before a deadline | Deadlines | `deadlines.call` | no deadline calls; a message instead | | yes | |
 | "Overdue?" after a deadline passed (Done / New date / Drop) | Deadlines | `deadlines.overdue_check` | no more "Overdue?" | | yes | yes |
 | exam mode starting for a quiz or exam | Deadlines | `deadlines.exam_mode_days` | list | | yes | |
@@ -274,6 +275,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | what the mail digest may read (until you choose) | Mail digest | `mail_digest.read` | list | | yes |
 | a mail digest that didn't come together | Mail digest | | list | | yes |
 | the digest couldn't be emailed to you | Mail digest by email | | list | | yes |
+| mail you sent in (+kurooto or your Email in label), filed into your notes, its dates with Add buttons | Mail digest (Email in) | `mail_digest.mail_in` | Email in off | | yes |
 
 ### Notes, books and research
 

@@ -465,6 +465,12 @@ class App:
 
             if meetings.take(self, msg, text):
                 return
+        if msg.files and self.modules.get("deadlines") in mods:  # a photo with "dates" as its caption: its dates
+            from kurooto.modules import photodates  # come back as buttons (modules/photodates.py)
+
+            if photodates.wants(self, msg):
+                msg.reply(photodates.start(self, msg.files, via=msg.via))
+                return
         books = self.modules.get("books")  # a PDF sent as "book for <subject>" goes to that subject's books
         if msg.files and books is not None and self.is_on("books"):
             out = books.take_book(msg)
@@ -641,6 +647,10 @@ class App:
             from kurooto.core import repair
 
             return repair.button(self, ref, act)
+        if prefix == "dof":  # Add / Add all / None under dates from a photo, a mail or a class calendar
+            from kurooto.core import dateoffers
+
+            return dateoffers.button(self, ref, act)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:

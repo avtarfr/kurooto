@@ -445,6 +445,16 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   The `add_deadline` tool (and the `deadline.add` action) takes an optional `course` (`subject`, its old name, still
   works): `Subjects.resolve()`, else the one subject `find_in()` names; unknown or naming two, the answer says so and
   lists the courses, and the item gets no subject from it (`subject_of()` on the title still applies).
+- **deadlines** Photo to dates (0.5.22, `modules/photodates.py`, `deadlines.from_photos`): `App.handle` hands a
+  message with a picture whose caption matches `photodates.WORDS` ("dates", "/dates", "timetable", "find the
+  dates") to `start()` before the books and class-pack checks; `/dates` (a photo, or alone: `latest()`, the newest
+  picture of `RECENT_S` 2 h from `calls/shared.json` (found again by name with `moved()` after the AI filed it) or the
+  inbox) and the `photo_dates` intent ("dates from that photo") do the same; `calls._upload` does for a phone share
+  whose note matches. `start()` refuses when `providers.sees()` says the main brain can't read pictures, else submits
+  one quiet job with `images=[...]` and `then="photo_dates.ready"` (registered in `Deadlines.__init__`, so a late answer
+  arrives). `ready()` parses the JSON (`parse()`), cleans it and offers it through `core/dateoffers.py`
+  (`why="asked"`); `unreadable`, nothing found, a failure (one mentioning images says the AI may not read pictures):
+  one line. `scan_calendar()` skips rows with `from` (a shared calendar's: offered instead).
 - **deadlines** meeting brief: `meeting_briefs()` (`deadlines:meeting_brief`, `deadlines.meeting_brief` daily 20:00)
   takes open "Meeting: <who>" deadlines due tomorrow whose surname matches a project's `With:` person
   (`infer.projects_with`), then tomorrow's weekly `Meets:` meetings (`core/meetings.py:on_day(..., deadlines=False)`,
@@ -517,7 +527,13 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **calendar** (`modules/calendar.py`): iCal links (secret `calendar.ics`) and Google Calendar, recurrences expanded,
   private events masked; blocks calls during events, `#focus` and `#nocall`; `calendar:refresh` every 15 min. Each
   stored event has a `src` (`ics:<hash of the link>`, `google:<account>`); a source that fails keeps its rows from
-  the last copy (`google_calendar.fetch` returns the failed accounts by name).
+  the last copy (`google_calendar.fetch` returns the failed accounts by name). Shared class calendars (0.5.22):
+  secret `calendar.shared` (`[{"url", "name"}]`), `subscribe()` / `unsubscribe()` (`/cal subscribe <link> as <name>`,
+  `/cal shared`, `/cal unsubscribe`, or the setup card's `shared` and `shared_name` fields, which work without a link
+  of your own); rows `src` `shared:<hash>` and `from` (the name, shown by `line()`); after each refresh
+  `_offer_shared()` offers deadline- and exam-like entries (`deadlines.EXAMISH` / `DUEISH`) not offered before
+  (`calendar-shared-offered.json`, the last 1000 keys) through `core/dateoffers.py`, one message per calendar, Calm
+  reason `calendar.shared` (`calendar.shared_offer`).
 - **weekly** (`modules/weekly.py`): Sunday summary from `events.jsonl` and modules' `weekly_lines`; optional review call.
 - **quests** (`modules/quests.py`): one onboarding quest a day for a week, judged from the event log.
 
@@ -634,7 +650,13 @@ Drive files filed into notes by an AI job; each `queue()` is a run in `classroom
 `filed` titles): `_filed` reports back with `_run_back` and the run's one message (`_tell_filed`, `LIST_MAX` titles)
 goes when nothing is left; a failed batch leaves its run and joins the next one, and a run older than `RUNS_DAYS` is
 let go at the next `queue()`), **mail_digest** / **reply_drafts** / **digest_email**
-(`google_mail.py`), **agent_plan** (`google_plan.py`, its own calendar of time blocks; `reschedule(start, by)` deletes today's blocks
+(`google_mail.py`; Email in, 0.5.22, is `mailin.py`: `mail_digest.mail_in` (off), `mailin.check()` every
+`mail_in_every` asks Gmail for `deliveredto:/to:` the `+kurooto` address or `label_query(mail_in_label)`, takes mail
+to +kurooto only from `me` or `mail_in_senders` (others aren't even fetched; `mail_in_anyone` overrides), applies
+`blocked()` and the confidentiality check, and submits one text-only `lane="bg"` job per mail (`PER_CHECK` 10,
+`then="mail_digest.mail_in_done"`); `done()` writes a new `note`-kind note (summary, Gmail link, the text; never
+over another) and offers the dates via `core/dateoffers.py`, Calm reason `mail_digest.mail_in`; state
+`mail-digest/mail-in.json` (`since`, `seen`); `/mail in [on|off|label|from|unfrom]`), **agent_plan** (`google_plan.py`, its own calendar of time blocks; `reschedule(start, by)` deletes today's blocks
 not done and plans them again from `start` (or each `by` later), keeping order, lengths and gaps up to `GAP_MAX`,
 dropping a repeated title, stopping at `LATEST_H`; `undo` in `agent-plan.json`; intent `reschedule_day`, call tool
 `reschedule_day`), **google_calendar**

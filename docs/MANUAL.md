@@ -551,7 +551,18 @@ One list of what's due, from:
 - recurring quizzes and tests (below);
 - the key dates in your term note ([Subjects and timetable](#subjects-and-timetable): `/term note`): its quizzes and
   exams, and deadlines that name one of your subjects. They're read again whenever you change the note; a row you
-  take out of the note leaves the list.
+  take out of the note leaves the list;
+- offered with an **Add** button each, added only when you tap: a photo (below), mail you forward to yourself
+  ([Email in](#email-in)) and a class calendar someone shares ([Calendar](#calendar): `/cal subscribe`).
+
+**Photo to dates:** send a photo of a notice, a poster or a timetable with `dates` (or `/dates`, `timetable`) as its
+caption, or say `/dates` / "dates from that photo" just after sending or sharing one. The AI you picked reads it; each
+deadline, exam and event comes back as a line with **Add** (plus **Add all** and **None of these**), and a timetable's
+classes with **Add N classes to my timetable** (new courses become subjects). A deadline or exam goes into this list
+(source: photo); an event becomes a reminder `date_offers.remind_min` (60) minutes before it. agy, Claude Code and a
+Gemini key read pictures; Ollama when its model does (otherwise it says so and sends nothing); another service is
+tried. *Leaves:* the photo, to the AI you picked. *Turn off:* `deadlines.from_photos`. *Undo:* a tapped deadline:
+**Not mine** under it in `/deadlines`; a reminder: `/reminders` → Cancel; classes: `/class remove mon 09:00`.
 
 The same thing from two places (say Classroom, your calendar and a task in your notes) is kept once; a known time
 beats "end of the day". Topics on your not-interested list are left out.
@@ -585,7 +596,8 @@ call's plan, the morning page, the call brief, `/status` ("Due in the next 3 day
 *Settings* (`deadlines.*`): `plan_h` (72), `ping_h` (24), `urgent_h` (6), `call` (on: the six-hour nudge is a call
 when Phone calls is on), `overdue_check` (on), `tick_notes` (on), `from_calendar` (on), `recurring` (on),
 `horizon_days` (30: how far ahead recurring quizzes become dated items), `exam_mode_days` (14; 0 turns exam mode off),
-`scan_notes` (on), `from_term_note` (on: the term note's key dates, when you have one).
+`scan_notes` (on), `from_term_note` (on: the term note's key dates, when you have one), `from_photos` (on: Photo to
+dates).
 *Turn off:* the whole thing in Features; the call alone with `deadlines.call` off; the overdue question with
 `deadlines.overdue_check` off.
 *Undo:* set `deadlines.plan_h` back to `72` (or reset it in Settings).
@@ -1659,12 +1671,18 @@ that calendar, so it's kept in your computer's keychain.
 - **Holiday calendars:** `/cal holidays Holidays in India` (any part of the name; several with commas) makes the
   all-day events of those calendars holidays: no classes those days, so no after-class questions and no calls held
   for classes. Timed events in them aren't holidays. `/cal holidays` lists them; `/cal holidays none` stops it.
+- **Shared class calendars (shared class lists, without a shared server):** a classmate or the course keeps one
+  calendar of deadlines and exams and shares its iCal link; `/cal subscribe <link> as LA class` (or the card's "a
+  class calendar someone shares" field, which works without a calendar of your own). Its events come in like yours,
+  marked "(from LA class)"; entries that look like a deadline or an exam come once each with an **Add** button and are
+  never added by themselves. `/cal shared` lists them, `/cal unsubscribe LA class` drops one. Nothing goes back to
+  the calendar; the link is kept in your keychain. `calendar.shared_offer` off: they only show as events.
 
 *Settings:* `availability.nocall_keyword` (`#nocall`), `availability.nocall_calendar` (`no call`),
 `availability.focus_keyword` (`#focus`), `calendar.mask_private` (on), `calendar.private_keyword` (`#private`),
-`calendar.class_calendars` (`[]`).
+`calendar.class_calendars` (`[]`), `calendar.shared_offer` (on).
 *Leaves:* nothing; event descriptions are read only for `#nocall`, `#focus` and `#private` and aren't kept.
-*Undo:* `/cal classes none`; `calendar.mask_private` = `false` shows private events' titles again (on this computer
+*Undo:* `/cal unsubscribe <name>`; `/cal classes none`; `calendar.mask_private` = `false` shows private events' titles again (on this computer
 and to your AI).
 
 ### Notes sync
@@ -2063,6 +2081,25 @@ characters; `mail_digest.local_model` picks another Ollama model (default: Local
 *Leaves:* the text of the mail you chose (and, with a query, the mail it matches) goes to the AI you picked; for the
 rest, only counts. Nothing is ever sent, deleted, archived or marked read. *Turn it off:* Features → Mail digest →
 Turn off. *Undo:* `/mail query off` goes back to only your `/mail read` rules (and your own domain).
+
+### Email in
+Your call line on workers.dev can't receive mail, so mail goes in through your own Gmail (with the Mail digest's
+read-only access): forward a notice or receipt to your address with `+kurooto` before the @ (`example+kurooto@gmail.com`),
+or put a Gmail label on it (`/mail in label Kurooto`; a Gmail filter can do that). Every 10 minutes Kurooto looks; each
+such mail goes to the AI you picked, which files it as a note in your notes' inbox (a summary, a Gmail link, the text)
+and lists its dates, offered with **Add** buttons. Nothing goes into Deadlines without a tap.
+
+Mail to +kurooto goes in only from your own address or ones you list (`/mail in from you@school.example`); a stranger's
+is never opened. Labelled mail goes in from anyone (only you label). The never-read list and the confidentiality check
+still apply. The AI gets no tools for it and is told the mail is information, not instructions.
+
+`/mail in` (status and your address), `/mail in on`, `/mail in off`, `/mail in label <Name>` / `off`,
+`/mail in from <address>` / `unfrom`. With your own domain on Cloudflare, Email Routing can deliver
+`kurooto@your-domain.example` to your +kurooto address (then label it with a filter, or list its senders); an Email Worker
+straight to the call line isn't built.
+*Settings:* `mail_digest.mail_in` (off), `mail_in_label`, `mail_in_senders`, `mail_in_anyone` (off), `mail_in_every`
+(`every 10m`). *Leaves:* the text of mail sent in, to the AI you picked. *Turn off / undo:* `/mail in off`; a filed
+note is an ordinary note you can delete; a tapped deadline: **Not mine** under it in `/deadlines`.
 
 ### Email reply drafts
 When the mail digest finds mail that needs your reply (a question or request to you), the AI drafts a short reply in
@@ -2627,6 +2664,13 @@ you set it up):
   /commands) answer at once; anything bigger goes to your AI and its answer prints here, not on Telegram. `kurooto ask`
   alone opens a prompt where you type one request after another. `--no-wait` prints the request's id; `kurooto ask
   --job <id>` waits for its answer later.
+- `kurooto ask --popup`: **Quick ask**, a small window to type one request in; the answer shows there (Enter sends,
+  Esc closes). Bind it to a key in your system's settings (Kurooto never grabs keys; on Wayland nothing may):
+  Dashboard → Settings → **Quick ask (hotkey)** shows the exact command and the steps. Windows: `kurooto ask
+  --shortcut` adds Kurooto Quick ask to the Start menu, then its Properties → Shortcut key. macOS: a Shortcuts
+  shortcut with Run Shell Script and a keyboard shortcut. Linux: your desktop's keyboard shortcuts (GNOME, KDE) or
+  `bind`/`bindsym` in Hyprland or sway. Needs Python's Tk (`python3-tk` on some Linux systems). *Undo:* remove the key
+  binding; `kurooto uninstall` removes the menu entry.
 - `kurooto call "the backup finished"`: rings your phone (needs Phone calls). It waits out your no-call rules
   (classes, /hold, focus, night) and calls when they end; `--force` rings now anyway, `--alarm` rings as a wake-up
   alarm, `--at 17:30` (or "in 20 min", "tomorrow 7:00") calls later. Nothing ever rings while you're on a call.

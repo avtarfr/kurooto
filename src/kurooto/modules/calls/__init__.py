@@ -1157,6 +1157,11 @@ class Calls(Module):
         rel = layout.shown(self.app, dest)
         self.app.events.emit("files_shared", via="phone", bytes=dest.stat().st_size)
         self.chat.shared(dest, note)  # "summarise the PDF I just sent" finds it (chat.py, modules/chat.py)
+        from kurooto.modules import photodates  # a photo shared with "dates" as its note: its dates as buttons
+
+        if note and photodates.on(self.app) and photodates.WORDS.search(note) and photodates.pictures([dest]):
+            self.app.notify(photodates.start(self.app, [dest], via="app"), kind="info", why="asked")
+            return 200, {"ok": True, "saved": rel}
         if self.app.is_on("chat"):
             jid = self.app.jobs.submit(
                 f"A file was shared from my phone: {rel}"

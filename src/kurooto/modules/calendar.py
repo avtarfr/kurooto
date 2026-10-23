@@ -17,6 +17,12 @@ title, place and description aren't kept (calendar.mask_private).
 Class calendars (calendar.class_calendars, or /cal classes Timetable): events in calendars with those names count as
 classes: no calls during them, they're in your day's classes, and one whose title names a subject gets the
 after-class question.
+
+Shared class lists, without a shared server: subscribe to a calendar a classmate or the course shares, by its iCal
+link (/cal subscribe <link> as <name>). Its events come in like your own, marked "(from <name>)"; entries that look
+like deadlines or exams ("PS3 due", "Quiz 2", "Midsem") are offered with an Add button each and never added by
+themselves (calendar.shared_offer). Read-only, like every calendar here: nothing is sent back, and nobody sees what
+you add. /cal shared lists them; /cal unsubscribe <name> drops one.
 """
 
 from __future__ import annotations
@@ -48,11 +54,16 @@ register_defaults(
         "private_keyword": "#private",  # in a title or description: private too
         "class_calendars": [],  # names (any part, any case) of calendars whose events are classes, e.g. ["Timetable"]
         "holiday_calendars": [],  # names of calendars whose all-day events are holidays (no classes), e.g. ["Holidays"]
+        # calendars you subscribed to (/cal subscribe): their deadline-like and exam-like entries are offered with an
+        # Add button each (never added by themselves); False: they only show as events
+        "shared_offer": True,  # a subscribed calendar's deadlines and exams offered with an Add button each
     },
 )
 BUSY = "Busy (private)"
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 SECRET = "calendar.ics"  # noqa: S105 (the secret's name): a JSON list of iCal links
+SHARED = "calendar.shared"  # a JSON list of {"url", "name"}: class calendars others share, subscribed by link
+OFFERED_KEEP = 1000  # shared entries already offered, remembered so each is offered once
 
 
 # --------------------------------------------------------------------------------------------- iCal
@@ -237,8 +248,46 @@ class Calendar(Module):
         gc = self.app.modules.get("google_calendar")
         return gc if gc is not None and self.app.is_on("google_calendar") and gc.ready()[0] else None
 
+    def shared(self) -> list[dict]:
+        """The class calendars you subscribed to: [{"url", "name"}]."""
+        try:
+            rows = json.loads(self.app.secrets.get(SHARED) or "[]")
+        except ValueError:
+            return []
+        return [r for r in rows if isinstance(r, dict) and r.get("url")]
+
+    def subscribe(self, url: str, name: str = "") -> tuple[bool, str]:
+        """Subscribe to a class calendar someone shares (its iCal link): its events come in marked with its name, and
+        its deadlines and exams are offered with a button each."""
+        url = url.strip().replace("webcal://", "https://", 1)
+        if not url.startswith(("https://", "http://127.0.0.1")):
+            return False, "That isn't an https:// iCal link (webcal:// works too)."
+        try:
+            evs = self._fetch(url)
+        except Exception as e:
+            return False, f"Couldn't read that link: {e}"[:200]
+        name = re.sub(r"\s+", " ", name).strip()[:40] or next((e["calendar"] for e in evs if e.get("calendar")), "")
+        name = name or "Shared calendar"
+        rows = [r for r in self.shared() if r["url"] != url and r["name"].lower() != name.lower()]
+        self.app.secrets.set(SHARED, json.dumps([*rows, {"url": url, "name": name}]))
+        self.app.events.emit("calendar_subscribed", events=len(evs))
+        self.refresh()
+        offer = " Its deadlines and exams come with an Add button each." if self.setting("shared_offer") else ""
+        return True, f"Subscribed to {name}: {len(evs)} events, shown as (from {name}).{offer}"
+
+    def unsubscribe(self, which: str) -> str:
+        rows = self.shared()
+        w = which.strip().lower()
+        keep = [r for n, r in enumerate(rows, 1) if w not in (str(n), r["name"].lower())]
+        if len(keep) == len(rows):
+            return "No such shared calendar. /cal shared lists them."
+        self.app.secrets.set(SHARED, json.dumps(keep))
+        self.app.events.emit("calendar_unsubscribed")
+        self.refresh()
+        return f"Unsubscribed. {len(keep)} shared calendar(s) left."
+
     def ready(self):
-        if self.links() or self.google_source():
+        if self.links() or self.shared() or self.google_source():
             return True, ""
         return False, "paste your calendar's private iCal link (see the help), or set up Google Calendar"
 
@@ -277,6 +326,14 @@ class Calendar(Module):
             except Exception as e:
                 failed.append(src)
                 self.app.events.emit("calendar_failed", error=str(e)[:200])
+        for sub in self.shared():  # class calendars others share: marked with their name ("from")
+            src = "shared:" + hashlib.sha256(sub["url"].encode()).hexdigest()[:12]
+            try:
+                evs = self._fetch(sub["url"])
+                found += [(src, {**e, "from": sub["name"]}) for e in expand(evs, start, end)]
+            except Exception as e:
+                failed.append(src)
+                self.app.events.emit("calendar_failed", error=str(e)[:200], shared=True)
         gc = self.google_source()
         if gc is not None:
             evs, cals, bad = gc.fetch(start, end, self.tz())
@@ -302,7 +359,54 @@ class Calendar(Module):
         self._plan_reminders(rows)
         self._plan_focus_ends(rows)
         self.app.events.emit("calendar_synced", events=len(rows))
+        try:  # never in the way of the refresh itself
+            self._offer_shared(rows)
+        except Exception as e:
+            self.app.events.emit("calendar_offer_failed", error=f"{type(e).__name__}: {e}"[:200])
         return len(rows)
+
+    def _offer_shared(self, rows: list[dict]) -> int:
+        """Deadline-like and exam-like entries of the calendars you subscribed to, not offered before: one message per
+        calendar, with an Add button each (core/dateoffers.py). Returns how many were offered."""
+        if not self.setting("shared_offer"):
+            return 0
+        from kurooto.core import dateoffers
+        from kurooto.modules.deadlines import DUEISH, EXAMISH, NOT_EXAM
+
+        f = self.app.paths.state / "calendar-shared-offered.json"
+        done = list(jload(f, []) or [])
+        seen = set(done)
+        per: dict[str, list[dict]] = {}
+        t0 = self.now()
+        for r in rows:
+            name, title = r.get("from"), str(r.get("title") or "")
+            if not name or r.get("private") or title == BUSY:
+                continue
+            exam = bool(EXAMISH.search(title)) and not NOT_EXAM.search(title)
+            if not (exam or DUEISH.search(title)):
+                continue
+            s = dt.datetime.fromisoformat(r["start"]).astimezone(self.tz())
+            if s < t0 - dt.timedelta(hours=1):
+                continue
+            key = f"{r.get('src')}|{title.lower()}|{s:%Y-%m-%d}"
+            if key in seen:
+                continue
+            seen.add(key)
+            done.append(key)
+            item = {"title": title, "date": f"{s:%Y-%m-%d}", "time": "" if r["all_day"] else f"{s:%H:%M}"}
+            per.setdefault(name, []).append({**item, "type": "exam" if exam else "deadline"})
+        n = 0
+        for name, raw in per.items():
+            items = dateoffers.clean_items(raw)
+            bid = dateoffers.make(self.app, "calendar", items, about=name)
+            if bid is None:
+                continue
+            text, buttons = dateoffers.message(self.app, bid, f"New in {name} (a calendar you subscribed to):")
+            self.app.notify(text, kind="info", buttons=buttons, why="calendar.shared", about=name)
+            n += len(items)
+        if per:
+            jsave(f, done[-OFFERED_KEEP:])
+        return n
 
     def events(self, start: dt.datetime, end: dt.datetime) -> list[dict]:
         out, tz = [], self.tz()
@@ -343,6 +447,7 @@ class Calendar(Module):
             "all_day": bool(e.get("all_day")),
             "location": "" if hide else e.get("location", ""),
             **tags,
+            **({"from": e["from"]} if e.get("from") else {}),  # a class calendar you subscribed to
         }
 
     def _tags(self, e: dict) -> dict:
@@ -491,10 +596,11 @@ class Calendar(Module):
     # -------------------------------------------------------------------------------- telling you
     @staticmethod
     def line(e: dict) -> str:
+        whose = f" (from {e['from']})" if e.get("from") else ""  # a calendar you subscribed to
         if e["all_day"]:
-            return f"all day  {e['title']}"
+            return f"all day  {e['title']}{whose}"
         loc = f" ({e['location']})" if e.get("location") else ""
-        return f"{e['start_dt']:%H:%M}–{e['end_dt']:%H:%M}  {e['title']}{loc}"
+        return f"{e['start_dt']:%H:%M}–{e['end_dt']:%H:%M}  {e['title']}{loc}{whose}"
 
     def agenda(self, d: dt.date) -> str:
         evs, today = self.day(d), self.now().date()
@@ -507,9 +613,11 @@ class Calendar(Module):
             Command(
                 "cal",
                 "the next 7 days of your calendar; /cal classes Timetable: events in that calendar are classes; "
-                "/cal holidays Holidays: its all-day events are days without classes",
+                "/cal holidays Holidays: its all-day events are days without classes; /cal subscribe <link> as <name>: "
+                "a class calendar someone shares",
                 self._week,
-                usage="/cal [classes|holidays <calendar names, comma-separated> | classes|holidays none]",
+                usage="/cal [classes|holidays <calendar names, comma-separated> | classes|holidays none | "
+                "subscribe <iCal link> as <name> | shared | unsubscribe <name>]",
             ),
         ]
 
@@ -547,8 +655,26 @@ class Calendar(Module):
             f"({n} in the next {self.setting('days') or 14} days).{known}"
         )
 
+    def _shared_cmd(self, word: str, rest: str) -> str:
+        if word == "subscribe":
+            m = re.fullmatch(r"(\S+)(?:\s+(?:as\s+)?(.+))?", rest)
+            if not m:
+                return "Usage: /cal subscribe <the calendar's iCal link> as <a name, like LA class>"
+            return self.subscribe(m[1], m[2] or "")[1]
+        if word == "unsubscribe":
+            return self.unsubscribe(rest) if rest else "Which one? /cal unsubscribe <its name or number> (/cal shared)."
+        rows = self.shared()
+        if not rows:
+            return (
+                "No shared class calendars. A classmate or the course shares one's iCal link: /cal subscribe <link> "
+                "as <name>. Its deadlines and exams come with an Add button each."
+            )
+        return "Shared class calendars:\n" + "\n".join(f"{n}. {r['name']}" for n, r in enumerate(rows, 1))
+
     def _week(self, msg: Incoming, arg: str) -> str:
         word, _, rest = arg.strip().partition(" ")
+        if word.lower() in ("subscribe", "unsubscribe", "shared"):
+            return self._shared_cmd(word.lower(), rest.strip())
         if word.lower() == "classes":
             return self._classes_cmd(rest.strip())
         if word.lower() == "holidays":
@@ -593,10 +719,30 @@ class Calendar(Module):
             "feature instead: it reads them through Google and turns this on.",
             "links": [["Google Calendar settings", "https://calendar.google.com/calendar/r/settings"]],
             "fields": [
-                {"name": "link", "label": "Private iCal link", "type": "password", "placeholder": "https://…/basic.ics"}
+                {
+                    "name": "link",
+                    "label": "Private iCal link",
+                    "type": "password",
+                    "placeholder": "https://…/basic.ics",
+                },
+                {
+                    "name": "shared",
+                    "label": "Or a class calendar someone shares (its iCal link; optional): its deadlines and exams "
+                    "come with an Add button each",
+                    "type": "password",
+                    "placeholder": "https://…/basic.ics",
+                },
+                {"name": "shared_name", "label": "Its name (optional)", "type": "text", "placeholder": "LA class"},
             ],
         }
 
     def configure(self, values: dict) -> dict:
-        ok, msg = self.add_link(str(values.get("link", "")))
-        return {"ok": ok, "message": msg}
+        link, shared = str(values.get("link") or "").strip(), str(values.get("shared") or "").strip()
+        said, ok = [], True
+        if link or not shared:
+            ok, msg = self.add_link(link)
+            said.append(msg)
+        if shared:
+            ok2, msg = self.subscribe(shared, str(values.get("shared_name") or ""))
+            ok, said = ok and ok2, [*said, msg]
+        return {"ok": ok, "message": " ".join(said)}

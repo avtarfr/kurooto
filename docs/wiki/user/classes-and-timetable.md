@@ -39,6 +39,11 @@ minutes before one.
 A subject is matched by its full name, its id (`linear-algebra`) or any short name, in any case. A word of four
 letters or more that is part of a subject's name also matches ("algebra").
 
+**From a photo of the timetable.** Send a photo of your timetable with `timetable` (or `dates`) as its caption: your AI
+reads it and offers its classes with one button, **Add N classes to my timetable**. Each class is added unless one
+already starts then, and a course you don't have yet becomes a subject (give it a short name with `/subject add Name
+(short)`). Nothing is added before you tap ([reminders-and-deadlines.md](reminders-and-deadlines.md#photo-to-dates)).
+
 **No calls during class.** While a class is on (from `subjects.margin_min` minutes before it starts until it ends),
 calls wait. A call that comes due then is held, you're told ("Held a call until 10:00 (class: Linear Algebra)"), and
 it rings by itself when the class ends. Your wake-up alarm is not held. Classes don't hold calls on holidays, in exam
@@ -346,6 +351,31 @@ names one of your subjects ("Linear Algebra lecture") gets the [after-class ques
 | `/cal classes none` | no calendar counts as classes |
 
 A timetable class at the same time isn't counted twice. Needs Calendar (or Google Calendar) and Subjects.
+
+## Shared class calendars
+
+**What it does.** Friends in the same course, or the course itself, keep one calendar of its deadlines and exams; you
+subscribe to it by its iCal link. Kurooto has no shared server between friends, and doesn't need one: the calendar
+lives where its owner keeps it (Google Calendar, Outlook), and each of you reads it. Its events come in like your own,
+marked with its name (`10:00–11:00  Quiz 3 (from LA class)` in `/today` and `/cal`). Entries that look like a
+deadline or an exam ("PS5 due", "Quiz 3", "Midsem") come with an **Add** button each, once each; they're never added
+to Deadlines by themselves, since anyone with edit access to that calendar wrote them. Nothing goes back: what you add
+or skip stays on your computer.
+
+**Get the link.** The calendar's owner: Google Calendar → Settings → the calendar → Access permissions → Make
+available to public, then Integrate calendar → Public address in iCal format (or share the secret address with the
+class only). Outlook: Calendar settings → Shared calendars → Publish a calendar → ICS.
+
+| Command | What it does |
+|---|---|
+| `/cal subscribe <iCal link> as LA class` | subscribe (webcal:// links work); without "as", the calendar's own name |
+| `/cal shared` | the calendars you subscribed to |
+| `/cal unsubscribe LA class` · `/cal unsubscribe 1` | drop one |
+
+Or on the dashboard: Features → Calendar → Set up, in "a class calendar someone shares"; that also works with no
+calendar of your own. Its events hold calls like your own events do (`calendar.no_calls_in_events`), and `/cal classes
+<its name>` makes its events classes. `calendar.shared_offer` off: its entries only show as events. The link is kept
+in your keychain.
 
 ## Holiday calendars
 

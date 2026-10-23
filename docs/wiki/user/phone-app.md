@@ -242,6 +242,10 @@ Chat you get "Got <file> from your phone: saved to ...". Files can be up to 50 M
 your call line (below). Then ask about it in the chat: "summarise the PDF I just sent" works for
 files shared in the last two hours (your AI is told their names and where they are).
 
+**A photo of a notice or a timetable:** share it, then say "dates from that photo" (or `/dates`) in the app's chat.
+Your AI reads it and its dates come back with an **Add** button each; nothing is added until you tap
+([reminders-and-deadlines.md](reminders-and-deadlines.md#photo-to-dates)).
+
 ## When your computer is off
 
 What you do on the phone while your computer sleeps isn't lost: chat messages, button taps, answers to questions

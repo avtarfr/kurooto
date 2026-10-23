@@ -96,6 +96,9 @@ class Agy(Brain):
     def available(self):
         return (True, "") if self.exe else (False, "agy isn't installed")
 
+    def sees(self):
+        return True, ""  # Gemini models: agy opens a picture where the request says it is
+
     def prepare(self, app):
         tools_once(app, self)
 

@@ -141,13 +141,22 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   them, and a change is kept only if it's better, one at a time, with Undo. After part two has proven itself.
 - **Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
   rest.
-- **An email-in address.** Forward a notice or a receipt to your own call line, and it's filed in your notes or
-  becomes a deadline.
+- ~~**An email-in address.** Forward a notice or a receipt to your own call line, and it's filed in your notes or
+  becomes a deadline.~~ (0.5.22: a workers.dev call line can't receive mail, so it's your own Gmail: mail forwarded
+  to example+kurooto@gmail.com, or given a label, is filed as a note and its dates offered as buttons; `/mail in on`.
+  Own domain: Cloudflare Email Routing to that address; Email Workers not yet)
 - **Zotero.** A paper from the research digest goes into Zotero with one tap, and reading notes link to it.
-- **Photo → dates.** Share a photo of a notice or a timetable from your phone, and the events and deadlines are
-  pulled out.
-- **Shared class lists.** Friends in the same course can opt in to share deadlines and exam dates.
-- **Quick-ask hotkey.** A small prompt window on the desktop, on every system.
+- ~~**Photo → dates.** Share a photo of a notice or a timetable from your phone, and the events and deadlines are
+  pulled out.~~ (0.5.22: "dates" as a photo's caption, `/dates`, or "dates from that photo" after sharing it; your
+  AI reads it, each date comes back as a button and nothing is added without a tap; a timetable's classes in one
+  tap; a brain that can't read pictures says so)
+- ~~**Shared class lists.** Friends in the same course can opt in to share deadlines and exam dates.~~ (0.5.22,
+  without a shared server, which Kurooto doesn't have by design: subscribe to a class calendar a classmate or the
+  course shares by its iCal link, `/cal subscribe <link> as <name>`; its events come in marked with its name, its
+  deadlines and exams are offered with an Add button each)
+- ~~**Quick-ask hotkey.** A small prompt window on the desktop, on every system.~~ (0.5.22: `kurooto ask --popup`, a
+  Tk window; the key is bound in the system's own settings, Settings → Quick ask shows the command and how; Wayland
+  has no global hotkeys, so the desktop runs it)
 - **Location reminders on Android.** "When I reach the library", without draining the battery.
 - **Course notes to PDF.** A LaTeX template for course notes.
 

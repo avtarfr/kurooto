@@ -288,6 +288,7 @@ with the date and time. For a photo, the largest size is kept. The caption trave
 | a PDF with the caption `book for linear algebra` | it becomes a book for that subject ([books-and-study.md](books-and-study.md)) |
 | a `.kurooto-course` file | a class pack to review ([classes-and-timetable.md](classes-and-timetable.md)) |
 | a photo with `/hint la` as the caption | the hint ladder ([books-and-study.md](books-and-study.md)) |
+| a photo with `dates` (or `/dates`, `timetable`) as the caption | its deadlines, exams and events come back as **Add** buttons; a timetable's classes with one button ([reminders-and-deadlines.md](reminders-and-deadlines.md#photo-to-dates)) |
 | a file with `/note` as the caption | a quick note that links it |
 | a file with a skill as the caption (`/add-to-notes`, `/study-log`) | the skill gets the file |
 | a reply to a question, with files | the files are kept with your answer |
@@ -387,3 +388,24 @@ refuses, the message says the name shows in Kurooto's messages, the app and the 
 `kurooto ask "what's due this week?"` handles plain English as on Telegram: quick things answer at once, bigger ones go
 to your AI and the answer prints in the terminal, not on Telegram, with the run receipt as its last line. `kurooto ask` alone opens a prompt for one request
 after another. More, including `kurooto notify` and `kurooto ask-me` for your own scripts: [add-ons.md](add-ons.md).
+
+## Quick ask (a hotkey)
+
+`kurooto ask --popup` opens a small window: type one request, press Enter, and the answer shows in the window (a
+bigger one says "Working on it…" first). Enter again asks another; Esc closes it. It's the same as typing to Kurooto,
+so quick things answer at once and the rest goes to your AI. It needs Kurooto running and Python's Tk (on Linux, the
+`python3-tk` or `tk` package if the window doesn't open; then `kurooto ask` works in a terminal).
+
+**The hotkey is your system's.** Kurooto doesn't grab a key itself: you bind the command to one in your system's own
+settings. Dashboard → Settings → **Quick ask (hotkey)** shows the exact command for this computer and the steps.
+
+| System | How |
+|---|---|
+| Windows | run `kurooto ask --shortcut` once: it adds **Kurooto Quick ask** to the Start menu. Start → find it → right-click → Open file location → right-click it → Properties → **Shortcut key**: press the keys (Ctrl+Alt+K) → OK |
+| macOS | Shortcuts → New Shortcut → add **Run Shell Script**, paste the command → the shortcut's details (i) → **Add Keyboard Shortcut**. Allow running scripts once (Shortcuts → Settings → Advanced). `kurooto ask --shortcut` also adds a Quick ask app to ~/Applications |
+| Linux, GNOME | Settings → Keyboard → Keyboard Shortcuts → Custom Shortcuts → **+**: a name, the command, the keys |
+| Linux, KDE | System Settings → Shortcuts → Add New → Command or Script |
+| Hyprland, sway | `bind = SUPER, K, exec, <the command>` in hyprland.conf; `bindsym $mod+k exec <the command>` in sway's config |
+
+**Wayland.** On Wayland no program may take a key for itself, so Kurooto doesn't pretend to: your desktop (the rows
+above) runs the command when you press the key. That works on every Wayland desktop that has keyboard shortcuts.

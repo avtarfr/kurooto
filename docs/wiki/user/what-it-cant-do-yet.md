@@ -74,7 +74,13 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 - Without Telegram, the phone app's chat can't carry files: they come as links (your Google Drive, or a sealed copy on
   your call line for a day).
 - Telegram takes files up to 50 MB.
-- It's for one person. The bot answers only you; there are no shared accounts or teams.
+- It's for one person. The bot answers only you; there are no shared accounts or teams. Friends in one course share
+  deadlines through a calendar one of them keeps, subscribed by its link ([shared class
+  calendars](classes-and-timetable.md#shared-class-calendars)), not through Kurooto.
+- It has no email address of its own: mail goes in through your own Gmail (+kurooto, or a label: [Email
+  in](google.md#email-in)). A Cloudflare Email Worker for your own domain isn't built.
+- No program may take a key for itself on Wayland, and Kurooto doesn't grab keys anywhere: the [Quick ask
+  hotkey](talking-to-kurooto.md#quick-ask-a-hotkey) is set in your system's keyboard settings.
 
 ## Planned, not built
 

@@ -72,7 +72,7 @@ its commands with "X is off: Features → X → Turn on". Some features need ano
 | Chat with your AI | free text goes to the AI you picked | | [Talking to Kurooto](talking-to-kurooto.md#chat-with-your-ai) |
 | Reminders | "remind me at 9 to call mum" | Telegram | [Reminders and deadlines](reminders-and-deadlines.md) |
 | Check-ins | asks how the day is going; replies go to your journal | Telegram | [Check-ins and journal](check-ins-and-journal.md) |
-| Deadlines | one list of what's due, with nudges, a call and an overdue check; exam mode | Telegram | [Reminders and deadlines](reminders-and-deadlines.md) |
+| Deadlines | one list of what's due, with nudges, a call and an overdue check; exam mode; dates from a photo | Telegram | [Reminders and deadlines](reminders-and-deadlines.md) |
 | Start-by dates | when to start each deadline (an estimate) | Deadlines | [Reminders and deadlines](reminders-and-deadlines.md) |
 | Subjects and timetable | your courses and classes; no calls in class | | [Classes and timetable](classes-and-timetable.md) |
 | Class packs | share or import a section's timetable and dates | Telegram, Subjects | [Classes and timetable](classes-and-timetable.md) |
@@ -97,13 +97,13 @@ its commands with "X is off: Features → X → Turn on". Some features need ano
 | Reminders with the lid shut | reminders reach your Android phone while the computer sleeps | Phone calls | [Phone calls](calls.md) |
 | Voice notes | voice messages written out and handled | Telegram | [Talking to Kurooto](talking-to-kurooto.md) |
 | Stay awake on charger | the computer doesn't sleep while plugged in | | [Your computer](your-computer.md) |
-| Calendar | your calendar's events; no calls during them | | [Classes and timetable](classes-and-timetable.md#calendar), [Google](google.md) |
+| Calendar | your calendar's events; no calls during them; class calendars others share, by link | | [Classes and timetable](classes-and-timetable.md#calendar), [Google](google.md) |
 | Notes sync | your notes in your private GitHub repository | | [Notes](notes-and-concept-graph.md) |
 | Backups | a daily zip in a folder you pick | | [Updates and backups](updates-and-backups.md) |
 | Profile sync | your setup, encrypted, for a new computer | | [Updates and backups](updates-and-backups.md) |
 | Google (Classroom, Gmail drafts) | Classroom deadlines and posts; email drafts | | [Google](google.md) |
 | Classroom → notes | Classroom posts filed into your notes | Google | [Google](google.md) |
-| Mail digest | your new mail, sorted, twice a day | Google | [Google](google.md) |
+| Mail digest | your new mail, sorted, twice a day; Email in (mail you forward to +kurooto, filed into notes) | Google | [Google](google.md) |
 | Email reply drafts | reply drafts you send with a tap | Google, Mail digest | [Google](google.md) |
 | Mail digest by email | the digest in your own inbox too | Google, Mail digest | [Google](google.md) |
 | Agent plan calendar | planned time blocks in a calendar of their own | Google | [Google](google.md) |

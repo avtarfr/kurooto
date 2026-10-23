@@ -270,9 +270,11 @@ There is no per-module route registration. `web/api.py:Api._modules` and `_card`
 | `addon` (set by `core/overlay.py:guard`) | listed under "Your add-ons" |
 
 Settings UI: `Api._settings` lists `Api.EDITABLE` sections (`you`, `notify`, `availability`, `updates`, `brain`, `ask`,
-`look`, `power`, `notes`, `files`, `quota`, `health`, `jobs`, `sources`, `agents`, `hardware`, `web`; titled from
+`look`, `power`, `notes`, `files`, `quota`, `health`, `jobs`, `sources`, `agents`, `hardware`, `web`, `date_offers`; titled from
 `Api.TITLES` where the name says little) plus the section of every enabled module whose id is a settings section,
-rendered generically by value type. Left out: `modules` (the Features page's), `autostart` (its own row), and
+rendered generically by value type. Two rows are made by hand: Starting (`_autostart_section`, after Power) and Quick
+ask (`_quick_ask_section`, after it: the `fixed` command `core/shortcuts.py:popup_command()` and the per-system steps
+`quick_ask_steps()` as its help; nothing to change there). Left out: `modules` (the Features page's), `autostart` (its own row), and
 `Api.HIDDEN` (`telegram.api_base`, `allowed_users`, `chat_id`: set by pairing; `brain.base_urls`, `models`: the brain
 page sets them, with its checks; `subjects.list`, `timetable`: their own pages). A new core section that's meant to be
 set by hand goes into `EDITABLE` (and its defaults' module into the import at the top of `_settings`). `Api._set`

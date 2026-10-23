@@ -375,6 +375,7 @@ jid = app.jobs.submit(
     why=None,  # a Calm reason for an answer that comes by itself
     lane=None,
     brain=None,  # lane "you" | "bg" | "chk"; pin to a brain id
+    images=None,  # pictures to look at (paths), kept as the `images` column (JSON); Task.images
 )
 ```
 
@@ -999,6 +1000,22 @@ them the next evening, Calm reason `meetings.actions`), `not` (cancels the job o
 keys for `Meets:` briefs). `mtg` is a core prefix (`App.callback`, `tests/unit/test_buttons.py:CORE`). Events
 `meeting_notes`, `meeting_minutes`, `meeting_button` (counts only). Settings `meetings.minutes`, `meetings.after_h`.
 Tests: `tests/unit/test_meetings.py`.
+
+## Dates offered with a button (`core/dateoffers.py`)
+
+What Photo to dates (`modules/photodates.py`), Email in (`modules/mailin.py`) and a shared class calendar
+(`modules/calendar.py:_offer_shared`) found, offered one **Add** button each; nothing is added without a tap.
+`clean_items(raw)` checks an AI's or a calendar's items (title, ISO date not before yesterday, `HH:MM` or "", type
+`deadline` | `exam` | `event`, optional `where`; repeats dropped; sorted by date and time) and `clean_classes(raw)` a
+timetable's (`subject`, `day` mon..sun, `start` < `end`). `make(app, source, items, classes, about)` keeps a batch in
+`<state>/date-offers/<id>.json` (the newest `KEEP` 100) and returns its id (None: nothing); `message(app, id, intro)`
+gives the text and buttons: `dof:<id>:<n>` (at most `SHOWN` 10), `:tt` (the classes), `:all`, `:none`. `button()`
+(a core prefix in `App.callback`; `tests/unit/test_buttons.py:CORE`) under the `date-offers` lock: a deadline or exam
+→ `Deadlines.add(source=photo | mail | shared-calendar, kind=exam | task)` (no time: 23:59); an event →
+`Reminders.add` `date_offers.remind_min` (60) before it (no time: 08:00 that day; never in the past); classes →
+`add_classes()`: `Subjects.resolve()` else a new subject in `subjects.list`, then `subjects.timetable` rows unless one
+starts then. A feature that's off is named in the answer and the item stays open. Events `dates_offered`,
+`dates_tapped`, `timetable_from_photo` (counts). Tests: `tests/unit/test_inputs.py`.
 
 ## Keep or drop (`core/keep.py`)
 

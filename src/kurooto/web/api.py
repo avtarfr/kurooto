@@ -905,6 +905,7 @@ class Api:
         "agents",
         "hardware",
         "web",
+        "date_offers",
     )
     # the core sections' titles where the section's name alone says little
     TITLES = {
@@ -915,6 +916,7 @@ class Api:
         "agents": "Skills in other AI programs",
         "hardware": "This computer",
         "web": "Dashboard",
+        "date_offers": "Dates offered (photos, mail, shared calendars)",
     }
     # Settings the page neither shows nor changes: who may talk to the bot and where it connects (set by pairing), brain
     # addresses and models (POST /api/brain sets those, with its checks), the subject list and timetable (their own
@@ -928,7 +930,15 @@ class Api:
     def _settings(self) -> dict:
         """Every setting you can change: the core sections (not the list of features that are on, which Features
         changes, nor Starting's, which has its own row) plus each enabled feature's own."""
-        from kurooto.core import agent_export, hardware, health, jobs, quota, sources  # noqa: F401 (their defaults)
+        from kurooto.core import (  # noqa: F401 (their defaults)
+            agent_export,
+            dateoffers,
+            hardware,
+            health,
+            jobs,
+            quota,
+            sources,
+        )
         from kurooto.core.palette import settings_choices as look_choices
 
         allv = self.app.settings.all()
@@ -943,7 +953,23 @@ class Api:
                 out.append({"section": sec, "title": title, "values": vals, **look_choices(self.app, sec)})
         at = next((i + 1 for i, x in enumerate(out) if x["section"] == "power"), len(out))
         out.insert(at, self._autostart_section())  # Settings → Starting, after Power
+        out.insert(at + 1, self._quick_ask_section())  # Settings → Quick ask: the command to bind to a key
         return {"sections": out}
+
+    @staticmethod
+    def _quick_ask_section() -> dict:
+        """Settings → Quick ask: the command that opens the Quick ask window (kurooto/popup.py) on this computer, to
+        bind to a key in the system's own settings, and how (core/shortcuts.py). Nothing to change here."""
+        from kurooto.core import shortcuts
+
+        cmd = shortcuts.shown(shortcuts.popup_command())
+        return {
+            "section": "quick_ask",
+            "title": "Quick ask (hotkey)",
+            "values": {"command": cmd},
+            "fixed": {"command": cmd},
+            "help": {"command": "Bind this command to a key in your system's settings. " + shortcuts.quick_ask_steps()},
+        }
 
     def _autostart_section(self) -> dict:
         """Settings → Starting: when you log in, or (Linux with systemd) when this computer starts. It changes through

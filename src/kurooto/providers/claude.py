@@ -130,6 +130,9 @@ class ClaudeCode(Brain):
     def available(self):
         return (True, "") if self.exe else (False, "Claude Code isn't installed")
 
+    def sees(self):
+        return True, ""  # Claude Code reads a picture with its Read tool, where the request says it is
+
     def after_test(self, app) -> str:
         """Nothing to set up: everything is given for each request. Say what it can do."""
         return (

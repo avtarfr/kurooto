@@ -61,7 +61,7 @@ GUARDED: dict[str, Guard] = {
     "mail.read": Guard(
         "read mail from a new sender, domain, label or search",
         ("typed", "button"),
-        "/mail read, /mail query, Features → Mail digest; never by the AI",
+        "/mail read, /mail query, /mail in label and /mail in from (Email in), Features → Mail digest; never by the AI",
     ),
     "send.out": Guard(
         "send something to someone else (mail, a message, publishing)",

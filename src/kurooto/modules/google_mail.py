@@ -23,6 +23,10 @@ Email reply drafts (a feature of its own): when the digest finds mail that needs
 your Gmail Drafts and sends it to you with Send / Edit / Discard. Nothing is sent unless you tap Send. Edit: say what
 to change; the AI rewrites it and asks again.
 
+Email in (/mail in on): mail you forward to your own address with +kurooto (example+kurooto@gmail.com), or put a label
+on (/mail in label Kurooto), is filed into your notes by the AI, and its dates come with an Add button each
+(modules/mailin.py).
+
 Mail digest by email (a feature of its own): each digest also comes to your own inbox, sent from the Google account
 you choose (a personal one, say, while the digest reads a school one) to that account's own address and nobody
 else's. A digest that mentions confidential material isn't emailed (it still comes on Telegram).
@@ -88,6 +92,13 @@ register_defaults(
         # kept only in Kurooto's data folder; needs Local AI models)
         "confidential": "count",
         "local_model": "",  # which Ollama model reads it; empty: Local AI models' helper model
+        # Email in (/mail in on): mail you forward to your address with +kurooto (example+kurooto@gmail.com), or label
+        # mail_in_label, is filed into your notes and its dates offered with an Add button each (modules/mailin.py)
+        "mail_in": False,  # Email in: mail to you+kurooto@ (or labelled) filed into notes, dates as buttons
+        "mail_in_label": "",  # a Gmail label whose mail goes in too, from anyone (you put it on, or a Gmail filter)
+        "mail_in_senders": [],  # your other addresses whose mail to +kurooto goes in (your own address always does)
+        "mail_in_anyone": False,  # True: mail to +kurooto from anyone goes in (a stranger could write into your notes)
+        "mail_in_every": "every 10m",  # how often it looks for mail sent in
     },
 )
 register_defaults("reply_drafts", {"per_day": 5, "ask_days": 3})
@@ -205,8 +216,12 @@ class MailDigest(GooglePart):
         return self.app.paths.state / "mail-digest"
 
     def start(self):
+        from kurooto.modules import mailin
+
         self.every("digest", self.setting("at") or "daily 08:00,18:00", self.digest)
         self.app.jobs.then_actions["mail_digest.done"] = self._done
+        self.every("mail_in", self.setting("mail_in_every") or "every 10m", lambda p: mailin.check(self, p))
+        self.app.jobs.then_actions[mailin.THEN] = lambda job, result, p: mailin.done(self, job, result, p)
 
     # ------------------------------------------------------------------------------------------ sorting
     def me(self) -> str:
@@ -593,7 +608,7 @@ class MailDigest(GooglePart):
                 "your mail digest now; /mail read <@domain | sender | label:Name> chooses what it may read",
                 self._cmd,
                 usage="/mail [read <rule> | unread <rule> | never <rule> | unnever <rule> | query <gmail search> | "
-                "query off | rules | confidential]",
+                "query off | rules | confidential | in [on | off | label <Name> | from <address>]]",
             )
         ]
 
@@ -636,6 +651,10 @@ class MailDigest(GooglePart):
             }[word]
         if word == "confidential":
             return self._confidential(msg)
+        if word == "in":  # Email in: mail forwarded to +kurooto, or labelled, filed into notes (modules/mailin.py)
+            from kurooto.modules import mailin
+
+            return mailin.command(self, rest)
         if word == "query":
             if not rest:
                 cur = self.query()

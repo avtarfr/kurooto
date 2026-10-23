@@ -54,6 +54,12 @@ brain. With **Local AI models** on (see [your-computer.md](your-computer.md)), a
 the quick "how hard is this?" question and makes the notes index; your main brain still does the real work. A small
 model that can't use tools just answers without them.
 
+**Reading pictures.** Photo to dates ([reminders-and-deadlines.md](reminders-and-deadlines.md#photo-to-dates)) needs
+an AI that reads pictures. agy and Claude Code open the photo where it was saved; a Gemini key gets it with the
+request. Ollama does when its model reads pictures (gemma3, gemma4, llava...; Kurooto asks Ollama, and with a model
+that doesn't it says so instead of sending it). Another OpenAI-compatible service gets the photo with the request; if
+it can't read pictures, the answer says so.
+
 **Retired:** Codex is no longer offered. If a setting named it, it's cleared, and the next request says to choose
 another AI in Settings → AI. An AI set up with an earlier version as "FreeLLMAPI" keeps working and shows as "Another
 OpenAI-compatible service".

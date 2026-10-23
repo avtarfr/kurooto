@@ -19,7 +19,7 @@ from kurooto.providers.openai_compat import PRESETS, OpenAICompat
 if TYPE_CHECKING:
     from kurooto.app import App
 
-__all__ = ["Brain", "Result", "Task", "Verdict", "build", "local", "CHOICES", "drop_retired"]
+__all__ = ["Brain", "Result", "Task", "Verdict", "build", "local", "sees", "CHOICES", "drop_retired"]
 
 register_defaults(
     "brain",
@@ -64,6 +64,22 @@ def build(app: App, which: str) -> Brain | None:
     if brain is not None and quota is not None:  # each request counts against its free limit (core/quota.py)
         brain.meter = lambda model, result: quota.count(brain, model, result)
     return brain
+
+
+def sees(app: App) -> tuple[bool | None, str]:
+    """Can the AI you picked (brain.main) read pictures? (True, ""), (False, what to do) or (None, a caution):
+    agy, Claude Code and a Gemini key do; Ollama when its model does; another service is tried."""
+    main = app.settings.get("brain.main") or ""
+    brain = build(app, main)
+    if brain is None:
+        return False, "Pick an AI first (dashboard → Settings → AI)."
+    ok, why = brain.sees()
+    if ok is False:
+        return False, (
+            f"Your AI ({CHOICES.get(main, main)}) can't read pictures: {why}. Pick one that can in Settings → AI "
+            "(agy, Claude Code, a Gemini key, or an Ollama model that reads pictures, like gemma3)."
+        )
+    return ok, why
 
 
 def local(app: App) -> Brain | None:

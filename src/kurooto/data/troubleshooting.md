@@ -48,6 +48,8 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | "that button is from a feature that's off now" | Turn the feature back on, or ignore the old message. |
 | Telegram's "/" menu is out of date | It updates within a minute of a feature going on or off, and every 15 minutes for skills. Turning `telegram.menu` off and on sets it again. |
 | "Voice notes are off" | Turn on Voice notes (Features); it needs a Gemini key. |
+| "can't read pictures" after a photo with `dates` | The AI you picked can't read photos (an Ollama model without vision). Settings → AI: agy, Claude Code, a Gemini key, or an Ollama model that reads pictures (gemma3) ([Photo to dates](reminders-and-deadlines.md#photo-to-dates)). |
+| `kurooto ask --popup` opens no window | This Python has no Tk (on Linux install `python3-tk` or `tk`), or there's no display; `kurooto ask` works in a terminal. The key that opens it is set in your system's keyboard settings ([Quick ask](talking-to-kurooto.md#quick-ask-a-hotkey)). |
 | "Couldn't get that file" (a big file) | Telegram lets bots fetch files up to 20 MB. Put the file into your notes or files folder yourself. |
 | "… Telegram takes files up to 50 MB" when Kurooto sends you something | Turn on [Drive upload](google.md): bigger files then come as a Google Drive link. |
 | I don't want Telegram | Pick **The Kurooto phone app instead** on the setup page's Chat step (it needs Phone calls), or turn Telegram off in Features once Phone calls is on: everything then comes to the app's chat ([phone-app.md](phone-app.md#using-the-app-instead-of-telegram)). |

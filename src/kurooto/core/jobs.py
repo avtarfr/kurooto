@@ -205,9 +205,10 @@ class Jobs:
             ("deadline", "real"),
             ("brain_req", "text"),
             ("receipt", "text"),
+            ("images", "text"),
         ):
             if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline;
-                # the AI it was pinned to; the run receipt
+                # the AI it was pinned to; the run receipt; pictures it looks at (a JSON list of paths)
                 self._db.execute(f"alter table jobs add column {col} {kind}")
         self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
         self._lanes: dict[str, tuple[str, threading.Thread]] = {}  # lane -> (job, the thread running it)
@@ -227,6 +228,7 @@ class Jobs:
         why: str | None = None,
         lane: str | None = None,
         brain: str | None = None,
+        images: list | None = None,
     ) -> str:
         """Queue an AI request. background=True: work nobody is waiting for, which waits for the charger when the
         laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools).
@@ -234,14 +236,16 @@ class Jobs:
         answer to something asked, never held.
         lane: "you" (your own request) or "bg" / "chk" (automatic work); unset, background work goes in "bg".
         brain: run it on this AI (agy, claude, gemini, ...) instead of the main one; another AI program takes over if
-        it can't."""
+        it can't.
+        images: pictures it looks at (paths): an API brain gets them with the request; the prompt says where they are
+        for agent programs, which open them."""
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
         lane = lane if lane in LANES else ("bg" if background else "you")
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"
-                "background,text_only,why,lane,brain_req) values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?)",
+                "background,text_only,why,lane,brain_req,images) values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     jid,
                     (title or prompt_clean.split("\n")[0])[:80],
@@ -257,6 +261,7 @@ class Jobs:
                     why,
                     lane,
                     brain,
+                    json.dumps([str(p) for p in images]) if images else None,
                 ),
             )
         self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean), lane=lane)
@@ -473,7 +478,8 @@ class Jobs:
         )
         minutes = (s.get("brain.timeout_min") or {}).get(level, 15)
         tools = agent_tools(self.app)
-        text_only = bool(self._read("select text_only from jobs where id=?", (jid,))[0])
+        text_only, pics = self._read("select text_only, images from jobs where id=?", (jid,))
+        text_only = bool(text_only)
         from kurooto.core import assembler  # what's remembered that your message refers to, within its budget
 
         memory, self.recalled[jid] = assembler.for_request(self.app, job)
@@ -489,6 +495,7 @@ class Jobs:
             mcp=None if text_only else mcp_command(),
             mcp_env={**run_env(self.app.paths), ENV_JOB: jid},  # its tool uses come back marked as its steps
             text_only=text_only,
+            images=[Path(p) for p in json.loads(pics or "[]")],
             on_process=lambda pid: self._mark(jid, proc=_process(pid)),
             stop=stop,
         )
