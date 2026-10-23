@@ -89,6 +89,17 @@ final class Prefs {
     static String tone(Context c, boolean alarm) { return sp(c).getString(alarm ? "alarmTone" : "callTone", ""); }
     static void setTone(Context c, boolean alarm, String uri) { sp(c).edit().putString(alarm ? "alarmTone" : "callTone", uri == null ? "" : uri).apply(); }
 
+    /** Bedside mode (0.6.0): open by itself while charging between these hours ("HH:MM"; off by default), and keep
+     *  the screen on while it's charging (on by default). */
+    static boolean bedsideAuto(Context c) { return sp(c).getBoolean("bedsideAuto", false); }
+    static String bedsideFrom(Context c) { return sp(c).getString("bedsideFrom", "22:00"); }
+    static String bedsideTo(Context c) { return sp(c).getString("bedsideTo", "07:00"); }
+    static boolean bedsideKeepOn(Context c) { return sp(c).getBoolean("bedsideKeepOn", true); }
+    static void setBedside(Context c, boolean auto, String from, String to) {
+        sp(c).edit().putBoolean("bedsideAuto", auto).putString("bedsideFrom", from).putString("bedsideTo", to).apply();
+    }
+    static void setBedsideKeepOn(Context c, boolean on) { sp(c).edit().putBoolean("bedsideKeepOn", on).apply(); }
+
     static long lastUpdateCheck(Context c) { return sp(c).getLong("updateCheck", 0); }
     static void setUpdate(Context c, String name, String link) {
         sp(c).edit().putLong("updateCheck", System.currentTimeMillis()).putString("updateName", name).putString("updateLink", link).apply();

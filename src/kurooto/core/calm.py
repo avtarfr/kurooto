@@ -272,6 +272,7 @@ REASONS: dict[str, Reason] = {
         ),
         R("health.alarm", "tonight's alarm might not ring", exempt="alarm", stop=None),
         R("calls.device_paired", "a device was paired with your call line", exempt="security", stop=None),
+        R("calls.shortcut_made", "a Tell Kurooto link was made on a paired phone", exempt="security", stop=None),
         R("reply_drafts.approval", "a reply draft waiting for Send, Edit or Discard", exempt="approval", stop=None),
         R("agy.consent", "whether agy may use Kurooto's tools", exempt="approval", stop=None),
         R(

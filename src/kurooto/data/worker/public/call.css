@@ -44,3 +44,9 @@ li { margin: 4px 0; }
 textarea { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: inherit; }
 .status { font-size: 14px; }
 .status:empty { display: none; }
+/* settings: the Tell Kurooto link, its QR code, small print */
+input.link { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: 13px/1.4 ui-monospace, monospace; }
+.qr { background: #fff; border-radius: 10px; padding: 8px; width: min(240px, 100%); align-self: center; }
+.qr svg { display: block; width: 100%; height: auto; }
+.small { font-size: 13px; }
+code { font: 14px ui-monospace, monospace; color: var(--fg); }

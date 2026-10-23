@@ -14,7 +14,11 @@
   var set = function (k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
 
   function msg(text, bad) { var m = $('msg'); m.hidden = false; m.textContent = text; m.className = 'card' + (bad ? ' err' : ''); }
-  function show(id) { ['android', 'ios', 'web', 'done'].forEach(function (s) { $(s).hidden = s !== id; }); }
+  function show(id) {
+    ['android', 'ios', 'web', 'done'].forEach(function (s) { $(s).hidden = s !== id; });
+    // an iPhone that's paired: the Tell Kurooto Shortcut's recipe, with a link made for it (shortcut.js)
+    if (id === 'done' && ios && standalone && get('kurootoDevice') && window.KurootoShortcut) { $('shortcut').hidden = false; window.KurootoShortcut.load(); }
+  }
 
   // the service worker reads the device key from IndexedDB (it can't see localStorage)
   function idbPut(key, value) {

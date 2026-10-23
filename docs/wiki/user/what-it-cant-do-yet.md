@@ -40,7 +40,8 @@ The iPhone gets a web app on the Home Screen (iOS 16.4 or newer), not an app fro
 - **calls are notifications you tap**: they can't ring like a phone call, ring on silent, or show on the lock screen as
   a call;
 - **reminders with the lid shut don't reach an iPhone**;
-- there's no "Tell Kurooto" Shortcut yet.
+- the "Tell Kurooto" Shortcut is built by hand from a five-step recipe: Apple doesn't let a web page make a Shortcut
+  file. It reads out Kurooto's first answer only ("On it." for longer jobs); the rest comes in the chat.
 
 If you need calls that really ring, use an Android phone. See [Phone app](phone-app.md#iphone).
 
@@ -51,6 +52,9 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 - It looks plain (no Material design yet), and has no home screen widget or Today screen yet.
 - Phone makers that close background apps hard can still delay rings; the app's checklist says what to change, but not
   every phone has been tried.
+- Bedside mode shows the calls due in the next day (from your call line), not reminders, deadlines or classes. On
+  Android 10 and newer, "open by itself while charging" is a full-screen notification: with the phone in use it only
+  shows a notice to tap. How dim "very dim" is depends on the phone's screen.
 
 ## Phone calls and voice
 

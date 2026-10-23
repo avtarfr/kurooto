@@ -138,6 +138,20 @@ final class Line {
         }
     }
 
+    /** Bedside mode: the calls due in the next day (the wake-up call among them) and how much waits for you, from
+     *  the schedule your computer pushed to the call line; null if unreachable or an older line without it. */
+    static JSONObject upcoming(Context c) {
+        Net.Reply r = Net.request("GET", Prefs.url(c) + "/upcoming", null, null, Prefs.device(c), 20000);
+        try {
+            if (!r.ok()) return null;
+            JSONObject j = new JSONObject(r.body);
+            Prefs.setAssistant(c, j.optString("assistant", ""));
+            return j;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     static final int NOT_SENT = 0, WAITING = 1, SENT = 2;
 
     /** Upload one file to your computer's notes inbox, in 512 KB parts, with this phone's key. With your computer

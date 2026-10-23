@@ -612,6 +612,11 @@ class Api:
                 return 200, {"ok": self.app.modules["calls"].revoke(str(b.get("id", "")))}
             except Exception as e:
                 return 200, {"ok": False, "error": f"{e}"[:300]}
+        if path == "phone/shortcut/revoke":  # a Tell Kurooto link (the iPhone Shortcut), 0.6.0
+            try:
+                return 200, {"ok": self.app.modules["calls"].shortcut_revoke(str(b.get("id", "")))}
+            except Exception as e:
+                return 200, {"ok": False, "error": f"{e}"[:300]}
         if path == "phone/ntfy":  # an ntfy account token (or "" to clear it): checked, kept, sent to the call line
             calls = self.app.modules.get("calls")
             if calls is None:
@@ -747,12 +752,14 @@ class Api:
             "on": True,
             **calls.status(),
             "devices": None,
+            "shortcuts": None,
             "ntfy_token": bool(self.app.secrets.get("calls.ntfy_token")),
             "ntfy_limited": calls.ntfy_limited(),
         }
         if calls.connector.connected:
             try:
                 out["devices"] = calls.devices()
+                out["shortcuts"] = calls.shortcuts()
             except Exception as e:
                 out["error"] = f"{e}"[:200]
         return out

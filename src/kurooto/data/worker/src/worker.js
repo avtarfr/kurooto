@@ -16,6 +16,10 @@
 //   - Chat (0.5.16): what you type in the phone app goes through /chat to your computer like a Telegram message;
 //     its answers come back the way messages do (chat-say), and this keeps the chat's last 50 messages (3 days at
 //     most) so a phone can catch up with the computer off.
+//   - Tell Kurooto (0.6.0): a paired phone can make one Shortcut link for itself ("tk1.<id>.<secret>", only its hash
+//     kept here). The iPhone Shortcut posts what you said to /tell/<token>; it goes on as a chat message from that
+//     phone, and nothing else: the link opens no other door here. Your computer lists them and can revoke one;
+//     unpairing the phone ends its link too.
 //   - Files for the chat (0.5.18): where Telegram would get a document, your computer can leave a sealed copy here
 //     for a day ("file-put"; AES-256-GCM with a key made on your computer that's only in the link's #fragment, so
 //     what's kept here can't be opened without the link); /file is the page that fetches it (/sealed/<id>) and opens
@@ -195,6 +199,9 @@ async function githubNote(env, slug) {
 }
 
 const MAX_DEVICES = 10;
+// a Tell Kurooto link (one per paired phone): "tk1.<8 hex id>.<32 hex secret>", in the Shortcut's URL
+const TELL_TOKEN = /^tk1\.([0-9a-f]{8})\.([0-9a-f]{32})$/;
+const TELL_TEXT = 4000;
 const RING_S = 60, ALARM_RING_S = 300;
 const ON_CALL_MS = 90e3; // a live call checks in every few seconds (/tasks); this long after the last one it's over
 const ITEM_ID = /^[0-9a-f]{16}$/;
@@ -298,7 +305,7 @@ export class Line {
     const gen = (await sha256(`gen:${this.env.CALL_SECRET || ''}`)).slice(0, 16);
     if (this.gen === gen) return;
     const was = await this.store.get('gen');
-    if (was && was !== gen) await this.store.delete(['devices', 'tickets', 'paircodes', 'pairfail']);
+    if (was && was !== gen) await this.store.delete(['devices', 'tickets', 'paircodes', 'pairfail', 'tells']);
     if (was !== gen) await this.store.put('gen', gen);
     this.gen = gen;
   }
@@ -311,6 +318,7 @@ export class Line {
     if (p === '/tick') return json(await this.tick());
     if (p === '/pair/claim' && req.method === 'POST') return this.claim(req);
     if (p.startsWith('/sealed/') && req.method === 'GET') return this.fileGet(p.slice(8)); // the key is in the link
+    if (p.startsWith('/tell/tk1.')) return this.tellSend(req, p.slice(6)); // a Shortcut: its token is its only key
     const who = await this.auth(req.headers.get('x-call-secret'));
     // a refused request's body is read first: answering before it has all arrived trips up the local dev server
     const refuse = async (error, status) => { try { await req.arrayBuffer(); } catch { /* none */ } return json({ error }, status); };
@@ -337,6 +345,18 @@ export class Line {
         return json({ seq: log.seq, msgs: log.msgs.filter((m) => m.seq > after), ...(await this.outboxFor(who.id)), assistant: ((await this.store.get('names')) || {}).assistant || '' });
       }
       if (p === '/outbox') return json(await this.outboxFor(who.id));
+      if (p === '/upcoming') { // bedside mode (Android, 0.6.0): the calls due in the next day, from the schedule pushed
+        const now = Math.floor(Date.now() / 1000), names = (await this.store.get('names')) || {};
+        const calls = ((await this.store.get('schedule')) || []).filter((c) => c.at >= now - 60).slice(0, 8)
+          .map((c) => ({ at: c.at, reason: String(c.reason || '').slice(0, 200), alarm: !!c.alarm }));
+        return json({ calls, waiting: (await this.openItems()).length, computer: this.online() ? 'online' : 'offline', assistant: names.assistant || '' });
+      }
+      if (p === '/shortcut/new' && req.method === 'POST') return this.tellNew(req, who);
+      if (p === '/shortcut/off' && req.method === 'POST') return json({ ok: await this.tellDrop((t) => t.device === who.id) });
+      if (p === '/shortcut') {
+        const mine = Object.entries((await this.store.get('tells')) || {}).find(([, t]) => t.device === who.id);
+        return json({ shortcut: mine ? { id: mine[0], created: mine[1].created, used: mine[1].used || null } : null });
+      }
       if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/?v=${await this.voice('outgoing')}#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
       if (p === '/ring-reply' && req.method === 'POST') {
         const { since = '', action = '' } = await req.json();
@@ -503,13 +523,21 @@ export class Line {
       const d = (await this.store.get('devices')) || {};
       return { devices: Object.entries(d).map(([id, v]) => ({ id, name: v.name, kind: v.kind, created: v.created, push: !!v.push, seal: v.seal || '' })) };
     }
-    if (m.op === 'revoke') {
+    if (m.op === 'revoke') { // `device`: m.id is the admin request's own (a line before 0.6.0 read m.id: never found)
+      const dev = String(m.device || '');
       const d = (await this.store.get('devices')) || {};
-      const had = !!d[m.id];
-      delete d[m.id];
+      const had = !!d[dev];
+      delete d[dev];
       await this.store.put('devices', d);
+      await this.tellDrop((t) => t.device === dev); // its Tell Kurooto link goes with it
       return { ok: had };
     }
+    if (m.op === 'tells') {
+      const d = (await this.store.get('devices')) || {};
+      const t = (await this.store.get('tells')) || {};
+      return { tells: Object.entries(t).map(([id, v]) => ({ id, device: v.device, device_name: d[v.device]?.name || '', created: v.created, used: v.used || null })) };
+    }
+    if (m.op === 'tell-revoke') return { ok: await this.tellDrop((_t, id) => id === String(m.tid || '')) };
     if (m.op === 'ticket') return { ticket: await this.mintTicket(Math.min(Number(m.hours) || 2, 24)) };
     if (m.op === 'bye') return this.bye(m);
     if (m.op === 'notify') return this.notify(m.item || {}, Number(m.rev) || 0, m.assistant);
@@ -1004,6 +1032,68 @@ export class Line {
       at += b.length;
     }
     return new Response(out, { headers: { 'content-type': 'application/octet-stream', 'cache-control': 'no-store', ...CORS } });
+  }
+
+  // ------------------------------------------------------------------------------------- Tell Kurooto
+  // A paired phone makes (or remakes) its Shortcut link; an older one of that phone's stops working.
+  async tellNew(req, who) {
+    try { await req.arrayBuffer(); } catch { /* no body */ }
+    const devices = (await this.store.get('devices')) || {};
+    if (!devices[who.id]) return json({ error: 'unknown device' }, 403);
+    const t = (await this.store.get('tells')) || {};
+    for (const [k, v] of Object.entries(t)) if (v.device === who.id) delete t[k];
+    const id = randomHex(4), secret = randomHex(16);
+    t[id] = { hash: await sha256(secret), device: who.id, created: new Date().toISOString(), used: null };
+    await this.store.put('tells', t);
+    await this.event({ name: 'shortcut_made', id, device: who.id, device_name: devices[who.id].name });
+    return json({ ok: true, id, token: `tk1.${id}.${secret}`, url: `${this.env.PUBLIC_URL}/tell/tk1.${id}.${secret}` });
+  }
+
+  // Drop the links that match; true if any did.
+  async tellDrop(match) {
+    const t = (await this.store.get('tells')) || {};
+    let n = 0;
+    for (const [id, v] of Object.entries(t)) if (match(v, id)) { delete t[id]; n++; }
+    if (n) await this.store.put('tells', t);
+    return n > 0;
+  }
+
+  // What the Shortcut sends: {"text"} as JSON, a form or plain text. It goes on exactly like a chat message typed on
+  // the phone the link belongs to (now, or kept in the outbox); the answer is plain text for the Shortcut to speak.
+  async tellSend(req, token) {
+    const text = (s, status = 200) => new Response(s, { status, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+    const raw = req.method === 'POST' ? await req.text().catch(() => '') : '';
+    const m = TELL_TOKEN.exec(String(token || ''));
+    const t = (await this.store.get('tells')) || {};
+    const it = m && t[m[1]];
+    const devices = (await this.store.get('devices')) || {};
+    if (!it || !same(it.hash, await sha256(m[2])) || !devices[it.device]) return text('This Tell Kurooto link was revoked or is wrong. Make a new one in the Kurooto app on your iPhone (Settings).', 401);
+    if (req.method !== 'POST') return text('This is your Tell Kurooto link. Use it in the Shortcut (method POST); see the Kurooto app\'s Settings.', 405);
+    if (raw.length > 16000) return text('That was too long.', 413);
+    let said = '';
+    const ctype = req.headers.get('content-type') || '';
+    try {
+      if (ctype.includes('json')) said = JSON.parse(raw || '{}').text;
+      else if (ctype.includes('form')) said = new URLSearchParams(raw).get('text');
+      else said = raw;
+    } catch { said = ''; }
+    said = String(said || '').trim().slice(0, TELL_TEXT);
+    if (!said) return text('I heard nothing to send.', 400);
+    t[m[1]].used = new Date().toISOString();
+    await this.store.put('tells', t);
+    const id = randomHex(8);
+    const body = { device: it.device, at: Date.now(), id, ts: Date.now(), n: randomHex(16), text: said, via: 'shortcut' };
+    if (this.online() && !(await this.outboxBusy())) {
+      const r = await this.relay('POST', '/chat', JSON.stringify(body));
+      if (r.status !== 503) {
+        let j = {};
+        try { j = JSON.parse(r.body || '{}'); } catch { /* not JSON */ }
+        const out = (j.said || []).map((x) => String(x.text || '')).filter(Boolean).join('\n\n');
+        return text(out || j.note || j.error || (r.status < 300 ? 'Sent.' : 'That did not go through.'), r.status < 300 ? 200 : r.status);
+      }
+    }
+    if (!(await this.outboxPut('chat', { id: it.device }, id, body))) return text(OUTBOX_FULL, 507);
+    return text(((await this.store.get('texts')) || {}).chat_queued || 'Your computer is off: this waits on your call line and goes to it when it is back.');
   }
 
   // ------------------------------------------------------------------------------------- the phone outbox

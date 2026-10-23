@@ -60,6 +60,7 @@ public class ListenService extends Service {
     private Vibrator vibrator;
     private String ringingSince = "";
     private final Handler main = new Handler(Looper.getMainLooper());
+    private android.content.BroadcastReceiver dock; // bedside mode opening by itself while charging (BedsideActivity)
 
     static void start(Context c) {
         Intent i = new Intent(c, ListenService.class);
@@ -118,6 +119,7 @@ public class ListenService extends Service {
         super.onCreate();
         instance = this;
         channels(this);
+        dock = BedsideActivity.watch(this);
     }
 
     /** The quiet "listening" notification (it names your assistant). */
@@ -148,6 +150,7 @@ public class ListenService extends Service {
         running = false;
         if (thread != null) thread.interrupt();
         stopRing();
+        if (dock != null) try { unregisterReceiver(dock); } catch (Exception ignored) { }
         instance = null;
         super.onDestroy();
     }
@@ -284,6 +287,8 @@ public class ListenService extends Service {
                     .addAction(new Notification.Action.Builder(null, "Answer", answerPi).build());
             nm.notify(ID_CALL, b.build());
         }
+        // bedside mode keeps the screen on, and then Android only shows a heads-up: ring full screen there instead
+        if (BedsideActivity.visible) try { startActivity(full); } catch (Exception ignored) { }
         ringingSince = since;
         startRing(alarm);
         main.postDelayed(() -> { if (since.equals(ringingSince)) { stopRing(); cancel(ID_CALL); } }, ringMs);
