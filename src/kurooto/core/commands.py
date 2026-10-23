@@ -3,7 +3,7 @@
 once (Intent.examples), in groups, each with its page in the user wiki.
 
     /help           the index: one line per group with its commands (of what's on), and "/help <group>" for the rest
-                    (always this form since 0.5.22: with everything merged, the full list no longer fits one message)
+                    (always this form since 0.6.0: with everything merged, the full list no longer fits one message)
     /help <group>   one group in full (talking, reminders, calls, ...): what each command does, what you can just
                     say, the features in it that are off, and its wiki page
     /help all       every group, one message each

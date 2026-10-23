@@ -144,7 +144,7 @@ Timeouts per level: `brain.timeout_min`.
    the main AI against the first of `brain.fallback`), that first fallback moves ahead of main.
 3. `_last_resort(main)`: only when main is `gemini`, the first agent program that is available and `has_worked()` is
    appended.
-4. The automatic order (0.5.22, `providers/fallback.py`), only when no fallback is picked: `candidates(app, skip)`
+4. The automatic order (0.6.0, `providers/fallback.py`), only when no fallback is picked: `candidates(app, skip)`
    appends the brains of `AUTO = ("agy", "claude", "gemini")` not already in the chain and set up here (`ready()`:
    built, `available()`, and for a `cli` brain `has_worked()`). They are tried only after a failure whose verdict is in
    `brain.fallback_on` (`triggers()`, default `{"rate_limited"}`; also `auth`, `timeout`) happened in this request, or

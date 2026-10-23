@@ -223,7 +223,7 @@ An action is a function `fn(app, args) -> dict` in `ACTIONS`: `journal.add`, `no
 Today page's **+30 min**), `checkin.defer` (to tomorrow morning), `ask`, `question.answer`, `study.mode` (`{on}`:
 `study_mode`, which `/study mode on|off` and its intent call too: it sets `look.study_mode` and emits `study_mode`),
 `study.timer` (`{do: start|pause|reset, subject}`: `modules/study.py:Study.timer_start`, `timer_pause`,
-`timer_reset`), and the Study pane's COURSE box (0.5.22): `subject.policy` (`{subject, policy}`:
+`timer_reset`), and the Study pane's COURSE box (0.6.0): `subject.policy` (`{subject, policy}`:
 `Subjects.set_ai_policy`), `notes.pdf` (`{subject}`: `core/coursepdf.command`), `draft.check` (`{path, subject?,
 text?}`: `Drafts.check(..., via="dashboard")`; the comments come as a message).
 

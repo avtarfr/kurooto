@@ -99,7 +99,7 @@ under `KUROOTO_HOME`). Where each kind of note goes is decided only by `core/lay
 how_to_help, inbox, course, lecture, concept, exam_prep, doubts, home, research, project, runs, ...), two `PRESETS`
 (`kurooto` and `zettelkasten`), per-kind overrides in `notes.paths`, and `files.folder` for binary files. Use
 `layout.path(app, kind, **fields)`, `layout.rel`, `layout.link`, `layout.file_dir`, `layout.frontmatter`; never build
-a notes path by hand. Links between notes go through `layout.note_link(app, target, label, from_note=)` (0.5.22):
+a notes path by hand. Links between notes go through `layout.note_link(app, target, label, from_note=)` (0.6.0):
 `notes.links` "wiki" gives `[[target|label]]`, "markdown" gives `[label](rel/path.md)` relative to `from_note` (else
 the notes root; spaces `%20`). Read links back with `layout.link_targets(text, from_rel)` / `Layout.note_targets`,
 which take both styles; never match `[[` by hand, so a switch can't break a reader. `describe()` tells the AI the
@@ -410,7 +410,7 @@ jid = app.jobs.submit(
   need one (the concept graph) count tries themselves.
 - **Deferral**: background work whose free limits are kept for the user goes back to `queued` with `not_before`
   (`_defer`, event `job_deferred`); `resume()` clears it when a limit answers again.
-- **Waiting for the internet** (0.5.22, `_hold`): with `app.helper.holds()` (the internet down and
+- **Waiting for the internet** (0.6.0, `_hold`): with `app.helper.holds()` (the internet down and
   `local_helper.offline` on), `_run` keeps only brains on this computer (`Helper.here`: `OpenAICompat.local()`); with
   none, the job goes back to `queued` with `held` (when it first waited) and `held_until` (now + `RETRY_S`, 120 s),
   event `job_held`. A job that waited already tries its brain at its next look unless `Helper.sure()`
@@ -441,7 +441,7 @@ jid = app.jobs.submit(
   never delivered, so they get none. Tests run with it off (`tests/conftest.py:no_receipts`);
   `tests/unit/test_receipt.py` turns it on. When the request was told remembered items (below), the line ends
   "· used N remembered items" (`receipt(..., recalled=)`; it stays when the line is shortened).
-- **Plan line** (0.5.22, `jobs.plan_line`): in `_run`, after `quota.arrange` and before the first brain runs,
+- **Plan line** (0.6.0, `jobs.plan_line`): in `_run`, after `quota.arrange` and before the first brain runs,
   `Jobs.plan_line(job, chain[0], level, recalled)` sends one line (`kind="info"`, `why="asked"`, `reply_to` the
   request) when the job is lane `you`, not quiet, not background, the user isn't on a call
   (`availability.on_call_until()`), and `Jobs.expected(brain, level)` (the median `seconds` of the last 9 ok lane-`you`
@@ -661,7 +661,7 @@ between `TICK_S` ticks; after network outages). Messages that couldn't reach Tel
 
 ## The offline helper (`core/helper.py`)
 
-`Helper` (`app.helper`), 0.5.22: a small model on the processor through Ollama (`ollama_models.toml` `cpu-helper`,
+`Helper` (`app.helper`), 0.6.0: a small model on the processor through Ollama (`ollama_models.toml` `cpu-helper`,
 `qwen2.5:1.5b-instruct`, about 1 GB; or `local_helper.model`) for quick decisions, and the queue's behaviour while the
 internet is down.
 
@@ -801,7 +801,7 @@ same answer (wrapped to count the bytes read; use it as a context manager) and r
   `other`). `record` takes a thread lock and the `egress` file lock (2 s; on timeout the count is dropped) and never
   raises. `attach(app)` (in `App.__init__`) points it at the running app's state folder and settings; before that
   (a bare CLI command, the launcher) nothing is counted and only `HOSTS` applies.
-- **Is the internet down?** (0.5.22) `urlopen` also tells `seen(host, err)` each outcome, in memory only (`_net`, reset
+- **Is the internet down?** (0.6.0) `urlopen` also tells `seen(host, err)` each outcome, in memory only (`_net`, reset
   by `attach`): an answer (an `HTTPError` too) clears the failures; a failure to reach the host (`URLError`, `OSError`,
   timeouts; not `Blocked`) is added. `net_down()`: failures to `NET_HOSTS` (2) hosts or more, the last within
   `NET_FRESH_S` (600 s), with no answer since. `failed_since(t)`: a failure after `t` with no answer after it.
@@ -1091,7 +1091,7 @@ keys for `Meets:` briefs). `mtg` is a core prefix (`App.callback`, `tests/unit/t
 `meeting_notes`, `meeting_minutes`, `meeting_button` (counts only). Settings `meetings.minutes`, `meetings.after_h`.
 Tests: `tests/unit/test_meetings.py`.
 
-**People in the weekly summary** (0.5.22): `week_line(app, days=7)` is one line built only from project notes
+**People in the weekly summary** (0.6.0): `week_line(app, days=7)` is one line built only from project notes
 (`infer.projects_with`, de-duplicated by note and surname): "met" from the `minutes-YYYY-MM-DD` block keys
 (`MINUTES_DAY`) and `Last met:` dates in the window, "next" from `next_after()` within 7 days (sorted by time), and
 "not met for a while" for notes with a `Meets:` schedule whose `last_met()` is `QUIET_DAYS` (21) or more ago. "" when

@@ -205,7 +205,7 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 
 - Kurooto's text lives in marked blocks: `<!-- kurooto:<key> ... -->` ... `<!-- /kurooto:<key> -->`, replaced as a
   whole by `put_block()`. Keys: `seen` (a concept note's "Seen in"), `concepts` (the book's index note), `books` (the
-  course page's "From the books"), `notation` (0.5.22: the Notation table), `merges` (what a merge brought in) and
+  course page's "From the books"), `notation` (0.6.0: the Notation table), `merges` (what a merge brought in) and
   `merged-into` (a redirect, put under the title by `put_block_top`). Block keys are matched with `\b` after the key,
   so a key mustn't be a prefix of another before a hyphen (hence `merges`, not `merged`).
 - Links are lines `- relation:: [[target]] — reason` (`link_line`; with `notes.links` "markdown",
@@ -238,7 +238,7 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 | `texts/<hash16>.txt` | the copy of an item's text that's read |
 | `garden.json` | `{"queue": [slugs], "last": {slug: date}}` |
 | `notation.json` | `{slug: [{book, batch, source, symbol, what, quote}]}` |
-| `made.json` | `{slug: outside_hash}` of notes the graph made (0.5.22 on) |
+| `made.json` | `{slug: outside_hash}` of notes the graph made (0.6.0 on) |
 | `dupes.json` | look-alike pairs, their answers and before-copies (see Near-duplicates) |
 | `budget.json` | `{"brains": {"<bulk AI>": {learned, why, capacity, capacity_at, capacity_kind, hold_until, last_hit: {at, kind, reset, fit}, done: [batch times, 8 days], night, nights: {"<morning date>": {kind, batches, cost, how, used, spent, hit}}}}}` (30 nights kept) |
 | `pending/<jobid>.json` | a batch waiting for its second look |
@@ -268,7 +268,7 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   (hourly, `plan_night`) books a one-off `integrate:early` (action `integrate.soon`) when the next night should start
   before `integrate.at` (`Budget.next_start`), and cancels it otherwise.
 
-## Near-duplicates and merging (0.5.22, `core/graphmerge.py`)
+## Near-duplicates and merging (0.6.0, `core/graphmerge.py`)
 
 - **Finding** (`conceptgraph.near_duplicates(index, skip, focus, cutoff=DUP_COSINE)`, no AI): over notes that are
   `concept_like` (not a dated note, `course`, `class-log`, `exam-prep`, `doubts`, `index`, `readme`, nor under a
@@ -307,11 +307,11 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
     the pair is `undone` (askable again after `REASK_DAYS`).
 - State `dupes.json`: `{"pairs": {pid: {a, b, why, shared, score, asked, state, at, journal: {path: [old, new]},
   before}}, "merges": {a: [{pid, from, title, day, text}]}, "sent", "fresh", "cursor"}`; `made.json`: `{slug:
-  outside_hash at creation}` for notes `write()` made from 0.5.22 on (older notes count as yours: they keep their
+  outside_hash at creation}` for notes `write()` made from 0.6.0 on (older notes count as yours: they keep their
   text when merged).
 - Events `integrate_duplicates` (pairs asked), `integrate_duplicate` (act). Tests: `tests/unit/test_graph_dupes.py`.
 
-## Notation crosswalk (0.5.22)
+## Notation crosswalk (0.6.0)
 
 - The batch answer's concepts carry `notation: [{symbol, what, quote}]` (`BATCH_PROMPT`, `PROMPT_VERSION` 2;
   `read_batch` keeps at most `MAX_NOTATION` = 4, `Proposed.notation`, defaulted so old pending files revive).

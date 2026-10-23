@@ -130,7 +130,7 @@ def test_mcp_server_end_to_end(live):
         assert c.rpc("tools/call", {"name": "nope", "arguments": {}}, 6)["error"]["code"] == -32602
         assert c.rpc("tools/call", {"arguments": {}}, 7)["error"]["code"] == -32602
         assert c.rpc("tools/call", {"name": "list_notes", "arguments": [1]}, 8)["result"]["isError"] is True
-        uris = [x["uri"] for x in c.rpc("resources/list", mid=9)["result"]["resources"]]  # (0.5.22) what it runs
+        uris = [x["uri"] for x in c.rpc("resources/list", mid=9)["result"]["resources"]]  # (0.6.0) what it runs
         assert uris == ["kurooto://self", "kurooto://manual"]
         assert c.rpc("prompts/list", mid=9)["error"]["code"] == -32601
         c.send(b"{not json")
@@ -579,7 +579,7 @@ def test_usage_counts_every_try_and_limit_hits(chat):
         app.jobs.submit("one", quiet=True, effort="medium")
         app.jobs.run_next()
         ai.mode = "ok"
-        providers.fallback.clear(app, "custom")  # (0.5.22) else skipped until its limit's reset
+        providers.fallback.clear(app, "custom")  # (0.6.0) else skipped until its limit's reset
         app.jobs.submit("two", quiet=True, effort="medium")
         app.jobs.run_next()
     finally:

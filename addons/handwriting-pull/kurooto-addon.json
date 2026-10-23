@@ -3,7 +3,7 @@
   "title": "Handwriting from the cloud",
   "description": "Copies new handwritten pages from a cloud folder (Google Drive, OneDrive, Dropbox, Nextcloud...) with rclone into Handwritten notes' folder every 2 hours, skipping metered connections; never deletes anything.",
   "version": "1.0.0",
-  "kurooto": ">=0.5.22",
+  "kurooto": ">=0.6.0",
   "license": "Apache-2.0",
   "features": ["hw_pull"],
   "commands": [{"name": "hwpull", "what": "when it last pulled; /hwpull now pulls now"}],

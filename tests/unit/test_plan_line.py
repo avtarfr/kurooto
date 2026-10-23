@@ -1,4 +1,4 @@
-"""The plan line (0.5.22): a text request of yours that usually takes more than 20 s on that AI gets one short line
+"""The plan line (0.6.0): a text request of yours that usually takes more than 20 s on that AI gets one short line
 first ("Searching your notes, then answering (about 40 s with ...)"), guessed from the last requests; never for quiet
 or background work, never while you're on a call, and jobs.plan_line turns it off."""
 

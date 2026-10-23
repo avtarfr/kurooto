@@ -9,7 +9,7 @@ signed updates when it's ready.
   also Settings → notes and `kurooto setup notes`, reads the folder without AI (daily-note names and folder, link
   style, header keys, subject folders, inbox) and proposes `notes.layout` + `notes.paths` with a confidence per line
   and a preview; Kurooto's own notes move as one plan shown first, with Undo from a move log. ~~Not yet: writing
-  markdown links instead of wikilinks for folders that use them.~~ (0.5.22: `notes.links` wiki or markdown, proposed
+  markdown links instead of wikilinks for folders that use them.~~ (0.6.0: `notes.links` wiki or markdown, proposed
   by the Notes step; every reader takes both))
 
 ## From the ideation panel (2026-10-23)
@@ -63,13 +63,13 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   the dashboard's Phone tab with Revoke)
 - ~~**CPU micro-helper.** A ~1 GB model for one-word decisions only (effort, intent, yes/no) on laptops without a
   graphics card, enabled only if a speed test passes, offered after week 2 when the free limit is being used up.~~
-  (0.5.22: the offline helper, `qwen2.5:1.5b-instruct` through Ollama, `/helper`; offered also when the internet often
+  (0.6.0: the offline helper, `qwen2.5:1.5b-instruct` through Ollama, `/helper`; offered also when the internet often
   drops)
 - ~~**Notation crosswalk.** When a concept appears in a second source, its notation and conventions are written side
-  by side (B_t vs W_t, Fourier 2π), quote-checked like every graph claim.~~ (0.5.22: the bulk AI's answer gives each
+  by side (B_t vs W_t, Fourier 2π), quote-checked like every graph claim.~~ (0.6.0: the bulk AI's answer gives each
   concept's notation with a quote; a row whose quote isn't in the pages or doesn't hold the symbol is dropped; a
   second source that writes it differently gives the note a Notation table in Kurooto's block; `integrate.notation`)
-- ~~**Near-duplicate concepts.** "Wiener process" and "Brownian motion": Merge / Keep both / Add alias.~~ (0.5.22: the
+- ~~**Near-duplicate concepts.** "Wiener process" and "Brownian motion": Merge / Keep both / Add alias.~~ (0.6.0: the
   same name, a shared alias or embeddings at least 0.92 alike, one message a morning with up to three pairs; Merge
   moves links, "Seen in", names and notation into one note and leaves the other a redirect, never deleting your text;
   Undo on each answer; `/graph same`, `integrate.duplicates`)
@@ -79,13 +79,13 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   meeting with someone a project note is With, weekly ones included; a voice note or typed note after it becomes
   minutes through your AI, and each action item is a deadline on a tap)
 - ~~**Run compare.** `kurooto runlog diff A B` and `/runs compare`: config differences, code diff, metrics and loss
-  curves side by side, written to the project's notes.~~ (0.5.22: in the Research add-on; `/runs` lists recent runs,
+  curves side by side, written to the project's notes.~~ (0.6.0: in the Research add-on; `/runs` lists recent runs,
   curves as a PNG with matplotlib, else sparklines)
 - ~~**LaTeX writing tracker.** Nightly build of your `.tex` repos: errors, undefined references, missing citations
-  (BibTeX suggested, you approve), words added.~~ (0.5.22: in the Research add-on; `/latex add` attaches a folder,
+  (BibTeX suggested, you approve), words added.~~ (0.6.0: in the Research add-on; `/latex add` attaches a folder,
   Tectonic or your own LaTeX builds into Kurooto's cache, one morning line when it broke or you wrote)
 - ~~**Check my attempt.** A photo of a proof (or a `.tex` derivation) before you submit: gaps marked, nothing
-  rewritten; a course's AI policy can turn it off.~~ (0.5.22: Check my draft, in the Research add-on: a photo, PDF,
+  rewritten; a course's AI policy can turn it off.~~ (0.6.0: Check my draft, in the Research add-on: a photo, PDF,
   `.tex`, essay or code with "check this" or `/check`; gaps, unclear steps, errors and missing reasons marked at lines
   or places, a comment that gives the fix away left out; `/subject policy la allowed|hints|off`; notes get the comments
   in a Kurooto block in the matching lecture note)
@@ -96,21 +96,21 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   next alarm and the calls due next, one Talk button that starts a call, over the lock screen; dims by the hour, warm
   at night; opens by itself while charging between chosen hours. In the app itself, not an add-on)
 - ~~**Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.~~
-  (0.5.22: also on the dashboard; held to its card (features, commands, AI tools, jobs, and only the hosts and
+  (0.6.0: also on the dashboard; held to its card (features, commands, AI tools, jobs, and only the hosts and
   programs it names); `update` shows what changes and asks again; `remove` with Undo)
 
 ## From the skeptic review (2026-10-23)
 Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.
-- **Make the panel's ideas general**: ~~link recall cards~~ (0.5.22: cards also from your course notes' links with a
+- **Make the panel's ideas general**: ~~link recall cards~~ (0.6.0: cards also from your course notes' links with a
   reason and from concepts read out of Classroom files and handwritten notes, under their course; new cards about what
   you met in class lately first) and ~~the revision plan~~ (0.5.16) also draw on course notes and Classroom files, not
   only books; ~~the meeting brief is for any recurring meeting ("With: X", their role in your own word: guide,
   manager, coach)~~ (0.5.20, with "Meets:", "Last met" and Next steps kept in Kurooto's block); ~~"check my attempt"
-  becomes "check my draft" (essays, accounts working, code, proofs)~~ (0.5.22: Check my draft, in the Research
+  becomes "check my draft" (essays, accounts working, code, proofs)~~ (0.6.0: Check my draft, in the Research
   add-on); ~~missed-class catch-up works without Classroom~~ (0.5.15: the task
   and lecture note stub come without Classroom too).
 - ~~**A Research add-on** for the narrow ones: notation crosswalk, run compare, LaTeX tracker, proof checking.~~
-  (0.5.22: one card and one switch under Add-ons, with run compare, the LaTeX tracker and the notation crosswalk, a
+  (0.6.0: one card and one switch under Add-ons, with run compare, the LaTeX tracker and the notation crosswalk, a
   part of the concept graph that only shows when two sources disagree, `integrate.notation`; a feature joins it with
   `bundle = "research_addon"`, as check my draft does) Bedside mode is an Android add-on.
 - ~~**No college-term defaults**: the check-in times and Start-by's day window are learned from when you actually
@@ -164,32 +164,32 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   other recorded decisions: which effort an AI request gets, the order of fallback AIs when one fails, and how
   Start-by sizes work. Each candidate is replayed against what actually happened, the current rules always among
   them, and a change is kept only if it's better, one at a time, with Undo. After part two has proven itself.~~
-  (0.5.22: `dreaming.tune_effort`, `tune_fallbacks`, `tune_sizing`, one change a night across all areas, outcome-based
+  (0.6.0: `dreaming.tune_effort`, `tune_fallbacks`, `tune_sizing`, one change a night across all areas, outcome-based
   trust in the margin, `/dream policy`)
 - ~~**Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
-  rest.~~ (0.5.22: known from Kurooto's own traffic; requests wait and run when it's back, told once, never dropped)
+  rest.~~ (0.6.0: known from Kurooto's own traffic; requests wait and run when it's back, told once, never dropped)
 - ~~**An email-in address.** Forward a notice or a receipt to your own call line, and it's filed in your notes or
-  becomes a deadline.~~ (0.5.22: a workers.dev call line can't receive mail, so it's your own Gmail: mail forwarded
+  becomes a deadline.~~ (0.6.0: a workers.dev call line can't receive mail, so it's your own Gmail: mail forwarded
   to example+kurooto@gmail.com, or given a label, is filed as a note and its dates offered as buttons; `/mail in on`.
   Own domain: Cloudflare Email Routing to that address; Email Workers not yet)
 - ~~**Zotero.** A paper from the research digest goes into Zotero with one tap, and reading notes link to it.~~
-  (0.5.22: a Zotero button under each digest paper, through the Zotero app's connector or the web API with your key;
+  (0.6.0: a Zotero button under each digest paper, through the Zotero app's connector or the web API with your key;
   notes that link the paper get a `zotero://select` link in a Kurooto block; `/zotero`)
 - ~~**Photo → dates.** Share a photo of a notice or a timetable from your phone, and the events and deadlines are
-  pulled out.~~ (0.5.22: "dates" as a photo's caption, `/dates`, or "dates from that photo" after sharing it; your
+  pulled out.~~ (0.6.0: "dates" as a photo's caption, `/dates`, or "dates from that photo" after sharing it; your
   AI reads it, each date comes back as a button and nothing is added without a tap; a timetable's classes in one
   tap; a brain that can't read pictures says so)
-- ~~**Shared class lists.** Friends in the same course can opt in to share deadlines and exam dates.~~ (0.5.22,
+- ~~**Shared class lists.** Friends in the same course can opt in to share deadlines and exam dates.~~ (0.6.0,
   without a shared server, which Kurooto doesn't have by design: subscribe to a class calendar a classmate or the
   course shares by its iCal link, `/cal subscribe <link> as <name>`; its events come in marked with its name, its
   deadlines and exams are offered with an Add button each)
-- ~~**Quick-ask hotkey.** A small prompt window on the desktop, on every system.~~ (0.5.22: `kurooto ask --popup`, a
+- ~~**Quick-ask hotkey.** A small prompt window on the desktop, on every system.~~ (0.6.0: `kurooto ask --popup`, a
   Tk window; the key is bound in the system's own settings, Settings → Quick ask shows the command and how; Wayland
   has no global hotkeys, so the desktop runs it)
-- ~~**Location reminders on Android.** "When I reach the library", without draining the battery.~~ (0.5.22:
+- ~~**Location reminders on Android.** "When I reach the library", without draining the battery.~~ (0.6.0:
   `reminders.places` and the app's Places, both off by default; places saved on the phone by name, Android's proximity
   alerts without Play services, the battery cost said before location is asked for; only names leave the computer)
-- ~~**Course notes to PDF.** A LaTeX template for course notes.~~ (0.5.22: `/notes pdf <course>`, the course page,
+- ~~**Course notes to PDF.** A LaTeX template for course notes.~~ (0.6.0: `/notes pdf <course>`, the course page,
   lecture notes and the concept notes they link through a LaTeX template and Tectonic; `/notes pdf template` for your
   own copy)
 

@@ -14,7 +14,7 @@ question (app.ask, via "app"), presses the button you tapped, or goes to the fea
 The call line keeps a copy of what's open (at most 40 items, each gone after a day or once it's dealt with
 anywhere) so the iPhone app can list it while this computer is off.
 
-Cards (0.5.22): a check-in or quiz question carries "card" ("checkin" / "quiz"), and the Android app shows it on its
+Cards (0.6.0): a check-in or quiz question carries "card" ("checkin" / "quiz"), and the Android app shows it on its
 main screen as a card with an answer box and its buttons. A reply whose answer comes with buttons (the quiz's Forgot /
 Hard / Good / Easy) can't put them in the reply note, so they come as the next message: the next card. A "place"
 message (a location reminder, modules/reminders.py) is kept by the Android app, not shown as a question.
@@ -52,7 +52,7 @@ def _clip(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
-# What the phone app shows as an answerable card on its main screen (0.5.22): the check-in, and quiz questions with
+# What the phone app shows as an answerable card on its main screen (0.6.0): the check-in, and quiz questions with
 # their self-grading. Told by what the message is about, or by its buttons' data (a grading message has no map).
 CARDS = {"checkin": "checkin", "quiz": "quiz", "qlink": "quiz"}
 CARD_BUTTONS = {"chk": "checkin", "qz": "quiz", "ql": "quiz"}

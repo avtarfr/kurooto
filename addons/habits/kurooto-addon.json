@@ -3,7 +3,7 @@
   "title": "Your command words",
   "description": "Short words of your own for the commands and requests you type often: /words add j = /journal makes /j had a good day work like /journal had a good day.",
   "version": "1.0.0",
-  "kurooto": ">=0.5.22",
+  "kurooto": ">=0.6.0",
   "license": "Apache-2.0",
   "features": ["habits"],
   "commands": [

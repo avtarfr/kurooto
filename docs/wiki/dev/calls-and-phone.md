@@ -511,7 +511,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `B64`, `Ui` (the look), `BlobView` (the main screen's background), `Dock` (bedside mode's rules), `Cards` + `CardRules` (check-in and quiz cards),
   `Places` + `PlaceRules`; 0.6.0: `Today` and `TodayView` (the Today screen), `Alarms` and `AlarmPlan` (the phone's own
   alarm), `Buttons` (quick notification buttons).
-- Check-in and quiz cards (0.5.22): `PhoneApp.item` adds `card` ("checkin" / "quiz", `phone.py:card_of`, from the
+- Check-in and quiz cards (0.6.0): `PhoneApp.item` adds `card` ("checkin" / "quiz", `phone.py:card_of`, from the
   map kind or the buttons' `chk:` / `qz:` / `ql:` data) to the item; the Worker stores items as they are, so `/pending`
   has it (the ntfy push doesn't need it). `MainActivity.loadWaiting` hands such an item to `Cards.view` (answer box,
   choices and buttons in rows by `CardRules.perRow`, drafts kept by item id while the process lives), which answers
@@ -519,7 +519,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   list 2.5 s after a delivered answer. Without a `card` field (an older computer) `CardRules.kind` goes by the text.
   `PhoneApp.answer` turns a reply's buttons (the quiz's self-grading) into the next phone item instead of dropping
   them, so the grading is the next card.
-- Location reminders (0.5.22): `modules/reminders.py` `PLACE` + `at_place` (setting `reminders.places`, off) send a
+- Location reminders (0.6.0): `modules/reminders.py` `PLACE` + `at_place` (setting `reminders.places`, off) send a
   phone item of kind `place` / `place_every` straight through `PhoneApp.send` (not `notify`: it isn't for Telegram),
   title = the place's name, text = the reminder. On the phone `Inbox.show` and `MainActivity.loadWaiting` give it to
   `Places.adopt`, which keeps it (SharedPreferences `places`: places with lat/lon/radius/inside/last, reminders by the

@@ -2,7 +2,7 @@
 They arrive on Telegram. If the computer was asleep at the time, the reminder still comes when it wakes, marked
 late; with Reminders with the lid shut on, your phone gets it at its time instead (lidsafe.py).
 
-Location reminders (0.5.22, reminders.places, off by default): "remind me when I reach the library to return the
+Location reminders (0.6.0, reminders.places, off by default): "remind me when I reach the library to return the
 book", "remind me whenever I'm at the gym to stretch". The place's name and the text go to the Android app (a "place"
 message through your call line), which keeps them and reminds you when you arrive at a place you saved there under
 that name (android/.../Places.java: Android's proximity alerts, no Google services). Where your places are never

@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Check-in and quiz cards on the main screen (0.5.22): the evening check-in and quiz questions answered right there,
+ * Check-in and quiz cards on the main screen (0.6.0): the evening check-in and quiz questions answered right there,
  * with an answer box and their options (In 30 min, Not tonight; Forgot / Hard / Good / Easy), instead of opening the
  * answer window. They are the same items as the notifications (what's open on your call line, /pending), and an answer
  * goes the same way (Line.answer: sealed, single use), so with your computer asleep it waits in the phone outbox on

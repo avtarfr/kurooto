@@ -28,7 +28,7 @@ crypto_test() {
   java -Dfile.encoding=UTF-8 -cp "$t" io.github.avtarfr.kurooto.SpeechTest
   java -cp "$t" io.github.avtarfr.kurooto.TodayTest
   java -cp "$t" io.github.avtarfr.kurooto.DockTest
-  # the check-in and quiz cards' and location reminders' rules (0.5.22)
+  # the check-in and quiz cards' and location reminders' rules (0.6.0)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/CardRules.java" "$HERE/src/$PKG/PlaceRules.java" "$HERE/test/CardsPlacesTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CardsPlacesTest
   rm -rf "$t"

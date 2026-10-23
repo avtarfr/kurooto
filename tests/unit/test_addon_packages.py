@@ -25,10 +25,10 @@ def test_there_are_the_four_generic_add_ons():
 def test_each_loads_by_link_with_exactly_its_card(name, tmp_path, monkeypatch):
     monkeypatch.setenv("KUROOTO_HOME", str(tmp_path / "home"))
     if addons._version(kurooto.__version__) < (0, 5, 22):  # a checkout between releases still says the last one
-        monkeypatch.setattr(kurooto, "__version__", "0.5.22")
+        monkeypatch.setattr(kurooto, "__version__", "0.6.0")
     src = ROOT / name
     man = addons.read_manifest(src)
-    assert man["name"] == name and man["description"] and man["version"] and man["kurooto"] == ">=0.5.22"
+    assert man["name"] == name and man["description"] and man["version"] and man["kurooto"] == ">=0.6.0"
     assert (src / "README.md").is_file() and list((src / "tests").glob("test_*.py"))
     repo = tmp_path / name
     shutil.copytree(src, repo, ignore=shutil.ignore_patterns("__pycache__"))

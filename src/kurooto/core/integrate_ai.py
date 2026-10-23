@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from kurooto.core import conceptgraph as cg
 from kurooto.core import graphwrite as gw
 
-PROMPT_VERSION = 2  # 2 (0.5.22): notation per concept
+PROMPT_VERSION = 2  # 2 (0.6.0): notation per concept
 MAX_NOTATION = 4
 MAX_CORE = 14
 QUOTE_WORDS = 30

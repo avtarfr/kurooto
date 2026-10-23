@@ -290,7 +290,7 @@ working; it now shows as "Another OpenAI-compatible service". What each service'
 [PRIVACY.md](PRIVACY.md).
 
 **Limits:** free tiers have daily limits. When the brain hits one, Kurooto tells you once and uses your fallback if
-you set one. **At a limit, the other AI answers** (0.5.22): when Claude Code hits its limit (the 5-hour window or the
+you set one. **At a limit, the other AI answers** (0.6.0): when Claude Code hits its limit (the 5-hour window or the
 weekly cap) the request goes to agy, and the other way round, then to a Gemini key if you saved one, each only once it
 has answered on this computer. The AI at its limit is skipped until it resets (the time it said, like "resets 3pm";
 otherwise half an hour, doubling up to 5 hours), so later requests go straight to the other; `/brain` and `/usage` say
@@ -475,7 +475,7 @@ dashboard's AI jobs page show each finished request's AI and model too. Quiet ba
 that effort, once there are three) gets one short line first: "Searching your notes, then answering (about 40 s with
 agy)." Guessed from what's known before the run (a file, a link, your notes mentioned, remembered items). Never on a
 call or for background work; `jobs.plan_line` = `false` turns it off.
-**Your AI knows what's running** (0.5.22): ask it "why didn't my alarm ring?" or "which model answered that?" and it
+**Your AI knows what's running** (0.6.0): ask it "why didn't my alarm ring?" or "which model answered that?" and it
 reads `self.md` in Kurooto's reserve folder first: the version and update channel, this computer's system and hardware
 profile, the AIs and models set up (fallback order, any at a limit and until when), each feature that's on and
 whether its health check passes, the last day's failures counted by kind, and where the log and settings are. No
@@ -504,7 +504,7 @@ exchanges go along too.
 [Reminders with the lid shut](#reminders-with-the-lid-shut) on, your Android phone gets it at its time instead).
 Buttons: +10 min, +1 h.
 
-**At a place** (0.5.22, off by default): "remind me when I reach the library to return the book", "remind me whenever
+**At a place** (0.6.0, off by default): "remind me when I reach the library to return the book", "remind me whenever
 I'm at the gym to stretch". Turn on Settings → Reminders → `places` and, in the Android app, Location reminders →
 Places (it says the battery cost, then asks for location). Save a place on the phone while you're there (a name, no
 map; 150 m around it). The computer sends only the place's name and the text; the phone keeps your places and reminds

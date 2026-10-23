@@ -126,7 +126,7 @@ def test_the_local_check_only_with_a_local_model_and_only_when_asked(cards, monk
     assert asked[0][0] == "/api/generate" and asked[0][1]["model"] == "tiny:1b"
 
 
-# ------------------------------------------------------------------------- course notes and class files (0.5.22)
+# ------------------------------------------------------------------------- course notes and class files (0.6.0)
 def test_course_notes_links_with_a_reason_are_cards_too_and_class_material_comes_first(cards):
     env, lc = cards
     app = env.app

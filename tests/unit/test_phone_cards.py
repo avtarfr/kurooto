@@ -1,4 +1,4 @@
-"""Check-in and quiz cards in the phone app (0.5.22): the phone gets a "card" field on check-in and quiz questions, a
+"""Check-in and quiz cards in the phone app (0.6.0): the phone gets a "card" field on check-in and quiz questions, a
 reply from the card reaches the feature, and the quiz's self-grading (which comes with buttons) arrives as its own
 card instead of being lost from the reply note. Through the call line's outbox too (the laptop asleep)."""
 

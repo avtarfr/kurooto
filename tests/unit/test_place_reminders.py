@@ -1,4 +1,4 @@
-"""Location reminders (0.5.22): "remind me when I reach the library to return the book" goes to the Android app as a
+"""Location reminders (0.6.0): "remind me when I reach the library to return the book" goes to the Android app as a
 "place" message (the place's name and the text; the app keeps it and says it on arrival). Off by default."""
 
 from __future__ import annotations

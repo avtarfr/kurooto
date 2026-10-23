@@ -279,7 +279,7 @@ Under **Waiting for you**, the evening (or midday, night) check-in and quiz ques
 
 With your computer asleep, the answer waits on your call line ("Saved. Your computer gets it when it is back on.")
 and is used when it's back; the quiz's grading card comes then. What you typed but didn't send stays in the box
-while the app is open. The cards need Kurooto 0.5.22 on the computer too (older ones still show these questions as
+while the app is open. The cards need Kurooto 0.6.0 on the computer too (older ones still show these questions as
 plain cards that open the answer window).
 
 ## Location reminders

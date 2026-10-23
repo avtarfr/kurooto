@@ -1,6 +1,6 @@
 # What the AI knows about Kurooto (the self-manual)
 
-Since 0.5.22 the AI that answers a request (and a user's own agent) can read what Kurooto is and what it's running, so
+Since 0.6.0 the AI that answers a request (and a user's own agent) can read what Kurooto is and what it's running, so
 "why didn't it ring?" or "which model answered?" is answered from facts. Two parts, both read-only for the AI. The
 user's view: [../user/ai-brains.md](../user/ai-brains.md#your-ai-knows-whats-running).
 

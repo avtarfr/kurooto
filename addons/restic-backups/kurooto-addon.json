@@ -3,7 +3,7 @@
   "title": "Machine backups (restic)",
   "description": "Backs up the folders you name with restic on a schedule, thins out old snapshots, checks the repository and tells you when a backup fails or gets old.",
   "version": "1.0.0",
-  "kurooto": ">=0.5.22",
+  "kurooto": ">=0.6.0",
   "license": "Apache-2.0",
   "features": ["restic"],
   "commands": [{"name": "restic", "what": "status, now, snapshots, check, init"}],

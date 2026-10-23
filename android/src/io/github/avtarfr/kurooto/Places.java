@@ -21,7 +21,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Location reminders (0.5.22), off by default: "remind me when I reach the library". You save places on this phone
+ * Location reminders (0.6.0), off by default: "remind me when I reach the library". You save places on this phone
  * (where you are now, with a name: no map), and each gets an Android proximity alert (LocationManager
  * .addProximityAlert: Android 6 and newer, no Google Play services). Arriving shows that place's reminders.
  *

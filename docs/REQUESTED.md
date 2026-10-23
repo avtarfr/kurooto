@@ -14,7 +14,7 @@ Standing plans, never struck through.
 
 ## Open
 - **Common features directly usable from the phone app** (and the rest of the dashboard plan:
-  ~~check-in and quiz cards~~ (0.5.22: answered on the app's main screen with an answer box and their buttons, through
+  ~~check-in and quiz cards~~ (0.6.0: answered on the app's main screen with an answer box and their buttons, through
   the phone outbox while the laptop sleeps)): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done;
   ~~the app's Today screen, local alarm and notification buttons~~ (0.6.0: Today on the app's first screen with
   Done / +1 on what's due, the wake-up alarm also set on the phone, Done and Snooze on reminder and deadline
@@ -22,7 +22,7 @@ Standing plans, never struck through.
 - **A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
   groups, with a link to the user wiki for the rest.
 - **Dreaming** (0.5.9 has the morning message of the night's work and the loose ends; ~~consolidating memory and
-  spotting contradictions across notes~~ (0.5.22: duplicate gists and how-to-help-me lines, and lines that disagree
+  spotting contradictions across notes~~ (0.6.0: duplicate gists and how-to-help-me lines, and lines that disagree
   across how-to-help-me lines, notes, deadlines and GBrain's contradictions report, in the morning message with
   Keep A / Keep B / Both true; nothing changes until a tap); still to come: folding what it learned into your profile
   note): while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
@@ -34,7 +34,7 @@ Standing plans, never struck through.
   retried requests, your corrections, call lessons, answers that claimed what they didn't do), changes its own
   prompts, skills and quiet settings to fix it, and keeps a change only if replaying the past cases goes better;
   each change is listed with Undo. It improves the way it improves: the checks themselves are revised the same way.~~
-  (0.5.22: the night pass also tunes effort, AI order and Start-by sizes by replay, one change a night with Undo; a
+  (0.6.0: the night pass also tunes effort, AI order and Start-by sizes by replay, one change a night with Undo; a
   skill that keeps going wrong gets a proposed fix gated by the AI's replay of those cases and your test cases, Apply
   or No, `dreaming.propose_prompts`; each change's outcome is kept and a kind you undid needs a clearer win)
 - **Set up from what it sees, not from settings** (0.5.9 has projects with their supervisor, meetings, classes,
@@ -48,7 +48,7 @@ Standing plans, never struck through.
   Android 12+, proper app bar, cards, bottom navigation), still one small APK that works on Android 6.~~ (0.6.0: the
   0.5.16 look carried through the chat, with a top app bar, and the widgets; bottom navigation waits for the Today
   screen)
-- **Make the UI more intuitive**, and keep improving the setup wizard's elements. (0.5.22: settings with a few values are lists, JSON
+- **Make the UI more intuitive**, and keep improving the setup wizard's elements. (0.6.0: settings with a few values are lists, JSON
   settings shown whole, "Saved" under the setting changed, features that are on first, the setup page's features step
   shows your picks first with the rest folded, Telegram's card links to its setup step; Claude Code is named "Claude
   Code" everywhere)
@@ -56,10 +56,10 @@ Standing plans, never struck through.
   the site, covering every nook and cranny; one full read equips someone to use, develop and fix Kurooto (being
   written for 0.5.8).
 - ~~**Use GBrain more**: weekly checkup and contradiction reports in chat, entity and timeline pages for courses,
-  queries during calls.~~ (0.5.22: `gbrain.checkup_line`, one weekly line from its doctor; its contradictions report
+  queries during calls.~~ (0.6.0: `gbrain.checkup_line`, one weekly line from its doctor; its contradictions report
   in Dreaming's morning section; `gbrain.course_pages`, each course page's key concepts and dated timeline; on calls
   search_notes searches by meaning and note_timeline reads a course's or a note's timeline)
-- **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting). (0.5.22: all four
+- **Make more add-ons public** (the generic ones: backups, desktop helpers, habits, handwriting). (0.6.0: all four
   are ready in `addons/` with manifests, tests and READMEs, to add by link; left: publishing each as its own
   repository)
 
@@ -68,7 +68,7 @@ Standing plans, never struck through.
   they're with ("got a project under Prof X": the project, its supervisor, and meetings from then on), classes from
   "every Monday at 9 I have a lab", routines, a deadline's course, subject aliases; one line to say so, and
   `/inferred` to undo. Alarms, calls and anything outward still need a tap.~~ (0.5.9 to 0.5.20: projects, meetings,
-  classes, commitments, recurring quizzes, short names; a deadline's course from its title. 0.5.22: a thesis or
+  classes, commitments, recurring quizzes, short names; a deadline's course from its title. 0.6.0: a thesis or
   dissertation, "my supervisor is Dr X", the person before "project", "on Mondays", "I've got", "I go running every
   morning"; a call with someone is never a routine. Rules alone are enough: no AI pass, nothing leaves the computer)
 - ~~Local model on the graphics card without spilling onto the processor~~ (0.5.9: spilled models are unloaded and

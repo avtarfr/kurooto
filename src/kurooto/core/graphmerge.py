@@ -1,4 +1,4 @@
-"""Near-duplicate concepts in the concept graph (0.5.22): two notes that look like one concept ("Wiener process" and
+"""Near-duplicate concepts in the concept graph (0.6.0): two notes that look like one concept ("Wiener process" and
 "Brownian motion") come as one question a night, at most three pairs, each with Merge / Keep both / Add alias.
 
     found by     core/conceptgraph.py:near_duplicates: the same name, a name they share (an alias), or embeddings at

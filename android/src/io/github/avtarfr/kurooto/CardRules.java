@@ -4,7 +4,7 @@ package io.github.avtarfr.kurooto;
 final class CardRules {
     private CardRules() { }
 
-    /** "checkin", "quiz" or "" (no card): from the item's "card" field (your computer, 0.5.22), else from its text,
+    /** "checkin", "quiz" or "" (no card): from the item's "card" field (your computer, 0.6.0), else from its text,
      *  for a computer on an older version ("Evening check-in: ...", "Quiz (topology, Must know): ..."). */
     static String kind(String card, String text) {
         if ("checkin".equals(card) || "quiz".equals(card)) return card;

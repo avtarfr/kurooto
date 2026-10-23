@@ -82,7 +82,7 @@ page's **Test it** asks the AI for a reply and says what to do if it fails:
 
 When the fallback answers, the answer says so in one line. Three more rules:
 
-- **At a limit, the other AI answers (0.5.22).** When Claude Code hits its limit (its 5-hour window or the weekly
+- **At a limit, the other AI answers (0.6.0).** When Claude Code hits its limit (its 5-hour window or the weekly
   cap), the request goes to agy, and the other way round; a Gemini key you saved comes after them. The run receipt
   says so: *Claude Code hit its limit; agy answered · 3.8-flash · medium · 40 s*. The AI at its limit is then skipped
   until it resets (the time it said, like "resets 3pm"; otherwise half an hour, then an hour, up to 5 hours), so the

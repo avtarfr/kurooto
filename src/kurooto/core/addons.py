@@ -15,7 +15,7 @@ someone published as a git repository. Nothing of it runs before you've seen its
 
 The manifest, kurooto-addon.json at the repository's top (docs/wiki/dev/modules.md has the full format):
 
-    {"name": "restic-backups", "title": "...", "description": "...", "version": "1.0.0", "kurooto": ">=0.5.22",
+    {"name": "restic-backups", "title": "...", "description": "...", "version": "1.0.0", "kurooto": ">=0.6.0",
      "features": ["restic"], "commands": [{"name": "restic", "what": "..."}], "jobs": [{"id": "restic:backup",
      "what": "..."}], "tools": [], "hosts": [], "programs": [{"name": "restic", "online": true}], "classify": false}
 
@@ -172,7 +172,7 @@ def read_manifest(d: Path) -> dict:
         programs.append({"name": n, "online": bool(d.get("online")), "what": str(d.get("what") or "")[:200]})
     need = str(m.get("kurooto") or "").strip()
     if need and not re.fullmatch(r">=\s*\d+(?:\.\d+){0,2}", need):
-        raise AddonError(f'its "kurooto" has to be like ">=0.5.22", not {need!r}')
+        raise AddonError(f'its "kurooto" has to be like ">=0.6.0", not {need!r}')
     return {
         "name": name,
         "title": str(m.get("title") or name)[:80],

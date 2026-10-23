@@ -1,5 +1,5 @@
 """Link recall cards, part of the Quiz: the concept graph's links (a concept note's "- needs:: [[b]] — reason" lines,
-modules/integrate.py) become review cards. Since 0.5.22 they also come from your course notes (lecture notes and course
+modules/integrate.py) become review cards. Since 0.6.0 they also come from your course notes (lecture notes and course
 pages: a typed line like that, or "- [[b]]: a reason of five words or more"), and from the concepts the graph read
 out of Classroom files and handwritten notes (their course is the item's); new cards whose concepts you met in class
 in the last 14 days come first. A card asks how two concepts relate ("How is Itô's lemma used in the

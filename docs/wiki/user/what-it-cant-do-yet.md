@@ -101,7 +101,7 @@ From [REQUESTED.md](../../REQUESTED.md) and [ROADMAP.md](../../ROADMAP.md), amon
 - the phone app's Today screen, a local alarm and notification buttons (planned for 0.6.0).
 
 (A small local model for laptops without a graphics card, and quick answers while the internet is down, came in
-0.5.22: [the offline helper](your-computer.md#the-offline-helper).)
+0.6.0: [the offline helper](your-computer.md#the-offline-helper).)
 
 ## Telling us
 

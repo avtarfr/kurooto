@@ -1,4 +1,4 @@
-"""The concept graph's look-alike notes and notation (0.5.22): pairs of notes that look like one concept come as one
+"""The concept graph's look-alike notes and notation (0.6.0): pairs of notes that look like one concept come as one
 question a morning with Merge / Keep both / Add alias (each with Undo), and a concept a second source writes
 differently gets a quote-checked "Notation" table. A fake AI answers the reading; the rest is real."""
 

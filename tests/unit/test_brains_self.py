@@ -1,4 +1,4 @@
-"""0.5.22: which model answered, shown; one AI's limit hands the request to the other (Claude Code to agy and back);
+"""0.6.0: which model answered, shown; one AI's limit hands the request to the other (Claude Code to agy and back);
 and the self-aware manual (core/selfdoc.py, data/ai-manual.md). Fake agy and Claude Code programs; no network."""
 
 from __future__ import annotations

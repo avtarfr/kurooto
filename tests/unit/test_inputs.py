@@ -1,4 +1,4 @@
-"""0.5.22, more ways in: Photo to dates (a photo's dates as buttons, nothing added without a tap), Email in (mail
+"""0.6.0, more ways in: Photo to dates (a photo's dates as buttons, nothing added without a tap), Email in (mail
 forwarded to +kurooto, or labelled, filed into notes), shared class calendars by iCal link (their deadlines offered,
 never added by themselves) and Quick ask (`kurooto ask --popup`; the hotkey is the system's)."""
 

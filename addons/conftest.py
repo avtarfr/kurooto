@@ -33,7 +33,7 @@ def load_addon(tmp_path, monkeypatch):
     from kurooto.core import addons, fence, overlay
 
     if addons._version(kurooto.__version__) < (0, 5, 22):  # a checkout between releases still says the last one
-        monkeypatch.setattr(kurooto, "__version__", "0.5.22")
+        monkeypatch.setattr(kurooto, "__version__", "0.6.0")
 
     def load(name: str, app):
         repo = tmp_path / "repos" / name

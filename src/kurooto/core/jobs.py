@@ -23,7 +23,7 @@ A watchdog ends a request that is stuck: no AI at work on it and no program runn
 running or waiting (/jobs, the dashboard's AI jobs page, `kurooto jobs --cancel ID`); a running agent program is
 stopped with everything it started.
 
-The plan line (jobs.plan_line, 0.5.22): when one of your text requests is likely to take more than PLAN_S seconds
+The plan line (jobs.plan_line, 0.6.0): when one of your text requests is likely to take more than PLAN_S seconds
 (the median of your last requests on that AI and effort, from at least 3), one short line comes first ("Searching your
 notes, then answering (about 40 s with agy)."), from what's known before it runs: a file you sent, a link, remembered
 items, words about your notes. Never on a call (calls' requests are quiet, and none while you're on one), never for

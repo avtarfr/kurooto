@@ -15,7 +15,7 @@ relative to the note). Both styles are read back, so switching never breaks the 
 The relation words: needs, generalises, special-case-of, example-of, contrasts-with, equivalent-to, part-of, used-in.
 A reason that would be true of any pair of notes ("related to", "connected formulation", "alignment") is refused.
 
-Merging two notes about one concept (0.5.22, modules/integrate.py): the kept note gets the other's typed links, "Seen
+Merging two notes about one concept (0.6.0, modules/integrate.py): the kept note gets the other's typed links, "Seen
 in" rows, names (as aliases) and notation, plus a `merged` block saying what came from where; the other gets a
 `merged-into` block under its title (a redirect). Its own text stays, unless Kurooto wrote all of it (the text outside
 its blocks is exactly as the concept graph made it: `made_by_graph`), when it shrinks to the title and the redirect,

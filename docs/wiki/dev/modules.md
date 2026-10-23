@@ -114,7 +114,7 @@ recorder to the test's `hits` fixture, and the user wiki's table (talking-to-kur
 `commands()`, and each request's `examples`, in `GROUPS` (key, title, user wiki page, module ids, core names; `moved`
 takes a command into another group, as Telegram's `/hold` and `/calls` go to Calls and phone). A module no group names
 lands in `MORE`. `App.help_parts(arg)` returns the messages (each under `LIMIT` = 3900 characters), `App.help(arg)`
-joins them: always the index (one line per group, from `_parts()`; since 0.5.22, as everything no longer fits one
+joins them: always the index (one line per group, from `_parts()`; since 0.6.0, as everything no longer fits one
 message), packed by `_pack()` into as few messages as fit; `/help <group>`, `/help all`, `/help <word>`
 (`find()`). Lines a module's `help()` adds that aren't one of its commands (Skills' `/<skill> …`) are kept.
 
@@ -335,7 +335,7 @@ def test_pomodoro_starts_and_ends(env):
   (`/api/state` sends `extra`).
 - `extra` versus `addon`: `extra` is an optional feature that comes with Kurooto; `addon` is set by `core/overlay.py`
   on features loaded from the user's own add-ons folder, and from add-ons by link (which also get `linked = <name>`).
-- Bundles (0.5.22): an `extra` feature can group others. `modules/research_addon.py:ResearchAddon` is the Research
+- Bundles (0.6.0): an `extra` feature can group others. `modules/research_addon.py:ResearchAddon` is the Research
   add-on; a feature joins it with `bundle = "research_addon"` (and `extra = True`, and its id in `MODULE_ORDER` so
   `/api/state` knows it). `ResearchAddon.members()` finds them; `turned_on()` enables each one not in
   `research_addon.members_off`, `turned_off()` disables them; the card (`card()`/`card_action`) has a switch per own
@@ -371,7 +371,7 @@ dashboard's Features → Add-ons by link (`web/api.py:_addons_post`: `addons/loo
 no `settings.json`), plus a manifest at the top:
 
 ```json
-{"name": "weather-x", "title": "Weather X", "description": "...", "version": "1.0.0", "kurooto": ">=0.5.22",
+{"name": "weather-x", "title": "Weather X", "description": "...", "version": "1.0.0", "kurooto": ">=0.6.0",
  "license": "Apache-2.0", "homepage": "https://...",
  "features": ["weather_x"],
  "commands": [{"name": "weather", "what": "the weather now"}],
@@ -520,7 +520,7 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   The `add_deadline` tool (and the `deadline.add` action) takes an optional `course` (`subject`, its old name, still
   works): `Subjects.resolve()`, else the one subject `find_in()` names; unknown or naming two, the answer says so and
   lists the courses, and the item gets no subject from it (`subject_of()` on the title still applies).
-- **deadlines** Photo to dates (0.5.22, `modules/photodates.py`, `deadlines.from_photos`): `App.handle` hands a
+- **deadlines** Photo to dates (0.6.0, `modules/photodates.py`, `deadlines.from_photos`): `App.handle` hands a
   message with a picture whose caption matches `photodates.WORDS` ("dates", "/dates", "timetable", "find the
   dates") to `start()` before the books and class-pack checks; `/dates` (a photo, or alone: `latest()`, the newest
   picture of `RECENT_S` 2 h from `calls/shared.json` (found again by name with `moved()` after the AI filed it) or the
@@ -602,7 +602,7 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **calendar** (`modules/calendar.py`): iCal links (secret `calendar.ics`) and Google Calendar, recurrences expanded,
   private events masked; blocks calls during events, `#focus` and `#nocall`; `calendar:refresh` every 15 min. Each
   stored event has a `src` (`ics:<hash of the link>`, `google:<account>`); a source that fails keeps its rows from
-  the last copy (`google_calendar.fetch` returns the failed accounts by name). Shared class calendars (0.5.22):
+  the last copy (`google_calendar.fetch` returns the failed accounts by name). Shared class calendars (0.6.0):
   secret `calendar.shared` (`[{"url", "name"}]`), `subscribe()` / `unsubscribe()` (`/cal subscribe <link> as <name>`,
   `/cal shared`, `/cal unsubscribe`, or the setup card's `shared` and `shared_name` fields, which work without a link
   of your own); rows `src` `shared:<hash>` and `from` (the name, shown by `line()`); after each refresh
@@ -668,7 +668,7 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   call, the night, any non-focus availability blocker such as a class) is clear. `quiz.links_check`: one sentence from
   the profile's helper model through `LocalModels.api("/api/generate")`, only with Local AI models on. `/card`
   (doesn't count toward the day), `/cards [on|off]`. Tests: `tests/unit/test_link_cards.py`.
-  Since 0.5.22 `links()` also reads each subject's own notes (`course_notes()`: the subject folder and course page,
+  Since 0.6.0 `links()` also reads each subject's own notes (`course_notes()`: the subject folder and course page,
   Subjects on, not concept notes, not `books/`): `LINE` typed links, or `PLAIN` "- [[b]]: reason" lines whose reason
   passes `graphwrite.lint_reason` (relation "", asked "How does A relate to B?", revealed "A → B: reason"); the target
   must be a concept note (`conceptgraph.scan`, and `concept_like` for these), by slug or by bare name
@@ -676,10 +676,10 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   (`classroom:<hash>`, `handwritten:<hash>`) to that item's subject (`Integrate.items()`). `recent()`: concepts with a
   seen row from an item dated in the last `RECENT_DAYS` (14), and dated course notes from then; cards touching one
   carry `recent`, and `next_card` puts new recent cards before other new ones.
-- **hints** (`modules/hints.py`): a hint ladder for a problem, respecting a course's AI policy line. Since 0.5.22
+- **hints** (`modules/hints.py`): a hint ladder for a problem, respecting a course's AI policy line. Since 0.6.0
   `Hints.policy(slug)` reads the subject's `ai_policy` first (mapped to `CHOICES`), so a course set to `off` refuses
   without asking.
-- **subjects** AI policy (0.5.22): a subject row in `subjects.list` may carry `ai_policy` (`POLICIES`: `allowed`,
+- **subjects** AI policy (0.6.0): a subject row in `subjects.list` may carry `ai_policy` (`POLICIES`: `allowed`,
   `hints`, `off`). `Subjects.ai_policy(slug)` returns it, else Hint ladder's course-note line mapped through
   `hints.policy_kind`, else `None` (treated as allowed); `set_ai_policy(slug, value)` validates through `POLICY_WORDS`
   and gives a term-note subject a row of its own. `/subject policy <s> [allowed|hints|off|clear]`; `/subject add` again
@@ -776,7 +776,7 @@ Drive files filed into notes by an AI job; each `queue()` is a run in `classroom
 `filed` titles): `_filed` reports back with `_run_back` and the run's one message (`_tell_filed`, `LIST_MAX` titles)
 goes when nothing is left; a failed batch leaves its run and joins the next one, and a run older than `RUNS_DAYS` is
 let go at the next `queue()`), **mail_digest** / **reply_drafts** / **digest_email**
-(`google_mail.py`; Email in, 0.5.22, is `mailin.py`: `mail_digest.mail_in` (off), `mailin.check()` every
+(`google_mail.py`; Email in, 0.6.0, is `mailin.py`: `mail_digest.mail_in` (off), `mailin.check()` every
 `mail_in_every` asks Gmail for `deliveredto:/to:` the `+kurooto` address or `label_query(mail_in_label)`, takes mail
 to +kurooto only from `me` or `mail_in_senders` (others aren't even fetched; `mail_in_anyone` overrides), applies
 `blocked()` and the confidentiality check, and submits one text-only `lane="bg"` job per mail (`PER_CHECK` 10,
@@ -829,7 +829,7 @@ arrives.
   `research_addon.latex`). Buttons `rlx:<ref>:bib` (submits a quiet text-only job with then-action
   `research_addon.bibtex`; needs Chat), `rlx:<ref>:add` (`latex_tracker.add_entry` appends to the first existing `.bib`
   the document names, never twice), `rlx:<ref>:no`.
-- **research** Zotero (0.5.22, `modules/zotero.py`, `Research.zotero`): `Zotero.way()` is `app` (the connector at
+- **research** Zotero (0.6.0, `modules/zotero.py`, `Research.zotero`): `Zotero.way()` is `app` (the connector at
   `LOCAL` answers `/connector/ping`), `web` (a key in `research.zotero_key`, the secret named by `KEY_NAME`) or `""`, by
   `research.zotero`. The digest keeps its papers by `ref_of(id)` in `<state>/research/digest-papers.json` (last 400) and
   the numbered ones in `digest-last.json`; `zotero_buttons()` adds `zot:<ref>:add` rows (at most 8) when `way()` isn't

@@ -1986,7 +1986,7 @@ function showDense(name) {
 function agentLabel(title) {
   const b = last && last.agent && last.agent.brain;
   if (b && BRAIN[b.id]) return BRAIN[b.id];
-  const known = { "Antigravity (agy)": "agy", "Claude Code": "claude", "Claude Code (Advanced)": "claude" }; // the last: a terminal opened before 0.5.22
+  const known = { "Antigravity (agy)": "agy", "Claude Code": "claude", "Claude Code (Advanced)": "claude" }; // the last: a terminal opened before 0.6.0
   return known[title] || String(title || "agent").toLowerCase().split(/[ (/]/)[0];
 }
 function denseTerms() {

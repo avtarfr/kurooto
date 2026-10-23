@@ -1,4 +1,4 @@
-"""The link style (notes.links, 0.5.22): Kurooto writes [[wikilinks]] or markdown links between notes, as your notes do,
+"""The link style (notes.links, 0.6.0): Kurooto writes [[wikilinks]] or markdown links between notes, as your notes do,
 and reads both back, so switching never breaks the concept graph, the hubs or the link cards."""
 
 from __future__ import annotations

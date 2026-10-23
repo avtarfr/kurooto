@@ -15,7 +15,7 @@ Candidates come from four places, then are merged and ranked:
 Every new concept is compared with every concept this way, in milliseconds, so nothing depends on an AI reading the
 whole vault: the AI is shown the few notes that matter.
 
-    near_duplicates(index)     pairs of notes that look like one concept (0.5.22): the same name, a name they share
+    near_duplicates(index)     pairs of notes that look like one concept (0.6.0): the same name, a name they share
                                (an alias), or embeddings at least 0.92 alike; modules/integrate.py asks about them
 
 A note merged into another (a `<!-- kurooto:merged-into -->` block naming it) is a redirect: it isn't offered as a

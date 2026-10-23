@@ -3,7 +3,7 @@
   "title": "Desktop helpers",
   "description": "At the alarm, rings your phone through KDE Connect and wakes the screen (Hyprland, Sway or X11); pings the phone for the kinds of messages you pick; /findphone rings it now.",
   "version": "1.0.0",
-  "kurooto": ">=0.5.22",
+  "kurooto": ">=0.6.0",
   "license": "Apache-2.0",
   "features": ["desktop_helpers"],
   "commands": [{"name": "findphone", "what": "rings your phone through KDE Connect"}],

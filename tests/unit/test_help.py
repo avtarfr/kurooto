@@ -79,7 +79,7 @@ def test_each_message_fits_telegram(app):
 
 def test_help_is_always_the_index_and_a_group_has_the_detail(app):
     app.settings.set("modules.enabled", ["reminders"])
-    (index,) = app.help_parts()  # a short list is an index too (0.5.22): one line per group, /help <group> for more
+    (index,) = app.help_parts()  # a short list is an index too (0.6.0): one line per group, /help <group> for more
     assert index.startswith("Kurooto, your assistant") and "/help <group>" in index
     assert "Reminders and deadlines (/help reminders; " in index and "wiki/user/reminders-and-deadlines.html" in index
     assert "/remind" in index and "/remind  a reminder" not in index and "Off right now" in index
