@@ -136,6 +136,20 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 - **Location reminders on Android.** "When I reach the library", without draining the battery.
 - **Course notes to PDF.** A LaTeX template for course notes.
 
+## More human (2026-10-23)
+- ~~**Open threads and "that thing".** A small list of what you're in the middle of, opened from what you say you'll
+  do and tasks you start, closed when done; "did I finish that thing?" resolves from the last 48 hours and asks once
+  when two fit.~~ (0.5.19: `/threads` with Done, Drop and Undo; also from what you say on calls; `memory.thread_days`;
+  a thing found that way is only read or asked about, never acted on without your OK)
+- ~~**A context assembler with a memory budget.** Each AI reply gets only the remembered items your message refers to,
+  capped, and the receipt says how many.~~ (0.5.19: `memory.budget_tokens` 600, `memory.recall`; open threads, gists,
+  meetings and daily notes by rules; gists only, never transcripts; "used 2 remembered items"; calls get open threads
+  and the day's gists)
+- ~~**A memory ledger with an episodic timeline.** One local store of everything remembered, each row with its source
+  and a Forget; "when did I last talk to Prof X?", "what was I doing last Thursday?".~~ (0.5.19: always encrypted with
+  a key in your keychain, out of backups unless `backups.memory`, covered by `/forget`; `/memory`, `/memory forget 3`,
+  `/memory export` to a note)
+
 What people have asked for, open and done, is in [REQUESTED.md](REQUESTED.md). Have an idea? Open an issue on GitHub.
 
 ## More human (2026-10-23)

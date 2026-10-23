@@ -35,6 +35,8 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/forget 7d` · `/forget 2w` · `/forget all` | forget what Kurooto kept of your conversations from the last 7 days (12h, 2w...) now, with a count per kind; `all` forgets everything after a button that asks whether the gists go too; `/forget` alone says how long things are kept (`privacy.keep_days`) | [Privacy](privacy.md#how-long-its-kept) |
 | `/egress` | where Kurooto's requests went in the last 7 days: each host with the feature, requests and bytes out and in; programs it handed work to (git, agy, Claude Code...); hosts not on the list, and any it blocked | [Privacy](privacy.md#where-requests-go) |
 | `/gists` · `/gists <words>` · `/gists forget 3` | the one-line gists conversations settled into as their words faded (what each call or request decided or did), newest first and numbered; with words, the ones that have them all; `forget 3` drops number 3 | [Privacy](privacy.md#gists-what-settles) |
+| `/memory` · `/memory <words>` · `/memory forget 3` · `/memory export` | everything Kurooto remembers (gists, threads, how-to-help-me lines, daily notes, project meetings), encrypted on this computer: newest first and numbered; with words, the rows that have them all; `forget 3` forgets one (a how-to-help-me line leaves that note too); `export` writes the gists and threads to a note in your inbox | [Privacy](privacy.md#the-memory-ledger) |
+| `/threads` · `/threads done 2` · `/threads drop 2` · `/threads all` | what you're in the middle of (what you said you'd do, in a message or on a call; tasks you started), newest first, with Done and Drop; what closed in the last 48 hours with Undo; `all` shows older closed ones too | [Talking to Kurooto](talking-to-kurooto.md#open-threads-and-that-thing) |
 | `/sync` | with Notes sync off: sync everything that's on (with it on, see Notes sync below) | [Notes](notes-and-concept-graph.md) |
 
 ### Telegram feature
@@ -210,6 +212,9 @@ the AI. A request that asks a question only matches the requests below that answ
 
 | You say | What happens | Feature |
 |---|---|---|
+| "did I finish that thing?", "did you finish that thing?", "what was that thing?", "the draft thing is done" | what "that thing" is, from your open threads of the last 48 hours (and your AI requests, for "you"), read only; two or more: one question with a button each; "done" closes it with Undo | Kurooto itself ([threads](talking-to-kurooto.md#open-threads-and-that-thing)) |
+| "when did I last talk to Prof Ortiz?", "when did I last meet Lena?" | the newest meetings, daily-note lines, gists and threads that name them | Kurooto itself ([memory](privacy.md#the-memory-ledger)) |
+| "what was I doing last Thursday?", "what did I do yesterday?", "what was I doing on 20 Oct?" | that day's daily note, meetings, calls, requests and threads | Kurooto itself ([memory](privacy.md#the-memory-ledger)) |
 | "remind me at 9 to call mum", "remind me in 20 minutes to take the pasta off", "remind me tomorrow at 7am to go to the gym", "remind me tonight to pack" (21:00), "remind me tomorrow to …" (09:00) | a reminder for today or tomorrow; for another day use `/remind fri 17:00 …` | Reminders |
 | "what's due?", "anything due?", "show my deadlines" (two weeks), "what's due this week?" (7 days), "what's due soon?" (`deadlines.plan_h`, 3 days) | the deadline list | Deadlines |
 | "add a deadline: essay draft due friday 5pm", "I have a lab report due fri 17:00" | a new deadline | Deadlines |

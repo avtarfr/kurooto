@@ -43,6 +43,7 @@ register_defaults(
         "secrets": False,  # also passwords and keys (bot token, API keys, sign-ins): anyone with the zip can use them
         "index": True,  # also the notes brain's index (big, but slow to rebuild)
         "confidential_mail": False,  # also confidential mail summarised on this computer (Mail digest's local mode)
+        "memory": False,  # also the memory ledger (encrypted: it opens only where its key is, see backups.secrets)
     },
 )
 CONFIDENTIAL = ("mail", "confidential")  # in the data folder: only with backups.confidential_mail
@@ -68,6 +69,7 @@ SKIP_STATE_FILES = {
     ("calls", "link.json"),
     *(("learning", f"history.db{x}") for x in ("", "-wal", "-shm")),  # the search index: built again from the rest
 }
+LEDGER = {f"ledger.db{x}" for x in ("", "-wal", "-shm")}  # the memory ledger (core/ledger.py): only with backups.memory
 SKIP_NOTES_DIRS = {".git", ".trash", "node_modules", ".obsidian"}
 TOPS = ("config", "data", "state", "notes")
 SAFETY = "restore-safety"  # in the data folder: what was there before the last restore
@@ -96,6 +98,7 @@ def sources(
     index: bool,
     skip: Path | None = None,
     confidential: bool = False,
+    memory: bool = False,
 ):
     """(name in the zip, file) for everything a backup holds. `skip`: a folder never to read (the backups' own)."""
     skip = skip.resolve() if skip else None
@@ -140,7 +143,9 @@ def sources(
         "state",
         keep_dir=lambda parts: not (len(parts) == 1 and parts[0] in SKIP_STATE_DIRS),
         keep_file=lambda parts: (
-            not (len(parts) == 1 and parts[0] in SKIP_STATE) and tuple(parts) not in SKIP_STATE_FILES
+            not (len(parts) == 1 and parts[0] in SKIP_STATE)
+            and tuple(parts) not in SKIP_STATE_FILES
+            and (memory or not (len(parts) == 1 and parts[0] in LEDGER))
         ),
     )
     if notes and workspace:
@@ -210,6 +215,7 @@ def make_zip(
     name: str | None = None,
     lock_dir: Path | None = None,
     confidential: bool = False,
+    memory: bool = False,
 ) -> tuple[Path, dict]:
     """Write one backup zip into `folder`. `secrets`: a Secrets object to include them, else None. Returns (the
     zip, its manifest)."""
@@ -217,7 +223,16 @@ def make_zip(
     stamp = now().strftime("%Y%m%d-%H%M%S")
     name = name or f"{PREFIX}{stamp}.zip"
     files = list(
-        sources(p, workspace, notes=notes, secrets=bool(secrets), index=index, skip=folder, confidential=confidential)
+        sources(
+            p,
+            workspace,
+            notes=notes,
+            secrets=bool(secrets),
+            index=index,
+            skip=folder,
+            confidential=confidential,
+            memory=memory,
+        )
     )
     total = 0
     for _, f in files:
@@ -392,6 +407,7 @@ def backup_now(p, settings, secrets, workspace: Path, folder: Path | None = None
                 secrets=secrets if get("secrets", False) else None,
                 index=bool(get("index", True)),
                 confidential=bool(get("confidential_mail", False)),
+                memory=bool(get("memory", False)),
             )
             gone = prune(target, int(get("keep", 7) or 7)) if folder is None else []
     except Timeout:

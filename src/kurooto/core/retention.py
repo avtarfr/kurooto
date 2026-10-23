@@ -12,6 +12,7 @@ What it covers, all in Kurooto's own folders (your notes folder is never touched
     cases       Wrong-button cases you didn't make test cases (cases/; cases.keep_days when you set it)
     messages    the words of messages that came by themselves (calm.db keeps when and why for 45 days)
     index       the search index of past requests, calls and chats (Learns from its own work)
+    threads     what you were in the middle of (core/threads.py), by when each opened
     logs        log lines (logs/), by their time; a log file with no times goes by when it was last written
 
 Voice notes keep nothing here: the recording is saved in your notes' inbox (yours, so never removed) and what was
@@ -38,7 +39,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kurooto.core import gists
+from kurooto.core import gists, threads
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
@@ -65,6 +66,7 @@ KINDS = {  # kind -> (one, many)
     "cases": ("case", "cases"),
     "messages": ("message I sent", "messages I sent"),
     "index": ("search index item", "search index items"),
+    "threads": ("thread", "threads"),
     "logs": ("log file", "log files"),
 }
 SPAN = re.compile(r"^(\d{1,5})\s*(h|hours?|d|days?|w|weeks?)$")
@@ -206,6 +208,7 @@ STEPS = {
     "cases": _cases,
     "messages": lambda app, lo, hi: app.calm.forget(lo, hi),
     "index": _index,
+    "threads": lambda app, lo, hi: threads.forget(app, lo, hi),
     "logs": _logs,
 }
 
@@ -291,8 +294,8 @@ def command(app: App, arg: str) -> tuple[str, list | None]:
     if arg in ("all", "everything"):
         text = (
             "Forget everything I've kept of our conversations: call transcripts, AI requests and answers, chats, "
-            "answered questions, cases, the words of messages I sent, the search index and the logs? Your notes "
-            "stay. This can't be undone."
+            "answered questions, cases, the words of messages I sent, the search index, your open threads and the "
+            "logs? Your notes stay. This can't be undone."
         )
         asked = int(time.time())
         if gists.on(app) or gists.load(app):  # one line of what each decided (core/gists.py): keep those?

@@ -446,6 +446,8 @@ class Telegram(Module):
         add("keep", "what you use of each feature")  # core/keep.py
         add("forget", "forget what I kept of the last days")  # core/retention.py
         add("gists", "what forgotten conversations decided")  # core/gists.py
+        add("memory", "what I remember, encrypted")  # core/ledger.py
+        add("threads", "what you're in the middle of")  # core/threads.py
         if not self.app.is_on("notes_sync"):
             add("sync", "sync everything that's on")
         sk = self.app.modules.get("skills")

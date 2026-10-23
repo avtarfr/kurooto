@@ -53,6 +53,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Going offline and coming back (on by default) | the "going offline" and "back online" messages, and messages kept while the network was down | Telegram; with Phone calls, the phone app through your call line |
 | Going offline, with Phone calls | your night and focus hours for the next day and the message's wording; only after you approve (asked once): your bot's token and chat id, so the line can say "offline since 22:10" | your own Cloudflare account (your call line) |
 | Calm by default | nothing (see [What stays](#what-stays-on-your-computer-and-where)) | stays here |
+| Memory: what an AI reply is told | only when your message refers to past things ("on the call", "yesterday", "that thing") or shares words with something you're in the middle of: at most about 600 tokens (`memory.budget_tokens`) of one-line items from the [memory ledger](#the-memory-ledger) (open threads, gists, meeting and daily-note lines), never transcripts, with that request; a call's brief also gets your open threads and the last day's gists | the AI you picked; for calls, Google (Gemini Live, your key) |
 | Wrong button and test cases | nothing | stays here |
 
 ### Your AI and what it learns
@@ -219,6 +220,8 @@ reach for each request only; nothing is saved in its own settings.
   earlier versions of skills it changed (`learning/before/`). What's kept of conversations stays until you
   set how long:
   [How long it's kept](#how-long-its-kept).
+- **The memory ledger** (`ledger.db` in the state folder) holds what Kurooto remembers, encrypted with a key in your
+  keychain: [The memory ledger](#the-memory-ledger).
 - **The data folder** holds the About you reports (never synced), Classroom's downloaded files, books and their text,
   and confidential mail summaries (`mail/confidential/`, readable only by your user account).
 - **Mail copies:** the text of mail chosen for the digest only until the digest is written; the sender, subject and a
@@ -241,6 +244,7 @@ default, keeps it until you `/forget` it:
 | Wrong-button cases you didn't make test cases (`cases.keep_days` likewise) | `cases/` |
 | The words of messages that came by themselves (when and why stay for 45 days) | `calm.db` |
 | The search index of past requests (Learns from its own work) | `learning/history.db` |
+| Threads you were in the middle of (by when each opened) | `ledger.db` (encrypted) |
 | Log lines | the logs folder |
 
 **`/forget 7d`** forgets the last 7 days of all that now (also `/forget 12h`, `/forget 2w`), and says how many of each
@@ -260,11 +264,41 @@ once their gist exists. Gists are made by rules from Kurooto's own records, neve
 | A chat turn | its request's name, once |
 
 A line that looks like a health, money or password detail keeps only its kind ("an AI request about something
-money"). They stay in `gists.jsonl` in the state folder (never your notes) for good, or `privacy.gist_days` days when
-you set it. **`/gists`** shows the latest, **`/gists lab`** finds them, **`/gists forget 3`** drops one. `/forget 7d`
+money"). They stay in the [memory ledger](#the-memory-ledger) (encrypted, never your notes) for good, or
+`privacy.gist_days` days when you set it. **`/gists`** shows the latest, **`/gists lab`** finds them, **`/gists forget 3`** drops one. `/forget 7d`
 keeps them; **`/forget all`** asks: **Forget all, keep gists** or **Forget gists too**. `privacy.keep_gist` = `false`
 makes none. With `privacy.gist_model` on and [Local AI models](ai-brains.md) on, a model on this computer adds one
 sentence of what a call decided; a cloud AI never does.
+
+### The memory ledger
+
+Everything Kurooto remembers is in one place on this computer, `ledger.db` in the state folder, and it's always
+encrypted, whether or not you use Profile sync:
+
+| Row | Where it comes from |
+|---|---|
+| Gists | conversations whose words faded (above) |
+| Threads | what you said you'd do, in a message or on a call, and tasks you started ([Talking to Kurooto](talking-to-kurooto.md#open-threads-and-that-thing)) |
+| How-to-help-me lines | the dated lines Kurooto keeps in your how-to-help-me note |
+| Days | your daily notes' headings and lines (a health, money or password line is left out) |
+| Meetings | the dated lines under a project note's "## Meetings" |
+
+- **Encrypted at rest.** Each row's words and where it came from are sealed (AES-256-GCM) with a key made on first use
+  and kept in your keychain (Windows Credential Manager, macOS Keychain, the Secret Service on Linux; the owner-only
+  `secrets.json` where there's none). On disk stay only each row's kind, its times, a thread's open or done, and
+  keyed hashes. Searching decrypts into memory, so no index of your words is written. If the key can't be read (a
+  keychain still locked at boot), nothing is shown or written until it can.
+- **Your notes stay the source of truth.** Days, meetings and how-to-help-me lines are read from your notes when they
+  change; gists and threads live only here. **`/memory export`** writes the gists and threads to a note in your inbox.
+- **Find and forget.** **`/memory`** lists it, newest first and numbered; **`/memory glacier`** finds rows with those
+  words; **`/memory forget 3`** forgets one (a how-to-help-me line comes out of that note too; a daily-note or meeting
+  line stays in your note, which is yours, and stays forgotten here).
+- **Ask it.** "When did I last talk to Prof Ortiz?" and "what was I doing last Thursday?" are answered from it, by
+  rules on this computer.
+- **Covered by `/forget`.** `/forget 7d` drops the threads from those days, `/forget all` all of them (and the gists if
+  you choose); `privacy.keep_days` expires threads like the rest.
+- **Out of backups** unless you turn on `backups.memory`; a backed-up ledger opens only where its key is (`backups.secrets`
+  carries the key). Never in Profile sync, never in the diagnostics zip.
 
 What it never touches:
 - **Your notes folder.** A voice note's recording is saved in your notes' inbox, so it stays; delete it there.
@@ -293,6 +327,7 @@ waits there to be forgotten.
 | Calm records | yes | no | no |
 | Test cases | no | no | no |
 | The search index of past requests (Learns from its own work) | no (it's built again from the rest) | no | no |
+| The memory ledger (encrypted) | only with `backups.memory`; it opens only with its key (`backups.secrets`) | no | no |
 
 More on each: [updates-and-backups.md](updates-and-backups.md). Before you share a diagnostics zip, open it and look.
 
@@ -308,6 +343,7 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
   or passwords. Cases you didn't review are forgotten after 30 days (`cases.keep_days`).
 - **Mail marked confidential** is never read by the AI you picked, never summarised by it, and never answered with an
   AI draft. Kurooto reads its text on your computer only to spot the marking, then drops it.
+- **Open threads** never open from a sentence about health, money or passwords.
 - **Private calendar events** keep only their time.
 - **Events** (the activity log) record counts and request names, never what you typed or answered.
 

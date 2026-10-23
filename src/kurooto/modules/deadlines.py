@@ -255,6 +255,10 @@ class Deadlines(Module):
             it["parts"], it["parts_done"] = total, done
             jsave(self.file, items)
         self.app.events.emit("deadline_progress", done=done, total=total)
+        from kurooto.core import threads  # started, not done: something you're in the middle of (core/threads.py)
+
+        if 0 < done < total:
+            threads.started(self.app, f"{it['title']} ({done} of {total} done)", key=f"deadline:{i}", via="deadline")
         left = (
             "all done: tap Done on it in /deadlines once it's handed in"
             if done == total
@@ -883,6 +887,10 @@ class Deadlines(Module):
 
     def _after_status(self, j: str, it: dict, status: str) -> dict:
         self.app.scheduler.cancel(f"calls:ring:deadlines:{j}")
+        if status in ("done", "ignored"):
+            from kurooto.core import threads
+
+            threads.finish(self.app, f"deadline:{j}", "done" if status == "done" else "dropped")
         if status == "done":
             it["ticked"] = self._tick_note(it)
         return it

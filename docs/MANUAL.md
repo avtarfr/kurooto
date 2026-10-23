@@ -50,6 +50,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Calm by default: why each message came, and a daily limit](#calm-by-default-why-each-message-came-and-a-daily-limit)
   - [Keep or drop](#keep-or-drop)
 - [Your rhythm: quiet hours, lighter days, gone quiet](#your-rhythm-quiet-hours-lighter-days-gone-quiet)
+- [Memory: open threads and what's remembered](#memory-open-threads-and-whats-remembered)
 - [Forgetting: how long conversations are kept](#forgetting-how-long-conversations-are-kept)
 - [Where requests go: /egress](#where-requests-go-egress)
 - [Updates and going back](#updates-and-going-back)
@@ -415,7 +416,9 @@ stopped with a message. **Run receipt:** every answer ends with one grey line (i
 dashboard and the terminal) built from the run's own record, not the answer's words: which AI, the effort, how long,
 the share of today's limit when Kurooto knows it, and what it actually did with Kurooto's tools ("searched notes, wrote
 1 note"; "did nothing" when it used none; agy and Claude Code's own file tools aren't seen, so for them "did nothing
-through Kurooto"). Quiet background work gets none; `jobs.receipt` = `false` turns it off.
+through Kurooto"; "used 2 remembered items" when it was told what's
+[remembered](#memory-open-threads-and-whats-remembered)). Quiet background work gets none; `jobs.receipt` = `false`
+turns it off.
 **Answers at your length** (`persona.register`, on): a short message (12 words or fewer) is answered briefly, a long
 one (80 or more) may get a full answer, and a voice note gets an answer worded to be said aloud. By your message's
 length only: nothing changes at night or partway through a conversation, and a length on your persona card wins.
@@ -1638,6 +1641,8 @@ smaller, but it has to be rebuilt) and its state (check-ins, deadlines, AI reque
   them**: only for a folder that's yours alone. Without them, after a restore you sign in again where Kurooto asks.
 - `backups.confidential_mail`: confidential mail summarised on this computer (Mail digest's local mode,
   `mail/confidential/` in Kurooto's data folder). Off, it stays out of the zip.
+- `backups.memory`: the memory ledger (gists, threads, what's read from your notes). It stays encrypted in the zip and
+  opens only where its key is: on another computer only with `backups.secrets`, which carries the key.
 
 The zip isn't encrypted.
 
@@ -2970,6 +2975,44 @@ Rules only, on this computer. Each change is said once, with **Undo**.
 that part at once.
 *Leaves:* nothing. `state/rhythm.json` keeps the two learned times, the last change and its Undo, and the dates asked.
 
+## Memory: open threads and what's remembered
+
+**Open threads.** When you say you'll do something, in a message or on a call ("I'll send the draft tonight", "I need
+to reply to Lena's email"), or start a task (a study session, progress on a deadline: "ps3 4/7"), it becomes an open
+thread: rules on this computer, no AI, nothing sent. It closes when you say it's done ("I sent the draft"), when the
+session ends or the deadline is done, on **Done** or **Drop**, or by itself after 7 days nobody touched it.
+Questions, "remind me ..." and anything about health, money or passwords never open one. **`/threads`** lists what's
+open with **Done** and **Drop**, and what closed in the last 48 hours with **Undo** (`/threads done 2`, `/threads drop
+2`, `/threads all`).
+
+**"That thing."** "Did I finish that thing?", "what was that thing?", "the draft thing is done" look at threads from
+the last 48 hours, narrowed by any other words you used ("did *you* finish that thing?" also looks at your AI
+requests). One match: what it is, where you said it ("on the call at 07:56") and how it stands, with **Done** /
+**Drop**; two or more: one question with a button each. A thing found this way is only read or asked about: nothing is
+sent, moved or deleted for it without your OK.
+
+**The memory ledger.** Everything remembered is in one store on this computer, always encrypted: gists of faded
+conversations, threads, the lines Kurooto keeps in your how-to-help-me note, your daily notes' headings and lines, and
+your project notes' meetings (read from your notes when they change; your notes stay the source of truth). Each row's
+words are sealed with AES-256-GCM under a key in your keychain (`ledger.key`; the owner-only secrets file where
+there's no keychain); only kinds, times and keyed hashes are on disk, and searching decrypts into memory.
+**`/memory`** lists it, **`/memory glacier`** finds rows, **`/memory forget 3`** forgets one (a how-to-help-me line
+comes out of that note too; a daily-note or meeting line stays in your note and stays forgotten here), **`/memory
+export`** writes the gists and threads to a note in your inbox. Ask it plainly: "when did I last talk to Prof Ortiz?",
+"what was I doing last Thursday?" (also "yesterday", "on 20 Oct").
+
+**What an AI reply is told.** Only when your message refers to past things ("on the call", "yesterday", "that thing",
+"did I ...", a weekday) or shares words with an open thread, your AI gets the few remembered items it's about: at most
+about 600 tokens (`memory.budget_tokens`), picked by rules (shared words, the course and the day you name, how
+recent), each saying where it's from, never transcripts. The run receipt then ends "used 2 remembered items". A call's
+brief gets your open threads and the last day's gists, so it can pick up what you said in a chat.
+
+*Settings:* `memory.threads` (on), `memory.thread_days` (7), `memory.recall` (on), `memory.budget_tokens` (600),
+`backups.memory` (off). *Leaves:* the remembered items above, with that request, to the AI you picked (Gemini Live for
+calls); nothing else. *Undo:* **Undo** on a closed thread for 48 hours; **Drop** a thread opened by mistake;
+`memory.threads` off opens no more; `memory.recall` off sends no remembered items. Forgetting: `/memory forget 3`,
+`/forget 7d` (threads from those days), `/forget all` (all threads; the gists if you choose).
+
 ## Forgetting: how long conversations are kept
 
 Nothing is forgotten unless you choose: set `privacy.keep_days` (e.g. 30) and what Kurooto keeps of your
@@ -2981,6 +3024,7 @@ through it):
 - Chat's recent turns, answered and expired questions, Wrong-button cases you didn't make test cases;
 - the words of messages that came by themselves (Calm keeps when and why for its 45 days);
 - the search index of past requests (Learns from its own work);
+- the threads you were in the middle of (by when each opened);
 - log lines older than that (`kurooto logs`).
 
 Your notes folder is never touched: a voice note's recording is saved in your notes' inbox, so it stays. Test cases

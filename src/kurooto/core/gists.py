@@ -13,9 +13,9 @@ Rules only. With privacy.gist_model on and Local AI models on, a model on this c
 call decided; never a cloud AI. A line that looks like a health, money or password detail (modules/remember.py's
 rules) keeps only its kind and outcome.
 
-Kept in Kurooto's state folder (gists.jsonl, never in your notes) for good, or privacy.gist_days when you set it.
-/gists shows the latest, /gists <words> finds them, /gists forget 3 drops one. /forget 7d keeps them; /forget all
-asks.
+Kept in the memory ledger (core/ledger.py: encrypted, in Kurooto's state folder, never in your notes) for good, or
+privacy.gist_days when you set it (before 0.5.19 they were in gists.jsonl, moved there on first use). /gists shows the
+latest, /gists <words> finds them, /gists forget 3 drops one. /forget 7d keeps them; /forget all asks.
 """
 
 from __future__ import annotations
@@ -122,8 +122,9 @@ def _call_tools_seen(app: App, lo: float, hi: float) -> list[str]:
     return list(reversed(names))
 
 
-def call_line(app: App, f: Path, when: float, before: float) -> str:
-    """One call's gist, from its .did.json (else the event log between the call before and this one)."""
+def call_line(app: App, f: Path, when: float, before: float, local: bool = True) -> str:
+    """One call's gist, from its .did.json (else the event log between the call before and this one). local=False:
+    never a model, even when privacy.gist_model allows one (the ledger's gists of what's still kept)."""
     side = f.with_name(f.stem + DID)
     rec = jload(side, None) if side.exists() else None
     if isinstance(rec, dict):
@@ -136,7 +137,7 @@ def call_line(app: App, f: Path, when: float, before: float) -> str:
         purpose = head[2:] if head.startswith("# ") else ""
         names = _call_tools_seen(app, max(before, when - 7200), when + 1)
         acts = [f"used {', '.join(names)}"] if names else []
-    said = local_line(app, f)
+    said = local_line(app, f) if local else ""
     line = "Call" + (f" ({_one(purpose, 60)})" if purpose else "") + ": " + ("; ".join(acts) or "nothing was set")
     return _safe(_one(line + (f". {said}" if said else ""), LINE_MAX), "a call")
 
@@ -176,7 +177,7 @@ def local_line(app: App, f: Path) -> str:
     return "" if not said else said
 
 
-def _calls(app: App, lo: float, hi: float) -> list[dict]:
+def _calls(app: App, lo: float, hi: float, local: bool = True) -> list[dict]:
     from kurooto.core.retention import TRANSCRIPT, _in, _mtime
 
     d = Path(app.paths.state) / "calls" / "transcripts"
@@ -188,7 +189,7 @@ def _calls(app: App, lo: float, hi: float) -> list[dict]:
         except ValueError:
             t = _mtime(f)
         if _in(t, lo, hi):
-            out.append({"at": t, "kind": "call", "text": call_line(app, f, t, before)})
+            out.append({"at": t, "kind": "call", "text": call_line(app, f, t, before, local)})
         before = t or before
     return out
 
@@ -222,7 +223,8 @@ MAKERS = {"calls": _calls, "requests": _requests, "chats": _chats}
 
 
 # ------------------------------------------------------------------------------------------- the store
-def load(app: App) -> list[dict]:
+def _old(app: App) -> list[dict]:
+    """Gists from before the ledger (gists.jsonl, plain text)."""
     f = gists_file(app)
     out = []
     try:
@@ -239,12 +241,40 @@ def load(app: App) -> list[dict]:
     return out
 
 
+def _move(app: App) -> None:
+    """gists.jsonl (0.5.18) into the encrypted ledger, once; the plain file goes only after they're in."""
+    if not gists_file(app).exists():
+        return
+    from kurooto.core import ledger
+
+    old = _old(app)
+    have = [{"at": r["at"], "kind": r["sub"], "text": r["text"]} for r in ledger.of(app).rows(("gist",))]
+    _put(app, sorted([*have, *old], key=lambda g: g.get("at") or 0))
+    gists_file(app).unlink(missing_ok=True)
+
+
+def load(app: App) -> list[dict]:
+    """Every gist, oldest first: {at, kind, text}. [] while the ledger's key can't be read."""
+    from kurooto.core import ledger
+
+    try:
+        _move(app)
+        return [{"at": r["at"], "kind": r["sub"], "text": r["text"]} for r in ledger.of(app).rows(("gist",))]
+    except ledger.Locked:
+        return []
+
+
+def _put(app: App, items: list[dict]) -> None:
+    from kurooto.core import ledger
+
+    rows = [(float(g.get("at") or 0), str(g.get("kind") or ""), {"text": g["text"]}) for g in items]
+    ledger.of(app).replace("gist", rows)
+
+
 def _save(app: App, items: list[dict]) -> None:
-    f = gists_file(app)
-    tmp = f.with_name(f.name + ".tmp")
-    tmp.write_text("".join(json.dumps(g, ensure_ascii=False) + "\n" for g in items), encoding="utf-8")
-    tmp.chmod(0o600)
-    tmp.replace(f)
+    """All gists at once, into the ledger (raises ledger.Locked, changing nothing, while its key can't be read)."""
+    _move(app)
+    _put(app, items)
 
 
 def keep(app: App, kind: str, lo: float, hi: float) -> int:
@@ -295,9 +325,11 @@ def expire(app: App, now: float | None = None) -> int:
 
 def clear(app: App) -> int:
     """/forget all, when you chose to drop the gists too. How many went."""
+    from kurooto.core import ledger
+
     with Lock(app.paths.state, "gists"):
-        n = len(load(app))
         gists_file(app).unlink(missing_ok=True)
+        n = ledger.of(app).drop("gist")
     return n
 
 

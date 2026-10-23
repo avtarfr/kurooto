@@ -69,7 +69,9 @@ Kurooto looks at each message in this order and stops at the first match:
    due?", "no calls for 2 hours"). These run on your computer with no AI. Long messages (over 300 characters), and
    messages with several requests in one ("..., also ...", "... and then ...", two sentences), always go to the AI so it
    reads the whole thing. A question ("what...?", "when...?") only matches requests that answer questions. A phrasing
-   you taught with the Wrong button goes first ([teaching-kurooto.md](teaching-kurooto.md)).
+   you taught with the Wrong button goes first ([teaching-kurooto.md](teaching-kurooto.md)). Questions about what's
+   remembered come before the features' requests: "did I finish that thing?", "when did I last talk to Prof Ortiz?",
+   "what was I doing last Thursday?" ([below](#open-threads-and-that-thing)).
    **Two close readings.** When no instant request takes your words but they're close to two of them (by their
    example phrasings), it asks instead of guessing: 'Did you mean "what's due this week" or "what's on today"?' with
    both as buttons and **Neither** (which sends it on as before). Only when the two are about equally close; otherwise
@@ -123,6 +125,13 @@ through a conversation. A length on your [persona card](teaching-kurooto.md#your
 **Memory of the conversation.** Chat remembers your last few exchanges (up to 6, each cut to 1,200 characters) as long
 as the last one was within 2 hours; after 2 hours of quiet a new message starts fresh. Requests from a terminal start
 fresh every time. Background requests (digests, the look back) never become part of the chat.
+
+**What it remembers beyond that.** When your message refers to past things ("as we said on the call", "yesterday",
+"that thing", "did I ...", a weekday) or shares words with something you're in the middle of, the AI is also told the
+few remembered items it's about: open threads, one-line gists of earlier calls, requests and chats, meeting and
+daily-note lines. At most about 600 tokens (`memory.budget_tokens`), picked by rules (shared words, the course you
+name, the day you name, how recent), each saying where it's from, so an answer can say "as we said on the call at
+07:56". Never transcripts. The grey line then ends with "used 2 remembered items". `memory.recall` off sends none.
 
 **Limits.** Telegram messages hold about 4,000 characters, so long answers come in parts; past six parts, the first
 five come and then the whole text as a file (nothing is cut off). Answers over about 7,000 characters also come as a
@@ -289,6 +298,31 @@ facts.
 This is a fixed list of rules, not the AI's judgement: plain-English requests that match it are answered at once on
 your computer; every AI request and every call is also told the rule. `persona.boundaries` off turns both off.
 
+## Open threads and "that thing"
+
+Kurooto keeps a short list of what you're in the middle of, so you can say "that thing" and be understood.
+
+- **Opens** when you say you'll do something, in a message or on a call ("I'll send the draft tonight", "I need to
+  reply to Lena's email", "I'm going to finish the problem set"), and when you start a task (a study session, progress
+  on a deadline: "ps3 4/7"). Rules on your computer, no AI; nothing is sent when one opens. Questions, "remind me ..."
+  and anything about health, money or passwords never open one.
+- **Closes** when you say it's done ("I sent the draft"), when the session ends or the deadline is done, when you tap
+  **Done** or **Drop**, or by itself after 7 days nobody touched it (`memory.thread_days`).
+- **`/threads`** lists what's open, newest first, with **Done** and **Drop**, and what closed in the last 48 hours with
+  **Undo**. `/threads done 2`, `/threads drop 2`, `/threads all`.
+- **"Did I finish that thing?"** looks at threads from the last 48 hours (narrowed by any other words: "that wind
+  tunnel thing"); "did *you* finish that thing?" also looks at your AI requests. One match: what it is, where you said
+  it and how it stands. Two or more: it asks once, with a button each. "That thing is done" closes it, with **Undo**.
+  "What was that thing?" works too.
+- **It never acts on a guess.** A "that thing" found this way is only read or asked about; nothing is sent, moved or
+  deleted for it without your OK (the AI is told the same).
+- **Your memory, asked plainly.** "When did I last talk to Prof Ortiz?" answers from meetings in your project notes,
+  daily notes, gists and threads; "what was I doing last Thursday?" (also "yesterday", "on 20 Oct") lists that day's
+  daily note, meetings, calls, requests and threads. `/memory` lists and searches everything remembered
+  ([privacy.md](privacy.md#the-memory-ledger)).
+
+Threads are kept in the encrypted memory ledger; `memory.threads` off opens no more.
+
 ## Other core commands
 
 | Command | Does |
@@ -299,6 +333,8 @@ your computer; every AI request and every call is also told the rule. `persona.b
 | `/calm`, `/why` | the daily message limit and what's turned down; why the last message came ([messages-it-sends.md](messages-it-sends.md)) |
 | `/forget 7d`, `/forget 2w`, `/forget all` | forget what Kurooto kept of the last 7 days (two weeks, or everything, after a confirm button) now; `/forget` alone says how long things are kept ([privacy.md](privacy.md#how-long-its-kept)) |
 | `/gists`, `/gists <words>` | the one-line gists your conversations settled into as their words faded ([privacy.md](privacy.md#gists-what-settles)) |
+| `/threads`, `/threads done 2` | what you're in the middle of, with Done, Drop and Undo ([above](#open-threads-and-that-thing)) |
+| `/memory`, `/memory <words>`, `/memory forget 3`, `/memory export` | everything remembered (encrypted on this computer), searchable, with Forget; export writes a note ([privacy.md](privacy.md#the-memory-ledger)) |
 | `/sync` | with Notes sync off: sync everything that's on. With Notes sync on, `/sync` syncs your notes and `/sync all` everything |
 
 ## Renaming your assistant

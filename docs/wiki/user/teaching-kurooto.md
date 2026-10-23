@@ -146,6 +146,25 @@ with **Keep**, **Change** and **Forget**. At most two a week, three days apart.
 **Turn it off.** Features → Remember. The note stays; while it exists, AI requests still read it. Delete the note to
 stop that.
 
+## What it remembers, and when it uses it
+
+Everything Kurooto remembers sits in one encrypted store on your computer, the memory ledger
+([privacy.md](privacy.md#the-memory-ledger)): the gists of faded conversations, the threads you're in the middle of
+([talking-to-kurooto.md](talking-to-kurooto.md#open-threads-and-that-thing)), the lines it keeps in your
+how-to-help-me note, and what your daily notes and project meetings say. Your notes stay the source of truth; the
+ledger reads them when they change.
+
+- **`/memory`** lists it, **`/memory lab`** finds rows with those words, **`/memory forget 3`** forgets one (a
+  how-to-help-me line comes out of the note too), **`/memory export`** writes the gists and threads to a note.
+- **Ask it plainly:** "when did I last talk to Prof Ortiz?", "what was I doing last Thursday?".
+- **What an answer is told.** Only when your message refers to past things or to something you're in the middle of,
+  your AI gets the few items it's about, at most about 600 tokens (`memory.budget_tokens`), each saying where it's
+  from ("call at 07:56 today"), never a transcript. The grey line under the answer counts them ("used 2 remembered
+  items"). Calls get your open threads and the last day's gists in their brief, so a call can pick up what you said in
+  a chat. `memory.recall` off: none of it goes.
+- **Nothing it isn't told.** It never guesses how you feel or keeps health, money or password details; a thread found
+  from "that thing" is only read or asked about, never acted on without your OK.
+
 ---
 
 ## Nightly look back

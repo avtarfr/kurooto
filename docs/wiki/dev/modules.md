@@ -524,7 +524,8 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **local_models** (`modules/local_models.py`): installs Ollama and the models the hardware profile suggests; wires the
   helper model into `brain.models.ollama` and `brain.classify`; `rest()` unloads models on battery.
 - **backups** (`modules/backups.py`): a daily zip of config, data and state (notes, secrets, the GBrain index optional)
-  to a folder the user picks; SQLite copied with the backup API; `kurooto restore`.
+  to a folder the user picks; SQLite copied with the backup API; `kurooto restore`. The memory ledger (`LEDGER`) only
+  with `backups.memory` (`sources(memory=)`); it opens only with its key, which `backups.secrets` carries.
 - **profile** (`modules/profile.py`, crypto in `core/profile.py`): the setup, encrypted with the user's passphrase, on
   a branch of a private repository; restore on a new computer.
 - **space** (`modules/space.py`): the Space keeper (see [core.md](core.md#space-keeper)).
