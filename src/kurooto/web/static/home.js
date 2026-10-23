@@ -653,6 +653,7 @@ function assignHoods(nodes) {
   return hoods;
 }
 
+const HUB_LINKS = 12, MAX_STEP = 40; // the notes graph: springs per hub, the furthest a note moves a frame
 class Mind {
   constructor(cv) { this.cv = cv; this.nodes = new Map(); this.links = []; this.alpha = 1; this.view = { x: 0, y: 0, k: 1 }; this.autofit = true;
     this.flares = []; this.groupIdx = new Map(); this.hover = null; this.selected = null; this.query = ""; this.showRecent = false; this.version = -1; this.wire(); }
@@ -708,8 +709,11 @@ class Mind {
       const sameHood = p.neighborhood === q.neighborhood;
       const targetL = sameHood ? (70 + Math.min(50, (p.deg + q.deg) * 0.7)) : (120 + Math.min(60, (p.deg + q.deg) * 0.8));
       const f = ((d - targetL) / d) * 0.022 * a;
-      p.vx += dx * f; p.vy += dy * f;
-      q.vx -= dx * f; q.vy -= dy * f;
+      // a hub's springs are shared out over its links: a map note with hundreds of them would otherwise overshoot
+      // further each step until the whole graph flies off the screen
+      const fp = f * Math.min(1, HUB_LINKS / p.deg), fq = f * Math.min(1, HUB_LINKS / q.deg);
+      p.vx += dx * fp; p.vy += dy * fp;
+      q.vx -= dx * fq; q.vy -= dy * fq;
     }
     for (const n of nodes) {
       const an = this.anchor.get(n.neighborhood) || { x: 0, y: 0 };
@@ -718,7 +722,9 @@ class Mind {
       n.vy += (an.y - n.y) * pull * a - n.y * 0.0001 * a;
       if (n === this.dragging) { n.vx = n.vy = 0; continue; }
       n.vx *= 0.80; n.vy *= 0.80;
+      const sp = Math.hypot(n.vx, n.vy); if (sp > MAX_STEP) { n.vx *= MAX_STEP / sp; n.vy *= MAX_STEP / sp; }
       n.x += n.vx; n.y += n.vy;
+      if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) { n.x = an.x; n.y = an.y; n.vx = n.vy = 0; }
     }
     this.alpha = Math.max(0.04, this.alpha * 0.988);
   }
@@ -727,7 +733,7 @@ class Mind {
     const xs = nodes.map((n) => n.x).sort((a, b) => a - b), ys = nodes.map((n) => n.y).sort((a, b) => a - b);
     const q = (arr, f) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(f * (arr.length - 1))))];
     const x0 = q(xs, 0.02), x1 = q(xs, 0.98), y0 = q(ys, 0.02), y1 = q(ys, 0.98);
-    const k = Math.min((w - (DENSE ? 120 : 160)) / Math.max(50, x1 - x0), (h - 90) / Math.max(50, y1 - y0)), tk = clamp(k, 0.25, 2.5);
+    const k = Math.min((w - (DENSE ? 120 : 160)) / Math.max(50, x1 - x0), (h - 90) / Math.max(50, y1 - y0)), tk = clamp(k, 0.08, 2.5);
     this.view.k += (tk - this.view.k) * 0.05; this.view.x += (-(x0 + x1) / 2 - this.view.x) * 0.05; this.view.y += (-(y0 + y1) / 2 - this.view.y) * 0.05;
   }
   toScreen(n, w, h) { return { x: w / 2 + (n.x + this.view.x) * this.view.k, y: h / 2 + 8 + (n.y + this.view.y) * this.view.k }; }
@@ -901,7 +907,7 @@ class Mind {
       });
     }
     cv.addEventListener("wheel", (e) => { e.preventDefault(); this.autofit = false; const r = cv.getBoundingClientRect(), before = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
-      this.view.k = clamp(this.view.k * Math.exp(-e.deltaY * 0.0015), 0.15, 6); const after = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
+      this.view.k = clamp(this.view.k * Math.exp(-e.deltaY * 0.0015), 0.08, 6); const after = this.toWorld(e.clientX - r.left, e.clientY - r.top, this.w, this.h);
       this.view.x += after.x - before.x; this.view.y += after.y - before.y; }, { passive: false });
     cv.addEventListener("mousedown", (e) => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       if (x < 240 && y < 40) { this.toggleRecent(); return; }

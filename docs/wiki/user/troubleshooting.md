@@ -216,6 +216,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | What you see | What to do |
 |---|---|
 | The dashboard won't open | `kurooto open`, or `http://127.0.0.1:8770`; the port may have moved (`kurooto paths` → `web.json`). It opens only on the computer Kurooto runs on. |
+| The NOTES map is empty, but its top line counts notes | Update to 0.5.11 or later: a note with hundreds of links threw the map off the screen. Reload the dashboard after updating. |
 | A setting isn't on the Settings page | A feature's settings appear once it's on. Telegram's pairing (`telegram.chat_id` and the like) is set by pairing, not on the page. |
 | The Terminals tab says it's off, or a terminal won't type | Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose. |
 | Kurooto Terminal opens separate windows instead of tabs | kitty (Linux, macOS) or Windows Terminal isn't there: `kurooto term --install`, or Windows Terminal from the Microsoft Store. `kurooto term --print` says what it found. |

@@ -113,6 +113,10 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   feature cells, jobs, schedule, updates, power, processes) every 2 s, and the notes graph (`Graph.scan()`) every
   5 s when notes changed. Errors emit `dashboard_error`.
 - Message types the page handles (`static/home.js:connect`): `graph`, `body`, `event`, `hello`, `pty`.
+- The NOTES map (`static/home.js:Mind`) is a force layout run each frame: pairwise repulsion, a spring per link,
+  a pull to the neighbourhood's anchor. A note's spring force is scaled by `min(1, HUB_LINKS / links)` and a step is
+  capped at `MAX_STEP`: without that, a map note with hundreds of links (the concept graph's course maps) overshoots
+  by more each step and the layout diverges (positions near 1e50, an empty pane). `fit()` zooms out to 0.08.
 - Terminals use no websockets: output arrives as `{"t":"pty","n":name,"d":<base64>,"replay":bool}` pushed only to the
   viewers (`modules/terminals.py`), and keystrokes go up as `POST /api/term/<name>/input` batched every 12 ms. xterm.js is
   vendored in `static/vendor/xterm/`.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.11 (2026-10-23)
+
+- **Fix:** the dashboard's NOTES map stayed empty once a note had hundreds of links (a course map the concept graph
+  links every concept to): its layout pulled that note further each frame until every dot was off the screen. A
+  note's pull is now shared out over its links, and the map zooms out far enough to fit a big notes folder.
+
 ## 0.5.10 (2026-10-23)
 
 - **Fix (Windows):** `agents.scripts` accepted any file there, since Windows says every file can run; now only
