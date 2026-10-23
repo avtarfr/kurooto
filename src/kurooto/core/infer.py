@@ -428,7 +428,7 @@ def observe(app: App, text: str, via: str = "chat") -> list[str]:
         data = _load(app)
         for sentence in _sentences(text):
             k = _key(sentence)
-            if k in data["seen"] or len(sentence) < 12:
+            if k in data["seen"] or len(sentence) < 12 or sentence.endswith("?"):  # a question states nothing
                 continue
             data["seen"].append(k)
             parts = (("projects", _project), ("meetings", _meeting), ("classes", _class), ("aliases", _alias),

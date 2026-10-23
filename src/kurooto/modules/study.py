@@ -259,6 +259,9 @@ class Study(Module):
             )
         self.app.events.emit("study_session_start", subject=slug, planned=minutes)
         name = subj.name_of(slug)
+        from kurooto.core import threads  # something you're in the middle of (core/threads.py)
+
+        threads.started(self.app, f"studying {name}", key=f"study:{slug}", via="study")
         until = f" for {minutes} min (until {now() + dt.timedelta(minutes=minutes):%H:%M})" if minutes else ""
         return (f"{prev} " if prev else "") + f"{name}: session started{until}. /study stop when you're done."
 
@@ -282,6 +285,9 @@ class Study(Module):
             self.add(s["subject"], secs, manual=True)
         mins = round(secs / 60)
         self.app.events.emit("study_session_end", subject=s["subject"], minutes=mins)
+        from kurooto.core import threads
+
+        threads.finish(self.app, f"study:{s['subject']}")
         return f"{self.app.modules['subjects'].name_of(s['subject'])}: {mins} min logged."
 
     def _session_end(self, p: dict) -> None:

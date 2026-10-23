@@ -129,6 +129,7 @@ it found on this computer. The folder must:
 | Your settings and which features are on | `backups.notes`: your notes folder (without `.git`, `.trash`, `.obsidian` and `node_modules`). Turn it on if your notes aren't synced anywhere else |
 | Kurooto's data, including the notes brain's index (`backups.index` off leaves the index out) | `backups.secrets`: your passwords and keys (bot token, API keys, sign-ins). **Anyone with the zip can then use them**, so only for a folder that's yours alone |
 | Its state: check-ins, deadlines, AI requests and answers, the schedule | `backups.confidential_mail`: confidential mail summarised on this computer by the Mail digest's local mode |
+| | `backups.memory`: the [memory ledger](privacy.md#the-memory-ledger) (gists, threads, what's read from your notes). It stays encrypted in the zip and opens only where its key is; on another computer only with `backups.secrets` too |
 
 **Never in a zip:** your test cases from the Wrong button (they hold what you typed), logs, locks, and a few files that
 only mean something to the running program. The zip **isn't encrypted**.
@@ -159,6 +160,7 @@ folder (handy before reinstalling). A one-off copy never removes older zips.
 | `backups.secrets` | `false` | include passwords and keys |
 | `backups.index` | `true` | include the notes brain's index (big, but slow to rebuild) |
 | `backups.confidential_mail` | `false` | include locally summarised confidential mail |
+| `backups.memory` | `false` | include the memory ledger (encrypted; restoring it elsewhere needs `backups.secrets`) |
 
 With the [Space keeper](#space-keeper) on, zips also go when together they pass `space.backups_max_gb` (3 GB) or are
 older than `space.backups_max_age_days` (off). The newest zip is never removed.

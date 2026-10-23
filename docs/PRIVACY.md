@@ -33,6 +33,7 @@ computer only.
 | After-class notes | nothing; with Chat on: your answer and the photos and files you sent with it, for the AI to write a study log | the AI service you picked |
 | Notes brain (GBrain) | nothing on computers with a graphics card or Apple Silicon (the index is made locally); on others, note text, to make the index. The nightly upkeep and timelines add nothing: the upkeep's index step sends note text to Google only if your index already uses Gemini. Kurooto turns off GBrain's own update check, so GBrain makes no calls to its release page | Google (Gemini, your key), unless you chose keyword-only |
 | Notes brain: your own GBrain (`gbrain.managed` = `false`) | nothing by Kurooto: it runs your gbrain program, which uses the embedding and AI models *your* brain is set up with (also for the upkeep steps you add, such as contradictions). With `gbrain.agy_mcp` and your approval, agy can use your brain's tools, so what it reads there goes to Google like the rest of agy's work | whatever your own brain is set up to use; Google (agy) with `gbrain.agy_mcp` |
+| Memory: what an AI reply is told | only when your message refers to past things ("on the call", "yesterday", "that thing", "did I ...", a weekday) or shares words with an open thread: at most about 600 tokens (`memory.budget_tokens`) of one-line items from the memory ledger (open threads, gists, meeting and daily-note lines), each saying where it's from, never transcripts, with that request. A call's brief also gets your open threads and the last day's gists. `memory.recall` = `false` sends none | the AI service you picked; for calls, Google (Gemini Live, your key) |
 | Remember | your how-to-help-me note (`about-me/how-to-help-me.md`) goes along with every AI request, like the profile's "In brief" part; health, money and password details are refused, never stored. "Still true?" (`remember.recheck_days`, 90) is worked out on this computer: when each line Kurooto wrote last came up, kept by a hash of its words in the state folder | the AI service you picked |
 | Nightly look back | what happened (events: what you answered, moved, skipped, and when), Kurooto's questions and your answers, today's call transcripts and journal (each can be left out), your how-to-help-me note and the values of the settings it may change; for a skill change you approved, that skill's text | the AI service you picked |
 | Learns from its own work (optional) | its search index of past requests, calls and chats is built and kept on this computer; when the AI searches it, the passages it finds go to that AI with the request; to learn a skill, the finished request, its answer and the steps it took; to learn a lesson, your correction and the skill; with the nightly look back, the day's requests, to pick out facts you stated (never health, money, passwords or other people's details) | the AI that takes second looks (`learning.brain`), else the AI service you picked |
@@ -53,7 +54,7 @@ computer only.
 | Calendar | nothing leaves; Kurooto reads your calendar's private link (or Google Calendar). Event descriptions are read only for `#nocall`, `#focus` and `#private` and aren't kept. Events marked private are kept and told only as "Busy (private)": their title and place go nowhere, not even to your AI | (read from Google/Outlook/Apple) |
 | Notes sync | your whole notes folder; conflict copies (when a note changed here and elsewhere at once) are ordinary notes and go too | your own private GitHub repository |
 | Notes sync + Phone calls | read access to that repository, so calls can read notes while the computer is off | your call line (its secret store) |
-| Backups | a zip of Kurooto's settings, data and state (AI requests and answers, check-ins, deadlines, your profile reports); your notes and your keys only if you turn them on. Not encrypted | only the folder you pick; if your computer syncs that folder to a cloud (Google Drive, OneDrive, iCloud, Dropbox), that cloud |
+| Backups | a zip of Kurooto's settings, data and state (AI requests and answers, check-ins, deadlines, your profile reports); your notes and your keys only if you turn them on, the memory ledger only with `backups.memory` (encrypted). Not encrypted otherwise | only the folder you pick; if your computer syncs that folder to a cloud (Google Drive, OneDrive, iCloud, Dropbox), that cloud |
 | Profile sync | your settings, passwords and keys, and saved state (deadlines, quiz progress, routines, observations, scheduled reminders and calls), all encrypted with your passphrase before they leave; in plain text only when it was saved, Kurooto's version, the kind of computer and a random id for it | your own private GitHub repository (the one Notes sync uses, or another you pick) |
 | Google | Kurooto reads Classroom and, with Gmail drafts on, writes drafts in your Gmail; nothing is sent from your Gmail without your tap | Google, with your own client and sign-in |
 | Classroom → notes | Classroom posts and the text of their attached files, to write the notes | the AI service you picked; read from Google with your own client |
@@ -191,10 +192,25 @@ line of what it decided or did, made by rules on this computer from Kurooto's ow
 and what its tools did (a reminder's time and wording, a deadline's title; never what a tool read); for an AI request
 of yours, its title (the first 80 characters of what you asked), how it ended and its run receipt, never the answer;
 for a chat turn, its request's name. A line that looks like a health, money or password detail keeps only its kind.
-Gists stay in Kurooto's state folder (`gists.jsonl`, never your notes or Profile sync; Backups include it like the
-rest of the state folder) for good, or `privacy.gist_days` days when you set it. `/gists forget 3` drops one, `/forget
+Gists stay in the memory ledger (below; never your notes or Profile sync) for good, or `privacy.gist_days` days when
+you set it. `/gists forget 3` drops one, `/forget
 all` asks whether they go too, `privacy.keep_gist` = `false` makes none. Only with `privacy.gist_model` on and Local AI
 models on does a model on this computer read a call's transcript to add one sentence; a cloud AI never does.
+
+**The memory ledger.** Everything Kurooto remembers is in one store, `ledger.db` in its state folder, always encrypted
+(not only with Profile sync): the gists; open threads (what you said you'd do, in a message or on a call, and tasks you
+started; never from a sentence about health, money or passwords); the dated lines Kurooto keeps in your how-to-help-me
+note; your daily notes' headings and lines (a health, money or password line is left out); your project notes'
+meeting lines. Each row's words and where it came from are sealed with AES-256-GCM under a 256-bit key made on first
+use and kept in your system's keychain as `ledger.key` (Windows Credential Manager, macOS Keychain, the Secret Service
+on Linux; the owner-only `secrets.json` where there's none, or when Kurooto starts at boot on Linux). On disk stay only
+each row's kind, its times, a thread's state and keyed hashes (so a note line you forgot isn't read back in); search
+decrypts into memory, so no index of your words is written. If the key can't be read, nothing is shown or written,
+and a new key is never made over rows an older one sealed. The ledger and its key are never in Profile sync or the
+diagnostics zip; Backups leave the ledger out unless you turn on `backups.memory` (it stays encrypted in the zip and
+opens only with its key, which `backups.secrets` carries). `/memory forget 3` forgets a row, `/forget 7d` and `/forget
+all` cover threads (and gists when you choose), `/memory export` writes the gists and threads to a note in your notes
+folder; your notes stay the source of truth.
 
 ## Your own code and terminals
 

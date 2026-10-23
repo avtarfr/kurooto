@@ -456,6 +456,12 @@ class Calls(Module):
             out.update(self.app.ask.call_brief())  # open questions and approvals for you (core/ask.py)
         except Exception as e:
             self.app.events.emit("calls_brief_failed", module="ask", error=str(e)[:200])
+        try:  # what you're in the middle of and what was said since yesterday, within its budget (core/assembler.py)
+            from kurooto.core import assembler
+
+            out.update(assembler.call_brief(self.app))
+        except Exception as e:
+            self.app.events.emit("calls_brief_failed", module="memory", error=str(e)[:200])
         upcoming = [f"{dt.datetime.fromtimestamp(c['at']):%H:%M} {c['reason']}" for c in self.schedule_list()[:5]]
         if upcoming:
             out["calls_planned"] = upcoming
@@ -1029,6 +1035,9 @@ class Calls(Module):
         from kurooto.core import gists
 
         gists.note_call(f, purpose, used)  # what it did, for its gist when the transcript is forgotten
+        from kurooto.core import threads
+
+        threads.from_call(self.app, lines)  # "I'll send the draft tonight" said on the call: an open thread
         try:  # the look back never stands in the way of keeping the transcript
             review.review(self, lines, used, purpose)
         except Exception as e:

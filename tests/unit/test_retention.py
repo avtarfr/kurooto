@@ -97,6 +97,7 @@ def test_the_daily_job_forgets_what_is_older_than_keep_days(kept):
         "cases": 1,
         "messages": 1,
         "index": 0,
+        "threads": 0,
         "logs": 2,
     }
     st = app.paths.state

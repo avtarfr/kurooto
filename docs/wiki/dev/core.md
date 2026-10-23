@@ -10,7 +10,7 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 [jobs](#jobs) · [events](#events) · [notify and Calm](#notify-and-calm) · [ask](#ask-questions-and-approvals) ·
 [availability](#availability) · [power](#power) · [presence](#presence) · [quota](#quota-free-ai-limits) ·
 [reserve](#the-reserve) · [space keeper](#space-keeper) · [retention](#retention-and-forget) ·
-[hardware](#hardware-profiles) ·
+[memory](#memory-the-ledger-threads-and-the-assembler) · [hardware](#hardware-profiles) ·
 [processes](#running-programs) · [locks](#locks-and-atomic-writes) · [Windows](#windows-notes) ·
 [smaller pieces](#smaller-core-pieces) · [keep or drop](#keep-or-drop-corekeeppy)
 
@@ -44,6 +44,7 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 | `availability` | `core/availability.py` |
 | `ask` | `core/ask.py` |
 | `keep` | `core/keep.py` |
+| `memory` (`threads`, `thread_days`; `recall`, `budget_tokens`) | `core/threads.py`, `core/assembler.py` |
 | `power` | `core/power.py` |
 | `quota` | `core/quota.py` |
 | `health` | `core/health.py` |
@@ -71,7 +72,8 @@ Modules read their own section with `Module.setting(key)` (= `settings.get(f"{id
 - Names in use include `telegram.token`, `web.token`, `gemini.api_key`, `<brain>.api_key`, `google.client`,
   `google.tokens[.<account>]`, `calendar.ics`, `calls.call_secret`, `calls.connector_secret`, `calls.ntfy_topic`,
   `calls.ntfy_key`, `calls.vapid_jwk`, `calls.vapid_public`, `calls.github_token`, `notes_sync.token`,
-  `profile.token`, `profile.key`. `diagnostics.py:KNOWN_SECRETS` lists the ones the bundle redacts; add new names there.
+  `profile.token`, `profile.key`, `ledger.key` (the memory ledger's key, `core/ledger.py`; in `profile.NEVER`).
+  `diagnostics.py:KNOWN_SECRETS` lists the ones the bundle redacts; add new names there.
 
 ## Paths and the notes layout
 
@@ -122,7 +124,8 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers (kept `privacy.keep_days`); once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
 | `calm.db` | SQLite, table `sent`, kept 45 days (`text`/`title` only `privacy.keep_days`) | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
-| `gists.jsonl` | JSON lines `{at, kind, text}`: the one-line gists conversations settled into (kept for good, or `privacy.gist_days`) | `core/gists.py` |
+| `ledger.db` | SQLite, tables `rows` (kind, sub, at, upd, src, h, `blob` = AES-GCM sealed JSON), `seen`, `forgot` (WAL, 0600): the memory ledger, encrypted; gists, threads, rows read from notes. Not backed up unless `backups.memory` | `core/ledger.py:Ledger` |
+| `gists.jsonl` | (0.5.18 only) the gists before the ledger; moved into it and removed on first use | `core/gists.py:_move` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
@@ -254,6 +257,7 @@ Recurring (key → when; setting that controls it):
 | `keep:tick` | daily 12:00 (respects quiet) | `keep.ask` | `core/keep.py:Keep.start` |
 | `ask:sweep` | every 10m | | `core/ask.py:Ask.start` |
 | `retention:expire` | daily 04:15 | `privacy.keep_days` | `core/retention.py:start` |
+| `memory:nightly` | daily 04:30 | `memory.thread_days` | `core/ledger.py:start` (notes read again, `threads.expire`) |
 | `reserve:refresh` | every 10m | | `core/reserve.py:start` |
 | `agents:export` | hourly (only while export is on) | `agents.export` | `core/agent_export.py` |
 | `health:daily` | daily 21:00 | `health.when` | `core/health.py:Health.start` |
@@ -360,7 +364,11 @@ jid = app.jobs.submit(
   no escaping); other channels show it as plain text. `GET /api/job` (`web/tools_api.py:job`) appends it to `answer`
   and returns it as `receipt`, so the terminal chat, `kurooto ask` and the dashboard show it too. Quiet requests are
   never delivered, so they get none. Tests run with it off (`tests/conftest.py:no_receipts`);
-  `tests/unit/test_receipt.py` turns it on.
+  `tests/unit/test_receipt.py` turns it on. When the request was told remembered items (below), the line ends
+  "· used N remembered items" (`receipt(..., recalled=)`; it stays when the line is shortened).
+- **Memory in the context** (0.5.19): `_run` calls `core/assembler.py:for_request(app, job)` before building the
+  `Task` and passes the block as `headless_context(app, extra)`; the count goes into `Jobs.recalled[jid]` for the
+  receipt and is dropped with the tool log. Only lane `you`; never raises (`recall_failed`).
 - **Chat history** (0.5.8): after delivery, the answer is recorded into Chat's history only if
   `chat.owns(job.id)` (`modules/chat.py:Chat.owns`, the set of job ids `Chat.ask` submitted). Digests, research,
   call reviews and skills therefore never become "the conversation".
@@ -581,6 +589,7 @@ over a stretch `[lo, hi)` in epoch seconds (`STEPS`):
 | `cases` | non-test cases by `at` | `cases.Store.forget` |
 | `messages` | `calm.db` rows not held | `Calm.forget` blanks `text`, `title` |
 | `index` | `learning/history.db` docs by `at` | `learning.forget` (`History.forget`; `prune` calls it) |
+| `threads` | `ledger.db` rows of kind `thread` by when they opened | `threads.forget` (`Ledger.drop`) |
 | `logs` | every file in the logs folder | `trim_log`: lines by their `asctime`, continuation lines follow the stamped line; no stamps: by mtime. Rewritten in place (the handler keeps appending); emptied rotated copies are removed |
 
 - `forget(app, lo, hi=END, kinds, gist=True, settle=False)` runs each kind under its own try (`retention_failed`,
@@ -603,8 +612,11 @@ over a stretch `[lo, hi)` in epoch seconds (`STEPS`):
 ### Gists (consolidation)
 
 `core/gists.py`: words fade, meaning settles. `keep(app, kind, lo, hi)` makes one line per item `MAKERS[kind]` finds
-in the stretch, by rules from records, and appends it to `state/gists.jsonl` (under `Lock(state, "gists")`; an item
-already gisted by `(kind, at)` is skipped, so a retry never doubles):
+in the stretch, by rules from records, and keeps it in the memory ledger as rows of kind `gist` (sub = call, request,
+chat; under `Lock(state, "gists")`; `load()`/`_save()` read and replace them all, `_move()` brings a 0.5.18
+`gists.jsonl` in once; an item already gisted by `(kind, at)` is skipped, so a retry never doubles). While the
+ledger's key can't be read, `load()` is empty and `_save()` raises `ledger.Locked` before changing anything, so the
+daily job keeps the words:
 
 - `calls`: `call_line()` from `<transcript>.did.json`, which `Calls.save_transcript` writes with `note_call(f,
   purpose, tool_log)`: acting tools (`core/jobs.py:ACTS`, verbs not in `READS`) with their result, read-only and
@@ -618,6 +630,74 @@ already gisted by `(kind, at)` is skipped, so a retry never doubles):
 - `expire()` drops gists older than `privacy.gist_days` (0, the default: never); `clear()` for `/forget all` → Gists
   too; `command()` is `/gists` (core command in `App.handle`): newest first, numbered; words filter (all must match);
   `forget N`. Events: `gists_kept`, `gists_expired`, `gist_forgotten`, `gist_failed` (counts and kinds only).
+- `MAKERS` also feed `ledger.live()`: the same lines for what's still kept in full, made on demand and never stored
+  (`_calls(..., local=False)`: never a model).
+
+## Memory: the ledger, threads and the assembler
+
+Three pieces (0.5.19), all rules, no AI.
+
+**The ledger** (`core/ledger.py`). One SQLite store, `state/ledger.db`, opened lazily per app (`of(app)`, closed by
+`App.close`). Kinds (`NAMES`): `gist`, `thread` (only here), `fact`, `day`, `meeting` (`NOTES`: read from notes).
+
+- Crypto: `Ledger.key()` is a 32-byte key in `app.secrets` as `ledger.key` (base64), made under
+  `Lock(state, "ledger-key")` on first use. With rows present and no key it raises `Locked` (never a new key over old
+  rows: a keychain still locked at boot). `seal(kind, payload)` = 12-byte nonce + `AESGCM.encrypt(json, aad =
+  "kurooto-ledger:<kind>")`; `unseal` returns None on `InvalidTag` (counted in `ledger_unreadable`). `mac(*parts)` is
+  HMAC-SHA256 under a key derived from it (`src` = a note's path, `h` = a note row's identity, `forgot` = forgotten
+  note rows). Plain on disk: kind, sub (a thread's state), at, upd, those hashes.
+- Search decrypts into memory: no token index, so equal words in two rows can't be told apart on disk. `words()` is
+  the shared tokenizer (3+ letters, `STOP` removed, "'s" stripped), used by threads and the assembler too.
+- `refresh(force)` (throttled to `REFRESH_S`, forced by `/memory` and the plain-English answers) walks
+  `note_sources()`: the how-to-help-me note (`_facts`: `remember.kept_lines`), daily notes matched by the layout's
+  `daily` template (`_day`: headings, then lines, sensitive lines dropped, `DAY_MAX`; `DAYS_BACK` = 730), project notes
+  (`_meetings`: `- YYYY-MM-DD: ...` under `## Meetings`, with the `With:` people, `infer.WITH_LINE`). A note whose
+  mtime changed has its rows replaced in one transaction; a note that's gone takes its rows; rows whose `h` is in
+  `forgot` are skipped.
+- `everything(app, live_days, fresh)`: all rows plus `live()` gists. `label()`, `said()`, `when_text()` word where a
+  row is from ("call at 07:56 today", "open thread, said on the call at 07:56 today").
+- Plain English (`intent()`, from `App.handle` before the modules' intents): `LAST_TALK` → `last_talk()` (rows naming
+  the last name, newest first, two before); `DOING` + `a_past_day()` (yesterday, today, N days ago, last/on
+  <weekday> = the latest before today, 20 Oct, Oct 20, ISO) → `day_story()`.
+- `/memory` (`command`): newest first and numbered; words filter; `forget N` (`forget()`: a `fact` also
+  `remember.remove_line`; a note row is tombstoned in `forgot`); `export` (`export()`: gists and threads into
+  `layout.path("note", slug="memory-<stamp>")`, `create=True`).
+- Backups skip `ledger.db*` unless `backups.memory` (`modules/backups.py:LEDGER`); the profile never carries it or its
+  key. Events: `ledger_key_made`, `ledger_locked`, `ledger_unreadable`, `ledger_read_failed`, `ledger_live_failed`,
+  `memory_forgotten`, `memory_exported` (counts and kinds only).
+
+**Threads** (`core/threads.py`). Rows of kind `thread`, sub `open` | `done` | `dropped` | `expired`; payload `text`,
+`via` (chat, call, study, deadline), `key` (a started task's: `study:<slug>`, `deadline:<id>`), `due`, `closed_at`.
+
+- Open: `observe(app, text, via)` (called by `App.handle` after `infer.observe`, and by `from_call()` from
+  `Calls.save_transcript` with the user's lines) matches `INTENT` per sentence, skips questions, "remind me", `NOT_TASK`
+  and `remember.sensitive`; the same words already open are touched instead. `started(app, text, key, via)` from
+  `Study.start_session` and `Deadlines.progress` (0 < done < total); `finish(app, key)` from `stop_session` and
+  `Deadlines._after_status` (done, ignored).
+- Close: a sentence matching `DONE` that shares at least two words (or all of a short thread's) with exactly one open
+  thread (`_closes`); `/threads done|drop N`; buttons `thr:<id>:done|drop|undo|show` (`button`, routed in
+  `App.callback`); `expire()` nightly after `memory.thread_days` without a touch (`upd`).
+- "That thing" (`intent`): `THING` plus `ASK` / `WHAT` / `THING_DONE`; `resolve()` = threads with `max(at, upd)` in
+  the last `RECENT_S` (48 h), plus `_requests()` (lane `you` jobs) for "did *you*", narrowed to the best word overlap.
+  One: `_answer` (read only; buttons only change the thread); several: one reply with a button each
+  (`thr:<id|job>:show`, or `:done` for "that thing is done"). Nothing outside the thread is ever changed.
+- `forget(app, lo, hi)` is retention's `threads` kind. Events `thread_opened`, `thread_closed`, `thread_reopened`,
+  `threads_failed`.
+
+**The assembler** (`core/assembler.py`), the memory budget.
+
+- `build(app, text) -> (block, n)`: nothing unless `memory.recall`; the persona card first (settings `persona.card`, a
+  string or a dict, when another feature set one), then `pick()`'s lines under `HEAD`, then `GUARD` when the message
+  says "that/this ... thing" (`THAT`): one open thread is named with the rule that it's only read or asked about;
+  several: ask which. Everything within `budget()` = `memory.budget_tokens` × `CHARS_PER_TOKEN` (4); a line that
+  doesn't fit is skipped for a shorter one. `n` counts remembered items only (not the card).
+- `pick(app, text, call)`: open threads when the message shares two words with one, or one with a past cue (`PAST`),
+  or says "that thing"; with a cue, ledger rows of kind gist, meeting, day from the last `LOOK_DAYS` (60) plus
+  `live()` gists of the last `LIVE_DAYS` (3) that share a word or fall on the day named. Score: 3 × shared words + 2
+  × subject words (`Subjects.find_in`) + 2 × the day named + recency. `ITEM_MAX` 240 characters each.
+- `for_request(app, job)` (core/jobs.py): lane `you` only, the text after "Current request:" (Chat's history isn't
+  what was asked now). `call_brief(app)` (`Calls.pending`): `open_threads` and `earlier` (gists of the last day),
+  within the same budget.
 
 ## Hardware profiles
 

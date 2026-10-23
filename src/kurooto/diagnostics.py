@@ -31,6 +31,7 @@ PATTERNS = [
 # the keychain can't be listed, so the names Kurooto uses are listed here
 KNOWN_SECRETS = [
     "web.token",
+    "ledger.key",
     "telegram.token",
     "gemini.api_key",
     "freellmapi.api_key",

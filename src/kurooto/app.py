@@ -269,6 +269,12 @@ class App:
             retention.start(self)
         except Exception as e:
             self.events.emit("module_failed", module="retention", error=f"{type(e).__name__}: {e}"[:300])
+        try:
+            from kurooto.core import ledger  # the memory ledger: notes read again, old threads closed (core/ledger.py)
+
+            ledger.start(self)
+        except Exception as e:
+            self.events.emit("module_failed", module="memory", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
     def handle(self, msg: Incoming, also: list[Module] | None = None) -> None:
@@ -347,6 +353,17 @@ class App:
 
                 msg.reply(gists.command(self, arg))
                 return
+            if name == "memory":  # everything remembered, encrypted: find, forget, export (core/ledger.py)
+                from kurooto.core import ledger
+
+                msg.reply(ledger.command(self, arg))
+                return
+            if name == "threads":  # what you're in the middle of, with Done, Drop and Undo (core/threads.py)
+                from kurooto.core import threads
+
+                text, buttons = threads.command(self, arg)
+                msg.reply(text, buttons=buttons)
+                return
             for m in mods:
                 for c in m.commands():
                     if c.name == name:
@@ -379,6 +396,9 @@ class App:
             from kurooto.core import infer
 
             infer.observe(self, text, via=msg.via)
+            from kurooto.core import threads  # "I'll send the draft tonight": an open thread (core/threads.py)
+
+            threads.observe(self, text, via="chat")
         books = self.modules.get("books")  # a PDF sent as "book for <subject>" goes to that subject's books
         if msg.files and books is not None and self.is_on("books"):
             out = books.take_book(msg)
@@ -420,6 +440,14 @@ class App:
                 self.events.emit("intent", name=picked[0].name, via="classifier")
                 self.keep.used(self.keep.intent_owner(picked[0].name, mods), "intent", msg.via)
                 msg.reply(picked[0].run(msg, picked[1]) or "Done.")
+                return
+            from kurooto.core import ledger, threads  # "when did I last talk to ...?", "did I finish that thing?"
+
+            got = threads.intent(self, plain)
+            got = ("that_thing", *got) if got else ledger.intent(self, plain)
+            if got:
+                self.events.emit("intent", name=got[0])
+                msg.reply(got[1], buttons=got[2] if len(got) > 2 else None)
                 return
             for m in mods:
                 for it in m.intents():
@@ -507,6 +535,10 @@ class App:
             from kurooto.core import retention
 
             return retention.button(self, ref, act)
+        if prefix == "thr":  # Done / Drop / Undo / which one, under /threads and "that thing" (core/threads.py)
+            from kurooto.core import threads
+
+            return threads.button(self, ref, act)
         if prefix == "inf":  # Undo under something set up from what you said (core/infer.py)
             from kurooto.core import infer
 
@@ -539,6 +571,12 @@ class App:
         ("inferred", "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>"),
         ("forget", "forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all"),
         ("gists", "one line of what each forgotten call or request decided; /gists <words> finds them"),
+        (
+            "memory",
+            'what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I '
+            'last talk to Prof Ortiz?", "what was I doing last Thursday?"',
+        ),
+        ("threads", 'what you\'re in the middle of, with Done, Drop and Undo; also "did I finish that thing?"'),
         ("help", "this list; /help <word> finds a command or feature, on or off"),
     )
 
@@ -615,3 +653,6 @@ class App:
                         self.events.emit("module_failed", module=m.id, error=f"at shutdown: {e}"[:300])
         self.scheduler.close()
         self.jobs.close()
+        from kurooto.core import ledger
+
+        ledger.close(self)

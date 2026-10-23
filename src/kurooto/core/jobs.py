@@ -186,6 +186,7 @@ class Jobs:
         # [{"name", "args"}]), "then", "payload". Learns from its own work (modules/learning.py) watches here
         self.watchers: list = []
         self.steps: dict[str, list[dict]] = {}  # a running request's tool log (note_step), dropped when it ends
+        self.recalled: dict[str, int] = {}  # a running request's remembered items (core/assembler.py), for its receipt
         if "background" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # older databases
             self._db.execute("alter table jobs add column background integer default 0")
         if "runner" not in [r[1] for r in self._db.execute("pragma table_info(jobs)")]:  # which process runs it
@@ -443,6 +444,7 @@ class Jobs:
         finally:
             self._stops.pop(jid, None)
             self.steps.pop(jid, None)
+            self.recalled.pop(jid, None)
             self.poke()
 
     def _run(self, jid: str) -> None:
@@ -472,13 +474,16 @@ class Jobs:
         minutes = (s.get("brain.timeout_min") or {}).get(level, 15)
         tools = agent_tools(self.app)
         text_only = bool(self._read("select text_only from jobs where id=?", (jid,))[0])
+        from kurooto.core import assembler  # what's remembered that your message refers to, within its budget
+
+        memory, self.recalled[jid] = assembler.for_request(self.app, job)
         task = Task(
             prompt=job.prompt,
             effort=level,
             title=job.title,
             cwd=self.app.workspace,
             timeout_s=minutes * 60,
-            context=headless_context(self.app),
+            context=headless_context(self.app, memory),
             tools=[] if text_only else tools,  # text-only work gets no tools (and agent programs no MCP)
             run_tool=lambda name, args: run_tool(self.app, name, args, tools, job=jid),
             mcp=None if text_only else mcp_command(),
@@ -623,7 +628,7 @@ class Jobs:
             pct = self.app.quota.status(pool)["pct"] if pool else None
         except Exception:  # a broken count never stops the answer
             pass
-        return receipt(used, level, seconds, pct, steps)
+        return receipt(used, level, seconds, pct, steps, self.recalled.get(jid, 0))
 
     def receipt(self, jid: str) -> str:
         """A finished request's run receipt, to show under its answer ("" when jobs.receipt is off or no AI ran)."""
@@ -931,18 +936,20 @@ def mcp_command() -> list[str]:
     return command()
 
 
-def receipt(brain, effort: str, seconds: float, pct: int | None, steps: list[dict]) -> str:
+def receipt(brain, effort: str, seconds: float, pct: int | None, steps: list[dict], recalled: int = 0) -> str:
     """The run receipt: one line built from the run's own record, never from the answer's words, e.g.
-    "agy · medium · 42 s · 12% of today's limit · searched notes, wrote 1 note". An agent program may also work with
-    tools of its own, which Kurooto doesn't see: with none of Kurooto's, it "did nothing through Kurooto"."""
+    "agy · medium · 42 s · 12% of today's limit · searched notes, wrote 1 note · used 2 remembered items". An agent
+    program may also work with tools of its own, which Kurooto doesn't see: with none of Kurooto's, it "did nothing
+    through Kurooto". recalled: how many remembered items it was told (core/assembler.py)."""
     head = [NAMES.get(brain.id, brain.label), effort, _took(seconds)]
     if pct is not None:
         head.append(f"{pct}% of today's limit")
     did = _did(steps) or ["did nothing" if brain.kind != "cli" else "did nothing through Kurooto"]
-    line = " · ".join(head) + " · " + ", ".join(did)
+    tail = f" · used {recalled} remembered item{'s' if recalled != 1 else ''}" if recalled else ""
+    line = " · ".join(head) + " · " + ", ".join(did) + tail
     while len(line) > RECEIPT_MAX and len(did) > 1:
         did = did[:-1]
-        line = " · ".join(head) + " · " + ", ".join(did) + " and more"
+        line = " · ".join(head) + " · " + ", ".join(did) + " and more" + tail
     return line[:RECEIPT_MAX]
 
 

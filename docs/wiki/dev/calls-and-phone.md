@@ -135,7 +135,10 @@ transcripts, events and answers until `welcome` replays them (`Calls.on_queue`).
   brief), `queue` (done later), `needs` (the assistant says it can't).
 - `/tasks` is polled for finished jobs and approvals; `Calls.on_call` keeps `availability.set_on_call` 90 s ahead
   (`ON_CALL_S`), so nothing else rings and updates wait.
-- What needs attention: `Calls.pending` merges every enabled module's `call_brief()` with `app.ask.call_brief()`.
+- What needs attention: `Calls.pending` merges every enabled module's `call_brief()` with `app.ask.call_brief()` and
+  `core/assembler.py:call_brief()` (`open_threads`, `earlier`: the last day's gists, within `memory.budget_tokens`).
+  `save_transcript` also hands the user's lines to `core/threads.py:from_call` ("I'll send the draft tonight" opens a
+  thread).
 - Module hooks the calls module looks for (`hasattr` in `modules/calls/__init__.py`): `call_tools`, `call_brief`,
   `call_schedule`, `call_outcome`, `call_transcript`, `call_reschedule`. `Calls.agent_tools` gives unattended AI runs
   only `schedule_call` and `hold_calls`.

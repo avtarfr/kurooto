@@ -116,6 +116,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `backups.folder` | `""` | where the zips go: an external drive or a cloud-synced folder |
 | `backups.index` | `true` | also the notes brain's index (big, but slow to rebuild) |
 | `backups.keep` | `7` | how many zips to keep |
+| `backups.memory` | `false` | also the memory ledger (encrypted: it opens only where its key is, see backups.secrets) |
 | `backups.notes` | `false` | also your notes folder |
 | `backups.secrets` | `false` | also passwords and keys (bot token, API keys, sign-ins): anyone with the zip can use them |
 | `backups.when` | `"daily 03:30"` | when the automatic backup runs |
@@ -495,6 +496,15 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `mail_digest.read` | `[]` | what the digest may read: "label:Courses", "sam@example.org", "@school.example" |
 | `mail_digest.save_note` | `true` | a copy of each digest in your notes (mail/<date>-<time>.md, or your notes layout's place) |
 | `mail_digest.skip_confidential` | `true` | don't summarise mail marked confidential |
+
+### `memory`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `memory.budget_tokens` | `600` | at most about this much of what's remembered goes with one AI reply or call |
+| `memory.recall` | `true` | AI replies and calls are told the few remembered items your message refers to |
+| `memory.thread_days` | `7` | an open thread nobody touched closes by itself after this many days |
+| `memory.threads` | `true` | what you say you'll do (in chats and on calls) and tasks you start become open threads |
 
 ### `modules`
 
