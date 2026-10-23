@@ -263,6 +263,12 @@ class App:
             self.keep.start()  # day 10, then monthly: features you don't use (core/keep.py)
         except Exception as e:
             self.events.emit("module_failed", module="keep", error=f"{type(e).__name__}: {e}"[:300])
+        try:
+            from kurooto.core import retention  # what's older than privacy.keep_days goes, daily (core/retention.py)
+
+            retention.start(self)
+        except Exception as e:
+            self.events.emit("module_failed", module="retention", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
     def handle(self, msg: Incoming, also: list[Module] | None = None) -> None:
@@ -328,6 +334,12 @@ class App:
                 return
             if name == "jobs":  # what the AI is working on and what waits, with Cancel buttons (core/jobs.py)
                 text, buttons = self.jobs.command(arg)
+                msg.reply(text, buttons=buttons)
+                return
+            if name == "forget":  # forget the last 7 days (or all) of what's kept now (core/retention.py)
+                from kurooto.core import retention
+
+                text, buttons = retention.command(self, arg)
                 msg.reply(text, buttons=buttons)
                 return
             for m in mods:
@@ -486,6 +498,10 @@ class App:
             return fixme.button(self, ref, act)
         if prefix == "job":  # a Cancel button under /jobs (core/jobs.py)
             return self.jobs.button(ref, act)
+        if prefix == "fgt":  # Forget everything / Keep it under /forget all (core/retention.py)
+            from kurooto.core import retention
+
+            return retention.button(self, ref, act)
         if prefix == "inf":  # Undo under something set up from what you said (core/infer.py)
             from kurooto.core import infer
 
@@ -516,6 +532,7 @@ class App:
         ("jobs", "what the AI is working on and what waits, with Cancel buttons"),
         ("keep", "what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off"),
         ("inferred", "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>"),
+        ("forget", "forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all"),
         ("help", "this list; /help <word> finds a command or feature, on or off"),
     )
 

@@ -304,10 +304,24 @@ class Jobs:
         (id, title, prompt, result, finished, lane, then_action)."""
         return self._read(
             "select id, title, prompt, result, finished, coalesce(lane, 'you'), coalesce(then_action, '') from jobs "
-            "where status='ok' and finished > ? order by finished limit ?",
+            "where status='ok' and finished > ? and prompt != '' order by finished limit ?",  # not forgotten ones
             (t, limit),
             one=False,
         )
+
+    def forget(self, lo: float, hi: float) -> int:
+        """(retention) Blank what was asked and answered in finished requests that ended in [lo, hi): the row stays,
+        without its words, for /usage and the Space keeper. How many were forgotten (core/retention.py)."""
+        with self._lock:
+            n = self._db.execute(
+                "update jobs set title='(forgotten)', prompt='', result=null, detail=null, then_payload=null "
+                "where status not in ('queued','running') and prompt != '' and coalesce(finished, created) >= ? "
+                "and coalesce(finished, created) < ?",
+                (lo, hi),
+            ).rowcount
+            if n:  # the old words don't linger in the write-ahead log
+                self._db.execute("pragma wal_checkpoint(truncate)")
+        return n
 
     def active(self) -> list[Job]:
         """What's running, then what's waiting, oldest first."""

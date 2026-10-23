@@ -356,11 +356,15 @@ class History:
 
     def prune(self, cutoff: float) -> int:
         """Forget what's older than cutoff (the Space keeper, with space.jobs_days). How many items went."""
+        return self.forget(float("-inf"), cutoff)
+
+    def forget(self, lo: float, hi: float) -> int:
+        """Forget the items from [lo, hi) (also retention, core/retention.py). How many items went."""
         if not self.file.exists():
             return 0
         with self._lock, contextlib.closing(self._con()) as con:
             with con:
-                n = con.execute("delete from docs where at < ?", (cutoff,)).rowcount
+                n = con.execute("delete from docs where at >= ? and at < ?", (lo, hi)).rowcount
             if n:
                 con.execute("vacuum")
             return n
@@ -949,3 +953,9 @@ def old_entries(app: App, cutoff: float) -> int:
 def prune(app: App, cutoff: float) -> int:
     mod = app.modules.get("learning")
     return (mod.index if mod is not None else History(app)).prune(cutoff)
+
+
+def forget(app: App, lo: float, hi: float) -> int:
+    """Index items from [lo, hi) go (core/retention.py)."""
+    mod = app.modules.get("learning")
+    return (mod.index if mod is not None else History(app)).forget(lo, hi)

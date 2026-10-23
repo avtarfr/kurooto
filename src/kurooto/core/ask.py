@@ -10,7 +10,8 @@ that needs your OK; the asker waits for it, and nothing happens without it.
     qid = app.ask.ask("Which chapter is the quiz on?", choices=["3", "4"], hook="study.quiz_topic", source="study")
     app.ask.hooks["study.quiz_topic"] = lambda q, answer: ...   # runs once, with the first answer
 
-Each question is a small JSON file in the state folder (ask/<id>.json), kept for 30 days after it's settled.
+Each question is a small JSON file in the state folder (ask/<id>.json), kept privacy.keep_days (30) after it's
+settled.
 What you answered, where and how fast is recorded as events (question_asked, question_answered, question_later,
 question_expired), which the weekly retro reads.
 """
@@ -37,7 +38,7 @@ register_defaults(
     "ask",
     {
         "expire_hours": 48,  # an unanswered question expires after this long, unless its asker said otherwise
-        "keep_days": 30,  # answered and expired questions are forgotten after this long
+        "keep_days": 0,  # answered and expired questions are forgotten after this many days (0: privacy.keep_days)
     },
 )
 
@@ -359,13 +360,24 @@ class Ask:
 
     # ---------------------------------------------------------------------------------------- expiring
     def sweep(self, payload: dict | None = None) -> int:
-        """Expire overdue questions and forget settled ones after keep_days. Runs every 10 minutes."""
+        """Expire overdue questions and forget settled ones after keep_days (privacy.keep_days unless ask.keep_days
+        is set). Runs every 10 minutes."""
+        from kurooto.core import retention
+
         n = len([q for q in self.all() if q.get("status") in OPEN]) - len(self.pending())
-        keep = dt.timedelta(days=float(self.app.settings.get("ask.keep_days") or 30))
+        keep = retention.days(self.app.settings, "ask")
+        if keep:
+            self.forget(0, (now() - dt.timedelta(days=keep)).timestamp())
+        return n
+
+    def forget(self, lo: float, hi: float) -> int:
+        """Forget the questions settled (answered or expired) in [lo, hi); open ones stay. How many went."""
+        n = 0
         for q in self.all():
             done = _when(q, "answered") or _when(q, "expired_at")
-            if q.get("status") not in OPEN and done and now() - done > keep:
+            if q.get("status") not in OPEN and done and lo <= done.timestamp() < hi:
                 self._file(q["id"]).unlink(missing_ok=True)
+                n += 1
         return n
 
     def expire(self, qid: str) -> bool:

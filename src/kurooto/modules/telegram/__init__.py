@@ -444,6 +444,7 @@ class Telegram(Module):
         add("calm", "messages that come by themselves: today's count and limit")  # (calm) core/calm.py
         add("why", "why the last message came")
         add("keep", "what you use of each feature")  # core/keep.py
+        add("forget", "forget what I kept of the last days")  # core/retention.py
         if not self.app.is_on("notes_sync"):
             add("sync", "sync everything that's on")
         sk = self.app.modules.get("skills")

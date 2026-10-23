@@ -82,7 +82,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `ask.expire_hours` | `48` | an unanswered question expires after this long, unless its asker said otherwise |
-| `ask.keep_days` | `30` | answered and expired questions are forgotten after this long |
+| `ask.keep_days` | `0` | answered and expired questions are forgotten after this many days (0: privacy.keep_days) |
 
 ### `autostart`
 
@@ -207,7 +207,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 |---|---|---|
 | `cases.button` | `true` | a Wrong button under replies to plain-English requests (/wrong works either way) |
 | `cases.fallthroughs` | `true` | keep short requests no instant request understood (they went to the AI) |
-| `cases.keep_days` | `30` | cases you didn't make test cases are forgotten after this long |
+| `cases.keep_days` | `0` | cases you didn't make test cases are forgotten after this many days (0: privacy.keep_days) |
 | `cases.learn` | `true` | a test case may teach its phrasing (only if every test case that passed still passes) |
 | `cases.learn_rephrased` | `true` | the same not-understood phrasing, twice followed by the same request: learn it |
 | `cases.review` | `"weekly sun 19:00"` | when the look back may show the phrasings that came up most... |
@@ -556,6 +556,12 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `power.on_battery` | `"saver"` | saver \| normal \| pause |
+
+### `privacy`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `privacy.keep_days` | `30` | transcripts, AI requests and answers, chats and logs go after this many days (0: kept) |
 
 ### `profile`
 

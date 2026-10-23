@@ -12,6 +12,7 @@ This page is the full list. Each feature's own page repeats its part under **Wha
 - [Features that send nothing](#features-that-send-nothing)
 - [Free AI tiers and their terms](#free-ai-tiers-and-their-terms)
 - [What stays on your computer, and where](#what-stays-on-your-computer-and-where)
+- [How long it's kept](#how-long-its-kept)
 - [Backups, Profile sync and the diagnostics zip](#backups-profile-sync-and-the-diagnostics-zip)
 - [Things Kurooto refuses to keep](#things-kurooto-refuses-to-keep)
 - [What the AI may read and write on your computer](#what-the-ai-may-read-and-write-on-your-computer)
@@ -184,19 +185,50 @@ reach for each request only; nothing is saved in its own settings.
   Windows Credential Manager, macOS Keychain, or the Secret Service on Linux. Where there is none (and when Kurooto
   starts at boot on Linux, while the keychain is still locked), they're in `secrets.json` in the settings folder,
   readable only by your user account. They're never written to logs.
-- **The state folder** holds your check-ins, deadlines, AI requests and answers, call transcripts, the schedule, open
-  questions (deleted 30 days after they're answered or expire, `ask.keep_days`), the record of messages that came by
-  themselves (`calm.db`, kept 45 days: when, why, the setting, what it was about, the first 300 characters, whether
-  you tapped it), test cases (`cases/`), the calls' lessons (`calls/lessons.md`), and earlier versions of notes the AI
-  edited (`note-history/`, the last 20 per file). With Learns from its own work on: the search index of past
-  requests, calls and chats (`learning/history.db`, trimmed after `space.jobs_days`), and the earlier versions of skills
-  it changed (`learning/before/`).
+- **The state folder** holds your check-ins, deadlines, AI requests and answers, call transcripts, the schedule,
+  questions, the record of messages that came by themselves (`calm.db`, kept 45 days: when, why, the setting, what it
+  was about, the first 300 characters, whether you tapped it), test cases (`cases/`), the calls' lessons
+  (`calls/lessons.md`), and earlier versions of notes the AI edited (`note-history/`, the last 20 per file). With
+  Learns from its own work on: the search index of past requests, calls and chats (`learning/history.db`), and the
+  earlier versions of skills it changed (`learning/before/`). What's kept of conversations goes after 30 days:
+  [How long it's kept](#how-long-its-kept).
 - **The data folder** holds the About you reports (never synced), Classroom's downloaded files, books and their text,
   and confidential mail summaries (`mail/confidential/`, readable only by your user account).
 - **Mail copies:** the text of mail chosen for the digest only until the digest is written; the sender, subject and a
   short excerpt of digested mail for 30 days, so a reply draft can answer it.
 - **The dashboard** (`http://127.0.0.1:8770`) answers only this computer, needs a key only its own page gets, refuses
   other websites, and on Linux checks that each request comes from your own user account.
+
+## How long it's kept
+
+What Kurooto keeps of your conversations is forgotten after **`privacy.keep_days`** (30 days), every night at 04:15
+(or when the computer wakes, if it slept through it):
+
+| What | Where (state folder) |
+|---|---|
+| Call transcripts, and calls that went on as text | `calls/transcripts/`, `calls/textcalls.json` |
+| What you asked the AI and what it answered (the time, AI and effort stay, without the words, for `/usage`) | `jobs.db`, `jobs/*-result.md` |
+| Chat's recent turns | `chat/history.json` |
+| Answered and expired questions (`ask.keep_days` gives them their own time) | `ask/` |
+| Wrong-button cases you didn't make test cases (`cases.keep_days` likewise) | `cases/` |
+| The words of messages that came by themselves (when and why stay for 45 days) | `calm.db` |
+| The search index of past requests (Learns from its own work) | `learning/history.db` |
+| Log lines | the logs folder |
+
+**`/forget 7d`** forgets the last 7 days of all that now (also `/forget 12h`, `/forget 2w`), and says how many of each
+kind went. **`/forget all`** forgets everything, after a **Forget everything** button. `privacy.keep_days` = `0` keeps
+everything until you forget it.
+
+What it never touches:
+- **Your notes folder.** A voice note's recording is saved in your notes' inbox, so it stays; delete it there.
+- **Test cases you made, open questions, a call still going.**
+- **The event log** (`events.jsonl`): times, counts and request names, never what you typed or what was answered.
+  Features learn your rhythm from it over weeks.
+- **Messages on Telegram or your phone:** they're in those apps; delete them there.
+- **Backup zips** you made before.
+
+Your call line holds a call's transcript only while the computer is off and hands it over when it's back, so nothing
+waits there to be forgotten.
 
 ## Backups, Profile sync and the diagnostics zip
 
@@ -224,7 +256,7 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 - **Learns from its own work** never keeps a fact about health, money, passwords or other people (a line naming a
   relative or friend, a phone number, an email address).
 - **Wrong button and test cases** never keep long messages, several requests in one, or anything about health, money
-  or passwords. Cases you didn't review are forgotten after 30 days.
+  or passwords. Cases you didn't review are forgotten after `privacy.keep_days` (30).
 - **Mail marked confidential** is never read by the AI you picked, never summarised by it, and never answered with an
   AI draft. Kurooto reads its text on your computer only to spot the marking, then drops it.
 - **Private calendar events** keep only their time.
@@ -245,6 +277,7 @@ Details: [ai-brains.md](ai-brains.md).
 
 ## Removing your data
 
+- **Conversations:** `/forget 7d` or `/forget all` ([How long it's kept](#how-long-its-kept)).
 - **One feature:** turn it off (Dashboard → Features). Its data stays until you delete it; your notes are never
   deleted.
 - **A paired phone:** `/phones`, then `/unpair <id>`. A lost phone: `kurooto rotate` gives your call line new keys and
