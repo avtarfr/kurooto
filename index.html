@@ -807,10 +807,14 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
      glow down every vein; nodes swell as it passes. Pointing at something sends a pulse both ways from its node. */
   (function () {
     var cv = $('#air'); if (!cv || reduce) return;
-    var touch = matchMedia('(pointer: coarse)').matches, cx = cv.getContext('2d'), dpr = Math.min(touch ? 1.5 : 2, devicePixelRatio || 1), W = 0, H = 0, TAU = Math.PI * 2, run = true, lastMs = 0;
+    /* phones scroll natively, ahead of anything drawn on top: a fixed drawing always trails them, so no veins there */
+    if (matchMedia('(pointer: coarse)').matches) { cv.remove(); return; }
+    var touch = false, cx = cv.getContext('2d'), dpr = Math.min(touch ? 1.5 : 2, devicePixelRatio || 1), W = 0, H = 0, TAU = Math.PI * 2, run = true, lastMs = 0;
     function size() { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }
     size(); addEventListener('resize', size);
-    document.addEventListener('visibilitychange', function () { run = !document.hidden; if (run) requestAnimationFrame(frame); });
+    var useTicker = !!(G && G.ticker);  /* with the smooth scroll on GSAP's ticker, drawing there keeps the veins on the page */
+    function next() { if (!useTicker) requestAnimationFrame(frame); }
+    document.addEventListener('visibilitychange', function () { run = !document.hidden; if (run) next(); });
     var sprites = {};
     function glow(col) {
       if (sprites[col]) return sprites[col];
@@ -895,7 +899,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     document.addEventListener('kuro:hour', function () { setTimeout(function () { discover(); beatNow(1.3); }, 140); });
     function frame(ms) {
       if (!run) return;
-      if (touch && ms - lastMs < 31) { requestAnimationFrame(frame); return; }  /* phones: 30 frames a second is plenty */
+      if (useTicker) ms = performance.now();
       lastMs = ms;
       var t = ms / 1000, now = performance.now() / 1000;
       if (frameN++ % (touch ? 8 : 10) === 0) discover();
@@ -961,9 +965,9 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
           cx.drawImage(glow(ink), M.left + M.width / 2 - cr * 2.4, M.top + M.height / 2 - cr * 2.4, cr * 4.8, cr * 4.8); cx.globalCompositeOperation = 'source-over'; }
       }
       cx.globalAlpha = 1;
-      requestAnimationFrame(frame);
+      next();
     }
-    requestAnimationFrame(frame);
+    if (useTicker) G.ticker.add(function () { if (run) frame(); }); else requestAnimationFrame(frame);
   })();
 
   /* ---------- the hero sun leans toward your pointer ---------- */
