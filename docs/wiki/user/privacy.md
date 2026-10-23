@@ -244,8 +244,27 @@ default, keeps it until you `/forget` it:
 | Log lines | the logs folder |
 
 **`/forget 7d`** forgets the last 7 days of all that now (also `/forget 12h`, `/forget 2w`), and says how many of each
-kind went. **`/forget all`** forgets everything, after a **Forget everything** button. `privacy.keep_days` = `0` keeps
-everything until you forget it.
+kind went. **`/forget all`** forgets everything, after a confirm button. `privacy.keep_days` = `0` keeps everything
+until you forget it.
+
+### Gists: what settles
+
+Conversations settle the way memories do: as the words of a call, an AI request or a chat fade (`privacy.keep_days`
+or `/forget`), it settles into a **one-line gist** of what it decided or did. The nightly job lets the words go only
+once their gist exists. Gists are made by rules from Kurooto's own records, never by rereading the words with an AI:
+
+| What | Its gist keeps |
+|---|---|
+| A call | what it was for, and what its tools did ("set reminder: I'll remind you Fri 23 Oct at 09:00: book the lab slot"); tools that only read are named, never what they read |
+| An AI request of yours | its title (the first 80 characters of what you asked), how it ended and its run receipt; never the answer |
+| A chat turn | its request's name, once |
+
+A line that looks like a health, money or password detail keeps only its kind ("an AI request about something
+money"). They stay in `gists.jsonl` in the state folder (never your notes) for good, or `privacy.gist_days` days when
+you set it. **`/gists`** shows the latest, **`/gists lab`** finds them, **`/gists forget 3`** drops one. `/forget 7d`
+keeps them; **`/forget all`** asks: **Forget all, keep gists** or **Forget gists too**. `privacy.keep_gist` = `false`
+makes none. With `privacy.gist_model` on and [Local AI models](ai-brains.md) on, a model on this computer adds one
+sentence of what a call decided; a cloud AI never does.
 
 What it never touches:
 - **Your notes folder.** A voice note's recording is saved in your notes' inbox, so it stays; delete it there.
@@ -279,6 +298,8 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 
 ## Things Kurooto refuses to keep
 
+- **Remember** asks "Still true?" about a line it kept that hasn't come up in 90 days, at most two a week
+  ([Teaching Kurooto](teaching-kurooto.md#remember)); only its own dated lines, never ones you wrote.
 - **Remember** won't store health, money or password details: they'd travel with every AI request. It says so and
   keeps nothing. Skills are told to keep health, money and other people's private details out of your notes too.
 - **Learns from its own work** never keeps a fact about health, money, passwords or other people (a line naming a

@@ -1060,6 +1060,12 @@ With [Learns from its own work](#learns-from-its-own-work) on, the nightly look 
 under "Picked up from your chats and calls", each with an Undo that takes that one line out again.
 "Remember to buy milk" is a reminder, not this: use Reminders for that.
 
+**Still true?** A line Kurooto wrote in its own sections (with its date) that hasn't come up in 90 days (not in what
+you asked or said on a call, not told again, not kept with Keep) gets one quiet "Still true?" with **Keep**,
+**Change** and **Forget**, at most two a week. Forget takes the line out (with **Undo**); Change asks for the new
+wording by reply, by the same rules (with **Undo**); replying "yes" keeps it, "no" forgets it. Lines you wrote yourself
+are never asked about or touched; editing a line counts as new. *Setting:* `remember.recheck_days` (90; 0: never).
+
 *Turn it off:* Features → Remember. The note stays in your notes; delete or edit it as you like. While the note
 exists, AI requests still read it; delete the note to stop that.
 
@@ -2864,16 +2870,29 @@ them in the app.
 
 **`/forget 7d`** forgets the last 7 days now (also `/forget 12h`, `/forget 2w`) and says how many of each kind went:
 "Forgot 2 call transcripts, 5 AI requests and 1 log file." **`/forget all`** forgets everything Kurooto has kept, after
-a **Forget everything** button (it works for 10 minutes; **Keep it** does nothing). `/forget` alone says how long
-things are kept.
+a button that asks whether the gists go too (**Forget all, keep gists** or **Forget gists too**; they work for 10
+minutes; **Keep it** does nothing). `/forget` alone says how long things are kept.
 
-*Settings:* `privacy.keep_days` (0, the default, keeps everything until you `/forget` it). `ask.keep_days` and
+**Gists: what settles.** Like memory, a conversation isn't simply dropped: as the words of a call, an AI request or a
+chat fade, it settles into a one-line gist of what it decided or did, and the nightly job lets the words go only once
+that gist exists. Gists come from Kurooto's own records, never from rereading the words with an AI: a call keeps what
+it was for and what its tools did ("set reminder: I'll remind you Fri 23 Oct at 09:00: book the lab slot"; tools that
+only read are named, never what they read); an AI request of yours keeps its title, how it ended and its run receipt
+(never the answer); a chat turn keeps its request's name. A line that looks like a health, money or password detail
+keeps only its kind. **`/gists`** shows the latest, numbered; **`/gists lab`** finds the ones with those words;
+**`/gists forget 3`** drops one. With `privacy.gist_model` on and Local AI models on, a model on this computer adds a
+sentence of what a call decided (never a cloud AI).
+
+*Settings:* `privacy.keep_days` (0, the default, keeps everything until you `/forget` it). `privacy.keep_gist` (on:
+conversations settle into gists; off: none are made), `privacy.gist_days` (0, the default: gists are kept for good),
+`privacy.gist_model` (off). `ask.keep_days` and
 `cases.keep_days` (0: `privacy.keep_days` when set, else 30 days, as before) give questions or cases their own time.
 *Leaves:* nothing. The event log (`events.jsonl`) isn't forgotten: it holds times, counts and names, never what you
 typed or what was answered, and features learn your rhythm from it over weeks. Your call line holds a call's
 transcript only while the computer is off and hands it over when it's back, so nothing waits there.
 *Undo:* none for what's forgotten (that's the point); a backup zip made before still has it. Set
-`privacy.keep_days` to 0 to keep everything again from now.
+`privacy.keep_days` to 0 to keep everything again from now. Gists: `/gists forget 3` drops one, `/forget all` →
+**Forget gists too** drops them all, `privacy.keep_gist` off makes no more.
 
 ## Where requests go: /egress
 

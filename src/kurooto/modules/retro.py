@@ -36,7 +36,7 @@ from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
 from kurooto.modules.calls.tools import Tool, arg
-from kurooto.modules.remember import add_line, has_line, help_brief, help_file, help_rel, sensitive
+from kurooto.modules.remember import LEARNED, add_line, has_line, help_brief, help_file, help_rel, sensitive
 
 register_defaults(
     "retro",
@@ -64,7 +64,6 @@ TUNABLE = {
 }
 ALIASES = {"config": "setting", "settings": "setting", "build": "idea", "feature": "idea", "line": "profile"}
 CHOICES = ["Apply", "Observe longer", "No"]
-LEARNED = "Learned in the nightly look back"
 IDEAS_NOTE = "kurooto/ideas.md"  # in the default notes layout; layout.path(app, "ideas") is where it is
 IDEAS_INTRO = (
     "# Ideas\n\nThings {name} could do for you, from the nightly look back (you approved each one). Tick one off, "

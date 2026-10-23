@@ -1056,6 +1056,9 @@ class Calls(Module):
                 m.call_transcript(r["key"], lines)
         self.app.events.emit("call_transcript", lines=len(lines), layer=str(b.get("layer") or "live")[:10])
         used = self.tool_log.pop(str(b.get("since") or ""), [])
+        from kurooto.core import gists
+
+        gists.note_call(f, purpose, used)  # what it did, for its gist when the transcript is forgotten
         try:  # the look back never stands in the way of keeping the transcript
             review.review(self, lines, used, purpose)
         except Exception as e:

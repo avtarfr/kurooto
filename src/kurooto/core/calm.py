@@ -473,6 +473,14 @@ REASONS: dict[str, Reason] = {
             stop=to(False, "nothing more is kept by itself"),
         ),
         R(
+            "remember.recheck",
+            "a line in your how-to-help-me note that hasn't come up in a while: still true?",
+            many="still-true questions",
+            setting="remember.recheck_days",
+            stop=to(0, "no more still-true questions"),
+            suggest=True,
+        ),
+        R(
             "cases.review",
             "the look back at what you typed that I didn't understand",
             setting="cases.review_days",

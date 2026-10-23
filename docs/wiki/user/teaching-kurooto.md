@@ -93,6 +93,17 @@ On a call: "remember that I study best in the morning" (the `remember` tool).
   back"), except the facts [Learns from its own work](#learns-from-its-own-work) picks up, if you turned it on (under
   "Picked up from your chats and calls", each with an Undo that takes only that line out again).
 
+**Still true?** People change. A line Kurooto wrote (under "You told me", "Picked up from your chats and calls" or
+"Learned in the nightly look back", with its date) that hasn't come up in 90 days (not in what you asked, said on a
+call or told it again, and not kept with Keep) gets one quiet message: 'Still true? "I study topology on Sundays"',
+with **Keep**, **Change** and **Forget**. At most two a week, three days apart.
+- **Keep**: it stays, and isn't asked about for another 90 days.
+- **Forget**: the line comes out of the note, with an **Undo** that puts it back.
+- **Change**: reply with the new wording (or reply to the question itself); same rules as `/remember`, with an
+  **Undo**. Replying "yes" keeps it, "no" forgets it.
+- Lines you wrote yourself, or anywhere else in the note, are never asked about or touched. Editing a line counts as
+  new. `remember.recheck_days` (90; 0 never asks); Less of this on the message works too.
+
 **What leaves your computer.** The short version of the note goes to the AI you picked with every request.
 
 **Turn it off.** Features → Remember. The note stays; while it exists, AI requests still read it. Delete the note to

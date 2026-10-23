@@ -140,7 +140,7 @@ def test_forget_all_asks_first(kept):
     app = env.app
     env.say("/forget all")
     sent = [p for m, p in env.fake.sent if m == "sendMessage"][-1]
-    assert "Forget everything" in json.dumps(sent.get("reply_markup"))
+    assert "Forget all, keep gists" in json.dumps(sent.get("reply_markup"))  # and Forget gists too (test_gists.py)
     assert app.jobs.get(jobs["old"]).prompt  # nothing yet
     assert env.press("fgt:0:no") == "Kept."
     assert env.press("fgt:0:all").startswith("That button has run out")  # an old button

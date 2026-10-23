@@ -350,6 +350,11 @@ class App:
                 text, buttons = retention.command(self, arg)
                 msg.reply(text, buttons=buttons)
                 return
+            if name == "gists":  # one line of what each forgotten conversation decided (core/gists.py)
+                from kurooto.core import gists
+
+                msg.reply(gists.command(self, arg))
+                return
             for m in mods:
                 for c in m.commands():
                     if c.name == name:
@@ -542,6 +547,7 @@ class App:
         ("inferred", "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>"),
         ("forget", "forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all"),
         ("egress", "where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked"),
+        ("gists", "one line of what each forgotten call or request decided; /gists <words> finds them"),
         ("help", "this list; /help <word> finds a command or feature, on or off"),
     )
 

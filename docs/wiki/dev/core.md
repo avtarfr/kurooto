@@ -123,6 +123,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers (kept `privacy.keep_days`); once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
 | `calm.db` | SQLite, table `sent`, kept 45 days (`text`/`title` only `privacy.keep_days`) | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
+| `gists.jsonl` | JSON lines `{at, kind, text}`: the one-line gists conversations settled into (kept for good, or `privacy.gist_days`) | `core/gists.py` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
@@ -157,7 +158,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 |---|---|
 | `telegram/{offset,pairing,map,menu,name}.json`, `telegram/paused.jsonl` | `modules/telegram` |
 | `chat/history.json` (last 10 turns, 1200 chars each) | `modules/chat.py` |
-| `calls/{rings,live,link,inbox,answer-nonces,live-health,textcalls}.json`, `calls/lessons.md`, `calls/transcripts/*.txt` | `modules/calls` |
+| `calls/{rings,live,link,inbox,answer-nonces,live-health,textcalls}.json`, `calls/lessons.md`, `calls/transcripts/*.txt` (and `*.did.json`: what each call's tools did, for its gist; goes with the transcript) | `modules/calls`, `core/gists.py:note_call` |
 | `alarm.json`, `alarm-last.json`, `alarm-skip.json`, `alarm-ringing.json` | `modules/alarm.py` |
 | `deadlines.json`, `deadlines-recurring.json` | `modules/deadlines.py` |
 | `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json` | check-ins, capture, study |
@@ -176,6 +177,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `classroom-notes/`, `mail-digest/`, `reply-drafts/`, `digest-email-*`, `drive-upload.json`, `drive-temporary.json`, `agent-plan.json` | the Google parts |
 | `notes-sync.json`, `backups.json`, `ollama-ours.json` | notes sync, backups, local models |
 | `skills/{packs,auto-packs}.json`, `skills/drafts/`, `skills/tectonic-declined` | `modules/skills.py` |
+| `remember/recheck.json` (per kept line, by `fact_key`: seen, used, kept, asked; the week's asks; undo records) | `modules/remember.py` |
 | `learning/history.db` (FTS5 search index, not backed up), `learning/{state,changes}.json`, `learning/before/` | `modules/learning.py` |
 | `classpacks/active.json`, `classpacks/drafts/` | `modules/classpacks.py` |
 | `lidsafe/{held,waiting,said}.json` | `modules/lidsafe.py` |
@@ -275,6 +277,7 @@ Recurring (key → when; setting that controls it):
 | `drive_upload:expire` | daily 04:10 | | `modules/google_drive.py` |
 | `handwritten:scan` | every 15m | `handwritten.every` | `modules/handwritten.py` |
 | `learning:index` | every 15m | `learning.search` | `modules/learning.py` |
+| `remember:recheck` | daily 18:30 | `remember.recheck_days` | `modules/remember.py:Remember.start` |
 | `integrate:night`, `integrate:retry`, `integrate:plan`, `integrate:garden`, `integrate:summary` | daily 01:30; every 3h; hourly; daily 06:20; daily 07:10 | `integrate.at`, `integrate.garden`, `integrate.summary` | `modules/integrate.py` |
 | `local_models:keepalive` | every 10m | | `modules/local_models.py` |
 | `notes_sync:sync` | every 10m | `notes_sync.every` | `modules/notes_sync.py` |
@@ -582,15 +585,18 @@ over a stretch `[lo, hi)` in epoch seconds (`STEPS`):
 | `index` | `learning/history.db` docs by `at` | `learning.forget` (`History.forget`; `prune` calls it) |
 | `logs` | every file in the logs folder | `trim_log`: lines by their `asctime`, continuation lines follow the stamped line; no stamps: by mtime. Rewritten in place (the handler keeps appending); emptied rotated copies are removed |
 
-- `forget(app, lo, hi=END, kinds)` runs each kind under its own try (`retention_failed`, `what=<kind>`) and returns
-  `{kind: n}`; `summary()` words it. `days(settings, section)` resolves `ask.keep_days` / `cases.keep_days` (0 means
+- `forget(app, lo, hi=END, kinds, gist=True, settle=False)` runs each kind under its own try (`retention_failed`,
+  `what=<kind>`) and returns `{kind: n}`; `summary()` words it. Before `calls`, `requests` and `chats` it calls
+  `gists.keep(app, kind, lo, hi)` (below); with `settle` (the daily job) a kind whose gists raised keeps its words
+  until next time (`gist_failed`). `days(settings, section)` resolves `ask.keep_days` / `cases.keep_days` (0 means
   follow `privacy.keep_days`); `cases.Cases._keep_days` and the `kurooto cases` CLI use it too.
 - `expire(app)` is `retention:expire` (daily 04:15, `misfire="coalesce"`, run in a thread): `forget(0, now -
-  keep_days)` for every kind, questions and cases with their own days. Emits `retention_expired` (counts only). Sends
-  nothing, so it has no Calm reason.
+  keep_days, settle=True)` for every kind, questions and cases with their own days, then `gists.expire`. Emits
+  `retention_expired` (counts only). Sends nothing, so it has no Calm reason.
 - `/forget` is a core command (`App.handle` → `command`): `7d`, `2w`, `12h` (`span`) forget `[now - span, END)` at
-  once (`retention_forgot`); `all` replies with `fgt:<asked>:all` / `fgt:0:no` buttons (`App.callback` → `button`); the
-  first works for `CONFIRM_S` (10 min), then answers in the toast and with a `why="asked"` message.
+  once (`retention_forgot`); `all` replies with `fgt:<asked>:all` (keep the gists) / `fgt:<asked>:gists` (`gists.clear`
+  too; only offered while gists are on or exist) / `fgt:0:no` buttons (`App.callback` → `button`); they work for
+  `CONFIRM_S` (10 min), then answer in the toast and with a `why="asked"` message.
 - Left alone on purpose: the notes folder (voice-note recordings are saved in its inbox), `events.jsonl` (metadata
   only; features learn from it over weeks), open questions and text calls, test cases, the Worker's queue (handed
   over and emptied at every `hello`, `data/worker/src/worker.js`). `Jobs.finished_since` skips forgotten rows so the
@@ -633,6 +639,25 @@ same answer (wrapped to count the bytes read; use it as a context manager) and r
 - Not routed, on purpose: requests to this computer (`top.py`, `cli.py`, `core/mcp.py`, `core/rerank.py`,
   `modules/local_models.py:LocalModels.api`, `modules/google_confidential.py`: Ollama and Kurooto's own page). Add-ons'
   own code is counted only when it uses `egress.urlopen`.
+
+### Gists (consolidation)
+
+`core/gists.py`: words fade, meaning settles. `keep(app, kind, lo, hi)` makes one line per item `MAKERS[kind]` finds
+in the stretch, by rules from records, and appends it to `state/gists.jsonl` (under `Lock(state, "gists")`; an item
+already gisted by `(kind, at)` is skipped, so a retry never doubles):
+
+- `calls`: `call_line()` from `<transcript>.did.json`, which `Calls.save_transcript` writes with `note_call(f,
+  purpose, tool_log)`: acting tools (`core/jobs.py:ACTS`, verbs not in `READS`) with their result, read-only and
+  unknown tools by name only, failures as "<tool> failed". Without it (older calls): the `calls_tool` names in the
+  event log since the call before (at most 2 h back). `drop_did` removes the side file with its transcript.
+- `requests`: `Jobs.ending(lo, hi)` (lane `you`, not yet forgotten): title · outcome (`OUTCOME` by verdict) · receipt.
+- `chats`: the turn's first 80 characters (Chat's request title), skipped when a request or chat gist has that name.
+- Every line goes through `_safe` (`modules/remember.py:sensitive`): health, money, credentials keep only the kind.
+- `local_model()`/`local_line()`: only with `privacy.gist_model` and Local AI models on and a `helper*` model pulled
+  (`LocalModels.wanted`/`have`), one sentence from `/api/generate` is appended to a call's line; never a cloud AI.
+- `expire()` drops gists older than `privacy.gist_days` (0, the default: never); `clear()` for `/forget all` → Gists
+  too; `command()` is `/gists` (core command in `App.handle`): newest first, numbered; words filter (all must match);
+  `forget N`. Events: `gists_kept`, `gists_expired`, `gist_forgotten`, `gist_failed` (counts and kinds only).
 
 ## Hardware profiles
 

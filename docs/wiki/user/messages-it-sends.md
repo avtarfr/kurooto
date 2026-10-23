@@ -232,6 +232,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | a skill learned or improved from a request that took many steps | Learns from its own work | `learning.skills` | no more learned skills | one a day | yes | |
 | a lesson a skill took from your correction | Learns from its own work | `learning.corrections` | no more lessons | | yes | |
 | facts from your chats and calls kept in your how-to-help-me note | Learns from its own work | `learning.remember` | nothing kept by itself | | yes | |
+| "Still true?" about a line in your how-to-help-me note that hasn't come up in a while (at most two a week) | Remember | `remember.recheck_days` | no more (0) | | yes | yes |
 | the look back at what you typed that I didn't understand | Wrong button and test cases | `cases.review_days` | list | half as often | yes | |
 | a PDF of handwriting waiting to be written out at night | Handwritten notes | | list | | yes | |
 | handwritten pages written out into notes | Handwritten notes | | list | one a day | yes | |
