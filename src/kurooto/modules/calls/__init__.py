@@ -355,6 +355,9 @@ class Calls(Module):
         if not tool:
             return f"There's no {name} tool (that feature may be off)."
         self.app.events.emit("calls_tool", name=name)
+        keep = getattr(self.app, "keep", None)  # what you use of each feature (core/keep.py)
+        if keep is not None:
+            keep.used(keep.tool_owner(name), "tool")
         try:
             out = tool.run(args or {})
         except Exception as e:

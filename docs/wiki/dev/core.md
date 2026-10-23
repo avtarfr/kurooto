@@ -2,7 +2,7 @@
 
 `src/kurooto/core/` holds everything features share. `App.__init__` (`app.py`) builds the services in this order:
 `Paths` → `Settings` → `Secrets` → `Events` → `Availability` → `Scheduler` (with gates) → `Notifier` → `Power` →
-`AboutYou` → `Quota` → `Jobs` → `Updates` → `Ask` → `Presence` → `Health` → `Calm` → every module in the catalog →
+`AboutYou` → `Quota` → `Jobs` → `Updates` → `Ask` → `Presence` → `Health` → `Calm` → `Keep` → every module in the catalog →
 add-ons. Anything a module needs is reached through `self.app.<service>`.
 
 Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the-notes-layout) ·
@@ -11,7 +11,7 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 [availability](#availability) · [power](#power) · [presence](#presence) · [quota](#quota-free-ai-limits) ·
 [reserve](#the-reserve) · [space keeper](#space-keeper) · [hardware](#hardware-profiles) ·
 [processes](#running-programs) · [locks](#locks-and-atomic-writes) · [Windows](#windows-notes) ·
-[smaller pieces](#smaller-core-pieces)
+[smaller pieces](#smaller-core-pieces) · [keep or drop](#keep-or-drop-corekeeppy)
 
 ## Settings
 
@@ -42,6 +42,7 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 | `notify` (`desktop`, `desktop_kinds`, `app_kinds`), `notify.calm`, `notify.presence` | `core/notify.py`, `core/calm.py`, `core/presence.py` |
 | `availability` | `core/availability.py` |
 | `ask` | `core/ask.py` |
+| `keep` | `core/keep.py` |
 | `power` | `core/power.py` |
 | `quota` | `core/quota.py` |
 | `health` | `core/health.py` |
@@ -120,6 +121,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers; once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
 | `calm.db` | SQLite, table `sent`, kept 45 days | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
+| `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
 | `net-outbox.jsonl` | JSON lines: Telegram messages held while offline (rewritten with `write_text`) | `core/presence.py` |
@@ -244,6 +246,7 @@ Recurring (key → when; setting that controls it):
 | Key | When | Setting | Owner |
 |---|---|---|---|
 | `calm:tick` | every 5m | | `core/calm.py:Calm.start` |
+| `keep:tick` | daily 12:00 (respects quiet) | `keep.ask` | `core/keep.py:Keep.start` |
 | `ask:sweep` | every 10m | | `core/ask.py:Ask.start` |
 | `reserve:refresh` | every 10m | | `core/reserve.py:start` |
 | `agents:export` | hourly (only while export is on) | `agents.export` | `core/agent_export.py` |
@@ -394,7 +397,7 @@ Other kinds, by area (shown in the feed and counted by retro): lifecycle `starte
 `commands_failed`, `upgraded`, `brain_retired`; jobs `job_queued`, `job_crashed`, `job_deferred`, `job_cancelled`,
 `job_ended`, `job_then_failed`, `jobs_failed`, `tool_used`, `tool_failed`, `tools_failed`, `note_written`,
 `quota_limit`, `quota_back`, `quota_reserve`, `agy_tools`; messages `notified`, `notify_queued`, `notify_failed`,
-`notify_delayed`, `calm_*`, `presence_online`, `presence_offline`, `question_hook_failed`, `question_hook_missing`;
+`notify_delayed`, `calm_*`, `keep_asked`, `keep_answer`, `keep_failed`, `presence_online`, `presence_offline`, `question_hook_failed`, `question_hook_missing`;
 power `power_pause`, `power_resume`, `power_off`; health `health_checked`, `health_fixed`, `health_told`,
 `health_failed`; updates `update_found`, `update_waiting`, `update_held`, `update_yanked`, `update_check_failed`,
 `update_failed`, `update_progress`, `update_switch`; Telegram `telegram_error`, `telegram_paired`, `telegram_menu_*`;
@@ -423,7 +426,7 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
 - Channels are registered by modules: `notifier.register("telegram", send, retract=None)`. `retract(map_kind, map_ref,
   button)` takes a question down from channels that keep copies (the phone app) once it's dealt with anywhere.
 - Button data is `"<prefix>:<ref>:<action>"`; `App.callback` routes core prefixes (`calm`, `upd`, `ask`, `health`,
-  `job`) and then each enabled module's `callbacks()[prefix]`. Keep a module's prefixes unique and short (Telegram
+  `job`, `inf`, `ton`, `keep`) and then each enabled module's `callbacks()[prefix]`. Keep a module's prefixes unique and short (Telegram
   limits callback data to 64 bytes).
 
 `core/calm.py:Calm`:
@@ -658,3 +661,28 @@ only in the term note or a class pack), refused for `NOT_ALIAS` words and for an
 their `undo` data, `seen`); `undo()` reverses one (a note it made and nobody touched is deleted; otherwise only its own
 line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `CORE_HELP`. Calm reason
 `infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`, `aliases`, `commitments`. Tests: `tests/unit/test_infer.py`.
+
+## Keep or drop (`core/keep.py`)
+
+`app.keep` (`Keep`) counts what the user uses of each feature: `Keep.used(module, how, via)` with `how` one of
+`intent`, `command`, `button`, `tool`, `reply`. Called from `App.handle` (a module's `replies()` handler, its
+command, its intent; a taught or classifier-picked intent through `intent_owner`), `App.callback` (a module's
+button), `modules/calls/__init__.py:Calls.run_tool` and `core/tools.py:run_tool` with `via="call"` (`tool_owner`: the
+module whose `call_tools()` has it, else `calls`). `via="setup"` (the try-it box) isn't counted. Stored in
+`<state>/keep.json`: `used[module][YYYY-MM-DD][how]` (pruned to `KEEP_DAYS = 90` by the tick), `last[module]`,
+`since` (set by the first `start()`), `first`, `monthly_at`, `answered[module]`.
+
+`keep:tick` (daily 12:00): with `setup.done`, at `FIRST_DAYS = 10` after `since`, one message (Calm reason
+`keep.ask`, kind `question`) lists every enabled feature but `NEVER = ("telegram",)` with `counts(days)` and
+`Calm.sent_by(since)` (messages and calls that came by themselves, not exempt `own`), and a row per feature (least
+used first, at most `MAX_ROWS = 15`): `keep:<id>:keep|quiet|off` (routed in `App.callback`). After `UNUSED_DAYS = 60`
+of counting, at most every `MONTH_DAYS = 30`: `idle()` = enabled features with no use for 60 days, a recurring job
+under `<id>:`, and no answer in `AGAIN_DAYS = 90`. `keep.ask = false` sends neither (the day-10 one is then skipped
+for good).
+
+Quiet is `quiet_change()`: a Calm `Change` adding the feature's non-exempt, stoppable `REASONS` to
+`notify.calm.stopped` (offered only while Calm is on and something is left to stop). Off is `Change(module=id)`
+(`App.disable`; not offered when another enabled feature requires it). Both go through `Calm.apply`, so Undo is
+`calm:<uid>:undo`. Calls a quiet feature places aren't stopped (`Calm.call_ok` doesn't read the stopped list).
+`/keep` (`Keep.command`, in `App.handle` and `CORE_HELP`): counts for 30 days, `/keep <1-90>`, `/keep <feature>`
+with its row. Events `keep_asked`, `keep_answer`, `keep_failed`. Tests: `tests/unit/test_keep.py`.

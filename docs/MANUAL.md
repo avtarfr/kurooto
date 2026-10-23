@@ -48,6 +48,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - [Going offline and coming back](#going-offline-and-coming-back)
 - [Kurooto keeps itself working](#kurooto-keeps-itself-working)
 - [Calm by default: why each message came, and a daily limit](#calm-by-default-why-each-message-came-and-a-daily-limit)
+  - [Keep or drop](#keep-or-drop)
 - [Updates and going back](#updates-and-going-back)
 - [Moving to a new computer](#moving-to-a-new-computer)
 - [Your computer and Kurooto (hardware profiles)](#your-computer-and-kurooto-hardware-profiles)
@@ -349,7 +350,7 @@ full list.
 Plain English works for many things ("remind me at 9 to call mum", "move tonight's check-in to 21:30", "skip Friday's
 check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` lists everything:
 the commands and plain-English requests of the features you have on, grouped by feature, Kurooto's own commands
-(`/q`, `/health`, `/calm`, `/why`, `/jobs`) and the features that are off. `/help <word>` finds a command or
+(`/q`, `/health`, `/calm`, `/why`, `/keep`, `/jobs`) and the features that are off. `/help <word>` finds a command or
 feature, on or off (`/help quiz`, `/help alarm`).
 
 ### Telegram
@@ -2779,6 +2780,26 @@ nothing is recorded; anything already waiting still comes at the evening bundle.
 *Leaves:* nothing. What's recorded stays in `calm.db` in the state folder for 45 days: when, the reason, the setting,
 what it was about, the first 300 characters and whether you tapped or answered it; a waiting message in full until
 its evening.
+
+### Keep or drop
+
+Kurooto counts what you actually use of each feature: requests it answered at once, its commands, taps on its
+messages' buttons, its tools used on a call, your replies to its messages (the setup page's try-it box doesn't count).
+**On day 10** (from Kurooto's first start, or from the update that brought this), once setup is done, one message
+lists each feature that's on, its use in those 10 days and the messages it sent by itself, with **Keep / Quiet / Off**
+per feature (the least used first):
+- **Keep:** nothing changes; not asked about again for 90 days.
+- **Quiet:** it keeps working, but what it sends by itself stops (its kinds go on Calm's stopped list,
+  `notify.calm.stopped`). Your own reminders, the alarm and approvals still come; calls follow their own settings.
+- **Off:** the feature is turned off, as in Features.
+
+**Then monthly:** features that are on, unused for 60 days and still running scheduled work get the same question.
+Nothing is turned down without a tap; Telegram is never asked about. `/keep` shows the counts any time (last 30
+days; `/keep 60` for 60), `/keep <feature>` one feature with its buttons.
+
+**Settings:** `keep.ask` (`true`). **Undo:** the Undo button under Quiet or Off (through Calm, like Less of this);
+`keep.ask` = `false` stops the questions. *Leaves:* nothing; the counts (numbers per feature and day, kept 90 days)
+are in `keep.json` in the state folder.
 
 ## Updates and going back
 

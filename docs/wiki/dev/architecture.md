@@ -40,7 +40,7 @@ Startup (`daemon.py:run`):
 4. Small repairs: PATH (`core/pathfix.py`), launcher and service entries (`core/autostart.py:refresh`); remove
    `off.json`.
 5. `asyncio.run(main())` → `serve(app, stop)`: `App.start()` (one-time upgrade steps, time-zone fix, updates, ask,
-   presence, agent export, the reserve, each enabled module's `start()` and background task, health, calm), then four
+   presence, agent export, the reserve, each enabled module's `start()` and background task, health, calm, keep), then four
    tasks: `scheduler.run_forever`, `jobs.worker`, `power.watch`, `presence.watch`, plus the web server thread
    (`web/server.py:start`). Emit `started`.
 6. On SIGINT/SIGTERM/SIGHUP (or Windows end-session): `presence.going_offline()`, cancel tasks, stop the web server,
@@ -75,7 +75,7 @@ What happens when the user types "what's due this week? and summarise my linear 
 3. **Routing** (`app.py:App.handle`), first match wins:
    1. a reply to a question (`reply_to.kind == "ask"`) → `core/ask.py:Ask.reply`;
    2. a reply to a module's message → that module's `replies()[kind]` (the phone app's copy is retracted);
-   3. `/start`, `/help`, `/aboutme`, `/q`, `/health`, `/calm`, `/why`, `/jobs` (core);
+   3. `/start`, `/help`, `/aboutme`, `/q`, `/health`, `/calm`, `/why`, `/keep`, `/jobs` (core);
    4. a `/command` of an enabled module; a command of a disabled module answers "X is off: Features → X → Turn on"
       (except `ALWAYS = ("status",)`); a skill name when Skills is on (`modules/skills.py:Skills.typed`);
       (from here on, with Learns from its own work on, `Learning.heard` sees the text without taking it: "no, ..."
@@ -87,7 +87,8 @@ What happens when the user types "what's due this week? and summarise my linear 
    8. **intents**, only when the text isn't `too_complex` (`modules/text.py`: long, or several requests in one): first
       an add-on classifier (`core/overlay.py:classify`), then each enabled module's `intents()` in catalog order; a
       text that looks like a question only goes to intents with `questions=True`. An intent emits `intent` and replies
-      with its `run()` result. Instant, no AI;
+      with its `run()` result. Instant, no AI. Requests, module commands, replies to a module's message and its
+      buttons (`App.callback`) are counted per feature by `core/keep.py:Keep.used`;
    9. "sync everything" or `/sync` (`core/syncall.py`);
    10. **Chat** (`modules/chat.py:Chat.ask`) if on; otherwise "turn on Chat".
 

@@ -5,6 +5,7 @@ digest, a warning. This page lists every kind, why it comes and how to get fewer
 tap its **Why?** button, or send `/why`.
 
 - [Calm: Why?, Less of this and the daily limit](#calm-why-less-of-this-and-the-daily-limit)
+- [Keep or drop: the features you don't use](#keep-or-drop-the-features-you-dont-use)
 - [Every message that comes by itself](#every-message-that-comes-by-itself)
 - [Going offline and back online](#going-offline-and-back-online)
 - [Kurooto keeps itself working](#kurooto-keeps-itself-working)
@@ -95,6 +96,44 @@ message in full until its evening.
 **Turn it off / undo:** every Less-of-this choice and every Apply has an Undo button that puts that one setting back
 (a feature it turned off goes back on). `/calm` lists what's stopped, with a button to start each again. `/calm off`
 turns Calm off; anything already waiting still comes at the evening bundle.
+
+## Keep or drop: the features you don't use
+
+**What it does.** Kurooto counts, on this computer, what you actually use of each feature: requests it answered at
+once ("remind me at 9 to call mum"), its commands, taps on its messages' buttons, its tools used on a call, and your
+replies to its messages. On **day 10** (counted from Kurooto's first start, or from the update that brought this), once
+setup is done, one message lists every feature that's on with its use in those 10 days and the messages it sent by
+itself:
+
+> Ten days in: what you used of each feature that's on, and what it sent by itself.
+> - Weekly summary: not used; 1 message by itself
+> - Reminders: used 12 times (9 requests, 3 commands)
+
+Under it, per feature (the least used first): **Keep**, **Quiet** and **Off**.
+
+- **Keep:** nothing changes, and it isn't asked about again for 90 days.
+- **Quiet:** the feature keeps working (its commands, requests and scheduled work), but what it sends by itself stops:
+  its kinds of message go on Calm's stopped list. Your own reminders, the alarm and approvals still come. Calls it
+  places follow their own settings.
+- **Off:** the feature is turned off, as in Features (its data stays).
+
+Quiet and Off each come with an **Undo** button. **Then monthly:** a feature that's on, hasn't been used for 60 days
+and still runs something on a schedule gets the same question. Nothing is turned down without a tap. Telegram, which
+these come on, is never asked about.
+
+| Command | Does |
+|---|---|
+| `/keep` | each feature that's on, what you used of it in the last 30 days, and what it sent by itself |
+| `/keep 60` | the same for 60 days (up to 90) |
+| `/keep weekly` | one feature, with its Keep / Quiet / Off buttons |
+
+**Settings:** `keep.ask` (`true`): `false` stops the questions; `/keep` still shows the counts.
+
+**What leaves your computer:** nothing. The counts are in `keep.json` in Kurooto's state folder: per feature and day,
+only numbers (kept 90 days), and when each feature was last used.
+
+**Turn it off / undo:** the Undo button under Quiet or Off puts it back; `keep.ask` = `false`, or Less of this → Stop
+on the question, stops the questions.
 
 ## Every message that comes by itself
 
@@ -220,6 +259,7 @@ No Stop; only Another time. When sent as urgent they always come.
 | a call that waits for a better time ("Held a call until 18:02 (class: Linear Algebra)") | | list | yes |
 | what Kurooto fixed and learned looking back at a call | `calls.review` | list | yes |
 | the monthly look at what you rarely answer | `notify.calm.monthly` | no more monthly suggestions | |
+| day 10, then monthly: what you use of each feature, with Keep / Quiet / Off | `keep.ask` | no more of these questions | yes |
 
 Also by itself, but not counted as above:
 

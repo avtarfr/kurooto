@@ -84,6 +84,9 @@ class App:
         from kurooto.core.calm import Calm  # (calm) why each message came, Less of this, the daily limit
 
         self.calm = Calm(self)
+        from kurooto.core.keep import Keep  # what you use of each feature; day 10 and monthly: Keep, Quiet or Off
+
+        self.keep = Keep(self)
         self.stop_reason = ""  # why it's stopping, for the "going offline" message ("stopped", "turned off")
         self.restart_requested = False
         self._stop = None  # the daemon's stop event, so an update can ask for a restart
@@ -256,6 +259,10 @@ class App:
             self.calm.start()  # (calm) the evening bundle and the monthly suggestion (core/calm.py)
         except Exception as e:
             self.events.emit("module_failed", module="calm", error=f"{type(e).__name__}: {e}"[:300])
+        try:
+            self.keep.start()  # day 10, then monthly: features you don't use (core/keep.py)
+        except Exception as e:
+            self.events.emit("module_failed", module="keep", error=f"{type(e).__name__}: {e}"[:300])
 
     # ------------------------------------------------------------------------------------- messages
     def handle(self, msg: Incoming, also: list[Module] | None = None) -> None:
@@ -276,6 +283,7 @@ class App:
                 h = m.replies().get(msg.reply_to.get("kind"))
                 if h:
                     self.notifier.retract(msg.reply_to.get("kind"), msg.reply_to.get("ref"))  # off your phones
+                    self.keep.used(m.id, "reply", msg.via)
                     out = h(msg, msg.reply_to.get("ref"))
                     if out:
                         msg.reply(out)
@@ -299,6 +307,10 @@ class App:
                 text, buttons = self.health.command(arg)
                 msg.reply(text, buttons=buttons)
                 return
+            if name == "keep":  # what you used of each feature, with Quiet and Off (core/keep.py)
+                text, buttons = self.keep.command(arg)
+                msg.reply(text, buttons=buttons)
+                return
             if name in ("calm", "why"):  # (calm) the daily limit, what's turned down; why the last one came
                 text, buttons = self.calm.command(arg) if name == "calm" else self.calm.why_last()
                 msg.reply(text, buttons=buttons)
@@ -315,6 +327,7 @@ class App:
             for m in mods:
                 for c in m.commands():
                     if c.name == name:
+                        self.keep.used(m.id, "command", msg.via)
                         out = c.handler(msg, arg.strip())
                         if out:
                             msg.reply(out)
@@ -372,6 +385,7 @@ class App:
         taught = cases.watch(msg, plain, mods) if cases is not None else None  # (request, slots), "ai" or None
         if taught and taught != "ai":
             self.events.emit("intent", name=taught[0].name, via="taught")
+            self.keep.used(self.keep.intent_owner(taught[0].name, mods), "intent", msg.via)
             msg.reply(taught[0].run(msg, taught[1]) or "Done.")
             return
         if plain and not too_complex(plain) and taught != "ai":
@@ -381,6 +395,7 @@ class App:
             picked = overlay.classify(self, plain, mods, asks)
             if picked:
                 self.events.emit("intent", name=picked[0].name, via="classifier")
+                self.keep.used(self.keep.intent_owner(picked[0].name, mods), "intent", msg.via)
                 msg.reply(picked[0].run(msg, picked[1]) or "Done.")
                 return
             for m in mods:
@@ -390,6 +405,7 @@ class App:
                     slots = it.match(plain)
                     if slots is not None:
                         self.events.emit("intent", name=it.name)
+                        self.keep.used(m.id, "intent", msg.via)
                         msg.reply(it.run(msg, slots) or "Done.")
                         return
             from kurooto.core import turnon  # a feature that's off would do it: [Turn on] [Not now]
@@ -468,9 +484,12 @@ class App:
             from kurooto.core import turnon
 
             return turnon.button(self, ref, act)
+        if prefix == "keep":  # Keep / Quiet / Off under the day-10 and monthly question (core/keep.py)
+            return self.keep.button(ref, act)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:
+                self.keep.used(m.id, "button")
                 try:
                     return h(ref, act) or "ok"
                 except Exception as e:
@@ -484,6 +503,7 @@ class App:
         ("calm", "messages that come by themselves: today's count and limit"),
         ("why", "why the last message that came by itself came"),
         ("jobs", "what the AI is working on and what waits, with Cancel buttons"),
+        ("keep", "what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off"),
         ("inferred", "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>"),
         ("help", "this list; /help <word> finds a command or feature, on or off"),
     )

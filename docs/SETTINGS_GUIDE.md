@@ -439,6 +439,12 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 |---|---|---|
 | `jobs.stuck_min` | `10` | the watchdog: minutes with no AI at work and no program running |
 
+### `keep`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `keep.ask` | `true` | day 10, then monthly: Keep / Quiet / Off for features you don't use |
+
 ### `learning`
 
 | Setting | Default | What it does |
