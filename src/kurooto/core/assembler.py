@@ -4,7 +4,6 @@ For your own AI requests (lane "you": chat, the terminal, the dashboard, a task 
 this builds to the request's context (providers/context.py), and the run receipt says "used 2 remembered items". It
 holds, in this order and at most memory.budget_tokens (600, about 4 characters a token):
 
-    the persona card       settings "persona.card", when there is one: how you want it to talk
     open threads           what you're in the middle of (core/threads.py) that the message is about
     remembered items       gists (of faded conversations, and of what's still kept from the last 3 days), meetings and
                            daily notes from the memory ledger (core/ledger.py) that share its words
@@ -60,13 +59,6 @@ GUARD = (
     '"That thing" most likely means: {what}. Read it or ask about it only: never send, move or delete anything for it '
     "without asking them first."
 )
-
-
-def _persona(app: App) -> str:
-    card = app.settings.get("persona.card")
-    if isinstance(card, dict):
-        card = "\n".join(f"{k}: {v}" for k, v in card.items() if v)
-    return str(card or "").strip()
 
 
 def _subject_words(app: App, text: str) -> set[str]:
@@ -137,11 +129,7 @@ def build(app: App, text: str) -> tuple[str, int]:
         return "", 0
     left = budget(app)
     parts: list[str] = []
-    card = _persona(app)
-    if card and left:
-        card = f"How they want you to talk (their persona card; they edit it):\n{card}"[:left]
-        parts.append(card)
-        left -= len(card) + 1
+    # the persona card goes into every AI request already (providers/context.py, core/persona.py), not here
     picked = pick(app, text)
     lines: list[str] = []
     if picked:

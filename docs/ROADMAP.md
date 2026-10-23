@@ -150,10 +150,6 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   and a Forget; "when did I last talk to Prof X?", "what was I doing last Thursday?".~~ (0.5.18: always encrypted with
   a key in your keychain, out of backups unless `backups.memory`, covered by `/forget`; `/memory`, `/memory forget 3`,
   `/memory export` to a note)
-
-What people have asked for, open and done, is in [REQUESTED.md](REQUESTED.md). Have an idea? Open an issue on GitHub.
-
-## More human (2026-10-23)
 - ~~**Persona card**: what to call you, tone, length, things to avoid, in every AI request and call.~~ (0.5.18:
   `/persona`, the About you tab, Settings; empty to start; feelings, a backstory and "I missed you" are left out)
 - ~~**Negotiate, don't repeat**: a reshaped plan from your own plan instead of the same reminder again.~~ (0.5.18:
@@ -164,3 +160,5 @@ What people have asked for, open and done, is in [REQUESTED.md](REQUESTED.md). H
   plain-English requests, and an instruction to every AI request and call)
 - ~~**Register that follows yours**: a short message gets a short answer, a voice note a spoken one.~~ (0.5.18: by
   length band only, `persona.register`)
+
+What people have asked for, open and done, is in [REQUESTED.md](REQUESTED.md). Have an idea? Open an issue on GitHub.

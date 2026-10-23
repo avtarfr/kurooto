@@ -1,5 +1,5 @@
 """The context assembler: an AI reply is told the few remembered items the message refers to (open threads, gists,
-meetings, daily notes; the persona card when there is one), within memory.budget_tokens, never transcripts;
+meetings, daily notes), within memory.budget_tokens, never transcripts;
 nothing when the message refers to nothing; the receipt counts them; a call's brief gets the open threads and the
 day's gists."""
 
@@ -65,12 +65,11 @@ def test_the_budget_caps_it(mem):
     assert assembler.build(app, text) == ("", 0)
 
 
-def test_that_thing_is_named_with_its_guardrail_and_the_persona_card_goes_first(env):
+def test_that_thing_is_named_with_its_guardrail(env):
     app = env.app
     threads.observe(app, "I'll send the glacier draft to Ortiz tonight.")
-    app.settings.set("persona.card", "Call me Avi. Short answers.")
     block, n = assembler.build(app, "can you check that thing for me?")
-    assert block.startswith("How they want you to talk (their persona card; they edit it):\nCall me Avi.")
+    assert "persona card" not in block  # it goes into every request through providers/context.py, once
     assert n == 1 and '"That thing" most likely means: "send the glacier draft to Ortiz tonight"' in block
     assert "never send, move or delete anything for it without asking them first" in block
 
