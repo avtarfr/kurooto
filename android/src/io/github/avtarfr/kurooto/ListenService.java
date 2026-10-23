@@ -65,6 +65,7 @@ public class ListenService extends Service {
     private String ringingSince = ""; // "local:<s>" while this phone's own alarm rings without its call
     private boolean ringingAlarm = false;
     private final Handler main = new Handler(Looper.getMainLooper());
+    private android.content.BroadcastReceiver dock; // bedside mode opening by itself while charging (BedsideActivity)
 
     static void start(Context c) {
         Intent i = new Intent(c, ListenService.class);
@@ -137,6 +138,7 @@ public class ListenService extends Service {
         super.onCreate();
         instance = this;
         channels(this);
+        dock = BedsideActivity.watch(this);
     }
 
     /** The quiet "listening" notification (it names your assistant). */
@@ -171,6 +173,7 @@ public class ListenService extends Service {
         running = false;
         if (thread != null) thread.interrupt();
         stopRing();
+        if (dock != null) try { unregisterReceiver(dock); } catch (Exception ignored) { }
         instance = null;
         super.onDestroy();
     }
@@ -312,6 +315,9 @@ public class ListenService extends Service {
             nm.notify(ID_CALL, ringNotice(this, reason, url, since, alarm, ringMs, false).build());
         }
         if (join && CallActivity.showing) { // the alarm's screen is up: it gains the call's Answer
+            try { startActivity(fullScreen(this, reason, url, since, alarm)); } catch (Exception ignored) { }
+        }
+        else if (BedsideActivity.visible) { // bedside mode keeps the screen on, and then Android only shows a heads-up
             try { startActivity(fullScreen(this, reason, url, since, alarm)); } catch (Exception ignored) { }
         }
         if (!join) startRing(alarm);

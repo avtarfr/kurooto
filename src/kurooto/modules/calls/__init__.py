@@ -1002,6 +1002,14 @@ class Calls(Module):
                 why="calls.device_paired",
             )
             self.app.events.emit("calls_device_paired", kind=m.get("kind"))
+        elif name == "shortcut_made":  # a phone made a Tell Kurooto link (public/shortcut.js)
+            self.app.notify(
+                f"A Tell Kurooto link was made on {m.get('device_name') or 'a paired phone'}: its Shortcut can send "
+                "you messages as that phone. If that wasn't you, revoke it on the dashboard (Phone).",
+                kind="info",
+                why="calls.shortcut_made",
+            )
+            self.app.events.emit("calls_shortcut_made")
         elif name == "rang_offline":
             self.app.events.emit("call_rang_offline", key=m.get("key", ""))
             self.app.notify(
@@ -1391,7 +1399,19 @@ class Calls(Module):
         return self.connector.admin_wait("devices").get("devices", [])
 
     def revoke(self, device_id: str) -> bool:
-        return bool(self.connector.admin_wait("revoke", id=device_id).get("ok"))
+        # `device`, not `id`: that's the admin request's own (before 0.6.0 this waited for an answer that never came)
+        return bool(self.connector.admin_wait("revoke", device=device_id).get("ok"))
+
+    def shortcuts(self) -> list[dict]:
+        """The Tell Kurooto links your phones made (0.6.0; one per phone): id, device, device_name, created, used.
+        A line from before 0.6.0 doesn't know them: none."""
+        return list(self.connector.admin_wait("tells").get("tells") or [])
+
+    def shortcut_revoke(self, shortcut_id: str) -> bool:
+        """Revoke one Tell Kurooto link: the Shortcut that holds it stops working at once. Its phone stays paired."""
+        if not re.fullmatch(r"[0-9a-f]{8}", shortcut_id or ""):
+            return False
+        return bool(self.connector.admin_wait("tell-revoke", tid=shortcut_id).get("ok"))
 
     def status(self) -> dict:
         link = jload(self.dir / "link.json", {}) or {}

@@ -2,8 +2,8 @@
 <!-- Kurooto for Android: rings like a phone call when Kurooto calls you (reminders, check-ins, the wake-up alarm),
      runs the call itself (earpiece, screen off at your ear; or turn by turn with the phone's own speech), shows its questions and approvals with a Reply box and
      answer buttons, chats with it like Telegram, shows your day (Today) and rings your wake-up alarm on the phone too,
-     and shares files and quick notes to your notes (a home screen widget, a launcher shortcut, a Quick Settings tile).
-     Works from Android 6.
+     shares files and quick notes to your notes (a home screen widget, a launcher shortcut, a Quick Settings tile), and
+     turns an old phone into a bedside dock (a dim clock with one button to talk). Works from Android 6.
      Paired with your own call line by a one-time link from your computer; nothing personal is built into the app. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="io.github.avtarfr.kurooto">
@@ -75,6 +75,13 @@
             android:excludeFromRecents="true"
             android:theme="@style/Kurooto.Call"
             android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <!-- bedside mode: a dock clock with one button to talk, over the lock screen (BedsideActivity) -->
+        <activity android:name=".BedsideActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Kurooto.Call" />
 
         <!-- a question, approval or message, with every way to answer it (tapping its notification) -->
         <activity android:name=".AnswerActivity"

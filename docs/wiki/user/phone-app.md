@@ -10,7 +10,9 @@ computer and call line out of reach. It can replace Telegram entirely: see [Usin
 
 - [Pair a phone](#pair-a-phone)
 - [Android](#android)
+- [Bedside mode (Android)](#bedside-mode-android)
 - [iPhone](#iphone)
+- [Tell Kurooto: Siri and Back Tap (iPhone)](#tell-kurooto-siri-and-back-tap-iphone)
 - [Any browser](#any-browser)
 - [What reaches the phone](#what-reaches-the-phone)
 - [Answering questions on the phone](#answering-questions-on-the-phone)
@@ -77,7 +79,9 @@ to answer it; check-ins and quiz questions are answered right on their card, see
 [Check-in and quiz cards](#check-in-and-quiz-cards)), what's **waiting for your computer** (things you sent while it
 was off), the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), the **Ringtones** (**Call
 ringtone** and **Wake-up alarm tone**, each showing the tone it's set to; tap to change it. The alarm tone plays on the
-alarm volume), **Location reminders** (Places, see [Location reminders](#location-reminders)), and **This phone** (what it's paired with, the app's version, and **Unpair this phone**). It starts
+alarm volume), **Location reminders** (Places, see [Location reminders](#location-reminders)), **Bedside mode**
+([below](#bedside-mode-android)), and **This phone** (what it's paired with, the app's version, and **Unpair this
+phone**). It starts
 listening again by itself after the phone restarts or the app updates ("Listening for calls" stays as a quiet
 notification).
 
@@ -110,6 +114,40 @@ so an old one is easy to spot.
 **Without the app.** The pairing page also offers "Use this page as an app instead". It works, but rings less
 reliably.
 
+## Bedside mode (Android)
+
+An old Android phone on a charger by your bed, as a dock. It shows:
+
+- a big **clock** and the date;
+- the **next alarm**: Kurooto's wake-up call ("Wake-up call 06:30"), or the phone's own alarm if that comes first;
+- the **calls due next** (a check-in, a reminder call; up to three) and how many things are **waiting for you**;
+- one big **Talk to Kurooto** button: one tap starts a voice call with Kurooto, the same call screen as the app's
+  **Call** button. **Chat** and **Close** are the small buttons below it.
+
+**Open it** from the app's main screen: **Bedside mode** → **Open bedside mode**.
+
+**On the lock screen.** It shows over the lock screen, so the dock can stay locked: **Talk** works without unlocking.
+**Chat** and "waiting for you" ask you to unlock first. With a PIN, pattern or fingerprint lock, the calls' reasons
+show as "a call (unlock to see)" until you unlock; the times and the wake-up call still show.
+
+**Brightness by the hour.** By day the phone's own brightness; from 20:00 lower, from 22:00 to 06:00 as dim as the
+screen goes, in a warm red-orange with no blue; 06:00 a little brighter. Tap anywhere to brighten it for 15 seconds.
+
+**Calls and the alarm ring there.** A call from Kurooto or the wake-up call opens full screen over bedside mode (on
+the alarm volume, as always); after the call you're back at the clock. Keep the app listening (the checklist's
+**Battery: unrestricted**) or nothing rings.
+
+**Settings** (the app's main screen, under **Bedside mode**):
+
+| Setting | Default | What it does |
+|---|---|---|
+| Open by itself while charging | Off | Pick the hours (say 22:00 to 07:00). Plugging the phone in during them, or the hours starting while it charges, opens bedside mode; unplugging closes it if it opened by itself. On Android 10 and newer it opens through a full-screen notification: by itself with the screen off, as a notice to tap while you use the phone. |
+| Keep the screen on while charging | On | Off: the screen times out as usual (bedside mode is still there when you wake it). |
+
+What's coming is read from your call line every 5 minutes: the calls your computer has booked for the next day,
+so it works with the computer asleep. Reminders, deadlines and classes aren't on it (see
+[What it can't do yet](what-it-cant-do-yet.md#android)). Nothing new leaves your computer for it.
+
 ## iPhone
 
 **What you get.** Kurooto as a web app on your Home Screen (iOS 16.4 or newer): calls arrive as notifications you tap
@@ -121,12 +159,57 @@ to answer, and questions and approvals show in **Waiting for you** with the same
 3. Open **Kurooto from the Home Screen** (not from Safari). It finishes pairing there.
 4. Tap **Turn on notifications** and allow them.
 
+**Tell Kurooto.** Right after pairing, the page shows how to make a Siri Shortcut: see
+[below](#tell-kurooto-siri-and-back-tap-iphone).
+
 **What doesn't work on iPhone.** Calls can't ring like a phone call, ring on silent, or show on the lock screen as a
 call: they're notifications you tap. Reminders with the lid shut don't reach an iPhone. If you need those, rely on
 Telegram reminders or use an Android phone. The iPhone app updates itself.
 
 **Speech.** Turn-by-turn calls use Safari's speech; Safari asks you to allow dictation. Answers are read aloud only
 where the browser has a voice.
+
+## Tell Kurooto: Siri and Back Tap (iPhone)
+
+A Shortcut that sends what you say to Kurooto, as if you'd typed it in the chat, and reads you the answer: "Hey Siri,
+Tell Kurooto", or a double tap on the back of the iPhone.
+
+Apple doesn't let a web page make a Shortcut file, so you build it once, by hand. The recipe comes right after pairing
+(in the Home Screen app), and any time under **Settings** in the Home Screen app (or `<your call line>/settings`). Your
+link is filled in: copy it with **Copy the link**, or scan its QR code on another Apple device.
+
+1. Open the **Shortcuts** app, tap **+**, and name the shortcut **Tell Kurooto** (the name is what you say to Siri).
+2. Add the action **Dictate Text**.
+3. Add **Get Contents of URL** and paste your link. Tap the arrow: Method **POST**, Request Body **JSON**, add a
+   **Text** field with key `text` and, as its value, **Dictated Text**.
+4. Add **Speak Text** (or Show Result) with **Contents of URL**.
+5. Tap **Done**, run it once, and tap **Always Allow** when it asks to connect to your call line.
+
+Then: **Siri**: "Hey Siri, Tell Kurooto", then what you want. **Back Tap**: Settings → Accessibility → Touch → Back Tap
+→ Double Tap (or Triple Tap) → Tell Kurooto. On an iPhone with an Action button: Settings → Action Button → Shortcut →
+Tell Kurooto.
+
+**What it does.** Your words go to your computer like a chat message from that iPhone: commands, "remind me at 9 to
+...", questions for your AI. Kurooto's first answer is read out ("On it." for longer jobs) and the full answer comes in
+the chat with a notification. With the computer off: "Your computer is off: this waits on your call line ...", and it
+goes through when the computer is back.
+
+| You hear | Means |
+|---|---|
+| This Tell Kurooto link was revoked or is wrong. | It was revoked, replaced by a new link, or the iPhone was unpaired. Make a new link in Settings and paste it into the Shortcut. |
+| I heard nothing to send. | Dictation caught nothing. Try again. |
+| Your computer is off: this waits on your call line ... | It's kept and goes to the computer when it's back. |
+
+**Keep the link to yourself.** Anyone with it can send Kurooto messages as that iPhone (only messages: it can't read
+anything, answer questions or call). Each iPhone has one link at a time.
+
+**Revoke it:**
+- on your computer: dashboard → **Phone** → **Tell Kurooto (iPhone Shortcut)** lists each link (phone, when made, last
+  used) with **Revoke**; the Shortcut stops working at once and the phone stays paired;
+- on the iPhone: Settings → **New link** (the old one stops working; paste the new one into the Shortcut) or **Remove**;
+- unpairing the iPhone (dashboard, `/unpair`) ends its link too, and so does `kurooto rotate`.
+
+Each time a link is made, Kurooto tells you ("A Tell Kurooto link was made on iPhone ..."); this message always comes.
 
 ## Any browser
 
@@ -392,7 +475,7 @@ sent them, each once.
 | Where | How |
 |---|---|
 | Telegram | `/phones` lists paired phones with their id, kind, whether notifications are on, and since when. `/unpair <id>` removes one (ids are 8 characters from `/phones`). |
-| Dashboard → Phone | Your call line's address and whether it's connected; **Pair a phone**; **Ring my phone (test)** (only while connected); the list of phones with **Remove**. |
+| Dashboard → Phone | Your call line's address and whether it's connected; **Pair a phone**; **Ring my phone (test)** (only while connected); the list of phones with **Remove**; the iPhones' Tell Kurooto links with **Revoke**. |
 | Android app | **Unpair this phone** unpairs it on the phone; also remove it on your computer (the dashboard's Phone tab, or `/phones`). |
 
 ## A lost phone, or keys that got out
@@ -404,7 +487,8 @@ Run `kurooto rotate` on your computer. Use it when a paired phone is lost or sto
 working), the phone notification key and channel (Android) and the Web Push keys (iPhone).
 
 **What happens:** it asks first (`--yes` skips that), redeploys your call line with the new keys (a minute or two;
-same address), and the line forgets every paired phone, every call link it made and open pairing codes. If the deploy
+same address), and the line forgets every paired phone, every call link it made, every Tell Kurooto link and open
+pairing codes. If the deploy
 fails, the old keys are put back and nothing changed. With Kurooto running it then prints a pairing link and QR code.
 
 **Pair again:**
@@ -435,6 +519,11 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
 - Files you share and quick notes go from the phone through your call line to your computer.
 - The 2x1 widget asks your call line what's waiting (as the app's main screen does); nothing else leaves the phone for
   the widgets or the tile.
+- Tell Kurooto (the iPhone Shortcut): what you say goes, as text, from the iPhone (Apple's dictation) through your call
+  line to your computer, like a chat message. The call line keeps a hash of each link (not the link), the phone it
+  belongs to, and when it was made and last used.
+- Bedside mode reads from your call line the calls already booked there (times and reasons) and how many things are
+  waiting; nothing new goes there.
 - Files from your computer for the chat (where Telegram would get a document): with Drive upload on, to your own Google
   Drive; otherwise a copy on your call line for a day, encrypted on your computer. The key is only in the link, which
   travels inside the chat message, so the copy is as private as the chat itself; ntfy never sees either.

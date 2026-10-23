@@ -42,6 +42,12 @@ public class MainActivity extends Activity {
         askPermissions();
         if (Prefs.paired(this)) ListenService.start(this);
         build();
+        if (getIntent().getBooleanExtra("bedside", false)) startActivity(new Intent(this, BedsideActivity.class)); // smoke.sh, shortcuts
+    }
+
+    @Override protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        if (i.getBooleanExtra("bedside", false)) startActivity(new Intent(this, BedsideActivity.class));
     }
 
     @Override protected void onResume() {
@@ -161,6 +167,8 @@ public class MainActivity extends Activity {
         tones.addView(Ui.item(this, "Wake-up alarm tone", toneName(true), v -> pickTone(true)));
         box.addView(tones);
         box.addView(Ui.small(this, "The alarm tone plays on the alarm stream, so wake-up calls ring even on silent."));
+
+        BedsideActivity.settings(this, box, this::build);
 
         box.addView(Ui.heading(this, "This phone"));
         LinearLayout phone = Ui.card(this);

@@ -30,7 +30,7 @@ The user's side of this is in [../user/calls.md](../user/calls.md) and [../user/
 | `modules/calls/tools.py` | the `Tool` dataclass (shared with `core/tools.py`) and notes helpers |
 | `data/worker/src/worker.js` | the Worker: `fetch`, `scheduled`, Durable Object `class Line` |
 | `data/worker/web/app.js`, `web/fallback.js` | the call page source (bundled into `public/app.js` at deploy) |
-| `data/worker/public/` | `index.html`, `pair.html`/`pair.js`, `inbox.html`/`inbox.js`, `talk.html`/`talk.js` (the web app's chat, 0.5.18), `file.html`/`file.js` (a sealed file for the chat, 0.5.18), `sw.js`, `worklet.js`, icons |
+| `data/worker/public/` | `index.html`, `pair.html`/`pair.js`, `inbox.html`/`inbox.js`, `talk.html`/`talk.js` (the web app's chat, 0.5.18), `file.html`/`file.js` (a sealed file for the chat, 0.5.18), `settings.html` + `shortcut.js` (the Tell Kurooto recipe, 0.6.0) and `qr.js` (a QR maker), `sw.js`, `worklet.js`, icons |
 | `data/worker/wrangler.template.toml`, `package.json`, `package-lock.json` | Worker config and pinned packages |
 | `android/` | the app (Java, no Gradle), `build.sh`, `smoke.sh`, `test/` |
 
@@ -238,9 +238,13 @@ that `config_template` puts in the call's instructions.
   the connector secret), `/pair/claim` and `GET /sealed/<32 hex>` (a sealed file: only its link's key opens it). Any valid key (device key `d1`, ticket `t1`, or a minted ticket):
   `/status`, `/token`, `/turn`, `/text-call`, `/call-report`, `/tool`, `/tasks`, `/transcript`, `/upload`. Paired
   devices only: `/pending`, `/answer`, `/chat` (GET and POST), `/outbox`, `/today`, `/app-call`, `/ring-reply`,
-  `/push/subscribe`, `/device/key`.
-- Admin operations over the WebSocket: `ring`, `stop-ring`, `pair-code`, `devices`, `revoke`, `ticket`, `bye`, `notify`,
-  `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`, `file-put`, `today-put`.
+  `/push/subscribe`, `/device/key`, `/upcoming` (bedside mode), `/shortcut`, `/shortcut/new`, `/shortcut/off`. Only a
+  Tell Kurooto link: `/tell/tk1.<id>.<secret>` (below).
+- Admin operations over the WebSocket: `ring`, `stop-ring`, `pair-code`, `devices`, `revoke` (`device`), `ticket`,
+  `bye`, `notify`, `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`, `file-put`, `today-put`, `tells`,
+  `tell-revoke` (`tid`). An op's own fields never use `id`: that's the request's id, and `connector.admin(op, id=...)`
+  replaced it, so the answer never matched (before 0.6.0, `revoke` sent `id` and `/unpair` timed out; it also deletes
+  the device's Today copy and its Tell Kurooto link).
 - Pinned packages in `package.json` / `package-lock.json` (`@google/genai`, esbuild, wrangler). CI installs them with
   `npm ci --ignore-scripts`.
 
@@ -407,6 +411,34 @@ no room; the app's own Done answers `{"dismiss": true}`, which `PhoneApp.answer`
 (`ListenService.sealedNote`) gets Done and +10 min / +1 h, kept on the phone (`ActionReceiver.SEALED_SNOOZE` shows it
 again with an inexact alarm): the computer is asleep when those come.
 
+## Tell Kurooto, the iPhone Shortcut (0.6.0)
+
+Apple doesn't allow generating a Shortcut file, so the phone shows a recipe with a link to paste.
+
+- **The link.** `<line>/tell/tk1.<8 hex id>.<32 hex secret>`, made by the Worker for a paired device:
+  `POST /shortcut/new` (device key; any older link of that device is dropped, so one per device) answers
+  `{ok, id, token, url}`; `GET /shortcut` says whether the device has one (`{shortcut: {id, created, used} | null}`);
+  `POST /shortcut/off` drops it. Stored in the Durable Object under `tells`: `{<id>: {hash: sha256(secret), device,
+  created, used}}`. Making one emits the event `shortcut_made` (`Calls.on_event` notifies, Calm reason
+  `calls.shortcut_made`, exempt "security").
+- **Scope.** `Line.fetch` routes `/tell/tk1.` before `auth()`, which never accepts a `tk1` token, so the link opens no
+  other route (401 everywhere else). `Line.tellSend` takes `{"text"}` as JSON, a form or plain text (at most
+  `TELL_TEXT`, 4000), checks the hash and that its device is still paired, sets `used`, and builds the body the web
+  app's chat would (`{device, at, id, ts, n, text, via: "shortcut"}`: no `button`, no `to`): relayed to `/chat` (so
+  `PhoneChat.take` handles it like any phone message, nonce and all) or queued in the phone outbox as `chat`. The answer
+  is `text/plain` for the Shortcut to speak: the immediate `said` texts joined, or the queued note, or the refusal
+  (401 revoked/wrong, 400 empty, 405 not POST, 413, 507).
+- **The computer's side.** `Calls.shortcuts()` (`admin_wait("tells")`; `[]` from an older line) and
+  `Calls.shortcut_revoke(id)` (`tell-revoke`, `tid`); `GET /api/phone` has `shortcuts`, `POST /api/phone/shortcut/revoke
+  {id}`; the Phone tab lists them with Revoke. `revoke` (unpairing) drops the device's link; `Line.fresh` (after
+  `kurooto rotate`) deletes `tells` with the devices.
+- **The pages.** `public/shortcut.js` renders the recipe into `#shortcut` (on `settings.html`, and on `pair.html` once an
+  iPhone in standalone mode has paired: `data-auto` makes a link if the device has none). The link is kept in
+  `localStorage` (`kurootoTell`) only; if the line's id differs (revoked or remade elsewhere), the page drops it and
+  offers a new one. `public/qr.js` (`KurootoQR.svg(text)`): byte mode, level M, versions 1-20, drawn on the phone so the
+  link never leaves it; `tests/unit/test_shortcut.py` compares it module by module with segno (segno pads a
+  byte-aligned stream with a zero byte where the standard has 0xEC, so the test uses data that fills each version).
+
 ## Pairing
 
 1. `Calls.pair_start`: `line.pair_code()` (8 characters from `CODE_ALPHABET`) sent with
@@ -452,8 +484,22 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `KUROOTO_KEYSTORE_PASS` on the maintainer's machine (`tools/release.py sign --apk` sets them and builds from the
   release's tarball; see [release-and-updates.md](release-and-updates.md#the-phone-app-sign---apk)); otherwise a
   throwaway debug key. `build.sh --test` runs
-  `test/CryptoTest.java`, `test/SpeechTest.java`, `test/CardsPlacesTest.java` (`CardRules`, `PlaceRules`) and
-  `test/TodayTest.java` (`Buttons`, `AlarmPlan`) on a plain JVM.
+  `test/CryptoTest.java`, `test/SpeechTest.java`, `test/CardsPlacesTest.java` (`CardRules`, `PlaceRules`),
+  `test/TodayTest.java` (`Buttons`, `AlarmPlan`) and `test/DockTest.java` on a plain JVM.
+- Bedside mode (0.6.0): `BedsideActivity` (theme `Kurooto.Call`, `showWhenLocked`, immersive): clock, date, next
+  alarm (the first `alarm` call from `GET /upcoming`, or `AlarmManager.getNextAlarmClock()` if earlier), up to three
+  calls (reasons hidden while a secure keyguard is locked), the waiting count, and the Talk button (`Line.callLink` then
+  `CallActivity`, which shows over the lock screen itself); Chat and the main screen go through
+  `requestDismissKeyguard` (8+). `/upcoming` (device key) answers `{calls: [{at, reason, alarm}] from the pushed
+  schedule (next day, at most 8), waiting, computer, assistant}`; read every 5 minutes. Window brightness and colours
+  by the hour come from `Dock` (pure Java, `test/DockTest.java`); a tap sets 0.3 for 15 s; `FLAG_KEEP_SCREEN_ON` while
+  plugged in (`bedsideKeepOn`). Opening by itself: `BedsideActivity.watch()` registers `Watcher` (POWER_CONNECTED,
+  TIME_TICK) from `ListenService.onCreate`; in the chosen hours (`bedsideAuto`, `bedsideFrom`, `bedsideTo`; `Dock.within`
+  crosses midnight) plugging in, or the hours starting while charging, opens it: `startActivity` below Android 10, a
+  full-screen notification on channel `bedside` (silent, `ID_BEDSIDE` 9) from 10. Opened that way (`auto`), unplugging
+  closes it. While it's visible, `ListenService.ring` also starts `CallActivity` directly (with the screen kept on,
+  Android shows a full-screen intent only as a heads-up). `MainActivity` adds its section with
+  `BedsideActivity.settings(...)`; `MainActivity` with the extra `bedside` opens it (`smoke.sh` uses that).
 - Components: `MainActivity` (the checklist: battery, notifications, full-screen calls), `PairActivity`,
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
   the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
@@ -462,7 +508,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `PlacesActivity` + `PlaceReceiver` (location reminders), `QuickNoteActivity`, `NoteTile`, `TalkWidget` /
   `TalkWideWidget` (below).
   Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Chat`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25),
-  `B64`, `Ui` (the look), `BlobView` (the main screen's background), `Cards` + `CardRules` (check-in and quiz cards),
+  `B64`, `Ui` (the look), `BlobView` (the main screen's background), `Dock` (bedside mode's rules), `Cards` + `CardRules` (check-in and quiz cards),
   `Places` + `PlaceRules`; 0.6.0: `Today` and `TodayView` (the Today screen), `Alarms` and `AlarmPlan` (the phone's own
   alarm), `Buttons` (quick notification buttons).
 - Check-in and quiz cards (0.5.22): `PhoneApp.item` adds `card` ("checkin" / "quiz", `phone.py:card_of`, from the
@@ -492,7 +538,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     you"), kept in `Prefs.widgetLine`. It looks it up in `onUpdate` (`updatePeriodMillis` 30 min, `goAsync`), on
     `TalkWidget.refreshSoon` (debounced 3 s: `Inbox.show`, `Inbox.cancel`, `Prefs.savePairing`), and takes
     MainActivity's own fetch through `TalkWidget.waiting(c, items)`; with no 2x1 placed nothing is fetched.
-    `Prefs.forget` redraws them unpaired. A Today screen can feed the 2x1 the same way (`Prefs.setWidgetLine` +
+    `Prefs.forget` redraws them unpaired. The Today screen could feed the 2x1 the same way (`Prefs.setWidgetLine` +
     `TalkWidget.draw`). Colours are the `k_*` resources, so the widgets follow light/dark and Material You;
     `drawable-v31/k_widget.xml` takes the launcher's corner radius.
   - `QuickNoteActivity` (`Kurooto.Dialog`, exported so every launcher can open the static shortcut; it sends only on
@@ -561,11 +607,13 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   ringing with VAPID signature checks, uploads, transcripts, the offline queue and cron), `test_lidsafe_line.py`,
   `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox),
   `test_presence_line.py`, `test_rotate_line.py`, `test_phone_today_line.py` (Today sealed per phone, kept while the
-  computer is away, Done from the outbox, off). `test_phone_chat_line.py` also covers a sealed file put and fetched. They need Node;
-  CI's `call-line` job installs the Worker's packages and bundles the page first.
+  computer is away, Done from the outbox, off), `test_shortcut_line.py` (Tell Kurooto links: made, scoped, revoked,
+  ended by unpairing, queued offline; and `/upcoming`). `test_phone_chat_line.py` also covers a sealed file put and
+  fetched. They need Node; CI's `call-line` job installs the Worker's packages and bundles the page first.
 - Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_phone_cards.py`,
   `test_place_reminders.py`, `test_phone_today.py` (the Today list, its hand-over, Done / +1, reminder and deadline
-  buttons), `test_app_first.py` (no Telegram: routing,
+  buttons), `test_shortcut.py` (the computer's side of the links, the dashboard, `public/qr.js` against segno through
+  `tests/js/qr.mjs`), `test_app_first.py` (no Telegram: routing,
   files as links, shared files, setup, doctor), `test_livefallback.py` (runs `tests/js/fallback.mjs` and
   `tests/js/callpage.mjs`).
 

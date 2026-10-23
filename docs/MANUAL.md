@@ -2896,6 +2896,21 @@ stays in the box.
 *Undo:* remove the widget or the tile. *Leaves your computer:* nothing new; the note travels like a shared file, and
 the 2x1 widget asks your call line what's waiting as the app does.
 
+**Bedside mode** (0.6.0): an old Android phone on a charger as a dock. A big clock, the date, the next alarm (Kurooto's
+wake-up call, or the phone's own alarm), the calls due next, and one big **Talk to Kurooto** button that starts a voice
+call (the same call screen as the app's Call button), with **Chat** and **Close** below it. It shows over the lock
+screen, so Talk works on a locked phone; Chat asks you to unlock first, and with a PIN or pattern the calls' reasons
+stay hidden until you unlock. The screen dims by the hour: the phone's own brightness by day, lower from 20:00, as dim as
+it goes and in warm red-orange from 22:00 to 06:00 (tap the screen to brighten it for 15 s). A call or the wake-up call
+rings there full screen. Open it from the app's main screen (**Bedside mode** → **Open bedside mode**).
+- **Open by itself while charging**: off by default; pick the hours (say 22:00 to 07:00). Plugging in within them, or
+  the hours starting while it charges, opens it; unplugging closes it again. On Android 10 and newer it opens through a
+  full-screen notification (by itself with the screen off; with the phone in use, tap the notice).
+- **Keep the screen on while charging**: on by default; off lets the screen time out as usual.
+
+*Undo:* **Close**, and turn **Open by itself while charging** off. *Leaves your computer:* nothing new: it reads the
+calls your computer already pushes to your call line (their times and reasons) and how many things are waiting.
+
 ### iPhone
 iPhones use Kurooto as a web app on the Home Screen (iOS 16.4 or newer).
 
@@ -2906,6 +2921,22 @@ iPhones use Kurooto as a web app on the Home Screen (iOS 16.4 or newer).
 
 **Chat:** tap **Chat** in the Home Screen app (or open `<your call line>/talk`): the same chat as Android's, with
 buttons, Reply and "Waiting for your computer".
+
+**Tell Kurooto (Siri, Back Tap)** (0.6.0): right after pairing, the page shows how to build a "Tell Kurooto"
+Shortcut, with a link made for this iPhone (to copy, and as a QR code); later it's under **Settings** in the Home Screen
+app (or `<your call line>/settings`). Apple doesn't let a page make the Shortcut, so it's five steps in the Shortcuts
+app: Dictate Text, then Get Contents of URL (your link, POST, JSON field `text` = Dictated Text), then Speak Text. Then
+"Hey Siri, Tell Kurooto", or Settings → Accessibility → Touch → Back Tap → Tell Kurooto. What you say goes to Kurooto
+as a chat message from that iPhone, and the first answer is read out; the rest comes in the chat. With the computer
+off it waits on your call line.
+- The link can only send chat messages; it opens nothing else on your call line. One per phone: **New link** makes
+  another and the old one stops working; **Remove** ends it.
+- Your computer tells you when a link is made, and lists them under dashboard → **Phone** → **Tell Kurooto** with
+  **Revoke**. Unpairing the phone ends its link too.
+
+*Undo:* **Revoke** on the dashboard (or **Remove** in the app's Settings), and delete the Shortcut. *Leaves your
+computer:* nothing new; what you say goes like a chat message from the phone. The call line keeps only a hash of the
+link, which phone it belongs to, when it was made and last used.
 
 **What doesn't work on iPhone:** calls arrive as notifications you tap to answer; they can't ring like a phone call,
 ring on silent, or show on the lock screen as a call. If you need those, use Telegram reminders or an Android phone.

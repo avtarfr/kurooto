@@ -16,6 +16,11 @@ SHOTS=${SHOTS:-shots}
 mkdir -p "$SHOTS"
 shot() { t 30 adb exec-out screencap -p > "$SHOTS/api$SDK-$1.png" || true; }  # for a look at each screen (CI keeps them)
 shot home
+# bedside mode (unpaired here: the clock and "pair this phone first"), then back
+t 60 adb shell am start -n "$PKG/.MainActivity" --ez bedside true
+sleep 5
+shot bedside
+t 20 adb shell input keyevent KEYCODE_BACK || true
 # a pairing link with a code nobody issued: the app must show an error, not crash
 t 60 adb shell am start -a android.intent.action.VIEW -d "'kurooto://pair?c=NOTACODE&u=https://example.com'"
 sleep 10

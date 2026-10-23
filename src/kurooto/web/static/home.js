@@ -2203,6 +2203,9 @@ async function renderPhone(body) {
     ${devs === null ? "<p class=\"d\">Paired phones show here when the line is connected.</p>" : devs.length
       ? `<table><tr><th>phone</th><th>kind</th><th>paired</th><th></th></tr>${devs.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.kind)}${d.push ? " · notifications on" : ""}</td><td>${esc(d.created.slice(0, 10))}</td><td><button data-revoke="${esc(d.id)}">Remove</button></td></tr>`).join("")}</table>`
       : "<p class=\"d\">No phones paired yet.</p>"}
+    ${ph.shortcuts && ph.shortcuts.length ? `<h3>Tell Kurooto (iPhone Shortcut)</h3>
+    <p class="d">Each link lets its Shortcut send you a chat message as that phone, and nothing else. Revoke one and its Shortcut stops working at once; the phone stays paired.</p>
+    <table><tr><th>phone</th><th>made</th><th>last used</th><th></th></tr>${ph.shortcuts.map((s) => `<tr><td>${esc(s.device_name || s.device)}</td><td>${esc((s.created || "").slice(0, 10))}</td><td>${esc(s.used ? s.used.slice(0, 16).replace("T", " ") : "never")}</td><td><button data-shortcut="${esc(s.id)}">Revoke</button></td></tr>`).join("")}</table>` : ""}
     <h3>ntfy account (optional)</h3>
     <p class="d">Android rings go through ntfy.sh, which limits each internet address; yours is shared (your call line's Cloudflare one, often a campus or office too), so a ring can be refused and your phone stays silent. A free account's token makes ntfy count your account instead: <a href="https://ntfy.sh/signup" target="_blank" rel="noopener">make one</a>, then Account → Access tokens → Create.${ph.ntfy_limited && !ph.ntfy_token ? ` <span class="bad2">ntfy refused ${ph.ntfy_limited} ring(s) this week.</span>` : ""}</p>
     <p>${ph.ntfy_token ? "<span class=\"ok2\">Token kept.</span> " : ""}<input type="password" id="ntfy-token" placeholder="tk_..." autocomplete="off" spellcheck="false"> <button data-ntfy>Save</button>${ph.ntfy_token ? " <button data-ntfy-clear>Remove</button>" : ""}</p>
@@ -2226,6 +2229,7 @@ async function renderPhone(body) {
       setTimeout(() => { const m = $("#phone-msg"); if (m) m.textContent = r.message; }, 300);
     }
     if (t.dataset.ring !== undefined) { const r = await api("phone/test", {}); msg.textContent = r.ok ? "Ringing your paired phones…" : r.error; }
+    if (t.dataset.shortcut) { const r = await api("phone/shortcut/revoke", { id: t.dataset.shortcut }); await renderPhone(body); const m = $("#phone-msg"); if (m) m.textContent = r.ok ? "Revoked: that Shortcut no longer works." : (r.error || "Not found."); }
     if (t.dataset.revoke) { const r = await api("phone/revoke", { id: t.dataset.revoke }); msg.textContent = r.ok ? "Removed." : (r.error || "Not found."); renderPhone(body); }
   };
 }

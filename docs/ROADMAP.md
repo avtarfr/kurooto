@@ -57,8 +57,10 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   once, and the phone hears when each went through); ~~still to come: a home screen widget and a capture tile
   (launcher shortcut on Android 6)~~ (0.6.0: Talk widgets 1x1 and 2x1, a Quick note launcher shortcut on 7.1+ and a
   Quick Settings tile on 7+; Android 6 gets the widgets).
-- **iPhone Shortcut.** Pairing an iPhone ends with a ready "Tell Kurooto" Shortcut (Siri, Back Tap) with a
-  revocable link.
+- ~~**iPhone Shortcut.** Pairing an iPhone ends with a ready "Tell Kurooto" Shortcut (Siri, Back Tap) with a
+  revocable link.~~ (0.6.0: Apple doesn't allow making the file, so pairing and the web app's Settings show a 5-step
+  recipe with the phone's own link, as text and a QR code; the link only sends chat messages, one per phone, listed on
+  the dashboard's Phone tab with Revoke)
 - ~~**CPU micro-helper.** A ~1 GB model for one-word decisions only (effort, intent, yes/no) on laptops without a
   graphics card, enabled only if a speed test passes, offered after week 2 when the free limit is being used up.~~
   (0.5.22: the offline helper, `qwen2.5:1.5b-instruct` through Ollama, `/helper`; offered also when the internet often
@@ -87,7 +89,9 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - ~~**Missed-class catch-up.** Skipping a class makes a catch-up item with that day's Classroom posts and a note stub.~~
   (0.5.14: a task due before the next class and a lecture note stub, also for classes you slept through; 0.5.15:
   that day's Classroom posts in the message and the stub, and without Classroom it works the same)
-- **Bedside mode.** An old Android phone as a dock: clock, today, alarm, a talk button.
+- ~~**Bedside mode.** An old Android phone as a dock: clock, today, alarm, a talk button.~~ (0.6.0: a big clock, the
+  next alarm and the calls due next, one Talk button that starts a call, over the lock screen; dims by the hour, warm
+  at night; opens by itself while charging between chosen hours. In the app itself, not an add-on)
 - **Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.
 
 ## From the skeptic review (2026-10-23)
