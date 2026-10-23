@@ -392,6 +392,13 @@ of several. The day after an exam or a heavy day it starts with one line saying 
 - **The self-check** (`dreaming.self_check`, on): with Wrong button and test cases on, it replays your test cases and
   names any that went right yesterday but go wrong now (after an update or a settings change), and counts the requests
   it didn't understand and the Wrong taps since the last message (the Sunday look back shows them).
+- **Tuning its own messages** (`dreaming.tune_messages`, on): it replays the messages it sent you by itself (the last
+  45 days) under a few variants of when they come, and when one clearly beats things as they are, it makes that one
+  change, with **Undo**: "Learned while you slept: questions about quiet projects wait for your evening bundle once 2
+  in a row go unanswered; over the last 14 days that would have saved 8 ignored pings and delayed none you answered."
+  One change a night at most, never to what always comes or what you set yourself.
+  [Messages it sends](messages-it-sends.md#calm-why-less-of-this-and-the-daily-limit) has the details; `/dream policy`
+  shows the rules and the last decisions.
 
 Nothing new runs for it: it reads Kurooto's own log and your notes, so it uses no AI and nothing leaves the computer.
 A quiet night with no loose ends sends nothing. `/dream` shows the same any time. With it on, the concept graph's own

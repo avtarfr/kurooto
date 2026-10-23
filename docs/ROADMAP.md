@@ -110,6 +110,10 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   one line in the morning with Not today.~~ (0.5.18: `notify.calm.lighter_after`)
 - ~~**Noticing absence**: two days without a word from you brings one gentle message, never a call, with I'm fine /
   Busy, quiet for a week.~~ (0.5.18: `availability.absence_days`)
+- ~~**Dream RSI, part two: it learns when to reach you.** Each night it replays the messages it sent by itself under a
+  few variants of when they come, keeps today's rules as a candidate, and applies the best only if it clearly wins, one
+  change a night with Undo; a kind you keep ignoring fades to the evening bundle.~~ (0.5.18: `notify.calm.habituate`
+  and `notify.calm.windows`, the nightly replay in Dreaming, `/dream policy`)
 
 ## Ideas
 - **Dream RSI, part three.** The nightly replay that tunes when messages come (part two) applied to Kurooto's
