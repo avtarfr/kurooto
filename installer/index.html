@@ -190,7 +190,7 @@ html.js .scene.is-live > .scene-stage { position: sticky; top: 0; height: 100svh
 .screen { width: 100%; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; background: var(--kuro-0); }
 .screen img, .screen video { width: 100%; height: 100%; object-fit: contain; }
 .round { width: min(60vmin, 560px); aspect-ratio: 1224 / 1158; border-radius: 28px; overflow: hidden; background: var(--kuro-0); }
-.round video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.round video { width: 100%; height: 100%; object-fit: contain; display: block; }
 .cardstack { position: relative; width: min(340px, 90%); height: 260px; }
 .card { position: absolute; inset: 0 auto auto 0; width: 100%; background: #FBFAF6; color: #172012; border-radius: 20px; padding: 18px 20px; font-family: var(--display); font-weight: 500; font-size: 16px; line-height: 1.4; }
 .card .t { font-weight: 700; font-size: 18px; }
@@ -805,27 +805,35 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
       for (var j = 0; j < N; j++) { var p = pts[j], q = pts[(j + 1) % N]; cx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
       cx.closePath();
     }
-    var NODE = '.hero h1, .hero .lead, .hero .who, .hero .act, .hero .tg, #scene .ch.is-on .hour, #scene .ch.is-on h2, #scene .ch.is-on .vis > :first-child, #day h2, #day .intro, #day .wake, #day .timeline li, #questions h2, .qs details, #install h2, .go .sub, .go .install, .links > div, #blocks';
+    var NODE = '.hero h1, .hero .lead, .hero .who, .hero .act, .hero .tg, #scene .ch.is-on .hour, #scene .ch.is-on h2, #scene .ch.is-on .vis > :not(.cardstack), #scene .ch.is-on .cardstack .card, #day h2, #day .intro, #day .wake, #day .timeline li, #questions h2, .qs details, #install h2, .go .sub, .go .install, #blocks';
     var SOLID = 'h1, h2, h3, p, li, summary, pre, .btn, .who span, .tg, .hour, .vis, .card, .install, .wake, #blocks, .links, .legal';
     var solids = [], nodes = [], beats = [], waves = [], sparks = [], nextBeat = 0, frameN = 0, lastY = scrollY, vel = 0, boost = 0, seeds = new WeakMap();
     function discover() {
-      nodes = $$(NODE).filter(function (el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.bottom > -200 && r.top < H + 200 && getComputedStyle(el).visibility !== 'hidden'; });
-      solids = $$(SOLID).filter(function (el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.top < H && !(el.closest('.ch') && !el.closest('.ch.is-on')); });
+      nodes = $$(NODE).filter(function (el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.bottom > -200 && r.top < H + 200 && (el.__op = shown(el)) > 0.3; });
+      solids = $$(SOLID).filter(function (el) { var r = el.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.top < H && shown(el) > 0.3; });
+    }
+    function shown(el) { /* really visible: its own and its ancestors' opacity and visibility */
+      var a = 1;
+      for (var e = el; e && e !== document.body; e = e.parentElement) { var cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none') return 0; a *= +cs.opacity; if (a < 0.05) return 0; }
+      return a;
     }
     function seedOf(el) { var s = seeds.get(el); if (s == null) { s = Math.random() * 10; seeds.set(el, s); } return s; }
     /* veins: nodes grouped by the left edge they sit on (a column), top to bottom */
     function veins() {
       var cols = [];
       nodes.forEach(function (el) {
-        var r = el.getBoundingClientRect(), op = +getComputedStyle(el).opacity; if (op < 0.05) return;
+        var r = el.getBoundingClientRect(), op = Math.min(1, el.__op || 1);
         var mid = el.matches('.vis > *, .tg, .card, #blocks, .install'), n = { el: el, edge: r.left - 3, x: r.left - (W < 700 ? 11 : 15), y: mid ? r.top + r.height / 2 : r.top + Math.min(24, r.height / 2), op: op, seed: seedOf(el) };
         var c = cols.find(function (c) { return Math.abs(c.x - n.x) < 40; }); if (!c) { c = { x: n.x, list: [] }; cols.push(c); } c.list.push(n);
       });
       cols.forEach(function (c) { c.list.sort(function (a, b) { return a.y - b.y; }); c.g = Math.max(8, Math.min(34, c.x * 0.55)); });
-      return cols;
+      cols.sort(function (a, b) { return a.x - b.x; });
+      cols.forEach(function (c, i) { c.main = i === 0; });
+      return cols.slice(0, 3);
     }
     function path(c, t) { /* the vein as a list of cubic segments through the margin, from above the screen to below it */
-      var L = c.list, pts = [{ x: L[0].x - c.g * 0.6, y: -40 }].concat(L).concat([{ x: L[L.length - 1].x - c.g * 0.6, y: H + 40 }]), segs = [];
+      var L = c.list, pts = c.main ? [{ x: L[0].x - c.g * 0.6, y: -40 }].concat(L).concat([{ x: L[L.length - 1].x - c.g * 0.6, y: H + 40 }])
+        : [{ x: L[0].x - c.g * 0.5, y: L[0].y - 80 }].concat(L).concat([{ x: L[L.length - 1].x - c.g * 0.5, y: L[L.length - 1].y + 80 }]), segs = [];  /* a side column: tendrils, not a full vein */
       for (var i = 0; i < pts.length - 1; i++) {
         var A = pts[i], B = pts[i + 1], dy = B.y - A.y, sway = c.g * (0.8 + 0.25 * Math.sin(t * 0.5 + (A.seed || i)));
         segs.push([A, { x: A.x - sway, y: A.y + dy * 0.35 }, { x: B.x - sway, y: B.y - dy * 0.35 }, B]);
@@ -860,12 +868,16 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
         cx.save(); var clip = new Path2D(); clip.rect(0, 0, W, H);
         solids.forEach(function (el) { var r = el.getBoundingClientRect(); clip.rect(r.left - 4, r.top - 3, r.width + 8, r.height + 6); }); cx.clip(clip, 'evenodd');
         cx.globalAlpha = light ? 0.5 : 0.42; cx.strokeStyle = soft; cx.lineWidth = 1.3; cx.lineCap = 'round';
-        cx.beginPath(); cx.moveTo(segs[0][0].x, segs[0][0].y); segs.forEach(function (s) { cx.bezierCurveTo(s[1].x, s[1].y, s[2].x, s[2].y, s[3].x, s[3].y); }); cx.stroke();
+        if (c.main) { cx.beginPath(); cx.moveTo(segs[0][0].x, segs[0][0].y); segs.forEach(function (s) { cx.bezierCurveTo(s[1].x, s[1].y, s[2].x, s[2].y, s[3].x, s[3].y); }); cx.stroke(); }
+        else segs.forEach(function (sg, i) { var end = i === 0 || i === segs.length - 1, base = cx.globalAlpha;
+          if (!end) { cx.beginPath(); cx.moveTo(sg[0].x, sg[0].y); cx.bezierCurveTo(sg[1].x, sg[1].y, sg[2].x, sg[2].y, sg[3].x, sg[3].y); cx.stroke(); return; }
+          for (var k = 0; k < 8; k++) { var a = bez(sg, k / 8), b2 = bez(sg, (k + 1) / 8), f = i === 0 ? (k + 1) / 8 : 1 - k / 8; cx.globalAlpha = base * f; cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(b2.x, b2.y); cx.stroke(); }
+          cx.globalAlpha = base; });
         /* heartbeats travel down it; a pointed-at node sends one both ways */
         cx.globalCompositeOperation = light ? 'source-over' : 'lighter';
         waves.forEach(function (w) { var k = (now - w.t0) / 2.4; if (k > 1) return; var pos = k * n, i = Math.min(n - 1, Math.floor(pos)), P = bez(segs[i], pos - i), sz = 14 * w.amp;
           cx.globalAlpha = 0.75 * (1 - k * 0.6); cx.drawImage(glow(ink), P.x - sz / 2, P.y - sz / 2, sz, sz);
-          c.list.forEach(function (nd, j) { if (Math.abs(pos - (j + 1)) < 0.25) nd.pump = w.amp; }); });
+          var o = 1; c.list.forEach(function (nd, j) { if (Math.abs(pos - (j + o)) < 0.25) nd.pump = w.amp; }); });
         sparks.forEach(function (sp) { var j = c.list.findIndex(function (nd) { return nd.el === sp.el; }); if (j < 0) return; var k = (now - sp.t0) / 1.2; if (k > 1) return;
           [-1, 1].forEach(function (dir) { var pos = j + 1 + dir * k * 1.6; if (pos < 0 || pos > n) return; var i = Math.min(n - 1, Math.floor(pos)), P = bez(segs[i], pos - i), sz = 18;
             cx.globalAlpha = 0.9 * (1 - k); cx.drawImage(glow('#C98A52'), P.x - sz / 2, P.y - sz / 2, sz, sz); }); });
