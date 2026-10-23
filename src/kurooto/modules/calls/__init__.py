@@ -40,6 +40,7 @@ from kurooto.modules.calls.chat import PhoneChat
 from kurooto.modules.calls.connector import Connector
 from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, live_profile
 from kurooto.modules.calls.phone import PhoneApp
+from kurooto.modules.calls.today import PhoneToday
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search, notes_index, read_note
 from kurooto.modules.text import a_time, stale_time
 
@@ -71,6 +72,7 @@ register_defaults(
         "review_effort": "high",  # how hard that look back thinks (low, medium, high)
         "review_brain": "",  # which AI does the look back ("" = your main one)
         "lessons_max": 12,  # the most lessons every call is told; a new one that says the same replaces the old
+        "today": True,  # the Android app's Today screen and its copy of your alarm, sealed for each phone (today.py)
     },
 )
 
@@ -119,6 +121,8 @@ class Calls(Module):
         self.finished: dict[str, dict] = {}  # call tasks done but not yet told on the call
         self.phone = PhoneApp(self)  # messages to the phone app, and the answers that come back
         self.chat = PhoneChat(self)  # the phone app as a chat, beside Telegram (chat.py)
+        self.today = PhoneToday(self)  # the app's Today screen and its copy of the alarm (today.py)
+        self._unsub_today = None
         self.live = LiveHealth(self)  # when Gemini Live won't take a call (fallback.py)
         self.turns = VoiceTurns(self)
         self.textcall = TextCall(self)
@@ -211,6 +215,10 @@ class Calls(Module):
         )
         self.app.notifier.register("app", self.phone.send, self.phone.retract)  # questions etc. (phone.py)
         self.app.notifier.register("chat", self.chat.send)  # answers to what you typed in the app (chat.py)
+        if self._unsub_today is None:  # what the Today list shows changed: the phones get it soon (today.py)
+            from kurooto.core.events import subscribe
+
+            self._unsub_today = subscribe(self.today.on_event)
 
     def stop(self):
         """Turned off: calls you booked are kept (not cancelled) and booked again when it's turned back on."""
@@ -224,6 +232,9 @@ class Calls(Module):
         super().stop()
         self.app.notifier.unregister("app")
         self.app.notifier.unregister("chat")
+        if self._unsub_today is not None:
+            self._unsub_today()
+            self._unsub_today = None
 
     @property
     def parked_file(self):
@@ -944,6 +955,8 @@ class Calls(Module):
                 why="calls.rang_offline",
             )
         elif name in ("sealed_sent", "sealed_failed", "device_key"):  # reminders with the lid shut (lidsafe.py)
+            if name == "device_key":  # a phone gave its key: its Today list can be sealed for it now (today.py)
+                self.today.poke()
             ls = self.app.modules.get("lidsafe")
             if ls is not None and self.app.is_on("lidsafe"):
                 ls.on_line_event(m)

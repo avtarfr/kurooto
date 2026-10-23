@@ -49,10 +49,14 @@ import java.util.regex.Pattern;
  * recognizer (on the phone itself on Android 13+ when its language is downloaded, else the phone's speech service)
  * and its text-to-speech voice, through the bridge below. The screen stays on meanwhile, on the loudspeaker: the
  * recognizer stops when the screen goes off, so the proximity sensor isn't used.
+ *
+ * This phone's own wake-up alarm (Alarms, 0.6.0) uses the same ringing screen with Stop and Snooze ("local", no call
+ * link); when the call for it comes meanwhile, the screen gains its Answer (ListenService.ring).
  */
 public class CallActivity extends Activity {
     static final int SDK = Build.VERSION.SDK_INT;
     static final int MIN_WEBVIEW = 80; // Chrome version the call page needs (audio worklets, modern JavaScript)
+    static volatile boolean showing; // on screen now (a call joining this phone's alarm comes here, not a new ring)
 
     private WebView web;
     private FrameLayout page; // the WebView, kept clear of the status and navigation bars (Android 15 draws behind them)
@@ -97,14 +101,27 @@ public class CallActivity extends Activity {
 
     private void handle(Intent i) {
         url = i.getStringExtra("url");
-        if (url == null) { finish(); return; }
-        if (i.getBooleanExtra("ringing", false) && !inCall) showRinging(i.getStringExtra("reason"), i.getBooleanExtra("alarm", false));
+        boolean local = url == null && i.getBooleanExtra("local", false); // this phone's own alarm (Alarms)
+        if (url == null && !local) { finish(); return; }
+        if (local && inCall) return;
+        if (local || (i.getBooleanExtra("ringing", false) && !inCall)) showRinging(i.getStringExtra("reason"), i.getBooleanExtra("alarm", false), local);
         else answer();
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        showing = true;
+    }
+
+    @Override protected void onPause() {
+        showing = false;
+        super.onPause();
+    }
+
     // ---------- ringing ----------
-    /** Who's calling and why, then Decline / Later / Answer along the bottom, in the call page's colours. */
-    private void showRinging(String reason, boolean alarm) {
+    /** Who's calling and why, then Decline / Later / Answer along the bottom, in the call page's colours (this
+     *  phone's own alarm: Stop and Snooze). */
+    private void showRinging(String reason, boolean alarm, boolean local) {
         int fg = Ui.color(this, R.color.k_call_fg);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -118,12 +135,12 @@ public class CallActivity extends Activity {
         int pad = Ui.dp(this, 26);
         badge.setPadding(pad, pad, pad, pad);
         box.addView(badge, new LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)));
-        TextView who = Ui.gap(Ui.text(this, alarm ? "Good morning: wake-up call" : Prefs.assistant(this) + " is calling", 28, false, fg), 24, 0);
+        TextView who = Ui.gap(Ui.text(this, local ? "Good morning: wake-up alarm" : alarm ? "Good morning: wake-up call" : Prefs.assistant(this) + " is calling", 28, false, fg), 24, 0);
         who.setGravity(Gravity.CENTER);
         TextView why = Ui.gap(Ui.text(this, reason == null ? "" : reason, 18, false, Ui.color(this, R.color.k_call_dim)), 12, 0);
         why.setGravity(Gravity.CENTER);
         final String since = getIntent().getStringExtra("since");
-        Button decline = button("Decline", R.color.k_call_stop);
+        Button decline = button(local ? "Stop" : "Decline", R.color.k_call_stop);
         decline.setOnClickListener(v -> reply(since, "decline"));
         Button later = button(alarm ? "Snooze" : "Later", R.color.k_call_quiet);
         later.setOnClickListener(v -> reply(since, "later"));
@@ -134,8 +151,10 @@ public class CallActivity extends Activity {
         row.addView(decline, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
         row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
         row.addView(later, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
-        row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
-        row.addView(ok, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
+        if (!local) {
+            row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
+            row.addView(ok, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
+        }
         box.addView(who);
         box.addView(why);
         box.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
@@ -145,7 +164,8 @@ public class CallActivity extends Activity {
 
     private void reply(final String since, final String action) {
         ListenService.stopRinging(this);
-        if (since != null && !since.isEmpty()) new Thread(() -> Line.ringReply(this, since, action)).start();
+        Alarms.replied(this, since, action, getIntent().getBooleanExtra("alarm", false)); // this phone's copy hears it
+        if (since != null && !since.isEmpty() && !since.startsWith("local:")) new Thread(() -> Line.ringReply(this, since, action)).start();
         finish();
     }
 

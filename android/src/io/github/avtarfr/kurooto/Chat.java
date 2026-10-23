@@ -199,6 +199,19 @@ final class Chat {
         }
     }
 
+    /** Done or +1 on a deadline on the Today screen (Today): to your computer like a chat button (it does what that
+     *  button on the deadline's Telegram message does), or kept on the call line till it's back. */
+    static Sent today(Context c, String deadline, String act, String label) {
+        try {
+            String id = newId();
+            Sent s = post(c, id, new JSONObject().put("today", new JSONObject().put("id", deadline).put("do", act)));
+            if (s.queued) waitFor(c, id, "today", label);
+            return s;
+        } catch (Exception e) {
+            return new Sent(false, false, "That didn't go through.", null);
+        }
+    }
+
     /** Catch up with the call line's copy of the chat, and what still waits there. False if it can't be reached. */
     static boolean sync(Context c) {
         JSONObject d = load(c);

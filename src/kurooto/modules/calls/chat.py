@@ -246,7 +246,8 @@ class PhoneChat:
         """A chat message from a phone, passed on by the call line (now, or from its outbox): {"device", "at", "id",
         and "k1" (sealed by the Android app) or the fields themselves (the iPhone app)}. The fields: "ts" (ms), "n"
         (a random nonce), and "text" (with "to": the id of Kurooto's message it replies to, optional), or "button"
-        (its number) and "msg" (the id of Kurooto's message it's under)."""
+        (its number) and "msg" (the id of Kurooto's message it's under), or "today" ({"id", "do"}: Done or +1 on a
+        deadline on the app's Today screen, today.py)."""
         mid = str(body.get("id") or "")
         if not ID.fullmatch(mid):
             return 400, {"ok": False, "note": "That message had no id."}
@@ -266,6 +267,8 @@ class PhoneChat:
             return 409, {"ok": False, "note": why.replace("answer", "message")}
         if "button" in fields:
             return self._button(str(fields.get("msg") or ""), fields["button"])
+        if "today" in fields:  # Done or +1 on the app's Today screen (today.py)
+            return self.calls.today.act(fields["today"])
         text = str(fields.get("text") or "").strip()[:TEXT_MAX]
         if not text:
             return 400, {"ok": False, "note": "The message was empty."}

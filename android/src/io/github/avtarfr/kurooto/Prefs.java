@@ -51,6 +51,8 @@ final class Prefs {
     static void forget(Context c) {
         sp(c).edit().remove("url").remove("device").remove("topic").remove("ntfyKey").remove("since").remove("sealSent").apply();
         Chat.forget(c); // the chat and what waited belong to that line
+        Today.forget(c); // ... and so do the Today list and the alarms it set here
+        Alarms.cancel(c);
     }
 
     /** This phone's id on the call line (the "<id>" in its key "d1.<id>.<secret>"), or "". */

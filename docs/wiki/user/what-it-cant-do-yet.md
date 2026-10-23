@@ -28,7 +28,8 @@ Kurooto runs on your computer, not on a server. While the computer is off or asl
 - it doesn't answer Telegram (messages wait about a day and are handled when it's back);
 - AI requests, syncs, digests and check-ins wait;
 - only what lives on your call line keeps working: calls you scheduled, the wake-up alarm, questions in the phone app,
-  and, on Android, [reminders with the lid shut](calls.md).
+  and, on Android, [reminders with the lid shut](calls.md) and the app's [Today](phone-app.md#today-on-the-phone) as
+  the computer last sent it. Done or +1 tapped there waits for the computer.
 
 One Telegram bot and one call line belong to one computer at a time: running Kurooto on two computers with the same bot
 doesn't work. Move with [Profile sync](updates-and-backups.md) and turn the old one off.
@@ -39,7 +40,8 @@ The iPhone gets a web app on the Home Screen (iOS 16.4 or newer), not an app fro
 
 - **calls are notifications you tap**: they can't ring like a phone call, ring on silent, or show on the lock screen as
   a call;
-- **reminders with the lid shut don't reach an iPhone**;
+- **reminders with the lid shut don't reach an iPhone**, nor does the Android app's Today screen, and the wake-up alarm
+  isn't set on the iPhone itself;
 - there's no "Tell Kurooto" Shortcut yet.
 
 If you need calls that really ring, use an Android phone. See [Phone app](phone-app.md#iphone).
@@ -48,7 +50,12 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 
 - The app isn't on the Play Store: it's installed from your own computer's pairing page, Android asks you to allow
   that, and Play Protect may warn first.
-- It looks plain (no Material design yet), and has no home screen widget or Today screen yet.
+- It looks plain (no Material design yet), and has no home screen widget yet.
+- Today, the phone's own copy of the wake-up alarm and Done / Snooze on notifications (0.6.0) are new and haven't been
+  tried on many real phones yet. The phone's alarm knows only the alarms your computer last sent: one you set while the
+  phone was offline reaches it when it's back online, and alarms less than 5 minutes apart ring on the phone as one.
+- Today's list is read-only apart from Done and +1 on what's due: check-ins, quiz cards and the rest of the dashboard
+  are still on the computer.
 - Phone makers that close background apps hard can still delay rings; the app's checklist says what to change, but not
   every phone has been tried.
 

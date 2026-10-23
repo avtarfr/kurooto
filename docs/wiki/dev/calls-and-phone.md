@@ -25,6 +25,7 @@ The user's side of this is in [../user/calls.md](../user/calls.md) and [../user/
 | `modules/calls/line.py` | the shared crypto (k1, t1, s1, pair codes, VAPID keys) |
 | `modules/calls/phone.py` | `PhoneApp`: questions and approvals as phone notifications with answer buttons |
 | `modules/calls/chat.py` | `PhoneChat`: the phone app as a chat channel (0.5.16), the `chat` notify channel, files for it as links and files shared from the phone (0.5.18) |
+| `modules/calls/today.py` | `PhoneToday`: the Android app's Today list, sealed for each phone, and Done / +1 tapped on it (0.6.0) |
 | `modules/calls/review.py` | the post-call look back and `/lessons` (0.5.8) |
 | `modules/calls/tools.py` | the `Tool` dataclass (shared with `core/tools.py`) and notes helpers |
 | `data/worker/src/worker.js` | the Worker: `fetch`, `scheduled`, Durable Object `class Line` |
@@ -202,7 +203,8 @@ Failures are counted in `<state>/calls/live-health.json` (`LiveHealth.record`) a
 - Because the review is a job not submitted by Chat, its prompt and answer are not recorded into the chat history
   (`Chat.owns`, checked in `core/jobs.py:Jobs._deliver`).
 
-Other files in `<state>/calls/`: `rings.json`, `live.json`, `link.json`, `inbox.json`, `chat.json`, `answer-nonces.json`,
+Other files in `<state>/calls/`: `rings.json`, `live.json`, `link.json`, `inbox.json`, `chat.json`, `today.json` (the
+digest, time, revision and phone count of the last Today hand-over), `answer-nonces.json`,
 `live-health.json`, `textcalls.json`, `lessons.md`, `transcripts/`, `searches.json` (each `search_notes` query, from
 `Calls.run_tool` through `modules/curious.py:searched`, kept 8 days for Dreaming's curious line; retention's `calls`
 kind clears it).
@@ -217,10 +219,10 @@ kind clears it).
 - Routes: top level `/health`, `/manifest.webmanifest`; the rest goes to `Line.fetch`. No auth: `/connect` (checked by
   the connector secret), `/pair/claim` and `GET /sealed/<32 hex>` (a sealed file: only its link's key opens it). Any valid key (device key `d1`, ticket `t1`, or a minted ticket):
   `/status`, `/token`, `/turn`, `/text-call`, `/call-report`, `/tool`, `/tasks`, `/transcript`, `/upload`. Paired
-  devices only: `/pending`, `/answer`, `/chat` (GET and POST), `/outbox`, `/app-call`, `/ring-reply`,
+  devices only: `/pending`, `/answer`, `/chat` (GET and POST), `/outbox`, `/today`, `/app-call`, `/ring-reply`,
   `/push/subscribe`, `/device/key`.
 - Admin operations over the WebSocket: `ring`, `stop-ring`, `pair-code`, `devices`, `revoke`, `ticket`, `bye`, `notify`,
-  `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`, `file-put`.
+  `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`, `file-put`, `today-put`.
 - Pinned packages in `package.json` / `package-lock.json` (`@google/genai`, esbuild, wrangler). CI installs them with
   `npm ci --ignore-scripts`.
 
@@ -325,6 +327,68 @@ phone went through: `{"tags": ["stop", "outbox"], "dev": <device id>, "done": [{
 Kurooto's; answers `{ok, seq, android, web}`. `outbox {done?}`: drop `done.seq` and tell its phone; answer the next
 item `{"item": {seq, kind, at, ..., body | body_b64}, "left"}` or `{"item": null}`.
 
+## Today and the phone's own alarm (0.6.0)
+
+**The list.** `modules/calls/today.py:PhoneToday.snapshot()` builds it from `core/actions.py:today` (the dashboard's
+Today API) plus the deadlines' parts and kinds and `core/threads.py:open_threads`: `{"v": 1, "date", "day", "classes":
+[{"time", "name", "skipping"}], "events": [line], "due": [{"id", "title", "due", "when", "parts"?, "done"?, "acts":
+["done", "+1"?] | "exam": true}], "reminders": [{"when", "what"}], "alarm": {"next", "daily", "at": [s...] (every
+alarm still to ring: `Alarm.upcoming()`), "snooze_min", "reason"} | {}, "threads": [{"text"}], "questions": n}`. No
+relative times ("in 3 hours"), so an unchanged day is byte-for-byte the same; cut to `TODAY_MAX` (40 000 bytes) by
+dropping the longest list's last rows.
+
+**Handing it over.** `Connector.push_state` calls `PhoneToday.push(connector)` after each state push (every 5 minutes,
+and on `poke()`). It asks the line for its devices, seals the list (plus `"made"`) for each Android device with a
+`seal` key (`line.seal_s1`, as Reminders with the lid shut does) and sends `today-put {rev, seal: {device id: s1
+token}, changed}` when the digest of list + keys changed, `poke()` was called, or the last hand-over is `REFRESH_S`
+(15 minutes) old. `changed` (the list itself changed) makes the Worker nudge Android phones. Events in `CHANGES`
+(deadline, alarm, reminder, thread events, `action`, `button_tapped`) call `poke()` through `core/events.py:subscribe`
+(registered in `Calls.start`), and so does the line's `device_key` event. `calls.today = false`: one `today-put {seal:
+{}, off: true}` and nothing more. An older line answers `unknown op` and is left alone until it's redeployed.
+
+**The Worker.** `today-put`: a lower `rev` than the stored one is refused (`stale`); each token (`TODAY_TOKEN`, an s1 of
+at most 110 000 characters, for an Android device) is stored under `today:<device id>`, devices no longer listed lose
+theirs, the index `today` keeps `{rev, devs, at (ISO), off}`; `changed` or `off` publishes `{"tags": ["stop", "today"]}`
+to ntfy (`stop`: older apps ignore it). `revoke` deletes the device's copy. `GET /today` (a paired device): `{"today":
+this device's token | null, "at": when it came | null, "off", "computer": "online" | "offline"}`.
+
+**Taps.** The app sends Done / +1 as a chat message `{"id", "ts", "n", "today": {"id": <deadline id>, "do": "done" |
+"+1"}}` (k1-sealed, through `/chat`, so it waits in the phone outbox like any chat message); `PhoneChat.take` passes
+`today` to `PhoneToday.act`, which checks the action and the id (open, not a quiz or exam) and runs
+`App.callback("dl:<id>:<do>")`, the deadline Telegram message's own button. Nothing is said in the chat; the note
+comes back in the answer (`200 {"ok", "note"}`, `400` bad or not tappable, `410` gone or not open).
+
+**The app.** `Today.fetch` (on opening, on the `today` nudge, when the ntfy stream reconnects more than 5 minutes after
+the last fetch) opens the token with `Seal`, keeps it in `today.json` and hands `alarm` to `Alarms.update`.
+`TodayView` draws it on `MainActivity`'s first screen under Call and Chat (its own column; it re-draws when a fetch
+lands), with Done / +1 under a tapped deadline (`Chat.today`, waiting kind `today`).
+
+**The alarm on the phone.** `Alarms.schedule` sets the next of the computer's times and a snooze tapped here
+(`AlarmPlan.next`, which leaves out the one that last rang here and anything within `SAME_S`, 5 minutes, of it) with
+`AlarmManager.setAlarmClock` (shown in the status bar, exempt from Doze), or `setAndAllowWhileIdle` when Android 12+
+refuses exact alarms (`SCHEDULE_EXACT_ALARM` on 12, `maxSdkVersion` 32; `USE_EXACT_ALARM` from 13). It's set again
+after every change, after it rings, and on boot (`BootReceiver`). Firing: `ActionReceiver.ALARM` →
+`Alarms.fired` → `ListenService.localAlarm` (the running service, or a start with `ACTION_ALARM`; if Android won't
+start it, the ringing notification alone) → `ringLocal`: rings as the wake-up call with since `local:<s>`, Stop and
+Snooze, on `CallActivity`'s ringing screen (`local` extra, no call link). One alarm, not two:
+- the call for an alarm arriving while `local:` rings joins it (`ListenService.ring`): no second sound, the
+  notification becomes the call's, and a showing `CallActivity` gets the call's intent (Answer appears);
+- the phone's alarm doesn't ring when an alarm call within `SAME_S` rang already (`Alarms.callRang`/`lastCall`);
+- Stop or Snooze (local or the call's) is recorded (`Alarms.replied`: `alarmDone` = "<s>:decline|later:<when>"); a
+  call for the same alarm arriving within `HANDLED_KEEP_S` (30 minutes) is answered that way at once with
+  `/ring-reply`, without ringing (`AlarmPlan.answered`). Snooze also sets the phone's own snooze
+  (`alarm.snooze_min` from the list), so it rings again with nothing else reachable.
+The app never adds an alarm of its own beyond that snooze: what it rings is the computer's list, which only has the
+alarms `core/tap.py` lets through.
+
+**Notification buttons.** `Buttons.pick` (plain Java, `TodayTest`) chooses a message's quick buttons by label:
+counting (`+<n>`), `Done`, then snoozes (`Snooze...`, `+<n> min|h`), at most 3; `Buttons.addDone` when it snoozes but
+has no Done. `Inbox.show` uses them for kinds `reminder` and `deadline` (Reply moves to the answer window when there's
+no room; the app's own Done answers `{"dismiss": true}`, which `PhoneApp.answer` already takes: off every phone);
+`ListenService.chatNote` for any chat message (its own Done just cancels the notification). A sealed reminder
+(`ListenService.sealedNote`) gets Done and +10 min / +1 h, kept on the phone (`ActionReceiver.SEALED_SNOOZE` shows it
+again with an inexact alarm): the computer is asleep when those come.
+
 ## Pairing
 
 1. `Calls.pair_start`: `line.pair_code()` (8 characters from `CODE_ALPHABET`) sent with
@@ -370,20 +434,21 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `KUROOTO_KEYSTORE_PASS` on the maintainer's machine (`tools/release.py sign --apk` sets them and builds from the
   release's tarball; see [release-and-updates.md](release-and-updates.md#the-phone-app-sign---apk)); otherwise a
   throwaway debug key. `build.sh --test` runs
-  `test/CryptoTest.java` and `test/SpeechTest.java` on a plain JVM.
+  `test/CryptoTest.java`, `test/SpeechTest.java` and `test/TodayTest.java` (`Buttons`, `AlarmPlan`) on a plain JVM.
 - Components: `MainActivity` (the checklist: battery, notifications, full-screen calls), `PairActivity`,
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
   the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
   device key so it can wait on the line),
   `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`.
   Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Chat`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25),
-  `B64`, `Ui` (the look).
+  `B64`, `Ui` (the look); 0.6.0: `Today` and `TodayView` (the Today screen), `Alarms` and `AlarmPlan` (the phone's
+  own alarm), `Buttons` (quick notification buttons).
 - Counting buttons (0.5.20, a deadline's **+1**): `Inbox.counts(button)` is a label `+<n>` (the Worker passes only
   labels). `Inbox.send` shows such an item again after a tap that went through or waits on the line (`setOnlyAlertOnce`,
   the answer's note as its text) instead of `done()`; the computer keeps the item open for it (`PhoneApp._button`).
-  `ListenService.chatNote` (the chat's notification) adds up to two such buttons as actions, `ActionReceiver.CHAT_TAP`
-  sends them with `Chat.tap` (the outbox when the computer is off) and shows the waiting or failed note with the
-  action kept; one that went through comes back as a new chat message with the button again.
+  `ListenService.chatNote` (the chat's notification) adds them as actions (0.6.0: with Done and the snoozes,
+  `Buttons`), `ActionReceiver.CHAT_TAP` sends them with `Chat.tap` (the outbox when the computer is off) and shows the
+  waiting or failed note, a +1 kept; one that went through comes back as a new chat message with the button again.
 - The look is Material 3 from the framework alone (no AndroidX or Material Components), views built in code:
   - Colours are resources named after Material 3's roles (`k_bg`, `k_card`, `k_fg`, `k_dim`, `k_primary`,
     `k_tonal`, `k_ok`, `k_bad`, ...): `res/values/colors.xml` is the web pages' light "kuro" palette, `values-night`
@@ -409,7 +474,9 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   - The ringing notification (`ListenService.ring`): on Android 12+ `Notification.CallStyle.forIncomingCall` (Person =
     the assistant's name, or "Wake-up call"; Decline and Answer are the same intents as before, Later/Snooze is an
     extra action between them). If Android refuses it (`notify` throws), and below 12, the old BigText notification
-    with three actions. Both share `ringNotice()` (full-screen intent, ongoing, timeout).
+    with three actions. Both share `ringNotice()` (full-screen intent, ongoing, timeout). 0.6.0: `ringingSince` is set
+    after `startRing()` (which clears it): before, a ring neither stopped after its 60 s / 5 minutes nor on the line's
+    `stop` (answered elsewhere) until it was tapped.
   - `CallActivity` puts the WebView in a `fitsSystemWindows` FrameLayout, so on Android 15 (edge to edge) the call page
     stays clear of the status and navigation bars; on 6 to 14 the insets are 0 and nothing changes.
   - Touch targets are 48dp at least (56dp for `large`, list rows 64dp). Use `Ui.color(c, R.color.k_*)`, never a
@@ -423,9 +490,11 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   (`tests/fakes/cloud.py:FakeCloud`) and the real `Connector`: `test_call_line.py` (auth, pairing, tokens, tool relay,
   ringing with VAPID signature checks, uploads, transcripts, the offline queue and cron), `test_lidsafe_line.py`,
   `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox),
-  `test_presence_line.py`, `test_rotate_line.py`. `test_phone_chat_line.py` also covers a sealed file put and fetched. They need Node;
+  `test_presence_line.py`, `test_rotate_line.py`, `test_phone_today_line.py` (Today sealed per phone, kept while the
+  computer is away, Done from the outbox, off). `test_phone_chat_line.py` also covers a sealed file put and fetched. They need Node;
   CI's `call-line` job installs the Worker's packages and bundles the page first.
-- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_app_first.py` (no Telegram: routing,
+- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_phone_today.py` (the Today list, its
+  hand-over, Done / +1, reminder and deadline buttons), `test_app_first.py` (no Telegram: routing,
   files as links, shared files, setup, doctor), `test_livefallback.py` (runs `tests/js/fallback.mjs` and
   `tests/js/callpage.mjs`).
 
@@ -438,6 +507,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   "no Android device" from "its publish failed").
 - A sealed file's link holds its key, and the link is part of a chat message the call line keeps (3 days): the file
   is only as private from the call line as the chat is.
+- The phone's own alarm and its call are matched by time (`AlarmPlan.SAME_S`, 5 minutes): alarms set less than 5
+  minutes apart ring on the phone as one. A sealed reminder snoozed on the phone isn't known to the computer.
+- Today and the phone's alarm are untested on a real phone as of 0.6.0's build (JVM tests, the debug build, lint and
+  the Worker tests only).
 - `calls.ring_s` is never sent to the Worker or the app, which ring 60 s (5 minutes for an alarm) whatever it says.
 - Turn-by-turn calls run tools through `core/tools.py:run_tool` and don't reach `Calls.tool_log`; a call page from
   before 0.5.8 (until the Worker is deployed again) sends no `since`, so its tools share the `""` log.
