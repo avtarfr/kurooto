@@ -1131,7 +1131,9 @@ Wrong taps since the last message; the Sunday look back shows them.
 
 **What it does.** "I got a project under Prof X on <topic>" (in the chat or your journal) starts that project's note
 with "With: Prof X (supervisor)" and a Meetings section; "met X today, ..." adds a dated line there and sets "Last
-met: <date>"; "a meeting with X on Friday at 4" becomes a deadline; "every Monday at 9 I have a <subject> lab" puts
+met: <date>"; "a meeting with X on Friday at 4" becomes a deadline, and the evening before (20:00,
+`deadlines.meeting_brief`) a meeting brief comes from that project's note: its Log since you last met, its open "##
+Next steps" and the last meeting's line; "every Monday at 9 I have a <subject> lab" puts
 the class in your timetable; "every Tuesday and Thursday at 7pm I go to the gym" or "I work a shift every weekend from
 9 to 5" adds a [commitment](#commitments) (an hour long unless you say the end; Commitments is turned on if it was
 off); "by POTA I mean Physics of the Atmosphere" or "I call stochastic calculus stoch" gives that subject the short

@@ -259,6 +259,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `deadlines.from_term_note` | `true` | quizzes, exams and deadlines from the term note's key dates (Subjects: /term note) |
 | `deadlines.horizon_days` | `30` | recurring quizzes become dated deadlines this far ahead |
 | `deadlines.max_files` | `3000` | the most notes read when looking for deadlines |
+| `deadlines.meeting_brief` | `"daily 20:00"` | the evening before a meeting with a project's person: a brief ("": off) |
 | `deadlines.overdue_check` | `true` | after the due time: "Overdue?" with Done / New date / Drop |
 | `deadlines.ping_h` | `24` | hours before the due time for a deadline's first nudge (one message; closer than urgent_h it's urgent) |
 | `deadlines.plan_h` | `72` | "due soon": what's due this many hours ahead goes into the morning plan, /status and calls |

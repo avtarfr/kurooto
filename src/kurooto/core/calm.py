@@ -267,6 +267,11 @@ REASONS: dict[str, Reason] = {
             stop=to(False, 'no more "Overdue?" questions'),
             suggest=True,
         ),
+        R(
+            "deadlines.meeting_brief",
+            "the evening before a meeting: the project since you last met",
+            setting="deadlines.meeting_brief",
+        ),
         R("deadlines.exam_mode", "exam mode starting for a quiz or exam", setting="deadlines.exam_mode_days"),
         R(
             "startby.tell",

@@ -350,7 +350,7 @@ up what they imply, then tells you in one line with an Undo button.
 | --- | --- |
 | "I got a project under Prof Lena Ortiz on glacier flow" | starts the project note *Glacier flow* with "With: Prof Lena Ortiz (supervisor)" and a Meetings section (it's listed on your research hub) |
 | "Met Ortiz today, we agreed on the forcing runs" | adds a dated line under that project's Meetings, and sets "Last met: <date>" under the "With:" line |
-| "I have a meeting with Ortiz on Friday at 4" | adds "Meeting: Prof Lena Ortiz" to your deadlines, so it's planned around and reminded |
+| "I have a meeting with Ortiz on Friday at 4" | adds "Meeting: Prof Lena Ortiz" to your deadlines, so it's planned around and reminded; the evening before (`deadlines.meeting_brief`, 20:00) a **meeting brief** comes: what the project's Log has since you last met, its open "## Next steps" (`- [ ]` lines) and the last meeting's line |
 | "Every Monday at 9 I have a linear algebra lab" | puts the class in your timetable (55 minutes unless you say the end; only for a subject you have) |
 | "By POTA I mean Physics of the Atmosphere", "LA is short for linear algebra", "I call stochastic calculus stoch" | gives that subject the short name, so "POTA quiz friday" lands on it (only your subjects; never a name another one has) |
 | "Every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5" | adds it to your [commitments](classes-and-timetable.md#commitments-gym-shifts-standups) (an hour unless you say the end), so calls wait for it; turns Commitments on if it was off |

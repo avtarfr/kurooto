@@ -49,6 +49,7 @@ register_defaults(
         "from_term_note": True,  # quizzes, exams and deadlines from the term note's key dates (Subjects: /term note)
         "horizon_days": 30,  # recurring quizzes become dated deadlines this far ahead
         "exam_mode_days": 14,  # exam mode starts this many days before a quiz or exam (0: never)
+        "meeting_brief": "daily 20:00",  # the evening before a meeting with a project's person: a brief ("": off)
     },
 )
 EXAMISH = re.compile(
@@ -204,6 +205,8 @@ class Deadlines(Module):
 
     def start(self):
         self.every("tick", "hourly", self._tick)
+        if self.setting("meeting_brief"):
+            self.every("meeting_brief", self.setting("meeting_brief"), lambda p: self.meeting_briefs())
         self.app.ask.hooks["deadlines.recurring"] = lambda q, a: self._recurring_answer(q.get("hook_payload") or {}, a)
         self.app.ask.hooks["deadlines.new_date"] = lambda q, a: self._new_date(
             str((q.get("hook_payload") or {}).get("id", "")), a
@@ -258,6 +261,35 @@ class Deadlines(Module):
             else f"{total - done} to go, due {when_text(it['due'])}"
         )
         return f"{self.full_title(it)}: {done}/{total}, {left}."
+
+    def meeting_briefs(self) -> list[str]:
+        """The evening before a "Meeting: <who>" deadline whose person a project note is With: what's been logged in
+        that project since you last met, the open next steps and the last meeting's line. Once per meeting."""
+        from kurooto.core import infer
+
+        tomorrow = now().date() + dt.timedelta(days=1)
+        sent = []
+        for i, it in list(self.items().items()):
+            due = dt.datetime.fromisoformat(it["due"])
+            if it.get("status") != "open" or due.date() != tomorrow or "briefed" in it.get("told", []):
+                continue
+            who = it["title"].removeprefix("Meeting:").strip() if it["title"].startswith("Meeting:") else ""
+            hit = next(
+                ((n, p) for n, p, _r in infer.projects_with(self.app) if who and p.split()[-1] == who.split()[-1]),
+                None,
+            )
+            if not hit:
+                continue
+            text = infer.brief(hit[0], who, due)
+            with Lock(self.app.paths.state, "deadlines"):
+                items = self.items()
+                if i in items:
+                    items[i].setdefault("told", []).append("briefed")
+                    jsave(self.file, items)
+            self.app.notify(text, kind="info", title="Meeting brief", why="deadlines.meeting_brief", about=who)
+            self.app.events.emit("meeting_brief", lines=text.count("\n"))
+            sent.append(text)
+        return sent
 
     def full_title(self, it: dict) -> str:
         """Its title, with the subject's name in front when the title doesn't say it ("Quiz" -> "Real Analysis II:

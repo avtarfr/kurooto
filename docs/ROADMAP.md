@@ -42,7 +42,8 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - **Notation crosswalk.** When a concept appears in a second source, its notation and conventions are written side
   by side (B_t vs W_t, Fourier 2π), quote-checked like every graph claim.
 - **Near-duplicate concepts.** "Wiener process" and "Brownian motion": Merge / Keep both / Add alias.
-- **Supervisor meeting brief.** The evening before a tagged meeting, a page from the project log since the last
+- **Supervisor meeting brief.** (0.5.10 has the brief from the project note; still to come: a voice note becoming
+  minutes, action items becoming deadlines.) The evening before a tagged meeting, a page from the project log since the last
   one; after it, a voice note becomes minutes, and action items become deadlines on a tap.
 - **Run compare.** `kurooto runlog diff A B` and `/runs compare`: config differences, code diff, metrics and loss
   curves side by side, written to the project's notes.

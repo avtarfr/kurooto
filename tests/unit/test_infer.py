@@ -117,3 +117,26 @@ def test_a_short_name_said_in_passing_becomes_the_subjects(env):
     items = infer._load(app)["items"]
     assert infer.undo(app, items[0]["id"]).startswith('Undone: Took "POTA"')
     assert subj.resolve("pota") is None and subj.resolve("stoch") == "stochastic-calculus"
+
+
+def test_the_evening_before_a_meeting_a_brief_from_the_project(env):
+    app = setup(env)
+    infer.observe(app, "I got a project under Prof Lena Ortiz on glacier flow.")
+    note = research.project_note(app, "Glacier flow")
+    infer.observe(app, "Met Ortiz today, we chose the forcing runs.")
+    today = dt.date.today()
+    text = note.read_text().replace(f"Last met: {today:%Y-%m-%d}", f"Last met: {today - dt.timedelta(days=5):%Y-%m-%d}")
+    text += (
+        f"- **{today - dt.timedelta(days=9):%Y-%m-%d}** | git:flow — old work\n"
+        f"- **{today - dt.timedelta(days=2):%Y-%m-%d}** | git:flow — 3: ran the forcing sweep\n"
+        "\n## Next steps\n- [ ] write up the sweep\n- [x] done already\n"
+    )
+    note.write_text(text)
+    due = dt.datetime.combine(today + dt.timedelta(days=1), dt.time(16))
+    app.modules["deadlines"].add("Meeting: Prof Lena Ortiz", due)
+    (brief,) = app.modules["deadlines"].meeting_briefs()
+    assert brief.startswith("Tomorrow at 16:00: meeting with Prof Lena Ortiz (Glacier flow).")
+    assert "ran the forcing sweep" in brief and "old work" not in brief
+    assert "Open next steps:\n- write up the sweep" in brief and "done already" not in brief
+    assert "Last time: " in brief and "forcing runs" in brief
+    assert app.modules["deadlines"].meeting_briefs() == []  # once

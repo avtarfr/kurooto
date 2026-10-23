@@ -2,6 +2,9 @@
 
 ## 0.5.10 (unreleased)
 
+- **Meeting brief**: the evening before a meeting with someone a project note is With (`deadlines.meeting_brief`,
+  20:00), a message with what that project's Log has since you last met, its open "## Next steps" and the last
+  meeting's line. Rules only, from your note.
 - **Problem-set progress**: "ps3 4/7" or "did 4 of 7 on the stats problem set" keeps how much of a deadline is done;
   lists, the call brief and Start-by lines show "(4/7)", and Start-by plans from what's left. On a call too
   (`deadline_progress`).

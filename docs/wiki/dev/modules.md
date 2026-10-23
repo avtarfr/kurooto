@@ -370,6 +370,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **deadlines** (`modules/deadlines.py`): merges deadlines from manual entries, notes tasks, Classroom, the calendar,
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,
   overdue check) and runs exam mode. Ids are hashes of title plus date. `deadlines.json` under the `deadlines` lock.
+- **deadlines** meeting brief: `meeting_briefs()` (`deadlines:meeting_brief`, `deadlines.meeting_brief` daily 20:00)
+  takes open "Meeting: <who>" deadlines due tomorrow whose surname matches a project's `With:` person
+  (`infer.projects_with`), builds `infer.brief(note, who, due)` (Log lines dated on or after `Last met`, else two
+  weeks; unchecked `## Next steps`; the newest `## Meetings` line), notifies once (`told` gets "briefed"; Calm reason
+  `deadlines.meeting_brief`).
 - **deadlines** progress: `PROGRESS` patterns and the `deadline_progress` intent/tool set `parts`/`parts_done` on an
   open deadline found by `find_open()` (`similar()` on the title or the full title, the soonest due); `parts_text()`
   adds "(4/7)" to lists and the call brief; Start-by's `size_of()` scales `_whole_size()` by what's left.

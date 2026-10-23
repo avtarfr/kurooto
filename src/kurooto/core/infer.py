@@ -312,6 +312,36 @@ def _class(app: App, sentence: str) -> dict | None:
     return None
 
 
+def brief(note: Path, who: str, due: dt.datetime) -> str:
+    """A meeting brief from a project note: since the "Last met" date (else two weeks), the Log's dated lines, the
+    open "## Next steps" items, and the last Meetings line."""
+    text = note.read_text(encoding="utf-8")
+    m = LAST_MET.search(text)
+    since = m[0].split(": ", 1)[1] if m else f"{now().date() - dt.timedelta(days=14):%Y-%m-%d}"
+
+    def section(name: str) -> list[str]:
+        s = re.search(rf"(?ms)^## {name}\n(.*?)(?=^## |\Z)", text)
+        return [ln.strip() for ln in s[1].splitlines() if ln.strip().startswith(("-", "*"))] if s else []
+
+    logged = []
+    for ln in section("Log"):
+        d = re.search(r"\d{4}-\d{2}-\d{2}", ln)
+        if d and d[0] >= since:
+            logged.append("- " + re.sub(r"\*\*|^[-*]\s*", "", ln)[:200])
+    steps = ["- " + ln[5:].strip()[:200] for ln in section("Next steps") if ln.startswith(("- [ ]", "* [ ]"))]
+    meetings = section("Meetings")
+    title = re.search(r"(?m)^# (.+)$", text)
+    out = [f"Tomorrow at {due:%H:%M}: meeting with {who}" + (f" ({title[1].strip()})." if title else ".")]
+    when = "since you last met" if m else "in the last two weeks"
+    out.append(f"Logged {when} ({since}):" if logged else f"Nothing logged {when} ({since}).")
+    out += logged[-8:]
+    if steps:
+        out += ["Open next steps:", *steps[:5]]
+    if meetings:
+        out.append("Last time: " + re.sub(r"^[-*]\s*", "", meetings[0])[:200])
+    return "\n".join(out)
+
+
 # --------------------------------------------------------------------------------------------- aliases
 def _alias(app: App, sentence: str) -> dict | None:
     subj = app.modules.get("subjects")
