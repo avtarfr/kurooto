@@ -119,10 +119,19 @@ def course_files(app: App, subject: str) -> list[Path]:
     return sorted(files, key=lambda f: (-f.stat().st_mtime, str(f)))
 
 
-def build(app: App, subject: str, name: str = "", aim: str = "", dest: Path | None = None) -> tuple[Path, dict]:
+def prompt_text(name: str, aim: str = "") -> str:
+    """The prompt for another AI, as it goes in PROMPT.md (and, on its own, in the chat next to the zip)."""
+    aim = (aim.strip().rstrip(".") + ".\n\n") if aim.strip() else ""
+    return PROMPT.format(name=name, aim=f"What it's for: {aim}" if aim else "")
+
+
+def build(
+    app: App, subject: str, name: str = "", aim: str = "", dest: Path | None = None, limit: int | None = -1
+) -> tuple[Path, dict]:
     """Write the zip. Returns (its path, {"notes": n, "files": n, "left_out": [(name, why)]}); ValueError if there's
     nothing to put in it."""
     subject = slug(subject)
+    limit = MAX_ZIP if limit == -1 else limit  # -1: Telegram's size; None: no limit (it goes to Drive)
     name = name or subject.replace("-", " ").title()
     notes = note_files(app, subject)
     files = course_files(app, subject)
@@ -155,7 +164,7 @@ def build(app: App, subject: str, name: str = "", aim: str = "", dest: Path | No
         base_of = {f: d for d in course_folders(app, subject) for f in files if d in f.parents}
         for f in files:
             size = f.stat().st_size
-            if total + size > MAX_ZIP:
+            if limit and total + size > limit:
                 out.append((f.name, "the zip would pass Telegram's 50 MB"))
                 continue
             a = arc("course-files", f, base_of.get(f, f.parent))
@@ -166,6 +175,5 @@ def build(app: App, subject: str, name: str = "", aim: str = "", dest: Path | No
         if out:
             text += ["", "## Left out\n", *(f"- {n}: {why}" for n, why in out)]
         z.writestr("INDEX.md", "\n".join(text) + "\n")
-        aim = (aim.strip().rstrip(".") + ".\n\n") if aim.strip() else ""
-        z.writestr("PROMPT.md", PROMPT.format(name=name, aim=f"What it's for: {aim}" if aim else ""))
+        z.writestr("PROMPT.md", prompt_text(name, aim))
     return dest, {"notes": n_notes, "files": len(index) - n_notes, "left_out": out}

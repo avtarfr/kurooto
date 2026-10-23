@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,7 +23,14 @@ from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.modules.google import GoogleError, GooglePart, NeedsSignIn
 
-register_defaults("drive_upload", {"folder": "Kurooto", "big_files": True})
+register_defaults(
+    "drive_upload",
+    {
+        "folder": "Kurooto",
+        "big_files": True,  # files over Telegram's 50 MB come as a Drive link instead of not at all
+        "temp_days": 7,  # those links last this many days, then the file is deleted from your Drive (0: kept)
+    },
+)
 FOLDER = "application/vnd.google-apps.folder"
 CHUNK = 8 * 2**20  # bytes per piece of a resumable upload (a multiple of 256 KiB, as Google wants)
 
@@ -54,6 +62,43 @@ class DriveUpload(GooglePart):
     @property
     def file(self) -> Path:
         return self.app.paths.state / "drive-upload.json"
+
+    @property
+    def temp_file(self) -> Path:
+        return self.app.paths.state / "drive-temporary.json"
+
+    def start(self):
+        self.every("expire", "daily 04:10", self.expire)
+
+    def remember_temporary(self, fid: str, name: str) -> None:
+        days = float(self.setting("temp_days") or 0)
+        if not days or not fid:
+            return
+        rows = jload(self.temp_file, []) or []
+        rows.append({"id": fid, "name": name, "delete_at": time.time() + days * 86400, "account": self.account})
+        jsave(self.temp_file, rows[-500:])
+
+    def expire(self) -> int:
+        """Delete the temporary uploads whose days are up (a file you moved out of Kurooto's folder or deleted
+        yourself is just forgotten). Returns how many went."""
+        rows = jload(self.temp_file, []) or []
+        keep, gone = [], 0
+        for r in rows:
+            if r.get("delete_at", 0) > time.time():
+                keep.append(r)
+                continue
+            try:
+                self.google.api("drive", f"/files/{r['id']}", method="DELETE")
+                gone += 1
+            except GoogleError as e:
+                if e.code not in (404, 403):
+                    keep.append(r)  # try again tomorrow
+            except NeedsSignIn:
+                keep.append(r)
+        jsave(self.temp_file, keep)
+        if gone:
+            self.app.events.emit("drive_temporary_deleted", files=gone)
+        return gone
 
     # ------------------------------------------------------------------------------------------ the folder
     def folder_id(self) -> str:
@@ -145,14 +190,15 @@ class DriveUpload(GooglePart):
                 pos = new
 
     # ---------------------------------------------------------------------------------- sending you a file
-    def send(self, path: Path, caption: str = "", wait: bool = False) -> tuple[bool, str]:
-        """Upload in the background; the link comes to you when it's done. (ok, what to say now)."""
+    def send(self, path: Path, caption: str = "", wait: bool = False, temporary: bool = False) -> tuple[bool, str]:
+        """Upload in the background; the link comes to you when it's done. (ok, what to say now). temporary: deleted
+        from your Drive after drive_upload.temp_days (what's too big for Telegram)."""
         ok, why = self.ready()
         if not ok:
             return False, f"Drive upload isn't ready: {why}."
         path = Path(path)
         size = path.stat().st_size
-        t = threading.Thread(target=self._send_now, args=(path, caption), daemon=True, name="drive-upload")
+        t = threading.Thread(target=self._send_now, args=(path, caption, temporary), daemon=True, name="drive-upload")
         self.last = t
         t.start()
         if wait:
@@ -162,7 +208,7 @@ class DriveUpload(GooglePart):
             f"Uploading {path.name} ({size / 2**20:.1f} MB) to your Google Drive; the link comes when it's done.",
         )
 
-    def _send_now(self, path: Path, caption: str) -> None:
+    def _send_now(self, path: Path, caption: str, temporary: bool = False) -> None:
         try:
             f = self.upload(path)
         except (NeedsSignIn, GoogleError, OSError) as e:
@@ -172,8 +218,13 @@ class DriveUpload(GooglePart):
         link = f.get("webViewLink") or f"https://drive.google.com/file/d/{f.get('id', '')}/view"
         folder = str(self.setting("folder") or "Kurooto")
         text = f"{caption.strip()}\n" if caption.strip() else ""
+        days = float(self.setting("temp_days") or 0)
+        lasts = ""
+        if temporary and days:
+            self.remember_temporary(str(f.get("id") or ""), path.name)
+            lasts = f" It's deleted from your Drive in {days:g} days; move it out of the {folder} folder to keep it."
         self.app.notify(
-            f"{text}{path.name} is in your Google Drive ({folder} folder): {link}",
+            f"{text}{path.name} is in your Google Drive ({folder} folder): {link}{lasts}",
             kind="result",
             buttons=[[("Open in Drive", {"url": link})]],
             why="asked",

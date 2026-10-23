@@ -298,7 +298,7 @@ def send_file(app: App, path, caption: str = "", inside: list[Path] | None = Non
     if to == "drive" or (size > TELEGRAM_MAX and on and drive.setting("big_files")):
         if not on:
             return False, "Drive upload is off: on this computer, dashboard → Features → Drive upload → Set up."
-        return drive.send(p, caption)
+        return drive.send(p, caption, temporary=to != "drive")  # too big for Telegram: a link that lasts a few days
     if size > TELEGRAM_MAX:
         more = " Turn on Drive upload to get bigger files as a Drive link." if drive is not None else ""
         return False, f"{p.name} is {size / 1024 / 1024:.0f} MB; Telegram takes files up to 50 MB.{more}"
@@ -339,8 +339,13 @@ def send_files(
         said = [send_file(app, f, caption if i == 0 else "", inside=inside)[1] for i, f in enumerate(files)]
         return True, " ".join(said)
     total = sum(f.stat().st_size for f in files)
-    if total > TELEGRAM_MAX:
-        return False, f"Those files are {total / 1024 / 1024:.0f} MB together; Telegram takes up to 50 MB. Send fewer."
+    drive = app.modules.get("drive_upload")
+    to_drive = drive is not None and app.is_on("drive_upload") and drive.setting("big_files")
+    if total > TELEGRAM_MAX and not to_drive:
+        return False, (
+            f"Those files are {total / 1024 / 1024:.0f} MB together; Telegram takes up to 50 MB. Send fewer, or "
+            "turn on Drive upload to get them as a Drive link."
+        )
     name = re.sub(r"[^A-Za-z0-9._-]+", "-", zip_name or "files").strip("-") or "files"
     dest = Path(app.paths.cache) / "send" / (name if name.endswith(".zip") else name + ".zip")
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -1098,12 +1103,28 @@ class Skills(Module):
     def _send_study_pack(self, subject: str, name: str, aim: str, reply_to=None) -> str:
         from kurooto.core import studypack
 
-        try:
-            zip_path, info = studypack.build(self.app, subject, name, aim)
+        drive = self.app.modules.get("drive_upload")
+        big = drive is not None and self.app.is_on("drive_upload") and drive.setting("big_files")
+        try:  # with Drive upload on nothing is left out: a pack over Telegram's 50 MB comes as a Drive link
+            zip_path, info = studypack.build(self.app, subject, name, aim, limit=None if big else -1)
         except ValueError as e:
             return str(e)
-        ok, said = send_file(self.app, zip_path, f"Study pack: {name or subject}. Give it to your AI with PROMPT.md.")
-        left = f" {len(info['left_out'])} file(s) didn't fit; INDEX.md lists them." if info["left_out"] else ""
+        title = name or subject.replace("-", " ").title()
+        ok, said = send_file(
+            self.app, zip_path, f"Study pack: {title}. Upload it to your AI and paste the prompt below."
+        )
+        if (
+            ok and "telegram" in self.app.notifier.channels
+        ):  # the prompt on its own, ready to copy (it's in the zip too)
+            self.app.notify(
+                studypack.prompt_text(title, aim), kind="result", title=f"Prompt for the {title} pack", why="asked"
+            )
+        left = (
+            f" {len(info['left_out'])} file(s) didn't fit in Telegram's 50 MB; INDEX.md lists them (Drive upload "
+            "sends bigger packs as a link)."
+            if info["left_out"]
+            else ""
+        )
         return f"{info['notes']} notes and {info['files']} course files in one zip.{left} {said}"
 
     def _pack(self, msg: Incoming, arg: str) -> str:

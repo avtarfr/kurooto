@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.8 (unreleased)
+
+- **Study packs: the prompt comes on its own**, as a message next to the zip, ready to copy (it's still in the zip).
+- **Anything over Telegram's 50 MB comes as a Google Drive link** (with Drive upload on): study packs leave nothing
+  out, several files sent at once aren't refused, and those uploads are deleted from your Drive after
+  `drive_upload.temp_days` (7) unless you move them out of the Kurooto folder.
+
 ## 0.5.7 (2026-10-23)
 
 - **Today page in the dashboard (Alt+T)**: one box for anything (plain words to Kurooto, `j` journal, `.` note, `!` a

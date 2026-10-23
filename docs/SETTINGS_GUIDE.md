@@ -277,8 +277,9 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `drive_upload.big_files` | `true` | files over Telegram's 50 MB go to your Google Drive and you get a link |
+| `drive_upload.big_files` | `true` | files over Telegram's 50 MB come as a Drive link instead of not at all |
 | `drive_upload.folder` | `"Kurooto"` | the Google Drive folder files go to |
+| `drive_upload.temp_days` | `7` | those links last this many days, then the file is deleted from your Drive (0: kept) |
 
 ### `exam_season`
 
