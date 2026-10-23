@@ -18,6 +18,7 @@ import time
 import uuid
 from typing import TYPE_CHECKING
 
+from kurooto.core import egress
 from kurooto.core.state import jsave
 
 if TYPE_CHECKING:
@@ -63,6 +64,7 @@ class Connector:
                 continue
             ws_url = url.replace("https://", "wss://", 1).replace("http://", "ws://", 1) + "/connect"
             try:
+                egress.allow(ws_url, "Phone calls", own=True)  # your call line, counted once per connection
                 async with connect(
                     ws_url,
                     additional_headers={"x-connector-secret": secret},

@@ -1,7 +1,7 @@
 # Core services
 
 `src/kurooto/core/` holds everything features share. `App.__init__` (`app.py`) builds the services in this order:
-`Paths` → `Settings` → `Secrets` → `Events` → `Availability` → `Scheduler` (with gates) → `Notifier` → `Power` →
+`Paths` → `Settings` → `Secrets` → `egress.attach` → `Events` → `Availability` → `Scheduler` (with gates) → `Notifier` → `Power` →
 `AboutYou` → `Quota` → `Jobs` → `Updates` → `Ask` → `Presence` → `Health` → `Calm` → `Keep` → every module in the catalog →
 add-ons. Anything a module needs is reached through `self.app.<service>`.
 
@@ -10,6 +10,7 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 [jobs](#jobs) · [events](#events) · [notify and Calm](#notify-and-calm) · [ask](#ask-questions-and-approvals) ·
 [availability](#availability) · [power](#power) · [presence](#presence) · [quota](#quota-free-ai-limits) ·
 [reserve](#the-reserve) · [space keeper](#space-keeper) · [retention](#retention-and-forget) ·
+[egress](#egress-every-request-on-the-internet) ·
 [hardware](#hardware-profiles) ·
 [processes](#running-programs) · [locks](#locks-and-atomic-writes) · [Windows](#windows-notes) ·
 [smaller pieces](#smaller-core-pieces) · [keep or drop](#keep-or-drop-corekeeppy)
@@ -594,6 +595,44 @@ over a stretch `[lo, hi)` in epoch seconds (`STEPS`):
   only; features learn from it over weeks), open questions and text calls, test cases, the Worker's queue (handed
   over and emptied at every `hello`, `data/worker/src/worker.js`). `Jobs.finished_since` skips forgotten rows so the
   search index doesn't take them back.
+
+## Egress: every request on the internet
+
+`core/egress.py`. **New code never calls `urllib.request.urlopen` (or another HTTP client) for an internet address;
+it calls `egress.urlopen(req, "<feature>", timeout=..., own=...)`**, which takes the same `Request` or URL, returns the
+same answer (wrapped to count the bytes read; use it as a context manager) and raises the same errors.
+
+- `_check`: `127.0.0.1`, `localhost`, `::1` pass without a count (nothing leaves); `privacy.egress` `off` passes
+  everything. Otherwise the host is on the list when it's in `HOSTS` (exact, or `.domain` for every host under it) or
+  in `privacy.allow_hosts`, or the call site says `own=True`: an address the user gave (the iCal link, a Research feed,
+  the custom AI service's `base_url`, the call line and its ntfy server, the AI's `fetch` tool, whose pages are chosen
+  for the user's request). In `enforce`, a host that's none of those raises `Blocked`, an `urllib.error.URLError`
+  whose text names the host and `privacy.allow_hosts`, so existing `except OSError` / `URLError` handling copes.
+  `record` (the default) counts it with `unlisted`.
+- `urlopen` counts `len(req.data)` out and what's read in, once, when the answer is closed (`_Counted`); a request that
+  raised (an `HTTPError` too) is counted with what went out. `urllib.request.urlopen` is looked up at call time, so
+  tests that put a fake there still work. Redirects are followed by urllib and aren't checked again.
+- `allow(url, feature, own)`: the same check for a connection made another way (`calls/connector.py`'s websocket),
+  counted once per connection, no bytes.
+- `handed(program, feature)`: a subprocess that goes online by itself, counted as "handed to <program>" and not looked
+  into: `providers/agy.py:Agy.run`, `providers/claude.py:ClaudeCode.run`, git's `GIT_ONLINE` steps in
+  `modules/notes_sync.py:NotesSync.git` (not for a local `remote`) and `core/profile.py`, `calls/deploy.py`
+  (`_wrangler`, `npm ci`), `local_models.py` (a pull through Ollama), `gbrain.py:GBrain.run` (`ONLINE` steps when the
+  index uses Gemini or the brain is the user's own), `skills.py` (Tectonic), `core/prereqs.py:Prereqs.install`
+  (`HANDED` kinds).
+- The ledger: `<state>/egress.json`, `{"days": {"YYYY-MM-DD": {"<host>|<feature>" or ">program|<feature>": {host, via,
+  feature, n, out, in, blocked, unlisted}}}}`, the last `DAYS` (30) days, at most `MAX_ROWS` rows a day (then
+  `other`). `record` takes a thread lock and the `egress` file lock (2 s; on timeout the count is dropped) and never
+  raises. `attach(app)` (in `App.__init__`) points it at the running app's state folder and settings; before that
+  (a bare CLI command, the launcher) nothing is counted and only `HOSTS` applies.
+- `/egress` is a core command (`App.handle` → `command`): `week()` sums the last `SHOWN` (7) days per row, blocked
+  first, then by count.
+- `HOSTS` and `docs/PRIVACY.md`'s "Where requests go" table must list the same hosts
+  (`tests/unit/test_egress.py:test_the_privacy_page_lists_the_same_hosts`). A new built-in host goes into both, with
+  the feature that reaches it.
+- Not routed, on purpose: requests to this computer (`top.py`, `cli.py`, `core/mcp.py`, `core/rerank.py`,
+  `modules/local_models.py:LocalModels.api`, `modules/google_confidential.py`: Ollama and Kurooto's own page). Add-ons'
+  own code is counted only when it uses `egress.urlopen`.
 
 ## Hardware profiles
 

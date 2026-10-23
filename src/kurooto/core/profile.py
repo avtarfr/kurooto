@@ -43,7 +43,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 from kurooto import __version__
-from kurooto.core import proc
+from kurooto.core import egress, proc
 from kurooto.core.clock import now
 from kurooto.core.config import merge
 from kurooto.core.lock import Lock
@@ -366,6 +366,8 @@ class Repo:
         exe = git_exe(self.app)
         if not exe:
             raise ProfileError("Git isn't installed")
+        if args and args[0] in egress.GIT_ONLINE:
+            egress.handed("git", "Profile sync")
         return proc.run([exe, "-C", str(self.dir), *args], timeout=timeout, env=self._env())
 
     def _prepare(self) -> None:

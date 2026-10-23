@@ -10,6 +10,7 @@ import os
 import subprocess
 import urllib.request
 
+from kurooto.core import egress
 from kurooto.core.clock import now
 from kurooto.core.lock import Lock
 from kurooto.core.prereqs import Prereqs
@@ -156,6 +157,7 @@ class LocalModels(Module):
             )
         for m in need:
             progress(f"Downloading {m['tag']} ({m['size_gb']:g} GB)…")
+            egress.handed("Ollama", "Local AI models")  # Ollama downloads it from its registry
             with (
                 Lock(self.app.paths.state, "ollama-pull"),
                 self.api("/api/pull", {"model": m["tag"], "stream": True}, timeout=3600) as r,

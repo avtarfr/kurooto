@@ -32,9 +32,11 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - ~~**Keep or drop.** A local count of what you actually use per feature; on day 10, Keep / Quiet / Off per feature,
   then monthly for features unused for 60 days that still run jobs. Never switched off without asking.~~ (0.5.15:
   `/keep`; Quiet uses Calm's stopped list, Off the usual turn-off, both with Undo)
-- **Egress ledger, enforced.** Every request Kurooto makes goes through one place that records host, feature and
+- ~~**Egress ledger, enforced.** Every request Kurooto makes goes through one place that records host, feature and
   bytes and blocks hosts not listed in PRIVACY.md; `/egress` shows the week. Requests your AI program makes itself
-  show as "handed to agy / Claude Code".
+  show as "handed to agy / Claude Code".~~ (0.5.17: `core/egress.py`, PRIVACY.md's "Where requests go" table;
+  `privacy.egress` records by default and refuses unlisted hosts with `enforce`; `privacy.allow_hosts`; git, npm,
+  wrangler, Ollama, GBrain, Tectonic and installers show as "handed to" as well)
 - ~~**Retention.** `privacy.keep_days` (30) expires transcripts, prompts, answers, audio and logs, also the call
   line's queued copies; `/forget 7d`.~~ (0.5.15: nightly, call transcripts, AI requests' words, chats, questions,
   cases, sent messages' words, the search index and log lines; `/forget 7d`, `/forget all` with a confirm button.

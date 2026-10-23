@@ -35,7 +35,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from kurooto.core import layout, proc
+from kurooto.core import egress, layout, proc
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock, Timeout
@@ -214,7 +214,7 @@ class Handwritten(Module):
             headers={"Content-Type": "application/json", "x-goog-api-key": key},
         )
         try:
-            with urllib.request.urlopen(req, timeout=300) as r:  # noqa: S310
+            with egress.urlopen(req, "Handwritten notes", timeout=300) as r:
                 out = json.loads(r.read())
         except urllib.error.HTTPError as e:
             if e.code == 429:  # a limit: it waits and is tried again later, not written off

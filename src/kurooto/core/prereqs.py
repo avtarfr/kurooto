@@ -13,7 +13,6 @@ import shutil
 import sys
 import tarfile
 import tomllib
-import urllib.request
 import webbrowser
 import zipfile
 from collections.abc import Callable
@@ -21,10 +20,18 @@ from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
-from kurooto.core import proc
+from kurooto.core import egress, proc
 
 Progress = Callable[[str], None]
 NODE_DIST = "https://nodejs.org/dist"
+HANDED = {  # install kinds whose own program goes online -> its name (core/egress.py)
+    "script": "the vendor's installer script",
+    "npm-global": "npm",
+    "bun-global": "Bun",
+    "winget": "winget",
+    "flatpak": "Flatpak",
+    "brew": "Homebrew",
+}
 
 
 def os_name() -> str:
@@ -141,6 +148,8 @@ class Prereqs:
             )
         kind = p.step.get("kind")
         progress(f"Installing {p.title}…")
+        if kind in HANDED:  # a program that downloads by itself
+            egress.handed(HANDED[kind], "setting up programs")
         try:
             if kind == "script":
                 ok, msg = self._script(p)
@@ -250,7 +259,7 @@ class Prereqs:
         dest = self.cache / url.rstrip("/").rsplit("/", 1)[-1]
         tmp = dest.with_suffix(dest.suffix + ".part")
         h = hashlib.sha256()
-        with urllib.request.urlopen(url, timeout=60) as r, open(tmp, "wb") as f:  # noqa: S310 (https checked above)
+        with egress.urlopen(url, "setting up programs", timeout=60) as r, open(tmp, "wb") as f:  # https checked above
             total = int(r.headers.get("Content-Length") or 0)
             done, last = 0, -1
             while chunk := r.read(1 << 20):
@@ -348,7 +357,7 @@ class Prereqs:
                 pass
 
     def _node(self, progress: Progress, dist: str = NODE_DIST) -> tuple[bool, str]:
-        with urllib.request.urlopen(f"{dist}/index.json", timeout=30) as r:  # noqa: S310
+        with egress.urlopen(f"{dist}/index.json", "setting up programs", timeout=30) as r:
             versions = json.loads(r.read())
         v = next(x for x in versions if x.get("lts"))["version"]
         a = "arm64" if arch() == "arm64" else "x64"
@@ -357,7 +366,7 @@ class Prereqs:
             "macos": f"node-{v}-darwin-{a}.tar.gz",
             "linux": f"node-{v}-linux-{a}.tar.xz",
         }[self.os]
-        with urllib.request.urlopen(f"{dist}/{v}/SHASUMS256.txt", timeout=30) as r:  # noqa: S310
+        with egress.urlopen(f"{dist}/{v}/SHASUMS256.txt", "setting up programs", timeout=30) as r:
             sums = dict(line.split()[::-1] for line in r.read().decode().splitlines() if line.strip())
         f = self._download(f"{dist}/{v}/{name}", progress, sha256=sums.get(name))
         dest = self.app_dir / "node"

@@ -10,6 +10,7 @@ This page is the full list. Each feature's own page repeats its part under **Wha
 - [The principles](#the-principles)
 - [What leaves, feature by feature](#what-leaves-feature-by-feature)
 - [Features that send nothing](#features-that-send-nothing)
+- [Where requests go](#where-requests-go)
 - [Free AI tiers and their terms](#free-ai-tiers-and-their-terms)
 - [What stays on your computer, and where](#what-stays-on-your-computer-and-where)
 - [How long it's kept](#how-long-its-kept)
@@ -149,6 +150,29 @@ only minutes per subject are kept; the idle check never reads what you type), Qu
 Stay awake on charger, Space keeper, the reserve (Markdown copies of Kurooto's state for AI programs, in the state
 folder), notes brain timelines and weekly checkup, `kurooto top`, `kurooto runlog`. Sync everything sends only what each
 sync's own feature sends.
+
+## Where requests go
+
+Every request Kurooto makes on the internet goes through one place that counts it: the host, the feature, how many
+requests, and how many bytes went out and came back, per day. **`/egress`** shows the last 7 days. Only the counts are
+kept (`egress.json` in the state folder, 30 days), never what was sent.
+
+Each host is checked against Kurooto's list, which is the "Where requests go" table in `docs/PRIVACY.md`: Telegram,
+Google's APIs (Gemini, sign-in, Classroom, Gmail, Drive and Calendar), GitHub, Cloudflare and your call line
+(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, arXiv, bioRxiv and PubMed, and Kurooto's release site.
+Addresses you gave are yours and always allowed: your calendar's link, your Research feeds, your own AI service, your
+call line, your ntfy server, and pages your AI reads for a request. This computer (`127.0.0.1`) is never counted.
+
+Programs that go online by themselves show as **handed to** them, with the feature: git (Notes sync, Profile sync),
+npm and wrangler (setting up the call line), agy and Claude Code, Ollama (a model download), GBrain, Tectonic and
+installers. Kurooto doesn't see what they send; the tables above say where it goes.
+
+**`privacy.egress`** decides what happens to a host that isn't on the list:
+- `record` (the default): it's counted and marked "not on the list", and the request goes ahead. It's the default
+  because an add-on or an address changed in settings can reach hosts Kurooto can't know of.
+- `enforce`: it's refused, and the feature says "Kurooto didn't connect to <host>". Add hosts you trust to
+  **`privacy.allow_hosts`** (`["feeds.example.org"]`; `".example.org"` allows every host under it).
+- `off`: nothing is checked or counted.
 
 ## Free AI tiers and their terms
 

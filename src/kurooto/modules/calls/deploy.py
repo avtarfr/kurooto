@@ -29,7 +29,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from kurooto import __version__
-from kurooto.core import proc, zones
+from kurooto.core import egress, proc, zones
 from kurooto.core.prereqs import Prereqs
 from kurooto.modules.calls import line
 
@@ -152,7 +152,7 @@ def cf_api(token: str, method: str, path: str, body: dict | None = None) -> dict
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
+        with egress.urlopen(req, "Phone calls: setting up", timeout=30) as r:
             return json.loads(r.read())
     except urllib.error.HTTPError as e:
         try:
@@ -170,7 +170,7 @@ def health(url: str, timeout: float = 10) -> dict | None:
         url.rstrip("/") + "/health", headers={"User-Agent": f"Kurooto/{__version__}", "Accept": "application/json"}
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
+        with egress.urlopen(req, "Phone calls", timeout=timeout, own=True) as r:
             return json.loads(r.read())
     except (OSError, ValueError):
         return None
@@ -218,6 +218,7 @@ class Deployer:
         return env
 
     def _wrangler(self, *args: str, input: str | None = None, timeout: float = 300) -> proc.Result:
+        egress.handed("wrangler", "Phone calls")  # Cloudflare's own tool talks to your account
         return proc.run(
             [self.node, str(self.dir / "node_modules" / "wrangler" / "bin" / "wrangler.js"), *args],
             input=input,
@@ -243,6 +244,7 @@ class Deployer:
         stamp = self.dir / "node_modules" / ".kurooto-lock"
         if not stamp.is_file() or stamp.read_bytes() != hashlib.sha256(lock).digest():
             self.say("Getting the call line's packages (about 230 MB, once)…")
+            egress.handed("npm", "Phone calls")
             r = proc.run(
                 [*self._npm_cli(), "ci", "--no-audit", "--no-fund", "--ignore-scripts"],
                 timeout=900,

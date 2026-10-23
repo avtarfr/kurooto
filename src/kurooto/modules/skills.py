@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto import providers
-from kurooto.core import layout
+from kurooto.core import egress, layout
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
@@ -491,6 +491,7 @@ def compile_tex(app: App, tex: Path, timeout: int = 900) -> tuple[bool, str]:
     try:
         if exe:
             env = {**os.environ, "TECTONIC_CACHE_DIR": str(app.paths.cache / "tectonic")}
+            egress.handed("Tectonic", "Skills: revision packs")  # it downloads LaTeX packages it lacks
             res = proc.run(
                 [exe, "--untrusted", "--chatter", "minimal", "--outdir", str(tex.parent), str(tex)],
                 timeout=timeout,

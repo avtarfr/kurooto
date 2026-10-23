@@ -44,6 +44,9 @@ class App:
         self.paths = (p or paths()).ensure()
         self.settings = Settings(self.paths.config / "settings.json")
         self.secrets = Secrets(self.paths.config)
+        from kurooto.core import egress  # every request on the internet is checked and counted (core/egress.py)
+
+        egress.attach(self)
         self.events = Events(self.paths.state)
         self.availability = Availability(self.paths.state, self.settings)
         self.scheduler = Scheduler(self.paths.state / "schedule.db", tz=self.settings.get("you.timezone") or None)
@@ -336,6 +339,11 @@ class App:
                 text, buttons = self.jobs.command(arg)
                 msg.reply(text, buttons=buttons)
                 return
+            if name == "egress":  # where Kurooto's requests went this week, per host and feature (core/egress.py)
+                from kurooto.core import egress
+
+                msg.reply(egress.command(self, arg))
+                return
             if name == "forget":  # forget the last 7 days (or all) of what's kept now (core/retention.py)
                 from kurooto.core import retention
 
@@ -533,6 +541,7 @@ class App:
         ("keep", "what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off"),
         ("inferred", "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>"),
         ("forget", "forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all"),
+        ("egress", "where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked"),
         ("help", "this list; /help <word> finds a command or feature, on or off"),
     )
 

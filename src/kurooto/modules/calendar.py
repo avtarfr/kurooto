@@ -30,6 +30,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dateutil.rrule import rrulestr
 
+from kurooto.core import egress
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
@@ -256,7 +257,7 @@ class Calendar(Module):
 
     def _fetch(self, url: str) -> list[dict]:
         req = urllib.request.Request(url, headers={"User-Agent": "kurooto"})  # noqa: S310 (your calendar's link)
-        with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
+        with egress.urlopen(req, "Calendar", timeout=30, own=True) as r:
             text = r.read(20 * 1024 * 1024).decode("utf-8", "replace")
         if "BEGIN:VCALENDAR" not in text:
             raise ValueError("not an iCal calendar")

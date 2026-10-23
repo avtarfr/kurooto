@@ -23,7 +23,7 @@ from pathlib import Path
 
 import psutil
 
-from kurooto.core import proc
+from kurooto.core import egress, proc
 from kurooto.core.config import register_defaults
 
 GB = 1024**3
@@ -251,13 +251,11 @@ PROFILES = ("light", "apple-8", "apple", "small-gpu", "big-gpu", "big-gpu-12")
 
 def registry_size_gb(tag: str, timeout: float = 15.0) -> float | None:
     """The download size of an Ollama model from the registry's manifest (None if it can't be told)."""
-    import urllib.request
-
     name, _, ver = tag.partition(":")
     path = name if "/" in name else f"library/{name}"
     url = f"https://registry.ollama.ai/v2/{path}/manifests/{ver or 'latest'}"
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:  # noqa: S310 (Ollama's registry)
+        with egress.urlopen(url, "Local AI models", timeout=timeout) as r:  # Ollama's registry
             data = json.loads(r.read().decode("utf-8"))
         return round(sum(int(layer.get("size", 0)) for layer in data.get("layers", [])) / 1e9, 2) or None
     except (OSError, ValueError, KeyError):

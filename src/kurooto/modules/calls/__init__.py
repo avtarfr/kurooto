@@ -28,7 +28,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-from kurooto.core import layout
+from kurooto.core import egress, layout
 from kurooto.core.clock import now, parse_when
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
@@ -84,7 +84,7 @@ def check_ntfy_token(server: str, token: str) -> tuple[str, str]:
         f"{server.rstrip('/')}/v1/account", headers={"Authorization": f"Bearer {token}"}
     )
     try:
-        with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+        with egress.urlopen(req, "Phone calls", timeout=20, own=True) as r:
             user = json.loads(r.read() or b"{}").get("username") or ""
     except urllib.error.HTTPError as e:
         return "", "ntfy didn't accept that token." if e.code in (401, 403) else f"ntfy answered HTTP {e.code}."
@@ -626,7 +626,7 @@ class Calls(Module):
                     method="POST",
                 )
                 try:
-                    with urllib.request.urlopen(req, timeout=10) as r:  # noqa: S310
+                    with egress.urlopen(req, "Phone calls", timeout=10, own=True) as r:
                         return r.status in (200, 201, 204)
                 except urllib.error.HTTPError as e:
                     if not (auth and e.code in (401, 403)):

@@ -29,6 +29,7 @@ import urllib.parse
 import urllib.request
 from email.message import EmailMessage
 
+from kurooto.core import egress
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
@@ -485,7 +486,7 @@ class Google(Module):
     def _token_call(self, form: dict) -> dict:
         req = urllib.request.Request(self.ep("token"), data=urllib.parse.urlencode(form).encode())  # noqa: S310 (https)
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:  # noqa: S310
+            with egress.urlopen(req, "Google sign-in", timeout=30) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             try:
@@ -586,7 +587,7 @@ class Google(Module):
             headers={"Authorization": f"Bearer {self.access_token(account)}", "Content-Type": "application/json"},
         )
         try:
-            with urllib.request.urlopen(req, timeout=120 if raw else 60) as r:  # noqa: S310
+            with egress.urlopen(req, f"Google ({service})", timeout=120 if raw else 60) as r:
                 if raw:
                     data = r.read(raw + 1)
                     if len(data) > raw:

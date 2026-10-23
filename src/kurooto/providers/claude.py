@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kurooto.core import proc
+from kurooto.core import egress, proc
 from kurooto.providers.base import AUTH_FAIL, RATE_LIMIT, Brain, Result, Task, Verdict
 
 if TYPE_CHECKING:
@@ -181,6 +181,7 @@ class ClaudeCode(Brain):
         minutes = max(1, task.timeout_s // 60)
         with tempfile.TemporaryDirectory() as tmp:
             args = self.args(task, Path(tmp))
+            egress.handed("Claude Code", "AI requests")  # what it sends to Anthropic, it sends itself
             t0 = time.monotonic()
             r = proc.run(
                 args, input=task.prompt, timeout=task.timeout_s + self.grace_s, cwd=task.cwd, on_start=task.on_process

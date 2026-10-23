@@ -38,7 +38,7 @@ import unicodedata
 import uuid
 from pathlib import Path
 
-from kurooto.core import proc
+from kurooto.core import egress, proc
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock, Timeout
@@ -95,6 +95,7 @@ PHASES = (
 )  # fmt: skip
 # what Kurooto runs on a brain it doesn't own: reading it, adding pages, keeping a source in step, the nightly steps
 EXTERNAL_OK = {"query", "search", "timeline", "extract", "dream", "advisor", "import", "sync", "embed", "--version"}
+ONLINE = ("sync", "embed", "query", "embeddings", "dream")  # steps that may reach its AI models (core/egress.py)
 BUSY = 75  # the exit code run() gives when the brain is busy (another step holds it)
 MIGRATIONS = ("pending_migration", "apply_migrations", "migration")
 
@@ -168,6 +169,8 @@ class GBrain(Module):
                 1, "", f"Kurooto doesn't run `gbrain {args[0] if args else ''}` on a brain it doesn't own"
             )
         home = self.brain_home()
+        if args and args[0] in ONLINE and (self.external() or self.embeddings() == "gemini"):
+            egress.handed("GBrain", "Notes brain")  # its index is made with Gemini (or your own brain's models)
         try:
             with Lock(self.app.paths.state, "gbrain", timeout=wait):  # its database allows one writer at a time
                 return proc.run(

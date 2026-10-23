@@ -25,7 +25,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from kurooto.core import proc
+from kurooto.core import egress, proc
 from kurooto.core.state import jload, jsave
 from kurooto.update import signing
 
@@ -79,7 +79,7 @@ class Updater:
     def _get(self, url: str, timeout: float = 30) -> bytes:
         if not (url.startswith("https://") or url.startswith("http://127.0.0.1")):
             raise UpdateError("updates only come over https")
-        with urllib.request.urlopen(url, timeout=timeout) as r:  # noqa: S310 (https checked above)
+        with egress.urlopen(url, "Updates", timeout=timeout) as r:  # https checked above
             return r.read()
 
     def _signed(self, url: str) -> dict:

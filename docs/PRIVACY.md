@@ -80,6 +80,50 @@ computer only.
 | Wrong button and test cases | nothing: what you typed, what Kurooto did and a snapshot of the settings that decided it stay in Kurooto's state folder (`cases/`), never in Backups, Profile sync or `kurooto doctor --bundle`; cases you didn't review are forgotten after 30 days (`cases.keep_days`, or `privacy.keep_days` when you set it). The monthly look back shows phrasings back to you on Telegram, where they came from. `kurooto cases export` writes a file on this computer; sharing it is up to you | stays on your computer |
 | Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list, exam mode and start-by dates), Subjects, Doubt queue, First-week quests, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
 
+## Where requests go
+
+Every request Kurooto makes on the internet goes through one place that counts it (the host, the feature, how many
+requests and bytes, per day) and checks it against this list. `/egress` shows the last 7 days. Only counts are kept
+(`egress.json` in Kurooto's state folder, 30 days), never what was sent.
+
+| Host | What reaches it |
+|---|---|
+| `api.telegram.org` | Telegram |
+| `generativelanguage.googleapis.com` | Gemini, with your key (chat, voice notes, handwritten notes, books, the notes index, checking the key) |
+| `oauth2.googleapis.com` | Google sign-in, and taking it back (`kurooto uninstall --revoke`) |
+| `classroom.googleapis.com` | Google Classroom |
+| `gmail.googleapis.com` | Gmail (mail digest, drafts) |
+| `www.googleapis.com` | Google Drive and Google Calendar |
+| `api.github.com` | Notes sync and Profile sync (checking your repository) |
+| `github.com` | downloading Git (Windows), Tectonic, kitty and fish |
+| `api.cloudflare.com` | Phone calls: setting up your call line |
+| `.workers.dev` | Phone calls: your call line (any address under it) |
+| `ntfy.sh` | Phone calls: ringing your phone |
+| `nodejs.org` | Phone calls: downloading Node.js to set up the call line |
+| `ollama.com` | Local AI models: downloading Ollama |
+| `registry.ollama.ai` | Local AI models: how big a model is, before you download it |
+| `export.arxiv.org` | Research (arXiv) |
+| `api.biorxiv.org` | Research (bioRxiv, medRxiv) |
+| `eutils.ncbi.nlm.nih.gov` | Research (PubMed) |
+| `avtarfr.github.io` | Updates and the list of withdrawn versions |
+
+**Addresses you gave are yours** and always allowed: your calendar's private link, the feeds you added to Research,
+the AI service you entered (a custom OpenAI-compatible one), your call line and your own ntfy server, and the public
+pages your AI reads for a request (its web reading tool). This computer (`127.0.0.1`) is always allowed and never
+counted: nothing leaves.
+
+**Programs that go online by themselves** are counted as "handed to" them, with the feature; Kurooto doesn't look
+into what they send: git (Notes sync and Profile sync), npm and wrangler (setting up your call line), agy and Claude
+Code (AI requests), Ollama (downloading a model), GBrain (making the index with Gemini, or your own brain's models),
+Tectonic (LaTeX packages), and installers (winget, Homebrew, Flatpak, npm, Bun, a vendor's install script). Where they
+send it is in the tables above.
+
+**Enforcing it** (`privacy.egress`): `record` (the default) counts everything and marks a host that isn't on the list
+"not on the list" without stopping it, because an add-on or an address changed in settings can reach hosts this list
+can't know of. `enforce` refuses those: the feature fails with a message naming the host. To allow one, add it to
+`privacy.allow_hosts` (`["feeds.example.org"]`; `".example.org"` allows every host under it). `off` checks and counts
+nothing. Your add-ons' own code is covered only when it makes its requests through Kurooto's (`core/egress.py`).
+
 ## Free tiers and terms
 
 **A free Gemini API key** (Google AI Studio's free tier):

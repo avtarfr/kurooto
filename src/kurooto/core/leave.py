@@ -32,6 +32,7 @@ import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from kurooto.core import egress
 from kurooto.modules.calls import deploy
 
 Say = Callable[[str], None]
@@ -288,7 +289,7 @@ def _google_revoke(endpoint: str, token: str, what: str, steps: str) -> Step:
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=20):  # noqa: S310
+        with egress.urlopen(req, "uninstall --revoke", timeout=20):
             return Step(what, True, "Kurooto's access is taken back")
     except urllib.error.HTTPError as e:
         try:

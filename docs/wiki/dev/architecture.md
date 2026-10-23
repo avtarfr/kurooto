@@ -75,7 +75,7 @@ What happens when the user types "what's due this week? and summarise my linear 
 3. **Routing** (`app.py:App.handle`), first match wins:
    1. a reply to a question (`reply_to.kind == "ask"`) → `core/ask.py:Ask.reply`;
    2. a reply to a module's message → that module's `replies()[kind]` (the phone app's copy is retracted);
-   3. `/start`, `/help`, `/aboutme`, `/q`, `/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/inferred`, `/jobs`, `/forget` (core);
+   3. `/start`, `/help`, `/aboutme`, `/q`, `/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/inferred`, `/jobs`, `/forget`, `/egress` (core);
    4. a `/command` of an enabled module; a command of a disabled module answers "X is off: Features → X → Turn on"
       (except `ALWAYS = ("status",)`); a skill name when Skills is on (`modules/skills.py:Skills.typed`);
       (from here on, with Learns from its own work on, `Learning.heard` sees the text without taking it: "no, ..."

@@ -42,7 +42,7 @@ import xml.etree.ElementTree as ET  # noqa: S405 (parsed only after refusing DTD
 from importlib import resources
 from pathlib import Path
 
-from kurooto.core import layout, proc
+from kurooto.core import egress, layout, proc
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
@@ -285,9 +285,10 @@ class Research(Module):
     def ep(self, name: str) -> str:
         return (self.setting("endpoints") or {})[name].rstrip("/")
 
-    def _get(self, url: str, timeout: float = 60) -> bytes:
+    def _get(self, url: str, timeout: float = 60, own: bool = False) -> bytes:
+        """own: a feed you added (its host is yours, not on Kurooto's list)."""
         req = urllib.request.Request(url, headers={"User-Agent": "kurooto (personal research digest)"})  # noqa: S310
-        with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 (public sources, https)
+        with egress.urlopen(req, "Research", timeout=timeout, own=own) as r:  # public sources, https
             return r.read(10 * 1024 * 1024)
 
     # --------------------------------------------------------------------------------------- sources
@@ -409,7 +410,7 @@ class Research(Module):
         return out
 
     def _rss(self, feed: dict, since: dt.datetime) -> list[dict]:
-        root = safe_xml(self._get(feed["url"]))
+        root = safe_xml(self._get(feed["url"], own=True))
         out = []
         items = (
             root.findall(".//item")

@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from kurooto.core import egress
 from kurooto.core.config import register_defaults
 from kurooto.modules.base import Module
 
@@ -73,7 +74,7 @@ class VoiceNotes(Module):
         )
         pool = f"gemini:{model}"  # voice notes count against your key's free limit too (core/quota.py)
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310
+            with egress.urlopen(req, "Voice notes", timeout=timeout) as r:
                 out = json.loads(r.read())
         except urllib.error.HTTPError as e:
             body, detail = e.read().decode("utf-8", "replace"), ""

@@ -31,7 +31,7 @@ import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kurooto.core import places
+from kurooto.core import egress, places
 from kurooto.core.state import jload
 from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search
 
@@ -558,7 +558,7 @@ class FileTools:
             url, headers={"User-Agent": "Kurooto (personal assistant)", "Accept": "*/*"}
         )
         try:
-            with opener.open(req, timeout=20) as r:  # noqa: S310 (http(s) only, public hosts only)
+            with egress.urlopen(req, "pages your AI reads", timeout=20, own=True, opener=opener) as r:
                 raw, ctype = r.read(MAX_PAGE + 1), r.headers.get("Content-Type", "")
         except (urllib.error.URLError, OSError, ValueError) as e:
             return f"Couldn't fetch it: {getattr(e, 'reason', e)}"[:300]
