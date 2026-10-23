@@ -20,7 +20,7 @@ wrong.
 |---|---|
 | A computer with Windows 10 or 11, macOS 12 or newer, or Linux | Kurooto runs on it. No graphics card is needed: the AI runs in the cloud unless you choose otherwise. |
 | About 1 GB of free disk space, plus what your features need | The installer checks for at least 2 GB free. The setup page shows the total before installing anything, and Kurooto always leaves some space spare (it skips local AI models rather than fill your disk). |
-| Telegram on your phone or computer (free), or the Kurooto phone app | This is where you talk to Kurooto. The phone app instead of Telegram needs Phone calls (a free Gemini key and a free Cloudflare account); see [step 6](#6-chat-telegram-or-the-phone-app). |
+| Telegram on your phone or computer (free), or the Kurooto phone app | This is where you talk to Kurooto. The phone app instead of Telegram needs Phone calls (a free Gemini key and a free Cloudflare account); see [step 7](#7-chat-telegram-or-the-phone-app). |
 | A Google account (free) | For an AI brain: agy signs in with it, and a Gemini API key is made with it. |
 
 Kurooto only works while the computer is on and awake. If you want it reachable all day, leave the computer on and
@@ -124,12 +124,31 @@ restarted: reload the page.
 
 The first page also has **I've used Kurooto before** (see [below](#used-kurooto-before)).
 
-### 2. Your computer
+### 2. Your notes
+
+Where Kurooto writes its notes (the daily note, a folder per subject, quick notes), and how. Already keep notes, in
+Obsidian or any folder of Markdown files? Type that folder's full path (a Windows path like
+`C:\Users\you\Documents\Notes` works, spaces too) and press **Look at this folder**. Kurooto reads the folder's names,
+dates, links and headers, with no AI, and proposes a place for each kind of note: daily notes, the inbox, subject
+folders, concept notes and research projects. Each line says how sure it is and why ("3 daily notes like
+`Daily Notes/2026-10-20.md`"), and you can change any line. The preview under it shows where notes will go ("Daily
+notes → `Daily Notes/2026-10-20.md`").
+
+- **Use this layout** saves it. Nothing in your notes changes before you press it.
+- **Keep Kurooto's own layout** keeps (or goes back to) Kurooto's folders: `journal/`, `about-me/`, a folder per
+  subject.
+- **Skip for now** leaves it for later. Kurooto's own layout is used until then.
+
+You can come back to this any time from **Dashboard → Settings → notes → Fit Kurooto to your notes**, or with
+`kurooto setup notes`. If Kurooto has already written notes, the step also shows which of them would move. More:
+[notes-and-concept-graph.md](notes-and-concept-graph.md#fit-kurooto-to-the-notes-you-have).
+
+### 3. Your computer
 
 Kurooto reads the computer: system, processor, memory, graphics card, free space, and what kind of setup it suits
 (no local models, small local models, bigger ones, Apple Silicon). It lists what it recommends, marked ★. Nothing is
 installed here: local models come with the features that use them (Local AI models, Notes brain) if you turn those on
-in step 5.
+in step 6.
 
 - **Use more than this computer suggests:** pick another setup, add an Ollama model of your own (`gemma4:12b`) or
   another program (`tesseract`), then **Save** or **Save and install now**. Kurooto says plainly what you're going past
@@ -140,7 +159,7 @@ in step 5.
 - **Colours:** Kurooto's own greens (kuro), the older pinks (rose), or this computer's own colours (system, marked ★
   when Kurooto finds them). Only how Kurooto's pages look. See [dashboard.md](dashboard.md).
 
-### 3. AI: pick the AI that answers you
+### 4. AI: pick the AI that answers you
 
 Pick a card, then follow its panel. The first card is marked ★. Each panel ends with a test: Kurooto asks the AI to
 reply and tells you whether it worked, and if not, what to do.
@@ -166,7 +185,7 @@ Chat and Reminders answer there even though you turn them on later; other featur
 said in the box goes to Telegram or your phone. A reminder set there still comes after a restart; cancel it with
 `/reminders` once Telegram is connected.
 
-### 4. About you (recommended, optional)
+### 5. About you (recommended, optional)
 
 Your other AI accounts (ChatGPT, Claude, Gemini, Copilot and the rest) already know a lot about you. This step brings
 that into Kurooto once:
@@ -184,7 +203,7 @@ The reports stay in Kurooto's private folder (not your notes, never synced); bui
 you picked. **Skip for now** (or Next with no reports added) skips this step. More:
 [teaching-kurooto.md](teaching-kurooto.md).
 
-### 5. Features: what should it do?
+### 6. Features: what should it do?
 
 Every feature is off until you tick it. First, **What do you do?** adds what suits it to Starter (each such card
 says "★ suits what you do"); you can still untick anything:
@@ -218,7 +237,7 @@ own; the rest wait for one evening bundle at 20:00. Your own reminders, alarms a
 number in the box beside it (`notify.calm.messages`); more about the limit in
 [messages-it-sends.md](messages-it-sends.md#calm-why-less-of-this-and-the-daily-limit).
 
-### 6. Chat: Telegram or the phone app
+### 7. Chat: Telegram or the phone app
 
 Pick where you talk to Kurooto: **Telegram** (your own private bot) or **The Kurooto phone app instead**.
 
@@ -255,7 +274,7 @@ From then on the bot answers only your Telegram account; anyone else who finds i
 You can **Skip for now** and connect it later (Next without a connection skips it too); the step waits on the
 dashboard's Finish setting up list until Telegram is paired or, with the phone app picked, Phone calls is set up.
 
-### 7. Almost done
+### 8. Almost done
 
 The summary lists your AI, Telegram (or the phone app), the features you picked, the steps you skipped (each with
 **Go back to it**) and your notes folder (by default `Documents/Kurooto`,

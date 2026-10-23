@@ -7,6 +7,7 @@ linked notes.
 
 - [Your notes folder](#your-notes-folder)
 - [Where each kind of note goes (layouts)](#where-each-kind-of-note-goes-layouts)
+- [Fit Kurooto to the notes you have](#fit-kurooto-to-the-notes-you-have)
 - [The files folder: keeping photos and PDFs out of your notes](#the-files-folder-keeping-photos-and-pdfs-out-of-your-notes)
 - [Home and hub notes](#home-and-hub-notes)
 - [What Kurooto never does to your text](#what-kurooto-never-does-to-your-text)
@@ -80,16 +81,66 @@ the default layout are translated to yours when they run (yours included).
 
 | Kinds you can move | Parts you can use in braces |
 |---|---|
-| `daily`, `profile`, `how_to_help`, `not_interested`, `recurring`, `ideas`, `skills`, `prompts`, `inbox`, `note`, `subject`, `course`, `class_log`, `lecture`, `concept`, `exam_prep`, `doubts`, `home`, `research`, `project`, `runs`, `handwritten`, `mail` | `{date}`, `{time}`, `{subject}`, `{project}`, `{slug}` |
+| `daily`, `profile`, `how_to_help`, `not_interested`, `recurring`, `ideas`, `skills`, `prompts`, `inbox`, `note`, `subject`, `course`, `class_log`, `lecture`, `concept`, `exam_prep`, `doubts`, `home`, `research`, `project`, `runs`, `handwritten`, `mail` | `{date}`, `{time}`, `{subject}`, `{project}`, `{slug}`, and `{year}`, `{month}`, `{day}` from the date (`{year}/{month}/{day}.md`) |
 
 A place that doesn't work (a part that kind doesn't have, or `..`) falls back to the layout's own, and `/health` says
 so.
 
 **Limits and edge cases.**
-- Changing the layout or a place affects **new** notes only. Nothing is moved. Move existing notes yourself if you
-  want them in the new places; Kurooto then finds them there.
+- Changing `notes.layout` or `notes.paths` in Settings affects **new** notes only: nothing is moved. To move
+  Kurooto's own notes along, use [Fit Kurooto to the notes you have](#fit-kurooto-to-the-notes-you-have) instead.
 
 **Undo.** Set `notes.layout` back to `kurooto` and empty `notes.paths`. What was written meanwhile stays where it was.
+
+---
+
+## Fit Kurooto to the notes you have
+
+**What it does.** Kurooto reads your notes folder and proposes where each kind of note goes, so it fits in with how
+you already keep notes instead of bringing its own folders. It's the setup page's **Notes** step; open it any time
+from **Dashboard → Settings → notes → Fit Kurooto to your notes**, or with `kurooto setup notes`.
+
+**What it reads** (no AI, nothing leaves your computer): the top-level folder names; how daily notes are named and
+where (`journal/2026-10-20.md`, `dailies/`, `Daily Notes/2026-10-20.md`, `2026/10/20.md`); whether your notes link
+with `[[wikilinks]]` or markdown links, with or without `.md`; the header (frontmatter) keys in use (`id`, `aliases`,
+`tags`, `title`...); where subject or course folders live (`Courses/<subject>`, `sources/<subject>`, or a folder with
+course pages); an inbox folder. Hidden folders such as `.obsidian` and `.git` are left out.
+
+**What it proposes.** A layout (`kurooto` or `zettelkasten`) and a line for each of: daily notes, quick notes (the
+inbox), subject folders, concept notes and research projects. Each line says how sure it is and why. Change any line,
+or switch the layout; the places that follow from a line follow it (a course page and lecture notes go in the subject
+folder, a quick note in the inbox). The preview shows where notes will go, with today's date and an example subject:
+
+    Daily notes -> Daily Notes/2026-10-20.md
+    A course page -> Courses/linear-algebra/course.md
+
+**Use this layout** saves `notes.layout` and `notes.paths` (and the notes folder, if you looked at another one).
+**Keep Kurooto's own layout** keeps, or goes back to, Kurooto's folders.
+
+**Moving Kurooto's own notes.** When Kurooto has already written notes, the step shows a plan before anything
+happens: which of its notes move where, how many links in its own text are updated, and what stays. Only notes with
+Kurooto's header move (`made_by`, or `trust_tier: agent_written` in the zettelkasten layout). These always stay where
+they are:
+- your own notes, and anything without Kurooto's header;
+- daily notes, because they hold your own words (new ones go to the new place);
+- your profile.
+
+Links to moved notes are updated only in Kurooto's own text: its notes, the `<!-- kurooto:... -->` blocks it keeps in
+your notes, and the course lists in the home note. Links in your own words that point at a moved note are listed,
+never changed.
+
+**Limits and edge cases.**
+- Nothing in your notes changes until you press **Use this layout**, and only as the plan you were shown says. If a
+  note changed since the plan was shown, nothing moves and you see the new plan.
+- If a note's new place is already taken, the plan says so and nothing moves until you rename that note or change
+  the line.
+- Looking at another folder switches Kurooto to it: its notes in the old folder stay there.
+- Link style isn't a setting: Kurooto keeps writing `[[wikilinks]]`, which Obsidian and most Markdown editors follow.
+- A very big folder (over 20,000 notes) is read in part, and the step says so.
+
+**Undo.** After a move, the step shows **Undo**: it puts the notes back, undoes the link updates and sets the layout
+back to what it was. A note you changed since keeps your change, and the step says which. In a notes folder that is a
+git repository, the moves also show up as renames in its history.
 
 ---
 

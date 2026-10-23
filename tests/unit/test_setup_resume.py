@@ -33,7 +33,8 @@ def step(api, name, how, seconds=5, **extra):
 def test_reopening_lands_on_the_first_step_not_finished(app):
     api = Api(app)
     assert api.get("setup")[1]["resume"] == "you"
-    assert step(api, "you", "next")[1]["resume"] == "computer"
+    assert step(api, "you", "next")[1]["resume"] == "notes"
+    assert step(api, "notes", "next")[1]["resume"] == "computer"
     assert step(api, "computer", "next")[1]["resume"] == "brain"
     # no AI that answers yet: Next goes on, but the step stays open and setup comes back to it
     code, v = step(api, "brain", "next")
@@ -68,6 +69,7 @@ def test_skip_for_now_except_where_setup_cant_finish_without_it(app, capsys):
         assert code == 400 and "can't be skipped" in out["error"], required
     assert step(api, "nowhere", "next")[0] == 400 and step(api, "about", "sideways")[0] == 400
     step(api, "you", "next")
+    step(api, "notes", "next")
     step(api, "computer", "skip")
     step(api, "about", "next")  # nothing added: Next on an optional step with nothing done skips it
     step(api, "features", "next")
@@ -85,7 +87,7 @@ def test_skip_for_now_except_where_setup_cant_finish_without_it(app, capsys):
     assert cli.main(["setup", "fax"]) == 2 and "Not a setup step" in capsys.readouterr().err
     # the setup page has the button on those steps only; the dashboard lists them with links back
     html = static("setup.html")
-    for sid in ("computer", "about", "features", "telegram"):
+    for sid in ("notes", "computer", "about", "features", "telegram"):
         sec = html.split(f'<section data-step="{sid}">')[1].split("</section>")[0]
         assert "data-skip" in sec, sid
     for sid in ("you", "brain", "finish"):

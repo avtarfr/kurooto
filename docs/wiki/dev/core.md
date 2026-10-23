@@ -99,7 +99,40 @@ under `KUROOTO_HOME`). Where each kind of note goes is decided only by `core/lay
 how_to_help, inbox, course, lecture, concept, exam_prep, doubts, home, research, project, runs, ...), two `PRESETS`
 (`kurooto` and `zettelkasten`), per-kind overrides in `notes.paths`, and `files.folder` for binary files. Use
 `layout.path(app, kind, **fields)`, `layout.rel`, `layout.link`, `layout.file_dir`, `layout.frontmatter`; never build
-a notes path by hand. `Layout.check()` feeds `kurooto doctor`'s `notes layout` row.
+a notes path by hand. `Layout.check()` feeds `kurooto doctor`'s `notes layout` row. Templates may use `{year}`,
+`{month}` and `{day}` too (`Layout._fields` derives them from `date`; `translate` maps `journal/<YYYY-MM-DD>` to the
+whole place when the date isn't one part of it).
+
+`core/notesfit.py` fits that to an existing folder (0.5.20; the setup page's Notes step, `web/api.py` `notes/fit*`):
+- `scan(root)` walks it (no AI; hidden folders and `node_modules` skipped; `MAX_FILES` 20,000, headers read for all,
+  links from the first `SAMPLE` 3,000) and `facts()` counts top-level folders, daily-note shapes (`daily_shape`:
+  `Daily Notes/{date}.md`, `{year}/{month}/{day}.md`), wikilinks against markdown links (with or without `.md`) and
+  header keys.
+- `propose(root, current)` picks the preset (`choose_layout`: zettelkasten folders and `id`+`aliases` headers against
+  kurooto folders) and one line per `LINES` kind (daily, inbox, subject, concept, project) with `confidence` (0 to 1),
+  `why` and `found`. `paths_from(preset, lines)` adds the places that follow (course, lecture, class log, exam prep,
+  doubts under the subject folder; note under the inbox; runs beside a `{project}/index.md`) and drops what equals
+  the preset; `merged_paths` keeps earlier `notes.paths` entries the lines don't decide. `preview()` renders `PREVIEW`
+  with today's date and `linear-algebra`.
+- `plan(root, old, new)` is the dry run. `kind_of` matches each note against the old layout's templates (most literal
+  text first; a `{subject}` that is one of the layout's own top folders doesn't count; folder kinds `handwritten`,
+  `runs`, `inbox` keep the rest of the path). Only `ours(front, old)` notes move: `made_by`, or `trust_tier:
+  agent_written` when the old layout is the zettelkasten. Daily notes are counted (`daily_left`), never moved.
+  `fix_links` rewrites `[[path]]` and relative markdown links to moved notes only inside Kurooto's text (`_spans`: the
+  whole of its own notes, `<!-- kurooto:k -->...<!-- /kurooto:k -->` blocks, the hubs one-liner, `- [[...]]` lines in
+  the home and research hubs) and counts the rest in `theirs`; a moved note's own relative links are rebased and a
+  zettelkasten `id:` follows it. Clashes: a taken place (`os.path.samefile` tells a case-only rename from another
+  file) or two notes on one place.
+- `apply_plan(plan, state_dir, digest)` refuses unless the digest (moves, settings, each edited file's text) matches
+  the one shown and there are no clashes; it renames, writes the link fixes (`newline=""`, so CRLF stays), removes the
+  folders it emptied and writes `<state>/notes-moves/<stamp>.json` (moves, edits with their old text and the new
+  text's sha256, folders made and removed, settings before and after). A failure halfway puts back what was done.
+  `undo(state_dir)` reverses the newest log: an edited file whose sha changed since is left (a problem is reported),
+  the notes move back, the folders it made go if empty; `undo_app` restores `notes.layout` and `notes.paths`.
+- Another folder than `you.workspace`: `apply` only switches `you.workspace` and the settings; nothing moves between
+  folders.
+
+Tests: `tests/unit/test_notesfit.py` (fixture folders in Kurooto's layout, Obsidian-style, zettelkasten and mixed).
 
 ## Files and folders
 
@@ -131,6 +164,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `gists.jsonl` | (0.5.17 only) the gists before the ledger; moved into it and removed on first use | `core/gists.py:_move` |
 | `dream-policy.json` | the day of the last tuning round and the last 30 decisions with their replay scores | `core/policy.py:tune` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
+| `notes-moves/<stamp>.json` | each Notes-step move: moves, link edits (old text, new sha256), folders made and removed, settings before and after, `undone` | `core/notesfit.py` |
 | `setup.json` | the setup page's steps: `steps.<id>` = `{status: done\|skipped\|open, seconds, visits, left_at}`, and `chosen` (the features ticked before the page was closed) | `core/setupsteps.py` |
 | `rhythm.json` | usual quiet hours, the last learned change and its Undo, lighter-day and absence marks, quiet week | `core/rhythm.py:Rhythm` |
 | `repair.json` | two-readings questions waiting for a tap (20, for 24 h) | `core/repair.py` |

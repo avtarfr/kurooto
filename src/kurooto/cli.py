@@ -1836,7 +1836,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("start", help="start it in the background now")
     sub.add_parser("open", help="open the setup page or dashboard")
     se = sub.add_parser("setup", help="open the setup page where you left off (or at one step)")
-    se.add_argument("step", nargs="?", default="", help="you, computer, brain, about, features, telegram or finish")
+    se.add_argument(
+        "step", nargs="?", default="", help="you, notes, computer, brain, about, features, telegram or finish"
+    )
     au = sub.add_parser("autostart", help="start at sign-in, or not (boot: before anyone logs in, on Linux)")
     au.add_argument("state", choices=["on", "off", "status", "boot", "login"])
     sub.add_parser("stop", help="stop it (it starts again at sign-in; `off` keeps it off)")

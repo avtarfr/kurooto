@@ -62,7 +62,8 @@ GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `jobs`, `term
 `profile`, `note?id=`, `settings`, `look`, `events` (last 80), `board` (503 without `Live`), `state` (the wizard's
 whole state, with `setup` and `calm` below), `setup` (`core/setupsteps.py:view`: each step's status, `resume`, `left`), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `persona`, `research`, `progress`, `ask`, `ask/<id>`,
 `today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `morning`
-(`modules/daily.py:morning_view`), `mail/confidential?day=`, `books`.
+(`modules/daily.py:morning_view`), `mail/confidential?day=`, `books`, `notes/fit?folder=` (`core/notesfit.py:view`: the proposal for that folder or the notes
+folder, `in_use`, `presets`, the move to `undo`).
 
 POST (in `Api.post`):
 
@@ -72,7 +73,7 @@ POST (in `Api.post`):
 | AI | `brain`, `brain/test`, `brain/models`, `jobs/cancel`, `tryit` |
 | features | `modules/enable`, `modules/disable`, `modules/setup`, `modules/configure`, `modules/card` |
 | settings and you | `settings`, `you`, `autostart`, `hardware/refresh`, `hardware/override`, `keys/gemini` |
-| setup | `prereqs/install`, `prereqs/signin`, `telegram/token`, `telegram/poll`, `telegram/relink`, `telegram/webhook-off`, `setup/channel` (`{"channel": "telegram" \| "app"}` into `setup.channel`; `GET state` returns it as `channel`), `setup/step` (`{step, how: next\|skip\|leave, seconds, chosen}`; 400 for an unknown step or skipping a required one), `setup/done` |
+| setup | `prereqs/install`, `prereqs/signin`, `telegram/token`, `telegram/poll`, `telegram/relink`, `telegram/webhook-off`, `setup/channel` (`{"channel": "telegram" \| "app"}` into `setup.channel`; `GET state` returns it as `channel`), `setup/step` (`{step, how: next\|skip\|leave, seconds, chosen}`; 400 for an unknown step or skipping a required one), `setup/done`, `notes/fit/preview` (`{layout, lines, folder}`: preview, problems, the move plan with its `digest`), `notes/fit/apply` (the same plus `digest`), `notes/fit/undo` (`{id?}`); these three answer 200 with `ok: false` and `error` for a refusal, so the page can say it |
 | everyday | `act`, `ask`, `ask/get`, `ask/pending`, `ask/answer`, `ask/expire`, `notify`, `send-file`, `open-note`, `open-url` |
 | health and sync | `health/fix`, `sync/all`, `sync/status` |
 | power | `power/stop`, `power/pause`, `power/resume`, `power/off` |
@@ -182,7 +183,7 @@ To add an action: write `fn(app, args)` that calls the existing module method, a
 
 ## The wizard
 
-`static/setup.js`: `STEPS = ["you", "computer", "brain", "about", "features", "telegram", "finish"]`, plus a hidden
+`static/setup.js`: `STEPS = ["you", "notes", "computer", "brain", "about", "features", "telegram", "finish"]`, plus a hidden
 `restore` section ("I've used Kurooto before": `POST /api/profile/restore`). Each step saves through its own route
 and reloads `GET /api/state`. The brain list comes from `web/api.py:BRAIN_ORDER`; features from `MODULE_ORDER`, with
 `STARTER` pre-ticked. The `telegram` step (labelled Chat) picks the channel first (`pickChannel`, `setup/channel`):
@@ -191,6 +192,12 @@ Telegram's pairing, or the phone app instead (`renderAppChannel`: needs Phone ca
 `finish()` runs `modules/setup` for chosen features that aren't ready, then `modules/enable` (which turns `calls` on
 first when Telegram isn't chosen, so what needs somewhere to talk can follow), `autostart` and `setup/done`. Secrets typed in the wizard go to `app.secrets.set` (keychain or `secrets.json`),
 never to `settings.json`.
+
+The `notes` step (`renderNotes`, 0.5.20) loads `GET notes/fit`, draws the layout buttons and one input per line, and
+posts `notes/fit/preview` 400 ms after typing stops; **Use this layout** posts `notes/fit/apply` with the digest of the
+plan last shown (`fitShown`), so a plan that changed since is refused, not applied. **Keep Kurooto's own layout** moves
+on when nothing would change, else fills in `presets.kurooto` for the notes folder. Settings → notes links to
+`/setup#notes` (`home.js:renderSettings`).
 
 **Where you are (`core/setupsteps.py`, `<state>/setup.json`).** The daemon keeps each step's status, not the browser.
 `go(i, how)` posts `setup/step` before moving: forward (Next, or a later step in the list) is `next`, **Skip for now**

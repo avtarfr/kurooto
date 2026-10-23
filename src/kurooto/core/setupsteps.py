@@ -23,9 +23,10 @@ from kurooto.core.state import jload, jsave
 if TYPE_CHECKING:
     from kurooto.app import App
 
-STEPS = ("you", "computer", "brain", "about", "features", "telegram", "finish")
+STEPS = ("you", "notes", "computer", "brain", "about", "features", "telegram", "finish")
 TITLES = {  # as the setup page's list says them (setup.js LABELS)
     "you": "You",
+    "notes": "Notes",
     "computer": "Computer",
     "brain": "AI",
     "about": "About you",
@@ -35,6 +36,7 @@ TITLES = {  # as the setup page's list says them (setup.js LABELS)
 }
 # what's left to do when a step was skipped, in words (the dashboard and doctor)
 WHAT = {
+    "notes": "fit Kurooto to the notes you already have (where daily notes, subjects and the inbox go)",
     "computer": "what this computer suits, its colours and what to do on battery",
     "about": "teach it what your other AI accounts know about you",
     "features": "pick what it does for you (what was ticked is on)",

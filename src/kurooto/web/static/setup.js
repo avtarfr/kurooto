@@ -4,9 +4,9 @@
 const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-const STEPS = ["you", "computer", "brain", "about", "features", "telegram", "finish"];
-const LABELS = ["You", "Computer", "AI", "About you", "Features", "Chat", "Done"];
-const HINTS = ["Your name and time zone", "What it found here", "Who answers you", "Optional: what other AIs know",
+const STEPS = ["you", "notes", "computer", "brain", "about", "features", "telegram", "finish"];
+const LABELS = ["You", "Notes", "Computer", "AI", "About you", "Features", "Chat", "Done"];
+const HINTS = ["Your name and time zone", "Fit in with your notes", "What it found here", "Who answers you", "Optional: what other AIs know",
   "What it does for you", "Telegram or the phone app", "Install and turn on"];
 let state = null;
 let step = 0;
@@ -146,7 +146,7 @@ function show(i) {
   $(".eyebrow", sec).textContent = `Step ${step + 1} of ${STEPS.length}`;
   shownAt = Date.now();
   if (STEPS[step] === "features") renderCalm();
-  ({ computer: renderComputer, brain: renderBrains, about: renderAbout, features: renderFeatures, telegram: renderTelegram, finish: renderFinish }[STEPS[step]] || (() => {}))();
+  ({ notes: renderNotes, computer: renderComputer, brain: renderBrains, about: renderAbout, features: renderFeatures, telegram: renderTelegram, finish: renderFinish }[STEPS[step]] || (() => {}))();
   navHint();
   gloss(sec);
   window.scrollTo(0, 0);
@@ -162,6 +162,7 @@ function navHint() {
   hint.textContent = {
     brain: brain && brain.ready ? "" : "Not working yet? You can go on and finish it later: this page opens again from the dashboard.",
     about: "Optional.",
+    notes: "Next keeps the layout in use; nothing moves without Use this layout.",
     features: `${chosen.size} of ${state.modules.length} on.`,
     telegram: channelOk() ? "" : state.channel === "app" ? "Phone calls isn't set up yet? Skip it for now and finish it later."
       : "Not connected yet? Skip it for now: the dashboard keeps a way back here.",
@@ -225,6 +226,116 @@ function checkYou() {
 async function saveYou() {
   const r = await api("you", { name: $("#name").value, timezone: $("#tz").value, assistant_name: $("#aname").value || "Kurooto" });
   if (r && typeof r.timezone === "string") $("#tz").value = r.timezone;  // under today's name
+}
+
+// --------------------------------------------------------------------------------------------- notes
+// Your notes (core/notesfit.py): Kurooto reads the folder (names, dates, links and headers; no AI) and proposes where
+// each kind of note goes, each line with how sure it is. Any line can be changed; the preview and the plan (Kurooto's
+// own notes that would move, links fixed in its own text) follow. Nothing in the notes folder changes until "Use this
+// layout", which sends the digest of the plan shown; a move can be undone here.
+let fit = null;  // what the folder shows and the proposal (GET notes/fit)
+let fitShown = null;  // the last dry run (POST notes/fit/preview)
+let fitTimer = 0;
+async function loadFit(folder) {
+  const panel = $("#nf-panel");
+  const wait = working("Looking at the folder…");
+  panel.replaceChildren(wait);
+  fit = await api("notes/fit" + (folder ? `?folder=${encodeURIComponent(folder)}` : ""));
+  wait.stop();
+  $("#nf-folder").value = fit.folder;
+  drawFit();
+}
+function renderNotes() { if (!fit) loadFit(""); }
+function fitLayout() { return ($(".fit-layout.on") || {}).dataset?.fitLayout || fit.layout; }
+function fitLines() { return Object.fromEntries($$("[data-fit-line]").map((i) => [i.dataset.fitLine, i.value.trim()])); }
+function pct(c) { return `${Math.round(c * 100)}%`; }
+function drawFit() {
+  const panel = $("#nf-panel");
+  if (!fit.exists) {
+    panel.replaceChildren(el("p", { class: "bad" }, "That folder isn't there. Type the full path of a folder (for example C:\\Users\\you\\Documents\\Notes, or ~/Notes), then Look at this folder."));
+    return;
+  }
+  const found = fit.notes ? `${fit.notes} notes${fit.daily ? `; daily notes like ${fit.daily.example}` : ""}.`
+    : "The folder is empty: Kurooto's own layout below is a good start.";
+  const layoutBtn = (id, label) => el("button", { type: "button", class: "fit-layout" + (id === fit.layout ? " on" : ""), "data-fit-layout": id, onclick: (e) => {
+    $$(".fit-layout").forEach((b) => b.classList.toggle("on", b === e.target));
+    for (const ln of fit.lines) if (!ln.found) $(`[data-fit-line="${ln.kind}"]`).value = fit.presets[id][ln.kind];  // what was found stays
+    previewFit();
+  } }, label);
+  panel.replaceChildren(
+    el("div", { class: "box" }, el("p", {}, found), ...fit.said.map((x) => el("p", { class: "note" }, x))),
+    el("h2", {}, "Layout"),
+    el("div", { class: "presets" }, layoutBtn("kurooto", "Kurooto's: journal/, a folder per subject"), layoutBtn("zettelkasten", "Zettelkasten: dailies/, sources/, zettel/")),
+    el("p", { class: "note" }, `Sure: ${pct(fit.layout_confidence)}. ${fit.layout_why}.`),
+    el("h2", {}, "Where each kind of note goes"),
+    el("p", { class: "note" }, "A place inside the notes folder; {date}, {subject}, {slug}, {project}, {year}, {month} and {day} are filled in."),
+    ...fit.lines.map((ln) => el("label", {}, ln.label,
+      el("input", { "data-fit-line": ln.kind, value: ln.template, spellcheck: "false", autocomplete: "off", oninput: () => { clearTimeout(fitTimer); fitTimer = setTimeout(previewFit, 400); } }),
+      el("span", { class: "field-note" }, `${ln.found ? "Found" : "Not found"} (sure: ${pct(ln.confidence)}): ${ln.why}.`))),
+    el("h2", {}, "Preview"),
+    el("ul", { class: "list", id: "nf-preview" }),
+    el("div", { id: "nf-plan" }),
+    el("div", { class: "row" },
+      el("button", { class: "primary", id: "nf-use", onclick: useFit }, "Use this layout"),
+      el("button", { id: "nf-keep", onclick: keepFit }, "Keep Kurooto's own layout")),
+    el("div", { class: "panel", id: "nf-result" }),
+    ...(fit.undo ? [undoBox(fit.undo)] : []));
+  previewFit();
+}
+function undoBox(u) {
+  const box = el("div", { class: "box" }, el("p", {}, `Moved ${u.moved} of Kurooto's notes (${String(u.at).replace("T", " ")}). `,
+    el("button", { type: "button", class: "link", onclick: async () => {
+      const r = await api("notes/fit/undo", {});
+      box.replaceChildren(el("p", { class: r.ok ? "ok" : "bad" }, r.ok ? `Put back ${r.moved_back} notes and the layout as it was.` : (r.error || r.problems.join(" "))));
+      fit = null; await refresh(); await loadFit($("#nf-folder").value);
+    } }, "Undo")));
+  return box;
+}
+async function previewFit() {
+  const out = $("#nf-plan");
+  if (!out) return;
+  const r = await api("notes/fit/preview", { layout: fitLayout(), lines: fitLines(), folder: $("#nf-folder").value });
+  fitShown = r.ok ? r : null;
+  $("#nf-use").disabled = !r.ok || !r.plan.ok || r.problems.length > 0;
+  if (!r.ok) { out.replaceChildren(el("p", { class: "bad" }, r.error)); return; }
+  $("#nf-preview").replaceChildren(...r.preview.map((x) => el("li", {}, `${x.label} → `, el("code", {}, x.path))));
+  const p = r.plan, parts = [];
+  r.problems.forEach((x) => parts.push(el("p", { class: "bad" }, x)));
+  if (r.other_folder) parts.push(el("p", {}, `Kurooto writes in this folder from now on. Its notes in ${state.workspace} stay where they are.`));
+  else if (!p.count) parts.push(el("p", {}, "None of Kurooto's own notes need to move."));
+  else {
+    parts.push(el("p", {}, `${p.count} of Kurooto's own notes move${p.fixed ? `, and ${p.fixed} link${p.fixed > 1 ? "s" : ""} in Kurooto's own text ${p.fixed > 1 ? "are" : "is"} updated to match` : ""}:`));
+    parts.push(el("ul", { class: "list" }, ...p.moves.map((m) => el("li", {}, el("code", {}, m.from), " → ", el("code", {}, m.to))),
+      p.count > p.moves.length ? el("li", {}, `and ${p.count - p.moves.length} more`) : null));
+  }
+  p.clashes.forEach((c) => parts.push(el("p", { class: "bad" }, `Can't move ${c.from} to ${c.to}: ${c.why}. Rename or move that note, or change the line. Nothing moves while a place is taken.`)));
+  if (p.daily_left) parts.push(el("p", { class: "note" }, `${p.daily_left} daily notes stay in ${p.daily_from}: they hold your own words. New ones go to the new place.`));
+  if (p.their_links) parts.push(el("p", { class: "note" }, `${p.their_links} links in your own notes point at notes that move; Kurooto doesn't change your text: ${p.theirs.map((x) => x.file).join(", ")}.`));
+  p.left.forEach((x) => parts.push(el("p", { class: "note" }, `${x.path} stays: ${x.why}.`)));
+  if (p.git && p.count) parts.push(el("p", { class: "note" }, "Your notes folder is a git repository: the moves show up there as renames."));
+  if (p.count) parts.push(el("p", { class: "note" }, "Only notes Kurooto wrote (with its header) move. Undo puts them back."));
+  out.replaceChildren(el("h2", {}, "What changes"), el("div", { class: "box" }, ...parts));
+}
+async function useFit() {
+  if (!fitShown) return;
+  const btn = $("#nf-use"), out = $("#nf-result");
+  btn.disabled = true;
+  const r = await api("notes/fit/apply", { layout: fitLayout(), lines: fitLines(), folder: $("#nf-folder").value, digest: fitShown.plan.digest });
+  if (!r.ok) { out.replaceChildren(el("p", { class: "bad" }, r.error)); await previewFit(); return; }
+  out.replaceChildren(el("p", { class: "ok" }, `✓ Saved. ${r.moved ? `Moved ${r.moved} notes and fixed ${r.fixed} links.` : "Kurooto writes to these places from now on."}`));
+  await refresh();
+  const keep = out.firstChild;
+  await loadFit(state.workspace);
+  $("#nf-result").replaceChildren(keep);
+}
+function keepFit() {
+  const use = fit.in_use;
+  if (!fit.other_folder && use.layout === "kurooto" && !Object.keys(use.paths).length) { go(step + 1); return; }  // already
+  $$(".fit-layout").forEach((b) => b.classList.toggle("on", b.dataset.fitLayout === "kurooto"));
+  $$("[data-fit-line]").forEach((i) => { i.value = fit.presets.kurooto[i.dataset.fitLine]; });
+  $("#nf-folder").value = state.workspace;
+  previewFit();
+  $("#nf-result").replaceChildren(el("p", {}, "Kurooto's own places are filled in above, for your notes folder. Use this layout switches back to them (the plan above shows what moves)."));
 }
 
 // ------------------------------------------------------------------------------------------ computer
@@ -968,7 +1079,7 @@ async function finish() {
     el("ol", { class: "next" },
       state.telegram.paired ? el("li", {}, "Send /help to your bot in Telegram to see what it can do.")
         : phoneApp() ? el("li", {}, "Pair your phone (below), then open Chat in the Kurooto app (iPhone: the Chat button) and send /help.")
-        : el("li", {}, "Connect Telegram or pick the phone app (step 6), so you can talk to your assistant."),
+        : el("li", {}, "Connect Telegram or pick the phone app (step 7), so you can talk to your assistant."),
       el("li", {}, "Open the dashboard: what's happening, your features and settings, all in one place.")),
     el("p", {}, el("a", { class: "button primary", href: "/" }, "Open the dashboard"))));
   if (chosen.has("calls") && !(res.results.calls && !res.results.calls.ok)) out.append(await pairBox());
@@ -1038,6 +1149,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 $("#tg-check").addEventListener("click", checkToken);
+$("#nf-look").addEventListener("click", () => loadFit($("#nf-folder").value.trim()));
 $("#ay-source").addEventListener("change", renderAbout);
 $("#ay-add").addEventListener("click", async () => {
   if (await addReport($("#ay-source").value.trim() || "an AI account", $("#ay-text").value)) { $("#ay-text").value = ""; renderAbout(); }

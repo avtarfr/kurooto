@@ -4,8 +4,12 @@ Ideas that aren't built yet. Nothing here is promised; each one ships as an opt-
 signed updates when it's ready.
 
 ## Next
-- **Your notes, your layout.** Choose where Kurooto writes: the daily note, subject folders, the inbox, your
-  profile. It then fits an existing notes system instead of bringing its own.
+- ~~**Your notes, your layout.** Choose where Kurooto writes: the daily note, subject folders, the inbox, your
+  profile. It then fits an existing notes system instead of bringing its own.~~ (0.5.20: the setup page's Notes step,
+  also Settings → notes and `kurooto setup notes`, reads the folder without AI (daily-note names and folder, link
+  style, header keys, subject folders, inbox) and proposes `notes.layout` + `notes.paths` with a confidence per line
+  and a preview; Kurooto's own notes move as one plan shown first, with Undo from a move log. Not yet: writing
+  markdown links instead of wikilinks for folders that use them.)
 
 ## From the ideation panel (2026-10-23)
 Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argued these out; the most backed first.

@@ -169,10 +169,15 @@ you decide whether to send it to whoever is helping you.
 1. **You:** what Kurooto calls you, your time zone (filled in from this computer, or your browser) and the
    assistant's name. An old name for a zone is saved under today's (`Europe/Kiev` becomes `Europe/Kyiv`), and
    zones are compared by their clocks, never their names.
-2. **Your computer:** what Kurooto found (processor, memory, graphics card, free space) and what it recommends for
+2. **Notes:** your notes folder, and where Kurooto writes in it. Point it at the notes you already keep (an Obsidian
+   vault, any folder of Markdown files; a Windows path with spaces works) and press **Look at this folder**: Kurooto
+   reads the folder, with no AI, and proposes a place for daily notes, the inbox, subject folders, concept notes and
+   research projects, each with how sure it is, plus a preview. **Use this layout**, change a line first, or **Keep
+   Kurooto's own layout**. See [Fitting Kurooto to the notes you have](#fitting-kurooto-to-the-notes-you-have).
+3. **Your computer:** what Kurooto found (processor, memory, graphics card, free space) and what it recommends for
    it, marked ★. You can change any of it later. On a laptop, what to do on battery; and the pages' **Colours**
    (see [Colours](#colours-look)): this computer's own colours are marked ★ when Kurooto finds them.
-3. **AI:** pick the AI that answers you (see [Your AI brain](#your-ai-brain)). ★ marks the recommendation:
+4. **AI:** pick the AI that answers you (see [Your AI brain](#your-ai-brain)). ★ marks the recommendation:
    Antigravity (agy), Google's agent program, signed in with your Google account. For agy and the other programs,
    press **Install** if it isn't installed and follow the sign-in; for a Gemini API key, make one at Google AI
    Studio, paste it and press **Save and test**. Then press **Test it**: it asks the AI to reply, and tells you if it
@@ -184,9 +189,9 @@ you decide whether to send it to whoever is helping you.
    even though they're turned on later, with Telegram; other features answer once they're on. Nothing said in the box
    goes to Telegram or your phone. *Undo:* nothing to turn off; it's only there while you set up (a reminder set there
    still comes after a restart, and can be cancelled with `/reminders` once Telegram is connected).
-4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
+5. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below. **Skip for now** if you'd rather do it later.
-5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the notes
+6. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the notes
    brain is a 0.5 GB download, so it's yours to tick). **What do you do?** (Student, Working, Research, Something
    else) adds what suits it: a student gets subjects, start-by dates, the quiz, after-class notes, doubts and the
    weekly summary; working, commitments, start-by dates, the calendar and the weekly summary; research, the Research
@@ -197,7 +202,7 @@ you decide whether to send it to whoever is helping you.
    ([Calm by default](#calm-by-default-why-each-message-came-and-a-daily-limit)): "Kurooto sends at most 6 messages a
    day on its own; the rest wait for one evening bundle at 20:00. Your own reminders, alarms and approvals always
    come." The number beside it changes `notify.calm.messages`.
-6. **Chat:** pick where you talk to Kurooto: **Telegram** or **The Kurooto phone app instead**. The phone app needs
+7. **Chat:** pick where you talk to Kurooto: **Telegram** or **The Kurooto phone app instead**. The phone app needs
    Phone calls (tick it on the Features step, **Set up now**); then **Pair my phone now**, or pair after Done. Its chat
    does what the bot does; files come as links (see [Without Telegram](#without-telegram)). *Undo:* pick Telegram
    instead, or add it later in Features. For **Telegram**, make your own bot in two minutes:
@@ -206,7 +211,7 @@ you decide whether to send it to whoever is helping you.
    2. BotFather replies with a token like `123456789:AAH…`. Paste it in the wizard and press **Check**.
    3. Tap the link the wizard shows, then **Start** in Telegram. Kurooto now knows that chat is yours and ignores
       everyone else.
-7. **Done:** the summary lists what you skipped, each with **Go back to it**. Finish setup installs what your
+8. **Done:** the summary lists what you skipped, each with **Go back to it**. Finish setup installs what your
    features need (with progress), turns them on, and, if you chose Phone calls, shows a QR code to pair your phone.
    Send `/help` to your bot (or in the phone app's chat).
 
@@ -2772,7 +2777,7 @@ and the AI never disagree. A feature that's off says so with a link to Features.
 ## Colours (Look)
 
 Kurooto's pages (the setup page, the dashboard and the morning page) come in three palettes. Pick one on the setup
-page (step 2, **Colours**) or in **Settings → Look → `look.palette`**:
+page (step 3, **Colours**) or in **Settings → Look → `look.palette`**:
 
 - **kuro** (the default): deep greens.
 - **rose**: the pinks of earlier versions.
@@ -2798,7 +2803,7 @@ The dashboard is always dark (with the system palette, its dark version); the ot
 
 *Settings:* `look.palette` (`kuro`, `rose` or `system`; default `kuro`), `look.theme_file` (empty).
 *Leaves your computer:* nothing. Kurooto only reads the colour settings and files above, on this computer.
-*Undo:* press **Kuro** on the setup page's step 2, or set `look.palette` back to `kuro`; empty `look.theme_file`.
+*Undo:* press **Kuro** on the setup page's step 3, or set `look.palette` back to `kuro`; empty `look.theme_file`.
 
 ## Taking your laptop with you (battery, pause, off)
 
@@ -3325,7 +3330,8 @@ are `[[wikilinks]]` either way. The AI is told your layout, and skills written f
 "plans/ideas.md"}`. The kinds are `daily`, `profile`, `how_to_help`, `not_interested`, `recurring`, `ideas`, `skills`,
 `prompts`, `inbox`, `note`, `subject`, `course`, `class_log`, `lecture`, `concept`, `exam_prep`, `doubts`, `research`,
 `project`, `runs`, `handwritten`, `mail`; the parts in braces are `{date}`, `{time}`, `{subject}`, `{project}` and
-`{slug}`. A place that doesn't work (a part that doesn't exist, or `..`) falls back to the layout's own.
+`{slug}`, plus `{year}`, `{month}` and `{day}` from the date (`{year}/{month}/{day}.md`). A place that doesn't work (a
+part that doesn't exist, or `..`) falls back to the layout's own.
 
 **Files folder** (`files.folder`): a folder outside your notes, for example `Documents/Kurooto files` or a folder your
 cloud drive syncs. With it set, these go there instead of into your notes: photos and PDFs you send (`inbox/`),
@@ -3336,12 +3342,42 @@ kurooto layout, `file://` links in the zettelkasten one (`files.links`: `relativ
 default): files stay where they always were, inside your notes (Classroom's in Kurooto's data folder).
 
 **Updating:** nothing changes until you set these; with the defaults everything stays where it was in 0.2. Changing
-them affects new notes and files only: nothing is moved, so move existing notes yourself if you want them in the new
-places (Kurooto then finds them there). Notes sync and Backups don't include the files folder: pick one your cloud
+them in Settings affects new notes and files only: nothing is moved. To move Kurooto's own notes along, use
+[Fitting Kurooto to the notes you have](#fitting-kurooto-to-the-notes-you-have). Notes sync and Backups don't include the files folder: pick one your cloud
 drive syncs, or back it up yourself.
 
 **Undo:** set `notes.layout` back to `kurooto` and empty `notes.paths` and `files.folder`. New notes and files go to
 the old places again; what was written in the meantime stays where it was put (nothing is deleted).
+
+### Fitting Kurooto to the notes you have
+
+The setup page's **Notes** step (later: dashboard → Settings → notes → **Fit Kurooto to your notes**, or `kurooto setup
+notes`) reads a notes folder and proposes `notes.layout` and `notes.paths` for it. No AI is used and nothing leaves
+your computer. It reads:
+- the top-level folder names (hidden ones such as `.obsidian` and `.git` are left out);
+- how daily notes are named and where: `journal/2026-10-20.md`, `dailies/`, `Daily Notes/2026-10-20.md`,
+  `2026/10/20.md`;
+- `[[wikilinks]]` or markdown links, with or without `.md`;
+- the header keys in use (`id`, `aliases`, `tags`, `title`);
+- where subject or course folders live;
+- an inbox folder.
+
+Each proposed line (daily notes, quick notes, subject folders, concept notes, research projects) says how sure it is
+and why, and can be changed; the places that follow from a line follow it (course pages and lecture notes in the
+subject folder, quick notes in the inbox). A preview shows the result ("Daily notes → `Daily Notes/2026-10-20.md`").
+
+**Use this layout** saves the settings. When Kurooto has already written notes, the step first shows a plan: which of
+**its own** notes move where (only notes with its header: `made_by`, or `trust_tier: agent_written` in the
+zettelkasten layout), how many links in its own text are updated, and what stays. Your notes, your daily notes (they
+hold your words) and your profile never move; links in your own words that point at a moved note are listed, never
+changed. Links are updated only in Kurooto's notes, its `<!-- kurooto:... -->` blocks and the home note's course
+list. Nothing in the notes folder changes before you confirm, and only as the plan shown says: a note changed since,
+or a new place that's already taken, stops the whole move. Looking at another folder switches Kurooto to that folder;
+its notes in the old one stay there. Link style isn't a setting yet: Kurooto keeps writing `[[wikilinks]]`.
+
+*Leaves your computer:* nothing. *Undo:* the step's **Undo** puts the moved notes back, undoes the link updates and
+sets the layout back (a move log in Kurooto's state folder, `notes-moves/`, works with or without git). A note you
+changed since keeps your change, and the step says which.
 
 ## Where things are
 
@@ -3415,6 +3451,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | The system palette doesn't use my colours | Settings → Look shows what Kurooto found. Changes show within half a minute. Your setup keeps its colours somewhere else? Point `look.theme_file` at a kitty theme or a matugen or pywal `colors.json`. |
 | The setup page says "Kurooto isn't answering" | It stopped or is restarting: start it from your apps menu (or `kurooto on`), then press the button again. What you typed stays. "Out of date": reload the page. |
 | Notes appear in the wrong folders | Check `notes.layout` and `notes.paths` (Settings → notes); a custom place that doesn't work falls back to the layout's own. Existing notes aren't moved when you change the layout. |
+| Use this layout says a place is taken | One of Kurooto's notes would land where a note already is. Rename or move that note, or change the line on the Notes step; nothing moves until no place is taken. |
 | Photos and PDFs still land in my notes | Set `files.folder` to a folder outside your notes folder (one inside it changes nothing). |
 | The setup page won't open | `kurooto open`, or go to `http://127.0.0.1:8770`. If another program uses that port, Kurooto picks the next one (`kurooto paths` → `web.json` in the state folder says which). |
 | Not enough space | The wizard says what needs it. Free some space, or choose fewer features. |
