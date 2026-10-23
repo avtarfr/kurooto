@@ -757,6 +757,16 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `reply_drafts.ask_days` | `3` | days between asking whether drafted replies were useful |
 | `reply_drafts.per_day` | `5` | the most reply drafts per day |
 
+### `repo_projects`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `repo_projects.github_extras` | `true` | with gh signed in: description, topics, open issues and milestones, read through gh |
+| `repo_projects.max_mb` | `50` | the most of a cloned repository's files checked out to be read (MB); its history isn't counted |
+| `repo_projects.on` | `true` | /project add and "set up my project from github.com/..." set a project up from its repository |
+| `repo_projects.refresh` | `true` | nightly, each watched repository's README, docs, releases and milestones are looked at again |
+| `repo_projects.refresh_at` | `"daily 04:20"` | when that runs (from Research, so Research has to be on) |
+
 ### `research`
 
 | Setting | Default | What it does |

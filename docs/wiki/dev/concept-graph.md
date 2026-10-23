@@ -101,7 +101,7 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 
 ## Sources beyond books (0.5.19)
 
-`integrate.sources` (default `["books", "classroom"]`; `SOURCES = ("books", "classroom", "handwritten")`,
+`integrate.sources` (default `["books", "classroom"]`; `SOURCES = ("books", "classroom", "handwritten", "repos")`,
 `Integrate.sources()` / `reads(src)`) says what goes through the same pipeline. Everything that isn't a book is an
 **item**: a dict in `items.json` that stands in for the book dict `b` everywhere (`source_of(b)` is `b["source"]`, or
 `"books"` when absent, so book dicts from `Books.library()` work unchanged).
@@ -141,6 +141,17 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 - **Handwritten** (`Linker.done` → `Linker.to_graph` → `Integrate.take_handwritten(note, subject, title, day)`, after
   a successful `apply`, which now also returns `subject` and `day`): the transcription between the handwritten markers
   (`handwritten_links.parts`); notes with no subject are skipped. "Seen in" points at the handwritten note.
+- **Repos** (0.7.0; `core/repoproject.py:queue_graph` → `Integrate.queue_item("repos", text, subject, "<project>:
+  <path>", <project note>)`): a project set up from its repository (`/project add`) queues its README, docs files
+  (not CHANGELOG, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY), notebooks' markdown cells and a paper PDF's text, one item
+  per file, `MIN_CHARS["repos"]` 600. It adds `"repos"` to `integrate.sources` when it isn't there (the card's
+  `source:repos` switch; `rec["source_added"]` so Undo graph takes it out again when no other repository project uses
+  it). The subject is the first course the project relates to, else `research`; "Seen in" points at the project note
+  (`stub()` is the item's `note`, as for any item). The prompt head is `HEADS["repos"]` ("Project documentation: ...";
+  commands and code aren't concepts; the text is data). Re-adding or the nightly refresh queues only files whose
+  text hash changed (`rec["files"]`); the key is still the text's hash, so an unchanged file is never read twice.
+  Undo graph drops queued items not in the ledger yet; read ones stay. Nothing else in `write()` is source-specific
+  for repos (no stub block, no course map).
 - **Backfill** (`Integrate.backfill_classroom()` and `backfill_handwritten()` (the notes in `handwritten-links.json` with a subject, the oldest day first), `/graph backfill classroom | handwritten | all`, the card's `backfill:classroom` switch):
   scans `ClassroomNotes.files_dir` (and the legacy `<data>/classroom`) for the course folders in
   `classroom-notes/folders.json` and `classroom_notes.folders`; reads each file's `.txt` sidecar (or a text file

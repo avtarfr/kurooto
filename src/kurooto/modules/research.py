@@ -26,6 +26,10 @@ no commits or runs for a few days (4 by default), Kurooto asks what's up: Busy, 
 (a call the next day at 18:00 with Phone calls on, else a message) or Pausing. Your own text in these notes is never
 changed; Kurooto only adds lines.
 
+Projects from repositories (core/repoproject.py): /project add <github address | folder> sets a project up from its
+repository (the note, its commit log here, its docs into the concept graph); the nightly look at those repositories
+(repo_projects.refresh_at) runs from here, and the setup form and the Research tab can start one.
+
 Zotero (modules/zotero.py, research.zotero): with the Zotero app running on this computer, or a Zotero web API key
 (/zotero key <key>), each paper in the digest comes with a Zotero button: one tap puts it in your library, and reading
 notes that link the paper get a link to its Zotero item.
@@ -295,6 +299,13 @@ class Research(Module):
         self.every("idle", self.setting("idle_when") or "daily 18:00", lambda p: self.idle_check(), respect="quiet")
         self.action("remind", self._remind)
         self.app.jobs.then_actions["research.digest"] = self._digested
+        from kurooto.core import repoproject  # projects set up from a repository: README, docs, releases, milestones
+
+        if self.app.settings.get("repo_projects.refresh"):
+            spec = self.app.settings.get("repo_projects.refresh_at") or "daily 04:20"
+            self.every("repo_refresh", spec, lambda p: repoproject.refresh(self.app))
+        else:
+            self.app.scheduler.cancel(f"{self.id}:repo_refresh")
         if self.setting("zotero_links") and str(self.setting("zotero") or "auto") != "off":
             self.every("zotero_links", "daily 04:40", lambda p: self._link_later())
         else:
@@ -960,9 +971,17 @@ class Research(Module):
             "rank": bool(self.setting("rank")),
             "repos": self.setting("repos") or [],
             "projects": {r: self.project_of(r) for r in self.setting("repos") or []},
+            "repo_projects": self._repo_projects(),
             "chat": self.app.is_on("chat"),
             "on": self.app.is_on(self.id),
         }
+
+    def _repo_projects(self) -> list[dict]:
+        from kurooto.core import repoproject
+
+        recs = sorted(repoproject.records(self.app).values(), key=lambda r: r.get("updated") or "", reverse=True)
+        return [{"label": r["label"], "project": r.get("project") or "", "updated": str(r.get("updated") or "")[:10]}
+                for r in recs[:30]]  # fmt: skip
 
     def setup_form(self) -> dict:
         return {
@@ -984,6 +1003,12 @@ class Research(Module):
                     "label": "Keywords (comma-separated)",
                     "type": "text",
                     "placeholder": "e.g. message passing, molecular property prediction",
+                },
+                {
+                    "name": "repo",
+                    "label": "A project's repository (optional: its project is set up from it)",
+                    "type": "text",
+                    "placeholder": "github.com/owner/name, or a folder such as ~/code/my-project",
                 },
                 {
                     "name": "zotero_key",
@@ -1009,6 +1034,10 @@ class Research(Module):
         zot = ""
         if str(values.get("zotero_key") or "").strip():
             zot = " " + self.zotero.set_key(str(values["zotero_key"]))
+        if str(values.get("repo") or "").strip():  # you typed it and pressed Save: the button way (core/tap.py)
+            from kurooto.core import repoproject
+
+            zot += " " + repoproject.start(self.app, str(values["repo"]).strip(), via="button")
         return {"ok": True, "message": "Saved. Pick more fields and sources on the dashboard's Research tab." + zot}
 
     # ------------------------------------------------------------------------------------------ telegram

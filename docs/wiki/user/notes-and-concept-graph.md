@@ -576,6 +576,10 @@ The relation words are: `needs`, `generalises`, `special-case-of`, `example-of`,
   change, each file's before-copy is kept, and it's one Git commit per textbook.
 - `handwritten` (add it to turn it on): your [handwritten notes](books-and-study.md#handwritten-notes), once written
   out and linked; "Seen in" points at the handwritten note. Notes with no subject are left out.
+- `repos` (added when you set up a project from a repository: [Research](research.md#set-up-a-project-from-a-repository)):
+  the project's README, docs, notebooks' text and paper, 600 characters or more each; "Seen in" points at the project
+  note, and the concept notes go to the course the project relates to (else `research`). Changed files are read
+  again; unchanged ones aren't.
 
 Each item is read **once**: it's known by the hash of its text, so the same file filed again (downloaded a second
 time, say) isn't read again, and an edited one is. Class files and handwritten notes are cut the same way as books:

@@ -70,9 +70,10 @@ GUARDED: dict[str, Guard] = {
     ),
     "repo.attach": Guard(
         "attach a code repository to a project",
-        ("typed",),
-        "/repos add <folder> [as <project>], /latex add <folder> [main.tex] (Research add-on); repositories are never "
-        "searched for on the disk",
+        ("typed", "button"),
+        "/repos add <folder> [as <project>], /latex add <folder> [main.tex] (Research add-on), /project add <address> "
+        'and `kurooto project add`; Set it up under "set up my project from <address>" and the Research card\'s '
+        "Add a project from a repository; repositories are never searched for on the disk",
     ),
     "addon.install": Guard(
         "add or update an add-on by link (code that runs inside Kurooto), official ones too",

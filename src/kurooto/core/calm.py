@@ -557,6 +557,13 @@ REASONS: dict[str, Reason] = {
             stop=to(False, "the LaTeX tracker is off (its card switches it back on)"),
         ),
         R(
+            "repo_projects.refresh",
+            "a project's repository changed overnight: its README or docs, a new release, new dated milestones",
+            many="lines about your projects' repositories",
+            setting="repo_projects.refresh",
+            stop=to(False, "repositories aren't looked at again each night"),
+        ),
+        R(
             "research.idle",
             "a question about a project with no commits for a while",
             many="questions about quiet projects",

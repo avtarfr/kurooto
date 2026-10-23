@@ -2016,6 +2016,31 @@ def ai_run(a) -> int | None:
     finally:
         app.close()
     return 1
+def project_parsers(sub) -> None:
+    pj = sub.add_parser("project", help="a project set up from its repository: add, update, list (core/repoproject.py)")
+    psub = pj.add_subparsers(dest="project_cmd")
+    psub.add_parser("list", help="the projects set up from repositories (the default)")
+    add = psub.add_parser("add", help="set a project up from a GitHub address or a folder (read, never run)")
+    add.add_argument("target", help="github.com/owner/name (https or git@ form) or a folder's full path")
+    add.add_argument("--as", dest="name", default="", help="the project's name (default: what the repository says)")
+    up = psub.add_parser("update", help="read a project's repository again")
+    up.add_argument("target", help="the project's name, or its repository")
+
+
+def project_run(a) -> int | None:
+    """Runs `kurooto project ...` through the running Kurooto (like typing /project on Telegram); None for any other
+    command. The result comes as a message, as it does on Telegram."""
+    if a.cmd != "project":
+        return None
+    cmd = a.project_cmd or "list"
+    text = "/project" if cmd == "list" else f'/project {cmd} "{a.target}"'
+    if cmd == "add" and a.name.strip():
+        text += f" as {a.name.strip()}"
+    r = say(text)
+    if r is None:
+        return 1
+    print("\n".join(r.get("replies") or []) or "Done.")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -2112,6 +2137,7 @@ def main(argv: list[str] | None = None) -> int:
     jobs_parsers(sub)
     addons_parsers(sub)
     ai_parsers(sub)
+    project_parsers(sub)
     a = ap.parse_args(argv)
     done = home_run(a)
     done = ws5_run(a) if done is None else done
@@ -2123,6 +2149,7 @@ def main(argv: list[str] | None = None) -> int:
     done = jobs_run(a) if done is None else done
     done = addons_run(a) if done is None else done
     done = ai_run(a) if done is None else done
+    done = project_run(a) if done is None else done
     if done is not None:
         return done
 

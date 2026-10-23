@@ -2757,6 +2757,31 @@ day's new commits become one line under `## Log` in the project's note, e.g. `- 
 commits: …`. Kurooto only adds lines: your own text in these notes is never changed. (Logs from 0.1.0 in
 `research/<repository>-log.md` are left as they are.)
 
+**A project from its repository** (`/project add <github address | folder> [as <name>]`, also in the phone app's
+chat; "set up my project from github.com/owner/name" asks first with **Set it up** / **Not now**; the Research tab's
+**Add a project from a repository**; the setup page's Research step; `kurooto project add <address> [--as <name>]`):
+a GitHub repository is copied into `<data>/repos/<owner>__<name>` (the default branch, its last 50 commits, a
+blobless clone, then only documentation, manifests, notebooks, a paper PDF up to 20 MB and text files up to 1 MB,
+`repo_projects.max_mb` 50 in all; never a secret's file, a picture, an archive or a submodule); a folder is read in
+place. Nothing in it runs. A private repository works when your git can reach it (`gh auth setup-git`, an ssh key);
+Kurooto never asks for a token. With Chat on, your AI reads the README, docs, file list, manifests, licence,
+`CITATION`, recent commits (authors' names only) and, with `gh` signed in (`repo_projects.github_extras`), its
+issues, milestones and topics, in one request; its answer is checked (people only if the repository names them, a
+supervisor only if it says so, only your own courses and projects). Without Chat, the same from the files alone. Then,
+in one message with **Undo** per piece (and in `/inferred`): the project note with Kurooto's `<!-- kurooto:repo -->`
+block under its title (what it is, goal, field, stack, licence, how to run it, open problems and next steps, people,
+links to the repository, a paper and your related courses, projects and concept notes; a supervisor it names also
+gets "With:" and Meetings); the repository in `/repos` (Research turned on if it was off); its README, docs,
+notebooks' text and paper in the concept graph (source `repos`, added to `integrate.sources`; "Seen in" points at the
+project note); dated milestones as **Add** buttons (a deadline only when you tap). Adding it again updates instead of
+doubling. Nightly at 04:20 (`repo_projects.refresh_at`, Research on), each watched repository set up this way is
+looked at again: a new commit on GitHub means a fresh copy; changed README or docs rewrite the block and queue only the
+changed files; a new tag and new milestones come in one line (Calm: `repo_projects.refresh`). `/project` lists them,
+`/project update <name>` reads one again. *Leaves:* git fetches from `github.com`, gh reads from `api.github.com`;
+what the AI is shown goes to your AI. *Undo:* the Undo buttons or `/inferred undo <id>` (the note goes only if nothing
+of yours is in it, else only Kurooto's block; the repository leaves `/repos`; files not read yet leave the graph's
+queue); `repo_projects.on` = `false`, `repo_projects.refresh` = `false`.
+
 **Quiet projects:** when a project has had no commits or runs for 4 days (`research.idle_days`; 0 never asks),
 Kurooto asks once, at 18:00, what's up: **Busy**, **Working off-git**, **Remind me tomorrow** (with Phone calls on, a
 call the next day at 18:00, and a message if you miss it; otherwise a message then; `research.remind_by_call` =

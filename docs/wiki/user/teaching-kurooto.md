@@ -483,7 +483,9 @@ Set up 2 things from your recent chats and journal (1 project, 1 class). /inferr
 
 with **Undo all**. `/inferred scan` runs it now.
 
-`/inferred` lists what was set up, newest first; `/inferred undo <id>` (or the Undo button) takes one back. Turn it off
+`/inferred` lists what was set up, newest first, including the pieces of a project you set up from its repository
+([`/project add`](research.md#set-up-a-project-from-a-repository)); `/inferred undo <id>` (or the Undo button) takes
+one back. Turn it off
 with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`, `infer.commitments`,
 `infer.quizzes`, `infer.short_names`; `infer.sweep` = false stops only the pass.
 

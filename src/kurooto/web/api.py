@@ -628,6 +628,14 @@ class Api:
             except Exception as e:
                 return 200, {"ok": False, "error": f"Couldn't reach it: {type(e).__name__}: {e}"[:300]}
             return 200, {"ok": True, "label": describe(feed), "count": len(papers), "papers": papers[:10]}
+        if path == "research/project":  # Add a project from a repository (core/repoproject.py): a button you pressed
+            from kurooto.core import repoproject
+
+            target = str(b.get("target") or "").strip()
+            if not target:
+                return 200, {"ok": False, "error": "Give a GitHub address or a folder first."}
+            said = repoproject.start(self.app, target, str(b.get("name") or "").strip(), via="button")
+            return 200, {"ok": not said.startswith(("Can't", "Projects from")), "message": said}
         if path == "research/run":
             r = self.app.modules["research"]
             threading.Thread(target=r.papers, name="papers", daemon=True).start()

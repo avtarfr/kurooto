@@ -85,6 +85,7 @@ computer only.
 | Drive upload | the files you send yourself, into a Kurooto folder in your Drive; nothing is shared | Google (your Drive) |
 | About you | the reports you add stay on this computer (Kurooto's data folder, not synced); building the profile sends them to the AI you picked, and its short "In brief" part goes along with every AI request | the AI service you picked |
 | Research | your fields, keywords and searches, arXiv searches you wrote in arXiv's own words included (never your notes). Runs kept in your repositories (`runs/index.csv`) and `research.save_note` stay on your computer | the sources you pick: arXiv, bioRxiv/medRxiv, PubMed, feeds (all public) |
+| Research: a project from a repository (`/project add`) | git fetches a GitHub repository you named (your own git sign-in for a private one; Kurooto sends nothing of yours and never asks for a token). With `gh` signed in (`repo_projects.github_extras`): the repository's description, topics, open issues and milestones are read. With Chat on, to write the project note: its README, `docs/`, the file list, manifests, licence, `CITATION`, the first pages of a paper in it, recent commit messages with the authors' names (no emails), issues and milestones, and the names of your courses and projects. Anything that looks like a key is taken out first; files named like secrets (`.env`, keys, `credentials`, `token` files, `.ssh/`, `secrets/`) are never copied or read; nothing in it runs. Its README and docs go to the concept graph like a book (to the graph's AI) | `github.com` (git), `api.github.com` (gh); the AI service you picked |
 | Research: Zotero (a paper you tap) | the paper's public details: title, authors, abstract, date, link, arXiv id or DOI | the Zotero app on this computer (its connector, `127.0.0.1:23119`), or Zotero's web API (`api.zotero.org`) with your key |
 | Research: "Remind me tomorrow" by call (Phone calls on) | the project's name, as the call's reason | your call line (Cloudflare, Gemini Live), like any call |
 | Research: `kurooto watch` | the command's name, exit code, duration and last lines (`--lines 0`: none) | Telegram (your own bot), like any message |
@@ -112,8 +113,8 @@ requests and bytes, per day) and checks it against this list. `/egress` shows th
 | `classroom.googleapis.com` | Google Classroom |
 | `gmail.googleapis.com` | Gmail (mail digest, drafts) |
 | `www.googleapis.com` | Google Drive and Google Calendar |
-| `api.github.com` | Notes sync and Profile sync (checking your repository) |
-| `github.com` | downloading Git (Windows), Tectonic, kitty and fish |
+| `api.github.com` | Notes sync and Profile sync (checking your repository); gh reading a project's issues and milestones (Projects from repositories, when gh is signed in) |
+| `github.com` | Projects from repositories (git fetching a repository you named); downloading Git (Windows), Tectonic, kitty and fish |
 | `api.cloudflare.com` | Phone calls: setting up your call line |
 | `.workers.dev` | Phone calls: your call line (any address under it) |
 | `ntfy.sh` | Phone calls: ringing your phone |
@@ -133,7 +134,8 @@ pages your AI reads for a request (its web reading tool). This computer (`127.0.
 counted: nothing leaves.
 
 **Programs that go online by themselves** are counted as "handed to" them, with the feature; Kurooto doesn't look
-into what they send: git (Notes sync, Profile sync, Add-ons by link), npm and wrangler (setting up your call line), agy and Claude
+into what they send: git (Notes sync, Profile sync, Add-ons by link, Projects from repositories), gh (a project's
+issues and milestones), npm and wrangler (setting up your call line), agy and Claude
 Code (AI requests), Ollama (downloading a model), GBrain (making the index with Gemini, or your own brain's models),
 Tectonic (LaTeX packages), and installers (winget, Homebrew, Flatpak, npm, Bun, a vendor's install script). Where they
 send it is in the tables above.

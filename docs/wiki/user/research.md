@@ -6,6 +6,7 @@ that keeps up with your code, a log of experiment runs, and a message when a lon
 - [Turn it on](#turn-it-on)
 - [The papers digest](#the-papers-digest)
 - [Projects and their logs](#projects-and-their-logs)
+- [Set up a project from a repository](#set-up-a-project-from-a-repository)
 - [Quiet projects](#quiet-projects)
 - [Meetings with someone: briefs, minutes and action items](#meetings-with-someone-briefs-minutes-and-action-items)
 - [Experiment runs (kurooto runlog)](#experiment-runs-kurooto-runlog)
@@ -148,6 +149,91 @@ it ("isn't a git repository (no commits to follow)"), which isn't a problem; `gi
 **Logs from 0.1.0** in `research/<repository>-log.md` are left as they are.
 
 `/sync all` also brings the project logs up to date ([Sync everything](notes-and-concept-graph.md#sync-everything)).
+
+---
+
+## Set up a project from a repository
+
+**What it does.** Give Kurooto a project's code repository (a GitHub address, or a folder on this computer) and your
+AI works out what the project is and sets everything up from it: the project note, its commit log, its docs in the
+concept graph, and its dated milestones as buttons.
+
+| Where | How |
+|---|---|
+| Telegram or the phone app's chat | `/project add github.com/ana-ruiz/glacier-flow` (or `https://...`, or `git@github.com:...` for ssh) |
+| The same, naming the project | `/project add ~/code/glacier-flow as Glacier Flow` |
+| In plain words | "set up my project from github.com/ana-ruiz/glacier-flow", or "add ~/code/glacier as a project": it says what it would do, with **Set it up** / **Not now**; nothing is fetched before your tap |
+| Dashboard → Research tab | **Add a project from a repository**: the address or folder, a name if you like |
+| Setup page → Research | "A project's repository (optional)" |
+| A terminal | `kurooto project add <address or folder> [--as <name>]`; `kurooto project` lists them |
+
+`/project` lists the projects set up this way; `/project update <name>` reads one again.
+
+**Getting it.** A GitHub address is copied into Kurooto's data folder (`<data>/repos/<owner>__<name>`): only the
+default branch, its last 50 commits, and of its files only the ones worth reading: documentation, manifests,
+notebooks, a paper PDF (up to 20 MB) and other text files up to 1 MB each, 50 MB in all (`repo_projects.max_mb`).
+Pictures, archives, data files and anything that looks like it holds a secret (`.env`, keys, `credentials`, `token`
+files, `.ssh/`, `secrets/`) are never copied or read. A folder on this computer is read where it is and never
+changed. **Nothing in a repository is ever run**: no install, no script, no build, no submodules.
+
+**Private repositories** work when the git on this computer can already reach them: sign git in once
+(`gh auth login`, then `gh auth setup-git`, or an ssh key and the `git@github.com:...` address). Kurooto never asks
+for a token and never keeps one. If git can't reach it, the message says so.
+
+**Understanding it.** Kurooto reads the README, `docs/`, the list of files, the languages, the package manifests
+(`pyproject.toml`, `package.json`, `requirements.txt`...), the licence, `CITATION.cff`, a paper link, and the recent
+commits (their messages and the authors' names only). With the `gh` program signed in, also the repository's
+description, topics, open issues and open milestones (`repo_projects.github_extras`; skipped quietly otherwise).
+With Chat on, your AI reads all that in one request and says what the project is, its goal and field, its stack,
+where it stands, how to run it, open problems and next steps, who works on it, and which of your courses and projects
+it relates to. Its answer is checked: a person is kept only if the repository names them, a supervisor only if the
+repository says so, and only your own courses and projects are linked. Without Chat (or if the AI fails), the same
+is filled in from the files alone: the README's title and first paragraph, its install section, the manifests, the
+commit authors and the open issues.
+
+**What gets set up.** One message lists it, with an Undo button per piece (also in `/inferred`):
+
+```
+Set up Glacier Flow from github.com/ana-ruiz/glacier-flow (your AI read it):
+- Project note research/glacier-flow/index.md: what it is, its stack, how to run it, status and next steps; with
+  Dr Lena Ortiz (supervisor, as the repository says).
+- Its commits go into the project's Log each night (/repos).
+- Its README and docs (3 files) are queued for the concept graph; it reads them at night.
+Dated milestones:
+- Glacier Flow: v1.0: Fri 14 Nov
+Nothing is added until you tap.
+/inferred lists these, with Undo.
+[Undo note] [Undo commit log] [Undo graph]
+[Add: Glacier Flow: v1.0 · Fri 14 Nov] [None of these]
+```
+
+- **The project note** is the same kind of project note "I got a project under Prof X" makes, listed in the research
+  hub. What Kurooto writes from the repository sits in its own block under the title (`<!-- kurooto:repo -->`): what
+  it is, goal, field, topics, stack, licence, how to run it (the commands as its docs write them), open problems and
+  next steps, people, and links (the repository, a paper, your related courses, projects and concept notes). Reading
+  it again rewrites only that block; your own text in the note is never changed. A supervisor the repository names
+  also gets a "With:" line and a Meetings section, so meeting briefs and minutes work as for any project.
+- **The commit log**: the repository joins `/repos` under the project's name (Research is turned on if it was off),
+  so each day's commits become a line in the project's Log.
+- **The concept graph** (when it's on): the README, docs, notebooks' text and the paper are read in batches like a
+  book, and the concepts they introduce link back to the project note ("Seen in"). It adds "repos" to what the graph
+  reads (`integrate.sources`; its card has the switch). If the graph is off, the message says so.
+- **Dated milestones** come as **Add** buttons (each becomes a deadline only when you tap it).
+- GBrain, when it's on, picks up the new notes at its next sync.
+
+**Again, and keeping up.** Adding the same repository again (in any of its address forms) updates it: the block is
+written again, changed files go to the concept graph, new milestones are offered; nothing is made twice. Every night
+at 04:20 (`repo_projects.refresh_at`, while Research is on and the repository is watched), Kurooto looks again: for a
+GitHub copy, one small request asks whether there's a new commit or tag, and only then is a fresh copy made. If the
+README or docs changed, the note's block is written again and only the changed files are queued for the graph; a new
+release (tag) and new dated milestones are said in one line, the milestones with Add buttons
+(`repo_projects.refresh` = `false` stops this).
+
+**Undo.** Undo note removes the note if nothing of yours is in it, else only Kurooto's block (and the "With:" line it
+added). Undo commit log takes the repository out of `/repos` (and turns Research off again if it turned it on and has
+nothing else). Undo graph takes back the files not read yet (concepts already written stay, like any other). The copy
+in the data folder stays until you delete `<data>/repos/<owner>__<name>`; backups leave it out (it can be fetched
+again).
 
 ---
 
@@ -455,6 +541,11 @@ Dashboard → Settings → research (most of these are also on the Research tab)
 | `research_addon.latex_morning` | `daily 08:00` | When the morning line comes (only when a build broke or you wrote) |
 | `research_addon.latex_timeout_min` | `15` | A build that takes longer is stopped and counts as an error |
 | `research_addon.members_off` | `[]` | Research tools in the bundle you switched off on its card |
+| `repo_projects.on` | on | `/project add` and "set up my project from …" ([Set up a project from a repository](#set-up-a-project-from-a-repository)) |
+| `repo_projects.refresh` | on | Each night, watched repositories set up this way are looked at again |
+| `repo_projects.refresh_at` | `daily 04:20` | When that runs |
+| `repo_projects.max_mb` | `50` | The most of a cloned repository's files that are copied to be read |
+| `repo_projects.github_extras` | on | With `gh` signed in: description, topics, open issues and milestones |
 | `meetings.minutes` | on | Notes you send after a meeting become minutes through your AI ([Meetings](#meetings-with-someone-briefs-minutes-and-action-items)) |
 | `meetings.after_h` | `3` | Hours after a meeting's start that a voice note or a long typed note counts as notes from it |
 
@@ -466,7 +557,11 @@ Dashboard → Settings → research (most of these are also on the Research tab)
 feeds), all public; never your notes. With Chat on and the AI picking, the papers' titles and summaries and what you
 work on go to the AI you picked. Notes you send after a meeting go to the AI you picked, to be written up as minutes
 (a voice note goes to Google first to be written out, as any voice note does). Commit messages and runs stay on this
-computer. `kurooto watch` messages go through
+computer. A project set up from a repository: git fetches a GitHub repository from `github.com` (with your own git
+sign-in for a private one), and `gh`, if it's signed in, reads its issues and milestones from `api.github.com`; what
+your AI is shown (README, docs, the file list, manifests, licence, commit messages and authors' names, issues,
+milestones, the names of your courses and projects) goes to the AI you picked, with anything that looks like a key
+taken out and secret files never read. `kurooto watch` messages go through
 Telegram like any message. A paper you tap into Zotero goes to the Zotero app on this computer, or, with your key, to
 Zotero's web API (`api.zotero.org`): only its public details. The Research add-on: run comparisons and LaTeX builds
 stay on this computer; Tectonic fetches LaTeX packages it lacks from its public server (nothing of yours is sent); a
@@ -477,4 +572,6 @@ BibTeX suggestion, only when you tap for one, sends the citation key and the sen
 `research.repo_runs` stops reading runs (lines already in your notes stay). `research.zotero` = `off` drops the Zotero
 buttons, `/zotero key off` removes the key; delete a `kurooto:zotero` block from a note if you don't want it. The
 Research add-on: Features → Research add-on → **Turn off** (or a part's switch on its card); comparisons in your notes
-and entries you added to a `.bib` stay.
+and entries you added to a `.bib` stay. Projects from repositories: `repo_projects.on` = `false` (no `/project add`),
+`repo_projects.refresh` = `false` (no nightly look); Undo under the message or `/inferred undo <id>` takes back a
+piece.

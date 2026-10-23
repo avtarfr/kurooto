@@ -105,19 +105,22 @@ register_defaults(
 STALE_S = 3 * 3600  # a request that didn't come back in this long is asked again
 TRIES = 3
 PAGE_MARK = re.compile(r'<a id="p-(\d+)"></a>\n## \[p\. \d+\]\n')
-SOURCES = ("books", "classroom", "handwritten")  # what integrate.sources may name
-MIN_CHARS = {"classroom": 1500, "handwritten": 800}  # less text (an announcement, a one-line post) isn't read
+SOURCES = ("books", "classroom", "handwritten", "repos")  # what integrate.sources may name
+# less text (an announcement, a one-line post) isn't read; repos: a project's README, docs, notebooks' text, paper
+MIN_CHARS = {"classroom": 1500, "handwritten": 800, "repos": 600}
 PART_CHARS = 3000  # text with no pages of its own is cut into parts of about this many characters (about a page)
 SLIDE = re.compile(r"^--- slide \d+ ---$", re.M)  # how Classroom writes out a .pptx (google_classroom._xml_text)
 NAMED = {
     "books": ("book", "books"),
     "classroom": ("class file", "class files"),
     "handwritten": ("handwritten", "handwritten"),
+    "repos": ("repository file", "repository files"),
 }
 SEEN_HEAD = {  # what a "Seen in" block calls the lines each source adds to an existing note
     "books": "### Added from the books",
     "classroom": "### Added from class",
     "handwritten": "### Added from your handwritten notes",
+    "repos": "### Added from your projects' repositories",
 }
 
 
@@ -1677,6 +1680,7 @@ class Integrate(Module):
                 ("books", "Read books"),
                 ("classroom", "Read class materials Classroom files into your notes"),
                 ("handwritten", "Read your handwritten notes"),
+                ("repos", "Read your projects' repositories (README, docs): /project add"),
             )
         ]
         toggles.append(
