@@ -1160,7 +1160,14 @@ A suggestion can be:
 - **an idea**: something new Kurooto could do for you, added to `kurooto/ideas.md` in your notes.
 
 Answer each with **Apply**, **Observe longer** or **No** (buttons, a reply, or on your next call; **Later** keeps it
-for the call). Apply does it at once; nothing changes without your tap. **No** drops that idea (however it's worded
+for the call). Apply does it at once; nothing changes without your tap.
+
+Before the AI, rules on this computer read the records themselves. A **routine** it sees (the same study session or
+`/hold` at the same time of the week on `retro.routine_weeks` (3) different weeks, not a commitment or class yet) comes
+as one message a night with **Add** / **No**; Add makes it a [commitment](#commitments). **Data fixes it is sure of**
+are made at once, each in one line with **Undo**: two copies of one deadline (Classroom's and the one you said, due
+the same day, same course, same words and numbers) become one. Only fixes listed in `core/tap.py` (`BY_ITSELF`) are
+made this way; anything outward, an alarm or a call waits for your tap. **No** drops that idea (however it's worded
 next time) for 30 days. **Observe longer** watches it for a week first (reply "observe 14" for 14 days); when the
 watching ends, the next look back tells you what it found.
 
@@ -1170,7 +1177,8 @@ get a message with what it found. `/lookback` shows the last look back (and what
 now.
 
 *Settings* (`retro.*`): `when` (`daily 23:50`; `weekly sun 21:00` looks back over the whole week), `max_proposals`
-(3), `observe_days` (7), `no_days` (30), `transcripts` (on), `journal` (on). The look back's instructions are the
+(3), `observe_days` (7), `no_days` (30), `transcripts` (on), `journal` (on), `routines` (on), `routine_weeks` (3),
+`fixes` (on). The look back's instructions are the
 `retro` skill: put your own copy in `kurooto/skills/retro/SKILL.md` to change how it thinks (it's not a command).
 *Needs:* Chat. *Turn it off:* Features → Nightly look back. Waiting suggestions stay answerable for three days.
 
@@ -1278,12 +1286,16 @@ with "With: Prof X (supervisor)" and a Meetings section; "met X today, ..." adds
 met: <date>"; "a meeting with X on Friday at 4" becomes a deadline, and the evening before (20:00,
 `deadlines.meeting_brief`) a meeting brief comes from that project's note: its Log since you last met, its open "##
 Next steps" and the last meeting's line; "every Monday at 9 I have a <subject> lab" puts
-the class in your timetable; "every Tuesday and Thursday at 7pm I go to the gym" or "I work a shift every weekend from
-9 to 5" adds a [commitment](#commitments) (an hour long unless you say the end; Commitments is turned on if it was
-off); "by POTA I mean Physics of the Atmosphere" or "I call stochastic calculus stoch" gives that subject the short
-name. Only what you say about yourself, by rules on this computer. Each change comes in one line with Undo; `/inferred`
-lists them. Settings `infer.on`, `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`,
-`infer.commitments`.
+the class in your timetable; "every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from
+9 to 5" or "gym Tue Thu 7am" adds a [commitment](#commitments) (an hour long unless you say the end; Commitments is
+turned on if it was off), and so does "I have lab every Thursday 2-5" when no course is named; "there's a quiz on
+Linear Algebra every Monday at 10" adds a row to the recurring quizzes table when the course and the day are said (a
+message that is only that request goes to the request, which asks for what's missing); "by POTA I mean Physics of
+the Atmosphere" or "I call stochastic calculus stoch" gives that subject the short name, and so does using one in
+capitals in two messages ("LA problem set") when it fits only one subject's initials. Only what you say about
+yourself, by rules on this computer; a question (with or without its "?") sets up nothing. Each change comes in one
+line with Undo; `/inferred` lists them. Settings `infer.on`, `infer.projects`, `infer.meetings`, `infer.classes`,
+`infer.aliases`, `infer.commitments`, `infer.quizzes`, `infer.short_names`.
 
 **Undo.** The Undo button, or `/inferred undo <id>`; `infer.on` = false stops it.
 

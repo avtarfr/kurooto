@@ -172,10 +172,10 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `alarm.json`, `alarm-last.json`, `alarm-skip.json`, `alarm-ringing.json` | `modules/alarm.py` |
 | `deadlines.json`, `deadlines-recurring.json` | `modules/deadlines.py` |
 | `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json`, `study/timer.json` | check-ins, capture, study (`timer.json`: Study mode's timer) |
-| `subjects/term-note.json`, `subjects/skip-<day>.json` | `modules/subjects.py` |
+| `subjects/term-note.json`, `subjects/skip-<day>.json`, `subjects-short-names.json` (short names used once, waiting for a second use) | `modules/subjects.py` |
 | `exam_season.json`, `revision.json`, `startby.json`, `quests.json`, `reminders-snooze.json` | those modules (`revision.json`: Exam season's revision plan, `modules/revision.py`) |
 | `doubts/*.json`, `hints/<id>.json`, `quiz/<subject>.json`, `quiz/{session,offered}.json`, `quiz/_links.json` (link recall cards) | doubts, hints, quiz |
-| `retro.json`, `retro-state.json`, `observations.json`, `retro-skills/` | `modules/retro.py` |
+| `retro.json`, `retro-state.json` (also `routines` asked, added or declined, and `fixes` with their undo), `observations.json`, `retro-skills/` | `modules/retro.py` |
 | `research-papers.json`, `research-logs.json` | `modules/research.py` |
 | `books.json`, `gbrain.json`, `gbrain-checkup.json`, `gbrain/` | books, gbrain |
 | `integrate/` (`ledger.json`, `seen.json`, `chapters.json`, `garden.json`, `budget.json`, `pending/`, `undo/`, `vectors.db`) | `modules/integrate.py`, `core/conceptgraph.py`, `core/readbudget.py` |
@@ -869,7 +869,7 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/profile.py` | Profile sync: the encrypted profile and restore |
 | `core/shortcuts.py` | the app-menu "Kurooto" entry |
 | `core/sources.py` | the book / Classroom / own-notes mix for note-writing skills |
-| `core/tap.py` | never without a tap: `GUARDED`, `WAYS`, `ask_first()` and `approved()` for guarded tools ([modules.md](modules.md#never-without-a-tap-coretappy)) |
+| `core/tap.py` | never without a tap: `GUARDED`, `WAYS`, `ask_first()` and `approved()` for guarded tools; `BY_ITSELF`, the data fixes the look back makes with Undo ([modules.md](modules.md#never-without-a-tap-coretappy)) |
 | `core/studypack.py` | a subject's notes and files as a zip with a prompt for another AI. `sources()` merges Books' reads (`book-text/<subject>/*/meta.json`, bookmarks in `chapters`) with Classroom's files and their `<file>.txt` (pages split on form feeds), dropping copies (`same_doc`); `is_class()` tells class material from books by length and title; with topics, `book_tiers()` ranks a book's pages (cited readings from `citations()`, then title-matching chapters, then hit pages) and `book_share()` fits all books into `MAX_PACK_BOOK_PAGES`; the prompt is `prompt_text()`, from the user's `study_pack_prompt` note when there is one |
 | `core/syncall.py` | "sync everything" (`sync_now` on each module that has one) |
 | `core/upgrade.py` | one-time steps at the first start of a new version (`upgrades.json`), the "what's new" message |
@@ -914,11 +914,21 @@ than 30 minutes ahead; `CLASS` adds a `subjects.timetable` row for a known subje
 Deadlines) adds a `commitments.items` row via `modules/commitments.py:Commitments.add`, turning the feature on if it
 was off (undo turns it off again when the list is empty); `ALIAS` ("by X I mean <subject>", "X is short for/stands
 for <subject>", "I call <subject> X") adds a short name to a `subjects.list` entry (one is made for a subject that's
-only in the term note or a class pack), refused for `NOT_ALIAS` words and for any name a subject already has. Each sentence is keyed
+only in the term note or a class pack), refused for `NOT_ALIAS` words and for any name a subject already has. Since
+0.5.20: `TERSE` ("gym Tue Thu 7am": the whole sentence, two days or more, "every" or a plural day, an am/pm or HH:MM
+time; `NOT_TERSE` words such as call, wake, remind, due, quiz, and a subject's name, refuse it) and a bare `BARE` kind
+with no subject in the sentence ("I have lab every Thursday 2-5") also make commitments, the latter's line saying how
+to make it a class; `_quiz` (`QUIZ` words plus `modules/recurring.py:read_rule` with a day, exactly one subject from
+`find_in`, and a `next` date when it's every 2+ weeks) calls `Deadlines.add_recurring` (undo: `remove_recurring`),
+skipped when the whole chat message is one the `add_recurring` intent takes (`_request`: not `too_complex` and its
+matcher matches), so it isn't added twice; after a message's sentences, `_short_names` hands the new ones to
+`Subjects.short_names_used` (below) and adds what it returns with `_add_alias` (the `ALIAS` rule's helper). A sentence
+that ends in "?" or starts like one (`ASKS`) is skipped before any rule. Each sentence is keyed
 (`_key`, sha256 of the normalised text) and looked at once. Changes are kept in `<state>/inferred.json` (`items` with
 their `undo` data, `seen`); `undo()` reverses one (a note it made and nobody touched is deleted; otherwise only its own
 line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `core/commands.py:CORE`. Calm reason
-`infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`, `aliases`, `commitments`. Tests: `tests/unit/test_infer.py`.
+`infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`, `aliases`, `commitments`, `quizzes`,
+`short_names`. Tests: `tests/unit/test_infer.py`.
 
 ## Keep or drop (`core/keep.py`)
 

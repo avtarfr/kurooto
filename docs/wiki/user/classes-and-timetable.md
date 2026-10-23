@@ -60,7 +60,9 @@ each class covered. The assistant on a call can mark a class skipped for you ("I
   note or a class pack is changed there instead.
 - Times are 24-hour (`14:00-14:55`).
 - Short names also come from what you say: "by POTA I mean Physics of the Atmosphere" or "I call stochastic calculus
-  stoch" adds one, with an Undo button (see [Teaching Kurooto](teaching-kurooto.md)).
+  stoch" adds one, with an Undo button (see [Teaching Kurooto](teaching-kurooto.md)). So does using one: "LA problem
+  set" in two messages, when Linear Algebra is the only subject whose initials are LA, makes "LA" its short name
+  (written in capitals; never one that fits two subjects).
 - Classes from a term note, a class pack or a class calendar join yours; where two say there's a class at the same day
   and time, yours wins.
 
@@ -124,10 +126,13 @@ in Features → Commitments, or just say one (below).
 | `/busy skip gym`, "skipping gym today", "not going to the gym tomorrow" | that day it doesn't hold calls; `/busy unskip gym` undoes today's |
 | `/busy calls standup off` | keeps it listed but lets calls through (`on` to undo) |
 | `/busy remove gym` | removes it |
-| "every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5", "we have standup every weekday at 10" | added for you (an hour unless you say the end), with an Undo button; Commitments is turned on if it was off |
+| "every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5", "we have standup every weekday at 10", "gym Tue Thu 7am" | added for you (an hour unless you say the end), with an Undo button; Commitments is turned on if it was off |
+| "I have lab every Thursday 2-5" (no course named) | "lab" added, Thu 14:00–17:00, with a line on how to make it a class |
+| the nightly look back sees the same thing at the same time on 3+ weeks (a study session, calls held) | it asks once, with **Add** / **No** ([Teaching Kurooto](teaching-kurooto.md#nightly-look-back)) |
 
 Things with class, lab, lecture, tutorial, quiz or test in them aren't taken as commitments: classes go in the
-timetable, quizzes and tests in Deadlines. These aren't Skills' routines (`/every`), which run a skill on a schedule.
+timetable, quizzes and tests in Deadlines. The one exception is a bare "lab", "tutorial", "seminar" or "lecture"
+with no course named, which becomes a commitment of that name. These aren't Skills' routines (`/every`), which run a skill on a schedule.
 
 **On calls.** Kurooto knows today's commitments and can mark one skipped when you say so.
 

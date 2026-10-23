@@ -10,6 +10,9 @@ this table allows.
 The AI's tools: on a live call you're on the line, you asked, and the call says what it did, so a tool runs. Anywhere
 else (an AI request, an agent program over `kurooto mcp`, the local API) a guarded tool isn't run: it becomes an
 Approve / Deny question (core/ask.py), and runs when you tap Approve (core/tools.py:run_tool, ask_first() here).
+
+BY_ITSELF below is the other side: the data fixes the nightly look back (modules/retro.py) makes without a tap, each
+said in one line with Undo. None of them is a guarded action; anything outward, an alarm or a call waits for a tap.
 """
 
 from __future__ import annotations
@@ -76,6 +79,12 @@ GUARDED: dict[str, Guard] = {
         "/forget 7d and /forget all (after Forget everything), /memory forget, /gists forget, Undo and Drop buttons; "
         "the AI never deletes (a note it changes keeps its earlier version)",
     ),
+}
+
+
+# What the nightly look back may change by itself (with Undo), because it is sure and it's only your own data.
+BY_ITSELF: dict[str, str] = {
+    "deadline.merge": "two copies of one deadline (Classroom's and the one you said) become one",
 }
 
 

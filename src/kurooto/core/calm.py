@@ -547,6 +547,21 @@ REASONS: dict[str, Reason] = {
             suggest=True,
         ),
         R(
+            "retro.routine",
+            "a routine the look back saw in your records (the same thing at the same time, 3+ weeks)",
+            many="routines from the look back",
+            setting="retro.routines",
+            stop=to(False, "no more routines suggested from your records"),
+            suggest=True,
+        ),
+        R(
+            "retro.fixed",
+            "a data fix the look back was sure of (two copies of one deadline), with Undo",
+            many="data fixes from the look back",
+            setting="retro.fixes",
+            stop=to(False, "no more data fixes by the look back"),
+        ),
+        R(
             "learning.skill",
             "a skill learned (or improved) from a request that took many steps",
             many="learned skills",
@@ -612,7 +627,11 @@ REASONS: dict[str, Reason] = {
         R("calls.review", "what Kurooto fixed and learned looking back at a call", setting="calls.review"),
         R("local_models.spill", "a local model that doesn't fit your graphics card", setting="local_models"),
         R("dreaming.morning", "what Kurooto did while you slept, and the loose ends", setting="dreaming.when"),
-        R("infer.done", "something set up from what you said (a project, a class, a meeting)", setting="infer.on"),
+        R(
+            "infer.done",
+            "something set up from what you said (a project, a class, a quiz, a routine)",
+            setting="infer.on",
+        ),
         R(
             "calm.monthly",
             "the monthly look at what you rarely answer",

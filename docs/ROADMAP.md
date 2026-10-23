@@ -87,10 +87,14 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   own messages there too) (0.5.18: the iPhone app's chat; Telegram is optional: setup offers the phone app instead,
   and without Telegram everything comes to the chat, files as Drive links or a sealed copy on the call line)
 - **Small gaps**: ~~`add_deadline` takes the course, so a mail's "Lab report" lands on the right course page~~
-  (0.5.15: `course` by name or short name; an unknown one is said, never guessed); a recurring fact said in chat
-  becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look back can propose routines
-  and acts on data changes with Undo instead of waiting for a tap; project notes keep "With:", "last met" and
-  "## Next steps"; subject aliases are learned from how you name them.
+  (0.5.15: `course` by name or short name; an unknown one is said, never guessed); ~~a recurring fact said in chat
+  becomes a class, a recurring quiz or a routine instead of being dropped~~ (0.5.20: "I have lab every Thursday 2-5",
+  "quiz on Linear Algebra every Monday", "gym Tue Thu 7am", with `/inferred` Undo; questions set up nothing); ~~the
+  nightly look back can propose routines and acts on data changes with Undo instead of waiting for a tap~~ (0.5.20:
+  the same thing at the same time on 3+ weeks comes with Add / No; two copies of one deadline become one with Undo;
+  `core/tap.py` `BY_ITSELF`); project notes keep "With:", "last met" and "## Next steps"; ~~subject aliases are learned
+  from how you name them~~ (0.5.20: a short name in capitals used in two messages, when it fits one subject's
+  initials).
 - ~~**Routines for people who aren't students**: gym, shifts, standups, tuition; they hold calls like a class does.~~
   (0.5.9: Commitments, `/busy`, also set up from what you say)
 - **Never without a tap**: setting or moving an alarm, placing calls, reading new mail senders, sending anything out,

@@ -140,3 +140,83 @@ def test_the_evening_before_a_meeting_a_brief_from_the_project(env):
     assert "Open next steps:\n- write up the sweep" in brief and "done already" not in brief
     assert "Last time: " in brief and "forcing runs" in brief
     assert app.modules["deadlines"].meeting_briefs() == []  # once
+
+
+def test_a_recurring_fact_becomes_a_class_a_quiz_or_a_routine(env):
+    app = setup(env)
+    # a lab with no course named: a routine (it holds calls like a class), said so
+    told = infer.observe(app, "Ugh, I have lab every Thursday 2-5.")
+    assert told and told[0].startswith("Added lab to your commitments: Thu 14:00–17:00")
+    assert "/class thu 14:00-17:00 <course> makes it a class" in told[0]
+    # a quiz on one of your subjects, said in passing: a row in the recurring quizzes table
+    told = infer.observe(app, "Also there's a quiz on Linear Algebra every Monday at 10, which is fun.")
+    assert told and told[0].startswith("Added to your recurring quizzes (kurooto/recurring.md): Linear Algebra: Quiz")
+    rows = app.modules["deadlines"].recurring_rows()
+    assert [(r["slug"], r["what"], r["day"], r["time"]) for r in rows] == [("linear-algebra", "Quiz", "mon", "10:00")]
+    # a terse one: two days and a clock time
+    assert infer.observe(app, "gym Tue Thu 7am") == [
+        "Added gym to your commitments: Tue, Thu 07:00–08:00; calls wait while it's on."
+    ]
+    assert infer.observe(app, "swimming on saturdays 8am-9:30am") == [
+        "Added swimming to your commitments: Sat 08:00–09:30; calls wait while it's on."
+    ]
+    assert infer.observe(app, "standup every weekday 10:00")[0].endswith(
+        "weekdays 10:00–11:00; calls wait while it's on."
+    )
+    # not sure enough: one day (a one-off), a request, a course with no day, every other week with no date
+    for line in (
+        "dentist Tue 7am",
+        "call mum Tue Thu 7pm",
+        "there's a quiz on Linear Algebra every week",
+        "LA has a test every other Friday at 2",
+    ):
+        assert infer.observe(app, line) == [], line
+    items = infer._load(app)["items"]
+    assert infer.undo(app, items[1]["id"]).startswith("Undone: Added to your recurring quizzes")
+    assert app.modules["deadlines"].recurring_rows() == []
+    assert infer.undo(app, items[0]["id"]).startswith("Undone: Added lab")
+    assert [r["name"] for r in app.modules["commitments"].items()] == ["gym", "swimming", "standup"]
+
+
+def test_questions_set_up_nothing(env):
+    app = setup(env)
+    for line in (
+        "Do I have lab every Thursday 2-5",
+        "is there a quiz on Linear Algebra every Monday",
+        "every Monday at 9 I have a linear algebra lab?",
+        "do I go to the gym every Tuesday at 7pm",
+        "When did I meet Ortiz",
+    ):
+        assert infer.observe(app, line) == [], line
+    assert not app.settings.get("subjects.timetable") and not app.modules["commitments"].items()
+    assert app.modules["deadlines"].recurring_rows() == []
+
+
+def test_a_quiz_request_on_its_own_is_the_requests_not_set_up_twice(env):
+    app = setup(env)
+    out = env.say("la has a quiz every thursday at 10")
+    assert out.startswith("Linear Algebra: Quiz every week, Thu 10:00")
+    assert len(app.modules["deadlines"].recurring_rows()) == 1
+    assert not [x for x in infer._load(app)["items"] if x["kind"] == "quiz"]
+
+
+def test_a_short_name_used_twice_for_the_one_course_it_fits_becomes_its_short_name(env):
+    app = setup(env)
+    env.say("/subject add Stochastic Calculus")
+    env.say("/subject add Real Analysis II")
+    env.say("/subject add Statistical Computing")
+    subj = app.modules["subjects"]
+    assert infer.observe(app, "Finished the SC reading and half the RA problem set.") == []  # once each
+    assert infer.observe(app, "Started the RA problem set again, RA is hard.") == [  # twice: RA (once per message)
+        'Took "RA" as Real Analysis II from now on (you\'ve called it that twice).'
+    ]
+    assert subj.resolve("ra") == "real-analysis-ii"
+    # "SC" fits Stochastic Calculus and Statistical Computing: never learned, however often
+    assert infer.observe(app, "SC homework tonight.") == [] and infer.observe(app, "More SC tomorrow.") == []
+    assert subj.resolve("sc") is None
+    # said twice in one message counts once; a name that's taken or a common word never counts
+    infer.observe(app, "OK, LA and LA again")
+    assert subj.resolve("ok") is None
+    item = infer._load(app)["items"][-1]
+    assert infer.undo(app, item["id"]).startswith('Undone: Took "RA"')
+    assert subj.resolve("ra") is None

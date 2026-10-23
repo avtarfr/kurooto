@@ -930,6 +930,88 @@ class Deadlines(Module):
         self.app.events.emit("deadline_moved")
         return f"Moved: {it['title']}, now due {when_text(it['due'])} ({human(hours_left(it['due']))})."
 
+    # --------------------------------------------------------------------- copies of one thing (the look back)
+    def duplicates(self) -> list[tuple[str, str]]:
+        """Open deadlines that are surely one thing kept twice (Classroom's and the one you said; a move that put two
+        on the same day): due the same day, from different places, the same course (or one without), and the same
+        numbers and words in their titles besides the course's name. (the one to keep, the copy) for each: the one
+        kept is the one a source brings back again (Classroom, mail, a note), else the older."""
+
+        def said(it: dict) -> bool:  # only you said it (a message, a call, something set up from what you said)
+            return set(it.get("sources", [it["source"]])) <= {"manual", "call", "inferred"}
+
+        live = [(i, it) for i, it in self.items().items() if it.get("status") == "open" and hours_left(it["due"]) > -24]
+        out, used = [], set()
+        for a, (i, x) in enumerate(live):
+            for j, y in live[a + 1 :]:
+                if i in used or j in used or x["due"][:10] != y["due"][:10]:
+                    continue
+                if set(x.get("sources", [x["source"]])) & set(y.get("sources", [y["source"]])):
+                    continue
+                sx, sy = x.get("subject"), y.get("subject")
+                if (sx and sy and sx != sy) or set(NUM.findall(x["title"])) != set(NUM.findall(y["title"])):
+                    continue
+                drop = self._subject_words(sx or sy)
+                wx, wy = ({w for w in re.findall(r"[a-z]+", t.lower()) if w not in STOP and w not in drop}
+                          for t in (x["title"], y["title"]))  # fmt: skip
+                if wx != wy:  # the same words, not only "similar": "Problem set 3" is not "Problem set 3 prep"
+                    continue
+                out.append((j, i) if said(x) and not said(y) else (i, j))
+                used |= {i, j}
+        return out
+
+    def merge(self, keep: str, copy: str) -> dict | None:
+        """Make two copies of one deadline one: the copy's id answers for the one kept (its old buttons still work);
+        its sources, course, link and note join it; a known time beats "end of the day". Returns what unmerge()
+        needs, or None if either is gone."""
+        with Lock(self.app.paths.state, "deadlines"):
+            items = self.items()
+            if keep not in items or copy not in items or keep == copy:
+                return None
+            k, c = items[keep], items.pop(copy)
+            undo = {
+                "keep": keep,
+                "copy": copy,
+                "item": c,
+                "aliases": list(k.get("aliases", [])),
+                "sources": list(k.get("sources", [k["source"]])),
+                "filled": [],
+                "due": k["due"],
+            }
+            k["aliases"] = [*undo["aliases"], *(x for x in [copy, *c.get("aliases", [])] if x != keep)]
+            k["sources"] = list(dict.fromkeys([*undo["sources"], *c.get("sources", [c["source"]])]))
+            for f in ("subject", "link", "note", "line", "parts", "parts_done"):
+                if c.get(f) and not k.get(f):
+                    k[f] = c[f]
+                    undo["filled"].append(f)
+            if k["due"][11:16] == "23:59" and c["due"][11:16] != "23:59":
+                k["due"] = c["due"]
+            undo["merged_due"] = k["due"]
+            jsave(self.file, items)
+        self.app.scheduler.cancel(f"calls:ring:deadlines:{copy}")  # the one kept has its own
+        self.app.events.emit("deadline_merged", source="lookback")
+        return undo
+
+    def unmerge(self, undo: dict) -> bool:
+        """Undo a merge(): the copy comes back as it was, and the one kept loses what it took from it."""
+        with Lock(self.app.paths.state, "deadlines"):
+            items = self.items()
+            keep, copy = undo.get("keep"), undo.get("copy")
+            if not keep or not copy or copy in items:
+                return False
+            items[copy] = undo["item"]
+            k = items.get(keep)
+            if k is not None:
+                k["aliases"] = undo["aliases"]
+                k["sources"] = undo["sources"]
+                for f in undo.get("filled", []):
+                    k.pop(f, None)
+                if k["due"] == undo.get("merged_due"):
+                    k["due"] = undo["due"]
+            jsave(self.file, items)
+        self.app.events.emit("deadline_unmerged")
+        return True
+
     def _new_date(self, i: str, answer: str) -> str:
         try:
             when = parse_when(answer.strip())

@@ -1,6 +1,7 @@
 """Subjects: the courses or topics you work on, with short names ("LA", "stats"), and an optional weekly timetable.
 With a timetable, Kurooto won't call you during a class you attend; tell it when you skip one ("skipping LA
-today", "not going to stats on Friday").
+today", "not going to stats on Friday"). A short name in capitals you use in two messages ("LA problem set") becomes
+the short name of the one subject whose initials it is (short_names_used(), added by core/infer.py with Undo).
 
     /subject add Linear Algebra (la, linalg)
     /class mon 09:00-09:55 la        /classes        /skip la   /attend la
@@ -63,12 +64,31 @@ CATCH_UP_EVERY = "every 30m"  # classes that ended are looked at this often
 CATCH_UP_DAYS = 3  # with no next class in two weeks, the catch-up is due this many days on
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 AUTO_NOTE = {"kurooto": "terms/*.md", "zettelkasten": "maps/semester-*.md"}
+SHORT = re.compile(r"(?<![\w&.-])([A-Z]{2,5})(?![\w&-])")  # a short name written in capitals: "LA", "POTA"
+NOT_SHORT = {
+    "ok", "am", "pm", "ta", "tv", "pc", "ai", "uk", "us", "usa", "pdf", "fyi", "asap", "lol", "btw", "idk", "tbh",
+    "imo", "dm", "id", "eod", "eta", "omg", "no", "so", "it", "is", "my", "me", "hi", "we", "or", "an", "at", "to",
+    "gpu", "cpu", "ram", "usb", "url", "api", "faq", "rsvp", "tba", "tbd", "aka", "na", "ps",
+}  # fmt: skip
+MINOR = {"of", "the", "and", "in", "to", "for", "a", "an", "on", "with", "into"}
+ROMAN = {"i", "ii", "iii", "iv", "v", "vi"}
+SHORT_DAYS = 60  # two uses of a short name count only this many days apart
 POSTS_HEAD = "## Classroom posts that day"  # in a catch-up's lecture stub, above...
 COVERED = "## What was covered"  # ...the part you fill in
 
 
 def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def initials(name: str) -> set[str]:
+    """The short names a course's name gives by its initials: "Linear Algebra" -> {"la"}, "Physics of the
+    Atmosphere" -> {"pota", "pa"}, "Real Analysis II" -> {"raii", "ra"}."""
+    words = [w.lower() for w in re.findall(r"[A-Za-z]+", name or "")]
+    major = [w for w in words if w not in MINOR]
+    full, most = "".join(w[0] for w in words), "".join(w[0] for w in major)
+    plain = "".join(w[0] for w in major if w not in ROMAN)
+    return {x for x in (full, most, plain) if len(x) >= 2}
 
 
 def posts_md(posts: list[dict]) -> str:
@@ -266,6 +286,39 @@ class Subjects(Module):
                         found.append(s["slug"])
                     break
         return found
+
+    # ---------------------------------------------------------------- short names from how you name them
+    def by_initials(self, short: str) -> list[str]:
+        """The subjects whose name's initials are this short name ("LA": Linear Algebra)."""
+        low = short.lower()
+        return [s["slug"] for s in self.subjects() if low in initials(s["name"])]
+
+    def short_names_used(self, text: str) -> list[tuple[str, str]]:
+        """Short names in capitals ("LA problem set") that aren't any subject's yet but fit exactly one subject by its
+        initials. Each counts once per message; one used in two messages (within SHORT_DAYS) is returned as (the
+        short name as written, the subject's slug), for core/infer.py to add with Undo. One that fits two subjects,
+        or none, is never counted."""
+        f = self.app.paths.state / "subjects-short-names.json"
+        seen = jload(f, {}) or {}
+        cutoff = (now() - dt.timedelta(days=SHORT_DAYS)).isoformat()
+        out, changed = [], False
+        for short in dict.fromkeys(SHORT.findall(text or "")):
+            low = short.lower()
+            if low in NOT_SHORT or self.resolve(low):
+                continue
+            fits = self.by_initials(short)
+            if len(fits) != 1:
+                continue
+            had = seen.get(low)
+            if not had or had.get("slug") != fits[0] or had.get("first", "") < cutoff:
+                seen[low] = {"slug": fits[0], "first": now().isoformat(timespec="seconds")}
+            else:
+                seen.pop(low)
+                out.append((short, fits[0]))
+            changed = True
+        if changed:
+            jsave(f, dict(list(seen.items())[-200:]))
+        return out
 
     def skipped(self, day: dt.date | None = None) -> set[str]:
         day = day or now().date()

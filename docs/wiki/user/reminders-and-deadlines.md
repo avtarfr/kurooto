@@ -215,6 +215,7 @@ It's part of Deadlines.
 | `/recurring add la quiz every 2 weeks thu 10:00 2026-11-05` | a date it happens on (needed for every two weeks) |
 | `/recurring` | lists them (a class pack's are marked "(class pack)") |
 | `/recurring remove la quiz` | removes that row (only rows in your table, not a class pack's) |
+| "Also, there's a quiz on Linear Algebra every Monday at 10" in a longer message or your journal | added for you with an Undo button when the course and the day are said ([set up from what you say](teaching-kurooto.md#set-up-from-what-you-say)) |
 
 "Every" can be weekly, every week, each, every other, every second, every 2 weeks, fortnightly or biweekly (up to 8
 weeks). What it is can be a quiz, class test, test, assessment, exam, viva, lab test, worksheet, problem sheet,

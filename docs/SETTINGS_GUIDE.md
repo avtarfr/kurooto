@@ -424,6 +424,8 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `infer.meetings` | `true` | "met X today": a dated line in that project's Meetings; a meeting ahead: a deadline |
 | `infer.on` | `true` | set things up from what you say in the chat and the journal (one line each, with Undo) |
 | `infer.projects` | `true` | "I got a project under Prof X": a project note with them, and a Meetings section |
+| `infer.quizzes` | `true` | "there's a quiz on Linear Algebra every Monday": a row in the recurring quizzes table |
+| `infer.short_names` | `true` | "LA" for Linear Algebra after two messages call it that (it fits only that one) |
 
 ### `integrate`
 
@@ -696,10 +698,13 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `retro.fixes` | `true` | make data fixes it is sure of (two copies of one deadline become one), with Undo |
 | `retro.journal` | `true` | read today's journal note |
 | `retro.max_proposals` | `3` | the most changes one look back proposes (it runs at retro.when: nightly by default) |
 | `retro.no_days` | `30` | how long a "No" keeps that idea away |
 | `retro.observe_days` | `7` | how long "Observe longer" (and /observe without a length) watches |
+| `retro.routine_weeks` | `3` | on this many different weeks |
+| `retro.routines` | `true` | propose a routine it sees in the records (the same thing at the same time, 3+ weeks) |
 | `retro.transcripts` | `true` | read today's call transcripts |
 | `retro.when` | `"daily 23:50"` | "weekly sun 21:00" looks back over the whole week instead |
 
