@@ -551,6 +551,17 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `overlay.code` | `true` | also run the Python add-ons in its modules/ (False: only skills, prompts and settings) |
 | `overlay.path` | `""` | your add-ons folder (full path) |
 
+### `persona`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `persona.avoid` | `""` | persona card: things to avoid, e.g. "emojis, exclamation marks, motivational lines" |
+| `persona.boundaries` | `true` | health, relationship and money decisions: not Kurooto's to make; it points to a person |
+| `persona.call_me` | `""` | persona card: what the AI calls you (empty: your name, or nothing) |
+| `persona.length` | `""` | persona card: how long answers should be, e.g. "short unless I ask for detail" |
+| `persona.register` | `true` | a short message gets a short answer, a voice note a spoken-style one (by length only) |
+| `persona.tone` | `""` | persona card: the tone you want, e.g. "plain and direct, no pep talk" |
+
 ### `power`
 
 | Setting | Default | What it does |
@@ -599,6 +610,12 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `quota.limits` | `{}` | your own limits per AI, e.g. {"agy": 200} |
 | `quota.local` | `"quick"` | what the model on this computer does for the free limit: quick, background or off |
 | `quota.on` | `true` | keep part of the free AI limit for what you're waiting on |
+
+### `repair`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `repair.on` | `true` | two close readings of a request: ask which, with both as buttons |
 
 ### `reply_drafts`
 
@@ -682,6 +699,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `startby.horizon_days` | `35` | deadlines due this far ahead get a start-by date |
 | `startby.learn_window` | `true` | once a week, move the window to when you're actually up (unless you set it) |
 | `startby.min_gap_min` | `30` | shorter gaps between classes and events don't count |
+| `startby.negotiate` | `true` | a reminder that would repeat for a slipping deadline: a reshaped plan instead, once a day |
 | `startby.share` | `40` | % of the free time in that window that goes to deadlines |
 | `startby.sizes.exam` | `10` | days an exam takes to prepare for |
 | `startby.sizes.other` | `2` | days other work takes |

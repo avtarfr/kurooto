@@ -1079,8 +1079,11 @@ class Calls(Module):
             "If something needs a screen or their computer, say so. Don't read out email contents or other people's "
             "details.",
         ]
+        from kurooto.core import persona  # the persona card and boundaries; calls.persona the same rules
+
+        lines += [x for x in (persona.card_text(self.app), persona.rule(self.app)) if x]
         if self.setting("persona"):
-            lines.append(str(self.setting("persona"))[:500])
+            lines.append(persona.clean(str(self.setting("persona")), 500)[0])
         learned = review.lessons(self.app)
         if learned:
             lines.append("What earlier calls taught you (follow these):\n" + "\n".join(f"- {x}" for x in learned))

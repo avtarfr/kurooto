@@ -92,6 +92,7 @@ SAID = {
     "none": "wasn't understood (Chat is off)",
     "sync": "synced everything",
     "other": "did something else",
+    "repair": "got two readings to pick from",
 }
 
 _handling = threading.local()  # the request this thread is handling, for the routing's own "intent" event
@@ -398,6 +399,47 @@ class Cases(Module):
             why="cases.rephrased",
             buttons=buttons,
         )
+
+    def repaired(self, text: str, target: str, means: str, via: str = "telegram") -> None:
+        """You picked one of two readings (core/repair.py): noted on a case for that phrasing. The REPHRASE_TIMES-th
+        time the same phrasing is repaired to the same request, it's taught as above (only if every test case that
+        passed still passes, never for requests that send, delete, call, ring or approve), with a line and Undo."""
+        if not self.setting("learn", True) or self._sensitive(text) or too_complex(tidy(text)) or len(text) > SHORT:
+            return
+        d = {
+            "id": uuid.uuid4().hex[:8],
+            "text": text.strip()[:2000],
+            "via": via,
+            "at": now().isoformat(timespec="seconds"),
+            "settings": self.snapshot(self.app.enabled()),
+            "did": "repair",
+        }
+        self._keep(d, "repair", {"repaired_to": target, "means": tidy(means)[:300]})
+        key = norm(text)
+        times = sum(
+            1
+            for c in self.store.load()["cases"].values()
+            if norm(c.get("text", "")) == key and c.get("repaired_to") == target and c.get("status") != "test"
+        )
+        self.app.events.emit("case_repaired", intent=target, times=times)
+        got = pattern(self.app.enabled(), means)  # a phrasing is taught as words that name the request you picked
+        if times < REPHRASE_TIMES or got is None or got[0].name != target:
+            return
+        said, buttons = self.teach(d["id"], means)
+        if not said.startswith(("Learned", "Saved as a test case")):
+            return
+        self.app.notify(
+            f'You picked "{_short(means)}" for "{_short(text)}" {times} times, so: {said}',
+            kind="info",
+            why="cases.repaired",
+            buttons=buttons,
+        )
+
+    def expected(self, text: str) -> str | None:
+        """What a test case says this phrasing should be (a request's name or "ai"), or None."""
+        key = norm(text)
+        cs = self.store.load()["cases"].values()
+        return next((c["expect"] for c in cs if c.get("status") == "test" and norm(c["text"]) == key), None)
 
     def _tested(self, text: str) -> bool:
         key = norm(text)

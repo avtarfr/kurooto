@@ -737,7 +737,7 @@ class Deadlines(Module):
         t = now()
         skip = matcher(self.app)
         ping_h, urgent_h = self.setting("ping_h") or 24, self.setting("urgent_h") or 6
-        todo = []
+        todo, again = [], set()
         with Lock(self.app.paths.state, "deadlines"):
             items = self.items()
             for i, it in items.items():
@@ -747,6 +747,8 @@ class Deadlines(Module):
                     continue
                 h = hours_left(it["due"], t)
                 told = it.setdefault("told", [])
+                if "ping" in told:  # a reminder now would be a repeat (after a snooze, or the six-hour one)
+                    again.add(i)
                 if it["kind"] == "exam":  # not "done": a reminder, or (Quiz) the practice offer the evening before
                     if 0 < h <= ping_h and "ping" not in told and not self._quiz_offers():
                         told.append("ping")
@@ -764,11 +766,13 @@ class Deadlines(Module):
             if todo:
                 jsave(self.file, items)
         for what, i, h in todo:
-            self._chase(what, i, items[i], h)
+            self._chase(what, i, items[i], h, again=i in again)
         self._exam_mode_news()
 
-    def _chase(self, what: str, i: str, it: dict, h: float) -> None:
+    def _chase(self, what: str, i: str, it: dict, h: float, again: bool = False) -> None:
         if what == "urgent" and self._calls_ok() and self._call(i, it, h):
+            return
+        if what != "overdue" and self._negotiate(i, again):
             return
         if what == "overdue":
             self.app.notify(
@@ -826,10 +830,22 @@ class Deadlines(Module):
         it = self.items().get(i)
         if not it or it["status"] != "open":
             return False
-        if outcome in ("missed", "decline", "skip"):
+        if outcome in ("missed", "decline", "skip") and not self._negotiate(i, True):
             self._tell(i, it, hours_left(it["due"]), urgent=True, prefix="Missed call. ")
         self.app.events.emit("deadline_call_" + (outcome or "reply"))
         return False
+
+    def _negotiate(self, i: str, again: bool) -> bool:
+        """(negotiate) A reminder that would repeat for a deadline that's slipping: Start-by offers a reshaped plan
+        from your own plan instead, once a day (modules/startby.py: offer_reshape). True when it did."""
+        sb = self.app.modules.get("startby")
+        if sb is None or not self.app.is_on("startby"):
+            return False
+        try:
+            return sb.offer_reshape(i, again)
+        except Exception as e:  # the reminder still comes
+            self.app.events.emit("module_failed", module="startby", error=f"reshape: {type(e).__name__}: {e}"[:300])
+            return False
 
     def _exam_mode_news(self) -> None:
         """Say once when exam mode starts for a quiz or exam."""

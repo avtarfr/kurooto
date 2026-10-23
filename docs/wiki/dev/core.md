@@ -123,6 +123,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `calm.db` | SQLite, table `sent`, kept 45 days (`text`/`title` only `privacy.keep_days`) | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
+| `repair.json` | two-readings questions waiting for a tap (20, for 24 h) | `core/repair.py` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
 | `net-outbox.jsonl` | JSON lines: Telegram messages held while offline (rewritten with `write_text`) | `core/presence.py` |
@@ -673,6 +674,7 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/overlay.py` | add-ons ([modules.md](modules.md#add-ons-coreoverlaypy)) |
 | `core/palette.py`, `core/syscolors.py` | the pages' colour palette, and the OS accent colour for the `system` palette |
 | `core/pathfix.py` | putting `~/.local/bin` on PATH (disabled in tests) |
+| `core/persona.py` | the persona card (`persona.call_me/tone/length/avoid`, empty by default; `clean()` drops parts matching `GUARD`: feelings, saying it missed you, a backstory, a relationship; applied on save and on every read), `/persona` (`command`), the dashboard's `persona` API (`view`, `save`); boundaries (`DECIDE` + `AREAS` rules, `keeps()` in `App.handle`, `BOUNDARY_RULE` in the headless context and calls; `persona.boundaries`); register (`register_line()`: `SHORT_WORDS` 12, `LONG_WORDS` 80, voice notes; `persona.register`). Events `persona_saved`, `boundary_kept`. Tests: `tests/unit/test_persona.py` |
 | `core/places.py` | the AI's read and write roots ([brains.md](brains.md#read-and-write-allow-lists)) |
 | `core/prereqs.py` | installing helper programs from `data/prereqs.toml`, checksum-checked, no admin where possible |
 | `core/profile.py` | Profile sync: the encrypted profile and restore |
@@ -694,6 +696,21 @@ module, re-matches and runs the intent with an `Incoming` whose replies go out t
 `no` hands it to Chat when that's on. Only for `msg.via` in `BUTTONS` (telegram, app): the setup page's try-it box and
 terminals go on to the AI. Events `turnon_offered`, `turnon_done`. Setting `turnon.offer`. Tests:
 `tests/unit/test_turnon.py`.
+
+## Two readings (`core/repair.py`)
+
+Just before `turnon.offer`, when no enabled intent's `match` took the text, `repair.offer(app, msg, plain, mods,
+asks)` scores each learnable intent (`modules/cases.py:learnable`) by its best example phrasing (`examples()`: its
+description split at commas, semicolons and "or"; only examples its own `match` takes with no filled slots) against
+the text (`difflib.SequenceMatcher` on `cases.norm`). When the top two are `close()` (both ≥ `MIN` 0.75, within
+`CLOSE` 0.08), the text waits in `<state>/repair.json` (20, for 24 h) and the reply carries `rpr:<ref>:0`,
+`rpr:<ref>:1` and `rpr:<ref>:no` (routed by `App.callback`). A pick runs that intent on its example (`run()`, event
+`intent` with `via="repair"`), replying through `app.notify(..., why="asked")`, and calls
+`modules/cases.py:Cases.repaired` with Cases on: a `repair` case with `repaired_to`; at `REPHRASE_TIMES` (2) for the
+same `norm` text and target it calls `teach()` (the replay gate applies; Calm reason `cases.repaired`, event
+`case_repaired`). A test case for the phrasing (`Cases.expected`) runs its reading without asking. `no` hands it to
+Chat when on. Only for `msg.via` in `BUTTONS` (telegram, app); a pattern match always runs as before. Setting
+`repair.on`. Events `repair_asked`, `repair_neither`. Tests: `tests/unit/test_repair.py`.
 
 ## Setting up from what's said (`core/infer.py`)
 

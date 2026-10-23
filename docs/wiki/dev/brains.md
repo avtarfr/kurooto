@@ -195,8 +195,10 @@ triggers a fresh consent question (`tools_once`: "more is wanted than was agreed
 
 `providers/context.py:headless_context(app)` is prepended to every job: who the user is, the time and zone, the notes
 folder, answer style, "nobody can answer follow-up questions", the tool rules, a pointer to `<state>/reserve/`, the
-profile brief (`core/aboutyou.py`), "how to help me" (`modules/remember.py:help_brief`) and the notes layout
-(`core/layout.py:describe`).
+profile brief (`core/aboutyou.py`), "how to help me" (`modules/remember.py:help_brief`), the persona card and the
+boundaries rule (`core/persona.py:card_text`, `rule`) and the notes layout (`core/layout.py:describe`). Chat's own
+requests also end with one register line (`core/persona.py:register_line`, marked `[Reply style]`, left out of chat
+history by `strip_register`).
 
 ## Adding a brain
 

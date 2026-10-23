@@ -75,26 +75,29 @@ What happens when the user types "what's due this week? and summarise my linear 
 3. **Routing** (`app.py:App.handle`), first match wins:
    1. a reply to a question (`reply_to.kind == "ask"`) → `core/ask.py:Ask.reply`;
    2. a reply to a module's message → that module's `replies()[kind]` (the phone app's copy is retracted);
-   3. `/start`, `/help`, `/aboutme`, `/q`, `/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/inferred`, `/jobs`, `/forget` (core);
+   3. `/start`, `/help`, `/aboutme`, `/persona`, `/q`, `/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/inferred`, `/jobs`, `/forget` (core);
    4. a `/command` of an enabled module; a command of a disabled module answers "X is off: Features → X → Turn on"
       (except `ALWAYS = ("status",)`); a skill name when Skills is on (`modules/skills.py:Skills.typed`);
       (from here on, with Learns from its own work on, `Learning.heard` sees the text without taking it: "no, ..."
       soon after a skill's answer is a correction of that skill);
    5. files: a PDF captioned "book for <subject>" → Books; a `.kurooto-course` file → Class packs; otherwise the first
       enabled module with `take_files`;
-   6. a text call in progress (`calls.textcall.takes`);
+   6. a text call in progress (`calls.textcall.takes`); then a request to decide the user's health, relationships or
+      money (`core/persona.py:keeps`, rules) gets its one-line answer;
    7. a phrasing taught through the Wrong button (`modules/cases.py:Cases.watch`);
    8. **intents**, only when the text isn't `too_complex` (`modules/text.py`: long, or several requests in one): first
       an add-on classifier (`core/overlay.py:classify`), then each enabled module's `intents()` in catalog order; a
       text that looks like a question only goes to intents with `questions=True`. An intent emits `intent` and replies
       with its `run()` result. Instant, no AI. Requests, module commands, replies to a module's message and its
-      buttons (`App.callback`) are counted per feature by `core/keep.py:Keep.used`;
+      buttons (`App.callback`) are counted per feature by `core/keep.py:Keep.used`. When none takes it,
+      `core/repair.py:offer` may ask between two close readings, then `core/turnon.py:offer` for a feature that's off;
    9. "sync everything" or `/sync` (`core/syncall.py`);
    10. **Chat** (`modules/chat.py:Chat.ask`) if on; otherwise "turn on Chat".
 
    Our example has two requests in one message (`MULTI` matches "? and"), so `too_complex` sends it past the intents
    to Chat. "what's due this week?" alone would have been answered instantly by Deadlines' `show_due` intent.
-4. **Chat** builds the prompt (with the last few turns if the conversation is under two hours old), calls
+4. **Chat** builds the prompt (with the last few turns if the conversation is under two hours old, and last the
+   register line from `core/persona.py:register_line`), calls
    `app.jobs.submit(prompt, title, reply_to=message_id)`, remembers the job id in `Chat.mine`, and replies "On it."
 5. **The queue** (`core/jobs.py`): the job is a row in `jobs.db` (status `queued`, lane `you`). The worker's next
    `_tick` claims it and runs `Jobs._run` in the lane's thread:

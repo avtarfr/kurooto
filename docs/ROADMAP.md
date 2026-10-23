@@ -99,3 +99,15 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 - **Course notes to PDF.** A LaTeX template for course notes.
 
 What people have asked for, open and done, is in [REQUESTED.md](REQUESTED.md). Have an idea? Open an issue on GitHub.
+
+## More human (2026-10-23)
+- ~~**Persona card**: what to call you, tone, length, things to avoid, in every AI request and call.~~ (0.5.19:
+  `/persona`, the About you tab, Settings; empty to start; feelings, a backstory and "I missed you" are left out)
+- ~~**Negotiate, don't repeat**: a reshaped plan from your own plan instead of the same reminder again.~~ (0.5.19:
+  "1 h now, 1 h tomorrow?" with Do that / Not today, once per deadline per day, on Telegram, the app and calls)
+- ~~**Repair with two readings**: ask with both as buttons when two requests are about equally close.~~ (0.5.19: the
+  same pick twice teaches the phrasing through test cases)
+- ~~**Boundaries it keeps**: health, relationship and money decisions point to a person.~~ (0.5.19: a rule list for
+  plain-English requests, and an instruction to every AI request and call)
+- ~~**Register that follows yours**: a short message gets a short answer, a voice note a spoken one.~~ (0.5.19: by
+  length band only, `persona.register`)

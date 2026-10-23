@@ -336,6 +336,22 @@ tap. At most three such messages a day, and only when it's two or more days befo
 the deadline's own day-before message says it). When there isn't enough free time left, it says so. The first morning
 after you turn it on, one message lists what's to start now.
 
+**Negotiate, don't repeat** (`startby.negotiate`, on). When a deadline's reminder would come again (the six-hour one
+after the day-ahead one, one after a Snooze, the message after a missed deadline call, or any reminder for a deadline
+whose "Time to start" came on an earlier day) and the deadline is slipping, you get a reshaped plan instead, from your
+own Start-by plan: "Problem set 4 (due Tue 03 Nov 11:00): your Start-by plan has 2 h of it today, and about 1 h of
+today's free time is left. 1 h now, 1 h tomorrow?" with **Do that** and **Not today**.
+- *Slipping* means this morning's plan put hours of it into today, and what's left of today's free time (the same 40%
+  share) no longer holds them. Outside your day's window, or with no free time tomorrow before it's due, nothing
+  changes.
+- **Do that**: tomorrow's part gets a reminder at the start of tomorrow's first free time ("Problem set 4: the 1 h you
+  moved to today"), and with the Agent plan calendar on, both parts go in as blocks.
+- **Not today**: nothing more about it today.
+- One offer per deadline per day; after that the reminders come as they always did. The words are fixed and plain:
+  no rising tone, no urgency that isn't in the dates.
+- On a deadline call, the AI has the same plan as the `reshape_plan` and `reshape_answer` tools and is told to offer
+  it once, calmly, when you're behind.
+
 **Crunch weeks.** The Sunday [weekly summary](check-ins-and-journal.md#weekly-summary) flags weeks in the next four
 (`startby.crunch_weeks`) where the work due adds up to more than the free time: "Crunch weeks (an estimate): week of
 9 Nov: about 14 h of work, about 9 h free. Start some of it the week before." It also says what to start in the
@@ -352,7 +368,8 @@ coming week.
 | `when should I start?` | what to start today |
 | `any crunch weeks coming?` · `how busy are the next weeks?` | crunch weeks ahead |
 
-On calls the brief has "time to start", and the AI has `start_by` and `set_work_size` tools.
+On calls the brief has "time to start", and the AI has `start_by`, `set_work_size`, `reshape_plan` and
+`reshape_answer` tools.
 
 **Settings that matter** (Dashboard → Settings → Start-by dates):
 
@@ -369,6 +386,7 @@ On calls the brief has "time to start", and the AI has `start_by` and `set_work_
 | `startby.tell` | on | the message on a start-by day |
 | `startby.ask_exams` | on | the once-per-subject exam question |
 | `startby.crunch_weeks` | `4` | weeks the Sunday summary looks ahead; `0` turns crunch weeks off |
+| `startby.negotiate` | on | a reminder that would repeat for a slipping deadline: a reshaped plan instead, once a day |
 
 **What leaves your computer.** Nothing.
 
@@ -391,6 +409,8 @@ Each of these has **Why?** and **Less of this** buttons on Telegram ([messages-i
 | "Overdue?" | a deadline passed (`deadlines.overdue_check`) | no more Overdue? questions |
 | "Exam mode for ..." | exam mode starting (`deadlines.exam_mode_days`) | |
 | "Time to start: ..." | a start-by date (`startby.tell`) | no more start-by messages (`/startby` still works) |
+| "... 1 h now, 1 h tomorrow?" (Do that / Not today) | a reminder that would repeat for a slipping deadline (`startby.negotiate`) | no more reshaped plans; reminders come as before |
+| "...: the 1 h you moved to today" | you tapped Do that | never held or stopped (you agreed to it) |
 | "How long do you usually need to prepare for a ... exam?" | `startby.ask_exams` | no more of these questions |
 | "Which day (and time) is the ... quiz?" | a recurring row with its day or week unknown | (an answer to what you set up) |
 

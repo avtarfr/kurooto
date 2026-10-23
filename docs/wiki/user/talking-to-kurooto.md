@@ -61,11 +61,20 @@ Kurooto looks at each message in this order and stops at the first match:
 3. **A skill** (`/journal`, `/study-log`, your own), when Skills is on. See [skills-and-routines.md](skills-and-routines.md).
 4. **Files and photos** (see [below](#sending-files-and-photos)).
 5. **A call that went on as text** on Telegram: what you type is part of it until it ends.
+   **A request to decide your health, relationships or money** ("should I stop my meds?", "should I break up with
+   him?", "should I put my savings in crypto?") gets a short answer at once, without the AI: it's yours to decide,
+   and who to ask (see [Boundaries it keeps](#boundaries-it-keeps)).
 6. **A plain-English request Kurooto understands instantly** ("remind me in 20 minutes to take the pasta off", "what's
    due?", "no calls for 2 hours"). These run on your computer with no AI. Long messages (over 300 characters), and
    messages with several requests in one ("..., also ...", "... and then ...", two sentences), always go to the AI so it
    reads the whole thing. A question ("what...?", "when...?") only matches requests that answer questions. A phrasing
    you taught with the Wrong button goes first ([teaching-kurooto.md](teaching-kurooto.md)).
+   **Two close readings.** When no instant request takes your words but they're close to two of them (by their
+   example phrasings), it asks instead of guessing: 'Did you mean "what's due this week" or "what's on today"?' with
+   both as buttons and **Neither** (which sends it on as before). Only when the two are about equally close; otherwise
+   nothing changes. Pick the same one twice for the same words and it learns them
+   ([teaching-kurooto.md](teaching-kurooto.md#two-readings)). On Telegram and the phone app; `repair.on` off turns it
+   off.
    **A request a feature that's off would understand** ("remind me in 5 min to stretch" with Reminders off) gets "That's
    for Reminders, which is off. Turn it on and do it?" with **Turn on** (it turns on that feature, and what it needs,
    then does the request) and **Not now** (it stays off; with Chat on, your AI gets the message instead). A feature
@@ -104,6 +113,11 @@ notes, wrote 1 note*. "did nothing" means it used none of Kurooto's tools. See
 | `/brain` | which AI answers (main and fallback), and whether each is ready |
 | `/usage`, `/usage 14` | AI requests per day (last 7 days, or the days you give, up to 60), limits hit, today's limits |
 | `/jobs`, `/jobs cancel <id>`, `/jobs cancel all` | what's running and waiting, with Cancel buttons |
+
+**How long its answers are** (`persona.register`, on). A short message (12 words or fewer) gets a short answer; a
+long one (80 words or more) may get a full one; a voice note gets an answer worded the way you'd say it aloud (short
+sentences, no lists). It goes only by your message's length, never by the time of day, and it doesn't change partway
+through a conversation. A length on your [persona card](teaching-kurooto.md#your-persona-card) wins over it.
 
 **Memory of the conversation.** Chat remembers your last few exchanges (up to 6, each cut to 1,200 characters) as long
 as the last one was within 2 hours; after 2 hours of quiet a new message starts fresh. Requests from a terminal start
@@ -263,11 +277,23 @@ notes folder ("send me my linear algebra pack"), on calls too. From a terminal: 
 - **During focus** a file waits until focus ends.
 - The AI can only send files from your notes folder.
 
+## Boundaries it keeps
+
+Decisions about your health, your relationships and your money are yours. Asked to make one ("should I stop taking my
+meds?", "should I break up with him?", "should I take the loan?"), Kurooto says it's not its to decide and who to ask:
+a doctor or pharmacist (and your local emergency number if it feels urgent), someone you trust or a counsellor,
+someone you trust with money or a financial adviser. One line, no lecture. It still gives facts when you ask for
+facts.
+
+This is a fixed list of rules, not the AI's judgement: plain-English requests that match it are answered at once on
+your computer; every AI request and every call is also told the rule. `persona.boundaries` off turns both off.
+
 ## Other core commands
 
 | Command | Does |
 |---|---|
 | `/aboutme` | the In-brief part of your profile (what goes along with every AI request) and a link to edit it on your computer ([teaching-kurooto.md](teaching-kurooto.md)) |
+| `/persona`, `/persona tone: plain, no pep talk`, `/persona clear` | your persona card: how Kurooto talks to you ([teaching-kurooto.md](teaching-kurooto.md#your-persona-card)) |
 | `/health`, `/health now` | what isn't working, with Fix buttons; `now` also checks online services ([messages-it-sends.md](messages-it-sends.md#kurooto-keeps-itself-working)) |
 | `/calm`, `/why` | the daily message limit and what's turned down; why the last message came ([messages-it-sends.md](messages-it-sends.md)) |
 | `/forget 7d`, `/forget 2w`, `/forget all` | forget what Kurooto kept of the last 7 days (two weeks, or everything, after a confirm button) now; `/forget` alone says how long things are kept ([privacy.md](privacy.md#how-long-its-kept)) |

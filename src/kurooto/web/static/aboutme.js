@@ -38,3 +38,38 @@ function aboutEditor(host, call, onSaved) {
   load();
   return ed;
 }
+
+// The persona card (core/persona.py): what to call you, tone, length, things to avoid. It starts empty; it goes along
+// with every AI request and call. Saving runs Kurooto's rules, which leave out feelings, a backstory or "I missed
+// you", and say what went; the preview is exactly what's sent.
+function personaEditor(host, call) {
+  const make = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const form = make("div", "form"), save = make("button", "primary", "Save card"), msg = make("p", "about-msg");
+  const preview = make("pre", "about-brief"), inputs = {};
+  const show = (r) => {
+    for (const f of r.fields) if (inputs[f.key]) inputs[f.key].value = f.value;
+    preview.textContent = r.preview || "(empty: I talk plainly)";
+  };
+  async function load() {
+    const r = await call("persona");
+    form.replaceChildren(...r.fields.map((f) => {
+      const label = make("label"), inp = make("input");
+      inp.placeholder = f.hint; inp.maxLength = 200; inp.value = f.value; inputs[f.key] = inp;
+      label.append(make("span", "", f.label), inp);
+      return label;
+    }));
+    show(r);
+  }
+  save.addEventListener("click", async () => {
+    save.disabled = true;
+    const values = {};
+    for (const [k, inp] of Object.entries(inputs)) values[k] = inp.value;
+    const r = await call("persona", { values });
+    save.disabled = false;
+    if (!r.ok) { msg.textContent = r.error || "That didn't save."; msg.className = "about-msg bad"; return; }
+    show(r); msg.textContent = r.message; msg.className = r.message === "Saved." ? "about-msg ok" : "about-msg bad";
+  });
+  const row = make("div", "about-row"); row.append(save);
+  host.replaceChildren(form, row, msg, make("p", "about-label", "What goes along with every AI request and call"), preview);
+  load();
+}

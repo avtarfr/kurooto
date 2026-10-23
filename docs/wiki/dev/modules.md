@@ -342,6 +342,8 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `REPHRASE_S` 180 s earlier) was kept as a fallthrough, the case gets `rephrased`/`rephrased_to`; at
   `REPHRASE_TIMES` (2) cases with the same `norm` text and target it calls `teach()` (the replay gate applies) and
   notifies with Undo (Calm reason `cases.rephrased`, event `case_rephrased`). Setting `cases.learn_rephrased`.
+  `repaired(text, target, means)` does the same for a reading picked in `core/repair.py` (kind `repair`,
+  `repaired_to`; Calm reason `cases.repaired`), and `expected(text)` is a test case's target for a phrasing.
 - **voice_notes** (`modules/voice_notes.py`): `transcribe()` posts audio to Gemini `generateContent`; used by Telegram.
   18 MB limit.
 - **library** (`modules/library.py`): `/note` into the inbox; `/prompts`, `/prompt` (the prompt library in
@@ -387,7 +389,17 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   last 21 days (a day turns at 04:00), and with 7+ days of 3+ messages sets `startby.window` from the medians of the
   first and last, clamped and rounded to 30 min, when either end is 60+ min off; skipped when the user's own value
   isn't the last learned one. State `window_learned` in `startby.json`; Undo is `sby:window:undo`; Calm reason
-  `startby.window`.
+  `startby.window`. Negotiate, don't repeat (`startby.negotiate`): `modules/deadlines.py:_chase` (ping, urgent,
+  exam; `again` when "ping" was told before) and `call_outcome` (a missed call) call `_negotiate` →
+  `offer_reshape(i, again)`, which needs `again` or a `told` date before today. `reshape(i)` runs `compute()` from
+  today's window start with `pieces` (`allocate` records where each item's hours went), takes the hours placed
+  today, and if what's left of today's free time × share is under them by more than 15 min, offers now (to the half
+  hour, down) and the rest at tomorrow's first free slot, when that ends before the due time. `_take_offer` keeps one
+  per deadline per day in `startby.json` `reshape` (`offered`, `done`, `declined`); buttons `neg:<id>:yes|no` →
+  `reshape_answer` (yes: a one-off `startby:moved:<id>` → `_moved`, Calm reason `startby.moved`; blocks via
+  `agent_plan.plan_block` when that's ready). The offer's Calm reason is `startby.negotiate`; call tools
+  `reshape_plan`, `reshape_answer`. Events `startby_reshape_offered`, `_done`, `_declined`. Tests:
+  `tests/unit/test_negotiate.py`.
 - **exam_season** (`modules/exam_season.py`): one card for an exam period (update hold, alarm check, the eve question,
   leave-by alarm, debrief, no calls in exams, the Calm budget). Registers `app.updates.holds["exam_season"]` and an
   availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`).

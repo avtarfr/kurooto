@@ -25,6 +25,7 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/q` (or `/questions`) | the open questions Kurooto asked you, each with its buttons; reply to one to answer it | [Talking to Kurooto](talking-to-kurooto.md#questions-and-approvals) |
 | `/jobs` | what the AI is working on and what waits, with Cancel buttons, and the last few that finished; `/jobs cancel <id>` or `/jobs cancel all` | [AI brains](ai-brains.md) |
 | `/aboutme` | the In-brief part of your profile and a link to edit it | [Teaching Kurooto](teaching-kurooto.md) |
+| `/persona` · `/persona tone: plain, no pep talk` · `/persona clear [line]` | your persona card (what to call you, tone, length, things to avoid; empty to start): show it, set a line, clear it. Feelings, a backstory or "I missed you" are left out, and it says so | [Teaching Kurooto](teaching-kurooto.md#your-persona-card) |
 | `/health` | what isn't working, with Fix buttons; `/health now` also checks online services | [Messages it sends](messages-it-sends.md) |
 | `/fixme` · `/fixme <what you see>` | what's wrong and what to do, matched by rules with no AI (so it works when the AI is what broke): each failing check with its troubleshooting row, known issues of your version and a Fix button where there's one; `/fixme the phone doesn't ring` finds the rows for what you see; `/fixme now` checks online too; `/fixme fix <id>` runs a fix (in a terminal); `/fixme ai` has your AI explain the last answer, if it works | [Troubleshooting](troubleshooting.md) |
 | `/calm` | messages that came by themselves today, the limit, what waits for the evening and what you turned down; `/calm 8` (messages a day), `/calm calls 2`, `/calm evening 21:00`, `/calm off`, `/calm on` | [Messages it sends](messages-it-sends.md) |
@@ -238,9 +239,12 @@ the AI. A request that asks a question only matches the requests below that answ
 | "every friday at 6pm send me a summary of my week" | a routine | Skills |
 | a link on its own | filed into your notes (the `/add-to-notes` skill) | Skills |
 | "sync everything", "sync it all", "sync all now" | every sync that's on, one after another | always there |
+| "should I stop my meds?", "should I break up with him?", "should I take the loan?" | not Kurooto's to decide: one line on who to ask (a doctor or pharmacist; someone you trust or a counsellor; a financial adviser) | always there (`persona.boundaries`) |
 
 Phrasings you taught with the Wrong button are matched first, as a whole message. See
-[Teaching Kurooto](teaching-kurooto.md#wrong-button-and-test-cases).
+[Teaching Kurooto](teaching-kurooto.md#wrong-button-and-test-cases). A short message none of these take, but about
+equally close to two of them, gets both as buttons ("Did you mean ...?") instead of a guess
+([Talking to Kurooto](talking-to-kurooto.md#what-happens-to-a-message)).
 
 **Effort prefixes.** Start a message for the AI with `low:`, `medium:` or `high:` to choose how hard it thinks. See
 [AI brains](ai-brains.md).

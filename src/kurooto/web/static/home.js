@@ -1697,12 +1697,15 @@ async function renderResearch(body) {
   };
 }
 
-// About you: your profile (about-me/profile.md), edited right here (aboutme.js); /aboutme on Telegram links here
+// About you: your persona card (aboutme.js personaEditor, /persona on Telegram) and your profile
+// (about-me/profile.md), edited right here (aboutme.js); /aboutme on Telegram links here
 async function renderAboutTab(body) {
   body.onclick = body.onchange = body.onsubmit = null; // another tab's handlers mustn't see the editor's clicks
   const a = await api("aboutyou/profile");
-  if (!a.exists) { body.innerHTML = `<p class="d">No profile yet. Build one on the <a href="/setup">setup page</a> (its About you step): what your other AI accounts know about you, merged by your AI.</p>`; return; }
-  body.innerHTML = `<p class="d">Your profile, ${esc(a.path)}. Edit it here or in your notes; building it again (on the <a href="/setup">setup page</a>) asks first if you've changed it.</p><div class="about-editor" id="about-host"></div>`;
+  const card = `<h4>Persona card</h4><p class="d">How I talk to you, the same on chat, the app and calls. Empty means plain. It sets wording only: no feelings, backstory or "I missed you".</p><div class="about-editor" id="persona-host"></div><h4>Profile</h4>`;
+  if (!a.exists) { body.innerHTML = card + `<p class="d">No profile yet. Build one on the <a href="/setup">setup page</a> (its About you step): what your other AI accounts know about you, merged by your AI.</p>`; personaEditor($("#persona-host"), api); return; }
+  body.innerHTML = card + `<p class="d">Your profile, ${esc(a.path)}. Edit it here or in your notes; building it again (on the <a href="/setup">setup page</a>) asks first if you've changed it.</p><div class="about-editor" id="about-host"></div>`;
+  personaEditor($("#persona-host"), api);
   aboutEditor($("#about-host"), api);
 }
 

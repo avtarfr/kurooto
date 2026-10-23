@@ -246,6 +246,10 @@ class Api:
             return 200, self._power()
         if path == "aboutyou/profile":  # the profile, for the editor (setup page and dashboard)
             return 200, self.app.about.view()
+        if path == "persona":  # the persona card, for its editor on the About you tab (core/persona.py)
+            from kurooto.core import persona
+
+            return 200, persona.view(self.app)
         if path == "aboutyou":
             from kurooto.core.aboutyou import prompt
 
@@ -518,6 +522,14 @@ class Api:
                 }
             except ValueError as e:
                 return 200, {"ok": False, "error": str(e)}
+        if path == "persona":  # save the persona card; what the rules left out is said (core/persona.py)
+            from kurooto.core import persona
+
+            values = b.get("values")
+            if not isinstance(values, dict):
+                return 400, {"error": "values is missing"}
+            _, dropped = persona.save(self.app, {k: str(v or "") for k, v in values.items()})
+            return 200, {"ok": True, **persona.view(self.app), "message": persona.dropped_text(dropped) or "Saved."}
         if path == "aboutyou/remove":
             return 200, {"ok": self.app.about.remove(str(b.get("id", ""))), **self.app.about.status()}
         if path in ("aboutyou/profile", "aboutyou/preview"):  # save your edit / what its In brief would be

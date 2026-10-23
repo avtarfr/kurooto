@@ -208,7 +208,7 @@ back to the board. In the roomy layout they're tabs under the panes.
 | Features | Alt+F | turn features on and off, set them up |
 | Phone | Alt+P | your call line, pairing a phone, a test ring |
 | Research | Alt+R | paper sources, the digest, project repositories |
-| About you | Alt+Y | your profile, to read and edit |
+| About you | Alt+Y | your persona card and your profile, to read and edit |
 | Settings | Alt+S | every setting you can change here |
 
 A link to `/#about` (what `/aboutme` on Telegram sends) opens the About you page directly; any page name works the
@@ -290,7 +290,10 @@ commits go into your project notes. All of it is explained in [research.md](rese
 
 ### About you (Alt+Y)
 
-Your profile (`about-me/profile.md` in your notes), in an editor: **Save** keeps the previous version beside it
+First your **persona card**: what to call you, tone, length and things to avoid, with **Save card** and a preview of
+exactly what goes along with every AI request and call. It starts empty; a part that would give Kurooto feelings, a
+backstory or "I missed you" is left out when you save, and the page says which
+([teaching-kurooto.md](teaching-kurooto.md#your-persona-card)). Then your profile (`about-me/profile.md` in your notes), in an editor: **Save** keeps the previous version beside it
 (`profile-<date>.md`), **Revert** goes back to what's saved, and **Preview In brief** shows exactly the part that goes
 along with every AI request (the section under `## In brief`; a warning shows when there is none). With no profile
 yet, the page links to the setup page's About you step. See [teaching-kurooto.md](teaching-kurooto.md).
