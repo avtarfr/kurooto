@@ -113,9 +113,12 @@ html[data-now="night"] .hero .sun::after { opacity: 1; }
 .blobbed { position: relative; isolation: isolate; overflow: clip; }
 .blobbed > .wrap { position: relative; z-index: 1; }
 .blob { position: absolute; width: var(--s); aspect-ratio: 1 / 1.15; left: var(--x); top: var(--y); background: var(--c); opacity: var(--o, 0.5);
-  border-radius: 50% 50% 14% 14% / 44% 44% 12% 12%; translate: -50% -50%; will-change: border-radius, translate, rotate; }
+  border-radius: 50% 50% 14% 14% / 44% 44% 12% 12%; translate: -50% -50%; }
 @media (prefers-reduced-motion: no-preference) {
-  .blob { animation: morph var(--d1) ease-in-out var(--dl) infinite alternate, wander var(--d2) ease-in-out var(--dl) infinite alternate; }
+  .blob { animation: wander var(--d2) ease-in-out var(--dl) infinite alternate; will-change: translate; }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .blob { animation: morph var(--d1) ease-in-out var(--dl) infinite alternate, wander var(--d2) ease-in-out var(--dl) infinite alternate; will-change: border-radius, translate, rotate; }
 }
 @keyframes morph {
   0% { border-radius: 50% 50% 14% 14% / 44% 44% 12% 12%; rotate: 0deg; }
@@ -421,11 +424,11 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
         </article>
         <article class="ch on-night" data-t="07:00">
           <div><div class="hour">07:00</div><h2>It calls to wake you</h2><p>A real call that rings like an alarm, even on silent. You talk the day through, and it plans it with you.</p></div>
-          <div class="vis"><div class="phone"><img src="media/phone-call.webp" width="1170" height="2532" alt="The phone's call page during a call with Kurooto: the conversation as text, with Hang up, Mute and Earpiece."></div></div>
+          <div class="vis"><div class="phone"><img loading="lazy" decoding="async" src="media/phone-call.webp" width="1170" height="2532" alt="The phone's call page during a call with Kurooto: the conversation as text, with Hang up, Mute and Earpiece."></div></div>
         </article>
         <article class="ch on-day" data-t="09:00">
           <div><div class="hour">09:00</div><h2>Quiet in class</h2><p>No calls during a class. Slept through one? A catch-up before the next and a lecture note to fill in, and nobody asks whether you went.</p></div>
-          <div class="vis"><div class="screen"><img src="media/morning.webp" width="2560" height="1662" alt="The morning page: today's plan from the daily note, with the day's classes, calendar, what's due soon and check-ins."></div></div>
+          <div class="vis"><div class="screen"><img loading="lazy" decoding="async" src="media/morning.webp" width="2560" height="1662" alt="The morning page: today's plan from the daily note, with the day's classes, calendar, what's due soon and check-ins."></div></div>
         </article>
         <article class="ch on-day" data-t="13:00">
           <div><div class="hour" data-task-hour>13:00</div><h2>One task, carried through the day</h2><p>It lands on your list, gets a start time, knows how far you got, and then it's off your mind.</p></div>
@@ -438,7 +441,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
         </article>
         <article class="ch on-day" data-t="16:00">
           <div><div class="hour">16:00</div><h2>Your whole day on one screen</h2><p>The dashboard: your computer, every feature at work and your notes as a living map, on a page only this computer can open.</p></div>
-          <div class="vis"><div class="screen"><img src="media/dashboard.webp" width="3840" height="2160" alt="The dashboard: this computer on the left, Kurooto's features as cells around a beating core, the notes and their links on the right, and a terminal below."></div></div>
+          <div class="vis"><div class="screen"><img loading="lazy" decoding="async" src="media/dashboard.webp" width="3840" height="2160" alt="The dashboard: this computer on the left, Kurooto's features as cells around a beating core, the notes and their links on the right, and a terminal below."></div></div>
         </article>
         <article class="ch on-night" data-t="19:30">
           <div><div class="hour">19:30</div><h2>It lives with you, not on a server</h2><p>Your computer, your Telegram bot, your own call line, your notes, the AI you pick. Every feature is off until you turn it on.</p></div>
@@ -446,11 +449,11 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
         </article>
         <article class="ch on-night" data-t="21:30">
           <div><div class="hour">21:30</div><h2>A check-in before bed</h2><p>What got done? It moves to when you actually answer, and keeps what you said in your journal.</p></div>
-          <div class="vis"><div class="phone"><img src="media/chat-example-2.webp" width="1170" height="2532" alt="A chat with Kurooto: an AI answer about the Gibbs phenomenon, then the evening check-in, the reply, and the note that it was saved to the journal."></div></div>
+          <div class="vis"><div class="phone"><img loading="lazy" decoding="async" src="media/chat-example-2.webp" width="1170" height="2532" alt="A chat with Kurooto: an AI answer about the Gibbs phenomenon, then the evening check-in, the reply, and the note that it was saved to the journal."></div></div>
         </article>
         <article class="ch on-night" data-t="23:30">
           <div><div class="hour">23:30</div><h2>Quiet now</h2><p>No calls until your alarm. A daily limit on messages it starts by itself, and a "Less of this" on every one.</p></div>
-          <div class="vis"><div class="phone"><img src="media/phone-inbox.webp" width="1170" height="2532" alt="The phone's inbox: a call to answer and a question with answer buttons, a reply box and Later."></div></div>
+          <div class="vis"><div class="phone"><img loading="lazy" decoding="async" src="media/phone-inbox.webp" width="1170" height="2532" alt="The phone's inbox: a call to answer and a question with answer buttons, a reply box and Later."></div></div>
         </article>
       </div>
     </div>
@@ -621,7 +624,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
   var videos = $$('video[data-play]');
   if (window.Stage && Stage.live) {
     Stage.smooth();
-    Stage.scene($('#scene'), {
+    var sceneMM = Stage.scene($('#scene'), {
       hold: 11,
       onUpdate: function (p) {
         sceneMin = sceneTime(p);
@@ -696,6 +699,23 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     $('#scene').classList.add('is-rest');
   }
 
+  /* ---------- the day plays once, forward: past its end it rests as a still page, so scrolling back up is free and
+     nothing you've seen replays. The section after it keeps its place on screen while the page above changes. ---------- */
+  if (typeof sceneMM !== 'undefined' && sceneMM && window.ScrollTrigger) {
+    ScrollTrigger.create({ trigger: '#scene', start: 'bottom bottom-=2', once: true, onEnter: function () {
+      requestAnimationFrame(function () {
+        var anchor = $('#day'), before = anchor.getBoundingClientRect().top;
+        sceneMM.revert();
+        $$('#scene .ch').forEach(function (ch) { ch.classList.add('is-on'); var v = ch.children[1]; if (v) { v.style.scale = ''; v.style.marginBottom = ''; } });
+        $('#scene').classList.add('is-rest', 'was-live');
+        ScrollTrigger.refresh();
+        var y = scrollY + anchor.getBoundingClientRect().top - before;
+        if (Stage.lenis) Stage.lenis.scrollTo(y, { immediate: true, force: true }); else scrollTo(0, y);
+        document.dispatchEvent(new Event('kuro:hour'));
+      });
+    } });
+  }
+
   /* ---------- each hour fits its screen: on a small screen the picture shrinks so the words stay whole ---------- */
   function fitHours() {
     $$('#scene.is-live .ch').forEach(function (ch) {
@@ -718,7 +738,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
   function fmt(m) { m = ((Math.round(m) % 1440) + 1440) % 1440; var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; }
   function pageMinutes() {
     var y = scrollY, top = scene.offsetTop, h = scene.offsetHeight - innerHeight, end = document.documentElement.scrollHeight - innerHeight;
-    if (!scene.classList.contains('is-live')) { var p = end > 0 ? y / end : 0; return 240 + p * 1440; }
+    if (!scene.classList.contains('is-live') && !scene.classList.contains('was-live')) { var p = end > 0 ? y / end : 0; return 240 + p * 1440; }
     if (y < top) { var n = nowMin(), to = n > 240 ? 1680 : 240; return n + (to - n) * Math.min(1, y / Math.max(1, top)); }
     if (y <= top + h) return sceneTime((y - top) / Math.max(1, h));
     var rest = Math.max(1, end - top - h);
@@ -787,7 +807,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
      glow down every vein; nodes swell as it passes. Pointing at something sends a pulse both ways from its node. */
   (function () {
     var cv = $('#air'); if (!cv || reduce) return;
-    var cx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), W = 0, H = 0, TAU = Math.PI * 2, run = true;
+    var touch = matchMedia('(pointer: coarse)').matches, cx = cv.getContext('2d'), dpr = Math.min(touch ? 1.5 : 2, devicePixelRatio || 1), W = 0, H = 0, TAU = Math.PI * 2, run = true, lastMs = 0;
     function size() { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }
     size(); addEventListener('resize', size);
     document.addEventListener('visibilitychange', function () { run = !document.hidden; if (run) requestAnimationFrame(frame); });
@@ -799,7 +819,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
       return (sprites[col] = c);
     }
     function blob(x, y, r, t, seed, wob) {
-      var N = 20, pts = [];
+      var N = touch ? 14 : 20, pts = [];
       for (var i = 0; i < N; i++) { var a = (i / N) * TAU, k = 1 + wob * (0.5 * Math.sin(2 * a + t * 0.55 + seed) + 0.38 * Math.sin(3 * a - t * 0.9 + seed * 1.7) + 0.22 * Math.sin(5 * a + t * 1.4 + seed * 2.3)); pts.push([x + Math.cos(a) * r * k, y + Math.sin(a) * r * k]); }
       cx.beginPath(); cx.moveTo((pts[N - 1][0] + pts[0][0]) / 2, (pts[N - 1][1] + pts[0][1]) / 2);
       for (var j = 0; j < N; j++) { var p = pts[j], q = pts[(j + 1) % N]; cx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
@@ -845,10 +865,10 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
       var cols = [];
       nodes.forEach(function (el) {
         var r = el.getBoundingClientRect(), op = Math.min(1, el.__op || 1);
-        var d = dock(el), e0 = d.x - (d.text ? 8 : 3), n = { el: el, edge: e0, x: e0 - (W < 700 ? 9 : 12), y: d.y, op: op, seed: seedOf(el) };
+        var d = dock(el), e0 = d.x - (d.text ? (W < 700 ? 5 : 8) : 3), n = { el: el, edge: e0, x: Math.max(6, e0 - (W < 700 ? 7 : 12)), y: d.y, op: op, seed: seedOf(el) };
         var c = cols.find(function (c) { return Math.abs(c.x - n.x) < 60; }); if (!c) { c = { x: n.x, list: [] }; cols.push(c); } c.list.push(n);
       });
-      cols.forEach(function (c) { c.list.sort(function (a, b) { return a.y - b.y; }); c.g = Math.max(8, Math.min(34, c.x * 0.55)); });
+      cols.forEach(function (c) { c.list.sort(function (a, b) { return a.y - b.y; }); c.g = Math.max(4, Math.min(34, (c.x - 4) * 0.7)); });
       cols.sort(function (a, b) { return a.x - b.x; });
       cols.forEach(function (c, i) { c.main = i === 0; });
       return cols.slice(0, 3);
@@ -858,7 +878,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
         : [{ x: L[0].x - c.g * 0.5, y: L[0].y - 80 }].concat(L).concat([{ x: L[L.length - 1].x - c.g * 0.5, y: L[L.length - 1].y + 80 }]), segs = [];  /* a side column: tendrils, not a full vein */
       for (var i = 0; i < pts.length - 1; i++) {
         var A = pts[i], B = pts[i + 1], dy = B.y - A.y, sway = c.g * (0.8 + 0.25 * Math.sin(t * 0.5 + (A.seed || i)));
-        segs.push([A, { x: A.x - sway, y: A.y + dy * 0.35 }, { x: B.x - sway, y: B.y - dy * 0.35 }, B]);
+        segs.push([A, { x: Math.max(3, A.x - sway), y: A.y + dy * 0.35 }, { x: Math.max(3, B.x - sway), y: B.y - dy * 0.35 }, B]);
       }
       return segs;
     }
@@ -875,8 +895,10 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     document.addEventListener('kuro:hour', function () { setTimeout(function () { discover(); beatNow(1.3); }, 140); });
     function frame(ms) {
       if (!run) return;
+      if (touch && ms - lastMs < 31) { requestAnimationFrame(frame); return; }  /* phones: 30 frames a second is plenty */
+      lastMs = ms;
       var t = ms / 1000, now = performance.now() / 1000;
-      if (frameN++ % 10 === 0) discover();
+      if (frameN++ % (touch ? 8 : 10) === 0) discover();
       var dy = scrollY - lastY; lastY = scrollY; vel += (Math.abs(dy) - vel) * 0.06; boost *= 0.97;
       var light = line.style.getPropertyValue('--line-ground') === '#F4F2EC', ink = light ? '#3F5626' : '#A6C07A', soft = light ? '#6B8A42' : '#6B8A42', ground = light ? '#F4F2EC' : '#0B0F0A';
       var bpm = Math.min(112, 54 + vel * 1.4 + boost * 26);
@@ -951,7 +973,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
   }
 
   /* ---------- hero sun drifts as you leave ---------- */
-  if (G && window.ScrollTrigger && !reduce) G.to('#hero-sun', { yPercent: -18, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+  if (G && window.ScrollTrigger && !reduce) G.to('#hero-sun', { yPercent: 14, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
 
   /* ---------- sections arrive (content is there without script; the move plays on top) ---------- */
   if (G && window.ScrollTrigger && !reduce) {
