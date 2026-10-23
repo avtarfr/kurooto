@@ -19,6 +19,10 @@ class Chat(Module):
     def __init__(self, app):
         super().__init__(app)
         self.dir = app.paths.state / "chat"
+        self.mine: set[str] = set()  # the requests chat sent: only their answers become the conversation
+
+    def owns(self, jid: str) -> bool:
+        return jid in self.mine
 
     @property
     def history_file(self):
@@ -58,6 +62,7 @@ class Chat(Module):
             prompt, title=text[:80], reply_to=None if terminal else msg.message_id, quiet=terminal
         )
         msg.job = jid
+        self.mine = {*list(self.mine)[-50:], jid}
         return "On it."
 
     def record_turn(self, prompt: str, reply: str) -> None:
@@ -71,7 +76,7 @@ class Chat(Module):
         history = jload(self.history_file, []) or []
         history.append(
             {
-                "user": user_text,
+                "user": user_text[:1200],
                 "assistant": reply[:1200].strip(),
                 "at": time.time(),
             }

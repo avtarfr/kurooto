@@ -385,3 +385,62 @@ def test_the_call_page_source_is_copied_and_the_built_one_is_not(tmp_path):
     assert (dst / "web" / "app.js").is_file() and (dst / "public" / "index.html").is_file()
     assert not (dst / "public" / "app.js").exists() and not (dst / "node_modules").exists()
     assert (dst / "src" / "worker.js").is_file()
+
+
+# ------------------------------------------------------------------------------------- the look back
+def test_after_a_call_a_stronger_request_looks_back_and_keeps_lessons(calls):
+    from kurooto.modules.calls import review
+    from kurooto.providers.base import Result, Verdict
+
+    app = calls.app
+    app.settings.set("brain.main", "gemini")
+    c = app.modules["calls"]
+    c.run_tool("hold_calls", {"until": "2h"})
+    said = [{"who": "Sam", "text": t} for t in ("hi", "remind me after class to email the TA", "thanks", "bye")]
+    c.handle_request("POST", "/transcript", json.dumps({"lines": said}).encode())
+    job = next(j for j in app.jobs.recent(5) if j.title == "Call review")
+    assert job.effort_req == "high" and "email the TA" in job.prompt and "hold_calls" in job.prompt
+    assert c.tool_log == []  # the next call starts with a clean log
+
+    out = "Set the reminder for 17:00.\n```lessons\n- When they say 'after class', ask when class ends.\n```"
+    app.jobs.then_actions["calls.reviewed"](job, Result(Verdict.OK, out), {})
+    assert review.lessons(app) == ["When they say 'after class', ask when class ends."]
+    assert "after class" in c.config_template()["systemInstruction"]
+    told = calls.fake.texts()[-1]
+    assert "Set the reminder" in told and "Learned for next time" in told and "```" not in told
+
+    # the same lesson again replaces, not repeats; /lessons lists and forgets
+    app.jobs.then_actions["calls.reviewed"](
+        job,
+        Result(
+            Verdict.OK,
+            "Nothing slipped through.\n```lessons\n- When they say after class, ask when the class ends.\n```",
+        ),
+        {},
+    )
+    assert len(review.lessons(app)) == 1
+    assert "1. When they say" in calls.say("/lessons")
+    assert calls.say("/lessons forget 1").startswith("Forgot:") and review.lessons(app) == []
+
+    # nothing fixed, nothing learned: no message; a short call or review off: no look back at all
+    n = len(calls.fake.texts())
+    app.jobs.then_actions["calls.reviewed"](job, Result(Verdict.OK, "Nothing slipped through.\n```lessons\n```"), {})
+    assert len(calls.fake.texts()) == n
+    assert review.review(c, said[:2], [], "") is None
+    app.settings.set("calls.review", False)
+    assert review.review(c, said, [], "") is None
+
+
+def test_lessons_merge_and_cap():
+    from kurooto.modules.calls.review import merge
+
+    assert merge(
+        ["Ask when class ends before setting reminders"], ["ask when the class ends before setting a reminder"], 5
+    ) == ["ask when the class ends before setting a reminder"]
+    assert merge(["a lesson about speaking slowly"], ["confirm reminder times aloud"], 5) == [
+        "a lesson about speaking slowly",
+        "confirm reminder times aloud",
+    ]
+    assert merge([f"lesson number {i} about different topics{i}" for i in range(5)], ["brand new advice entirely"], 3)[
+        -1
+    ] == ("brand new advice entirely")

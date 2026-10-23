@@ -453,6 +453,7 @@ REASONS: dict[str, Reason] = {
         R("calls.line_update", "your call line couldn't be updated", setting="updates.mode"),
         R("calls.rang_offline", "a call your call line placed while this computer was off"),
         R("calls.held", "a call that waits for a better time"),
+        R("calls.review", "what Kurooto fixed and learned looking back at a call", setting="calls.review"),
         R(
             "calm.monthly",
             "the monthly look at what you rarely answer",

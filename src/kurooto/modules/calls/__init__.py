@@ -33,7 +33,7 @@ from kurooto.core.config import register_defaults
 from kurooto.core.lock import Lock
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Intent, Module
-from kurooto.modules.calls import line
+from kurooto.modules.calls import line, review
 from kurooto.modules.calls.connector import Connector
 from kurooto.modules.calls.fallback import LiveHealth, TextCall, VoiceTurns, live_profile
 from kurooto.modules.calls.phone import PhoneApp
@@ -64,6 +64,12 @@ register_defaults(
         "later_min": 30,  # "Later" on a ringing call calls back after this long
         "realert_min": [3, 6],  # a call you didn't answer rings again this many minutes after the first; [] = once
         "notes_repo": "",  # owner/repo of your notes on GitHub (Notes sync), so calls can read notes while off
+        # after every call a stronger AI request reads the transcript, does what slipped through and keeps lessons
+        # that every later call is told (review.py); review_brain: which AI ("" = your main one)
+        "review": True,
+        "review_effort": "high",
+        "review_brain": "",
+        "lessons_max": 12,
     },
 )
 
@@ -94,6 +100,7 @@ class Calls(Module):
         self.live = LiveHealth(self)  # when Gemini Live won't take a call (fallback.py)
         self.turns = VoiceTurns(self)
         self.textcall = TextCall(self)
+        self.tool_log: list[dict] = []  # this call's tool uses, for the look back after it (review.py)
 
     # ------------------------------------------------------------------------------------------ setup
     def worker_url(self) -> str:
@@ -127,6 +134,9 @@ class Calls(Module):
         self.app.jobs.then_actions["calls.task_done"] = self._task_done
         self.action("textcall_idle", self.textcall.idle)  # a call that went on as text (fallback.py)
         self.app.jobs.then_actions["calls.textcall_said"] = self.textcall.said
+        self.app.jobs.then_actions["calls.reviewed"] = lambda job, result, payload: review.reviewed(
+            self, job, result, payload
+        )
         self.app.notifier.register("app", self.phone.send, self.phone.retract)  # questions etc. (phone.py)
 
     def stop(self):
@@ -295,9 +305,11 @@ class Calls(Module):
             return f"There's no {name} tool (that feature may be off)."
         self.app.events.emit("calls_tool", name=name)
         try:
-            return tool.run(args or {})
+            out = tool.run(args or {})
         except Exception as e:
-            return f"That failed: {type(e).__name__}: {e}"[:300]
+            out = f"That failed: {type(e).__name__}: {e}"[:300]
+        self.tool_log = [*self.tool_log[-59:], {"name": name, "args": str(args or {})[:300], "result": str(out)[:300]}]
+        return out
 
     def pending(self) -> dict:
         out: dict = {}
@@ -852,6 +864,11 @@ class Calls(Module):
             if m and self.app.is_on(mid) and hasattr(m, "call_transcript"):
                 m.call_transcript(r["key"], lines)
         self.app.events.emit("call_transcript", lines=len(lines), layer=str(b.get("layer") or "live")[:10])
+        used, self.tool_log = self.tool_log, []
+        try:  # the look back never stands in the way of keeping the transcript
+            review.review(self, lines, used, purpose)
+        except Exception as e:
+            self.app.events.emit("call_review_failed", error=f"{type(e).__name__}: {e}"[:200])
         return {"ok": True}
 
     def _upload(self, q: dict, body: bytes) -> tuple[int, dict]:
@@ -902,6 +919,9 @@ class Calls(Module):
         ]
         if self.setting("persona"):
             lines.append(str(self.setting("persona"))[:500])
+        learned = review.lessons(self.app)
+        if learned:
+            lines.append("What earlier calls taught you (follow these):\n" + "\n".join(f"- {x}" for x in learned))
         cfg = {
             "_model": self.setting("live_model") or "gemini-3.8-live",
             "responseModalities": ["AUDIO"],
@@ -1106,7 +1126,11 @@ class Calls(Module):
             Command("phone", "pair a phone so calls ring it", self._cmd_phone),
             Command("phones", "paired phones (and /unpair <id> to remove one)", self._cmd_phones),
             Command("unpair", "remove a paired phone: /unpair <id>", self._cmd_unpair),
+            Command("lessons", "what calls have learned from looking back (/lessons forget 2)", self._cmd_lessons),
         ]
+
+    def _cmd_lessons(self, msg, arg: str) -> str:
+        return review.command(self.app, arg)
 
     def _cmd_call(self, msg: Incoming, arg: str) -> str:
         if not self.worker_url():
