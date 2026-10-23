@@ -817,14 +817,36 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
       for (var e = el; e && e !== document.body; e = e.parentElement) { var cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none') return 0; a *= +cs.opacity; if (a < 0.05) return 0; }
       return a;
     }
+    /* where the plug goes: the first thing you actually see in the element. A box with its own ground (a button, a card,
+       a dark row) is plugged at its edge; bare text at its first word; either way centred on the first line of text.
+       Pictures and cards are plugged at the middle of their edge. */
+    var rng = document.createRange();
+    function ground(e) { var cs = getComputedStyle(e), m = cs.backgroundColor.match(/[\d.]+/g); return (m && (m.length < 4 || +m[3] > 0.05) && cs.backgroundColor !== 'transparent') || /^(IMG|VIDEO|CANVAS|SVG)$/i.test(e.tagName); }
+    function firstLine(el) {
+      var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), t;
+      while ((t = w.nextNode())) { if (!t.nodeValue.trim()) continue; rng.selectNodeContents(t); var rs = rng.getClientRects(); for (var i = 0; i < rs.length; i++) if (rs[i].width > 1) return rs[i]; }
+      return null;
+    }
+    function dock(el) {
+      var r = el.getBoundingClientRect();
+      if (el.matches('.vis > *, .tg, .card, #blocks, .install')) return { x: r.left, y: r.top + r.height / 2 };
+      var w = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT), n = el, box = ground(el) ? el : null;
+      while (!box && (n = w.nextNode())) {
+        if (n.nodeType === 1) { if (ground(n) && n.getBoundingClientRect().width > 4) box = n; continue; }
+        if (!n.nodeValue.trim()) continue;
+        rng.selectNodeContents(n); var rs = rng.getClientRects(); for (var i = 0; i < rs.length; i++) if (rs[i].width > 1) return { x: rs[i].left, y: rs[i].top + rs[i].height / 2, text: true };
+      }
+      var b = (box || el).getBoundingClientRect(), L = firstLine(box || el);
+      return { x: b.left, y: L ? L.top + L.height / 2 : b.top + Math.min(24, b.height / 2) };
+    }
     function seedOf(el) { var s = seeds.get(el); if (s == null) { s = Math.random() * 10; seeds.set(el, s); } return s; }
     /* veins: nodes grouped by the left edge they sit on (a column), top to bottom */
     function veins() {
       var cols = [];
       nodes.forEach(function (el) {
         var r = el.getBoundingClientRect(), op = Math.min(1, el.__op || 1);
-        var mid = el.matches('.vis > *, .tg, .card, #blocks, .install'), n = { el: el, edge: r.left - 3, x: r.left - (W < 700 ? 11 : 15), y: mid ? r.top + r.height / 2 : r.top + Math.min(24, r.height / 2), op: op, seed: seedOf(el) };
-        var c = cols.find(function (c) { return Math.abs(c.x - n.x) < 40; }); if (!c) { c = { x: n.x, list: [] }; cols.push(c); } c.list.push(n);
+        var d = dock(el), e0 = d.x - (d.text ? 8 : 3), n = { el: el, edge: e0, x: e0 - (W < 700 ? 9 : 12), y: d.y, op: op, seed: seedOf(el) };
+        var c = cols.find(function (c) { return Math.abs(c.x - n.x) < 60; }); if (!c) { c = { x: n.x, list: [] }; cols.push(c); } c.list.push(n);
       });
       cols.forEach(function (c) { c.list.sort(function (a, b) { return a.y - b.y; }); c.g = Math.max(8, Math.min(34, c.x * 0.55)); });
       cols.sort(function (a, b) { return a.x - b.x; });
