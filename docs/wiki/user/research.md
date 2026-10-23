@@ -7,6 +7,7 @@ that keeps up with your code, a log of experiment runs, and a message when a lon
 - [The papers digest](#the-papers-digest)
 - [Projects and their logs](#projects-and-their-logs)
 - [Quiet projects](#quiet-projects)
+- [Meetings with someone: briefs, minutes and action items](#meetings-with-someone-briefs-minutes-and-action-items)
 - [Experiment runs (kurooto runlog)](#experiment-runs-kurooto-runlog)
 - [Long jobs (kurooto watch)](#long-jobs-kurooto-watch)
 - [Research time in the study tracker](#research-time-in-the-study-tracker)
@@ -148,6 +149,81 @@ expires after 3 days. Like any question, you can answer it on the phone app or o
 
 ---
 
+## Meetings with someone: briefs, minutes and action items
+
+Any meeting you have with someone a project note is **With**, whatever they are to you (supervisor, guide, manager,
+coach): the project note keeps the meeting's lines, a brief comes the evening before, and what you send after it becomes
+minutes.
+
+**Setting it up, by saying it** (in the chat or your journal; one line back with Undo, `/inferred` lists them):
+
+| You say | Kurooto |
+|---|---|
+| "I got a project under Prof Lena Ortiz on glacier flow" | starts the note *Glacier flow* with "With: Prof Lena Ortiz (supervisor)" |
+| "I meet my manager Mira Castell every Monday at 10 about onboarding" | puts "With: Mira Castell (manager)" and "Meets: every Mon 10:00" in the project note *Onboarding* (made if missing; without a topic, *Meetings with Mira Castell*) |
+| "We meet my guide Dr Okafor every Tuesday at 4" | the weekly time for the project that's With Okafor already ("I have a weekly call with ... on Fridays at 5" works too) |
+| "Met Okafor today, we fixed the drift" | a dated line under the note's Meetings, and "Last met: <date>" |
+| "I have a meeting with Ortiz on Friday at 4" | a "Meeting: Prof Lena Ortiz" deadline, for a one-off meeting |
+
+Someone unknown with no role or title ("I meet Sam every Friday") sets nothing up. The role is your own word, from "my
+<role>"; you can change it in the note.
+
+**In the project note**, these lines live in Kurooto's own block, the only part of the note it rewrites:
+
+```
+<!-- kurooto:meeting -->
+With: Mira Castell (manager)
+Last met: 2026-10-19
+Meets: every Mon 10:00
+<!-- /kurooto:meeting -->
+```
+
+A note from before 0.5.20 keeps its own "With:" and "Last met:" lines (they're yours now, and never changed); the block
+goes under them, and the newest "Last met" date in the note is the one that counts.
+
+**The evening before** (20:00, `deadlines.meeting_brief`), for a weekly meeting or a "Meeting:" deadline, a **meeting
+brief**: what the project's Log has since you last met, its open "## Next steps", the last Meetings line and the last
+minutes' first points. Once per meeting.
+
+**After the meeting** (needs Chat on: your AI writes the minutes, in one request), any of these becomes minutes:
+
+- a voice note sent within 3 hours of the meeting's start (`meetings.after_h`);
+- a typed note of 20 words or more sent then, which nothing else (a reminder, a /command) answers;
+- a message that starts "about the meeting with Okafor:", "notes from today's meeting:" (any time; a colon or dash
+  after it).
+
+The reply says which meeting it took it for, with **Not about the meeting**: that takes the minutes out of the note and
+sends your message to your AI as a plain message. The minutes go under the note's `## Meetings`, in a block for that
+day (a second note the same day is added to the same minutes):
+
+```
+<!-- kurooto:minutes-2026-10-19 -->
+**Minutes, Mon 19 Oct 2026, with Mira Castell**
+- Went through the onboarding plan
+Decisions:
+- Start with the support queue
+Action items:
+- Write the access request (by 2026-10-21)
+<!-- /kurooto:minutes-2026-10-19 -->
+```
+
+If your AI can't answer, your notes go into that block as you sent them, so nothing is lost. "Last met" moves to the
+meeting's day.
+
+**Action items.** They're added as `- [ ]` lines in Kurooto's block under `## Next steps` (made if missing; tick or
+edit them there, they're kept as you leave them), and come back as buttons, on Telegram and in the phone app's chat:
+
+| Button | What happens |
+|---|---|
+| **Add 1: ...** | that item becomes a deadline: on the date said in the meeting (17:00), else at your next meeting with them, else a week on. Nothing is added without this tap |
+| **None** | no deadlines; the items stay under Next steps |
+| **Later** | they come back the next evening, with the briefs |
+
+Four items get buttons at a time (the rest are in the note). `meetings.minutes` = `false` turns minutes off;
+`meetings.after_h` sets the window after a meeting.
+
+---
+
 ## Experiment runs (kurooto runlog)
 
 **What it does.** Logs a training or simulation run into the project's notes, with the code's exact state, so you
@@ -262,6 +338,8 @@ Dashboard → Settings → research (most of these are also on the Research tab)
 | `research.idle_when` | `daily 18:00` | When that's checked |
 | `research.remind_by_call` | on | "Remind me tomorrow" is a call (with Phone calls on) |
 | `research.repo_runs` | `runs` | The folder in each repository where scripts keep their runs; empty = don't read |
+| `meetings.minutes` | on | Notes you send after a meeting become minutes through your AI ([Meetings](#meetings-with-someone-briefs-minutes-and-action-items)) |
+| `meetings.after_h` | `3` | Hours after a meeting's start that a voice note or a long typed note counts as notes from it |
 
 ---
 
@@ -269,7 +347,9 @@ Dashboard → Settings → research (most of these are also on the Research tab)
 
 **What leaves.** Your fields, keywords and searches go to the sources you pick (arXiv, bioRxiv, medRxiv, PubMed, the
 feeds), all public; never your notes. With Chat on and the AI picking, the papers' titles and summaries and what you
-work on go to the AI you picked. Commit messages and runs stay on this computer. `kurooto watch` messages go through
+work on go to the AI you picked. Notes you send after a meeting go to the AI you picked, to be written up as minutes
+(a voice note goes to Google first to be written out, as any voice note does). Commit messages and runs stay on this
+computer. `kurooto watch` messages go through
 Telegram like any message.
 
 **Turn it off.** Features → Research → Turn off: no digests, logs or questions. Project notes and log lines stay.

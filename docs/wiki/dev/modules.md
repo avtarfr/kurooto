@@ -447,9 +447,12 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   lists the courses, and the item gets no subject from it (`subject_of()` on the title still applies).
 - **deadlines** meeting brief: `meeting_briefs()` (`deadlines:meeting_brief`, `deadlines.meeting_brief` daily 20:00)
   takes open "Meeting: <who>" deadlines due tomorrow whose surname matches a project's `With:` person
-  (`infer.projects_with`), builds `infer.brief(note, who, due)` (Log lines dated on or after `Last met`, else two
-  weeks; unchecked `## Next steps`; the newest `## Meetings` line), notifies once (`told` gets "briefed"; Calm reason
-  `deadlines.meeting_brief`).
+  (`infer.projects_with`), then tomorrow's weekly `Meets:` meetings (`core/meetings.py:on_day(..., deadlines=False)`,
+  once per note and day via `meetings.briefed()`, skipping a note briefed from a deadline), builds
+  `infer.brief(note, who, due)` (Log lines dated on or after `Last met`, else two weeks; unchecked `## Next steps`;
+  the newest `## Meetings` line; the newest minutes' first points), notifies once (`told` gets "briefed"; Calm reason
+  `deadlines.meeting_brief`), then re-offers action items you said Later to (`meetings.offers_due()`). Items tapped
+  from minutes are added with `source="meeting"`.
 - **deadlines** progress: `PROGRESS` patterns and the `deadline_progress` intent/tool set `parts`/`parts_done` (and
   `progress_at`, for the evening reflection) on an
   open deadline found by `find_open()` (`similar()` on the title or the full title, the soonest due); `parts_text()`

@@ -518,6 +518,13 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `mail_digest.save_note` | `true` | a copy of each digest in your notes (mail/<date>-<time>.md, or your notes layout's place) |
 | `mail_digest.skip_confidential` | `true` | don't summarise mail marked confidential |
 
+### `meetings`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `meetings.after_h` | `3` | hours after a meeting's start that a voice note or a long typed note counts as notes from it |
+| `meetings.minutes` | `true` | notes you send after a meeting with a project's person become minutes through your AI |
+
 ### `memory`
 
 | Setting | Default | What it does |

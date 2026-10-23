@@ -134,6 +134,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `setup.json` | the setup page's steps: `steps.<id>` = `{status: done\|skipped\|open, seconds, visits, left_at}`, and `chosen` (the features ticked before the page was closed) | `core/setupsteps.py` |
 | `rhythm.json` | usual quiet hours, the last learned change and its Undo, lighter-day and absence marks, quiet week | `core/rhythm.py:Rhythm` |
 | `repair.json` | two-readings questions waiting for a tap (20, for 24 h) | `core/repair.py` |
+| `meetings.json` | minutes requests and their action-item offers (60; your words kept 2 days, for Not about the meeting), weekly briefs sent | `core/meetings.py` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
 | `net-outbox.jsonl` | JSON lines: Telegram messages held while offline (rewritten with `write_text`) | `core/presence.py` |
@@ -907,10 +908,16 @@ Chat when on. Only for `msg.via` in `BUTTONS` (telegram, app); a pattern match a
 
 `infer.observe(app, text, via)` runs on every plain chat message (`App.handle`, before routing; it never consumes the
 message) and every `daily.append` body. Rules only: `PROJECT` + `WITH` (first person, no `NOT` words) start a project
-via `modules/research.py:ensure_project` and write `With: <who> (<role>)` and `## Meetings`; `MEET` with a project
-person's surname logs a dated line (and sets `Last met: <date>`, `LAST_MET`, under the last `With:` line; undo puts back
-the one before), or a deadline "Meeting: <who>" when `modules/text.py:when_from` finds a time more
-than 30 minutes ahead; `CLASS` adds a `subjects.timetable` row for a known subject; `REGULAR` ("every <days> at <time> I go to/have/work
+via `modules/research.py:ensure_project` and write `With: <who> (<role>)` (in Kurooto's `meeting` block,
+`core/meetings.py:set_fields`) and `## Meetings`; `MEET` first tries `RECURRING` (`_recurring`: "I meet my <role>
+<Name> every <days> at <time> [about <topic>]", "every <day> at <time> I have a meeting with ...", "a weekly call with
+... on <day>s at <time>"; `PERSON` parses the role, title and name), which sets `Meets: every <days> <HH:MM>` (and the
+`With:` line, in a new "<topic>" or "Meetings with <who>" project note when nobody's With them and a role or title was
+said; undo `note_before` restores the note unless it changed since); otherwise `MEET` with a project person's surname
+logs a dated line (and sets `Last met: <date>` in the block; undo puts back the block as it was, `block_before`; old
+records with `met`/`met_before` still undo), or a deadline "Meeting: <who>" when `modules/text.py:when_from` finds a time
+more than 30 minutes ahead; `brief()` reads `meetings.last_met` (the newest date anywhere), steps under `## Next steps`
+(blocks included), `## Meetings` lines outside blocks, and the newest `minutes-<date>` block (`MINUTES`); `CLASS` adds a `subjects.timetable` row for a known subject; `REGULAR` ("every <days> at <time> I go to/have/work
 <what>", or the other order; not for class, test or quiz words, which `NOT_REGULAR` leaves to the classes rule and
 Deadlines) adds a `commitments.items` row via `modules/commitments.py:Commitments.add`, turning the feature on if it
 was off (undo turns it off again when the list is empty); `ALIAS` ("by X I mean <subject>", "X is short for/stands
@@ -930,6 +937,34 @@ their `undo` data, `seen`); `undo()` reverses one (a note it made and nobody tou
 line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `core/commands.py:CORE`. Calm reason
 `infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`, `aliases`, `commitments`, `quizzes`,
 `short_names`. Tests: `tests/unit/test_infer.py`.
+
+## Meetings: minutes and action items (`core/meetings.py`)
+
+A meeting is someone a project note is With (`infer.projects_with`) plus a time: the note's `Meets:` line
+(`schedule()`, weekly) or an open/done "Meeting: <who>" deadline matched by surname; `on_day(app, day)` lists them,
+`recent(app)` the latest that started within `meetings.after_h` hours (36 for the explicit form), `next_after()` the
+next one in a note. The note's lines live in Kurooto blocks (`<!-- kurooto:<key> -->`, written with `put()`/`drop()`
+via `core/graphwrite.py:block`): `meeting` (`With:`/`Last met:`/`Meets:`, `set_fields()`: made under the last bare
+`With:`/`Last met:` lines, else the title; a `With:` outside the block is never edited, `Last met` only moves forward),
+`minutes-YYYY-MM-DD` (right under `## Meetings`), `next-steps` (under `## Next steps`, made before `## Meetings` or
+`## Log` if missing; existing lines kept as they are, new `- [ ]` items appended).
+
+`take(app, msg, text, window)` is called twice from `App.handle`: after `infer.observe` for `EXPLICIT` (the message
+starts "about/notes from ... meeting [with X]" and a colon or dash; `person()` matches surname, first name or role),
+and just before Chat with `window=True` (a voice note of 8+ words or a typed one of `MIN_WORDS` 20+, not ending in "?",
+within the window). Both need `meetings.minutes` and Chat on. `submit()` queues one quiet, text-only job (`PROMPT`, the
+same day's earlier minutes included) with `then="meetings.minutes"` (`App.__init__` registers it) and replies with
+**Not about the meeting** (`mtg:<id>:not`). `minutes_written()` parses `Summary:` / `Decisions:` / `Action items:`
+(`parse()`; "(by YYYY-MM-DD)" sets an item's due at 17:00, else the next meeting, else a week on), writes the blocks
+and `Last met`, keeps the blocks' previous bodies as `undo`, and answers (`why="asked"`, `reply_to` the message: the
+phone app's chat when it came from there) with `offer()`: up to `BUTTONS` (4) `mtg:<id>:a<n>` buttons plus `none` and
+`later`. A failed answer writes the notes verbatim. `button()`: `a<n>` calls `Deadlines.add(source="meeting")` (the
+only way an item becomes a deadline), `none`, `later` (`offers_due()`, run from `Deadlines.meeting_briefs`, re-sends
+them the next evening, Calm reason `meetings.actions`), `not` (cancels the job or restores the blocks, then
+`jobs.submit` of the text as a plain request). State `<state>/meetings.json` (`minutes` by id, `KEEP` 60; `briefed`
+keys for `Meets:` briefs). `mtg` is a core prefix (`App.callback`, `tests/unit/test_buttons.py:CORE`). Events
+`meeting_notes`, `meeting_minutes`, `meeting_button` (counts only). Settings `meetings.minutes`, `meetings.after_h`.
+Tests: `tests/unit/test_meetings.py`.
 
 ## Keep or drop (`core/keep.py`)
 
