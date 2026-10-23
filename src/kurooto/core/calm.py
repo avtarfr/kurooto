@@ -14,6 +14,10 @@ time, messages come as they are. Never held, never stoppable: the alarm, approva
 than 12 hours away, and anything urgent (Kurooto can't work until you act). Answers to what you asked or did aren't
 counted at all.
 
+Two more per-kind rules, which Dreaming tunes by itself (core/policy.py, Dream RSI part two), each with Undo:
+notify.calm.habituate (kind -> N: after N in a row you left unanswered, these wait for the evening bundle until you
+answer one: getting used to things) and notify.calm.windows (kind -> "10:00-18:00": outside those hours they wait).
+
 During exam season (modules/exam_season.py, its "budget" part), only deadlines, quizzes, the alarm and exam season
 itself come during the day; the rest waits for the evening.
 
@@ -58,6 +62,8 @@ register_defaults(
             "stopped": [],  # kinds stopped with Less of this (when their feature has no setting of its own)
             "evening": [],  # kinds that always wait for the evening bundle (Less of this → Another time)
             "fewer": {},  # kind -> at most this many a day; more wait for the evening (Less of this → Fewer)
+            "habituate": {},  # kind -> after this many in a row unanswered, they wait for the evening until you answer
+            "windows": {},  # kind -> "10:00-18:00": outside these hours they wait for the evening bundle
         }
     },
 )
@@ -70,6 +76,7 @@ SUGGEST_RATIO = 0.2  # ...and you answered at most this share of them
 SUGGEST_AGAIN_DAYS = 90  # "No" keeps that kind out of the suggestion this long
 DEADLINE_H = 12  # a deadline closer than this always comes
 BUNDLE_CHARS = 3800  # one Telegram message
+IGNORED_H = 3  # a message you could answer counts as ignored once it's this many hours old and still unanswered
 
 EXEMPT = {
     "alarm": "it's about your alarm",
@@ -187,6 +194,29 @@ def _skip_subject(app: App, rec: dict) -> Change | None:
     if not slug or slug in skip:
         return None
     return Change(f"none after {rec.get('about') or slug}", key="capture.skip_subjects", value=[*skip, slug])
+
+
+def inside(window: str, t: dt.datetime) -> bool:
+    """Is t within "10:00-18:00" (a window past midnight wraps)? A window that can't be read lets everything in."""
+    try:
+        a, b = (dt.time.fromisoformat(x.strip().zfill(5)) for x in str(window).split("-", 1))
+    except ValueError:
+        return True
+    tt = t.time()
+    return (a <= tt or tt < b) if a > b else a <= tt < b
+
+
+def streak(rows, at: float) -> int:
+    """How many in a row you left unanswered as of `at`: rows are (sent ts, answered ts or None), newest first; ones
+    younger than IGNORED_H hours don't count yet, and one answered by then ends the run."""
+    n = 0
+    for ts, answered in rows:
+        if ts > at - IGNORED_H * 3600:
+            continue
+        if answered is not None and answered <= at:
+            break
+        n += 1
+    return n
 
 
 def R(rid: str, what: str, **kw) -> Reason:
@@ -663,9 +693,25 @@ class Calm:
         cap = (self.s("fewer") or {}).get(why)
         if cap is not None and self._count(t.date().isoformat(), why=why) >= int(cap):
             return "fewer"
+        n = (self.s("habituate") or {}).get(why)
+        if n and self.ignored(why, t) >= int(n):
+            return "habit"
+        window = (self.s("windows") or {}).get(why)
+        if window and not inside(window, t):
+            return "window"
         if self._count(t.date().isoformat()) >= self.limit("messages", 6):
             return "budget"
         return ""
+
+    def ignored(self, why: str, t: dt.datetime) -> int:
+        """How many of this kind you could answer came in a row without an answer (streak())."""
+        with self._db() as db:
+            rows = db.execute(
+                "select ts, answered from sent where why=? and state in ('sent','bundled') and "
+                "(buttons!='[]' or map_kind!='') order by ts desc, rowid desc limit 30",
+                (why,),
+            ).fetchall()
+        return streak([(float(a), b) for a, b in rows], t.timestamp())
 
     def decide(self, msg: Message) -> str:
         """Before a message goes out: "send", "hold" (for the evening bundle) or "stop" (you stopped this kind).
@@ -1246,6 +1292,14 @@ class Calm:
         if fewer:
             names = [self.reason(x).plural if self.reason(x) else x for x in fewer]
             lines.append(f"One a day: {', '.join(names)}.")
+        name = lambda x: self.reason(x).plural if self.reason(x) else x  # noqa: E731
+        habit = self.s("habituate") or {}
+        if habit:
+            bits = [f"{name(x)} after {n} unanswered in a row" for x, n in habit.items()]
+            lines.append(f"Evening once you stop answering: {', '.join(bits)}.")
+        windows = self.s("windows") or {}
+        if windows:
+            lines.append("Only at some hours: " + ", ".join(f"{name(x)} ({w})" for x, w in windows.items()) + ".")
         for x in (self.s("stopped") or [])[:5]:
             r = self.reason(x)
             buttons.append([(f"Start {r.plural if r else x} again"[:60], f"calm:{x}:unstop")])
@@ -1278,4 +1332,6 @@ HELD = {
     "evening": "you asked for these in the evening",
     "exams": "exam season",
     "calls": "the day's call was used",
+    "habit": "you hadn't answered the last few of these",
+    "window": "it came outside the hours set for these",
 }

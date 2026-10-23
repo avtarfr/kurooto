@@ -12,7 +12,8 @@ Contents: [settings](#settings) · [secrets](#secrets) · [paths](#paths-and-the
 [reserve](#the-reserve) · [space keeper](#space-keeper) · [retention](#retention-and-forget) ·
 [hardware](#hardware-profiles) ·
 [processes](#running-programs) · [locks](#locks-and-atomic-writes) · [Windows](#windows-notes) ·
-[smaller pieces](#smaller-core-pieces) · [keep or drop](#keep-or-drop-corekeeppy)
+[smaller pieces](#smaller-core-pieces) · [keep or drop](#keep-or-drop-corekeeppy) ·
+[the message policy](#the-message-policy-dream-rsi-part-two-corepolicypy)
 
 ## Settings
 
@@ -122,6 +123,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `jobs/<id>-result.md`, `jobs/told-<brain>-<verdict>` | long answers (kept `privacy.keep_days`); once-an-hour markers | `Jobs._deliver`, `Jobs._problem` |
 | `calm.db` | SQLite, table `sent`, kept 45 days (`text`/`title` only `privacy.keep_days`) | `core/calm.py:Calm` |
 | `calm.json`, `calm-undo.json` | bundle day and suggestion state; undo records | `Calm` |
+| `dream-policy.json` | the day of the last tuning round and the last 30 decisions with their replay scores | `core/policy.py:tune` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
 | `events.jsonl`, `events.jsonl.1` | JSON lines, append-only; past 10 MB it moves to `.1` (replacing the one before) | `core/events.py:Events` |
 | `focus-queue.jsonl` | JSON lines: messages held during focus | `core/notify.py:Notifier` |
@@ -456,7 +458,10 @@ depend on it, list it in that check's `events` in `core/health_checks.py`.
   `urgent`, `security`, `bundle`.
 - The daily limit: `notify.calm.messages` (6) and `notify.calm.calls` (1, `Calm.call_ok`). Past it, messages are held
   for the evening bundle at `notify.calm.evening_at` (20:00, sent by `calm:tick`). Per-kind user choices: `stopped`,
-  `evening`, `fewer`. Exam season tightens it (`modules/exam_season.py:budget_during_exams`).
+  `evening`, `fewer`. Exam season tightens it (`modules/exam_season.py:budget_during_exams`). Two per-kind rules
+  Dreaming tunes (`core/policy.py`): `habituate` (kind → N: `Calm.ignored(why, t)`, the `streak()` of answerable
+  records left unanswered, at least `IGNORED_H = 3` hours old, reaching N holds it as `held="habit"`) and `windows`
+  (kind → `"HH:MM-HH:MM"`, `inside()`; outside it `held="window"`). Both are checked in `Calm._wait` after `fewer`.
 - On Telegram a counted message gets "Why?" and "Less of this" (`calm:<rid>:why|less`); `Less of this` offers Stop /
   Fewer / Another time, each changing one setting (`Change`), with Undo. `/calm` and `/why` show the state.
 - Records: `calm.db` table `sent` (45 days; `Calm.forget` blanks `text` and `title` after `privacy.keep_days`).
@@ -736,3 +741,43 @@ Quiet is `quiet_change()`: a Calm `Change` adding the feature's non-exempt, stop
 `calm:<uid>:undo`. Calls a quiet feature places aren't stopped (`Calm.call_ok` doesn't read the stopped list).
 `/keep` (`Keep.command`, in `App.handle` and `CORE_HELP`): counts for 30 days, `/keep <1-90>`, `/keep <feature>`
 with its row. Events `keep_asked`, `keep_answer`, `keep_failed`. Tests: `tests/unit/test_keep.py`.
+
+## The message policy: Dream RSI, part two (`core/policy.py`)
+
+Dream-RSI (arXiv 2609.14858) mapped onto Calm: the base assistant isn't changed; a small policy decides when messages
+that come by themselves reach the user; every past message is the record; offline, the record is a replay simulator
+that can reorder (now vs. the evening bundle) but never invent outcomes; each night variants are proposed, today's
+policy is always one of them, all are scored on the whole record, and the best becomes the new policy only if it wins
+by a margin. Part one is Dreaming's self-check (`modules/dreaming.py:self_check`).
+
+- **The policy** (`Candidate`, `today(app)`): `evening` (`notify.calm.evening`), `habituate`
+  (`notify.calm.habituate`), `windows` (`notify.calm.windows`). Everything else in Calm, availability and the user's
+  settings is a hard constraint. Tunable kinds (`tunable(why, never)`): a known `Reason`, not `exempt`, `later` true,
+  not in `dreaming.never_tune`. Kinds the user already has an entry for (in any of the three, `stopped` or `fewer`) or
+  whose change from here was undone or reverted within `BLOCK_DAYS = 30` (`blocked()`) aren't proposed.
+- **The record** (`record(app)`): `calm.db` rows with `kind!='ring'`, a known `why`, state `sent` or `bundled`, no
+  `exempt` (all 45 days: the pool grows to that), as `Row(ts, why, bundled, held, answered, answerable)`;
+  `answerable` = it had buttons or a reply mapping. `calm_less` events mark the latest row of that reason in the day
+  before as `less`.
+- **The replay** (`replay(app, c, rows, base)`): per judged row (tunable, and answerable or `less`),
+  `Candidate.place(row, ignored, evening)` says `now` or `evening`: after that day's `evening_at` always `now`; a row
+  held for a reason the policy doesn't own (limit, fewer, exams) stays `evening`; then `evening`, `windows`, and
+  `habituate` against `streak()` over earlier rows of the kind. Score: `+ANSWERED` (1) for an answered row still in
+  time; `-DELAYED` (5), or `-DELAYED_QUICK` (10) when answered within `QUICK_MIN = 30` minutes, for one sent now and
+  answered before that evening that the policy would hold; `-IGNORED` (1) for an unanswered interruption,
+  `-IGNORED_BUNDLED` (0.2) in the bundle; `-LESS` (2) for a `less` row sent now; minus `CHANGE[lever]` (habituate
+  0.5, window 0.75, evening 1.0) for a variant. With `base`, `saved` and `delayed` count rows that differ from it.
+- **A round** (`tune(app)`, once a day: `dream-policy.json` `day`): `propose()` makes one-setting variants for the
+  `TOP_KINDS = 3` kinds with the most unanswered interruptions (at least `MIN_SEEN = 5` judged, `MIN_IGNORED = 3`):
+  habituate N in `HABITUATE_N = (2, 3, 5)`, the evening bundle, and a window from the hours of the answered ones. The
+  best strictly beats today's or today's stays (so it's never worse on the replay); it's applied only when it beats
+  today's by `dreaming.tune_margin` (3.0), through `Calm.apply(change, why=BY)` (`"dreaming.policy"`), so Undo is
+  `calm:<uid>:undo`. Every round is kept (last 30) and emits `dreaming_policy`; an exception emits
+  `dreaming_policy_failed` and costs nothing else.
+- **Dreaming's hook**: `Dreaming.report` calls `policy.morning(app, send)`: `(lines, buttons)`; it tunes only for the
+  sent morning message (`/dream` shows today's decision again) and gives one "Learned while you slept: ..." line with
+  an Undo button. `/dream policy` is `policy.show(app)`.
+- **Adding a lever**: a Calm setting `_wait` reads (the runtime, with a `HELD` text), its rule in `Candidate.place`
+  (the replay must decide it from recorded fields only), its proposals in `propose()` with a `CHANGE` cost and a
+  `Candidate.said()`/`change()` branch, `KEYS`, and a test in `tests/unit/test_dream_policy.py`. Never a lever that
+  sends something that wasn't sent: the replay can't judge it.

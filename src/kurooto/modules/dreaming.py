@@ -9,6 +9,10 @@ The self-check (dreaming.self_check, on; the first part of Dream RSI): each morn
 button and test cases, modules/cases.py) and says which ones that went right yesterday go wrong now, after an update
 or a settings change, so a step back is caught the next day instead of when you next need it. It also counts the
 requests it didn't understand and the Wrong taps since the last message (they wait for the Sunday look back).
+
+Tuning its own messages (dreaming.tune_messages, on; Dream RSI part two, core/policy.py): before the message, it replays
+the messages it sent you by itself under a few variants of when they come, applies the best if it clearly beats things
+as they are (one change a night, with Undo) and says so in one line. /dream policy shows the rules and the decisions.
 """
 
 from __future__ import annotations
@@ -17,6 +21,7 @@ import datetime as dt
 import re
 from pathlib import Path
 
+from kurooto.core import policy
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
@@ -50,9 +55,18 @@ class Dreaming(Module):
         self.every("morning", self.setting("when") or "daily 07:30", self.morning)
 
     def commands(self):
-        return [Command("dream", "what Kurooto did since the last morning message, and the loose ends, now", self._cmd)]
+        return [
+            Command(
+                "dream",
+                "what Kurooto did since the last morning message, and the loose ends, now; /dream policy: when its "
+                "own messages reach you, and what it tuned",
+                self._cmd,
+            )
+        ]
 
     def _cmd(self, msg, arg: str) -> str:
+        if arg.strip().lower() == "policy":
+            return policy.show(self.app)
         return self.report(send=False) or "Nothing happened overnight that's worth a line, and no loose ends."
 
     # ------------------------------------------------------------------------------------- the morning
@@ -203,6 +217,8 @@ class Dreaming(Module):
         ev = self.events(start)
         did, ends = self.night(ev), self.loose_ends(ev)
         checked, passing = self.self_check(ev)
+        learned, undo = policy.morning(self.app, send)  # Dream RSI part two: one line, with its Undo
+        did += learned
         ends += checked
         if send:
             st = {"at": now().isoformat()}
@@ -218,6 +234,6 @@ class Dreaming(Module):
             parts.append("Loose ends:\n" + "\n".join(f"- {x}" for x in ends))
         text = "\n\n".join(parts)
         if send:
-            self.app.notify(text, kind="result", title="Dreaming", why="dreaming.morning")
+            self.app.notify(text, kind="result", title="Dreaming", why="dreaming.morning", buttons=undo)
         self.app.events.emit("dreaming_told", did=len(did), loose=len(ends), sent=send)
         return text

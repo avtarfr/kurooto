@@ -85,6 +85,12 @@ Three skeptics checked the panel's ideas for a public release and looked for set
 - **Never without a tap**: setting or moving an alarm, placing calls, reading new mail senders, sending anything out,
   attaching a code repository to a project. Repositories are never searched for on the disk.
 
+## Human-like (2026-10-23)
+- ~~**Dream RSI, part two: it learns when to reach you.** Each night it replays the messages it sent by itself under a
+  few variants of when they come, keeps today's rules as a candidate, and applies the best only if it clearly wins, one
+  change a night with Undo; a kind you keep ignoring fades to the evening bundle.~~ (0.5.18: `notify.calm.habituate`
+  and `notify.calm.windows`, the nightly replay in Dreaming, `/dream policy`)
+
 ## Ideas
 - **Offline fallback.** When the internet drops, a small model on your computer answers quick things and queues the
   rest.

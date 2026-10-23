@@ -59,6 +59,27 @@ part on, during the exam period only Deadlines, Quiz, the alarm and Exam season 
 else that comes by itself waits for the evening bundle, even after 20:00 (then until the next one). The daily limit
 still applies to what comes. Calls from other features are held the same way.
 
+**Getting used to things (tuned while dreaming).** With [Dreaming](teaching-kurooto.md#dreaming) on, each night
+Kurooto replays the messages it sent you by itself in the last 45 days under a few variants of when they come, and
+scores each variant with what you actually did: answered ones that would still reach you in time count for it,
+interruptions you ignored count against it, and holding back one you answered quickly counts heavily against it. If a
+variant clearly beats things as they are (`dreaming.tune_margin`), it makes that **one** change and says so in the
+morning message with **Undo**: "Learned while you slept: questions about quiet projects wait for your evening bundle
+once 2 in a row go unanswered; over the last 14 days that would have saved 8 ignored pings and delayed none you
+answered." At most one change a night. The changes it can make:
+
+- **after N unanswered in a row** (`notify.calm.habituate`): that kind waits for the evening bundle once you've left
+  the last N unanswered (3 hours or older), and comes as it happens again as soon as you answer one;
+- **the evening bundle** for that kind (`notify.calm.evening`, the same as Another time);
+- **only at the hours you answered it** (`notify.calm.windows`, e.g. `10:00-13:00`): at other times it waits.
+
+It never touches what always comes (the alarm, your reminders and calls, approvals, deadlines under 12 hours), kinds
+that can't wait for the evening (practice offers, check-ins, doubt lists), the kinds in `dreaming.never_tune`
+(deadline reminders and calls among them), or anything you set yourself (stopped, fewer, the evening list, the limit,
+the night). It only moves messages that had something to answer, and it can't judge what it never sent. After an Undo
+it leaves that kind alone for 30 days. `/dream policy` shows the rules as they are and the last nights' decisions;
+`dreaming.tune_messages` = false turns it off.
+
 **Once a month**, Kurooto looks at the kind of question you answer least. If 8 or more came in 30 days and you answered
 a fifth of them or fewer: "In the last 30 days you answered 1 of 19 after-class questions. Turn them off? (Turns off
 After-class notes; Undo puts it back.)" with **Apply** / **No**. Only for questions you're meant to answer (marked
@@ -69,12 +90,13 @@ records first.
 
 | Command | Does |
 |---|---|
-| `/calm` | today's count ("2 of 6 messages and 0 of 1 calls"), how many wait for the bundle, what you stopped or moved to the evening, with **Start ... again** buttons |
+| `/calm` | today's count ("2 of 6 messages and 0 of 1 calls"), how many wait for the bundle, what you stopped or moved to the evening (and what waits after some go unanswered, or outside its hours), with **Start ... again** buttons |
 | `/calm 8` | allow 8 messages a day |
 | `/calm calls 2` | allow 2 calls a day |
 | `/calm evening 21:00` | move the evening bundle |
 | `/calm off`, `/calm on` | turn Calm off (everything comes as it happens, no Why? buttons) or back on |
 | `/why` | why the last message that came by itself came, with Less of this |
+| `/dream policy` | when messages that come by themselves reach you, and what Dreaming tuned (with the replay's scores) |
 
 **Settings** (Dashboard → Settings → notify → calm):
 
@@ -88,6 +110,8 @@ records first.
 | `notify.calm.stopped` | `[]` | kinds you stopped (filled by Less of this) |
 | `notify.calm.evening` | `[]` | kinds that always wait for the bundle |
 | `notify.calm.fewer` | `{}` | kinds limited to a number a day |
+| `notify.calm.habituate` | `{}` | kind → after this many unanswered in a row, they wait for the bundle until you answer one |
+| `notify.calm.windows` | `{}` | kind → `"10:00-13:00"`: outside those hours they wait for the bundle |
 
 **What leaves your computer:** nothing. The records stay in `calm.db` in Kurooto's state folder for 45 days: when,
 the reason, the setting, what it was about, the first 300 characters (only for `privacy.keep_days`, 30:

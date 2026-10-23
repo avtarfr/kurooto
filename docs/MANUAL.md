@@ -1136,9 +1136,23 @@ each morning it replays your test cases and names any that went right yesterday 
 settings change), so a step back shows up the next morning. It also counts the requests it didn't understand and the
 Wrong taps since the last message; the Sunday look back shows them.
 
+**Tuning its own messages** (`dreaming.tune_messages`, on). Before the message, it replays the messages it sent you by
+itself in the last 45 days under a few variants of when they come: a kind waits for the evening bundle once N in a row
+go unanswered (`notify.calm.habituate`), always waits for it (`notify.calm.evening`), or comes only at the hours you
+answered it (`notify.calm.windows`). Each variant is scored with what you did (answered and still in time: for;
+ignored interruptions: against; holding back one you answered quickly: heavily against). Today's rules are always a
+candidate; the best variant is applied only if it beats them by `dreaming.tune_margin` (3), one change a night, and
+the morning message says so with **Undo**: "Learned while you slept: questions about quiet projects wait for your
+evening bundle once 2 in a row go unanswered; over the last 14 days that would have saved 8 ignored pings and delayed
+none you answered." It never touches what always comes (the alarm, your reminders and calls, approvals, deadlines
+under 12 hours), kinds that can't wait, `dreaming.never_tune`, or what you set yourself, and after an Undo it leaves
+that kind alone for 30 days. `/dream policy` shows the rules and the last nights' decisions with their scores.
+
 **What leaves your computer.** Nothing: it reads Kurooto's own log and your notes.
 
-**Undo.** Turn it off in Features; the concept graph's morning line comes on its own again.
+**Undo.** Turn it off in Features; the concept graph's morning line comes on its own again. A tuned message rule:
+its **Undo** button, or remove the kind from `notify.calm.habituate`, `notify.calm.evening` or `notify.calm.windows`;
+`dreaming.tune_messages` = false stops the tuning.
 
 ### Set up from what you say
 
@@ -2797,7 +2811,9 @@ buttons); `/calm 8` sets the messages a day, `/calm calls 2` the calls, `/calm e
 `/calm off` and `/calm on`. `/why` explains the last message that came by itself.
 
 **Settings** (Settings → `notify.calm`): `on` (`true`), `messages` (6), `calls` (1), `evening_at` (`20:00`),
-`monthly` (`true`), and the lists Less of this fills: `stopped`, `evening`, `fewer`.
+`monthly` (`true`), and the lists Less of this fills: `stopped`, `evening`, `fewer`; and the two Dreaming tunes:
+`habituate` (kind → after N unanswered in a row, it waits for the bundle until you answer one) and `windows` (kind →
+`"10:00-13:00"`: outside those hours it waits).
 
 **Undo:** each Less-of-this choice and each Apply has an Undo button that puts that one setting back as it was (a
 feature it turned off goes back on). `/calm` lists what's stopped, with a button to start each again.
@@ -3041,7 +3057,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | "needs a look" on the dashboard, or a "Needs a look" line in the weekly summary | `/health` (or the Features tab) says what and offers a Fix button where Kurooto can fix it; a sign-in that ended needs you (the line says where). |
 | "Your alarm ... might not ring" | Set your phone's own alarm for tonight, then: Phone calls set up and linked (`kurooto doctor`), a phone paired (Phone tab). The Fix button reconnects or plans the alarm again. |
 | A reminder didn't reach my phone while the lid was shut | `kurooto doctor`: the "Reminders with the lid shut" line says what your call line holds and for how many phones. "No phone can open them yet": update the Android app and open it once. Also check the app's checklist (notifications, **Battery: unrestricted**) and that the phone was online. Reminders set in the last seconds before the lid shut on a Mac come when it wakes. |
-| A message came only in the evening bundle, or not at all | More than `notify.calm.messages` (6) came by themselves that day, it's exam season, or you chose Fewer, Another time or Stop for that kind. `/why` on the next one (or its Why? button) says which; `/calm` lists what's turned down, with buttons to start it again. `/calm off` restores the old behaviour. |
+| A message came only in the evening bundle, or not at all | More than `notify.calm.messages` (6) came by themselves that day, it's exam season, you chose Fewer, Another time or Stop for that kind, or Dreaming tuned that kind (`/dream policy`). `/why` on the next one (or its Why? button) says which; `/calm` lists what's turned down, with buttons to start it again. `/calm off` restores the old behaviour. |
 | A check-in call came as a message instead | The day's call (`notify.calm.calls`, 1) had come already. `/calm calls 2` allows two. |
 | "Back online" every morning | Your laptop sleeps at night. Raise `notify.presence.after_min` past your night, or turn it off (`notify.presence.on` = `false`). |
 | No "going offline" when the laptop sleeps | That message comes from your call line: it needs Phone calls set up, and Telegram from the line needs your OK (`notify.presence.line_telegram`); or add `"app"` to `notify.presence.channels`. |

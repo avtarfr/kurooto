@@ -521,7 +521,10 @@ arrives.
   `/dream` shows it without marking it sent. Calm reason `dreaming.morning`. `self_check(ev)` (`dreaming.self_check`):
   counts `case_kept` events (missed vs `wrong`), then with Cases on runs `cases.suite()` and reports test cases in
   `fail` whose id was in the stored `passing` list (`<state>/dreaming.json`), emitting `dreaming_regressed`; only the
-  sent morning message replaces `passing`. A suite error emits `dreaming_check_failed` and skips the check.
+  sent morning message replaces `passing`. A suite error emits `dreaming_check_failed` and skips the check. Before
+  the message, `policy.morning(app, send)` (Dream RSI part two, `dreaming.tune_messages`; see
+  [core.md](core.md#the-message-policy-dream-rsi-part-two-corepolicypy)) may tune one Calm setting and adds its line
+  and Undo button; `/dream policy` is `policy.show`.
 - **learning** (`modules/learning.py:Learning`, requires `chat`, `extra = True`): "Learns from its own work", four parts
   each behind a setting (`learning.search`, `skills`, `corrections`, `remember`; `part(name)` is the feature and the
   part both on) and a card toggle (`card`, `card_action`, `PARTS`).

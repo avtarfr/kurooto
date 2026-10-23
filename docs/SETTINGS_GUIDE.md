@@ -280,7 +280,10 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `dreaming.loose_ends` | `true` | also the loose ends: your open doubts, unlinked notes, broken links, tasks past due |
+| `dreaming.never_tune` | `["deadlines.reminder", "deadlines.call", "health.now", "a…` | kinds it never tunes (besides the alarm, your reminders and calls, deadlines under 12 hours) |
 | `dreaming.self_check` | `true` | replay your test cases each morning and say which ones went wrong since yesterday |
+| `dreaming.tune_margin` | `3.0` | how much better (in the replay's score) a change must be than leaving things as they are |
+| `dreaming.tune_messages` | `true` | each night, replay the messages it sent you and tune when they come (one change, Undo) |
 | `dreaming.when` | `"daily 07:30"` | when the morning message comes (it covers everything since the last one) |
 
 ### `drive_upload`
@@ -532,10 +535,12 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `notify.calm.evening` | `[]` | kinds that always wait for the evening bundle (Less of this → Another time) |
 | `notify.calm.evening_at` | `"20:00"` | the evening bundle: what waited today |
 | `notify.calm.fewer` | `{}` | kind -> at most this many a day; more wait for the evening (Less of this → Fewer) |
+| `notify.calm.habituate` | `{}` | kind -> after this many in a row unanswered, they wait for the evening until you answer |
 | `notify.calm.messages` | `6` | messages a day that come by themselves; more wait for the evening bundle |
 | `notify.calm.monthly` | `true` | once a month: a kind of question you rarely answer, and whether to turn it off |
 | `notify.calm.on` | `true` | reasons, Why? and Less of this, the daily limit; off: everything comes as it always did |
 | `notify.calm.stopped` | `[]` | kinds stopped with Less of this (when their feature has no setting of its own) |
+| `notify.calm.windows` | `{}` | kind -> "10:00-18:00": outside these hours they wait for the evening bundle |
 | `notify.desktop` | `true` | show notifications on this computer |
 | `notify.desktop_kinds` | `["call", "question", "approval", "deadline", "update"]` | which messages show on this computer |
 | `notify.presence.after_min` | `10` | away for less than this: nothing is said |
