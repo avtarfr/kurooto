@@ -579,6 +579,12 @@ class Api:
                 return 200, {"ok": self.app.modules["calls"].revoke(str(b.get("id", "")))}
             except Exception as e:
                 return 200, {"ok": False, "error": f"{e}"[:300]}
+        if path == "phone/ntfy":  # an ntfy account token (or "" to clear it): checked, kept, sent to the call line
+            calls = self.app.modules.get("calls")
+            if calls is None:
+                return 200, {"ok": False, "message": "Phone calls aren't here."}
+            ok, msg = calls.set_ntfy_token(str(b.get("token") or ""))
+            return 200, {"ok": ok, "message": msg}
         if path == "phone/test":
             if not self.app.is_on("calls"):
                 return 200, {"ok": False, "error": "Phone calls are off"}
@@ -676,7 +682,13 @@ class Api:
         calls = self.app.modules.get("calls")
         if not calls or not self.app.is_on("calls"):
             return {"on": False}
-        out = {"on": True, **calls.status(), "devices": None}
+        out = {
+            "on": True,
+            **calls.status(),
+            "devices": None,
+            "ntfy_token": bool(self.app.secrets.get("calls.ntfy_token")),
+            "ntfy_limited": calls.ntfy_limited(),
+        }
         if calls.connector.connected:
             try:
                 out["devices"] = calls.devices()

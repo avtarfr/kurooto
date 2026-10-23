@@ -1590,6 +1590,9 @@ async function renderPhone(body) {
     ${devs === null ? "<p class=\"d\">Paired phones show here when the line is connected.</p>" : devs.length
       ? `<table><tr><th>phone</th><th>kind</th><th>paired</th><th></th></tr>${devs.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.kind)}${d.push ? " · notifications on" : ""}</td><td>${esc(d.created.slice(0, 10))}</td><td><button data-revoke="${esc(d.id)}">Remove</button></td></tr>`).join("")}</table>`
       : "<p class=\"d\">No phones paired yet.</p>"}
+    <h3>ntfy account (optional)</h3>
+    <p class="d">Android rings go through ntfy.sh, which limits each internet address; yours is shared (your call line's Cloudflare one, often a campus or office too), so a ring can be refused and your phone stays silent. A free account's token makes ntfy count your account instead: <a href="https://ntfy.sh/signup" target="_blank" rel="noopener">make one</a>, then Account → Access tokens → Create.${ph.ntfy_limited && !ph.ntfy_token ? ` <span class="bad2">ntfy refused ${ph.ntfy_limited} ring(s) this week.</span>` : ""}</p>
+    <p>${ph.ntfy_token ? "<span class=\"ok2\">Token kept.</span> " : ""}<input type="password" id="ntfy-token" placeholder="tk_..." autocomplete="off" spellcheck="false"> <button data-ntfy>Save</button>${ph.ntfy_token ? " <button data-ntfy-clear>Remove</button>" : ""}</p>
     <p class="d" id="phone-msg"></p>`;
   body.onclick = async (e) => {
     const t = e.target, msg = $("#phone-msg");
@@ -1600,6 +1603,14 @@ async function renderPhone(body) {
       $("#pairbox").innerHTML = r.ok
         ? `<div class="qr">${r.svg}</div><p>Scan this with your phone. The page that opens has 1) Download the app (Android) or Add to Home Screen (iPhone), then 2) pairing. Works for 15 minutes (or send /phone to your bot and tap the link on the phone). Code <code>${esc(r.code)}</code> · <a href="${esc(r.link)}" target="_blank" rel="noopener">link</a></p>`
         : `<p class="bad2">${esc(r.error)}</p>`;
+    }
+    if (t.dataset.ntfy !== undefined || t.dataset.ntfyClear !== undefined) {
+      const token = t.dataset.ntfy !== undefined ? $("#ntfy-token").value.trim() : "";
+      if (t.dataset.ntfy !== undefined && !token) { msg.textContent = "Paste the token first."; return; }
+      msg.textContent = "Checking…";
+      const r = await api("phone/ntfy", { token });
+      if (r.ok) renderPhone(body);
+      setTimeout(() => { const m = $("#phone-msg"); if (m) m.textContent = r.message; }, 300);
     }
     if (t.dataset.ring !== undefined) { const r = await api("phone/test", {}); msg.textContent = r.ok ? "Ringing your paired phones…" : r.error; }
     if (t.dataset.revoke) { const r = await api("phone/revoke", { id: t.dataset.revoke }); msg.textContent = r.ok ? "Removed." : (r.error || "Not found."); renderPhone(body); }

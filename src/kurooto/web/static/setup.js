@@ -624,7 +624,23 @@ function callsBox(m) {
       el("li", {}, "then pair your phone (after Done)")),
     m.ready ? el("p", { class: "ok" }, "✓ Your call line is set up. Press Done at the end: then you pair your phone.")
       : el("p", {}, btn, key ? "" : el("span", { class: "note" }, " First save your Gemini key in the box below.")),
-    out);
+    out, m.ready ? ntfyBox() : null);
+}
+
+// Optional: an ntfy account token, so Android rings aren't refused for an internet address others share too.
+function ntfyBox() {
+  const input = el("input", { type: "password", placeholder: "tk_...", autocomplete: "off", spellcheck: "false" });
+  const msg = el("span", { class: "note" });
+  return el("details", {},
+    el("summary", {}, "Optional: an ntfy account, so rings to Android always get through"),
+    el("p", { class: "note" }, "Android rings go through ntfy.sh, which limits each internet address, and yours is shared (your call line's, often a campus or office too). A free account's token makes it count your account instead: ",
+      el("a", { href: "https://ntfy.sh/signup", target: "_blank", rel: "noopener" }, "make one"), ", then Account → Access tokens → Create, and paste it here. You can do this later on the dashboard's Phone tab."),
+    el("p", {}, input, " ", el("button", { type: "button", onclick: async () => {
+      if (!input.value.trim()) { msg.textContent = " Paste the token first."; return; }
+      msg.textContent = " Checking…";
+      const r = await api("phone/ntfy", { token: input.value.trim() });
+      msg.textContent = " " + r.message; msg.className = r.ok ? "ok" : "bad";
+    } }, "Save"), msg));
 }
 
 // A feature's own details (an iCal link, a repository and token, a Google client): shown when it's ticked.

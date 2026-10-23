@@ -123,7 +123,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 
 | What you see | What to do |
 |---|---|
-| The phone didn't ring, and `/status` or the log shows "429 Too Many Requests" from ntfy | ntfy.sh limits each internet address, and you share yours (a campus, and your call line's Cloudflare one). Make a free ntfy.sh account, then `kurooto ntfy-token`: ntfy then counts your account instead. |
+| The phone didn't ring, and `/status` or the log shows "429 Too Many Requests" from ntfy | ntfy.sh limits each internet address, and you share yours (a campus, and your call line's Cloudflare one). Make a free ntfy.sh account and paste its token on the dashboard's Phone tab (or `kurooto ntfy-token`): ntfy then counts your account instead. `/health` says when this happened. |
 | The phone doesn't ring | Is every item on the app's checklist ticked? **Battery: unrestricted**, and Kurooto off any "sleeping apps" list (Samsung, Xiaomi, Oppo, Vivo, OnePlus, Huawei). Then dashboard → Phone → **Ring my phone**. |
 | Android won't install the app | Allow installing unknown apps for your browser when asked; for Play Protect, "More details" → "Install anyway". |
 | iPhone gets no notifications | Open Kurooto from the Home Screen (not Safari), turn notifications on in it, iOS 16.4 or newer, and Settings → Notifications → Kurooto. |

@@ -276,6 +276,9 @@ Needs [Phone calls](calls.md) on. It shows your call line's address and whether 
   Telegram does the same.
 - **Ring my phone (test):** rings every paired phone (only while connected).
 - **Paired phones:** name, kind, whether notifications are on, when it was paired, and **Remove**.
+- **ntfy account (optional):** paste a free ntfy.sh account's access token so Android rings aren't refused for an
+  internet address you share (it says how many were refused this week); **Remove** goes back to no token. Your call
+  line is updated with it by itself.
 
 Details are in [phone-app.md](phone-app.md).
 

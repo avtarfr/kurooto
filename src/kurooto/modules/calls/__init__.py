@@ -78,6 +78,23 @@ ON_CALL_S = 90  # a live call checks in every few seconds; this long after the l
 GEMINI_KEY = "gemini.api_key"
 
 
+def check_ntfy_token(server: str, token: str) -> tuple[str, str]:
+    """(the ntfy account's name, "") if the server takes this token, else ("", why not)."""
+    req = urllib.request.Request(  # noqa: S310 (your ntfy server, https)
+        f"{server.rstrip('/')}/v1/account", headers={"Authorization": f"Bearer {token}"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
+            user = json.loads(r.read() or b"{}").get("username") or ""
+    except urllib.error.HTTPError as e:
+        return "", "ntfy didn't accept that token." if e.code in (401, 403) else f"ntfy answered HTTP {e.code}."
+    except OSError as e:
+        return "", f"Couldn't reach ntfy: {e}"[:200]
+    if not user or user == "*":
+        return "", "ntfy didn't take that as an account's token."
+    return user, ""
+
+
 class Calls(Module):
     id = "calls"
     title = "Phone calls"
@@ -126,7 +143,54 @@ class Calls(Module):
         ok, why = self.ready()
         if not ok:
             return ok, why
-        return (True, "") if self.connector.connected else (False, "not connected to your call line right now")
+        if not self.connector.connected:
+            return False, "not connected to your call line right now"
+        limited = 0 if self.app.secrets.get("calls.ntfy_token") else self.ntfy_limited()
+        if limited:
+            return False, (
+                f"ntfy refused {limited} ring{'s' if limited != 1 else ''} to your phone this week (too many from an "
+                "address you share): add a free ntfy account's token on the Phone tab, or `kurooto ntfy-token`"
+            )
+        return True, ""
+
+    def ntfy_limited(self, days: int = 7) -> int:
+        """Rings and messages ntfy refused for its rate limit (429) in the last `days`."""
+        since = (now() - dt.timedelta(days=days)).isoformat()
+        return sum(
+            1 for e in self.app.events.tail(20000) if e.get("kind") == "calls_ntfy_limited" and e.get("ts", "") >= since
+        )
+
+    def set_ntfy_token(self, token: str) -> tuple[bool, str]:
+        """Keep (or with "" clear) an ntfy account token, checked with ntfy first; the call line is then deployed
+        again in the background so it publishes with it too (the dashboard's Phone tab and the setup page)."""
+        token = (token or "").strip()
+        if token:
+            user, err = check_ntfy_token(self.setting("ntfy_server") or "https://ntfy.sh", token)
+            if err:
+                return False, err
+            self.app.secrets.set("calls.ntfy_token", token)
+            msg = f"Kept: rings are published as your ntfy account ({user})."
+        else:
+            self.app.secrets.delete("calls.ntfy_token")
+            msg = "No ntfy token now: rings are published without one."
+        self.app.events.emit("calls_ntfy_token", set=bool(token))
+        from kurooto.modules.calls import deploy
+
+        if not deploy.needs_redeploy(self.app):
+            return True, msg
+
+        def go():
+            ok, why = deploy.deploy(self.app, progress=lambda line: None, unattended=True)
+            self.app.events.emit("calls_line_updated", ok=ok)
+            if not ok:
+                self.app.notify(
+                    f"Your call line couldn't take the ntfy token yet: {why} (it tries again at 05:10).",
+                    kind="info",
+                    why="calls.line_update",
+                )
+
+        threading.Thread(target=go, name="call-line-ntfy", daemon=True).start()
+        return True, msg + " Your call line is updated with it in the background (a minute or two)."
 
     # ------------------------------------------------------------------------------------- lifecycle
     def start(self):
@@ -567,6 +631,8 @@ class Calls(Module):
                     self.app.events.emit("calls_ntfy_token_refused", code=e.code)
             return False
         except Exception as e:
+            if isinstance(e, urllib.error.HTTPError) and e.code == 429:
+                self.app.events.emit("calls_ntfy_limited")  # the health check suggests a token (ntfy_limited)
             self.app.events.emit("calls_ntfy_publish_failed", error=str(e)[:200])
             return False
 

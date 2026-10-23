@@ -44,7 +44,10 @@ Secrets (`Calls.SECRETS` and `deploy.ensure_secrets`): `calls.call_secret`, `cal
 `calls.ntfy_topic`, `calls.ntfy_key`, `calls.vapid_jwk`, `calls.vapid_public`, `calls.ntfy_token` (optional, from
 `kurooto ntfy-token`: an ntfy account token, sent as `Authorization: Bearer` by `Calls.publish_ntfy` and the Worker's
 `publish()`, each retrying once without it on a 401/403; it moves ntfy's rate limits from the shared IP to the
-account); also `gemini.api_key` (required) and
+account; `check_ntfy_token(server, token)` asks `GET /v1/account`; `Calls.set_ntfy_token` keeps or clears it and
+redeploys the line in the background, from `POST /api/phone/ntfy {token}` (the Phone tab, the setup page's call
+box) and `kurooto ntfy-token`; `GET /api/phone` has `ntfy_token` and `ntfy_limited`. A 429 from ntfy emits
+`calls_ntfy_limited`; `Calls.health` is not OK while any came in the last 7 days and there's no token); also `gemini.api_key` (required) and
 `calls.github_token` (set by Notes sync, `modules/notes_sync.py`, so the line can read notes while the computer is off).
 
 ## Deploying the line (`modules/calls/deploy.py`)

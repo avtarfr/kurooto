@@ -54,6 +54,11 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
 
    On Samsung, Xiaomi, Oppo, Vivo, OnePlus and Huawei phones, also take Kurooto off any "sleeping apps" or "deep
    sleep" list in Settings → Battery, or calls may not ring.
+4. Recommended: a free [ntfy.sh](https://ntfy.sh/signup) account. Android rings go through ntfy.sh, which limits each
+   internet address, and yours is shared (your call line runs on Cloudflare's, and campuses and offices share one),
+   so a ring can be refused and the phone stays silent. Make the account, then Account → Access tokens → Create, and
+   paste the token on the dashboard's Phone tab (or on the setup page, or `kurooto ntfy-token`). Once ntfy has
+   refused a ring, `/health` and the dashboard say so.
 4. Test it: Dashboard → Phone → **Ring my phone (test)**.
 
 **The app's screen** shows what it's paired with, the checklist, **Waiting for you** (open questions and approvals),

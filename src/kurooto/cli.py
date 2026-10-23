@@ -843,11 +843,8 @@ def profile_run(a) -> int | None:
 def ntfy_token(clear: bool) -> int:
     """`kurooto ntfy-token`: keep an ntfy account token (typed without showing it, or KUROOTO_NTFY_TOKEN), checked
     with ntfy first; then the call line is deployed again so it publishes with it too. --clear: without one again."""
-    import urllib.error
-    import urllib.request
-
     from kurooto.app import App
-    from kurooto.modules.calls import deploy
+    from kurooto.modules.calls import check_ntfy_token, deploy
 
     app = App()
     try:
@@ -860,21 +857,9 @@ def ntfy_token(clear: bool) -> int:
             if not token:
                 print("No token given: nothing changed.")
                 return 1
-            server = (app.settings.get("calls.ntfy_server") or "https://ntfy.sh").rstrip("/")
-            req = urllib.request.Request(  # noqa: S310 (your ntfy server, https)
-                f"{server}/v1/account", headers={"Authorization": f"Bearer {token}"}
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=20) as r:  # noqa: S310
-                    user = json.loads(r.read() or b"{}").get("username") or ""
-            except urllib.error.HTTPError as e:
-                print("ntfy didn't accept that token." if e.code in (401, 403) else f"ntfy answered HTTP {e.code}.")
-                return 1
-            except OSError as e:
-                print(f"Couldn't reach ntfy: {e}"[:200])
-                return 1
-            if not user or user == "*":
-                print("ntfy didn't take that as an account's token.")
+            user, err = check_ntfy_token(app.settings.get("calls.ntfy_server") or "https://ntfy.sh", token)
+            if err:
+                print(err)
                 return 1
             app.secrets.set("calls.ntfy_token", token)
             print(f"Kept: rings from this computer are published as {user}.")
