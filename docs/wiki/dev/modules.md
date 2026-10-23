@@ -408,7 +408,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 ### Study
 
 - **subjects** (`modules/subjects.py`): subjects, timetable, holidays, exam periods, the term note
-  (`modules/termnote.py` parser); a call blocker during classes; class packs layered under.
+  (`modules/termnote.py` parser); a call blocker during classes; class packs layered under. Missed-class catch-up:
+  `catch_up()`, job `subjects:catch_up` every 30 min; classes over today that were skipped or ended before
+  `woke_at(day)` (the first `message_in`, `alarm_up_now` or `call_answered` after `checkins.day_starts`) get a
+  `deadlines.add(..., source="catch_up", kind="task")` due at the course's next class and a lecture stub; state
+  `subjects/catchup-<date>.json`; button `cup:<date>|<slug>:went`; Calm reason `subjects.catch_up`.
 - **commitments** (`modules/commitments.py:Commitments`): `commitments.items` rows `{name, days, start, end, calls}`;
   `on(day)` gives a day's with `start_dt`/`end_dt` (an end before the start runs into the next day); the call blocker
   `commitments` checks yesterday's and today's (night shifts); skips per day in `<state>/commitments/skip-<date>.json`;

@@ -16,6 +16,12 @@ kurooto/modules/termnote.py; /term-setup writes one). Kurooto re-reads it whenev
 holidays, exam periods and last day of classes join the ones you set here (yours win where both say something), and
 its dated quizzes, exams and deadlines reach Deadlines. "maps/semester-*" picks the newest matching note; "auto" is
 terms/* (or maps/semester-* in the zettelkasten layout).
+
+Missed-class catch-up (subjects.catch_up, on): a class you skipped, or one that was over before you were up (the
+alarm answered, "I'm awake", or your first message of the day), gets a catch-up task in Deadlines, due before that
+course's next class (else in 3 days), and a note for that lecture: the one you have for that day, else a short stub
+("## What was covered") to fill in. One message lists them, with a **Went to ...** button on each (it takes the task
+back, and the stub if you haven't written in it). Rules only; nothing leaves the computer.
 """
 
 from __future__ import annotations
@@ -48,8 +54,11 @@ register_defaults(
         # a note with your timetable and key dates, read live: "terms/2026-autumn", "maps/semester-*" (the newest
         # matching note), "auto" (terms/*, or maps/semester-* in the zettelkasten layout); empty: off
         "term_note": "",
+        "catch_up": True,  # a class you missed gets a catch-up task and a lecture note (see the notes above)
     },
 )
+CATCH_UP_EVERY = "every 30m"  # classes that ended are looked at this often
+CATCH_UP_DAYS = 3  # with no next class in two weeks, the catch-up is due this many days on
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 AUTO_NOTE = {"kurooto": "terms/*.md", "zettelkasten": "maps/semester-*.md"}
 
@@ -71,6 +80,7 @@ class Subjects(Module):
     def start(self):
         self.app.availability.blockers["subjects:class"] = self._block
         self.every("term_note", "every 10m", self._term_watch)
+        self.every("catch_up", CATCH_UP_EVERY, lambda p: self.catch_up())
 
     def stop(self):
         super().stop()
@@ -286,6 +296,130 @@ class Subjects(Module):
             out.append({**c, "name": self.name_of(c["subject"]), "start_dt": s, "end_dt": e})
         out += self._calendar_classes(day, skip, out)
         return sorted(out, key=lambda c: c["start_dt"])
+
+    # ------------------------------------------------------------------------------ missed-class catch-up
+    def woke_at(self, day: dt.date) -> dt.datetime | None:
+        """When you were first up that day: the alarm answered, "I'm awake", or your first message after the day
+        turned (checkins.day_starts, 05:00). None: no sign yet."""
+        try:
+            turn = dt.time.fromisoformat(self.app.settings.get("checkins.day_starts") or "05:00")
+        except ValueError:
+            turn = dt.time(5, 0)
+        start = dt.datetime.combine(day, turn)
+        for e in self.app.events.tail(20000):
+            kind = e.get("kind")
+            if kind not in ("message_in", "alarm_up_now", "call_answered"):
+                continue
+            try:
+                t = dt.datetime.fromisoformat(e["ts"])
+            except (KeyError, ValueError):
+                continue
+            if start <= t < start + dt.timedelta(days=1):
+                return t
+        return None
+
+    def _catch_file(self, day: dt.date) -> Path:
+        return self.app.paths.state / "subjects" / f"catchup-{day.isoformat()}.json"
+
+    def catch_up(self, day: dt.date | None = None) -> list[str]:
+        """Catch-ups for the classes of that day (today) that are over and that you missed. Returns their lines."""
+        if not self.setting("catch_up"):
+            return []
+        t = now()
+        day = day or t.date()
+        done = jload(self._catch_file(day), {}) or {}
+        skipped, woke, looked = self.skipped(day), None, False
+        lines, buttons = [], []
+        for c in self.classes_on(day, include_skipped=True):
+            slug = c.get("subject") or slugify(c["name"])
+            if c["end_dt"] > t or slug in done:
+                continue
+            if slug not in skipped and not looked:  # the event log is read only when it can matter
+                woke, looked = self.woke_at(day), True
+            why = "skipped" if slug in skipped else "before you were up" if woke and woke > c["end_dt"] else ""
+            if not why:
+                continue
+            done[slug] = self._make_catch_up(c, slug, day, why)
+            lines.append(f"{c['name']} ({c['start']}, {why}): {done[slug]['line']}")
+            buttons.append([(f"Went to {c['name'][:24]}", f"cup:{day.isoformat()}|{slug}:went")])
+        if lines:
+            jsave(self._catch_file(day), done)
+            self.app.notify(
+                "Catch up on what you missed today:\n" + "\n".join(f"- {x}" for x in lines),
+                kind="info",
+                why="subjects.catch_up",
+                buttons=buttons[:6],
+            )
+            self.app.events.emit("class_catch_up", n=len(lines))
+        return lines
+
+    def _next_class(self, slug: str, after: dt.datetime) -> dt.datetime | None:
+        for add in range(1, 15):
+            for c in self.classes_on(after.date() + dt.timedelta(days=add), include_skipped=True):
+                if (c.get("subject") or slugify(c["name"])) == slug:
+                    return c["start_dt"]
+        return None
+
+    def _make_catch_up(self, c: dict, slug: str, day: dt.date, why: str) -> dict:
+        root = Path(self.app.workspace)
+        lecture = layout.path(self.app, "lecture", subject=slug, date=day.isoformat(), slug="missed-class")
+        have = sorted(p for p in lecture.parent.glob(f"{day.isoformat()}-*.md") if p != lecture)
+        made = False
+        if have:
+            note = have[0]
+        else:
+            note = lecture
+            if not note.exists():
+                note.parent.mkdir(parents=True, exist_ok=True)
+                head = layout.frontmatter(
+                    self.app, "lecture", note, title=f"{c['name']}: {day:%d %b} (missed)", subject=slug
+                )
+                note.write_text(
+                    f"{head}# {c['name']}: {day:%a %d %b} (missed)\n\nYou missed this class ({why}). Fill this in "
+                    "from the slides, a friend's notes or the Classroom posts.\n\n## What was covered\n\n",
+                    encoding="utf-8",
+                )
+                made = True
+        rel = note.relative_to(root).with_suffix("").as_posix() if note.is_relative_to(root) else str(note)
+        due = self._next_class(slug, c["end_dt"]) or dt.datetime.combine(
+            day + dt.timedelta(days=CATCH_UP_DAYS), dt.time(18, 0)
+        )
+        dl, did = self.app.modules.get("deadlines"), ""
+        if dl is not None and self.app.is_on("deadlines"):
+            title = f"Catch up: {c['name']} ({day:%a %d %b} class)"
+            dl.add(title, due, source="catch_up", kind="task", subject=slug, note=rel)
+            from kurooto.modules import deadlines
+
+            did = deadlines.did(title, deadlines.iso(due))
+        return {
+            "note": rel,
+            "made": made,
+            "size": note.stat().st_size if made else 0,
+            "deadline": did,
+            "line": f"catch-up due {due:%a %H:%M}, notes in [[{rel}]]",
+        }
+
+    def _went(self, ref: str, act: str) -> str:
+        """ "Went after all": the catch-up task goes, and the stub if it's as it was made."""
+        day, _, slug = ref.partition("|")
+        f = self._catch_file(dt.date.fromisoformat(day))
+        done = jload(f, {}) or {}
+        it = done.pop(slug, None)
+        if not it:
+            return "That's gone already."
+        dl = self.app.modules.get("deadlines")
+        if it.get("deadline") and dl is not None:
+            dl._status(it["deadline"], "ignored")
+        note = Path(self.app.workspace) / f"{it['note']}.md"
+        if it.get("made") and note.is_file() and note.stat().st_size == it.get("size"):
+            note.unlink()
+        done[slug] = {"went": True}
+        jsave(f, done)
+        self.app.events.emit("class_catch_up_undone")
+        return "OK, you went: no catch-up for it."
+
+    def callbacks(self):
+        return {"cup": self._went}
 
     def _calendar_classes(self, day: dt.date, skip: set[str], have: list[dict]) -> list[dict]:
         """Events in your class calendars (Calendar: calendar.class_calendars) are classes too, unless the timetable

@@ -693,6 +693,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `subjects.catch_up` | `true` | a class you missed gets a catch-up task and a lecture note (see the notes above) |
 | `subjects.exam_periods` | `[]` | [["2026-12-07", "2026-12-18"], ...]: no classes then (exams instead) |
 | `subjects.holidays` | `[]` | ["2026-12-25", ...]: no classes those days |
 | `subjects.list` | `[]` | your subjects: name, short names, folder |

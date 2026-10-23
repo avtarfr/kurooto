@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.14 (2026-10-23)
+
+- **Missed-class catch-up** (`subjects.catch_up`, on): a class you skipped, or one that was over before you were up
+  (the alarm answered, "I'm awake", or your first message of the day), gets a catch-up task in Deadlines due when that
+  course's next class starts (else in 3 days) and a lecture note for that day (yours, else a short one to fill in).
+  One message lists them; **Went to ...** takes one back. Rules only.
+
 ## 0.5.13 (2026-10-23)
 
 - **Reschedule my day** (Agent plan calendar): "reschedule my day", "I just woke up, reschedule my day", "reschedule

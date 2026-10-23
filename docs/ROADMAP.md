@@ -51,7 +51,9 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   (BibTeX suggested, you approve), words added.
 - **Check my attempt.** A photo of a proof (or a `.tex` derivation) before you submit: gaps marked, nothing
   rewritten; a course's AI policy can turn it off.
-- **Missed-class catch-up.** Skipping a class makes a catch-up item with that day's Classroom posts and a note stub.
+- ~~**Missed-class catch-up.** Skipping a class makes a catch-up item with that day's Classroom posts and a note stub.~~
+  (0.5.14: a task due before the next class and a lecture note stub, also for classes you slept through; the
+  Classroom posts are still to come)
 - **Bedside mode.** An old Android phone as a dock: clock, today, alarm, a talk button.
 - **Add-ons by link.** `kurooto addons add <git url>`: a manifest card first, consent for code, pinned to a commit.
 

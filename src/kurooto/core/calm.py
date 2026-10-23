@@ -373,6 +373,7 @@ REASONS: dict[str, Reason] = {
             "a phrasing learned because you said it again in other words",
             setting="cases.learn_rephrased",
         ),
+        R("subjects.catch_up", "a catch-up for a class you missed", setting="subjects.catch_up"),
         R("checkins.learned", "a check-in's time moved to when you've been doing it", setting="checkins.learn_times"),
         R("weekly.summary", "the weekly summary", setting="weekly.when", stop=FEATURE),
         R("weekly.call", "the Sunday review call", setting="weekly.call", stop=to(False, "no Sunday review call")),

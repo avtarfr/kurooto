@@ -649,6 +649,11 @@ la`). Kurooto never calls you during a class (or in the 5 minutes before it, `su
 gone from 0.5.8: `/skip` no longer warns about attendance. "not going to LA on Friday" and "skipping stats tomorrow"
 mark that day. Other features use the subjects: after-class notes, the quiz, the study tracker.
 
+**Missed-class catch-up** (`subjects.catch_up`, on): a class you skipped, or one over before you were up (the alarm
+answered, "I'm awake", or your first message of the day), gets a catch-up task in Deadlines due when that course's
+next class starts (else in 3 days) and a lecture note for that day (yours, else a short stub to fill in). One message
+lists them; **Went to ...** takes one back (and the stub, if untouched).
+
 **Term dates:** `/term ends 2026-12-04` (the last day of classes) and `/term exams 2026-12-07 to 2026-12-18` (an exam
 period; add as many as you need). On those days, after the term ends and on holidays there are no classes: no
 after-class questions, and the timetable doesn't hold calls. `/term` shows them, `/term clear` removes them.
