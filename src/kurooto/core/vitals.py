@@ -188,6 +188,8 @@ class Sampler:
         # measures since whichever caller asked last, so two readers a moment apart got windows of milliseconds
         self._times: tuple[float, list] | None = None
         self._cores: list[float] = []
+        self._procs: tuple[float, dict] | None = None  # when, pid -> (create_time, cpu seconds) for the process list
+        self._share: dict[int, float] = {}
         self._core_use()
 
     # ------------------------------------------------------------------------------------------- pieces
@@ -333,6 +335,8 @@ class Sampler:
                 d = all_b - all_a
                 use.append(min(1.0, max(0.0, (busy_b - busy_a) / d)) if d > 0 else 0.0)
             self._cores = use
+        elif not self._cores:
+            self._cores = [0.0] * len(times)  # the first reading only sets the baseline
         self._times = (now, times)
         return self._cores
 
@@ -401,16 +405,32 @@ class Sampler:
     # -------------------------------------------------------------------------------------------- processes
     def processes(self, own: Callable[[int], str | None] | None = None, n: int = 30) -> list[dict]:
         """The busiest `n` processes by processor and the biggest `n` by memory (one list, busiest first): pid,
-        name, cpu (1.0 = one core), mem (bytes), threads, and `own` (a label) for Kurooto's own."""
+        name, cpu (its share of the whole machine, 0..1, the same scale as the total: 1.0 = every core busy),
+        mem (bytes), threads, and `own` (a label) for Kurooto's own.
+
+        Processor use is each process's own cpu_times over at least two seconds, the same for every reader in that
+        time. psutil's cpu_percent measured since whichever reader asked last, so short windows turned a single 10 ms
+        clock tick into 0.8% and an idle process never read 0."""
         rows = []
         total = psutil.virtual_memory().total or 1
-        for p in psutil.process_iter(["name", "memory_info", "num_threads"]):
+        now = time.monotonic()
+        fresh = self._procs is None or now - self._procs[0] >= 2.0
+        seen: dict[int, tuple[float, float]] = {}
+        ncpu = psutil.cpu_count() or 1
+        for p in psutil.process_iter(["name", "memory_info", "num_threads", "cpu_times", "create_time"]):
             if p.pid == 0:  # Windows' idle process counts the idle time of every core
                 continue
-            try:
-                cpu = p.cpu_percent(None) / 100
-            except (psutil.Error, OSError):
-                cpu = 0.0
+            if fresh:
+                ct = p.info.get("cpu_times")
+                if ct is not None:
+                    seen[p.pid] = (p.info.get("create_time") or 0.0, (ct.user or 0.0) + (ct.system or 0.0))
+                    before = self._procs[1].get(p.pid) if self._procs else None
+                    if before and before[0] == seen[p.pid][0]:
+                        dt = now - self._procs[0]
+                        self._share[p.pid] = max(0.0, (seen[p.pid][1] - before[1]) / (dt * ncpu)) if dt > 0 else 0.0
+                    else:
+                        self._share[p.pid] = 0.0  # new since the last reading: measured from the next one
+            cpu = self._share.get(p.pid, 0.0)
             mi = p.info.get("memory_info")
             mem = getattr(mi, "rss", 0) or 0
             rows.append(
@@ -424,6 +444,9 @@ class Sampler:
                     "own": own(p.pid) if own else None,
                 }
             )
+        if fresh:
+            self._procs = (now, seen)
+            self._share = {pid: v for pid, v in self._share.items() if pid in seen}
         by_cpu = sorted(rows, key=lambda r: (-r["cpu"], -r["mem"]))[:n]
         picked = {r["pid"] for r in by_cpu}
         by_mem = [r for r in sorted(rows, key=lambda r: -r["mem"])[:n] if r["pid"] not in picked]

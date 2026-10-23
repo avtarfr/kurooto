@@ -19,7 +19,7 @@ def test_two_readers_in_one_second_share_one_reading(monkeypatch):
     monkeypatch.setattr(vitals.psutil, "cpu_times", lambda percpu=True: next(seq))
     s = vitals.Sampler.__new__(vitals.Sampler)
     s._times, s._cores = None, []
-    s._core_use()  # the baseline
+    assert s._core_use() == [0.0, 0.0]  # the baseline: one zero per core until a second has passed
     clock[0] += 1.0
     assert s._core_use() == [1.0, 0.25]  # over the full second
     clock[0] += 0.05
@@ -31,3 +31,31 @@ def test_busy_leaves_out_idle_iowait_and_guest():
     busy, total = vitals._busy(t)
     assert total == 5 + 1 + 2 + 10 + 2 - 0  # guest is already counted in user
     assert busy == total - 12
+
+
+class _P:
+    def __init__(self, pid, cpu_s, born=1.0):
+        CT = namedtuple("CT", "user system")
+        MI = namedtuple("MI", "rss")
+        self.pid = pid
+        self.info = {"name": f"p{pid}", "memory_info": MI(1000 * pid), "num_threads": 1,
+                     "cpu_times": CT(cpu_s, 0.0), "create_time": born}  # fmt: skip
+
+
+def test_process_use_is_a_share_of_the_whole_machine_over_a_steady_window(monkeypatch):
+    clock = [50.0]
+    procs = {"now": [_P(1, 0.0), _P(2, 10.0)]}
+    monkeypatch.setattr(vitals.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(vitals.psutil, "process_iter", lambda attrs=None: list(procs["now"]))
+    monkeypatch.setattr(vitals.psutil, "cpu_count", lambda logical=True: 4)
+    s = vitals.Sampler.__new__(vitals.Sampler)
+    s._procs, s._share = None, {}
+    s.processes()  # the baseline
+    clock[0] += 2.0
+    procs["now"] = [_P(1, 0.01), _P(2, 18.0)]  # one clock tick; 8 cpu seconds in 2 s on 4 cores
+    rows = {r["pid"]: r["cpu"] for r in s.processes()}
+    assert abs(rows[2] - 8.0 / (2.0 * 4)) < 1e-6  # 8 cpu seconds over 2 s on 4 cores: the whole machine
+    assert rows[1] < 0.002  # a single 10 ms tick is a rounding error, not 0.8%
+    clock[0] += 0.5
+    procs["now"] = [_P(1, 5.0), _P(2, 18.0)]  # a reader half a second later gets the same numbers
+    assert {r["pid"]: r["cpu"] for r in s.processes()} == rows
