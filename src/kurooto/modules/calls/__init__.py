@@ -276,6 +276,17 @@ class Calls(Module):
                 hint="At the start of every call, call pending_items and bring up what matters, briefly.",
             ),
             Tool(
+                "send_message",
+                "Send them a message on their chat (Telegram): something they asked to have in writing, a list, a "
+                "link, a summary of what was decided. Never say you'll send something without calling this.",
+                lambda a: self._tool_message(a),
+                {"text": arg("the message, plain text")},
+                ("text",),
+                offline="queue",
+                hint="When they say 'send it on Telegram' or 'tell me on Telegram', call send_message (or send_file "
+                "for a file); never just promise it.",
+            ),
+            Tool(
                 "search_notes",
                 "Search their notes (courses, plans, journal, anything they wrote).",
                 self._search,
@@ -352,6 +363,13 @@ class Calls(Module):
         for old in list(self.tool_log)[:-10]:  # calls that never sent a transcript don't pile up
             self.tool_log.pop(old, None)
         return out
+
+    def _tool_message(self, a: dict) -> str:
+        text = str(a.get("text") or "").strip()[:3500]
+        if not text:
+            return "Nothing to send."
+        self.app.notify(text, kind="result", title="From your call", why="calls.own")
+        return "Sent on their chat."
 
     def pending(self) -> dict:
         out: dict = {}

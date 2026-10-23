@@ -492,3 +492,13 @@ def test_turning_calls_off_keeps_the_calls_you_booked(calls):
     left = [x["reason"] for x in c.schedule_list()]
     assert left == ["revise thermodynamics"] and not c.parked_file.exists()
     assert "didn't ring" in calls.fake.texts()[-1] and "gym" in calls.fake.texts()[-1]
+
+
+def test_a_call_can_put_something_in_writing_and_start_a_sync(calls):
+    c = calls.app.modules["calls"]
+    assert c.run_tool("send_message", {"text": "End-sem dates: PST 27 Nov, TSA 27 Nov"}) == "Sent on their chat."
+    assert "End-sem dates" in calls.fake.texts()[-1]
+    from kurooto.core.tools import sync_tools
+
+    tool = next(t for t in sync_tools(calls.app) if t.name == "sync_now")
+    assert isinstance(tool.run({}), str)

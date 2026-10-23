@@ -644,6 +644,8 @@ def sync_status(app: App) -> dict:
 
 
 def sync_tools(app: App) -> list[Tool]:
+    from kurooto.core import syncall
+
     return [
         Tool(
             "sync_status",
@@ -652,7 +654,16 @@ def sync_tools(app: App) -> list[Tool]:
             lambda a: sync_status(app),
             writes=False,
             hint="For 'is everything synced?' or 'when did my notes last sync?', call sync_status.",
-        )
+        ),
+        Tool(
+            "sync_now",
+            "Sync everything that syncs, now (Classroom, calendar, mail, notes, research): the same as /sync all. It "
+            "runs in the background and sends them the result on Telegram when it's done.",
+            lambda a: syncall.start(app)[1],
+            offline="queue",
+            writes=True,
+            hint="'sync now' or 'check Classroom now': call sync_now (it reports on Telegram by itself).",
+        ),
     ]
 
 

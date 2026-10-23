@@ -537,3 +537,9 @@ was off doesn't ring late; Kurooto tells you it was missed instead.
 - The call line stays on your Cloudflare account until you delete it (Cloudflare dashboard → Workers & Pages → the
   `kurooto-…` worker → Settings → Delete), or until `kurooto uninstall --revoke` deletes it for you. See
   [Updates and backups](updates-and-backups.md).
+
+## Things a call can send or start
+
+- "Send that on Telegram", "tell me on Telegram": the call sends it to your chat (a summary, a list, a link). A call
+  never just promises it any more.
+- "Sync now", "check Classroom now": the same as `/sync all`; the result comes on Telegram when it's done.

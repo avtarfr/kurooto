@@ -660,8 +660,9 @@ def test_what_agy_may_do(home, monkeypatch, tmp_path):
         writes = [r[11:-1] for r in rules if r.startswith("write_file(")]
         assert writes == [notes, str(app.paths.data / "classroom")]  # notes and course files; add-ons are off
         cmds = {r[8:-1] for r in rules if r.startswith("command(")}
-        assert {"git", "grep", "rg", "cat", "ls", "pdftotext", "latexmk", "mkdir", "find"} <= cmds
+        assert {"grep", "cat", "ls", "pdftotext", "mkdir"} <= cmds
         assert not cmds & {"sed", "kurooto", "rm", "mv", "cp", "python", "python3", "bash", "sh", "curl"}
+        assert not cmds & {"find", "git", "latexmk", "rg", "sort"}  # each can start another program through options
         reads = [r[10:-1] for r in rules if r.startswith("read_file(")]
         assert reads == [str(p) for p in places.read_roots(app)] and reads[0] == notes
         assert str(app.paths.state / "mail-digest") in reads and str(app.paths.data / "classroom") in reads

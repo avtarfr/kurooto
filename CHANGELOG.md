@@ -80,6 +80,9 @@
   and "I have a quiz on Thursday" is a deadline, not something to remember. The look back after each call checks every
   change you asked for against what the tools actually did, and fixes it with the right tool (including undoing a
   wrong ignore with the new `unignore_topic`).
+- **Calls can put things in writing and sync now**: "send it on Telegram" sends it (a new `send_message` tool:
+  calls used to promise it and send nothing), and "sync now" / "check Classroom now" starts the same sync as
+  `/sync all` (`sync_now`), with the result on Telegram.
 - **A quiz that's past is over, not overdue**, and a quiz on a course page is never merged into another subject's
   quiz on the same day (a course page's path names its subject). A bare "Quiz" gets its subject's name, everywhere.
 - **Start-by says what to start**: "POTA Quiz 2 (on Tue 27 Oct 10:00): start working on it today, about 2 h of work",
