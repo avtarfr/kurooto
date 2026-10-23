@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.9 (unreleased)
+## 0.5.9 (2026-10-23)
 
 - **Kurooto sets itself up from what you say** (`infer.*`, on): "I got a project under Prof Lena Ortiz on ring
   models" in the chat or your journal starts the project note with "With: Prof Lena Ortiz (supervisor)" and a
