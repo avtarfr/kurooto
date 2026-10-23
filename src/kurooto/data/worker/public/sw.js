@@ -1,5 +1,6 @@
 // Kurooto's service worker: turns a push (it carries nothing) into a notification. It asks the call line what's
-// ringing or waiting, with this device's key: a call opens the call page, a question or message opens the inbox.
+// ringing or waiting, with this device's key: a call opens the call page, a question or message opens the inbox, and
+// so does a chat message from Kurooto (the newest few come with /pending as "chat").
 function idb(mode, fn) {
   return new Promise(function (resolve) {
     try {
@@ -29,12 +30,13 @@ function tidy(items) {
   }).catch(function () {});
 }
 
-// The newest thing this phone hasn't been shown yet.
-function showItem(items, name) {
+// The newest thing this phone hasn't been shown yet: a question or message, else a chat message.
+function showItem(items, name, chat) {
   return idbGet('seen').then(function (raw) {
     var seen = [];
     try { seen = JSON.parse(raw || '[]'); } catch (e) { seen = []; }
     var fresh = items.filter(function (i) { return seen.indexOf(i.id) < 0; });
+    if (!fresh.length) fresh = (chat || []).filter(function (m) { return seen.indexOf(m.id) < 0; }).map(function (m) { return { id: m.id, title: m.title, text: m.text, kind: 'chat' }; });
     var it = fresh[fresh.length - 1];
     if (!it) return self.registration.showNotification(name, { body: 'Something new is waiting for you. Tap to see it.', data: { link: '/inbox' }, tag: 'kurooto' });
     var more = fresh.length > 1 ? ' (+' + (fresh.length - 1) + ' more)' : '';
@@ -60,7 +62,7 @@ self.addEventListener('push', function (event) {
           body: ring.reason || 'Tap to answer', data: { link: ring.link }, tag: 'kurooto-call', renotify: true, requireInteraction: true,
         });
       }
-      return showItem(items, name);
+      return showItem(items, name, j.chat);
     });
   }).catch(function () {
     // iOS drops the subscription if a push shows nothing, so always show something

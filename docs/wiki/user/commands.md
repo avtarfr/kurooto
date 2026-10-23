@@ -9,6 +9,7 @@ the `kurooto` terminal commands, and the dashboard's keyboard shortcuts. Each ro
 - Commands work in any case (`/Remind` is `/remind`), and `/remind@yourbot` works in a group-style chat too.
 - Most commands take the rest of the line as their argument; `/journal` followed by a new line works as well.
 - The same plain words also work in the dashboard's Today box and Ctrl+K, in `kurooto ask`, and many of them on a call.
+- Commands and plain words work in the Android app's chat exactly as on Telegram ([Phone app](phone-app.md#chat-with-kurooto-in-the-app)).
 
 ## Telegram commands
 

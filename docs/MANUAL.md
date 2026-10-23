@@ -1238,6 +1238,17 @@ handy; the first answer counts and the others go away.
 `["call", "question", "approval"]`; add `"reminder"`, `"deadline"`, `"result"` or `"info"` to get those there too
 (they still go to Telegram as well). Remove `"question"` and `"approval"` to keep them on Telegram only.
 
+**Chat in the app (Android):** **Chat with Kurooto** on the app's main screen works like your Telegram chat: what you
+type goes through your call line to your computer and is handled as a Telegram message would be (commands, plain
+words, your AI); the answers, and the AI's later answer, come back to the chat (a notification when it isn't open),
+with working buttons. Where Telegram is blocked, also turn on `notify.app_chat` (Settings → notify): Kurooto's own
+messages (reminders, results, info) then show in the chat too; questions and approvals stay under Waiting for you.
+*Undo:* `notify.app_chat` back to `false`; the chat itself is only there when you use it.
+
+**When the computer is off:** chat messages, button taps, answers and files you share from a paired phone wait on your
+call line (at most 100 things and 20 MB of files) and reach the computer when it's back, in order, each once. The app
+shows "Waiting for your computer" until then, and says "Reached your computer" for an answer or a file.
+
 **While you're on a call** nothing else rings: reminder calls and check-ins wait until the call ends (also when the
 computer is off), and updates wait too. Wake-up calls still ring.
 
@@ -2401,8 +2412,9 @@ write to it, and Kurooto never reads it back.
 
 ### Android (recommended)
 The Kurooto app rings like a real phone call (full screen, even on the lock screen), uses the earpiece with the screen
-off at your ear, rings wake-up calls on the alarm volume, shows Kurooto's questions and approvals with a Reply box, and
-lets you share files to your notes. It works from Android 6. For calls turn by turn (see Phone calls), it uses
+off at your ear, rings wake-up calls on the alarm volume, shows Kurooto's questions and approvals with a Reply box,
+has a chat with Kurooto like Telegram's, and lets you share files to your notes (they wait on your call line while the
+computer is off). It works from Android 6. For calls turn by turn (see Phone calls), it uses
 Android's own speech recognizer and voice; on Android 13 and newer it recognises speech on the phone when your
 language is downloaded for on-device recognition (in the phone's language or speech settings; the place differs).
 

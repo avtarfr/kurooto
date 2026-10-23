@@ -44,6 +44,8 @@ computer only.
 | Phone calls: how Live failed | which Live model failed, Google's error code, and what the call did instead, counted for `kurooto doctor` | your call line passes it to your computer; it stays there |
 | Phone calls: ringing and messages | "a call is ringing" messages, and the questions, approvals and messages you choose for the phone (`notify.app_kinds`), encrypted with a key only your paired Android phones, your computer and your call line hold (ntfy can't read them) | ntfy.sh (Android; with `kurooto ntfy-token`, as your ntfy account: the token is kept on this computer and your call line) or Apple/Google push services (web app; the push itself is empty) |
 | Phone calls: what's waiting | the text of open questions, approvals and messages sent to your phones (at most 40; a message is gone after a day, a question or approval once it's answered or expires), so the iPhone app can list them | your own Cloudflare account (your call line) |
+| Phone calls: the app's chat | what you type in the phone app's chat and Kurooto's answers (with `notify.app_chat` on, its other messages too). Your call line keeps the chat's last 50 messages, each for at most 3 days, so a phone can catch up while this computer is off; Kurooto's messages go to Android phones encrypted as above | your own Cloudflare account (your call line); ntfy.sh (Android, encrypted) or Apple/Google push (web app; the push itself is empty) |
+| Phone calls: the phone outbox | chat messages, button taps, answers and shared files (at most 100 things and 20 MB of files) sent from a paired phone while this computer is off, held until it's back and takes them, then deleted; for a day after, the ids of what went through and this computer's short note on each, so the phone can show it | your own Cloudflare account (your call line) |
 | Going offline and coming back (on by default) | the "going offline", "back online" and "network was down" messages, and messages kept while the network was down | Telegram (your own bot); with Phone calls, the phone app through your call line |
 | Going offline + Phone calls | your night and focus hours for the next day and the message's wording, so your call line can say "offline since 22:10" while this computer can't; only after you approve (asked once): your Telegram bot's token and your chat id, kept in your call line's storage and deleted there when you set `notify.presence.line_telegram` to `false` or turn the feature off | your own Cloudflare account (your call line), which then sends to Telegram or your phones |
 | Morning alarm | the alarm time; with Chat on, the AI reads your notes before the alarm to draft the day's plan, and the wake-up call's transcript to settle it | your call line; the AI service you picked |
@@ -214,11 +216,14 @@ pairing and the ring messages' key: `kurooto rotate` gives your call line new ke
 account, as on every setup), and the line then forgets every phone paired before, so the lost one can't call, be
 called or read new messages.
 
-Answers from the Android app are sealed with the same key as the ring messages. That key keeps them from ntfy, not
-from your call line: the line holds it too (it seals the ring messages and gives it to each Android phone when it
-pairs), so your call line, on your own Cloudflare account, could read them. Only what Reminders with the lid shut
-hands over is sealed with keys that only your phones hold. The iPhone app's answers travel over HTTPS with its device
-key. Each answer can be used once (it carries a random number and the time it was sent).
+Answers and chat messages from the Android app are sealed with the same key as the ring messages. That key keeps them
+from ntfy, not from your call line: the line holds it too (it seals the ring messages and gives it to each Android
+phone when it pairs), so your call line, on your own Cloudflare account, could read them, also while they wait there
+for this computer. Only what Reminders with the lid shut hands over is sealed with keys that only your phones hold.
+The iPhone app's answers travel over HTTPS with its device key. Each answer and chat message can be used once (it
+carries a random number and the time it was sent). Files shared while this computer is off wait on your call line as
+they are (not encrypted there beyond Cloudflare's own storage). The Android app keeps the chat and what waits for
+your computer in its private storage; unpairing deletes them.
 
 ## Removing it all
 

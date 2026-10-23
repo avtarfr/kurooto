@@ -24,6 +24,7 @@ The user's side of this is in [../user/calls.md](../user/calls.md) and [../user/
 | `modules/calls/fallback.py` | `LiveHealth`, `VoiceTurns`, `TextCall`, `rotate`, `live_profile`: when Gemini Live fails |
 | `modules/calls/line.py` | the shared crypto (k1, t1, s1, pair codes, VAPID keys) |
 | `modules/calls/phone.py` | `PhoneApp`: questions and approvals as phone notifications with answer buttons |
+| `modules/calls/chat.py` | `PhoneChat`: the phone app as a chat channel (0.5.16), the `chat` notify channel |
 | `modules/calls/review.py` | the post-call look back and `/lessons` (0.5.8) |
 | `modules/calls/tools.py` | the `Tool` dataclass (shared with `core/tools.py`) and notes helpers |
 | `data/worker/src/worker.js` | the Worker: `fetch`, `scheduled`, Durable Object `class Line` |
@@ -75,11 +76,15 @@ Redeploys: `fingerprint` hashes the Worker source and the values baked into it (
   `setWebSocketAutoResponse` without waking. Nothing heard for `DEAD_S = 75` s ends the session and redials.
 - Reconnect back-off 2 s doubling to 60 s; failures go to `app.presence.net_failed("line", e)`. Link state:
   `<state>/calls/link.json`.
-- Computer to Worker: `hello`, `state` (`Calls.state_message`: setup, tools, brief, schedule, texts, voices, presence
+- Computer to Worker: `hello` (`pull: true`: hand over what waited one item at a time), `state` (`Calls.state_message`: setup, tools, brief, schedule, texts, voices, presence
   hours ...; pushed every `STATE_S = 300` s or 1 s after `poke()`), `index` (the notes index, in parts, at most
   hourly), `reply` (answers to relayed requests), `admin` (operations).
-- Worker to computer: `welcome` (version, the offline queue, an away report), `request` (relayed HTTP), `admin-reply`,
-  `event`.
+- Worker to computer: `welcome` (version, `outbox`: how many items wait, an away report; to a computer without
+  `pull`, the whole queue as before), `request` (relayed HTTP), `admin-reply`, `event`, `outbox` (something was
+  queued while the link looked away, or the queue isn't empty at a state push: take it).
+- `_drainer` (a session task): on `outbox`, asks `admin("outbox", done={seq, status, note})` in a loop, handing each
+  item to `Calls.take_queued` in a thread, until the answer has no `item`. The Worker drops an item only when the next
+  ask names it done, so a crash mid-way repeats at most one item (answers and chat messages refuse a used nonce).
 - `admin(...)` / `admin_wait(...)` (from a thread; refuses on the event loop) / `admin_later(...)` (fire and forget;
   its True only means a socket existed).
 
@@ -114,7 +119,7 @@ There is no FCM. Android rings through an ntfy JSON stream held by `ListenServic
 
 When the computer is off, the Worker's cron (`Line.tick`, every minute) places scheduled calls itself (skipping ones
 more than 180 s late, holding non-alarm calls during a call), answers tools from the last brief, and queues tool calls,
-transcripts, events and answers until `welcome` replays them (`Calls.on_queue`).
+transcripts, events and answers until the computer takes them (`Calls.take_queued`, see the phone outbox below).
 
 ## During a call
 
@@ -136,7 +141,7 @@ transcripts, events and answers until `welcome` replays them (`Calls.on_queue`).
 - Module hooks the calls module looks for (`hasattr` in `modules/calls/__init__.py`): `call_tools`, `call_brief`,
   `call_schedule`, `call_outcome`, `call_transcript`, `call_reschedule`. `Calls.agent_tools` gives unattended AI runs
   only `schedule_call` and `hold_calls`.
-- Relayed HTTP paths handled by `Calls.handle_request`: `/tool`, `/tasks`, `/answer`, `/transcript`, `/turn`,
+- Relayed HTTP paths handled by `Calls.handle_request`: `/tool`, `/tasks`, `/answer`, `/chat`, `/transcript`, `/turn`,
   `/textcall`, `/upload` (1 MB per part, 50 MB total, into the notes inbox folder from `core/layout.py`).
 
 ## Fallback layers
@@ -190,7 +195,7 @@ Failures are counted in `<state>/calls/live-health.json` (`LiveHealth.record`) a
 - Because the review is a job not submitted by Chat, its prompt and answer are not recorded into the chat history
   (`Chat.owns`, checked in `core/jobs.py:Jobs._deliver`).
 
-Other files in `<state>/calls/`: `rings.json`, `live.json`, `link.json`, `inbox.json`, `answer-nonces.json`,
+Other files in `<state>/calls/`: `rings.json`, `live.json`, `link.json`, `inbox.json`, `chat.json`, `answer-nonces.json`,
 `live-health.json`, `textcalls.json`, `lessons.md`, `transcripts/`.
 
 ## The Worker (`data/worker/src/worker.js`)
@@ -203,11 +208,81 @@ Other files in `<state>/calls/`: `rings.json`, `live.json`, `link.json`, `inbox.
 - Routes: top level `/health`, `/manifest.webmanifest`; the rest goes to `Line.fetch`. No auth: `/connect` (checked by
   the connector secret) and `/pair/claim`. Any valid key (device key `d1`, ticket `t1`, or a minted ticket):
   `/status`, `/token`, `/turn`, `/text-call`, `/call-report`, `/tool`, `/tasks`, `/transcript`, `/upload`. Paired
-  devices only: `/pending`, `/answer`, `/app-call`, `/ring-reply`, `/push/subscribe`, `/device/key`.
+  devices only: `/pending`, `/answer`, `/chat` (GET and POST), `/outbox`, `/app-call`, `/ring-reply`,
+  `/push/subscribe`, `/device/key`.
 - Admin operations over the WebSocket: `ring`, `stop-ring`, `pair-code`, `devices`, `revoke`, `ticket`, `bye`, `notify`,
-  `notify-clear`, `sealed-put`, `sealed-claim`.
+  `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`.
 - Pinned packages in `package.json` / `package-lock.json` (`@google/genai`, esbuild, wrangler). CI installs them with
   `npm ci --ignore-scripts`.
+
+## The app's chat and the phone outbox (0.5.16)
+
+**The chat.** `modules/calls/chat.py:PhoneChat`. A message typed in the app reaches `PhoneChat.take`, which builds
+`Incoming(text, via="app", message_id="app:<id>", respond=...)` and calls `App.handle`: commands, intents and Chat as
+on Telegram (`core/turnon.py` already offers its buttons for `via` `app`). `respond` and later answers go through
+`PhoneChat.say`, which keeps the buttons' data in `<state>/calls/chat.json` (last 100, 7 days) and sends
+`admin_later("chat-say", msg=...)`; failed pushes are sent again from `state_message` (`flush`, last hour).
+Jobs answer with `reply_to="app:<id>"`: `core/notify.py:Notifier._deliver` sends such a message to the `chat` channel
+only (and the desktop, by its kinds); with no `chat` channel it goes to Telegram without the reply_to. With
+`notify.app_chat` on, messages whose kind isn't in `notify.app_kinds` (and isn't `call`) also go to `chat`.
+A button press runs `App.callback(data)` and says its answer in the chat unless it's empty or "ok".
+
+**The phone outbox.** The Worker's `queue` (one value: an index of items, each with a rising `seq`; a phone item's body
+under its own key `q:<seq>`) holds both the line's own items (`tool`, `transcript`, `event`) and phone items
+(`answer`, `chat`, `upload`, with `device` and `oid`). Past 200 items the oldest line items go, never phone items.
+A phone request is relayed only when the computer is online and no phone item is queued; otherwise it's queued, so
+order holds. Limits: `OUTBOX_MAX` 100 things (distinct `oid`), `OUTBOX_BYTES` 20 MB of files (checked for the whole
+file, `parts × 512 KB`, at part 0); over them, 507 with `note`. Only paired devices can queue; a ticket's upload while
+offline still gets 503. When the computer finishes an item (`outbox` op with `done`), the Worker drops it, records
+`{oid, kind, ok, note, t}` in `odone` (100, one day) and tells an Android sender by ntfy (below). Web devices aren't
+pushed for this (an iPhone must show something for every push); they poll `/outbox` or `/chat`.
+
+**Sealing.** Android: the fields are k1-sealed with the ntfy key (as answers are), so ntfy can't read them; the Worker
+holds that key (`NTFY_KEY`) and stores the sealed form. Web: plain JSON over HTTPS with the device key. Either way
+`ts` + `n` (16-64 hex) make it single use (`PhoneApp._spend_nonce`, 10-minute freshness against the Worker's `at`).
+Shared files are stored as sent (base64) while they wait.
+
+### API for phone apps
+
+All with header `x-call-secret: d1.<id>.<secret>` (a paired device). Ids are 16 lowercase hex.
+
+| Route | Body / query | Answer |
+|---|---|---|
+| `POST /chat` (Android) | `{"id", "k1": seal_k1(ntfy key, JSON fields)}` | see below |
+| `POST /chat` (web) | `{"id", "ts", "n", "text", "to"?}` or `{"id", "ts", "n", "button": <number>, "msg": <Kurooto message id>}` | see below |
+| `GET /chat?after=<seq>` | | `{"seq", "msgs": [message...] with seq > after, "waiting", "done", "computer", "assistant"}` |
+| `GET /outbox` | | `{"waiting": [{"oid", "kind", "at"}], "done": [{"oid", "kind", "ok", "note", "t"}], "computer": "online"\|"offline"}` |
+| `GET /pending` | | as before, plus `"chat"`: the last 5 messages from Kurooto (for the service worker) |
+| `POST /answer` | as before | as before; offline and queued: `{"ok": true, "queued": true, "note"}` |
+| `POST /upload?name&note&id&part&parts` | raw bytes, at most 512 KB a part | online: the computer's answer; offline (device key, `id` given): `{"ok": true, "queued": true, "part", "note"}` |
+
+The sealed fields (Android) are the web body's fields plus `"id"` (must match the outer id): `{"id", "ts", "n",
+"text", "to"?}` or `{"id", "ts", "n", "button", "msg"}`. `text` is at most 4000 characters (16 000 bytes of body).
+
+`POST /chat` answers: computer online, `200 {"ok": true, "id", "said": [message...]}` (the immediate replies; later
+ones arrive as chat messages), or a button's `200 {"ok": true, "note"}`; offline, `200 {"ok": true, "queued": true,
+"note"}`; `400 {"ok": false, "note"}` (empty, no id, can't be opened: pair again); `409 {"ok": false, "note"}` (stale
+or used nonce); `507 {"error": "full", "note"}` (the outbox is full); `401` (not paired).
+
+A chat message: `{"id", "seq", "from": "you"|"kurooto", "text" (at most 6000), "at" (seconds), "buttons":
+[{"label"} | {"label", "url"}] (at most 6; a button with `url` opens it, one without is pressed by its index),
+"reply" (true: a reply to it, with `to`, reaches the feature that sent it), "re"? (the message it answers),
+"title"?}`. Your own message appears in the log (`from: "you"`) once the computer took it. The line keeps the last
+50, each 3 days.
+
+What an app should do: keep its own copy of the chat; generate the id; show "Waiting for your computer" for anything
+answered `queued`, until `GET /outbox` (or `/chat`) no longer lists its `oid` (the chat message's id, the answer's
+item id, the upload's `id`); catch up with `GET /chat?after=<last seq>` on opening and after a push.
+
+**Pushes.** Each Kurooto message: Android gets a k1 ntfy message `{"title", "message", "tags": ["stop", "chat"],
+"id", "seq", "re", "reply", "buttons", "time", "assistant"}` (text trimmed to fit ntfy; the app fetches `/chat` for
+the rest); web devices get an empty Web Push and find it in `/pending`'s `chat`. When a queued item from an Android
+phone went through: `{"tags": ["stop", "outbox"], "dev": <device id>, "done": [{"oid", "kind", "ok", "note"}]}`.
+`stop` makes apps older than 0.5.16 ignore both.
+
+**Admin ops.** `chat-say {msg, assistant}`: store a message (`from` you or kurooto; once per id) and push it if it's
+Kurooto's; answers `{ok, seq, android, web}`. `outbox {done?}`: drop `done.seq` and tell its phone; answer the next
+item `{"item": {seq, kind, at, ..., body | body_b64}, "left"}` or `{"item": null}`.
 
 ## Pairing
 
@@ -253,9 +328,12 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `KUROOTO_KEYSTORE_PASS` on the maintainer's machine; otherwise a throwaway debug key. `build.sh --test` runs
   `test/CryptoTest.java` and `test/SpeechTest.java` on a plain JVM.
 - Components: `MainActivity` (the checklist: battery, notifications, full-screen calls), `PairActivity`,
-  `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ShareActivity` (share to Kurooto),
+  `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
+  the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
+  device key so it can wait on the line),
   `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`.
-  Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25), `B64`.
+  Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Chat`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25),
+  `B64`.
 - CI: `ci.yml` job `android` (vectors, debug build, `NewApi`/`InlinedApi` lint as errors);
   `android-emulator.yml` runs `smoke.sh` on API 23 to 35.
 
@@ -264,12 +342,18 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - `tests/integration/` runs the real Worker under `wrangler dev` with fakes for Google, ntfy and Web Push
   (`tests/fakes/cloud.py:FakeCloud`) and the real `Connector`: `test_call_line.py` (auth, pairing, tokens, tool relay,
   ringing with VAPID signature checks, uploads, transcripts, the offline queue and cron), `test_lidsafe_line.py`,
-  `test_livefallback_line.py`, `test_phone_line.py`, `test_presence_line.py`, `test_rotate_line.py`. They need Node;
+  `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox),
+  `test_presence_line.py`, `test_rotate_line.py`. They need Node;
   CI's `call-line` job installs the Worker's packages and bundles the page first.
-- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_livefallback.py` (runs `tests/js/fallback.mjs` and
+- Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_livefallback.py` (runs `tests/js/fallback.mjs` and
   `tests/js/callpage.mjs`).
 
 ## Known problems and doc mismatches
+
+- The app's chat gets no files: a long AI answer's attached file (`Jobs._deliver`) goes to Telegram only, and the chat
+  shows its first 1500 characters.
+- A shared file's part that the computer took but didn't confirm (it crashed in between) is written twice when the
+  outbox is taken again; chat messages and answers are protected by their nonce, file parts aren't.
 
 - With no Android device paired, the computer still publishes each ring to ntfy once (the Worker's answer can't tell
   "no Android device" from "its publish failed").

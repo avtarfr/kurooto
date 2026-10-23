@@ -41,6 +41,8 @@ import java.net.URL;
  *   tags "sealed" -> a reminder your call line sent while your computer was asleep, sealed for this phone alone
  *                   (Seal; the line can't read it): a normal notification. It also carries "stop", so an older
  *                   app ignores it.
+ *   tags "chat"   -> a chat message from Kurooto (Chat): kept, and a notification unless the chat is open ("stop" too)
+ *   tags "outbox" -> things this phone sent while your computer was off went through to it (Chat; "stop" too)
  *   anything else -> a normal notification
  */
 public class ListenService extends Service {
@@ -200,6 +202,14 @@ public class ListenService extends Service {
                 sealed(m);
                 return;
             }
+            if (tagStr.contains("\"chat\"")) {
+                chat(m);
+                return;
+            }
+            if (tagStr.contains("\"outbox\"")) {
+                if (m.optString("dev").equals(Prefs.deviceId(this))) outboxDone(Chat.done(this, m.optJSONArray("done")));
+                return;
+            }
             if (tagStr.contains("\"clear\"")) {
                 Inbox.cancel(this, m.optJSONArray("ids"));
                 return;
@@ -343,6 +353,50 @@ public class ListenService extends Service {
                     .build();
             ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify("sealed-" + it.optString("id"), ID_SEALED, n);
         } catch (Exception ignored) { }
+    }
+
+    /** A chat message from Kurooto: into the chat, and a notification that opens it (unless it's open already). */
+    private void chat(JSONObject m) {
+        try {
+            JSONObject msg = new JSONObject().put("id", m.optString("id")).put("from", "kurooto").put("text", m.optString("message"))
+                    .put("at", m.optLong("time")).put("re", m.optString("re")).put("reply", m.optBoolean("reply"))
+                    .put("buttons", m.optJSONArray("buttons") == null ? new JSONArray() : m.optJSONArray("buttons"));
+            if (m.optString("id").isEmpty()) return;
+            Chat.put(this, msg);
+            if (ChatActivity.visible) { new Thread(() -> Chat.sync(this)).start(); return; } // the whole text, in order
+            String text = m.optString("message");
+            Notification n = builder(this, CH_MSG)
+                    .setSmallIcon(R.drawable.ic_stat)
+                    .setContentTitle(Prefs.assistant(this))
+                    .setContentText(text)
+                    .setStyle(new Notification.BigTextStyle().bigText(text))
+                    .setCategory(Notification.CATEGORY_MESSAGE)
+                    .setContentIntent(PendingIntent.getActivity(this, 5, new Intent(this, ChatActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
+                    .setAutoCancel(true)
+                    .build();
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify("chat", ChatActivity.ID_NOTE, n);
+        } catch (Exception ignored) { }
+    }
+
+    /** Answers and files that waited on the call line reached your computer: say so quietly (chat messages just
+     *  lose their "Waiting for your computer"). */
+    private void outboxDone(JSONArray gone) {
+        for (int i = 0; gone != null && i < gone.length(); i++) {
+            JSONObject x = gone.optJSONObject(i);
+            if (x == null || "chat".equals(x.optString("kind")) || "button".equals(x.optString("kind"))) continue;
+            String what = ("file".equals(x.optString("kind")) ? "File: " : "Answer: ") + x.optString("label");
+            String note = x.optString("note");
+            Notification n = builder(this, CH_MSG)
+                    .setSmallIcon(R.drawable.ic_stat)
+                    .setContentTitle(x.optBoolean("ok", true) ? "Reached your computer" : "Your computer couldn't take it")
+                    .setContentText(what)
+                    .setStyle(new Notification.BigTextStyle().bigText(what + (note.isEmpty() ? "" : "\n" + note)))
+                    .setOnlyAlertOnce(true)
+                    .setAutoCancel(true)
+                    .build();
+            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify("outbox-" + x.optString("oid"), ID_SEALED + 2, n);
+        }
     }
 
     private void notifyPlain(String title, String text, String click) {

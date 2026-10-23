@@ -3,6 +3,10 @@ network; nothing listens for the internet here). The Worker passes requests from
 transcripts, shared files) down it, and this answers them. Every 5 minutes, and whenever your scheduled calls
 change, it pushes what calls need while the computer is off: the call setup, a brief, and the upcoming calls.
 
+What waited on the line while this computer was off (requests from calls, and what you did on your phone: answers,
+chat messages, shared files, the "phone outbox") is taken one item at a time, in order, each removed from the line
+once it's done here (_drainer), so nothing is lost or done twice.
+
 Reconnects with back-off. A connect that hangs is dropped after 15 s, and a link that goes silent (no "pong" to the
 30 s "ping" for 75 s, e.g. after the network changed) is dropped and redialled, so a dead link never leaves the
 Worker thinking the computer is on.
@@ -37,6 +41,7 @@ class Connector:
         self.last_pong = 0.0
         self.waiting: dict[str, asyncio.Future] = {}
         self.dirty = asyncio.Event()  # the scheduled calls changed: push now
+        self.outbox = asyncio.Event()  # something waits on the line for this computer: take it
         self.last_index = 0.0
         self.version = ""
 
@@ -55,6 +60,7 @@ class Connector:
         from websockets.asyncio.client import connect
 
         self.loop = asyncio.get_running_loop()
+        self.dirty, self.outbox = asyncio.Event(), asyncio.Event()  # Events are tied to one loop; a restart has another
         backoff = 2
         while not stop.is_set():
             url, secret = self.calls.worker_url(), self.app.secrets.get("calls.connector_secret")
@@ -97,11 +103,13 @@ class Connector:
         self.app.events.emit("calls_link", connected=True)
         if getattr(self.app, "presence", None) is not None:
             self.app.presence.net_ok("line")
-        await ws.send(json.dumps({"type": "hello"}))
+        self.outbox.clear()
+        await ws.send(json.dumps({"type": "hello", "pull": True}))  # pull: hand over what waited one at a time
         tasks = [
             asyncio.create_task(self._reader(ws)),
             asyncio.create_task(self._heartbeat(ws)),
             asyncio.create_task(self._pusher()),
+            asyncio.create_task(self._drainer()),
             asyncio.create_task(stop.wait()),
         ]
         try:
@@ -134,12 +142,16 @@ class Connector:
                     f.set_result(m.get("result") or {})
             elif kind == "welcome":
                 self.version = m.get("version", "")
-                await asyncio.to_thread(self.calls.on_queue, m.get("queue") or [])
+                await asyncio.to_thread(self.calls.on_queue, m.get("queue") or [])  # a line from before 0.5.16
+                if m.get("outbox"):
+                    self.outbox.set()
                 if m.get("away") and getattr(self.app, "presence", None) is not None:  # it told you this was offline
                     await asyncio.to_thread(self.app.presence.line_report, m["away"])
                 self.dirty.set()
             elif kind == "event":
                 await asyncio.to_thread(self.calls.on_event, m)
+            elif kind == "outbox":  # something was left on the line while this computer looked away
+                self.outbox.set()
 
     async def _heartbeat(self, ws) -> None:
         while True:
@@ -161,6 +173,30 @@ class Connector:
             except TimeoutError:
                 pass
             self.dirty.clear()
+
+    async def _drainer(self) -> None:
+        """Take what waits on the line, oldest first: ask for the next item, handle it here, and say it's done with
+        the next ask (the line then drops it and tells the phone it went through). Never returns (a session ends
+        when one of its tasks does)."""
+        while True:
+            await self.outbox.wait()
+            self.outbox.clear()
+            done, tools = None, 0
+            try:
+                while True:
+                    res = await self.admin("outbox", timeout=30, **({"done": done} if done else {}))
+                    it = res.get("item")
+                    if not isinstance(it, dict):
+                        break  # nothing left (or a line that doesn't know "outbox": it sent all in its welcome)
+                    status, note = await asyncio.to_thread(self.calls.take_queued, it)
+                    tools += it.get("kind") == "tool"
+                    done = {"seq": it.get("seq"), "status": status, "note": note}
+            except Exception as e:
+                log.info("call line: taking what waited stopped: %s", e)
+                await asyncio.sleep(5)
+                self.outbox.set()  # try again (on this link; a new one asks anyway)
+            if tools:
+                await asyncio.to_thread(self.calls.queued_tools_done, tools)
 
     async def push_state(self) -> None:
         if self.ws is None:

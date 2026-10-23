@@ -4,8 +4,8 @@ Your phone is where Kurooto's calls ring, and a second place to answer its quest
 rings like a phone call; an iPhone gets a web app on its Home Screen. Both need [Phone calls](calls.md) set up first:
 the app comes from your own call line.
 
-You still talk to Kurooto mostly on Telegram; the phone app adds calls, the wake-up alarm, and questions with answer
-buttons.
+The phone app adds calls, the wake-up alarm, questions with answer buttons, and a chat with Kurooto that works like
+Telegram, for places where Telegram is blocked or little used.
 
 - [Pair a phone](#pair-a-phone)
 - [Android](#android)
@@ -13,7 +13,9 @@ buttons.
 - [Any browser](#any-browser)
 - [What reaches the phone](#what-reaches-the-phone)
 - [Answering questions on the phone](#answering-questions-on-the-phone)
+- [Chat with Kurooto in the app](#chat-with-kurooto-in-the-app)
 - [Sharing files to your notes](#sharing-files-to-your-notes)
+- [When your computer is off](#when-your-computer-is-off)
 - [Managing paired phones](#managing-paired-phones)
 - [A lost phone, or keys that got out](#a-lost-phone-or-keys-that-got-out)
 - [What leaves your computer](#what-leaves-your-computer)
@@ -57,7 +59,8 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
 4. Test it: Dashboard → Phone → **Ring my phone (test)**.
 
 **The app's screen** shows what it's paired with, the checklist, **Waiting for you** (open questions and approvals),
-a **Call** button, the ringtone pickers (**Call ringtone** and **Wake-up alarm tone**; the alarm tone plays on the
+a **Call** button, **Chat with Kurooto**, what's **waiting for your computer** (things you sent while it was off),
+the ringtone pickers (**Call ringtone** and **Wake-up alarm tone**; the alarm tone plays on the
 alarm volume), and **Unpair this phone**. It starts listening again by itself after the phone restarts or the app
 updates ("Listening for calls" stays as a quiet notification).
 
@@ -109,6 +112,7 @@ Settings → notify):
 | Setting | Default | Effect |
 |---|---|---|
 | `notify.app_kinds` | `["call", "question", "approval"]` | Kinds of message that also go to the phone app. Add `"reminder"`, `"deadline"`, `"result"` or `"info"` to get those there too. Remove `"question"` and `"approval"` to keep them on Telegram only. |
+| `notify.app_chat` | `false` | Kurooto's own messages (reminders, results, info: everything not in `notify.app_kinds`) also show in the app's chat. Turn it on where Telegram is blocked. |
 
 Everything that goes to the phone still goes to Telegram as well. The phone's list keeps at most 40 items; a message
 that isn't a question stays on it for a day.
@@ -140,11 +144,50 @@ to type in.
 | That answer couldn't be opened here. Pair the phone again. | The phone's keys don't match any more (after `kurooto rotate`, say). Pair again. |
 | This phone was unpaired. Pair it again from your computer. | It was removed with `/unpair` or the dashboard. |
 
+## Chat with Kurooto in the app
+
+**Android:** tap **Chat with Kurooto** on the app's main screen. Type as you would on Telegram: a question, "remind me
+at 9 to call Dr Sam Okafor", a /command. It's handled exactly like a Telegram message: the same commands, plain-English
+requests and, with Chat on, your AI. The answer comes back in the chat ("On it." first, then the AI's answer when it's
+done), and as a notification when the chat isn't open. Buttons under an answer work as on Telegram. **Reply** under a
+message that takes one (a reminder, a check-in) answers it. Answers to what you wrote in the app come back to the app
+only, not to Telegram.
+
+**iPhone:** the chat comes to the Home Screen app in a later version. Chat messages from Kurooto already arrive as
+notifications.
+
+**Kurooto's own messages in the chat.** With `notify.app_chat` on (Dashboard → Settings → notify), reminders,
+results and other messages also show in the chat, besides Telegram. Questions and approvals stay under **Waiting for
+you**.
+
+**What you see under your message:**
+
+| Under your message | Means |
+|---|---|
+| Sending… | On its way to your call line. |
+| Waiting for your computer | Your computer is off. It waits on your call line and goes to the computer when it's back; then this goes away and the answer comes. |
+| Not sent: tap to try again | The phone was offline, or your call line refused it (the reason is in brackets). Tap the message to send it again. |
+
 ## Sharing files to your notes
 
 **Android:** in any app, Share → **Share to Kurooto** (one file or several). Each goes into your notes' `inbox/` (or
 your files folder's, if you set one). With Chat on, the AI files it where it belongs and tells you where; without
-Chat you get "Got <file> from your phone: saved to ...". Files can be up to 50 MB each. The computer has to be on.
+Chat you get "Got <file> from your phone: saved to ...". Files can be up to 50 MB each. With the computer off, a file
+up to 20 MB waits on your call line (below).
+
+## When your computer is off
+
+What you do on the phone while your computer sleeps isn't lost: chat messages, button taps, answers to questions
+and shared files wait on your call line (the "phone outbox") and go to the computer when it's back, in the order you
+sent them, each once.
+
+- The chat shows **Waiting for your computer** under each one; the app's main screen lists what's waiting.
+- When the computer takes one, the phone hears it: the chat's mark goes away and the answer comes, and for an answer
+  or a file you get a quiet "Reached your computer" notification.
+- The call line holds at most 100 things and 20 MB of files. When it's full: "Your call line is holding as much as it
+  can for your computer." Wait till the computer is back, or use Telegram.
+- Sharing a file with the computer off needs this version of the app (it shares with the phone's own key; older ones
+  asked the computer first).
 
 ## Managing paired phones
 
@@ -187,7 +230,14 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
   can't read them); an iPhone gets an empty Web Push and then fetches what's waiting from your call line.
 - Your call line keeps a copy of what's open (at most 40 items, each gone after a day or once it's dealt with) so the
   phone can list it while the computer is off.
+- The chat: what you type goes from the phone through your call line to your computer, sealed on Android with the key
+  your phones, your computer and your call line hold, and over an encrypted connection from an iPhone. Kurooto's
+  answers go back like questions do. Your call line keeps the chat's last 50 messages, each for at most 3 days, so a
+  phone can catch up while the computer is off.
 - Files you share go from the phone through your call line to your computer.
+- While your computer is off, what you send from the phone waits on your call line until the computer takes it (then
+  it's deleted there): chat messages and answers as sent (sealed from Android), files as they are. A day's record of
+  what went through (ids and short notes, no text you typed) stays so the phone can show it.
 - Call audio: see [Calls: what leaves your computer](calls.md#what-leaves-your-computer).
 
 **Turn it off.** Unpair the phone (above). To stop questions reaching the phone but keep calls, take `"question"` and

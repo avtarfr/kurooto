@@ -13,8 +13,14 @@
 //     what's still open (the inbox) for the web app to list. Answers come back through /answer to your computer
 //     (the Android app's are sealed with the ntfy key, which keeps them from ntfy but not from this Worker: it holds
 //     NTFY_KEY), or wait here till it's back.
+//   - Chat (0.5.16): what you type in the phone app goes through /chat to your computer like a Telegram message;
+//     its answers come back the way messages do (chat-say), and this keeps the chat's last 50 messages (3 days at
+//     most) so a phone can catch up with the computer off.
 //   - While your computer is off: answers come from the brief it last pushed, notes from the index it pushed (and,
 //     with Notes sync, whole notes from your private GitHub repo); anything that needs the computer is queued.
+//     What you do on a paired phone meanwhile (answers, chat messages and button taps, shared files) waits here
+//     too (the phone outbox: at most 100 things and 20 MB), in order; your computer takes it one item at a time
+//     when it's back ("outbox"), and the phone hears when each went through.
 //   - Going offline: when your computer's link has been gone for a while (it's asleep, crashed or lost its network)
 //     the cron says so for it, once, outside the night hours it pushed: on the phone app, and on Telegram if you
 //     allowed this line to keep your bot's token (pushed over the link, kept in this object's storage, deleted when
@@ -144,6 +150,17 @@ function phoneMessage(it) {
   return m;
 }
 
+// A chat message from Kurooto as the Android app gets it (it fetches the whole chat from /chat when it's opened).
+function chatMessage(m) {
+  const out = {
+    title: String(m.title || 'Kurooto').slice(0, 120), message: m.text, priority: 3, tags: ['stop', 'chat'],
+    time: Math.floor(Date.now() / 1000), id: m.id, seq: m.seq, re: m.re || '', reply: !!m.reply, buttons: m.buttons,
+  };
+  const size = () => new TextEncoder().encode(JSON.stringify(out)).length;
+  while (size() > 2800 && out.message.length > 80) out.message = out.message.slice(0, Math.floor(out.message.length * 0.8)) + '…';
+  return out;
+}
+
 // Telegram, for "your computer is offline" (only with the token your computer pushed after you allowed it).
 async function sendTelegram(env, tg, text) {
   if (!tg || !tg.token || !tg.chat) return false;
@@ -177,6 +194,13 @@ const MAX_DEVICES = 10;
 const RING_S = 60, ALARM_RING_S = 300;
 const ON_CALL_MS = 90e3; // a live call checks in every few seconds (/tasks); this long after the last one it's over
 const ITEM_ID = /^[0-9a-f]{16}$/;
+// the phone outbox: what a paired phone sent while your computer was off (kept in the queue, in order, each body
+// under its own key); at most this many things and bytes of shared files, a file going in parts of PART bytes
+const PHONE_KINDS = ['answer', 'chat', 'upload'];
+const OUTBOX_MAX = 100, OUTBOX_BYTES = 20 * 1024 * 1024, PART = 512 * 1024, QUEUE_MAX = 200;
+const OUTBOX_FULL = 'Your call line is holding as much as it can for your computer. Wait till it is back on, or use Telegram.';
+// the chat: messages kept, for how long, longest text kept
+const CHAT_MAX = 50, CHAT_KEEP_S = 3 * 86400, CHAT_TEXT = 6000, DONE_KEEP_MS = 86400e3;
 // sealed reminders: at most this many held; a failed send is tried again each minute this many times; a send in
 // progress counts as sent this long; answers are kept this long
 const SEALED_MAX = 40, SEALED_TRIES = 5, SEALED_BUSY_MS = 120e3, SEALED_KEEP_MS = 3 * 86400e3;
@@ -225,10 +249,34 @@ export class Line {
     try { this.state.getWebSockets()[0].send(JSON.stringify(msg)); return true; } catch { return false; }
   }
 
-  async queue(item) {
+  // What waits for the computer, oldest first. Each item has a sequence number; a body given separately (a phone's)
+  // is kept under its own key. Past QUEUE_MAX the oldest of the line's own items go, never a phone's.
+  async queueList() {
     const q = (await this.store.get('queue')) || [];
-    q.push({ ...item, at: new Date().toISOString() });
-    await this.store.put('queue', q.slice(-200));
+    if (q.some((x) => !x.seq)) { // kept by a line from before 0.5.16
+      let seq = (await this.store.get('qseq')) || 0;
+      for (const x of q) if (!x.seq) x.seq = ++seq;
+      await this.store.put('qseq', seq);
+      await this.store.put('queue', q);
+    }
+    return q;
+  }
+
+  async queue(item, body) {
+    const q = await this.queueList();
+    const seq = ((await this.store.get('qseq')) || 0) + 1;
+    await this.store.put('qseq', seq);
+    const e = { ...item, seq, at: new Date().toISOString() };
+    if (body !== undefined) { e.bkey = `q:${seq}`; await this.store.put(e.bkey, body); }
+    q.push(e);
+    while (q.length > QUEUE_MAX) {
+      const i = q.findIndex((x) => !PHONE_KINDS.includes(x.kind));
+      if (i < 0) break;
+      const [gone] = q.splice(i, 1);
+      if (gone.bkey) await this.store.delete(gone.bkey);
+    }
+    await this.store.put('queue', q);
+    this.tell({ type: 'outbox' }); // the computer looked away a moment (or is taking the rest): it takes this too
     return q.length;
   }
 
@@ -271,10 +319,16 @@ export class Line {
       if (p === '/tool' && req.method === 'POST') return this.tool(req);
       if (p === '/tasks') return this.tasks(req);
       if (p === '/transcript' && req.method === 'POST') return this.transcript(req);
-      if (p === '/upload' && req.method === 'POST') return this.upload(req, url);
+      if (p === '/upload' && req.method === 'POST') return this.upload(req, url, who);
       if (who.kind !== 'device') return refuse('that needs a paired device', 403);
-      if (p === '/pending') return json({ rings: await this.ringing(who.id), items: await this.openItems(), assistant: ((await this.store.get('names')) || {}).assistant || '' });
+      if (p === '/pending') return json({ rings: await this.ringing(who.id), items: await this.openItems(), chat: (await this.chatLog()).msgs.filter((m) => m.from === 'kurooto').slice(-5), assistant: ((await this.store.get('names')) || {}).assistant || '' });
       if (p === '/answer' && req.method === 'POST') return this.answer(req, who);
+      if (p === '/chat' && req.method === 'POST') return this.chat(req, who);
+      if (p === '/chat') {
+        const after = Number(url.searchParams.get('after')) || 0, log = await this.chatLog();
+        return json({ seq: log.seq, msgs: log.msgs.filter((m) => m.seq > after), ...(await this.outboxFor(who.id)), assistant: ((await this.store.get('names')) || {}).assistant || '' });
+      }
+      if (p === '/outbox') return json(await this.outboxFor(who.id));
       if (p === '/app-call' && req.method === 'POST') return json({ link: `${this.env.PUBLIC_URL}/?v=${await this.voice('outgoing')}#${await this.mintTicket(2)}`, computer: this.online() ? 'online' : 'offline' });
       if (p === '/ring-reply' && req.method === 'POST') {
         const { since = '', action = '' } = await req.json();
@@ -393,15 +447,26 @@ export class Line {
       if (m.presence !== undefined) await this.setPresence(m.presence);
       if (m.inbox && Array.isArray(m.inbox.items)) await this.setInbox(m.inbox.items, Number(m.inbox.rev) || 0);
       if (m.sealed_on === false) await this.store.delete('sealed'); // reminders with the lid shut is off: drop them
+      if (((await this.store.get('queue')) || []).length) ws.send(JSON.stringify({ type: 'outbox' })); // missed a nudge?
     } else if (m.type === 'index') {
       await this.store.put(`index:${m.part || 0}`, m.items || []);
       if ((m.part || 0) === 0) await this.store.put('index:parts', m.parts || 1);
     } else if (m.type === 'hello') {
-      const q = (await this.store.get('queue')) || [];
+      const q = await this.queueList();
       const away = (await this.store.get('away')) || null; // what this line told you while the computer was gone
       const told = away && away.told ? { since: away.since, told: away.told, channels: away.channels || [] } : null;
-      ws.send(JSON.stringify({ type: 'welcome', version: this.env.VERSION || '', queue: q, away: told }));
-      if (q.length) await this.store.put('queue', []);
+      if (m.pull) { // it takes what waited one item at a time ("outbox"), each dropped here once it's done
+        ws.send(JSON.stringify({ type: 'welcome', version: this.env.VERSION || '', queue: [], outbox: q.length, away: told }));
+      } else { // a computer from before 0.5.16: everything at once, what it can't take (chat, files) left out
+        const all = [];
+        for (const x of q) {
+          if (x.kind === 'answer' && x.bkey) all.push({ ...x, body: await this.store.get(x.bkey) });
+          else if (!PHONE_KINDS.includes(x.kind)) all.push(x);
+          if (x.bkey) await this.store.delete(x.bkey);
+        }
+        ws.send(JSON.stringify({ type: 'welcome', version: this.env.VERSION || '', queue: all, away: told }));
+        if (q.length) await this.store.put('queue', []);
+      }
       if (away && !away.told) await this.store.delete('away'); // back before anything was said: nothing to say
       await this.store.put('seen', Date.now());
     } else if (m.type === 'admin') {
@@ -448,6 +513,8 @@ export class Line {
     }
     if (m.op === 'sealed-put') return this.sealedPut(Array.isArray(m.items) ? m.items : [], Number(m.rev) || 0);
     if (m.op === 'sealed-claim') return this.sealedClaim((Array.isArray(m.ids) ? m.ids : []).map(String));
+    if (m.op === 'outbox') return this.outbox(m.done);
+    if (m.op === 'chat-say') return this.chatSay(m.msg || {}, m.assistant);
     return { error: 'unknown op' };
   }
 
@@ -688,14 +755,26 @@ export class Line {
     return json({ ok: true, queued: true });
   }
 
-  async upload(req, url) {
-    if (!this.online()) return json({ error: 'your computer is offline: share it again later, or send it to your Telegram bot' }, 503);
+  // A part of a shared file: to your computer now; from a paired phone while it's off, kept in the outbox (a whole
+  // file must fit when its first part comes).
+  async upload(req, url, who) {
+    const offline = () => json({ error: 'your computer is offline: share it again later, or send it to your Telegram bot' }, 503);
+    if (!this.online() && who.kind !== 'device') { try { await req.arrayBuffer(); } catch { /* none */ } return offline(); }
     const buf = new Uint8Array(await req.arrayBuffer());
     if (buf.length > 600 * 1024) return json({ error: 'send files in parts of at most 512 KB' }, 413);
     let s = '';
     for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-    const r = await this.relay('POST', '/upload' + url.search, '', btoa(s));
-    return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+    if (this.online() && (who.kind !== 'device' || !(await this.outboxBusy()))) { // a phone's waits behind what it sent before
+      const r = await this.relay('POST', '/upload' + url.search, '', btoa(s));
+      if (r.status !== 503 || who.kind !== 'device') return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+    }
+    const id = String(url.searchParams.get('id') || '').replace(/[^\w-]/g, '').slice(0, 40);
+    if (who.kind !== 'device' || !id) return offline();
+    const part = Number(url.searchParams.get('part')) || 0, parts = Math.max(1, Number(url.searchParams.get('parts')) || 1);
+    const ok = await this.outboxPut('upload', who, id, btoa(s), { bytes: buf.length, need: part === 0 ? parts * PART : 0, search: url.search, last: part >= parts - 1 });
+    if (!ok) return json({ error: 'full', note: OUTBOX_FULL }, 507);
+    const texts = (await this.store.get('texts')) || {};
+    return json({ ok: true, queued: true, part, note: texts.outbox_queued || 'Saved on your call line. It goes to your computer when it is back on.' });
   }
 
   // ------------------------------------------------------------------------------------------- ringing
@@ -803,13 +882,126 @@ export class Line {
     else for (const k of ['answer', 'button', 'dismiss', 'ts', 'n']) if (b[k] !== undefined) body[k] = b[k];
     const inbox = (await this.store.get('inbox')) || { rev: 0, items: [] };
     await this.store.put('inbox', { rev: inbox.rev, items: inbox.items.filter((i) => i.id !== item) });
-    if (this.online()) {
+    if (this.online() && !(await this.outboxBusy())) { // behind what this or another phone sent before, if any
       const r = await this.relay('POST', '/answer', JSON.stringify(body));
       if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
     }
-    await this.queue({ kind: 'answer', body });
+    if (!(await this.outboxPut('answer', who, item, body))) return json({ error: 'full', note: OUTBOX_FULL }, 507);
     const texts = (await this.store.get('texts')) || {};
     return json({ ok: true, queued: true, note: texts.answer_queued || 'Saved. Your computer gets it when it is back on.' });
+  }
+
+  // ------------------------------------------------------------------------------------------- the chat
+  // A message typed in the phone app (or a button tapped under one of Kurooto's): to your computer now, or kept in
+  // the outbox till it's back. Like an answer: the Android app's is sealed ("k1"), the web app's plain JSON.
+  async chat(req, who) {
+    const raw = await req.text();
+    if (raw.length > 16000) return json({ error: 'too long' }, 413);
+    let b;
+    try { b = JSON.parse(raw || '{}'); } catch { return json({ error: 'not JSON' }, 400); }
+    const id = String(b.id || '');
+    if (!ITEM_ID.test(id)) return json({ error: 'no id' }, 400);
+    const body = { device: who.id, at: Date.now(), id };
+    if (b.k1) body.k1 = String(b.k1);
+    else for (const k of ['text', 'to', 'button', 'msg', 'ts', 'n']) if (b[k] !== undefined) body[k] = b[k];
+    if (this.online() && !(await this.outboxBusy())) {
+      const r = await this.relay('POST', '/chat', JSON.stringify(body));
+      if (r.status !== 503) return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json', ...CORS } });
+    }
+    if (!(await this.outboxPut('chat', who, id, body))) return json({ error: 'full', note: OUTBOX_FULL }, 507);
+    const texts = (await this.store.get('texts')) || {};
+    return json({ ok: true, queued: true, note: texts.chat_queued || 'Your computer is off: this waits on your call line and goes to it when it is back.' });
+  }
+
+  async chatLog() {
+    const log = (await this.store.get('chat')) || { seq: 0, msgs: [] };
+    const cut = Date.now() / 1000 - CHAT_KEEP_S;
+    return { seq: log.seq, msgs: log.msgs.filter((m) => m.at > cut) };
+  }
+
+  // Your computer puts a message in the chat: yours (once it took it) or Kurooto's (then it goes to your phones).
+  async chatSay(msg, assistant = '') {
+    if (!ITEM_ID.test(String(msg.id)) || !['you', 'kurooto'].includes(msg.from)) return { error: 'bad message' };
+    const log = await this.chatLog();
+    const had = log.msgs.find((m) => m.id === msg.id);
+    if (had) return { ok: true, seq: had.seq }; // said already (sent again after the link dropped)
+    const m = {
+      id: msg.id, seq: log.seq + 1, from: msg.from, text: String(msg.text || '').slice(0, CHAT_TEXT),
+      at: Number.isFinite(msg.at) ? Math.floor(msg.at) : Math.floor(Date.now() / 1000),
+      buttons: (Array.isArray(msg.buttons) ? msg.buttons : []).slice(0, 6).map((x) => (String(x?.url || '').startsWith('https://') ? { label: String(x.label).slice(0, 40), url: String(x.url) } : { label: String(x?.label || '').slice(0, 40) })),
+      reply: !!msg.reply,
+    };
+    if (msg.title) m.title = String(msg.title).slice(0, 120);
+    if (ITEM_ID.test(String(msg.re || ''))) m.re = String(msg.re);
+    await this.store.put('chat', { seq: m.seq, msgs: log.msgs.concat([m]).slice(-CHAT_MAX) });
+    if (m.from !== 'kurooto') return { ok: true, seq: m.seq };
+    const devices = (await this.store.get('devices')) || {};
+    let android = false;
+    if (Object.values(devices).some((d) => d.kind === 'android')) android = await this.toPhones(chatMessage(m), assistant).catch(() => false);
+    const { web, changed, errors } = await pushAll(this.env, devices);
+    if (changed) await this.store.put('devices', devices);
+    return { ok: true, seq: m.seq, android, web, errors };
+  }
+
+  // ------------------------------------------------------------------------------------- the phone outbox
+  async outboxBusy() {
+    return ((await this.store.get('queue')) || []).some((x) => PHONE_KINDS.includes(x.kind));
+  }
+
+  // Keep a phone's request for the computer. False when the outbox is full (OUTBOX_MAX things; OUTBOX_BYTES of
+  // files, checked for a whole file when its first part comes: need).
+  async outboxPut(kind, who, oid, body, { bytes = 0, need = 0, ...extra } = {}) {
+    const mine = ((await this.store.get('queue')) || []).filter((x) => PHONE_KINDS.includes(x.kind));
+    const used = mine.reduce((n, x) => n + (x.bytes || 0), 0);
+    const things = new Set(mine.map((x) => x.oid));
+    if (!things.has(oid) && things.size >= OUTBOX_MAX) return false;
+    if (used + Math.max(need, bytes) > OUTBOX_BYTES + (need ? 0 : OUTBOX_BYTES)) return false; // a file's later parts were counted with its first
+    await this.queue({ kind, device: who.id, oid, ...(bytes ? { bytes } : {}), ...extra }, body);
+    return true;
+  }
+
+  // What this phone sent that still waits for the computer, and what went through in the last day.
+  async outboxFor(device) {
+    const q = (await this.store.get('queue')) || [];
+    const waiting = [], seen = new Set();
+    for (const x of q) {
+      if (x.device !== device || !x.oid || seen.has(x.oid)) continue;
+      seen.add(x.oid);
+      waiting.push({ oid: x.oid, kind: x.kind, at: x.at });
+    }
+    const done = ((await this.store.get('odone')) || []).filter((d) => d.device === device).map(({ device: _, ...d }) => d);
+    return { waiting, done, computer: this.online() ? 'online' : 'offline' };
+  }
+
+  // The computer takes what waited, oldest first: `done` is the item it just finished (dropped here, and the phone
+  // that sent it is told); the answer is the next one, with its body.
+  async outbox(done) {
+    const q = await this.queueList();
+    if (done && Number.isFinite(Number(done.seq))) {
+      const i = q.findIndex((x) => x.seq === Number(done.seq));
+      if (i >= 0) {
+        const [it] = q.splice(i, 1);
+        await this.store.put('queue', q);
+        if (it.bkey) await this.store.delete(it.bkey);
+        if (it.device && it.oid && (it.kind !== 'upload' || it.last)) await this.outboxDone(it, done);
+      }
+    }
+    const next = q[0];
+    if (!next) return { item: null };
+    const { bkey, ...item } = next;
+    if (bkey) item[next.kind === 'upload' ? 'body_b64' : 'body'] = await this.store.get(bkey);
+    return { item, left: q.length };
+  }
+
+  async outboxDone(it, done) {
+    const status = Number(done.status) || 0;
+    const d = { oid: it.oid, kind: it.kind, ok: status >= 200 && status < 300, note: String(done.note || '').slice(0, 300), t: Date.now() };
+    const all = ((await this.store.get('odone')) || []).filter((x) => x.t > Date.now() - DONE_KEEP_MS && x.oid !== it.oid);
+    await this.store.put('odone', all.concat([{ ...d, device: it.device }]).slice(-100));
+    const devices = (await this.store.get('devices')) || {};
+    if (devices[it.device]?.kind === 'android') { // "stop" too, so an older app ignores it
+      await this.toPhones({ title: 'stop', message: '', tags: ['stop', 'outbox'], dev: it.device, done: [d], time: Math.floor(Date.now() / 1000) }).catch(() => false);
+    }
   }
 
   // ------------------------------------------------------------------------------------- going offline
