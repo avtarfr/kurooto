@@ -26,6 +26,7 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/jobs` | what the AI is working on and what waits, with Cancel buttons, and the last few that finished; `/jobs cancel <id>` or `/jobs cancel all` | [AI brains](ai-brains.md) |
 | `/aboutme` | the In-brief part of your profile and a link to edit it | [Teaching Kurooto](teaching-kurooto.md) |
 | `/health` | what isn't working, with Fix buttons; `/health now` also checks online services | [Messages it sends](messages-it-sends.md) |
+| `/fixme` · `/fixme <what you see>` | what's wrong and what to do, matched by rules with no AI (so it works when the AI is what broke): each failing check with its troubleshooting row, known issues of your version and a Fix button where there's one; `/fixme the phone doesn't ring` finds the rows for what you see; `/fixme now` checks online too; `/fixme fix <id>` runs a fix (in a terminal); `/fixme ai` has your AI explain the last answer, if it works | [Troubleshooting](troubleshooting.md) |
 | `/calm` | messages that came by themselves today, the limit, what waits for the evening and what you turned down; `/calm 8` (messages a day), `/calm calls 2`, `/calm evening 21:00`, `/calm off`, `/calm on` | [Messages it sends](messages-it-sends.md) |
 | `/why` | why the last message that came by itself came | [Messages it sends](messages-it-sends.md) |
 | `/sync` | with Notes sync off: sync everything that's on (with it on, see Notes sync below) | [Notes](notes-and-concept-graph.md) |
@@ -268,6 +269,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto doctor --fix <id>` | run the fix a problem offers |
 | `kurooto doctor --bundle` | a diagnostics zip with secrets, names and addresses blanked out, to send to someone helping you |
 | `kurooto doctor --json` | the same checks for programs |
+| `kurooto fixme [words]` | what's wrong and what to do, matched by rules (no AI), also with Kurooto stopped: each failing check with its troubleshooting row and known issues; with words, the rows for what you see (`kurooto fixme the phone doesn't ring`); the exit code is the number of problems |
 | `kurooto top`, `kurooto top --once` | a status board in the terminal (q quits) |
 | `kurooto logs`, `kurooto logs -f`, `kurooto logs -n 200` | the end of Kurooto's log; `-f` keeps following it |
 | `kurooto paths` | where settings, data, state, logs, cache and the program live |
@@ -380,5 +382,5 @@ The Today box takes the same `j`, `.` and `!` shortcuts. A bare verb is complete
 ## How this list was checked
 
 Every Telegram command above comes from the code's command list (each feature's `commands()` and Kurooto's own
-`/help`, `/start`, `/q`, `/aboutme`, `/health`, `/calm`, `/why`, `/jobs`), every plain-English row from each feature's
+`/help`, `/start`, `/q`, `/aboutme`, `/health`, `/fixme`, `/calm`, `/why`, `/jobs`), every plain-English row from each feature's
 instant requests, and every terminal command from `kurooto --help`.

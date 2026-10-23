@@ -14,6 +14,8 @@ The user's view: [../user/updates-and-backups.md](../user/updates-and-backups.md
 - `CHANGELOG.md`: `## X.Y.Z (YYYY-MM-DD)` sections, newest first, bullets with a bold lead. Work in progress goes under
   `## X.Y.Z (unreleased)`; the date replaces "unreleased" when it ships. The site's changelog page is built from this
   file (`tools/release.py:site_pages`, `md_html`).
+- Known problems of released versions go in `src/kurooto/data/known_issues.json`, which ships (signed) with the next
+  release and which `/fixme` matches by rules ([debugging.md](debugging.md#fixme-corefixmepy)).
 - The Android app's versionCode is derived from `pyproject.toml` (`android/build.sh`, `tools/release.py:version_code`).
 - Dependencies are pinned twice: `uv.lock` for development and `requirements.lock` (hashes) for installs. CI's
   `update-rehearsal` job fails if they disagree (`uv export --frozen --no-dev --no-emit-project --format

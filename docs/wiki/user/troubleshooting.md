@@ -1,11 +1,16 @@
 # Troubleshooting
 
-Find what you see in the left column; the right column says what to do. Start with these three, which answer most
+Find what you see in the left column; the right column says what to do. Start with these four, which answer most
 problems:
 
-1. **`/health`** on Telegram: what isn't working, with **Fix** buttons (`/health now` also checks online services).
-2. **`kurooto doctor`** in a terminal: every check, one line each; `kurooto doctor --fix <id>` runs a fix.
-3. **`/why`** when a message surprised you, and **`/calm`** when one didn't come.
+1. **`/fixme`** on Telegram or the dashboard's terminal prompt, or **`kurooto fixme`** in a terminal: what isn't
+   working, each with its row from this page, known issues of your version and a **Fix** button where Kurooto can fix
+   it. It works by rules, with no AI, so it answers when the AI is what broke (`kurooto fixme` also with Kurooto
+   stopped). `/fixme the phone doesn't ring` finds the rows for what you see; **Ask my AI** (or `/fixme ai`) has your AI
+   explain, if it works.
+2. **`/health`** on Telegram: what isn't working, with **Fix** buttons (`/health now` also checks online services).
+3. **`kurooto doctor`** in a terminal: every check, one line each; `kurooto doctor --fix <id>` runs a fix.
+4. **`/why`** when a message surprised you, and **`/calm`** when one didn't come.
 
 Still stuck? `kurooto doctor --bundle` makes a zip for someone helping you, with secrets, names, addresses and folders
 blanked out and none of your messages or notes. Look inside, then send it yourself. See
@@ -37,6 +42,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | Two computers both answer, or the bot misses messages after moving | Turn Kurooto off on the old computer: `kurooto off`. |
 | "X is off: Features → X → Turn on" | That command belongs to a feature that's off. Turn it on on the dashboard's Features page. |
 | "I can't answer free text yet" | Turn on **Chat** (Features). |
+| The AI doesn't answer, or something broke and you don't know what | `/fixme` (or `kurooto fixme`): it needs no AI. `/fixme <what you see>` finds the rows on this page. |
 | "that button is from a feature that's off now" | Turn the feature back on, or ignore the old message. |
 | Telegram's "/" menu is out of date | It updates within a minute of a feature going on or off, and every 15 minutes for skills. Turning `telegram.menu` off and on sets it again. |
 | "Voice notes are off" | Turn on Voice notes (Features); it needs a Gemini key. |

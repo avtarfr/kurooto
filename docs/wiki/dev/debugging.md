@@ -11,6 +11,7 @@ What a user sees and is told to do is in [../user/troubleshooting.md](../user/tr
 
 1. `kurooto paths`: where config, data, state, logs, cache and the program are (`core/paths.py:paths`).
 2. `kurooto doctor` (`cli.py:doctor`, rows from `diagnostics.py:checks`): exit code = number of `FAIL` rows.
+   `kurooto fixme` adds the troubleshooting row and known issues to each failing one ([below](#fixme-corefixmepy)).
 3. `kurooto logs -n 200` (`watch.py:follow_log` on `<logs>/kurooto.log`).
 4. The event log: `<state>/events.jsonl`, one JSON object per line, newest last (past 10 MB the older part is in
    `events.jsonl.1`).
@@ -57,6 +58,52 @@ What a user sees and is told to do is in [../user/troubleshooting.md](../user/tr
 | `profile` | no successful `profile_save` in 72 h | none |
 | `gbrain` | no `gbrain_sync` in 24 h | `sync` |
 | `kurooto` | the focus queue or the network outbox stuck for 30 min | `deliver` |
+
+## `/fixme` (`core/fixme.py`)
+
+What a user sends when something broke, maybe the AI itself, so nothing in it needs an AI. `/fixme` (Telegram, the
+phone app, the dashboard's terminal prompt through `web/tools_api.py:say`) and `kurooto fixme [words]`
+(`cli.py`, `fixme.cli`: builds an `App()` like doctor, so it works with the daemon stopped) call `fixme.answer`:
+
+- `problems(app, net)`: the failing health results (`Health.evaluate(save=False)`, with their `Result` and so their
+  fix), then doctor's other failing rows (`diagnostics.checks(app, health=False, net=net)`), one per check id
+  (`_doctor_id` maps doctor's row names; a feature's row goes by its title). `net` is `False` for `/fixme` (the
+  probes' last answers stand in, like `/health`) and `True` for `/fixme now` and `kurooto fixme`.
+- Each problem gets troubleshooting rows: `ROWS` maps check ids to pieces of the "What you see" cell; a check that
+  isn't there and has no `help` of its own is matched by words (`find`, at least two shared words and one from its
+  title). The rows come from `data/troubleshooting.md`, an exact copy of `docs/wiki/user/troubleshooting.md` (the
+  docs aren't in the package); `tests/unit/test_fixme.py` fails until you copy it again after editing the page, and
+  checks every `ROWS` piece names exactly one row.
+- Free text (`/fixme the phone doesn't ring`): `words` (stop words out, a rough stem, `SAME` for "rang"/"ring") and
+  `find`: two points per word shared with "What you see", one with the section's title, half with "What to do"; the
+  best three within 60% of the top score.
+- Known issues (`issues`, `hits`): `data/known_issues.json`, plus the list of a newer version that's downloaded and
+  checked (`update-ready.json` names it; `<app>/versions/<v>/src/src/kurooto/data/known_issues.json`), plus a line
+  when the running version is on the signed yank list (`Updater.yanked(False)`, the cached copy).
+- Buttons: health's own Fix buttons (`Health._buttons`, `health:<id>:fix`); a known issue's `"action": "fix:<id>"`
+  adds that check's Fix, `"update"` an Update button (`upd:latest:now`). Where no button comes back (a terminal), the
+  text says `/fixme fix <id>` (or `kurooto doctor --fix <id>` from `kurooto fixme`).
+- The AI, only after: `ai_works` (a brain picked, `available()`, and its last finished request didn't fail; nothing is
+  asked of it) decides whether **Ask my AI** (`fixme:last:ai`) and the `/fixme ai` hint are offered. `explain` sends the
+  last answer (state `fixme.json`) as a `text_only`, low-effort job; in a terminal `msg.job` is set so the prompt
+  shows the answer when it comes. Event: `fixme` (counts only).
+
+**Adding a known issue.** An entry in `src/kurooto/data/known_issues.json` under `issues`:
+
+| Field | Meaning |
+|---|---|
+| `id` | unique; a newer version's list adds only ids the running one lacks |
+| `versions` | `"*"`, `"0.5.14"`, `"<0.5.16"` or comparisons joined by commas (`">=0.5.14,<0.5.16"`) |
+| `seen` | what the user sees, in their words |
+| `checks` | doctor or health check ids it explains (`calls`, `telegram`, `ai`, `space`, a feature id...) |
+| `symptom` | a regular expression (case doesn't matter) for a failing check's line or what was typed |
+| `keywords` | phrases; one matches when all its words were typed |
+| `fix` | what to do, in plain words |
+| `action` | optional: `"update"` (an Update button) or `"fix:<check id>"` (that check's Fix button) |
+
+With none of `checks`, `symptom` and `keywords`, everyone on those versions sees it. Add a test case only when the
+matching needs a new rule. It ships with the next release, and installs that downloaded that release already show it
+before switching to it.
 
 ## Logs
 

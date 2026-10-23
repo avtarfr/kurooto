@@ -1,0 +1,15 @@
+{
+ "about": "Known problems in released versions, matched by rules in /fixme (core/fixme.py). It ships inside each signed release. Fields: id; versions (\"<0.5.11\", \">=0.5.14,<0.5.16\", \"0.5.14\" or \"*\"); seen (what you see); checks (doctor or health check ids it explains); symptom (a regular expression for a failing check's line or your words); keywords (phrases: all their words in what you typed); fix (what to do); action (optional: \"update\", or \"fix:<check id>\" for that check's Fix). How to add one: docs/wiki/dev/debugging.md.",
+ "issues": [
+  {
+   "id": "notes-map-empty",
+   "versions": "<0.5.11",
+   "seen": "The dashboard's NOTES map is empty, but its top line counts notes",
+   "checks": [],
+   "symptom": "",
+   "keywords": ["notes map empty", "map empty", "graph empty"],
+   "fix": "A note with hundreds of links threw the map off the screen. Update to 0.5.11 or later, then reload the dashboard.",
+   "action": "update"
+  }
+ ]
+}

@@ -349,7 +349,7 @@ full list.
 Plain English works for many things ("remind me at 9 to call mum", "move tonight's check-in to 21:30", "skip Friday's
 check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` lists everything:
 the commands and plain-English requests of the features you have on, grouped by feature, Kurooto's own commands
-(`/q`, `/health`, `/calm`, `/why`, `/jobs`) and the features that are off. `/help <word>` finds a command or
+(`/q`, `/health`, `/fixme`, `/calm`, `/why`, `/jobs`) and the features that are off. `/help <word>` finds a command or
 feature, on or off (`/help quiz`, `/help alarm`).
 
 ### Telegram
@@ -2705,6 +2705,18 @@ minutes later whether it worked.
 dashboard (a "needs a look" badge; the Features tab lists them with Fix buttons), `kurooto doctor` (a `working: ...`
 line each; `kurooto doctor --fix <id>` runs a fix in the running Kurooto) and the weekly summary.
 
+**`/fixme`: when the AI is what broke.** `/fixme` on Telegram or the dashboard's terminal prompt (and `kurooto fixme`
+in a terminal, which works with Kurooto stopped) runs the same checks as doctor and `/health` and matches each failing
+one, by fixed rules and with no AI, to its row on the troubleshooting page and to the known issues of your version
+(a list inside each signed release; a newer version that's already downloaded brings its own, and a version its
+maintainer withdrew says so). A check Kurooto can fix gets its **Fix** button (`/fixme fix <id>` in a terminal).
+`/fixme the phone doesn't ring` finds the troubleshooting rows for what you see. `/fixme now` asks online services too.
+Your AI only explains, and only when you ask: **Ask my AI** under the answer (or `/fixme ai`), offered only when your
+AI looks like it works; the rules' answer never waits for it.
+
+*Undo:* nothing to undo; `/fixme` only looks (a Fix runs only when you tap it). *Leaves:* nothing, unless you tap Ask
+my AI: then the answer goes to your AI like any request.
+
 **Settings** (`health.*`; not on the dashboard's Settings page yet: change them in `settings.json` in Kurooto's settings
  folder, [Where things are](#where-things-are)):
 - `on`: the daily pass (default `true`). `/health`, the dashboard and doctor check either way.
@@ -2960,6 +2972,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 |---|---|
 | The bot doesn't answer | `kurooto doctor`; is it running? Turned off? `kurooto on` (or Kurooto in your app menu). Is the computer asleep? See Stay awake on charger. |
 | The bot says it's paused | `/resume`; or it's on battery with `power.on_battery` set to `pause`: plug in, or choose `saver`. |
+| The AI doesn't answer, or something broke and you don't know what | `/fixme` (or `kurooto fixme` in a terminal): what fails, matched by rules to the troubleshooting page and known issues, with Fix buttons; it needs no AI. `/fixme <what you see>` finds the rows for it. |
 | "needs a look" on the dashboard, or a "Needs a look" line in the weekly summary | `/health` (or the Features tab) says what and offers a Fix button where Kurooto can fix it; a sign-in that ended needs you (the line says where). |
 | "Your alarm ... might not ring" | Set your phone's own alarm for tonight, then: Phone calls set up and linked (`kurooto doctor`), a phone paired (Phone tab). The Fix button reconnects or plans the alarm again. |
 | A reminder didn't reach my phone while the lid was shut | `kurooto doctor`: the "Reminders with the lid shut" line says what your call line holds and for how many phones. "No phone can open them yet": update the Android app and open it once. Also check the app's checklist (notifications, **Battery: unrestricted**) and that the phone was online. Reminders set in the last seconds before the lid shut on a Mac come when it wakes. |

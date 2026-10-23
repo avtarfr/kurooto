@@ -22,7 +22,8 @@ scanner's denylist is the `PRIVACY_DENYLIST` Actions secret (terms only).
 ## Each release
 ```sh
 # 1. version and changelog
-#    pyproject.toml: version = "0.1.0"; CHANGELOG.md: the release's notes; commit, tag v0.1.0, push; CI green.
+#    pyproject.toml: version = "0.1.0"; CHANGELOG.md: the release's notes; known problems found since the last
+#    release go in src/kurooto/data/known_issues.json (/fixme reads it; see below); commit, tag v0.1.0, push; CI green.
 # 2. the Android app, release-signed
 KUROOTO_KEYSTORE=~/.config/kurooto-dev/android-release.keystore KUROOTO_KEYSTORE_PASS=… \
   ANDROID_HOME=/path/to/sdk android/build.sh
@@ -60,6 +61,16 @@ means a new version (or a yank), never a rebuild.
 `build` also writes the site's own pages: the installers and landing page from `installer/`, and `privacy.html`,
 made from `docs/PRIVACY.md` inside `installer/privacy.html` (between its `PRIVACY:START` and `PRIVACY:END` markers).
 Google's sign-in setup links to that page, so publish the site whenever PRIVACY.md changes.
+
+## Known issues (`/fixme`)
+`src/kurooto/data/known_issues.json` ships inside each signed release, so its signature covers it. `/fixme` and
+`kurooto fixme` match it by rules (no AI): an entry shows when the running version is in its `versions` and one of
+its `checks` fails, its `symptom` pattern matches a failing check's line or what was typed, or all words of one of
+its `keywords` were typed (no rule at all: everyone on those versions sees it). A newer release that's already
+downloaded and waiting for the night lends its list to the version still running, so add the problems of older
+versions there with `versions` like `">=0.5.14,<0.5.16"` and a `fix` that says to update (`"action": "update"`), or
+`"action": "fix:<check id>"` for a health check's Fix. The fields and how to add one are in
+`docs/wiki/dev/debugging.md`. A release that's broken for everyone is a yank instead.
 
 ## Withdrawing a release (yank)
 A release that turns out broken goes on the signed yank list; installs then never update to it, even ones that

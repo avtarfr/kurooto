@@ -92,7 +92,8 @@ class Redactor:
         return o
 
 
-def checks(app) -> list[tuple[str, bool, str]]:
+def checks(app, health: bool = True, net: bool = True) -> list[tuple[str, bool, str]]:
+    """Doctor's rows. health: with the health checks' rows (/fixme reads those itself); net: Telegram is asked."""
     from kurooto import providers
     from kurooto.core.prereqs import Prereqs
     from kurooto.core.state import jload
@@ -130,8 +131,8 @@ def checks(app) -> list[tuple[str, bool, str]]:
         except Exception as e:
             ok, why = False, f"{type(e).__name__}: {e}"
         out.append((m.title, ok, why or "ok"))
-    out += more_checks(app)
-    out += health_rows(app)
+    out += more_checks(app, net)
+    out += health_rows(app) if health else []
     out += layout_checks(app)
     if "backups" in app.modules and not app.is_on("backups"):  # say when nothing is backed up (a note)
         from kurooto.modules.backups import age_line
@@ -167,11 +168,11 @@ def call_line(app, calls, running: bool) -> tuple[bool | None, str]:
     )
 
 
-def more_checks(app) -> list[tuple[str, bool | None, str]]:
+def more_checks(app, net: bool = True) -> list[tuple[str, bool | None, str]]:
     """Telegram answers (not only set up), your skills in agent programs, and what add-ons check themselves."""
     out: list[tuple[str, bool | None, str]] = []
     tg = app.modules.get("telegram")
-    if tg is not None and app.is_on("telegram") and tg.ready()[0]:
+    if net and tg is not None and app.is_on("telegram") and tg.ready()[0]:
         try:
             me = tg.api().call("getMe", None, None, 8)
             out.append(("Telegram bot", True, f"@{me.get('username') or '?'} answers"))

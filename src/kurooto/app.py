@@ -299,6 +299,12 @@ class App:
                 text, buttons = self.health.command(arg)
                 msg.reply(text, buttons=buttons)
                 return
+            if name == "fixme":  # what to do, by rules: it works when the AI is what broke (core/fixme.py)
+                from kurooto.core import fixme
+
+                text, buttons = fixme.command(self, msg, arg)
+                msg.reply(text, buttons=buttons)
+                return
             if name in ("calm", "why"):  # (calm) the daily limit, what's turned down; why the last one came
                 text, buttons = self.calm.command(arg) if name == "calm" else self.calm.why_last()
                 msg.reply(text, buttons=buttons)
@@ -458,6 +464,10 @@ class App:
             return self.ask.button(ref, act)
         if prefix == "health":  # a Fix button (core/health.py)
             return self.health.button(ref, act)
+        if prefix == "fixme":  # Ask my AI under /fixme's answer (core/fixme.py)
+            from kurooto.core import fixme
+
+            return fixme.button(self, ref, act)
         if prefix == "job":  # a Cancel button under /jobs (core/jobs.py)
             return self.jobs.button(ref, act)
         if prefix == "inf":  # Undo under something set up from what you said (core/infer.py)
@@ -481,6 +491,7 @@ class App:
         ("q", "open questions I asked you (reply to one to answer it)"),
         ("aboutme", "what I know about you (your profile's In-brief part), and where to edit it"),
         ("health", "what isn't working, with Fix buttons (/health now checks online too)"),
+        ("fixme", "what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains"),
         ("calm", "messages that come by themselves: today's count and limit"),
         ("why", "why the last message that came by itself came"),
         ("jobs", "what the AI is working on and what waits, with Cancel buttons"),
