@@ -501,3 +501,25 @@ def test_add_deadline_takes_the_course_and_kind_so_a_mails_lab_report_lands_on_i
     tool.run({"title": "Midterm", "due": "2030-11-03 10:00", "subject": "la", "kind": "exam"})
     got = {it["title"]: (it["subject"], it["kind"]) for it in dl.items().values()}
     assert got["Lab report"] == ("topology", "task") and got["Midterm"] == ("linear-algebra", "exam")
+
+
+def test_add_deadline_course_unknown_or_ambiguous_is_said_not_guessed(study):
+    from kurooto.core import actions
+
+    dl = study.app.modules["deadlines"]
+    tool = next(t for t in dl.call_tools() if t.name == "add_deadline")
+    assert "course" in tool.params and "subject" not in tool.params
+    assert "Not filed" not in tool.run({"title": "Lab report", "due": "2030-11-02 17:00", "course": "linalg"})
+    out = tool.run({"title": "Poster", "due": "2030-11-04 09:00", "course": "Fluid Dynamics"})
+    assert out.endswith('Not filed under "Fluid Dynamics": no such course (courses: Linear Algebra, Topology).')
+    out = tool.run({"title": "Essay", "due": "2030-11-05 09:00", "course": "topology or linear algebra"})
+    assert "Not filed under" in out  # names two: not a guess
+    r = actions.act(study.app, "deadline.add", {"title": "Reading", "when": "2030-11-06 09:00", "course": "la"})
+    assert r["ok"], r
+    got = {it["title"]: it["subject"] for it in dl.items().values()}
+    assert got == {"Lab report": "linear-algebra", "Poster": None, "Essay": None, "Reading": "linear-algebra"}
+    tool.run({"title": "Topology: Quiz 2", "due": "2030-11-07 10:00", "course": "nope"})  # the title still names one
+    assert (
+        dl.items()[next(i for i, it in dl.items().items() if it["title"] == "Topology: Quiz 2")]["subject"]
+        == "topology"
+    )

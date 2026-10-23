@@ -8,7 +8,7 @@ three can't behave differently.
     act(app, name, args)            one action; {"ok", "message", ...}; never raises
 
 Actions: journal.add {text} · note.capture {text} · reminder.add {when, what} · reminder.cancel {key} ·
-reminder.snooze {key, minutes} · deadline.add {title, when} · deadline.done {id} · deadline.move {id, when} ·
+reminder.snooze {key, minutes} · deadline.add {title, when, course?} · deadline.done {id} · deadline.move {id, when} ·
 alarm.set {when} · alarm.skip {day} · alarm.clear · alarm.daily {time or "off"} · checkin.skip {name} ·
 checkin.postpone {name, minutes} (later today) · checkin.defer {name} (to tomorrow morning) · ask {text} (a job: its
 answer comes like a chat answer) · question.answer {id, answer}
@@ -190,7 +190,7 @@ def deadline_add(app: App, args: dict) -> dict:
     return _tool(
         app,
         "add_deadline",
-        {"title": _text(args, "title"), "due": str(args.get("when") or "")},
+        {"title": _text(args, "title"), "due": str(args.get("when") or ""), "course": str(args.get("course") or "")},
         args.get("_via", "dashboard"),
     )
 

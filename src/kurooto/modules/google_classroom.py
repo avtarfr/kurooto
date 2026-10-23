@@ -77,6 +77,7 @@ MAX_PROMPT = 90_000  # a whole batch, so it fits on any computer's command line 
 START = "<!-- kurooto:exam-prep"  # Kurooto's part of exam-prep.md starts with this line...
 END = "<!-- /kurooto:exam-prep -->"  # ...and ends with this one
 START_LINE = f"{START} (kept current by Kurooto from your courses; write your own notes outside these markers) -->"
+POSTS_DAYS = 30  # classroom-posts.json keeps each course's posts (time, title, link) this many days, for catch-up
 
 
 def slugify(text: str, n: int = 60) -> str:
@@ -151,6 +152,66 @@ def write_exam_prep(root, folder: str, text: str, course: str, made_by: str) -> 
     return f"Updated {lay.shown(f)}."
 
 
+# ------------------------------------------------------------------------------------------- posts by day
+def course_subject(app, course: str) -> str | None:
+    """The subject of yours a course's name names (the longest name or short name in it), or None."""
+    subj = app.modules.get("subjects")
+    if subj is None or not app.is_on("subjects"):
+        return None
+    slug, low, best = None, course.lower(), 0
+    for s in subj.subjects():
+        for cand in [s.get("name", ""), s.get("slug", "").replace("-", " "), *s.get("aliases", [])]:
+            cand = cand.strip().lower()
+            if len(cand) >= 2 and re.search(rf"\b{re.escape(cand)}\b", low) and len(cand) > best:
+                slug, best = s["slug"], len(cand)
+    return slug
+
+
+def remember_posts(app, course: dict, posts: list[tuple[str, dict]]) -> None:
+    """Keep each post's time, title and link per course in classroom-posts.json (both Classroom checks do), for
+    missed-class catch-up; posts on your not-interested list and older than POSTS_DAYS are left out."""
+    f = app.paths.state / "classroom-posts.json"
+    cutoff = (now() - dt.timedelta(days=POSTS_DAYS)).date().isoformat()
+    with Lock(app.paths.state, "classroom-posts"):
+        known = jload(f, {}) or {}
+        c = known.setdefault(course["id"], {"posts": {}})
+        c["name"] = course.get("name") or "a course"
+        for kind, it in posts:
+            at = it.get("creationTime") or it.get("updateTime") or ""
+            text = re.sub(r"\s+", " ", it.get("description") or it.get("text") or "").strip()
+            title = it.get("title") or text[:70] or kind
+            if at[:10] >= cutoff and not not_interested(app, f"{title} {text[:400]}"):
+                c["posts"][f"{kind}:{it['id']}"] = {"at": at, "title": title, "url": it.get("alternateLink", "")}
+        for cc in known.values():
+            cc["posts"] = {k: p for k, p in cc.get("posts", {}).items() if p["at"][:10] >= cutoff}
+        jsave(f, known)
+
+
+def posts_on(app, slug: str, day: dt.date) -> list[dict]:
+    """That day's Classroom posts ({at, title, url}) of the courses filed under this subject; none while neither
+    Classroom feature is on."""
+    if not (app.is_on("google") and app.settings.get("google.classroom")) and not app.is_on("classroom_notes"):
+        return []
+    chosen = app.settings.get("classroom_notes.folders") or {}
+    known = jload(app.paths.state / "classroom-notes" / "folders.json", {}) or {}
+    out = []
+    for c in (jload(app.paths.state / "classroom-posts.json", {}) or {}).values():
+        name = c.get("name", "")
+        if (slugify(chosen[name]) if chosen.get(name) else known.get(name) or course_subject(app, name)) != slug:
+            continue
+        out += [p for p in c.get("posts", {}).values() if _local_day(p.get("at", "")) == day]
+    return sorted(out, key=lambda p: p["at"])
+
+
+def _local_day(stamp: str) -> dt.date | None:
+    """A Classroom time ("2026-10-23T05:30:00.123Z", UTC) as the day it was here."""
+    try:
+        t = dt.datetime.fromisoformat(stamp)
+    except ValueError:
+        return None
+    return (t.astimezone() if t.tzinfo else t).date()
+
+
 class ClassroomNotes(GooglePart):
     id = "classroom_notes"
     part = "classroom_notes"
@@ -197,16 +258,7 @@ class ClassroomNotes(GooglePart):
         known = jload(self.dir / "folders.json", {}) or {}
         if course in known:
             return known[course]
-        slug = None
-        subj = self.app.modules.get("subjects")
-        if subj is not None and self.app.is_on("subjects"):
-            low, best = course.lower(), 0
-            for s in subj.subjects():
-                for cand in [s.get("name", ""), s.get("slug", "").replace("-", " "), *s.get("aliases", [])]:
-                    cand = cand.strip().lower()
-                    if len(cand) >= 2 and re.search(rf"\b{re.escape(cand)}\b", low) and len(cand) > best:
-                        slug, best = s["slug"], len(cand)
-        slug = slug or slugify(re.sub(r"\([^)]*\)", "", course), 50)
+        slug = course_subject(self.app, course) or slugify(re.sub(r"\([^)]*\)", "", course), 50)
         known[course] = slug
         jsave(self.dir / "folders.json", known)
         return slug
@@ -242,13 +294,14 @@ class ClassroomNotes(GooglePart):
             name = c.get("name") or "a course"
             if self.skipped(name) or not_interested(self.app, name):
                 continue
-            folder, items, ignored = self.folder(name), [], 0
+            folder, items, ignored, posts = self.folder(name), [], 0, []
             for kind, coll, key in KINDS:
                 try:
                     found = list(g.pages("classroom", f"/courses/{c['id']}/{coll}", key, {"pageSize": 50}, limit=4))
                 except GoogleError as e:  # e.g. a course that doesn't share materials
                     self.app.events.emit("classroom_notes_unreadable", kind=kind, code=e.code)
                     continue
+                posts += [(kind, it) for it in found]
                 for it in found:
                     iid = f"{c['id']}:{kind}:{it['id']}"
                     stamp = it.get("updateTime") or it.get("creationTime") or "?"
@@ -266,6 +319,7 @@ class ClassroomNotes(GooglePart):
                         ignored += 1
                         continue
                     items.append(self.item(kind, it, text, folder, date))
+            remember_posts(self.app, c, posts)
             if items or ignored:
                 self._save_batches(name, folder, sorted(items, key=lambda x: x["date"]), ignored)
                 out["courses"] += 1

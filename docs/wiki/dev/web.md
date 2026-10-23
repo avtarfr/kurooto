@@ -141,9 +141,9 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
 ## The Today page and actions (`core/actions.py`)
 
 An action is a function `fn(app, args) -> dict` in `ACTIONS`: `journal.add`, `note.capture`, `reminder.add`,
-`reminder.cancel`, `reminder.snooze`, `deadline.add`, `deadline.done`, `deadline.move`, `alarm.set`, `alarm.skip`,
-`alarm.clear`, `alarm.daily`, `checkin.skip`, `checkin.postpone` (`Checkins.postpone`, the Today page's **+30 min**),
-`checkin.defer` (to tomorrow morning), `ask`, `question.answer`.
+`reminder.cancel`, `reminder.snooze`, `deadline.add` (`{title, when, course?}`), `deadline.done`, `deadline.move`,
+`alarm.set`, `alarm.skip`, `alarm.clear`, `alarm.daily`, `checkin.skip`, `checkin.postpone` (`Checkins.postpone`, the
+Today page's **+30 min**), `checkin.defer` (to tomorrow morning), `ask`, `question.answer`.
 
 `act(app, name, args, via)` never raises: a `Problem` becomes `{"ok": False, "message"}`, any other exception becomes
 a sentence plus an `action_failed` event; success emits `action` and returns `{"ok": True, ...}`. Actions call the

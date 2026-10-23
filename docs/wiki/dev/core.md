@@ -170,6 +170,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `handwritten-links.json`, `handwritten-undo/` | `modules/handwritten_links.py` |
 | `calendar.json` | `modules/calendar.py` |
 | `google-classroom.json`, `google-signin.json`, `google-needs-<part>` | `modules/google.py` |
+| `classroom-posts.json` (each course's posts of the last 30 days: time, title, link; for missed-class catch-up) | `modules/google_classroom.py:remember_posts`, written by both Classroom checks |
 | `classroom-notes/`, `mail-digest/`, `reply-drafts/`, `digest-email-*`, `drive-upload.json`, `drive-temporary.json`, `agent-plan.json` | the Google parts |
 | `notes-sync.json`, `backups.json`, `ollama-ours.json` | notes sync, backups, local models |
 | `skills/{packs,auto-packs}.json`, `skills/drafts/`, `skills/tectonic-declined` | `modules/skills.py` |

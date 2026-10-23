@@ -151,6 +151,9 @@ label for mail and Drive access, and it's fine for your own client.
 - **Classroom announcements:** each new announcement comes to Telegram as "New in Linear Algebra: ..." (the first 400
   characters) with an **Open** button to the post. The very first check only learns what's already there, so you
   don't get a flood of old posts.
+- **Posts for missed classes:** each course's posts of the last 30 days (when, title, link) are kept on this computer,
+  so the [catch-up for a class you missed](classes-and-timetable.md#catching-up-on-a-class-you-missed) lists what was
+  posted that day. Classroom → notes adds materials to them.
 - **Gmail drafts** (off by default): `/draft` writes an email draft into your Gmail. Kurooto never sends it; you open
   Gmail, check it and send it yourself.
 
@@ -237,8 +240,9 @@ into your notes, in the course's folder (it uses the matching subject from
   [Quiz](quiz-and-exams.md) asks you), Typical questions and Gaps. Kurooto rewrites only the part between its two
   markers; anything you write above or below them stays.
 
-Dates in posts (a midterm, a moved quiz) go into Deadlines; assignment due dates already arrive through the Google
-feature. It also keeps your notes' home page linked to your courses.
+Dates in posts (a midterm, a moved quiz) go into Deadlines, on that course; assignment due dates already arrive
+through the Google feature. It also keeps your notes' home page linked to your courses, and a class you missed gets
+that day's posts in its catch-up.
 
 **Turn it on.** Needs the Google feature. Turn on the Drive API (and the Classroom API) in your project, then Dashboard
 → Features → Classroom → notes → Save → sign in again.

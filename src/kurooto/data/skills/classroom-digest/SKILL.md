@@ -52,8 +52,8 @@ comes with a problem sheet, also make a note as in step 1 and list the problems 
 
 **3. Announcements.** Exams, quizzes, tests, moved deadlines, syllabus or room changes: a dated line
 `- YYYY-MM-DD: <what>` under `## Exams` in the course page, and add_deadline for each dated exam or quiz (title like
-"<course>: midterm", due like "2026-11-05 10:00"). No add_deadline tool: list the dates in your answer. Anything else
-worth knowing: one dated line under `## Announcements`. Skip pure logistics with no lasting value.
+"<course>: midterm", due like "2026-11-05 10:00", course: the course). No add_deadline tool: list the dates in your
+answer. Anything else worth knowing: one dated line under `## Announcements`. Skip pure logistics with no lasting value.
 
 **4. Exam prep.** Call update_exam_prep with subject = the notes folder and the course's whole current exam prep,
 rewritten from everything known so far (the course page, its lecture notes, this batch and, with course_sources, their
