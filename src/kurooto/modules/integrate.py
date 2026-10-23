@@ -326,7 +326,9 @@ class Integrate(Module):
                 n += bool(self.queue_item("classroom", text, folder, post, note, date=date, course=course))
         return n
 
-    def take_handwritten(self, note: Path, subject: str, title: str, day: str = "") -> str | None:
+    def take_handwritten(
+        self, note: Path, subject: str, title: str, day: str = "", backfill: bool = False, order: int = 0
+    ) -> str | None:
         """Handwritten notes were written out and linked (modules/handwritten_links.py): queue the transcription to be
         read like a book, when integrate.sources has "handwritten"."""
         if not self.app.is_on(self.id) or not self.reads("handwritten"):
@@ -339,7 +341,41 @@ class Integrate(Module):
             return None
         if got is None:
             return None
-        return self.queue_item("handwritten", got[1], subject, title or Path(note).stem, self.rel(note), date=day)
+        return self.queue_item(
+            "handwritten",
+            got[1],
+            subject,
+            title or Path(note).stem,
+            self.rel(note),
+            date=day,
+            backfill=backfill,
+            order=order,
+        )
+
+    def backfill_handwritten(self) -> int:
+        """Queue the handwritten notes linked before the graph read them: every note handwritten_links has a subject
+        for, the oldest day first, after what's written from now on. (Notes not linked yet: /handwritten link links
+        them, and each is queued once linked.) Notes queued."""
+        if not self.app.is_on(self.id) or not self.reads("handwritten"):
+            return 0
+        st = jload(self.app.paths.state / "handwritten-links.json", {}) or {}
+        order = max((int(it.get("order") or 0) for it in self.items().values()), default=0)
+        n = 0
+        root = Path(self.app.workspace)
+        for rel, rec in sorted((st.get("notes") or {}).items(), key=lambda kv: (kv[1].get("day") or "", kv[0])):
+            if not rec.get("subject"):
+                continue
+            note = root / (rel if rel.endswith(".md") else rel + ".md")
+            if not note.is_file():
+                continue
+            order += 1
+            if self.take_handwritten(note, rec["subject"], rec.get("title") or "", rec.get("day") or "", True, order):
+                n += 1
+        with self.lock:
+            data = self.load("items.json", {}) or {}
+            data.setdefault("backfill", {})["handwritten"] = now().isoformat(timespec="seconds")
+            self.save("items.json", data)
+        return n
 
     def source_note(self, subject: str, title: str, date: str = "", names: list[str] = ()) -> str:
         """The note a class file was filed into, as a [[link]] path: the lecture note Classroom → notes wrote for its
@@ -1246,6 +1282,16 @@ class Integrate(Module):
             return ""
         return "Waiting to be read: " + ", ".join(f"{n} {NAMED[k][n != 1]}" for k, n in per.items()) + "."
 
+    def backfill_hw_said(self, n: int) -> str:
+        if not self.reads("handwritten"):
+            return 'Handwritten notes aren\'t read into the graph: add "handwritten" to integrate.sources first.'
+        if not n:
+            return (
+                "No handwritten notes waiting: those linked before are read already or too short; /handwritten link "
+                "links older ones, and each is queued once linked."
+            )
+        return f"Queued {n} handwritten note{'s' if n != 1 else ''}, the oldest first, within each night's budget."
+
     def backfill_said(self, n: int, courses: int) -> str:
         if not self.reads("classroom"):
             return 'Class materials aren\'t read into the graph: add "classroom" to integrate.sources first.'
@@ -1305,9 +1351,9 @@ class Integrate(Module):
         return [
             Command(
                 "graph",
-                "the concept graph: /graph, /graph now, /graph stop, /graph backfill classroom",
+                "the concept graph: /graph, /graph now, /graph stop, /graph backfill classroom | handwritten | all",
                 self._cmd,
-                usage="/graph [now | stop | backfill classroom]",
+                usage="/graph [now | stop | backfill classroom | handwritten | all]",
             )
         ]
 
@@ -1320,9 +1366,22 @@ class Integrate(Module):
                 return "Nothing to start: " + " ".join(self.budget.lines())
             return "Started." if r.get("submitted") else f"Nothing to start ({r or 'already running'})."
         if a.startswith("backfill"):
-            if a.split()[1:] != ["classroom"]:
-                return "Usage: /graph backfill classroom (reads the Classroom files filed before, night by night)."
-            return self.backfill_said(*self.backfill_classroom())
+            what = a.split()[1:]
+            if what == ["classroom"]:
+                return self.backfill_said(*self.backfill_classroom())
+            if what == ["handwritten"]:
+                return self.backfill_hw_said(self.backfill_handwritten())
+            if what == ["all"]:  # every source that's on: books are queued as they're found already
+                said = []
+                if self.reads("classroom"):
+                    said.append(self.backfill_said(*self.backfill_classroom()))
+                if self.reads("handwritten"):
+                    said.append(self.backfill_hw_said(self.backfill_handwritten()))
+                return " ".join(said) or "Only books are read (integrate.sources); they're queued as they're found."
+            return (
+                "Usage: /graph backfill classroom | handwritten | all (reads what was filed or written before, "
+                "night by night)."
+            )
         if a == "stop":
             nxt = self.hold()
             return (

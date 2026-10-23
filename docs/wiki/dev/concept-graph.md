@@ -113,7 +113,7 @@ The user's side: [../user/notes-and-concept-graph.md](../user/notes-and-concept-
 - **Handwritten** (`Linker.done` → `Linker.to_graph` → `Integrate.take_handwritten(note, subject, title, day)`, after
   a successful `apply`, which now also returns `subject` and `day`): the transcription between the handwritten markers
   (`handwritten_links.parts`); notes with no subject are skipped. "Seen in" points at the handwritten note.
-- **Backfill** (`Integrate.backfill_classroom()`, `/graph backfill classroom`, the card's `backfill:classroom` switch):
+- **Backfill** (`Integrate.backfill_classroom()` and `backfill_handwritten()` (the notes in `handwritten-links.json` with a subject, the oldest day first), `/graph backfill classroom | handwritten | all`, the card's `backfill:classroom` switch):
   scans `ClassroomNotes.files_dir` (and the legacy `<data>/classroom`) for the course folders in
   `classroom-notes/folders.json` and `classroom_notes.folders`; reads each file's `.txt` sidecar (or a text file
   itself); takes the date and title from the download name (`<date>-<slug>-<fid6>.<ext>`). Queued with

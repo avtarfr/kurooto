@@ -477,7 +477,7 @@ source: "Waiting to be read: 2 books, 5 class files, 1 handwritten." The feature
 for each source.
 
 **Class files filed before 0.5.19** aren't read on their own: that would be a whole semester in one night.
-`/graph backfill classroom` (or **Also read the Classroom files filed before** on the card) queues them: the oldest
+`/graph backfill classroom` (or **Also read the Classroom files filed before** on the card) queues them, and `/graph backfill handwritten` the handwritten notes linked before (`/graph backfill all` does every source that's on): the oldest
 course first, each course's files in date order, after whatever is filed from now on, so they're read night by night
 within the budget. It finds them in the folder Classroom → notes downloads to; run it again and it queues nothing new.
 
@@ -579,6 +579,8 @@ ago"). See [Dreaming](teaching-kurooto.md#dreaming).
 | `/graph now` | Starts the next batch now ("Started.", or "Nothing to start" and why: tonight's budget is read, or the AI's limit hasn't reset) |
 | `/graph stop` | Starts no new batches until the next night's start ("Stopped: no new batches until its usual start, Thu 01:30"); it holds through a restart, and `/graph now` goes on sooner |
 | `/graph backfill classroom` | Queues the Classroom files filed before 0.5.19, the oldest course first ("Queued 12 Classroom files from 3 courses, the oldest course first. They're read within each night's budget, after what's filed from now on.") |
+| `/graph backfill handwritten` | Queues the handwritten notes linked before, the oldest day first ("Queued 3 handwritten notes..."); notes never linked are queued when `/handwritten link` links them. |
+| `/graph backfill all` | Every backfill for the sources that are on: Classroom, handwritten. Books need none: they're queued as they're found. |
 
 The quality numbers in `/graph`: how many concepts and links, **broken** links, notes with **no links in**, links
 with a **vague reason**, and the share of all links that go to the three busiest notes (a high share means a few hub

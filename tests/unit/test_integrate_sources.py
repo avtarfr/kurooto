@@ -231,3 +231,21 @@ def test_pages_of_a_text_pdf_pages_slides_or_parts():
     pages, unit = ig.split_pages(("word " * 300 + "\n\n") * 5)
     assert unit == "parts" and len(pages) == 5 and all(len(p) <= 2 * ig.PART_CHARS for p in pages.values())
     assert ig.text_hash("a  b\n") == ig.text_hash("a b")
+
+
+def test_backfill_handwritten_and_all_queue_what_was_linked_before(world):  # noqa: F811
+    env = world
+    env.app.settings.set("integrate.sources", ["books", "classroom", "handwritten"])
+    handwritten_note(env, FILLER * 8)
+    rec = {"title": "Phase change", "subject": SUBJ, "day": "2026-10-21"}
+    notes = {"handwritten/2026-10-21-phase-change": rec, "handwritten/no-subject": {"title": "x", "subject": ""}}
+    (env.app.paths.state / "handwritten-links.json").write_text(json.dumps({"notes": notes}), encoding="utf-8")
+    out = env.say("/graph backfill all")
+    assert "Queued 1 handwritten note" in out, out
+    (item,) = [it for it in env.integrate.items().values() if it["source"] == "handwritten"]
+    assert item["backfill"] and item["note"] == "handwritten/2026-10-21-phase-change"
+    assert env.integrate.backfill_handwritten() == 0  # the same text isn't queued twice
+    assert "No handwritten notes waiting" in env.say("/graph backfill handwritten")
+    env.app.settings.set("integrate.sources", ["books"])
+    assert 'add "handwritten" to integrate.sources' in env.say("/graph backfill handwritten")
+    assert "Usage: /graph backfill classroom | handwritten | all" in env.say("/graph backfill everything")

@@ -1937,7 +1937,8 @@ files (agy). Videos and images are linked, not downloaded. The first check goes 
 - **Into the concept graph.** Once filed, each file with real text (slides, handouts, PDFs, solutions: 1,500
   characters or more, so not a one-line announcement) is read into the [concept graph](#concept-graph-books-into-linked-notes)
   like a book: its concepts become notes whose "Seen in" points at the lecture note it was filed into. Files filed
-  before 0.5.19: `/graph backfill classroom`.
+  before 0.5.19: `/graph backfill classroom` (`/graph backfill handwritten` for handwritten notes linked before,
+  `/graph backfill all` for every source that's on).
 
 *Settings:* `classroom_notes.at` (when), `classroom_notes.folders` (a course's exact name → the folder you want),
 `classroom_notes.files` (download attached files), `classroom_notes.max_file_mb` (30),
