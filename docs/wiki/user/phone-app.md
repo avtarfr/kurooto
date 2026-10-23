@@ -63,13 +63,21 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
    refused a ring, `/health` and the dashboard say so.
 4. Test it: Dashboard → Phone → **Ring my phone (test)**.
 
-**The app's screen** shows what it's paired with, the checklist, **Waiting for you** (open questions and approvals),
-a **Call** button, **Chat with Kurooto**, what's **waiting for your computer** (things you sent while it was off),
-the ringtone pickers (**Call ringtone** and **Wake-up alarm tone**; the alarm tone plays on the
-alarm volume), and **Unpair this phone**. It starts listening again by itself after the phone restarts or the app
-updates ("Listening for calls" stays as a quiet notification).
+**The app's screen**, top to bottom: the **Call** button, **Chat with Kurooto**, **Waiting for you** (open questions
+and approvals, one card each; tap one to answer it), what's **waiting for your computer** (things you sent while it was
+off), the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), the **Ringtones** (**Call
+ringtone** and **Wake-up alarm tone**, each showing the tone it's set to; tap to change it. The alarm tone plays on the
+alarm volume), and **This phone** (what it's paired with, the app's version, and **Unpair this phone**). It starts
+listening again by itself after the phone restarts or the app updates ("Listening for calls" stays as a quiet
+notification).
 
-**A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). What each does is in
+**Its look** follows the phone: light or dark as the phone is set, and on Android 12 and newer in your wallpaper's
+colours (Material You). Older phones get Kurooto's own greens. The ringing screen is always dark, like the call
+itself. The app's icon is the call line's: a white handset in a green circle (on Android 13 and newer it follows
+themed icons if you use them).
+
+**A ringing call** shows **Answer**, **Decline** and **Later** (**Snooze** for the wake-up alarm). On Android 12 and
+newer the notification looks like the phone's own incoming calls (a red Decline, a green Answer). What each does is in
 [Calls: Kurooto calling you](calls.md#kurooto-calling-you).
 
 **Speech on the phone.** For calls that go turn by turn (when Google's live voice is down, or by choice with
@@ -177,8 +185,9 @@ you**.
 
 **Android:** in any app, Share → **Share to Kurooto** (one file or several). Each goes into your notes' `inbox/` (or
 your files folder's, if you set one). With Chat on, the AI files it where it belongs and tells you where; without
-Chat you get "Got <file> from your phone: saved to ...". Files can be up to 50 MB each. With the computer off, a file
-up to 20 MB waits on your call line (below).
+Chat you get "Got <file> from your phone: saved to ...". Files can be up to 50 MB each. A small window shows the progress, then
+"Sent." in green or what went wrong in red, and closes by itself. With the computer off, a file up to 20 MB waits on
+your call line (below).
 
 ## When your computer is off
 

@@ -12,12 +12,12 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 - ~~**Link recall cards.** The concept graph's links become review cards ("how does Itô's lemma relate to
   Fokker–Planck?"), answered in your own words and graded by you (a small local model may check, never the free
   key). A miss points to the book pages. Up to five a day, also as phone notifications, never in class or focus.~~
-  (0.5.17: `/card`, `/cards on`, `quiz.links*`, the quiz's spacing; "Where to read" adds the subject's own notes and
+  (0.5.16: `/card`, `/cards on`, `quiz.links*`, the quiz's spacing; "Where to read" adds the subject's own notes and
   Classroom files; `quiz.links_check` for the local model. Not yet: papers from the research digest, which don't go
   through Books.)
 - ~~**Revision plan.** When exam season starts, a course's topics are ranked (no note, stub, weak recall, the rest)
   and laid over Start-by's free slots with the pages to read; the evening check-in asks "did you cover X?" and feeds
-  the same recall score as the quiz. Plain arithmetic, no AI.~~ (0.5.17: Exam season's `revision` part, `/revise`;
+  the same recall score as the quiz. Plain arithmetic, no AI.~~ (0.5.16: Exam season's `revision` part, `/revise`;
   topics from the exam prep note, else lecture or concept notes; class material's pages before books'; Yes / Partly /
   No grade the topic's quiz items, with Undo)
 - ~~**Turn on from chat.** A message that needs a feature that's off ("wake me at 7") offers [Turn on] [Not now]; one
@@ -34,7 +34,7 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
   `/keep`; Quiet uses Calm's stopped list, Off the usual turn-off, both with Undo)
 - ~~**Egress ledger, enforced.** Every request Kurooto makes goes through one place that records host, feature and
   bytes and blocks hosts not listed in PRIVACY.md; `/egress` shows the week. Requests your AI program makes itself
-  show as "handed to agy / Claude Code".~~ (0.5.17: `core/egress.py`, PRIVACY.md's "Where requests go" table;
+  show as "handed to agy / Claude Code".~~ (0.5.16: `core/egress.py`, PRIVACY.md's "Where requests go" table;
   `privacy.egress` records by default and refuses unlisted hosts with `enforce`; `privacy.allow_hosts`; git, npm,
   wrangler, Ollama, GBrain, Tectonic and installers show as "handed to" as well)
 - ~~**Retention.** `privacy.keep_days` (30) expires transcripts, prompts, answers, audio and logs, also the call
@@ -72,7 +72,7 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 
 ## From the skeptic review (2026-10-23)
 Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.
-- **Make the panel's ideas general**: link recall cards and ~~the revision plan~~ (0.5.17) also draw on course notes
+- **Make the panel's ideas general**: link recall cards and ~~the revision plan~~ (0.5.16) also draw on course notes
   and Classroom files, not only books; the meeting brief is for any recurring meeting ("With: X", their role in your
   own word: guide, manager, coach); "check my attempt" becomes "check my draft" (essays, accounts working, code,
   proofs); missed-class catch-up works without Classroom.

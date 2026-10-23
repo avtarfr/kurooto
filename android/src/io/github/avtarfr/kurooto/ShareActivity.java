@@ -3,14 +3,12 @@ package io.github.avtarfr.kurooto;
 import android.app.Activity;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
 import android.provider.OpenableColumns;
-import android.view.Gravity;
 import android.widget.TextView;
 
 import java.io.ByteArrayInputStream;
@@ -29,15 +27,8 @@ public class ShareActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
-        status = new TextView(this);
-        status.setTextColor(Color.parseColor("#ece8f2"));
-        status.setBackgroundColor(Color.parseColor("#14111a"));
-        status.setTextSize(18);
-        status.setGravity(Gravity.CENTER);
-        status.setPadding(48, 48, 48, 48);
-        status.setText("Sending to " + Prefs.assistant(this) + "…");
-        setContentView(status);
-        if (!Prefs.paired(this)) { done("Pair this phone first: open the Kurooto app."); return; }
+        status = Ui.busy(this, "Share to " + Prefs.assistant(this), "Sending to " + Prefs.assistant(this) + "…");
+        if (!Prefs.paired(this)) { done("Pair this phone first: open the Kurooto app.", false); return; }
 
         Intent in = getIntent();
         String text = in.getStringExtra(Intent.EXTRA_TEXT);
@@ -66,7 +57,7 @@ public class ShareActivity extends Activity {
             done(ok == total && waiting > 0 ? "Your computer is off: it waits on your call line and goes to your notes inbox when the computer is back."
                     : ok == total ? "Sent. It's in your notes inbox; with Chat on, the AI files it and tells you where."
                     : ok == 0 ? "Not sent: is this phone online? Your call line may also be full while your computer is off. (You can send it to your Telegram bot instead.)"
-                    : "Sent " + ok + " of " + total + ".");
+                    : "Sent " + ok + " of " + total + ".", ok == total);
         }).start();
     }
 
@@ -85,8 +76,8 @@ public class ShareActivity extends Activity {
         return out;
     }
 
-    private void done(final String text) {
-        h.post(() -> { status.setText(text); h.postDelayed(this::finish, 3000); });
+    private void done(final String text, final boolean worked) {
+        h.post(() -> { status.setText(text); Ui.done(status, worked); h.postDelayed(this::finish, 3000); });
     }
 
     private String nameOf(Uri u) {

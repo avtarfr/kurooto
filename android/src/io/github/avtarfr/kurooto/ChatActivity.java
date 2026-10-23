@@ -3,7 +3,6 @@ package io.github.avtarfr.kurooto;
 import android.app.Activity;
 import android.app.NotificationManager;
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
@@ -42,8 +41,8 @@ public class ChatActivity extends Activity {
         if (!Prefs.paired(this)) { startActivity(new Intent(this, MainActivity.class)); finish(); return; }
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.parseColor("#14111a"));
-        root.setPadding(32, 48, 32, 24);
+        root.setBackgroundColor(Ui.color(this, R.color.k_bg)); // the look comes from Ui's palette (light/dark, Material You)
+        root.setPadding(Ui.dp(this, 16), Ui.dp(this, 24), Ui.dp(this, 16), Ui.dp(this, 12));
         root.addView(label("Chat with " + Prefs.assistant(this), 22, true));
         status = label("", 13, false);
         root.addView(status);
@@ -58,16 +57,13 @@ public class ChatActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         typed = new EditText(this);
         typed.setHint("Message " + Prefs.assistant(this));
-        typed.setTextColor(Color.parseColor("#ece8f2"));
-        typed.setHintTextColor(Color.parseColor("#9a93a8"));
+        typed.setTextColor(Ui.color(this, R.color.k_fg));
+        typed.setHintTextColor(Ui.color(this, R.color.k_dim));
         typed.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         typed.setMaxLines(5);
         row.addView(typed, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        Button send = new Button(this);
-        send.setText("Send");
-        send.setAllCaps(false);
-        send.setTextColor(Color.WHITE);
-        send.setBackgroundColor(Color.parseColor("#2e9d6a"));
+        Button send = Ui.filled(this, "Send");
+        send.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         send.setOnClickListener(v -> send());
         row.addView(send);
         root.addView(row);
@@ -134,16 +130,16 @@ public class ChatActivity extends Activity {
         lp.setMargins(mine ? 96 : 0, 12, mine ? 0 : 96, 12);
         box.setLayoutParams(lp);
         box.setPadding(28, 20, 28, 20);
-        box.setBackgroundColor(Color.parseColor(mine ? "#235c43" : "#2a2438"));
+        box.setBackground(Ui.shape(mine ? Ui.color(this, R.color.k_card_high) : Ui.color(this, R.color.k_card), 0, Ui.dp(this, 16)));
         TextView t = label(m.optString("text"), 16, false);
-        t.setTextColor(Color.parseColor("#ece8f2"));
+        t.setTextColor(Ui.color(this, R.color.k_fg));
         t.setTextIsSelectable(true);
         box.addView(t);
         String state = m.optString("state");
         if (mine && !state.isEmpty()) {
             TextView s = label("sending".equals(state) ? "Sending…" : "waiting".equals(state) ? "Waiting for your computer"
                     : "Not sent: tap to try again" + (m.optString("note").isEmpty() ? "" : " (" + m.optString("note") + ")"), 12, false);
-            s.setTextColor(Color.parseColor("failed".equals(state) ? "#e85d8a" : "#9a93a8"));
+            s.setTextColor("failed".equals(state) ? Ui.color(this, R.color.k_bad) : Ui.color(this, R.color.k_dim));
             if ("failed".equals(state)) box.setOnClickListener(v -> resend(m));
             box.addView(s);
         }
@@ -179,7 +175,7 @@ public class ChatActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextSize(sp);
-        t.setTextColor(Color.parseColor(bold ? "#ece8f2" : "#9a93a8"));
+        t.setTextColor(bold ? Ui.color(this, R.color.k_fg) : Ui.color(this, R.color.k_dim));
         t.setPadding(0, 4, 0, 4);
         if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
         return t;
@@ -190,8 +186,8 @@ public class ChatActivity extends Activity {
         b.setText(s);
         b.setAllCaps(false);
         b.setTextSize(14);
-        b.setTextColor(Color.WHITE);
-        b.setBackgroundColor(Color.parseColor("#3a3150"));
+        b.setTextColor(Ui.color(this, R.color.k_on_tonal));
+        b.setBackground(Ui.shape(Ui.color(this, R.color.k_tonal), 0, Ui.PILL));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.setMargins(0, 10, 0, 0);
         b.setLayoutParams(lp);

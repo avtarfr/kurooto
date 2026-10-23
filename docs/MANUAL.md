@@ -2464,7 +2464,7 @@ language is downloaded for on-device recognition (in the phone's language or spe
      browser. Kurooto isn't on the Play Store.
    - *Play Protect warns:* tap "More details" → "Install anyway".
 3. Back on the page, tap **Pair the app**. The app opens, pairs, and shows a checklist.
-4. Fix every ✗ on the checklist: notifications, microphone, full-screen calls (Android 14+), and **Battery:
+4. Tap **Fix** beside every checklist item without a tick: notifications, microphone, full-screen calls (Android 14+), and **Battery:
    unrestricted**. On Samsung, Xiaomi, Oppo, Vivo, OnePlus and Huawei phones, also take Kurooto off any "sleeping
    apps" list in Settings → Battery, or calls may not ring.
 5. Test: dashboard → Phone → **Ring my phone**.
@@ -2556,6 +2556,8 @@ calendar, what's due, check-ins and open questions. The alarm opens it.
 use deep greens, like the website. If you liked the earlier pink and rose colours better, set Settings → Look →
 `look.palette` to `rose` and reload the page; `kuro` (the default) brings the greens back. The setup and morning pages
 follow your system's light or dark mode; the dashboard is always dark. Your call line's pages on the phone stay green.
+The Android app follows the phone instead: light or dark as the phone is set, in the wallpaper's colours on Android 12
+and newer (Material You), Kurooto's greens on older phones; its ringing screen is always dark.
 
 Only your computer can open the dashboard; it needs a key that only this computer has. On Linux, where several people
 can be signed in to one computer at once, it also checks that the page and every request come from your own user
@@ -3171,7 +3173,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | /notes or /timeline says the brain is busy | The nightly upkeep (or a sync) is using it; try again in a while. |
 | Phone calls: "not connected to your call line" | Is this computer online? It reconnects by itself within a minute. Still not: Features → Phone calls → Set up (redeploys). |
 | Cloudflare sign-in didn't finish | Press Set up again; the sign-in link is also shown in the progress log. |
-| The phone doesn't ring | App checklist all ✓? Battery unrestricted, and not on a "sleeping apps" list? Dashboard → Phone → Ring my phone. |
+| The phone doesn't ring | Every item on the app's checklist ticked? Battery unrestricted, and not on a "sleeping apps" list? Dashboard → Phone → Ring my phone. |
 | A call keeps cutting itself off on loudspeaker | Use the earpiece or earphones, or move the mic gate slider to the right. |
 | A call says "Reconnecting…" and then goes turn by turn | Google's live voice was down (`kurooto doctor`: "Phone calls: voice service"). Nothing to do; next time it tries Live again. Know another Live model? Add it to `calls.live_models`. |
 | A call went to Telegram instead | Your phone couldn't turn speech into text, or the microphone wasn't allowed. Android: update the app (turn by turn needs this version) and allow the microphone; in a browser, use Chrome. Answer on Telegram meanwhile. |

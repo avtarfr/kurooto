@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- dark mode: the dark framework themes under Kurooto's (values/themes.xml) -->
+<resources>
+    <style name="Base.Kurooto" parent="android:Theme.Material.NoActionBar" />
+    <style name="Base.Kurooto.Dialog" parent="android:Theme.Material.Dialog.NoActionBar" />
+</resources>

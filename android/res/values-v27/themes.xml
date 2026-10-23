@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 8.1+, light mode: dark navigation bar icons too (dark mode takes values-night/themes.xml first) -->
+<resources>
+    <style name="Base.Kurooto" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

@@ -2,17 +2,15 @@ package io.github.avtarfr.kurooto;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Color;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.view.Gravity;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import org.json.JSONArray;
@@ -32,19 +30,14 @@ public class AnswerActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         try { it = new JSONObject(getIntent().getStringExtra("item")); } catch (Exception e) { finish(); return; }
-        ScrollView sv = new ScrollView(this);
-        sv.setBackgroundColor(Color.parseColor("#14111a"));
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(48, 40, 48, 40);
-        sv.addView(box);
-        box.addView(label(it.optString("title", Prefs.assistant(this)), 20, true));
-        box.addView(label(Inbox.text(it), 16, false));
+        LinearLayout box = Ui.dialog(this);
+        box.addView(Ui.title(this, it.optString("title", Prefs.assistant(this))));
+        box.addView(Ui.gap(Ui.body(this, Inbox.text(it)), 0, 8));
 
         JSONArray ch = it.optJSONArray("choices");
         for (int i = 0; ch != null && i < ch.length(); i++) {
             final String c = ch.optString(i);
-            box.addView(button(c, "#2e9d6a", () -> send(field("answer", c))));
+            box.addView(button(Ui.filled(this, c), () -> send(field("answer", c))));
         }
         JSONArray bs = it.optJSONArray("buttons");
         for (int i = 0; bs != null && i < bs.length(); i++) {
@@ -52,29 +45,26 @@ public class AnswerActivity extends Activity {
             if (x == null) continue;
             final int n = i;
             final String url = x.optString("url");
-            box.addView(button(x.optString("label"), "#3a3150", url.startsWith("https://")
+            box.addView(button(Ui.tonal(this, x.optString("label")), url.startsWith("https://")
                     ? (Runnable) () -> { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception ignored) { } }
                     : (Runnable) () -> send(field("button", n))));
         }
         if (it.optBoolean("reply")) {
-            final EditText typed = new EditText(this);
-            typed.setHint(ch != null && ch.length() > 0 ? "Or type an answer" : "Your answer");
-            typed.setTextColor(Color.parseColor("#ece8f2"));
-            typed.setHintTextColor(Color.parseColor("#9a93a8"));
+            final EditText typed = Ui.gap(Ui.field(this, ch != null && ch.length() > 0 ? "Or type an answer" : "Your answer"), 16, 0);
             typed.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
             typed.setMinLines(2);
+            typed.setGravity(Gravity.TOP | Gravity.START);
             inputs.add(typed);
             box.addView(typed);
-            box.addView(button("Send", "#2e9d6a", () -> {
+            box.addView(button(Ui.filled(this, "Send"), () -> {
                 String t = typed.getText().toString().trim();
                 if (!t.isEmpty()) send(field("answer", t));
             }));
         }
-        if (it.optBoolean("later")) box.addView(button("Later", "#3a3150", () -> send(field("answer", "later"))));
-        else box.addView(button("Dismiss", "#3a3150", () -> send(field("dismiss", true))));
-        status = label("", 14, false);
+        if (it.optBoolean("later")) box.addView(button(Ui.end(Ui.flat(this, "Later")), () -> send(field("answer", "later"))));
+        else box.addView(button(Ui.end(Ui.flat(this, "Dismiss")), () -> send(field("dismiss", true))));
+        status = Ui.status(this);
         box.addView(status);
-        setContentView(sv);
     }
 
     private static JSONObject field(String k, Object v) {
@@ -83,14 +73,14 @@ public class AnswerActivity extends Activity {
 
     private void send(final JSONObject fields) {
         for (android.view.View v : inputs) v.setEnabled(false);
-        status.setTextColor(Color.parseColor("#9a93a8"));
+        status.setTextColor(Ui.color(this, R.color.k_dim));
         status.setText("Sending…");
         final String id = it.optString("id");
         new Thread(() -> {
             final Line.Answered r = Line.answer(this, id, fields);
             h.post(() -> {
                 status.setText(r.note);
-                status.setTextColor(Color.parseColor(r.delivered() ? "#4fbf8a" : "#e85d8a"));
+                if (r.delivered()) Ui.ok(status); else Ui.bad(status);
                 if (r.delivered() || r.gone()) {
                     Inbox.cancel(this, id);
                     h.postDelayed(this::finish, 1800);
@@ -101,27 +91,8 @@ public class AnswerActivity extends Activity {
         }).start();
     }
 
-    private TextView label(String s, int sp, boolean bold) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(sp);
-        t.setTextColor(Color.parseColor(bold ? "#ece8f2" : "#c9c3d4"));
-        t.setPadding(0, bold ? 8 : 12, 0, 12);
-        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
-        return t;
-    }
-
-    private Button button(String s, String color, final Runnable onClick) {
-        Button b = new Button(this);
-        b.setText(s);
-        b.setAllCaps(false);
-        b.setTextSize(16);
-        b.setTextColor(Color.WHITE);
-        b.setBackgroundColor(Color.parseColor(color));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 16, 0, 0);
-        b.setLayoutParams(lp);
-        b.setPadding(24, 28, 24, 28);
+    /** A button that sends (or opens) something, greyed out while an answer is on its way. */
+    private Button button(Button b, final Runnable onClick) {
         b.setOnClickListener(v -> onClick.run());
         inputs.add(b);
         return b;

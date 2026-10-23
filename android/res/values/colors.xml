@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kurooto's colours, named after Material 3's colour roles. This file is the light "kuro" palette of the web pages
+     (src/kurooto/web/static/style.css); values-night has the dark one, and on Android 12+ values-v31 and
+     values-night-v31 swap in Material You's colours (from the wallpaper). Ui.java turns them into views. -->
+<resources>
+    <color name="k_bg">#F4F2EC</color>                    <!-- background -->
+    <color name="k_card">#FFFFFF</color>                  <!-- surface container: cards, dialogs -->
+    <color name="k_card_high">#E9E5DA</color>             <!-- surface container high: a second surface, e.g. your own messages -->
+    <color name="k_fg">#2F3A26</color>                    <!-- on surface -->
+    <color name="k_dim">#52624A</color>                   <!-- on surface variant: supporting text -->
+    <color name="k_outline">#7E8A74</color>
+    <color name="k_primary">#3F5626</color>
+    <color name="k_on_primary">#F6F3EC</color>
+    <color name="k_primary_container">#D3E4B4</color>
+    <color name="k_on_primary_container">#1C2A0E</color>
+    <color name="k_tonal">#E1E6D3</color>                 <!-- secondary container: tonal buttons -->
+    <color name="k_on_tonal">#2F3A26</color>
+    <color name="k_ok">#2E6B3F</color>
+    <color name="k_bad">#B23A26</color>
+
+    <!-- the same in light and dark, with or without Material You -->
+    <color name="k_brand">#6B8A42</color>                 <!-- notifications' accent -->
+    <!-- the ringing screen and the call page (src/kurooto/data/worker/public/call.css), always dark -->
+    <color name="k_call_bg">#0B0F0A</color>
+    <color name="k_call_fg">#F2EEE8</color>
+    <color name="k_call_dim">#95A682</color>
+    <color name="k_call_go">#4F6E2C</color>
+    <color name="k_call_stop">#B8432E</color>
+    <color name="k_call_quiet">#26311F</color>
+</resources>

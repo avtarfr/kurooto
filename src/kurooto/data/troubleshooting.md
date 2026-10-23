@@ -139,6 +139,10 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | "That's no longer open" | It was answered somewhere else or expired. Nothing to do. |
 | "That answer couldn't be opened here. Pair the phone again." | Pair the phone again (for example after `kurooto rotate`). |
 | A device paired that wasn't me | `/phones`, then `/unpair <id>`. If a phone was lost, run `kurooto rotate`. |
+| "Waiting for your computer" under a chat message, a file or an answer | Your computer is off or not connected to your call line. It goes through by itself once the computer is back; nothing to resend. |
+| "Your call line is holding as much as it can for your computer" | The phone outbox is full (100 things, 20 MB of files). Wait till the computer is back, or use Telegram. |
+| The app's chat says "Your call line doesn't have the chat yet" | Your computer runs an older Kurooto, or its call line wasn't redeployed yet. Update Kurooto; it redeploys the line by itself (or Features → Phone calls → set up again). |
+| No answer in the app's chat, but Telegram works | Answers to what you wrote in the app come back to the app. Is the app's notification category "Messages" on? Open the chat: it catches up from your call line. |
 
 ## Classes and study
 
@@ -241,6 +245,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | `kurooto autostart boot`: "Linux didn't allow that from here" | Run `loginctl enable-linger` in a terminal, then `kurooto autostart boot` again. |
 | `kurooto ask`, `call`, `send`, `ask-me` or `ask-approval` say Kurooto isn't running | `kurooto on`, then try again. `--timeout` is in minutes. |
 | A low-disk warning | `/space clean` removes Kurooto's own old files; free space elsewhere too. |
+| "Kurooto didn't connect to <host> ... it isn't on the list" | `privacy.egress` is `enforce` and that host isn't on Kurooto's list (an address changed in settings, an add-on). If you trust it, add it to `privacy.allow_hosts` in Settings (`["feeds.example.org"]`), or set `privacy.egress` back to `record`. `/egress` shows what was blocked. |
 
 ## Updates, backups and moving
 

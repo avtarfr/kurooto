@@ -6,8 +6,6 @@ import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Typeface;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -20,7 +18,6 @@ import android.text.InputType;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import org.json.JSONArray;
@@ -61,31 +58,24 @@ public class MainActivity extends Activity {
     }
 
     private void build() {
-        ScrollView sv = new ScrollView(this);
-        sv.setBackgroundColor(Color.parseColor("#14111a"));
-        box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(48, 72, 48, 48);
-        sv.addView(box);
+        box = Ui.page(this);
         if (Prefs.paired(this)) paired(); else unpaired();
-        setContentView(sv);
     }
 
     // ---------- first run ----------
     private void unpaired() {
-        box.addView(label("Kurooto", 28, true));
-        box.addView(label("Pair this phone with Kurooto on your computer, so it can call you and you can call it.", 16, false));
-        box.addView(label("On your computer: open Kurooto's dashboard → Phone → Pair a phone. Scan the QR code with this phone's camera "
-                + "and tap Pair the app. Or send /phone to your Telegram bot and open the link here.", 15, false));
-        box.addView(label("Or paste the pairing link", 20, true));
-        final EditText link = new EditText(this);
-        link.setHint("https://…/pair#c=…");
-        link.setTextColor(Color.parseColor("#ece8f2"));
-        link.setHintTextColor(Color.parseColor("#9a93a8"));
+        box.addView(Ui.headline(this, "Kurooto"));
+        box.addView(Ui.body(this, "Pair this phone with Kurooto on your computer, so it can call you and you can call it."));
+        LinearLayout how = Ui.card(this);
+        how.addView(Ui.dim(this, "On your computer: open Kurooto's dashboard → Phone → Pair a phone. Scan the QR code with this phone's camera "
+                + "and tap Pair the app. Or send /phone to your Telegram bot and open the link here."));
+        box.addView(how);
+        box.addView(Ui.heading(this, "Or paste the pairing link"));
+        final EditText link = Ui.field(this, "https://…/pair#c=…");
         link.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         box.addView(link);
-        Button pair = big("Pair", "#2e9d6a");
-        status = label("", 14, false);
+        Button pair = Ui.large(Ui.filled(this, "Pair"));
+        status = Ui.status(this);
         pair.setOnClickListener(v -> {
             final Line.Pairing p = Line.parse(link.getText().toString());
             if (p == null) { status.setText("That isn't a pairing link. It looks like https://…/pair#c=ABCD2345."); return; }
@@ -106,21 +96,24 @@ public class MainActivity extends Activity {
     // ---------- paired ----------
     private void paired() {
         String name = Prefs.assistant(this);
-        box.addView(label(name, 28, true));
-        box.addView(label("Its calls ring here like phone calls (earpiece, screen off at your ear); wake-up calls ring like an alarm.", 15, false));
-        Button call = big("Call " + name, "#2e9d6a");
+        box.addView(Ui.headline(this, name));
+        box.addView(Ui.dim(this, "Its calls ring here like phone calls (earpiece, screen off at your ear); wake-up calls ring like an alarm."));
+        Button call = Ui.large(Ui.filled(this, "Call " + name));
+        Ui.gap(call, 16, 0);
         call.setOnClickListener(v -> requestCall());
         box.addView(call);
-        Button chat = big("Chat with " + name, "#3a3150");
+        Button chat = Ui.tonal(this, "Chat with " + name);
+        Ui.gap(chat, 8, 0);
         chat.setOnClickListener(v -> startActivity(new Intent(this, ChatActivity.class)));
         box.addView(chat);
         JSONArray queued = Chat.waiting(Chat.load(this));
         if (queued.length() > 0) {
             StringBuilder s = new StringBuilder("Waiting for your computer (on your call line):");
             for (int i = 0; i < queued.length(); i++) s.append("\n· ").append(queued.optJSONObject(i).optString("label"));
-            box.addView(label(s.toString(), 14, false));
+            box.addView(Ui.dim(this, s.toString()));
         }
-        status = label(getIntent().getBooleanExtra("justPaired", false) ? "Paired. You're all set." : "", 14, false);
+        status = Ui.status(this);
+        if (getIntent().getBooleanExtra("justPaired", false)) { status.setText("Paired. You're all set."); Ui.ok(status); }
         box.addView(status);
         waiting = new LinearLayout(this);
         waiting.setOrientation(LinearLayout.VERTICAL);
@@ -130,46 +123,51 @@ public class MainActivity extends Activity {
         String upd = Prefs.sp(this).getString("updateLink", "");
         String updName = Prefs.sp(this).getString("updateName", "");
         if (!upd.isEmpty() && !versionName().equals(updName)) {
-            Button u = big("Update available: " + updName, "#e85d8a");
+            Button u = Ui.button(this, "Update available: " + updName, Ui.color(this, R.color.k_primary_container),
+                    Ui.color(this, R.color.k_on_primary_container), 0);
             u.setOnClickListener(v -> open(Uri.parse(upd)));
             box.addView(u);
         }
 
-        box.addView(label("Checklist", 20, true));
+        box.addView(Ui.heading(this, "Checklist"));
+        LinearLayout list = Ui.list(this);
+        box.addView(list);
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         Intent appInfo = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
-        check("Notifications", SDK < 24 || nm.areNotificationsEnabled(),
+        check(list, "Notifications", SDK < 24 || nm.areNotificationsEnabled(),
                 SDK >= 26 ? new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()) : appInfo);
-        check("Microphone", checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED, appInfo);
-        if (SDK >= 34) check("Full-screen calls (ring on the lock screen)", nm.canUseFullScreenIntent(),
+        check(list, "Microphone", checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED, appInfo);
+        if (SDK >= 34) check(list, "Full-screen calls (ring on the lock screen)", nm.canUseFullScreenIntent(),
                 new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + getPackageName())));
-        check("Battery: unrestricted (keeps listening)", pm.isIgnoringBatteryOptimizations(getPackageName()),
+        check(list, "Battery: unrestricted (keeps listening)", pm.isIgnoringBatteryOptimizations(getPackageName()),
                 new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
         if (Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT).matches(".*(samsung|xiaomi|redmi|poco|oppo|realme|vivo|oneplus|huawei|honor).*")) {
-            box.addView(label(Build.MANUFACTURER + " phones also put apps to sleep on their own: in Settings → Battery, set Kurooto to "
-                    + "\"Unrestricted\" or \"No restrictions\" and take it off any \"sleeping apps\" list, or calls may not ring.", 13, false));
+            box.addView(Ui.small(this, Build.MANUFACTURER + " phones also put apps to sleep on their own: in Settings → Battery, set Kurooto to "
+                    + "\"Unrestricted\" or \"No restrictions\" and take it off any \"sleeping apps\" list, or calls may not ring."));
         }
 
-        box.addView(label("Ringtones", 20, true));
-        Button callTone = big("Call ringtone: " + toneName(false), "#3a3150");
-        callTone.setOnClickListener(v -> pickTone(false));
-        box.addView(callTone);
-        Button alarmTone = big("Wake-up alarm tone: " + toneName(true), "#3a3150");
-        alarmTone.setOnClickListener(v -> pickTone(true));
-        box.addView(alarmTone);
-        box.addView(label("The alarm tone plays on the alarm stream, so wake-up calls ring even on silent.", 13, false));
+        box.addView(Ui.heading(this, "Ringtones"));
+        LinearLayout tones = Ui.list(this);
+        tones.addView(Ui.item(this, "Call ringtone", toneName(false), v -> pickTone(false)));
+        tones.addView(Ui.item(this, "Wake-up alarm tone", toneName(true), v -> pickTone(true)));
+        box.addView(tones);
+        box.addView(Ui.small(this, "The alarm tone plays on the alarm stream, so wake-up calls ring even on silent."));
 
-        box.addView(label("This phone", 20, true));
-        box.addView(label("Paired with " + Prefs.url(this) + " · app " + versionName(), 13, false));
-        Button forget = big("Unpair this phone", "#3a3150");
+        box.addView(Ui.heading(this, "This phone"));
+        LinearLayout phone = Ui.card(this);
+        phone.addView(Ui.body(this, "Paired with " + Prefs.url(this)));
+        phone.addView(Ui.dim(this, "App " + versionName()));
+        int bad = Ui.color(this, R.color.k_bad);
+        Button forget = Ui.button(this, "Unpair this phone", 0, bad, bad);
+        phone.addView(forget);
+        box.addView(phone);
         forget.setOnClickListener(v -> {
             Prefs.forget(this);
             stopService(new Intent(this, ListenService.class));
             build();
             status.setText("Unpaired here. Also remove it on your computer (Phone tab, or /phones on Telegram).");
         });
-        box.addView(forget);
     }
 
     /** Open questions, approvals and messages, newest first; tap one to answer it. */
@@ -182,61 +180,38 @@ public class MainActivity extends Activity {
                 if (into != waiting) return;
                 if (!name.equals(Prefs.assistant(this))) { build(); return; } // renamed on the computer
                 if (items == null || items.length() == 0) return;
-                into.addView(label("Waiting for you", 20, true));
+                into.addView(Ui.heading(this, "Waiting for you"));
                 for (int i = items.length() - 1; i >= 0; i--) {
                     final JSONObject it = items.optJSONObject(i);
                     if (it == null) continue;
-                    String text = Inbox.text(it);
-                    Button b = big(it.optString("title", "Kurooto") + ": " + (text.length() > 80 ? text.substring(0, 79) + "…" : text), "#3a3150");
-                    b.setTextSize(15);
-                    b.setAllCaps(false);
-                    b.getLayoutParams().height = LinearLayout.LayoutParams.WRAP_CONTENT;
-                    b.setPadding(32, 24, 32, 24);
-                    b.setOnClickListener(v -> startActivity(new Intent(this, AnswerActivity.class).putExtra("item", it.toString())));
-                    into.addView(b);
+                    LinearLayout card = Ui.tapCard(this, v -> startActivity(new Intent(this, AnswerActivity.class).putExtra("item", it.toString())));
+                    card.addView(Ui.text(this, it.optString("title", "Kurooto"), 14, true, Ui.color(this, R.color.k_primary)));
+                    card.addView(Ui.lines(Ui.body(this, Inbox.text(it)), 3));
+                    into.addView(card);
                 }
             });
         }).start();
     }
 
-    private void check(String what, boolean ok, final Intent fix) {
-        LinearLayout row = new LinearLayout(this);
-        row.setPadding(0, 12, 0, 12);
-        TextView t = label((ok ? "✓  " : "✗  ") + what, 15, false);
-        t.setTextColor(Color.parseColor(ok ? "#4fbf8a" : "#e85d8a"));
-        row.addView(t, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+    /** One checklist row: a tick or a warning, what it is, and Fix (to the setting) when it isn't done. */
+    private void check(LinearLayout into, String what, boolean ok, final Intent fix) {
+        LinearLayout row = Ui.row(this);
+        row.setMinimumHeight(Ui.dp(this, 56));
+        row.setPadding(Ui.dp(this, 16), Ui.dp(this, 4), Ui.dp(this, 8), Ui.dp(this, 4));
+        row.addView(Ui.icon(this, ok ? R.drawable.ic_ok : R.drawable.ic_fix, Ui.color(this, ok ? R.color.k_ok : R.color.k_bad)),
+                new LinearLayout.LayoutParams(Ui.dp(this, 24), Ui.dp(this, 24)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        lp.setMargins(Ui.dp(this, 16), 0, Ui.dp(this, 8), 0);
+        row.addView(Ui.text(this, what, 16, false, Ui.color(this, R.color.k_fg)), lp);
         if (!ok) {
-            Button fixB = new Button(this);
-            fixB.setText("Fix");
+            Button fixB = Ui.flat(this, "Fix");
             fixB.setOnClickListener(v -> {
                 try { startActivity(fix); }
                 catch (Exception e) { startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()))); }
             });
-            row.addView(fixB);
+            row.addView(fixB, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         }
-        box.addView(row);
-    }
-
-    private TextView label(String s, int sp, boolean bold) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextSize(sp);
-        t.setTextColor(Color.parseColor(bold ? "#ece8f2" : "#9a93a8"));
-        t.setPadding(0, bold ? 36 : 8, 0, 8);
-        if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
-        return t;
-    }
-
-    private Button big(String s, String color) {
-        Button b = new Button(this);
-        b.setText(s);
-        b.setTextSize(18);
-        b.setTextColor(Color.WHITE);
-        b.setBackgroundColor(Color.parseColor(color));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 160);
-        lp.setMargins(0, 24, 0, 8);
-        b.setLayoutParams(lp);
-        return b;
+        into.addView(row);
     }
 
     private void open(Uri u) {

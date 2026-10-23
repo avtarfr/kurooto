@@ -30,8 +30,8 @@
     <application
         android:name=".App"
         android:label="Kurooto"
-        android:icon="@drawable/ic_agent"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/Kurooto"
         android:allowBackup="false"
         android:usesCleartextTraffic="false">
 
@@ -46,7 +46,7 @@
         <activity android:name=".PairActivity"
             android:exported="true"
             android:excludeFromRecents="true"
-            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
+            android:theme="@style/Kurooto.Dialog">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -61,6 +61,7 @@
             android:turnScreenOn="true"
             android:launchMode="singleTask"
             android:excludeFromRecents="true"
+            android:theme="@style/Kurooto.Call"
             android:configChanges="orientation|screenSize|keyboardHidden" />
 
         <!-- a question, approval or message, with every way to answer it (tapping its notification) -->
@@ -69,7 +70,7 @@
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:windowSoftInputMode="adjustResize"
-            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar" />
+            android:theme="@style/Kurooto.Dialog" />
 
         <!-- the chat with Kurooto, beside Telegram -->
         <activity android:name=".ChatActivity"
@@ -80,7 +81,7 @@
             android:exported="true"
             android:label="Kurooto"
             android:excludeFromRecents="true"
-            android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar">
+            android:theme="@style/Kurooto.Dialog">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
