@@ -182,8 +182,8 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
 ## What leaves your computer
 
 - Questions and messages for the phone go from your computer to your call line (your Cloudflare account) to your phone.
-  Android gets them end-to-end encrypted through ntfy.sh; an iPhone gets an empty Web Push and then fetches what's
-  waiting from your call line.
+  Android gets them through ntfy.sh, encrypted with a key your phones, your computer and your call line hold (ntfy
+  can't read them); an iPhone gets an empty Web Push and then fetches what's waiting from your call line.
 - Your call line keeps a copy of what's open (at most 40 items, each gone after a day or once it's dealt with) so the
   phone can list it while the computer is off.
 - Files you share go from the phone through your call line to your computer.

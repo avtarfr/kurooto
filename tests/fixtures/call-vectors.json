@@ -1,5 +1,5 @@
 {
-  "note": "Test vectors shared by tests/unit/test_calls_line.py, the Worker test and the Android CryptoTest. Not real keys.",
+  "note": "Test vectors shared by tests/unit/test_calls.py and test_lidsafe.py, the Worker test (tests/js/vectors.mjs) and the Android CryptoTest. Not real keys.",
   "k1": {
     "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
     "nonce_hex": "6465666768696a6b6c6d6e6f",

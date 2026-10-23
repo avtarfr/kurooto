@@ -156,5 +156,4 @@ installer, 0.2.0 through `kurooto update --now`, 0.3.0 built with `--break-run` 
 
 ## Known problems
 
-- `docs/RELEASING.md` describes `build --critical` and `sign --critical` as different; in code both skip every hold.
 - `update/launcher.py`'s docstring lists the phases as `trial | ok`; `rolled_back` is also written.

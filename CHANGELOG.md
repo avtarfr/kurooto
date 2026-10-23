@@ -61,6 +61,12 @@
   zip; `kurooto call` exits 2 when Kurooto isn't running, like `send`, `notify` and `ask-me`; the local page answers a
   bad `Content-Length` with 400; a stopped dashboard server stops listening to events; the settings guide no longer
   reads a module `defaults` attribute that nothing used (it's gone from `Module`).
+- **Docs match the code**: the manual's term-note example no longer swallows the Concept graph, Space keeper and
+  reserve sections, and it now covers `/new` and the chat's memory, the calls look back (`/lessons`), topic study
+  packs, `drive_upload.temp_days`, Exam season as an add-on and the new `/help`; agy is the recommended brain
+  everywhere; the privacy page says the call line holds the Android app's message key, holds transcripts while the
+  computer is off, and that every call's transcript goes to your AI for the look back; the settings guide drops
+  Codex and `kurooto restart` and fixes six descriptions; RELEASING.md says never to rebuild after signing.
 
 ## 0.5.7 (2026-10-23)
 

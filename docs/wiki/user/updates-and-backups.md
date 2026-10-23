@@ -88,8 +88,8 @@ season on yourself; it's off by default and in no preset. Critical releases stil
   happens in the background at 05:10. If it fails you get "Your call line couldn't be updated: ..." and calls keep
   working on the old version; Features → Phone calls → Set up tries again. With `updates.mode` = `off`, the line isn't
   updated either.
-- **The Android app** checks for a new version once a day and shows an **Update** button that opens the download. See
-  [Phone app](phone-app.md).
+- **The Android app** checks for a new version each time you open it (at most every 2 minutes) and shows an **Update**
+  button that opens the download. See [Phone app](phone-app.md).
 - **The iPhone Home Screen app** updates itself.
 
 **Limits and edge cases.**

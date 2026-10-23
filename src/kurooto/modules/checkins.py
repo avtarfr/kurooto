@@ -38,7 +38,11 @@ from kurooto.modules.text import a_day, a_minutes, a_time, as_written
 register_defaults(
     "checkins",
     {
-        "times": {"evening": "22:00", "midday": None, "night": None},  # None = off (night: e.g. "23:15")
+        "times": {
+            "evening": "22:00",  # the evening check-in, the day in review (None: off)
+            "midday": None,  # the midday check-in (None: off; e.g. "13:00")
+            "night": None,  # the night check-in before bed (None: off; e.g. "23:15")
+        },
         "questions": {
             "evening": "How did today go? What got done, and what slipped?",
             "midday": "How's the morning been? Anything to re-plan for the afternoon?",

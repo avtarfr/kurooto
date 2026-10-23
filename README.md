@@ -57,7 +57,8 @@ recommends settings for it (★), installs whatever the features you pick need, 
 
 ## Your first 15 minutes
 1. Paste the line above; the setup page opens.
-2. Pick an AI: a **Gemini API key ★** is free from Google AI Studio. Make one, paste it, Save, Test.
+2. Pick an AI: **Antigravity (agy) ★**, Google's agent program, is free with a Google account: Install, sign in,
+   Test. (A Gemini API key works too; calls and voice notes use one.)
 3. Pick features: **★ Starter** is a good start.
 4. Make your Telegram bot with @BotFather (the wizard walks you through it) and tap Start.
 5. Send `/help` to your bot. Try "remind me in 2 minutes to stretch".
@@ -75,9 +76,9 @@ recommends settings for it (★), installs whatever the features you pick need, 
 | **Your setup** | daily backups to a folder you pick; your setup encrypted in your private repository, so a new computer is ready in a minute |
 | **See it all** | a local dashboard (with terminals, if you like), a status board in any terminal, and a look back each night that suggests small improvements |
 
-**AI, your choice:** a Gemini API key ★ (recommended), Antigravity (agy) or Claude Code (both get the same reach: your
-notes, your tools, harmless commands, nothing else), local models through Ollama on computers that can run them, or any
-OpenAI-compatible service.
+**AI, your choice:** Antigravity (agy) ★ (recommended) or Claude Code (both get the same reach: your notes, your
+tools, harmless commands, nothing else), a Gemini API key, local models through Ollama on computers that can run
+them, or any OpenAI-compatible service.
 
 **Updates:** automatic at night, signed, and rolled back if a new version misbehaves.
 

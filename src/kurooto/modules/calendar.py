@@ -1,7 +1,7 @@
 """Calendar: your calendar's events in Kurooto, from its private iCal link (Google Calendar: Settings → your calendar →
 "Secret address in iCal format"; Outlook and Apple Calendar have one too). Read-only; nothing is ever changed there.
 
-What you get: /today and /week, "what's on tomorrow?", today's events in calls and check-ins, no calls during an
+What you get: /today and /cal (7 days), "what's on tomorrow?", today's events in calls and check-ins, no calls during an
 event (on by default; or only during events with #nocall in the title or description, or in a calendar whose name
 contains "no call"), focus time during events with #focus (calls held, messages wait until it ends), and optionally a
 reminder a few minutes before each event. Refreshed every 15 minutes.

@@ -19,7 +19,13 @@ from kurooto.modules import daily
 from kurooto.modules.base import Command, Module
 from kurooto.modules.calls.tools import Tool
 
-register_defaults("weekly", {"when": "weekly sun 19:00", "call": False})  # call: also a Sunday review call
+register_defaults(
+    "weekly",
+    {
+        "when": "weekly sun 19:00",  # when the week's summary comes ("weekly <day> HH:MM")
+        "call": False,  # with Phone calls on: also a Sunday review call after the summary
+    },
+)
 REASON = "Sunday review"
 
 

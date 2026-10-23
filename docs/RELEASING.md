@@ -41,8 +41,21 @@ A tester installs straight from beta with `KUROOTO_CHANNEL=beta` in front of the
 `beta.json` names and saves `updates.channel` = `beta` in the new install's settings (`settings.json` in its config
 folder, made if there's none), so it keeps following beta. Sign the first beta before telling testers, or there's no
 `beta.json` to install from.
-Exam season holds every update back during its users' exams; `build --critical` marks a release that must install
-anyway (a fix that can't wait), in its signed manifest.
+Exam season holds every update back during its users' exams, and staged updates (`updates.staged`) wait 48 hours
+and for exams to end. A release marked critical skips every one of those holds: `build --critical` marks it in its
+signed manifest, `sign --critical` in the signed channel pointer, and installs treat either the same way (one is
+enough). The pointer's mark goes when that channel is signed again without it; the manifest's stays with the
+version. Only for fixes that can't wait.
+
+**Never rebuild after the owner has signed: the tarball must stay byte-identical to the signed one.** `sign` signs
+what `manifest.unsigned.json` says, including the tarball's sha256 and size. `build` isn't reproducible (file times
+in the archive, the manifest's `created`), and running it again for the same version overwrites the tarball and the
+unsigned manifest but not the signed `manifest.json`. Nothing catches it: `sign` doesn't hash the tarball again and
+`publish` checks neither signatures nor hashes. Published, every install and update of that version then fails with
+"didn't match its signed checksum", while installs that already downloaded the old build keep it. So an agent or
+contributor goes no further than `build`, and only when asked; signing and publishing are the owner's. After the
+owner has signed, don't run `build` for that version again or touch anything in `SITE/releases/<v>/`: a problem
+means a new version (or a yank), never a rebuild.
 
 `build` also writes the site's own pages: the installers and landing page from `installer/`, and `privacy.html`,
 made from `docs/PRIVACY.md` inside `installer/privacy.html` (between its `PRIVACY:START` and `PRIVACY:END` markers).
@@ -57,8 +70,8 @@ uv run tools/release.py yank --site ~/kurooto-site --key ~/.config/kurooto-dev/r
 uv run tools/release.py publish --site ~/kurooto-site --message "yank 0.2.1"
 ```
 `--undo` takes a version off the list again. A channel pointer that still names a yanked version keeps it refused,
-so sign a fixed version on that channel (the command warns). A security fix: `sign ... --critical`, so installs with
-staged updates on (`updates.staged`) don't wait their 48 hours or for exams to end.
+so sign a fixed version on that channel (the command warns). A security fix: `--critical` (on `build` or `sign`, see
+above), so installs don't wait their 48 hours, for exams to end, or for Exam season.
 
 ## Checks before publishing
 - `uv run pytest`, CI green on all three systems (including the update rehearsal and the call line).

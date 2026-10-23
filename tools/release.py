@@ -7,10 +7,11 @@
     uv run tools/release.py yank  --site SITE --key PEM V [V ...] [--reason TEXT] [--undo]
     uv run tools/release.py publish --site SITE [--message TEXT]     push SITE to the gh-pages branch (GitHub Pages)
 
-sign --critical marks the release critical (a security fix): installs with staged updates on (updates.staged) don't
-wait their 48 hours for it, nor for the end of exams. yank adds versions to the signed yank list (SITE/yank.json; with
---undo it takes them off): installs never update to a yanked version, even one already downloaded. Publish after
-either. A yanked version that a channel pointer still names stays refused, so sign a fixed version on that channel.
+--critical (on build or sign: either is enough, installs treat them the same) marks the release critical (a fix that
+can't wait): it skips every hold, Exam season's and the staged wait (updates.staged: 48 hours, the end of exams).
+yank adds versions to the signed yank list (SITE/yank.json; with --undo it takes them off): installs never update
+to a yanked version, even one already downloaded. Publish after either. A yanked version that a channel pointer
+still names stays refused, so sign a fixed version on that channel.
 
 build --apk PATH puts the release-signed Android app in the package (your call line serves it at /kurooto.apk) and
 on the site, with android.json for the app's update check. See docs/RELEASING.md for the whole routine.
@@ -30,8 +31,9 @@ SITE is a folder laid out like the GitHub Pages site:
     SITE/releases/<v>/kurooto.apk, android.json the Android app and its version (with --apk)
 The passphrase for the key comes from KUROOTO_RELEASE_PASSPHRASE, or is asked for.
 --break-run builds a version whose `kurooto run` crashes at once (only for testing rollback).
---critical marks the release critical in its signed manifest: it installs even while a feature holds updates (Exam
-season, during someone's exams). Only for fixes that can't wait.
+build --critical marks it in the signed manifest, sign --critical in the signed channel pointer (gone when that
+channel is signed again without it). Only for fixes that can't wait.
+Never build a version again after it's signed: sign pins the tarball's sha256, and a rebuilt tarball isn't the same.
 """
 
 from __future__ import annotations
@@ -622,7 +624,7 @@ def main() -> None:
     b.add_argument("--version")
     b.add_argument("--notes", default="")
     b.add_argument("--break-run", action="store_true")
-    b.add_argument("--critical", action="store_true", help="installs even during someone's exams")
+    b.add_argument("--critical", action="store_true", help="critical: skips every hold (exam season, staged waiting)")
     b.add_argument("--apk", help="the release-signed Android app (android/build/kurooto.apk)")
     s = sub.add_parser("sign")
     s.add_argument("--site", required=True)
@@ -630,7 +632,7 @@ def main() -> None:
     s.add_argument("--version", required=True)
     s.add_argument("--key", required=True)
     s.add_argument("--channel", default="stable")
-    s.add_argument("--critical", action="store_true", help="a security fix: staged installs don't wait for it")
+    s.add_argument("--critical", action="store_true", help="critical: skips every hold (exam season, staged waiting)")
     y = sub.add_parser("yank")
     y.add_argument("--site", required=True)
     y.add_argument("--key", required=True)

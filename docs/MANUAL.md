@@ -16,39 +16,30 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Telegram](#telegram) · [Questions and approvals](#questions-and-approvals) ·
     [Chat with your AI](#chat-with-your-ai) · [Reminders](#reminders) · [Check-ins](#check-ins) ·
     [Deadlines](#deadlines) · [Recurring quizzes](#recurring-quizzes) · [Not interested](#not-interested) ·
-    [Exam mode](#exam-mode) · [Exam season](#exam-season) · [Subjects and timetable](#subjects-and-timetable) ·
-    [Quiz](#quiz) · [Weekly summary](#weekly-summary)
-    [Exam mode](#exam-mode) · [Start-by dates](#start-by-dates) · [Subjects and timetable](#subjects-and-timetable) ·
-    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Class packs](#class-packs) ·
-    [Quiz](#quiz) ·
-    [Weekly summary](#weekly-summary)
-    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) ·
-    [Quiz](#quiz) · [Weekly summary](#weekly-summary)
-    [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Doubt queue](#doubt-queue) ·
-    [Quiz](#quiz) ·
-    [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
+    [Exam mode](#exam-mode) · [Exam season](#exam-season) · [Start-by dates](#start-by-dates) ·
+    [Subjects and timetable](#subjects-and-timetable) · [Class packs](#class-packs) · [Doubt queue](#doubt-queue) ·
+    [Quiz](#quiz) · [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Hint ladder](#hint-ladder) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
-    [Remember](#remember) · [Nightly look back](#nightly-look-back)
+    [Remember](#remember) · [Nightly look back](#nightly-look-back) ·
+    [Wrong button and test cases](#wrong-button-and-test-cases)
   - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) ·
     [Reminders with the lid shut](#reminders-with-the-lid-shut) · [Voice notes](#voice-notes) ·
     [Stay awake on charger](#stay-awake-on-charger) · [Calendar](#calendar)
   - [Notes sync](#notes-sync) · [Sync everything](#sync-everything) · [Backups](#backups) ·
-    [Profile sync](#profile-sync)
-  - [Google](#google-classroom-gmail-drafts) ·
+    [Space keeper](#space-keeper-cleaning-off-old-backups-and-leftovers) · [Profile sync](#profile-sync)
+  - [Google](#google-classroom-gmail-drafts) · [Several Google accounts](#several-google-accounts) ·
     [Google: setting up your own sign-in](#google-setting-up-your-own-sign-in-step-by-step) ·
     [Classroom → notes](#classroom--notes) · [Mail digest](#mail-digest) ·
-    [Email reply drafts](#email-reply-drafts) · [Agent plan calendar](#agent-plan-calendar)
-  - [Handwritten notes](#handwritten-notes) · [Books and PDFs](#books-and-pdfs) · [Study tracker](#study-tracker) ·
-    [Research](#research) · [Terminals](#terminals) · [Kurooto Terminal](#kurooto-terminal) ·
-    [Your add-ons](#your-add-ons) ·
     [Email reply drafts](#email-reply-drafts) · [Agent plan calendar](#agent-plan-calendar) ·
-    [Several Google accounts](#several-google-accounts) · [Google Calendar](#google-calendar) ·
-    [Mail digest by email](#mail-digest-by-email) · [Drive upload](#drive-upload)
-  - [Handwritten notes](#handwritten-notes) · [Study tracker](#study-tracker) · [Research](#research) ·
-    [Terminals](#terminals) · [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) ·
-    [From a terminal or a script](#from-a-terminal-or-a-script)
+    [Google Calendar](#google-calendar) · [Mail digest by email](#mail-digest-by-email) · [Drive upload](#drive-upload)
+  - [Handwritten notes](#handwritten-notes) · [Books and PDFs](#books-and-pdfs) ·
+    [Concept graph](#concept-graph-books-into-linked-notes) · [Study packs](#study-packs) ·
+    [Study tracker](#study-tracker) · [Research](#research) · [Terminals](#terminals) ·
+    [Kurooto Terminal](#kurooto-terminal) · [Your add-ons](#your-add-ons) ·
+    [From a terminal or a script](#from-a-terminal-or-a-script) ·
+    [The reserve](#the-reserve-markdown-copies-of-kurootos-state-for-ai-programs)
 - [Your phone](#your-phone)
 - [The dashboard](#the-dashboard)
 - [Colours (Look)](#colours-look)
@@ -80,7 +71,8 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 - **Free disk space:** about 1 GB for Kurooto itself, plus what the features you pick need (the wizard shows the total
   before installing anything). Kurooto always leaves 5 GB free.
 - **Telegram** on your phone (free): this is how you talk to Kurooto.
-- **A Google account** (free): for the recommended AI, a Gemini API key from Google AI Studio.
+- **A Google account** (free): to sign in to the recommended AI, Antigravity (agy), and for a Gemini API key from
+  Google AI Studio (calls and voice notes use one).
 
 **Optional, depending on the features you pick:**
 
@@ -90,8 +82,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
 | Notes sync, Profile sync | a free [GitHub](https://github.com/signup) account |
 | Backups | a folder on an external drive, or one your computer syncs to a cloud (Google Drive, OneDrive, iCloud Drive, Dropbox) |
 | Google Classroom, Gmail (drafts, the mail digest, reply drafts), the Agent plan calendar | your Google account, plus about 10 minutes in Google Cloud (free) |
-| Revision packs as PDF | Tectonic, a small LaTeX engine (Kurooto installs it for you when you ask) |
-| ChatGPT as the AI | a paid ChatGPT plan |
+| Revision packs as PDF | a LaTeX engine: your own (TeX Live, MiKTeX, MacTeX), or Tectonic, a small one Kurooto installs for you when you ask |
 | Claude as the AI | a paid Claude plan |
 
 Nothing costs money unless you choose a paid plan: a paid AI plan you already have, or a paid Gemini key.
@@ -162,9 +153,10 @@ what it means.
 2. **Your computer:** what Kurooto found (processor, memory, graphics card, free space) and what it recommends for
    it, marked ★. You can change any of it later. On a laptop, what to do on battery; and the pages' **Colours**
    (see [Colours](#colours-look)): this computer's own colours are marked ★ when Kurooto finds them.
-3. **AI:** pick the AI that answers you (see [Your AI brain](#your-ai-brain)). ★ marks the recommendation: a Gemini
-   API key. Make one at Google AI Studio, paste it and press **Save and test**. For the others, press **Install** if
-   it isn't installed and follow the sign-in. Then press **Test it**: it asks the AI to reply, and tells you if it
+3. **AI:** pick the AI that answers you (see [Your AI brain](#your-ai-brain)). ★ marks the recommendation:
+   Antigravity (agy), Google's agent program, signed in with your Google account. For agy and the other programs,
+   press **Install** if it isn't installed and follow the sign-in; for a Gemini API key, make one at Google AI
+   Studio, paste it and press **Save and test**. Then press **Test it**: it asks the AI to reply, and tells you if it
    worked, or what to do if it didn't.
 
    **Try it now:** once the AI works, a chat box appears under it. What you type there is handled exactly as a
@@ -175,10 +167,11 @@ what it means.
    still comes after a restart, and can be cancelled with `/reminders` once Telegram is connected).
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
    [About you](#about-you) below.
-5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the
-   notes brain is a 0.5 GB download, so it's yours to tick). **Everything** or **Pick myself** for more. Some features ask for a detail right in their
-   card (a calendar link, a repository); phone calls, voice notes and the alarm use your Gemini key (they ask for one
-   if you picked another AI).
+5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the notes
+   brain is a 0.5 GB download, so it's yours to tick). **Everything** or **Pick myself** for more; the add-ons that come
+   with Kurooto (such as [Exam season](#exam-season)) are in no preset, only on when you pick them. Some features ask
+   for a detail right in their card (a calendar link, a repository); phone calls, voice notes and the alarm use your
+   Gemini key (they ask for one if you picked another AI).
 6. **Telegram:** make your own bot in two minutes:
    1. Open [@BotFather](https://t.me/BotFather) in Telegram, send `/newbot`, answer its two questions (a display name,
       then a username ending in `bot`).
@@ -232,15 +225,16 @@ the setup page), and set a **fallback** that takes over when the first one hits 
 
 | Brain | Cost | Good for | Setup |
 |---|---|---|---|
-| **Gemini API key** ★ | free tier, or paid | the simplest, and the way Google recommends for tools like this; also used for calls and voice notes. Free tier: Google may use what you send to improve its products and human reviewers may read it; 18+; a paid key is required in the EEA, UK and Switzerland | [Google AI Studio](https://aistudio.google.com/apikey) → Create API key → paste |
-| **Antigravity (agy)** | free with a Google account | Google's agent program on your computer; can read your notes. Some risk to the Google account (see the note below) | Install → a window opens → sign in with Google |
+| **Antigravity (agy)** ★ | free with a Google account | Kurooto's recommendation: Google's agent program, run on your computer; can read your notes and use Kurooto's tools, with higher limits than a free key. Some risk to the Google account (see the note below) | Install → a window opens → sign in with Google |
+| **Gemini API key** | free tier, or paid | the way Google recommends for tools like this; also used for calls and voice notes. A free key's daily limits are strict and run out quickly, so it's best kept for calls and voice notes. Free tier: Google may use what you send to improve its products and human reviewers may read it; 18+; a paid key is required in the EEA, UK and Switzerland | [Google AI Studio](https://aistudio.google.com/apikey) → Create API key → paste |
 | **Claude Code** (Advanced) | needs a paid Claude plan | if you already pay for Claude; it can do everything agy does here (below) | Install → sign in with your Claude account |
 | **Ollama on this computer** | free | private and offline, but much weaker, and needs a good graphics card; best as a helper next to another AI | Install Ollama → Test |
 | **Another OpenAI-compatible service** | depends | any service that speaks OpenAI's API | its address, key and model names |
 
 **agy:** Kurooto runs Google's official agy program on your computer, signed in as you, and never touches its sign-in
 token. Google's answers differ on whether other tools may start agy unattended, so there is some risk to your Google
-account; for tools like Kurooto, Google recommends a Gemini API key.
+account; for tools like Kurooto, Google recommends a Gemini API key. Kurooto marks agy ★ for its higher limits and
+full tool access; if that risk matters to you, pick a Gemini API key instead.
 
 If you set Kurooto up before 0.2.0, it keeps the AI you chose. An AI set up as FreeLLMAPI with an earlier version keeps
 working; it now shows as "Another OpenAI-compatible service". What each service's terms mean for your data is in
@@ -275,7 +269,8 @@ the end of the day's limit for what you're waiting on: calls, voice notes, the m
   requests (57%, Google's number); background work waits from 175. Resets at 12:30.", and how many background
   requests wait for a reset.
 
-**Settings** (Settings → `quota`):
+**Settings** (`quota.*`; not on the dashboard's Settings page yet: change them in `settings.json` in Kurooto's settings
+ folder, [Where things are](#where-things-are)):
 - `on`: `true` (default); `false`: background work never waits (the counting and the plain line stay).
 - `background_pct`: `70`, the share of a known limit after which background work waits.
 - `limits`: your own numbers, which win over learned ones: `{"gemini:gemini-flash-latest": 250, "agy": 900}`
@@ -349,8 +344,10 @@ its data stays unless you delete it. Each section says what leaves your computer
 full list.
 
 Plain English works for many things ("remind me at 9 to call mum", "move tonight's check-in to 21:30", "skip Friday's
-check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` lists the commands of the
-features you have on.
+check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` lists everything:
+the commands and plain-English requests of the features you have on, grouped by feature, Kurooto's own commands
+(`/q`, `/health`, `/calm`, `/why`, `/jobs`) and the features that are off. `/help <word>` finds a command or
+feature, on or off (`/help quiz`, `/help alarm`).
 
 ### Telegram
 Your own bot, which only answers you. Commands: `/status` (what's going on: whether calls are held, focus, what's
@@ -388,11 +385,16 @@ questions are part of the brief your call line keeps for calls while the compute
 
 ### Chat with your AI
 Anything that isn't a command or an instant request goes to your AI; the answer comes back as a reply. Long answers
-arrive as a file. `/brain` shows which AI answers and whether it works; `/jobs` what's running and waiting (with
-Cancel buttons; `/jobs cancel <id|all>`, `kurooto jobs --cancel ID`) and the last few; `/usage` how many AI requests
-ran each day and the limits hit. Your requests never wait behind background work (it has its own lane), and a
-request that's stuck (no AI at work for `jobs.stuck_min` minutes, 10) is stopped with a message.
-*Leaves:* what you ask, and notes it reads, go to the AI you picked.
+arrive as a file. **A conversation:** each message carries your last 6 exchanges with the AI from the past 2 hours, so
+"and the second one?" works; after 2 hours quiet it starts afresh. Only chat's own answers count (a digest's or a
+research run's never turns up as something you said). `/new` (or `/clear`) starts a fresh conversation now. The last 10
+exchanges are kept in Kurooto's state folder (`chat/history.json`). `/brain` shows which AI answers and whether it
+works; `/jobs` what's running and waiting (with Cancel buttons; `/jobs cancel <id|all>`, `kurooto jobs --cancel ID`) and
+the last few; `/usage` how many AI requests ran each day and the limits hit. Your requests never wait behind background
+work (it has its own lane), and a request that's stuck (no AI at work for `jobs.stuck_min` minutes, 10) is stopped with
+a message.
+*Leaves:* what you ask, and notes it reads, go to the AI you picked; with a conversation going, your recent
+exchanges go along too.
 
 ### Reminders
 "remind me at 9 to call mum", "remind me in 20 minutes to take the pasta off", `/remind tomorrow 7am gym`,
@@ -527,8 +529,9 @@ once when it starts. While it's on:
 *Turn off:* `deadlines.exam_mode_days` = 0.
 
 ### Exam season
-One card for the whole exam period, on top of exam mode. Off until you turn it on (Features → Exam season; it needs
-Deadlines). **It does nothing without exam dates:** the exam periods in Subjects (`/term exams 2026-12-07 to
+One card for the whole exam period, on top of exam mode. An add-on that comes with Kurooto: listed apart under
+Features (**Add-ons**), off until you turn it on, and in no preset (**Everything** leaves it out). It needs
+Deadlines. **It does nothing without exam dates:** the exam periods in Subjects (`/term exams 2026-12-07 to
 2026-12-18`, or your term note) and the exams on your deadline list ("Linear Algebra final exam", "Topology midterm",
 a viva). Quizzes and tests count only inside an exam period, unless you set `exam_season.quizzes` on. A season runs
 from the day before its first exam to the end of its last; exam days up to three days apart are one season. You're
@@ -622,11 +625,11 @@ off; crunch weeks: `startby.crunch_weeks` = 0.
 `startby.exam_by_subject` in Settings to forget the exam sizes.
 
 ### Subjects and timetable
-Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable
-(`/class mon 09:00-09:55 la`). Kurooto never calls you during a class (or in the 5 minutes before it,
-`subjects.margin_min`). `/classes today`, `/skip la` or "skipping LA today" (not going), `/attend la` (undo). "not
-going to LA on Friday" and "skipping stats tomorrow" mark that day. Other features use the subjects: after-class notes,
-the quiz, the study tracker.
+Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable (`/class mon 09:00-09:55
+la`). Kurooto never calls you during a class (or in the 5 minutes before it, `subjects.margin_min`). `/classes today`,
+`/skip la` or "skipping LA today" (not going: calls aren't held for it), `/attend la` (undo). Attendance and standing is
+gone from 0.5.8: `/skip` no longer warns about attendance. "not going to LA on Friday" and "skipping stats tomorrow"
+mark that day. Other features use the subjects: after-class notes, the quiz, the study tracker.
 
 **Term dates:** `/term ends 2026-12-04` (the last day of classes) and `/term exams 2026-12-07 to 2026-12-18` (an exam
 period; add as many as you need). On those days, after the term ends and on holidays there are no classes: no
@@ -641,83 +644,6 @@ exam periods and last day of classes count from then on, together with the ones 
 read and the next key dates. The note needs two tables:
 
 ```
-## Concept graph (books into linked notes)
-
-**What it does.** When a book has been read (Books and PDFs), its concepts are woven into your notes: a note for each
-new concept, links to the notes you already have (each with the relation and a one-sentence reason), a "Seen in"
-list on each concept with the book and pages, and, in the book's own note, which concepts each stretch of pages
-introduces. Your own text is never changed: Kurooto adds lines and keeps its parts inside `<!-- kurooto:... -->`
-markers, and a write that would touch anything else is refused.
-
-**How a batch goes.**
-1. The book is cut into batches of about 12 pages that follow its sections (numbered headings and the running headers
-   at the top of pages; a margin note such as "Section 9.1" is never taken for a heading).
-2. For each batch Kurooto finds, on this computer and without an AI, the few existing notes that may be related:
-   names and aliases, keywords and, where there's a model for them, meaning (Ollama's nomic-embed-text, or your Gemini
-   key). It shows the AI the pages and those notes only, in one request.
-3. The AI answers with the concepts the pages develop, how each relates to your notes and what an existing note lacks.
-4. Plain checks run on the answer: the quote it gives must be in those pages, a link's reason must say something
-   specific ("related to…" is refused), a link must point at a note that exists, a concept with the same name as an
-   existing note is never made a second time.
-5. Anything doubtful goes to a second look by the other AI program (or the same one, told to be strict) and is
-   dropped unless that confirms it. There is no queue for you to review.
-6. What's left is written, and, if your notes are a git repository, committed: one commit per batch, so
-   `git revert <commit>` undoes exactly that batch.
-
-**Every day** (`integrate.garden`), the notes the reading touched and notes nothing links to are checked once more
-against everything that's there now, and one line says what changed. `/graph` shows the state and the numbers that
-say how good the graph is: broken links, notes with no links in, vague reasons, and how many links go to the three
-busiest notes.
-
-**Which AI.** `integrate.roles` = `{"bulk": "agy", "check": "claude"}`. With both agy and Claude Code installed they
-split the work and run side by side; with one, it does both; with none, your main AI does (a Gemini key's daily
-limit makes that slow: set `integrate.per_night` low and `integrate.first` to your current subjects). Without a
-graphics card nothing changes except that embeddings come from the CPU or your Gemini key.
-
-| Setting | Does |
-|---|---|
-| `integrate.at` | when the night's work starts (it carries on batch after batch, and after each book is read) |
-| `integrate.roles` | the AI for the bulk work and for the second look |
-| `integrate.per_night` | the most batches a night |
-| `integrate.first` | subjects to do first |
-| `integrate.garden`, `integrate.garden_per_day` | the daily second pass |
-| `integrate.embeddings` | auto, ollama, gemini or off |
-| `integrate.commit` | one git commit per batch |
-
-**Undo.** `git revert` a batch's commit; each batch also keeps a before-copy of every file it changed in
-`<state>/integrate/undo/`. To stop it, turn the feature off in Features.
-
-**Reading cost.** The vision model now reads a maths page again only when its text layer broke the equations into
-pieces (`books.latex` = `maths`); `all` reads every maths page, `never` none.
-
-## Space keeper (cleaning off old backups and leftovers)
-
-Kurooto keeps the last `backups.keep` backup zips and, with Space keeper on, also cleans what else piles up, weekly
-(`space.when`) and on request. **Only Kurooto's own leftovers ever go**, never your notes, files or books:
-
-| What | When it goes | Setting |
-|---|---|---|
-| Backup zips | more than `backups.keep`; together over `space.backups_max_gb` (default 3); older than `space.backups_max_age_days` (default off). The oldest go first and the newest is never removed | `space.backups_max_gb`, `space.backups_max_age_days` |
-| Installer downloads, study-pack zips, zips made to send you files, cut-off downloads | older than `space.cache_days` (14) | `space.cache_days` |
-| Log files | a log bigger than `space.log_mb` (20 MB) is cut to its newest part | `space.log_mb` |
-| Finished AI requests | older than `space.jobs_days` (60) | `space.jobs_days` |
-| The concept graph's before-copies and unfinished work files | older than `space.undo_days` (30) | `space.undo_days` |
-| Help bundles and restore leftovers | older than `space.cache_days` | |
-
-`/space` (or `kurooto space`) says what Kurooto takes and what would go; `/space clean` (`kurooto space --clean`) does it.
-A weekly clean that frees 50 MB or more sends one line. The feature's status line warns when the disk Kurooto uses has
-under 2 GB free. Undo: a removed backup or download isn't recoverable (they're made again, or the next backup replaces
-them); turn the feature off to stop it.
-
-## The reserve (Markdown copies of Kurooto's state for AI programs)
-
-An AI program that only has to read a file can't fail on a permission it doesn't have, so Kurooto keeps plain Markdown
-copies of its own state in `<state>/reserve/`: `alarm.md`, `deadlines.md`, `calendar.md`, `settings.md` (what differs
-from the defaults and which features are on; never a secret), `addons.md`, and `agent-guide.md` (what an AI program may
-read, write and run, its tools by name, the chat commands). They're rewritten every 10 minutes and when an alarm
-changes, only when their text changed. `kurooto reserve` writes them now. An AI program may read this folder, never
-write to it, and Kurooto never reads it back.
-
 ## Weekly timetable
 | Day | Time | Subject | Code |
 | :--- | :--- | :--- | :--- |
@@ -941,11 +867,12 @@ computer was off runs once when it's back (if that's still one of its days).
 **Revision packs.** `/pack linear algebra midterm friday` reads that subject's notes (course page, exam prep, lecture
 notes, solutions) and builds a 2–6 page pack: what's on it, definitions, theorems with their hypotheses, formulas,
 worked problems, pitfalls and a self-test with answers. It's saved in your notes (`<subject>/revision-pack-<date>.tex`
-and `.pdf`; `revision-packs/` when the subject has no folder) and sent to Telegram. PDFs need **Tectonic**, a small
-LaTeX engine: the first pack without it comes as a `.tex` file, and a message asks **Install Tectonic** / **Not now**
-(about 25 MB, from Tectonic's official releases; the first PDF then takes a few minutes while it fetches about 50 MB
-of LaTeX packages into Kurooto's cache). After **Not now** it doesn't ask again for 30 days. If a pack doesn't
-compile, the AI gets one try to fix it; otherwise you get the `.tex`.
+and `.pdf`; `revision-packs/` when the subject has no folder) and sent to Telegram. PDFs need a LaTeX engine:
+**Tectonic** (a small one) when it's installed, else the computer's own LaTeX (`latexmk`, else `pdflatex`, from TeX
+Live, MiKTeX or MacTeX). With neither, the first pack comes as a `.tex` file, and a message asks **Install Tectonic** /
+**Not now** (about 25 MB, from Tectonic's official releases; the first PDF then takes a few minutes while it fetches
+about 50 MB of LaTeX packages into Kurooto's cache). After **Not now** it doesn't ask again for 30 days. If a pack
+doesn't compile, the AI gets one try to fix it; otherwise you get the `.tex`.
 
 **Packs before exams.** With Deadlines on, the evening before a quiz or exam that has a subject (12 to 36 hours ahead,
 from 16:00, `skills.auto_pack_after`) you're asked **A revision pack for it tonight?** with **Build it** / **No
@@ -1227,6 +1154,17 @@ Whichever way the call went, its transcript is kept and does what a live call's 
 journal and study logs. `kurooto doctor` has a line "Phone calls: voice service": how often Live failed this week
 and what the calls did instead.
 
+**After every call: the look back.** Once a call ends, a stronger AI request (your main AI, or
+`calls.review_brain`; effort `calls.review_effort`, high) reads its transcript and the tools it used. It does what
+slipped through when that's safe without asking (a reminder it misheard, a note it promised, a deadline), lists
+what needs you (anything that sends, calls, deletes or spends), and writes up to 3 short lessons for later calls.
+You get one message only when it fixed or learned something. Every later call is told the lessons (at most
+`calls.lessons_max`, 12; a new one that says the same replaces the old). `/lessons` lists them, `/lessons forget 2`
+removes one; they're a plain file you can edit, `calls/lessons.md` in the state folder. A call that only rang, or
+with no AI picked, has no look back. *Turn off:* `calls.review` = `false` (the lessons you have are still told;
+`/lessons forget` them, or empty the file). *Leaves:* the transcript and the call's tool log go to the AI that does
+the look back; the lessons go with every call's setup to your call line and Gemini Live.
+
 **Live or your phone's own speech:** `calls.voice_mode` chooses how calls listen and speak: `auto` (the default: Live,
 and your phone's speech when Live fails), `live` (Live only; when it fails, the call goes to Telegram), or `phone`
 (your phone's speech, turn by turn, every time; Live only when the phone can't). `calls.voice_by_kind` sets it per kind
@@ -1252,9 +1190,11 @@ iPhones and other browsers: answers are read aloud only where the browser has a 
 *Leaves:* call audio goes to Google (your key); the call line keeps a short brief (what's due, today's classes and
 check-ins, open questions, the steps for check-in, wake-up and Sunday review calls, your notes' titles) on your
 Cloudflare account for calls while the computer is off, and the questions and messages waiting for your phones.
-Transcripts stay on your computer. Turn by turn: your speech goes to your phone's speech service unless it's
-recognised on the phone (above); each turn's text to Gemini (your key) or the model on your computer. Text on
-Telegram: the conversation goes through your Telegram bot and your AI, like your other messages.
+Transcripts are kept on your computer; while it's off, your call line holds them until it's back. After every call, the
+transcript and the tools it used go to your AI for the look back (above; `calls.review` off stops it). Turn by turn:
+your speech goes to your phone's speech service unless it's recognised on the phone (above); each turn's text to Gemini
+(your key) or the model on your computer. Text on Telegram: the conversation goes through your Telegram bot and your
+AI, like your other messages.
 
 *Turn off / undo:* `calls.voice_mode` = `live` stops turn by turn (failed calls go to Telegram); a call on Telegram
 ends with **End the call**. The Live retries can't be turned off; `calls.live_models` = `[]` keeps them to
@@ -1468,6 +1408,24 @@ leaves the notes folder alone; `--no-start` doesn't start Kurooto afterwards; `-
 another kind of computer (Windows ↔ Mac) works; the notes folder becomes this computer's default.
 
 *Turn it off:* Features → Backups → Turn off. The zips already made stay where they are.
+
+### Space keeper (cleaning off old backups and leftovers)
+Kurooto keeps the last `backups.keep` backup zips and, with Space keeper on, also cleans what else piles up, weekly
+(`space.when`) and on request. **Only Kurooto's own leftovers ever go**, never your notes, files or books:
+
+| What | When it goes | Setting |
+|---|---|---|
+| Backup zips | more than `backups.keep`; together over `space.backups_max_gb` (default 3); older than `space.backups_max_age_days` (default off). The oldest go first and the newest is never removed | `space.backups_max_gb`, `space.backups_max_age_days` |
+| Installer downloads, study-pack zips, zips made to send you files, cut-off downloads | older than `space.cache_days` (14) | `space.cache_days` |
+| Log files | a log bigger than `space.log_mb` (20 MB) is cut to its newest part | `space.log_mb` |
+| Finished AI requests | older than `space.jobs_days` (60) | `space.jobs_days` |
+| The concept graph's before-copies and unfinished work files | older than `space.undo_days` (30) | `space.undo_days` |
+| Help bundles and restore leftovers | older than `space.cache_days` | |
+
+`/space` (or `kurooto space`) says what Kurooto takes and what would go; `/space clean` (`kurooto space --clean`) does it.
+A weekly clean that frees 50 MB or more sends one line. The feature's status line warns when the disk Kurooto uses has
+under 2 GB free. Undo: a removed backup or download isn't recoverable (they're made again, or the next backup replaces
+them); turn the feature off to stop it.
 
 ### Profile sync
 Your Kurooto setup, kept **encrypted** in your own private GitHub repository, so a new computer (or a reinstall) is set
@@ -1815,9 +1773,14 @@ Files you send yourself go to a folder of Kurooto's own in your Google Drive, **
 in pieces in the background; the link comes when it's done. Google's permission covers only the files Kurooto makes,
 so it can't see the rest of your Drive, and nothing is shared: the link opens only for you.
 
-*Settings:* `drive_upload.folder` (`Kurooto`), `drive_upload.big_files` (on).
+Files that go there only because they're over Telegram's 50 MB (a big file, a study pack) are temporary: they're
+deleted from your Drive after `drive_upload.temp_days` (7) days, and the message says so. Download or copy one you
+want to keep (in this version moving it out of the folder doesn't save it). Files you send there yourself stay.
+
+*Settings:* `drive_upload.folder` (`Kurooto`), `drive_upload.big_files` (on), `drive_upload.temp_days` (7; 0: big
+files are kept too).
 *Leaves:* the files you send, to your own Drive. *Turn it off:* Features → Drive upload → Turn off (the files stay in
-Drive until you delete them).
+Drive until you delete them; temporary ones are no longer deleted for you).
 
 | Feature | What changes | Undo |
 |---|---|---|
@@ -1918,8 +1881,84 @@ Classroom materials and notes go to the AI you picked when it writes your notes.
 index notes stay.
 *Undo:* delete a book's PDF from its folder; its index note (`<subject>/books/<book>.md`) and its text
 (`book-text/<subject>/<book>/` in the data folder) are then yours to delete, Kurooto never deletes them. `/books mix
-<subject> reset` undoes a subject's mix; Settings → `sources` resets the general one. Tesseract installed by
-`/books setup` is removed like any program (winget uninstall or Homebrew on a Mac).
+<subject> reset` undoes a subject's mix; deleting `sources` from `settings.json` resets the general one. Tesseract
+installed by `/books setup` is removed like any program (winget uninstall or Homebrew on a Mac).
+
+### Concept graph (books into linked notes)
+**What it does.** When a book has been read (Books and PDFs), its concepts are woven into your notes: a note for each
+new concept, links to the notes you already have (each with the relation and a one-sentence reason), a "Seen in"
+list on each concept with the book and pages, and, in the book's own note, which concepts each stretch of pages
+introduces. Your own text is never changed: Kurooto adds lines and keeps its parts inside `<!-- kurooto:... -->`
+markers, and a write that would touch anything else is refused.
+
+**How a batch goes.**
+1. The book is cut into batches of about 12 pages that follow its sections (numbered headings and the running headers
+   at the top of pages; a margin note such as "Section 9.1" is never taken for a heading).
+2. For each batch Kurooto finds, on this computer and without an AI, the few existing notes that may be related:
+   names and aliases, keywords and, where there's a model for them, meaning (Ollama's nomic-embed-text, or your Gemini
+   key). It shows the AI the pages and those notes only, in one request.
+3. The AI answers with the concepts the pages develop, how each relates to your notes and what an existing note lacks.
+4. Plain checks run on the answer: the quote it gives must be in those pages, a link's reason must say something
+   specific ("related to…" is refused), a link must point at a note that exists, a concept with the same name as an
+   existing note is never made a second time.
+5. Anything doubtful goes to a second look by the other AI program (or the same one, told to be strict) and is
+   dropped unless that confirms it. There is no queue for you to review.
+6. What's left is written, and, if your notes are a git repository, committed: one commit per batch, so
+   `git revert <commit>` undoes exactly that batch.
+
+**Every day** (`integrate.garden`), the notes the reading touched and notes nothing links to are checked once more
+against everything that's there now, and one line says what changed. `/graph` shows the state and the numbers that
+say how good the graph is: broken links, notes with no links in, vague reasons, and how many links go to the three
+busiest notes.
+
+**Which AI.** Picked for you by default (`integrate.roles` = `{"bulk": "", "check": ""}`): with both agy and Claude
+Code installed, agy does the bulk work and Claude Code the second look, side by side; with one, it does both; with
+none, your main AI does (a Gemini key's daily
+limit makes that slow: set `integrate.per_night` low and `integrate.first` to your current subjects). Without a
+graphics card nothing changes except that embeddings come from the CPU or your Gemini key.
+
+| Setting | Does |
+|---|---|
+| `integrate.at` | when the night's work starts (it carries on batch after batch, and after each book is read) |
+| `integrate.roles` | the AI for the bulk work and for the second look (e.g. `{"bulk": "agy", "check": "claude"}`; empty: picked for you) |
+| `integrate.per_night` | the most batches a night |
+| `integrate.first` | subjects to do first |
+| `integrate.garden`, `integrate.garden_per_day` | the daily second pass |
+| `integrate.embeddings` | auto, ollama, gemini or off |
+| `integrate.commit` | one git commit per batch |
+
+**Undo.** `git revert` a batch's commit; each batch also keeps a before-copy of every file it changed in
+`<state>/integrate/undo/`. To stop it, turn the feature off in Features.
+
+**Reading cost.** The vision model now reads a maths page again only when its text layer broke the equations into
+pieces (`books.latex` = `maths`); `all` reads every maths page, `never` none.
+
+### Study packs
+One subject's notes and course material in a zip, with a ready-made prompt, for you to give another AI (any chat AI
+that takes file uploads) and ask it for deeper study notes. Part of Skills; nothing here uses your own AI.
+
+`/studypack linear algebra` for everything, or add what it's for: `/studypack la quiz on thursday`. **Name a topic to
+narrow it:** `/studypack pota quiz on thermodynamics` (several: `on entropy, heat engines`) takes only what's about it:
+the class files that mention it, the pages of each book about it (as text, with a page either side, at most 150 pages
+a book) and your notes on it, including what the notes brain finds. "Make me a study pack for statistics" to your AI
+works too.
+- **Class material first.** Class files and books are told apart by length, since professors post books on Classroom
+  too: over 80 pages, or a title with "Ch 8", "edition" or a download site's name, is a book; 40 pages or less, or a
+  lecture, slides, notes, cheat sheet, quiz, assignment or exam paper, is class material. The zip has `class/`, then
+  `books/`, then `notes/`, with `PROMPT.md` and `INDEX.md` (every file, and what was left out and why), and the prompt
+  tells the other AI to follow the class where a book disagrees.
+- **Never a whole book:** it would flood the other AI's context. Without a topic, books are only listed in `INDEX.md`;
+  with one, only their pages on it go in. A book that [Books and PDFs](#books-and-pdfs) hasn't read yet can't be cut
+  to its pages, so it stays out. Finding those pages reads Books' extracted text on this computer.
+- **What comes to Telegram:** the zip, then the prompt as its own message, ready to copy (it's in the zip too).
+- **Size:** Telegram takes up to 50 MB. With [Drive upload](#drive-upload) on, nothing is left out: a bigger pack comes
+  as a temporary Drive link (`drive_upload.temp_days`). Without it, the zip is kept under 50 MB (notes first, then
+  class material, newest first, then books) and `INDEX.md` lists the rest. Notes over 400 KB and files over 40 MB
+  never go in, nor do hidden files.
+
+*Leaves:* nothing by itself; you choose which AI to upload the zip to. A pack over 50 MB goes to your own Drive with
+Drive upload on. *Turn it off:* turn off Skills, or just don't use `/studypack`. The zip is kept in Kurooto's cache,
+which the [Space keeper](#space-keeper-cleaning-off-old-backups-and-leftovers) clears after 14 days.
 
 ### Study tracker
 How long you spend on each subject, counted from the window you're working in: a window whose title names a subject
@@ -2190,6 +2229,14 @@ you set it up):
 
 `kurooto ask` and `kurooto call` need Kurooto running (`kurooto on`).
 
+### The reserve (Markdown copies of Kurooto's state for AI programs)
+An AI program that only has to read a file can't fail on a permission it doesn't have, so Kurooto keeps plain Markdown
+copies of its own state in `<state>/reserve/`: `alarm.md`, `deadlines.md`, `calendar.md`, `settings.md` (what differs
+from the defaults and which features are on; never a secret), `addons.md`, and `agent-guide.md` (what an AI program may
+read, write and run, its tools by name, the chat commands). They're rewritten every 10 minutes and when an alarm
+changes, only when their text changed. `kurooto reserve` writes them now. An AI program may read this folder, never
+write to it, and Kurooto never reads it back.
+
 ## Your phone
 
 ### Android (recommended)
@@ -2211,7 +2258,8 @@ language is downloaded for on-device recognition (in the phone's language or spe
    apps" list in Settings → Battery, or calls may not ring.
 5. Test: dashboard → Phone → **Ring my phone**.
 
-The app checks for a new version once a day and shows an **Update** button; it opens the download.
+The app looks for a new version each time you open it (at most every 2 minutes) and shows an **Update** button; it
+opens the download.
 
 ### iPhone
 iPhones use Kurooto as a web app on the Home Screen (iOS 16.4 or newer).
@@ -2497,7 +2545,8 @@ minutes later whether it worked.
 dashboard (a "needs a look" badge; the Features tab lists them with Fix buttons), `kurooto doctor` (a `working: ...`
 line each; `kurooto doctor --fix <id>` runs a fix in the running Kurooto) and the weekly summary.
 
-**Settings** (Settings → `health`):
+**Settings** (`health.*`; not on the dashboard's Settings page yet: change them in `settings.json` in Kurooto's settings
+ folder, [Where things are](#where-things-are)):
 - `on`: the daily pass (default `true`). `/health`, the dashboard and doctor check either way.
 - `when`: when the daily pass runs (default `daily 21:00`, before bedtime, so tonight's alarm is checked in time).
 - `auto_fix`: try the safe fixes before telling you (default `true`).
@@ -2579,10 +2628,11 @@ Kurooto updates itself. Settings → `updates.mode`:
 - **ask**: Telegram asks you (Update / Later / Skip).
 - **off**.
 
-Every release is signed; Kurooto refuses anything unsigned, older, or changed on the way. During your exams,
-[Exam season](#exam-season) holds back every update that isn't marked critical (in its signed manifest) until the
-exams are over. The previous two versions stay installed. If a new version crashes three times in its first five minutes, Kurooto goes back to the one before
-and won't offer the broken one again; you're told on Telegram. `kurooto update --now` installs an update right away.
+Every release is signed; Kurooto refuses anything unsigned, older, or changed on the way. During your exams, [Exam
+season](#exam-season) holds back every update that isn't marked critical (in its signed manifest) until the exams are
+over. The three newest versions stay installed (the one you're on and the one before it always do). If a new version
+crashes three times in its first five minutes, Kurooto goes back to the one before and won't offer the broken one again;
+you're told on Telegram. `kurooto update --now` installs an update right away.
 
 **Withdrawn versions.** When a release turns out to be broken, its maintainer puts it on a signed yank list on the
 release site. Kurooto never installs a version on that list: not when it finds it, not when it already downloaded it
@@ -2739,9 +2789,8 @@ Service on Linux), or, where there is none, in a file only your user can read in
 Commands: `kurooto on` / `kurooto off` (completely, until turned on again), `kurooto pause [2h]` / `kurooto
 resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto doctor`, `kurooto top`, `kurooto
 term`, `kurooto logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
-`kurooto update`, `kurooto autostart on|off|status`, `kurooto paths`, `kurooto rotate`, `kurooto uninstall
-[--revoke]`. For scripts: `kurooto
-`kurooto update`, `kurooto autostart on|off|status`, `kurooto cases`, `kurooto paths`, `kurooto uninstall`. For scripts: `kurooto
+`kurooto update`, `kurooto autostart on|off|status`, `kurooto cases`, `kurooto paths`, `kurooto rotate`, `kurooto
+uninstall [--revoke]`. For scripts: `kurooto
 notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog`, `watch` (see
 [From a terminal or a script](#from-a-terminal-or-a-script) and [Research](#research)).
 
@@ -2805,7 +2854,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | Done didn't tick the box in my notes | The line was changed since Kurooto read it (it's re-read every hour); tick it yourself, nothing else depends on it. |
 | A recurring quiz is on the wrong week | Put any date it really happens on in the "Next" column of `kurooto/recurring.md`. |
 | `/journal` (or another skill) goes to Chat as plain text | Turn on **Skills** (Features). `/skills` lists the names. |
-| A revision pack comes as a `.tex` file | Tectonic isn't installed: tap **Install Tectonic** in the message that came with the pack. If you tapped **Not now**, it asks again after 30 days. |
+| A revision pack comes as a `.tex` file | There's no LaTeX engine (neither Tectonic nor your own `latexmk` or `pdflatex`): tap **Install Tectonic** in the message that came with the pack. If you tapped **Not now**, it asks again after 30 days. |
 | The first PDF takes minutes | Tectonic fetches the LaTeX packages it needs once (about 50 MB); later packs take seconds. |
 | "it didn't compile" | The AI's LaTeX had an error it couldn't fix; the `.tex` is in your notes. `/pack` again, or reply with what to change. |
 | A routine didn't run | It runs when the computer is on; one missed while it was off runs once when it's back (if that's still one of its days). `/routines` shows what's set. |
