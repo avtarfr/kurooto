@@ -17,7 +17,7 @@ Class attributes:
 | `title`, `description` | shown on the feature card |
 | `privacy` | one or two plain sentences: what leaves the computer and where it goes. The default is "Stays on this computer.", so a module that sends anything must override it |
 | `requires` | ids of features that must be on first (`App.enable` refuses otherwise; `App.disable` refuses to turn off something another feature requires) |
-| `extra` | True: an add-on that ships with Kurooto: in no preset, listed apart under Features, on only by hand (Exam season) |
+| `extra` | True: an add-on that ships with Kurooto: in no preset, listed apart under Features, on only by hand (Exam season, Learns from its own work) |
 | `heavy` | True: its scheduled work and background task wait for the charger in battery saver mode (`core/power.py`) |
 | `processes`, `processes_intermittent` | program names or command-line fragments to show CPU and memory for on the dashboard |
 
@@ -323,7 +323,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **library** (`modules/library.py`): `/note` into the inbox; `/prompts`, `/prompt` (the prompt library in
   `<notes>/prompts`).
 - **remember** (`modules/remember.py`): "remember that ..." appended to `about-me/how-to-help-me.md` (health, money and
-  credentials refused by `SENSITIVE`); `help_brief()` goes into every AI request's context.
+  credentials refused by `SENSITIVE`); `help_brief()` goes into every AI request's context. `keep(app, fact, via,
+  section)` is the one path for a fact (Remember's command, intent and call tool, and Learns from its own work's
+  facts); `remove_line()` takes a line Kurooto added out again, exactly as written (an Undo).
 
 ### Time and attention
 
@@ -438,7 +440,46 @@ arrives.
   marks them in `research-papers.json` once delivered: right after the plain digest, or in the `research.digest`
   then-action when the AI-picked one succeeded.
 - **retro** (`modules/retro.py`, requires `chat`): the nightly look back proposes setting, profile, skill and idea
-  changes, each confirmed through `app.ask`; only settings in `TUNABLE` (and modules' `tunable`) may be proposed.
+  changes, each confirmed through `app.ask`; only settings in `TUNABLE` (and modules' `tunable`) may be proposed. With
+  Learns from its own work's `remember` part on (`Learning.picks_facts()`), `_run` appends `learning.REMEMBER_ASK` to
+  the instructions, adds `chats` (the day's own requests, `Learning.chats`) to the input, and hands the answer's
+  `remember` list to `Learning.keep_facts`, which keeps them without a tap.
+- **learning** (`modules/learning.py:Learning`, requires `chat`, `extra = True`): "Learns from its own work", four parts
+  each behind a setting (`learning.search`, `skills`, `corrections`, `remember`; `part(name)` is the feature and the
+  part both on) and a card toggle (`card`, `card_action`, `PARTS`).
+  - Search: `History` keeps an SQLite FTS5 table `docs(title, body, key, kind, at)` in `<state>/learning/history.db`
+    (a plain table matched with `LIKE` when this Python's SQLite lacks FTS5). `update()` adds only what's new: jobs
+    from `Jobs.finished_since(mark)` (lane `you`, not `learning.*` then-actions; the request text through `asked()`,
+    which drops Chat's earlier turns and a skill's `RULES`), transcripts by file mtime (`marks` table), chat turns
+    newer than the last one, skipping a turn whose answer hash is already indexed (`answers` table). It runs every
+    15 minutes (`learning:index`, in a thread) and before each `search()` (all words with prefix match, then any word;
+    `bm25` with the title weighted 4x). `/history [Nd] <words>`; tool `search_history` (`agent_tools()`, so unattended
+    runs of every brain get it, not calls). `core/space.py:history_items` prunes items older than `space.jobs_days`;
+    `footprint` shows the index on its own; Backups skip it (`SKIP_STATE_FILES`).
+  - Skills from experience: `_finished` is a `Jobs.watchers` entry (registered in `__init__`, gated on the feature).
+    For an ok job in lane `you` with no then-action and at least `skill_min_steps` steps (the tool log, or
+    `usage["tool_calls"]`), at most `CHECKS_A_DAY` a day, `judge_skill` submits `LEARN_SKILL` text-only, low effort,
+    background, lane `chk`, on `check_brain()` (`learning.brain`, else `modules/integrate.py:Integrate.roles()[1]`),
+    then-action `learning.skill`. `_skill_judged` reads `NONE` / `IMPROVE <name>` + bullets / `NEW` + a fenced
+    SKILL.md. New: `make()` must accept it, no existing skill may share its name or mostly its words (`similar`, a
+    Jaccard of 0.5 over name and description), not a command name; written with `stamp()` (`learned: true`,
+    `learned_from`, `learned_on`; `internal:` dropped) via `write_note_file(create=True)` into `skills.user_dir`.
+    Improve: tips under "## Learned from experience" through `_change`.
+  - Corrections: `_finished` also remembers the last skill answer (`then` `skills.done`/`skills.latex`) in
+    `state.json`. `heard(msg, text)` is called from `App.handle` for every non-reply message that isn't a command
+    (it never consumes it): `CORRECTION` within `CORRECTION_WINDOW_S` of that answer. `Skills._again` (a reply to a
+    skill's answer) calls `corrected(..., replied=True)`, which needs `CORRECTING` words. `LESSON` goes to the same
+    lane and brain (then-action `learning.lesson`): `LESSON: ...` adds a line under "## Lessons"; `REWRITE` + a fenced
+    file replaces it only if the file is unchanged since (`base` hash), still a skill with its header, and 0.5 to 2x
+    the old length.
+  - `_change(name, fn, kind)` edits a skill: your file for `yours`/`prompt` skills, else `Skills.customize` makes your
+    copy (`created`, so Undo deletes it). The old text is kept in `<state>/learning/before/`; every change is a record
+    in `changes.json` (last `KEEP_CHANGES`) with the new text's hash. `undo(id)` (button `lrn:<id>:undo`, `/learned`)
+    refuses when the file's hash changed since; a fact is removed with `modules/remember.py:remove_line`.
+  - Facts: `keep_facts` drops lines matching `OTHERS` (relatives and friends, third-person pronouns, `@`, phone
+    numbers), then `modules/remember.py:keep` (Remember's own rules: `MAX_FACT`, `sensitive()`, no duplicates) into
+    the section `PICKED`; one message with an Undo per fact.
+  - Calm reasons `learning.skill`, `learning.lesson`, `learning.remember`; events `learning_*`, `history_searched`.
 - **files** (`modules/files.py`): `take_files` for incoming files; with Chat on, an AI job files them.
 
 Helpers that aren't modules: `modules/text.py` (time parsing, `too_complex`, `tidy`), `modules/daily.py` (the daily
@@ -452,3 +493,16 @@ note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py
   and `list(self.mine)[-50:]` keeps an arbitrary 50 ids rather than the newest.
 - `modules/hints.py:policy_kind` tests "no solutions" before "no AI", so a policy line saying both is read as hints
   allowed.
+- `modules/research.py`: papers are marked seen before the AI-ranked digest is delivered; a failed digest loses them.
+- `modules/capture.py` and `modules/checkins.py` declare no `privacy` and inherit "Stays on this computer.", though with
+  Chat on their content goes to the AI. `modules/google_mail.py:MailDigest.privacy` says confidential mail is never
+  read, but `mail_digest.confidential = "local"` has a local model read it.
+- `modules/skills.py:compile_tex` passes `-no-shell-escape` to pdflatex but not to latexmk.
+- `modules/calendar.py:Calendar.refresh` keeps the old copy only when every link failed; one failing link among several
+  silently drops that link's events.
+- `modules/classpacks.py`: `attendance_rules`, `attendance_rule` and `class_kind` have no callers once Attendance is
+  removed.
+- `modules/learning.py`: only the last skill answer is remembered for a "no, ..." correction (`state.json`
+  `last_skill`), so a correction meant for an earlier skill answer goes to the latest one. The duplicate check for a
+  learned skill compares words of names and descriptions only, so a reworded duplicate can slip through. The tool log
+  is in memory: a request that finishes after a restart counts only the steps since.

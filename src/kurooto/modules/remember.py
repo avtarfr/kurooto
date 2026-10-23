@@ -1,9 +1,10 @@
 """Remember: tell Kurooto how you like to be helped ("remember that I hate calls before 8") and it keeps it.
 
 What you tell it goes into your notes, in about-me/how-to-help-me.md (or where your notes layout keeps it), which you
-can read and edit like any note: your edits win, and Kurooto never rewords or removes a line. A short version of that
-note goes along with every AI request Kurooto makes, next to the "In brief" part of your profile. The nightly look
-back adds lines there too, but only the ones you approve.
+can read and edit like any note: your edits win, and Kurooto never rewords or removes a line (except taking out one
+it added itself, when you tap that line's Undo). A short version of that note goes along with every AI request
+Kurooto makes, next to the "In brief" part of your profile. The nightly look back adds lines there too, but only the
+ones you approve, or, with Learns from its own work on, facts you stated (keep(), under PICKED, each with an Undo).
 
 It won't keep health, money or password details: those would travel with every AI request. Reminders and your own
 notes are the place for them.
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
 
 HELP_NOTE = "about-me/how-to-help-me.md"  # in the default notes layout; help_file() / help_rel() say where it is
 TOLD = "You told me"
+PICKED = "Picked up from your chats and calls"  # what Learns from its own work keeps by itself (modules/learning.py)
 INTRO = (
     "# How to help me\n\n"
     "What {name} has learned about how you like to be helped. Edit it freely: what you write here wins, and {name} "
@@ -97,6 +99,46 @@ def add_line(app: App, section: str, line: str) -> bool:
     return True
 
 
+def remove_line(app: App, line: str) -> bool:
+    """Take out one line Kurooto added ("- line", exactly as it was written), for an Undo. False if it isn't there
+    as written any more (you changed or removed it): then nothing changes."""
+    f = help_file(app)
+    try:
+        text = f.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+    lines = text.split("\n")
+    want = f"- {line}".rstrip()
+    hit = next((i for i, ln in enumerate(lines) if ln.rstrip() == want), None)
+    if hit is None:
+        return False
+    from kurooto.core.tools import write_note_file
+
+    write_note_file(f, "\n".join(lines[:hit] + lines[hit + 1 :]))
+    return True
+
+
+def keep(app: App, fact: str, via: str = "telegram", section: str = TOLD) -> tuple[str, str]:
+    """Keep one fact by Remember's rules: one short line, never health, money or password details, never twice. It
+    goes at the end of "## section" with today's date. (status, detail): "kept" and the line as written; "refused"
+    and which kind of detail; "known"; "empty"; "long"."""
+    fact = re.sub(r"\s+", " ", str(fact or "")).strip().rstrip(".")
+    if not fact:
+        return "empty", ""
+    if len(fact) > MAX_FACT:
+        return "long", ""
+    kind = sensitive(fact)
+    if kind:
+        app.events.emit("remember_refused", what=kind, via=via)
+        return "refused", kind
+    fact = fact[0].upper() + fact[1:]
+    line = f"{fact} ({now():%Y-%m-%d})"
+    if not add_line(app, section, line):
+        return "known", ""
+    app.events.emit("remembered", chars=len(fact), via=via)
+    return "kept", line
+
+
 def help_brief(app: App, limit: int = 1500) -> str:
     """The note without its title and the standard intro, for the AI's context; cut at `limit` characters."""
     try:
@@ -128,20 +170,16 @@ class Remember(Module):
     )
 
     def remember(self, fact: str, via: str = "telegram") -> str:
-        fact = re.sub(r"\s+", " ", str(fact or "")).strip().rstrip(".")
-        if not fact:
+        status, detail = keep(self.app, fact, via)
+        if status == "empty":
             return "What should I remember? e.g. /remember I hate calls before 8"
-        if len(fact) > MAX_FACT:
+        if status == "long":
             return f"That's long for one line (keep it under {MAX_FACT} characters); your notes suit longer things."
-        kind = sensitive(fact)
-        if kind:
-            self.app.events.emit("remember_refused", what=kind, via=via)
-            return REFUSE.format(what=WHAT[kind])
-        fact = fact[0].upper() + fact[1:]
-        if not add_line(self.app, TOLD, f"{fact} ({now():%Y-%m-%d})"):
+        if status == "refused":
+            return REFUSE.format(what=WHAT[detail])
+        if status == "known":
             return "I know that already."
-        self.app.events.emit("remembered", chars=len(fact), via=via)
-        return f"Noted in {help_rel(self.app)}: {fact}."
+        return f"Noted in {help_rel(self.app)}: {detail.rsplit(' (', 1)[0]}."
 
     # ------------------------------------------------------------------------------------------ Telegram
     def commands(self):

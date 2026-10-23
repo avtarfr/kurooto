@@ -323,6 +323,7 @@ Otherwise pair them again (see [Phone app](phone-app.md)).
 | Installer downloads, study-pack zips, zips made to send you files, cut-off downloads | older than `space.cache_days` (14) | `space.cache_days` |
 | Log files | a log bigger than `space.log_mb` (20 MB) is cut to its newest part | `space.log_mb` |
 | Finished AI requests | older than `space.jobs_days` (60) | `space.jobs_days` |
+| The search index of past requests, calls and chats ([Learns from its own work](teaching-kurooto.md#learns-from-its-own-work)) | what it holds from more than `space.jobs_days` (60) ago | `space.jobs_days` |
 | The concept graph's before-copies and unfinished work files | older than `space.undo_days` (30) | `space.undo_days` |
 | Help bundles and restore leftovers | older than `space.cache_days` | |
 | Old program versions | beyond the ones kept for going back | |

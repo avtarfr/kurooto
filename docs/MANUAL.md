@@ -22,7 +22,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
   - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Hint ladder](#hint-ladder) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) · [After-class notes](#after-class-notes) ·
-    [Remember](#remember) · [Nightly look back](#nightly-look-back) ·
+    [Remember](#remember) · [Nightly look back](#nightly-look-back) · [Learns from its own work](#learns-from-its-own-work) ·
     [Wrong button and test cases](#wrong-button-and-test-cases)
   - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) ·
     [Reminders with the lid shut](#reminders-with-the-lid-shut) · [Voice notes](#voice-notes) ·
@@ -999,6 +999,8 @@ what you write there wins. A short version of it goes along with every AI reques
 brief" part of your profile. `/remember` on its own shows what it keeps.
 
 It won't keep health, money or password details (they'd travel with every AI request); it says so and keeps nothing.
+With [Learns from its own work](#learns-from-its-own-work) on, the nightly look back adds facts you stated by itself,
+under "Picked up from your chats and calls", each with an Undo that takes that one line out again.
 "Remember to buy milk" is a reminder, not this: use Reminders for that.
 
 *Turn it off:* Features → Remember. The note stays in your notes; delete or edit it as you like. While the note
@@ -1036,6 +1038,40 @@ now.
 (3), `observe_days` (7), `no_days` (30), `transcripts` (on), `journal` (on). The look back's instructions are the
 `retro` skill: put your own copy in `kurooto/skills/retro/SKILL.md` to change how it thinks (it's not a command).
 *Needs:* Chat. *Turn it off:* Features → Nightly look back. Waiting suggestions stay answerable for three days.
+
+### Learns from its own work
+An optional add-on (Features → Add-ons; in no preset; needs Chat). Kurooto keeps what its own finished work teaches it.
+It doesn't ask first: it acts, tells you in one line, and every change has an **Undo** button (`/learned` lists the
+last ten with theirs). Four parts, each with a switch on the card and a setting:
+- **Search its memory** (`learning.search`): a search index of your past AI requests and their answers, call
+  transcripts and chats, kept on this computer (`learning/history.db` in the state folder, brought up to date every 15
+  minutes and before each search). `/history lab report` (or `/history 7d lab report` for the last 7 days) shows the
+  best matches; the AI searches it too (the `search_history` tool) when you refer to something from before.
+- **Skills from experience** (`learning.skills`): after a request of yours that went well and took at least
+  `learning.skill_min_steps` (5) tool uses, a background request on the second-look AI (low effort) decides whether
+  it's a procedure you'd want again. If so it writes a skill into `kurooto/skills/<name>/SKILL.md` with `learned: true`,
+  `learned_from` (the request) and `learned_on` (the date) in its header, and says "Learned a skill: /weekly-lab-report,
+  from today's request. /skills weekly-lab-report to see it." When a skill already does it, it adds a few tips to that
+  skill under "## Learned from experience" instead; never a second skill for the same thing. At most five requests a
+  day are looked at.
+- **Lessons from corrections** (`learning.corrections`): reply to a skill's answer saying what was wrong, or send "no,
+  ...", "that's wrong", "next time ..." within two hours of it, and the skill gets a line under "## Lessons" ("Lesson
+  for /journal: Put the date in the title."), or rarely the step that went wrong rewritten. A reply that only answers
+  the skill's question isn't a correction.
+- **Worth remembering** (`learning.remember`, at most `learning.remember_max` (3) a night): the nightly look back also
+  picks out lasting facts and preferences you stated in the day's chats and calls, and adds them to your how-to-help-me
+  note under "Picked up from your chats and calls", by Remember's rules: never health, money, passwords, or anything
+  about other people. Needs the nightly look back on.
+
+Learned skills and lessons need Skills on. For a skill that comes with Kurooto, the change goes into your own copy.
+`learning.brain` picks the AI that takes the second look ("": the concept graph's second-look AI, else your main one).
+*Undo:* the message's **Undo** (or `/learned`): a new skill is removed; a changed skill goes back to how it was (its
+earlier version is kept in `learning/before/` in the state folder; your own copy of a shipped skill is removed); a fact
+is taken out of the note. If you edited the skill or the line since, Undo leaves it alone. Turning the feature off
+keeps what it learned.
+*Leaves:* nothing to build the index. When the AI searches it, the passages it finds go to that AI with the request;
+learning a skill sends the request, its answer and steps, and a lesson your correction and the skill, to the
+second-look AI; picking up facts sends the day's requests to the AI the look back uses.
 
 ### Wrong button and test cases
 When Kurooto gets a plain-English request wrong, tap **Wrong** under its reply (or under the AI's answer), or send

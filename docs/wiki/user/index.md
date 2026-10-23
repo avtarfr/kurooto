@@ -46,7 +46,7 @@ all of them.
 - [Google](google.md): Classroom, Gmail digest and reply drafts, Google Calendar, the Agent plan calendar, Drive upload, and setting up your own Google sign-in.
 
 **Kurooto itself**
-- [Teaching Kurooto](teaching-kurooto.md): your profile, Remember, the nightly look back, the Wrong button.
+- [Teaching Kurooto](teaching-kurooto.md): your profile, Remember, the nightly look back, learning from its own work, the Wrong button.
 - [Dashboard](dashboard.md): every pane and page, Today, Ctrl+K, keyboard shortcuts, colours, terminals, `kurooto top`.
 - [Your computer](your-computer.md): battery, pause and off, staying awake, starting at boot, hardware and local models, diagnostics.
 - [Updates and backups](updates-and-backups.md): updates and going back, backups and restore, Profile sync, a new computer, Space keeper, uninstalling.
@@ -86,6 +86,7 @@ its commands with "X is off: Features → X → Turn on". Some features need ano
 | After-class notes | after each class, what was worth keeping | Telegram, Subjects | [Classes and timetable](classes-and-timetable.md) |
 | Remember | how you like to be helped | Telegram | [Teaching Kurooto](teaching-kurooto.md) |
 | Nightly look back | small improvements suggested each night | Telegram, Chat | [Teaching Kurooto](teaching-kurooto.md) |
+| Learns from its own work (optional) | searches past requests and calls; skills from its own work and your corrections; facts you state | Chat | [Teaching Kurooto](teaching-kurooto.md#learns-from-its-own-work) |
 | Wrong button and test cases | teach it your words | Telegram | [Teaching Kurooto](teaching-kurooto.md) |
 | Phone calls | call Kurooto, and let it call you | | [Phone calls](calls.md) |
 | Morning alarm | a wake-up call that rings on silent | Phone calls | [Phone calls](calls.md) |

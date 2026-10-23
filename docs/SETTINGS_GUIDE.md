@@ -404,6 +404,18 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 |---|---|---|
 | `jobs.stuck_min` | `10` | the watchdog: minutes with no AI at work and no program running |
 
+### `learning`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `learning.brain` | `""` | the AI that looks at finished work ("": the concept graph's second-look AI, else your main one) |
+| `learning.corrections` | `true` | a skill learns a lesson when you correct its answer |
+| `learning.remember` | `true` | the nightly look back keeps facts you stated in your chats and calls (how-to-help note) |
+| `learning.remember_max` | `3` | facts kept a night, at most |
+| `learning.search` | `true` | a search index of past requests, calls and chats on this computer: /history, search_history |
+| `learning.skill_min_steps` | `5` | tool uses a request needs before it's looked at as a possible skill |
+| `learning.skills` | `true` | a request that took many steps can become a skill (or improve the one that does it) |
+
 ### `lidsafe`
 
 | Setting | Default | What it does |

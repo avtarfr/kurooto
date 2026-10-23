@@ -18,9 +18,6 @@ Standing plans, never struck through.
   local alarm and notification buttons are planned for 0.6.0.
 - **A /help that lists everything** on Telegram and in the app's chat: every command and request it understands, in
   groups, with a link to the user wiki for the rest.
-- **Learns from its own work, like Hermes Agent** (Nous Research, MIT licence; adapted code keeps its notice): after a
-  request that took many steps, how it did it is saved as a skill; a skill improves when you correct its result; it
-  searches its memory of past requests and calls; it suggests what's worth remembering.
 - **Dreaming**: while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
   your journal), consolidates what it learned into memory and your profile, spots contradictions and loose ends, and
   tells you in the morning what it tidied.
@@ -54,6 +51,10 @@ Standing plans, never struck through.
 - ~~Handwritten notes linked like any note~~ (0.5.8): a title from what's written, the subject and the lecture it
   was written in, links to the course page and the concepts on it, and its doubts kept findable (`/handwritten link`
   for older ones).
+- ~~Learns from its own work, like Hermes Agent: after a request that took many steps, how it did it is saved as a
+  skill; a skill improves when you correct its result; it searches its memory of past requests and calls; it suggests
+  what's worth remembering~~ (0.5.8, the optional "Learns from its own work": `/history`, `/learned`; the design only,
+  none of Hermes Agent's code)
 - ~~PDF, Word and PowerPoint to Markdown with MarkItDown~~ (dropped: Books already reads PDFs page by page, with
   OCR for scans, and Classroom keeps text of Office files; the slow part of reading is the AI, not the conversion)
 - ~~Drop attendance tracking entirely~~ (0.5.8; skipping a class still works). Exam season becomes an add-on, off by

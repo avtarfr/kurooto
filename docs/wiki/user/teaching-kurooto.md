@@ -1,17 +1,19 @@
 # Teaching Kurooto about you
 
-Kurooto gets better at helping you in five ways, and you can see and change every one of them:
+Kurooto gets better at helping you in six ways, and you can see and change every one of them:
 
 | What | What it keeps | Where | Goes along with |
 |---|---|---|---|
 | [About you](#about-you-your-profile) | a profile built from what your other AI accounts know about you | `about-me/profile.md` in your notes | every AI request (its **In brief** part only, up to 2,500 characters) |
 | [Remember](#remember) | how you like to be helped, in your words | `about-me/how-to-help-me.md` in your notes | every AI request (a short version, up to 1,500 characters) |
 | [Nightly look back](#nightly-look-back) | suggestions you approve: settings, lines for the note above, skill changes, ideas | your settings, that note, your skills, `kurooto/ideas.md` | |
+| [Learns from its own work](#learns-from-its-own-work) (optional) | a search of past requests, calls and chats; skills from requests that took many steps; lessons from your corrections; facts you state | Kurooto's state folder (the search index); your skills; that note | requests that search it (the passages found) |
 | [Wrong button and test cases](#wrong-button-and-test-cases) | requests it got wrong, and your words for things | Kurooto's state folder | instant requests on Telegram |
 | [Call lessons](#call-lessons) | how calls could go better | Kurooto's state folder | every call |
 
 Nothing changes without your say: the look back asks before every change, taught phrasings need your tap, and the
-two notes are yours to edit (your edits win). Paths are the default notes layout's; in the zettelkasten layout the
+two notes are yours to edit (your edits win). The one exception is the optional **Learns from its own work**, which you
+turn on by hand: it acts, tells you in one line each time, and every change has an Undo. Paths are the default notes layout's; in the zettelkasten layout the
 `about-me/` notes are in `master/` and `kurooto/ideas.md` is `master/ideas.md`.
 
 ---
@@ -88,7 +90,8 @@ On a call: "remember that I study best in the morning" (the `remember` tool).
 - A line it already has: "I know that already."
 - The note is yours: read it, edit it, add your own lines. Kurooto never rewords or removes a line, and what you write
   there wins. The nightly look back adds lines only when you approve them (under "Learned in the nightly look
-  back").
+  back"), except the facts [Learns from its own work](#learns-from-its-own-work) picks up, if you turned it on (under
+  "Picked up from your chats and calls", each with an Undo that takes only that line out again).
 
 **What leaves your computer.** The short version of the note goes to the AI you picked with every request.
 
@@ -164,6 +167,59 @@ command).
 turned off), your how-to-help-me note and the settings it may change go to the AI you picked.
 
 **Turn it off.** Features → Nightly look back. Waiting suggestions stay answerable for three days.
+
+---
+
+## Learns from its own work
+
+**What it does.** Kurooto keeps what its own finished work teaches it, in four parts, each with its own switch. It
+doesn't ask first: it acts and tells you in one line, with an **Undo** button. (The idea comes from Hermes Agent, by
+Nous Research; none of its code is used.)
+
+| Part | What happens | Setting |
+|---|---|---|
+| Search its memory | a search index of your past AI requests and their answers, call transcripts and chats, on this computer. `/history <words>` searches it, and the AI can too (the `search_history` tool) when you say "like last week" or "what did I ask about ..." | `learning.search` |
+| Skills from experience | after a request that went well and took 5 or more steps (tool uses), the AI looks at how it was done. A procedure you're likely to want again becomes a skill in your skills folder ("Learned a skill: /weekly-lab-report, from today's request"), or, when a skill already does it, a few tips added to that skill under "Learned from experience". Never a second skill for the same thing | `learning.skills`, `learning.skill_min_steps` |
+| Skills learn from corrections | correct a skill's answer (reply to it with what was wrong, or send "no, ...", "that's wrong", "next time ..." within two hours of it) and the skill gets a line under "## Lessons" ("Lesson for /journal: Put the date in the title"); rarely, the step that went wrong is rewritten instead | `learning.corrections` |
+| Worth remembering | the nightly look back also picks out up to 3 lasting facts or preferences you stated in the day's chats and calls ("I'm a morning person") and adds them to your how-to-help-me note, under "Picked up from your chats and calls" | `learning.remember`, `learning.remember_max` |
+
+**Turn it on.** Features → Add-ons → Learns from its own work (it's in no preset). It needs Chat. Learned skills and
+lessons need [Skills](skills-and-routines.md) on; picking up facts needs the [Nightly look back](#nightly-look-back)
+on. The card on the Features page has a switch for each part.
+
+**From Telegram.**
+
+| You send | What happens |
+|---|---|
+| `/history lab report` | the best matches among past requests, calls and chats: when, what kind, the title and the passage |
+| `/history 7d linear algebra` | only the last 7 days |
+| `/learned` | what it learned lately (skills, tips, lessons, facts), each with **Undo** |
+
+**Undo.** Every message has an **Undo** button, and `/learned` lists the last ten changes with theirs.
+- A new skill is removed. Tips or a lesson are taken out again: the skill file goes back to how it was (a copy of it is
+  kept in Kurooto's state folder, `learning/before/`). For a skill that comes with Kurooto, the change was made in your
+  own copy (`kurooto/skills/<name>/SKILL.md`), and Undo removes that copy.
+- If you edited the skill since, Undo leaves it alone and says where the earlier version is.
+- A fact is taken out of your how-to-help-me note, unless you changed that line.
+
+**Rules it keeps.**
+- Only your own requests are looked at, not background work (digests, routines, the concept graph). At most five a
+  day are looked at as possible skills.
+- A learned skill's file says so in its header: `learned: true`, the request it came from (`learned_from`) and the
+  date (`learned_on`). Edit or delete it like any of your skills.
+- Facts follow [Remember](#remember)'s rules: one short line, never health, money or password details, and never
+  anything about other people (a line about your sister, a phone number or an email address is left out).
+- A reply that only answers a skill's question ("week 3") isn't a correction.
+
+**What leaves your computer.** The search index is built and kept on this computer. When the AI searches it during a
+request, the passages it finds go to that AI with the request. Learning a skill sends the finished request, its answer
+and the steps it took to the AI that takes second looks (`learning.brain`; by default the concept graph's second-look
+AI, else your main one); a lesson sends your correction and the skill. Picking up facts sends the day's requests to
+the AI the nightly look back uses.
+
+**Turn it off.** Features → Learns from its own work, or one part on its card. Learned skills, lessons and facts stay
+where they are (they're yours now); the search index stays in the state folder until the Space keeper trims it (it
+forgets what's older than `space.jobs_days`, 60 days, like finished requests).
 
 ---
 
@@ -260,6 +316,9 @@ Each has **Why?** and **Less of this** on Telegram ([messages-it-sends.md](messa
 | "What I found about ..." | a watch you or the look back started ended | (an answer to what you asked) |
 | "Look back: phrasings that came up most..." | the monthly review of cases (`cases.review_days`) | Fewer makes it half as often |
 | "What I fixed and learned looking back at a call" | the call look back (`calls.review`) | |
+| "Learned a skill: /..." or "Improved a skill: /..." with Undo | Learns from its own work (`learning.skills`) | Stop; Fewer makes it one a day |
+| "Lesson for /...: ..." with Undo | a correction of a skill's answer (`learning.corrections`) | Stop |
+| "Kept from today's chats and calls ..." with Undo | the nightly look back with Learns from its own work (`learning.remember`) | Stop |
 
 ---
 
@@ -273,4 +332,6 @@ Each has **Why?** and **Less of this** on Telegram ([messages-it-sends.md](messa
 | The look back never suggests anything | Most days that's right. `/lookback` shows when it last ran; on a laptop it waits for the charger. `/lookback now` runs one. |
 | A skill change says "nothing changed" | The AI's version was the same, or it broke the skill's header. It may suggest it again another night. |
 | "Saved as a test case, but not learned" | Teaching that phrasing would break another test case (the message says which), or it's a request that sends, calls or deletes. |
+| A learned skill or lesson isn't what you wanted | Tap its **Undo** (or `/learned`). Turn that part off on the card if it keeps happening. |
+| `/history` finds nothing you know you asked | Only your own requests that ended well are kept, and only for 60 days (`space.jobs_days`). Searching by a word from the answer works too. |
 | "1 phrasing you taught no longer works" | The request it stood for changed or its feature is off. `/cases`: Unlearn it, then teach it again with `/wrong <words>`. |

@@ -687,8 +687,9 @@ def agent_tools(app: App) -> list[Tool]:
     return out
 
 
-def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, via: str = "ai"):
-    """Run one tool by name. Never raises: a problem comes back as a sentence the AI can read."""
+def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, via: str = "ai", job: str | None = None):
+    """Run one tool by name. Never raises: a problem comes back as a sentence the AI can read. job: the AI request
+    this is a step of (its tool log, core/jobs.py:Jobs.note_step)."""
     tool = next((t for t in (tools if tools is not None else agent_tools(app)) if t.name == name), None)
     if not tool:
         return f"There's no {name} tool (that feature may be off)."
@@ -697,6 +698,9 @@ def run_tool(app: App, name: str, args: dict, tools: list[Tool] | None = None, v
     if missing:
         return f"{name} needs: {', '.join(missing)}."
     app.events.emit("tool_used", name=name, via=via)
+    note = getattr(getattr(app, "jobs", None), "note_step", None)
+    if job and note is not None:
+        note(job, name, args)
     try:
         return tool.run(args)
     except Exception as e:

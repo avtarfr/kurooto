@@ -62,7 +62,9 @@ already reflects: calls get a post-call look back (`modules/calls/review.py`, `/
 Chat's own requests (`modules/chat.py:Chat.owns`, checked in `core/jobs.py:Jobs._deliver`). Also in 0.5.8:
 Attendance is removed (`core/upgrade.py:drop_retired`), Exam season is an add-on (`Module.extra`), topic study packs
 (`core/studypack.py`: class material ranked above books, never a whole book), `/help` lists everything and searches
-(`app.py:App.help`), and scheduled actions all take the payload (`tests/unit/test_scheduled_actions.py`).
+(`app.py:App.help`), and scheduled actions all take the payload (`tests/unit/test_scheduled_actions.py`). Learns from its own work
+(`modules/learning.py`, an add-on): a per-request tool log and `Jobs.watchers` (`core/jobs.py`), an FTS5 search index
+of past requests, skills and lessons learned with Undo, facts kept by the nightly look back.
 
 Pages about code end with the known problems found while writing them (verified against the code at the time of
 writing); they are worth fixing, each with a test.

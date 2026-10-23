@@ -690,6 +690,9 @@ class Skills(Module):
         if s is None:
             return f"The skill {name} is gone."
         prev = self.app.jobs.get(jid) if jid else None
+        learning = self.app.modules.get("learning")  # a correction teaches the skill a lesson (modules/learning.py)
+        if learning is not None and self.app.is_on("learning"):
+            learning.corrected(s.name, jid, msg.text, replied=True)
         before = (prev.result or "")[-3000:] if prev else ""
         args = msg.text.strip()
         if before:

@@ -420,6 +420,26 @@ REASONS: dict[str, Reason] = {
             suggest=True,
         ),
         R(
+            "learning.skill",
+            "a skill learned (or improved) from a request that took many steps",
+            many="learned skills",
+            setting="learning.skills",
+            stop=to(False, "no more skills learned from requests"),
+            fewer=DAILY,
+        ),
+        R(
+            "learning.lesson",
+            "a lesson a skill took from your correction",
+            setting="learning.corrections",
+            stop=to(False, "skills don't take lessons from corrections any more"),
+        ),
+        R(
+            "learning.remember",
+            "facts from your chats and calls kept in your how-to-help-me note",
+            setting="learning.remember",
+            stop=to(False, "nothing more is kept by itself"),
+        ),
+        R(
             "cases.review",
             "the look back at what you typed that I didn't understand",
             setting="cases.review_days",

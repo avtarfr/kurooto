@@ -25,6 +25,7 @@ from kurooto.modules.google_plan import AgentPlan
 from kurooto.modules.handwritten import Handwritten
 from kurooto.modules.hints import Hints
 from kurooto.modules.integrate import Integrate
+from kurooto.modules.learning import Learning
 from kurooto.modules.library import Library
 from kurooto.modules.lidsafe import LidSafe
 from kurooto.modules.local_models import LocalModels
@@ -71,6 +72,7 @@ CATALOG = [
     Capture,
     Remember,
     Retro,
+    Learning,
     Cases,
     Calls,
     Alarm,

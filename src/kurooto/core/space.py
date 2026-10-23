@@ -9,6 +9,8 @@ chose except Kurooto's own backup zips there:
                      they're older than space.cache_days (they're made again when needed)
     logs             a log file past space.log_mb is cut to its newest part
     jobs             finished AI requests older than space.jobs_days (their answers were delivered long ago)
+    history          what the search index of past requests, calls and chats holds from before space.jobs_days
+                     (Learns from its own work, modules/learning.py)
     pending          unfinished work files of the concept graph and its before-copies, once they're older than
                      space.undo_days
     diagnostics      help bundles (kurooto-diagnostics-*) and restore leftovers older than space.cache_days
@@ -53,12 +55,12 @@ DIAG = re.compile(r"^(kurooto-diagnostics-.*|restore-.*)$")
 
 @dataclass
 class Item:
-    kind: str  # backups | cache | logs | jobs | pending | diagnostics | versions
+    kind: str  # backups | cache | logs | jobs | history | pending | diagnostics | versions
     what: str  # a plain sentence
     bytes: int
     paths: list[Path] = field(default_factory=list)
     cut_to: int = 0  # for a log: keep this many bytes from the end
-    sql: str = ""  # for jobs: the cutoff time
+    sql: str = ""  # for jobs and history: the cutoff time
 
 
 def size(p: Path) -> int:
@@ -180,6 +182,31 @@ def job_items(app: App, now: float) -> list[Item]:
     return [Item("jobs", f"{n} finished AI requests older than {days:g} days", int(chars), [db], sql=str(cutoff))]
 
 
+def history_items(app: App, now: float) -> list[Item]:
+    """The search index of past requests (modules/learning.py) forgets what's older than space.jobs_days too."""
+    from kurooto.modules import learning
+
+    days = float(app.settings.get("space.jobs_days") or 60)
+    cutoff = now - days * 86400
+    try:
+        n = learning.old_entries(app, cutoff)
+    except sqlite3.Error:
+        return []
+    if not n:
+        return []
+    total = learning.index_size(app)
+    every = max(1, learning.History(app).stats())
+    return [
+        Item(
+            "history",
+            f"{n} items older than {days:g} days in the search index of past requests and calls",
+            int(total * n / every),
+            [learning.index_file(app)],
+            sql=str(cutoff),
+        )
+    ]
+
+
 def pending_items(app: App, now: float) -> list[Item]:
     days = float(app.settings.get("space.undo_days") or 30)
     out = []
@@ -212,6 +239,7 @@ def plan(app: App, now: float | None = None) -> list[Item]:
         *cache_items(app, now),
         *log_items(app),
         *job_items(app, now),
+        *history_items(app, now),
         *pending_items(app, now),
         *diagnostics_items(app, now),
     ]
@@ -219,13 +247,18 @@ def plan(app: App, now: float | None = None) -> list[Item]:
 
 def footprint(app: App) -> dict[str, int]:
     """How much room each part of Kurooto takes (the folders it owns, not your notes or books)."""
+    from kurooto.modules.learning import index_size
+
     p = app.paths
+    history = index_size(app)  # in the state folder, shown on its own
     out = {
         "program versions": size(Path(p.app) / "versions"),
         "downloads and caches": size(Path(p.cache)),
-        "state and logs": size(Path(p.state)),
+        "state and logs": size(Path(p.state)) - history,
         "its data (books' text, profile, index)": size(Path(p.data)),
     }
+    if history:
+        out["search index of past requests"] = history
     mod = app.modules.get("backups")
     folder = mod.folder() if mod is not None else None
     if folder is not None and Path(folder).is_dir():
@@ -271,6 +304,11 @@ def clean(app: App, items: list[Item]) -> dict:
                     con.close()
                 freed += it.bytes
                 removed += len(ids)
+            elif it.kind == "history":
+                from kurooto.modules import learning
+
+                removed += learning.prune(app, float(it.sql))
+                freed += it.bytes
             else:
                 for pth in it.paths:
                     n = size(pth)
