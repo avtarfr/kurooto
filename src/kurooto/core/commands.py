@@ -2,14 +2,15 @@
 (CORE, answered in App.handle) and each feature's (Module.commands()), and the plain words each feature understands at
 once (Intent.examples), in groups, each with its page in the user wiki.
 
-    /help           everything that's on, by group, when it fits one message; otherwise a short index of the groups
-                    with their commands
+    /help           the index: one line per group with its commands (of what's on), and "/help <group>" for the rest
+                    (always this form since 0.5.22: with everything merged, the full list no longer fits one message)
     /help <group>   one group in full (talking, reminders, calls, ...): what each command does, what you can just
                     say, the features in it that are off, and its wiki page
     /help all       every group, one message each
     /help <word>    what matches it, on or off
 
-Every message stays under Telegram's 4096 characters (LIMIT). A feature that isn't in a group lands in "More".
+Every message stays under Telegram's 4096 characters (LIMIT); an index that won't fit one comes in two, split between
+groups. A feature that isn't in a group lands in "More".
 tests/unit/test_help.py fails when a command registered anywhere isn't in /help.
 """
 
@@ -38,19 +39,16 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (
         ("memory",),
         'what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I '
-        'last talk to Prof Ortiz?"',
+        'last talk to Prof Ortiz?", "what was I doing last Thursday?"',
     ),
     (("helper",), "the offline helper: on, off, test"),
-    (("egress",), "where my requests went this week: hosts, features, bytes, any blocked"),
+    (("egress",), "where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked"),
     (("health",), "what isn't working, with Fix buttons (/health now checks online too)"),
     (("fixme",), "what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains"),
     (("keep",), "what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off"),
     (("calm",), "messages that come by themselves: today's count, the limit and what waits"),
     (("why",), "why the last message that came by itself came"),
-    (
-        ("notes",),
-        "pdf <course>: a course's notes as one PDF",
-    ),
+    (("notes",), "pdf <course>: a course's notes as one PDF; /notes pdf template: a copy of the template to edit"),
 )
 SYNC = (("sync",), "sync everything that's on (Classroom, calendar, research, notes brain)")  # while Notes sync is off
 
@@ -268,26 +266,30 @@ def help(app: App, arg: str = "") -> list[str]:
         return [_clip(section(app, g, on, offs=True))]
     if word:
         return [_clip(find(app, word))]
-    head = f"{app.name}, your assistant. Plain words work; so do these."
-    full = [head]
-    for g in (*GROUPS, MORE):
-        if _shown(app, g, on, False):
-            full += ["", section(app, g, on, offs=False)]
-    full += ["", *_footer(app)]
-    text = "\n".join(full)
-    if len(text) <= LIMIT:
-        return [text]
-    index = [
-        f"{head} /help <group> shows a group in full: what each command does and what you can just say. /help all "
-        "sends every group."
-    ]
+    head = (
+        f"{app.name}, your assistant. Plain words work; so do these commands, by group. /help <group> shows a group in "
+        "full: what each command does and what you can just say. /help all sends every group; /help <word> finds one."
+    )
+    index = []
     for g in (*GROUPS, MORE):
         if not _shown(app, g, on, False):
             continue
         _, said, names = _parts(app, g, on)
         say = f" · {len(said)} thing{'s' if len(said) > 1 else ''} to just say" if said else ""
-        index += ["", f"{g.title} (/help {g.key}; {wiki(g.page)}): {' '.join('/' + n for n in names)}{say}"]
-    return [_clip("\n".join([*index, "", *_footer(app)]))]
+        index.append(f"{g.title} (/help {g.key}; {wiki(g.page)}): {' '.join('/' + n for n in names)}{say}")
+    return _pack([head, *index, "\n".join(_footer(app))])
+
+
+def _pack(paragraphs: list[str]) -> list[str]:
+    """Paragraphs (blank lines between them) in as few messages under LIMIT as they fit; each one clipped to fit."""
+    out: list[str] = []
+    for p in paragraphs:
+        p = _clip(p)
+        if out and len(out[-1]) + 2 + len(p) <= LIMIT:
+            out[-1] += "\n\n" + p
+        else:
+            out.append(p)
+    return out
 
 
 def _shown(app: App, g: Group, on: list[Module], offs: bool) -> bool:

@@ -77,15 +77,18 @@ def test_each_message_fits_telegram(app):
             assert parts and all(0 < len(p) < 4096 for p in parts), (on, arg)
 
 
-def test_short_lists_come_whole_long_ones_as_an_index(app):
+def test_help_is_always_the_index_and_a_group_has_the_detail(app):
     app.settings.set("modules.enabled", ["reminders"])
-    (whole,) = app.help_parts()
-    assert whole.startswith("Kurooto, your assistant")
-    assert "/remind  a reminder" in whole and '"remind me at 9 to call mum"' in whole
-    assert "wiki/user/reminders-and-deadlines.html" in whole and "Off right now" in whole
+    (index,) = app.help_parts()  # a short list is an index too (0.5.22): one line per group, /help <group> for more
+    assert index.startswith("Kurooto, your assistant") and "/help <group>" in index
+    assert "Reminders and deadlines (/help reminders; " in index and "wiki/user/reminders-and-deadlines.html" in index
+    assert "/remind" in index and "/remind  a reminder" not in index and "Off right now" in index
+    detail = app.help_parts("reminders")[0]
+    assert "/remind  a reminder" in detail and '"remind me at 9 to call mum"' in detail
     everything(app)
-    (index,) = app.help_parts()
-    assert "/help <group>" in index and "Calls and phone (/help calls; " in index
+    parts = app.help_parts()
+    index = "\n\n".join(parts)
+    assert len(parts) <= 2 and "/help <group>" in parts[0] and "Calls and phone (/help calls; " in index
     assert "wiki/user/calls.html): /hold /calls /call" in index and "/alarm" in index
     assert "/alarm  the wake-up call" not in index  # what each does: /help calls
     calls = app.help_parts("calls")[0]
@@ -93,6 +96,13 @@ def test_short_lists_come_whole_long_ones_as_an_index(app):
     assert '"wake me at 6:45"' in calls and "Just say:" in calls
     groups = app.help_parts("all")
     assert len(groups) == len(commands.GROUPS) and groups[0].startswith("Talking")
+
+
+def test_wording_trimmed_to_fit_is_whole_again(app):
+    everything(app)
+    privacy = app.help_parts("privacy")[0]
+    assert '"what was I doing last Thursday?"' in privacy
+    assert "/egress  where my requests went in the last 7 days: each host and feature, requests, bytes" in privacy
 
 
 def test_a_group_says_what_is_off_in_it(app):

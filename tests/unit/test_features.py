@@ -277,7 +277,7 @@ def test_help_lists_only_what_is_on(env):
 
 def test_help_lists_everything_on_says_what_is_off_finds_a_word_and_points_at_the_wiki(env):
     env.on("reminders")
-    out = env.say("/help")  # too long for one message (0.5.22): the index of groups, each with /help <group>
+    out = env.say("/help")  # always the index of groups (0.5.22), each with /help <group> for the detail
     assert "Reminders and deadlines (/help reminders; " in out and "/remind" in out
     assert "Off right now" in out and "Phone calls" in out and "/wiki/" in out and "/help <group>" in out
     out = env.say("/help reminders")

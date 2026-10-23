@@ -401,12 +401,11 @@ its data stays unless you delete it. Each section says what leaves your computer
 full list.
 
 Plain English works for many things ("remind me at 9 to call mum", "move tonight's check-in to 21:30", "skip Friday's
-check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` lists everything, in groups
-(Talking, Reminders and deadlines, Calls and phone, Notes, Privacy and memory, Settings and upkeep, ...), each with its
-page in the user wiki: the commands of the features you have on with what each does, Kurooto's own commands (`/q`,
-`/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/jobs`), what you can just say, and the features that are off. When
-that's more than one Telegram message it sends a short index instead; `/help <group>` (`/help calls`) shows one group
-in full and `/help all` every group, one message each. `/help <word>` finds a command or feature, on or off
+check-in", "what's due?", "wake me at 6:45", "quiz me by call", "sync everything"). `/help` is an index, one line per
+group (Talking, Reminders and deadlines, Calls and phone, Notes, Privacy and memory, Settings and upkeep, ...) with its
+commands (the features you have on and Kurooto's own: `/q`, `/health`, `/fixme`, `/calm`, `/why`, `/keep`, `/jobs`)
+and its page in the user wiki, then the features that are off; `/help <group>` (`/help calls`) shows one group in full,
+what each command does and what you can just say, and `/help all` every group, one message each. `/help <word>` finds a command or feature, on or off
 (`/help quiz`, `/help alarm`). The phone app's chat answers `/help` the same way.
 
 ### Telegram

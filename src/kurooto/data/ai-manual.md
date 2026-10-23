@@ -167,15 +167,15 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 | /inferred | what was set up from what you said (a project, a class, a meeting), with /inferred undo <id> |
 | /forget | forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all (asks first) |
 | /gists | one line of what each forgotten call or request decided; /gists <words> finds them |
-| /memory | what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I last talk to Prof Ortiz?" |
+| /memory | what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I last talk to Prof Ortiz?", "what was I doing last Thursday?" |
 | /helper | the offline helper: on, off, test |
-| /egress | where my requests went this week: hosts, features, bytes, any blocked |
+| /egress | where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked |
 | /health | what isn't working, with Fix buttons (/health now checks online too) |
 | /fixme | what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains |
 | /keep | what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off |
 | /calm | messages that come by themselves: today's count, the limit and what waits |
 | /why | why the last message that came by itself came |
-| /notes | pdf <course>: a course's notes as one PDF |
+| /notes | pdf <course>: a course's notes as one PDF; /notes pdf template: a copy of the template to edit |
 | /sync | sync everything that's on (Classroom, calendar, research, notes brain) |
 
 ## Never without the user's tap

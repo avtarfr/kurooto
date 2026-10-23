@@ -32,13 +32,12 @@ anyone else, and from groups, are ignored.
 with `_`: `/term_setup` runs term-setup. Telegram shows at most 100. Kurooto updates the menu within a minute of a
 feature going on or off, and looks for new skills every 15 minutes.
 
-**`/help`** (and `/start`) lists everything that works right now, in groups (Talking, Reminders and deadlines,
-Classes and calendar, Study, Quiz and exams, Calls and phone, Check-ins and journal, Notes, Skills and routines,
-Research, Google, Teaching Kurooto, Privacy and memory, Settings and upkeep), each with its page in this wiki: the
-commands of the features you have on with what each does, Kurooto's own commands, what you can just say in plain words,
-and the features that are off. When that's more than one Telegram message, `/help` sends a short index instead (each
-group with its commands) and **`/help <group>`** shows one group in full (`/help calls`, `/help reminders`), including
-its features that are off; **`/help all`** sends every group, one message each. **`/help <word>`** searches
+**`/help`** (and `/start`) is an index of everything that works right now, one line per group (Talking, Reminders
+and deadlines, Classes and calendar, Study, Quiz and exams, Calls and phone, Check-ins and journal, Notes, Skills and
+routines, Research, Google, Teaching Kurooto, Privacy and memory, Settings and upkeep): its commands (of the features
+you have on and Kurooto's own), how many things you can just say, and its page in this wiki; then the features that
+are off. **`/help <group>`** shows one group in full (`/help calls`, `/help reminders`): what each command does, what
+you can just say in plain words, and its features that are off; **`/help all`** sends every group, one message each. **`/help <word>`** searches
 everything, on or off: `/help call` shows Phone calls, its commands and how to turn it on. If Chat is off it says free
 text isn't sent to an AI. The same `/help` answers in the phone app's chat. The full list is in
 [commands.md](commands.md).

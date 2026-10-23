@@ -114,7 +114,8 @@ recorder to the test's `hits` fixture, and the user wiki's table (talking-to-kur
 `commands()`, and each request's `examples`, in `GROUPS` (key, title, user wiki page, module ids, core names; `moved`
 takes a command into another group, as Telegram's `/hold` and `/calls` go to Calls and phone). A module no group names
 lands in `MORE`. `App.help_parts(arg)` returns the messages (each under `LIMIT` = 3900 characters), `App.help(arg)`
-joins them: everything when it fits one message, else an index; `/help <group>`, `/help all`, `/help <word>`
+joins them: always the index (one line per group, from `_parts()`; since 0.5.22, as everything no longer fits one
+message), packed by `_pack()` into as few messages as fit; `/help <group>`, `/help all`, `/help <word>`
 (`find()`). Lines a module's `help()` adds that aren't one of its commands (Skills' `/<skill> …`) are kept.
 
 Adding a command: give it a `help` line; a new feature goes into a group. Adding one to `App.handle` itself: add it to

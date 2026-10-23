@@ -399,7 +399,7 @@ def test_commands_of_features_that_are_off_say_how_to_turn_them_on(env, monkeypa
         app.disable("chat")
         assert env.say("/jobs").startswith("Nothing running or waiting.")  # Kurooto's own: always answers
         assert env.say("/help").startswith(app.name)
-        assert "/jobs  what the AI is working on" in env.say("/help")
+        assert "/jobs" in env.say("/help") and "/jobs  what the AI is working on" in env.say("/help talking")
     finally:
         ai.close()
 
