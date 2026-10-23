@@ -17,6 +17,11 @@ plan drafted before the alarm). On the day itself you get one message, only when
 due (otherwise the deadline's own day-before nudge says it). The Sunday summary flags crunch weeks, where the work due
 adds up to more than the free time: "week of 9 Nov: about 14 h of work, about 9 h free".
 
+The window learns your day (startby.learn_window, on): once a week it looks at when your messages came in over the
+last three weeks (days with 3 or more), and when the middle of your first ones and of your last ones is an hour or more
+from the window's ends, the window moves there (to the half hour), with one line and Undo. A window you set yourself
+is never changed.
+
 All of it is an estimate, local arithmetic only: no AI, and nothing leaves this computer.
 
     /startby                         what to start when, with sizes to tap
@@ -44,6 +49,7 @@ register_defaults(
         "sizes": {"problem_set": 3, "report": 12, "quiz": 2, "exam": 10, "other": 2},
         "exam_by_subject": {},  # {"linear-algebra": 25}: hours to prepare for that subject's exams (else sizes.exam)
         "window": "09:00-22:00",  # the part of each day free time is counted in
+        "learn_window": True,  # once a week, move the window to when you're actually up (unless you set it)
         "share": 40,  # % of the free time in that window that goes to deadlines
         "min_gap_min": 30,  # shorter gaps between classes and events don't count
         "horizon_days": 35,  # deadlines due this far ahead get a start-by date
@@ -58,6 +64,8 @@ WEEK_H = 25
 TASK_SIZES = [(1, "An hour"), (3, "An evening"), (5, "A day"), (12, "2-3 days"), (25, "A week")]
 EXAM_SIZES = [(3, "An evening"), (5, "A day"), (12, "2-3 days"), (25, "A week"), (50, "Two weeks")]
 NAMES = {h: label for h, label in TASK_SIZES + EXAM_SIZES}
+LEARN_DAYS, LEARN_ACTIVE_DAYS, LEARN_MSGS, LEARN_GAP_MIN = 21, 7, 3, 60  # look back, days needed, a day's, off by
+DAY_TURNS = 4  # your day, for this: from 04:00 (a message at 01:00 ends the day before)
 WORDS = {"an hour": 1, "one hour": 1, "an evening": 3, "one evening": 3, "a day": DAY_H, "one day": DAY_H,
          "two days": 2 * DAY_H, "three days": 3 * DAY_H, "a couple of days": 12, "a few days": 12, "a week": WEEK_H,
          "one week": WEEK_H, "two weeks": 2 * WEEK_H}  # fmt: skip
@@ -220,6 +228,70 @@ class StartBy(Module):
         spec = self.setting("when") or "daily 08:00"
         self.every("morning", spec, self._morning, {"what": "start-by dates"}, respect="quiet")
         self.app.ask.hooks["startby.exam_size"] = lambda q, a: self._exam_answer(q.get("hook_payload") or {}, a)
+        self.every("learn_window", "weekly sun 12:00", lambda p: self.learn_window())
+
+    # ------------------------------------------------------------------------------ the learned window
+    def learn_window(self) -> str:
+        """Move startby.window to when your messages come in (not one you set yourself). Returns the line told."""
+        if not self.setting("learn_window"):
+            return ""
+        st = self._state().get("window_learned") or {}
+        mine = (self.app.settings.user().get("startby") or {}).get("window")
+        if mine is not None and mine != st.get("to"):
+            return ""  # yours
+        if st.get("at") and now() - dt.datetime.fromisoformat(st["at"]) < dt.timedelta(
+            days=30 if st.get("undone") else 7
+        ):
+            return ""
+        since = now() - dt.timedelta(days=LEARN_DAYS)
+        days: dict[dt.date, list[int]] = {}
+        for e in self.app.events.tail(50000, kinds={"message_in"}):
+            try:
+                t = dt.datetime.fromisoformat(e["ts"]).replace(tzinfo=None)
+            except (KeyError, ValueError):
+                continue
+            if t < since:
+                continue
+            shifted = t - dt.timedelta(hours=DAY_TURNS)
+            days.setdefault(shifted.date(), []).append(shifted.hour * 60 + shifted.minute + DAY_TURNS * 60)
+        active = [sorted(v) for v in days.values() if len(v) >= LEARN_MSGS]
+        if len(active) < LEARN_ACTIVE_DAYS:
+            return ""
+        first = sorted(v[0] for v in active)[len(active) // 2]
+        last = sorted(v[-1] for v in active)[len(active) // 2]
+        first = max(5 * 60, min(13 * 60, first // 30 * 30))  # 05:00 to 13:00
+        last = max(17 * 60, min(27 * 60, -(-last // 30) * 30))  # 17:00 to 03:00 the next morning
+        cur = self.setting("window") or "09:00-22:00"
+        a, b = parse_window(cur)
+        a_m, b_m = a.hour * 60 + a.minute, b.hour * 60 + b.minute + (24 * 60 if b <= a else 0)
+        if abs(first - a_m) < LEARN_GAP_MIN and abs(last - b_m) < LEARN_GAP_MIN:
+            return ""
+        hm = lambda m: f"{m // 60 % 24:02d}:{m % 60:02d}"  # noqa: E731
+        new = f"{hm(first)}-{hm(last)}"
+        self.app.settings.set("startby.window", new)
+        self._put_state(window_learned={"at": now().isoformat(timespec="seconds"), "from": cur, "to": new})
+        line = (
+            f"Start-by dates now count your free time from {hm(first)} to {hm(last)}, not {cur.replace('-', ' to ')}: "
+            f"that's when your messages came in on {len(active)} days of the last three weeks."
+        )
+        self.app.events.emit("startby_window_learned", from_window=cur, to_window=new, days=len(active))
+        self.app.notify(line, kind="info", why="startby.window", buttons=[[("Undo", "sby:window:undo")]])
+        return line
+
+    def _put_state(self, **kw) -> None:
+        with Lock(self.app.paths.state, "startby", timeout=5):
+            st = self._state()
+            st.update(kw)
+            jsave(self.file, st)
+
+    def _window_undo(self) -> str:
+        st = self._state().get("window_learned") or {}
+        if not st or st.get("undone"):
+            return "Nothing to undo."
+        if self.setting("window") == st["to"]:
+            self.app.settings.set("startby.window", st["from"])
+        self._put_state(window_learned={**st, "undone": True, "at": now().isoformat(timespec="seconds")})
+        return f"Back to {st['from']}; I'll leave the window alone."
 
     def health_check(self):
         from kurooto.core.health import Check
@@ -587,6 +659,8 @@ class StartBy(Module):
         return {"sby": self._button}
 
     def _button(self, ref: str, act: str) -> str:
+        if ref == "window" and act == "undo":
+            return self._window_undo()
         try:
             h = float(act)
         except ValueError:

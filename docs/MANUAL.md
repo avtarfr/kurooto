@@ -599,6 +599,13 @@ Only 40% of it counts (`startby.share`): the rest is meals, rest, going over lec
 events are known two weeks ahead (`calendar.days`); after that only classes count, so far-off weeks look freer than
 they will be.
 
+**The window learns your day** (`startby.learn_window`, on). Once a week (Sunday noon) it looks at when your messages
+came in over the last three weeks. With 7 or more days of 3+ messages, and the middle of your first messages or of
+your last ones an hour or more from the window's ends, the window moves there, to the half hour (starting between
+05:00 and 13:00, ending between 17:00 and 03:00): "Start-by dates now count your free time from 11:00 to 01:30, not
+09:00 to 22:00", with **Undo**. Not again for a week; after an Undo, not for a month. A window you set yourself is never
+changed.
+
 **Start-by dates.** Working back from the due times, latest first, each deadline's hours go into the latest free
 time before it that a later one hasn't taken; the day its first hour lands on is its start-by date. Two big deadlines
 in the same week push each other earlier. From that date until it's due, the deadline is in the morning plan: the

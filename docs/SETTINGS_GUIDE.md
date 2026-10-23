@@ -664,6 +664,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `startby.crunch_weeks` | `4` | the Sunday summary looks this many weeks ahead (0: no crunch weeks) |
 | `startby.exam_by_subject` | `{}` | {"linear-algebra": 25}: hours to prepare for that subject's exams (else sizes.exam) |
 | `startby.horizon_days` | `35` | deadlines due this far ahead get a start-by date |
+| `startby.learn_window` | `true` | once a week, move the window to when you're actually up (unless you set it) |
 | `startby.min_gap_min` | `30` | shorter gaps between classes and events don't count |
 | `startby.share` | `40` | % of the free time in that window that goes to deadlines |
 | `startby.sizes.exam` | `10` | days an exam takes to prepare for |

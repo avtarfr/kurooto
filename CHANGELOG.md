@@ -19,6 +19,9 @@
   to when you actually do it. On 5+ answered days in the last two weeks with 4+ of them 30 minutes or more off on the
   same side, its time becomes the middle of those, to the quarter hour; one line says so, with Undo. Not again for two
   weeks, and one you undid is left alone for a month. The first step away from college-term defaults.
+- **Start-by's day window learns your day** (`startby.learn_window`, on): once a week, with 7+ days of messages in the
+  last three weeks, the window free time is counted in (09:00-22:00) moves to when your first and last messages
+  usually come, with Undo. A window you set yourself is never changed.
 - **Short names for subjects from what you say**: "by POTA I mean Physics of the Atmosphere", "LA is short for linear
   algebra", "I call stochastic calculus stoch" add that short name to the subject (`infer.aliases`), with Undo, so
   "POTA quiz friday" lands on the right course from then on. Only for your subjects, and never a name that's taken.

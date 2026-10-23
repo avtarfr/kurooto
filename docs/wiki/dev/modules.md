@@ -348,6 +348,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   recurring quizzes and the term note; the hourly `deadlines:tick` chases them (24 h ping, 6 h call or urgent message,
   overdue check) and runs exam mode. Ids are hashes of title plus date. `deadlines.json` under the `deadlines` lock.
 - **startby** (`modules/startby.py`): start-by dates from size estimates and free time; local arithmetic only.
+  `learn_window()` (`startby:learn_window`, weekly sun 12:00, `startby.learn_window`) reads `message_in` events of the
+  last 21 days (a day turns at 04:00), and with 7+ days of 3+ messages sets `startby.window` from the medians of the
+  first and last, clamped and rounded to 30 min, when either end is 60+ min off; skipped when the user's own value
+  isn't the last learned one. State `window_learned` in `startby.json`; Undo is `sby:window:undo`; Calm reason
+  `startby.window`.
 - **exam_season** (`modules/exam_season.py`): one card for an exam period (update hold, alarm check, the eve question,
   leave-by alarm, debrief, no calls in exams, the Calm budget). Registers `app.updates.holds["exam_season"]` and an
   availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`).
