@@ -190,7 +190,8 @@ reach for each request only; nothing is saved in its own settings.
   was about, the first 300 characters, whether you tapped it), test cases (`cases/`), the calls' lessons
   (`calls/lessons.md`), and earlier versions of notes the AI edited (`note-history/`, the last 20 per file). With
   Learns from its own work on: the search index of past requests, calls and chats (`learning/history.db`), and the
-  earlier versions of skills it changed (`learning/before/`). What's kept of conversations goes after 30 days:
+  earlier versions of skills it changed (`learning/before/`). What's kept of conversations stays until you
+  set how long:
   [How long it's kept](#how-long-its-kept).
 - **The data folder** holds the About you reports (never synced), Classroom's downloaded files, books and their text,
   and confidential mail summaries (`mail/confidential/`, readable only by your user account).
@@ -201,8 +202,9 @@ reach for each request only; nothing is saved in its own settings.
 
 ## How long it's kept
 
-What Kurooto keeps of your conversations is forgotten after **`privacy.keep_days`** (30 days), every night at 04:15
-(or when the computer wakes, if it slept through it):
+What Kurooto keeps of your conversations stays until you choose otherwise. Set **`privacy.keep_days`** (e.g. 30) and
+it's forgotten after that many days, every night at 04:15 (or when the computer wakes, if it slept through it); 0, the
+default, keeps it until you `/forget` it:
 
 | What | Where (state folder) |
 |---|---|
@@ -256,7 +258,7 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 - **Learns from its own work** never keeps a fact about health, money, passwords or other people (a line naming a
   relative or friend, a phone number, an email address).
 - **Wrong button and test cases** never keep long messages, several requests in one, or anything about health, money
-  or passwords. Cases you didn't review are forgotten after `privacy.keep_days` (30).
+  or passwords. Cases you didn't review are forgotten after 30 days (`cases.keep_days`).
 - **Mail marked confidential** is never read by the AI you picked, never summarised by it, and never answered with an
   AI draft. Kurooto reads its text on your computer only to spot the marking, then drops it.
 - **Private calendar events** keep only their time.

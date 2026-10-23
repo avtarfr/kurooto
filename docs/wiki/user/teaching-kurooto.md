@@ -284,7 +284,7 @@ punctuation aside) and goes before the usual patterns.
 |---|---|---|
 | `cases.button` | on | the Wrong button (`/wrong` works either way) |
 | `cases.fallthroughs` | on | keep short requests nothing understood |
-| `cases.keep_days` | `0` | cases you didn't make test cases are forgotten after this many days (0: `privacy.keep_days`, 30); test cases stay |
+| `cases.keep_days` | `0` | cases you didn't make test cases are forgotten after this many days (0: `privacy.keep_days` when set, else 30); test cases stay |
 | `cases.review` | `weekly sun 19:00` | when the monthly list may come |
 | `cases.review_days` | `28` | at most this often |
 | `cases.review_max` | `5` | phrasings in one list |

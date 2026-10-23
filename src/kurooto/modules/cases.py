@@ -22,8 +22,8 @@ A taught phrasing is matched whole (case and punctuation aside) and goes first, 
 it stands for runs with today's time ("skip gym tomorrow" means tomorrow from now). Undo: /cases, Unlearn.
 
 Everything stays on this computer, in Kurooto's state folder (state/cases/), out of backups, Profile sync and
-`kurooto doctor --bundle`. Cases you didn't make test cases are forgotten after privacy.keep_days (30; /forget does
-it now). Events carry no text.
+`kurooto doctor --bundle`. Cases you didn't make test cases are forgotten after cases.keep_days, else
+privacy.keep_days, else 30 days (/forget does it now). Events carry no text.
 `kurooto cases` lists them; `kurooto cases export` writes the test cases as a pytest file that replays each one at its
 own time and settings (read it before you share it); `kurooto cases check` runs them here.
 """

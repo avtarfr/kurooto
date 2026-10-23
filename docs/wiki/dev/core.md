@@ -488,7 +488,7 @@ app.ask.approval("Send this draft?", hook="mail.send")  # Approve / Deny
   (`call_brief`, `call_tools`). First answer wins. `Later` keeps it for the next call; "Nothing new" is an answer.
 - Each question is `<state>/ask/<id>.json`; unanswered ones expire after `ask.expire_hours` (48) (`sweep`, every 10 min,
   `ask:sweep`); settled ones are kept `retention.days(settings, "ask")`: `ask.keep_days` when set, else
-  `privacy.keep_days` (30). `Ask.forget(lo, hi)` drops those settled in a stretch.
+  `privacy.keep_days` when set, else 30 (`retention.TIDY`). `Ask.forget(lo, hi)` drops those settled in a stretch.
 - Hooks run once with the first answer; a hook not registered at that moment emits `question_hook_missing` and the
   answer is kept. Built-in hook `ask.ai` starts an AI job from `hook_payload["prompt"]` with `{answer}` filled in.
 - Tools: `ask_user` for unattended AI (`agent_tools`), plus call tools to answer questions by voice.
@@ -565,7 +565,8 @@ state folder. Never touches notes, books or user folders except Kurooto's own zi
 
 ## Retention and /forget
 
-`core/retention.py`: what's kept of conversations goes after `privacy.keep_days` (30; 0 keeps). Kinds, each a function
+`core/retention.py`: what's kept of conversations goes after `privacy.keep_days` (default 0: kept; `TIDY` keeps the
+old 30-day tidy-up of settled questions and cases). Kinds, each a function
 over a stretch `[lo, hi)` in epoch seconds (`STEPS`):
 
 | Kind | What | How |

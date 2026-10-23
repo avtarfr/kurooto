@@ -16,8 +16,9 @@ DAY = 86400
 
 @pytest.fixture
 def kept(env):
-    """One old (40 days) and one new (2 days) item of each kind, plus an old note in the notes folder."""
+    """One old (40 days) and one new (2 days) item of each kind, plus an old note in the notes folder; 30 days kept."""
     app = env.app
+    app.settings.set("privacy.keep_days", 30)
     t = time.time()
     old, new = t - 40 * DAY, t - 2 * DAY
     st = app.paths.state
@@ -155,16 +156,17 @@ def test_forget_all_asks_first(kept):
 
 def test_forget_alone_says_what_is_kept_and_keep_days_0_keeps(env):
     app = env.app
+    assert "until you forget it" in env.say("/forget")  # the default: nothing fades by itself
+    assert not any(retention.expire(app).values())  # only settled questions and cases keep their 30-day tidy-up
+    app.settings.set("privacy.keep_days", 30)
     assert "for 30 days (privacy.keep_days)" in env.say("/forget")
     assert "for 30 days" in env.say("/forget soon")  # not a stretch: the same help
-    app.settings.set("privacy.keep_days", 0)
-    assert "until you forget it" in env.say("/forget")
-    assert retention.expire(app) == {}
 
 
 def test_questions_and_cases_follow_privacy_keep_days_unless_set(env):
     s = env.app.settings
-    assert retention.days(s, "ask") == retention.days(s, "cases") == 30
+    assert retention.days(s) == 0  # conversations are kept until you choose otherwise
+    assert retention.days(s, "ask") == retention.days(s, "cases") == 30  # the old tidy-up stays
     s.set("privacy.keep_days", 7)
     assert retention.days(s, "ask") == 7 and retention.days(s) == 7
     s.set("cases.keep_days", 90)
