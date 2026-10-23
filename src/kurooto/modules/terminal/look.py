@@ -48,7 +48,13 @@ def stylesheet() -> str:
 
 
 def palette(name: str = "kuro", css: str | None = None) -> dict[str, str]:
-    """The palette's dark colours by token name (bg, fg, accent, lav, ...). Unknown names give the default."""
+    """The palette's dark colours by token name (bg, fg, accent, lav, ...). Unknown names give the default. A named
+    theme (catppuccin-mocha, ...; core/themes.py) isn't in the style sheet: its dark flavour comes from
+    core/palette.py."""
+    from kurooto.core import palette as pal
+
+    if name in pal.THEMES:
+        return {**KURO, **pal.role_map(name, "dark")}
     css = stylesheet() if css is None else css
     css = MEDIA.sub("", re.sub(r"/\*.*?\*/", "", css, flags=re.S))  # light-mode variants and comments out
     base, named = dict(KURO), {}

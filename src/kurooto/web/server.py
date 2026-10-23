@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from kurooto.app import App
 
 register_defaults("web", {"port": 8770})
-register_defaults("look", {"palette": "kuro", "theme_file": ""})  # the pages' colours (core/palette.py)
+register_defaults("look", {"palette": "kuro", "theme_file": ""})  # the pages' colours (core/palette.py, themes.py)
 PALETTES = ("kuro", "rose", "system")
 # the dashboard's layout: dense (one full-screen board, on screens 1280 px wide or more; narrower ones get roomy) or
 # roomy; projects: folders of git repositories its PROJECTS box shows (empty: Research's repositories); panes: the dense

@@ -421,17 +421,20 @@ async function renderLook() {
     system: sys ? `${sys.label}${sys.mode ? `, ${sys.mode} mode` : ""}. Changes when they do.`
       : "Nothing found here yet. Kurooto reads matugen, pywal, KDE, GNOME and GTK colours, and the accent colour of Windows and macOS.",
   };
-  box.replaceChildren(el("h2", {}, "Colours"), el("div", { class: "cards looks" }, ...look.choices.map(({ id, label }) =>
-    el("button", { class: "card" + (id === look.chosen ? " on" : ""), "aria-pressed": String(id === look.chosen), disabled: id === "system" && !sys,
-      onclick: async () => {
-        await api("settings", { key: "look.palette", value: id });
-        if (window.kurootoLook) await window.kurootoLook.refresh();
-        renderLook();
-      } },
-    id === "system" && sys ? el("div", { class: "star" }, "★ RECOMMENDED: FOUND HERE") : null,
-    el("div", { class: "swatches", "aria-hidden": "true" }, ...((look.previews[id] || {})[light ? "light" : "dark"] || []).map((c) => el("i", { style: `background:${c}` }))),
-    el("h3", {}, label), el("p", {}, about[id])))),
-  el("p", { class: "note" }, "Only how Kurooto's pages look. Change it any time: Settings → Look."));
+  const pick = async (id) => {
+    await api("settings", { key: "look.palette", value: id });
+    if (window.kurootoLook) await window.kurootoLook.refresh();
+    renderLook();
+  };
+  const dots = (id) => el("div", { class: "swatches", "aria-hidden": "true" }, ...((look.previews[id] || {})[light ? "light" : "dark"] || []).map((c) => el("i", { style: `background:${c}` })));
+  const card = (id, ...kids) => el("button", { class: "card" + (id === look.chosen ? " on" : ""), "aria-pressed": String(id === look.chosen), disabled: id === "system" && !sys, onclick: () => pick(id) }, ...kids);
+  // the named themes (core/themes.py): the flavour named is the dashboard's (always dark); light pages use the other
+  const themes = look.choices.filter((c) => c.family);
+  box.replaceChildren(el("h2", {}, "Colours"), el("div", { class: "cards looks" }, ...look.choices.filter((c) => !c.family).map(({ id, label }) =>
+    card(id, id === "system" && sys ? el("div", { class: "star" }, "★ RECOMMENDED: FOUND HERE") : null, dots(id), el("h3", {}, label), el("p", {}, about[id])))),
+  el("h3", { class: "themes-h" }, "Or a named theme"),
+  el("div", { class: "cards looks themes" }, ...themes.map((c) => card(c.id, dots(c.id), el("h3", {}, c.dark), el("p", {}, `Light mode: ${c.light}`)))),
+  el("p", { class: "note" }, "Only how Kurooto's pages and terminals look. Change it any time: Settings → Look."));
   gloss(box);
 }
 

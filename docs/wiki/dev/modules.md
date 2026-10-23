@@ -801,7 +801,7 @@ arrives.
   `WinPty` via pywinpty/ConPTY), 400 KB replay buffer, input 100 KB per request.
 - **terminal** (`modules/terminal/`): Kurooto Terminal, a real terminal window (`kurooto term`): `plan.py` decides tabs,
   shell and terminal program; `kitty.py` (Linux, macOS) and `wt.py` (Windows Terminal fragment) draw it; `look.py`
-  turns the palette into a terminal scheme; `launchers.py` adds app-menu entries; `defaults.py` (opt-in) makes it the
+  turns the palette into a terminal scheme (a named theme's dark flavour from `core/palette.py:role_map`); `launchers.py` adds app-menu entries; `defaults.py` (opt-in) makes it the
   default terminal and can undo exactly what it changed; `run.py` is the CLI.
 - **research** (`modules/research.py`): a weekly papers digest (arXiv, bioRxiv, medRxiv, PubMed, feeds), daily
   project logs from git and `runs/`, and questions about idle projects. `papers()` collects with `mark_seen=False` and

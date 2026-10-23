@@ -991,7 +991,7 @@ the offline helper (`core/helper.py`) offers it on computers whose profile has n
 | `core/overlay.py` | add-ons: your folder's, and loading the add-ons by link ([modules.md](modules.md#add-ons-coreoverlaypy)) |
 | `core/addons.py` | add-ons by link: fetch at a pinned commit, the card, consent, update with what changes, remove and undo ([modules.md](modules.md#add-ons-by-link-coreaddonspy-corefencepy)) |
 | `core/fence.py` | the fence around add-ons by link: only the hosts and programs on their card (an audit hook) |
-| `core/palette.py`, `core/syscolors.py` | the pages' colour palette, and the OS accent colour for the `system` palette |
+| `core/palette.py`, `core/syscolors.py`, `core/themes.py` | the pages' colour palette, the OS accent colour for the `system` palette, and the named themes ([Colours](#colours-palettes-and-named-themes-corepalettepy-corethemespy)) |
 | `core/pathfix.py` | putting `~/.local/bin` on PATH (disabled in tests) |
 | `core/persona.py` | the persona card (`persona.call_me/tone/length/avoid`, empty by default; `clean()` drops parts matching `GUARD`: feelings, saying it missed you, a backstory, a relationship; applied on save and on every read), `/persona` (`command`), the dashboard's `persona` API (`view`, `save`); boundaries (`DECIDE` + `AREAS` rules, `keeps()` in `App.handle`, `BOUNDARY_RULE` in the headless context and calls; `persona.boundaries`); register (`register_line()`: `SHORT_WORDS` 12, `LONG_WORDS` 80, voice notes; `persona.register`). Events `persona_saved`, `boundary_kept`. Tests: `tests/unit/test_persona.py` |
 | `core/places.py` | the AI's read and write roots ([brains.md](brains.md#read-and-write-allow-lists)) |
@@ -1274,3 +1274,186 @@ the best strictly better one (ties keep today's) is the area's proposal.
 - **Adding an area**: a setting the runtime reads, a `*_plan` with a replay from recorded fields, a `live()` branch, a
   trust kind per direction, its entry in `AREAS`, a line in `show()`, and a test in `tests/unit/test_dream_tuning.py`.
 
+## Colours: palettes and named themes (`core/palette.py`, `core/themes.py`)
+
+`look.palette` picks the colours of every page, the dashboard's canvases, the terminals (kitty, Windows Terminal, the
+dashboard's xterm tabs) and `kurooto top`. `palette.NAMES` is `OWN` (`kuro`, `rose`, `system`) and then the named
+themes (0.7.0). Everything that draws asks `palette.py`: `current(app, mode)` (CSS variables, `kurooto top`),
+`css(app)` (the `<style id="kurooto-palette">` that `Server.fill` writes into each page and `static/palette.js`
+refreshes every 30 s), `describe(app)` (`GET /api/look`: choices, previews, vars, css), `settings_choices` and
+`check` (Settings → Look). `modules/terminal/look.py:palette()` reads kuro and rose from `style.css` and a named
+theme from `palette.role_map(name, "dark")`. The dashboard's canvases (SYSTEMS, the notes map, meters, the mesh)
+draw only with `PAL` in `home.js`, read from the CSS variables at load and again on the `kurooto:palette` event; a
+change in Settings reloads the dashboard.
+
+**Roles** (`palette.KEYS`): `bg` the page, `panel` panes and cards, `line` borders, `fg` text, `dim` secondary text,
+`accent` the fill of buttons with `accent-contrast` as its text and `hover` its hover, `accent-text` the accent as
+text, `link`, the secondary colours `lav`, `pink`, `peach`, `sand`, `rose` (the dashboard's cells, neighbourhoods
+and graphs, headings), and `ok`, `warn`, `bad` for status (never the accent). `palette.TEXT` is every text colour:
+each must reach WCAG AA (4.5:1) on `bg` and on `panel`, and `accent-contrast` on `accent` and `hover`
+(`failures()`).
+
+**Named themes.** `core/themes.py` is plain data:
+
+- `Flavour`: an id (`catppuccin-latte`), the project's own name (`Catppuccin Latte`, with its spelling: Rosé Pine,
+  Frappé), `mode` dark or light, `colours` (the official palette, the project's colour names to hex, copied exactly
+  from its repository; `tests/unit/test_themes.py` spot-checks them) and `roles` (Kurooto's role → one of those
+  names; `on` is the preferred text on the accent).
+- `Family`: its dark flavours, its light flavour, the source URL and licence.
+- `THEMES`: one per dark flavour, keyed by `look.palette`'s value: the flavour id (`catppuccin-mocha`), or the
+  family's name where it has one dark flavour (`gruvbox`, `everforest`, `solarized`; `nord` and `dracula` are both).
+  A theme is (family, dark flavour, light flavour): the dashboard (always dark) and the terminals use the dark
+  flavour, the other pages the light flavour when the browser is in light mode. Light flavours aren't values of
+  their own (`check` refuses `catppuccin-latte`): the pairing keeps the dashboard dark.
+
+`palette._flavour(fid)` turns a flavour into CSS variables: `bg`, `panel` and `line` as published; each text colour
+through `readable()` (lighter on dark pages, darker on light ones, in OKLCH, hue kept, the smallest step that
+reaches 4.5:1 on both backgrounds); the accent fill kept unless it's under 3:1 on the page; its text the flavour's
+`on` colour, else its background, else its text colour, whichever reads at 4.5:1, else the fill a shade darker or
+lighter. Where an official colour failed and a sibling of the same palette passes, the role map uses the sibling
+instead (Nord's links nord8, Kanagawa's errors peachRed, Rosé Pine Dawn's success pine, Solarized's text the
+emphasized tone); the rest moved, listed by `palette.adjusted()`. `css(app)` for a theme: the dark flavour on
+`:root[data-palette="<id>"]`, the light flavour inside `@media (prefers-color-scheme: light)`, and the dark flavour
+again on `[data-palette="<id>"] body.home`.
+
+`palette.role_map(name, mode)` gives a role → hex map (no `--`) for kuro, rose, a theme or a flavour, and
+`palette.export()` everything but `system` as JSON-ready data (`themes` with their flavours, source and licence;
+`flavours` with their roles). The phone app's colour scheme will take the same palettes from it (planned with the
+Compose app; not built).
+
+**Adding a theme:** its official colours and a role map in `themes.py` (a comment with the source), a `Flavour`
+per flavour, a `Family`; then the user wiki's theme list and credits, and the table below
+(`palette.adjusted()`; a test checks every row is here). `test_themes.py` checks every pair.
+
+Role maps (the palette's own colour names):
+
+| family | bg | panel | line | fg | dim | accent | accent-text | link | lav | pink | peach | sand | rose | ok | warn | bad | on |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Catppuccin | base | mantle | surface0 | text | subtext0 | mauve | mauve | blue | lavender | pink | peach | rosewater | flamingo | green | yellow | red | crust |
+| Tokyo Night | bg | bg_dark | fg_gutter | fg | fg_dark | blue | blue | cyan | magenta | purple | orange | yellow | green1 | green | yellow | red | bg_dark |
+| Rosé Pine | base | surface | highlight_med | text | subtle | rose | rose | iris | foam | love | gold | rose | iris | foam | gold | love | base |
+| Rosé Pine Dawn | base | surface | highlight_med | text | subtle | rose | rose | iris | foam | love | gold | rose | iris | pine | gold | love | base |
+| Gruvbox Dark | dark0 | dark0_hard | dark2 | light1 | light4 | bright_yellow | bright_yellow | bright_blue | bright_blue | bright_purple | bright_orange | light2 | bright_aqua | bright_green | bright_yellow | bright_red | dark0 |
+| Gruvbox Light | light0 | light0_hard | light2 | dark1 | dark4 | faded_yellow | faded_yellow | faded_blue | faded_blue | faded_purple | faded_orange | dark2 | faded_aqua | faded_green | faded_yellow | faded_red | light0 |
+| Nord | nord0 | nord1 | nord3 | nord6 | nord4 | nord8 | nord8 | nord8 | nord7 | nord15 | nord12 | nord13 | nord9 | nord14 | nord13 | nord11 | nord0 |
+| Nord Light | nord6 | nord5 | nord4 | nord0 | nord3 | nord10 | nord10 | nord10 | nord10 | nord15 | nord12 | nord3 | nord9 | nord14 | nord13 | nord11 | nord6 |
+| Dracula | background | background | current_line | foreground | comment | purple | purple | cyan | cyan | pink | orange | yellow | purple | green | orange | red | background |
+| Alucard | background | background | selection | foreground | comment | purple | purple | cyan | cyan | pink | orange | yellow | purple | green | orange | red | background |
+| Everforest | bg0 | bg_dim | bg4 | fg | grey2 | green | green | blue | blue | purple | orange | yellow | aqua | green | yellow | red | bg0 |
+| Kanagawa Wave | sumiInk3 | sumiInk4 | sumiInk6 | fujiWhite | oldWhite | crystalBlue | crystalBlue | springBlue | oniViolet | sakuraPink | surimiOrange | carpYellow | waveAqua2 | springGreen | roninYellow | peachRed | sumiInk3 |
+| Kanagawa Dragon | dragonBlack3 | dragonBlack4 | dragonBlack6 | dragonWhite | oldWhite | dragonBlue2 | dragonBlue2 | dragonTeal | dragonViolet | dragonPink | dragonOrange | dragonYellow | dragonAqua | springGreen | roninYellow | peachRed | dragonBlack3 |
+| Kanagawa Lotus | lotusWhite3 | lotusWhite2 | lotusViolet1 | lotusInk1 | lotusGray2 | lotusBlue4 | lotusBlue4 | lotusTeal2 | lotusViolet4 | lotusPink | lotusOrange | lotusYellow | lotusAqua | lotusGreen | lotusOrange2 | lotusRed3 | lotusWhite3 |
+| Solarized Dark | base03 | base02 | base01 | base1 | base0 | blue | blue | blue | violet | magenta | orange | yellow | cyan | green | yellow | red | base03 |
+| Solarized Light | base3 | base2 | base1 | base01 | base00 | blue | blue | blue | violet | magenta | orange | yellow | cyan | green | yellow | red | base3 |
+
+Official colours moved to reach AA (everything else is exactly as published):
+
+| flavour | role | official | used |
+|---|---|---|---|
+| catppuccin-latte | dim | subtext0 #6c6f85 | #63667c |
+| catppuccin-latte | accent-text | mauve #8839ef | #8535eb |
+| catppuccin-latte | link | blue #1e66f5 | #135cea |
+| catppuccin-latte | lav | lavender #7287fd | #4c5bcd |
+| catppuccin-latte | pink | pink #ea76cb | #a93a8f |
+| catppuccin-latte | peach | peach #fe640b | #b44300 |
+| catppuccin-latte | sand | rosewater #dc8a78 | #9d5141 |
+| catppuccin-latte | rose | flamingo #dd7878 | #aa4b4d |
+| catppuccin-latte | ok | green #40a02b | #1e7900 |
+| catppuccin-latte | warn | yellow #df8e1d | #955b00 |
+| catppuccin-latte | bad | red #d20f39 | #ce0436 |
+| tokyonight-storm | pink | purple #9d7cd8 | #a07fdb |
+| tokyonight-day | fg | fg #3760bf | #2f57b5 |
+| tokyonight-day | dim | fg_dark #6172b0 | #485893 |
+| tokyonight-day | accent-text | blue #2e7de9 | #0058bd |
+| tokyonight-day | link | cyan #007197 | #006283 |
+| tokyonight-day | lav | magenta #9854f1 | #7b30ce |
+| tokyonight-day | pink | purple #7847bd | #7241b6 |
+| tokyonight-day | peach | orange #b15c00 | #904a00 |
+| tokyonight-day | sand | yellow #8c6c3e | #745527 |
+| tokyonight-day | rose | green1 #387068 | #2c645d |
+| tokyonight-day | ok | green #587539 | #476428 |
+| tokyonight-day | warn | yellow #8c6c3e | #745527 |
+| tokyonight-day | bad | red #f52a65 | #ba0046 |
+| tokyonight-day | accent | blue #2e7de9 | #0058bd |
+| rose-pine-moon | dim | subtle #908caa | #938fad |
+| rose-pine-dawn | dim | subtle #797593 | #706c8a |
+| rose-pine-dawn | accent-text | rose #d7827e | #a85855 |
+| rose-pine-dawn | link | iris #907aa9 | #7b6693 |
+| rose-pine-dawn | lav | foam #56949f | #3b7984 |
+| rose-pine-dawn | pink | love #b4637a | #a7576e |
+| rose-pine-dawn | peach | gold #ea9d34 | #9b6200 |
+| rose-pine-dawn | sand | rose #d7827e | #a85855 |
+| rose-pine-dawn | rose | iris #907aa9 | #7b6693 |
+| rose-pine-dawn | warn | gold #ea9d34 | #9b6200 |
+| rose-pine-dawn | bad | love #b4637a | #a7576e |
+| rose-pine-dawn | accent | rose #d7827e | #a95855 |
+| gruvbox-dark | bad | bright_red #fb4934 | #ff5540 |
+| gruvbox-light | dim | dark4 #7c6f64 | #76695e |
+| gruvbox-light | accent-text | faded_yellow #b57614 | #986000 |
+| gruvbox-light | rose | faded_aqua #427b58 | #3f7855 |
+| gruvbox-light | ok | faded_green #79740e | #736e00 |
+| gruvbox-light | warn | faded_yellow #b57614 | #986000 |
+| gruvbox-light | accent | faded_yellow #b57614 | #986000 |
+| nord | pink | nord15 #b48ead | #caa4c3 |
+| nord | peach | nord12 #d08770 | #e89d85 |
+| nord | rose | nord9 #81a1c1 | #90b1d1 |
+| nord | bad | nord11 #bf616a | #f6929a |
+| nord-light | accent-text | nord10 #5e81ac | #476993 |
+| nord-light | link | nord10 #5e81ac | #476993 |
+| nord-light | lav | nord10 #5e81ac | #476993 |
+| nord-light | pink | nord15 #b48ead | #7f5c79 |
+| nord-light | peach | nord12 #d08770 | #98553f |
+| nord-light | rose | nord9 #81a1c1 | #4d6b89 |
+| nord-light | ok | nord14 #a3be8c | #566e40 |
+| nord-light | warn | nord13 #ebcb8b | #806322 |
+| nord-light | bad | nord11 #bf616a | #a44953 |
+| nord-light | accent | nord10 #5e81ac | #4a6c96 |
+| dracula | dim | comment #6272a4 | #7f90c4 |
+| everforest-light | dim | grey2 #829181 | #5f6e5e |
+| everforest-light | accent-text | green #8da101 | #606e00 |
+| everforest-light | link | blue #3a94c5 | #00709e |
+| everforest-light | lav | blue #3a94c5 | #00709e |
+| everforest-light | pink | purple #df69ba | #af3d8e |
+| everforest-light | peach | orange #f57d26 | #aa4f00 |
+| everforest-light | sand | yellow #dfa000 | #8b6200 |
+| everforest-light | rose | aqua #35a77c | #007753 |
+| everforest-light | ok | green #8da101 | #606e00 |
+| everforest-light | warn | yellow #dfa000 | #8b6200 |
+| everforest-light | bad | red #f85552 | #c9232b |
+| everforest-light | accent | green #8da101 | #687700 |
+| kanagawa-wave | lav | oniViolet #957fb8 | #9e88c2 |
+| kanagawa-lotus | dim | lotusGray2 #716e61 | #636053 |
+| kanagawa-lotus | accent-text | lotusBlue4 #4d699b | #456092 |
+| kanagawa-lotus | link | lotusTeal2 #6693bf | #38638d |
+| kanagawa-lotus | pink | lotusPink #b35b79 | #994462 |
+| kanagawa-lotus | peach | lotusOrange #cc6d00 | #954e00 |
+| kanagawa-lotus | sand | lotusYellow #77713f | #66602e |
+| kanagawa-lotus | rose | lotusAqua #597b75 | #456761 |
+| kanagawa-lotus | ok | lotusGreen #6f894e | #50682e |
+| kanagawa-lotus | warn | lotusOrange2 #e98a00 | #8e5200 |
+| kanagawa-lotus | bad | lotusRed3 #e82424 | #c5000f |
+| solarized-dark | dim | base0 #839496 | #8c9d9f |
+| solarized-dark | accent-text | blue #268bd2 | #41a1ea |
+| solarized-dark | link | blue #268bd2 | #41a1ea |
+| solarized-dark | lav | violet #6c71c4 | #8c93e9 |
+| solarized-dark | pink | magenta #d33682 | #fe60a6 |
+| solarized-dark | peach | orange #cb4b16 | #f57243 |
+| solarized-dark | sand | yellow #b58900 | #bf921a |
+| solarized-dark | rose | cyan #2aa198 | #37aaa1 |
+| solarized-dark | ok | green #859900 | #8ea219 |
+| solarized-dark | warn | yellow #b58900 | #bf921a |
+| solarized-dark | bad | red #dc322f | #ff695d |
+| solarized-dark | accent | blue #268bd2 | #3294dc |
+| solarized-light | fg | base01 #586e75 | #556b72 |
+| solarized-light | dim | base00 #657b83 | #576c74 |
+| solarized-light | accent-text | blue #268bd2 | #006cac |
+| solarized-light | link | blue #268bd2 | #006cac |
+| solarized-light | lav | violet #6c71c4 | #5b5fb0 |
+| solarized-light | pink | magenta #d33682 | #c12173 |
+| solarized-light | peach | orange #cb4b16 | #b83d00 |
+| solarized-light | sand | yellow #b58900 | #826200 |
+| solarized-light | rose | cyan #2aa198 | #00746d |
+| solarized-light | ok | green #859900 | #5e6d00 |
+| solarized-light | warn | yellow #b58900 | #826200 |
+| solarized-light | bad | red #dc322f | #ca1a1e |
+| solarized-light | accent | blue #268bd2 | #0075ba |

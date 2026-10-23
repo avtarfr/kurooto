@@ -166,7 +166,7 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   selector it overrides, so it wins without `!important`). Tokens on `body.home[data-design="new"]`: `--ui` (Public
   Sans, then system-ui), `--code` (the old monospace stack), `--mono` and `--sans` redefined to `--ui` so every classic
   rule that says `var(--mono)` takes the sans-serif, `--well`/`--raised`/`--rule`/`--track` (steps mixed from the
-  palette's `--fg` and `--panel`, so kuro, rose and system all work), `--hd` (a pane's header row), radii and
+  palette's `--fg` and `--panel`, so kuro, rose, system and the named themes all work), `--hd` (a pane's header row), radii and
   `--ease-out`. Figures are `tabular-nums` everywhere (`!important`, because classic's `font:` shorthands reset it).
   Monospace stays on `code`, `pre`, the terminals (`home.js:MONO`, given to xterm in both designs), file paths and
   setting names. The font is `static/fonts/public-sans-latin{,-ext}.woff2` (fontsource's variable cut, weights

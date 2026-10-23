@@ -6,6 +6,9 @@
            matugen, pywal, KDE, GNOME, GTK, Windows or macOS). Text stays readable: every text colour is moved
            lighter or darker until it passes WCAG AA (4.5:1) on the backgrounds it's used on. When nothing is found,
            it's kuro.
+  named themes (0.7.0)  catppuccin-mocha, tokyonight-storm, rose-pine, gruvbox, nord, ... (core/themes.py: each
+           project's official colours): a family's dark flavour for the dashboard and terminals, its light flavour
+           for the pages in light mode. An official colour that doesn't reach AA is moved just enough (adjusted()).
 
 current(app) -> {"--bg": "#0b0f0a", "--fg": ..., ...} is what `kurooto top` and the terminal themes use; css(app)
 is what the pages get (written into them by web/server.py, refreshed every 30 seconds by static/palette.js).
@@ -20,12 +23,15 @@ from typing import TYPE_CHECKING
 
 from kurooto.core import syscolors
 from kurooto.core.syscolors import SysColors, luminance, mode_of
+from kurooto.core.themes import FAMILIES, FLAVOURS, THEMES
 
 if TYPE_CHECKING:
     from kurooto.app import App
 
-NAMES = ("kuro", "rose", "system")
-LABELS = {"kuro": "Kuro (deep greens)", "rose": "Rose (the original pinks)", "system": "This computer's colours"}
+OWN = ("kuro", "rose", "system")
+NAMES = (*OWN, *THEMES)
+LABELS = {"kuro": "Kuro (deep greens)", "rose": "Rose (the original pinks)", "system": "This computer's colours",
+          **{t: th.label for t, th in THEMES.items()}}  # fmt: skip
 KEYS = ("bg", "fg", "dim", "line", "panel", "accent", "accent-text", "accent-contrast", "link", "hover",
         "lav", "pink", "peach", "sand", "rose", "ok", "warn", "bad")  # fmt: skip
 # text colours and what they're read on: each pair must pass AA (4.5:1)
@@ -202,6 +208,87 @@ def failures(v: dict[str, str]) -> list[str]:
     return bad
 
 
+# ------------------------------------------------------------------------------------------- the named themes
+_FLAV: dict[str, tuple[dict[str, str], list[dict]]] = {}
+
+
+def _flavour(fid: str) -> tuple[dict[str, str], list[dict]]:
+    """A flavour (core/themes.py) as CSS variables, and what had to move for AA: its official colours in Kurooto's
+    roles, each text colour moved lighter or darker just enough where it doesn't reach 4.5:1 on the page and panel
+    backgrounds; the accent as a fill (buttons) with text on it in the palette's own background colour where that
+    reads, else its text colour, else the fill a shade lighter or darker."""
+    if fid in _FLAV:
+        return _FLAV[fid]
+    f = FLAVOURS[fid]
+    official = {role: f.colours[name] for role, name in f.roles.items()}
+    moved: list[dict] = []
+
+    def use(role: str, value: str, why: str) -> str:
+        if value != official[role]:
+            moved.append({"flavour": fid, "role": role, "name": f.roles[role], "official": official[role],
+                          "used": value, "why": why})  # fmt: skip
+        return value
+
+    bg, panel = official["bg"], official["panel"]
+    out = {"--bg": bg, "--panel": panel, "--line": official["line"]}
+    for key in TEXT:
+        out[f"--{key}"] = use(key, readable(official[key], [bg, panel]), "text below 4.5:1")
+    fill = use("accent", readable(official["accent"], [bg], 3.0), "a fill below 3:1 on the page")
+    on = next((c for c in (official.get("on"), bg, out["--fg"]) if c and contrast(c, fill) >= 4.5), None)
+    if on is None:  # nothing of the palette's reads on its accent: the accent a shade darker or lighter
+        on = official.get("on") or bg
+        moved = [m for m in moved if m["role"] != "accent"]
+        fill = use("accent", readable(fill, [on], 4.5), "its text below 4.5:1")
+    hover = mix(fill, out["--fg"] if luminance(fill) < luminance(out["--fg"]) else bg, 0.16)
+    if contrast(on, hover) < 4.5:
+        hover = readable(hover, [on], 4.5)
+    out.update({"--accent": fill, "--accent-contrast": on, "--hover": hover})
+    _FLAV[fid] = ({f"--{k}": out[f"--{k}"] for k in KEYS}, moved)
+    return _FLAV[fid]
+
+
+def flavour(fid: str) -> dict[str, str]:
+    """A flavour's CSS variables ({"--bg": ...}), every text colour readable (AA)."""
+    return dict(_flavour(fid)[0])
+
+
+def adjusted() -> list[dict]:
+    """Every official colour that was moved to reach AA: flavour, role, the palette's name for it, the official and
+    the used hex (docs/wiki/dev/core.md lists them)."""
+    return [m for fid in FLAVOURS for m in _flavour(fid)[1]]
+
+
+def role_map(name: str, mode: str = "dark") -> dict[str, str]:
+    """A palette's role -> '#rrggbb' map (bg, fg, accent, ...; no leading --) for kuro, rose or a theme id, in dark
+    or light mode; a flavour id (catppuccin-latte) gives that flavour. For other programs (the phone app's colour
+    scheme, later)."""
+    if name in STATIC or name in THEMES:
+        v = variables(name, mode)
+    elif name in FLAVOURS:
+        v = flavour(name)
+    else:
+        raise KeyError(name)
+    return {k.lstrip("-"): c for k, c in v.items()}
+
+
+def export() -> dict:
+    """Every palette but system as plain data (json.dumps-able): the themes (look.palette's values) with their dark
+    and light flavours, and each flavour's roles. kuro and rose are their own family, with a dark and a light one."""
+    themes: dict[str, dict] = {}
+    flavours: dict[str, dict] = {}
+    for n in STATIC:
+        themes[n] = {"name": LABELS[n], "family": n, "dark": n, "light": f"{n}-light"}
+        for mode, fid in (("dark", n), ("light", f"{n}-light")):
+            flavours[fid] = {"name": LABELS[n], "family": n, "mode": mode, "roles": role_map(n, mode)}
+    for tid, t in THEMES.items():
+        fam = FAMILIES[t.family]
+        themes[tid] = {"name": t.label, "family": fam.name, "dark": t.dark, "light": t.light, "source": fam.url,
+                       "licence": fam.licence}  # fmt: skip
+    for fid, f in FLAVOURS.items():
+        flavours[fid] = {"name": f.name, "family": FAMILIES[f.family].name, "mode": f.mode, "roles": role_map(fid)}
+    return {"themes": themes, "flavours": flavours}
+
+
 # ------------------------------------------------------------------------------------------- for the app
 def _settings(app):
     """The App's settings, or a Settings itself (`kurooto top` reads settings without starting the App)."""
@@ -230,6 +317,8 @@ def resolve(app: App) -> tuple[str, SysColors | None]:
 def variables(name: str, mode: str, colors: SysColors | None = None) -> dict[str, str]:
     if name == "system":
         return build(colors, mode)
+    if name in THEMES:  # the family's light flavour for light pages, the chosen dark one for the rest
+        return flavour(THEMES[name].light if mode == "light" else THEMES[name].dark)
     return dict(STATIC.get(name, KURO)["light" if mode == "light" else "dark"])
 
 
@@ -250,8 +339,14 @@ def _block(selector: str, v: dict[str, str], mode: str) -> str:
 
 def css(app: App) -> str:
     """The <style> the pages get: empty for kuro and rose (style.css has them); for system, the page's colours in the
-    computer's mode (both, by the browser's setting, when the mode isn't known) and the dark dashboard's."""
+    computer's mode (both, by the browser's setting, when the mode isn't known) and the dark dashboard's; for a named
+    theme, its dark flavour, its light flavour in light mode, and the dark one for the dashboard."""
     name, found = resolve(app)
+    if name in THEMES:
+        page, dark = f':root[data-palette="{name}"]', variables(name, "dark")
+        light = _block(page, variables(name, "light"), "light")
+        return "\n".join([_block(page, dark, "dark"), f"@media (prefers-color-scheme: light) {{ {light} }}",
+                          _block(f'[data-palette="{name}"] body.home', dark, "dark")])  # fmt: skip
     if name != "system" or not found:
         return ""
     page = ':root[data-palette="system"]'
@@ -264,6 +359,15 @@ def css(app: App) -> str:
     return "\n".join(parts)
 
 
+def _choice(n: str) -> dict:
+    """A palette for the choice on the setup page: a named theme with its family and the names of its flavours."""
+    if n not in THEMES:
+        return {"id": n, "label": LABELS[n]}
+    t = THEMES[n]
+    return {"id": n, "label": LABELS[n], "family": FAMILIES[t.family].name, "dark": FLAVOURS[t.dark].name,
+            "light": FLAVOURS[t.light].name}  # fmt: skip
+
+
 def describe(app: App) -> dict:
     """For /api/look and Settings: what's chosen, what's in use, what this computer offers, and the CSS."""
     name, found = resolve(app)
@@ -273,8 +377,8 @@ def describe(app: App) -> dict:
         "palette": name,
         "mode": found.mode if found else None,
         "system": sys_colors.to_dict() if sys_colors and sys_colors.accent else None,
-        "choices": [{"id": n, "label": LABELS[n]} for n in NAMES],
-        "previews": {  # a few colours of each, for the choice on the setup page
+        "choices": [_choice(n) for n in NAMES],  # Kurooto's own three, then the named themes
+        "previews": {  # a few colours of each, for the choice on the setup page and in Settings
             n: {
                 m: [variables(n, m, sys_colors)[f"--{k}"] for k in ("bg", "accent", "lav", "pink", "peach", "rose")]
                 for m in ("dark", "light")
@@ -301,8 +405,9 @@ def settings_choices(app: App, section: str) -> dict:
         "help": {
             "design": "The dashboard's design. Classic is the look of 0.5.18 and earlier, set in a monospace font; "
             "the board, its keys and its data are the same in both.",
-            "palette": "The colours of these pages. This computer's colours follow your desktop's accent colour and "
-            "light or dark mode, and change when they do.",
+            "palette": "The colours of these pages and the terminals. This computer's colours follow your desktop's "
+            "accent colour and light or dark mode. A named theme keeps its project's own colours: the dashboard and "
+            "terminals in the flavour named first, the other pages in the light one when they're in light mode.",
             "theme_file": "Optional: a colours file of your own (a kitty theme, or matugen or pywal JSON) to use "
             "instead of the desktop's. Setting it switches the palette to this computer's colours; empty it to stop.",
         },

@@ -478,13 +478,15 @@ default on). Without a plan yet it says so: with Chat on and the alarm set, one 
 
 ## Colours
 
-Kurooto's pages (setup, dashboard, morning page, and the terminal colours) come in three palettes:
+Kurooto's pages (setup, dashboard, morning page, and the terminal colours) come in three palettes of its own, and
+in well-known named themes:
 
 | Palette | Looks |
 |---|---|
 | **kuro** (default) | deep greens |
 | **rose** | the pinks of earlier versions |
 | **system** | this computer's own accent colour and light or dark mode, followed as they change (within half a minute, without reloading) |
+| a named theme | Catppuccin, Tokyo Night, Rosé Pine, Gruvbox, Nord, Dracula, Everforest, Kanagawa or Solarized, in the project's own colours |
 
 Where **system** looks, best first: on Linux, Material You colours made from your wallpaper by matugen, then pywal,
 then KDE's accent colour, GNOME's (47 or later) and your GTK theme's; on Windows the accent colour and app mode
@@ -498,9 +500,48 @@ Text always stays readable: a colour that would be hard to read on its backgroun
 passes the WCAG AA contrast level (4.5:1). The dashboard is always dark; the setup and morning pages follow light or
 dark mode. Your call line's pages on the phone stay green.
 
+### Named themes
+
+Each theme is a family with a dark flavour and a light one. The dashboard and the terminals are always dark, so they
+use the dark flavour you pick; the setup and morning pages use the family's light flavour when your browser is in
+light mode. Pick one on the setup page's **Colours** (under "Or a named theme", with a few of its colours) or in
+**Settings → Look → `look.palette`** (the dots under it show the dashboard's colours and the light pages').
+
+| `look.palette` | Dashboard and terminals | Light pages |
+|---|---|---|
+| `catppuccin-mocha`, `catppuccin-macchiato`, `catppuccin-frappe` | Catppuccin Mocha, Macchiato or Frappé | Catppuccin Latte |
+| `tokyonight-night`, `tokyonight-storm`, `tokyonight-moon` | Tokyo Night, Tokyo Night Storm or Moon | Tokyo Night Day |
+| `rose-pine`, `rose-pine-moon` | Rosé Pine or Rosé Pine Moon | Rosé Pine Dawn |
+| `gruvbox` | Gruvbox Dark | Gruvbox Light |
+| `nord` | Nord | Nord Light (Nord's own colours as Nord describes them for light designs: Snow Storm backgrounds, Polar Night text) |
+| `dracula` | Dracula | Alucard |
+| `everforest` | Everforest Dark (medium) | Everforest Light (medium) |
+| `kanagawa-wave`, `kanagawa-dragon` | Kanagawa Wave or Dragon | Kanagawa Lotus |
+| `solarized` | Solarized Dark | Solarized Light |
+
+The colours are the projects' own, exactly as they publish them. Kurooto still keeps text readable: where a theme's
+colour is too faint to read as text on its background (common in light flavours, and in Solarized and Nord), that
+colour is made a little darker or lighter, keeping its hue, until it passes 4.5:1; backgrounds and lines are never
+changed. The developer notes ([core.md](../dev/core.md#colours-palettes-and-named-themes-corepalettepy-corethemespy))
+list every colour that moved.
+
+Credits (the palettes, under their own licences; Kurooto copies only the colour values):
+
+| Theme | By | Source | Licence |
+|---|---|---|---|
+| Catppuccin | the Catppuccin org | [catppuccin/palette](https://github.com/catppuccin/palette) | MIT |
+| Tokyo Night | folke (from enkia's Tokyo Night) | [folke/tokyonight.nvim](https://github.com/folke/tokyonight.nvim) | Apache-2.0 |
+| Rosé Pine | the Rosé Pine org | [rose-pine/palette](https://github.com/rose-pine/palette) | MIT |
+| Gruvbox | morhetz | [morhetz/gruvbox](https://github.com/morhetz/gruvbox) | MIT/X11 |
+| Nord | Sven Greb | [nordtheme/nord](https://github.com/nordtheme/nord) | MIT |
+| Dracula | the Dracula Theme org | [dracula/dracula-theme](https://github.com/dracula/dracula-theme) | MIT |
+| Everforest | sainnhe | [sainnhe/everforest](https://github.com/sainnhe/everforest) | MIT |
+| Kanagawa | rebelot | [rebelot/kanagawa.nvim](https://github.com/rebelot/kanagawa.nvim) | MIT |
+| Solarized | Ethan Schoonover | [ethanschoonover.com/solarized](https://ethanschoonover.com/solarized) ([altercation/solarized](https://github.com/altercation/solarized)) | MIT |
+
 | Setting | Default | Effect |
 |---|---|---|
-| `look.palette` | `kuro` | `kuro`, `rose` or `system`; the dashboard reloads to take it |
+| `look.palette` | `kuro` | `kuro`, `rose`, `system` or a named theme (above); the dashboard reloads to take it |
 | `look.theme_file` | empty | a colours file to use instead of the desktop's |
 
 Also on the setup page's "Your computer" step (**Colours**). *Leaves your computer:* nothing.

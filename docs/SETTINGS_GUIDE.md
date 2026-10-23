@@ -550,11 +550,11 @@ README, and appear in Settings once their feature is on.
 | `look.hidden_features` | `[]` | features hidden from the Features list (they still run if on) |
 | `look.layout` | `"dense"` | dense (everything on one board) or roomy |
 | `look.links_in` | `"default"` | where links open: default is your default browser |
-| `look.palette` | `"kuro"` | the pages' colours (core/palette.py) |
+| `look.palette` | `"kuro"` | the pages' colours (core/palette.py, themes.py) |
 | `look.panes` | `[]` | the dense board's hidden panes: status, systems, notes, terminal (empty: none hidden) |
 | `look.projects` | `[]` | folders of git repositories the PROJECTS box shows (empty: Research's repositories) |
 | `look.study_mode` | `false` | the dashboard in Study mode: the notes map, the study timer and what's due (Alt+M, /study mode) |
-| `look.theme_file` | `""` | the pages' colours (core/palette.py) |
+| `look.theme_file` | `""` | the pages' colours (core/palette.py, themes.py) |
 
 ### `mail_digest`
 

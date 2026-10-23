@@ -27,7 +27,8 @@ let FONT = MONO, FSC = 1; // the canvases' words and their scale: set by useDesi
 const cf = (px, weight = "", fam = FONT) => `${weight ? weight + " " : ""}${Math.round(px * FSC * 2) / 2}px ${fam}`;
 function useDesign() { NEW = document.body.dataset.design !== "classic"; FONT = NEW ? SANS : MONO; FSC = NEW ? 1.12 : 1; }
 useDesign();
-// the canvases' colours are the page's palette (style.css: "kuro" by default, "rose" with look.palette = rose)
+// the canvases' colours are the page's palette (style.css: "kuro" by default, "rose"; the system palette and the named
+// themes come as a <style> from core/palette.py)
 const css = (name, fallback) => { const v = getComputedStyle(document.body).getPropertyValue(name).trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : fallback; };
 const PAL = { bg: css("--bg", "#0b0f0a"), fg: css("--fg", "#dad3c8"), accent: css("--accent-text", "#a6c07a"), lav: css("--lav", "#8dbdb3"),
   pink: css("--pink", "#d6967a"), peach: css("--peach", "#ddb866"), sand: css("--sand", "#e4d8b4"), rose: css("--rose", "#b9a6cc"),
@@ -2409,6 +2410,14 @@ async function renderSettings(body) {
   findWire(body, "settings", typing);
   const notesSet = body.querySelector('[data-key="notes.layout"]');  // the setup page's Notes step (core/notesfit.py)
   if (notesSet) notesSet.closest("fieldset").insertAdjacentHTML("beforeend", `<div class="help d"><a href="/setup#notes">Fit Kurooto to your notes</a>: it reads your notes folder, proposes where each kind of note goes, and moves its own notes there, with Undo.</div>`);
+  // the chosen palette's colours under its choice: the dashboard's (always dark) and the light pages' (core/palette.py)
+  const palSet = body.querySelector('[data-key="look.palette"]');
+  if (palSet) api("look").then((look) => {
+    const p = (look.previews || {})[palSet.value], row = palSet.closest(".set");
+    if (!p || !row || stale(body, "settings")) return;
+    const dots = (cs) => (cs || []).map((c) => `<i style="background:${esc(c)}"></i>`).join("");
+    row.insertAdjacentHTML("beforeend", `<div class="help d swatch-row" aria-hidden="true"><span>dashboard</span>${dots(p.dark)}<span>light pages</span>${dots(p.light)}</div>`);
+  }).catch(() => {});
   // what happened, right under the setting you changed (the page can be long: a line at its end went unseen)
   const say = (t, text, bad) => {
     $("#saved").textContent = text;

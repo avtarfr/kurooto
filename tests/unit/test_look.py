@@ -251,9 +251,8 @@ def test_system_palette_on_the_pages_and_its_fallback(web):
     page = call(srv, "/setup", token=False)[1]
     assert '<style id="kurooto-palette"></style>' in page and "/static/palette.js" in page
     assert call(srv, "/api/settings", {"key": "look.palette", "value": "purple"})[0] == 400
-    assert srv.api.post("settings", {"key": "look.palette", "value": "purple"})[1] == {
-        "error": "look.palette is one of: kuro, rose, system"
-    }
+    wrong = srv.api.post("settings", {"key": "look.palette", "value": "purple"})[1]["error"]
+    assert wrong.startswith("look.palette is one of: kuro, rose, system, catppuccin-mocha, ") and "solarized" in wrong
     assert call(srv, "/api/settings", {"key": "look.palette", "value": "system"})[1] == {"ok": True}
     page = call(srv, "/setup", token=False)[1]
     assert page_palette(page) == "kuro" and '<style id="kurooto-palette"></style>' in page  # nothing found yet
@@ -281,7 +280,7 @@ def test_system_palette_on_the_pages_and_its_fallback(web):
 def test_settings_offer_the_palettes_with_what_they_are(web):
     app, srv, found = web
     look = next(s for s in call(srv, "/api/settings")[1]["sections"] if s["section"] == "look")
-    assert [c[0] for c in look["choices"]["palette"]] == ["kuro", "rose", "system"]
+    assert [c[0] for c in look["choices"]["palette"]] == ["kuro", "rose", "system", *palette.THEMES]
     assert "nothing found here yet" in look["choices"]["palette"][2][1] and look["help"]["palette"]
     found["value"] = syscolors.from_kdeglobals(fx("kdeglobals"))
     syscolors.forget()

@@ -561,7 +561,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `k_tonal`, `k_ok`, `k_bad`, ...): `res/values/colors.xml` is the web pages' light "kuro" palette, `values-night`
     the dark one, and `values-v31` / `values-night-v31` map Material You's `system_accent1_*` / `system_neutral*_*`
     onto the same names on Android 12+. `k_call_*` (the ringing screen, from `call.css`) and `k_brand` (notifications)
-    never change. Light or dark follows the system (`-night`); Android 9 and older are light.
+    never change. Light or dark follows the system (`-night`); Android 9 and older are light. Later (the Compose
+    app): the named themes too, from `core/palette.py:export()` (each theme's flavours and their role → hex maps).
   - Themes (`res/values/themes.xml`): `Kurooto` (full-screen pages, the app's default), `Kurooto.Dialog` (`AnswerActivity`,
     `PairActivity`, `ShareActivity`: a 28dp-cornered card, `drawable/k_dialog.xml`) and `Kurooto.Call` (`CallActivity`,
     always dark). `Base.Kurooto*` only pick the framework's light or dark `Theme.Material` parent.
