@@ -1972,14 +1972,27 @@ busiest notes.
 **Which AI.** Picked for you by default (`integrate.roles` = `{"bulk": "", "check": ""}`): with both agy and Claude
 Code installed, agy does the bulk work and Claude Code the second look, side by side; with one, it does both; with
 none, your main AI does (a Gemini key's daily
-limit makes that slow: set `integrate.per_night` low and `integrate.first` to your current subjects). Without a
+limit makes that slow: set `integrate.first` to your current subjects). Without a
 graphics card nothing changes except that embeddings come from the CPU or your Gemini key.
+
+**How much a night** fits your AI by itself (`integrate.per_night` = `auto`). With Claude Code or agy, whose plan you
+share with your own chats, it learns what fits: 30 batches the first night (or the most it read in one night before),
+50% more after each night that read its whole budget with no limit hit, half after a limit (and nothing more until it
+resets; a reset more than about 6 hours away is Claude's weekly limit, which also starts the next week lower), and at
+most 60% of what fit in one window (`integrate.share_pct`), so the rest is yours. A free Gemini key: 60% of its daily
+limit; under 10 batches a night, `/graph` and the card say agy or the model on this computer reads books better. An API
+key: at most $0.50 a night (`integrate.max_cost_per_night`). The model on this computer: no budget. A number in
+`integrate.per_night` is a hard ceiling. The night starts 5 hours before you usually wake (your alarm or the night
+hours), so a 5-hour window it opens has reset when you get up; never later than `integrate.at`. `/graph`, `/usage` and
+the feature's card show tonight's budget, how it was decided and the last limit hit with its reset.
 
 | Setting | Does |
 |---|---|
 | `integrate.at` | when the night's work starts (it carries on batch after batch, and after each book is read) |
 | `integrate.roles` | the AI for the bulk work and for the second look (e.g. `{"bulk": "agy", "check": "claude"}`; empty: picked for you) |
-| `integrate.per_night` | the most batches a night |
+| `integrate.per_night` | batches a night: `auto` (fitted to your AI) or a number (a hard ceiling) |
+| `integrate.share_pct` | the most of a subscription's usage window (or a free key's day) the reading takes (60) |
+| `integrate.max_cost_per_night`, `integrate.price_per_mtok` | an API key's money budget a night (0.50 USD), and its prices when it reports no cost |
 | `integrate.first` | subjects to do first |
 | `integrate.garden`, `integrate.garden_per_day` | the daily second pass |
 | `integrate.embeddings` | auto, ollama, gemini or off |

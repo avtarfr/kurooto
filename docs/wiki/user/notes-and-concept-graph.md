@@ -486,14 +486,40 @@ with an agent program (agy or Claude Code) installed; see "Which AI" below.
    `git revert <commit>` undoes exactly that batch.
 
 **When it runs.**
-- Each night from 01:30 (`integrate.at`), batch after batch, and right after a book has been read.
+- Each night from 01:30 (`integrate.at`), batch after batch, and right after a book has been read. If you wake early,
+  it starts earlier: 5 hours before you wake (your alarm, else the night hours in Settings → availability), so a Claude
+  5-hour window it opens has reset by the time you get up; never before your bedtime, never later than `integrate.at`.
 - Every 3 hours it carries on if something was waiting (a limit that has reset). When the AI was at its limit or
   signed out, it tries again after 20 minutes. A batch that fails 3 times is marked failed.
-- At most `integrate.per_night` (300) batches a day, so it can't use all of your AI's day.
+- How much a night is fitted to your AI by itself (see **How much it reads a night** below), so it never uses up what
+  you need yourself.
 - Books with the fewest pages go first (`integrate.order`), so the most books get done soonest; list subjects to do
   first in `integrate.first`.
 - Effort: the small, quick model by default; the next one up for a batch that failed before, or for a book whose
   recent batches needed many second looks.
+
+**How much it reads a night** (`integrate.per_night` = `auto`, the default). A night runs from one night's start to the
+next, so batches read during the day count toward the night before.
+- **Claude Code or agy (a subscription):** your plan's usage is shared between Kurooto and your own chats, and the
+  numbers aren't published, so Kurooto learns them. The first night it reads 30 batches (or as many as it ever read in
+  one night before, if that's more). Each night that read its whole budget without hitting a limit, the next night
+  reads 50% more (up to 300). When a limit is hit, the budget is halved and nothing more is read until that limit
+  resets. A reset more than about 6 hours away means Claude's weekly limit rather than the 5-hour window: it waits for
+  it, and the next week starts lower. Once a limit has shown how many batches fit in one window, a night reads at most
+  60% of that (`integrate.share_pct`), so the rest of the window is yours. What fit is forgotten after 14 days without
+  a limit, so a bigger plan is noticed.
+- **A free Gemini key:** 60% of its daily limit (learned the first time it's reached). If that's under 10 batches a
+  night, `/graph` and the feature's card say so: agy (free with a Google account) or the model on this computer reads
+  books much better.
+- **An API key** (another OpenAI-compatible service): a money budget, `integrate.max_cost_per_night` ($0.50), from
+  the cost each answer reports, or estimated from its tokens at `integrate.price_per_mtok` (set it to your model's
+  prices).
+- **The model on this computer (Ollama):** no budget; on battery it waits for the charger as before.
+- **A number** in `integrate.per_night` (say 60) is a hard ceiling on all of that: it never reads more in a night.
+
+`/graph` shows tonight's budget and how it was decided ("Tonight's reading budget: 15 batches (learned: 15 batches,
+60% of the 25 that fit last night); 4 read so far."), and the last limit ("Last limit: the 5-hour window on Fri 23 Oct
+03:10 after 25 batches in it; reset at 06:30."). `/usage` and the feature's card on the dashboard show the same.
 
 **The daily second pass ("garden")**, at 06:20 (`integrate.garden`): the notes the reading touched, then notes that
 nothing links to, are checked once more against everything that's there now (up to 40 a day,
@@ -514,8 +540,8 @@ limit is what runs out).
 
 | Command | What it does |
 |---|---|
-| `/graph` | The state: batches done, waiting and failed; which AI does the bulk work and the second look; today's AI requests and cost; and the quality numbers below |
-| `/graph now` | Starts the next batch now ("Started.", or "Nothing to start" and why) |
+| `/graph` | The state: batches done, waiting and failed; which AI does the bulk work and the second look; today's AI requests and cost; tonight's reading budget, how it was decided and the last limit hit; and the quality numbers below |
+| `/graph now` | Starts the next batch now ("Started.", or "Nothing to start" and why: tonight's budget is read, or the AI's limit hasn't reset) |
 | `/graph stop` | Starts no new batches until the next night's start ("Stopped: no new batches until its usual start, Thu 01:30"); it holds through a restart, and `/graph now` goes on sooner |
 
 The quality numbers in `/graph`: how many concepts and links, **broken** links, notes with **no links in**, links
@@ -525,8 +551,8 @@ notes swallow everything).
 **Which AI** (`integrate.roles`, e.g. `{"bulk": "agy", "check": "claude"}`). Empty (the default) chooses for you:
 - agy and Claude Code both installed: they split the work (bulk and second look) and run side by side;
 - one of them: it does both;
-- neither: your main AI does both. With a free Gemini key's daily limit that's slow: set `integrate.per_night` low and
-  `integrate.first` to your current subjects.
+- neither: your main AI does both. With a free Gemini key's daily limit that's slow (the budget keeps 40% of the day
+  for you): set `integrate.first` to your current subjects, or read with agy or the model on this computer.
 
 Without a graphics card nothing changes except that the meaning-based matching comes from your Gemini key or is
 skipped.
@@ -538,7 +564,10 @@ skipped.
 | `integrate.at` | `daily 01:30` | When the night's work starts |
 | `integrate.roles` | `{"bulk": "", "check": ""}` | The AI for the bulk work and the second look; empty = chosen for you |
 | `integrate.batch_pages` | `12` | About how many pages per request |
-| `integrate.per_night` | `300` | The most batches in a day |
+| `integrate.per_night` | `auto` | Batches a night: `auto` (fitted to your AI by itself) or a number (a hard ceiling) |
+| `integrate.share_pct` | `60` | The most of a subscription's usage window (or a free key's day) the reading takes |
+| `integrate.max_cost_per_night` | `0.5` | An API key: the most a night's reading may cost (USD) |
+| `integrate.price_per_mtok` | `{"in": 2.0, "out": 8.0}` | An API key that reports no cost: its USD per million tokens, for the estimate |
 | `integrate.first` | `[]` | Subjects to do first, e.g. `["linear-algebra"]` |
 | `integrate.order` | `smallest` | Which books first: `smallest` or `name` |
 | `integrate.garden` | on | The daily second pass |

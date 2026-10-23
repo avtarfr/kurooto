@@ -391,12 +391,16 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `integrate.first` | `[]` | subjects to do first, e.g. ["deep-learning"] |
 | `integrate.garden` | `true` | each day, a second pass over the notes the reading touched and notes nothing links to |
 | `integrate.garden_per_day` | `40` | the most notes in that pass |
+| `integrate.max_cost_per_night` | `0.5` | an API key: the most a night's reading may cost (USD, as the service reports it) |
 | `integrate.order` | `"smallest"` | which books first: smallest (fewest pages: most books done soonest) \| name |
-| `integrate.per_night` | `300` | the most batches in a night (a limit on how much of your AI's day it may use) |
+| `integrate.per_night` | `"auto"` | batches a night: auto (fitted to your AI's plan by itself) or a number (a hard ceiling) |
+| `integrate.price_per_mtok.in` | `2.0` | an API key that reports no cost: its USD per million tokens |
+| `integrate.price_per_mtok.out` | `8.0` | an API key that reports no cost: its USD per million tokens |
 | `integrate.rerank` | `"auto"` | a local model judges which notes belong together (a graphics card helps): auto \| off |
 | `integrate.rerank_model` | `""` | which one ("": the helper model of this computer's setup) |
 | `integrate.roles.bulk` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
 | `integrate.roles.check` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
+| `integrate.share_pct` | `60` | a subscription's usage window (or a free key's day): the most of it reading takes |
 | `integrate.summary` | `true` | one line each morning about what changed |
 
 ### `jobs`

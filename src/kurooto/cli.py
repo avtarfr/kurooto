@@ -1402,13 +1402,16 @@ def usage_cmd(days: int) -> int:
     """`kurooto usage [DAYS]`: /usage in a terminal (Kurooto's own requests, agy's count from its logs, and today's
     free limits)."""
     from kurooto.app import App
+    from kurooto.core.readbudget import usage_text as reading
     from kurooto.modules.chat import usage_text
     from kurooto.providers.agy import log_usage, log_usage_text
 
     days = days if 1 <= days <= 60 else 7
     app = App()
     try:
-        print(usage_text(app.jobs.usage(days), days) + log_usage_text(log_usage(days)) + app.quota.text())
+        print(
+            usage_text(app.jobs.usage(days), days) + log_usage_text(log_usage(days)) + app.quota.text() + reading(app)
+        )
     finally:
         app.close()
     return 0
