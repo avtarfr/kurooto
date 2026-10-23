@@ -384,7 +384,7 @@ follow-up) and from your own scripts (see [From a terminal or a script](#from-a-
 - `/q` lists the open ones with their buttons; `/status` says how many are waiting.
 
 *Settings:* `ask.expire_hours` (default 48: how long an unanswered question stays open), `ask.keep_days` (default
-0: answered ones are kept as long as `privacy.keep_days`, 30; see [Forgetting](#forgetting-how-long-conversations-are-kept)).
+0: answered ones are kept as long as `privacy.keep_days` when set, else 30 days; see [Forgetting](#forgetting-how-long-conversations-are-kept)).
 *Leaves your computer:* the question goes wherever Kurooto reaches you (Telegram, the phone app, the desktop); open
 questions are part of the brief your call line keeps for calls while the computer is off.
 
@@ -1196,7 +1196,7 @@ what you typed: read the file before you share it, for example with whoever gave
 <id>` (or `all`) deletes them.
 
 *Settings* (`cases.*`): `button` (the Wrong button, on), `fallthroughs` (keep requests nothing understood, on),
-`keep_days` (0: as long as `privacy.keep_days`, 30; cases you didn't make test cases are forgotten after this; test
+`keep_days` (0: as long as `privacy.keep_days` when set, else 30 days; cases you didn't make test cases are forgotten after this; test
 cases stay), `review` (`weekly sun
 19:00`) and `review_days` (28: about once a month), `review_max` (5 phrasings), `learn` (on; off keeps test cases
 without teaching anything).
@@ -2811,13 +2811,14 @@ feature it turned off goes back on). `/calm` lists what's stopped, with a button
 nothing is recorded; anything already waiting still comes at the evening bundle.
 
 *Leaves:* nothing. What's recorded stays in `calm.db` in the state folder for 45 days: when, the reason, the setting,
-what it was about, the first 300 characters (only for `privacy.keep_days`, 30) and whether you tapped or answered it;
+what it was about, the first 300 characters (forgotten after `privacy.keep_days` when you set it) and whether you tapped or answered it;
 a waiting message in full until its evening.
 
 ## Forgetting: how long conversations are kept
 
-Always on. What Kurooto keeps of your conversations is forgotten after `privacy.keep_days` (30 days), every night at
-04:15 (or when the computer wakes, if it slept through it):
+Nothing is forgotten unless you choose: set `privacy.keep_days` (e.g. 30) and what Kurooto keeps of your
+conversations is forgotten after that many days, every night at 04:15 (or when the computer wakes, if it slept
+through it):
 - call transcripts, and calls that went on as text;
 - what you asked the AI and what it answered (the request's time, AI and effort stay, without the words, for `/usage`
   and the Space keeper), and long answers kept as files;
@@ -2835,8 +2836,8 @@ them in the app.
 a **Forget everything** button (it works for 10 minutes; **Keep it** does nothing). `/forget` alone says how long
 things are kept.
 
-*Settings:* `privacy.keep_days` (30; 0 keeps everything until you `/forget` it). `ask.keep_days` and `cases.keep_days`
-(0: follow `privacy.keep_days`) give questions or cases their own time.
+*Settings:* `privacy.keep_days` (0, the default, keeps everything until you `/forget` it). `ask.keep_days` and
+`cases.keep_days` (0: `privacy.keep_days` when set, else 30 days, as before) give questions or cases their own time.
 *Leaves:* nothing. The event log (`events.jsonl`) isn't forgotten: it holds times, counts and names, never what you
 typed or what was answered, and features learn your rhythm from it over weeks. Your call line holds a call's
 transcript only while the computer is off and hands it over when it's back, so nothing waits there.

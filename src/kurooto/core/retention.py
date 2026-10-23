@@ -1,5 +1,5 @@
-"""Retention: what Kurooto keeps of your conversations is forgotten after privacy.keep_days (30), and /forget forgets
-a stretch of it now.
+"""Retention: what Kurooto keeps of your conversations is forgotten after privacy.keep_days, when you set it (0, the
+default, keeps it), and /forget forgets a stretch of it now.
 
 What it covers, all in Kurooto's own folders (your notes folder is never touched):
 
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 register_defaults(
     "privacy",
     {
-        "keep_days": 30,  # transcripts, AI requests and answers, chats and logs go after this many days (0: kept)
+        "keep_days": 0,  # transcripts, AI requests and answers, chats and logs go after this many days (0: kept)
     },
 )
 
@@ -65,14 +65,17 @@ STAMP = re.compile(rb"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")  # a log line's t
 TRANSCRIPT = re.compile(r"^(\d{4}-\d{2}-\d{2}-\d{6})")
 
 
+TIDY = {"ask": 30, "cases": 30}  # settled questions and Wrong cases were always tidied after 30 days; they still are
+
+
 def days(settings: Settings, section: str = "") -> float:
-    """How many days to keep: the section's own keep_days when you set one (ask, cases), else privacy.keep_days.
-    0: keep."""
+    """How many days to keep: the section's own keep_days when you set one (ask, cases), else privacy.keep_days, else
+    the section's old tidy-up (TIDY). 0: keep."""
     own = settings.get(f"{section}.keep_days") if section else None
     try:
-        return max(0.0, float(own or settings.get("privacy.keep_days") or 0))
+        return max(0.0, float(own or settings.get("privacy.keep_days") or TIDY.get(section, 0)))
     except (TypeError, ValueError):
-        return 30.0
+        return float(TIDY.get(section, 0))
 
 
 def _in(t: float | None, lo: float, hi: float) -> bool:

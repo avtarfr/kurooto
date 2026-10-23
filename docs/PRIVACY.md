@@ -76,8 +76,8 @@ computer only.
 | Kurooto Terminal | nothing by itself; getting kitty or fish (only when you say yes) downloads them from their official GitHub releases. What you type to your AI's program goes to its service, as when you run it yourself | stays on your computer |
 | Your add-ons | nothing by the feature itself; your add-ons' own code can do anything Kurooto can, so they send whatever they're written to send | wherever your add-ons send it |
 | Study tracker: telling you're away | nothing: the idle check reads input interrupt counts (`/proc/interrupts`), the cursor position (Hyprland) and whether a screen locker runs; never what you type, and none of it is kept | stays on your computer |
-| Calm by default (on by default) | nothing: what's recorded about each message that came by itself (when, why, the setting, what it was about, its first 300 characters (only `privacy.keep_days`, 30), whether you tapped or answered it) stays in `calm.db` in Kurooto's state folder for 45 days, and a message waiting for the evening bundle is kept in full until it's sent. It goes into Backups like the rest of the state folder, never into Profile sync; `notify.calm.on` = `false` records nothing | stays on your computer |
-| Wrong button and test cases | nothing: what you typed, what Kurooto did and a snapshot of the settings that decided it stay in Kurooto's state folder (`cases/`), never in Backups, Profile sync or `kurooto doctor --bundle`; cases you didn't review are forgotten after `privacy.keep_days` (30). The monthly look back shows phrasings back to you on Telegram, where they came from. `kurooto cases export` writes a file on this computer; sharing it is up to you | stays on your computer |
+| Calm by default (on by default) | nothing: what's recorded about each message that came by itself (when, why, the setting, what it was about, its first 300 characters (forgotten after `privacy.keep_days` when you set it), whether you tapped or answered it) stays in `calm.db` in Kurooto's state folder for 45 days, and a message waiting for the evening bundle is kept in full until it's sent. It goes into Backups like the rest of the state folder, never into Profile sync; `notify.calm.on` = `false` records nothing | stays on your computer |
+| Wrong button and test cases | nothing: what you typed, what Kurooto did and a snapshot of the settings that decided it stay in Kurooto's state folder (`cases/`), never in Backups, Profile sync or `kurooto doctor --bundle`; cases you didn't review are forgotten after 30 days (`cases.keep_days`, or `privacy.keep_days` when you set it). The monthly look back shows phrasings back to you on Telegram, where they came from. `kurooto cases export` writes a file on this computer; sharing it is up to you | stays on your computer |
 | Local AI models, Reminders, Deadlines (with recurring quizzes, the not-interested list, exam mode and start-by dates), Subjects, Doubt queue, First-week quests, Study tracker (and its daily note section), Quick notes and prompts, Stay awake on charger, Sync everything (each sync sends what its own feature sends), `kurooto top`, `kurooto runlog`, notes brain timelines and weekly checkup | nothing | stays on your computer |
 
 ## Free tiers and terms
@@ -172,13 +172,13 @@ tools exist only on calls, with you.
 ## Questions and approvals
 
 Questions are delivered on the channels you set up (Telegram, the phone app, the desktop) and stored on this computer
-in the state folder (`ask/<id>.json`), deleted `privacy.keep_days` (30) after they're answered or expire
-(`ask.keep_days` when you set one). The events log records when and where you answered, not what.
+in the state folder (`ask/<id>.json`), deleted 30 days after they're answered or expire
+(`ask.keep_days`, or `privacy.keep_days` when you set one). The events log records when and where you answered, not what.
 
 ## How long it's kept
 
-What Kurooto keeps of your conversations on this computer is forgotten after `privacy.keep_days` (30 days; 0 keeps
-it until you forget it), every night: call transcripts and calls that went on as text, AI requests and their answers
+What Kurooto keeps of your conversations on this computer stays until you say otherwise: set `privacy.keep_days`
+(e.g. 30) and it's forgotten after that many days, every night (0, the default, keeps it until you forget it): call transcripts and calls that went on as text, AI requests and their answers
 (the time, AI and effort stay, without the words), Chat's recent turns, answered questions, Wrong-button cases you
 didn't make test cases, the words of messages that came by themselves, the search index of past requests, and log
 lines. `/forget 7d` forgets the last 7 days now; `/forget all` forgets everything, after a confirm button. Your notes

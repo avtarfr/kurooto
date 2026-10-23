@@ -10,8 +10,8 @@ that needs your OK; the asker waits for it, and nothing happens without it.
     qid = app.ask.ask("Which chapter is the quiz on?", choices=["3", "4"], hook="study.quiz_topic", source="study")
     app.ask.hooks["study.quiz_topic"] = lambda q, answer: ...   # runs once, with the first answer
 
-Each question is a small JSON file in the state folder (ask/<id>.json), kept privacy.keep_days (30) after it's
-settled.
+Each question is a small JSON file in the state folder (ask/<id>.json), kept ask.keep_days, else privacy.keep_days,
+else 30 days after it's settled.
 What you answered, where and how fast is recorded as events (question_asked, question_answered, question_later,
 question_expired), which the weekly retro reads.
 """

@@ -561,7 +561,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `privacy.keep_days` | `30` | transcripts, AI requests and answers, chats and logs go after this many days (0: kept) |
+| `privacy.keep_days` | `0` | transcripts, AI requests and answers, chats and logs go after this many days (0: kept) |
 
 ### `profile`
 

@@ -144,7 +144,7 @@ answer it. `/status` says how many are open.
 
 **Expiry.** An unanswered question expires after 48 hours (`ask.expire_hours`), or sooner when its asker stops waiting;
 then nothing happens ("That question expired"). Answered and expired questions are forgotten after
-`privacy.keep_days` (30 days; `ask.keep_days` gives them their own), or now with `/forget`
+30 days (`ask.keep_days` gives them their own, `privacy.keep_days` when set applies too), or now with `/forget`
 ([privacy.md](privacy.md#how-long-its-kept)).
 
 **What leaves your computer:** the question goes wherever Kurooto reaches you (Telegram, the phone app, the desktop);

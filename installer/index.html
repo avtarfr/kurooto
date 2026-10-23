@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kurooto</title>
-<meta name="description" content="A personal assistant that runs on your own computer: Telegram, phone calls, your choice of AI, every feature opt-in.">
+<meta name="description" content="A personal assistant that lives on your own computer and fits itself to your days: Telegram, phone calls, your choice of AI, every feature opt-in.">
 <script>
   // same theme switch (and stored choice) as avtarfr.github.io
   try { var t = localStorage.getItem('theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch (e) {}
@@ -208,11 +208,22 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .shot-card, .interest-card { transition: none; } .shot-card:hover { transform: none; } }
 
 .links-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.beta-note {
+  margin-top: 1.2rem; max-width: 62ch; font-size: 0.86rem; color: var(--text-muted); background: var(--accent-light);
+  border: 1px solid var(--accent-badge-border); border-radius: var(--radius-md); padding: 0.7rem 0.9rem;
+}
+.beta-note strong { color: var(--text-bright); font-weight: 600; }
+.days-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+.days-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.4rem 1.5rem; }
+.days-card .interest-title { margin-bottom: 0.4rem; }
+.days-card .said { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-text); margin-top: 0.6rem; }
+.stable-line { margin-top: 0.9rem; color: var(--text-muted); font-size: 0.84rem; }
 .site-footer { border-top: 1px solid var(--border-soft); padding: 1.8rem 0; color: var(--text-muted); font-size: 0.84rem; }
 .site-footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.6rem; }
 
 @media (max-width: 860px) {
   .interests-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .days-grid { grid-template-columns: minmax(0, 1fr); }
   .install-grid { grid-template-columns: minmax(0, 1fr); }
   .shots-grid { grid-template-columns: minmax(0, 1fr); }
 }
@@ -233,6 +244,7 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
     <div class="nav-right">
       <ul class="nav-links">
         <li><a href="#install">Install</a></li>
+        <li><a href="#days">Your days</a></li>
         <li><a href="#features">Features</a></li>
         <li><a href="#showcase">Showcase</a></li>
         <li><a href="wiki/index.html">Wiki</a></li>
@@ -252,15 +264,16 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
     <div class="container hero-grid">
       <div class="hero-text">
       <h1 class="hero-name">Kurooto</h1>
-      <p class="hero-role">A personal assistant that runs on your own computer</p>
+      <p class="hero-role">An assistant that lives on your computer and fits itself to your days</p>
       <p class="hero-bio">
-        Talk to it on Telegram, let it call your phone, and pick the AI behind it. It keeps your reminders, check-ins,
-        deadlines and notes in one place. It runs on Windows, macOS and Linux, needs no admin rights, and costs nothing
-        to run. Every feature is off until you turn it on.
+        Talk to it on Telegram or in its phone app, let it call you, and pick the AI behind it. Over the first weeks it
+        learns the hours you actually keep, picks things up from what you tell it, and keeps quiet when it should. When
+        a day goes sideways, it helps you pick it back up. It runs on Windows, macOS and Linux, needs no admin rights,
+        costs nothing to run, and every feature is off until you turn it on.
       </p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#install">Install</a>
-        <a class="btn btn-outline" href="https://github.com/avtarfr/kurooto/blob/main/docs/MANUAL.md">Read the manual</a>
+        <a class="btn btn-primary" href="#install">Try the beta</a>
+        <a class="btn btn-outline" href="#days">How it fits your days</a>
       </div>
       <p class="version" id="version"></p>
       </div>
@@ -281,29 +294,66 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
   <section class="section section-alt" id="install">
     <div class="container">
       <div class="section-head">
-        <h2 class="section-headline">Install</h2>
-        <p class="section-subtitle">Paste one line. A setup page opens in your browser and walks you through the rest.</p>
+        <h2 class="section-headline">Install the beta</h2>
+        <p class="section-subtitle">Paste one line. A setup page opens in your browser and walks you through the rest. These lines install the beta: everything Kurooto can do today, with new versions as soon as they're signed.</p>
       </div>
       <div class="install-grid">
         <div class="install-card">
           <h3>Windows</h3>
           <p>In PowerShell (not as administrator).</p>
-          <div class="cmd"><code>irm https://avtarfr.github.io/kurooto/install.ps1 | iex</code><button class="copy-btn" type="button">Copy</button></div>
+          <div class="cmd"><code>$env:KUROOTO_CHANNEL='beta'; irm https://avtarfr.github.io/kurooto/install.ps1 | iex</code><button class="copy-btn" type="button">Copy</button></div>
         </div>
         <div class="install-card">
           <h3>macOS and Linux</h3>
           <p>In a terminal.</p>
-          <div class="cmd"><code>curl -LsSf https://avtarfr.github.io/kurooto/install.sh | sh</code><button class="copy-btn" type="button">Copy</button></div>
+          <div class="cmd"><code>curl -LsSf https://avtarfr.github.io/kurooto/install.sh | KUROOTO_CHANNEL=beta sh</code><button class="copy-btn" type="button">Copy</button></div>
         </div>
       </div>
+      <p class="beta-note">
+        <strong>A beta, tried on only a few computers so far.</strong> It's used every day on one Linux laptop and
+        tested automatically on Windows, macOS and Linux, but it hasn't met many real PCs yet. If something goes wrong,
+        <code>kurooto doctor</code> says what, and <code>kurooto doctor --bundle</code> makes a report you can send
+        (secrets taken out). Trying it on your computer is the most useful thing you can do for it.
+      </p>
       <p class="needs">
         <strong>You'll need</strong> a Telegram account on your phone, and a Google account (or a free Gemini key) for
         the AI. Releases are signed, and Kurooto updates itself at night, rolling back by itself if an update fails.
       </p>
+      <p class="stable-line" id="stable-line">Prefer something steadier? Leave out <code>KUROOTO_CHANNEL</code> to install
+        the stable channel: older, with fewer features.</p>
     </div>
   </section>
 
-  <section class="section" id="features">
+  <section class="section" id="days">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-headline">Made to fit your days</h2>
+        <p class="section-subtitle">Most assistants wait to be told. Kurooto pays attention to how your days actually go, and every change it makes comes with a line saying what it did and an Undo.</p>
+      </div>
+      <div class="days-grid">
+        <article class="days-card"><h3 class="interest-title">It learns your hours</h3>
+          <p class="interest-desc">Check-ins move to the times you actually answer, and the part of the day it plans work into follows when you're really around, not a 9-to-5 someone else picked.</p></article>
+        <article class="days-card"><h3 class="interest-title">It picks things up as you talk</h3>
+          <p class="interest-desc">Mention a new project and who you're working with, and the project note is started. Say you have a lab every Monday at 9, and it's in your timetable. Say "by stoch I mean Stochastic Processes", and it remembers.</p>
+          <p class="said">"I got a project under Prof Lena Ortiz on ring models"</p></article>
+        <article class="days-card"><h3 class="interest-title">It helps when a day goes sideways</h3>
+          <p class="interest-desc">Slept through the morning? Your plan moves to start from now, in the same order, with the breaks kept. Classes you missed get a catch-up before the next one and a note to fill in, and nobody asks whether you went.</p>
+          <p class="said">"I just woke up, reschedule my day"</p></article>
+        <article class="days-card"><h3 class="interest-title">It knows when to stay quiet</h3>
+          <p class="interest-desc">A daily limit on messages it starts by itself, a "Less of this" on every one, and no calls in class, during focus or at night. After ten days it asks which features you actually use, and lets the rest go quiet.</p></article>
+        <article class="days-card"><h3 class="interest-title">Overnight, it tidies up</h3>
+          <p class="interest-desc">While you sleep it reads your books into your notes and links what belongs together, then sends one morning message: what it did, and the loose ends worth a look. It also checks that nothing it learned made it worse at what you taught it.</p></article>
+        <article class="days-card"><h3 class="interest-title">It learns from being corrected</h3>
+          <p class="interest-desc">Tap Wrong when it misunderstands, or just say it again in other words: it learns the phrasing, and only keeps a lesson if everything you taught it before still works.</p></article>
+        <article class="days-card"><h3 class="interest-title">It remembers, and lets go when you ask</h3>
+          <p class="interest-desc">It remembers what you've been through together until you decide otherwise: <code>/forget 7d</code> lets the last week go, or have conversations fade on their own after a month. Your notes are yours and never touched. Nothing leaves your computer unless a feature you turned on needs it.</p></article>
+        <article class="days-card"><h3 class="interest-title">It's honest about what it did</h3>
+          <p class="interest-desc">Every AI answer ends with one quiet line from its own record: which AI, how long, and what it actually did, down to "did nothing". When something breaks, <code>/fixme</code> says what and how to fix it, even if the AI is the part that broke.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="features">
     <div class="container">
       <div class="section-head">
         <h2 class="section-headline">What it does</h2>
@@ -327,7 +377,7 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
   </section>
 
 
-  <section class="section section-alt" id="showcase">
+  <section class="section" id="showcase">
     <div class="container">
       <div class="section-head">
         <h2 class="section-headline">Showcase</h2>
@@ -405,7 +455,7 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
     <div class="container">
       <div class="section-head">
         <h2 class="section-headline">In progress</h2>
-        <p class="section-subtitle">What's being built for the next version, and what people have asked for. Want new features first? The beta channel gets every version the day it's signed; stable gets it once it has run on beta for a while. Both update by themselves at night, and roll back on their own if an update keeps crashing.</p>
+        <p class="section-subtitle">What's being built for the next version, and what people have asked for. The beta (the install lines above) gets every version the day it's signed; stable gets it once it has run on beta for a while. Both update by themselves at night, and roll back on their own if an update keeps crashing.</p>
       </div>
       <div class="links-row">
         <a class="btn btn-outline" href="ongoing.html#being-built">Being built now</a>
@@ -463,9 +513,14 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { v.removeAttribute('autoplay'); v.pause(); show(true); }
     b.addEventListener('click', function () { if (v.paused) { v.play(); show(false); } else { v.pause(); show(true); } });
   })();
-  fetch('stable.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
-    var v = (j.doc || j).version; if (v) document.getElementById('version').textContent = 'Current version: ' + v;
-  }).catch(function () {});
+  function channel(name) {
+    return fetch(name + '.json', { cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (j) { return (j.doc || j).version; }).catch(function () { return ''; });
+  }
+  Promise.all([channel('beta'), channel('stable')]).then(function (v) {
+    if (v[0]) document.getElementById('version').textContent = 'Beta ' + v[0] + (v[1] ? ' · stable ' + v[1] : '');
+    if (v[1]) document.getElementById('stable-line').insertAdjacentText('beforeend', ' (stable is ' + v[1] + ').');
+  });
 </script>
 </body>
 </html>

@@ -90,7 +90,7 @@ records first.
 | `notify.calm.fewer` | `{}` | kinds limited to a number a day |
 
 **What leaves your computer:** nothing. The records stay in `calm.db` in Kurooto's state folder for 45 days: when,
-the reason, the setting, what it was about, the first 300 characters (only for `privacy.keep_days`, 30:
+the reason, the setting, what it was about, the first 300 characters (forgotten after `privacy.keep_days` when you set it:
 [privacy.md](privacy.md#how-long-its-kept)), and whether you tapped or answered it; a waiting message in full until its
 evening.
 

@@ -2,11 +2,11 @@
 
 ## 0.5.15 (2026-10-23)
 
-- **Retention** (`privacy.keep_days`, 30): what Kurooto keeps of your conversations is forgotten nightly: call
-  transcripts, what you asked the AI and its answers, chat turns, answered questions, cases, the words of messages it
-  sent, the search index and log lines. `/forget 7d` (12h, 2w) forgets the last stretch now with a count per kind;
-  `/forget all` asks first. Questions and cases follow it unless `ask.keep_days` / `cases.keep_days` is set. Your
-  notes folder is never touched.
+- **Forgetting, when you choose** (`privacy.keep_days`, off by default): set it (e.g. 30) and what Kurooto keeps of
+  your conversations is forgotten nightly after that many days: call transcripts, what you asked the AI and its
+  answers, chat turns, answered questions, cases, the words of messages it sent, the search index and log lines.
+  `/forget 7d` (12h, 2w) forgets the last stretch now with a count per kind; `/forget all` asks first. Settled
+  questions and cases are still tidied after 30 days, as before. Your notes folder is never touched.
 - **Run receipt:** every answer from your AI ends with one quiet line built from the run's own record, not its words:
   which AI, the effort, how long, the share of today's limit when known, and what it actually did ("searched notes,
   wrote 1 note"; "did nothing"). Italics on Telegram, plain text in the dashboard and the terminal; `jobs.receipt`
