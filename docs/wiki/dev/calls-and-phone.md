@@ -160,8 +160,16 @@ Failures are counted in `<state>/calls/live-health.json` (`LiveHealth.record`) a
   `MIN_LINES = 4` lines and `brain.main` is set, it submits
 
   ```python
-  app.jobs.submit(prompt, title="Call review", effort=calls.review_effort, quiet=True, then="calls.reviewed",
-                  lane="bg", why="calls.review", brain=calls.review_brain or None)
+  app.jobs.submit(
+      prompt,
+      title="Call review",
+      effort=calls.review_effort,
+      quiet=True,
+      then="calls.reviewed",
+      lane="bg",
+      why="calls.review",
+      brain=calls.review_brain or None,
+  )
   ```
 
   with the transcript (last 24 000 chars), that call's `Calls.tool_log[since]` (last 60 tool uses; the call page sends

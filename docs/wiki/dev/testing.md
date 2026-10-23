@@ -98,12 +98,12 @@ the same change; a string that only looks like one (a scheduler key, log text) g
 ## Writing a test
 
 ```python
-def test_something(env):                       # a paired app talking to a fake Telegram (tests/conftest.py:Env)
-    env.on("reminders")                        # App.enable, asserting it worked
+def test_something(env):  # a paired app talking to a fake Telegram (tests/conftest.py:Env)
+    env.on("reminders")  # App.enable, asserting it worked
     reply = env.say("remind me in 5 min to stretch")
     assert "I'll remind you" in reply
     assert env.app.scheduler.jobs("reminders:")
-    text = env.press("rem:abcd:10")            # a button tap; returns the answerCallbackQuery text
+    text = env.press("rem:abcd:10")  # a button tap; returns the answerCallbackQuery text
 ```
 
 - For code that doesn't need Telegram, build an app directly: `monkeypatch.setenv("KUROOTO_HOME", str(tmp_path)); app
