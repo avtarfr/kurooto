@@ -18,6 +18,7 @@ These belong to Kurooto itself and answer whichever features are on.
 
 | Command | What it does | More |
 |---|---|---|
+| `/inferred` · `/inferred undo <id>` | what was set up from what you said (a project, a meeting, a class), and taking one back | Kurooto itself |
 | `/help`, `/start` | everything I can do: the commands and plain-word requests of the features you have on, the features that are off, and a link to this wiki; `/help <word>` finds a command or feature, on or off | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/status` | what's going on: calls held or allowed, focus, what's coming up, open questions, today's check-ins, what's due soon, the alarm, recent AI requests, the features that are on (answers even with Telegram off, from a terminal) | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/q` (or `/questions`) | the open questions Kurooto asked you, each with its buttons; reply to one to answer it | [Talking to Kurooto](talking-to-kurooto.md#questions-and-approvals) |

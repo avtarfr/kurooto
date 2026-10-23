@@ -38,6 +38,9 @@ def append(app: App, heading: str, body: str, day: dt.date | None = None) -> Pat
         if new:
             out.write(layout.frontmatter(app, "daily", f, agent=False, bare=True) + f"# {day.isoformat()}\n")
         out.write(f"\n## {heading}\n\n{body.strip()}\n")
+    from kurooto.core import infer  # a journal line can set something up ("I got a project under Prof X")
+
+    infer.observe(app, body, via="journal")
     return f
 
 

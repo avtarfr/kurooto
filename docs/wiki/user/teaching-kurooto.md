@@ -335,3 +335,22 @@ Each has **Why?** and **Less of this** on Telegram ([messages-it-sends.md](messa
 | A learned skill or lesson isn't what you wanted | Tap its **Undo** (or `/learned`). Turn that part off on the card if it keeps happening. |
 | `/history` finds nothing you know you asked | Only your own requests that ended well are kept, and only for 60 days (`space.jobs_days`). Searching by a word from the answer works too. |
 | "1 phrasing you taught no longer works" | The request it stood for changed or its feature is off. `/cases`: Unlearn it, then teach it again with `/wrong <words>`. |
+
+## Set up from what you say
+
+You don't need a settings page for the facts of your work: say them, in the chat or in your journal, and Kurooto sets
+up what they imply, then tells you in one line with an Undo button.
+
+| You say | Kurooto |
+| --- | --- |
+| "I got a project under Prof Lena Ortiz on glacier flow" | starts the project note *Glacier flow* with "With: Prof Lena Ortiz (supervisor)" and a Meetings section (it's listed on your research hub) |
+| "Met Ortiz today, we agreed on the forcing runs" | adds a dated line under that project's Meetings |
+| "I have a meeting with Ortiz on Friday at 4" | adds "Meeting: Prof Lena Ortiz" to your deadlines, so it's planned around and reminded |
+| "Every Monday at 9 I have a linear algebra lab" | puts the class in your timetable (55 minutes unless you say the end; only for a subject you have) |
+
+It only acts on what you say about yourself: "my friend got a project", "I didn't get it" or "maybe I'll ask" set
+nothing up, and a line is looked at once even when it reaches both the chat and the journal. It works by rules on this
+computer, with no AI. It never sets alarms, places calls, sends anything or attaches code (`/repos add` does that).
+
+`/inferred` lists what was set up, newest first; `/inferred undo <id>` (or the Undo button) takes one back. Turn it off
+with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`.

@@ -303,6 +303,11 @@ class App:
                 text, buttons = self.calm.command(arg) if name == "calm" else self.calm.why_last()
                 msg.reply(text, buttons=buttons)
                 return
+            if name == "inferred":  # what was set up from what you said, with undo (core/infer.py)
+                from kurooto.core import infer
+
+                msg.reply(infer.command(self, arg))
+                return
             if name == "jobs":  # what the AI is working on and what waits, with Cancel buttons (core/jobs.py)
                 text, buttons = self.jobs.command(arg)
                 msg.reply(text, buttons=buttons)
@@ -334,6 +339,10 @@ class App:
         learning = self.modules.get("learning") if self.is_on("learning") else None
         if learning is not None and text:  # "no, ..." just after a skill's answer teaches it (it goes on as usual)
             learning.heard(msg, text)
+        if text and not text.startswith("/"):  # "I got a project under Prof X": set up what it states (core/infer.py)
+            from kurooto.core import infer
+
+            infer.observe(self, text, via=msg.via)
         books = self.modules.get("books")  # a PDF sent as "book for <subject>" goes to that subject's books
         if msg.files and books is not None and self.is_on("books"):
             out = books.take_book(msg)
@@ -447,6 +456,10 @@ class App:
             return self.health.button(ref, act)
         if prefix == "job":  # a Cancel button under /jobs (core/jobs.py)
             return self.jobs.button(ref, act)
+        if prefix == "inf":  # Undo under something set up from what you said (core/infer.py)
+            from kurooto.core import infer
+
+            return infer.undo(self, ref)
         for m in self.enabled():
             h = m.callbacks().get(prefix)
             if h:
@@ -463,6 +476,7 @@ class App:
         ("calm", "messages that come by themselves: today's count and limit"),
         ("why", "why the last message that came by itself came"),
         ("jobs", "what the AI is working on and what waits, with Cancel buttons"),
+        ("inferred", "what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>"),
         ("help", "this list; /help <word> finds a command or feature, on or off"),
     )
 

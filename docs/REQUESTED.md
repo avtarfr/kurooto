@@ -25,7 +25,8 @@ Standing plans, never struck through.
   retried requests, your corrections, call lessons, answers that claimed what they didn't do), changes its own
   prompts, skills and quiet settings to fix it, and keeps a change only if replaying the past cases goes better;
   each change is listed with Undo. It improves the way it improves: the checks themselves are revised the same way.
-- **Set up from what it sees, not from settings**: one pass over chat and the journal (rules first, the AI only on a
+- **Set up from what it sees, not from settings** (0.5.9 has projects with their supervisor, meetings and classes; still
+  to come: routines, a deadline's course from mail, subject aliases): one pass over chat and the journal (rules first, the AI only on a
   hit) creates projects with whoever they're with ("got a project under Prof X": the project, its supervisor, and
   meetings from then on), classes from "every Monday at 9 I have a lab", routines, a deadline's course, subject
   aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.

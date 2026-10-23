@@ -380,6 +380,15 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `health.on` | `true` | the daily pass (doctor, the dashboard and /health always check) |
 | `health.when` | `"daily 21:00"` | before bedtime: tonight's alarm is checked then |
 
+### `infer`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `infer.classes` | `true` | "every Monday at 9 I have a <subject> lab": a class in the timetable |
+| `infer.meetings` | `true` | "met X today": a dated line in that project's Meetings; a meeting ahead: a deadline |
+| `infer.on` | `true` | set things up from what you say in the chat and the journal (one line each, with Undo) |
+| `infer.projects` | `true` | "I got a project under Prof X": a project note with them, and a Meetings section |
+
 ### `integrate`
 
 | Setting | Default | What it does |

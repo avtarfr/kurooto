@@ -616,3 +616,15 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 | `core/upgrade.py` | one-time steps at the first start of a new version (`upgrades.json`), the "what's new" message |
 | `core/vitals.py` | CPU, memory, GPU, network, disk and battery samples for the board and `kurooto top` |
 | `core/zones.py` | old and new names of the same time zone |
+
+## Setting up from what's said (`core/infer.py`)
+
+`infer.observe(app, text, via)` runs on every plain chat message (`App.handle`, before routing; it never consumes the
+message) and every `daily.append` body. Rules only: `PROJECT` + `WITH` (first person, no `NOT` words) start a project
+via `modules/research.py:ensure_project` and write `With: <who> (<role>)` and `## Meetings`; `MEET` with a project
+person's surname logs a dated line, or a deadline "Meeting: <who>" when `modules/text.py:when_from` finds a time more
+than 30 minutes ahead; `CLASS` adds a `subjects.timetable` row for a known subject. Each sentence is keyed
+(`_key`, sha256 of the normalised text) and looked at once. Changes are kept in `<state>/inferred.json` (`items` with
+their `undo` data, `seen`); `undo()` reverses one (a note it made and nobody touched is deleted; otherwise only its own
+line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `CORE_HELP`. Calm reason
+`infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`. Tests: `tests/unit/test_infer.py`.
