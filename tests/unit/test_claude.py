@@ -2,6 +2,7 @@
 the answer, and the command it's started with. No real Claude Code: fakes."""
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -145,10 +146,11 @@ def test_your_own_gbrain_goes_to_claude_like_it_goes_to_agy(app, tmp_path, monke
 def test_your_own_scripts_are_allowed_by_path_but_never_a_shell_or_interpreter(app, tmp_path):
     from kurooto.providers.agy import safe_scripts, wanted_rules
 
-    mine = tmp_path / "make-figures"
+    ext = ".cmd" if os.name == "nt" else ""  # on Windows a program is known by its extension
+    mine = tmp_path / f"make-figures{ext}"
     mine.write_text("#!/bin/sh\necho ok\n")
     mine.chmod(0o755)
-    shell = tmp_path / "bash"
+    shell = tmp_path / f"bash{ext}"
     shell.write_text("#!/bin/sh\n")
     shell.chmod(0o755)
     plain = tmp_path / "notes.txt"

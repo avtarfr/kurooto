@@ -257,6 +257,15 @@ def settings_file() -> Path:
     return Path.home() / ".gemini" / "antigravity-cli" / "settings.json"
 
 
+def runnable(f: Path) -> bool:
+    """Can this file be run as a program? On Windows every file passes os.access(X_OK), so there it's the extension
+    (PATHEXT: .exe, .bat, .cmd...); elsewhere the execute bit."""
+    if os.name == "nt":
+        exts = os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").lower().split(";")
+        return f.suffix.lower() in {e for e in exts if e}
+    return os.access(f, os.X_OK)
+
+
 def safe_scripts(app) -> list[tuple[Path, str | None]]:
     """Your own scripts your AI programs may run (agents.scripts): (full path, the bare name when it's on PATH as
     that same file). Left out: a path that isn't absolute, not an executable file, or a shell or interpreter."""
@@ -265,7 +274,7 @@ def safe_scripts(app) -> list[tuple[Path, str | None]]:
     out = []
     for raw in (app.settings.get("agents.scripts") if app is not None else None) or []:
         f = Path(os.path.expanduser(str(raw)))
-        if not f.is_absolute() or not f.is_file() or not os.access(f, os.X_OK):
+        if not f.is_absolute() or not f.is_file() or not runnable(f):
             continue
         if f.name.lower() in INTERPRETERS or f.stem.lower() in INTERPRETERS:
             continue

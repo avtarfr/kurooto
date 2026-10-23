@@ -2,6 +2,8 @@
 
 ## 0.5.10 (unreleased)
 
+- **Fix (Windows):** `agents.scripts` accepted any file there, since Windows says every file can run; now only
+  programs by their extension (`PATHEXT`: .exe, .bat, .cmd...).
 - **Meeting brief**: the evening before a meeting with someone a project note is With (`deadlines.meeting_brief`,
   20:00), a message with what that project's Log has since you last met, its open "## Next steps" and the last
   meeting's line. Rules only, from your note.
