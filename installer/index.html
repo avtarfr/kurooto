@@ -6,7 +6,7 @@
 <title>Kurooto: an assistant that fits your day</title>
 <meta name="description" content="Kurooto lives on your own computer, talks to you on Telegram and its phone app, calls you when it matters, and learns the hours you actually keep. Free, opt-in, Windows, macOS and Linux.">
 <meta name="theme-color" content="#0B0F0A">
-<script>document.documentElement.classList.add('js')</script>
+<script>(function(){var d=document.documentElement,h=new Date().getHours();d.classList.add('js');d.dataset.now=h>=21||h<5?'night':h<8?'dawn':h<17?'day':'dusk';})()</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
@@ -16,6 +16,7 @@
   --bone: #F2EEE8; --bone-dim: #C9C2B6;
   --day-0: #F4F2EC; --day-1: #EAE6DD; --day-2: #E1DBCF; --day-ink: #172012; --day-ink-2: #3D4A33; --day-accent: #3F5626;
   --moss: #6B8A42; --moss-hi: #A6C07A; --moss-ink: #0A0E08;
+  --ember: #C98A52; --dusk: #1E2418;
   --ground: var(--kuro-0); --ink: var(--bone); --accent: var(--moss);
   --display: "Libre Franklin", "Franklin Gothic Medium", system-ui, sans-serif;
   --text: "Source Serif 4", Georgia, serif;
@@ -92,8 +93,23 @@ html.booting .boot { display: grid; }
 }
 
 /* ---------- hero: before dawn ---------- */
-.hero { background: var(--kuro-0); min-height: 100svh; padding-top: calc(64px + clamp(48px, 9vh, 120px)); overflow: hidden; position: relative; isolation: isolate; }
-.hero .sun { position: absolute; z-index: 0; border-radius: 50%; background: var(--moss); width: 150vh; height: 150vh; right: calc(-46vh + var(--rail)); bottom: -88vh; will-change: transform; }
+.hero { min-height: 100svh; padding-top: calc(64px + clamp(48px, 9vh, 120px)); overflow: hidden; position: relative; isolation: isolate; }
+.hero .sun { position: absolute; z-index: 0; border-radius: 50%; background: var(--moss); width: 150vh; height: 150vh; right: calc(-46vh + var(--rail)); bottom: var(--sun-bottom, -88vh); will-change: transform; transition: background-color 900ms ease; }
+.hero .sun::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--hero-ground, var(--kuro-0)); transform: translate(-30%, -24%); opacity: 0; transition: opacity 900ms ease; }
+.hero { --hero-ground: var(--kuro-0); background: var(--hero-ground); transition: background-color 900ms ease, color 900ms ease; }
+html[data-now="dawn"] .hero { --hero-ground: var(--dusk); --sun-bottom: -102vh; }
+html[data-now="dawn"] .hero .sun, html[data-now="dusk"] .hero .sun { background: var(--ember); }
+html[data-now="day"] .hero { --hero-ground: var(--day-0); --sun-bottom: -96vh; color: var(--day-ink); }
+html[data-now="day"] .hero .who span { background: var(--day-2); color: var(--day-ink); }
+html[data-now="day"] .hero .who input:checked + span { background: var(--day-ink); color: var(--day-0); }
+html[data-now="day"] .hero .lead { color: var(--day-ink-2); }
+html[data-now="day"] .hero .btn.quiet, html[data-now="day"] .hero .who legend { color: var(--day-ink); }
+html[data-now="dusk"] .hero { --hero-ground: var(--kuro-2); --sun-bottom: -106vh; }
+html[data-now="night"] .hero .sun { background: var(--bone); }
+html[data-now="night"] .hero .sun::after { opacity: 1; }
+.air { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) { .hero .tg { animation: drift 7s var(--ease-in-out, ease-in-out) infinite alternate; } }
+@keyframes drift { from { translate: 0 -6px; } to { translate: 0 8px; } }
 .hero .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); grid-template-rows: auto 1fr; column-gap: 2rem; min-height: calc(100svh - 64px - clamp(48px, 9vh, 120px)); }
 .hero h1 { grid-column: 1 / -1; font-size: clamp(3rem, 1rem + 6.2vw, 6.75rem); max-width: 11em; }
 .hero h1 .w { display: inline-block; }
@@ -108,7 +124,7 @@ html.booting .boot { display: grid; }
 .who input:checked + span { background: var(--bone); color: var(--kuro-0); }
 .who input:focus-visible + span { outline: 3px solid var(--moss-hi); outline-offset: 3px; }
 .who label:active span { transform: scale(0.97); }
-@media (hover: hover) and (pointer: fine) { .who input:not(:checked) + span:hover { background: var(--kuro-4); } }
+@media (hover: hover) and (pointer: fine) { .who input:not(:checked) + span:hover { background: var(--kuro-4); } html[data-now="day"] .hero .who input:not(:checked) + span:hover { background: var(--day-1); } }
 .act { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 .btn { display: inline-flex; align-items: center; gap: 10px; border-radius: 999px; padding: 16px 28px; font-family: var(--display); font-weight: 600; font-size: 1.0625rem; text-decoration: none; border: 0; cursor: pointer; background: var(--moss); color: var(--moss-ink); transition: transform 160ms var(--ease-out), background-color 200ms ease; }
 .btn:active { transform: scale(0.97); }
@@ -330,6 +346,7 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
   </div>
 </header>
 
+<canvas class="air" id="air" aria-hidden="true"></canvas>
 <div class="dayline" id="dayline" aria-hidden="true">
   <div class="track"></div>
   <span class="tick" style="top:0%">4:00</span><span class="tick" style="top:20%">8:00</span><span class="tick" style="top:40%">noon</span><span class="tick" style="top:60%">16:00</span><span class="tick" style="top:80%">20:00</span><span class="tick" style="top:100%">0:00</span>
@@ -592,8 +609,10 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
         videos.forEach(function (v) { var on = chapters[idx].contains(v); if (on && v.paused) v.play().catch(function () {}); else if (!on && !v.paused) v.pause(); });
         var c = chapters[idx];
         chapters.forEach(function (ch, i) { ch.classList.toggle('is-on', i === idx); });
-        bar.style.setProperty('--bar-ground', c.classList.contains('on-day') ? '#F4F2EC' : '#0B0F0A');
-        bar.style.setProperty('--bar-ink', c.classList.contains('on-day') ? '#172012' : '#F2EEE8');
+        if (p > 0 && p < 1) {  /* before and after the scene, the day line decides the bar */
+          bar.style.setProperty('--bar-ground', c.classList.contains('on-day') ? '#F4F2EC' : '#0B0F0A');
+          bar.style.setProperty('--bar-ink', c.classList.contains('on-day') ? '#172012' : '#F2EEE8');
+        }
       },
       build: function (tl, ctx) {
         var q = ctx.q, slot = 1 / N, fade = slot * 0.16;
@@ -663,14 +682,15 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
   function pageMinutes() {
     var y = scrollY, top = scene.offsetTop, h = scene.offsetHeight - innerHeight, end = document.documentElement.scrollHeight - innerHeight;
     if (!scene.classList.contains('is-live')) { var p = end > 0 ? y / end : 0; return 240 + p * 1440; }
-    if (y < top) return 240;
+    if (y < top) { var n = nowMin(), to = n > 240 ? 1680 : 240; return n + (to - n) * Math.min(1, y / Math.max(1, top)); }
     if (y <= top + h) return sceneTime((y - top) / Math.max(1, h));
     var rest = Math.max(1, end - top - h);
     return 1440 + ((y - top - h) / rest) * 240;
   }
+  function nowMin() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
   var lastTxt = '';
   function paintLine() {
-    var m = pageMinutes(), frac = Math.min(1, Math.max(0, (m - 240) / 1440));
+    var m = pageMinutes(), frac = Math.min(1, Math.max(0, ((((m - 240) % 1440) + 1440) % 1440) / 1440)); if (m >= 1680) frac = 1;
     var desk = innerWidth >= 1000, box = line.getBoundingClientRect();
     if (desk) marker.style.transform = 'translateY(' + (frac * (box.height) - 15) + 'px)';
     else marker.style.transform = 'translateX(' + (frac * (box.width - 32 - 70)) + 'px)';
@@ -679,19 +699,58 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     line.classList.toggle('is-night', night);
     var dayGround = m > 520 && m < 1150 && scene.classList.contains('is-live') && scrollY >= scene.offsetTop && scrollY <= scene.offsetTop + scene.offsetHeight - innerHeight;
     var onDaySection = (function () { var d = $('#day').getBoundingClientRect(); return d.top < 120 && d.bottom > 120; })();
-    var light = dayGround || onDaySection;
+    var heroDay = document.documentElement.dataset.now === 'day' && scrollY < scene.offsetTop - 60;
+    var light = dayGround || onDaySection || heroDay;
     line.style.setProperty('--line-ink', light ? '#172012' : '#F2EEE8');
     line.style.setProperty('--line-ground', light ? '#F4F2EC' : '#0B0F0A');
     line.style.setProperty('--night-cut', light ? '#F4F2EC' : '#0B0F0A');
     if (!scene.contains(document.elementFromPoint(innerWidth / 2, 80))) {
-      bar.style.setProperty('--bar-ground', onDaySection ? '#F4F2EC' : '#0B0F0A');
-      bar.style.setProperty('--bar-ink', onDaySection ? '#172012' : '#F2EEE8');
+      bar.style.setProperty('--bar-ground', onDaySection || heroDay ? '#F4F2EC' : '#0B0F0A');
+      bar.style.setProperty('--bar-ink', onDaySection || heroDay ? '#172012' : '#F2EEE8');
     }
   }
   var raf = false;
   addEventListener('scroll', function () { if (!raf) { raf = true; requestAnimationFrame(function () { raf = false; paintLine(); }); } }, { passive: true });
   addEventListener('resize', paintLine);
   paintLine();
+
+  /* ---------- the page keeps the visitor's own hour ---------- */
+  setInterval(function () {
+    var h = new Date().getHours(), ph = h >= 21 || h < 5 ? 'night' : h < 8 ? 'dawn' : h < 17 ? 'day' : 'dusk';
+    if (document.documentElement.dataset.now !== ph) document.documentElement.dataset.now = ph;
+    paintLine();
+  }, 30000);
+
+  /* ---------- the air: seeds drifting up, pushed by your scroll ---------- */
+  (function () {
+    var cv = $('#air'); if (!cv || reduce) return;
+    var cx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), W = 0, H = 0, dots = [], lastY = scrollY, push = 0, run = true;
+    function size() { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var n = W < 700 ? 22 : 46; dots = []; for (var i = 0; i < n; i++) dots.push({ x: Math.random() * W, y: Math.random() * H, r: 0.8 + Math.random() * 1.8, v: 0.12 + Math.random() * 0.3, s: Math.random() * 6.28, k: Math.random() }); }
+    size(); addEventListener('resize', size);
+    document.addEventListener('visibilitychange', function () { run = !document.hidden; if (run) requestAnimationFrame(frame); });
+    function frame(t) {
+      if (!run) return;
+      var dy = scrollY - lastY; lastY = scrollY; push += (dy - push) * 0.08;
+      var light = line.style.getPropertyValue('--line-ground') === '#F4F2EC', night = line.classList.contains('is-night') && !light;
+      cx.clearRect(0, 0, W, H);
+      for (var i = 0; i < dots.length; i++) {
+        var d = dots[i]; d.y -= d.v + push * 0.06 * d.r; d.x += Math.sin(t / 2400 + d.s) * 0.18;
+        if (d.y < -8) { d.y = H + 8; d.x = Math.random() * W; } else if (d.y > H + 8) { d.y = -8; d.x = Math.random() * W; }
+        var a = night && d.k > 0.55 ? 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(t / 700 + d.s * 3)) : light ? 0.42 : 0.34;
+        cx.globalAlpha = a; cx.fillStyle = night && d.k > 0.55 ? '#F2EEE8' : light ? '#6B8A42' : '#A6C07A';
+        cx.beginPath(); cx.arc(d.x, d.y, d.r, 0, 6.283); cx.fill();
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+
+  /* ---------- the hero sun leans toward your pointer ---------- */
+  if (G && !reduce && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    var sx = G.quickTo('#hero-sun', 'x', { duration: 1.6, ease: 'power3' }), sy = G.quickTo('#hero-sun', 'y', { duration: 1.6, ease: 'power3' });
+    $('.hero').addEventListener('pointermove', function (e) { sx((e.clientX / innerWidth - 0.5) * 36); sy((e.clientY / innerHeight - 0.5) * 24); });
+  }
 
   /* ---------- hero sun drifts as you leave ---------- */
   if (G && window.ScrollTrigger && !reduce) G.to('#hero-sun', { yPercent: -18, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
