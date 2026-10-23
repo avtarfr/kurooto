@@ -38,9 +38,10 @@ CORE: tuple[tuple[tuple[str, ...], str], ...] = (
     (
         ("memory",),
         'what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I '
-        'last talk to Prof Ortiz?", "what was I doing last Thursday?"',
+        'last talk to Prof Ortiz?"',
     ),
-    (("egress",), "where my requests went in the last 7 days: each host and feature, requests, bytes, any blocked"),
+    (("helper",), "the offline helper: on, off, test"),
+    (("egress",), "where my requests went this week: hosts, features, bytes, any blocked"),
     (("health",), "what isn't working, with Fix buttons (/health now checks online too)"),
     (("fixme",), "what's wrong and what to do, by rules (no AI needed); /fixme <what you see>, /fixme ai explains"),
     (("keep",), "what you used of each feature that's on (last 30 days); /keep <feature> offers Quiet and Off"),
@@ -116,7 +117,7 @@ GROUPS: tuple[Group, ...] = (
         "Settings and upkeep",
         "your-computer",
         ("backups", "profile", "space", "local_models", "awake", "terminals", "terminal", "overlay"),
-        ("health", "fixme", "keep", "calm", "why"),
+        ("health", "fixme", "keep", "calm", "why", "helper"),
     ),
 )
 MORE = Group("more", "More", "index")  # a feature no group names (an add-on, a new one)

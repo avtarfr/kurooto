@@ -9,6 +9,10 @@ Free limits (core/quota.py): background work skips a limit that's kept for you (
 or used up) and waits in the queue for its reset (not_before) instead of being dropped; your own requests try a
 used-up limit last, and a used-up limit is told in one plain line.
 
+No internet (core/helper.py): a request that needs it waits in the queue (held_until) instead of failing, you're told
+once, and it runs when the connection is back, its answer saying it waited; one that waited local_helper.hold_h ends
+with a message. A request that failed because the connection went during it waits the same way.
+
 Three lanes, each running one request at a time: yours ("you": what you asked on Telegram, a call, the terminal or
 the dashboard), work nobody is waiting for ("bg": background=True, automatic revision packs, routines, the morning
 plan), and a second lane of that work ("chk": the concept graph's second looks and linking, so its checking AI runs
@@ -79,6 +83,7 @@ MAX_STEPS = 200  # tool uses kept per running request (its tool log)
 DENIED_HELP = Agy.denied_help  # what an AI that was refused says (providers/agy.py); a brain's own is `denied_help`
 SHORT = {"agy": "agy", "gemini": "your Gemini key", "claude": "Claude Code"}
 NAMES = {**SHORT, "gemini": "Gemini", "ollama": "Ollama", "custom": "your AI service", "freellmapi": "your AI service"}
+GAVE_UP = "It waited for the internet connection"  # the start of the message when a request waited too long
 RECEIPT_MAX = 120  # the run receipt is one line, at most this long
 # the run receipt's "what it did", from its tool log: a tool -> (what it did, the thing it counts; "" = said once)
 ACTS = {
@@ -205,9 +210,11 @@ class Jobs:
             ("deadline", "real"),
             ("brain_req", "text"),
             ("receipt", "text"),
+            ("held", "real"),
+            ("held_until", "real"),
         ):
             if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline;
-                # the AI it was pinned to; the run receipt
+                # the AI it was pinned to; the run receipt; when it first waited for the internet, and until when
                 self._db.execute(f"alter table jobs add column {col} {kind}")
         self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
         self._lanes: dict[str, tuple[str, threading.Thread]] = {}  # lane -> (job, the thread running it)
@@ -227,6 +234,7 @@ class Jobs:
         why: str | None = None,
         lane: str | None = None,
         brain: str | None = None,
+        offline: bool = False,
     ) -> str:
         """Queue an AI request. background=True: work nobody is waiting for, which waits for the charger when the
         laptop is on battery. text_only=True: the answer is just text (agent programs are told to use no tools).
@@ -234,14 +242,16 @@ class Jobs:
         answer to something asked, never held.
         lane: "you" (your own request) or "bg" / "chk" (automatic work); unset, background work goes in "bg".
         brain: run it on this AI (agy, claude, gemini, ...) instead of the main one; another AI program takes over if
-        it can't."""
+        it can't.
+        offline: the internet is down and the caller told you it waits (modules/chat.py): it waits from now."""
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
         lane = lane if lane in LANES else ("bg" if background else "you")
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"
-                "background,text_only,why,lane,brain_req) values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?)",
+                "background,text_only,why,lane,brain_req,held,held_until) "
+                "values(?,?,?,?, 'queued',?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     jid,
                     (title or prompt_clean.split("\n")[0])[:80],
@@ -257,6 +267,8 @@ class Jobs:
                     why,
                     lane,
                     brain,
+                    time.time() if offline else None,
+                    time.time() + 120 if offline else None,  # core/helper.py:RETRY_S
                 ),
             )
         self.app.events.emit("job_queued", job=jid, chars=len(prompt_clean), lane=lane)
@@ -348,12 +360,12 @@ class Jobs:
         "not_before,background"
     )
 
-    # queued, allowed on this power, and not waiting for a free limit's reset (core/quota.py)
-    _READY = "status='queued' and (background=0 or ?) and coalesce(not_before, 0) <= ?"
+    # queued, allowed on this power, not waiting for a free limit's reset (core/quota.py) nor for the internet
+    _READY = "status='queued' and (background=0 or ?) and coalesce(not_before, 0) <= ? and coalesce(held_until, 0) <= ?"
 
     def _ready_args(self) -> tuple:
         q = self.app.quota  # with the reserve turned off (quota.on = false), work that waited goes at once
-        return int(self.app.power.current == "normal"), q.clock() if q.on() else 1e18
+        return int(self.app.power.current == "normal"), q.clock() if q.on() else 1e18, time.time()
 
     def _claim(self, lane: str | None = None) -> str | None:
         """Mark the oldest ready job (of one lane, or of any) as running; its id, or None."""
@@ -423,15 +435,19 @@ class Jobs:
 
     # ------------------------------------------------------------------------------------- running
     def _classifier(self, main):
+        """Who answers "how hard is this": brain.classify's choice; the offline helper (core/helper.py) where the
+        rules would otherwise decide alone (rules, its limit kept for you, the internet down); else the rules (None)."""
+        helper = getattr(self.app, "helper", None)
+        quick = helper.classifier() if helper is not None else None
         how = self.app.settings.get("brain.classify") or "rules"
-        if how == "rules" or main is None:
-            return None
+        if how == "rules" or main is None or (helper is not None and helper.holds()):
+            return quick
         brain = main if how == "main" else providers.build(self.app, how)
         quota = self.app.quota
         if brain is not None and quota.wait_until(quota.pool(brain, "low")) is not None:  # its limit is kept for you
-            brain = providers.local(self.app) if quota.setting("local") != "off" else None  # else the rules
+            brain = providers.local(self.app) if quota.setting("local") != "off" else None  # else the helper or rules
         if brain is None or not brain.available()[0]:
-            return None
+            return quick
         return lambda q: brain.complete(q, effort="low", timeout=30).text
 
     def _run_safe(self, jid: str) -> None:
@@ -500,6 +516,16 @@ class Jobs:
         if wait is not None and not chain:
             self._defer(jid, wait)
             return
+        helper = getattr(self.app, "helper", None)
+        if helper is not None and chain and helper.holds():  # no internet: only an AI on this computer can run it
+            here = [b for b in chain if helper.here(b)]
+            waited = (self._read("select held from jobs where id=?", (jid,)) or [None])[0]
+            if here:
+                chain = here
+            elif not waited or helper.sure():  # one that waited already tries, unless it's down for certain
+                self._hold(jid, job)
+                return
+        tried = time.time()
         used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
         limits: list[dict] = []  # every limit hit on the way, also one a stand-in then answered for
         for i, brain in enumerate(chain):
@@ -541,9 +567,23 @@ class Jobs:
         if wait is not None and not result.ok:  # moved to the model here, which couldn't: it waits for the reset
             self._defer(jid, wait)
             return
+        if (
+            not result.ok
+            and result.verdict in (Verdict.ERROR, Verdict.TIMEOUT)
+            and helper is not None
+            and not (used is not None and helper.here(used))
+            and helper.lost(tried)
+        ):  # the connection went while it tried: it waits for it to come back
+            self._hold(jid, job)
+            return
         if last is not None and used is last and result.ok and first:
             note = f"(Answered with {SHORT.get(last.id, last.label)}: {_why(*first)}.)"
             result.usage = {**result.usage, "note": note}
+        waited = (self._read("select held from jobs where id=?", (jid,)) or [None])[0]
+        if waited and result.ok:
+            line = f"(It waited for the internet connection from {_clock(waited)}.)"
+            note = (result.usage or {}).get("note")
+            result.usage = {**result.usage, "note": f"{note}\n{line}" if note else line}
         if (
             result.verdict == Verdict.DENIED
             and getattr(used, "denied_help", "")
@@ -795,6 +835,8 @@ class Jobs:
             body = DENIED_HELP
         elif result.verdict == Verdict.RATE_LIMITED and self.app.quota.used_up(pool):
             body = self.app.quota.line(pool, label)  # "Google's free limit for today is used up, resets at 12:30; ..."
+        elif result.detail.startswith(GAVE_UP):  # it waited local_helper.hold_h for the internet
+            body = result.detail
         else:
             body = FRIENDLY.get(result.verdict, "It failed.").format(brain=label)
         reply_to = int(job.reply_to) if job.reply_to and job.reply_to.isdigit() else job.reply_to
@@ -837,6 +879,52 @@ class Jobs:
             )
         self.app.events.emit("job_deferred", job=jid, until=datetime.datetime.fromtimestamp(until).isoformat())
 
+    def _hold(self, jid: str, job: Job) -> None:
+        """No internet (core/helper.py): back in the queue, looked at again every RETRY_S and at once when the
+        connection is back (unhold). You're told the first time it waits (your own requests); one that waited
+        local_helper.hold_h ends with a message. Never dropped silently."""
+        from kurooto.core import helper as helper_mod
+
+        t = time.time()
+        first = (self._read("select held from jobs where id=?", (jid,)) or [None])[0]
+        hold_s = self.app.helper.hold_s()
+        if first and t - float(first) > hold_s:
+            h = round(hold_s / 3600)
+            self._end(
+                jid,
+                Verdict.TIMEOUT,
+                f"{GAVE_UP} for {h} h and didn't run, as the internet stayed down. Send it again once you're online.",
+            )
+            return
+        with self._lock:
+            self._db.execute(
+                "update jobs set status='queued', held=coalesce(held, ?), held_until=?, runner=null, started=null, "
+                "proc=null, deadline=null where id=? and status='running'",
+                (t, t + helper_mod.RETRY_S, jid),
+            )
+        self.app.events.emit("job_held", job=jid, lane=job.lane, first=not first)
+        if not first and job.lane == "you" and not job.quiet:
+            from kurooto.core.calm import ASKED
+
+            reply_to = int(job.reply_to) if job.reply_to and job.reply_to.isdigit() else job.reply_to
+            self.app.notify(self.app.helper.waiting_line(job.title), kind="info", reply_to=reply_to, why=ASKED)
+
+    def unhold(self) -> list[str]:
+        """The internet is back: what waited for it runs now. The titles of your own requests among them."""
+        with self._lock:
+            rows = self._db.execute(
+                "select title, coalesce(lane, 'you'), quiet from jobs where status='queued' and held_until is not null"
+            ).fetchall()
+            self._db.execute("update jobs set held_until=null where status='queued' and held_until is not null")
+        if rows:
+            self.poke()
+        return [title for title, lane, quiet in rows if lane == "you" and not quiet]
+
+    def held(self) -> int:
+        """Requests waiting for the internet connection."""
+        row = self._read("select count(*) from jobs where status='queued' and held_until is not null")
+        return int(row[0]) if row else 0
+
     def resume(self) -> int:
         """A free limit answers again before its reset: waiting work gets another look now (core/quota.py)."""
         with self._lock:
@@ -865,6 +953,8 @@ class Jobs:
             what = f"waiting {_mins(t - j.created)}"
             if j.not_before and j.not_before > t:
                 what += f", until a free limit resets ({datetime.datetime.fromtimestamp(j.not_before):%H:%M})"
+            elif (self._read("select held_until from jobs where id=?", (j.id,)) or [None])[0]:
+                what += ", for the internet connection"
             elif j.background and self.app.power.current != "normal":
                 what += ", for the charger"
         lane = "" if j.lane == "you" else " · background"
@@ -925,6 +1015,12 @@ def public(j: Job) -> dict:
     """A job for the dashboard and `kurooto jobs`: what it is and how it's going (not what was asked or answered)."""
     keys = ("id", "title", "status", "verdict", "effort", "seconds", "created", "started", "brain", "lane")
     return {k: getattr(j, k) for k in keys}
+
+
+def _clock(ts: float) -> str:
+    """14:02, or Mon 14:02 on another day."""
+    d = datetime.datetime.fromtimestamp(float(ts))
+    return f"{d:%H:%M}" if d.date() == datetime.date.today() else f"{d:%a %H:%M}"
 
 
 def _mins(secs: float) -> str:

@@ -164,6 +164,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `gists.jsonl` | (0.5.17 only) the gists before the ledger; moved into it and removed on first use | `core/gists.py:_move` |
 | `dream-policy.json` | the day of the last tuning round and the last 30 decisions with their replay scores | `core/policy.py:tune` |
 | `keep.json` | uses per feature and day (90 days), last use, when counting started, answers | `core/keep.py:Keep` |
+| `local-helper.json` | the offline helper's speed test, outages seen (30 days), the internet down since, the offer | `core/helper.py:Helper` |
 | `notes-moves/<stamp>.json` | each Notes-step move: moves, link edits (old text, new sha256), folders made and removed, settings before and after, `undone` | `core/notesfit.py` |
 | `setup.json` | the setup page's steps: `steps.<id>` = `{status: done\|skipped\|open, seconds, visits, left_at}`, and `chosen` (the features ticked before the page was closed) | `core/setupsteps.py` |
 | `rhythm.json` | usual quiet hours, the last learned change and its Undo, lighter-day and absence marks, quiet week | `core/rhythm.py:Rhythm` |
@@ -298,6 +299,8 @@ Recurring (key → when; setting that controls it):
 |---|---|---|---|
 | `calm:tick` | every 5m | | `core/calm.py:Calm.start` |
 | `keep:tick` | daily 12:00 (respects quiet) | `keep.ask` | `core/keep.py:Keep.start` |
+| `local_helper:tick` | every 1m | `local_helper.offline`, `local_helper.on` | `core/helper.py:Helper.start` |
+| `local_helper:offer` | daily 12:30 (respects quiet) | `local_helper.offer` | `core/helper.py:Helper.start` |
 | `rhythm:tick` | every 30m | `availability.learn_night`, `notify.calm.lighter_after`, `availability.absence_days` | `core/rhythm.py:Rhythm.start` |
 | `ask:sweep` | every 10m | | `core/ask.py:Ask.start` |
 | `retention:expire` | daily 04:15 | `privacy.keep_days` | `core/retention.py:start` |
@@ -375,6 +378,7 @@ jid = app.jobs.submit(
     why=None,  # a Calm reason for an answer that comes by itself
     lane=None,
     brain=None,  # lane "you" | "bg" | "chk"; pin to a brain id
+    offline=False,  # the internet is down and the caller said it waits (Chat): it waits from now
 )
 ```
 
@@ -393,6 +397,17 @@ jid = app.jobs.submit(
   need one (the concept graph) count tries themselves.
 - **Deferral**: background work whose free limits are kept for the user goes back to `queued` with `not_before`
   (`_defer`, event `job_deferred`); `resume()` clears it when a limit answers again.
+- **Waiting for the internet** (0.5.22, `_hold`): with `app.helper.holds()` (the internet down and
+  `local_helper.offline` on), `_run` keeps only brains on this computer (`Helper.here`: `OpenAICompat.local()`); with
+  none, the job goes back to `queued` with `held` (when it first waited) and `held_until` (now + `RETRY_S`, 120 s),
+  event `job_held`. A job that waited already tries its brain at its next look unless `Helper.sure()`
+  (`egress.net_down()`): its own request is the check, so a Telegram-only outage never holds AI requests for long. A try
+  that failed with `error`/`timeout` while `Helper.lost(tried)` (the internet down, or `egress.failed_since` the try
+  began) waits the same way. The first hold of a `you`-lane, non-quiet job tells the user (`Helper.waiting_line`, why
+  `asked`); Chat says it itself and submits with `offline=True`. `_READY` also needs `held_until` past. `unhold()` (from
+  `Helper.back`) clears `held_until` and returns the user's titles; a held job's answer gets "(It waited for the
+  internet connection from 14:02.)" as its `note`. Past `local_helper.hold_h` it ends `timeout` with a `GAVE_UP` detail,
+  which `_deliver` shows as is. `held()` counts them; `/jobs` says "for the internet connection".
 - **Watchdog** (`watchdog()`): a running job of this process with no AI process and no sign of life
   (`_mark` updates `activity`) for `jobs.stuck_min` minutes ends `stuck`; one past its deadline (time limit plus the
   brain's `grace_s` plus `GRACE_S = 120`) ends `timeout`. Ending kills the process tree (`proc.kill_tree`).
@@ -622,6 +637,49 @@ between `TICK_S` ticks; after network outages). Messages that couldn't reach Tel
 (`hold`, `failed`, `flush_outbox`). `offline(start, end)` gives the offline periods health subtracts. Settings
 `notify.presence.*`. The call line reports outages the computer can't (`line_report`).
 
+## The offline helper (`core/helper.py`)
+
+`Helper` (`app.helper`), 0.5.22: a small model on the processor through Ollama (`ollama_models.toml` `cpu-helper`,
+`qwen2.5:1.5b-instruct`, about 1 GB; or `local_helper.model`) for quick decisions, and the queue's behaviour while the
+internet is down.
+
+- **The model**: talked to through `LocalModels.api("/api/generate")` (`_generate`, temperature 0, a few tokens,
+  `keep_alive` 30 min). `ready()`: `local_helper.on`, a passed speed test for this tag in `local-helper.json`, and the
+  tag in `LocalModels.have()` (believed for `HAVE_S`). `word(prompt, choices)` is the one decision call, capped at
+  `local_helper.timeout_s` (4 s); anything not among the choices is None (the rules decide). Event `helper_decided`.
+- **Decisions**: `classifier()` for `providers/effort.py` (`Jobs._classifier` uses it where the rules would decide
+  alone: `brain.classify = rules`, the chosen classifier's limit kept with no local brain, or the internet down);
+  `pick(text, rows)` among `core/repair.py:readings` at `NEAR` (0.6) or closer, top three, by number, run with
+  `repair.run(..., via="helper")` in `App.handle` before `repair.offer`; `yes_no(question, reply)` for replies of six
+  words or fewer (`modules/remember.py:_reply`, yes / no / other).
+- **Setting up** (`setup`, one at a time): `room()` (core/prereqs.py `room`, Ollama too when missing), Ollama installed
+  and served (`LocalModels.serve`), `LocalModels.pull(tag, size, progress, feature="Offline helper")` (handed to
+  Ollama), then `speed_test()`: a warm-up (`WARM_S`), `TESTS` timed one-word answers (`self.timer`), the median
+  against `local_helper.max_s`. Failed: `local_helper.on` stays off and a model pulled just now is removed
+  (`LocalModels.remove`). `/helper on`, `/helper test` and the offer's Install run in a thread and report through
+  `notify(why="asked")`.
+- **Offline**: `offline()` is `egress.net_down()`, or `presence.net_down()` with no answer through `egress` since
+  its failures began (`egress.answered_since`: then it's Telegram or the call line, not the internet); `sure()` is
+  `egress.net_down()` alone; `holds()` adds `local_helper.offline`.
+  `offline_reply(text)` (Chat, before submitting; not with files or a conversation in the last 2 h): with the internet
+  down and the helper ready, a question up to `QUICK_CHARS` that `effort.pick` (with the helper) calls `low` is
+  answered by the model (`ANSWER`; "CANNOT" means no), with a closing line naming the offline helper. Otherwise Chat
+  submits with `offline=True` and says `waiting_line()`. The queue side is in [Jobs](#jobs).
+- **`tick()`** (`local_helper:tick`, every minute): `down_since` set when the internet goes (`helper_offline`); when
+  it's back, the outage (`OUTAGE_MIN_S` or longer) is kept in `outages` (30 days), `back()` calls `Jobs.unhold()` and
+  says once what's running now (why `asked`); every 10 minutes, Ollama is started if the helper is on and it isn't
+  running.
+- **The offer** (`local_helper:offer`, daily 12:30, quiet respected; Calm reason `local_helper.offer`): `why_offer()`
+  needs `local_helper.offer`, the helper off, `setup.done`, fewer than `OFFERS` (2) offers and none in `AGAIN_D` (30)
+  days, `OFFER_AFTER_D` (14) days since the earliest of its own `since` and Keep's, `eligible()` (no `helper*` model
+  in `LocalModels.wanted()`, `MIN_RAM_GB`), `room()` ok, and either `TIGHT_DAYS` (3) days with `quota_reserve` /
+  `quota_limit` events in the last 14 (`tight_days`, from the event log) or `OUTAGES` (3) outages. Buttons
+  `lh:<ref>:install` / `lh:<ref>:later` (`App.callback` → `button`). Events `helper_offered`, `helper_offer_answered`.
+- `/helper` (core command): `status()`, `on`, `off`, `test`.
+- State `local-helper.json`: `since`, `test` {ok, model, at, seconds}, `down_since`, `outages`, `offer` {count, at,
+  why, ref}. Tests: `tests/unit/test_helper.py` (a fake `_generate` and fake `LocalModels` methods; no Ollama, no
+  download).
+
 ## Quota (free AI limits)
 
 `core/quota.py:Quota` (`app.quota`): counts requests per pool (`pool_id`: `gemini:<model>` per model, `agy`, a
@@ -719,6 +777,11 @@ same answer (wrapped to count the bytes read; use it as a context manager) and r
   `other`). `record` takes a thread lock and the `egress` file lock (2 s; on timeout the count is dropped) and never
   raises. `attach(app)` (in `App.__init__`) points it at the running app's state folder and settings; before that
   (a bare CLI command, the launcher) nothing is counted and only `HOSTS` applies.
+- **Is the internet down?** (0.5.22) `urlopen` also tells `seen(host, err)` each outcome, in memory only (`_net`, reset
+  by `attach`): an answer (an `HTTPError` too) clears the failures; a failure to reach the host (`URLError`, `OSError`,
+  timeouts; not `Blocked`) is added. `net_down()`: failures to `NET_HOSTS` (2) hosts or more, the last within
+  `NET_FRESH_S` (600 s), with no answer since. `failed_since(t)`: a failure after `t` with no answer after it.
+  Loopback never counts. `core/helper.py` reads both; nothing is pinged for them.
 - `/egress` is a core command (`App.handle` → `command`): `week()` sums the last `SHOWN` (7) days per row, blocked
   first, then by count.
 - `HOSTS` and `docs/PRIVACY.md`'s "Where requests go" table must list the same hosts
@@ -827,7 +890,8 @@ battery; `current(app)` caches the machine in `hardware.json` and recomputes the
 (NVIDIA 4-8 GB), `big-gpu` (8 GB+), `big-gpu-12` (12 GB+). `recommend()` picks Ollama models from
 `data/ollama_models.toml` (e.g. `helper-*` models, embeddings) and says plainly what an override goes past (`limits`).
 Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto hardware --profile P --add MODEL
---install`. Used by Local AI models, the reranker and the dashboard.
+--install`. Used by Local AI models, the reranker and the dashboard. The table's `cpu-helper` row is in no profile:
+the offline helper (`core/helper.py`) offers it on computers whose profile has no `helper-*` model.
 
 ## Running programs
 

@@ -6,6 +6,10 @@
     handed(program, feature)  a program that goes online by itself (git, npm, wrangler, agy, Claude Code, Ollama):
                             Kurooto can't see what it sends, so it's counted as "handed to <program>"
 
+It also notes, in memory only, whether requests get answers (net_down, failed_since): requests to two or more hosts
+failing for want of a connection, with no answer from any since, is how the offline helper (core/helper.py) knows
+the internet is down without pinging anything of its own.
+
 The list is HOSTS (docs/PRIVACY.md's "Where requests go" table says the same, and a test keeps them equal), plus
 what you set up yourself: a call site passes own=True for an address you gave (your calendar's link, your feeds,
 your own AI service, your call line, your ntfy server, a page your AI reads for you), and privacy.allow_hosts adds
@@ -77,6 +81,9 @@ HOSTS = {  # host (".domain": any host under it) -> what reaches it; docs/PRIVAC
 
 _on: dict = {}  # the running assistant's state folder and settings (attach)
 _mem = threading.Lock()
+_net: dict = {"ok": 0.0, "fails": []}  # the network as requests found it: the last answer, failures since (at, host)
+NET_FRESH_S = 600  # failures older than this (and nothing tried since) no longer say the internet is down
+NET_HOSTS = 2  # failures to this many hosts, with no answer from any, mean the internet is down
 
 
 class Blocked(urllib.error.URLError):
@@ -97,6 +104,53 @@ class Blocked(urllib.error.URLError):
 def attach(app: App) -> None:
     """The running assistant's settings and ledger; before this (a bare `kurooto` command) nothing is counted."""
     _on.update(state=Path(app.paths.state), settings=app.settings)
+    with _mem:
+        _net.update(ok=0.0, fails=[])
+
+
+def _unreachable(err: BaseException) -> bool:
+    """A request that never got an answer (no network, DNS, a timeout), not a "no" from the other side."""
+    if isinstance(err, (urllib.error.HTTPError, Blocked)):
+        return False
+    return isinstance(err, (urllib.error.URLError, OSError))  # TimeoutError and socket errors are OSErrors
+
+
+def seen(host: str, err: BaseException | None = None) -> None:
+    """One request's outcome, for net_down: an answer (err None, or an HTTP error: the other side answered) or a
+    failure to reach the host. This computer doesn't count."""
+    if not host or host in LOOPBACK:
+        return
+    answered = err is None or isinstance(err, urllib.error.HTTPError)
+    if not answered and not _unreachable(err):
+        return
+    with _mem:
+        if answered:
+            _net.update(ok=time.time(), fails=[])
+        else:
+            _net["fails"] = [*_net["fails"][-19:], (time.time(), host)]
+
+
+def net_down(now: float | None = None) -> bool:
+    """Is the internet down, as Kurooto's own requests found it? Failures to NET_HOSTS hosts or more, the last one
+    recent, and no answer from anywhere since."""
+    t = time.time() if now is None else now
+    with _mem:
+        fails = list(_net["fails"])
+    if not fails or t - fails[-1][0] > NET_FRESH_S:
+        return False
+    return len({h for _at, h in fails}) >= NET_HOSTS
+
+
+def answered_since(t: float) -> bool:
+    """Did any host answer a request after t?"""
+    with _mem:
+        return float(_net["ok"]) >= t
+
+
+def failed_since(t: float) -> bool:
+    """Did a request fail to reach its host after t, with no answer from anywhere after it?"""
+    with _mem:
+        return any(at >= t for at, _h in _net["fails"])
 
 
 def host_of(url: str) -> str:
@@ -156,13 +210,16 @@ def urlopen(req, feature: str, timeout: float = 30, own: bool = False, opener=No
     host = host_of(url)
     ok = _check(host, feature, own)
     go = opener.open if opener else urllib.request.urlopen  # looked up now: tests put a fake in its place
-    if ok is None:
-        return go(req, timeout=timeout)
     try:
         r = go(req, timeout=timeout)
-    except BaseException:
-        record(host, feature, out=out, unlisted=not ok)  # it went out, whatever came back
+    except BaseException as e:
+        seen(host, e)
+        if ok is not None:
+            record(host, feature, out=out, unlisted=not ok)  # it went out, whatever came back
         raise
+    seen(host)
+    if ok is None:
+        return r
     return _Counted(r, lambda got: record(host, feature, out=out, got=got, unlisted=not ok))
 
 

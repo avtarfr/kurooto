@@ -62,7 +62,8 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 ## The AI
 
 - The free AI options have small daily limits; heavy use runs out, and requests wait or go to your fallback AI.
-- Local models (Ollama) are private and offline but much weaker, and need a good graphics card.
+- Local models (Ollama) are private and offline but much weaker, and need a good graphics card; without one, only
+  the offline helper's quick decisions run here, and only if its speed test passes.
 - Antigravity (agy) is Google's own program signed in as you; Google's answers differ on whether other tools may start
   it unattended, so there's some risk to that Google account. See [AI brains](ai-brains.md).
 - The AI can be wrong. Kurooto never sends anything outward (mail, messages) without your tap, but check what it
@@ -80,9 +81,10 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 
 From [REQUESTED.md](../../REQUESTED.md) and [ROADMAP.md](../../ROADMAP.md), among others:
 
-- the phone app's Today screen, a local alarm and notification buttons (planned for 0.6.0);
-- a small local model for laptops without a graphics card;
-- answering quick things offline when the internet drops.
+- the phone app's Today screen, a local alarm and notification buttons (planned for 0.6.0).
+
+(A small local model for laptops without a graphics card, and quick answers while the internet is down, came in
+0.5.22: [the offline helper](your-computer.md#the-offline-helper).)
 
 ## Telling us
 

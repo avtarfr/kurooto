@@ -156,27 +156,48 @@ class LocalModels(Module):
                 f"{room['margin_gb']:g} GB kept spare)."
             )
         for m in need:
-            progress(f"Downloading {m['tag']} ({m['size_gb']:g} GB)…")
-            egress.handed("Ollama", "Local AI models")  # Ollama downloads it from its registry
-            with (
-                Lock(self.app.paths.state, "ollama-pull"),
-                self.api("/api/pull", {"model": m["tag"], "stream": True}, timeout=3600) as r,
-            ):
-                last = -1
-                for line in r:
-                    try:
-                        st = json.loads(line)
-                    except ValueError:
-                        continue
-                    if st.get("error"):
-                        return False, f"Couldn't download {m['tag']}: {st['error']}"
-                    if st.get("total"):
-                        pct = int(st.get("completed", 0) * 100 / st["total"])
-                        if pct // 10 != last:
-                            last = pct // 10
-                            progress(f"{m['tag']}: {pct}%")
+            ok, msg = self.pull(m["tag"], m["size_gb"], progress)
+            if not ok:
+                return False, msg
         self._wire_up(models)
         return True, "Local models are ready: " + ", ".join(m["tag"] for m in models)
+
+    def pull(self, tag: str, size_gb: float, progress=print, feature: str = "Local AI models") -> tuple[bool, str]:
+        """Download one model through Ollama (its server running), with progress every 10%."""
+        progress(f"Downloading {tag} ({size_gb:g} GB)…")
+        egress.handed("Ollama", feature)  # Ollama downloads it from its registry
+        with (
+            Lock(self.app.paths.state, "ollama-pull"),
+            self.api("/api/pull", {"model": tag, "stream": True}, timeout=3600) as r,
+        ):
+            last = -1
+            for line in r:
+                try:
+                    st = json.loads(line)
+                except ValueError:
+                    continue
+                if st.get("error"):
+                    return False, f"Couldn't download {tag}: {st['error']}"
+                if st.get("total"):
+                    pct = int(st.get("completed", 0) * 100 / st["total"])
+                    if pct // 10 != last:
+                        last = pct // 10
+                        progress(f"{tag}: {pct}%")
+        return True, ""
+
+    def remove(self, tag: str) -> bool:
+        """Remove a model Kurooto downloaded (the offline helper's, when it was too slow here)."""
+        req = urllib.request.Request(  # noqa: S310 (Ollama on this computer)
+            OLLAMA + "/api/delete",
+            data=json.dumps({"model": tag}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="DELETE",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30):  # noqa: S310 (Ollama on this computer)
+                return True
+        except OSError:
+            return False
 
     def _wire_up(self, models: list[dict]) -> None:
         """Use the helper model for quick decisions; GBrain uses the embedding model on its own."""

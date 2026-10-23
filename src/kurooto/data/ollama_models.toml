@@ -20,6 +20,13 @@ use = "quick decisions, summaries and longer local answers, and reading handwrit
 min_vram_gb = 7.5
 vision = true  # it reads pictures too: handwritten notes on 8 GB cards (the vision model, when there is one, first)
 
+[models.cpu-helper]
+tag = "qwen2.5:1.5b-instruct"
+size_gb = 0.99
+use = "the offline helper: one-word decisions on the processor, on computers without a graphics card"
+min_vram_gb = 0
+cpu = true  # not in any profile: offered by the offline helper (core/helper.py) after its speed test
+
 [models.vision]
 tag = "gemma4:12b"
 size_gb = 8.0

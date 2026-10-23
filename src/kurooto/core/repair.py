@@ -129,8 +129,8 @@ def offer(app: App, msg: Incoming, plain: str, mods: list[Module], asks: bool) -
     return True
 
 
-def run(app: App, r: dict, msg: Incoming) -> bool:
-    """Run one reading: the request by its name, with the words it reads."""
+def run(app: App, r: dict, msg: Incoming, via: str = "repair") -> bool:
+    """Run one reading: the request by its name, with the words it reads (via: who picked it, for the event)."""
     from kurooto.modules.text import tidy
 
     for m in app.enabled():
@@ -140,7 +140,7 @@ def run(app: App, r: dict, msg: Incoming) -> bool:
             slots = _match(it, tidy(r["means"]))
             if slots is None:
                 return False
-            app.events.emit("intent", name=it.name, via="repair")
+            app.events.emit("intent", name=it.name, via=via)
             app.keep.used(m.id, "intent", msg.via)
             msg.reply(it.run(msg, slots) or "Done.")
             return True

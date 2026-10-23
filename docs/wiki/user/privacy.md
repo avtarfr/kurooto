@@ -153,6 +153,7 @@ mode), Start-by dates, Subjects and timetable, Doubt queue, First-week quests, C
 private link; event descriptions are read only for `#nocall`, `#focus` and `#private` and aren't kept; private events
 are kept only as "Busy (private)", not even told to your AI), Study tracker (window titles are read and thrown away;
 only minutes per subject are kept; the idle check never reads what you type), Quick notes and prompts, Local AI models,
+the [offline helper](your-computer.md#the-offline-helper) (only its model's download goes out, made by Ollama),
 Stay awake on charger, Space keeper, the reserve (Markdown copies of Kurooto's state for AI programs, in the state
 folder), notes brain timelines and weekly checkup, `kurooto top`, `kurooto runlog`. Sync everything sends only what each
 sync's own feature sends.
