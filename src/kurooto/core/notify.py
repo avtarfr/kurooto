@@ -48,6 +48,7 @@ class Message:
     map_kind: str | None = None  # remember what the sent message is about, for replies and buttons
     map_ref: str | None = None
     file: str | None = None  # a document to attach (long answers)
+    tail: str | None = None  # the text's own last line, to show quietly (the run receipt): Telegram puts it in italics
     # the envelope (core/calm.py): why it came by itself, which setting controls it, what it's about
     why: str | None = None  # a reason id ("deadlines.reminder"), or "asked" for an answer to you; None: not recorded
     setting: str | None = None  # the setting it comes from, when more precise than the reason's own

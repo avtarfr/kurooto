@@ -96,9 +96,18 @@ class TelegramAPI:
     def me(self) -> dict:
         return self.call("getMe")
 
-    def send(self, chat_id, text: str, buttons: list | None = None, reply_to=None, silent: bool = False) -> int:
+    def send(
+        self,
+        chat_id,
+        text: str,
+        buttons: list | None = None,
+        reply_to=None,
+        silent: bool = False,
+        tail: str | None = None,
+    ) -> int:
         """Send text (split if long; buttons go on the last part). Returns the last message id. Past MAX_PARTS
-        messages, the start comes as messages and the whole text as a file after them: nothing is left out."""
+        messages, the start comes as messages and the whole text as a file after them: nothing is left out.
+        tail: the text's last line, shown in italics (the run receipt under an answer)."""
         parts = split_text(text)
         whole = len(parts) > MAX_PARTS
         if whole:
@@ -115,6 +124,9 @@ class TelegramAPI:
                 params["reply_parameters"] = {"message_id": reply_to, "allow_sending_without_reply": True}
             if buttons and i == len(parts) - 1 and not whole:
                 params["reply_markup"] = keyboard(buttons)
+            if tail and i == len(parts) - 1 and part.endswith(tail):  # Telegram counts in UTF-16 code units
+                n = len(tail.encode("utf-16-le")) // 2
+                params["entities"] = [{"type": "italic", "offset": len(part.encode("utf-16-le")) // 2 - n, "length": n}]
             mid = self.call("sendMessage", params)["message_id"]
         if whole:
             import tempfile

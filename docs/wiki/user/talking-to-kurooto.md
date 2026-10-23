@@ -86,6 +86,12 @@ under its reply, or send `/wrong` ([teaching-kurooto.md](teaching-kurooto.md)).
 it." and the answer comes as a reply to your message. The AI can act too (add a reminder, a note, a deadline; read your
 notes and files): see [ai-brains.md](ai-brains.md#what-the-ai-can-do-its-tools).
 
+**The grey line under an answer.** Every answer ends with one short line in italics, built from Kurooto's own
+record of the run, not from what the AI wrote: which AI answered, the effort, how long it took, the share of today's
+limit when Kurooto knows it, and what it actually did, e.g. *agy · medium · 42 s · 12% of today's limit · searched
+notes, wrote 1 note*. "did nothing" means it used none of Kurooto's tools. See
+[ai-brains.md](ai-brains.md#the-run-receipt).
+
 **Turn it on.** Features → Chat with your AI (in Starter). Needs a working AI brain.
 
 **From Telegram:**
@@ -275,5 +281,5 @@ refuses, the message says the name shows in Kurooto's messages, the app and the 
 ## From a terminal
 
 `kurooto ask "what's due this week?"` handles plain English as on Telegram: quick things answer at once, bigger ones go
-to your AI and the answer prints in the terminal, not on Telegram. `kurooto ask` alone opens a prompt for one request
+to your AI and the answer prints in the terminal, not on Telegram, with the run receipt as its last line. `kurooto ask` alone opens a prompt for one request
 after another. More, including `kurooto notify` and `kurooto ask-me` for your own scripts: [add-ons.md](add-ons.md).

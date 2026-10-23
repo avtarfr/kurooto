@@ -60,7 +60,13 @@ create index if not exists jobs_status on jobs(status, created);
 create table if not exists attempts (job text, brain text, verdict text, at real, seconds real, tool_calls integer);
 create index if not exists attempts_at on attempts(at);
 """
-register_defaults("jobs", {"stuck_min": 10})  # the watchdog: minutes with no AI at work and no program running
+register_defaults(
+    "jobs",
+    {
+        "stuck_min": 10,  # the watchdog: minutes with no AI at work and no program running
+        "receipt": True,  # a quiet last line under each answer: which AI, effort, time, limit used, what it did
+    },
+)
 
 LONG = 7000  # longer answers are also sent as a document
 LANES = ("you", "bg", "chk")  # your own requests; work nobody is waiting for; a second kind of that work, so two
@@ -72,6 +78,39 @@ GEMINI_KEY = "gemini.api_key"  # also what calls and voice notes use
 MAX_STEPS = 200  # tool uses kept per running request (its tool log)
 DENIED_HELP = Agy.denied_help  # what an AI that was refused says (providers/agy.py); a brain's own is `denied_help`
 SHORT = {"agy": "agy", "gemini": "your Gemini key", "claude": "Claude Code"}
+NAMES = {**SHORT, "gemini": "Gemini", "ollama": "Ollama", "custom": "your AI service", "freellmapi": "your AI service"}
+RECEIPT_MAX = 120  # the run receipt is one line, at most this long
+# the run receipt's "what it did", from its tool log: a tool -> (what it did, the thing it counts; "" = said once)
+ACTS = {
+    "search_notes": ("searched notes", ""),
+    "list_notes": ("searched notes", ""),
+    "note_timeline": ("searched notes", ""),
+    "search_history": ("searched past answers", ""),
+    "read_note": ("read", "note"),
+    "write_note": ("wrote", "note"),
+    "add_to_note": ("added to", "note"),
+    "edit_note": ("edited", "note"),
+    "tick_task": ("ticked", "task"),
+    "list_files": ("looked through files", ""),
+    "read_file": ("read", "file"),
+    "read_course_file": ("read", "file"),
+    "read_book": ("read books", ""),
+    "fetch_url": ("read", "web page"),
+    "add_reminder": ("set", "reminder"),
+    "set_alarm": ("set", "alarm"),
+    "add_deadline": ("added", "deadline"),
+    "move_deadline": ("moved", "deadline"),
+    "mark_deadline_done": ("ticked off", "deadline"),
+    "remove_deadline": ("removed", "deadline"),
+    "schedule_call": ("set up", "call"),
+    "call_now": ("rang", "call"),
+    "remember": ("remembered", "preference"),
+    "send_message": ("sent", "message"),
+    "send_file": ("sent", "file"),
+    "send_files": ("sent", "file"),
+    "ask_user": ("asked", "question"),
+    "draft_reply": ("drafted", "reply"),
+}
 
 FRIENDLY = {
     Verdict.DENIED: "The AI stopped without an answer: it tried something unattended runs aren't allowed to do. "
@@ -164,8 +203,10 @@ class Jobs:
             ("activity", "real"),
             ("deadline", "real"),
             ("brain_req", "text"),
+            ("receipt", "text"),
         ):
-            if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline
+            if col not in have:  # the lane; the agent program running it; the last sign of life; a try's deadline;
+                # the AI it was pinned to; the run receipt
                 self._db.execute(f"alter table jobs add column {col} {kind}")
         self._stops: dict[str, threading.Event] = {}  # job -> set when it's cancelled or ended by the watchdog
         self._lanes: dict[str, tuple[str, threading.Thread]] = {}  # lane -> (job, the thread running it)
@@ -480,10 +521,11 @@ class Jobs:
         ):
             result.detail = used.denied_help
         ok = result.ok
+        receipt = self._receipt(jid, used, level, time.time() - (job.started or time.time())) if used else None
         with self._lock:
             done = self._db.execute(
                 "update jobs set status=?, verdict=?, brain=?, effort=?, finished=?, seconds=?, result=?, detail=?, "
-                "proc=null, deadline=null where id=? and status='running'",
+                "receipt=?, proc=null, deadline=null where id=? and status='running'",
                 (
                     "ok" if ok else "failed",
                     result.verdict.value,
@@ -493,6 +535,7 @@ class Jobs:
                     round(result.seconds, 1),
                     result.text,
                     result.detail[:2000],
+                    receipt,
                     jid,
                 ),
             ).rowcount
@@ -543,6 +586,25 @@ class Jobs:
                 log.append(
                     {"name": str(name)[:60], "args": json.dumps(args or {}, ensure_ascii=False, default=str)[:300]}
                 )
+
+    def _receipt(self, jid: str, used, level: str, seconds: float) -> str:
+        """The run receipt of a request that just ran: its AI, effort, time, the share of today's limit (when
+        core/quota.py knows the limit) and what it did from its tool log."""
+        with self._lock:
+            steps = list(self.steps.get(jid, ()))
+        pct = None
+        try:
+            pool = self.app.quota.pool(used, level)
+            pct = self.app.quota.status(pool)["pct"] if pool else None
+        except Exception:  # a broken count never stops the answer
+            pass
+        return receipt(used, level, seconds, pct, steps)
+
+    def receipt(self, jid: str) -> str:
+        """A finished request's run receipt, to show under its answer ("" when jobs.receipt is off or no AI ran)."""
+        if not self.app.settings.get("jobs.receipt"):
+            return ""
+        return (self._read("select receipt from jobs where id=?", (jid,)) or [None])[0] or ""
 
     def _mark(self, jid: str, **cols) -> None:
         """Note how a running job is doing (which AI, its program, its deadline); each note is a sign of life."""
@@ -708,19 +770,24 @@ class Jobs:
         reply_to = int(job.reply_to) if job.reply_to and job.reply_to.isdigit() else job.reply_to
         cases = self.app.modules.get("cases") if self.app.is_on("cases") else None  # (wrong) a Wrong button on it
         buttons = cases.answer_buttons(job.id) if cases is not None else None
+        tail = self.receipt(job.id) or None  # the run receipt, last (Telegram shows it in italics)
+        end = f"\n\n{tail}" if tail else ""
         if len(body) > LONG:
             md = self.dir / f"{job.id}-result.md"
             md.write_text(body, encoding="utf-8")
             self.app.notify(
-                f"{head}\n\n{body[:1500]}\n\n[…the full answer is attached]",
+                f"{head}\n\n{body[:1500]}\n\n[…the full answer is attached]{end}",
                 kind="result",
                 reply_to=reply_to,
                 buttons=buttons,
                 why=why,
+                tail=tail,
             )
             self.app.notify(job.title, kind="result", file=str(md), why=why)
         else:
-            self.app.notify(f"{head}\n\n{body}", kind="result", reply_to=reply_to, buttons=buttons, why=why)
+            self.app.notify(
+                f"{head}\n\n{body}{end}", kind="result", reply_to=reply_to, buttons=buttons, why=why, tail=tail
+            )
         chat = self.app.modules.get("chat")
         if chat is not None and result.ok and result.text and getattr(chat, "owns", lambda _j: True)(job.id):
             try:  # only chat's own requests: a digest's or a research run's prompt isn't something you said
@@ -837,6 +904,50 @@ def _mins(secs: float) -> str:
 def mcp_command() -> list[str]:
     """How an agent program starts Kurooto's tool server (`kurooto mcp`), with this version's own Python."""
     return command()
+
+
+def receipt(brain, effort: str, seconds: float, pct: int | None, steps: list[dict]) -> str:
+    """The run receipt: one line built from the run's own record, never from the answer's words, e.g.
+    "agy · medium · 42 s · 12% of today's limit · searched notes, wrote 1 note". An agent program may also work with
+    tools of its own, which Kurooto doesn't see: with none of Kurooto's, it "did nothing through Kurooto"."""
+    head = [NAMES.get(brain.id, brain.label), effort, _took(seconds)]
+    if pct is not None:
+        head.append(f"{pct}% of today's limit")
+    did = _did(steps) or ["did nothing" if brain.kind != "cli" else "did nothing through Kurooto"]
+    line = " · ".join(head) + " · " + ", ".join(did)
+    while len(line) > RECEIPT_MAX and len(did) > 1:
+        did = did[:-1]
+        line = " · ".join(head) + " · " + ", ".join(did) + " and more"
+    return line[:RECEIPT_MAX]
+
+
+def _did(steps: list[dict]) -> list[str]:
+    """What a run did, from its tool log, in the order it first did each: ["searched notes", "wrote 2 notes"]."""
+    counts: dict[tuple[str, str], int] = {}
+    other = 0
+    for s in steps:
+        act = ACTS.get(str(s.get("name") or ""))
+        if act is None:
+            other += 1
+        else:
+            counts[act] = counts.get(act, 0) + 1
+    out = [f"{verb} {n} {_plural(noun, n)}" if noun else verb for (verb, noun), n in counts.items()]
+    if other:
+        out.append(f"used {other} other tool{'s' if other > 1 else ''}")
+    return out
+
+
+def _plural(noun: str, n: int) -> str:
+    if n == 1:
+        return noun
+    return noun[:-1] + "ies" if noun.endswith("y") else noun + "s"
+
+
+def _took(secs: float) -> str:
+    s = max(1, round(secs))
+    if s < 60:
+        return f"{s} s"
+    return f"{round(s / 60)} min" if s < 3600 else f"{s // 3600} h {round(s % 3600 / 60)} min"
 
 
 def _why(brain, result: Result) -> str:

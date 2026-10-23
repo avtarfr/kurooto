@@ -249,7 +249,7 @@ class Telegram(Module):
         if msg.file:
             mid = api.document(chat, msg.file, caption=text[:1000], reply_to=msg.reply_to)
         else:
-            mid = api.send(chat, text, buttons=msg.buttons, reply_to=msg.reply_to, silent=silent)
+            mid = api.send(chat, text, buttons=msg.buttons, reply_to=msg.reply_to, silent=silent, tail=msg.tail)
         if msg.map_kind:
             self.map_set(mid, msg.map_kind, msg.map_ref)
         return mid

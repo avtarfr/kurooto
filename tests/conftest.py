@@ -105,6 +105,17 @@ def calendar_day_checkins():
         yield
 
 
+@pytest.fixture(autouse=True)
+def no_receipts():
+    """Answers end with a run receipt (jobs.receipt, on by default). Tests that check an answer's exact words run
+    without it; tests/unit/test_receipt.py turns it on. Its own MonkeyPatch, like calendar_day_checkins."""
+    from kurooto.core import config, jobs  # noqa: F401 (registers its defaults)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(config._DEFAULTS["jobs"], "receipt", False)
+        yield
+
+
 # ------------------------------------------------------------------------------------- the real-install guard
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_protocol(item, nextitem):

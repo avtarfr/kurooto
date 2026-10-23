@@ -187,6 +187,7 @@ your message. Answers longer than about 7,000 characters also come as a file.
 - **Stuck requests.** A watchdog stops a request with no AI at work and no program running for `jobs.stuck_min`
   minutes (10), or one past its time limit: "It got stuck (nothing was happening), so I stopped it. Send it again to try
   once more."
+- **The run receipt.** See below.
 - **What failures say:**
 
 | Reply | Meaning |
@@ -198,6 +199,28 @@ your message. Answers longer than about 7,000 characters also come as a file.
 | "No answer in time; the request was stopped" | It ran past `brain.timeout_min`. Ask with `low:` or split it up. |
 
 When Kurooto stops (shutdown, update), running requests stop where they are and run again at the next start.
+
+## The run receipt
+
+Every answer from your AI ends with one short line, in italics on Telegram and as plain text in the dashboard and the
+terminal:
+
+*agy · medium · 42 s · 12% of today's limit · searched notes, wrote 1 note, set 1 reminder*
+
+It's built from Kurooto's own record of the run, never from the answer's words, so an AI that says "I've added it to
+your notes" without using a tool for it shows up: the line says what it did.
+
+- **Which AI and effort**: the one that answered (a fallback, if the main one couldn't), and how hard it thought.
+- **Time**: from the start of the run to the answer, fallback tries included.
+- **Share of today's limit**: only when Kurooto knows the limit (learned from a "limit reached" answer, or set in
+  `quota.limits`); `/usage` shows them all.
+- **What it did**: Kurooto's tools it used, counted: "searched notes", "read 2 notes", "wrote 1 note", "set 1
+  reminder", "used 1 other tool". "did nothing" means it used none. agy and Claude Code can also read and write files
+  with tools of their own, which Kurooto doesn't see: for them it says "did nothing through Kurooto". A tool that
+  was used but failed still counts.
+
+Failed requests get it too. Quiet background work that doesn't message you (the look back, the concept graph) gets
+none. Turn it off with `jobs.receipt` = `false` (Settings → AI jobs).
 
 ## What goes along with every request
 
@@ -225,6 +248,7 @@ Dashboard → Settings → brain (and quota, jobs, you):
 | `brain.timeout_min.low` / `.medium` / `.high` | `10` / `15` / `30` | minutes a request may run |
 | `brain.agy.io_mode` | `pipe` | how Kurooto talks to agy (leave it unless agy gives no output) |
 | `jobs.stuck_min` | `10` | minutes without progress before a request is stopped (Settings → AI jobs) |
+| `jobs.receipt` | `true` | the run receipt: one quiet line under each answer saying which AI, effort, time, limit used and what it did |
 | `you.language` | `follow` | answer in the language you write in, or always in the one named |
 
 **What leaves your computer:** what you ask, and the notes and files the AI reads for it, go to the AI service you

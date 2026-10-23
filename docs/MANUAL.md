@@ -397,7 +397,11 @@ last 10 exchanges are kept in Kurooto's state folder (`chat/history.json`). `/br
 it works; `/jobs` what's running and waiting (with Cancel buttons; `/jobs cancel <id|all>`, `kurooto jobs --cancel ID`)
 and the last few; `/usage` how many AI requests ran each day and the limits hit. Your requests never wait behind
 background work (it has its own lane), and a request that's stuck (no AI at work for `jobs.stuck_min` minutes, 10) is
-stopped with a message.
+stopped with a message. **Run receipt:** every answer ends with one grey line (italics on Telegram, plain text in the
+dashboard and the terminal) built from the run's own record, not the answer's words: which AI, the effort, how long,
+the share of today's limit when Kurooto knows it, and what it actually did with Kurooto's tools ("searched notes, wrote
+1 note"; "did nothing" when it used none; agy and Claude Code's own file tools aren't seen, so for them "did nothing
+through Kurooto"). Quiet background work gets none; `jobs.receipt` = `false` turns it off.
 *Leaves:* what you ask, and notes it reads, go to the AI you picked; with a conversation going, your recent
 exchanges go along too.
 

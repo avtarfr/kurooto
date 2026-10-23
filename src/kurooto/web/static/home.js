@@ -1287,7 +1287,7 @@ async function tdWait(job, say = tdSay) {
     let j; try { j = await api(`job?id=${encodeURIComponent(job)}`); } catch { continue; }
     if (j.ok === false) return;
     if (j.status === "ok" || j.status === "failed") {
-      const who = [j.label || j.brain, j.effort, j.seconds ? `${Math.round(j.seconds)} s` : ""].filter(Boolean).join(" · ");
+      const who = j.receipt ? "" : [j.label || j.brain, j.effort, j.seconds ? `${Math.round(j.seconds)} s` : ""].filter(Boolean).join(" · ");
       say(`${who ? who + "\n" : ""}${String(j.answer || "").trim() || "(no answer)"}`, j.status !== "ok");
       return;
     }

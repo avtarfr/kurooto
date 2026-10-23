@@ -24,7 +24,8 @@ all of them.
 
 **Start here**
 - [Getting started](getting-started.md): install on Windows, macOS or Linux, the setup wizard, your first 15 minutes.
-- [AI brains](ai-brains.md): which AI answers you, free limits, what the AI may do on your computer.
+- [AI brains](ai-brains.md): which AI answers you, free limits, what the AI may do on your computer, and the run
+  receipt under each answer.
 - [Talking to Kurooto](talking-to-kurooto.md): Telegram, plain English, chat, questions and approvals, pause, focus, voice notes, sending files.
 - [Messages Kurooto sends by itself](messages-it-sends.md): every message it sends unasked and why, the daily limit, going offline, health checks.
 

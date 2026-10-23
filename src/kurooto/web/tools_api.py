@@ -126,6 +126,9 @@ def job(app: App, jid: str) -> tuple[int, dict]:
             v = Verdict.ERROR
         out["answer"] = j.result if j.status == "ok" else FRIENDLY.get(v, "It failed.").format(brain=label)
         out["label"] = label
+        tail = app.jobs.receipt(j.id)  # the run receipt (jobs.receipt), as a plain last line
+        if tail:
+            out["receipt"], out["answer"] = tail, f"{out['answer'] or ''}\n\n{tail}"
     return 200, out
 
 
