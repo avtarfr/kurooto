@@ -3,6 +3,7 @@
 The bundle never contains your messages, notes, journal, transcripts, AI requests or answers. Secrets (tokens, keys,
 links) are replaced with [secret]; names, email addresses, web addresses and your folders are replaced too. Nothing
 is sent anywhere: the zip is saved on this computer, and you decide whether to send it. Look inside first.
+setup.json: how long each step of the setup page took, and whether it was finished or skipped (never what you typed).
 """
 
 from __future__ import annotations
@@ -135,6 +136,7 @@ def checks(app, health: bool = True, net: bool = True) -> list[tuple[str, bool, 
     out += more_checks(app, net)
     out += health_rows(app) if health else []
     out += layout_checks(app)
+    out += setup_rows(app)
     if "backups" in app.modules and not app.is_on("backups"):  # say when nothing is backed up (a note)
         from kurooto.modules.backups import age_line
 
@@ -240,6 +242,16 @@ def layout_checks(app) -> list[tuple[str, bool | None, str]]:
     return [("notes layout", True, lay.preset + (f"; files in {files}" if files else ""))]
 
 
+def setup_rows(app) -> list[tuple[str, bool | None, str]]:
+    """Steps of the setup page skipped for now (core/setupsteps.py): notes, never problems."""
+    from kurooto.core import setupsteps
+
+    try:
+        return setupsteps.doctor_rows(app)
+    except Exception as e:
+        return [("setup", None, f"couldn't read where setup is: {type(e).__name__}")]
+
+
 def timezone_check(app) -> tuple[str, bool, str] | None:
     """Your time zone (Settings → You) and this computer's should be the same: until 0.2.1, some times (repeating
     ones: check-in planning, the look back, digests) follow the setting and others (reminders, check-ins) the
@@ -322,6 +334,9 @@ def bundle(app, dest: Path | None = None) -> tuple[Path, list[str]]:
             keep["error"] = r.text(str(e["error"]))[:300]
         events.append(keep)
     files["events.json"] = json.dumps(events, indent=1, default=str)
+    from kurooto.core import setupsteps  # where setup went quickly and where it stalled: steps and seconds only
+
+    files["setup.json"] = json.dumps(setupsteps.timings(app), indent=1)
     log = app.paths.logs / "kurooto.log"
     if log.exists():
         lines = log.read_text(encoding="utf-8", errors="replace").splitlines()[-1500:]

@@ -147,10 +147,24 @@ than the beta you have.
 ## The setup wizard
 
 The wizard is a page on your own computer (`127.0.0.1` means "this computer"; nothing outside can open it). It saves
-as you go, so you can close it and come back. The list of steps (on the left on a wide screen, numbered dots on a
-phone) opens any step; a step you passed but haven't finished (an AI that doesn't answer yet, Telegram not connected)
-shows **!** instead of a tick. Words like *API key*, *token* or *repository* are underlined with dots: tap one to read
-what it means.
+as you go, so you can close it and come back: Kurooto keeps where you are, and reopening the page (`kurooto setup`, or
+**setup** in the dashboard's corner) lands on the first step you haven't finished. The list of steps (on the left on a
+wide screen, numbered dots on a phone) opens any step: finished ones have a tick, skipped ones a dash, and a step you
+passed but haven't finished (an AI that doesn't answer yet) shows **!**. Words like *API key*, *token* or
+*repository* are underlined with dots: tap one to read what it means.
+
+**Skip for now.** Every step except **You** and **AI** has **Skip for now** beside Next: setup can't finish without a
+name and an AI, but the rest can wait. Next on About you with no reports added, or on Chat with nothing connected,
+counts as a skip too, and so does a step you never opened when you press Finish setup. Skipped steps wait on the
+dashboard (Features → **Finish setting up**, and the corner link says **finish setup (N)**) and in `kurooto doctor` as
+notes, never problems, each with its way back (`kurooto setup telegram` opens that step). A skipped step leaves the
+list once it's done, wherever you did it (Telegram paired from the dashboard counts). *Undo:* open the step and press
+Next.
+
+**Where people stall.** Kurooto records how long you spend on each step and whether you finished or skipped it, on
+this computer only (`setup.json` in Kurooto's state folder: steps, seconds, visits; never what you typed). It's never
+sent anywhere: `kurooto doctor --bundle` puts it in the diagnostics zip, which is saved here for you to look at, and
+you decide whether to send it to whoever is helping you.
 
 1. **You:** what Kurooto calls you, your time zone (filled in from this computer, or your browser) and the
    assistant's name. An old name for a zone is saved under today's (`Europe/Kiev` becomes `Europe/Kyiv`), and
@@ -171,7 +185,7 @@ what it means.
    goes to Telegram or your phone. *Undo:* nothing to turn off; it's only there while you set up (a reminder set there
    still comes after a restart, and can be cancelled with `/reminders` once Telegram is connected).
 4. **About you** (★ recommended, optional): teach Kurooto what your other AI accounts already know about you. See
-   [About you](#about-you) below.
+   [About you](#about-you) below. **Skip for now** if you'd rather do it later.
 5. **Features:** the **★ Starter** set is a good start (Telegram, chat, reminders, check-ins and deadlines; the notes
    brain is a 0.5 GB download, so it's yours to tick). **What do you do?** (Student, Working, Research, Something
    else) adds what suits it: a student gets subjects, start-by dates, the quiz, after-class notes, doubts and the
@@ -179,7 +193,10 @@ what it means.
    feature, commitments, start-by dates and the weekly summary. **Everything** or **Pick myself** for more; the add-ons
    that come with Kurooto (such as [Exam season](#exam-season)) are in no preset, only on when you pick them. Some
    features ask for a detail right in their card (a calendar link, a repository); phone calls, voice notes and the alarm
-   use your Gemini key (they ask for one if you picked another AI).
+   use your Gemini key (they ask for one if you picked another AI). Above the cards, one line says the daily limit
+   ([Calm by default](#calm-by-default-why-each-message-came-and-a-daily-limit)): "Kurooto sends at most 6 messages a
+   day on its own; the rest wait for one evening bundle at 20:00. Your own reminders, alarms and approvals always
+   come." The number beside it changes `notify.calm.messages`.
 6. **Chat:** pick where you talk to Kurooto: **Telegram** or **The Kurooto phone app instead**. The phone app needs
    Phone calls (tick it on the Features step, **Set up now**); then **Pair my phone now**, or pair after Done. Its chat
    does what the bot does; files come as links (see [Without Telegram](#without-telegram)). *Undo:* pick Telegram
@@ -189,8 +206,9 @@ what it means.
    2. BotFather replies with a token like `123456789:AAH…`. Paste it in the wizard and press **Check**.
    3. Tap the link the wizard shows, then **Start** in Telegram. Kurooto now knows that chat is yours and ignores
       everyone else.
-7. **Done:** Kurooto installs what your features need (with progress), turns them on, and, if you chose Phone calls,
-   shows a QR code to pair your phone. Send `/help` to your bot (or in the phone app's chat).
+7. **Done:** the summary lists what you skipped, each with **Go back to it**. Finish setup installs what your
+   features need (with progress), turns them on, and, if you chose Phone calls, shows a QR code to pair your phone.
+   Send `/help` to your bot (or in the phone app's chat).
 
 **Used Kurooto before?** The first page has **I've used Kurooto before**: give your private repository, a token for it
 and your profile's passphrase, and your setup comes back (see [Moving to a new computer](#moving-to-a-new-computer)).
@@ -226,8 +244,8 @@ to it as `profile-new-<date>.md`. `/aboutme` on Telegram shows the In-brief part
 this computer).
 
 The reports themselves stay in Kurooto's private data folder (not your notes, never synced). Remove anything you'd
-rather not keep before adding a report. Come back any time with more accounts: open the setup page (`kurooto open`, then
-"setup") and go to About you. To teach it smaller things as you go, see [Remember](#remember).
+rather not keep before adding a report. Come back any time with more accounts: `kurooto setup about` opens that step
+(or **setup** in the dashboard's corner). To teach it smaller things as you go, see [Remember](#remember).
 
 **Your persona card.** Four short lines on how Kurooto talks to you: what to call you, tone, length, things to avoid
 ("plain and direct, no pep talk"). It starts empty (no name, voice or tone picked for you) and goes along with every
@@ -3300,8 +3318,8 @@ Secrets (bot token, keys) are in your system's keychain (Windows Credential Mana
 Service on Linux), or, where there is none, in a file only your user can read in the settings folder.
 
 Commands: `kurooto on` / `kurooto off` (completely, until turned on again), `kurooto pause [2h]` / `kurooto
-resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto doctor`, `kurooto top`, `kurooto
-term`, `kurooto logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
+resume`, `kurooto start` / `kurooto stop` (just for now), `kurooto open`, `kurooto setup [STEP]`, `kurooto doctor`,
+`kurooto top`, `kurooto term`, `kurooto logs [-f]`, `kurooto sync`, `kurooto backup` / `kurooto restore <zip>`, `kurooto profile save|status|restore`,
 `kurooto update`, `kurooto autostart on|off|status`, `kurooto cases`, `kurooto paths`, `kurooto rotate`, `kurooto
 uninstall [--revoke]`. For scripts: `kurooto
 notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog`, `watch` (see

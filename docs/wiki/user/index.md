@@ -24,6 +24,8 @@ all of them.
 
 **Start here**
 - [Getting started](getting-started.md): install on Windows, macOS or Linux, the setup wizard, your first 15 minutes.
+- [What it can't do yet](what-it-cant-do-yet.md): what doesn't work, or only partly, said plainly: iPhone calls are
+  notifications, the computer has to be on, few real computers tested so far.
 - [AI brains](ai-brains.md): which AI answers you, free limits, what the AI may do on your computer, and the run
   receipt under each answer.
 - [Talking to Kurooto](talking-to-kurooto.md): Telegram, plain English, chat, questions and approvals, pause, focus, voice notes, sending files.
@@ -56,7 +58,8 @@ all of them.
 
 **Reference**
 - [Commands](commands.md): every Telegram command, every plain-English request understood instantly, every `kurooto` terminal command, and the dashboard's keyboard shortcuts.
-- [FAQ](faq.md) · [Troubleshooting](troubleshooting.md) · [Glossary](glossary.md)
+- [FAQ](faq.md) · [Troubleshooting](troubleshooting.md) · [What it can't do yet](what-it-cant-do-yet.md) ·
+  [Glossary](glossary.md)
 
 ## Every feature, and where it's explained
 

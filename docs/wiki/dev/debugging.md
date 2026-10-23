@@ -26,7 +26,8 @@ What a user sees and is told to do is in [../user/troubleshooting.md](../user/tr
   (`<state>/daemon.json` pid), time zone (`timezone_check`), the AI brain, each enabled module's `health()` (for
   calls, `call_line()` when doctor runs outside the daemon), `more_checks` (Telegram `getMe`, agent export, add-ons'
   `doctor_checks()`), `health_rows` (`working: <feature>` from `app.health.evaluate(net=True, save=False)`),
-  `layout_checks` (notes layout and files folder), backups, installed prerequisites.
+  `layout_checks` (notes layout and files folder), `setup_rows` (a `--` note per setup step skipped for now,
+  `core/setupsteps.py:doctor_rows`), backups, installed prerequisites.
 - `ok` / `--` (a note, `ok is None`) / `FAIL` (`ok is False`; counted).
 - `--json` prints `{version, problems, checks: [{name, ok, detail}]}`.
 - `--fix ID` asks the **running** daemon to run a fix (`POST /api/health/fix`, `core/health.py:Health.fix`). `ID` is
@@ -139,7 +140,8 @@ whole file.
 `kurooto doctor --bundle` (`diagnostics.py:bundle`, `Redactor`) writes
 `<data>/kurooto-diagnostics-YYYYmmdd-HHMMSS.zip` with `doctor.json`, `versions.json`, user `settings.json`
 (redacted), `features.json`, `hardware.json`, `jobs.json` (last 30, status only, no prompts), `events.json` (last 400,
-only safe fields), the last 1500 log lines (redacted) and a README. Redaction: every known secret value
+only safe fields), `setup.json` (`core/setupsteps.py:timings`: each setup step's status, seconds and visits, nothing
+typed), the last 1500 log lines (redacted) and a README. Redaction: every known secret value
 (`KNOWN_SECRETS`, `Secrets.names()`, Google tokens) becomes `[secret]`; token and key patterns, emails and URLs are
 masked; the notes path becomes `[notes folder]`, the home folder `~`, the user's name `[you]`; keys matching
 `SENSITIVE_KEYS` become `[set]`. Nothing is sent anywhere. If you change what the bundle collects, extend

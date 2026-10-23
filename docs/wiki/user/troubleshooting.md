@@ -29,6 +29,8 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | The setup page didn't open | Run `kurooto open`, or go to `http://127.0.0.1:8770/setup`. If another program uses that port, Kurooto picks the next one (`kurooto paths` → `web.json` in the state folder names it). |
 | The setup page says "Kurooto isn't answering" | It stopped or is restarting: start it from your app menu or with `kurooto on`, then press the button again. What you typed stays. |
 | The setup page says it's out of date | Reload the page. |
+| The setup page opens on a step I already did | It opens on the first step not finished: an AI that doesn't answer its test yet keeps the AI step open. Pick any step in the list, or `kurooto setup about` (any step's name) to open one. |
+| "finish setup (2)" on the dashboard, or `setup: …` notes in `kurooto doctor` | Steps you skipped for now. Click one in Features → **Finish setting up** (or `kurooto setup telegram`) to finish it; it leaves the list once it's done. They're notes, never problems. |
 | Not enough space | The wizard says what needs it. Free some space, or pick fewer features. |
 | "That doesn't look like a bot token" | Copy the whole token from BotFather's message (it looks like `123456789:AAH…`). |
 | Telegram didn't accept the token | Copy it again, or send `/token` to @BotFather to see it. |

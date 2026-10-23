@@ -982,6 +982,20 @@ function healthBadge(el, hp) {
   el.style.cursor = "pointer";
   el.onclick = () => showTab("features");
 }
+// steps skipped on the setup page (core/setupsteps.py): the setup link in the corner says how many, the Features tab
+// lists them, each a link back to its step
+let SETUP_LEFT = [];
+function setupLeft(s) {
+  SETUP_LEFT = (s && s.left) || [];
+  const a = $("#setup-link");
+  if (a) { a.href = SETUP_LEFT.length ? SETUP_LEFT[0].link : "/setup"; a.textContent = setupWord(); a.title = setupTitle(); }
+}
+const setupWord = () => (SETUP_LEFT.length ? `finish setup (${SETUP_LEFT.length})` : "setup");
+const setupTitle = () => (SETUP_LEFT.length ? `Skipped for now: ${SETUP_LEFT.map((x) => x.title).join(", ")}` : "the setup page");
+function setupBlock() {
+  if (!SETUP_LEFT.length) return "";
+  return `<div class="card2 later"><b>Finish setting up</b>${SETUP_LEFT.map((x) => `<p><a href="${esc(x.link)}">${esc(x.title)}</a>: ${esc(x.what)}</p>`).join("")}</div>`;
+}
 function healthBlock(h) {
   const bad = (h.results || []).filter((r) => r.ok === false);
   if (!bad.length) return "";
@@ -1076,7 +1090,7 @@ function renderBoard(m) {
     ? ` · <span class="k">battery</span> <span class="${p.pct < 20 ? "hot" : "v"}">${Math.round(p.pct)}%</span>${p.secs ? ` <span class="k">${ago(p.secs)} left</span>` : ""}${p.watts ? ` <span class="k">${p.watts.toFixed(1)}W</span>` : ""}`
     : ` · <span class="k">${p.ac ? "ac" : "power"}</span> <span class="v">${Math.round(p.pct)}%</span>`;
   $("#sb-up").innerHTML = `<span><span class="k">UP</span> <span class="v">${ago(s.uptime)}</span></span><span><span class="k">EVENTS TODAY</span> <span class="v">${m.events_today || 0}</span></span>${pw ? `<span>${pw.replace(/^ · /, "")}</span>` : ""}`;
-  $("#sb-act").innerHTML = `${m.power && m.power.mode === "paused" ? '<button data-pw="resume">resume</button>' : '<button data-pw="pause">pause 1h</button>'} · <button data-pw="off">off</button> · <a href="/setup">setup</a>`;
+  $("#sb-act").innerHTML = `${m.power && m.power.mode === "paused" ? '<button data-pw="resume">resume</button>' : '<button data-pw="pause">pause 1h</button>'} · <button data-pw="off">off</button> · <a href="${esc(SETUP_LEFT.length ? SETUP_LEFT[0].link : "/setup")}" title="${esc(setupTitle())}">${esc(setupWord())}</a>`;
   // CPU: the history, every core with its own short history, speed, load, temperatures, fans
   $("#cpu-meta").textContent = [s.cpu_name, s.phys && s.phys !== s.threads ? `${s.phys} cores` : "", `${s.threads} threads`].filter(Boolean).join(" · ");
   $("#cpu-pct").innerHTML = `<span style="color:${grad(s.cpu)}">${pct(s.cpu)}</span>`;
@@ -1523,7 +1537,8 @@ async function renderFeatures(body) {
   const hidden = st.modules.filter(hid);
   const hiddenBox = !hidden.length ? "" : `<div class="hid-box"><button class="linkish" data-showhidden="1">${SHOW_HIDDEN ? "close the hidden list" : `Show hidden (${hidden.length})`}</button>${SHOW_HIDDEN
     ? `<ul class="hid-list">${hidden.map((m) => `<li><b>${esc(m.title)}</b><span class="d">${esc(m.description)}</span><button data-unhide="${m.id}">Unhide</button></li>`).join("")}</ul>` : ""}</div>`;
-  body.innerHTML = `${findBar("features", "features")}${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon && !m.extra).map(card).join("")}</div>${extras.length
+  setupLeft(st.setup);
+  body.innerHTML = `${findBar("features", "features")}${setupBlock()}${healthBlock(health)}<div class="feat">${st.modules.filter((m) => !m.addon && !m.extra).map(card).join("")}</div>${extras.length
     ? `<p class="d addons-h">Add-ons: they come with Kurooto, and are off until you turn them on</p><div class="feat">${extras.map(card).join("")}</div>` : ""}${addons.length
     ? `<p class="d addons-h">Your add-ons: your own code, from your add-ons folder</p><div class="feat">${addons.map(card).join("")}</div>` : ""}<div class="log" id="flog">${kept}</div>${hiddenBox}`;
   findWire(body, "features", typing);
@@ -2243,6 +2258,7 @@ window.addEventListener("resize", () => { applyLayout(); refit(); });
   const asked = location.hash.slice(1); // e.g. /#about, the link /aboutme sends
   if (TABS[asked]) tab = asked;
   loadLook();
+  api("setup").then(setupLeft).catch(() => {}); // an older Kurooto: the plain setup link
   api("events").then((r) => { for (const e of (r.events || []).reverse()) feed.push(e); if (current() === "activity") renderTab(); }).catch(() => {});
   applyLayout(true);
   if (document.body.dataset.study === "on") setStudy(true, false, false); // look.study_mode: as it was left

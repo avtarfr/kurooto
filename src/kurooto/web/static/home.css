@@ -219,6 +219,8 @@ body.dense .page table { font-size: 12px; }
 /* what needs a look (core/health.py), above the features */
 .card2.health { border: 1px solid var(--warn); padding: 10px; margin-bottom: 10px; border-radius: 2px; font-family: var(--sans); }
 .card2.health p { margin: 4px 0; font-size: 13px; }
+.card2.later { border: 1px solid var(--lav); padding: 10px; margin-bottom: 10px; border-radius: 2px; font-family: var(--sans); }
+.card2.later p { margin: 4px 0; font-size: 13px; }
 .card2.health button { margin-left: 6px; }
 /* ------------------------------------------------------------------------------------------------ panes and pages
    Dense: a pane fills the board (a click on its name, or a double-click on its border), the panes menu in the board's

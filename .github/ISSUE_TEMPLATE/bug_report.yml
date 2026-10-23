@@ -1,0 +1,57 @@
+name: Something doesn't work
+description: A bug, a crash, or setup getting stuck.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting it. Before you start: `kurooto fixme` (or `/fixme` on Telegram) matches what's wrong
+        against the troubleshooting page and known issues, and often says what to do.
+
+        Never paste a token, an API key, a password or a pairing link here: this page is public.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you saw (the exact message helps), and what you expected instead.
+      placeholder: |
+        I pressed Check the token on the setup page's Chat step, and it said "Telegram didn't accept that token"...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Kurooto version
+      description: "`kurooto --version`, or the number beside KUROOTO at the top of the dashboard."
+      placeholder: "0.5.19"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Your computer's system and its version
+      placeholder: "Windows 11 23H2 / macOS 14.5 / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: phone
+    attributes:
+      label: Your phone, if it's about calls or the phone app
+      placeholder: "Android 14 (Pixel 7) / iPhone, iOS 17.5"
+  - type: textarea
+    id: bundle
+    attributes:
+      label: The diagnostics zip
+      description: |
+        Run `kurooto doctor --bundle` in a terminal. It saves a zip on your computer (nothing is sent): the checks,
+        the log, your settings, recent events and how long each setup step took, with secrets, names, email and web
+        addresses and your folders blanked out, and never your messages, notes or what you asked the AI.
+        Look inside it first, then drag it into this box. If Kurooto can't start, paste what `kurooto doctor` prints
+        instead.
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Since when it happens, whether it happens every time, what you already tried.

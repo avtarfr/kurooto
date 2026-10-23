@@ -60,7 +60,7 @@ flattened to their first value; a non-dict JSON body becomes `{}`. Anything unma
 
 GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `jobs`, `term`, `health`, `sync/status`,
 `profile`, `note?id=`, `settings`, `look`, `events` (last 80), `board` (503 without `Live`), `state` (the wizard's
-whole state), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `persona`, `research`, `progress`, `ask`, `ask/<id>`,
+whole state, with `setup` and `calm` below), `setup` (`core/setupsteps.py:view`: each step's status, `resume`, `left`), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `persona`, `research`, `progress`, `ask`, `ask/<id>`,
 `today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `morning`
 (`modules/daily.py:morning_view`), `mail/confidential?day=`, `books`.
 
@@ -72,7 +72,7 @@ POST (in `Api.post`):
 | AI | `brain`, `brain/test`, `brain/models`, `jobs/cancel`, `tryit` |
 | features | `modules/enable`, `modules/disable`, `modules/setup`, `modules/configure`, `modules/card` |
 | settings and you | `settings`, `you`, `autostart`, `hardware/refresh`, `hardware/override`, `keys/gemini` |
-| setup | `prereqs/install`, `prereqs/signin`, `telegram/token`, `telegram/poll`, `telegram/relink`, `telegram/webhook-off`, `setup/channel` (`{"channel": "telegram" \| "app"}` into `setup.channel`; `GET state` returns it as `channel`), `setup/done` |
+| setup | `prereqs/install`, `prereqs/signin`, `telegram/token`, `telegram/poll`, `telegram/relink`, `telegram/webhook-off`, `setup/channel` (`{"channel": "telegram" \| "app"}` into `setup.channel`; `GET state` returns it as `channel`), `setup/step` (`{step, how: next\|skip\|leave, seconds, chosen}`; 400 for an unknown step or skipping a required one), `setup/done` |
 | everyday | `act`, `ask`, `ask/get`, `ask/pending`, `ask/answer`, `ask/expire`, `notify`, `send-file`, `open-note`, `open-url` |
 | health and sync | `health/fix`, `sync/all`, `sync/status` |
 | power | `power/stop`, `power/pause`, `power/resume`, `power/off` |
@@ -191,6 +191,23 @@ Telegram's pairing, or the phone app instead (`renderAppChannel`: needs Phone ca
 `finish()` runs `modules/setup` for chosen features that aren't ready, then `modules/enable` (which turns `calls` on
 first when Telegram isn't chosen, so what needs somewhere to talk can follow), `autostart` and `setup/done`. Secrets typed in the wizard go to `app.secrets.set` (keychain or `secrets.json`),
 never to `settings.json`.
+
+**Where you are (`core/setupsteps.py`, `<state>/setup.json`).** The daemon keeps each step's status, not the browser.
+`go(i, how)` posts `setup/step` before moving: forward (Next, or a later step in the list) is `next`, **Skip for now**
+(`[data-skip]`, on every step but `REQUIRED = ("you", "brain", "finish")`) is `skip`, going back is `leave`; closing
+the page posts `leave` with `fetch(..., {keepalive: true})` on `pagehide`. The server decides the status with
+`finished(app, step)`: `brain` = the main brain's `available()`, `about` = a report or the profile exists, `telegram` =
+paired, or the phone app picked with Calls ready; the rest have nothing to check (`None`). `next` on an unfinished
+step gives `open` for a required one and `skipped` otherwise; `skip` on a finished one gives `done`; `leave` keeps
+what was there (`open` if nothing). `setup/done` calls `finish()`: optional steps never finished count as skipped
+(an opened Features counts as done). `status()` turns a skipped step whose work got done since into `done`, so
+`left()` (the dashboard's Finish setting up, `diagnostics.setup_rows`) drops it. `resume()`: the first step neither
+done nor skipped, else the first skipped, else `you`; the page opens there unless the address names a step
+(`/setup#about`). Seconds per visit are capped at `MAX_VISIT` (an hour). `chosen` restores the features' ticks while
+`setup.done` is false. `kurooto setup [STEP]` opens `<url>setup#STEP`. The dashboard (`home.js:setupLeft`) reads `GET
+setup` at start and `state.setup` on the Features tab: the corner link becomes **finish setup (N)** and a **Finish
+setting up** box lists each step with its link. The features step also says Calm's daily limit (`state.calm`, the
+number field saves `notify.calm.messages` through `POST settings`). Tests: `tests/unit/test_setup_resume.py`.
 
 ## How a module shows up in the UI
 

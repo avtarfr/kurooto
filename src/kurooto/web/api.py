@@ -9,7 +9,7 @@ import time
 from typing import TYPE_CHECKING
 
 from kurooto import __version__, providers
-from kurooto.core import autostart, egress, hardware, opener
+from kurooto.core import autostart, egress, hardware, opener, setupsteps
 from kurooto.core.prereqs import Prereqs
 from kurooto.core.state import jload
 from kurooto.modules.telegram.api import TelegramError
@@ -241,7 +241,11 @@ class Api:
                 "workspace": str(self.app.workspace),
                 "zones": zones.names(),  # the time zone picker: today's names (core/zones.py)
                 "computer_zone": zones.computer_zone(),
+                "setup": setupsteps.view(self.app),  # each step finished, skipped or not yet (core/setupsteps.py)
+                "calm": {k: s.get(f"notify.calm.{k}") for k in ("on", "messages", "evening_at")},  # the daily limit
             }
+        if path == "setup":  # where setup is (core/setupsteps.py): the dashboard's Finish setting up
+            return 200, setupsteps.view(self.app)
         if path == "phone":
             return 200, self._phone()
         if path == "power":
@@ -633,8 +637,16 @@ class Api:
                 return 400, {"error": "telegram or app"}
             s.set("setup.channel", ch)
             return 200, {"ok": True, "channel": ch}
+        if path == "setup/step":  # leaving a step: next, skip or leave, and the seconds spent (core/setupsteps.py)
+            try:
+                return 200, setupsteps.record(
+                    self.app, str(b.get("step") or ""), str(b.get("how") or ""), b.get("seconds") or 0, b.get("chosen")
+                )
+            except ValueError as e:
+                return 400, {"error": str(e)}
         if path == "setup/done":
             s.set("setup.done", True)
+            setupsteps.finish(self.app)
             on = [m.title for m in self.app.enabled()]
             where = " in the phone app's chat" if self.app.app_main() else ""
             self.app.notify(f"{self.app.name} is set up. On: {', '.join(on)}. Send /help{where} any time.", why="asked")
