@@ -9,3 +9,8 @@ Third-party software included:
 xterm.js (@xterm/xterm 5.5.0) and its fit add-on (@xterm/addon-fit 0.10.0), MIT licence, copyright the xterm.js
 authors and others; the dashboard's terminals use them. Unmodified copies from the npm registry, with their licence
 texts, are in src/kurooto/web/static/vendor/xterm/.
+
+Public Sans (variable, weights 100-900; the Latin and Latin Extended cuts from @fontsource-variable/public-sans
+5.1.0), SIL Open Font License 1.1, copyright 2015 The Public Sans Project Authors
+(https://github.com/uswds/public-sans); the dashboard's typeface. Unmodified copies, with the licence text, are in
+src/kurooto/web/static/fonts/.

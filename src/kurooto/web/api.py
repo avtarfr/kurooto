@@ -949,10 +949,13 @@ class Api:
 
     def _set(self, key: str, value) -> tuple[int, dict]:
         from kurooto.core.palette import check as look_check
+        from kurooto.web.server import DESIGNS
 
         sec = key.split(".")[0]
         if key in ("look.palette", "look.theme_file") and (wrong := look_check(self.app, key, value)):  # palette.py
             return 400, {"error": wrong}
+        if key == "look.design" and value not in DESIGNS:  # the dashboard's design (web/server.py)
+            return 400, {"error": f"look.design is one of: {', '.join(DESIGNS)}"}
         part = key.split(".")[1] if "." in key else ""
         # a whole section at once would take the hidden ones too, so only section.key
         if not part or (sec not in self.EDITABLE and not self.app.is_on(sec)) or part in self.HIDDEN.get(sec, set()):

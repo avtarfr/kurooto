@@ -288,14 +288,19 @@ def describe(app: App) -> dict:
 
 
 def settings_choices(app: App, section: str) -> dict:
-    """For Settings → Look: the palettes with what each is, and a line on what each setting does."""
+    """For Settings → Look: the palettes and the designs with what each is, and a line on what each setting does."""
     if section != "look":
         return {}
     found = offered(app)
     system = f" (found: {found.label})" if found and found.accent else " (nothing found here yet: kuro until then)"
     return {
-        "choices": {"palette": [[n, LABELS[n] + (system if n == "system" else "")] for n in NAMES]},
+        "choices": {
+            "palette": [[n, LABELS[n] + (system if n == "system" else "")] for n in NAMES],
+            "design": [["new", "new: a sans-serif typeface, calmer panes"], ["classic", "classic: the monospace look"]],
+        },
         "help": {
+            "design": "The dashboard's design. Classic is the look of 0.5.18 and earlier, set in a monospace font; "
+            "the board, its keys and its data are the same in both.",
             "palette": "The colours of these pages. This computer's colours follow your desktop's accent colour and "
             "light or dark mode, and change when they do.",
             "theme_file": "Optional: a colours file of your own (a kitty theme, or matugen or pywal JSON) to use "

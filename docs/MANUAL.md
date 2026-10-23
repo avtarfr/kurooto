@@ -2658,13 +2658,23 @@ that pulses when something happens; NOTES is a map of your notes and their links
 (your call line, pairing, a test ring), **About you** (your profile, to edit; `/#about` opens it), **Settings**
 (every setting, with what it means), and **Terminals** (when the [Terminals](#terminals) feature is on).
 
+**Two designs** (Settings → Look → `look.design`, or the **classic look** / **new look** button). **new** (the default
+since 0.5.19) sets the page in a sans-serif typeface, Public Sans, that comes with Kurooto (nothing is fetched from the
+internet), with figures that keep their width as they change; monospace is kept for the terminals, code and file
+paths. The panes are calm, rounded surfaces with their name and figures on a header line, the top bar carries the
+name, a status line, **study**, **panes** and the design button, and the graphs are thin lines over a faint fill.
+**classic** is the look of 0.5.18 and earlier, set wholly in monospace with each pane's name in its border. Both have
+the same panes, pages, keys and data; the switch applies at once and is remembered (it's a setting). In classic, the
+button is in the **panes** menu (roomy: the top bar). *Undo:* switch back the same way.
+
 **Two layouts** (Settings → `look.layout`). **dense**, the default on a screen 1280 px wide or more, is one full-screen
-board with thin borders and each pane's name set into its top line:
+board (the new design: rounded panes under a top bar; classic: thin borders with each pane's name set into its top
+line):
 - **STATUS**, down the left, is a monitor like btop, the same as `kurooto top`: the processor (a history graph, every
   core with its own short graph, speed, load, temperatures, fans), memory (used, cached, available, swap), the
   graphics card (use, its memory, temperature, power, a graph), the network (down above the line, up below, totals),
   disks (how full; reads and writes per second), the battery, the busiest processes (click **cpu** or **mem** to
-  sort; Kurooto's own are marked ✦), **study today** (with the Study tracker on) and **projects**: your git folders
+  sort; Kurooto's own are marked ✦, or with a dot in the new design), **study today** (with the Study tracker on) and **projects**: your git folders
   with each one's last commit, what's not pushed yet and what's changed (list them in `look.projects`; Research's
   repositories otherwise). Its header has the time, how long the computer's been up, today's events, the battery,
   and pause, off and setup.
@@ -2676,7 +2686,11 @@ board with thin borders and each pane's name set into its top line:
   crowded ring they move a little (with a hairline back to their cell) or say less, and never cover each other
   (on a very small screen a few may hide: hover over a cell for its card).
 - **NOTES** adds your folders with their note counts, whether anything was touched this hour, and the notes you
-  edited last. Double-click a note on the map to open it: in your default app for Markdown, or in your own program
+  edited last. At the usual zoom the map names its regions, like place names: each course by its course page's title
+  and each research project by its index note's title, at the middle of its notes. A note's own name shows when you
+  point at it, find it, light the recent ones (**R**) or zoom in; zoomed in, course pages, hubs and projects are named
+  first, then notes that link across courses. A book's index note is drawn small and named last: its hundreds of
+  "Seen in" links come from reading the book, so it no longer crowds out everything else. Double-click a note on the map to open it: in your default app for Markdown, or in your own program
   with Settings → notes → `open_with`, e.g. `kitty nvim {path}`, `code {path}` or `kurooto term -e nvim {path}` (on
   every system; the program has to open its own window). It runs as a program with arguments, never through a shell;
   `{path}` is the note (one argument even with spaces), `{folder}` your notes folder, and without `{path}` the note

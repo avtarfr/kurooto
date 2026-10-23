@@ -44,7 +44,9 @@ register_defaults(
     "look",
     {"layout": "dense", "projects": [], "panes": [], "hidden_features": [], "links_in": "default", "study_mode": False},
 )
+register_defaults("look", {"design": "new"})  # the dashboard's design: new, or classic (the monospace look of 0.5.18)
 LAYOUTS = ("dense", "roomy")
+DESIGNS = ("new", "classic")
 CSP = (
     "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; "
     "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
@@ -57,6 +59,7 @@ TYPES = {
     ".svg": "image/svg+xml",
     ".png": "image/png",
     ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
 }
 
 
@@ -74,7 +77,9 @@ def free_port(start: int) -> int:
 
 
 def static(name: str) -> bytes | None:
-    if not re.fullmatch(r"(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)", name):  # vendor: terminals
+    if not re.fullmatch(r"(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)", name) and not re.fullmatch(
+        r"fonts/[a-z0-9_-]+\.woff2", name
+    ):  # vendor: the terminals; fonts: the dashboard's typeface (static/fonts/OFL.txt)
         return None
     f = resources.files("kurooto.web").joinpath("static", *name.split("/"))
     return f.read_bytes() if f.is_file() else None
@@ -254,21 +259,24 @@ class Server:
         jsave(access_file(app.paths), {"url": self.url, "token": self.tools_token, "started": time.time()})
 
     def fill(self, html: str) -> str:
-        """A page with its key, the version, the palette (look.palette), the layout (look.layout) and Study mode
-        (look.study_mode) written in. The system palette's colours come as a <style> (made only of checked #rrggbb
-        values), and static/palette.js keeps them current. static/links.js sends links to other sites to the default
-        browser (look.links_in)."""
+        """A page with its key, the version, the palette (look.palette), the layout (look.layout), the design
+        (look.design) and Study mode (look.study_mode) written in. The system palette's colours come as a <style>
+        (made only of checked #rrggbb values), and static/palette.js keeps them current. static/links.js sends links
+        to other sites to the default browser (look.links_in)."""
         from kurooto.core import palette as pal
 
         name = pal.resolve(self.app)[0]  # "system" with nothing found is kuro
         layout = self.app.settings.get("look.layout")
         layout = layout if layout in LAYOUTS else "dense"
+        design = self.app.settings.get("look.design")
+        design = design if design in DESIGNS else "new"
         head = (
             f'<style id="kurooto-palette">{pal.css(self.app)}</style><script src="/static/palette.js" defer></script>'
         )
         links = "here" if self.app.settings.get("look.links_in") == "here" else "default"  # never anything else
         head += f'<meta name="kurooto-links" content="{links}"><script src="/static/links.js" defer></script>'
         html = html.replace("</head>", head + "\n</head>", 1).replace("{{LAYOUT}}", layout)
+        html = html.replace("{{DESIGN}}", design)
         html = html.replace("{{STUDY}}", "on" if self.app.settings.get("look.study_mode") else "")
         return html.replace("{{TOKEN}}", self.token).replace("{{VERSION}}", __version__).replace("{{PALETTE}}", name)
 

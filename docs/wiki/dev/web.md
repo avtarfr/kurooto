@@ -21,11 +21,13 @@ The user's view: [../user/dashboard.md](../user/dashboard.md).
   `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`. Because of the CSP,
   pages may not use inline scripts or load anything from another origin.
 - Static files: `static(name)` reads them with `importlib.resources`, only names matching
-  `(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)`.
-- `Server.fill(html)` substitutes `{{TOKEN}}`, `{{VERSION}}`, `{{PALETTE}}`, `{{LAYOUT}}`, `{{STUDY}}` and injects the
+  `(?:vendor/xterm/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)` or `fonts/[a-z0-9_-]+\.woff2` (served as `font/woff2`).
+- `Server.fill(html)` substitutes `{{TOKEN}}`, `{{VERSION}}`, `{{PALETTE}}`, `{{LAYOUT}}`, `{{DESIGN}}` (`look.design`,
+  anything but `DESIGNS` is `new`), `{{STUDY}}` and injects the
   palette style and `/static/palette.js` / `/static/links.js` before `</head>`.
-- Settings registered here: `web.port`, and the `look.*` section (`palette`, `theme_file`, `layout`, `projects`,
-  `panes`, `hidden_features`, `links_in`, `study_mode`).
+- Settings registered here: `web.port`, and the `look.*` section (`palette`, `theme_file`, `layout`, `design`,
+  `projects`, `panes`, `hidden_features`, `links_in`, `study_mode`). `Api._set` refuses a `look.design` that isn't
+  `new` or `classic`; `core/palette.py:settings_choices` gives Settings → Look its choices and help.
 
 ## Who may call it
 
@@ -114,6 +116,14 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   feature cells, jobs, schedule, updates, power, processes) every 2 s, and the notes graph (`Graph.scan()`) every
   5 s when notes changed. Errors emit `dashboard_error`.
 - Message types the page handles (`static/home.js:connect`): `graph`, `body`, `event`, `hello`, `pty`.
+- NOTES names (0.5.19): the pure part of `home.js` between `// -- the pure part` and `// -- end of the pure part`
+  (`noteRole`, `hoodOf`, `assignHoods`, `rankLabels`, `regionSpots`; no DOM, so `tests/unit/test_notes_labels.py`
+  runs it in node) gives each note a role (`course`, `hub`, `book` for `<subject>/books/<book>`, `note`), a
+  neighbourhood (a subject folder, `project:<name>` for `projects/<name>/` or `research/<name>/`, `hub`, or by vote),
+  `sdeg` (links not to a book; a book's is capped at 4, so its dot stays small) and `bridge` (other neighbourhoods its
+  links reach). `Mind.draw` names regions (the course page's or project index's title at the weighted centroid of its
+  notes) below `ZOOM_NAMES` (1.35) and notes above it (`rankLabels`: course pages and hubs, then bridges, books never
+  unless pointed at or found); focus, search, R and Study mode work as before.
 - The NOTES map (`static/home.js:Mind`) is a force layout run each frame: pairwise repulsion, a spring per link,
   a pull to the neighbourhood's anchor. A note's spring force is scaled by `min(1, HUB_LINKS / links)` and a step is
   capped at `MAX_STEP`: without that, a map note with hundreds of links (the concept graph's course maps) overshoots
@@ -139,6 +149,25 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   path as the Today page (`study` calls `setStudy`). Note: `core/palette.py` is the colour palette and
   `core/shortcuts.py` is the app-menu launcher entry; neither is about keyboard shortcuts.
 
+- Designs (0.5.19, `look.design`): `home.css` is the classic design and is left as it was; `home-new.css`, loaded
+  after it, holds the new design, every rule scoped to `body[data-design="new"]` (one more attribute than the classic
+  selector it overrides, so it wins without `!important`). Tokens on `body.home[data-design="new"]`: `--ui` (Public
+  Sans, then system-ui), `--code` (the old monospace stack), `--mono` and `--sans` redefined to `--ui` so every classic
+  rule that says `var(--mono)` takes the sans-serif, `--well`/`--raised`/`--rule`/`--track` (steps mixed from the
+  palette's `--fg` and `--panel`, so kuro, rose and system all work), `--hd` (a pane's header row), radii and
+  `--ease-out`. Figures are `tabular-nums` everywhere (`!important`, because classic's `font:` shorthands reset it).
+  Monospace stays on `code`, `pre`, the terminals (`home.js:MONO`, given to xterm in both designs), file paths and
+  setting names. The font is `static/fonts/public-sans-latin{,-ext}.woff2` (fontsource's variable cut, weights
+  100-900) with `fonts/OFL.txt`; it is never fetched from the internet (CSP `default-src 'self'` would refuse it).
+  In `home.js`: `NEW`, `FONT` (canvas words: `SANS` or `MONO`), `FSC` (the canvas font scale, 1.12 in the new
+  design) and `cf(px, weight, family)` build every canvas font; `useDesign()` reads `<body data-design>`;
+  `setDesign(v)` saves the setting and `applyDesign(v)` switches live (rebuilds STATUS, redraws the borders, clears
+  the label width cache, moves `#panes-ctl` into `.bar .right` with `placeCtl()` in the new dense board).
+  `[data-design-toggle]` buttons (the top bar's `.design-tg`, the panes menu) toggle it; a `setting_changed` event for
+  `look.design` from elsewhere reloads it. Design-dependent wording is small: STATUS box names (`buildBoard`'s `L()`),
+  the clock's case, the page title's case, the chat banner, ✦ against a CSS dot, and `grad()` (classic: cool to warm;
+  new: the ink, peach from 70%, bad from 90%), `areaGraph` instead of `dotGraph`'s dots, and meters' `.hi` class.
+  Tests: `tests/unit/test_design.py`.
 - Study mode (`home.js:setStudy`, Alt+M, `#study-btn` in `.panes-ctl`, `.study-tg` in the roomy bar, Ctrl+K `study`):
   `body.study`; `applyPanes` gives the grid `"notes study"` and `shownPanes`/`paneShown` answer only NOTES, while
   `HIDE`, `MAX`, `dtab` and the terminals stay as they were; an open page is closed and reopened on the way out
