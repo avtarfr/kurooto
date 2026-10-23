@@ -1073,6 +1073,22 @@ keeps what it learned.
 learning a skill sends the request, its answer and steps, and a lesson your correction and the skill, to the
 second-look AI; picking up facts sends the day's requests to the AI the look back uses.
 
+### Commitments
+
+**What it does.** The regular things in your week that aren't classes: the gym, a shift, a standup, tuition you
+teach. `/busy add gym mon,wed,fri 18:00-19:00` (days can be `weekdays`, `weekends`, `daily` or `mon-fri`; a name of
+several words works: `/busy add night shift daily 22:00-06:00`). While one is on, calls wait, as they do for a class
+(`commitments.no_calls`), and a shift that runs past midnight holds them until it ends. `/busy` lists them and today's
+skips; `/busy skip gym` or "skipping gym today" (or "not going to the gym tomorrow") frees that day, `/busy unskip
+gym` undoes it; `/busy calls standup off` keeps one in the list without holding calls; `/busy remove gym`. On a call,
+Kurooto knows today's commitments and can mark one skipped. Saying one in passing sets it up (see
+[Set up from what you say](#set-up-from-what-you-say)). Not to be confused with Skills' routines (`/every`), which run
+a skill on a schedule.
+
+**What leaves your computer.** Nothing.
+
+**Undo.** `/busy remove <name>`, or turn Commitments off in Features (the list stays for when you turn it on again).
+
 ### Dreaming
 
 **What it does.** Turned on (Features → Dreaming), everything Kurooto did while you slept comes as one message at
@@ -1080,6 +1096,11 @@ second-look AI; picking up facts sends the day's requests to the AI the look bac
 skills and facts learned, things set up from what you said; then the loose ends: your open doubts from the last two
 weeks, notes nothing links to yet, broken links, tasks past due, AI requests that failed. A quiet night sends nothing.
 `/dream` shows it any time.
+
+**The self-check** (`dreaming.self_check`, on). With [Wrong button and test cases](#wrong-button-and-test-cases) on,
+each morning it replays your test cases and names any that went right yesterday but go wrong now (after an update or a
+settings change), so a step back shows up the next morning. It also counts the requests it didn't understand and the
+Wrong taps since the last message; the Sunday look back shows them.
 
 **What leaves your computer.** Nothing: it reads Kurooto's own log and your notes.
 
@@ -1089,9 +1110,12 @@ weeks, notes nothing links to yet, broken links, tasks past due, AI requests tha
 
 **What it does.** "I got a project under Prof X on <topic>" (in the chat or your journal) starts that project's note
 with "With: Prof X (supervisor)" and a Meetings section; "met X today, ..." adds a dated line there; "a meeting with X
-on Friday at 4" becomes a deadline; "every Monday at 9 I have a <subject> lab" puts the class in your timetable. Only
-what you say about yourself, by rules on this computer. Each change comes in one line with Undo; `/inferred` lists
-them. Settings `infer.on`, `infer.projects`, `infer.meetings`, `infer.classes`.
+on Friday at 4" becomes a deadline; "every Monday at 9 I have a <subject> lab" puts the class in your timetable;
+"every Tuesday and Thursday at 7pm I go to the gym" or "I work a shift every weekend from 9 to 5" adds a
+[commitment](#commitments) (an hour long unless you say the end; Commitments is turned on if it was off); "by POTA I
+mean Physics of the Atmosphere" or "I call stochastic calculus stoch" gives that subject the short name. Only what you say
+about yourself, by rules on this computer. Each change comes in one line with Undo; `/inferred` lists them. Settings
+`infer.on`, `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`, `infer.commitments`.
 
 **Undo.** The Undo button, or `/inferred undo <id>`; `infer.on` = false stops it.
 

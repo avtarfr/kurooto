@@ -69,7 +69,8 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   recurring fact said in chat becomes a class, a recurring quiz or a routine instead of being dropped; the nightly look
   back can propose routines and acts on data changes with Undo instead of waiting for a tap; project notes keep
   "With:", "last met" and "## Next steps"; subject aliases are learned from how you name them.
-- **Routines for people who aren't students**: gym, shifts, standups, tuition; they hold calls like a class does.
+- ~~**Routines for people who aren't students**: gym, shifts, standups, tuition; they hold calls like a class does.~~
+  (0.5.9: Commitments, `/busy`, also set up from what you say)
 - **Never without a tap**: setting or moving an alarm, placing calls, reading new mail senders, sending anything out,
   attaching a code repository to a project. Repositories are never searched for on the disk.
 

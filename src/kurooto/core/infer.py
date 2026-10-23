@@ -9,6 +9,10 @@ comes in one line with Undo, and /inferred lists them (/inferred undo <id>).
            also becomes a deadline ("Meeting: Prof Lena Ortiz"), so it's planned around and reminded
     "every Monday at 9 I have a Linear Algebra lab" / "I have an LA tutorial every wed at 14:00"
         -> a class in the timetable (for a subject you have; it holds calls), 55 minutes unless the end is said
+    "every Tuesday and Thursday at 7pm I go to the gym" / "I work a shift every weekend from 9 to 5"
+        -> a commitment (Commitments, turned on if it was off; it holds calls), an hour unless the end is said
+    "by POTA I mean Physics of the Atmosphere" / "LA is short for linear algebra" / "I call stochastic calculus stoch"
+        -> a short name for that subject, so "POTA quiz friday" lands on it
 
 Never by itself: alarms, calls, mail, anything outward, or a code repository (a project gets code only by /repos add).
 Each line is looked at once, wherever it was said (a check-in answer reaches both the chat and the journal).
@@ -39,6 +43,8 @@ register_defaults(
         "projects": True,  # "I got a project under Prof X": a project note with them, and a Meetings section
         "meetings": True,  # "met X today": a dated line in that project's Meetings; a meeting ahead: a deadline
         "classes": True,  # "every Monday at 9 I have a <subject> lab": a class in the timetable
+        "aliases": True,  # "by POTA I mean Physics of the Atmosphere": a short name for that subject
+        "commitments": True,  # "every Tuesday at 7pm I go to the gym": a commitment (it holds calls like a class)
     },
 )
 
@@ -84,6 +90,41 @@ CLASS = (
         r"(?P<s>" + TIME + r")(?:\s*(?:-|–|to)\s*(?P<e>" + TIME + r"))?"
     ),
 )
+WD = r"(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*"
+DAYSET = (
+    r"(?P<days>(?i:week\s?days?|weekends?|day|morning|evening|night|" + WD + r"(?:\s*(?:,|and|&|-|to)\s*" + WD + r")*))"
+)
+SPAN = r"(?:at|from)?\s*(?P<s>" + TIME + r")(?:\s*(?:-|–|to|till|until)\s*(?P<e>" + TIME + r"))?"
+ACT = r"(?P<verb>(?i:go to|go for|have|do|attend|work|teach|play|train at|train|volunteer at|volunteer))"
+RWHAT = r"(?:\s+(?:a|an|my|the|our)\b)?(?:\s+(?P<what>[A-Za-z][\w' -]{1,30}?))?"
+REGULAR = (
+    re.compile(
+        r"(?i)\bevery\s+"
+        + DAYSET
+        + r"\s*,?\s*"
+        + SPAN
+        + r"\s*,?\s*(?:i|we)\s+"
+        + ACT
+        + RWHAT
+        + r"\s*(?=$|[.,;!?]|\b(?:and|but|so|then|ugh)\b)"
+    ),
+    re.compile(r"(?i)\b(?:i|we)\s+" + ACT + RWHAT + r"\s+(?:on\s+)?every\s+" + DAYSET + r"\s*,?\s*" + SPAN),
+)
+NOT_REGULAR = re.compile(r"(?i)\b(?:class|classes|lab|lecture|tutorial|seminar|section|exam|quiz|test|deadline)\b")
+ABBR = r"[\"'“]?(?P<a>[A-Za-z][\w.&+-]{1,19})[\"'”]?"
+SUBJ = r"(?P<n>[^.,;!?\n\"”]{2,60}?)"
+ALIAS = (
+    re.compile(r"(?i)\bby\s+" + ABBR + r"\s+(?:i|we)\s+mean\s+(?:the\s+)?" + SUBJ + r"\s*(?=$|[.,;!?\"”])"),
+    re.compile(
+        r"(?i)(?:^|\s)"
+        + ABBR
+        + r"\s+(?:is short for|stands for|is what i call|is my name for)\s+(?:the\s+)?"
+        + SUBJ
+        + r"\s*(?=$|[.,;!?\"”])"
+    ),
+    re.compile(r"(?i)\bi\s+call\s+(?:the\s+)?" + SUBJ + r"\s+" + ABBR + r"\s*(?=$|[.,;!?])"),
+)
+NOT_ALIAS = {"it", "this", "that", "what", "which", "who", "he", "she", "they", "we", "i", "you", "the", "a", "an"}
 
 
 def _on(app: App, part: str) -> bool:
@@ -261,6 +302,82 @@ def _class(app: App, sentence: str) -> dict | None:
     return None
 
 
+# --------------------------------------------------------------------------------------------- aliases
+def _alias(app: App, sentence: str) -> dict | None:
+    subj = app.modules.get("subjects")
+    if subj is None or not app.is_on("subjects") or NOT.search(sentence):
+        return None
+    for rx in ALIAS:
+        m = rx.search(sentence)
+        if not m:
+            continue
+        alias, said = m["a"].strip(".").lower(), m["n"].strip()
+        taken = {n.lower() for x in subj.subjects() for n in (x["slug"], x["name"], *x.get("aliases", []))}
+        if alias in NOT_ALIAS or alias in taken:
+            return None  # a word, or a name that's taken already
+        found = subj.find_in(said)
+        slug = subj.resolve(said) or (found[0] if len(found) == 1 else None)
+        if not slug:
+            return None
+        items = [dict(x) for x in subj.setting("list") or []]
+        mine = next((x for x in items if x["slug"] == slug), None)
+        made = mine is None
+        if made:  # a subject from the term note or a class pack: yours now holds its short names
+            mine = {"name": subj.name_of(slug), "slug": slug, "aliases": []}
+            items.append(mine)
+        mine["aliases"] = [*mine.get("aliases", []), alias]
+        app.settings.set("subjects.list", items)
+        return {
+            "kind": "alias",
+            "line": f'Took "{m["a"].strip(".")}" as {subj.name_of(slug)} from now on.',
+            "undo": {"alias": alias, "slug": slug, "made": made},
+        }
+    return None
+
+
+# ---------------------------------------------------------------------------------------- commitments
+def _commitment(app: App, sentence: str) -> dict | None:
+    if NOT.search(sentence) or "commitments" not in app.modules:
+        return None
+    from kurooto.modules import commitments as rt
+
+    for rx in REGULAR:
+        m = rx.search(sentence)
+        if not m:
+            continue
+        what = (m["what"] or "").strip(" -")
+        if NOT_REGULAR.search(what):
+            return None  # a class or a test: the classes rule or the deadlines, not a commitment
+        name = what.lower() or {"work": "work", "train": "training", "volunteer": "volunteering"}.get(
+            m["verb"].lower(), ""
+        )
+        d = re.sub(r"s\b", "", m["days"].lower().replace("week ", "week"))
+        days = list(rt.DAYS) if d in ("day", "morning", "evening", "night") else rt.parse_days(d)
+        start = _hm(m["s"])
+        if not name or not days or not start:
+            return None
+        end = _hm(m["e"]) if m["e"] else None
+        if not end:
+            t = dt.datetime.combine(dt.date.today(), dt.time.fromisoformat(start)) + dt.timedelta(hours=1)
+            end = f"{t:%H:%M}"
+        mod = app.modules["commitments"]
+        if any(r["name"].lower() == name for r in mod.items()):
+            return None  # known already
+        enabled = False
+        if not app.is_on("commitments"):
+            ok, _why = app.enable("commitments")
+            if not ok:
+                return None
+            enabled = True
+        row = mod.add(name, days, start, end)
+        return {
+            "kind": "commitment",
+            "line": f"Added {name} to your commitments: {rt.days_text(days)} {start}–{end}; calls wait while it's on.",
+            "undo": {"commitment": row, "enabled": enabled},
+        }
+    return None
+
+
 # ----------------------------------------------------------------------------------------------- run
 def observe(app: App, text: str, via: str = "chat") -> list[str]:
     """Look at something you said (a message, a journal line) once; set up what it states. Returns the lines told."""
@@ -274,7 +391,9 @@ def observe(app: App, text: str, via: str = "chat") -> list[str]:
             if k in data["seen"] or len(sentence) < 12:
                 continue
             data["seen"].append(k)
-            for part, fn in (("projects", _project), ("meetings", _meeting), ("classes", _class)):
+            parts = (("projects", _project), ("meetings", _meeting), ("classes", _class), ("aliases", _alias),
+                     ("commitments", _commitment))  # fmt: skip
+            for part, fn in parts:
                 if not _on(app, part):
                     continue
                 try:
@@ -319,6 +438,22 @@ def undo(app: App, iid: str) -> str:
             row = u["class"]
             tt = app.settings.get("subjects.timetable") or []
             app.settings.set("subjects.timetable", [c for c in tt if c != row])
+        elif "alias" in u:
+            items = []
+            for x in app.settings.get("subjects.list") or []:
+                if x["slug"] == u["slug"]:
+                    x = dict(x, aliases=[a for a in x.get("aliases", []) if a != u["alias"]])
+                    if u.get("made") and not x["aliases"]:
+                        continue
+                items.append(x)
+            app.settings.set("subjects.list", items)
+        elif "commitment" in u:
+            mod = app.modules.get("commitments")
+            if mod is not None:
+                row = u["commitment"]
+                app.settings.set("commitments.items", [r for r in mod.setting("items") or [] if r != row])
+                if u.get("enabled") and not mod.items():
+                    app.disable("commitments")
         elif "deadline" in u:
             dl = app.modules.get("deadlines")
             if dl is not None:

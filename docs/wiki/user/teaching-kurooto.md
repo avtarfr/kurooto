@@ -347,13 +347,15 @@ up what they imply, then tells you in one line with an Undo button.
 | "Met Ortiz today, we agreed on the forcing runs" | adds a dated line under that project's Meetings |
 | "I have a meeting with Ortiz on Friday at 4" | adds "Meeting: Prof Lena Ortiz" to your deadlines, so it's planned around and reminded |
 | "Every Monday at 9 I have a linear algebra lab" | puts the class in your timetable (55 minutes unless you say the end; only for a subject you have) |
+| "By POTA I mean Physics of the Atmosphere", "LA is short for linear algebra", "I call stochastic calculus stoch" | gives that subject the short name, so "POTA quiz friday" lands on it (only your subjects; never a name another one has) |
+| "Every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5" | adds it to your [commitments](classes-and-timetable.md#commitments-gym-shifts-standups) (an hour unless you say the end), so calls wait for it; turns Commitments on if it was off |
 
 It only acts on what you say about yourself: "my friend got a project", "I didn't get it" or "maybe I'll ask" set
 nothing up, and a line is looked at once even when it reaches both the chat and the journal. It works by rules on this
 computer, with no AI. It never sets alarms, places calls, sends anything or attaches code (`/repos add` does that).
 
 `/inferred` lists what was set up, newest first; `/inferred undo <id>` (or the Undo button) takes one back. Turn it off
-with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`.
+with `infer.on`, or a part with `infer.projects`, `infer.meetings`, `infer.classes`, `infer.aliases`, `infer.commitments`.
 
 ## Dreaming
 
@@ -365,6 +367,9 @@ by default) instead of several:
   (`/learned`), things set up from what you said (`/inferred`).
 - **Loose ends:** your own open doubts from the last two weeks (the Doubts of your handwritten notes), notes nothing
   links to yet, links that point at notes that don't exist, tasks past due, AI requests that failed overnight.
+- **The self-check** (`dreaming.self_check`, on): with Wrong button and test cases on, it replays your test cases and
+  names any that went right yesterday but go wrong now (after an update or a settings change), and counts the requests
+  it didn't understand and the Wrong taps since the last message (the Sunday look back shows them).
 
 Nothing new runs for it: it reads Kurooto's own log and your notes, so it uses no AI and nothing leaves the computer.
 A quiet night with no loose ends sends nothing. `/dream` shows the same any time. With it on, the concept graph's own

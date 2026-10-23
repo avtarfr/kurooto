@@ -90,3 +90,26 @@ def test_chat_and_journal_lines_both_go_through_it(env):
 
     daily.append(app, "Journal 21:00", "I got a project under Prof Lena Ortiz on glacier flow.")
     assert research.project_note(app, "Glacier flow").exists()
+
+
+def test_a_short_name_said_in_passing_becomes_the_subjects(env):
+    app = setup(env)
+    env.say("/subject add Physics of the Atmosphere")
+    env.say("/subject add Stochastic Calculus")
+    subj = app.modules["subjects"]
+    told = infer.observe(app, "By POTA I mean Physics of the Atmosphere, obviously.")
+    assert told == ['Took "POTA" as Physics of the Atmosphere from now on.']
+    assert subj.resolve("pota") == "physics-of-the-atmosphere"
+    assert infer.observe(app, "I call stochastic calculus stoch") == [
+        'Took "stoch" as Stochastic Calculus from now on.'
+    ]
+    assert subj.find_in("stoch quiz on friday") == ["stochastic-calculus"]
+    for line in (
+        "this means war with Physics of the Atmosphere",  # a word, not a name
+        "LA stands for linear algebra",  # taken already
+        "QFT is short for quantum field theory",  # not one of your subjects
+    ):
+        assert infer.observe(app, line) == [], line
+    items = infer._load(app)["items"]
+    assert infer.undo(app, items[0]["id"]).startswith('Undone: Took "POTA"')
+    assert subj.resolve("pota") is None and subj.resolve("stoch") == "stochastic-calculus"

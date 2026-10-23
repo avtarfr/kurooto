@@ -623,8 +623,13 @@ Settings `hardware.force_profile`, `extra_models`, `extra_prereqs`; `kurooto har
 message) and every `daily.append` body. Rules only: `PROJECT` + `WITH` (first person, no `NOT` words) start a project
 via `modules/research.py:ensure_project` and write `With: <who> (<role>)` and `## Meetings`; `MEET` with a project
 person's surname logs a dated line, or a deadline "Meeting: <who>" when `modules/text.py:when_from` finds a time more
-than 30 minutes ahead; `CLASS` adds a `subjects.timetable` row for a known subject. Each sentence is keyed
+than 30 minutes ahead; `CLASS` adds a `subjects.timetable` row for a known subject; `REGULAR` ("every <days> at <time> I go to/have/work
+<what>", or the other order; not for class, test or quiz words, which `NOT_REGULAR` leaves to the classes rule and
+Deadlines) adds a `commitments.items` row via `modules/commitments.py:Commitments.add`, turning the feature on if it
+was off (undo turns it off again when the list is empty); `ALIAS` ("by X I mean <subject>", "X is short for/stands
+for <subject>", "I call <subject> X") adds a short name to a `subjects.list` entry (one is made for a subject that's
+only in the term note or a class pack), refused for `NOT_ALIAS` words and for any name a subject already has. Each sentence is keyed
 (`_key`, sha256 of the normalised text) and looked at once. Changes are kept in `<state>/inferred.json` (`items` with
 their `undo` data, `seen`); `undo()` reverses one (a note it made and nobody touched is deleted; otherwise only its own
 line goes); `App.callback` routes `inf:<id>:undo`, `/inferred` is in `App.handle` and `CORE_HELP`. Calm reason
-`infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`. Tests: `tests/unit/test_infer.py`.
+`infer.done`. Settings `infer.on`, `projects`, `meetings`, `classes`, `aliases`, `commitments`. Tests: `tests/unit/test_infer.py`.

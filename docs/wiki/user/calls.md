@@ -151,6 +151,7 @@ Linear Algebra): the essay"**. It's placed by itself when the block ends.
 | Focus | `/focus 2h`, or a calendar event with `#focus`. Calls held and non-urgent messages wait. |
 | The night | `availability.night`, 23:30 to 07:00. With the alarm set, the night is from your bedtime until the alarm instead (see [Morning alarm](#morning-alarm)). |
 | A class | Every class on your timetable, plus 5 minutes before it (`subjects.margin_min`), while `subjects.no_calls_in_class` is on. A class you `/skip` doesn't hold calls. Holidays, exam periods and days after the term ends have no classes. |
+| A commitment | Each of your [commitments](classes-and-timetable.md#commitments-gym-shifts-standups) (the gym, a shift, a standup) while it's on, unless you skipped it today or set `/busy calls <name> off`; a night shift holds calls until it ends. |
 | A calendar event | Every timed event (`calendar.no_calls_in_events`), or only events tagged `#nocall` and events in a calendar whose name contains "no call" when `calendar.nocall_events` = `tagged`. |
 | An exam | With Exam season on and its `no_calls` part on: from 15 minutes before an exam until `exam_season.exam_min` (180) minutes after it starts. |
 

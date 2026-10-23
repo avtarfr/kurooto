@@ -11,6 +11,7 @@ from kurooto.modules.cases import Cases
 from kurooto.modules.chat import Chat
 from kurooto.modules.checkins import Checkins
 from kurooto.modules.classpacks import ClassPacks
+from kurooto.modules.commitments import Commitments
 from kurooto.modules.deadlines import Deadlines
 from kurooto.modules.doubts import Doubts
 from kurooto.modules.dreaming import Dreaming
@@ -58,6 +59,7 @@ CATALOG = [
     Deadlines,
     StartBy,
     Subjects,
+    Commitments,
     ClassPacks,
     Doubts,
     Quiz,

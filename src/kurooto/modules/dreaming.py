@@ -4,6 +4,11 @@ handwritten notes it linked, things it set up from what you said: one message at
 with the loose ends worth a look (your own open doubts, notes nothing links to yet, links that point nowhere, tasks
 past due, AI requests that failed). Nothing new runs: it gathers what the night did from the event log and the
 features' own state, so it costs nothing. While it's on, the concept graph's own morning line is folded into it.
+
+The self-check (dreaming.self_check, on; the first part of Dream RSI): each morning it replays your test cases (Wrong
+button and test cases, modules/cases.py) and says which ones that went right yesterday go wrong now, after an update
+or a settings change, so a step back is caught the next day instead of when you next need it. It also counts the
+requests it didn't understand and the Wrong taps since the last message (they wait for the Sunday look back).
 """
 
 from __future__ import annotations
@@ -22,6 +27,7 @@ register_defaults(
     {
         "when": "daily 07:30",  # when the morning message comes (it covers everything since the last one)
         "loose_ends": True,  # also the loose ends: your open doubts, unlinked notes, broken links, tasks past due
+        "self_check": True,  # replay your test cases each morning and say which ones went wrong since yesterday
     },
 )
 DOUBT = re.compile(r"(?ms)^## Doubts\n(.*?)(?=^#|\Z)")
@@ -142,6 +148,40 @@ class Dreaming(Module):
             out.append(f"{len(failed)} AI request{'s' if len(failed) != 1 else ''} failed overnight (/jobs).")
         return out
 
+    # ---------------------------------------------------------------------------------- the self-check
+    def self_check(self, ev: list[dict]) -> tuple[list[str], list[str] | None]:
+        """(lines, the test cases passing now): the ones that went right last time and go wrong now, and what was
+        missed or marked wrong since the last message. Only the morning message stores the pass list (not /dream)."""
+        if not self.setting("self_check"):
+            return [], None
+        out = []
+        kept = [e for e in ev if e.get("kind") == "case_kept"]
+        wrong = sum(1 for e in kept if e.get("wrong"))
+        missed = len(kept) - wrong
+        if wrong or missed:
+            bits = [f"{missed} request{'s' if missed != 1 else ''} I didn't understand"] if missed else []
+            bits += [f"{wrong} marked Wrong"] if wrong else []
+            out.append(" and ".join(bits) + "; the Sunday look back shows them (/cases).")
+        cases = self.app.modules.get("cases")
+        if cases is None or not self.app.is_on("cases"):
+            return out, None
+        try:
+            res = cases.suite()
+        except Exception as e:  # a broken case must not cost the morning message
+            self.app.events.emit("dreaming_check_failed", error=f"{type(e).__name__}: {e}"[:200])
+            return out, None
+        was = set((jload(self.state_file, {}) or {}).get("passing") or [])
+        broke = [r for r in res["fail"] if r["id"] in was]
+        if broke:
+            r = broke[0]
+            more = f" (and {len(broke) - 1} more)" if len(broke) > 1 else ""
+            out.append(
+                f"Went wrong since yesterday ({len(broke)} test case{'s' if len(broke) != 1 else ''}): "
+                f'"{r["text"][:60]}" should be {r["expect"]}, got {r.get("got")}{more} (/cases).'
+            )
+            self.app.events.emit("dreaming_regressed", n=len(broke))
+        return out, sorted(r["id"] for r in res["pass"])
+
     def open_doubts(self) -> list[str]:
         """Doubts you wrote in the last two weeks (handwritten notes' Doubts sections, "DOUBT:" lines in notes)."""
         root = Path(self.app.workspace)
@@ -162,7 +202,13 @@ class Dreaming(Module):
         start = self.since()
         ev = self.events(start)
         did, ends = self.night(ev), self.loose_ends(ev)
-        jsave(self.state_file, {"at": now().isoformat()}) if send else None
+        checked, passing = self.self_check(ev)
+        ends += checked
+        if send:
+            st = {"at": now().isoformat()}
+            prev = (jload(self.state_file, {}) or {}).get("passing")
+            st["passing"] = passing if passing is not None else prev
+            jsave(self.state_file, st)
         if not did and not ends:
             return ""
         parts = []

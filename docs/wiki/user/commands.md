@@ -91,6 +91,7 @@ More: [Phone calls](calls.md), [Phone app](phone-app.md).
 | `/subject add Linear Algebra (la, linalg)`, `/subject`, `/subject remove la` | add, list or remove subjects | Subjects and timetable |
 | `/class mon 09:00-09:55 la` · `/class remove mon 09:00` | add a class to your timetable, or remove one | Subjects and timetable |
 | `/classes`, `/classes today` | your timetable | Subjects and timetable |
+| `/busy add gym mon,wed,fri 18:00-19:00`, `/busy`, `/busy skip gym`, `/busy unskip gym`, `/busy calls gym off`, `/busy remove gym` | the regular things that aren't classes (gym, shifts, standups); calls wait for them | Commitments |
 | `/skip la` (or `/skip la, stats`), `/attend la` | you're not going to a class today (no after-class question, calls allowed then); `/attend` undoes it | Subjects and timetable |
 | `/term`, `/term ends 2026-12-04`, `/term exams 2026-12-07 to 2026-12-18`, `/term note terms/2026-autumn`, `/term note off`, `/term clear` | term dates, or a term note to read them from | Subjects and timetable |
 | `/classpack`, `/classpack export`, `/classpack export from terms/section-b`, `/classpack set electives ml, topology`, `/classpack set batch B`, `/classpack set la quiz off`, `/classpack set la reset`, `/classpack remove`, `/classpack undo` | share your section's setup, or change or remove an imported one | Class packs |

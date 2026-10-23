@@ -363,6 +363,11 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 
 - **subjects** (`modules/subjects.py`): subjects, timetable, holidays, exam periods, the term note
   (`modules/termnote.py` parser); a call blocker during classes; class packs layered under.
+- **commitments** (`modules/commitments.py:Commitments`): `commitments.items` rows `{name, days, start, end, calls}`;
+  `on(day)` gives a day's with `start_dt`/`end_dt` (an end before the start runs into the next day); the call blocker
+  `commitments` checks yesterday's and today's (night shifts); skips per day in `<state>/commitments/skip-<date>.json`;
+  `/busy` (add splits the words as the first split whose rest `parse_days` reads), intent `skip_commitment`, call tool
+  `skip_commitment`, brief `commitments_today`. Distinct from Skills' `/every` routines.
 - **classpacks** (`modules/classpacks.py`, format in `modules/coursepack.py`): import/export a section's setup as a
   `.kurooto-course` file with a strict schema that refuses personal data.
 - **capture** (`modules/capture.py`): after each class, a question about what was worth keeping; answers to the class log,
@@ -450,7 +455,10 @@ arrives.
   `learning_skill_learned`/`_improved`, `learning_remembered`, `inferred`; `loose_ends()` reads open doubts (`## Doubts`
   bullets in notes changed in 14 days), `Integrate.metrics()` (broken, no links in), past-due tasks
   (`Deadlines.upcoming`), `job_failed` events. No AI. `Integrate.summary` doesn't send its own line while it's on.
-  `/dream` shows it without marking it sent. Calm reason `dreaming.morning`.
+  `/dream` shows it without marking it sent. Calm reason `dreaming.morning`. `self_check(ev)` (`dreaming.self_check`):
+  counts `case_kept` events (missed vs `wrong`), then with Cases on runs `cases.suite()` and reports test cases in
+  `fail` whose id was in the stored `passing` list (`<state>/dreaming.json`), emitting `dreaming_regressed`; only the
+  sent morning message replaces `passing`. A suite error emits `dreaming_check_failed` and skips the check.
 - **learning** (`modules/learning.py:Learning`, requires `chat`, `extra = True`): "Learns from its own work", four parts
   each behind a setting (`learning.search`, `skills`, `corrections`, `remember`; `part(name)` is the feature and the
   part both on) and a card toggle (`card`, `card_action`, `PARTS`).

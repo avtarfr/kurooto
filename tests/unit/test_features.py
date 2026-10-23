@@ -280,7 +280,9 @@ def test_help_lists_everything_on_says_what_is_off_finds_a_word_and_points_at_th
     out = env.say("/help")
     assert "Reminders:" in out and "/remind" in out and "Understood at once, in plain words:" in out
     assert "Off right now" in out and "Phone calls" in out and "/wiki/" in out and "/help <word>" in out
-    found = env.say("/help call")
+    n = len(env.fake.texts())
+    env.say("/help call")
+    found = "\n".join(env.fake.texts()[n:])  # a long answer comes in several messages
     assert "Phone calls (off: turn it on in Features" in found and "/call" in found
     assert env.say("/help zzzz").startswith('Nothing here matches "zzzz"')
 

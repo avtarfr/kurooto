@@ -239,6 +239,13 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `classroom_notes.max_file_mb` | `30` | Classroom files bigger than this (MB) aren't downloaded |
 | `classroom_notes.skip` | `[]` | courses to leave out: words from their names |
 
+### `commitments`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `commitments.items` | `[]` | {"name": "gym", "days": ["mon", "wed"], "start": "18:00", "end": "19:00", "calls": true} |
+| `commitments.no_calls` | `true` | no calls during a commitment (each one can opt out: /busy calls gym off) |
+
 ### `deadlines`
 
 | Setting | Default | What it does |
@@ -269,6 +276,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | Setting | Default | What it does |
 |---|---|---|
 | `dreaming.loose_ends` | `true` | also the loose ends: your open doubts, unlinked notes, broken links, tasks past due |
+| `dreaming.self_check` | `true` | replay your test cases each morning and say which ones went wrong since yesterday |
 | `dreaming.when` | `"daily 07:30"` | when the morning message comes (it covers everything since the last one) |
 
 ### `drive_upload`
@@ -391,7 +399,9 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `infer.aliases` | `true` | "by POTA I mean Physics of the Atmosphere": a short name for that subject |
 | `infer.classes` | `true` | "every Monday at 9 I have a <subject> lab": a class in the timetable |
+| `infer.commitments` | `true` | "every Tuesday at 7pm I go to the gym": a commitment (it holds calls like a class) |
 | `infer.meetings` | `true` | "met X today": a dated line in that project's Meetings; a meeting ahead: a deadline |
 | `infer.on` | `true` | set things up from what you say in the chat and the journal (one line each, with Undo) |
 | `infer.projects` | `true` | "I got a project under Prof X": a project note with them, and a Meetings section |

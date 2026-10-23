@@ -8,6 +8,15 @@
   a deadline; "every Monday at 9 I have a linear algebra lab" puts the class in your timetable. Rules only, on this
   computer; nothing from other people's news or a "didn't"; each change in one line with Undo, and `/inferred` lists
   them (`/inferred undo <id>`). Never alarms, calls, mail or code repositories.
+- **Commitments** (a feature): the regular things in your week that aren't classes (the gym, a shift, a standup,
+  tuition), each on its days and hours: `/busy add gym mon,wed,fri 18:00-19:00` (days: `weekdays`, `weekends`,
+  `daily`, `mon-fri`). Like a class, one holds calls while it's on, a night shift past midnight too; `/busy skip gym`
+  or "skipping gym today" frees that day, `/busy calls gym off` lets calls through. Said in passing ("every Tuesday
+  and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5") it's set up for you
+  (`infer.commitments`), with Undo; that turns Commitments on if it was off, and Undo turns it off again.
+- **Short names for subjects from what you say**: "by POTA I mean Physics of the Atmosphere", "LA is short for linear
+  algebra", "I call stochastic calculus stoch" add that short name to the subject (`infer.aliases`), with Undo, so
+  "POTA quiz friday" lands on the right course from then on. Only for your subjects, and never a name that's taken.
 
 - **Dreaming** (a feature, off until you turn it on): everything Kurooto did while you slept in one morning message
   at `dreaming.when` (07:30): books read into your notes, links tidied, handwritten notes linked, lessons from calls,
@@ -15,6 +24,9 @@
   from the last two weeks, notes nothing links to yet, links that point nowhere, tasks past due, AI requests that
   failed. It reads Kurooto's own log and your notes, so it costs nothing; the concept graph's own morning line folds
   into it. `/dream` shows it any time.
+  **The self-check** (`dreaming.self_check`, on; the first part of Dream RSI): each morning it replays your test cases
+  (Wrong button and test cases) and names any that went right yesterday and go wrong now, after an update or a settings
+  change, and it counts the requests it didn't understand and the Wrong taps since the last message.
 - **No local model half on the processor**: every 10 minutes Kurooto checks what Ollama has loaded; when models
   together don't fit your graphics card they're unloaded, so the next request loads its one model fully on the card, and
   a model too big even alone is told to you once. `/models` shows each loaded model's share on the card.

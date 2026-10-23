@@ -44,6 +44,7 @@ MODULE_ORDER = [
     "gbrain",
     "local_models",
     "subjects",
+    "commitments",
     "classpacks",
     "doubts",
     "capture",

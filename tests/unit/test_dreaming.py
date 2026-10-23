@@ -3,6 +3,8 @@ nothing happened; the concept graph's own morning line folds into it."""
 
 import datetime as dt
 
+from kurooto.core.state import jload, jsave
+
 
 def test_the_night_in_one_message_with_the_loose_ends(env):
     app = env.app
@@ -44,3 +46,26 @@ def test_the_graphs_own_morning_line_folds_into_dreaming(env):
     n = len(env.fake.texts())
     line = ig.summary()
     assert line.startswith("Concept graph: 3 batches") and len(env.fake.texts()) == n  # not sent on its own
+
+
+def test_the_self_check_says_which_test_cases_went_wrong_since_yesterday(env, monkeypatch):
+    app = env.app
+    env.on("deadlines", "cases", "dreaming")
+    cases = app.modules["cases"]
+
+    def put(d):
+        d["cases"]["c1"] = {"id": "c1", "text": "whats on my plate", "expect": "show_due", "status": "test"}
+
+    cases.store.change(put)
+    from kurooto.modules import cases as cmod
+
+    monkeypatch.setattr(cmod, "route", lambda app, text, learned=None: "show_due")
+    dream = app.modules["dreaming"]
+    dream.morning()  # goes right: remembered, nothing to say about it
+    st = jload(dream.state_file, {})
+    jsave(dream.state_file, {**st, "at": (dt.datetime.now() - dt.timedelta(hours=8)).isoformat()})  # last night's
+    monkeypatch.setattr(cmod, "route", lambda app, text, learned=None: "ai")  # an update broke it
+    app.events.emit("case_kept", kind="missed", did="ai", wrong=False)
+    text = dream.report(send=False)
+    assert 'Went wrong since yesterday (1 test case): "whats on my plate" should be show_due, got ai' in text
+    assert "1 request I didn't understand" in text

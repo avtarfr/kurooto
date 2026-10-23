@@ -7,7 +7,7 @@ from pathlib import Path
 import kurooto
 
 SRC = Path(kurooto.__file__).parent
-CORE = {"calm", "upd", "ask", "health", "job"}  # routed by App.callback itself
+CORE = {"calm", "upd", "ask", "health", "job", "inf"}  # routed by App.callback itself
 NOT_BUTTONS = {
     "http",
     "https",

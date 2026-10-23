@@ -59,6 +59,8 @@ each class covered. The assistant on a call can mark a class skipped for you ("I
 - `/class remove mon 09:00` removes one of your own classes ("Removed the class on Mon 09:00."). A class from a term
   note or a class pack is changed there instead.
 - Times are 24-hour (`14:00-14:55`).
+- Short names also come from what you say: "by POTA I mean Physics of the Atmosphere" or "I call stochastic calculus
+  stoch" adds one, with an Undo button (see [Teaching Kurooto](teaching-kurooto.md)).
 - Classes from a term note, a class pack or a class calendar join yours; where two say there's a class at the same day
   and time, yours wins.
 
@@ -86,6 +88,32 @@ goes to your AI, which can use the same skip tool. A plain-English skip must nam
 **On calls.** Say you're skipping a class; the wake-up call also asks which classes you're skipping today.
 
 **What leaves your computer.** Nothing. **Undo:** `/attend la` for today; a skip for another day ends by itself.
+
+## Commitments (gym, shifts, standups)
+
+**What it does.** The regular things in your week that aren't classes, each on its days and hours. While one is on,
+calls wait for it the way they wait for a class; a shift that runs past midnight holds them until it ends. Turn it on
+in Features → Commitments, or just say one (below).
+
+**From Telegram.**
+
+| You send | What happens |
+|---|---|
+| `/busy add gym mon,wed,fri 18:00-19:00` | adds it. Days: `mon,wed`, `tuesday and thursday`, `weekdays`, `weekends`, `daily`, `mon-fri`. A longer name works: `/busy add night shift daily 22:00-06:00` |
+| `/busy` | lists them, with today's skips |
+| `/busy skip gym`, "skipping gym today", "not going to the gym tomorrow" | that day it doesn't hold calls; `/busy unskip gym` undoes today's |
+| `/busy calls standup off` | keeps it listed but lets calls through (`on` to undo) |
+| `/busy remove gym` | removes it |
+| "every Tuesday and Thursday at 7pm I go to the gym", "I work a shift every weekend from 9 to 5", "we have standup every weekday at 10" | added for you (an hour unless you say the end), with an Undo button; Commitments is turned on if it was off |
+
+Things with class, lab, lecture, tutorial, quiz or test in them aren't taken as commitments: classes go in the
+timetable, quizzes and tests in Deadlines. These aren't Skills' routines (`/every`), which run a skill on a schedule.
+
+**On calls.** Kurooto knows today's commitments and can mark one skipped when you say so.
+
+**Settings.** `commitments.items` (the list), `commitments.no_calls` (on: they hold calls).
+
+**What leaves your computer.** Nothing. **Undo:** `/busy remove <name>`, or turn it off in Features (the list stays).
 
 ## Term dates and holidays
 

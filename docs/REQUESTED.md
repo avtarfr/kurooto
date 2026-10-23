@@ -22,12 +22,13 @@ Standing plans, never struck through.
   memory and spotting contradictions across notes): while you sleep and the laptop is idle, Kurooto goes over the day (chats, calls, AI requests, notes,
   your journal), consolidates what it learned into memory and your profile, spots contradictions and loose ends, and
   tells you in the morning what it tidied.
-- **Dream RSI (self-improvement while dreaming)**: the same night pass also looks at what went wrong (failed or
+- **Dream RSI (self-improvement while dreaming)** (0.5.9 has the first part: each morning it replays your test cases
+  and names any that went wrong since yesterday): the same night pass also looks at what went wrong (failed or
   retried requests, your corrections, call lessons, answers that claimed what they didn't do), changes its own
   prompts, skills and quiet settings to fix it, and keeps a change only if replaying the past cases goes better;
   each change is listed with Undo. It improves the way it improves: the checks themselves are revised the same way.
-- **Set up from what it sees, not from settings** (0.5.9 has projects with their supervisor, meetings and classes; still
-  to come: routines, a deadline's course from mail, subject aliases): one pass over chat and the journal (rules first, the AI only on a
+- **Set up from what it sees, not from settings** (0.5.9 has projects with their supervisor, meetings, classes,
+  commitments like the gym or a shift, a mail deadline's course and subjects' short names): one pass over chat and the journal (rules first, the AI only on a
   hit) creates projects with whoever they're with ("got a project under Prof X": the project, its supervisor, and
   meetings from then on), classes from "every Monday at 9 I have a lab", routines, a deadline's course, subject
   aliases; one line to say so, and `/inferred` to undo. Alarms, calls and anything outward still need a tap.
