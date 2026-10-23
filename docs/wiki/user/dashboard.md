@@ -8,6 +8,7 @@ This page covers the dashboard, the morning page, the colours, `kurooto top` (th
 two terminal features. For talking to Kurooto in general see [talking-to-kurooto.md](talking-to-kurooto.md).
 
 - [Opening it](#opening-it)
+- [Two designs: new and classic](#two-designs-new-and-classic)
 - [Two layouts: dense and roomy](#two-layouts-dense-and-roomy)
 - [The board (dense layout)](#the-board-dense-layout)
 - [Study mode](#study-mode)
@@ -41,11 +42,24 @@ page Kurooto serves gets, requests from other websites are refused, and the page
 Linux, where several people can be signed in at once, it also checks that the page and every request come from your
 own user account, and refuses them when it can't tell.
 
+## Two designs: new and classic
+
+| Design | Looks |
+|---|---|
+| **new** (default since 0.5.19) | set in a sans-serif typeface (Public Sans, which comes with Kurooto: nothing is fetched from the internet), with figures that keep their width as they change; monospace only for the terminals, code and file paths. Rounded panes with their name and figures on a header line, a top bar with the name, a status line, **study**, **panes ▾** and the design button; thin-line graphs and bars in the palette's colours |
+| **classic** | the look of 0.5.18 and earlier: everything in monospace, thin borders with each pane's name set into its top line, dotted graphs |
+
+Both have the same panes, pages, keys, search and data, and both follow the palette ([Colours](#colours)).
+
+**Switch:** the **classic look** button in the top bar (in classic: **panes ▾** → **new look**, or the top bar in the
+roomy layout), or Dashboard → Settings → Look → `look.design`. It changes at once, without a reload, and every browser
+gets it (it's a setting). *Undo:* switch back the same way.
+
 ## Two layouts: dense and roomy
 
 | Layout | What it is | When you get it |
 |---|---|---|
-| **dense** (default) | one full-screen board with thin borders, each pane's name set into its top line; the pages open over the whole board | windows at least 1280 px wide and 600 px tall |
+| **dense** (default) | one full-screen board; the pages open over the whole board | windows at least 1280 px wide and 600 px tall |
 | **roomy** | the earlier layout: bigger panes and type, with the pages as tabs below | narrower windows get it by themselves; `look.layout` = `roomy` keeps it everywhere |
 
 Both have the same pages, the same Alt keys, the same search and the same way of hiding features.
@@ -55,8 +69,9 @@ Both have the same pages, the same Alt keys, the same search and the same way of
 ## The board (dense layout)
 
 Four panes: **STATUS** down the left, **SYSTEMS** and **NOTES** on top, **TERMINAL** below. A top bar shows Kurooto's
-name and version, a short status line ("12 features on · 0 AI request running · cpu 7%"), a **needs a look** badge
-when something isn't working, an **update** badge when a new version is ready, and the **setup** link.
+name and version, a short status line ("12 features on · 0 AI requests running · cpu 7%"), a **needs a look** badge
+when something isn't working, an **update** badge when a new version is ready, and the **setup** link (the new design;
+classic shows it only in the roomy layout and keeps **study** and **panes ▾** in the board's top-right corner).
 
 ### STATUS: this computer
 
@@ -71,7 +86,7 @@ A monitor like the program btop, the same as [`kurooto top`](#kurooto-top-the-bo
   `nvidia-smi`, or an AMD card on Linux; a sleeping laptop graphics card isn't woken to ask).
 - **NET:** download above the line, upload below, and totals. **DISKS:** how full, reads and writes per second.
 - **PROCESSES:** the busiest programs. Click **cpu** or **mem** in the header to sort (this browser remembers it).
-  Kurooto's own processes are marked ✦.
+  Kurooto's own processes are marked ✦ (a dot in the new design).
 - **STUDY TODAY:** minutes per subject, with the [Study tracker](books-and-study.md) on.
 - **PROJECTS:** your git folders with each one's last commit, what isn't pushed yet and what's changed. List the
   folders in `look.projects` (default empty: the repositories you gave [Research](research.md)).
@@ -113,9 +128,19 @@ your choice; another browser starts folded.
 ### NOTES: a map of your notes
 
 Every note in your notes folder is a dot; links between notes are lines. Notes are grouped into coloured
-neighbourhoods by folder: each `sources/<subject>/` folder is one, `maps/` and `projects/` are the hub, and any other
-note joins the neighbourhood most of its links go to (or "Other Notes"). Grouping works best with the zettelkasten
-notes layout (see [notes-and-concept-graph.md](notes-and-concept-graph.md)).
+neighbourhoods by folder: each `sources/<subject>/` folder is one (in the kurooto notes layout, each subject folder
+with a `course.md`), each research project (`projects/<name>/` or `research/<name>/`) is one, the other maps and hubs
+are the hub ("Maps & hubs"), and any other note joins the neighbourhood most of its links go to (or "Other Notes").
+Grouping works best with the zettelkasten notes layout (see [notes-and-concept-graph.md](notes-and-concept-graph.md)).
+
+**Names on the map (new in 0.5.19).** At the usual zoom the map names its regions, the way a map names places: each
+course by its course page's title ("MTH201 Linear Algebra") and each research project by its index note's title, in
+the region's colour at the middle of its notes. A note's own name shows when you point at it, find it, light the
+recent ones (**R**) or zoom in; zoomed in, course pages, hubs and projects are named first, then notes that link
+across courses, then the best-linked. A book's index note (`<subject>/books/<book>`) is drawn small and named last:
+once the [concept graph](notes-and-concept-graph.md) reads a book, hundreds of notes link to it from their "Seen in"
+lines, and before 0.5.19 it took every label and the map read as a list of book titles. The region names step back
+while you point at or search for a note.
 
 | To | Do |
 |---|---|
@@ -157,7 +182,7 @@ to your AI, and its answer prints here, not on Telegram. Its own words:
 
 An answer that takes longer than 30 minutes stops being waited for here; see it in the **AI jobs** page.
 
-The pane's border also lists the pages (today, activity, jobs, schedule, features, phone, research, you, settings),
+The pane's header (classic: its border) also lists the pages (today, activity, jobs, schedule, features, phone, research, you, settings),
 each with its key letter underlined, and a reminder of the keys.
 
 ## Study mode
@@ -165,7 +190,7 @@ each with its key letter underlined, and a reminder of the keys.
 A calm board for studying: only your notes and the things that help you study. Everything else (STATUS, SYSTEMS,
 the terminal, the panes menu) waits, untouched, and comes back exactly as it was when you leave.
 
-**Switch it on or off:** **study** in the board's top-right corner (roomy layout: in the top bar; it reads **leave
+**Switch it on or off:** **study** in the top bar (classic design: the board's top-right corner; it reads **leave
 study** while it's on), **Alt+M**, Ctrl+K → `study on` / `study off`, or from Telegram or the kurooto tab
 `/study mode on` / `/study mode off` (plain words work too: "study mode", "leave study mode"). The page follows at
 once wherever you switch it. It stays on across reloads and in every browser (the setting `look.study_mode`).
@@ -388,7 +413,7 @@ on from a search unhides it.
 
 - **Fill the board with one pane:** click its name (⤢) or double-click its border. **Esc** or its name again brings
   the others back.
-- **panes ▾**, in the board's top-right corner, hides STATUS, SYSTEMS, NOTES or TERMINAL (one always stays) and the
+- **panes ▾**, in the top bar (classic: the board's top-right corner), hides STATUS, SYSTEMS, NOTES or TERMINAL (one always stays) and the
   others take the room. It also lists the pages with their keys, and **show them all**.
 - What's hidden is the setting `look.panes` (e.g. `["status"]`), so every browser shows the same.
   *Undo:* panes → show them all, or empty `look.panes`.

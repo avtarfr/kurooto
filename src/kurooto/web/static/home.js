@@ -10,12 +10,23 @@
 // the "panes" menu hides some, and the pages (features, settings…) open over the whole board (Alt+F, Alt+S…).
 // "roomy" is the earlier layout with bigger type, used by itself on narrower screens. Study mode (Alt+M) keeps only
 // the NOTES map and a STUDY pane: a focus timer, today's study, what's due and the subject's notes.
+//
+// Two designs (Settings → look.design, or the "classic look" / "new look" button): "new" (home-new.css: a sans-serif,
+// Public Sans, with tabular figures; monospace only for terminals, code and paths) and "classic" (home.css alone: the
+// monospace look of 0.5.18). <body data-design> holds it; setDesign() switches without a reload.
 "use strict";
 const TOKEN = document.querySelector('meta[name="kurooto-token"]').content;
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const TAU = Math.PI * 2;
-const FONT = '"JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace';
+const MONO = '"JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace'; // terminals, code, paths
+const SANS = '"Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'; // static/fonts/
+let NEW = document.body.dataset.design !== "classic"; // look.design
+let FONT = MONO, FSC = 1; // the canvases' words and their scale: set by useDesign() below
+// a canvas font: the new design's sans-serif is set a little larger than the classic monospace
+const cf = (px, weight = "", fam = FONT) => `${weight ? weight + " " : ""}${Math.round(px * FSC * 2) / 2}px ${fam}`;
+function useDesign() { NEW = document.body.dataset.design !== "classic"; FONT = NEW ? SANS : MONO; FSC = NEW ? 1.12 : 1; }
+useDesign();
 // the canvases' colours are the page's palette (style.css: "kuro" by default, "rose" with look.palette = rose)
 const css = (name, fallback) => { const v = getComputedStyle(document.body).getPropertyValue(name).trim(); return /^#[0-9a-f]{6}$/i.test(v) ? v : fallback; };
 const PAL = { bg: css("--bg", "#0b0f0a"), fg: css("--fg", "#dad3c8"), accent: css("--accent-text", "#a6c07a"), lav: css("--lav", "#8dbdb3"),
@@ -37,7 +48,9 @@ function readPalette() {
 }
 window.addEventListener("kurooto:palette", () => requestAnimationFrame(readPalette));
 // cool to warm, for meters and graphs: the palette's lav, peach and pink
-const grad = (v) => (v = clamp(v || 0, 0, 1)) < 0.5 ? mix(PAL.lav, PAL.peach, v * 2) : mix(PAL.peach, PAL.pink, (v - 0.5) * 2);
+// (the new design: the ink, and a warning colour only when it's high)
+const grad = (v) => NEW ? ((v || 0) >= 0.9 ? PAL.bad : (v || 0) >= 0.7 ? PAL.peach : PAL.fg)
+  : (v = clamp(v || 0, 0, 1)) < 0.5 ? mix(PAL.lav, PAL.peach, v * 2) : mix(PAL.peach, PAL.pink, (v - 0.5) * 2);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const ago = (sec) => { if (sec == null || !isFinite(sec)) return "—"; sec = Math.max(0, sec); if (sec < 60) return `${Math.round(sec)}s`; if (sec < 3600) return `${Math.round(sec / 60)}m`; if (sec < 86400) return `${Math.floor(sec / 3600)}h${String(Math.floor((sec % 3600) / 60)).padStart(2, "0")}`; return `${Math.floor(sec / 86400)}d`; };
 const bytes = (n) => { if (!n) return "0"; const u = ["B", "K", "M", "G", "T"]; let i = 0; while (n >= 1024 && i < 4) { n /= 1024; i++; } return `${n.toFixed(i > 1 ? 1 : 0)}${u[i]}`; };
@@ -112,6 +125,7 @@ function renderMenu() {
   m.innerHTML = `<div class="mh">panes</div>${Object.entries(NAMES).map(([p, l]) => `<label><input type="checkbox" data-pane="${p}"${HIDE.has(p) ? "" : " checked"}${!HIDE.has(p) && left === 1 ? ' disabled title="one pane always stays"' : ""}> ${l}${MAX === p ? ' <span class="d">fills the board</span>' : ""}</label>`).join("")}
     ${MAX || HIDE.size ? '<button data-all="1">show them all</button>' : ""}<p class="d">Click a pane's name or double-click its border and it fills the board; Esc brings the others back.</p>
     <div class="mh">study</div><button data-study-toggle><span>study mode</span><span class="d">alt+m</span></button>
+    <div class="mh">look</div><button data-design-toggle><span>${NEW ? "classic look (monospace)" : "new look"}</span><span class="d">look.design</span></button>
     <div class="mh">pages</div>${Object.keys(DLABEL).map((k) => `<button data-pg="${k}"><span>${mnem(k)}</span><span class="d">alt+${PKEY[k]}</span></button>`).join("")}`;
 }
 function openMenu(open) {
@@ -162,7 +176,7 @@ function closePage() {
 }
 function renderPageNav() {
   const nav = $("#page-nav"), find = PAGE === "features" || PAGE === "settings";
-  nav.innerHTML = `<span class="t" title="back to the board (Esc)">${esc((TABS[PAGE] || PAGE).toUpperCase())}<i class="mx"></i></span><span class="rule">─</span><span class="pages">${pageTabs()}</span><span class="rule">─</span>` +
+  nav.innerHTML = `<span class="t" title="back to the board (Esc)">${esc(NEW ? TABS[PAGE] || PAGE : (TABS[PAGE] || PAGE).toUpperCase())}<i class="mx"></i></span><span class="rule">─</span><span class="pages">${pageTabs()}</span><span class="rule">─</span>` +
     `<span class="meta">${find ? "/ or ctrl+f search · " : ""}alt+f features · alt+s settings</span><span class="rule">─</span><button class="tab" data-close="1">esc back</button>`;
   nav.onclick = (e) => {
     if (e.target.closest(".t, [data-close]")) { closePage(); return; }
@@ -213,10 +227,10 @@ window.addEventListener("keydown", (e) => {
     try { localStorage.setItem("kurooto.dash.legends", LEGENDS ? "1" : "0"); } catch { /* fine */ }
   }
 });
-function say(ctx, s, x, y, col, align = "left", font = `9px ${FONT}`) {
+function say(ctx, s, x, y, col, align = "left", font = cf(9)) {
   ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
   const wd = ctx.measureText(s).width, x0 = align === "right" ? x - wd : align === "center" ? x - wd / 2 : x;
-  ctx.fillStyle = rgba(PAL.bg, 0.72); ctx.fillRect(x0 - 2, y - 9, wd + 4, 12); ctx.fillStyle = col; ctx.fillText(s, x, y);
+  ctx.fillStyle = rgba(PAL.bg, 0.72); ctx.fillRect(x0 - 2, y - 9 * FSC, wd + 4, 12 * FSC); ctx.fillStyle = col; ctx.fillText(s, x, y);
   return wd;
 }
 
@@ -297,7 +311,7 @@ class Body {
     for (let i = 0; i < N; i++) { const p = pts[i], q = pts[(i + 1) % N]; m = mid(p, q); ctx.quadraticCurveTo(p[0], p[1], m[0], m[1]); }
     ctx.closePath();
   }
-  say(ctx, s, x, y, col, align = "left", font = `9px ${FONT}`) { return say(ctx, s, x, y, col, align, font); }
+  say(ctx, s, x, y, col, align = "left", font = cf(9)) { return say(ctx, s, x, y, col, align, font); }
   ecg(ctx, w, now, base, amp) {
     const g = (d, mu, sd) => Math.exp(-((d - mu) ** 2) / (2 * sd * sd));
     const at = (tt) => { let v = 0.004 * Math.sin(tt * 47), col = null, best = 0;
@@ -333,7 +347,7 @@ class Body {
       ctx.strokeStyle = rgba(PAL.fg, k % 6 ? 0.03 : 0.07);
       ctx.beginPath(); ctx.moveTo(cx + c * r0, cy + s * r0 * 0.86); ctx.lineTo(cx + c * r1 * wide, cy + s * r1 * 0.86); ctx.stroke();
       if (k % 3 === 0) {
-        ctx.font = `8px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = rgba(PAL.fg, 0.24);
+        ctx.font = cf(8); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = rgba(PAL.fg, 0.24);
         ctx.fillText(String(k).padStart(2, "0"), cx + c * (r1 * wide + 9), cy + s * (r1 + 9) * 0.86);
       }
     }
@@ -374,7 +388,7 @@ class Body {
     const now = performance.now() / 1000, cpu = this.state.sys.cpu || 0;
     let ringR, cx = w / 2, cy = h / 2 + 4;
     if (DENSE) { // room for the four corners: events, the AI, today, what's due
-      const lh = 12, top = 24 + 6 * lh, bottom = h - 18 - 6 * lh;
+      const lh = Math.round(12 * FSC), top = 24 + 6 * lh, bottom = h - 18 - 6 * lh;
       ringR = clamp(Math.min(w * 0.35, (bottom - top - 88) / 1.72), 56, 420);
       cy = top + 0.86 * ringR + 28 + Math.max(0, (bottom - top - 88 - 1.72 * ringR) / 2);
     } else ringR = clamp(Math.min(w * 0.36, (h - 70) / 1.9), 60, 420);
@@ -446,11 +460,13 @@ class Body {
     const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr); cg.addColorStop(0, mix(PAL.accent, PAL.pink, 0.35)); cg.addColorStop(1, PAL.accent);
     ctx.fillStyle = cg; ctx.fill();
     ctx.fillStyle = PAL.bg; ctx.font = `700 ${Math.max(9, cr * 0.32)}px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText((this.state.name || "Kurooto").toUpperCase().slice(0, 10), cx, cy);
+    const nm = this.state.name || "Kurooto", word = (NEW ? nm : nm.toUpperCase()).slice(0, 10);
+    if (NEW) { const fit = (cr * 1.6) / Math.max(1, ctx.measureText(word).width); if (fit < 1) ctx.font = `700 ${Math.max(7, cr * 0.32 * fit)}px ${FONT}`; }
+    ctx.fillText(word, cx, cy);
     this.ripples = this.ripples.filter((r) => now - r.t0 < 1.8);
     for (const r of this.ripples) { const k = (now - r.t0) / 1.8; ctx.strokeStyle = rgba(r.col, 0.45 * (1 - k)); ctx.lineWidth = 1.5 * (1 - k); ctx.beginPath(); ctx.arc(cx, cy, coreR * (1.1 + k * 3.2), 0, TAU); ctx.stroke(); }
-    if (DENSE) this.panels(ctx, w, h, 12);
-    if (!cells.length) this.say(ctx, `No features on yet: turn some on in ${DENSE ? "features (Alt+F)" : "the Features tab below"}.`, cx, h - 16 - (DENSE ? 84 : 0), PAL.dim, "center", `11px ${FONT}`);
+    if (DENSE) this.panels(ctx, w, h, Math.round(12 * FSC));
+    if (!cells.length) this.say(ctx, `No features on yet: turn some on in ${DENSE ? "features (Alt+F)" : "the Features tab below"}.`, cx, h - 16 - (DENSE ? 84 : 0), PAL.dim, "center", cf(11));
     this.hoverCard();
   }
   cell(ctx, o, t, ringR) {
@@ -473,7 +489,7 @@ class Body {
   // way, then with fewer words (no detail, then the name alone, then a shortened name). A label that had to give way
   // needs a few pixels to spare before it grows back, so the words don't flicker as the cells orbit.
   labels(ctx, cells, cx, cy, coreR, w, h) {
-    const LH = 11, placed = [], panels = DENSE ? this.panelRects || [] : [];
+    const LH = Math.round(11 * FSC), placed = [], panels = DENSE ? this.panelRects || [] : [];
     const width = (text, font) => { const k = font + "|" + text; let v = this.widths.get(k);
       if (v === undefined) { ctx.font = font; v = ctx.measureText(text).width; if (this.widths.size > 4000) this.widths.clear(); this.widths.set(k, v); } return v; };
     // how badly a box would cover what's there: 0 when it fits (pad: the room it must leave)
@@ -491,8 +507,8 @@ class Body {
     const order = [...cells].sort((a, b) => (b.data.events || 0) - (a.data.events || 0) || (b.proc ? 1 : 0) - (a.proc ? 1 : 0) || a.i - b.i);
     for (const o of order) {
       const col = o.down ? PAL.dim : PAL[o.color], vital = this.vital(o), more = DENSE ? this.detail(o) : "";
-      const name = [o.label, `600 10px ${FONT}`, rgba(o.down ? PAL.dim : PAL.fg, 0.95)];
-      const full = [name, [vital, `9px ${FONT}`, o.down ? rgba(PAL.bad, 0.85) : rgba(col, 0.85)], ...(more ? [[more, `8px ${FONT}`, rgba(PAL.fg, 0.42)]] : [])];
+      const name = [o.label, cf(10, 600), rgba(o.down ? PAL.dim : PAL.fg, 0.95)];
+      const full = [name, [vital, cf(9), o.down ? rgba(PAL.bad, 0.85) : rgba(col, 0.85)], ...(more ? [[more, cf(8), rgba(PAL.fg, 0.42)]] : [])];
       const short = o.label.length > 8 ? [[o.label.slice(0, 7) + "…", name[1], name[2]]] : [name];
       const variants = [full, full.slice(0, 2), [name], short].filter((v, i, all) => i === 0 || v.length < all[i - 1].length || v[0][0] !== all[i - 1][0][0]);
       const dx = o.x - cx, dy = o.y - cy, d = Math.hypot(dx, dy) || 1, a0 = Math.atan2(dy / d, dx / d);
@@ -503,7 +519,7 @@ class Body {
       const tries = [];
       for (const spots of [near, mid]) for (const lines of variants.slice(0, 3)) for (const sp of spots) tries.push([lines, sp]);
       for (const lines of variants.slice(2)) for (const sp of [...near, ...mid, ...far]) tries.push([lines, sp]);
-      const tiny = [[o.label.length > 8 ? o.label.slice(0, 7) + "…" : o.label, `600 8px ${FONT}`, name[2]]];
+      const tiny = [[o.label.length > 8 ? o.label.slice(0, 7) + "…" : o.label, cf(8, 600), name[2]]];
       for (const sp of [...near, ...mid, ...far]) tries.push([tiny, sp]);
       let best = null, rank = 0;
       for (const [lines, [turn, step]] of tries) {
@@ -625,25 +641,54 @@ const detailOf = (e) => Object.entries(e).filter(([k]) => !["ts", "kind", "t", "
   .map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : v}`).join(" ").slice(0, 60);
 
 // -------------------------------------------------------------------------------------------------- NOTES
-// Neighborhoods come from your own notes: each course or subject folder (sources/<name>/) is one, maps/ and projects/ are
+// Neighborhoods come from your own notes: each course or subject folder (sources/<name>/, or <name>/ beside its
+// course.md) is one, each research project (projects/<name>/ or research/<name>/) is one, the other maps and hubs are
 // the hub, and any other note joins the neighborhood most of its links go to.
+// Names on the map (0.5.19): at the usual zoom the map names its regions, like a map names places: each
+// neighbourhood's name (its course page's title, or its project's) at the middle of its notes. A note's own name shows
+// when you point at it, find it, light the recent ones (R) or zoom in; zoomed in, course pages, hubs and projects come
+// first, then notes that link across neighbourhoods. A book's index note comes last and is drawn small: its hundreds
+// of links come from reading the book ("Seen in" lines), not from how your notes connect.
+// -- the pure part (no page, no canvas): tests/unit/test_notes_labels.py runs it in node
 const HOOD_COLORS = ["peach", "lav", "rose", "accent", "pink", "sand"], MAX_HOODS = 8;
-const HUB = { label: "Maps & Projects", get color() { return PAL.fg; }, anchor: { x: 0, y: -40 } };
+const HUB = { label: "Maps & hubs", get color() { return PAL.fg; }, anchor: { x: 0, y: -40 } };
 const OTHER = { label: "Other Notes", get color() { return PAL.dim; }, anchor: { x: 0, y: 380 } };
-const prettyHood = (s) => s.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-function hoodOf(id) {
-  const m = /^sources\/([^/]+)\//.exec(id || "");
-  return m ? m[1] : /^(maps|projects)\//.test(id || "") ? "hub" : null;
+const prettyHood = (s) => s.replace(/^project:/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+// a note's role: "course" (a course page), "hub" (a map, the home or research hub, a project's index), "book" (a
+// book's index note, <subject>/books/<book>) or "note"
+function noteRole(id) {
+  if (/(^|\/)books\//.test(id)) return "book";
+  if (/^maps\/courses\/[^/]+$/.test(id) || /^[^/]+\/course$/.test(id) || /^sources\/[^/]+\/course$/.test(id)) return "course";
+  if (/^maps\//.test(id) || /^(index|research\/index|projects\/[^/]+\/index|research\/[^/]+\/index|projects\/[^/]+)$/.test(id)) return "hub";
+  return "note";
 }
-// n.neighborhood for every node (n.nb already holds its links); returns {key: {label, color, anchor}}
+// subjects: the folder names that are courses (sources/<s>/…, or <s>/course in the kurooto layout)
+function hoodOf(id, subjects = new Set()) {
+  let m = /^sources\/([^/]+)\//.exec(id || ""); if (m) return m[1];
+  m = /^(?:projects|research)\/([^/]+)\/./.exec(id || ""); if (m) return `project:${m[1]}`;
+  m = /^maps\/courses\/([^/]+)$/.exec(id || ""); if (m && subjects.has(m[1])) return m[1]; // a course page joins its course
+  if (/^(maps|projects|research)\//.test(id || "") || id === "index") return "hub";
+  m = /^([^/]+)\//.exec(id || ""); if (m && subjects.has(m[1])) return m[1];
+  return null;
+}
+// n.neighborhood, n.role, n.sdeg (links that aren't a book's) and n.bridge (how many other neighbourhoods its links
+// reach) for every node (n.nb already holds its links); returns {key: {label, color, anchor}}
 function assignHoods(nodes) {
+  const subjects = new Set();
+  for (const n of nodes.values()) { const m = /^sources\/([^/]+)\//.exec(n.id) || /^([^/]+)\/course$/.exec(n.id); if (m) subjects.add(m[1]); }
   const base = new Map(), size = new Map();
-  for (const n of nodes.values()) { const k = hoodOf(n.id); base.set(n.id, k); if (k && k !== "hub") size.set(k, (size.get(k) || 0) + 1); }
+  for (const n of nodes.values()) {
+    n.role = noteRole(n.id);
+    const k = hoodOf(n.id, subjects); base.set(n.id, k); if (k && k !== "hub") size.set(k, (size.get(k) || 0) + 1);
+  }
   const keys = [...size].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, MAX_HOODS).map(([k]) => k);
   const known = new Set(keys), hoods = new Map([["hub", HUB], ["other", OTHER]]);
+  const titleOf = (...ids) => { for (const id of ids) { const n = nodes.get(id); if (n && n.title) return n.title; } return null; };
   keys.forEach((k, i) => {
-    const ang = (i / keys.length) * 2 * Math.PI - Math.PI / 2;
-    hoods.set(k, { label: prettyHood(k), get color() { return PAL[HOOD_COLORS[i % HOOD_COLORS.length]]; },
+    const ang = (i / keys.length) * 2 * Math.PI - Math.PI / 2, p = k.replace(/^project:/, "");
+    const label = (k.startsWith("project:") ? titleOf(`projects/${p}/index`, `research/${p}/index`, `projects/${p}`)
+      : titleOf(`maps/courses/${k}`, `${k}/course`, `sources/${k}/course`)) || prettyHood(k);
+    hoods.set(k, { label, project: k.startsWith("project:"), get color() { return PAL[HOOD_COLORS[i % HOOD_COLORS.length]]; },
       anchor: { x: Math.cos(ang) * 420, y: Math.sin(ang) * 300 } });
   });
   for (const n of nodes.values()) {
@@ -655,8 +700,33 @@ function assignHoods(nodes) {
     }
     n.neighborhood = k;
   }
+  for (const n of nodes.values()) {
+    const other = [...(n.nb || [])].map((id) => nodes.get(id)).filter((q) => q && q.role !== "book");
+    n.sdeg = n.role === "book" ? Math.min(n.nb ? n.nb.size : 0, 4) : other.length;
+    n.bridge = new Set(other.map((q) => q.neighborhood).filter((h) => h !== n.neighborhood && h !== "other")).size;
+  }
   return hoods;
 }
+// which notes get their names when zoomed in, best first: course pages, hubs and projects, then notes that link
+// across neighbourhoods, then the best-linked; a book's index note last
+function rankLabels(nodes) {
+  const score = (n) => (n.role === "course" || n.role === "hub" ? 3e6 : n.role === "book" ? -1e6 : n.bridge * 1e3) + (n.sdeg || 0);
+  return [...nodes].sort((a, b) => score(b) - score(a) || a.id.localeCompare(b.id));
+}
+// each region's name and where it goes: the middle of its notes (better-linked notes count more; books barely), for
+// neighbourhoods of three notes or more; in the map's own coordinates
+function regionSpots(nodes, hoods) {
+  const acc = new Map();
+  for (const n of nodes) {
+    if (n.neighborhood === "other" || !hoods.has(n.neighborhood)) continue;
+    const w = n.role === "book" ? 0.2 : Math.sqrt((n.sdeg || 0) + 1), a = acc.get(n.neighborhood) || { x: 0, y: 0, w: 0, n: 0 };
+    a.x += n.x * w; a.y += n.y * w; a.w += w; a.n++; acc.set(n.neighborhood, a);
+  }
+  return [...acc].filter(([, a]) => a.n >= 3).sort((p, q) => q[1].n - p[1].n)
+    .map(([key, a]) => ({ key, label: hoods.get(key).label, x: a.x / a.w, y: a.y / a.w, n: a.n }));
+}
+// -- end of the pure part
+const ZOOM_NAMES = 1.35; // zoomed in this far, notes get their names and the regions' names step back
 
 const HUB_LINKS = 12, MAX_STEP = 40; // the notes graph: springs per hub, the furthest a note moves a frame
 class Mind {
@@ -739,11 +809,13 @@ class Mind {
     const k = Math.min((w - (DENSE ? 120 : 160)) / Math.max(50, x1 - x0), (h - 90) / Math.max(50, y1 - y0)), tk = clamp(k, 0.08, 2.5);
     this.view.k += (tk - this.view.k) * 0.05; this.view.x += (-(x0 + x1) / 2 - this.view.x) * 0.05; this.view.y += (-(y0 + y1) / 2 - this.view.y) * 0.05;
   }
+  // a note's dot: bigger the more links it has (a book's reading links don't count)
+  radius(n) { return (2.0 + Math.sqrt(n.sdeg ?? n.deg) * 0.95) * Math.sqrt(this.view.k); }
   toScreen(n, w, h) { return { x: w / 2 + (n.x + this.view.x) * this.view.k, y: h / 2 + 8 + (n.y + this.view.y) * this.view.k }; }
   toWorld(x, y, w, h) { return { x: (x - w / 2) / this.view.k - this.view.x, y: (y - h / 2 - 8) / this.view.k - this.view.y }; }
   draw() {
     const { ctx, w, h } = fitCanvas(this.cv); this.w = w; this.h = h; ctx.clearRect(0, 0, w, h);
-    if (!this.nodes.size) { ctx.fillStyle = PAL.dim; ctx.font = `12px ${FONT}`; ctx.textAlign = "center"; ctx.fillText("Your notes folder is empty so far.", w / 2, h / 2); return; }
+    if (!this.nodes.size) { ctx.fillStyle = PAL.dim; ctx.font = cf(12); ctx.textAlign = "center"; ctx.fillText("Your notes folder is empty so far.", w / 2, h / 2); return; }
     if (this.autofit) this.fit(w, h);
     const nowS = Date.now() / 1000, focus = this.hover || this.selected;
     const match = this.query ? new Set([...this.nodes.values()].filter((n) => (n.title + " " + n.id).toLowerCase().includes(this.query)).map((n) => n.id)) : this.only && this.only.size ? this.only : null;
@@ -767,7 +839,7 @@ class Mind {
       const isNodeRecent = isRecent(n);
       const isHourRecent = (nowS - (n.mtime || 0) < 3600);
       const isLit = lit(n);
-      const r = (2.0 + Math.sqrt(n.deg) * 0.95) * Math.sqrt(this.view.k), col = this.colorOf(n);
+      const r = this.radius(n), col = this.colorOf(n);
       ctx.fillStyle = rgba(col, isLit ? (isFocused || isNeighbor ? 1.0 : 0.88) : 0.08);
       ctx.beginPath(); ctx.arc(S.x, S.y, r, 0, TAU); ctx.fill();
       if (isFocused) { ctx.strokeStyle = PAL.fg; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(S.x, S.y, r + 4.5, 0, TAU); ctx.stroke(); }
@@ -781,11 +853,11 @@ class Mind {
     const now = performance.now() / 1000; this.flares = this.flares.filter((f) => now - f.t0 < 4);
     for (const f of this.flares) { const k = (now - f.t0) / 4, S = this.toScreen(f.n, w, h); ctx.strokeStyle = rgba(PAL.sand, 0.8 * (1 - k)); ctx.lineWidth = 2 * (1 - k); ctx.beginPath(); ctx.arc(S.x, S.y, 4 + 46 * Math.sqrt(k), 0, TAU); ctx.stroke(); }
     
-    // Hub and Hover Labels with collision avoidance
-    ctx.font = `600 10.5px ${FONT}`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const hubs = [...this.nodes.values()].sort((a, b) => b.deg - a.deg).slice(0, 8);
+    // Names, with collision avoidance: the regions' names at the usual zoom; the notes' own when pointed at, found,
+    // recent (R) or zoomed in (then the best by rankLabels)
+    const zoomed = this.view.k >= ZOOM_NAMES;
+    const onScreen = (n) => { const S = this.toScreen(n, w, h); return S.x > 0 && S.y > 0 && S.x < w && S.y < h; };
+    const hubs = zoomed ? rankLabels([...this.nodes.values()].filter(onScreen)).filter((n) => n.role !== "book").slice(0, Math.round(6 + 4 * this.view.k)) : [];
     const recentTop = this.showRecent ? [...this.nodes.values()].filter(isRecent).sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 8) : [];
 
     const candidates = [];
@@ -809,12 +881,35 @@ class Mind {
       }
       return false;
     };
+    // the regions' names: large and quiet, in their colour; they step back while a note is pointed at or found, and
+    // fade out as you zoom in
+    const quiet = focus || match || this.showRecent, fade = clamp((ZOOM_NAMES + 0.25 - this.view.k) / 0.5, 0, 1);
+    if (fade > 0 && !this.only) {
+      ctx.font = cf(13, 650); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+      for (const g of regionSpots(this.nodes.values(), this.hoods || new Map())) {
+        const S = this.toScreen(g, w, h), txt = g.label.length > 30 ? g.label.slice(0, 29) + "…" : g.label;
+        const tw = ctx.measureText(txt).width, bh = 18 * FSC;
+        let box = null;
+        for (const dy of [0, -bh - 2, bh + 2, -2 * bh - 4, 2 * bh + 4]) {
+          const b = { x: clamp(S.x - tw / 2 - 4, 8, w - tw - 16), y: clamp(S.y + dy - bh / 2, 24, h - bh - 8), w: tw + 8, h: bh };
+          if (!collides(b)) { box = b; break; }
+        }
+        if (!box) continue;
+        if (!quiet) placed.push(box);
+        const a = fade * (quiet ? 0.35 : 0.95), x = box.x + box.w / 2, y = box.y + bh / 2;
+        ctx.strokeStyle = rgba(PAL.bg, 0.85 * a); ctx.lineWidth = 4; ctx.strokeText(txt, x, y);
+        ctx.fillStyle = rgba(mix(this.hoods.get(g.key).color, PAL.fg, 0.35), a); ctx.fillText(txt, x, y);
+      }
+    }
+    ctx.font = cf(10.5, 600);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
 
     for (const item of candidates) {
       const n = item.node;
       const S = this.toScreen(n, w, h);
       if (S.x < -20 || S.y < -20 || S.x > w + 20 || S.y > h + 20) continue;
-      const r = (2.0 + Math.sqrt(n.deg) * 0.95) * Math.sqrt(this.view.k);
+      const r = this.radius(n);
       const txt = n.title.length > 28 ? n.title.slice(0, 27) + "…" : n.title;
       const tw = ctx.measureText(txt).width;
       const pillW = tw + 18, pillH = 18;
@@ -860,7 +955,7 @@ class Mind {
   }
   // dense: semantic neighborhoods and their counts
   hud(ctx, w, h, nowS) {
-    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.font = `11px ${FONT}`;
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.font = cf(11);
     const counts = new Map();
     for (const n of this.nodes.values()) counts.set(n.neighborhood, (counts.get(n.neighborhood) || 0) + 1);
     const legend = [...(this.hoods || [])]
@@ -885,13 +980,13 @@ class Mind {
     if (this.showRecent) { // only while it's on: R (or a click on this line) turns it off
       const hotHour = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 3600).length;
       const hotDay = [...this.nodes.values()].filter((n) => nowS - (n.mtime || 0) < 86400).length;
-      say(ctx, `Recent: ${hotHour} in the last hour, ${hotDay} today · R: off`, 14, 26, PAL.peach, "left", `11px ${FONT}`);
+      say(ctx, `Recent: ${hotHour} in the last hour, ${hotDay} today · R: off`, 14, 26, PAL.peach, "left", cf(11));
     }
     const recent = [...this.nodes.values()].sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 5);
     const recOpen = LEGENDS || inside(this.mouse, this.recentRect);
     const shown = recOpen ? recent : recent.slice(0, 1);
     shown.forEach((n, i) => say(ctx, `~ ${n.id.slice(-40)} · ${ago(nowS - (n.mtime || 0))} ago${!recOpen && recent.length > 1 ? `  ▸ ${recent.length - 1}` : ""}`, 14, h - 14 - i * 15,
-      rgba(i === 0 ? PAL.sand : PAL.fg, 0.72 - i * 0.11), "left", `11px ${FONT}`));
+      rgba(i === 0 ? PAL.sand : PAL.fg, 0.72 - i * 0.11), "left", NEW ? `11px ${MONO}` : cf(11))); // paths
     this.recentRect = { x0: 10, y0: h - 14 - (shown.length - 1) * 15 - 12, x1: 340, y1: h - 8 };
   }
   pick(x, y) { let best = null, bd = 14; for (const n of this.nodes.values()) { const S = this.toScreen(n, this.w, this.h), d = Math.hypot(S.x - x, S.y - y); if (d < bd) { bd = d; best = n; } } return best; }
@@ -946,7 +1041,7 @@ class Mind {
 // -------------------------------------------------------------------------------------- STATUS and tabs
 let last = null;
 function renderStatus(m) {
-  if (DENSE) { if (paneShown("status")) renderBoard(m); return; }
+  if (DENSE) { barStatus(m); if (paneShown("status")) renderBoard(m); return; }
   const s = m.sys, pct = (v) => `${Math.round((v || 0) * 100)}%`;
   const meter = (v, col) => `<div class="meter"><i style="width:${clamp(v * 100, 0, 100)}%;background:var(--${col})"></i></div>`;
   const gpu = (s.gpus || []).map((g) => esc(g.name) + (g.vram_gb ? ` (${g.vram_gb} GB)` : "")).join(", ") || "none in use";
@@ -965,7 +1060,12 @@ function renderStatus(m) {
     <div class="row2"><span class="k">kurooto</span><span class="${m.power && m.power.mode !== "normal" ? "warn" : ""}">${
       !m.power || m.power.mode === "normal" ? "running" : m.power.mode === "saver" ? "saving battery: heavy work waits for the charger" : `paused ${esc(m.power.why)}`}</span></div>
     <div class="pw">${m.power && m.power.mode === "paused" ? '<button data-pw="resume">Resume</button>' : '<button data-pw="pause">Pause 1 h</button>'}<button data-pw="off">Turn off</button></div>`;
-  $("#meta").textContent = `${m.cells.filter((c) => c.on).length} features on · ${m.jobs.filter((j) => j.status === "running").length} AI request running · cpu ${pct(s.cpu)}`;
+  barStatus(m);
+}
+// the top bar: a line on what's on and running, the update and health badges, the version
+function barStatus(m) {
+  const running = m.jobs.filter((j) => j.status === "running").length;
+  $("#meta").textContent = `${m.cells.filter((c) => c.on).length} features on · ${running} AI request${NEW && running !== 1 ? "s" : ""} running · cpu ${pct(m.sys.cpu)}`;
   const u = m.updates || {};
   const badge = $("#update-badge");
   if (u.ready && u.ready.version) { badge.textContent = `update ${u.ready.version} ${u.ready.staged ? "ready tonight" : u.ready.waiting ? "waiting" : "available"}`; badge.title = u.ready.waiting ? `It waits: ${u.ready.waiting}` : ""; badge.classList.remove("hidden"); } else badge.classList.add("hidden");
@@ -995,6 +1095,7 @@ function healthBlock(h) {
 const SB = { built: false, sort: "cpu", cw: 7.5, lh: 17 };
 try { SB.sort = localStorage.getItem("kurooto.dash.procsort") === "mem" ? "mem" : "cpu"; } catch { /* fine */ }
 function dotGraph(cv, vals, { max = 1, mirror = null, lines = null } = {}) {
+  if (NEW) { areaGraph(cv, vals, { max, mirror, lines }); return; }
   const { ctx, w, h } = fitCanvas(cv);
   ctx.clearRect(0, 0, w, h);
   const px = SB.cw / 2, py = SB.lh / 4, cols = Math.max(4, Math.floor(w / px)), r = Math.max(0.8, Math.min(px, py) * 0.3);
@@ -1016,30 +1117,53 @@ function dotGraph(cv, vals, { max = 1, mirror = null, lines = null } = {}) {
     ctx.fillStyle = rgba(PAL.fg, 0.08); ctx.fillRect(0, Math.round(half), w, 1);
   } else draw(vals, 0, h, false, max);
 }
-const meter = (v, cls = "") => `<span class="m grow ${cls}"><i style="clip-path:inset(0 ${(100 - clamp((v || 0) * 100, 0, 100)).toFixed(1)}% 0 0)"></i></span>`;
+// the new design's graphs: one line in the data colour over a faint fill, newest on the right (network: down above
+// the middle in lav, up below it in pink, the colours of its arrows)
+function areaGraph(cv, vals, { max = 1, mirror = null, lines = null } = {}) {
+  const { ctx, w, h } = fitCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  const step = 3, cols = Math.max(4, Math.floor(w / step));
+  const draw = (series, top, height, down, peak, col) => {
+    const v = series.slice(-cols); if (!v.length) return;
+    const x0 = w - (v.length - 1) * step, base = down ? top : top + height;
+    const y = (x) => { const k = clamp((x || 0) / (peak || 1), 0, 1) * (height - 1.5); return down ? top + 0.75 + k : top + height - 0.75 - k; };
+    ctx.beginPath(); ctx.moveTo(x0, base); v.forEach((x, i) => ctx.lineTo(x0 + i * step, y(x))); ctx.lineTo(w, base); ctx.closePath();
+    ctx.fillStyle = rgba(col, 0.13); ctx.fill();
+    ctx.beginPath(); v.forEach((x, i) => (i ? ctx.lineTo(x0 + i * step, y(x)) : ctx.moveTo(x0, y(x))));
+    ctx.strokeStyle = col; ctx.lineWidth = 1.25; ctx.lineJoin = "round"; ctx.stroke();
+  };
+  ctx.fillStyle = rgba(PAL.fg, 0.07);
+  if (mirror) {
+    const half = h / 2;
+    draw(vals, 0, half, false, max, PAL.lav); draw(mirror, half, half, true, lines || max, PAL.pink);
+    ctx.fillStyle = rgba(PAL.fg, 0.1); ctx.fillRect(0, Math.round(half), w, 1);
+  } else { ctx.fillRect(0, h - 1, w, 1); draw(vals, 0, h, false, max, PAL.accent); }
+}
+const meter = (v, cls = "") => `<span class="m grow ${cls}${(v || 0) >= 0.9 ? " hi" : ""}"><i style="clip-path:inset(0 ${(100 - clamp((v || 0) * 100, 0, 100)).toFixed(1)}% 0 0)"></i></span>`;
 const pct = (v) => `${Math.round((v || 0) * 100)}%`;
 const temp = (c) => (c == null ? "" : `<span class="${c >= 90 ? "hot" : c >= 80 ? "warm" : "v"}">${Math.round(c)}°</span>`);
 function buildBoard() {
   const st = $("#status");
+  const L = (classic, fresh) => (NEW ? fresh : classic); // a box's name in each design
   st.className = "board";
   st.innerHTML = `
   <div class="hd"><span><b id="sb-name">KUROOTO</b> <span class="k" id="sb-ver"></span> <span id="sb-mode" class="warm"></span><span id="sb-badge" class="warm"></span> <span id="sb-health" class="hot"></span></span><span class="clock" id="sb-clock"></span></div>
   <div class="hd"><span id="sb-up"></span><span id="sb-act"></span></div>
-  <div class="box" id="bx-cpu"><div class="lab"><span class="t">CPU</span><span class="meta" id="cpu-meta"></span></div>
+  <div class="box" id="bx-cpu"><div class="lab"><span class="t">${L("CPU", "CPU")}</span><span class="meta" id="cpu-meta"></span></div>
     <div class="graph"><canvas class="cv" id="g-cpu"></canvas><span class="pct" id="cpu-pct"></span></div>
     <div class="cpus" id="cpu-cores"></div><div class="row" id="cpu-info"></div></div>
   <div class="duo" id="duo-mem">
-    <div class="box" id="bx-mem"><div class="lab"><span class="t">MEM</span><span class="meta" id="mem-meta"></span></div><div id="mem-body"></div></div>
-    <div class="box" id="bx-gpu"><div class="lab"><span class="t">GPU</span><span class="meta" id="gpu-meta"></span></div><div id="gpu-body"></div><div class="graph"><canvas class="cv" id="g-gpu"></canvas></div></div>
+    <div class="box" id="bx-mem"><div class="lab"><span class="t">${L("MEM", "Memory")}</span><span class="meta" id="mem-meta"></span></div><div id="mem-body"></div></div>
+    <div class="box" id="bx-gpu"><div class="lab"><span class="t">${L("GPU", "Graphics")}</span><span class="meta" id="gpu-meta"></span></div><div id="gpu-body"></div><div class="graph"><canvas class="cv" id="g-gpu"></canvas></div></div>
   </div>
   <div class="duo">
-    <div class="box" id="bx-net"><div class="lab"><span class="t">NET</span><span class="meta" id="net-meta"></span></div>
+    <div class="box" id="bx-net"><div class="lab"><span class="t">${L("NET", "Network")}</span><span class="meta" id="net-meta"></span></div>
       <div class="graph"><canvas class="cv" id="g-net"></canvas><span class="tag top" id="net-rx"></span><span class="tag top right k" id="net-peak"></span><span class="tag bot" id="net-tx"></span></div><div class="row" id="net-tot"></div></div>
-    <div class="box" id="bx-disk"><div class="lab"><span class="t">DISKS</span><span class="meta" id="disk-meta"></span></div><div id="disk-body"></div></div>
+    <div class="box" id="bx-disk"><div class="lab"><span class="t">${L("DISKS", "Disks")}</span><span class="meta" id="disk-meta"></span></div><div id="disk-body"></div></div>
   </div>
-  <div class="box procs" id="bx-proc"><div class="lab"><span class="t">PROCESSES</span><span class="meta" id="proc-meta"></span></div><div id="proc-body"></div></div>
-  <div class="box study" id="bx-study"><div class="lab"><span class="t">STUDY TODAY</span><span class="meta" id="study-meta"></span></div><div id="study-body"></div></div>
-  <div class="box proj" id="bx-proj"><div class="lab"><span class="t">PROJECTS</span><span class="meta" id="proj-meta"></span></div><div id="proj-body"></div></div>`;
+  <div class="box procs" id="bx-proc"><div class="lab"><span class="t">${L("PROCESSES", "Processes")}</span><span class="meta" id="proc-meta"></span></div><div id="proc-body"></div></div>
+  <div class="box study" id="bx-study"><div class="lab"><span class="t">${L("STUDY TODAY", "Study today")}</span><span class="meta" id="study-meta"></span></div><div id="study-body"></div></div>
+  <div class="box proj" id="bx-proj"><div class="lab"><span class="t">${L("PROJECTS", "Projects")}</span><span class="meta" id="proj-meta"></span></div><div id="proj-body"></div></div>`;
   const probe = document.createElement("canvas").getContext("2d");
   const fs = getComputedStyle(st);
   probe.font = `${fs.fontSize} ${FONT}`;
@@ -1057,7 +1181,8 @@ function setSort(k) { SB.sort = k; try { localStorage.setItem("kurooto.dash.proc
 function clockTick() {
   const c = $("#sb-clock"); if (!c) return;
   const d = new Date();
-  c.innerHTML = `${d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }).toUpperCase().replace(",", "")} <b>${d.toTimeString().slice(0, 8)}</b>`;
+  const day = d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" }).replace(",", "");
+  c.innerHTML = `${NEW ? day : day.toUpperCase()} <b>${d.toTimeString().slice(0, 8)}</b>`;
 }
 function renderBoard(m) {
   if (!SB.built || !$("#bx-cpu")) buildBoard();
@@ -1093,6 +1218,7 @@ function renderBoard(m) {
   s.cores.forEach((v, i) => {
     const row = grid.children[i];
     row.querySelector("i").style.clipPath = `inset(0 ${(100 - clamp(v * 100, 0, 100)).toFixed(1)}% 0 0)`;
+    row.querySelector(".m").classList.toggle("hi", v >= 0.9);
     row.querySelector(".r").textContent = pct(v);
     if (cols <= 2 && H.cores && H.cores[i]) dotGraph(row.querySelector("canvas"), H.cores[i]);
   });
@@ -1140,7 +1266,7 @@ function renderBoard(m) {
   $("#disk-body").innerHTML = (s.disks || []).slice(0, 4).map((d) => `<div class="row" title="${esc(d.mount)}"><span class="k" style="width:5.5em;overflow:hidden;text-overflow:ellipsis">${esc(d.mount === "/" ? "/" : label(d.mount))}</span>${meter(d.pct)}<span class="v r" style="min-width:3em">${pct(d.pct)}</span></div>`).join("") ||
     '<div class="row"><span class="k">no disks to show</span></div>';
   // processes: sorted by cpu or memory; Kurooto's own marked ✦
-  $("#proc-meta").innerHTML = `<button data-sort="cpu" class="${SB.sort === "cpu" ? "on" : ""}">cpu</button><button data-sort="mem" class="${SB.sort === "mem" ? "on" : ""}">mem</button> · <span class="mine" style="color:var(--pink)">✦</span> kurooto`;
+  $("#proc-meta").innerHTML = `<button data-sort="cpu" class="${SB.sort === "cpu" ? "on" : ""}">cpu</button><button data-sort="mem" class="${SB.sort === "mem" ? "on" : ""}">mem</button> · <span class="mine" style="color:var(--pink)">${NEW ? "" : "✦"}</span> kurooto`;
   const procs = [...(m.procs || [])].sort((a, b) => (SB.sort === "mem" ? b.mem - a.mem : b.cpu - a.cpu || b.mem - a.mem));
   // study today and projects first, so the processes take what's left
   const study = m.study, sbox = $("#bx-study");
@@ -1162,7 +1288,7 @@ function renderBoard(m) {
   const body = $("#proc-body"), box = $("#bx-proc");
   const avail = box.clientHeight - 12, fit = Math.max(1, Math.floor(avail / SB.lh) - 1);
   const head = `<tr><th class="id" style="width:5.6em">pid</th><th class="n">process</th><th style="width:3em">thr</th><th data-sort="cpu" class="${SB.sort === "cpu" ? "on" : ""}" style="width:4.4em">cpu</th><th data-sort="mem" class="${SB.sort === "mem" ? "on" : ""}" style="width:5em">mem</th></tr>`;
-  body.innerHTML = `<table>${head}${procs.slice(0, fit).map((r) => `<tr><td class="id">${r.pid}</td><td class="n">${r.own ? `<span class="mine">✦ ${esc(r.own === "kurooto" ? "kurooto" : r.name)}</span>` : `<span class="v">${esc(r.name)}</span>`}</td><td class="k">${r.threads ?? ""}</td><td style="color:${grad(Math.min(1, r.cpu))}">${(r.cpu * 100).toFixed(1)}%</td><td class="v">${bytes(r.mem)}</td></tr>`).join("")}</table>`;
+  body.innerHTML = `<table>${head}${procs.slice(0, fit).map((r) => `<tr><td class="id">${r.pid}</td><td class="n">${r.own ? `<span class="mine">${NEW ? "" : "✦ "}${esc(r.own === "kurooto" ? "kurooto" : r.name)}</span>` : `<span class="v">${esc(r.name)}</span>`}</td><td class="k">${r.threads ?? ""}</td><td style="color:${grad(Math.min(1, r.cpu))}">${(r.cpu * 100).toFixed(1)}%</td><td class="v">${bytes(r.mem)}</td></tr>`).join("")}</table>`;
 }
 
 const feed = [];
@@ -1780,6 +1906,7 @@ const promptText = () => `${((last && last.name) || "Kurooto").toLowerCase()} ) 
 function chatInit(host) {
   host.innerHTML = '<div class="chat-log" id="chat-log"></div><label class="chat-in"><span class="p" id="chat-p"></span><input id="chat-input" spellcheck="false" autocomplete="off" aria-label="Ask in plain English"></label>';
   const inp = $("#chat-input");
+  if (NEW) inp.placeholder = "Ask in plain English, or type help";
   inp.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { const v = inp.value.trim(); inp.value = ""; if (v) chatSend(v); }
     else if (e.key === "ArrowUp" && CHAT.hist.length) { e.preventDefault(); CHAT.hi = CHAT.hi < 0 ? CHAT.hist.length - 1 : Math.max(0, CHAT.hi - 1); inp.value = CHAT.hist[CHAT.hi]; }
@@ -1790,7 +1917,7 @@ function chatInit(host) {
   chatDraw();
 }
 function chatBanner() {
-  const name = ((last && last.name) || "Kurooto").toUpperCase().split("").join(" ");
+  const nm = (last && last.name) || "Kurooto", name = NEW ? nm : nm.toUpperCase().split("").join(" ");
   const brain = brainName(last && last.agent && last.agent.brain);
   return `<span class="banner">${esc(name)}</span>   <span class="d">plain English, right here</span>
 <span class="d">quick:</span> <span class="ex">"push the evening check-in by 30 min"</span> <span class="d">·</span> <span class="ex">"what's due this week?"</span> <span class="d">·</span> <span class="ex">"no calls till 6"</span>
@@ -2009,6 +2136,7 @@ function connect() {
     else if (m.t === "event") {
       SEEN.set(m, performance.now() / 1000); feed.unshift(m); feed.length = Math.min(feed.length, 200); body.event(m); if (current() === "activity") renderTab();
       if (m.kind === "study_mode") setStudy(!!m.on, false); // /study mode on|off, or the timer's end
+      else if (m.kind === "setting_changed" && m.key === "look.design") loadDesign(); // changed somewhere else
       else if (STUDY && /^(study|deadline|quiz|setting_changed)/.test(m.kind)) smSoon();
     }
     else if (m.t === "hello") { TERM.cid = m.cid; if (TERM.shown) termAttach(TERM.shown); }
@@ -2019,12 +2147,46 @@ function connect() {
 // a setting changed on the Settings tab that changes this page
 function settingChanged(key, value) {
   if (key === "look.layout") { document.body.dataset.layout = value; applyLayout(); }
+  if (key === "look.design") applyDesign(value);
   if (key === "look.palette") setTimeout(() => location.reload(), 300); // the canvases take their colours at load
   if (key === "look.panes") { HIDE = cleanHide(value); MAX = null; try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ } applyPanes(); }
   if (key === "look.hidden_features") HIDDEN_F = new Set(Array.isArray(value) ? value : []);
   if (key === "look.study_mode") setStudy(!!value, false);
   if (key === "look.links_in" && $('meta[name="kurooto-links"]')) $('meta[name="kurooto-links"]').content = value; // links.js
 }
+// The design (look.design): "new" or "classic". It applies at once: the board's boxes, the canvases' words and the
+// borders are redrawn in the other one, and a page that's open stays open.
+function setDesign(v) {
+  v = v === "classic" ? "classic" : "new";
+  applyDesign(v);
+  api("settings", { key: "look.design", value: v }).catch(() => {});
+}
+function loadDesign() {
+  api("settings").then((r) => {
+    const look = ((r && r.sections) || []).find((s) => s.section === "look");
+    if (look && look.values.design) applyDesign(look.values.design);
+  }).catch(() => {});
+}
+function applyDesign(v) {
+  v = v === "classic" ? "classic" : "new";
+  const changed = document.body.dataset.design !== v;
+  document.body.dataset.design = v; useDesign();
+  for (const b of document.querySelectorAll(".design-tg")) b.textContent = NEW ? "classic look" : "new look";
+  const inp = $("#chat-input"); if (inp) inp.placeholder = NEW ? "Ask in plain English, or type help" : "";
+  placeCtl();
+  if (!changed) return;
+  if (body) body.widths.clear();
+  SB.built = false; if (last) renderStatus(last);
+  if (DENSE) { renderNav(); if (PAGE) renderPageNav(); chatDraw(); }
+  renderMenu(); applyPanes();
+}
+// the new design keeps the panes menu and Study mode's button in the top bar; classic sets them into the board's border
+function placeCtl() {
+  const ctl = $("#panes-ctl"), bar = NEW && DENSE ? $(".bar .right") : $(".grid");
+  if (ctl.parentElement === bar) return;
+  if (bar.classList.contains("grid")) bar.prepend(ctl); else bar.insertBefore(ctl, bar.querySelector(".design-tg"));
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-design-toggle]")) { e.preventDefault(); closeMenu(); setDesign(NEW ? "classic" : "new"); } });
 function applyLayout(force = false) {
   const d = denseFits();
   if (d === DENSE && !force) return;
@@ -2034,6 +2196,7 @@ function applyLayout(force = false) {
   PAGE = null; closeMenu();
   DENSE = d;
   document.body.classList.toggle("dense", DENSE);
+  placeCtl();
   $(".grid").classList.remove("tall");
   SB.built = false;
   const tb = $("#tab-body"); tb.onclick = tb.onchange = tb.onsubmit = null; tb.innerHTML = "";
@@ -2075,7 +2238,7 @@ function loadXterm() {
 function termMake(name) {
   if (TERM.xs[name]) return TERM.xs[name];
   const el = document.createElement("div"); el.className = "term-one";
-  const term = new window.Terminal({ fontFamily: FONT, fontSize: 13, cursorBlink: true, scrollback: 5000, allowProposedApi: false,
+  const term = new window.Terminal({ fontFamily: MONO, fontSize: 13, cursorBlink: true, scrollback: 5000, allowProposedApi: false,
     theme: { background: PAL.panel, foreground: PAL.fg, cursor: PAL.accent, selectionBackground: rgba(PAL.lav, 0.35) } });
   const fit = new window.FitAddon.FitAddon(); term.loadAddon(fit);
   let pending = "", timer = null;
@@ -2243,6 +2406,9 @@ window.addEventListener("resize", () => { applyLayout(); refit(); });
   const asked = location.hash.slice(1); // e.g. /#about, the link /aboutme sends
   if (TABS[asked]) tab = asked;
   loadLook();
+  applyDesign(document.body.dataset.design);
+  // the typeface arrives after the first drawing: measure the words again (the cells' labels, the STATUS columns)
+  if (document.fonts) document.fonts.addEventListener("loadingdone", () => { body.widths.clear(); SB.built = false; if (last) renderStatus(last); });
   api("events").then((r) => { for (const e of (r.events || []).reverse()) feed.push(e); if (current() === "activity") renderTab(); }).catch(() => {});
   applyLayout(true);
   if (document.body.dataset.study === "on") setStudy(true, false, false); // look.study_mode: as it was left

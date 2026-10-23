@@ -486,6 +486,7 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `look.design` | `"new"` | the dashboard's design: new, or classic (the monospace look of 0.5.18) |
 | `look.hidden_features` | `[]` | features hidden from the Features list (they still run if on) |
 | `look.layout` | `"dense"` | dense (everything on one board) or roomy |
 | `look.links_in` | `"default"` | where links open: default is your default browser |
