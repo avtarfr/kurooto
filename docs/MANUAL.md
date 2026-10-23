@@ -3265,7 +3265,8 @@ calendar, what's due, check-ins and open questions. The alarm opens it.
 
 **Colours:** Kurooto's pages (the setup page, the dashboard, the morning page, and your call line's pages on the phone)
 use deep greens, like the website. If you liked the earlier pink and rose colours better, set Settings → Look →
-`look.palette` to `rose` and reload the page; `kuro` (the default) brings the greens back. The setup and morning pages
+`look.palette` to `rose` and reload the page, or pick a named theme such as Catppuccin or Nord
+([Colours](#colours-look)); `kuro` (the default) brings the greens back. The setup and morning pages
 follow your system's light or dark mode; the dashboard is always dark. Your call line's pages on the phone stay green.
 The Android app follows the phone instead: light or dark as the phone is set, in the wallpaper's colours on Android 12
 and newer (Material You), Kurooto's greens on older phones; its ringing screen is always dark. Its main screen has the
@@ -3305,8 +3306,8 @@ and the AI never disagree. A feature that's off says so with a link to Features.
 
 ## Colours (Look)
 
-Kurooto's pages (the setup page, the dashboard and the morning page) come in three palettes. Pick one on the setup
-page (step 3, **Colours**) or in **Settings → Look → `look.palette`**:
+Kurooto's pages (the setup page, the dashboard and the morning page) and its terminals come in three palettes of its
+own and in named themes. Pick one on the setup page (step 3, **Colours**) or in **Settings → Look → `look.palette`**:
 
 - **kuro** (the default): deep greens.
 - **rose**: the pinks of earlier versions.
@@ -3321,8 +3322,18 @@ page (step 3, **Colours**) or in **Settings → Look → `look.palette`**:
 
   When nothing is found, the pages look like kuro until something is. Settings → Look says what was found.
 
+- **A named theme**, in the project's own colours: Catppuccin (`catppuccin-mocha`, `catppuccin-macchiato`,
+  `catppuccin-frappe`; Latte for light pages), Tokyo Night (`tokyonight-night`, `tokyonight-storm`, `tokyonight-moon`;
+  Day), Rosé Pine (`rose-pine`, `rose-pine-moon`; Dawn), Gruvbox (`gruvbox`), Nord (`nord`), Dracula (`dracula`;
+  Alucard), Everforest (`everforest`), Kanagawa (`kanagawa-wave`, `kanagawa-dragon`; Lotus) and Solarized
+  (`solarized`). You pick the dark flavour: the dashboard and terminals are always dark and use it, and the setup and
+  morning pages use the family's light flavour when your browser is in light mode. The dots under the setting show
+  both. The palettes are the projects' own (MIT, or Apache-2.0 for Tokyo Night); the dashboard guide lists the
+  sources.
+
 Text always stays readable: any colour that would be hard to read on its background is made lighter or darker until it
-passes the WCAG AA contrast level (4.5:1).
+passes the WCAG AA contrast level (4.5:1). For a named theme, only such text colours move (mostly in light flavours,
+Solarized and Nord); backgrounds and everything else stay exactly as the project publishes them.
 
 **Your own colours file:** set **Settings → Look → `look.theme_file`** to the full path of a kitty theme (lines like
 `background #1a1110` and `color4 #9ccaff`) or a matugen or pywal `colors.json`. It's used instead of the desktop's
@@ -3330,7 +3341,8 @@ colours, and switches the palette to system. Kurooto says so if it can't find co
 
 The dashboard is always dark (with the system palette, its dark version); the other pages follow light or dark mode.
 
-*Settings:* `look.palette` (`kuro`, `rose` or `system`; default `kuro`), `look.theme_file` (empty).
+*Settings:* `look.palette` (`kuro`, `rose`, `system` or a named theme's id; default `kuro`), `look.theme_file`
+(empty).
 *Leaves your computer:* nothing. Kurooto only reads the colour settings and files above, on this computer.
 *Undo:* press **Kuro** on the setup page's step 3, or set `look.palette` back to `kuro`; empty `look.theme_file`.
 

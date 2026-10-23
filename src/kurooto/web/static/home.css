@@ -64,6 +64,10 @@ body.home { color-scheme: dark;
 .form legend { color: var(--lav); font-size: 12px; }
 .form label { margin: 6px 0; font: 12px var(--mono); display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .form .help { font-size: 11.5px; margin: -4px 0 6px; }
+.form .swatch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.form .swatch-row span { margin: 0 2px 0 6px; }
+.form .swatch-row span:first-child { margin-left: 0; }
+.form .swatch-row i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line); }
 .form .fixed { width: 55%; color: var(--dim); }
 .form .said { color: var(--accent-text); margin-top: 2px; }
 .form .said.bad2 { color: var(--bad); }

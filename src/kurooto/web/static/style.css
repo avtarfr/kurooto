@@ -231,6 +231,11 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
 .wizard .box.done .next { margin: 4px 0 12px; padding-left: 22px; }
 .wizard .swatches { display: flex; gap: 6px; margin-bottom: 10px; }
 .wizard .swatches i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); }
+.wizard .themes-h { font-size: 14px; margin: 18px 0 8px; color: var(--dim); font-weight: 600; }
+.wizard .cards.themes { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.wizard .cards.themes .card { padding: 10px 12px; }
+.wizard .cards.themes .swatches { margin-bottom: 6px; }
+.wizard .cards.themes h3 { font-size: 14px; margin-bottom: 2px; }
 .trouble { position: sticky; top: 0; z-index: 20; padding: 10px 18px; font-size: 14px; color: var(--fg); background: var(--panel);
   border-bottom: 3px solid var(--warn); }
 @media (max-width: 760px) {  /* phones: the steps as numbered dots, the current one with its name */
