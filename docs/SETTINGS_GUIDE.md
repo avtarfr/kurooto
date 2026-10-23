@@ -283,8 +283,10 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 
 | Setting | Default | What it does |
 |---|---|---|
+| `dreaming.curious` | `true` | a topic you asked about 3+ times this week with no note on it: one line, Make a stub |
 | `dreaming.loose_ends` | `true` | also the loose ends: your open doubts, unlinked notes, broken links, tasks past due |
 | `dreaming.never_tune` | `["deadlines.reminder", "deadlines.call", "health.now", "a…` | kinds it never tunes (besides the alarm, your reminders and calls, deadlines under 12 hours) |
+| `dreaming.resurface` | `true` | one line from the past: a note or quiz subject from 10-30 days ago, or an anniversary |
 | `dreaming.self_check` | `true` | replay your test cases each morning and say which ones went wrong since yesterday |
 | `dreaming.tune_margin` | `3.0` | how much better (in the replay's score) a change must be than leaving things as they are |
 | `dreaming.tune_messages` | `true` | each night, replay the messages it sent you and tune when they come (one change, Undo) |

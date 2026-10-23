@@ -163,6 +163,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `telegram/{offset,pairing,map,menu,name}.json`, `telegram/paused.jsonl` | `modules/telegram` |
 | `chat/history.json` (last 10 turns, 1200 chars each) | `modules/chat.py` |
 | `calls/{rings,live,link,inbox,answer-nonces,live-health,textcalls}.json`, `calls/lessons.md`, `calls/transcripts/*.txt` (and `*.did.json`: what each call's tools did, for its gist; goes with the transcript) | `modules/calls`, `core/gists.py:note_call` |
+| `calls/searches.json` (what calls searched your notes for, 8 days at most), `dreaming-curious.json` (lines shown, settled, their buttons' offers, repositories' first commits) | `modules/curious.py` |
 | `alarm.json`, `alarm-last.json`, `alarm-skip.json`, `alarm-ringing.json` | `modules/alarm.py` |
 | `deadlines.json`, `deadlines-recurring.json` | `modules/deadlines.py` |
 | `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json` | check-ins, capture, study |
@@ -589,7 +590,7 @@ over a stretch `[lo, hi)` in epoch seconds (`STEPS`):
 
 | Kind | What | How |
 |---|---|---|
-| `calls` | `calls/transcripts/*.txt` (time from the file name, else mtime), finished `calls/textcalls.json` conversations | removed |
+| `calls` | `calls/transcripts/*.txt` (time from the file name, else mtime), finished `calls/textcalls.json` conversations, `calls/searches.json` rows | removed |
 | `requests` | finished jobs; `jobs/*-result.md` by mtime | `Jobs.forget`: `title='(forgotten)'`, `prompt=''`, `result`/`detail`/`then_payload` null; the row and `attempts` stay for `/usage` and the Space keeper |
 | `chats` | `chat/history.json` turns by `at` | removed |
 | `questions` | settled `ask/` files | `Ask.forget` |

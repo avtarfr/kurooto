@@ -199,7 +199,9 @@ Failures are counted in `<state>/calls/live-health.json` (`LiveHealth.record`) a
   (`Chat.owns`, checked in `core/jobs.py:Jobs._deliver`).
 
 Other files in `<state>/calls/`: `rings.json`, `live.json`, `link.json`, `inbox.json`, `chat.json`, `answer-nonces.json`,
-`live-health.json`, `textcalls.json`, `lessons.md`, `transcripts/`.
+`live-health.json`, `textcalls.json`, `lessons.md`, `transcripts/`, `searches.json` (each `search_notes` query, from
+`Calls.run_tool` through `modules/curious.py:searched`, kept 8 days for Dreaming's curious line; retention's `calls`
+kind clears it).
 
 ## The Worker (`data/worker/src/worker.js`)
 

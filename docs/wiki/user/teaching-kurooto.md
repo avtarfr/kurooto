@@ -399,7 +399,22 @@ of several. The day after an exam or a heavy day it starts with one line saying 
   One change a night at most, never to what always comes or what you set yourself.
   [Messages it sends](messages-it-sends.md#calm-why-less-of-this-and-the-daily-limit) has the details; `/dream policy`
   shows the rules and the last decisions.
+- **Curious** (`dreaming.curious`, on): a topic you asked about 3 or more times this week (your requests to the AI,
+  what calls searched your notes for, quiz questions you got wrong) with no note on it, or only a stub, gets one line:
+  "You've asked about the Fokker–Planck equation 3 times this week and there's no note on it. Want one?" **Make a
+  stub** writes a short concept note in that subject's folder (where your notes layout puts concept notes) and links
+  it from the course page under "Concepts"; **Not interested** puts the topic on your not-interested list (`/unignore`
+  takes it back). It's careful about what counts as a topic: the name of one of your concept notes, or a phrase that
+  ends in a word like equation, lemma, theorem or distribution ("Itô's lemma"), or a pair of names ("Navier–Stokes").
+- **From the past** (`dreaming.resurface`, on): one line about a note you last changed 10 to 30 days ago, or a subject
+  you last practised in a quiz then ("You last worked on Itô's lemma 12 days ago"; one with an exam in the next two
+  weeks first), or an anniversary ("A month ago today you started work on L96": a project's first Log line, or a
+  repository's first commit). **Open it** opens the note on your computer (**Practise** starts a quiz); **Less of
+  this** turns these lines off, with Undo.
+
+  Each comes at most once a day, and the same topic or note not again for 30 days.
 
 Nothing new runs for it: it reads Kurooto's own log and your notes, so it uses no AI and nothing leaves the computer.
 A quiet night with no loose ends sends nothing. `/dream` shows the same any time. With it on, the concept graph's own
-morning line comes inside it. `dreaming.loose_ends` = false leaves the loose ends out.
+morning line comes inside it. `dreaming.loose_ends` = false leaves the loose ends out (the curious and past lines have
+their own settings). What calls searched your notes for is kept 8 days at most, and `/forget` clears it.

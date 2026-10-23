@@ -15,6 +15,10 @@ requests it didn't understand and the Wrong taps since the last message (they wa
 Tuning its own messages (dreaming.tune_messages, on; Dream RSI part two, core/policy.py): before the message, it replays
 the messages it sent you by itself under a few variants of when they come, applies the best if it clearly beats things
 as they are (one change a night, with Undo) and says so in one line. /dream policy shows the rules and the decisions.
+
+Curious and remembering (dreaming.curious, dreaming.resurface; modules/curious.py): one line about a topic you asked
+about 3+ times this week with no note on it (Make a stub / Not interested), and one from a shared past, a note or quiz
+subject from 10-30 days ago or an anniversary (Open it / Less of this). Each at most once a day, among the loose ends.
 """
 
 from __future__ import annotations
@@ -27,6 +31,7 @@ from kurooto.core import policy
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
+from kurooto.modules import curious
 from kurooto.modules.base import Command, Module
 
 register_defaults(
@@ -66,10 +71,17 @@ class Dreaming(Module):
             )
         ]
 
-    def _cmd(self, msg, arg: str) -> str:
+    def _cmd(self, msg, arg: str) -> str | None:
         if arg.strip().lower() == "policy":
             return policy.show(self.app)
-        return self.report(send=False) or "Nothing happened overnight that's worth a line, and no loose ends."
+        text = self.report(send=False) or "Nothing happened overnight that's worth a line, and no loose ends."
+        if self.buttons and msg.respond:  # the curious and resurfacing lines' buttons
+            msg.reply(text, buttons=self.buttons)
+            return None
+        return text
+
+    def callbacks(self):
+        return {"drm": lambda ref, act: curious.button(self.app, ref, act)}
 
     # ------------------------------------------------------------------------------------- the morning
     def morning(self, payload: dict | None = None) -> str:
@@ -214,6 +226,26 @@ class Dreaming(Module):
                 out += [ln.lstrip("-* ").strip() for ln in block.splitlines() if ln.strip().startswith(("-", "*"))]
         return [d for d in dict.fromkeys(out) if d][:20]
 
+    # --------------------------------------------------------------------------- curious and remembering
+    buttons: list = []  # the last report's buttons (the curious and resurfacing lines')
+
+    def curious_lines(self, send: bool) -> list[str]:
+        """A gap in your notes you keep asking about, and a line from the past (modules/curious.py): at most one
+        of each, with their buttons in self.buttons. Only the sent morning message marks them shown."""
+        lines, self.buttons = [], []
+        for on, line in (("curious", curious.curious_line), ("resurface", curious.resurface_line)):
+            if not self.setting(on):
+                continue
+            try:
+                text, buttons = line(self.app, send)
+            except Exception as e:  # a note that can't be read must not cost the morning message
+                self.app.events.emit("dreaming_check_failed", error=f"{on}: {type(e).__name__}: {e}"[:200])
+                continue
+            if text:
+                lines.append(text)
+                self.buttons += buttons
+        return lines
+
     def report(self, send: bool = True) -> str:
         start = self.since()
         ev = self.events(start)
@@ -224,6 +256,7 @@ class Dreaming(Module):
         learned, undo = policy.morning(self.app, send)  # Dream RSI part two: one line, with its Undo
         did += learned
         ends += checked
+        ends += self.curious_lines(send)
         if send:
             st = {"at": now().isoformat()}
             prev = (jload(self.state_file, {}) or {}).get("passing")
@@ -238,7 +271,8 @@ class Dreaming(Module):
             parts.append("Loose ends:\n" + "\n".join(f"- {x}" for x in ends))
         text = "\n\n".join(parts)
         if send:
-            buttons = ([[("Not today", "rhy:lighter:no")]] if light else []) + list(undo or [])
+            buttons = [[("Not today", "rhy:lighter:no")]] if light else []
+            buttons += list(undo or []) + list(self.buttons or [])  # Dream RSI's Undo, the curious lines' buttons
             self.app.notify(text, kind="result", title="Dreaming", why="dreaming.morning", buttons=buttons or None)
         self.app.events.emit("dreaming_told", did=len(did), loose=len(ends), sent=send)
         return text

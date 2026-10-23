@@ -564,6 +564,23 @@ arrives.
   the message, `policy.morning(app, send)` (Dream RSI part two, `dreaming.tune_messages`; see
   [core.md](core.md#the-message-policy-dream-rsi-part-two-corepolicypy)) may tune one Calm setting and adds its line
   and Undo button; `/dream policy` is `policy.show`.
+  `curious_lines(send)` adds at most two lines to the loose ends from `modules/curious.py` (rules only), their buttons
+  in `self.buttons` (the morning message carries them; `/dream` replies with them). `curious_line`
+  (`dreaming.curious`): `asks()` = lane-`you` job titles of 7 days (`Jobs.finished_since`), call `search_notes`
+  queries (`<state>/calls/searches.json`, written by `searched()` from `Calls.run_tool`), quiz items graded under 3;
+  `gaps()` = a concept note (`conceptgraph.scan`) named in 3+ of them that `is_stub` (under 15 words of its own), or a
+  `phrases()` phrase (2-3 words ending in a `HEADS` word, or a Name–Name pair; `REQUEST_WORDS` split runs) in 3+
+  with no note of that name (`note_names`: concept names and aliases, every note's file name) and not on the
+  not-interested list. `resurface_line` (`dreaming.resurface`): `anniversaries()` (whole months or years since a
+  project note's first `## Log` date, or a Research repository's first commit, cached in `roots`), else `faded()`
+  (concept and dated lecture notes changed, and quiz subjects practised, 10-30 days ago; a subject with an exam in
+  14 days first). `pick()` keeps one a day per kind and skips keys shown (or settled by a button) in 30 days; only
+  `send` marks them shown (`<state>/dreaming-curious.json`), emitting `dreaming_curious` / `dreaming_resurface`.
+  Buttons `drm:<offer>:stub|no|open|quiz|less` (`curious.button`): `make_stub` writes `layout.path("concept", ...)`
+  (or kind `note` with no subject in the default layout) with the layout's frontmatter and adds `- [[...|Name]]`
+  under the course page's `## Concepts`; `no` is `notinterested.add_topic`; `open` is `opener.open_note`; `quiz` is
+  `Quiz.start_session`; `less` applies a Calm `Change` (`dreaming.resurface` false) with an Undo button. Tests:
+  `tests/unit/test_curious.py`.
 - **learning** (`modules/learning.py:Learning`, requires `chat`, `extra = True`): "Learns from its own work", four parts
   each behind a setting (`learning.search`, `skills`, `corrections`, `remember`; `part(name)` is the feature and the
   part both on) and a card toggle (`card`, `card_action`, `PARTS`).

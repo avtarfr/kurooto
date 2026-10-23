@@ -42,6 +42,7 @@ One line per folder or important file. Paths are relative to the repository root
 | `modules/telegram/` | the Telegram channel and a stdlib Bot API client (`api.py`) |
 | `modules/calls/` | phone calls: connector, deploy, fallback, crypto (`line.py`), phone app channel, post-call review ([calls-and-phone.md](calls-and-phone.md)) |
 | `modules/terminal/` | Kurooto Terminal (kitty, Windows Terminal, launchers, default terminal) |
+| `modules/curious.py` | not a feature: Dreaming's curious and resurfacing lines (rules only) and their buttons |
 | `web/` | the local HTTP server, API, live events, tools API, try-it; `web/static/` the pages and scripts ([web.md](web.md)) |
 | `update/` | `launcher.py` (stdlib-only, copied into the app folder), `updater.py`, `service.py`, `signing.py` ([release-and-updates.md](release-and-updates.md)) |
 | `data/` | package data: `skills/<name>/SKILL.md` (shipped skills), `prompts/`, `prereqs.toml` (helper programs and their checksums), `ollama_models.toml` (models per hardware profile), `research_sources.json`, `troubleshooting.md` (a copy of the user wiki's, for `/fixme`), `known_issues.json` (`/fixme`'s known issues, signed with the release), `worker/` (the call line's Worker source) |

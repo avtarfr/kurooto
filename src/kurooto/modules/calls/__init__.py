@@ -424,6 +424,10 @@ class Calls(Module):
         if not tool:
             return f"There's no {name} tool (that feature may be off)."
         self.app.events.emit("calls_tool", name=name)
+        if name == "search_notes":  # what you look up, for Dreaming's curious line (modules/curious.py)
+            from kurooto.modules import curious
+
+            curious.searched(self.app, (args or {}).get("query", ""))
         keep = getattr(self.app, "keep", None)  # what you use of each feature (core/keep.py)
         if keep is not None:
             keep.used(keep.tool_owner(name), "tool")

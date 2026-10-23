@@ -114,6 +114,10 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   few variants of when they come, keeps today's rules as a candidate, and applies the best only if it clearly wins, one
   change a night with Undo; a kind you keep ignoring fades to the evening bundle.~~ (0.5.18: `notify.calm.habituate`
   and `notify.calm.windows`, the nightly replay in Dreaming, `/dream policy`)
+- ~~**Curious**: a topic you asked about 3+ times this week with no note gets one morning line, with Make a stub and
+  Not interested.~~ (0.5.18: `dreaming.curious`, rules only)
+- ~~**Remembering**: one morning line from a shared past, a note or quiz subject from 10-30 days ago (exam subjects
+  first) or a project's anniversary, with Open it and Less of this.~~ (0.5.18: `dreaming.resurface`)
 
 ## Ideas
 - **Dream RSI, part three.** The nightly replay that tunes when messages come (part two) applied to Kurooto's
