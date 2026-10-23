@@ -261,6 +261,8 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   `tick()` starts nothing before then, whoever calls it (the night, retry, plan and early jobs, `poke`, `_done`), and a
   restart keeps it.
 - No intents.
+- The links are read back as review cards by the Quiz (`modules/quiz_links.py`, see [modules.md](modules.md)), with
+  `seen.json`'s pages for "Where to read"; nothing there writes to the notes.
 - Tests: `tests/unit/test_integrate.py`, `test_readbudget.py`, `test_books.py`, `test_segment.py`, `test_hubs.py`,
   `test_rerank_hardware.py`.
 

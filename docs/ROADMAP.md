@@ -9,10 +9,12 @@ signed updates when it's ready.
 
 ## From the ideation panel (2026-10-23)
 Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argued these out; the most backed first.
-- **Link recall cards.** The concept graph's links become review cards ("how does Itô's lemma relate to
+- ~~**Link recall cards.** The concept graph's links become review cards ("how does Itô's lemma relate to
   Fokker–Planck?"), answered in your own words and graded by you (a small local model may check, never the free
-  key). A miss points to the book pages. Up to five a day, also as phone notifications, never in class or focus.
-  Papers opened from the research digest go through Books into the graph and get the same cards.
+  key). A miss points to the book pages. Up to five a day, also as phone notifications, never in class or focus.~~
+  (0.5.17: `/card`, `/cards on`, `quiz.links*`, the quiz's spacing; "Where to read" adds the subject's own notes and
+  Classroom files; `quiz.links_check` for the local model. Not yet: papers from the research digest, which don't go
+  through Books.)
 - **Revision plan.** When exam season starts, a course's topics are ranked (no note, stub, weak recall, the rest)
   and laid over Start-by's free slots with the pages to read; the evening check-in asks "did you cover X?" and feeds
   the same recall score as the quiz. Plain arithmetic, no AI.

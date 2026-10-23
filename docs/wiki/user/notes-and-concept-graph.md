@@ -531,6 +531,11 @@ and one request to the second-look AI: to the lecture it was written in, the cou
 covers, with a real title and its doubts listed (`/handwritten link` for older ones; details on
 [Books and study](books-and-study.md#handwritten-notes)).
 
+**Review the links.** With Quiz on, every link between two concept notes is also a
+[link recall card](quiz-and-exams.md#link-recall-cards): "How is Itô's lemma used in Fokker-Planck?", answered in
+your own words, with the reason and the book pages (and the subject's own notes and Classroom files) to read after.
+`/card` for one now, `/cards on` for up to five a day.
+
 **The morning line** (`integrate.summary`), at 07:10 when anything happened: "Concept graph: 14 batches, +22 concept
 notes, +61 links, 9 notes updated; 30 AI requests (about $0.40 at API prices); 5 doubtful, 2 dropped after a second
 look." The cost is what the requests would cost at API prices; a subscription plan isn't billed per request (its own

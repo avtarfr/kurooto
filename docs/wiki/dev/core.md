@@ -162,7 +162,7 @@ is the encrypted profile (`core/profile.py:KEEP`).
 | `checkins/<day>.json`, `capture/<day>.json`, `study/<day>.json`, `study/session.json` | check-ins, capture, study |
 | `subjects/term-note.json`, `subjects/skip-<day>.json` | `modules/subjects.py` |
 | `exam_season.json`, `startby.json`, `quests.json`, `reminders-snooze.json` | those modules |
-| `doubts/*.json`, `hints/<id>.json`, `quiz/<subject>.json`, `quiz/{session,offered}.json` | doubts, hints, quiz |
+| `doubts/*.json`, `hints/<id>.json`, `quiz/<subject>.json`, `quiz/{session,offered}.json`, `quiz/_links.json` (link recall cards) | doubts, hints, quiz |
 | `retro.json`, `retro-state.json`, `observations.json`, `retro-skills/` | `modules/retro.py` |
 | `research-papers.json`, `research-logs.json` | `modules/research.py` |
 | `books.json`, `gbrain.json`, `gbrain-checkup.json`, `gbrain/` | books, gbrain |
@@ -279,7 +279,7 @@ Recurring (key → when; setting that controls it):
 | `notes_sync:sync` | every 10m | `notes_sync.every` | `modules/notes_sync.py` |
 | `profile:daily` | daily 04:40 | `profile.when` | `modules/profile.py` |
 | `quests:daily` | daily 18:00, respect quiet | `quests.when` | `modules/quests.py` |
-| `quiz:offers`, `quiz:exam_daily` | hourly; `daily <quiz.exam_daily>` if set | `quiz.exam_daily` | `modules/quiz.py` |
+| `quiz:offers`, `quiz:exam_daily`, `quiz:links` | hourly; `daily <quiz.exam_daily>` if set; `quiz.links_at` if `quiz.links` is on | `quiz.exam_daily`, `quiz.links` | `modules/quiz.py`, `modules/quiz_links.py` |
 | `research:papers`, `research:logs`, `research:idle` | weekly mon 08:00; daily 23:30; daily 18:00 (quiet) | `research.papers`, `research.log_when`, `research.idle_when` | `modules/research.py` |
 | `retro:nightly` | daily 23:50 | `retro.when` | `modules/retro.py` |
 | `skills:autopack`, `skills:routine:<id>` | every 30m; the user's `/every` spec | | `modules/skills.py` |
@@ -293,7 +293,8 @@ One-offs (`at`), by key: `reminders:<id>` (`reminders.fire`, registered in `Remi
 fire even before the feature is on), `alarm:ring` / `alarm:prep` / `alarm:awake`, `calls:ring:<key>`,
 `calls:missed:<since>`, `calls:realert:<first>`, `calls:task:<job>`, `calls:textcall:<cid>`, `checkins:<name>`,
 `checkins:unstick:<name>`, `checkins:deferred`, `capture:<subject>:<end>`, `calendar:focus:<end>`,
-`calendar:remind:*`, `google_calendar:refresh`, `quiz:checkin:<ts>`, `exam_season:leave:<id>`,
+`calendar:remind:*`, `google_calendar:refresh`, `quiz:checkin:<ts>`, `quiz:links:later` (a link card held by a class or focus),
+`exam_season:leave:<id>`,
 `exam_season:night_again`, `health:after:<id>`, `health:recheck`, `integrate:soon`, `integrate:early` (the night's
 start moved earlier for an early wake, set by `integrate:plan`), `notes_sync:soon` (debounced after
 `job_done`), `profile:soon` (debounced after setting changes), `research:remind:<slug>`, `retro:after-reset`,

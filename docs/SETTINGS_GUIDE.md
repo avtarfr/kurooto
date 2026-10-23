@@ -588,6 +588,10 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `quiz.call_min` | `10` | how long a quiz call is meant to take |
 | `quiz.exam_daily` | `""` | in exam mode: a practice check-in every day at this time, e.g. "18:00" (empty: never) |
 | `quiz.exam_per_session` | `6` | in exam mode |
+| `quiz.links` | `false` | link recall cards from the concept graph's links come by themselves (/card works anyway) |
+| `quiz.links_at` | `"daily 11:00,16:00,20:00"` | when one may come (never in a class, focus time or the night) |
+| `quiz.links_check` | `false` | a local model (Local AI models) says how close your answer came; never a cloud AI |
+| `quiz.links_per_day` | `3` | the most link cards a day (at most 5) |
 | `quiz.offer_at` | `"19:00"` | the evening before a quiz or exam: offer practice from this time (empty: never) |
 | `quiz.per_session` | `3` | questions per quiz |
 
