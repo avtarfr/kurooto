@@ -545,9 +545,14 @@ beats "end of the day". Topics on your not-interested list are left out.
 
 **How much is done:** "ps3 4/7" (or "did 4 of 7 on the stats problem set") keeps a deadline's parts done. The lists
 and calls show "(4/7)", and Start-by plans from what's left. On a call, the AI uses the same (`deadline_progress`).
+Or reply to the deadline's reminder or "Overdue?" message (Telegram, the app's chat, the phone's Reply): `4/7`, `4`,
+`+1` or `done`, each with **Undo** (the latest change only; Undo of `done` also unticks the note's box). While parts
+remain, those messages and `/deadlines` have **+1**, which stays to be tapped again; on the phone (with `"deadline"`
+in `notify.app_kinds`, or in the app's chat) each tap counts, in order, even while the computer sleeps. The wake-up
+call, the morning page and `/status` say "Problem set 3 4/7, due Fri".
 
 **The chase**, for things you hand in:
-- a day before: a message with **Done / Not mine / Snooze 3 h**;
+- a day before: a message with **Done / Not mine / Snooze 3 h** (and **+1** first for one with parts to do);
 - six hours before: with Phone calls on, **a call** ("is it done, or how will you finish it?"). It waits out
   classes, `/hold`, focus and the night; when that would leave less than half an hour, or Phone calls is off, you
   get an urgent message instead. A missed call also becomes that message;

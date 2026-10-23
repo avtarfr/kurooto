@@ -511,7 +511,9 @@ class Alarm(Module):
             except Exception:
                 due = []
             if due:
-                steps.append("Due soon: " + "; ".join(f"{d.get('title')} ({d.get('when', '')})" for d in due[:6]) + ".")
+                from kurooto.modules.deadlines import due_line  # "ps3 4/7, due Fri" for one with parts
+
+                steps.append("Due soon: " + "; ".join(due_line(d) for d in due[:6]) + ".")
         sb = app.modules.get("startby")
         if sb is not None and app.is_on("startby"):
             try:

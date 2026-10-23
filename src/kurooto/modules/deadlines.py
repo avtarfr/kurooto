@@ -22,6 +22,8 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import re
+import uuid
+from dataclasses import replace
 
 from kurooto.core import layout
 from kurooto.core.clock import now, parse_when
@@ -153,10 +155,35 @@ PROGRESS = (
 )
 
 
+REPLY = re.compile(
+    r"(?i)^(?:(?P<a>\d{1,2})\s*(?:/|of|out of)\s*(?P<b>\d{1,2})|(?P<n>\d{1,2})|\+\s*(?P<plus>\d{1,2})"
+    r"|(?P<done>(?:all\s+)?done|finished|submitted|handed\s+in))(?:\s+(?:done|finished|parts|questions|problems))?$"
+)  # a reply to a deadline's message: "4/7", "4", "+1", "done"
+
+
 def parts_text(it: dict) -> str:
     """ " (4/7)" for a deadline with parts done, else ""."""
     total = it.get("parts")
     return f" ({it.get('parts_done', 0)}/{total})" if total else ""
+
+
+def due_day(due: str, t: dt.datetime | None = None) -> str:
+    """When it's due, short: "today 17:00", "tomorrow", "Fri", or "Fri 06 Nov" a week or more away."""
+    d = dt.datetime.fromisoformat(due)
+    days = (d.date() - (t or now()).date()).days
+    if days <= 0:
+        return "today" + ("" if d.strftime("%H:%M") == "23:59" else f" {d:%H:%M}")
+    if days == 1:
+        return "tomorrow"
+    return f"{d:%a}" if days < 7 else f"{d:%a %d %b}"
+
+
+def due_line(r: dict) -> str:
+    """One deadline_soon() row for the morning (the wake-up call, /status): "ps3 4/7, due Fri" for one with parts,
+    else "Essay (in 2 days)"."""
+    if r.get("parts"):
+        return f"{r['title']} {r['parts']}, due {due_day(r['due'])}"
+    return f"{r['title']} ({r['when']})"
 
 
 def similar(a: str, b: str, drop: set[str] | frozenset = frozenset()) -> bool:
@@ -248,23 +275,127 @@ class Deadlines(Module):
         got = self.find_open(words)
         if got is None:
             return f'Which deadline is "{words.strip()}"? /deadlines lists them.'
-        i, _ = got
+        return self._record(got[0], done, total)[0]
+
+    @staticmethod
+    def _snapshot(it: dict) -> dict:
+        """What Undo puts back (the last change only; its token says which change an Undo button is for)."""
+        return {"u": uuid.uuid4().hex[:6], "parts": it.get("parts"), "parts_done": it.get("parts_done"),
+                "status": it.get("status", "open")}  # fmt: skip
+
+    def _record(self, i: str, done: int | None = None, total: int | None = None, plus: int = 0) -> tuple[str, str]:
+        """Set how many parts of deadline i are done ("ps3 4/7", a reply to its message), or `plus` more (+1 on
+        the phone, counted in order). (what to say, the Undo button's data or "" when nothing changed)."""
         with Lock(self.app.paths.state, "deadlines"):
             items = self.items()
-            it = items[i]
+            j = self._resolve(items, i)
+            if not j:
+                return "That one is gone.", ""
+            it = items[j]
+            total = total or it.get("parts") or 0
+            if not total:
+                return f"Out of how many? Reply to the reminder like {done or plus}/7.", ""
+            if plus:
+                done = (it.get("parts_done") or 0) + plus
+                if done > total:
+                    return f"{self.full_title(it)} is already {total}/{total}: tap Done once it's handed in.", ""
+            if total > 99 or done is None or not 0 <= done <= total:
+                return "Say it as done/total, e.g. ps3 4/7.", ""
+            it["undo"] = self._snapshot(it)
             it["parts"], it["parts_done"] = total, done
             jsave(self.file, items)
         self.app.events.emit("deadline_progress", done=done, total=total)
         from kurooto.core import threads  # started, not done: something you're in the middle of (core/threads.py)
 
         if 0 < done < total:
-            threads.started(self.app, f"{it['title']} ({done} of {total} done)", key=f"deadline:{i}", via="deadline")
+            threads.started(self.app, f"{it['title']} ({done} of {total} done)", key=f"deadline:{j}", via="deadline")
         left = (
             "all done: tap Done on it in /deadlines once it's handed in"
             if done == total
             else f"{total - done} to go, due {when_text(it['due'])}"
         )
-        return f"{self.full_title(it)}: {done}/{total}, {left}."
+        return f"{self.full_title(it)}: {done}/{total}, {left}.", f"dl:{j}:undo{it['undo']['u']}"
+
+    def replies(self):
+        return {"deadline": self._reply}
+
+    def _reply(self, msg: Incoming, ref: str) -> str | None:
+        """A reply to one of its deadline messages (Telegram, the phone's Reply, the app's chat): "4/7", "4", "+1"
+        (parts done) or "done", each with Undo. Anything else is handled as if it weren't a reply."""
+        m = REPLY.match(msg.text.strip().rstrip(".!").strip())
+        if not m:
+            self.app.handle(replace(msg, reply_to=None))
+            return None
+        items = self.items()
+        j = self._resolve(items, str(ref))
+        if not j:
+            return "That one is gone."
+        if items[j].get("status") != "open":
+            return f"{self.full_title(items[j])} is already marked {items[j].get('status')}."
+        if m["done"]:
+            text, undo = self._done_by_reply(j)
+        elif m["plus"]:
+            text, undo = self._record(j, plus=int(m["plus"]))
+        else:
+            text, undo = self._record(j, int(m["a"] or m["n"]), int(m["b"] or 0) or None)
+        msg.reply(text, buttons=[[("Undo", undo)]] if undo else None)
+        return None
+
+    def _done_by_reply(self, j: str) -> tuple[str, str]:
+        """ "done" in reply: as the Done button, with Undo (which also unticks the note's box it ticked)."""
+        with Lock(self.app.paths.state, "deadlines"):
+            items = self.items()
+            if j not in items:
+                return "That one is gone.", ""
+            it = items[j]
+            snap = it["undo"] = self._snapshot(it)
+            it["status"] = "done"
+            jsave(self.file, items)
+        it = self._after_status(j, it, "done")
+        if it.get("ticked"):
+            with Lock(self.app.paths.state, "deadlines"):
+                items = self.items()
+                if (items.get(j, {}).get("undo") or {}).get("u") == snap["u"]:
+                    items[j]["undo"]["ticked"] = True
+                    jsave(self.file, items)
+        self.app.events.emit("deadline_done")
+        said = "Marked done" + (f" (ticked in {it['note']})." if it.get("ticked") else ".")
+        return said, f"dl:{j}:undo{snap['u']}"
+
+    def _undo(self, j: str, u: str) -> str:
+        """Undo under a reply's answer: puts back the parts count (or the open status) the last change replaced."""
+        with Lock(self.app.paths.state, "deadlines"):
+            items = self.items()
+            it = items[j]
+            snap = it.get("undo")
+            if not snap or snap.get("u") != u:
+                return "That was changed again since; reply to its reminder with the count instead."
+            for k in ("parts", "parts_done"):
+                if snap.get(k) is None:
+                    it.pop(k, None)
+                else:
+                    it[k] = snap[k]
+            was, it["status"] = it.get("status"), snap.get("status", "open")
+            it.pop("undo")
+            jsave(self.file, items)
+        if snap.get("ticked"):
+            self._untick_note(it)
+        done, total = it.get("parts_done") or 0, it.get("parts") or 0
+        if it["status"] == "open" and 0 < done < total:
+            from kurooto.core import threads
+
+            threads.started(self.app, f"{it['title']} ({done} of {total} done)", key=f"deadline:{j}", via="deadline")
+        self.app.events.emit("deadline_undo")
+        if was != it["status"]:
+            return f"Undone: {self.full_title(it)} is open again."
+        if total:
+            return f"Undone: {self.full_title(it)} is back to {done}/{total}."
+        return f"Undone: {self.full_title(it)} has no count of parts again."
+
+    def _plus_button(self, i: str, it: dict) -> list:
+        """+1 (one more part done) for a deadline with parts still to do."""
+        total = it.get("parts") or 0
+        return [("+1", f"dl:{i}:+1")] if total and (it.get("parts_done") or 0) < total else []
 
     def meeting_briefs(self) -> list[str]:
         """The evening before a "Meeting: <who>" deadline whose person a project note is With: what's been logged in
@@ -783,10 +914,19 @@ class Deadlines(Module):
                 f"{it['title']} was due {when_text(it['due'])}.",  # the title asks "Overdue?"
                 kind="deadline",
                 title="Overdue?",
-                buttons=[[("Done", f"dl:{i}:done"), ("New date", f"dl:{i}:date"), ("Drop", f"dl:{i}:drop")]],
+                buttons=[
+                    [
+                        *self._plus_button(i, it),
+                        ("Done", f"dl:{i}:done"),
+                        ("New date", f"dl:{i}:date"),
+                        ("Drop", f"dl:{i}:drop"),
+                    ]
+                ],
                 why="deadlines.overdue",
                 about=it["title"],
                 item=i,
+                map_kind="deadline",
+                map_ref=i,
             )
             self.app.events.emit("deadline_overdue_asked")
             return
@@ -798,7 +938,16 @@ class Deadlines(Module):
             buttons = [[("Practice now", f"dl:{i}:quiz")]] if self.app.is_on("quiz") else None
         else:
             text = f"{prefix}Due {human(h)}: {it['title']} ({dt.datetime.fromisoformat(it['due']):%a %d %b %H:%M})"
-            buttons = [[("Done", f"dl:{i}:done"), ("Not mine", f"dl:{i}:ignore"), ("Snooze 3 h", f"dl:{i}:snooze")]]
+            if it.get("parts"):
+                text += f", {it.get('parts_done', 0)}/{it['parts']} done"
+            buttons = [
+                [
+                    *self._plus_button(i, it),
+                    ("Done", f"dl:{i}:done"),
+                    ("Not mine", f"dl:{i}:ignore"),
+                    ("Snooze 3 h", f"dl:{i}:snooze"),
+                ]
+            ]
         self.app.notify(
             text,
             kind="deadline",
@@ -808,6 +957,7 @@ class Deadlines(Module):
             about=it["title"],
             item=i,
             due=it["due"],
+            **({} if it["kind"] == "exam" else {"map_kind": "deadline", "map_ref": i}),  # a reply "4/7" (_reply)
         )
         self.app.events.emit("deadline_told", urgent=urgent)
 
@@ -915,6 +1065,23 @@ class Deadlines(Module):
                 return True
         return False
 
+    def _untick_note(self, it: dict) -> bool:
+        """Undo of a Done that ticked its "- [ ]" line: that box only goes back to "[ ]"."""
+        f = self.app.workspace / it["note"]
+        ticked = it["line"].replace("[ ]", "[x]", 1)
+        try:
+            with open(f, encoding="utf-8", newline="") as fh:
+                lines = fh.read().split("\n")
+        except OSError:
+            return False
+        for k, ln in enumerate(lines):
+            if ln.rstrip("\r") == ticked:
+                lines[k] = ln.replace("[x]", "[ ]", 1)
+                with open(f, "w", encoding="utf-8", newline="") as fh:
+                    fh.write("\n".join(lines))
+                return True
+        return False
+
     def move(self, i: str, when: dt.datetime) -> str:
         """A new due date for a deadline (the chase starts over)."""
         with Lock(self.app.paths.state, "deadlines"):
@@ -972,6 +1139,10 @@ class Deadlines(Module):
             self.app.scheduler.cancel(f"calls:ring:deadlines:{j}")
             self.app.events.emit("deadline_snooze")
             return "I'll ask again in 3 hours."
+        if act.startswith("+") and act[1:].isdigit():  # +1: one more part done (a counting button, core/notify.py)
+            return self._record(j, plus=int(act[1:]))[0]
+        if act.startswith("undo"):
+            return self._undo(j, act[4:])
         j, it = self._status(j, "done" if act == "done" else "ignored")
         if not j:
             return "That one is gone."
@@ -1002,6 +1173,7 @@ class Deadlines(Module):
             "kind": it["kind"],
             "when": human(h),
             "hours": round(h, 1),
+            **({"parts": f"{it.get('parts_done', 0)}/{it['parts']}"} if it.get("parts") else {}),
         }
 
     def plan_hours(self) -> float:
@@ -1051,7 +1223,11 @@ class Deadlines(Module):
         if not up:
             return "Nothing due in the next two weeks that I know of."
         for i, it, h in up[:12]:
-            buttons = None if it["kind"] == "exam" else [[("Done", f"dl:{i}:done"), ("Not mine", f"dl:{i}:ignore")]]
+            buttons = (
+                None
+                if it["kind"] == "exam"
+                else [[*self._plus_button(i, it), ("Done", f"dl:{i}:done"), ("Not mine", f"dl:{i}:ignore")]]
+            )
             msg.reply(f"{human(h)} · {it['title']}{parts_text(it)}", buttons=buttons)
         return None
 

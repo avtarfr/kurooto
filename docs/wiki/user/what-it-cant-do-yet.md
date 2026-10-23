@@ -81,8 +81,6 @@ If you need calls that really ring, use an Android phone. See [Phone app](phone-
 From [REQUESTED.md](../../REQUESTED.md) and [ROADMAP.md](../../ROADMAP.md), among others:
 
 - the phone app's Today screen, a local alarm and notification buttons (planned for 0.6.0);
-- replying "4/7" to a deadline message to log progress on a problem set (the chat and calls understand "ps3 4/7"
-  already);
 - a small local model for laptops without a graphics card;
 - answering quick things offline when the internet drops.
 

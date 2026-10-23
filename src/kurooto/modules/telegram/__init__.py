@@ -554,13 +554,13 @@ class Telegram(Module):
         def due():
             if not app.is_on("deadlines"):
                 return []
-            from kurooto.modules.deadlines import span
+            from kurooto.modules.deadlines import due_line, span
 
             dl = app.modules["deadlines"]
             soon, ahead = dl.deadlines_soon(), span(dl.plan_hours())  # deadlines.plan_h
             if not soon:
                 return f"Nothing due in the next {ahead}."
-            rows = [f"  {r['title'][:70]} ({r['when']})" for r in soon[:6]]
+            rows = [f"  {due_line({**r, 'title': r['title'][:70]})}" for r in soon[:6]]  # "ps3 4/7, due Fri"
             more = [f"  and {len(soon) - 6} more (/deadlines)"] if len(soon) > 6 else []
             return f"Due in the next {ahead}:\n" + "\n".join(rows + more)
 

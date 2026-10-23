@@ -44,6 +44,12 @@ register_defaults(
 URGENT_KINDS = ("approval", "call")
 
 
+def counts(data: str) -> bool:
+    """A counting button ("dl:<id>:+1", one more part of a problem set done): its message stays where it is (on the
+    phone too) so it can be tapped again; any other button takes its message off your phones."""
+    return isinstance(data, str) and data.rpartition(":")[2].startswith("+")
+
+
 @dataclass
 class Message:
     text: str

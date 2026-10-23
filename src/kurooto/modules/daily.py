@@ -184,10 +184,14 @@ def morning_view(app: App) -> dict:
         part("alarm", lambda: (lambda at: f"{at:%a %H:%M}" if at else "")(app.modules["alarm"].next()))
     dl = app.modules.get("deadlines")
     if dl is not None and app.is_on("deadlines") and hasattr(dl, "deadlines_soon"):
+        from kurooto.modules.deadlines import due_day
+
         part(
             "due",
             lambda: [
-                {"title": d.get("title", ""), "when": d.get("when") or d.get("due", "")}
+                {"title": f"{d['title']} {d['parts']}", "when": f"due {due_day(d['due'])}"}  # "ps3 4/7", "due Fri"
+                if d.get("parts")
+                else {"title": d.get("title", ""), "when": d.get("when") or d.get("due", "")}
                 for d in dl.deadlines_soon()  # deadlines.plan_h ahead
             ],
         )

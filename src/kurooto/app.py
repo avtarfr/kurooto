@@ -9,7 +9,7 @@ from pathlib import Path
 from kurooto.core.availability import Availability
 from kurooto.core.config import Settings, register_defaults
 from kurooto.core.events import Events
-from kurooto.core.notify import Notifier
+from kurooto.core.notify import Notifier, counts
 from kurooto.core.paths import Paths, paths
 from kurooto.core.power import Power
 from kurooto.core.scheduler import Scheduler
@@ -582,7 +582,8 @@ class App:
     def callback(self, data: str) -> str:
         """A button you tapped: "<prefix>:<ref>:<action>"."""
         prefix, ref, act = (data.split(":", 2) + ["", ""])[:3]
-        self.notifier.retract(button=data)  # the phone app's copy of that message goes (core/notify.py)
+        if not counts(data):  # the phone app's copy of that message goes; a +1 stays to be tapped again (notify.py)
+            self.notifier.retract(button=data)
         self.calm.touched(button=data)  # (calm) you tapped it: answered (core/calm.py)
         self.events.emit("button_tapped", prefix=prefix)  # you're around (core/rhythm.py)
         if prefix == "calm":  # Why? / Less of this / Undo / the monthly suggestion (core/calm.py)

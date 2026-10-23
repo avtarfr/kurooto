@@ -439,6 +439,18 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **deadlines** progress: `PROGRESS` patterns and the `deadline_progress` intent/tool set `parts`/`parts_done` on an
   open deadline found by `find_open()` (`similar()` on the title or the full title, the soonest due); `parts_text()`
   adds "(4/7)" to lists and the call brief; Start-by's `size_of()` scales `_whole_size()` by what's left.
+  0.5.20: every change goes through `_record(i, done, total, plus)` (under the deadlines lock, so +1 taps merged from
+  the phone outbox count in order), which keeps the replaced state in the item's `undo` (`_snapshot`: a 6-hex token
+  `u`, `parts`, `parts_done`, `status`) and returns the Undo button `dl:<id>:undo<u>`; `_undo` refuses a token that
+  isn't the latest. The reminder (`_tell`) and "Overdue?" message carry `map_kind="deadline"`, `map_ref=<id>`, so
+  `replies()["deadline"]` (`_reply`) gets a reply on Telegram, the app's chat and the phone's Reply: `REPLY` reads
+  "4/7", "4", "+1", "done" (`_done_by_reply`: the Done button's path plus `undo`, `ticked` for `_untick_note`);
+  anything else is handed back to `App.handle` without `reply_to`. `_plus_button()` puts **+1** (`dl:<id>:+1`) first
+  on those messages and `/deadlines` rows while parts remain; `core/notify.py:counts()` marks such a counting button
+  (action starting "+"): `App.callback` doesn't retract its message and `PhoneApp._button` keeps the phone item open,
+  so it can be tapped again; `PhoneChat._button` says the answer with the same button under it. `_row()` adds
+  `parts` ("4/7"); `due_line()` / `due_day()` make "ps3 4/7, due Fri" for the wake-up call (`alarm.py`), `/status`
+  (Telegram) and the morning page (`daily.morning_view`).
 - **startby** (`modules/startby.py`): start-by dates from size estimates and free time; local arithmetic only.
   `learn_window()` (`startby:learn_window`, weekly sun 12:00, `startby.learn_window`) reads `message_in` events of the
   last 21 days (a day turns at 04:00), and with 7+ days of 3+ messages sets `startby.window` from the medians of the

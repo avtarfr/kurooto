@@ -393,19 +393,33 @@ public class ListenService extends Service {
             if (m.optString("id").isEmpty()) return;
             Chat.put(this, msg);
             if (ChatActivity.visible) { new Thread(() -> Chat.sync(this)).start(); return; } // the whole text, in order
-            String text = m.optString("message");
-            Notification n = builder(this, CH_MSG)
-                    .setSmallIcon(R.drawable.ic_stat)
-                    .setContentTitle(Prefs.assistant(this))
-                    .setContentText(text)
-                    .setStyle(new Notification.BigTextStyle().bigText(text))
-                    .setCategory(Notification.CATEGORY_MESSAGE)
-                    .setContentIntent(PendingIntent.getActivity(this, 5, new Intent(this, ChatActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
-                    .setAutoCancel(true)
-                    .build();
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify("chat", ChatActivity.ID_NOTE, n);
+            chatNote(this, m.optString("id"), m.optString("message"), m.optJSONArray("buttons"), false);
         } catch (Exception ignored) { }
+    }
+
+    /** The chat's notification: Kurooto's newest message. A counting button under it ("+1") is an action there too,
+     *  tapped like the chat's own button (Chat.tap: through the outbox while your computer is off). quiet: shown
+     *  again after such a tap, without a sound. */
+    static void chatNote(Context c, String id, String text, JSONArray buttons, boolean quiet) {
+        int flags = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
+        Notification.Builder b = builder(c, CH_MSG)
+                .setSmallIcon(R.drawable.ic_stat)
+                .setContentTitle(Prefs.assistant(c))
+                .setContentText(text)
+                .setStyle(new Notification.BigTextStyle().bigText(text))
+                .setCategory(Notification.CATEGORY_MESSAGE)
+                .setOnlyAlertOnce(quiet)
+                .setContentIntent(PendingIntent.getActivity(c, 5, new Intent(c, ChatActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags))
+                .setAutoCancel(true);
+        for (int i = 0, n = 0; buttons != null && i < buttons.length() && n < 2; i++) {
+            JSONObject x = buttons.optJSONObject(i);
+            if (!Inbox.counts(x)) continue;
+            Intent tap = new Intent(c, ActionReceiver.class).setAction(ActionReceiver.CHAT_TAP).putExtra("msg", id)
+                    .putExtra("n", i).putExtra("label", x.optString("label")).putExtra("buttons", buttons.toString());
+            b.addAction(new Notification.Action.Builder(null, x.optString("label"), PendingIntent.getBroadcast(c, (id + ":t" + i).hashCode(), tap, flags)).build());
+            n++;
+        }
+        ((NotificationManager) c.getSystemService(NOTIFICATION_SERVICE)).notify("chat", ChatActivity.ID_NOTE, b.build());
     }
 
     /** Answers and files that waited on the call line reached your computer: say so quietly (chat messages just

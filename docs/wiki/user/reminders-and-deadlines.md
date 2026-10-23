@@ -122,12 +122,13 @@ midsem, endsem, viva, oral, test or assessment counts as an exam: it can't be "d
 | `/due 2026-11-02 lab report` | a date alone means 09:00 that day |
 | `/due tomorrow 23:59 reading response` · `/due in 3 days project` | any time `/remind` takes works (a bare number is the hour, as in `/remind`) |
 | `add a deadline: essay draft due friday 5pm` · `I have a lab report due fri 17:00` | the same, in words (the part after "due" is the time) |
-| `/deadlines` | the next two weeks, soonest first (up to 12), with **Done** and **Not mine** buttons on things you hand in |
+| `/deadlines` | the next two weeks, soonest first (up to 12), with **Done** and **Not mine** buttons on things you hand in (and **+1** on one with parts still to do) |
 | `what's due?` · `anything due?` · `show my deadlines` | the next two weeks |
 | `what's due this week?` | the next 7 days |
 | `what's due soon?` | the next `deadlines.plan_h` hours (3 days) |
 | `/status` | includes "Due in the next 3 days" |
 | `ps3 4/7` · `problem set 3 4 of 7 done` · `did 4 of 7 on the stats problem set` | how much of it is done: "Problem set 3: 4/7, 3 to go, due Fri 17:00". The lists show "(4/7)", and [Start-by](#start-by-dates-and-crunch-weeks) plans from what's left (3/7 of its size). Only for a deadline on your list; at 7/7 it reminds you to tap **Done** once it's handed in |
+| a reply to a deadline's message: `4/7` · `4` · `+1` · `done` | the same for that deadline, no name needed ([below](#problem-set-progress)), with **Undo** |
 
 If you add something that's already on the list, Kurooto says "Already on the list" and keeps one copy (if you had
 dropped it, adding it yourself brings it back).
@@ -143,6 +144,8 @@ For things you hand in (not exams):
 | After the due time (up to 3 days after) | **Overdue?** "Essay draft was due Fri 13 Nov 17:00." | **Done**, **New date** (asks you for the date: reply, answer on the phone app or on your next call; the chase starts over), **Drop** |
 
 - The list is checked once an hour, so a nudge comes within the hour of its moment.
+- For a deadline with parts ([below](#problem-set-progress)) the message says how far you are ("..., 4/7 done") and
+  has **+1** first.
 - **The six-hour call waits out** classes, `/hold`, focus, calendar events and the night. If that would leave less
   than 30 minutes before the deadline, you get the urgent message instead. A missed or declined call becomes
   "Missed call. Due in ...", with the same buttons.
@@ -151,6 +154,28 @@ For things you hand in (not exams):
 - **Done** ticks the `- [ ]` box in your notes when the deadline came from one (only that box changes; turn it off
   with `deadlines.tick_notes`). If the line changed since Kurooto read it, nothing is ticked: tick it yourself.
 - Settled deadlines older than 90 days are forgotten.
+
+### Problem-set progress
+
+A deadline with parts (a problem set's questions) keeps how many are done. Say it in the chat or on a call ("ps3 4/7"),
+or answer one of its messages:
+
+| You | What happens |
+|---|---|
+| Reply `4/7` (or `4 of 7`) to its reminder or "Overdue?" message | 4 of 7 done: "Problem set 3: 4/7, 3 to go, due Fri 30 Oct 17:00", with **Undo** |
+| Reply `4` | 4 done, of the total it already has. Without one: "Out of how many? Reply to the reminder like 4/7." |
+| Reply `+1` (or `+2`), or tap **+1** | one (two) more done. **+1** stays under the message, so you can tap it after each question |
+| Reply `done` | as **Done**: it's handed in (and its `- [ ]` box in your notes is ticked), with **Undo** |
+| Reply anything else | handled as an ordinary message |
+| **Undo** | puts back what that reply changed: the count before it, or the deadline open again (and its box unticked). Only the latest change; an older **Undo** says it was changed again since |
+
+Replies work on Telegram, in the phone app's chat (**Reply** under the message) and with **Reply** on the phone's
+notification. **+1** works on all of them too; on the phone it waits on your call line while your computer is off,
+and each tap counts, in order ([phone-app.md](phone-app.md#when-your-computer-is-off)).
+
+**In the morning.** The wake-up call, the morning page and `/status` say a deadline with parts as "Problem set 3 4/7,
+due Fri" (or "due tomorrow", "due today 17:00"; with the date when it's a week or more away). The lists show "(4/7)",
+and [Start-by](#start-by-dates-and-crunch-weeks) plans from what's left.
 
 **On the dashboard.** The [Today page](dashboard.md) shows what's due in the next three weeks (red when overdue,
 amber under a day) with **done** and **new date**, and an add box (`essay draft fri 17:00`: what, then when).

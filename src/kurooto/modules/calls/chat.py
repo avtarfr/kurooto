@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kurooto.core.lock import Lock
+from kurooto.core.notify import counts
 from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Incoming
 from kurooto.modules.calls import line
@@ -296,6 +297,7 @@ class PhoneChat:
             return 400, {"ok": False, "note": "That button is out of date."}
         out = str(self.app.callback(target) or "")
         self.app.events.emit("phone_chat_button")
-        if out.strip() and out.strip().lower() != "ok":
-            self.say(out, re_id=mid)
+        if out.strip() and out.strip().lower() != "ok":  # under a +1's answer, the +1 again (and on the notification)
+            again = [[(m["buttons"][int(n)]["label"], target)]] if counts(target) else None
+            self.say(out, again, re_id=mid)
         return 200, {"ok": True, "note": _clip(out, 300)}
