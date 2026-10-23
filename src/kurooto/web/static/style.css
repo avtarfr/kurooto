@@ -186,7 +186,8 @@ a.button.primary { background: var(--accent); color: var(--accent-contrast); bor
 .wizard .presets { gap: 10px; margin-bottom: 18px; }
 .roles { align-items: center; }
 .roles-q { color: var(--dim); margin-right: 4px; }
-.chan.on, .preset-role.on { border-color: var(--accent-text); color: var(--accent-text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.chan.on, .preset-role.on, .fit-layout.on { border-color: var(--accent-text); color: var(--accent-text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+#nf-panel > .row { margin-top: 16px; }
 .wizard .preset.on { border-color: var(--accent-text); color: var(--accent-text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .wizard .big, .wizard code, .wizard pre.prompt, .wizard .qr { border-radius: var(--rc); }
 .wizard code { border-radius: 4px; }

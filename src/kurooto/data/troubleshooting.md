@@ -184,7 +184,8 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 
 | What you see | What to do |
 |---|---|
-| Notes appear in the wrong folders | Check `notes.layout` and `notes.paths` (Settings → notes). Existing notes aren't moved when you change the layout. |
+| Notes appear in the wrong folders | Check `notes.layout` and `notes.paths` (Settings → notes). Changing them there doesn't move existing notes; **Fit Kurooto to your notes** (`kurooto setup notes`) moves Kurooto's own notes, with Undo. |
+| Use this layout says a place is taken | One of Kurooto's notes would land where a note already is. Rename or move that note, or change the line on the Notes step; nothing moves until no place is taken. |
 | Photos and PDFs still land in my notes | Set `files.folder` to a folder outside your notes folder (one inside changes nothing). |
 | Notes sync refuses the repository | It must be private, and the token needs Contents: Read and write for that repository (Repository access → Only select repositories). |
 | A note named "(conflict, this computer, …)" appeared | The note changed here and elsewhere at once; both versions are kept. Merge them, then delete the copy. |

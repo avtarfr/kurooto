@@ -23,7 +23,7 @@ and in a terminal (`kurooto ask`). Telegram is optional: the phone app's chat ca
 
 ## Your bot
 
-**What it does.** Your own bot, made with @BotFather during setup ([getting-started.md](getting-started.md#6-chat-telegram-or-the-phone-app)).
+**What it does.** Your own bot, made with @BotFather during setup ([getting-started.md](getting-started.md#7-chat-telegram-or-the-phone-app)).
 It serves only the Telegram account that tapped the one-time pairing link, and only in a private chat; messages from
 anyone else, and from groups, are ignored.
 

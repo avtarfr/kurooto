@@ -1890,6 +1890,8 @@ async function renderSettings(body) {
   };
   body.innerHTML = `${findBar("settings", "settings")}<div class="form">${sections.map((s) => `<fieldset><legend>${esc(s.title)}</legend>${Object.entries(s.values).map(([k, v]) => `<div class="set" data-hay="${esc(shay(`${s.section}.${k}`, v, s))}">${field(`${s.section}.${k}`, v, s)}</div>`).join("")}</fieldset>`).join("")}</div><p class="d" id="saved"></p>`;
   findWire(body, "settings", typing);
+  const notesSet = body.querySelector('[data-key="notes.layout"]');  // the setup page's Notes step (core/notesfit.py)
+  if (notesSet) notesSet.closest("fieldset").insertAdjacentHTML("beforeend", `<div class="help d"><a href="/setup#notes">Fit Kurooto to your notes</a>: it reads your notes folder, proposes where each kind of note goes, and moves its own notes there, with Undo.</div>`);
   body.onchange = async (e) => {
     const t = e.target; if (!t.dataset.key) return;
     let value = t.type === "checkbox" ? t.checked : t.dataset.num !== undefined ? Number(t.value) : t.value;

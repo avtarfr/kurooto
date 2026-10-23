@@ -18,7 +18,8 @@ Features ask like this (`app` may also be a Layout, or a plain notes folder for 
     layout.frontmatter(app, "lecture", path, title="Eigenvalues", subject="linear-algebra")
 
 A custom place is a path inside the notes folder with the kind's fields in braces ({date}, {subject}, {slug},
-{project}, {time}); a template that doesn't work falls back to the layout's own place.
+{project}, {time}, and {year}, {month}, {day} from the date: "{year}/{month}/{day}.md"); a template that doesn't work
+falls back to the layout's own place. core/notesfit.py reads an existing notes folder and proposes these settings.
 """
 
 from __future__ import annotations
@@ -192,7 +193,16 @@ ZETTEL_TAGS = {
     "profile": ["master", "about-me"],
 }
 
-SHOWN = {"date": "<YYYY-MM-DD>", "time": "<HHMM>", "subject": "<subject>", "slug": "<slug>", "project": "<project>"}
+SHOWN = {
+    "date": "<YYYY-MM-DD>",
+    "time": "<HHMM>",
+    "subject": "<subject>",
+    "slug": "<slug>",
+    "project": "<project>",
+    "year": "<YYYY>",
+    "month": "<MM>",
+    "day": "<DD>",
+}
 IMAGES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".svg")
 
 
@@ -246,6 +256,10 @@ class Layout:
         t = now()
         out = {"date": t.date().isoformat(), "time": f"{t:%H%M}", "slug": "note"}
         out.update({k: v for k, v in fields.items() if v is not None and v != ""})
+        d = re.fullmatch(r"(\d{4})-(\d\d)-(\d\d)", str(out["date"]))
+        if d:  # for places like "{year}/{month}/{day}.md"
+            for k, v in zip(("year", "month", "day"), d.groups(), strict=True):
+                out.setdefault(k, v)
         for need in KINDS[kind][1]:
             if need not in out:
                 raise ValueError(f"{kind} needs {need}")
@@ -460,7 +474,9 @@ class Layout:
             return shape.split(mark)[0] if mark in shape else None
 
         about = s("profile").rpartition("/")[0]
+        whole = s("daily") if SHOWN["date"] not in s("daily") else None  # "{year}/{month}/{day}.md": no date prefix
         rules: list[tuple[str, str | None]] = [
+            (r"journal/<(?:YYYY-MM-DD|date|today)>", whole),
             (r"journal/(?=<|\d{4}-\d\d-\d\d|YYYY)", prefix("daily", "date")),
             *[
                 rule

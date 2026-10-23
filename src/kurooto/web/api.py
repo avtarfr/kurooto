@@ -246,6 +246,12 @@ class Api:
             }
         if path == "setup":  # where setup is (core/setupsteps.py): the dashboard's Finish setting up
             return 200, setupsteps.view(self.app)
+        if (
+            path == "notes/fit"
+        ):  # the setup page's Notes step: what the folder shows and the proposal (core/notesfit.py)
+            from kurooto.core import notesfit
+
+            return 200, notesfit.view(self.app, q.get("folder") or None)
         if path == "phone":
             return 200, self._phone()
         if path == "power":
@@ -644,6 +650,19 @@ class Api:
                 )
             except ValueError as e:
                 return 400, {"error": str(e)}
+        if path.startswith("notes/fit/"):  # preview (a dry run), apply (with the plan's digest), undo
+            from kurooto.core import notesfit
+
+            try:
+                if path == "notes/fit/preview":
+                    return 200, notesfit.check(self.app, b)
+                if path == "notes/fit/apply":
+                    return 200, notesfit.apply(self.app, b)
+                if path == "notes/fit/undo":
+                    return 200, notesfit.undo_app(self.app, str(b.get("id") or ""))
+            except (ValueError, OSError, notesfit.Refused) as e:  # said on the page, so not an HTTP error
+                return 200, {"ok": False, "error": str(e)}
+            return 404, {"error": "not found"}
         if path == "setup/done":
             s.set("setup.done", True)
             setupsteps.finish(self.app)
