@@ -59,8 +59,10 @@ uv run kurooto run                             # the daemon in the foreground; o
 
 Written against the 0.5.8 development tree (`pyproject.toml` still says 0.5.7). Changes landing in 0.5.8 that this wiki
 already reflects: calls get a post-call look back (`modules/calls/review.py`, `/lessons`); chat history records only
-Chat's own requests (`modules/chat.py:Chat.owns`, checked in `core/jobs.py:Jobs._deliver`). Changes in progress:
-Attendance is being removed (not documented here), and Exam season is becoming an opt-in add-on.
+Chat's own requests (`modules/chat.py:Chat.owns`, checked in `core/jobs.py:Jobs._deliver`). Also in 0.5.8:
+Attendance is removed (`core/upgrade.py:drop_retired`), Exam season is an add-on (`Module.extra`), topic study packs
+(`core/studypack.py`: class material ranked above books, never a whole book), `/help` lists everything and searches
+(`app.py:App.help`), and scheduled actions all take the payload (`tests/unit/test_scheduled_actions.py`).
 
 Pages about code end with the known problems found while writing them (verified against the code at the time of
 writing); they are worth fixing, each with a test.

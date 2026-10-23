@@ -17,6 +17,7 @@ Class attributes:
 | `title`, `description` | shown on the feature card |
 | `privacy` | one or two plain sentences: what leaves the computer and where it goes. The default is "Stays on this computer.", so a module that sends anything must override it |
 | `requires` | ids of features that must be on first (`App.enable` refuses otherwise; `App.disable` refuses to turn off something another feature requires) |
+| `extra` | True: an add-on that ships with Kurooto: in no preset, listed apart under Features, on only by hand (Exam season) |
 | `heavy` | True: its scheduled work and background task wait for the charger in battery saver mode (`core/power.py`) |
 | `processes`, `processes_intermittent` | program names or command-line fragments to show CPU and memory for on the dashboard |
 | `defaults` | **not used**: nothing reads it. Register settings with `register_defaults` (below) |
@@ -254,9 +255,13 @@ def test_pomodoro_starts_and_ends(env):
 - Turning on: `App.enable(id)` from the wizard (`POST /api/modules/enable`, or `modules/setup` which runs `setup()` and
   then enables), the dashboard, Google sign-in (which enables the Google parts that became ready), or
   `modules/google.py:GooglePart` `with_modules`.
-- 0.5.8 changes: the Attendance module is being removed (it is still in `CATALOG` and `MODULE_ORDER` in this tree; this
-  wiki doesn't document it), and Exam season is becoming an opt-in add-on rather than a built-in feature; check
-  `CATALOG`, `MODULE_ORDER` and `core/overlay.py` for its current place before relying on either.
+- 0.5.8 changes: Attendance is gone. `core/upgrade.py:drop_retired` (called from `App.start`) turns a retired
+  feature off on an install that had it, resets its settings and cancels its jobs; class packs keep accepting the old
+  `attendance` keys and drop them. Exam season is an add-on that ships with Kurooto: `Module.extra = True` keeps a
+  feature out of every preset (setup.js leaves it out of "Everything") and lists it apart on the Features page
+  (`/api/state` sends `extra`).
+- `extra` versus `addon`: `extra` is an optional feature that comes with Kurooto; `addon` is set by `core/overlay.py`
+  on features loaded from the user's own add-ons folder.
 
 ## Add-ons (`core/overlay.py`)
 
@@ -325,7 +330,7 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
 - **startby** (`modules/startby.py`): start-by dates from size estimates and free time; local arithmetic only.
 - **exam_season** (`modules/exam_season.py`): one card for an exam period (update hold, alarm check, the eve question,
   leave-by alarm, debrief, no calls in exams, the Calm budget). Registers `app.updates.holds["exam_season"]` and an
-  availability blocker; `budget_during_exams()` is read by Calm. Becoming an opt-in add-on in 0.5.8.
+  availability blocker; `budget_during_exams()` is read by Calm. An add-on since 0.5.8 (`extra = True`).
 - **alarm** (`modules/alarm.py`, requires `calls`): the wake-up call is booked on the call line so it rings with the
   computer asleep; `alarm:plan` every 30 min; the morning plan drafted `prep_min` before; sets
   `app.availability.sleep`; mirrors to `reserve/alarm.md`.
