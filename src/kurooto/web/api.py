@@ -45,7 +45,6 @@ MODULE_ORDER = [
     "local_models",
     "subjects",
     "classpacks",
-    "attendance",
     "doubts",
     "capture",
     "quiz",

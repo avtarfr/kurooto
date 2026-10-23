@@ -78,18 +78,6 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `ask.expire_hours` | `48` | an unanswered question expires after this long, unless its asker said otherwise |
 | `ask.keep_days` | `30` | answered and expired questions are forgotten after this long |
 
-### `attendance`
-
-| Setting | Default | What it does |
-|---|---|---|
-| `attendance.grades` | `{}` | grade lines for /standing, % of a course's total: {"A": 85, "B": 70, "C": 55, "D": 40} |
-| `attendance.lab_min_pct` | `75` | the rule for labs, which are counted on their own |
-| `attendance.lab_slots` | `[]` | timetable slots that are the lab of their subject: ["thu 14:00"] |
-| `attendance.min_pct` | `75` | a course's rule: the share of its classes you must attend, unless `rules` says otherwise |
-| `attendance.rules` | `{}` | a course's own rule: {"la": 80, "la:lab": 100} |
-| `attendance.since` | `""` | count classes from this day ("2026-08-03"); filled in with the day you turn it on |
-| `attendance.weekly` | `true` | one line in the Sunday summary |
-
 ### `autostart`
 
 | Setting | Default | What it does |
@@ -229,13 +217,6 @@ feature. Add-ons are yours: they aren't part of updates and aren't published.
 | `checkins.times.evening` | `"22:00"` | None = off (night: e.g. "23:15") |
 | `checkins.times.midday` | `null` | None = off (night: e.g. "23:15") |
 | `checkins.times.night` | `null` | None = off (night: e.g. "23:15") |
-
-### `classpacks`
-
-| Setting | Default | What it does |
-|---|---|---|
-| `classpacks.labs` | `"separate"` | with labs counted on their own ("separate") or together with the lectures ("together") |
-| `classpacks.min_pct` | `75` | the section's attendance rule in packs you make: at least this many percent of classes, |
 
 ### `classroom_notes`
 

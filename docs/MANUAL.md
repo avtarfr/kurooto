@@ -23,7 +23,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Quiz](#quiz) ·
     [Weekly summary](#weekly-summary)
     [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) ·
-    [Attendance and standing](#attendance-and-standing) · [Quiz](#quiz) · [Weekly summary](#weekly-summary)
+    [Quiz](#quiz) · [Weekly summary](#weekly-summary)
     [Exam mode](#exam-mode) · [Subjects and timetable](#subjects-and-timetable) · [Doubt queue](#doubt-queue) ·
     [Quiz](#quiz) ·
     [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
@@ -625,9 +625,8 @@ off; crunch weeks: `startby.crunch_weeks` = 0.
 Your courses with short names (`/subject add Linear Algebra (la, linalg)`) and your timetable
 (`/class mon 09:00-09:55 la`). Kurooto never calls you during a class (or in the 5 minutes before it,
 `subjects.margin_min`). `/classes today`, `/skip la` or "skipping LA today" (not going), `/attend la` (undo). "not
-going to LA on Friday" and "skipping stats tomorrow" mark that day (with [Attendance](#attendance-and-standing) on, a
-skip that would leave a course under its rule asks first). Other features use the subjects: after-class notes, the
-quiz, the study tracker.
+going to LA on Friday" and "skipping stats tomorrow" mark that day. Other features use the subjects: after-class notes,
+the quiz, the study tracker.
 
 **Term dates:** `/term ends 2026-12-04` (the last day of classes) and `/term exams 2026-12-07 to 2026-12-18` (an exam
 period; add as many as you need). On those days, after the term ends and on holidays there are no classes: no
@@ -756,22 +755,22 @@ items leave the deadline list. Your note itself is never changed.
 
 ### Class packs
 One person turns the section's setup into a small file; everyone else sends it to their own Kurooto and has the
-timetable, term dates, holidays, recurring quizzes, dated exams and attendance rules from day one. Off until you turn
-it on (Features → Class packs; it needs Subjects).
+timetable, term dates, holidays, recurring quizzes and dated exams from day one. Off until you turn it on (Features →
+Class packs; it needs Subjects).
 
-**What a pack carries, and nothing else:** the courses (names, short names, which are electives, a course's own
-attendance rule), the weekly timetable (lecture, lab or tutorial, and a lab batch), the term (last day of classes,
-holidays, exam periods), recurring quizzes, dated exams, the section's attendance rule (75%, labs counted separately,
-unless it says otherwise) and the day it was checked against the official timetable. The format is strict
+**What a pack carries, and nothing else:** the courses (names, short names, which are electives), the weekly timetable
+(lecture, lab or tutorial, and a lab batch), the term (last day of classes, holidays, exam periods), recurring quizzes,
+dated exams and the day it was checked against the official timetable. The format is strict
 (`<name>.kurooto-course`, JSON): a field it doesn't know makes the whole file invalid, so there's no place in it for
 names, keys, notes, skills, your skips or your own deadlines, and every piece of text in it is checked for an email
 address, phone number, link, @handle, file path or anything that looks like a key. A file that breaks a rule is
-refused whole, with the reason.
+refused whole, with the reason. Packs made before 0.5.8 may also carry attendance rules: they still import, and the
+rules are left out.
 
 **Making one.** `/classpack export` makes a pack of your setup: your subjects and timetable, your term note, your
 `/term` dates and holidays, and your recurring quizzes. For the whole section (every elective, every lab batch), keep a
-term note ([Subjects and timetable](#subjects-and-timetable)) with two more columns in its timetable and two more
-tables, and `/classpack export from terms/section-b` reads that note alone:
+term note ([Subjects and timetable](#subjects-and-timetable)) with two more columns in its timetable and one more
+table, and `/classpack export from terms/section-b` reads that note alone:
 
 ```
 ## Weekly timetable
@@ -786,18 +785,12 @@ tables, and `/classpack export from terms/section-b` reads that note alone:
 | Subject | What | Every (weeks) | Day | Time | Next | Until |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | Linear Algebra | Quiz | 1 | Thu | 10:00 | | |
-
-## Attendance
-| Course | Minimum | Labs |
-| :--- | :--- | :--- |
-| All | 75 | separate |
-| Statistics | 80 | together |
 ```
 
 Type says lecture, lab or tutorial ("Elective" marks a course not everyone takes); Batch is a lab batch. Write a lab
 under its course's name ("Statistics", Type Lab) to keep it one course. Kurooto's message lists what's in the pack and
-what it left out (and why). Tap the electives; reply to change anything: "title Year 2 section B", "la 80" or "all 80",
-"la labs together", "la quiz off", "holiday 2026-10-02 off". Then check it against the official timetable and tap
+what it left out (and why). Tap the electives; reply to change anything: "title Year 2 section B", "la quiz off",
+"la quiz fri 11:00", "holiday 2026-10-02 off". Then check it against the official timetable and tap
 **Checked today, make it** (or reply "checked 2026-10-18"): that date is stamped in the pack, and the file comes to
 your Telegram for you to forward (a copy stays in Kurooto's data folder, `classpacks/`). From a terminal: `kurooto
 classpack export --checked today [--from terms/section-b] [--title "Year 2 section B"] [--elective machine-learning]
@@ -805,73 +798,24 @@ classpack export --checked today [--from terms/section-b] [--title "Year 2 secti
 
 **Importing one.** Send the `.kurooto-course` file to your bot (or `kurooto classpack import FILE`). Nothing counts
 yet: first a review says when it was checked against the official timetable (where they differ, the official one is
-right), what's in it, what it means for you and its attendance rules. Tap the electives you take and your lab batch,
-reply to change any rule ("la 80", "la labs together", "la quiz off", "la quiz fri 11:00", "all 80"), then **Import**.
+right), what's in it and what it means for you. Tap the electives you take and your lab batch, reply to leave out or
+move a quiz ("la quiz off", "la quiz fri 11:00"), then **Import**.
 The pack sits under your own setup, never in it: your own classes (`/class`), term dates (`/term`), term note and
 recurring table win where they say something else, and nothing is written into your notes. Its classes keep calls
 away like yours, holidays and exam periods have no classes, and its quizzes and exams reach [Deadlines](#deadlines)
 (with `deadlines.recurring` and `deadlines.from_term_note` on). `/recurring` marks its quizzes "(class pack)".
 
 **After a mid-term reshuffle,** send the new pack: the review lists what changes for you (classes moved, holidays,
-quiz times, exam dates, rules) before anything does, and keeps your electives, batch and changes. The same pack again
-changes nothing. `/classpack` shows what you have; `/classpack set la 80` (or any change above, `electives ml,
+quiz times, exam dates) before anything does, and keeps your electives, batch and changes. The same pack again
+changes nothing. `/classpack` shows what you have; `/classpack set la quiz off` (or any change above, `electives ml,
 topology`, `batch B`, `la reset`) changes it later and lists what changed for you. A pack whose term ended more than two
 weeks ago shows up in `/health`.
 
-*Settings:* `classpacks.min_pct` (75) and `classpacks.labs` (`separate` or `together`): the section's attendance rule
-in packs you make, when your term note has no Attendance table.
 *Privacy:* everything stays on this computer; a pack you make goes to your own Telegram, and you decide whom to
 forward it to.
 *Turn off:* Features → Class packs; the pack stops counting and is kept for when you turn it on again.
 *Undo:* `/classpack remove` takes the pack out (your own setup stays); `/classpack undo` goes back one step (to the
 pack you had before a re-import, or back after a remove).
-### Attendance and standing
-Off until you turn it on (it needs Subjects and timetable). How many classes you've been to in each course, checked
-against its rule, and how many more you can miss. **Everything here is an estimate**, and every reply says so.
-
-**How it counts.** Every class on your timetable (`/class`, and the term note's) counts as attended unless you `/skip`
-it. Holidays, exam periods and the days after the last day of classes don't count; calendar events don't either.
-Counting starts on the day you turn it on (`/attendance since 2026-08-03` counts from the term's first day, with the
-skips Kurooto heard about). Labs are counted on their own, with their own rule: a subject named like a lab ("Physics
-Lab", "Chemistry Practical") is one, and `/attendance lab thu 14:00` makes that timetable slot the lab of its subject.
-
-- `/attendance`: each course, closest to its line first: "Linear Algebra 82% (23/28), you can miss 3 more this term".
-  With the last day of classes set (`/term ends`), "you can miss" counts the rest of the term: miss that many and go to
-  every other class, and the term ends on the line. Without it, it's how many in a row you can miss from now. Under
-  the line, it says how many classes in a row bring you back, or that the term can't get there any more.
-- `/attendance la`: one course, with its rule and the classes left. "how's my attendance?" works too, and "can I skip
-  LA on Friday?" answers without marking anything.
-- `/attendance set la 23/30`: the official count as of now, when Kurooto's has drifted (a cancelled class, an extra
-  one, a skip you didn't tell it about). Classes from now on count on top of it; `/attendance set la clear` drops it.
-- `/attendance rule la 80`, `/attendance rule la lab 100`, `/attendance rule labs 100` (every lab),
-  `/attendance rule 75` (every course); `/attendance rule la clear` goes back to the usual rule.
-- **`/skip` asks first.** When skipping would leave a course under its line, `/skip la` doesn't mark it: you get the
-  numbers and **Skip anyway** / **Don't skip**. `/skip la anyway` (or "skipping LA today anyway") skips without
-  asking. A skip that's fine is marked as before, with the course's new numbers. On calls, the assistant tells you
-  before it marks such a skip.
-- **The Sunday summary** has one line: "Attendance (an estimate): PHL 100%, 0 to spare; LA 82%, 3 to spare".
-
-**Marks, second and optional.** `/standing` shows attendance and marks per course; the first time, it asks **Set up
-marks?** (**Not now** stops asking). Then:
-- `/marks la weights midsem 30, quizzes 20, endsem 50`: the course's weightage;
-- `/marks la midsem 21/30`: a score as it comes (`/marks la midsem clear` removes it);
-- `/marks grades A 85, B 70, C 55, D 40`: grade lines, as % of the total, for every course (`/marks la grades ...` for
-  one course's own).
-`/standing` then shows what you'd need on what's left (usually the end-sem) for each grade: "31.5 of the 50 so far; on
-what's left (endsem, worth 50): A out of reach, B 77%+, C 47-76%, D 17-46%". `/marks la` shows one course,
-`/marks la clear` forgets it.
-
-*Settings* (Settings → `attendance`): `min_pct` (75), `lab_min_pct` (75), `rules` (a course's own rule, e.g.
-`{"linear-algebra": 80, "linear-algebra:lab": 100}`), `lab_slots` (`["thu 14:00"]`), `since` (the first day counted;
-filled in when you turn it on), `weekly` (the Sunday line, `true`), `grades` (`{"A": 85, "B": 70}`).
-
-*Leaves:* nothing. Your corrections and marks stay in Kurooto's state folder (`attendance/`). On calls, and to your AI
-when it asks, the `attendance` and `skip_class` tools give the attendance numbers (never marks), like any of Kurooto's
-tools.
-
-*Undo:* turn the feature off (Features → Attendance and standing): `/skip` stops asking, and the Sunday line goes.
-Your corrections and marks stay; delete the `attendance` folder in Kurooto's state folder to forget them. Skips
-themselves belong to Subjects and are unchanged.
 ### Doubt queue
 A doubt from class, kept for the next one (needs Subjects). `/doubt la why does the rank not change?`, or in plain
 words "I have a doubt about eigenvalues", adds a line to that subject's doubts note, `<subject>/doubts.md`
@@ -2913,7 +2857,6 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | `kurooto watch` says "only shown on this computer" | Kurooto wasn't running: `kurooto start`. |
 | The Terminals tab says it's off, or a terminal won't type | Features → Terminals → Turn on. On Linux, a terminal from another user account is refused on purpose. |
 | `/term` says "Term note …: not found" | The path is relative to your notes folder (`terms/2026-autumn`, `maps/semester-*`); `/term note <path>` again, or `/term note off`. |
-| `/attendance` doesn't match the official register | It's an estimate from your timetable and skips: `/attendance set la 23/30` (attended/held as of now) puts it right, and classes from then on count on top. A class missing from your timetable isn't counted at all (`/class`, or the term note). |
 | A class or date from the term note is missing | Check the table's heading ("Weekly timetable", "Key dates"), times like `09:00-09:55` and dates like `2026-11-12`; `/term` says how many classes and key dates it read. |
 | Telegram's "/" menu is out of date | It updates within a minute of a feature going on or off, and every quarter of an hour for skills; `telegram.menu` off and on again sets it within a minute. |
 | Your add-ons: a problem in `kurooto doctor` | `/addons` shows which file and the error. Fix it, then restart Kurooto (`kurooto stop`, `kurooto start`). |

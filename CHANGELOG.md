@@ -13,6 +13,8 @@
 - **Anything over Telegram's 50 MB comes as a Google Drive link** (with Drive upload on): study packs leave nothing
   out, several files sent at once aren't refused, and those uploads are deleted from your Drive after
   `drive_upload.temp_days` (7) unless you move them out of the Kurooto folder.
+- **Attendance and standing is gone**, and class packs no longer carry attendance rules: `/skip` still works (without
+  the warning), and class packs made earlier still import.
 
 ## 0.5.7 (2026-10-23)
 

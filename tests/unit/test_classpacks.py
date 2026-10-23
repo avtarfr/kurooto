@@ -1,6 +1,7 @@
 """Class packs: the strict .kurooto-course schema (nothing personal fits, and an export never carries any), export
-from your setup or a term note, import on Telegram with electives, lab batch and rule changes, re-import with a diff,
-your own setup winning, remove and undo, the health check and the terminal commands."""
+from your setup or a term note, import on Telegram with electives, lab batch and quiz changes, re-import with a diff,
+your own setup winning, remove and undo, the health check and the terminal commands. a_pack() was made before 0.5.8:
+it still carries attendance rules, which are read and left out."""
 
 from __future__ import annotations
 
@@ -64,7 +65,7 @@ def a_pack() -> dict:
     }  # fmt: skip
 
 
-SCHEMA_KEYS = cp.TOP | cp.TERM | cp.SPAN | cp.RULE | cp.COURSE | cp.CLASS | cp.QUIZ | cp.EXAM
+SCHEMA_KEYS = cp.TOP | cp.TERM | cp.SPAN | cp.COURSE | cp.CLASS | cp.QUIZ | cp.EXAM
 
 
 def keys_in(obj) -> set:
@@ -145,13 +146,19 @@ TOKEN = "123456" + "789:" + "AAH" + "x9" * 16
         ("classes.0.end", "08:00", "ends before it starts"),
         ("quizzes.0.every_weeks", 2, "needs a next date"),
         ("courses.0.elective", "yes", "true or false"),
-        ("attendance", {"min_pct": 120}, "from 0 to 100"),
     ],
 )
 def test_the_schema_refuses_anything_else(path, value, said):
     with pytest.raises(cp.PackError) as e:
         cp.validate(at(a_pack(), path, value))
     assert said in str(e.value)
+
+
+def test_an_older_packs_attendance_rules_are_read_and_left_out():
+    old = at(at(a_pack(), "attendance", {"min_pct": 120, "labs": "sometimes"}), "courses.0.attendance", "x")
+    p = cp.validate(old)
+    assert "attendance" not in p and not any("attendance" in c for c in p["courses"])
+    assert "attendance" not in cp.dumps(p) and cp.same(p, a_pack())
 
 
 def test_files_that_arent_packs():
@@ -168,10 +175,6 @@ def test_files_that_arent_packs():
 
 def test_reading_what_someone_typed():
     p = cp.validate(a_pack())
-    assert cp.read_change("la 80", p) == ("rule", {"course": "linear-algebra", "min_pct": 80})
-    assert cp.read_change("Linear Algebra 70%", p) == ("rule", {"course": "linear-algebra", "min_pct": 70})
-    assert cp.read_change("all 85", p) == ("rule", {"course": "*", "min_pct": 85})
-    assert cp.read_change("stats labs separate", p) == ("rule", {"course": "statistics", "labs": "separate"})
     assert cp.read_change("la quiz off", p) == ("off", {"key": "linear-algebra|quiz"})
     assert cp.read_change("la midterm off", p) == ("off", {"key": "linear-algebra|midterm"})
     assert cp.read_change("la quiz fri 11:00", p) == (
@@ -183,25 +186,24 @@ def test_reading_what_someone_typed():
     assert cp.read_change("checked 2026-10-18", p) == ("checked", {"date": "2026-10-18"})
     assert cp.read_change("la reset", p) == ("reset", {"course": "linear-algebra"})
     assert cp.read_change("batch Z", p) is None and cp.read_change("chemistry 80", p) is None
-    assert cp.read_change("la 180", p) is None
+    assert cp.read_change("la 80", p) is None and cp.read_change("stats labs separate", p) is None  # no rules now
 
 
 # --------------------------------------------------------------------------------------------- importing
-def test_import_on_telegram_with_electives_batch_and_a_changed_rule(packs):
+def test_import_on_telegram_with_electives_batch_and_a_moved_quiz(packs):
     app, sub, dl = packs.app, packs.app.modules["subjects"], packs.app.modules["deadlines"]
     out = send(packs, a_pack())
     assert out.startswith("Class pack: Year 2 section B (Autumn).")
     assert f"Checked against the official timetable on {d(-2)}" in out
     assert "Your electives: none ticked" in out and "Your lab batch: none yet" in out
-    assert "Attendance: 75%, labs counted separately; Statistics 80%, labs counted in" in out
+    assert "attendance" not in out.lower()
     assert not list(app.workspace.glob("inbox/*kurooto-course*"))  # moved out of the notes
     assert list((app.paths.data / "classpacks" / "received").iterdir())
     assert packs.press(button(packs, "[ ] Machine Learning")).startswith("Machine Learning: ticked.")
     assert packs.press(button(packs, "Batch A")).startswith("Batch A.")
-    packs.reply_to_last("la 80\nla quiz fri 11:00\nnonsense here")
+    packs.reply_to_last("la quiz fri 11:00\nnonsense here")
     review = packs.fake.texts()[-1]
     assert "Your electives: Machine Learning" in review and "Your lab batch: A" in review
-    assert "Linear Algebra 80%, labs counted separately (yours)" in review
     assert "Moved by you: Linear Algebra Quiz to Fri 11:00" in review
     assert any("I couldn't read: nonsense here" in t for t in packs.fake.texts()[-3:])
     assert sub.timetable() == []  # nothing counts before Import
@@ -220,14 +222,13 @@ def test_import_on_telegram_with_electives_batch_and_a_changed_rule(packs):
     assert quiz and all(dt.date.fromisoformat(it["due"][:10]).weekday() == 4 for it in quiz)  # moved to Fridays
     assert "(class pack" in packs.say("/recurring")
     mod = app.modules["classpacks"]
-    assert mod.attendance_rule("la") == {"min_pct": 80, "labs": "separate", "yours": True}
-    assert mod.attendance_rule("Statistics") == {"min_pct": 80, "labs": "together", "yours": False}
     assert mod.class_kind("statistics", "thu", "14:00") == "lab"
     status = packs.say("/classpack")
     assert "Your electives: Machine Learning (of Machine Learning, Topology)." in status and "batch: A" in status
-    out = packs.say("/classpack set stats 90")
-    assert out.startswith("Statistics: at least 90%.") and "Attendance for Statistics: 80%" in out
-    assert mod.attendance_rule("stats")["min_pct"] == 90
+    assert "attendance" not in status.lower()
+    assert packs.say("/classpack set stats 90").startswith("I couldn't read that.")
+    out = packs.say("/classpack set la quiz off")
+    assert out.startswith("Linear Algebra Quiz: left out.") and "- Linear Algebra Quiz" in out
 
 
 def test_reimporting_after_a_reshuffle_shows_the_diff_and_keeps_your_choices(packs):
@@ -236,7 +237,6 @@ def test_reimporting_after_a_reshuffle_shows_the_diff_and_keeps_your_choices(pac
     send(packs, a_pack())
     packs.press(button(packs, "[ ] Machine Learning"))
     packs.press(button(packs, "Batch A"))
-    packs.reply_to_last("la 80")
     packs.press(button(packs, "Import"))
     new = a_pack()
     new["checked"], new["made"] = d(-1), d(0)
@@ -245,7 +245,7 @@ def test_reimporting_after_a_reshuffle_shows_the_diff_and_keeps_your_choices(pac
     new["term"]["holidays"].append({"from": d(5), "to": d(5), "what": "Founders day"})
     new["quizzes"][0]["time"] = "11:00"
     new["exams"][0]["date"] = d(exam_n() + 1)
-    new["courses"][1]["attendance"]["min_pct"] = 85
+    new["courses"][1]["attendance"]["min_pct"] = 85  # an older pack's rule: no change for you
     new["courses"].append({"id": "cryptography", "name": "Cryptography", "short": [], "elective": True})
     out = send(packs, new, fid="P2")
     assert "What changes for you from the pack you have" in out
@@ -254,18 +254,18 @@ def test_reimporting_after_a_reshuffle_shows_the_diff_and_keeps_your_choices(pac
         "Thu 14:00-16:55 Statistics (lab, batch A) -> Wed 14:00-16:55",
         "Linear Algebra Quiz: every week, Thu 10:00 -> every week, Thu 11:00",
         f"Linear Algebra Midterm: {d(exam_n())} 10:00 -> {d(exam_n() + 1)} 10:00",
-        "Attendance for Statistics: 80%, labs counted in -> 85%, labs counted in",
     ]:
         assert line in out, line
+    assert "attendance" not in out.lower()
     assert "Machine Learning" not in out.split("What changes")[1]  # still yours: not a change
     assert (
         "Your electives: Machine Learning" in out
         and "Your lab batch: A" in out
         and "[ ] Cryptography" in str(last_buttons(packs))
     )
-    assert mod.attendance_rule("la")["min_pct"] == 80  # nothing changes before Import
+    assert ("wed", "14:00") not in {(c["day"], c["start"]) for c in app.modules["subjects"].timetable()}  # not yet
     packs.press(button(packs, "Import"))
-    assert mod.attendance_rule("la") == {"min_pct": 80, "labs": "separate", "yours": True}  # your change kept
+    assert mod.active()["electives"] == ["machine-learning"] and mod.active()["batch"] == "A"  # your choices kept
     assert ("wed", "14:00") in {(c["day"], c["start"]) for c in app.modules["subjects"].timetable()}
     out = send(packs, new, fid="P3")
     assert out.startswith("That's the class pack you have already")
@@ -355,7 +355,7 @@ def term_note() -> str:
 """
 
 
-def test_export_from_a_term_note_with_batches_electives_quizzes_and_rules(packs):
+def test_export_from_a_term_note_with_batches_electives_and_quizzes(packs):
     app = packs.app
     f = app.workspace / "terms" / "section-b.md"
     f.parent.mkdir(parents=True)
@@ -369,8 +369,7 @@ def test_export_from_a_term_note_with_batches_electives_quizzes_and_rules(packs)
         ("statistics", "lab", "B"),
     }
     assert pack["quizzes"][0]["course"] == "linear-algebra" and pack["exams"][0]["what"] == "Linear Algebra midterm"
-    assert pack["attendance"] == {"min_pct": 75, "labs": "separate"}
-    assert pack["courses"][1]["attendance"] == {"min_pct": 80, "labs": "together"}
+    assert "attendance" not in pack and not any("attendance" in c for c in pack["courses"])  # its table is ignored
     assert pack["term"]["classes_end"] == d(30) and pack["term"]["exam_periods"][0]["what"] == "End-term exams"
     ok, said, out = app.modules["classpacks"].write(pack, d(0))
     assert ok and cp.read(out)["checked"] == d(0)
@@ -419,8 +418,8 @@ def test_export_on_telegram_ticks_electives_and_stamps_the_check(packs):
     out = packs.say("/classpack export")
     assert out.startswith("A class pack of your setup.") and "It carries no names, notes, keys or skips" in out
     assert packs.press(button(packs, "[ ] Machine Learning")) == "Machine Learning: an elective."
-    packs.reply_to_last("title Year 2 section B\nla 80\nall labs together")
-    assert "Title: Year 2 section B." in packs.fake.texts()[-2]
+    packs.reply_to_last("title Year 2 section B\nla 80")
+    assert packs.fake.texts()[-2] == "Title: Year 2 section B. (I couldn't read: la 80)"
     packs.reply_to_last(f"title mail {EMAIL}")
     assert "Not that title" in packs.fake.texts()[-2]
     assert packs.press(button(packs, "Checked today")).startswith("Made year-2-section-b-")
@@ -429,8 +428,7 @@ def test_export_on_telegram_ticks_electives_and_stamps_the_check(packs):
     p = cp.read(f)
     assert p["checked"] == d(0) and p["title"] == "Year 2 section B"
     assert [c["id"] for c in p["courses"] if c["elective"]] == ["machine-learning"]
-    assert p["courses"][0]["attendance"] == {"min_pct": 80, "labs": "separate"}
-    assert p["attendance"]["labs"] == "together"
+    assert "attendance" not in f.read_text(encoding="utf-8")
     out = packs.say("/classpack export")
     packs.reply_to_last(f"checked {d(3)}")
     assert "hasn't come yet" in packs.fake.texts()[-1]

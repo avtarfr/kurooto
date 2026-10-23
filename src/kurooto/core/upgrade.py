@@ -7,6 +7,9 @@ for an unanswered call, AI study logs after class, your journal and call transcr
 those settings are set to off, unless you had set them yourself. Deadlines already overdue and research projects
 already quiet aren't asked about all at once on the first day, and a short "What's new" message comes once.
 New installs keep 0.2.0's defaults.
+
+Features Kurooto no longer has (Attendance, gone in 0.5.8) are dropped at every start (drop_retired): out of
+modules.enabled, with their settings and scheduled jobs. Their state folder stays.
 """
 
 from __future__ import annotations
@@ -41,6 +44,9 @@ WHATS_NEW = (
     "- Your About-you profile is editable, and the pages have a new green look.\n"
     f"New features stay off until you turn them on in Settings. The manual: {MANUAL}"
 )
+
+
+RETIRED = {"attendance": ("classpacks.min_pct", "classpacks.labs")}  # gone in 0.5.8, with the settings only it used
 
 
 def _has(raw: dict, dotted: str) -> bool:
@@ -80,3 +86,30 @@ def run(app: App) -> str:
 
 def whats_new(app: App) -> None:
     app.notify(WHATS_NEW, kind="update", why="updates.whats_new")
+
+
+def drop_retired(app: App) -> list[str]:
+    """A feature Kurooto no longer has: off, its settings and scheduled jobs gone. Nothing to do once it's gone, and an
+    add-on of yours with the same id is left alone. Returns the ids it dropped."""
+    dropped = []
+    for mid, extra in RETIRED.items():
+        if mid in app.modules:
+            continue
+        on = list(app.settings.get("modules.enabled") or [])
+        raw = app.settings.user()
+        jobs = [
+            j.key
+            for j in app.scheduler.jobs()
+            if j.module == mid or j.key.startswith(f"{mid}:") or j.action.startswith(f"{mid}.")
+        ]
+        if mid not in on and mid not in raw and not jobs and not any(_has(raw, k) for k in extra):
+            continue
+        if mid in on:
+            app.settings.set("modules.enabled", [m for m in on if m != mid])
+        for key in (mid, *extra):
+            app.settings.reset(key)
+        for key in jobs:
+            app.scheduler.cancel(key)
+        dropped.append(mid)
+        app.events.emit("feature_retired", module=mid, jobs=len(jobs))
+    return dropped
