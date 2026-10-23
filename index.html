@@ -107,6 +107,22 @@ html[data-now="day"] .hero .btn.quiet, html[data-now="day"] .hero .who legend { 
 html[data-now="dusk"] .hero { --hero-ground: var(--kuro-2); --sun-bottom: -106vh; }
 html[data-now="night"] .hero .sun { background: var(--bone); }
 html[data-now="night"] .hero .sun::after { opacity: 1; }
+/* blobs: the KUROOTO pill shapes, loosened and left to breathe behind each section */
+.blobs { position: absolute; inset: 0; overflow: clip; pointer-events: none; }
+.blobbed { position: relative; isolation: isolate; overflow: clip; }
+.blobbed > .wrap { position: relative; z-index: 1; }
+.blob { position: absolute; width: var(--s); aspect-ratio: 1 / 1.15; left: var(--x); top: var(--y); background: var(--c); opacity: var(--o, 0.5);
+  border-radius: 50% 50% 14% 14% / 44% 44% 12% 12%; translate: -50% -50%; will-change: border-radius, translate, rotate; }
+@media (prefers-reduced-motion: no-preference) {
+  .blob { animation: morph var(--d1) ease-in-out var(--dl) infinite alternate, wander var(--d2) ease-in-out var(--dl) infinite alternate; }
+}
+@keyframes morph {
+  0% { border-radius: 50% 50% 14% 14% / 44% 44% 12% 12%; rotate: 0deg; }
+  35% { border-radius: 62% 38% 46% 54% / 52% 40% 60% 48%; }
+  70% { border-radius: 38% 62% 58% 42% / 40% 58% 42% 60%; rotate: 9deg; }
+  100% { border-radius: 56% 44% 34% 66% / 58% 46% 54% 42%; rotate: -6deg; }
+}
+@keyframes wander { from { translate: -50% -50%; } to { translate: calc(-50% + var(--mx)) calc(-50% + var(--my)); } }
 .air { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 30; pointer-events: none; }
 @media (prefers-reduced-motion: no-preference) { .hero .tg { animation: drift 9s var(--ease-in-out, ease-in-out) infinite alternate; } }
 @keyframes drift { from { translate: 0 -6px; } to { translate: 0 8px; } }
@@ -721,12 +737,33 @@ button, .btn, .go-btn, .who span, summary, .seg label { -webkit-user-select: non
     paintLine();
   }, 30000);
 
+  /* ---------- blobs behind each section ---------- */
+  (function () {
+    var DARK = ['#1B2317', '#26311F', '#6B8A42'], LIGHT = ['#EAE6DD', '#E1DBCF', '#6B8A42'];
+    function rnd(a, b) { return a + Math.random() * (b - a); }
+    function add(host, light, before, n, only) {
+      var box = document.createElement('div'); box.className = 'blobs'; box.setAttribute('aria-hidden', 'true');
+      for (var i = 0; i < n; i++) {
+        var b = document.createElement('i'), c = only || (light ? LIGHT : DARK)[i % 3], moss = c === '#6B8A42';
+        b.className = 'blob';
+        b.style.cssText = '--s:' + rnd(22, 46).toFixed(1) + 'vmax;--x:' + rnd(-5, 105).toFixed(1) + '%;--y:' + rnd(0, 100).toFixed(1) + '%;--c:' + c +
+          ';--o:' + (only ? 0.12 : moss ? (light ? 0.14 : 0.2) : light ? 0.9 : 0.75) + ';--d1:' + rnd(18, 30).toFixed(1) + 's;--d2:' + rnd(26, 44).toFixed(1) + 's;--dl:-' + rnd(0, 30).toFixed(1) +
+          's;--mx:' + rnd(-9, 9).toFixed(1) + 'vw;--my:' + rnd(-7, 7).toFixed(1) + 'vh';
+        box.appendChild(b);
+      }
+      host.insertBefore(box, before || host.firstChild);
+    }
+    var hero = $('.hero'); add(hero, document.documentElement.dataset.now === 'day', hero.firstChild, 3);
+    [['#day', true], ['#questions', false], ['#install', false], ['.foot', false]].forEach(function (x) { var el = $(x[0]); if (el) { el.classList.add('blobbed'); add(el, x[1], null, 3); } });
+    if (scene.classList.contains('is-live')) { var sky = $('.sky', scene); add(sky.parentNode, false, sky.nextSibling, 4, '#6B8A42'); }  /* moss only: the sky turns light and dark under it */
+  })();
+
   /* ---------- the air: seeds drifting up, pushed by your scroll ---------- */
   (function () {
     var cv = $('#air'); if (!cv || reduce) return;
     var cx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), W = 0, H = 0, dots = [], lastY = scrollY, push = 0, run = true;
     function size() { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var n = W < 700 ? 22 : 46; dots = []; for (var i = 0; i < n; i++) dots.push({ x: Math.random() * W, y: Math.random() * H, r: 0.8 + Math.random() * 1.8, v: 0.07 + Math.random() * 0.18, s: Math.random() * 6.28, k: Math.random() }); }
+      var n = W < 700 ? 16 : 32; dots = []; for (var i = 0; i < n; i++) dots.push({ x: Math.random() * W, y: Math.random() * H, r: 0.8 + Math.random() * 1.8, v: 0.07 + Math.random() * 0.18, s: Math.random() * 6.28, k: Math.random() }); }
     size(); addEventListener('resize', size);
     document.addEventListener('visibilitychange', function () { run = !document.hidden; if (run) requestAnimationFrame(frame); });
     function frame(t) {
