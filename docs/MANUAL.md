@@ -2743,7 +2743,15 @@ line):
   own shows their cpu, memory, uptime and threads on its cell (grey and dashed when none is running); the others
   show what they did last and when they run next. Each cell's words sit just outside it, away from the core; on a
   crowded ring they move a little (with a hairline back to their cell) or say less, and never cover each other
-  (on a very small screen a few may hide: hover over a cell for its card).
+  (on a very small screen a few may hide: hover over a cell for its card). In the new design SYSTEMS is the board's
+  largest pane and is drawn as living tissue: the core is a membrane whose heartbeat runs out through its rims, each
+  feature is a small neuron whose branches grow with how busy it was over the last two minutes, and the nerves are
+  tapered fibres that flash where a pulse arrives. **It responds to you:** point at a cell for its card (its nerve
+  lights up); click it (or Tab to it and press Enter) for a menu: **ping** (a pulse there and back), **sync now** for
+  a feature that syncs, **quiet** (it keeps working but stops messaging you, through Calm, with **undo**), its
+  **settings** (its card on Features) and its **activity** (the Activity page for that feature alone). Click the core
+  for Ctrl+K. Drag to turn the ring a little and scroll to zoom; both spring back. With reduced motion set on your
+  computer it holds still. *Undo:* a quiet feature's **undo** in the same menu, or `/calm`.
 - **NOTES** adds your folders with their note counts, whether anything was touched this hour, and the notes you
   edited last. At the usual zoom the map names its regions, like place names: each course by its course page's title
   and each research project by its index note's title, at the middle of its notes. A note's own name shows when you

@@ -139,6 +139,19 @@ body[data-design="new"] .pane .card { max-width: 360px; padding: 10px 12px; bord
 body[data-design="new"] .pane .card .h { margin-bottom: 2px; font-weight: 600; color: var(--fg); }
 body[data-design="new"] .pane .card .d { color: var(--dim); }
 body[data-design="new"] #mind-card .h + .d { font: 12px var(--code); } /* the note's path */
+/* a SYSTEMS cell's menu: its actions as rows, its last events under a rule; opened from the keyboard it's instant */
+body[data-design="new"] .pane .card.bm { min-width: 240px; padding: 10px 6px 8px; }
+body[data-design="new"] .bm > .h, body[data-design="new"] .bm > .d { padding: 0 8px; }
+body[data-design="new"] .bm .bm-acts { gap: 1px; margin: 8px 0 4px; }
+body[data-design="new"] .bm .bm-acts button { align-items: baseline; height: auto; padding: 6px 8px; border-radius: var(--r-ctl); font: 13px var(--ui); }
+body[data-design="new"] .bm .bm-acts button span { font-size: 12px; }
+body[data-design="new"] .bm .bm-acts button:focus-visible { background: color-mix(in srgb, var(--fg) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-text) 55%, transparent); }
+@media (hover: hover) { body[data-design="new"] .bm .bm-acts button:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); } }
+body[data-design="new"] .bm .bm-log { margin: 4px 8px 0; padding-top: 7px; border-top: 1px solid var(--rule); font-size: 12px; }
+body[data-design="new"] .bm .bm-said { margin: 6px 8px 0; font-size: 12px; }
+body[data-design="new"] .pane .card.instant { transition: none; }
+body[data-design="new"] #body-card .k { color: color-mix(in srgb, var(--fg) 55%, transparent); }
 body[data-design="new"] .pane .card pre { font: 12px/1.5 var(--code); color: color-mix(in srgb, var(--fg) 88%, transparent); }
 body[data-design="new"] #mind-search { height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--raised); color: var(--fg);
   font: 14px var(--ui); box-shadow: 0 0 0 1px var(--rule), 0 12px 32px rgba(0, 0, 0, 0.4); }

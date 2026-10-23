@@ -207,8 +207,24 @@ class Api:
             from kurooto.core import palette
 
             return 200, palette.describe(self.app)
-        if path == "events":
-            return 200, {"events": self.app.events.tail(80)}
+        if path == "events":  # each with the SYSTEMS cell it belongs to, as the live ones have (web/live.py)
+            from kurooto.web.live import cell_of
+
+            return 200, {"events": [{"cell": cell_of(str(e.get("kind", ""))), **e} for e in self.app.events.tail(80)]}
+        if path == "cell":  # a SYSTEMS cell's menu: which of its actions there are (static/home.js:Body.openMenu)
+            from kurooto.core import syncall
+
+            m = self.app.modules.get(str(q.get("id") or ""))
+            if m is None:
+                return 404, {"error": "no such feature"}
+            on = self.app.is_on(m.id)
+            return 200, {
+                "id": m.id,
+                "title": m.title,
+                "on": on,
+                "sync": on and m.id in dict(syncall.steps(self.app)),
+                "quiet": on and self.app.keep.quiet_change(m) is not None,
+            }
         if path == "board":  # Kurooto's side of the dashboard's board, for `kurooto top` (web/live.py)
             live = getattr(self.app, "live", None)
             return (200, live.vitals.board()) if live is not None else (503, {"error": "the page isn't up"})
@@ -340,6 +356,20 @@ class Api:
             from kurooto.core import syncall
 
             return 200, syncall.status(self.app)
+        if path == "cell/sync":  # a SYSTEMS cell's "sync now": that feature alone, in the background
+            from kurooto.core import syncall
+
+            ok, message = syncall.start_one(self.app, str(b.get("id") or ""))
+            return 200, {"ok": ok, "message": message}
+        if path == "cell/quiet":  # a SYSTEMS cell's "quiet": it keeps working but stops messaging (core/keep.py)
+            m = self.app.modules.get(str(b.get("id") or ""))
+            c = self.app.keep.quiet_change(m) if m is not None and self.app.is_on(m.id) else None
+            if c is None:
+                return 200, {"ok": False, "message": "Nothing of it left to quiet."}
+            ok, said, uid = self.app.calm.apply(c, why="dashboard")
+            return 200, {"ok": ok, "message": said, "undo": uid}
+        if path == "calm/undo":  # the Undo beside a change made from the dashboard (core/calm.py)
+            return 200, {"ok": True, "message": self.app.calm.undo(str(b.get("id") or ""))}
         if path.startswith("profile/"):  # save now; restore on a new computer (modules/profile.py)
             from kurooto.modules.profile import web
 

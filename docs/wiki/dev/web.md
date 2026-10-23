@@ -169,6 +169,30 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   the clock's case, the page title's case, the chat banner, ✦ against a CSS dot, and `grad()` (classic: cool to warm;
   new: the ink, peach from 70%, bad from 90%), `areaGraph` instead of `dotGraph`'s dots, and meters' `.hi` class.
   Tests: `tests/unit/test_design.py`.
+- SYSTEMS (`home.js:Body`, 0.5.21). The new design draws it with `membrane()` (the core: three rims from `blob()`,
+  each feeling the systole a little later, `lub(now, lag)`; a denser centre carries the name), `neuron()` (a cell:
+  five branches outside its nerve's side, each one's length the mean of a fifth of `o.hist`; the soma is `blob()`),
+  `axon()` (the nerve as a filled taper sampled at 17 points along the quadratic, widening into the soma; a second
+  fibre and a twig) and `synapses()` (a flash, an arc and three sparks where a pulse lands, from `this.syn`), over
+  `meshLayer()` (specks and threads drawn once per size and palette into an offscreen canvas). Classic keeps
+  `cell()` and the plain curves. Hot paths allocate little: `blob()` and `axon()` write into `BLOB`/`AX`
+  (Float32Arrays), each nerve's control point is computed once a frame (`o.q`, read by `at(o, s, P)`), and `rgba()`
+  memoises its strings. `STILL` (prefers-reduced-motion) freezes the shapes (`tm = 0`) and the springs; `CAN_HOVER`
+  gates the pointer's hover.
+  Input: `wire()` (pointer events; a press that moves more than 5 px turns the ring, `view.rot`, rubber-banded by
+  `rubber()`; the wheel sets `view.zt` in the dense layout; `springs()` brings both back, k 90, damping 13), `hit()`,
+  `hot()` (pointed at, focused or menu open: `o.hv` eases to it and lights the nerve and the cell). `#body-cells`
+  holds one visually hidden button per cell (`cellList()`, rebuilt only when the set changes) for Tab and screen
+  readers; `#body-menu` is `openMenu(o, byKey)` (instant and focused from the keyboard, `.instant`; faded in from a
+  click), `menuAct()` and `closeMenu()`. `place()` puts the hover card and the menu beside the cell, above or below
+  it, or in the pane's nearest corner, whichever covers least of the core. The menu asks `GET /api/cell?id=` which
+  actions there are (`sync`: the feature is in `core/syncall.py:steps`; `quiet`: `core/keep.py:quiet_change` has
+  something to stop) and acts through `POST /api/cell/sync` (`syncall.start_one`: the feature alone, in a thread,
+  ending with the event `sync_one` whose `cell` field puts the pulse on its cell), `POST /api/cell/quiet`
+  (`calm.apply(keep.quiet_change(m))`, returning the undo id) and `POST /api/calm/undo`. **activity** sets
+  `ACT_CELL` and opens the Activity page (`activity()`), filtered by each event's `cell`: `GET /api/events` now
+  carries it too (`live.cell_of`). Layout: in the new design `paneGrid` gives SYSTEMS 1.45 parts of the top row to
+  NOTES' 1 and the top row 63% of the height (classic: 1:1 and 55%). Tests: `tests/unit/test_systems_menu.py`.
 - Study mode (`home.js:setStudy`, Alt+M, `#study-btn` in `.panes-ctl`, `.study-tg` in the roomy bar, Ctrl+K `study`):
   `body.study`; `applyPanes` gives the grid `"notes study"` and `shownPanes`/`paneShown` answer only NOTES, while
   `HIDE`, `MAX`, `dtab` and the terminals stay as they were; an open page is closed and reopened on the way out
