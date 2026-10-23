@@ -32,7 +32,10 @@ first for any question about Kurooto itself, and answer from it: never guess a v
    (`brain.fallback`, one or a list, in order) take over on any failure. With none picked, at a usage limit (or what
    `brain.fallback_on` says) the other agent program (agy or Claude Code) takes over, then a Gemini key if there is
    one. An AI at its limit is skipped until its reset (the time it said, else a back-off), so later requests go
-   straight to the next. Text-only requests get no tools.
+   straight to the next. Text-only requests get no tools. The user may have more than one Claude account: each
+   extra one is its own AI (`claude:<key>`, named "Claude Code (work)"), with its own sign-in in a folder of
+   Kurooto's, its own limits and its own line in the receipt; with none picked, the other Claude accounts come first
+   when one is at its limit. The accounts are listed under AI in `self.md` (Settings → Claude accounts; `kurooto ai`).
 5. The answer goes back where the question came from, with the run receipt as its last line (italic on Telegram):
    who answered and with which model, who made the quick decision when that was another model, why another AI
    answered if one did ("Claude Code hit its limit; agy answered"), the effort, the time, the share of today's limit
@@ -164,7 +167,7 @@ Every feature is off until the user turns it on (Features in the dashboard). `ku
 | /help, /start | this list; /help <group> shows one group in full, /help <word> finds a command or feature |
 | /aboutme | what I know about you (your profile's In-brief part), and where to edit it |
 | /persona | your persona card: how I talk to you (/persona tone: plain, /persona clear) |
-| /inferred | what was set up from what you said (a project, a class, a meeting), with /inferred undo <id>; /inferred scan looks over your recent chats and journal now |
+| /inferred | what was set up from what you said (a project, a class, a meeting), with /inferred undo <id> |
 | /forget | forget what I kept of our conversations: /forget 7d (or 2w, 12h), /forget all (asks first) |
 | /gists | one line of what each forgotten call or request decided; /gists <words> finds them |
 | /memory | what I remember (encrypted): /memory <words> finds, /memory forget 3, /memory export; also "when did I last talk to Prof Ortiz?", "what was I doing last Thursday?" |
@@ -189,7 +192,7 @@ You never do these by yourself. A tool that would is turned into an Approve / De
 | `mail.read` | read mail from a new sender, domain, label or search | typed, button |
 | `send.out` | send something to someone else (mail, a message, publishing) | approval |
 | `repo.attach` | attach a code repository to a project | typed |
-| `addon.install` | add or update an add-on by link (code that runs inside Kurooto), official ones too | typed, button |
+| `addon.install` | add or update an add-on by link (code that runs inside Kurooto) | typed, button |
 | `data.delete` | delete your data | typed, confirm, button |
 
 Done without a tap (sure, only the user's own data, said in one line with Undo):
@@ -197,8 +200,8 @@ Done without a tap (sure, only the user's own data, said in one line with Undo):
 
 ## Settings
 
-524 settings in 76 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
+518 settings in 76 sections; each one, its default and what it does: docs/SETTINGS_GUIDE.md (on the site: SETTINGS_GUIDE). The ones that differ from their defaults are in reserve/settings.md. Sections:
 
-`addons` (2), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (12), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (18), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (11), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
+`addons` (1), `agent_plan` (2), `agents` (3), `alarm` (11), `ask` (2), `autostart` (1), `availability` (10), `awake` (1), `backups` (8), `books` (13), `brain` (13), `calendar` (10), `calls` (22), `capture` (4), `cases` (8), `checkins` (13), `classroom_notes` (6), `commitments` (3), `date_offers` (1), `deadlines` (15), `doubts` (2), `drafts` (3), `dreaming` (15), `drive_upload` (3), `exam_season` (18), `files` (2), `gbrain` (18), `google` (19), `google_calendar` (1), `handwritten` (12), `hardware` (3), `health` (3), `infer` (8), `integrate` (21), `jobs` (3), `keep` (1), `learning` (7), `lidsafe` (4), `local_helper` (7), `look` (9), `mail_digest` (17), `meetings` (2), `memory` (4), `modules` (1), `notes` (4), `notes_sync` (8), `notify` (20), `overlay` (2), `persona` (6), `power` (1), `privacy` (6), `profile` (5), `quests` (2), `quiz` (10), `quota` (4), `remember` (1), `reminders` (1), `repair` (1), `reply_drafts` (2), `research` (20), `research_addon` (7), `retro` (9), `skills` (2), `sources` (7), `space` (7), `startby` (16), `study` (8), `subjects` (9), `telegram` (5), `terminal` (7), `turnon` (1), `updates` (6), `voice_notes` (2), `web` (1), `weekly` (3), `you` (5).
 
-<!-- settings fingerprint: 3b446c4c772b135a -->
+<!-- settings fingerprint: 1baeb09f9f80298d -->

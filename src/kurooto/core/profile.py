@@ -954,7 +954,7 @@ def _brain(app) -> dict:
         ok, why = b.available() if b else (False, "unknown")
     except Exception as e:
         ok, why = False, f"{type(e).__name__}: {e}"[:200]
-    return {"main": main, "label": providers.CHOICES.get(main, main), "ready": bool(ok), "why": why or ""}
+    return {"main": main, "label": providers.label(main, main), "ready": bool(ok), "why": why or ""}
 
 
 def status(app) -> dict:

@@ -602,7 +602,8 @@ function renderBrainPanel(which) {
       el("p", {}, "3. Check it works:" + (which === "claude" ? " Each request then gets only what Kurooto gives it, for that " +
         "request and nothing saved in Claude Code's own settings: Kurooto's tools, your notes and course files " +
         "(it may write only in your notes and course folders; Documents and Downloads are read-only), web pages and " +
-        "harmless commands such as ls, grep and git. Nothing else, and never the kurooto command itself." : "")), ...testButton(which));
+        "harmless commands such as ls, grep and git. Nothing else, and never the kurooto command itself." : "")), ...testButton(which),
+      claudeAccounts());
   } else if (which === "gemini") {
     const key = el("input", { placeholder: "AIza…", autocomplete: "off", spellcheck: "false" });
     const out = el("p", { "aria-live": "polite" });
@@ -646,6 +647,53 @@ function renderBrainPanel(which) {
   if (brain.ready) box.append(tryBox());
   panel.replaceChildren(box);
   gloss(panel);
+}
+
+// Another Claude account (providers/claude_accounts.py): its own sign-in, in a folder of Kurooto's, and its own AI
+// ("claude:work") with its own limits. Your usual sign-in above stays as it is.
+function claudeAccounts() {
+  const box = el("div", { class: "claude-accounts" });
+  const msg = el("p", { "aria-live": "polite" }); // what Add said; kept when the list is drawn again
+  const draw = () => {
+    const rows = (state.claude_accounts || []).map((a) => {
+      const out = el("p", { "aria-live": "polite" });
+      const test = el("button", { onclick: async () => { // tests that account only; your main AI stays as it is
+        test.disabled = true;
+        const busy = working("Asking it to reply… (up to a minute)");
+        out.replaceChildren(busy); out.className = "";
+        try {
+          const r = await api("brain/test", { which: a.id });
+          busy.stop();
+          out.replaceChildren(el("span", {}, (r.ok ? "✓ " : "") + r.message), r.ok ? null : el("span", { class: "fix" }, " " + fixFor("claude", r.message)));
+          out.className = r.ok ? "ok" : "bad";
+          if (r.ok) state.claude_accounts = (await api("brain/claude-accounts")).accounts;
+        } catch { busy.stop(); out.textContent = "Couldn't ask Kurooto to test it."; out.className = "bad"; }
+        test.disabled = false;
+      } }, "Test it");
+      const sign = el("button", { onclick: async () => {
+        const r = await api("brain/claude-accounts/signin", { id: a.id });
+        out.textContent = r.message || ""; out.className = r.ok ? "note" : "bad";
+      } }, "Open the sign-in window");
+      return el("div", {}, el("div", { class: "row" }, el("b", {}, a.label), el("span", { class: "note" }, a.working ? " ✓ working" : " not tested yet"), sign, test), out);
+    });
+    const name = el("input", { placeholder: "a short name, e.g. work", autocomplete: "off", spellcheck: "false", "aria-label": "Its name" });
+    const add = el("button", { onclick: async () => {
+      add.disabled = true;
+      const r = await api("brain/claude-accounts/add", { name: name.value.trim() });
+      add.disabled = false;
+      if (r.accounts) { state.claude_accounts = r.accounts; draw(); }
+      msg.textContent = r.message || ""; msg.className = r.ok ? "note" : "bad";
+    } }, "Add another Claude account");
+    box.replaceChildren(
+      el("h3", {}, "Another Claude account"),
+      el("p", {}, "If you have a second Claude subscription, sign it in here too: it becomes its own AI, with its own limits and its own line under answers. When the first one is at its limit, the second answers (then agy or a Gemini key, as before). Your usual sign-in above stays as it is."),
+      el("p", { class: "note" }, state.claude_terms || ""),
+      ...rows,
+      el("div", { class: "row" }, name, add), msg,
+      el("p", { class: "note" }, "Adding one opens a sign-in window for it: sign in with the other Claude account there, close it, then press Test it. Rename or remove it later in the dashboard: Settings → Claude accounts."));
+  };
+  draw();
+  return box;
 }
 
 // Try it: once the AI answers its test, a box that talks to Kurooto here, before Telegram is set up. It goes through

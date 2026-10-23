@@ -6,8 +6,10 @@ Settings (brain.*):
                     Empty: at a limit (fallback_on) the automatic order AUTO takes over: the other agent program
                     (agy or Claude Code), then a Gemini key if you saved one; the AI that failed and any that isn't set
                     up here (an agent program that hasn't answered here yet, an API brain without its key) are left
-                    out. This is the one list that holds the order (the nightly policy look may tune it); there's no
-                    other order setting.
+                    out. With extra Claude accounts (providers/claude_accounts.py) they follow Claude Code in that
+                    order, and when the main AI is one of your Claude accounts the others come first: the first
+                    account at its limit -> the second -> agy -> a Gemini key. This is the one list that holds the
+                    order (the nightly policy look may tune it); there's no other order setting.
     fallback_on     ["rate_limited"]: what moves a request on to the automatic order (and, for an AI you picked, a
                     timeout too): rate_limited (a usage limit: Claude's 5-hour window or weekly cap, agy's day),
                     auth (signed out), timeout. [] turns the automatic order off.
@@ -49,7 +51,11 @@ _lock = threading.Lock()
 
 
 def name(bid: str) -> str:
-    return NAMES.get(bid, bid)
+    if bid in NAMES:
+        return NAMES[bid]
+    from kurooto import providers
+
+    return providers.label(bid)
 
 
 def chosen(app: App) -> list[str]:
@@ -61,9 +67,26 @@ def chosen(app: App) -> list[str]:
     return [str(x).strip() for x in v or [] if str(x).strip()] if isinstance(v, (list, tuple)) else []
 
 
+def auto(app: App) -> list[str]:
+    """The automatic order: AUTO, with your extra Claude accounts right after Claude Code; when the main AI is one of
+    your Claude accounts, your other ones go first (one account at its limit -> the next -> agy -> Gemini)."""
+    from kurooto.providers import claude_accounts
+
+    out: list[str] = []
+    for b in AUTO:
+        out.append(b)
+        if b == "claude":
+            out += claude_accounts.ids(app)
+    main = app.settings.get("brain.main") or ""
+    if claude_accounts.is_claude(main):
+        same = [b for b in out if claude_accounts.is_claude(b) and b != main]
+        out = same + [b for b in out if b not in same]
+    return out
+
+
 def order(app: App) -> list[str]:
-    """Who takes over, in order: the AIs you picked (brain.fallback), else the automatic order (AUTO)."""
-    return chosen(app) or list(AUTO)
+    """Who takes over, in order: the AIs you picked (brain.fallback), else the automatic order (auto())."""
+    return chosen(app) or auto(app)
 
 
 def triggers(app: App) -> set[str]:

@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import sys
 import tarfile
@@ -378,20 +379,41 @@ class Prereqs:
         return True, v
 
     # ------------------------------------------------------------------------------------- signing in
-    def open_signin(self, key: str) -> tuple[bool, str]:
-        """Open a terminal window running the tool's sign-in, so you can log in in your browser."""
-        p = self.items[key]
+    def open_signin(self, key: str, env: dict[str, str] | None = None) -> tuple[bool, str]:
+        """Open a terminal window running the tool's sign-in, so you can log in in your browser. `env`: variables the
+        program gets in that window only (an extra Claude account's CLAUDE_CONFIG_DIR: providers/claude_accounts.py)."""
+        import shlex
+
+        p = self.items.get(key)
+        if p is None:
+            return False, "Nothing to sign in to."
         exe = p.find()
         if not exe or not p.signin:
             return False, f"{p.title} isn't installed yet."
+        env = {k: str(v) for k, v in (env or {}).items() if re.match(r"^[A-Z_][A-Z0-9_]*$", k)}
         cmd = [exe, *p.signin[1:]]
+        if env and self.os != "windows":
+            cmd = ["env", *(f"{k}={v}" for k, v in env.items()), *cmd]
         if self.os == "windows":
+            sets = "".join(f"$env:{k}='{v.replace(chr(39), chr(39) * 2)}'; " for k, v in env.items())
+            exe_q = str(exe).replace("'", "''")
             proc.run(
-                ["cmd", "/c", "start", f"Sign in to {p.title}", "powershell", "-NoExit", "-Command", f"& '{exe}'"],
+                [
+                    "cmd",
+                    "/c",
+                    "start",
+                    f"Sign in to {p.title}",
+                    "powershell",
+                    "-NoExit",
+                    "-Command",
+                    f"{sets}& '{exe_q}'",
+                ],
                 timeout=20,
             )
         elif self.os == "macos":
-            script = f'tell application "Terminal" to do script "{exe}"'
+            line = " ".join(shlex.quote(x) for x in cmd) if env else str(exe)
+            line = line.replace("\\", "\\\\").replace('"', '\\"')  # inside an AppleScript string
+            script = f'tell application "Terminal" to do script "{line}"'
             proc.run(["osascript", "-e", script, "-e", 'tell application "Terminal" to activate'], timeout=20)
         else:
             for term in (
@@ -406,11 +428,13 @@ class Prereqs:
                 if shutil.which(term):
                     import subprocess
 
-                    w = subprocess.Popen([term, "-e", *cmd], start_new_session=True)
+                    w = subprocess.Popen(
+                        [term, "-e", *cmd], start_new_session=True, env={**os.environ, **env} if env else None
+                    )
                     from kurooto.core import children
 
                     children.keep(w.pid)  # the sign-in window is yours
                     break
             else:
-                return False, f"Open a terminal and run: {' '.join(cmd)}"
+                return False, f"Open a terminal and run: {' '.join(shlex.quote(x) for x in cmd)}"
         return True, p.signin_hint or "A sign-in window opened."

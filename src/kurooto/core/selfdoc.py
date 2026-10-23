@@ -146,10 +146,11 @@ def _brain_line(app: App, bid: str) -> str:
     else:
         ms = getattr(b, "models", None) or {}
     shown = ", ".join(f"{k} {v}" for k, v in ms.items() if k in ("low", "medium", "high") and v)
-    return f"{providers.CHOICES.get(bid, bid)} [{bid}]: {state}" + (f"; models: {shown}" if shown else "")
+    return f"{providers.label(bid, bid)} [{bid}]: {state}" + (f"; models: {shown}" if shown else "")
 
 
 def _brains(app: App) -> list[str]:
+    from kurooto import providers
     from kurooto.providers import fallback
 
     s = app.settings
@@ -164,9 +165,13 @@ def _brains(app: App) -> list[str]:
         out += [f"  - {_brain_line(app, b)}" for b in picked]
     elif fallback.triggers(app):
         out.append(f"- No fallback picked: at a limit (brain.fallback_on: {on}) these take over, in order:")
-        out += [f"  - {_brain_line(app, b)}" for b in fallback.AUTO if b != main]
+        out += [f"  - {_brain_line(app, b)}" for b in fallback.auto(app) if b != main]
     else:
         out.append("- No fallback: brain.fallback is empty and brain.fallback_on is []")
+    extra = providers.claude_accounts.accounts(app)
+    if extra:  # each its own AI, with its own sign-in folder of Kurooto's and its own limits
+        names = ", ".join(f"{a.label} [{a.id}]" for a in extra)
+        out.append(f"- Claude accounts: Claude Code [claude] (the usual sign-in), and extra: {names}")
     if first:
         out.append(f"- The fallback goes first at these efforts (brain.fallback_first, tuned at night): {first}")
     how = s.get("brain.classify") or "rules"

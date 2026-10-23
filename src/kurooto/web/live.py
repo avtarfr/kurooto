@@ -524,7 +524,7 @@ class Vitals:
         if self._brain[0] != main:
             from kurooto import providers
 
-            self._brain = (main, providers.CHOICES.get(main, main))
+            self._brain = (main, providers.label(main, main))
         return {"id": main, "label": self._brain[1]}
 
     def _link(self) -> dict | None:

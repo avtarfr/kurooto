@@ -549,7 +549,7 @@ class Jobs:
                 other = next(
                     (
                         b
-                        for k in providers.AGENT_PROGRAMS
+                        for k in providers.agent_programs(self.app)
                         if k != want and (b := providers.build(self.app, k)) is not None and b.available()[0]
                     ),
                     None,
@@ -968,7 +968,7 @@ class Jobs:
         if main is None:
             return None
         if main.id == "gemini":
-            for key in providers.AGENT_PROGRAMS:
+            for key in providers.agent_programs(self.app):
                 brain = providers.build(self.app, key)
                 if (
                     brain is not None
@@ -1130,7 +1130,7 @@ class Jobs:
         """One running or waiting job, for /jobs and `kurooto jobs`."""
         t = time.time()
         if j.status == "running":
-            who = providers.CHOICES.get(j.brain or "", j.brain or "")
+            who = providers.label(j.brain or "", j.brain or "")
             what = f"{SHORT.get(j.brain or '', who) or 'starting'} · {_mins(t - (j.started or t))}"
         else:
             what = f"waiting {_mins(t - j.created)}"
@@ -1159,7 +1159,7 @@ class Jobs:
         if done:
             lines += ["", "Last finished:"] + [
                 f"{j.status:7} {j.effort or '-':6} {f'{j.seconds:.0f}s' if j.seconds else '':>5}  {j.title}"
-                + (f" · {NAMES.get(j.brain, j.brain)}" if j.brain else "")
+                + (f" · {NAMES.get(j.brain) or providers.label(j.brain)}" if j.brain else "")
                 + (f" {short_model(j.model, j.effort or '')}" if j.brain and j.model else "")
                 + (f" ({j.verdict})" if j.status == "failed" and j.verdict else "")
                 for j in done

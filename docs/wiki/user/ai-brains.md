@@ -7,6 +7,7 @@ the brain: they run on your computer without any AI.
 
 - [The brains you can choose](#the-brains-you-can-choose)
 - [Main and fallback](#main-and-fallback)
+- [Two Claude accounts](#two-claude-accounts)
 - [How hard it thinks (effort)](#how-hard-it-thinks-effort)
 - [Free limits and the reserve](#free-limits-and-the-reserve)
 - [What the AI can do (its tools)](#what-the-ai-can-do-its-tools)
@@ -105,6 +106,43 @@ When the fallback answers, the answer says so in one line. Three more rules:
   program (agy or Claude Code) that is installed and has worked on this computer before. The other way round happens
   only at a limit, in the automatic order: a refusal, an empty answer or an error from an agent
   program doesn't go to your free Gemini key, because its limit is small and kept for calls.
+
+## Two Claude accounts
+
+If you have more than one Claude subscription (a personal and a work one, say), each can be signed in and used as a
+separate AI (0.7.0). Your usual sign-in (`claude`) stays exactly as it is.
+
+**Adding one:**
+
+1. Setup page (`kurooto setup brain`) → AI → **Claude Code** (set up the usual one first: install, sign in, Test it).
+2. Under **Another Claude account**, type a short name (`work`) and press **Add another Claude account**.
+3. A sign-in window opens for that account only: sign in with your *other* Claude account, then close the window.
+4. Press **Test it** next to it. Once it answers, it's ready.
+
+In a terminal instead: `kurooto ai add-claude work` (Claude Code starts right there for that account: sign in, then
+type `/exit`), then `kurooto ai test claude:work`. `kurooto ai accounts` lists them.
+
+Using a second subscription to get around the first one's usage limits may not be allowed by Anthropic's terms; check them for your use.
+
+**What it shows:** each extra account is its own AI, `claude:work`, named "Claude Code (work)":
+
+- **its own limits**: one at its 5-hour or weekly limit doesn't hold up the other;
+- **at a limit, the other account answers first** (with no fallback picked): Claude Code → Claude Code (work) → agy →
+  a Gemini key. The run receipt says so: *Claude Code hit its limit; Claude Code (work) answered · opus-4.5 · ...*;
+- `/brain`, `/usage`, `kurooto usage` and the AI's own page about Kurooto (`self.md`) name each account, and which is
+  at its limit until when; the dashboard shows it as "claude (work)".
+- Use its id wherever an AI is named: `brain.main` = `claude:work`, `brain.fallback` = `["claude:work", "agy"]`, the
+  concept graph's `integrate.roles`. Models: `brain.models["claude:work"]`, else the same as `brain.models.claude`.
+
+**Where its sign-in lives:** in a folder of Kurooto's (data folder → `claude-accounts/work/`; Claude Code's
+`CLAUDE_CONFIG_DIR`). Kurooto never opens, copies or prints what's in it, never writes in your own `~/.claude`, and
+leaves it out of backups unless `backups.secrets` is on. A profile restored on another computer brings the account's
+name but not its sign-in: press **Open the sign-in window** for it there.
+
+**Rename or remove:** dashboard → Settings → **Claude accounts**. Type a new name (its id stays, so your settings keep
+working). **Remove** asks first, then deletes only Kurooto's folder for it (your Claude account itself isn't touched)
+and takes it out of `brain.main` and `brain.fallback`. Terminal: `kurooto ai rename-claude work "day job"`,
+`kurooto ai remove-claude work`.
 
 ## How hard it thinks (effort)
 
@@ -310,8 +348,9 @@ Dashboard → Settings → brain (and quota, jobs, you):
 
 | Setting | Default | Effect |
 |---|---|---|
-| `brain.main` | empty | the AI that handles requests: `agy`, `gemini`, `claude`, `ollama` or `custom` |
+| `brain.main` | empty | the AI that handles requests: `agy`, `gemini`, `claude`, `ollama` or `custom`, or an extra Claude account (`claude:work`) |
 | `brain.fallback` | empty | the AI that takes over when the main one can't answer, or a list of them in order (`["agy", "gemini"]`); empty: at a limit, the other agent program, then a Gemini key |
+| `brain.claude_accounts` | `{}` | your extra Claude accounts, each its own AI `claude:<name>` ([Two Claude accounts](#two-claude-accounts)); change them in Settings → Claude accounts |
 | `brain.fallback_on` | `["rate_limited"]` | what moves a request on to the automatic order: `rate_limited`, `auth`, `timeout` (`[]`: off) |
 | `brain.classify` | `rules` | who judges how hard a request is: `rules`, `main` or `ollama` |
 | `brain.models` | `{}` | models per brain and effort, e.g. `{"custom": {"low": "...", "medium": "...", "high": "..."}}`, `{"claude": {"high": "opus"}}` |

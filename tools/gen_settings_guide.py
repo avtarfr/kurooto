@@ -35,7 +35,7 @@ NOTES = {  # settings whose source line has no comment: what they do
     "brain.agy.io_mode": "how Kurooto talks to agy: pipe, or a pseudo-terminal where pipes give no output",
     "brain.classify": "who judges how hard a request is: rules, main (your AI) or ollama",
     "brain.fallback": "the AI that takes over when the main one can't answer, or a list of them in order; empty: at a limit (brain.fallback_on), the other agent program, then a Gemini key",
-    "brain.main": "the AI that handles requests: agy, claude, gemini, ollama or custom",
+    "brain.main": "the AI that handles requests: agy, claude, gemini, ollama or custom, or an extra Claude account (claude:<name>)",
     "brain.timeout_min.high": "minutes a hard request may run before it's stopped",
     "brain.timeout_min.low": "minutes a quick request may run before it's stopped",
     "brain.timeout_min.medium": "minutes a normal request may run before it's stopped",

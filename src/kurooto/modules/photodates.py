@@ -148,7 +148,7 @@ def ready(app: App, job, result, payload: dict) -> None:
     if not result.ok:
         from kurooto.core.jobs import FRIENDLY
 
-        label = providers.CHOICES.get(job.brain or "", job.brain or "the AI")
+        label = providers.label(job.brain or "", job.brain or "the AI")
         said = FRIENDLY.get(result.verdict, "It failed.").format(brain=label)
         if re.search(r"image|vision|picture|multimodal", result.detail or "", re.I):
             said = (

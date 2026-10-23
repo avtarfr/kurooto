@@ -518,9 +518,9 @@ class Research(Module):
         tail = self.app.jobs.receipt(job.id) or None
         if not result.ok:
             from kurooto.core.jobs import FRIENDLY
-            from kurooto.providers import CHOICES
+            from kurooto.providers import label as brain_label
 
-            label = CHOICES.get(job.brain or "", job.brain or "the AI")
+            label = brain_label(job.brain or "", job.brain or "the AI")
             failed = FRIENDLY.get(result.verdict, "it failed.").format(brain=label)
             text = f"New papers: {failed} They come again next time."
             self.app.notify(text, kind="result", why="research.papers")

@@ -519,7 +519,7 @@ Event kinds that something reads (not just the feed):
 | `reminder_set`, `reminder_fired`, `checkin_*`, `deadline_added`, `deadline_done`, `deadline_told`, `quiz_graded`, `quiz_session`, `doubt_added`, `study_session_start`, `remembered`, `skill_run` | weekly, quests, presence |
 
 Other kinds, by area (shown in the feed and counted by retro): lifecycle `started`, `stopped`, `module_failed`,
-`commands_failed`, `upgraded`, `brain_retired`; jobs `job_queued`, `job_crashed`, `job_deferred`, `job_cancelled`,
+`commands_failed`, `upgraded`, `brain_retired`, `claude_account_added`, `claude_account_removed`; jobs `job_queued`, `job_crashed`, `job_deferred`, `job_cancelled`,
 `job_ended`, `job_then_failed`, `jobs_failed`, `tool_used`, `tool_failed`, `tools_failed`, `note_written`,
 `quota_limit`, `quota_back`, `quota_reserve`, `agy_tools`; messages `notified`, `notify_queued`, `notify_failed`,
 `notify_delayed`, `calm_*`, `rhythm_*`, `keep_asked`, `keep_answer`, `keep_failed`, `presence_online`, `presence_offline`, `question_hook_failed`, `question_hook_missing`;
