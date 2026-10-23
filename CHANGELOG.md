@@ -10,7 +10,12 @@
   that began the night before says "until 06:00" instead of looking like tonight's.
 - **The dashboard and setup page are fast again:** each setting Kurooto looked up copied all of its settings, and a
   page asked a thousand times or more, so the dashboard's Today took 3 to 9 seconds and the setup page's 5 to 13. Now
-  0.06 and 0.2 seconds. The concept graph's card also stopped re-splitting every queued book on each look.
+  every call the pages make answers in well under a tenth of a second once warm (the Features list in 0.06 s, the
+  Notes step in 0.02 s), and the notes map rescans in 11 ms instead of 145.
+- **A dashboard in a background tab costs nothing:** it kept Kurooto at 13-30% of a core reading the computer and your
+  notes every few seconds; now that stops until you look again, and catches up at once (2.5% while you watch).
+- **The browser keeps the dashboard's script, styles and fonts** between loads (checked each time, so updates still
+  arrive) instead of fetching 230 KB of script on every open.
 - **Study packs keep to their course:** a note from another course's or project's folder came along when it merely
   linked the course (a project's book note in a Physics of the Atmosphere pack). It now comes only when it's about the
   topic you named.
