@@ -66,7 +66,7 @@ fun TodayPage(a: MainActivity, ui: HomeState, outer: PaddingValues) {
 @Composable
 private fun Mark(name: String) {
     Image(
-        painterResource(R.mipmap.ic_launcher),
+        painterResource(R.drawable.k_mark), // a bitmap: the mipmap is an adaptive icon, which painterResource can't draw
         contentDescription = name,
         modifier = Modifier.padding(end = 12.dp).size(44.dp),
     )
