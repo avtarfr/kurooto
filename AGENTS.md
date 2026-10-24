@@ -175,6 +175,10 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
   (Views is off until the person turns it on in the dashboard → Phone); an old phone on a charger can
   be a bedside clock. iPhones use the Home Screen web app and a "Tell Kurooto" Shortcut whose link the person can
   revoke from the dashboard.
+- Brain (0.8.0, off until turned on in Features) is Kurooto's mind. Its log and scores in the state folder's `mind/`
+  folder are written only by its scorekeeper process: never edit or delete those files. `/mind` and `/mind verify`
+  say how it is; deleting it is the person's tap after turning Brain off. `tools/mind_harden.sh` (optional hardened
+  mode) needs sudo: ask first.
 - Updates install themselves at night by default, signed and with automatic rollback.
 - On battery (`power.on_battery`, default `saver`) heavy work waits for the charger on purpose; Telegram keeps working.
 - The notes folder is plain Markdown files; Kurooto never deletes it, and its notes tools only create, add to and

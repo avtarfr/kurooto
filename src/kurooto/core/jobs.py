@@ -53,6 +53,7 @@ from kurooto.core.config import register_defaults
 from kurooto.core.mcp import ENV_JOB, command, run_env
 from kurooto.core.state import owner_only
 from kurooto.core.tools import run_tool, tools_for
+from kurooto.mind import records
 from kurooto.providers import effort as effort_mod
 from kurooto.providers.agy import Agy
 from kurooto.providers.base import Result, Task, Verdict, short_model
@@ -278,6 +279,8 @@ class Jobs:
         forced, prompt_clean = effort_mod.strip_forced(prompt)
         jid = "j" + uuid.uuid4().hex[:8]
         lane = lane if lane in LANES else ("bg" if background else "you")
+        if why and why != "asked":  # work Kurooto starts by itself: its decision record first (Brain, mind/records.py)
+            records.decide(self.app, f"job:{why}"[:80], scored_reason=why, source="rules", risk_class="")
         with self._lock:
             self._db.execute(
                 "insert into jobs(id,title,prompt,effort_req,status,reply_to,quiet,created,then_action,then_payload,"

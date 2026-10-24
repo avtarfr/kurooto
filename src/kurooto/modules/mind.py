@@ -1,0 +1,272 @@
+"""Brain (0.8.0): Kurooto's mind, as a feature. Off until you turn it on; turned off, Kurooto is exactly as in 0.7.
+
+This module starts the scorekeeper (kurooto/mind/scorekeeper.py) as a process of its own, starts it again if it dies
+(waiting 1 s, then longer, up to a minute), and ends it with Kurooto. It mirrors a few kinds of events into the mind
+log (ids and numbers only: mind/log.py MIRRORED), and answers /mind. Everything it keeps is in `<state>/mind/`, on
+this computer only. Turning it off offers to delete that (Delete Brain's data / Keep it); nothing is deleted
+otherwise.
+
+The optional hardened mode (tools/mind_harden.sh, Linux and macOS): the scorekeeper runs as a system user of its own,
+started by systemd or launchd, so not even a program running as you can change the log. Kurooto then only reads it.
+
+The parts that grow from the spine (stages 02-17) each have their own switch, `mind.<part>.on`, and come with Brain.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import datetime as dt
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+from kurooto import mind
+from kurooto.core.config import register_defaults
+from kurooto.core.events import subscribe
+from kurooto.mind import log as mlog
+from kurooto.modules.base import Command, Incoming, Module
+
+register_defaults(
+    "mind",
+    {
+        "hardened": False,  # the scorekeeper runs as its own user (tools/mind_harden.sh; its marker file does the same)
+        "anchor_every": 1000,  # the log's head is written down every this many records (and once a day)
+    },
+)
+
+BACKOFF_MAX_S = 60  # a scorekeeper that keeps dying is started again at most this often
+STEADY_S = 300  # one that ran this long starts the wait from 1 s again
+END_S = 5  # it's asked to stop, and killed if it hasn't after this long
+CONFIRM_S = 7 * 86400  # Delete Brain's data works this long after it was offered
+
+
+class Mind(Module):
+    id = mind.MODULE
+    title = "Brain"
+    description = (
+        "Kurooto's mind: a tamper-evident log of what it saw and decided, kept by a separate process the AI can't "
+        "change. The parts that grow from it (forecasts, drives, a journal) each have their own switch."
+    )
+    privacy = "Stays on this computer: ids, kinds and numbers, never the words of your messages."
+    processes = ("kurooto.mind.scorekeeper",)
+    extra = True  # in no preset ("Everything" too): on only when you pick it yourself
+
+    def __init__(self, app):
+        super().__init__(app)
+        self._unsub = None
+        self._proc: subprocess.Popen | None = None
+        self.restarts = 0
+        self.started_at = 0.0
+
+    @property
+    def dir(self) -> Path:
+        return self.app.paths.state / "mind"
+
+    # ------------------------------------------------------------------------------------------ lifecycle
+    def start(self) -> None:
+        if self._unsub is None:
+            self._unsub = subscribe(self._mirror)
+
+    def stop(self) -> None:
+        if self._unsub is not None:
+            self._unsub()
+            self._unsub = None
+        c = mind._clients.get(id(self.app))
+        if c is not None:
+            c.flush(2.0)
+        super().stop()
+        self._end()
+
+    def turned_off(self) -> None:
+        """Brain was just turned off: say what it kept, and offer to delete it."""
+        if not self.dir.exists():
+            return
+        n = mlog.MindLog(self.dir / "log.db").count()
+        asked = int(time.time())
+        self.app.notify(
+            f"Brain is off. What it kept stays on this computer ({n:,} records in its log, and its scores) until you "
+            "delete it. Turning it on again carries on from there.",
+            kind="result",
+            why="mind.off",
+            buttons=[[("Delete Brain's data", f"mnd:{asked}:delete"), ("Keep it", "mnd:0:keep")]],
+        )
+
+    def _mirror(self, rec: dict) -> None:
+        """An event, as it happens (core/events.py): the mirrored kinds go to the scorekeeper. Never blocks."""
+        kind = str(rec.get("kind") or "")
+        if mlog.mirrored(kind) and mind.on(self.app):
+            mind.connect(self.app).report(kind, rec)
+
+    # ------------------------------------------------------------------------------------------ the process
+    def hardened(self) -> bool:
+        """The scorekeeper runs as its own user (tools/mind_harden.sh leaves the marker; mind.hardened forces it)."""
+        return bool(self.setting("hardened")) or (self.dir / "hardened").exists()
+
+    def _cmd(self) -> list[str]:
+        return [
+            sys.executable,
+            "-m",
+            "kurooto.mind.scorekeeper",
+            "--dir",
+            str(self.dir),
+            "--parent",
+            str(os.getpid()),
+            "--anchor-every",
+            str(int(self.setting("anchor_every") or 1000)),
+        ]
+
+    def _spawn(self) -> subprocess.Popen:
+        self.dir.mkdir(parents=True, exist_ok=True)
+        mlog.private(self.dir, 0o700)
+        self.app.paths.logs.mkdir(parents=True, exist_ok=True)
+        err = open(self.app.paths.logs / "mind-scorekeeper.log", "a", encoding="utf-8")  # noqa: SIM115 (the child's)
+        kw: dict = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": err}
+        if sys.platform == "win32":
+            kw["creationflags"] = subprocess.CREATE_NO_WINDOW
+        try:
+            return subprocess.Popen(self._cmd(), **kw)  # noqa: S603 (our own module, our own interpreter)
+        finally:
+            err.close()
+
+    def _end(self) -> None:
+        p, self._proc = self._proc, None
+        if p is None or p.poll() is not None:
+            return
+        try:
+            p.terminate()
+            p.wait(END_S)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait(END_S)
+        except OSError:
+            pass
+
+    async def background(self, stop: asyncio.Event) -> None:
+        """Keep the scorekeeper running while Brain is on (hardened: systemd or launchd does, and this only waits)."""
+        wait = 1.0
+        try:
+            while not stop.is_set():
+                if not mind.on(self.app):  # turned off meanwhile: Kurooto stops this task too
+                    break
+                if self.hardened():
+                    await self._sleep(stop, 60)
+                    continue
+                self._proc = await asyncio.to_thread(self._spawn)
+                self.started_at = time.monotonic()
+                self.app.events.emit("mind_keeper_started", pid=self._proc.pid)
+                while self._proc is not None and self._proc.poll() is None and not stop.is_set():
+                    await self._sleep(stop, 1)
+                if stop.is_set() or self._proc is None:
+                    break
+                code = self._proc.returncode
+                self.restarts += 1
+                self.app.events.emit("mind_keeper_exited", code=code)
+                if time.monotonic() - self.started_at >= STEADY_S:
+                    wait = 1.0
+                await self._sleep(stop, wait)
+                wait = min(BACKOFF_MAX_S, wait * 2)
+        finally:
+            await asyncio.to_thread(self._end)
+
+    @staticmethod
+    async def _sleep(stop: asyncio.Event, secs: float) -> None:
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=secs)
+        except TimeoutError:
+            pass
+
+    # ------------------------------------------------------------------------------------------ what you see
+    def health(self) -> tuple[bool, str]:
+        c = mind.connect(self.app)
+        up, _ = c.running()
+        if not up:
+            return False, "its scorekeeper isn't running (it's started again by itself; /mind says more)"
+        return True, ""
+
+    def dreaming_lines(self) -> list[str]:
+        """The morning message's line: where the log is, so a rewritten log can be caught against what you saw."""
+        c = mind.connect(self.app)
+        st = c.state()
+        if not st["head"]:
+            return []
+        return [f"Brain's log: {st['records']:,} records, head #{st['head']} {st['hash'][:12]}."]
+
+    def commands(self) -> list[Command]:
+        return [
+            Command(
+                "mind",
+                "Brain: its scorekeeper, its log and whether the log checks out; /mind verify checks all of it",
+                self.cmd,
+                usage="/mind [verify]",
+            )
+        ]
+
+    def cmd(self, msg: Incoming, arg: str) -> str:
+        c = mind.connect(self.app)
+        if (arg or "").strip().lower() == "verify":
+            r = c.verify()
+            if r.ok:
+                return f"Brain's log checks out: {r.records:,} records, every one in its place (#{r.head})."
+            return f"Brain's log doesn't check out at #{r.first_bad_seq}: {r.why}. /mind says more."
+        return self.status(c)
+
+    def status(self, c) -> str:
+        st = c.state()
+        up, pid = c.running()
+        lines = ["Brain is on."]
+        if self.hardened():
+            lines.append(f"Scorekeeper: {'running' if up else 'not running'} as its own user (hardened mode).")
+        elif up:
+            lines.append(f"Scorekeeper: running (process {pid}).")
+        else:
+            lines.append("Scorekeeper: not running right now; it's started again by itself.")
+        a = st["anchor"]
+        start = int(a["seq"]) if a else 1
+        r = c.verify(start)  # quick: from the last anchor (/mind verify checks everything)
+        state = "checks out" if r.ok else f"doesn't check out at #{r.first_bad_seq} ({r.why})"
+        lines.append(f"Log: {st['records']:,} records, head #{st['head']} {st['hash'][:12]}, {state}.")
+        if a:
+            when = _when(a.get("at"))
+            lines.append(f"Last anchor: #{a['seq']} {str(a['hash'])[:12]}{f', {when}' if when else ''}.")
+        scored = sum(st["scores"].values())
+        lines.append("Scores: none yet." if not scored else f"Scores: {scored} kept.")
+        if st["waiting"]:
+            lines.append(f"Waiting to be logged: {st['waiting']} (kept aside until the scorekeeper takes them).")
+        if st["dropped"]:
+            lines.append(f"Dropped since Kurooto started: {st['dropped']} (more came than could be kept).")
+        return "\n".join(lines)
+
+
+def _when(iso) -> str:
+    try:
+        t = dt.datetime.fromisoformat(str(iso))
+    except (TypeError, ValueError):
+        return ""
+    return t.strftime("%d %b %H:%M")
+
+
+def button(app, ref: str, act: str) -> str:
+    """Delete Brain's data / Keep it, under the message that Brain is off (a core button: Brain is off by then)."""
+    if act != "delete":
+        return "Kept."
+    try:
+        asked = int(ref)
+    except ValueError:
+        return "That button has expired."
+    if time.time() - asked > CONFIRM_S:
+        return "That button has expired; turn Brain off again to be asked again."
+    if mind.on(app):
+        return "Brain is on again, so its data stays. Turn it off first."
+    d = app.paths.state / "mind"
+    c = mind.connect(app)
+    up, _ = c.running()
+    if up:
+        return "Brain's scorekeeper is still stopping; try again in a minute."
+    mind.forget_client(app)
+    n = mlog.MindLog(d / "log.db").count() if d.exists() else 0
+    shutil.rmtree(d, ignore_errors=True)
+    app.events.emit("mind_deleted", records=n)
+    return "Deleted Brain's data." if not d.exists() else "Couldn't delete all of it; /mind says what's left."

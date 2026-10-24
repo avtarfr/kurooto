@@ -132,6 +132,7 @@ GROUPS: tuple[Group, ...] = (
         ("sync", "notes"),
     ),
     Group("projects", "Projects and proposals", "proposals", ("projects",), ("project", "proposals")),
+    Group("brain", "Brain", "mind", ("mind",)),
     Group("skills", "Skills and routines", "skills-and-routines", ("skills",)),
     Group("research", "Research", "research", ("research", "research_addon")),
     Group(

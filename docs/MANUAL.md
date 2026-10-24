@@ -24,7 +24,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) ·
     [The offline helper](#the-offline-helper) ·
     [After-class notes](#after-class-notes) ·
-    [Remember](#remember) · [Nightly look back](#nightly-look-back) · [Learns from its own work](#learns-from-its-own-work) · [Dreaming](#dreaming) · [Set up from what you say](#set-up-from-what-you-say) ·
+    [Remember](#remember) · [Nightly look back](#nightly-look-back) · [Learns from its own work](#learns-from-its-own-work) · [Dreaming](#dreaming) · [Brain](#brain) · [Set up from what you say](#set-up-from-what-you-say) ·
     [Meetings: minutes and action items](#meetings-minutes-and-action-items) ·
     [Wrong button and test cases](#wrong-button-and-test-cases)
   - [Phone calls](#phone-calls) · [Morning alarm](#morning-alarm) ·
@@ -1593,6 +1593,36 @@ a stub it made is a plain note you can delete; `/unignore <topic>` takes back No
 **Undo** button (the line, the gist or the deadline's date comes back, and the pair is asked about again);
 `dreaming.consolidate` = false stops looking. A Keep for your profile: its **Undo** button (the line comes out and is
 offered again), or delete the line from the note; `dreaming.fold` = false stops offering.
+
+### Brain
+
+**What it does** (0.8.0). Brain is Kurooto's mind, built up part by part; turned off, Kurooto works exactly as before.
+Its first part is the spine everything else stands on:
+- **A log.** It records what Kurooto saw (deadlines, reminders, calls, AI requests, buttons you tapped, Undo,
+  proposals, sleep and power) and what it decided on its own, before it acted (a message it started, an AI request it
+  queued, a proposal it made at night).
+- **It can't be quietly changed.** Each record carries a fingerprint of the one before, and the morning message shows
+  where the log has got to, so a changed, cut or rewritten log is caught.
+- **Only the scorekeeper writes it.** The scorekeeper is a small separate program; Kurooto and its AI can only hand it
+  facts, and any other request is refused.
+
+**Turn it on:** Features → **Brain**. The parts it grows later each have their own switch, `mind.<part>.on`.
+
+**What it keeps:** ids, kinds and numbers, never the words of a message, a reminder, a title or anything you typed. A
+decision keeps its reason (up to 300 characters). All of it is in the `mind` folder of the state folder, readable only
+by you. It's not in backups or Profile sync, and nothing of it leaves the computer.
+
+**Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
+every record).
+
+**Settings:** `mind.anchor_every` (1000: the log's head is noted every this many records, and once a day);
+`mind.hardened` (off).
+
+**Hardened mode (optional, Linux and macOS):** `sudo tools/mind_harden.sh --apply` runs the scorekeeper as a system
+user of its own, so not even a program running as you can change the log. Without `--apply` it only prints its plan.
+
+*Undo:* Features → Brain → Turn off. The message that follows offers **Delete Brain's data** (gone for good) or **Keep
+it**. Hardened mode: `sudo tools/mind_harden.sh --undo`.
 
 ### Set up from what you say
 

@@ -250,6 +250,17 @@ Questions are delivered on the channels you set up (Telegram, the phone app, the
 in the state folder (`ask/<id>.json`), deleted 30 days after they're answered or expire
 (`ask.keep_days`, or `privacy.keep_days` when you set one). The events log records when and where you answered, not what.
 
+## Kurooto's mind log (Brain)
+
+Brain (0.8.0, off until you turn it on) keeps a log of what Kurooto saw and decided, and its scores, in the `mind`
+folder of the state folder, on this computer only:
+
+| What | Kept | Leaves the computer? |
+|---|---|---|
+| The mind log (`log.db`): ids and numbers only (a deadline added, a call missed, a button tapped, an AI request ended), and Kurooto's own decisions with their reason (up to 300 characters); never the words of a message, a reminder, a title or anything you typed | until you delete it (turn Brain off, then Delete Brain's data) | no; not in backups or Profile sync |
+| Brain's scores (`score.db`): empty until later parts of Brain fill them | the same | no |
+| Where the log has got to (`anchors.jsonl`), also shown in the morning message | the same | no |
+
 ## How long it's kept
 
 What Kurooto keeps of your conversations on this computer stays until you say otherwise: set `privacy.keep_days`

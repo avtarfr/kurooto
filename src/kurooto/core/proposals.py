@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any
 from kurooto.core import scratch
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
+from kurooto.mind import records
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -297,6 +298,9 @@ def make(
     )
     if existing is not None:
         p["told"] = False
+    if night:  # one it made with nobody waiting: its decision record first (Brain, mind/records.py)
+        records.decide(app, f"proposal:{source}"[:80], scored_reason="proposals.night",
+                       source=f"ai:{brain}" if brain and records.SOURCES.match(f"ai:{brain}") else "rules")  # fmt: skip
     home(app).mkdir(parents=True, exist_ok=True)
     (home(app) / f"{p['id']}.diff").write_text(ch.patch, encoding="utf-8")
     save(app, p)

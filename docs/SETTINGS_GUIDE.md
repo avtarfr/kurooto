@@ -606,6 +606,13 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `memory.thread_days` | `7` | an open thread nobody touched closes by itself after this many days |
 | `memory.threads` | `true` | what you say you'll do (in chats and on calls) and tasks you start become open threads |
 
+### `mind`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `mind.anchor_every` | `1000` | the log's head is written down every this many records (and once a day) |
+| `mind.hardened` | `false` | the scorekeeper runs as its own user (tools/mind_harden.sh; its marker file does the same) |
+
 ### `modules`
 
 | Setting | Default | What it does |

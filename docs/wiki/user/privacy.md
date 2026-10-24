@@ -176,8 +176,15 @@ Stay awake on charger, Space keeper, the reserve (Markdown copies of Kurooto's s
 folder), notes brain timelines, course pages, weekly checkup and checkup line, Dreaming's consolidating and its
 "For your profile" lines (rules, and the model on this computer for a second look; the lines waiting for your Keep
 are kept owner-only in Kurooto's state folder), setting up from what you say and its nightly pass (rules, and the
-model on this computer for a line the rules can't read), `kurooto top`, `kurooto runlog` (and run compare). Sync everything sends only what each
+model on this computer for a line the rules can't read), `kurooto top`, `kurooto runlog` (and run compare), Brain (below). Sync everything sends only what each
 sync's own feature sends.
+
+**Brain** (0.8.0, off until you turn it on) keeps its log and scores in the `mind` folder of the state folder: ids,
+kinds and numbers (a deadline was added, a call was missed, a button was tapped), never the words of a message, a
+reminder, a title, an error or anything you typed. A decision Kurooto made on its own keeps its reason, up to 300
+characters. Only you can read the files (in [hardened mode](mind.md#hardened-mode-optional), its own system user
+writes them and your group reads them). The folder isn't in backups or Profile sync, nothing of it leaves the
+computer, and it's kept until you delete it: turn Brain off and tap **Delete Brain's data**.
 
 ## Where requests go
 

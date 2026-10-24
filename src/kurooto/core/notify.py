@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 from kurooto.core import desktop
 from kurooto.core.config import register_defaults
+from kurooto.mind import records
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -126,6 +127,8 @@ class Notifier:
         calm = getattr(self.app, "calm", None)
         if calm is not None and calm.decide(msg) != "send":
             return None
+        if msg.why and msg.why != "asked":  # one it starts by itself: its decision record (Brain, mind/records.py)
+            records.decide(self.app, f"message:{msg.kind}", scored_reason=msg.why, source="rules")
         return self.release(msg)
 
     def release(self, msg: Message) -> Any:

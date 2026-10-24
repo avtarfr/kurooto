@@ -92,8 +92,8 @@ GUARDED: dict[str, Guard] = {
         "delete your data",
         ("typed", "confirm", "button"),
         "/forget 7d and /forget all (after Forget everything), /memory forget, /gists forget, Undo and Drop buttons, "
-        'Keep A / Keep B under the morning message\'s "Worth a look"; the AI never deletes (a note it changes keeps '
-        "its earlier version)",
+        "Keep A / Keep B under the morning message's \"Worth a look\", Delete Brain's data after Brain is turned off; "
+        "the AI never deletes (a note it changes keeps its earlier version)",
     ),
 }
 
@@ -102,6 +102,7 @@ GUARDED: dict[str, Guard] = {
 # (tests/unit/test_tap.py). oad: an official add-on's Add / Update (core/official.py)
 BUTTONS: dict[str, str] = {
     "oad": "addon.install",
+    "mnd": "data.delete",  # Delete Brain's data, offered when Brain is turned off (modules/mind.py)
 }
 
 

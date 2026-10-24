@@ -65,7 +65,9 @@ SKIP_STATE = {
     "focus-queue.jsonl",
     "profile.json",  # this computer's own id for the encrypted profile: it mustn't move to another computer
 }
-SKIP_STATE_DIRS = {"locks", "logs", "cases"}  # cases: what you typed, kept on this computer only
+# cases: what you typed, kept on this computer only. mind: Brain's log and scores (0.8.0) stay on this computer; an
+# older copy put back would look like a log cut short (mind/log.py anchors), and its key is only for one run
+SKIP_STATE_DIRS = {"locks", "logs", "cases", "mind"}
 SKIP_STATE_FILES = {
     ("telegram", "offset.json"),
     ("telegram", "pairing.json"),

@@ -32,6 +32,7 @@ from kurooto.modules.learning import Learning
 from kurooto.modules.library import Library
 from kurooto.modules.lidsafe import LidSafe
 from kurooto.modules.local_models import LocalModels
+from kurooto.modules.mind import Mind
 from kurooto.modules.notes_sync import NotesSync
 from kurooto.modules.overlay import AddOns
 from kurooto.modules.profile import Profile
@@ -68,6 +69,7 @@ CATALOG = [
     Quiz,
     ExamSeason,
     Dreaming,
+    Mind,
     Weekly,
     Quests,
     Files,

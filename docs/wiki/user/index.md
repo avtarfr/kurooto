@@ -48,6 +48,8 @@ all of them.
 - [Research](research.md): a digest of new papers, project logs, experiment runs, a message when a long job ends.
 - [Projects and proposals](proposals.md): the AI drafts in a scratch folder of its own; every change to your files
   (notes, a project, a skill) comes as a proposal with the diff, and only your tap applies it. Help with your project.
+- [Brain](mind.md): Kurooto's mind (0.8.0), off until you turn it on: a log of what it saw and decided that it can't
+  quietly change, kept by a separate program the AI can't reach; each part it grows has its own switch.
 - [Google](google.md): Classroom, Gmail digest and reply drafts, Google Calendar, the Agent plan calendar, Drive upload, and setting up your own Google sign-in.
 
 **Kurooto itself**
