@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 (unreleased)
+## 0.7.0 (2026-10-24)
 
 **The phone app, rebuilt**
 - The Android app's screens are rebuilt in Jetpack Compose with Material 3 Expressive, with a bottom bar: **Today**
@@ -15,6 +15,12 @@
   Phone). iPhones don't get them.
 - The app is built with Gradle through `android/build.sh` (pinned versions, the same signing); `build.sh --dev` makes a
   "Kurooto dev" build that installs beside the real one, with a `demo` mode.
+
+- **Calls ring straight through your call line:** the app keeps its own link to your call line, so calls and
+  messages reach the phone without ntfy.sh; ntfy.sh stays as the fallback when the link is down. A message sent while
+  the phone was offline is replayed when it comes back. The Phone tab says which way calls are coming.
+- **Kurooto's mark:** a moth, as the app icon (with a themed icon on Android 13+), at the top of Today, beside the
+  dashboard's name and as the favicon of every page.
 
 **Your AI can do more, and you approve it**
 - **A scratch folder and proposals:** the AI may think and write freely in a scratch folder of its own; every change to
@@ -46,6 +52,8 @@
   Lenovo Legion and LOQ on Linux: a small root helper, installed once with one sudo command, for the custom profile and
   full-speed fans.
 - Dreaming's morning message takes a feature's own loose ends (`dreaming_lines()`).
+- Fixed: after a restart, the concept graph could start reading outside its night window, depending on the time of
+  day (two clocks were mixed).
 
 ## 0.6.1 (2026-10-24)
 
