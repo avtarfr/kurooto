@@ -66,7 +66,7 @@ body[data-design="new"] .bar, body[data-design="new"].dense .bar { display: flex
 body[data-design="new"] .brand { position: relative; display: block; padding-left: 22px; font: 700 15px/1 var(--ui); letter-spacing: -0.01em;
   color: var(--fg); text-transform: lowercase; }
 body[data-design="new"] .brand::first-letter { text-transform: uppercase; }
-body[data-design="new"] .brand::before { content: ""; position: absolute; left: 0; top: calc(50% - 6px); width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+body[data-design="new"] .brand::before { content: ""; position: absolute; left: 0; top: calc(50% - 7px); width: 14px; height: 14px; background: url(/static/favicon.svg) center / contain no-repeat; } /* the mark */
 body[data-design="new"] .brand .ver { margin: 0 0 0 8px; font: 500 12px/1 var(--ui); color: var(--dim); text-transform: none; }
 body[data-design="new"] .bar .meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 13px var(--ui); color: var(--dim); }
 body[data-design="new"] .bar .right { display: flex; align-items: center; gap: 4px; font: 13px var(--ui); }

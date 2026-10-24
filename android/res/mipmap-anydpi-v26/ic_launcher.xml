@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- the launcher icon on Android 8+: the call line's icon (src/kurooto/data/worker/public/icon.svg) as layers, so
-     the launcher picks the shape; monochrome is the handset alone, for Android 13's themed icons -->
+<!-- the launcher icon on Android 8+: Kurooto's mark (the lichen moth at rest, logo/chosen/iconsmith.svg) as layers,
+     so the launcher picks the shape; the moth sits inside the 66 dp safe zone. Monochrome is its flat silhouette with
+     the seam, for Android 13's themed icons. Android 6 and 7 use mipmap-*dpi/ic_launcher.png (a rounded square). -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/k_call_bg" />
-    <foreground android:drawable="@drawable/ic_launcher_fg" />
-    <monochrome android:drawable="@drawable/ic_launcher_mono" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>

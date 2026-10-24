@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -61,21 +62,14 @@ fun TodayPage(a: MainActivity, ui: HomeState, outer: PaddingValues) {
     ) { TodayTab(a, ui) }
 }
 
-/** The assistant's initial in a nine-sided cookie (MaterialShapes), at the top bar's end. */
+/** Kurooto's mark (the moth, as on the launcher) at the top bar's end, named for the assistant. */
 @Composable
 private fun Mark(name: String) {
-    ShapeBadge(
-        MaterialShapes.Cookie9Sided,
-        MaterialTheme.colorScheme.primaryContainer,
-        Modifier.padding(end = 12.dp).semantics { contentDescription = name },
-        size = 44,
-    ) {
-        Text(
-            name.take(1).uppercase(),
-            style = MaterialTheme.typography.titleLargeEmphasized,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-    }
+    Image(
+        painterResource(R.mipmap.ic_launcher),
+        contentDescription = name,
+        modifier = Modifier.padding(end = 12.dp).size(44.dp),
+    )
 }
 
 @Composable

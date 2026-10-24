@@ -395,11 +395,14 @@ def build(site: Path, base: str, version: str | None, notes: str, break_run: boo
     return version
 
 
+ICONS = ("favicon.ico", "favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png")  # the mark, 0.7.0
+
+
 def site_pages(site: Path) -> None:
     """The site's own pages: the installers, the landing page, its media, the privacy and changelog pages, both wikis,
     and the in-progress page (what's being built, the beta channel, what's requested)."""
     site.mkdir(parents=True, exist_ok=True)
-    for f in ("install.ps1", "install.sh", "bootstrap.py", "index.html"):
+    for f in ("install.ps1", "install.sh", "bootstrap.py", "index.html", *ICONS):
         shutil.copy(ROOT / "installer" / f, site / f)
     (site / "privacy.html").write_text(privacy_page(), encoding="utf-8")
     (site / "changelog.html").write_text(changelog_page(), encoding="utf-8")
