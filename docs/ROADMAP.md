@@ -12,6 +12,15 @@ signed updates when it's ready.
   markdown links instead of wikilinks for folders that use them.~~ (0.6.0: `notes.links` wiki or markdown, proposed
   by the Notes step; every reader takes both))
 
+- **Brain (Kurooto's mind), planned for 0.8.0.** One feature, off by default, with a switch for every part: a
+  tamper-evident log of its own decisions and a separate scorekeeper; one gate every message passes through, which may
+  only make a message quieter, later or gentler; a read of how your weeks go, scored before it's trusted; drives and
+  named states that change what it does (it never claims to feel, and never rewards itself for your attention);
+  autonomy earned per kind of action, with the always-ask list never unlocking; a journal checked line by line
+  against the log; a hidden test set it can't see, so its improvement is measured; overnight experiments on your
+  projects; skills from solved tasks; week plans; and forgetting that really forgets. Turned off, Kurooto behaves
+  exactly as 0.7.
+
 ## From the ideation panel (2026-10-23)
 Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argued these out; the most backed first.
 - ~~**Link recall cards.** The concept graph's links become review cards ("how does Itô's lemma relate to
@@ -101,7 +110,7 @@ Seven viewpoints (student, researcher, notes, phone, AI, friends, skeptic) argue
 
 ## From the skeptic review (2026-10-23)
 Three skeptics checked the panel's ideas for a public release and looked for setup Kurooto could do itself.
-- **Make the panel's ideas general**: ~~link recall cards~~ (0.6.0: cards also from your course notes' links with a
+- ~~**Make the panel's ideas general**~~ (all parts done by 0.6.0): ~~link recall cards~~ (0.6.0: cards also from your course notes' links with a
   reason and from concepts read out of Classroom files and handwritten notes, under their course; new cards about what
   you met in class lately first) and ~~the revision plan~~ (0.5.16) also draw on course notes and Classroom files, not
   only books; ~~the meeting brief is for any recurring meeting ("With: X", their role in your own word: guide,
@@ -121,13 +130,14 @@ Three skeptics checked the panel's ideas for a public release and looked for set
   (0.5.16: Android's chat, handled like a Telegram message with working buttons; `notify.app_chat` sends Kurooto's
   own messages there too) (0.5.18: the iPhone app's chat; Telegram is optional: setup offers the phone app instead,
   and without Telegram everything comes to the chat, files as Drive links or a sealed copy on the call line)
-- **Small gaps**: ~~`add_deadline` takes the course, so a mail's "Lab report" lands on the right course page~~
+- ~~**Small gaps**~~ (all done by 0.5.20): ~~`add_deadline` takes the course, so a mail's "Lab report" lands on the right course page~~
   (0.5.15: `course` by name or short name; an unknown one is said, never guessed); ~~a recurring fact said in chat
   becomes a class, a recurring quiz or a routine instead of being dropped~~ (0.5.20: "I have lab every Thursday 2-5",
   "quiz on Linear Algebra every Monday", "gym Tue Thu 7am", with `/inferred` Undo; questions set up nothing); ~~the
   nightly look back can propose routines and acts on data changes with Undo instead of waiting for a tap~~ (0.5.20:
   the same thing at the same time on 3+ weeks comes with Add / No; two copies of one deadline become one with Undo;
-  `core/tap.py` `BY_ITSELF`); project notes keep "With:", "last met" and "## Next steps"; ~~subject aliases are learned
+  `core/tap.py` `BY_ITSELF`); ~~project notes keep "With:", "last met" and "## Next steps"~~ (0.5.20: in Kurooto's
+  meeting block and the minutes' Next steps); ~~subject aliases are learned
   from how you name them~~ (0.5.20: a short name in capitals used in two messages, when it fits one subject's
   initials).
 - ~~**Routines for people who aren't students**: gym, shifts, standups, tuition; they hold calls like a class does.~~
