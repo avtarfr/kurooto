@@ -13,6 +13,10 @@ Standing plans, never struck through.
 - **Kurooto knows itself**: every feature, command and setting is in `/help` and the wikis the day it ships.
 
 ## Open
+- **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
+  using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
+  without a tap and never what was there before Kurooto; an install receipt, `kurooto installed` and `kurooto remove`,
+  and `kurooto uninstall` that follows the receipt. Today turning a feature off keeps everything it installed.
 - ~~**Common features directly usable from the phone app** (and the rest of the dashboard plan:
   ~~check-in and quiz cards~~ (0.6.0: answered on the app's main screen with an answer box and their buttons, through
   the phone outbox while the laptop sleeps)): the dashboard's Today page (0.5.7) and Ctrl+K (0.5.8) are done;
