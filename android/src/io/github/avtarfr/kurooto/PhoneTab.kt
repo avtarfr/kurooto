@@ -122,12 +122,26 @@ private fun ColumnScope.PhoneTab(a: MainActivity, ui: HomeState) {
             "(the checklist above) so wake-up calls ring there.",
     )
 
+    Heading("Switches")
+    Group(
+        listOf(
+            Item(
+                "Connect straight to your call line",
+                "Off: calls and messages come through ntfy.sh only",
+                checked = Prefs.direct(a),
+                onClick = { a.toggleDirect() },
+            ),
+            Item("Moving background", "Off: a still picture", checked = Prefs.moving(a), onClick = { a.toggleMoving() }),
+        ),
+    )
+
     Heading("This phone")
     var asking by rememberSaveable { mutableStateOf(false) }
     KCard {
         Text(if (ui.demo) "Demo: not paired" else "Paired with " + Prefs.url(a), style = MaterialTheme.typography.bodyLarge)
         if (!ui.demo) Dim(
-            if (ListenService.direct()) "Connected straight to your call line"
+            if (!Prefs.direct(a)) "Calls come through ntfy.sh (the straight connection is switched off above)"
+            else if (ListenService.direct()) "Connected straight to your call line"
             else "Not connected to your call line right now: calls still come through ntfy.sh",
             Modifier.padding(top = 4.dp),
         )

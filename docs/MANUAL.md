@@ -3218,6 +3218,9 @@ stays in the box.
 *Undo:* remove the widget or the tile. *Leaves your computer:* nothing new; the note travels like a shared file, and
 the 2x1 widget asks your call line what's waiting as the app does.
 
+**The app's switches** (0.7.1, Phone tab → Switches): **Connect straight to your call line** (off: ntfy.sh only) and
+**Moving background** (off: a still picture). *Undo:* tap the switch again.
+
 **Bedside mode** (0.6.0): an old Android phone on a charger as a dock. A big clock, the date, the next alarm (Kurooto's
 wake-up call, or the phone's own alarm), the calls due next, and one big **Talk to Kurooto** button that starts a voice
 call (the same call screen as the app's Call button), with **Chat** and **Close** below it. It shows over the lock

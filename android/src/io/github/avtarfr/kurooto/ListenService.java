@@ -168,8 +168,10 @@ public class ListenService extends Service {
             running = true;
             thread = new Thread(this::loop, "ntfy-stream");
             thread.start();
-            direct = new Direct(this, this::deliver);
-            direct.start();
+            if (Prefs.direct(this)) { // the Phone tab's switch; off: ntfy only
+                direct = new Direct(this, this::deliver);
+                direct.start();
+            }
         }
         return START_STICKY;
     }

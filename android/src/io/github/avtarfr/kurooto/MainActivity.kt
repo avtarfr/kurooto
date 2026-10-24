@@ -310,6 +310,21 @@ class MainActivity : ComponentActivity() {
 
     internal fun bedsideHours() = BedsideActivity.hours(this) { ui.tick++ }
 
+    /** The Phone tab's switch for the line's own connection: the listening service starts again without (or with) it. */
+    internal fun toggleDirect() {
+        Prefs.setDirect(this, !Prefs.direct(this))
+        if (!Prefs.direct(this)) Direct.disarm(this)
+        stopService(Intent(this, ListenService::class.java))
+        ListenService.start(this)
+        ui.tick++
+    }
+
+    /** The Phone tab's switch for the moving background; the screen is drawn again with it. */
+    internal fun toggleMoving() {
+        Prefs.setMoving(this, !Prefs.moving(this))
+        recreate()
+    }
+
     internal fun toggleKeepOn() {
         Prefs.setBedsideKeepOn(this, !Prefs.bedsideKeepOn(this))
         ui.tick++

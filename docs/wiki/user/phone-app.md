@@ -50,6 +50,10 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
 From 0.7.0 the app opens on four tabs: **Today**, **Inbox**, **Views** and **Phone**, and its icon is Kurooto's mark,
 a moth (a themed icon on Android 13 and up, if your launcher uses them).
 
+**Switches** (Phone tab, 0.7.1): **Connect straight to your call line** (on; off: calls and messages come through
+ntfy.sh only, as before 0.7.0) and **Moving background** (on; off: a still picture, as with Android's "Remove
+animations"). Views is off until you turn it on in the dashboard → Phone.
+
 **Install and pair.**
 1. On the pairing page, tap **Download the app**, open the downloaded file and tap **Install**.
    - "For your security, your phone isn't allowed to install unknown apps": tap Settings and allow it for your

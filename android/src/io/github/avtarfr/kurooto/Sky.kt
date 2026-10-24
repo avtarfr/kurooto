@@ -2,6 +2,7 @@ package io.github.avtarfr.kurooto
 
 import android.graphics.RuntimeShader
 import android.os.Build
+import androidx.compose.ui.platform.LocalContext
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -64,7 +65,7 @@ fun Sky(owner: LifecycleOwner, strength: () -> Float, scroll: () -> Float, modif
     val k = LocalKurooto.current
     val reduced = LocalReducedMotion.current
     fixed = fixedHour
-    val animate = !reduced && Build.VERSION.SDK_INT >= 31
+    val animate = !reduced && Prefs.moving(LocalContext.current) && Build.VERSION.SDK_INT >= 31 // Phone tab switch
     var time by remember { mutableFloatStateOf(seed()) }
     var hour by remember(fixedHour) { mutableFloatStateOf(fixedHour ?: hourNow()) }
     LaunchedEffect(owner, animate) {

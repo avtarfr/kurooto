@@ -60,6 +60,12 @@ Also, when they apply: `docs/MANUAL.md` (with the Undo), `docs/PRIVACY.md`, `doc
 - Every change meets the [definition of done](#definition-of-done) above: user wiki, developer wiki, `/help`,
   `CHANGELOG.md` and the published site pages, in the same commit.
 - Behaviour that installs, deletes, signs in or sends must stay opt-in and ask first.
+- **Every feature is a switch** (the owner's standing rule, 2026-10-24: nothing is forced on anyone). Each new feature,
+  and each new behaviour inside an existing one, has its own setting (in the module's `register_defaults`, with a
+  comment, so it's in Settings and SETTINGS_GUIDE.md); one that changes what people already had starts off, or on only
+  when it's invisible until used. Off stops it at once and breaks nothing else. Fixes are never switches. A job core
+  code schedules must be listed in `tests/unit/test_feature_switches.py` with its switch, or as plumbing with a reason.
+  The phone app's switches live in `Prefs.java` and the Phone tab's **Switches** group.
 
 ## Privacy rules
 

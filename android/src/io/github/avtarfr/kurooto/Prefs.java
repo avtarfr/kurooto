@@ -128,6 +128,13 @@ final class Prefs {
     }
     static void setBedsideKeepOn(Context c, boolean on) { sp(c).edit().putBoolean("bedsideKeepOn", on).apply(); }
 
+    // switches (0.7.1, every feature can be turned off): the line's own connection (off: calls through ntfy only),
+    // and the moving background (off: a still frame, as with "Remove animations")
+    static boolean direct(Context c) { return sp(c).getBoolean("direct", true); }
+    static void setDirect(Context c, boolean on) { sp(c).edit().putBoolean("direct", on).apply(); }
+    static boolean moving(Context c) { return sp(c).getBoolean("moving", true); }
+    static void setMoving(Context c, boolean on) { sp(c).edit().putBoolean("moving", on).apply(); }
+
     // Systems or the Notes map: the one the Views tab opens on (ViewsActivity)
     static String viewMode(Context c) { return sp(c).getString("viewMode", "systems"); }
     static void setViewMode(Context c, String mode) { sp(c).edit().putString("viewMode", mode).apply(); }
