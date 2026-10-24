@@ -871,7 +871,7 @@ class Integrate(Module):
                 for rec in bk.get("batches", {}).values():
                     if rec.get("state") not in ("queued", "checking"):
                         continue
-                    age = time.time() - (dt.datetime.fromisoformat(rec["at"]).timestamp() if rec.get("at") else 0)
+                    age = now().timestamp() - (dt.datetime.fromisoformat(rec["at"]).timestamp() if rec.get("at") else 0)
                     if age > STALE_S or self.lost(rec):
                         if rec["state"] == "checking" and rec.get("job"):  # its second look won't come: no leftovers
                             (self.dir / "pending" / f"{rec['job']}.json").unlink(missing_ok=True)
