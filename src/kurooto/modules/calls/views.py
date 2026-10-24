@@ -4,8 +4,9 @@ same code (web/static/views/), from copies this computer seals for each phone. O
 What goes:
   notes    the notes map: each note's path in your notes folder, its title, when it changed and how many words it
            has, and which notes link to which (with the layout's research hub and each project's entry in it, which
-           the map uses for its regions). Never what a note says. A big folder is cut to NOTES_MAX notes (the best
-           linked first) and LINKS_MAX links (the links between the least linked notes first: a book's hundreds of
+           the map uses for its regions). Never what a note says. A big folder is cut to calls.views_notes notes
+           (NOTES_MAX by default; the best linked first) and calls.views_links links (LINKS_MAX; the links between the
+           least linked notes first: a book's hundreds of
            "Seen in" links go before anything else); the copy says how many were left out.
   systems  what SYSTEMS shows: each feature that's on, how busy it was in the last 2 minutes, its process (cpu,
            memory, threads, uptime), when it last did something and runs next, whether it's down; what needs a look
@@ -28,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import gzip
 import hashlib
 import json
 import time
@@ -42,8 +44,10 @@ if TYPE_CHECKING:
     from kurooto.modules.calls import Calls
 
 KINDS = ("notes", "systems")
-NOTES_MAX = 1500  # notes in the phone's copy of the map (the best linked kept)
-LINKS_MAX = 6000  # links in it (those between the least linked notes kept first)
+NOTES_MAX = 5000  # notes in the phone's copy of the map by default (calls.views_notes; the best linked kept)
+LINKS_MAX = 20000  # links in it by default (calls.views_links; those between the least linked notes kept first)
+# (0.7.2: were 1500 and 6000, a guess at what an old phone draws smoothly; a copy is gzipped, so 2,600 notes is far
+# below VIEW_MAX. A copy that would still be too big is cut further, a quarter at a time: fit_notes)
 TITLE_MAX = 80
 NOTES_MIN_S = 180  # changed notes go at most this often
 NOTES_REFRESH_S = 3600  # unchanged, the same copy goes again this often ("as of" on the phone)
@@ -107,6 +111,17 @@ def trim_notes(payload: dict, notes_max: int = NOTES_MAX, links_max: int = LINKS
     }
 
 
+def fit_notes(payload: dict, notes_max: int, links_max: int, limit: int = VIEW_MAX) -> dict:
+    """trim_notes, cut a quarter at a time while the gzipped copy would be bigger than 90% of limit (sealing adds a
+    little), so a huge folder still reaches the phone instead of failing as "too big"."""
+    while True:
+        snap = trim_notes(payload, notes_max, links_max)
+        size = len(gzip.compress(json.dumps(snap, ensure_ascii=False, separators=(",", ":")).encode(), mtime=0))
+        if size <= limit * 0.9 or notes_max <= 50:
+            return snap
+        notes_max, links_max = max(50, notes_max * 3 // 4), max(50, links_max * 3 // 4)
+
+
 class PhoneViews:
     """The phone app's copies of SYSTEMS and the notes map: made, sealed for each Android phone and handed over."""
 
@@ -133,7 +148,9 @@ class PhoneViews:
             self.graph = Graph(root)
         self.graph.lay = graph_layout(self.app)
         self.graph.scan()
-        return trim_notes(self.graph.payload)
+        n = int(self.calls.setting("views_notes") or NOTES_MAX)
+        e = int(self.calls.setting("views_links") or LINKS_MAX)
+        return fit_notes(self.graph.payload, max(50, n), max(50, e))
 
     def systems_snapshot(self) -> dict:
         import psutil

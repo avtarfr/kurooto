@@ -76,6 +76,8 @@ register_defaults(
         "lessons_max": 12,  # the most lessons every call is told; a new one that says the same replaces the old
         "today": True,  # the Android app's Today screen and its copy of your alarm, sealed for each phone (today.py)
         "views": False,  # Systems and the Notes map on the Android app (notes' titles, features' health; views.py)
+        "views_notes": 5000,  # most notes on the phone's Notes map (best linked first); lower it on a slow phone
+        "views_links": 20000,  # the most links on it (a book's "Seen in" links go first)
     },
 )
 

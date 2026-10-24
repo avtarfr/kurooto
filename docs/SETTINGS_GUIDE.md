@@ -208,6 +208,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `calls.today` | `true` | the Android app's Today screen and its copy of your alarm, sealed for each phone (today.py) |
 | `calls.turn_brain` | `"gemini"` | answers turn-by-turn calls here: "gemini" (your key) or "local" (Local AI models) |
 | `calls.views` | `false` | Systems and the Notes map on the Android app (notes' titles, features' health; views.py) |
+| `calls.views_links` | `20000` | the most links on it (a book's "Seen in" links go first) |
+| `calls.views_notes` | `5000` | most notes on the phone's Notes map (best linked first); lower it on a slow phone |
 | `calls.voice` | `""` | a Gemini Live voice name (e.g. "Kore"); empty = Google's default |
 | `calls.voice_by_kind` | `{}` | a voice per kind of call, e.g. {"alarm": "Puck"} |
 | `calls.voice_by_model` | `{}` | a voice per Live model |

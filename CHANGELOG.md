@@ -5,6 +5,9 @@
 - **Every feature can be turned off** (a standing rule from now on; fixes aren't switches): the app's Phone tab has
   **Switches** for the straight connection to your call line (off: ntfy.sh only) and the moving background (off: a
   still picture); a test checks that everything Kurooto schedules by itself has a setting that turns it off.
+- **The phone's Notes map shows your whole folder:** it was cut to 1,500 notes and 6,000 links; now up to 5,000 notes
+  and 20,000 links by default (`calls.views_notes`, `calls.views_links`; lower them on a slow phone), and a folder too
+  big for your call line is cut just enough to fit instead of not arriving.
 
 ## 0.7.1 (2026-10-24)
 

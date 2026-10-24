@@ -297,3 +297,22 @@ def test_the_drawing_code_runs_in_android_6s_webview(name):
         return r.stdout
 
     assert build("chrome58") == build("esnext")
+
+
+def test_a_copy_too_big_is_cut_to_fit_and_the_settings_set_the_caps():
+    """0.7.2: the caps are calls.views_notes / views_links (5000 / 20000 by default, were 1500 / 6000), and a copy that
+    would still be too big for the call line is cut a quarter at a time until it fits, instead of failing."""
+    import gzip
+    import json
+    import random
+
+    rnd = random.Random(7)  # noqa: S311 (made-up test data)
+    nodes = [{"id": f"n/{i:05d}-{rnd.getrandbits(64):x}.md", "title": f"{rnd.getrandbits(128):x}", "mtime": i}
+             for i in range(3000)]  # fmt: skip
+    links = [[nodes[rnd.randrange(3000)]["id"], nodes[rnd.randrange(3000)]["id"]] for _ in range(9000)]
+    whole = views.fit_notes({"nodes": nodes, "links": links}, views.NOTES_MAX, views.LINKS_MAX)
+    assert len(whole["nodes"]) == 3000 and whole["cut"]["notes"] == 0  # 3,000 notes fit whole now
+    small = views.fit_notes({"nodes": nodes, "links": links}, views.NOTES_MAX, views.LINKS_MAX, limit=60_000)
+    size = len(gzip.compress(json.dumps(small, separators=(",", ":")).encode(), mtime=0))
+    assert size <= 60_000 * 0.9 and 50 <= len(small["nodes"]) < 3000 and small["cut"]["notes"] > 0
+    assert views.NOTES_MAX == 5000 and views.LINKS_MAX == 20000

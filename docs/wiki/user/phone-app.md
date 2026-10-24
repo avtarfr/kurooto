@@ -362,7 +362,9 @@ They're the dashboard's own drawings, drawn on the phone by the same code, in th
 - **Notes map:** your notes and their links, coloured by course and project, with the regions' names. **Drag** to move
   the map, **pinch** to zoom, **tap a note** for its card (its title, where it is, links, words, when it changed);
   tap the empty map to fit it again. Your computer sends it when your notes change (at most every few minutes) and
-  once an hour anyway. A very big notes folder is cut to the 1500 best-linked notes.
+  once an hour anyway. It holds up to 5,000 notes and 20,000 links (the best-linked first; a book's "Seen in" links
+  are the first links left out); set `calls.views_notes` and `calls.views_links` lower if the map is slow on an old
+  phone. A folder too big for your call line is cut just enough to fit, and the map says how many were left out.
 - **Read-only:** nothing on these screens changes anything. Notes' contents never reach the phone.
 - **When it's from:** "live" while your computer is sending Systems, else "as of 14:05". With your computer asleep
   the last copy shows with "your computer is asleep"; with no internet, "can't reach your call line".
