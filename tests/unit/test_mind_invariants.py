@@ -299,7 +299,7 @@ def test_every_mind_feature_has_switch():
 def test_every_mind_part_has_a_switch():
     """I-16: a mind module that runs a job, a tool, an intent or a gate check is a part with its own switch. The spine
     (log, score, scorekeeper, client, records, whitelist) is Brain itself."""
-    spine = {"__init__", "log", "score", "scorekeeper", "client", "records", "whitelist"}
+    spine = {"__init__", "log", "score", "scorekeeper", "client", "records", "whitelist", "stops"}  # safety: no switch
     named = {f.stem for f in parts().values()}
     for f in (SRC / "mind").glob("*.py"):
         if f.stem in spine:

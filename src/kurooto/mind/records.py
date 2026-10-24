@@ -102,7 +102,7 @@ ID = re.compile(r"^[A-Za-z0-9_.:@+-]{1,64}$")
 # everything else that's text is dropped, so nothing anyone typed reaches the log (invariant I-11)
 ID_KEYS = frozenset(
     {"id", "job", "key", "verdict", "was", "mode", "module", "subkind", "via", "layer", "prefix", "lane", "source",
-     "outcome", "line", "channel", "state", "decision", "result"}
+     "outcome", "line", "channel", "state", "decision", "result", "gap"}
 )  # fmt: skip
 FACT_KEYS_MAX = 20
 

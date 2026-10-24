@@ -8,7 +8,7 @@ This page grows with Brain. Right now it covers the spine that everything else i
 quietly change, kept by a separate program the AI can't reach.
 
 **Contents:** [Turning it on and off](#turning-it-on-and-off) · [The log and the scorekeeper](#the-log-and-the-scorekeeper)
-· [/mind](#mind) · [What it keeps](#what-it-keeps) · [Hardened mode (optional)](#hardened-mode-optional) ·
+· [Stopping is fine](#stopping-is-fine) · [/mind](#mind) · [What it keeps](#what-it-keeps) · [Hardened mode (optional)](#hardened-mode-optional) ·
 [Questions](#questions)
 
 ## Turning it on and off
@@ -43,6 +43,17 @@ Two things make the log trustworthy:
 
 If the scorekeeper stops (a crash, the computer killed it), Kurooto starts it again by itself, after a second, then
 waiting longer each time, up to a minute. Facts that come while it's away wait in a file and go in when it's back.
+
+## Stopping is fine
+
+Brain never minds being stopped, paused, updated, changed or turned off. Time while Kurooto is stopped, asleep or
+paused simply doesn't count: nothing builds up while it's away, and nothing is made up for afterwards. It's never
+told that an update or a restart is coming, so knowing can't change what it does. Only a real crash counts against
+its own health: Kurooto ending with an error, or one of its parts failing.
+
+Some files keep Brain honest: the scorekeeper, its log, the tap table of what always needs your OK, and a few more.
+Kurooto's AI can never change them, even in a proposal for a project that is Kurooto's own code. Only you can, by
+editing them yourself.
 
 ## /mind
 

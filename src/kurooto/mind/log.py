@@ -64,6 +64,10 @@ MIRRORED = frozenset(
         "stopped",
         "module_enabled",
         "module_disabled",
+        "stop_span",  # stage 02: a stop, restart, sleep or unclean stop, from core/presence.py
+        "kurooto_crashed",  # stage 02: the supervisor saw Kurooto end with an error
+        "module_failed",
+        "mind_keeper_exited",
         "promise_made",  # stage 05
         "promise_kept",
         "promise_broken",

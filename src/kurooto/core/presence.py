@@ -379,6 +379,8 @@ class Presence:
         """Keep an offline period (for core/health.py): those of the last 15 days, at most GAPS_MAX."""
         if back - since < 1:
             return
+        if kind in ("stop", "restart", "off", "sleep"):  # a stop span for Brain (mind/stops.py); not the network's
+            self.app.events.emit("stop_span", start=round(since, 1), end=round(back, 1), gap=kind)
         with self._lock:
             st = self._load()
             gaps = [

@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING, Any
 from kurooto.core import scratch
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
-from kurooto.mind import records
+from kurooto.mind import records, stops
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -265,6 +265,16 @@ def make(
             f"That change is too big to propose ({len(ch.files)} files, {ch.size // 1024} KB; the limit is "
             f"{max_files} files and {max_kb} KB): ask for a smaller part. Nothing changed."
         )
+    hit = protected(sc.origin, [c.path for c in ch.files])
+    if hit:  # Brain's honesty files: only the owner's own commits change them (mind/stops.py PROTECTED, I-6)
+        if existing is None:
+            scratch.remove(app, sc)
+        else:
+            existing["status"] = "waiting"
+            save(app, existing)
+        app.events.emit("proposal_refused", why="protected", files=len(hit))
+        why = stops.PROTECTED_WHY.format(files=", ".join(hit[:4]))
+        return None, f"I can't propose that: {why}. Nothing changed."
     checks = None
     if sc.checks:
         checks = scratch.run_checks(app, sc, float(s.get("projects.check_timeout_s") or 300))
@@ -407,6 +417,16 @@ def morning(app: App, payload: dict | None = None) -> str:
 
 
 # ------------------------------------------------------------------------------------------------- Apply
+def protected(origin, paths: list[str]) -> list[str]:
+    """The paths of a change that are protected files (mind/stops.py), judged with the folder they're in, so a project
+    rooted inside Kurooto's own code is caught too."""
+    import os
+
+    full = [os.path.join(str(origin or ""), p) for p in paths]
+    hits = set(stops.protected_hits(full))
+    return [p for p, f in zip(paths, full, strict=True) if f in hits]
+
+
 def apply(app: App, pid: str, via: str = "button") -> str:
     """Apply a waiting proposal (only from your tap: core/tap.py "proposal.apply")."""
     p = get(app, pid)
@@ -420,6 +440,10 @@ def apply(app: App, pid: str, via: str = "button") -> str:
             "undone": "That was applied and undone.",
         }
         return said.get(p.get("status"), "That proposal isn't waiting any more.")  # fmt: skip
+    hit = protected(p.get("origin") or "", [str(f.get("path") or "") for f in p.get("files") or []])
+    if hit:  # (made before 0.8.0, or edited since): still never applied
+        app.events.emit("proposal_refused", id=pid, why="protected")
+        return "That can't be applied: " + stops.PROTECTED_WHY.format(files=", ".join(hit[:4])) + "."
     sc = scratch.get(app, p.get("sid"))
     if sc is None:
         p["status"] = "expired"

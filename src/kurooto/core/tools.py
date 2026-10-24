@@ -44,6 +44,9 @@ from kurooto.modules.calls.tools import Tool, arg, clip, keyword_search
 if TYPE_CHECKING:
     from kurooto.app import App
 
+# modules no AI tool may reach (Brain, stage 02): sleep inhibitors keep the computer awake, and only the owner's own
+# settings use them (Stay awake on charger, the alarm); tests/unit/test_mind_stops.py checks the import graph
+TOOL_NEVER = ("kurooto.core.inhibit",)
 CALL_ONLY = {"run_task", "pending_items"}  # an unattended request doesn't start more requests or brief a call
 MAX_NOTE = 200_000  # characters a tool may add in one go
 BAD_CHARS = re.compile(r'[<>:"|?*\x00-\x1f]')  # not allowed in file names on Windows

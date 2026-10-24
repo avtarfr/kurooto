@@ -21,7 +21,7 @@ from pathlib import Path
 from kurooto.app import App
 from kurooto.core.lock import Lock, Timeout
 from kurooto.core.paths import paths
-from kurooto.core.state import jsave
+from kurooto.core.state import jload, jsave
 
 log = logging.getLogger("kurooto")
 RESTART = 75  # the launcher starts the (possibly new) current version again
@@ -55,6 +55,8 @@ async def serve(app: App, stop: asyncio.Event, web: bool = True) -> None:
         server = start_web(app)
         log.info("dashboard on %s", server.url)
     app.events.emit("started", pid=os.getpid())
+    for code in take_crashes(app.paths.state):  # what the supervisor saw since the last start
+        app.events.emit("kurooto_crashed", code=code)
     await stop.wait()
     await app.presence.going_offline()  # "going offline" before anything stops, at most ~3 s (core/presence.py)
     tasks += list(app._background.values())
@@ -64,6 +66,30 @@ async def serve(app: App, stop: asyncio.Event, web: bool = True) -> None:
     if server:
         server.stop()
     app.events.emit("stopped")
+
+
+CRASHED = "crashed.json"  # the supervisor's note of exits with an error, until the next start reads it
+CRASHES_KEPT = 20
+
+
+def note_crash(state, code: int) -> None:
+    """Kurooto ended with an error the supervisor didn't ask for: noted for the next start (never raises)."""
+    try:
+        seen = jload(state / CRASHED, []) or []
+        jsave(state / CRASHED, [*seen, {"at": time.time(), "code": int(code)}][-CRASHES_KEPT:])
+    except Exception as e:
+        log.warning("couldn't note the crash: %s", e)
+
+
+def take_crashes(state) -> list[int]:
+    """The exit codes the supervisor noted since the last start (then forgotten)."""
+    f = state / CRASHED
+    try:
+        seen = jload(f, []) or []
+        f.unlink(missing_ok=True)
+    except Exception:
+        return []
+    return [int(c.get("code") or 1) for c in seen if isinstance(c, dict)]
 
 
 def end_children() -> None:
@@ -155,6 +181,7 @@ def supervise() -> int:
         if child.returncode == RESTART:
             continue
         lived = time.monotonic() - started
+        note_crash(p.state, child.returncode)  # the next start tells the event log (and Brain: a real crash)
         crashes = crashes + 1 if lived < 300 else 1
         backoff = min(backoff * 2, 300) if lived < 300 else 5
         log.error("kurooto run exited with %s after %.0fs; restarting in %ss", child.returncode, lived, backoff)

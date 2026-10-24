@@ -1612,6 +1612,11 @@ Its first part is the spine everything else stands on:
 decision keeps its reason (up to 300 characters). All of it is in the `mind` folder of the state folder, readable only
 by you. It's not in backups or Profile sync, and nothing of it leaves the computer.
 
+**Stopping is fine.** Time while Kurooto is stopped, asleep or paused doesn't count for Brain: nothing builds up and
+nothing is made up for afterwards, and it's never told an update or restart is coming. Only a real crash counts
+against its own health. The files that keep Brain honest (its scorekeeper and log, the tap table, the hardening script
+and a few more) can't be changed by any proposal, even in a project that is Kurooto's own code; only by you.
+
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
 every record).
 

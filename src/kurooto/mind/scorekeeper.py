@@ -40,10 +40,11 @@ from multiprocessing.connection import Listener
 from pathlib import Path
 
 from kurooto.mind import log as mlog
-from kurooto.mind import records
+from kurooto.mind import records, stops
 from kurooto.mind.score import TABLES, Score
 
 ACCEPTED_FROM_DAEMON = frozenset({*mlog.MIRRORED, "decision"})
+STOP_KINDS = frozenset({"stop_span", "power_pause", "power_resume", "module_disabled", "module_enabled"})
 ALIVE_S = 5.0  # `alive` is touched this often
 CHECK_S = 60.0  # the spool and the daily anchor are looked at this often
 PARENT_S = 2.0  # with --parent: how often it checks Kurooto is still there
@@ -120,6 +121,22 @@ class Keeper:
             if seq % self.anchor_every == 0:
                 self.anchor("every")
         return {"ok": True, "seq": seq}
+
+    # -------------------------------------------------------------------------------------------- stop spans
+    def spans(self) -> list:
+        """Every stop span in the log so far (mind/stops.py): what the drive and every slow average skip (stage 05
+        builds them on stops.Integrator with these)."""
+        out, after = [], 0
+        while True:
+            rows = self.log.read(after, STOP_KINDS, LIMIT_MAX)
+            out += rows
+            if len(rows) < LIMIT_MAX:
+                break
+            after = rows[-1].seq
+        return stops.spans(out, now=time.time())
+
+    def frozen(self, t: float) -> bool:
+        return stops.frozen(self.spans(), t)
 
     # -------------------------------------------------------------------------------------------- anchors
     def anchor(self, why: str) -> dict | None:
