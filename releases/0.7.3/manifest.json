@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.7.3",
+  "notes": "Fixes: a slow On it, no calls over calls, a refused AI run tried again, Profile sync's first steps, graph tools for your AI",
+  "created": 1792880101.263726,
+  "files": {
+   "kurooto-0.7.3.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.7.3/kurooto-0.7.3.tar.gz",
+    "sha256": "62a92a620fc600fdf374b539db15c34357c701e7df722ab571a7f4c3eedad214",
+    "size": 3985028
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.7.3/kurooto.apk",
+   "sha256": "c2ebe13e3756b2d029b509814a7bd334b0580ad89e6d39e0c8a86df1ad43a814",
+   "size": 1981840,
+   "versionCode": 70039,
+   "versionName": "0.7.3",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "f6db934a7b665b092de66fcbd437e65f6108ff4da3100e33c4c15d9c5e7f529b"
+  }
+ },
+ "sig": "aC5WfIFkJWIq+E46kQ3COgIY9f7TpautWgYL9CVfJ4dsYFsErGXWPg8suyltElSfIFboInK6AfWa34+I1DSwCg=="
+}
