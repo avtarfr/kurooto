@@ -73,7 +73,7 @@ def add(p, word: str) -> dict:
 
 def test_the_list_ships_with_kurooto_and_finds_by_name_or_repository():
     names = [e["name"] for e in official.catalog()]
-    assert names == ["restic-backups", "desktop-helpers", "habits", "handwriting-pull"]
+    assert names == ["restic-backups", "desktop-helpers", "habits", "handwriting-pull", "night-performance"]
     for e in official.catalog():
         assert e["url"].startswith("https://github.com/") and len(e["commit"]) == 40 and e["tag"] == "v1.0.0"
     assert official.find("habits")["name"] == "habits"

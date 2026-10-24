@@ -12,7 +12,7 @@ first, as for any add-on by link (docs/wiki/user/add-ons.md#official-add-ons).
 | `desktop-helpers/` | [kurooto-desktop-helpers](https://github.com/avtarfr/kurooto-desktop-helpers) | Desktop helpers | rings the phone (KDE Connect) and wakes the screen at the alarm; pings | kdeconnect-cli, hyprctl, swaymsg, xset |
 | `habits/` | [kurooto-command-words](https://github.com/avtarfr/kurooto-command-words) | Your command words | your own short words for commands and requests (`/j` for `/journal`) | nothing |
 | `handwriting-pull/` | [kurooto-handwriting-pull](https://github.com/avtarfr/kurooto-handwriting-pull) | Handwriting from the cloud | copies new handwritten pages from a cloud folder with rclone | rclone, nmcli |
-| `night-performance/` | [kurooto-night-performance](https://github.com/avtarfr/kurooto-night-performance) (not in the official list yet) | Night performance | switches to the highest performance power mode during the heavy night work, and back; a root helper for Lenovo Legion and LOQ in `legion/` | powerprofilesctl, tuned-adm, asusctl, system76-power, sudo (-n only), powercfg, pmset |
+| `night-performance/` | [kurooto-night-performance](https://github.com/avtarfr/kurooto-night-performance) | Night performance | switches to the highest performance power mode during the heavy night work, and back; a root helper for Lenovo Legion and LOQ in `legion/` | powerprofilesctl, tuned-adm, asusctl, system76-power, sudo (-n only), powercfg, pmset |
 
 **A new version:** change the folder here, bump `version` in its manifest, copy the folder's contents to its
 repository, tag it (`v1.0.1`), then in `official_addons.json` move the old `commit` into `earlier` and put the new

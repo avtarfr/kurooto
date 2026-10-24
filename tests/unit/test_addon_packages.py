@@ -16,7 +16,7 @@ from kurooto.core import addons, fence, overlay
 ROOT = Path(__file__).resolve().parents[2] / "addons"
 NAMES = sorted(p.parent.name for p in ROOT.glob(f"*/{addons.MANIFEST}"))
 # in addons/ but not in the official list yet: published and pinned after review (then taken out of here)
-UNLISTED = {"night-performance"}
+UNLISTED: set[str] = set()
 
 
 def test_there_are_the_five_generic_add_ons():

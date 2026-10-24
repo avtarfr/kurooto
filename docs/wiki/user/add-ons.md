@@ -149,6 +149,7 @@ them (inside Kurooto itself, so each release's signature covers it), each pinned
 | Desktop helpers | `desktop-helpers` | at the alarm, rings your phone through KDE Connect and wakes the screen; pings the phone for the kinds of messages you pick; `/findphone` | KDE Connect paired with your phone, or a Hyprland, Sway or X11 session | [kurooto-desktop-helpers](https://github.com/avtarfr/kurooto-desktop-helpers) |
 | Your command words | `habits` | your own short words for commands and requests: `/j had a good day` for `/journal had a good day` | nothing | [kurooto-command-words](https://github.com/avtarfr/kurooto-command-words) |
 | Handwriting from the cloud | `handwriting-pull` | copies new handwritten pages from a cloud folder with rclone every 2 hours, skipping metered connections | rclone set up with your cloud, and Handwritten notes on | [kurooto-handwriting-pull](https://github.com/avtarfr/kurooto-handwriting-pull) |
+| Night performance | `night-performance` | switches this computer to its highest performance power mode during Kurooto's heavy night work, and back after | power-profiles-daemon, tuned or asusctl (Linux), Windows' power plans, or your own commands; on a Lenovo Legion or LOQ, its helper | [kurooto-night-performance](https://github.com/avtarfr/kurooto-night-performance) |
 
 **What "Official" means.** In Kurooto's list and at the commit it pins (each one's `v1.0.0` for now). One you add
 from the list, or by hand from the same address at that commit, gets the **Official** badge. The same add-on at another
@@ -173,7 +174,7 @@ Looking shows what changes and its card again; only **Update** (or yes in a term
 itself. `addons.official_updates` off: no message (the buttons stay).
 
 **What leaves your computer:** git fetches the add-on from github.com when you add or update one (counted in
-`/egress` as handed to git). None of the four reaches a host on the internet itself; restic and rclone, which they may
+`/egress` as handed to git). None of the five reaches a host on the internet itself; restic and rclone, which they may
 start, reach your own backup repository and cloud.
 
 ---
@@ -182,11 +183,11 @@ start, reach your own backup repository and cloud.
 
 **What it does.** Reading books into your notes at night keeps a laptop busy for hours, and it heats up. This add-on
 switches the computer to its highest performance power mode while Kurooto's heavy night work runs (which on most
-laptops also runs the fans harder), and back to exactly the mode it found when the work is done. It's an add-on by
-link, made with Kurooto (not in the official list yet):
+laptops also runs the fans harder), and back to exactly the mode it found when the work is done. It's an official
+add-on (0.7.0): Features → Official add-ons → **Add**, `/addons official`, or:
 
 ```
-kurooto addons add https://github.com/avtarfr/kurooto-night-performance --ref v1.0.0
+kurooto addons add night-performance
 ```
 
 Then turn on **Night performance** (Features) and send `/perf`: it says what it found, the mode now and tonight's

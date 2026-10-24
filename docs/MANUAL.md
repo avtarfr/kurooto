@@ -3054,9 +3054,9 @@ undo <name>` (**Undo**) puts it back, or the version before an update. `kurooto 
 show <name>` shows a card. `addons.on` off loads none of them.
 
 ### Official add-ons
-Four add-ons published from Kurooto's own repository, each a public repository on GitHub: **Machine backups (restic)**
-(`restic-backups`), **Desktop helpers** (`desktop-helpers`), **Your command words** (`habits`) and **Handwriting from
-the cloud** (`handwriting-pull`). Kurooto ships a list of them, each pinned to one commit (its `v1.0.0` tag's), so the
+Five add-ons published from Kurooto's own repository, each a public repository on GitHub: **Machine backups (restic)**
+(`restic-backups`), **Desktop helpers** (`desktop-helpers`), **Your command words** (`habits`), **Handwriting from
+the cloud** (`handwriting-pull`) and **Night performance** (`night-performance`, 0.7.0). Kurooto ships a list of them, each pinned to one commit (its `v1.0.0` tag's), so the
 list is covered by the release's signature. **Official** means exactly that: in this list and at that commit. One you
 add from the list, or by hand from the same address at that commit, is marked Official; another commit or a fork
 isn't.

@@ -429,7 +429,7 @@ no `settings.json`), plus a manifest at the top:
   are the line.
 
 The published ones' sources live in `addons/<name>/` (restic-backups, desktop-helpers, habits, handwriting-pull, and
-night-performance, not in the official list yet: `test_addon_packages.py:UNLISTED`), each with its manifest, README and
+night-performance), each with its manifest, README and
 tests; `addons/conftest.py:load_addon` adds one by link in a test (a git repo made from
 a copy), and `tests/unit/test_addon_packages.py` checks each loads with exactly its card and that the official list
 matches the folders.

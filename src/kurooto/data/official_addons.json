@@ -44,6 +44,17 @@
       "commit": "20b324403daae3999dd5e822a2a4b47f6a80417a",
       "earlier": [],
       "source": "addons/handwriting-pull"
+    },
+    {
+      "name": "night-performance",
+      "title": "Night performance",
+      "line": "Switches this computer to its highest performance power mode during Kurooto's heavy night work, and back when it's done.",
+      "needs": "power-profiles-daemon, tuned or asusctl (Linux), Windows' power plans, or your own commands; on a Lenovo Legion or LOQ, its helper (installed once with sudo)",
+      "url": "https://github.com/avtarfr/kurooto-night-performance",
+      "tag": "v1.0.0",
+      "commit": "b969bf0b8e6184263f3927a5db4e033bd64218b8",
+      "earlier": [],
+      "source": "addons/night-performance"
     }
   ]
 }
