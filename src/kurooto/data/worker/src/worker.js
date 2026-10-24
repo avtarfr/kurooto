@@ -6,9 +6,15 @@
 //   - Calls: Gemini Live tokens are minted here with your Gemini key, so the audio goes between your phone and
 //     Google directly. What the call knows and can do (its instructions and tools) is pushed by your computer.
 //   - Ringing: your computer (or the cron below, when it's off) rings your paired devices: the Android app through
-//     ntfy (encrypted with NTFY_KEY, which your devices, your computer and this Worker hold: ntfy can't read it), the
-//     web app through Web Push (no payload; it asks this Worker what's ringing). Not while you're on a call: those
-//     calls ring when it ends.
+//     its own WebSocket to this line (0.7.0) and through ntfy (encrypted with NTFY_KEY, which your devices, your
+//     computer and this Worker hold: ntfy can't read it), the web app through Web Push (no payload; it asks this
+//     Worker what's ringing). Not while you're on a call: those calls ring when it ends.
+//   - The Android app's own connection (0.7.0): each paired Android phone keeps one WebSocket to /phone, accepted with
+//     the hibernation API, so an idle one costs nothing (its "ping" is answered by the runtime without waking this
+//     object). Everything this line sends the Android app (rings, messages, chat, Today nudges...) goes down it first,
+//     sealed exactly as on ntfy, with a message id ("mid") the phone uses to drop a second copy; the last ones are
+//     kept a few hours so a phone that reconnects gets what it missed. ntfy is only the fallback: for a phone not
+//     heard from lately (or one with an app from before 0.7.0), and a second path for rings.
 //   - Messages: questions and approvals (and other kinds, if you choose) reach your phones the same way; this keeps
 //     what's still open (the inbox) for the web app to list. Answers come back through /answer to your computer
 //     (the Android app's are sealed with the ntfy key, which keeps them from ntfy but not from this Worker: it holds
@@ -126,12 +132,12 @@ async function webPush(env, sub) {
   return r.status;
 }
 
-// With NTFY_TOKEN (an ntfy account token) ntfy counts its limits for that account, not for Cloudflare's shared
-// addresses (a 429 there means the phone doesn't ring); a token ntfy refuses falls back to publishing without one.
-async function publish(env, fields) {
-  if (!env.NTFY_TOPIC || !env.NTFY_KEY) return false;
-  const message = await sealK1(env.NTFY_KEY, JSON.stringify(fields));
-  const body = JSON.stringify({ topic: env.NTFY_TOPIC, message, priority: fields.priority || 3, tags: ['k1'] });
+// A message already sealed for the Android app (k1), to ntfy: the fallback since 0.7.0 (Line.toPhones). ntfy limits
+// each internet address, and a free ntfy account is counted by address too; NTFY_TOKEN only helps with a paid
+// account. A token ntfy refuses falls back to publishing without one.
+async function publish(env, message, priority = 3) {
+  if (!env.NTFY_TOPIC || !message) return false;
+  const body = JSON.stringify({ topic: env.NTFY_TOPIC, message, priority, tags: ['k1'] });
   for (const token of env.NTFY_TOKEN ? [env.NTFY_TOKEN, ''] : ['']) {
     const headers = { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) };
     const r = await fetch((env.NTFY_SERVER || 'https://ntfy.sh').replace(/\/+$/, '') + '/', { method: 'POST', headers, body });
@@ -212,6 +218,12 @@ const MAX_DEVICES = 10;
 const TELL_TOKEN = /^tk1\.([0-9a-f]{8})\.([0-9a-f]{32})$/;
 const TELL_TEXT = 4000;
 const RING_S = 60, ALARM_RING_S = 300;
+// the Android app's own connection (0.7.0): a phone heard from (its "ping", about every minute while it's awake and
+// every few minutes asleep) this recently counts as connected, and gets no ntfy copy of anything but a ring; what
+// was sent to the phones is kept this many messages and this long, for a phone that reconnects (one that never
+// connected, or whose place in it is gone, gets the last PHONE_NEW_MS of it)
+const PHONE_FRESH_MS = 6 * 60e3, PHONE_LOG_MAX = 60, PHONE_LOG_MS = 6 * 3600e3, PHONE_NEW_MS = 10 * 60e3;
+const SEND_MAX = 8000; // what your computer hands over at /send (a message for the phones), at most
 const ON_CALL_MS = 90e3; // a live call checks in every few seconds (/tasks); this long after the last one it's over
 const ITEM_ID = /^[0-9a-f]{16}$/;
 // the phone outbox: what a paired phone sent while your computer was off (kept in the queue, in order, each body
@@ -257,7 +269,7 @@ export class Line {
   // after the computer's network went away; that one doesn't count.
   online() {
     const now = Date.now();
-    return this.state.getWebSockets().some((ws) => {
+    return this.computers().some((ws) => {
       const beat = this.state.getWebSocketAutoResponseTimestamp(ws)?.getTime() || 0;
       const seen = ws.deserializeAttachment()?.at || 0;
       return now - Math.max(beat, seen) < 90e3;
@@ -267,7 +279,7 @@ export class Line {
   // When the computer was last heard from, by the sockets still here (0 if none).
   lastSeen() {
     let seen = 0;
-    for (const ws of this.state.getWebSockets()) {
+    for (const ws of this.computers()) {
       const beat = this.state.getWebSocketAutoResponseTimestamp(ws)?.getTime() || 0;
       seen = Math.max(seen, beat, ws.deserializeAttachment()?.at || 0);
     }
@@ -276,7 +288,25 @@ export class Line {
 
   tell(msg) {
     if (!this.online()) return false;
-    try { this.state.getWebSockets()[0].send(JSON.stringify(msg)); return true; } catch { return false; }
+    try { this.computers()[0].send(JSON.stringify(msg)); return true; } catch { return false; }
+  }
+
+  // The sockets here are your computer's (its connector: attachment {at}) and, since 0.7.0, the Android phones'
+  // (tagged "phone" and "dev:<id>", attachment {kind: 'phone', dev, at}). A socket from before 0.7.0 is the computer's.
+  computers() {
+    return this.state.getWebSockets().filter((ws) => ws.deserializeAttachment()?.kind !== 'phone');
+  }
+
+  // When each Android phone was last heard from on its own connection: {device id: ms}.
+  phonesHeard() {
+    const out = {};
+    for (const ws of this.state.getWebSockets('phone')) {
+      const a = ws.deserializeAttachment() || {};
+      if (!a.dev) continue;
+      const beat = this.state.getWebSocketAutoResponseTimestamp(ws)?.getTime() || 0;
+      out[a.dev] = Math.max(out[a.dev] || 0, beat, a.at || 0);
+    }
+    return out;
   }
 
   // What waits for the computer, oldest first. Each item has a sequence number; a body given separately (a phone's)
@@ -334,6 +364,7 @@ export class Line {
     const url = new URL(req.url);
     const p = url.pathname;
     if (p === '/connect') return this.connect(req);
+    if (p === '/send' && req.method === 'POST') return this.send(req); // your computer, without its WebSocket
     if (p === '/tick') return json(await this.tick());
     if (p === '/pair/claim' && req.method === 'POST') return this.claim(req);
     if (p.startsWith('/sealed/') && req.method === 'GET') return this.fileGet(p.slice(8)); // the key is in the link
@@ -356,6 +387,7 @@ export class Line {
       if (p === '/transcript' && req.method === 'POST') return this.transcript(req);
       if (p === '/upload' && req.method === 'POST') return this.upload(req, url, who);
       if (who.kind !== 'device') return refuse('that needs a paired device', 403);
+      if (p === '/phone') return this.phoneConnect(req, who, url);
       if (p === '/pending') return json({ rings: await this.ringing(who.id), items: await this.openItems(), chat: (await this.chatLog()).msgs.filter((m) => m.from === 'kurooto').slice(-5), assistant: ((await this.store.get('names')) || {}).assistant || '' });
       if (p === '/answer' && req.method === 'POST') return this.answer(req, who);
       if (p === '/chat' && req.method === 'POST') return this.chat(req, who);
@@ -498,14 +530,19 @@ export class Line {
   connect(req) {
     if (req.headers.get('upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426 });
     if (!same(req.headers.get('x-connector-secret'), this.env.CONNECTOR_SECRET)) return new Response('no', { status: 401 });
-    for (const old of this.state.getWebSockets()) { try { old.close(1000, 'replaced'); } catch { /* gone */ } }
+    for (const old of this.computers()) { try { old.close(1000, 'replaced'); } catch { /* gone */ } }
     const pair = new WebSocketPair();
-    this.state.acceptWebSocket(pair[1]);
+    this.state.acceptWebSocket(pair[1], ['computer']);
     pair[1].serializeAttachment({ at: Date.now() });
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 
   async webSocketMessage(ws, data) {
+    const was = ws.deserializeAttachment() || {};
+    if (was.kind === 'phone') { // a phone only pings (answered without waking this); anything else just says it's there
+      ws.serializeAttachment({ ...was, at: Date.now() });
+      return;
+    }
     ws.serializeAttachment({ at: Date.now() });
     let m;
     try { m = JSON.parse(data); } catch { return; }
@@ -548,9 +585,11 @@ export class Line {
     }
   }
 
-  async webSocketClose() { await this.store.put('seen', Date.now()); /* the computer reconnects by itself */ }
+  async webSocketClose(ws) { // the computer (or a phone) reconnects by itself
+    if (ws?.deserializeAttachment()?.kind !== 'phone') await this.store.put('seen', Date.now());
+  }
 
-  async webSocketError() { await this.store.put('seen', Date.now()); }
+  async webSocketError(ws) { if (ws?.deserializeAttachment()?.kind !== 'phone') await this.store.put('seen', Date.now()); }
 
   async admin(m) {
     if (m.op === 'ring') return this.ring(m);
@@ -565,7 +604,11 @@ export class Line {
     }
     if (m.op === 'devices') {
       const d = (await this.store.get('devices')) || {};
-      return { devices: Object.entries(d).map(([id, v]) => ({ id, name: v.name, kind: v.kind, created: v.created, push: !!v.push, seal: v.seal || '' })) };
+      const heard = this.phonesHeard(), fresh = Date.now() - PHONE_FRESH_MS;
+      return { devices: Object.entries(d).map(([id, v]) => ({
+        id, name: v.name, kind: v.kind, created: v.created, push: !!v.push, seal: v.seal || '',
+        ...(v.kind === 'android' ? { connected: (heard[id] || 0) > fresh, heard: heard[id] ? new Date(heard[id]).toISOString() : null } : {}),
+      })) };
     }
     if (m.op === 'revoke') { // `device`: m.id is the admin request's own (a line before 0.6.0 read m.id: never found)
       const dev = String(m.device || '');
@@ -573,6 +616,7 @@ export class Line {
       const had = !!d[dev];
       delete d[dev];
       await this.store.put('devices', d);
+      for (const ws of this.state.getWebSockets(`dev:${dev}`)) { try { ws.close(1008, 'unpaired'); } catch { /* gone */ } }
       await this.store.delete(`today:${dev}`); // its Today copy goes with it
       const views = await this.store.get('views'); // and its keys to the views
       if (views) { for (const k of VIEW_KINDS) if (views[k]?.keys) delete views[k].keys[dev]; await this.store.put('views', views); }
@@ -606,7 +650,7 @@ export class Line {
 
   // Ask the computer (relay). 503 when it's not connected; the caller then answers from what it has.
   async relay(method, path, body, body_b64) {
-    const sockets = this.state.getWebSockets();
+    const sockets = this.computers();
     if (!sockets.length || !this.online()) return { status: 503, body: JSON.stringify({ offline: true }) };
     const id = crypto.randomUUID();
     const reply = new Promise((resolve) => {
@@ -887,7 +931,7 @@ export class Line {
     }
     const { web, changed, errors } = await pushAll(this.env, devices);
     if (changed) await this.store.put('devices', devices);
-    return { since, link, android, web, devices: list.length, errors };
+    return { since, link, android, web, devices: list.length, phones: list.filter(([, d]) => d.kind === 'android').length, errors };
   }
 
   async endRing(since) {
@@ -909,12 +953,76 @@ export class Line {
   // Every sealed message to the Android app carries your assistant's current name, so renaming it on your computer
   // reaches the app without pairing again. Your computer sends the name with each ring and message; the state push
   // keeps it fresh for calls this Worker places itself.
+  //
+  // 0.7.0: sealed once, with a message id ("mid"), kept for phones that reconnect, sent down every Android phone's own
+  // connection, and to ntfy only when a paired Android phone wasn't heard from lately (PHONE_FRESH_MS: asleep, out of
+  // reach, or an app from before 0.7.0) or it's a ring (a second path; the phone keeps the first copy). True when an
+  // Android phone has it (connected) or ntfy took it.
   async toPhones(fields, assistant = '') {
     const names = (await this.store.get('names')) || {};
     const name = String(assistant || '').slice(0, 60);
     if (name && name !== names.assistant) await this.store.put('names', { ...names, assistant: name });
     const current = name || names.assistant || '';
-    return publish(this.env, current ? { ...fields, assistant: current } : fields);
+    const devices = (await this.store.get('devices')) || {};
+    const android = Object.entries(devices).filter(([, d]) => d.kind === 'android').map(([id]) => id);
+    if (!this.env.NTFY_KEY || !android.length) return false;
+    const k1 = await sealK1(this.env.NTFY_KEY, JSON.stringify({ ...fields, ...(current ? { assistant: current } : {}), mid: randomHex(8) }));
+    const seq = await this.phoneLogPut(k1);
+    for (const ws of this.state.getWebSockets('phone')) { try { ws.send(JSON.stringify({ seq, k1 })); } catch { /* gone */ } }
+    const heard = this.phonesHeard(), cut = Date.now() - PHONE_FRESH_MS;
+    const up = android.filter((id) => (heard[id] || 0) > cut).length;
+    const ring = Array.isArray(fields.tags) && fields.tags.includes('call');
+    const viaNtfy = ring || up < android.length ? await publish(this.env, k1, fields.priority || 3).catch(() => false) : false;
+    return up > 0 || viaNtfy;
+  }
+
+  // What went to the Android phones lately, for one that reconnects: {seq, items: [{seq, t, k1}]}.
+  async phoneLog() {
+    const log = (await this.store.get('plog')) || { seq: 0, items: [] };
+    const cut = Date.now() - PHONE_LOG_MS;
+    return { seq: log.seq, items: log.items.filter((x) => x.t > cut) };
+  }
+
+  async phoneLogPut(k1) {
+    const log = await this.phoneLog();
+    const seq = log.seq + 1;
+    await this.store.put('plog', { seq, items: log.items.concat([{ seq, t: Date.now(), k1 }]).slice(-PHONE_LOG_MAX) });
+    return seq;
+  }
+
+  // An Android phone's own connection (0.7.0): one per phone (a new one replaces the old), hibernatable. It first
+  // hears {"type": "hello", seq}, then what it missed: every message after `after` (the last seq it had), or the
+  // last PHONE_NEW_MS of them when it has none or this line's count started again. Then each message as it's sent,
+  // {seq, k1}. It sends "ping" now and then; the runtime answers "pong" without waking this object.
+  async phoneConnect(req, who, url) {
+    if (req.headers.get('upgrade') !== 'websocket') return json({ error: 'expected a websocket' }, 426);
+    const devices = (await this.store.get('devices')) || {};
+    if (devices[who.id]?.kind !== 'android') return json({ error: 'only the Android app has its own connection' }, 403);
+    for (const old of this.state.getWebSockets(`dev:${who.id}`)) { try { old.close(1000, 'replaced'); } catch { /* gone */ } }
+    const pair = new WebSocketPair();
+    this.state.acceptWebSocket(pair[1], ['phone', `dev:${who.id}`]);
+    pair[1].serializeAttachment({ kind: 'phone', dev: who.id, at: Date.now() });
+    const log = await this.phoneLog();
+    const after = Number(url.searchParams.get('after')) || 0;
+    const known = after > 0 && after <= log.seq, cut = Date.now() - PHONE_NEW_MS;
+    pair[1].send(JSON.stringify({ type: 'hello', seq: log.seq, version: this.env.VERSION || '' }));
+    for (const x of log.items) if (known ? x.seq > after : x.t > cut) pair[1].send(JSON.stringify({ seq: x.seq, k1: x.k1 }));
+    return new Response(null, { status: 101, webSocket: pair[0] });
+  }
+
+  // Your computer hands over a message for the Android phones over HTTPS (0.7.0: when its WebSocket is down, it used
+  // to publish to ntfy itself, from an address it shares). {fields, assistant}; checked with the connector secret.
+  async send(req) {
+    const raw = await req.text().catch(() => '');
+    if (!same(req.headers.get('x-connector-secret'), this.env.CONNECTOR_SECRET)) return json({ error: 'no' }, 401);
+    if (raw.length > SEND_MAX) return json({ error: 'too long' }, 413);
+    let b;
+    try { b = JSON.parse(raw || '{}'); } catch { return json({ error: 'not JSON' }, 400); }
+    if (!b.fields || typeof b.fields !== 'object' || Array.isArray(b.fields)) return json({ error: 'no message' }, 400);
+    const devices = (await this.store.get('devices')) || {};
+    const phones = Object.values(devices).filter((d) => d.kind === 'android').length;
+    if (!phones) return json({ ok: true, android: false, phones: 0 });
+    return json({ ok: true, android: await this.toPhones(b.fields, b.assistant).catch(() => false), phones });
   }
 
   // The inbox: what your computer sent your phones that's still open. Its revision only goes up, so an older

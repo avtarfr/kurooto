@@ -87,6 +87,7 @@ APP_LINE_SOON_MIN = 1  # a new phone app goes to the call line this soon after i
 APP_LINE_BUSY_MIN = 10  # on a call, or another deploy running: looked at again this much later
 APP_LINE_RETRY_MIN = 30  # a deploy that failed (offline, Cloudflare): tried again this much later
 APP_LINE_TRIES = 6  # then the 05:10 line update takes it
+PHONES_FRESH_S = 1800  # the health check trusts the last device list (who's connected straight to the line) this long
 
 
 def check_ntfy_token(server: str, token: str) -> tuple[str, str]:
@@ -138,6 +139,7 @@ class Calls(Module):
         # each call's tool uses, by the call's "since" ("" when the call page didn't say), for the look back after it
         # (review.py); two calls at once, or work queued while the computer was off, each keep their own
         self.tool_log: dict[str, list[dict]] = {}
+        self._devices_seen: tuple[float, list[dict]] = (0.0, [])  # the last device list, and when (phones_direct)
 
     # ------------------------------------------------------------------------------------------ setup
     def worker_url(self) -> str:
@@ -161,13 +163,22 @@ class Calls(Module):
             return ok, why
         if not self.connector.connected:
             return False, "not connected to your call line right now"
-        limited = 0 if self.app.secrets.get("calls.ntfy_token") else self.ntfy_limited()
-        if limited:
+        limited = self.ntfy_limited()
+        if limited and not self.phones_direct():
             return False, (
-                f"ntfy refused {limited} ring{'s' if limited != 1 else ''} to your phone this week (too many from an "
-                "address you share): add a free ntfy account's token on the Phone tab, or `kurooto ntfy-token`"
+                f"ntfy refused {limited} ring{'s' if limited != 1 else ''} or message{'s' if limited != 1 else ''} to "
+                "your phone this week: it limits each internet address, and yours is shared (a free ntfy account is "
+                "counted the same way). The Kurooto app from 0.7.0 gets them straight from your call line: update "
+                "the app on your phone and let it run in the background (battery: unrestricted)"
             )
         return True, ""
+
+    def phones_direct(self) -> bool:
+        """Every paired Android phone was connected straight to the call line (0.7.0) when the devices were last
+        listed (the Phone tab, the last PHONES_FRESH_S): then ntfy refusing something doesn't matter."""
+        at, devs = self._devices_seen
+        android = [d for d in devs if d.get("kind") == "android"]
+        return time.time() - at < PHONES_FRESH_S and bool(android) and all(d.get("connected") for d in android)
 
     def ntfy_limited(self, days: int = 7) -> int:
         """Rings and messages ntfy refused for its rate limit (429) in the last `days`."""
@@ -698,10 +709,42 @@ class Calls(Module):
         t = line.ticket(self.app.secrets.get("calls.call_secret") or "", hours)
         return f"{self.worker_url()}/{'?' + q if q else ''}#{t}"
 
+    def send_phones(self, fields: dict) -> bool:
+        """A message for the Android app when the call line's WebSocket is down (0.7.0): handed to the line over HTTPS
+        (`POST /send` with the connector secret), which sends it down the phones' own connections (and ntfy for a
+        phone it hasn't heard from); only when the line can't be reached, or is older than 0.7.0, or had no way to
+        the phone, does this computer publish to ntfy itself. True when a phone got it."""
+        got = self._via_line(fields)
+        if got is not None and (got.get("android") or not got.get("phones")):
+            return bool(got.get("android"))
+        return self.publish_ntfy(fields)
+
+    def _via_line(self, fields: dict) -> dict | None:
+        """The line's answer to /send ({ok, android, phones}), or None (unreachable, refused, or a line from before
+        0.7.0, which doesn't know /send)."""
+        url, secret = self.worker_url(), self.app.secrets.get("calls.connector_secret")
+        if not url or not secret:
+            return None
+        body = json.dumps({"fields": fields, "assistant": self.app.name}).encode()
+        req = urllib.request.Request(  # noqa: S310 (your own call line, https)
+            f"{url}/send",
+            data=body,
+            headers={"Content-Type": "application/json", "x-connector-secret": secret},
+            method="POST",
+        )
+        try:
+            with egress.urlopen(req, "Phone calls", timeout=10, own=True) as r:
+                got = json.loads(r.read() or b"{}")
+        except Exception as e:
+            self.app.events.emit("calls_line_send_failed", error=str(e)[:200])
+            return None
+        return got if isinstance(got, dict) and got.get("ok") else None
+
     def publish_ntfy(self, fields: dict) -> bool:
-        """Publish an encrypted k1 payload directly to ntfy from this computer. With an ntfy account token
-        (`kurooto ntfy-token`) ntfy counts its limits for your account, not for the internet address you share with
-        everyone else on it (a campus, a Cloudflare one); a token ntfy refuses falls back to publishing without."""
+        """Publish an encrypted k1 payload directly to ntfy from this computer: the last resort (send_phones). ntfy
+        limits each internet address, and a free ntfy account is counted by address too, so on a shared network
+        (a campus) this can be refused (429); only a paid ntfy account's token (`kurooto ntfy-token`) is counted
+        apart. A token ntfy refuses falls back to publishing without."""
         topic = self.app.secrets.get("calls.ntfy_topic")
         key = self.app.secrets.get("calls.ntfy_key")
         server = (self.setting("ntfy_server") or "https://ntfy.sh").rstrip("/")
@@ -790,8 +833,8 @@ class Calls(Module):
             assistant=self.app.name,
             voice=voice,
         )
-        if not sent:  # the call line isn't connected: this computer rings the Android app through ntfy itself
-            self.publish_ntfy(push)
+        if not sent:  # the line's WebSocket is down: handed to it over HTTPS, else ntfy from here
+            self.send_phones(push)
         answer = [
             [("Answer", {"url": self.link(reason, since=since, voice=voice)}), *[tuple(b) for b in buttons or []]]
         ]
@@ -818,9 +861,12 @@ class Calls(Module):
         return since
 
     def _ring_fallback(self, push: dict, res: dict | None) -> None:
-        """The call line's answer to "ring": it publishes to the Android app itself ("android": true), so this
-        computer publishes only when it didn't (an error, no answer, or its publish failed): one ring, not two."""
-        if not (res or {}).get("android"):
+        """The call line's answer to "ring": it rings the Android app itself ("android": true: on the phone's own
+        connection or ntfy), so this computer publishes only when it didn't (an error, no answer, or neither way
+        worked): one ring, not two. A line from 0.7.0 also says how many Android phones are paired ("phones"):
+        with none, nothing is published."""
+        res = res or {}
+        if not res.get("android") and res.get("phones", 1):
             self.publish_ntfy(push)
 
     def _ring_state(self, since: str, state: str) -> dict | None:
@@ -838,7 +884,7 @@ class Calls(Module):
             return
         self._ring_state(p["since"], "missed")
         if not self.connector.admin_later("stop-ring", since=p["since"]):  # the line stops the app's ring itself
-            self.publish_ntfy(
+            self.send_phones(
                 {"title": "stop", "message": "", "tags": ["stop", f"since-{p['since']}"], "time": int(time.time())}
             )
         if not self._realert_later(p["since"], r):
@@ -1419,7 +1465,10 @@ class Calls(Module):
         }
 
     def devices(self) -> list[dict]:
-        return self.connector.admin_wait("devices").get("devices", [])
+        """The paired phones; an Android one has `connected` (its own connection to the line, 0.7.0) and `heard`."""
+        devs = self.connector.admin_wait("devices").get("devices", [])
+        self._devices_seen = (time.time(), devs)
+        return devs
 
     def revoke(self, device_id: str) -> bool:
         # `device`, not `id`: that's the admin request's own (before 0.6.0 this waited for an answer that never came)

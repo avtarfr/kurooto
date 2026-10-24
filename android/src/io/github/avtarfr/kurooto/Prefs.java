@@ -44,6 +44,7 @@ final class Prefs {
                 .putString("topic", n == null ? "" : n.optString("topic", ""))
                 .putString("ntfyKey", n == null ? "" : n.optString("key", ""))
                 .putString("since", "")
+                .putLong("directSeq", 0) // a new line counts its messages from 0
                 .putString("sealSent", "") // a new pairing is a new device on the call line: it needs the key again
                 .apply();
         TalkWidget.refreshSoon(c);
@@ -51,7 +52,7 @@ final class Prefs {
 
     static void forget(Context c) {
         sp(c).edit().remove("url").remove("device").remove("topic").remove("ntfyKey").remove("since").remove("sealSent")
-                .remove("widgetLine").remove("noteDraft").apply();
+                .remove("widgetLine").remove("noteDraft").remove("directSeq").remove("seenIds").apply();
         Chat.forget(c); // the chat and what waited belong to that line
         Today.forget(c); // ... and so do the Today list and the alarms it set here
         Views.forget(c); // ... and the copies of Systems and the Notes map
@@ -89,6 +90,19 @@ final class Prefs {
     static void setSealSent(Context c, String raw) { sp(c).edit().putString("sealSent", raw).apply(); }
 
     static String since(Context c) { return sp(c).getString("since", ""); }
+
+    /** The last message number this phone had on its own connection to the line (Direct, 0.7.0). */
+    static long directSeq(Context c) { return sp(c).getLong("directSeq", 0); }
+    static void setDirectSeq(Context c, long seq) { sp(c).edit().putLong("directSeq", seq).apply(); }
+
+    /** True the first time a message id comes (from the line's own connection or from ntfy), false for a second
+     *  copy (LinkRules.seen). */
+    static synchronized boolean firstTime(Context c, String mid) {
+        String now = LinkRules.seen(sp(c).getString("seenIds", ""), mid, LinkRules.SEEN_MAX);
+        if (now == null) return false;
+        if (mid != null && !mid.isEmpty()) sp(c).edit().putString("seenIds", now).apply();
+        return true;
+    }
     static void setSince(Context c, String id) { sp(c).edit().putString("since", id).apply(); }
 
     /** Chosen ringtones (content URIs as strings; empty = the phone's default). */

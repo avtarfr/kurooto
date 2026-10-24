@@ -395,13 +395,14 @@ Needs [Phone calls](calls.md) on. It shows your call line's address and whether 
   (iPhone), then pairing. The code works for 15 minutes; the page also shows the code and a link. `/phone` on
   Telegram does the same.
 - **Ring my phone (test):** rings every paired phone (only while connected).
-- **Paired phones:** name, kind, whether notifications are on, when it was paired, and **Remove**.
+- **Paired phones:** name, kind, whether notifications are on, for an Android phone whether it's **connected**
+  straight to your call line (0.7.0; when it isn't, ntfy.sh carries its messages), when it was paired, and **Remove**.
 - **On the phone:** **Show Systems and the Notes map in the Android app** (0.7.0, off at first): this board's SYSTEMS
   and NOTES map in the app, sealed for each phone (see [phone-app.md](phone-app.md#systems-and-the-notes-map-on-the-phone)).
   Turning it off drops your call line's copies.
-- **ntfy account (optional):** paste a free ntfy.sh account's access token so Android rings aren't refused for an
-  internet address you share (it says how many were refused this week); **Remove** goes back to no token. Your call
-  line is updated with it by itself.
+- **ntfy.sh (the fallback):** how many rings or messages ntfy refused this week. ntfy limits each internet address and
+  counts a free account the same way, so only a paid ntfy plan's token helps; paste one here if you have it (**Remove**
+  goes back to none; your call line is updated with it by itself). With the app connected you don't need it.
 
 Details are in [phone-app.md](phone-app.md).
 

@@ -126,6 +126,11 @@ private fun ColumnScope.PhoneTab(a: MainActivity, ui: HomeState) {
     var asking by rememberSaveable { mutableStateOf(false) }
     KCard {
         Text(if (ui.demo) "Demo: not paired" else "Paired with " + Prefs.url(a), style = MaterialTheme.typography.bodyLarge)
+        if (!ui.demo) Dim(
+            if (ListenService.direct()) "Connected straight to your call line"
+            else "Not connected to your call line right now: calls still come through ntfy.sh",
+            Modifier.padding(top = 4.dp),
+        )
         Dim("App " + a.versionName(), Modifier.padding(top = 4.dp))
         Dim(
             "${ui.name}'s calls ring here like phone calls (earpiece, screen off at your ear); wake-up calls ring like an alarm.",

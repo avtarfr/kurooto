@@ -860,7 +860,9 @@ def ntfy_token(clear: bool) -> int:
             app.secrets.delete("calls.ntfy_token")
             print("No ntfy token now: rings are published without one.")
         else:
-            print("Make a free account at https://ntfy.sh/signup, then Account → Access tokens → Create a token.")
+            print("Only a paid ntfy plan's token helps: ntfy counts a free account by address, like everyone else.")
+            print("(Since 0.7.0 the Android app gets calls straight from your call line while it's connected.)")
+            print("On https://ntfy.sh: Account → Access tokens → Create a token.")
             token = _secret("ntfy token (tk_...): ", "KUROOTO_NTFY_TOKEN").strip()
             if not token:
                 print("No token given: nothing changed.")
@@ -2141,7 +2143,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     ro = sub.add_parser("rotate", help="new keys for your call line (a lost phone, a backup that got out)")
     ro.add_argument("--yes", action="store_true", help="don't ask first (every paired phone has to pair again)")
-    nt = sub.add_parser("ntfy-token", help="an ntfy account token, so phone rings aren't refused for a shared address")
+    nt = sub.add_parser(
+        "ntfy-token", help="a paid ntfy account's token for the phone app's fallback (a free one is counted by address)"
+    )
     nt.add_argument("--clear", action="store_true", help="publish without a token again")
     home_parsers(sub)
     profile_parsers(sub)

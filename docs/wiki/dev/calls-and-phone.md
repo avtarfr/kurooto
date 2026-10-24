@@ -47,11 +47,15 @@ writes `account`, `hash`, `deployed`), `live_model`, `live_models`, `voice_by_mo
 Secrets (`Calls.SECRETS` and `deploy.ensure_secrets`): `calls.call_secret`, `calls.connector_secret`,
 `calls.ntfy_topic`, `calls.ntfy_key`, `calls.vapid_jwk`, `calls.vapid_public`, `calls.ntfy_token` (optional, from
 `kurooto ntfy-token`: an ntfy account token, sent as `Authorization: Bearer` by `Calls.publish_ntfy` and the Worker's
-`publish()`, each retrying once without it on a 401/403; it moves ntfy's rate limits from the shared IP to the
-account; `check_ntfy_token(server, token)` asks `GET /v1/account`; `Calls.set_ntfy_token` keeps or clears it and
+`publish()`, each retrying once without it on a 401/403. It does *not* lift the limit for a free account: ntfy.sh
+reports a free account's limits with `basis: ip` (250 messages a day for the address), counted like an anonymous
+visitor, so on a campus network the token changes nothing; only a paid plan is counted apart. Since 0.7.0 the
+Android app doesn't depend on ntfy while it's connected (below), which is the real fix. `check_ntfy_token(server, token)` asks `GET /v1/account`; `Calls.set_ntfy_token` keeps or clears it and
 redeploys the line in the background, from `POST /api/phone/ntfy {token}` (the Phone tab, the setup page's call
 box) and `kurooto ntfy-token`; `GET /api/phone` has `ntfy_token` and `ntfy_limited`. A 429 from ntfy emits
-`calls_ntfy_limited`; `Calls.health` is not OK while any came in the last 7 days and there's no token); also `gemini.api_key` (required) and
+`calls_ntfy_limited`; `Calls.health` is not OK while any came in the last 7 days unless `Calls.phones_direct()`: every
+paired Android phone was `connected` in the last device list (`Calls.devices()` keeps it, `_devices_seen`, trusted
+`PHONES_FRESH_S` = 30 min); its advice is to update the app and let it run in the background, not a free account); also `gemini.api_key` (required) and
 `calls.github_token` (set by Notes sync, `modules/notes_sync.py`, so the line can read notes while the computer is off).
 
 ## Deploying the line (`modules/calls/deploy.py`)
@@ -122,21 +126,109 @@ one message (`why="calls.line_update"`). Tests: `tests/unit/test_apk_ship.py` (t
    - asks Calm first (`core/calm.py:Calm.call_ok`: by default one self-started call a day; the alarm and calls the user
      asked for are exempt). A refused call is held for the evening bundle as a line with a call link;
    - records it in `<state>/calls/rings.json`;
-   - sends `admin_later("ring", ...)`: the Worker's `Line.ring` mints a ticket (2 h; 3 h for alarms), publishes a
-     k1-sealed message to ntfy for paired Android devices, and sends an empty Web Push (VAPID) to every subscribed
-     browser, whose service worker (`public/sw.js`) then fetches `/pending`;
-   - publishes to ntfy directly from the computer (`Calls.publish_ntfy`) only when the line isn't connected, or
-     its answer to `ring` (`Calls._ring_fallback`) doesn't say `"android": true` (an error, no answer, its publish
-     failed, or no Android device paired): one ntfy message per ring;
+   - sends `admin_later("ring", ...)`: the Worker's `Line.ring` mints a ticket (2 h; 3 h for alarms), sends a
+     k1-sealed message to paired Android devices (`Line.toPhones`: their own connections first, and ntfy as a
+     second path for rings, below), and an empty Web Push (VAPID) to every subscribed browser, whose service worker
+     (`public/sw.js`) then fetches `/pending`;
+   - when the line's WebSocket isn't connected, hands the ring to the line over HTTPS instead
+     (`Calls.send_phones`: `POST <line>/send`, below) and publishes to ntfy from the computer (`Calls.publish_ntfy`)
+     only when that fails (unreachable, an older line) or the line had no way to an Android phone; when connected,
+     publishes only when its answer to `ring` (`Calls._ring_fallback`) doesn't say `"android": true` (an error, no
+     answer, neither path worked) and doesn't say `"phones": 0` (a 0.7.0 line with no Android phone paired: nothing
+     to ring). One ring, not two;
    - sends a Telegram notice with an Answer link (`Calls.link`, a `t1` ticket in the URL fragment), or an urgent
      "the call line isn't connected" notice;
    - schedules `calls.missed` at `ring_s + 30` s, or `ALARM_RING_S` (300, the Worker's and the app's alarm ring)
      + 30 s for an alarm.
-4. `Calls._missed`: stops the ring (`stop-ring`, or a direct ntfy stop when the line isn't connected), re-alerts at `realert_min` (not for alarms),
+4. `Calls._missed`: stops the ring (`stop-ring`, or `send_phones` when the line isn't connected), re-alerts at `realert_min` (not for alarms),
    and finally "Missed call" with Call back / In 30 min buttons; the owning module hears `call_outcome(..., "missed")`.
 5. `Calls._scheduled_ring` skips a late or missed one-off when a line exists, assuming the line's cron placed it.
 
-There is no FCM. Android rings through an ntfy JSON stream held by `ListenService`; browsers through Web Push.
+There is no FCM. Android rings through its own WebSocket to the line (0.7.0, `Direct`) and an ntfy JSON stream as
+the fallback, both held by `ListenService`; browsers through Web Push.
+
+## The Android app's own connection (0.7.0)
+
+Why: ntfy.sh limits each internet address (a free account too: `GET /v1/account` says `basis: ip`, 250 messages a
+day), and a campus shares one address, so rings were refused with 429 and phones stayed silent. Now the line delivers
+to the app directly and ntfy is the fallback.
+
+**Transport: a WebSocket to the Durable Object, hibernatable.** Chosen over Server-Sent Events or long polling
+because only a hibernated WebSocket costs nothing while idle: an SSE stream or a held long-poll keeps the Durable
+Object awake (billed duration the whole time; one phone all day would be ~10 800 GB-s of the free plan's 13 000), while
+a socket accepted with `state.acceptWebSocket` lets it sleep, and the text `"ping"` is answered `"pong"` by
+`setWebSocketAutoResponse` without waking it. Android 6 has no WebSocket client and the app uses no libraries, so
+`android/src/.../WebSock.java` is a small RFC 6455 client over `java.net` sockets (TLS from
+`HttpsURLConnection.getDefaultSSLSocketFactory()`, so `Tls`'s ISRG Root X1 applies on Android < 7.1.1, and the host
+name checked with `HttpsURLConnection.getDefaultHostnameVerifier()`); text messages, fragments, ping/pong, close, masked
+client frames, a 1 MB cap; a read timeout only between messages (one that stalls mid-message breaks the stream).
+
+**The Worker** (`worker.js`):
+- `GET /phone?after=<seq>` (an upgrade, header `x-call-secret: d1...`; Android devices only: 403 for web, 401 unpaired,
+  426 without an upgrade). `Line.phoneConnect` closes the device's older socket (one per device), accepts with tags
+  `["phone", "dev:<id>"]` and attachment `{kind: "phone", dev, at}`, sends `{"type": "hello", seq, version}`, then
+  replays from the phone log: every item with `seq > after` if `0 < after <= log.seq`, else the last `PHONE_NEW_MS`
+  (10 min). Then each message as `{seq, k1}`; the k1 is the same sealed JSON ntfy gets, plus `mid` (16 hex).
+- Sockets are told apart by attachment: `Line.computers()` (no `kind: "phone"`; a socket from before 0.7.0 counts as
+  the computer's) is what `online`, `lastSeen`, `tell`, `relay` and `connect` (which replaces only the computer's) use;
+  `webSocketMessage` from a phone only refreshes its `at` and is otherwise ignored (a phone can't send `admin` or
+  anything else to the computer's handler); `webSocketClose`/`Error` of a phone doesn't touch `seen`.
+- `Line.phonesHeard()`: `{device id: ms}` from each phone socket's auto-response timestamp or `at`. Connected =
+  heard within `PHONE_FRESH_MS` (6 min).
+- `Line.toPhones(fields, assistant)` (rings, stops, inbox messages, clears, chat, outbox done, Today nudges, sealed
+  reminders): no Android device paired, nothing; else seal once with `mid`, append to the phone log (`plog`: `{seq,
+  items: [{seq, t, k1}]}`, last `PHONE_LOG_MAX` 60, `PHONE_LOG_MS` 6 h), send down every phone socket, and `publish()`
+  to ntfy when it's a ring (tag `call`) or some paired Android device isn't connected. Returns true when a connected
+  phone has it or ntfy took it. `publish(env, k1, priority)` now takes the sealed message.
+- `POST /send` (no device key; `x-connector-secret`): `{fields, assistant}` (at most `SEND_MAX` 8000 bytes) through
+  `toPhones`; answers `{ok, android, phones}` (`phones`: Android devices paired). `ring` answers carry `phones` too.
+- `devices` (admin) gives Android devices `connected` and `heard` (ISO or null); `revoke` closes the device's socket
+  (code 1008).
+
+**The computer** (`modules/calls/__init__.py`): `Calls.send_phones(fields)` is what used to be a direct
+`publish_ntfy` (the ring and its stop while the line's WebSocket is down): `_via_line` POSTs `/send` (10 s, through
+`core/egress.py` as the line's own host); `None` (unreachable, 401/404 from a line before 0.7.0, not `ok`) or
+`android: false` with `phones > 0` falls back to `publish_ntfy` with the existing token logic; `phones: 0` publishes
+nothing. `Calls.devices()` keeps the list for `phones_direct()`; the Phone tab shows **connected** per Android phone.
+
+**The app** (`android/`): `ListenService` runs `Direct` (`Direct.java`) beside the ntfy stream; both hand opened
+messages to `ListenService.deliver`, which drops a `mid` seen before (`Prefs.firstTime`, `LinkRules.seen`: the last
+`SEEN_MAX` 200 ids in prefs `seenIds`; a message without `mid`, from an older line, is never a copy), so a ring
+arriving both ways rings once and a replayed message isn't shown twice. `Direct`:
+- connects to `LinkRules.target(Prefs.url, Prefs.directSeq)`; after each `{seq, k1}` stores `directSeq`; a `hello`
+  with a lower seq than stored (the log started again: a new line, a rotate) lowers it;
+- pings with `"ping"` when `PING_MS` (60 s, elapsedRealtime, so time asleep counts) has passed, checked on every read
+  timeout (`READ_MS` 20 s), after every message, on every line of the ntfy stream (ntfy's own ~45 s keepalive wakes
+  the phone anyway) and from an inexact `setAndAllowWhileIdle` wake-up alarm every `KEEP_MS` (4 min; Doze spaces these
+  to about one per 9-15 min; `ActionReceiver.KEEPALIVE`, `goAsync`, re-armed each time, which also restarts the service
+  if Android stopped it); a ping unanswered for `DEAD_MS` (30 s) closes the socket;
+- reconnects after `LinkRules.backoffMs` (2 s doubling to 60 s, plus up to a third at random); 404, 401, 403 or 426
+  (a line before 0.7.0, or unpaired) waits `OLD_MS` (30 min) and ntfy carries everything meanwhile;
+- on each connection sends the seal key and fetches Today if it's 5 minutes old, as the ntfy loop does.
+`MainActivity`'s **This phone** card says whether it's connected now (`ListenService.direct()`).
+
+**Mixed versions.** Old app + new line: no socket, so the device is never connected and everything also goes to ntfy,
+as before (the extra `mid` field is ignored). New app + old line: `/phone` is 404, the app keeps to ntfy and asks again
+every 30 minutes. New computer + old line: `/send` is 401, so `publish_ntfy` as before; no `phones` in ring answers, so
+`_ring_fallback` behaves as before. The line itself is redeployed by the existing paths: the new phone app fetched
+after an update (`Updates.phone_app` → `app_behind` → `calls.app_line` within minutes), else the 05:10
+`_line_update` (`needs_redeploy`: the Worker source is in `fingerprint`). A deploy disconnects every WebSocket; the
+computer and the phones reconnect by themselves, and the phones get what was sent meanwhile from the log.
+
+**Cloudflare's free plan** (Workers Free; Durable Objects on it are SQLite-backed only), from Cloudflare's pricing and
+limits pages as of 2026-10: 100 000 Worker requests a day; for Durable Objects 100 000 requests a day, 13 000 GB-s of
+duration a day, 5 million rows read and 100 000 rows written a day, 5 GB stored; limits reset at 00:00 UTC, and past
+one, operations of that kind fail. WebSockets: opening one is a request; incoming messages are billed 20 to 1 as
+requests; outgoing messages and incoming protocol pings are free; a hibernated object isn't billed for duration (it
+hibernates after about 10 s with nothing to do), and auto-responses don't wake it or add duration (the docs don't say
+whether they count as requests; counted below as incoming messages). Up to 32 768 hibernatable sockets per object,
+10 tags each, 32 MiB a message.
+One phone connected all day: at most 1 440 pings a day (one a minute; far fewer asleep) = at most 72 billed requests,
+plus one Worker request and one Durable Object request per reconnect (even 300 reconnects on a bad network is 600),
+no extra duration while idle, and one row read and one written per message to the phones (a few hundred a day).
+Ten phones (`MAX_DEVICES`) would still be well under 5% of the request limits. For comparison, what the line already
+uses: the cron wakes the object every minute (1 440 requests, roughly 1 440 × 10 s × 128 MB ≈ 1 850 GB-s a day), and
+the computer's connector pings every 30 s (at most 144 billed requests).
 
 When the computer is off, the Worker's cron (`Line.tick`, every minute) places scheduled calls itself (skipping ones
 more than 180 s late, holding non-alarm calls during a call), answers tools from the last brief, and queues tool calls,
@@ -236,12 +328,13 @@ that `config_template` puts in the call's instructions.
   Secrets: `CALL_SECRET`, `CONNECTOR_SECRET`, `GEMINI_API_KEY`, `NTFY_TOPIC`, `NTFY_KEY`, `VAPID_JWK`, `VAPID_PUBLIC`,
   `NTFY_TOKEN` (always sent, empty without one, so clearing it clears the line's copy),
   optional `GITHUB_TOKEN`.
-- Routes: top level `/health`, `/manifest.webmanifest`; the rest goes to `Line.fetch`. No auth: `/connect` (checked by
-  the connector secret), `/pair/claim` and `GET /sealed/<32 hex>` (a sealed file: only its link's key opens it). Any valid key (device key `d1`, ticket `t1`, or a minted ticket):
+- Routes: top level `/health`, `/manifest.webmanifest`; the rest goes to `Line.fetch`. No auth: `/connect` and
+  `POST /send` (0.7.0; both checked by the connector secret), `/pair/claim` and `GET /sealed/<32 hex>` (a sealed file: only its link's key opens it). Any valid key (device key `d1`, ticket `t1`, or a minted ticket):
   `/status`, `/token`, `/turn`, `/text-call`, `/call-report`, `/tool`, `/tasks`, `/transcript`, `/upload`. Paired
   devices only: `/pending`, `/answer`, `/chat` (GET and POST), `/outbox`, `/today`, `/view`, `/view/watch` (Android
   only), `/app-call`, `/ring-reply`,
-  `/push/subscribe`, `/device/key`, `/upcoming` (bedside mode), `/shortcut`, `/shortcut/new`, `/shortcut/off`. Only a
+  `/push/subscribe`, `/device/key`, `/upcoming` (bedside mode), `/shortcut`, `/shortcut/new`, `/shortcut/off`, `/phone`
+  (Android only: the app's own WebSocket, 0.7.0). Only a
   Tell Kurooto link: `/tell/tk1.<id>.<secret>` (below).
 - Admin operations over the WebSocket: `ring`, `stop-ring`, `pair-code`, `devices`, `revoke` (`device`), `ticket`,
   `bye`, `notify`, `notify-clear`, `sealed-put`, `sealed-claim`, `outbox`, `chat-say`, `file-put`, `today-put`,
@@ -598,6 +691,8 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     (`Buttons`, `AlarmPlan`), `test/DockTest.java` and `test/ViewsTest.java` (`ViewSeal`).
   - CI (`ci.yml` job `android`, `android-emulator.yml`) sets `GRADLE_USER_HOME` to the runner's temp folder and needs
     the network for Gradle's first run; `smoke.sh` is unchanged.
+- `build.sh --test` also runs `test/LinkTest.java` (0.7.0: `LinkRules`, and `WebSock` against a local server:
+  handshake, fragments, ping/pong, masking, close, a 404) on a plain JVM.
 - Bedside mode (0.6.0): `BedsideActivity` (theme `Kurooto.Call`, `showWhenLocked`, immersive): clock, date, next
   alarm (the first `alarm` call from `GET /upcoming`, or `AlarmManager.getNextAlarmClock()` if earlier), up to three
   calls (reasons hidden while a secure keyguard is locked), the waiting count, and the Talk button (`Line.callLink` then
@@ -617,14 +712,15 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `CallActivity` (WebView with the `KurootoApp` JS bridge), `AnswerActivity`, `ChatActivity` (the chat; its store and
   the outbox's waiting list are `Chat`, `chat.json` in the app's files), `ShareActivity` (share to Kurooto, with the
   device key so it can wait on the line),
-  `ListenService` (foreground, type `remoteMessaging`, holds the ntfy stream), `BootReceiver`, `ActionReceiver`,
+  `ListenService` (foreground, type `remoteMessaging`, holds the line's own connection, `Direct`, and the ntfy stream),
+  `BootReceiver`, `ActionReceiver`,
   `PlacesActivity` + `PlaceReceiver` (location reminders), `QuickNoteActivity`, `NoteTile`, `TalkWidget` /
   `TalkWideWidget` (below).
   Helpers: `Crypto`, `Seal`, `Line`, `Net`, `Prefs`, `Inbox`, `Chat`, `Speech`, `Tls` (adds ISRG Root X1 on API < 25),
   `B64`, `Ui` (the framework screens' look), `Dock` (bedside mode's rules), `CardRules` (check-in and quiz cards),
   `Places` + `PlaceRules`; 0.6.0: `Today` (the Today list), `Alarms` and `AlarmPlan` (the phone's own alarm), `Buttons`
   (quick notification buttons). 0.7.0, Kotlin: `MainActivity` + `HomeState`, `Home.kt`, `TodayTab.kt`, `InboxTab.kt`
-  (with `InboxCard`), `PhoneTab.kt`, `Kit.kt`, `Theme.kt`, `Sky.kt`, `Demo.kt`.
+  (with `InboxCard`), `PhoneTab.kt`, `Kit.kt`, `Theme.kt`, `Sky.kt`, `Demo.kt`; Java: `Direct`, `WebSock`, `LinkRules` (the line's own connection).
 - Check-in and quiz cards (0.6.0): `PhoneApp.item` adds `card` ("checkin" / "quiz", `phone.py:card_of`, from the
   map kind or the buttons' `chk:` / `qz:` / `ql:` data) to the item; the Worker stores items as they are, so `/pending`
   has it (the ntfy push doesn't need it). The Inbox tab shows such an item as an `InboxCard` (answer box, choices and
@@ -761,11 +857,14 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `test_livefallback_line.py`, `test_phone_line.py`, `test_phone_chat_line.py` (the chat and the phone outbox),
   `test_presence_line.py`, `test_rotate_line.py`, `test_phone_today_line.py` (Today sealed per phone, kept while the
   computer is away, Done from the outbox, off), `test_shortcut_line.py` (Tell Kurooto links: made, scoped, revoked,
-  ended by unpairing, queued offline; and `/upcoming`), `test_phone_views_line.py` (the notes map sealed per phone and
+  ended by unpairing, queued offline; and `/upcoming`), `test_phone_direct_line.py` (the app's own connection: who may connect, messages down it and not on
+  ntfy, rings both ways with one `mid`, ping/pong, `/send`, one socket per phone, replay after reconnecting, unpairing
+  closes it), `test_phone_views_line.py` (the notes map sealed per phone and
   kept while the computer is away, watching Systems, parts in order and the newest only, off). `test_phone_chat_line.py` also covers a sealed file put and
   fetched. They need Node; CI's `call-line` job installs the Worker's packages and bundles the page first.
 - Unit: `tests/unit/test_calls.py`, `test_phone.py`, `test_phone_chat.py`, `test_phone_cards.py`,
-  `test_place_reminders.py`, `test_phone_today.py` (the Today list, its hand-over, Done / +1, reminder and deadline
+  `test_place_reminders.py`, `test_phone_direct.py` (`send_phones` through `/send` and its ntfy fallback, `_ring_fallback` with
+  `phones`, `connected` on the Phone tab), `test_phone_today.py` (the Today list, its hand-over, Done / +1, reminder and deadline
   buttons), `test_views.py` (the views' copies, sealing, parts, watching, off; the shared drawing code against
   Chrome 58 with esbuild), `test_shortcut.py` (the computer's side of the links, the dashboard, `public/qr.js` against segno through
   `tests/js/qr.mjs`), `test_app_first.py` (no Telegram: routing,
@@ -777,8 +876,15 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - A shared file's part that the computer took but didn't confirm (it crashed in between) is written twice when the
   outbox is taken again; chat messages and answers are protected by their nonce, file parts aren't.
 
-- With no Android device paired, the computer still publishes each ring to ntfy once (the Worker's answer can't tell
-  "no Android device" from "its publish failed").
+- With no Android device paired and a line from before 0.7.0, the computer still publishes each ring to ntfy once (that
+  line's answer can't tell "no Android device" from "its publish failed"; a 0.7.0 line says `phones`).
+- The app's own connection is untested on a real phone as of 0.7.0's build (JVM tests against a local server, the debug
+  build, lint and the Worker tests): how often Doze lets the keepalive alarm and the socket through on each maker's
+  phone, and whether a carrier or campus NAT drops a socket idle for 4+ minutes, are unknown. A dropped socket that
+  still looks connected to the line (heard within 6 min) means a non-ring message waits until the phone's next ping
+  fails and it reconnects (the replay brings it; rings always also go through ntfy).
+- `Line.toPhones` writes the phone log on every message even when no phone ever connects (an app before 0.7.0): one
+  row write each, well inside the free plan.
 - A sealed file's link holds its key, and the link is part of a chat message the call line keeps (3 days): the file
   is only as private from the call line as the chat is.
 - The phone's own alarm and its call are matched by time (`AlarmPlan.SAME_S`, 5 minutes): alarms set less than 5

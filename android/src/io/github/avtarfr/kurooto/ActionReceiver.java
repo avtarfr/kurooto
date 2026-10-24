@@ -25,12 +25,20 @@ public class ActionReceiver extends BroadcastReceiver {
             BUTTON = "io.github.avtarfr.kurooto.BUTTON", CHAT_TAP = "io.github.avtarfr.kurooto.CHAT_TAP";
     static final String DISMISS = "io.github.avtarfr.kurooto.DISMISS", ALARM = "io.github.avtarfr.kurooto.ALARM",
             NOTE_DONE = "io.github.avtarfr.kurooto.NOTE_DONE", SEALED_SNOOZE = "io.github.avtarfr.kurooto.SEALED_SNOOZE",
-            SEALED_SHOW = "io.github.avtarfr.kurooto.SEALED_SHOW";
+            SEALED_SHOW = "io.github.avtarfr.kurooto.SEALED_SHOW", KEEPALIVE = "io.github.avtarfr.kurooto.KEEPALIVE";
 
     @Override public void onReceive(Context c, Intent i) {
         String a = i.getAction();
         if (ALARM.equals(a)) {
             Alarms.fired(c.getApplicationContext(), i.getLongExtra("at", 0));
+            return;
+        }
+        if (KEEPALIVE.equals(a)) { // the line's own connection, while the phone sleeps (Direct): a ping, the next alarm
+            final PendingResult done = goAsync();
+            final Context app = c.getApplicationContext();
+            new Thread(() -> {
+                try { ListenService.keepAlive(app); } finally { done.finish(); }
+            }).start();
             return;
         }
         if (NOTE_DONE.equals(a)) {

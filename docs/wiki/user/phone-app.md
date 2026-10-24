@@ -66,12 +66,17 @@ Kurooto's questions and approvals with a Reply box, and lets you share files int
 
    On Samsung, Xiaomi, Oppo, Vivo, OnePlus and Huawei phones, also take Kurooto off any "sleeping apps" or "deep
    sleep" list in Settings → Battery, or calls may not ring.
-4. Recommended: a free [ntfy.sh](https://ntfy.sh/signup) account. Android rings go through ntfy.sh, which limits each
-   internet address, and yours is shared (your call line runs on Cloudflare's, and campuses and offices share one),
-   so a ring can be refused and the phone stays silent. Make the account, then Account → Access tokens → Create, and
-   paste the token on the dashboard's Phone tab (or on the setup page, or `kurooto ntfy-token`). Once ntfy has
-   refused a ring, `/health` and the dashboard say so.
-4. Test it: Dashboard → Phone → **Ring my phone (test)**.
+4. Test it: Dashboard → Phone → **Ring my phone (test)**. The Phone tab says **connected** beside the phone once the
+   app is connected straight to your call line (below).
+
+**How calls reach the phone (0.7.0).** The app keeps its own connection to your call line, so calls, messages, the
+chat and Today come straight from there. [ntfy.sh](https://ntfy.sh) is only the fallback: for a moment when the
+phone isn't connected (asleep a long time, no signal, just restarted), and as a second copy of every ring; the app
+rings once whichever copy comes first. ntfy limits each internet address, and on a campus or office network that
+address is shared, so ntfy can refuse ("429"); a free ntfy account doesn't change that (ntfy counts it by address
+too). With the app connected it doesn't matter. The connection is light: the app says it's there about once a minute
+while the phone is awake and every few minutes while it sleeps, and nothing in between. **This phone** at the bottom
+of the app's screen says whether it's connected right now.
 
 **The app's screen** (0.7.0) has four tabs, in the bar at the bottom:
 
@@ -554,9 +559,11 @@ There's no undo: the old keys are gone. A phone you don't pair again can't call 
 ## What leaves your computer
 
 - Questions and messages for the phone go from your computer to your call line (your Cloudflare account) to your phone.
-  Android gets them through ntfy.sh (as your ntfy account with `kurooto ntfy-token`, else anonymously), encrypted
-  with a key your phones, your computer and your call line hold (ntfy
-  can't read them); an iPhone gets an empty Web Push and then fetches what's waiting from your call line.
+  Android gets them on its own connection to your call line, and through ntfy.sh only when it isn't connected (and a
+  second copy of each ring; anonymously, or as your ntfy account with `kurooto ntfy-token`), encrypted the same way
+  either way, with a key your phones, your computer and your call line hold (ntfy can't read them); an iPhone gets
+  an empty Web Push and then fetches what's waiting from your call line. Your call line keeps the last 60 of these
+  sealed messages for 6 hours, so a phone that reconnects gets what it missed.
 - Your call line keeps a copy of what's open (at most 40 items, each gone after a day or once it's dealt with) so the
   phone can list it while the computer is off.
 - The chat: what you type goes from the phone through your call line to your computer, sealed on Android with the key

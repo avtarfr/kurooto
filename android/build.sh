@@ -13,7 +13,8 @@
 #                                                          quoted safely), the cards' and location reminders' rules,
 #                                                          the notification buttons and local alarm rules, bedside
 #                                                          mode's rules (brightness by the hour, hours) and opening
-#                                                          Systems and the Notes map (ViewSeal, 0.7.0)
+#                                                          Systems and the Notes map (ViewSeal, 0.7.0), and the
+#                                                          app's own connection to the call line (WebSock, 0.7.0)
 #
 # Needs: an Android SDK with platform 36 and build-tools (ANDROID_HOME), a JDK 17 (java on PATH or JAVA_HOME), and the
 # network the first time (Gradle 8.14.6, checked against its SHA-256 below, then the Android Gradle plugin, Kotlin and
@@ -50,6 +51,9 @@ crypto_test() {
   # the check-in and quiz cards' and location reminders' rules (0.6.0)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/CardRules.java" "$HERE/src/$PKG/PlaceRules.java" "$HERE/test/CardsPlacesTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CardsPlacesTest
+  # the app's own connection to the call line (0.7.0): its rules and the WebSocket client against a local server
+  javac -nowarn -encoding UTF-8 -cp "$t" -d "$t" "$HERE/src/$PKG/LinkRules.java" "$HERE/src/$PKG/WebSock.java" "$HERE/test/LinkTest.java"
+  java -cp "$t" io.github.avtarfr.kurooto.LinkTest
   rm -rf "$t"
 }
 if [ "${1:-}" = "--test" ]; then crypto_test; exit 0; fi

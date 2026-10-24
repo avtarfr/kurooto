@@ -9,6 +9,8 @@ import json
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -81,7 +83,16 @@ def test_notes_index_search_and_safe_reading(tmp_path):
 
 # ----------------------------------------------------------------------------------- the feature
 @pytest.fixture
-def calls(env):
+def calls(env, monkeypatch):
+    real = urllib.request.urlopen
+
+    def offline(req, *a, **kw):  # nothing here reaches ntfy or a call line for real (the fake Telegram still does)
+        url = req.full_url if isinstance(req, urllib.request.Request) else str(req)
+        if "ntfy.sh" in url or ".workers.dev" in url:
+            raise urllib.error.URLError("offline in tests")
+        return real(req, *a, **kw)
+
+    monkeypatch.setattr(urllib.request, "urlopen", offline)
     env.app.secrets.set("gemini.api_key", "k")
     deploy.ensure_secrets(env.app)
     env.app.settings.set("calls.worker", {"url": "https://kurooto-abc.your-subdomain.workers.dev"})

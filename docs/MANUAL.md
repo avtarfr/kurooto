@@ -1697,9 +1697,12 @@ Talk to Kurooto like a phone call, and let it call you: reminders ("call me at 5
 deadline nudges, quizzes, the morning alarm. During a call it can search your notes, add reminders and deadlines,
 start tasks on your computer, answer Kurooto's questions, and more, depending on which features you have on.
 
-**ntfy account (recommended for Android):** Android rings go through ntfy.sh, which limits each internet address; your
-call line's is shared, so a ring can be refused. A free ntfy.sh account's token (dashboard → Phone, the setup page, or
-`kurooto ntfy-token`) makes ntfy count your account instead; `/health` says when rings were refused without one.
+**How rings reach Android (0.7.0):** the app keeps its own connection to your call line, and calls, messages, the chat
+and Today come down it. ntfy.sh is only the fallback (a phone that isn't connected, and a second copy of each ring,
+rung once). ntfy limits each internet address, and a free ntfy account is counted by address too, so on a shared
+network (a campus) it can refuse ("429"); with the app connected that doesn't matter. The dashboard's Phone tab says
+**connected** beside each Android phone; `/health` says when ntfy refused something and the phone wasn't connected.
+Only a paid ntfy plan's token (`kurooto ntfy-token`) is counted apart.
 
 **How it works:** setup makes your own *call line*, a small program on your own free Cloudflare account (it's yours;
 nobody else's server is involved). Your computer keeps a connection to it, and your phone pairs with it. Calls use

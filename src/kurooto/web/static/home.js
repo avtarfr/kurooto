@@ -1254,7 +1254,7 @@ async function renderPhone(body) {
     <p><button class="primary" data-pair>Pair a phone</button> <button data-ring ${ph.connected ? "" : "disabled"}>Ring my phone (test)</button></p>
     <div id="pairbox"></div>
     ${devs === null ? "<p class=\"d\">Paired phones show here when the line is connected.</p>" : devs.length
-      ? `<table><tr><th>phone</th><th>kind</th><th>paired</th><th></th></tr>${devs.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.kind)}${d.push ? " · notifications on" : ""}</td><td>${esc(d.created.slice(0, 10))}</td><td><button data-revoke="${esc(d.id)}">Remove</button></td></tr>`).join("")}</table>`
+      ? `<table><tr><th>phone</th><th>kind</th><th>paired</th><th></th></tr>${devs.map((d) => `<tr><td>${esc(d.name)}</td><td>${esc(d.kind)}${d.push ? " · notifications on" : ""}${d.kind === "android" && d.connected !== undefined ? (d.connected ? ' · <span class="ok2">connected</span>' : ' · <span class="d">not connected (ntfy.sh carries its messages)</span>') : ""}</td><td>${esc(d.created.slice(0, 10))}</td><td><button data-revoke="${esc(d.id)}">Remove</button></td></tr>`).join("")}</table>`
       : "<p class=\"d\">No phones paired yet.</p>"}
     ${ph.shortcuts && ph.shortcuts.length ? `<h3>Tell Kurooto (iPhone Shortcut)</h3>
     <p class="d">Each link lets its Shortcut send you a chat message as that phone, and nothing else. Revoke one and its Shortcut stops working at once; the phone stays paired.</p>
@@ -1262,8 +1262,8 @@ async function renderPhone(body) {
     <h3>On the phone</h3>
     <p><label class="views-tg"><input type="checkbox" data-views ${ph.views ? "checked" : ""}> Show Systems and the Notes map in the Android app</label></p>
     <p class="d">The app draws them as this page does. What goes: your notes' titles, where they are in your notes folder and which link to which (never what they say), and each feature's health. Sealed on this computer for each phone, so your call line can't read them; Systems only while you're looking at it. Turning it off drops your call line's copies. The iPhone app doesn't get them.</p>
-    <h3>ntfy account (optional)</h3>
-    <p class="d">Android rings go through ntfy.sh, which limits each internet address; yours is shared (your call line's Cloudflare one, often a campus or office too), so a ring can be refused and your phone stays silent. A free account's token makes ntfy count your account instead: <a href="https://ntfy.sh/signup" target="_blank" rel="noopener">make one</a>, then Account → Access tokens → Create.${ph.ntfy_limited && !ph.ntfy_token ? ` <span class="bad2">ntfy refused ${ph.ntfy_limited} ring(s) this week.</span>` : ""}</p>
+    <h3>ntfy.sh (the fallback)</h3>
+    <p class="d">The Android app (0.7.0 and later) gets calls and messages straight from your call line while it's connected ("connected" above). ntfy.sh only carries them when it isn't, and a second copy of each ring. ntfy limits each internet address, and yours may be shared (a campus or office); a free ntfy account is counted by address too, so only a paid ntfy plan's token lifts that.${ph.ntfy_limited ? ` <span class="bad2">ntfy refused ${ph.ntfy_limited} ring(s) or message(s) this week.</span>` : ""}</p>
     <p>${ph.ntfy_token ? "<span class=\"ok2\">Token kept.</span> " : ""}<input type="password" id="ntfy-token" placeholder="tk_..." autocomplete="off" spellcheck="false"> <button data-ntfy>Save</button>${ph.ntfy_token ? " <button data-ntfy-clear>Remove</button>" : ""}</p>
     <p class="d" id="phone-msg"></p>`;
   body.onclick = async (e) => {
