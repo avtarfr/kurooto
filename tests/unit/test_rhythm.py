@@ -674,8 +674,11 @@ def test_tomorrow_morning_goes_to_the_wake_up_call(bycall, monkeypatch):
     alarm = env.app.modules["alarm"]
     alarm.set(now() + dt.timedelta(hours=8))
     ck._call("night", day)
-    texts, _ = buttons_of_last(env)
-    assert texts == ["Answer", "Tomorrow morning", "Skip"]  # on the ring's Telegram message
+    texts, sent = buttons_of_last(env)
+    # on the ring's Telegram message; the long label has a row of its own (0.7.4: it was cut off in a row of three)
+    assert texts == ["Answer", "Skip", "Tomorrow morning"]
+    rows = [[b["text"] for b in row] for row in sent["reply_markup"]["inline_keyboard"]]
+    assert rows == [["Answer", "Skip"], ["Tomorrow morning"]]
     data = f"chk:night|{day.isoformat()}:defer"
     assert env.press(data).startswith("OK, sleep well. The rest of it comes on your wake-up call")
     assert ck.today()["night"]["status"] == "deferred" and not env.app.scheduler.get("checkins:unstick:night")

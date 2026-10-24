@@ -12,6 +12,7 @@ linked notes.
 - [Home and hub notes](#home-and-hub-notes)
 - [What Kurooto never does to your text](#what-kurooto-never-does-to-your-text)
 - [Files into notes](#files-into-notes)
+- [Notes sorter](#notes-sorter-a-scratch-folder-sorts-itself)
 - [Quick notes and prompts](#quick-notes-and-prompts)
 - [Notes brain (search by meaning)](#notes-brain-search-by-meaning)
 - [Notes sync (GitHub)](#notes-sync-github)
@@ -260,6 +261,48 @@ Chat on, the AI then files it properly: a note in the right place that says what
 reads it to file it.
 
 **Turn it off.** Features → Files into notes → Turn off. Saved files and notes stay.
+
+---
+
+## Notes sorter (a scratch folder sorts itself)
+
+Drop notes in a **scratch folder** (`inbox/` by default) and Kurooto files them where they belong, by itself, within limits.
+Turn it on in Features → **Notes sorter** (it's off until you do).
+
+**What it does.** Every night at 03:30 (and on `/sort now`) it looks at the notes in the scratch folder that have sat for ten
+minutes and moves each to a folder you already have:
+1. **Rules first, no AI:** the note's own `subject:` (or `course:`), a tag or the title naming one of your subjects, and what
+   you taught it before (below).
+2. **Your AI for the rest:** a note the rules can't place is sent, its first lines only, as one short request; the AI may only
+   pick one of your existing folders, with a confidence. Below `sorter.min_conf` (0.75) the note stays.
+3. **A note it can't place stays**, and `/sort` lists it with its best two guesses as **Move** buttons.
+
+**What it never does:**
+- **Delete anything, merge anything or overwrite anything.** A name that's taken gets a number (`notes-2.md`).
+- **Move a note that isn't in the scratch folder**, into a new top-level folder, or into Kurooto's own folders (journal,
+  about-me, prompts, skills).
+- **Rewrite your text.** Links in Kurooto's own notes are updated for the move. A note that notes of *yours* link to by its
+  path waits (moving it would break your link), and `/sort` says so.
+- **Move more than `sorter.per_night` (20) a day**, or a note you touched in the last 10 minutes, or one with `sort: no` in
+  its header.
+
+**Undo.** One message says what moved, with an **Undo** button; `/sort undo` puts the last pass back exactly (the notes, the
+links it fixed). It keeps the move log as long as Kurooto's notes-moves.
+
+**It notices when a note belongs elsewhere.**
+- **You move a note it filed:** that's taken as a correction. It learns "a note like this goes there" and leaves that note alone.
+- **Weekly (Sundays) it looks again** at the notes it moved. One that now clearly fits another folder moves once more, at most
+  once a month per note, with Undo (`sorter.recheck`).
+
+| Command | What it does |
+|---|---|
+| `/sort` | what's waiting (with Move buttons), today's count, the last pass |
+| `/sort now` | a pass now, and the weekly re-check |
+| `/sort undo` | put the last pass back |
+
+**Settings** (Settings → sorter): `folder` (inbox), `at` (daily 03:30), `per_night` (20), `settle_min` (10), `min_conf` (0.75),
+`ai` (on: ask your AI about a note the rules can't place; off: rules only), `recheck` (on), `learn` (on). Everything stays on
+this computer except that one short AI request.
 
 ---
 

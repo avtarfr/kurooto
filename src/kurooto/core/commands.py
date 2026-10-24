@@ -128,7 +128,7 @@ GROUPS: tuple[Group, ...] = (
         "notes",
         "Notes",
         "notes-and-concept-graph",
-        ("library", "gbrain", "notes_sync", "integrate", "files"),
+        ("library", "gbrain", "notes_sync", "integrate", "files", "sorter"),
         ("sync", "notes"),
     ),
     Group("projects", "Projects and proposals", "proposals", ("projects",), ("project", "proposals")),

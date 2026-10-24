@@ -142,6 +142,7 @@ More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-a
 | `/notes pdf la`, `/notes pdf template` | a course's notes (course page, lectures, the concept notes they link) as one PDF; your own copy of its LaTeX template | Kurooto (with Subjects) |
 | `/timeline research/reading-group` | a note's dated log | Notes brain |
 | `/sync`, `/sync all` | sync your notes now; `all`: everything that syncs | Notes sync |
+| `/sort`, `/sort now`, `/sort undo` | the notes sorter: what's waiting; sort the scratch folder now; put the last pass back | Notes sorter |
 | `/graph`, `/graph now`, `/graph stop` | the concept graph's state; start or stop its work | Concept graph |
 | `/graph backfill classroom` | read the Classroom files filed before 0.5.19 into the concept graph, night by night | Concept graph |
 | `/graph backfill handwritten` | read the handwritten notes linked before into the concept graph (with `handwritten` in `integrate.sources`); `/handwritten link` links older ones first | Concept graph |

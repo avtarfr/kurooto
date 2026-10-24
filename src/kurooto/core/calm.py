@@ -246,6 +246,7 @@ REASONS: dict[str, Reason] = {
         # ------------------------------------------------------------------ never held, never stopped
         R("reminders.own", "a reminder you set", exempt="own", stop=None, later=False),
         R("calls.own", "a call you asked for", exempt="own", stop=None, later=False),
+        R("sorter.summary", "notes the sorter moved out of your scratch folder, with Undo", setting="sorter.on"),
         R("study.timer", "the end of a study session you started with a length", exempt="own", stop=None),
         R("quiz.checkin", "a quiz time you set", exempt="own", stop=None, later=False),
         R(

@@ -107,6 +107,7 @@ BUTTONS: dict[str, str] = {
 
 # What the nightly look back may change by itself (with Undo), because it is sure and it's only your own data.
 BY_ITSELF: dict[str, str] = {
+    "notes.sort": "a note in your scratch folder moves to where it belongs (never deleted or overwritten, with Undo)",
     "deadline.merge": "two copies of one deadline (Classroom's and the one you said) become one",
 }
 

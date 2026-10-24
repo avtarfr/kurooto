@@ -49,6 +49,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Chat with your AI | what you ask; notes it reads to answer; what its tools return; your profile's "In brief" part, your how-to-help-me note and your persona card (empty unless you write one) | the AI you picked |
 | Setup page: Try it now | what you type that isn't an instant request, like a Chat message; nothing goes to Telegram or your phone | the AI you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
+| Notes sorter (off until you turn it on) | only for a note its rules can't place, with `sorter.ai` on: the note's first lines and the names of your folders, as one short request; with it off, nothing | the AI you picked |
 | Files into notes | with Chat on, the files you send, so the AI can file them | the AI you picked |
 | Photo to dates | the photo you sent for its dates (`dates` as its caption, `/dates`); nothing is added before you tap | the AI you picked |
 | Going offline and coming back (on by default) | the "going offline" and "back online" messages, and messages kept while the network was down | Telegram; with Phone calls, the phone app through your call line |

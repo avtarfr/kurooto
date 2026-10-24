@@ -65,6 +65,7 @@ words, one step at a time, and let them do the clicking in their browser.
 | `kurooto project help on\|off NAME` / `kurooto project help NAME "what to do"` / `checks NAME [CMD\|off]` | lets the AI help with a project / asks for a change, which comes back as a proposal to apply / what runs after its changes | when they asked; never apply the proposal for them |
 | `kurooto ai accounts` / `kurooto ai test NAME` | their Claude accounts / a test reply from one AI | yes |
 | `kurooto ai add-claude [NAME]` / `rename-claude` / `remove-claude` | adds another Claude account (it signs in in this terminal) / renames / removes one | ask first; they sign in, not you |
+| `/sort` (on Telegram or the app's chat) | the notes sorter: what waits in the scratch folder; `/sort now` sorts it; `/sort undo` puts the last pass back | yes; it never deletes, and each pass has Undo |
 | `kurooto backup [--to FOLDER]` | makes a backup zip now | yes; ask before `--to` a folder they didn't pick |
 | `kurooto profile status` | what the encrypted profile holds and when it was saved | yes |
 | `kurooto profile save` | saves the profile now (the first time it asks for a repository and a passphrase) | yes, when set up; never type a passphrase for them |

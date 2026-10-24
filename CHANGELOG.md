@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.4 (2026-10-25)
+
+- **A notes sorter** (Features → Notes sorter, off until you turn it on): notes you drop in a scratch folder (`inbox`) are moved
+  by themselves into the folders of your notes, at night or on `/sort now`. Rules first (a note's `subject:`, a tag, a title
+  naming one of your subjects, what you've taught it), then your AI for the rest, which may only pick a folder you already
+  have. It never deletes, merges or overwrites anything (a taken name gets a number), doesn't touch your text, leaves a note
+  your own notes link to by its path, and keeps to 20 a day. One message says what moved, with **Undo**; `/sort undo` puts
+  it back exactly. It notices when a note belongs elsewhere: a note you move yourself is a lesson, and weekly it re-checks
+  what it moved.
+- **Fixed:** the "Tomorrow morning" button under a check-in call was cut off in Telegram; a long button now has its own row.
+
 ## 0.7.3 (2026-10-25)
 
 - **A slow "On it" fixed:** Kurooto reads Telegram on threads of its own (a message once waited 68 s before it was even

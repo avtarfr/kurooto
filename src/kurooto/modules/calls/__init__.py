@@ -865,8 +865,14 @@ class Calls(Module):
         )
         if not sent:  # the line's WebSocket is down: handed to it over HTTPS, else ntfy from here
             self.send_phones(push)
+        extra = [tuple(b) for b in buttons or []]
+        # a label over 10 characters ("Tomorrow morning") is cut off in a row of three: it gets a row of its own (0.7.4)
         answer = [
-            [("Answer", {"url": self.link(reason, since=since, voice=voice)}), *[tuple(b) for b in buttons or []]]
+            [
+                ("Answer", {"url": self.link(reason, since=since, voice=voice)}),
+                *[b for b in extra if len(str(b[0])) <= 10],
+            ],
+            *[[b] for b in extra if len(str(b[0])) > 10],
         ]
         if sent:  # the phone rings; Telegram just keeps a quiet record with a link
             text = f"{'Wake-up call' if alarm else 'Calling you'}: {reason}"

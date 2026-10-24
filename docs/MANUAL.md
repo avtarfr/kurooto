@@ -19,7 +19,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Exam mode](#exam-mode) · [Exam season](#exam-season) · [Start-by dates](#start-by-dates) ·
     [Subjects and timetable](#subjects-and-timetable) · [Class packs](#class-packs) · [Doubt queue](#doubt-queue) ·
     [Quiz](#quiz) · [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
-  - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
+  - [Files into notes](#files-into-notes) · [Skills](#skills) · [Notes sorter](#notes-sorter) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Hint ladder](#hint-ladder) · [Check my draft](#check-my-draft) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) ·
     [The offline helper](#the-offline-helper) ·
@@ -1178,6 +1178,25 @@ notes, and sends nothing to anyone but you.
 *Needs:* Chat. *Leaves your computer:* what you send with a skill, and the notes it reads, go to the AI you picked.
 *Turn it off:* Features → Skills; your own skills, routines and packs stay (routines start again when you turn it back
 on).
+
+### Notes sorter
+
+**What it does** (0.7.4). Notes you drop in a scratch folder (`inbox`) are moved by themselves into the right folders of your
+notes. Turn it on: Features → **Notes sorter** (off until you do).
+- **Every night at 03:30** (`sorter.at`) and on `/sort now`, a note that has sat ten minutes is placed by rules (its own
+  `subject:`, a tag or its title naming one of your subjects, what you taught it), else, with `sorter.ai` on, by one short
+  request to your AI that may only choose one of your folders. A note it can't place stays, listed by `/sort` with Move buttons.
+- **It never deletes, merges or overwrites** (a taken name gets a number), moves only from the scratch folder into folders you
+  already have, and leaves a note your own notes link to by path (they'd break). At most 20 a day.
+- **Undo:** one message says what moved with an **Undo** button; `/sort undo` restores everything, links included.
+- **It notices a note belongs elsewhere:** a note you move yourself after it filed it is a lesson (and left alone); on Sundays it
+  re-checks what it moved and may move a note once more (at most monthly), with Undo.
+
+**Commands:** `/sort`, `/sort now`, `/sort undo`. **Settings:** `sorter.folder`, `at`, `per_night`, `settle_min`, `min_conf`,
+`ai`, `recheck`, `learn`. **Privacy:** only a note the rules can't place sends its first lines to your AI (switch it off with
+`sorter.ai`).
+
+*Leaves:* the AI request, as above. *Undo:* `/sort undo`; turn the feature off in Features.
 
 ### Quick notes and prompts
 `/note <text>` saves it straight into your notes' inbox (`inbox/YYYY-MM-DD-<first words>.md`), as written; a photo or

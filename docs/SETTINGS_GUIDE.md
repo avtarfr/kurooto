@@ -849,6 +849,19 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `skills.auto_pack` | `"ask"` | the evening before a quiz or exam: ask (a button) \| auto (build it) \| off |
 | `skills.auto_pack_after` | `"16:00"` | not before this time of day, 12 to 36 hours before it |
 
+### `sorter`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `sorter.ai` | `true` | ask your AI about a note the rules can't place (its first lines go to it); off: rules only |
+| `sorter.at` | `"daily 03:30"` | when the nightly pass runs |
+| `sorter.folder` | `"inbox"` | the scratch folder, inside your notes: what lands here is sorted |
+| `sorter.learn` | `true` | a note you move again after it filed it teaches it |
+| `sorter.min_conf` | `0.75` | how sure a guess must be before it's acted on |
+| `sorter.per_night` | `20` | the most notes moved in a day |
+| `sorter.recheck` | `true` | weekly: a note it moved that now clearly fits another folder moves once more |
+| `sorter.settle_min` | `10` | a note touched in the last this-many minutes is left (you may still be writing it) |
+
 ### `sources`
 
 | Setting | Default | What it does |
