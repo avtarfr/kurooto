@@ -13,6 +13,9 @@ Standing plans, never struck through.
 - **Kurooto knows itself**: every feature, command and setting is in `/help` and the wikis the day it ships.
 
 ## Open
+- **A notes sorter** (planned for 0.7.4): notes dropped in a scratch folder are moved by Kurooto into the right zettelkasten or
+  Kurooto-style folders, with Undo, a limit a night and never overwriting; it needs a permission to move files in your notes,
+  which will be a switch, off until you turn it on.
 - **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
 - **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
