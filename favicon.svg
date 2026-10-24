@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Reduced form: the same wing outline, one cut (the seam where the wings part at rest),
+       two antenna strokes. Single colour on ground; works as a themed monochrome icon. -->
+  <rect width="512" height="512" fill="#0B0F0A"/>
+  <g fill="#A6C07A">
+    <!-- wings and thorax as one silhouette; the rear seam is the one cut -->
+    <path d="M256 104
+             C318 104 418 190 462 330 C474 370 458 392 424 396
+             C370 402 318 418 284 452
+             L256 250
+             L228 452
+             C194 418 142 402 88 396 C54 392 38 370 50 330
+             C94 190 194 104 256 104 Z"/>
+  </g>
+  <!-- antennae: laid back, thick enough to survive 32 px -->
+  <g fill="none" stroke="#A6C07A" stroke-width="22" stroke-linecap="round">
+    <path d="M238 96 C200 70 150 96 118 164"/>
+    <path d="M274 96 C312 70 362 96 394 164"/>
+  </g>
+</svg>

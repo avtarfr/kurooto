@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.7.0",
+  "notes": "A rebuilt phone app with Views, direct phone rings, named themes, proposals you approve, projects from repos, night performance and Kurooto's mark",
+  "created": 1792844247.4830654,
+  "files": {
+   "kurooto-0.7.0.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.7.0/kurooto-0.7.0.tar.gz",
+    "sha256": "00c40fa2227fedf2c6ecc478f1665ec8f4c9e11169f69b2893ec44c5d476f2fb",
+    "size": 3921638
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.7.0/kurooto.apk",
+   "sha256": "47fe80cd1849e19321adc43783a7e751b0de92a13df787a5d112512b45fa8fe4",
+   "size": 1936728,
+   "versionCode": 70009,
+   "versionName": "0.7.0",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "269da91f542247bd1b8fd6697b11e1626c5386ca8ad58b9d9b12718b4ee9923e"
+  }
+ },
+ "sig": "8jnjBGKhXHEoxVngyFjJaJCuqH2FcMlK1Fd1rMlW0WBzjMJmmNwSJ+OzNPqc/3c1egFL8VW5wiH9Oi3QTVHjCA=="
+}
