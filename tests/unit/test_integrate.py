@@ -453,6 +453,16 @@ def test_the_garden_links_notes_nothing_links_to_and_checks_the_answer(world):
     assert gd.count("[[zettel/") <= 1 and "nowhere" not in gd
 
 
+def test_graph_garden_runs_the_pass_now_and_the_time_is_a_setting(world):
+    env = world
+    env.fake_ai.answer = json.dumps({"links": []})
+    out = env.say("/graph garden")
+    assert "The garden started" in out
+    assert "06:20" in str(env.integrate.setting("garden_at"))  # the default; a setting, not fixed in code
+    env.app.settings.set("integrate.garden", False)
+    assert "off" in env.say("/graph garden")
+
+
 def test_metrics_count_broken_links_and_vague_reasons(world):
     env = world
     p = env.app.workspace / "zettel" / "gradient-descent.md"

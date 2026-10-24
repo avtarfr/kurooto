@@ -492,6 +492,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `integrate.embeddings` | `"auto"` | where meaning-based matching comes from: auto \| ollama \| gemini \| off |
 | `integrate.first` | `[]` | subjects to do first, e.g. ["deep-learning"] |
 | `integrate.garden` | `true` | each day, a second pass over the notes the reading touched and notes nothing links to |
+| `integrate.garden_at` | `"daily 06:20"` | when that pass runs by itself (/graph garden or `kurooto graph garden`: now) |
 | `integrate.garden_per_day` | `40` | the most notes in that pass |
 | `integrate.max_cost_per_night` | `0.5` | an API key: the most a night's reading may cost (USD, as the service reports it) |
 | `integrate.notation` | `true` | a Notation table when a second source writes a concept differently (a switch on the card) |

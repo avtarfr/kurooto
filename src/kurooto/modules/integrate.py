@@ -47,7 +47,8 @@ integrate.at.
 State: <state>/integrate/ (ledger.json: "books" per book and "items" per other item; items.json: what was queued
 from Classroom and handwritten notes; texts/, seen.json, chapters.json, garden.json, stopped.json, budget.json,
 pending/, undo/, vectors.db). Command: /graph (status), /graph now (start), /graph stop (until the next night's start),
-/graph backfill classroom (read the Classroom files filed before), /graph same (look-alike concept notes now).
+/graph backfill classroom (read the Classroom files filed before), /graph same (look-alike concept notes now),
+/graph garden (the daily second pass now, 0.7.5; it runs by itself at integrate.garden_at, 06:20 unless changed).
 """
 
 from __future__ import annotations
@@ -90,6 +91,7 @@ register_defaults(
         "max_cost_per_night": 0.5,  # an API key: the most a night's reading may cost (USD, as the service reports it)
         "price_per_mtok": {"in": 2.0, "out": 8.0},  # an API key that reports no cost: its USD per million tokens
         "garden": True,  # each day, a second pass over the notes the reading touched and notes nothing links to
+        "garden_at": "daily 06:20",  # when that pass runs by itself (/graph garden or `kurooto graph garden`: now)
         "garden_per_day": 40,  # the most notes in that pass
         "embeddings": "auto",  # where meaning-based matching comes from: auto | ollama | gemini | off
         "rerank": "auto",  # a local model judges which notes belong together (a graphics card helps): auto | off
@@ -234,7 +236,7 @@ class Integrate(Module):
             except Exception as e:
                 self.app.events.emit("module_failed", module=self.id, error=f"{step.__name__}: {e}"[:300])
         if self.setting("garden"):
-            self.every("garden", "daily 06:20", self.garden)
+            self.every("garden", self.setting("garden_at") or "daily 06:20", self.garden)
         if self.setting("summary"):
             self.every("summary", "daily 07:10", self.summary)
         self.every("duplicates", "daily 06:25", lambda p=None: graphmerge.night(self, p))
@@ -1849,9 +1851,9 @@ class Integrate(Module):
             Command(
                 "graph",
                 "the concept graph: /graph, /graph now, /graph stop, /graph same (look-alike concept notes), "
-                "/graph backfill classroom | handwritten | all",
+                "/graph garden (the daily linking pass now), /graph backfill classroom | handwritten | all",
                 self._cmd,
-                usage="/graph [now | stop | same | backfill classroom | handwritten | all]",
+                usage="/graph [now | stop | same | garden | backfill classroom | handwritten | all]",
             )
         ]
 
@@ -1863,6 +1865,16 @@ class Integrate(Module):
             if r.get("limit") in ("per_night", "cost", "hit"):
                 return "Nothing to start: " + " ".join(self.budget.lines())
             return "Started." if r.get("submitted") else f"Nothing to start ({r or 'already running'})."
+        if a == "garden":
+            if not self.setting("garden"):
+                return "The garden is off (integrate.garden)."
+            r = self.garden()
+            n = r.get("asked", 0)
+            return (
+                f"The garden started: {n} note{'s' if n != 1 else ''} sent to be linked."
+                if n
+                else "Nothing for the garden to do now: the notes it picks are done for today."
+            )
         if a in ("same", "duplicates", "dupes"):
             text, buttons = graphmerge.ask_now(self)
             if buttons and msg.respond:

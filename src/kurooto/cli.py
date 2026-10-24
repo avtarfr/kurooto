@@ -1795,6 +1795,23 @@ def classpack_run(a) -> int | None:
 def jobs_parsers(sub) -> None:
     jb = sub.add_parser("jobs", help="what the AI is working on and what waits; --cancel ID (or all) cancels")
     jb.add_argument("--cancel", default="", metavar="ID", help="cancel this request (an id from the list, or all)")
+    gr = sub.add_parser("graph", help="the concept graph, like /graph: status, now, stop, same, garden, backfill …")
+    gr.add_argument(
+        "what",
+        nargs="*",
+        help="nothing (status), now, stop, same, garden (the linking pass now), backfill classroom|handwritten|all",
+    )
+
+
+def graph_run(a) -> int | None:
+    """Runs `kurooto graph [...]`: /graph, through the running Kurooto; None for any other command."""
+    if a.cmd != "graph":
+        return None
+    r = say(("/graph " + " ".join(a.what)).strip())
+    if r is None:
+        return 1
+    print("\n".join(r.get("replies") or []) or "Done.")
+    return 0
 
 
 def jobs_run(a) -> int | None:
@@ -2167,6 +2184,7 @@ def main(argv: list[str] | None = None) -> int:
     done = cases_run(a) if done is None else done
     done = classpack_run(a) if done is None else done
     done = jobs_run(a) if done is None else done
+    done = graph_run(a) if done is None else done
     done = addons_run(a) if done is None else done
     done = ai_run(a) if done is None else done
     done = project_run(a) if done is None else done

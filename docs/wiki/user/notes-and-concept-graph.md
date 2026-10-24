@@ -780,6 +780,7 @@ ago"). See [Dreaming](teaching-kurooto.md#dreaming).
 | `/graph backfill handwritten` | Queues the handwritten notes linked before, the oldest day first ("Queued 3 handwritten notes..."); notes never linked are queued when `/handwritten link` links them. |
 | `/graph backfill all` | Every backfill for the sources that are on: Classroom, handwritten. Books need none: they're queued as they're found. |
 | `/graph same` | The concept notes that look like one concept now, with Merge / Keep both / Add alias (also pairs asked before and not answered) |
+| `/graph garden` | The daily second pass now, instead of waiting for 06:20; says how many notes it sent. Off with `integrate.garden` |
 
 The quality numbers in `/graph`: how many concepts and links, **broken** links, notes with **no links in**, links
 with a **vague reason**, and the share of all links that go to the three busiest notes (a high share means a few hub
