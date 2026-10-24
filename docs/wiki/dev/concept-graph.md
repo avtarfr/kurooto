@@ -384,6 +384,13 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   `Integrate.card_action`; whenever the graph reads, not tied to the Research add-on). A merge writes the kept
   note's table under the same rule.
 
+## Tools for the AI (0.7.3)
+
+`Integrate.agent_tools()` offers four read-only tools (`graph_status`, `graph_search`, `concept_card`, `graph_links`),
+over `cg.scan` and `Index.candidates` (no reranker). They exist only while the concept graph is on; the index is
+rebuilt at most every 2 minutes for a run of questions (`_tool_index`). `tests/unit/test_fixes_073.py` runs them against
+a two-note zettelkasten.
+
 ## Reading budget (`core/readbudget.py`)
 
 `Budget(app, bulk)` (`Integrate.budget`, `bulk` = the bulk role's brain id) decides how much a night reads when

@@ -175,6 +175,8 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
   (Views is off until the person turns it on in the dashboard → Phone); an old phone on a charger can
   be a bedside clock. iPhones use the Home Screen web app and a "Tell Kurooto" Shortcut whose link the person can
   revoke from the dashboard.
+- With the concept graph on, `kurooto mcp` also offers read-only `graph_search`, `concept_card`, `graph_links` and
+  `graph_status` (0.7.3): look concepts up there instead of reading the notes folder file by file.
 - Updates install themselves at night by default, signed and with automatic rollback.
 - On battery (`power.on_battery`, default `saver`) heavy work waits for the charger on purpose; Telegram keeps working.
 - The notes folder is plain Markdown files; Kurooto never deletes it, and its notes tools only create, add to and

@@ -543,6 +543,10 @@ things". With Notes sync off, plain `/sync` does the same.
 
 ## Concept graph
 
+**Your AI can look in it** (0.7.3, with the concept graph on): `graph_search` (concepts by meaning or words),
+`concept_card`, `graph_links` (what a concept links to and what links to it) and `graph_status`, read-only, for the
+AI that answers you and for agent programs over `kurooto mcp`.
+
 **What it does.** When a book has been read (see [Books and study](books-and-study.md)), or Classroom has filed a
 lecture's slides or handouts into your notes, its concepts are woven into your notes:
 - a **concept note** for each new concept (its definition, formulas, links, and where it came from);

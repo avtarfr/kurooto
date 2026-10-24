@@ -31,6 +31,9 @@ def headless_context(app: App, extra: str = "") -> str:
         "asks for an action. Notes they wrote are theirs: add to them or create new ones, never reword or remove "
         "their text yourself; a change they asked for goes through edit_note, which makes it a proposal they approve.",
         "Never say you did something you didn't: if there was no tool for it or a tool failed, say so plainly.",
+        "Never run commands or scripts (python -c, shell pipes) to look inside Kurooto or its tools: the tool "
+        "descriptions are complete, and unattended runs refuse such commands, which ends the whole run. If a command "
+        "is refused, don't try another way to run it; finish with what you already have.",
         "To learn what is set or due (alarms, deadlines, the calendar, settings, what you may do), open the Markdown "
         f"files in {app.paths.state / 'reserve'} (agent-guide.md says what each holds) instead of running commands.",
         f"For a question about {app.name} itself (what's on, which AI or model, why something didn't happen), read "

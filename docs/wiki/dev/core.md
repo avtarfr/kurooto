@@ -415,6 +415,9 @@ jid = app.jobs.submit(
 ```
 
 - Status: `queued` → `running` → `ok` | `failed`. Verdicts are `providers.base.Verdict`.
+- **Claim order (0.7.3):** within a lane a job with a reply target (something you typed) is claimed before one
+  without (`order by (reply_to is null), created`), and a check-in's journal and study-log jobs run in "bg", so an
+  evening check-in can't hold up a request you type right after it.
 - **Lanes** (`LANES = ("you", "bg", "chk")`): one job at a time per lane, so the user's own request never waits
   behind background work. Unset, `background=True` goes to `bg`, everything else to `you`. `chk` is a second
   background lane so two agent programs can work at once (the concept graph's check role, call reviews).

@@ -602,6 +602,26 @@ class Calls(Module):
             return self.schedule(at, cur["reason"], key=cur["key"], why="calls.own")
         return self.schedule(at, reason or "a reminder", why="calls.own")
 
+    def busy_with(self, key: str = "") -> str:
+        """Why a new call of Kurooto's own shouldn't ring now: "a call is going on" or "a call is ringing" (one rang
+        within calls.ring_s and wasn't answered, missed or declined yet); "" when the line is free. A call with this
+        key (the same check-in, ringing again) replaces its own ring: that isn't a second call."""
+        live = self.live_call()
+        if live is not None and not (key and live.get("key") == key):
+            return "a call is going on"
+        t = time.time()
+        wait = float(self.setting("ring_s") or 60) + 20
+        for r in (jload(self.dir / "rings.json", {}) or {}).values():
+            if (
+                isinstance(r, dict)
+                and r.get("state") == "ringing"
+                and not r.get("alarm")
+                and not (key and r.get("key") == key)
+                and t - float(r.get("at") or 0) < wait
+            ):
+                return "a call is ringing"
+        return ""
+
     def live_call(self) -> dict | None:
         """The call going on now, if Kurooto placed it: {"key", "reason"} (for at most two hours)."""
         cur = jload(self.dir / "live.json", {}) or {}
@@ -805,6 +825,14 @@ class Calls(Module):
                     buttons=[[("Call now", {"url": self.link(reason, hours=26)})]],
                 )
             self.app.events.emit("call_not_placed", key=key)
+            return ""
+        # a call Kurooto starts by itself (a check-in, a deadline nudge: it has a reason of its own) waits while
+        # another is going on or ringing (0.7.3); an alarm always rings, and a call you asked for goes through
+        automatic = bool(why) and why not in ("calls.own", "alarm.ring")
+        busy = self.busy_with(key) if automatic and not alarm else ""
+        if busy:
+            self.app.events.emit("call_not_placed", key=key, busy=busy)
+            self._tell_owner_module({"key": key, "reason": reason}, "held")
             return ""
         since = str(int(time.time()))
         rings = jload(self.dir / "rings.json", {}) or {}

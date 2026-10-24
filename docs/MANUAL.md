@@ -1594,6 +1594,15 @@ a stub it made is a plain note you can delete; `/unignore <topic>` takes back No
 `dreaming.consolidate` = false stops looking. A Keep for your profile: its **Undo** button (the line comes out and is
 offered again), or delete the line from the note; `dreaming.fold` = false stops offering.
 
+### Fixes in 0.7.3
+- **A slow "On it":** Telegram is read on threads of its own, a request you type is answered before automatic work, and a
+  check-in's journal runs in the background lane.
+- **Calls:** the phone doesn't ring over a call, and Kurooto's own calls wait for each other (an alarm always rings).
+- **A refused AI run:** agy refused for running a command is tried once more, told not to; the AI is told never to run
+  code to look inside Kurooto.
+- **Profile sync on a fresh install** shows four plain steps. **The concept graph** has read-only tools for your AI
+  (`graph_search`, `concept_card`, `graph_links`, `graph_status`).
+
 ### Set up from what you say
 
 **What it does.** "I got a project under Prof X on <topic>" (in the chat or your journal; also "my thesis under Prof

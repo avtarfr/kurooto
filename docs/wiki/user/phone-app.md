@@ -47,6 +47,11 @@ If that wasn't you, remove it with /phones." This message always comes; it's nev
 earpiece with the screen off at your ear, rings wake-up calls on the alarm volume (so they ring on silent), shows
 Kurooto's questions and approvals with a Reply box, and lets you share files into your notes. It works from Android 6.
 
+**On another call?** From 0.7.3 the app doesn't ring over a call: if your phone is already in one (a phone call,
+WhatsApp, Meet, or one of Kurooto's own), a quiet note says Kurooto called and the call rings again after its usual
+wait. A wake-up alarm still rings. Your computer also won't start one of Kurooto's calls while another is going on or
+ringing: the second waits.
+
 From 0.7.0 the app opens on four tabs: **Today**, **Inbox**, **Views** and **Phone**, and its icon is Kurooto's mark,
 a moth (a themed icon on Android 13 and up, if your launcher uses them).
 

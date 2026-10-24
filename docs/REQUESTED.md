@@ -13,6 +13,7 @@ Standing plans, never struck through.
 - **Kurooto knows itself**: every feature, command and setting is in `/help` and the wikis the day it ships.
 
 ## Open
+- **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
 - **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
   without a tap and never what was there before Kurooto; an install receipt, `kurooto installed` and `kurooto remove`,

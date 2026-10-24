@@ -871,6 +871,17 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   files as links, shared files, setup, doctor), `test_livefallback.py` (runs `tests/js/fallback.mjs` and
   `tests/js/callpage.mjs`).
 
+## Not ringing over a call (0.7.3)
+
+- **The computer:** `Calls.busy_with()` says "a call is going on" (`live.json`) or "a call is ringing" (an unanswered
+  ring younger than `calls.ring_s` + 20 s) for anything but an alarm; `ring()` then emits `call_not_placed` with
+  `busy` and tells the owning feature "held" (a check-in or deadline call tries again by its own rules).
+- **The phone:** `ListenService.phoneBusy()` reads `AudioManager.getMode()` (IN_CALL or IN_COMMUNICATION; no
+  permission, API 23). Not an alarm and a busy phone: a quiet notice in the messages channel, no ring; the line's
+  re-ring (+3 and +6 minutes) tries again. A wake-up alarm always rings.
+- Tests: `tests/unit/test_fixes_073.py`; the phone side is checked by reading the source in a test and by hand on a
+  phone (not an emulator).
+
 ## Known problems and doc mismatches
 
 - A shared file's part that the computer took but didn't confirm (it crashed in between) is written twice when the

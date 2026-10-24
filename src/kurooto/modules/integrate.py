@@ -57,6 +57,7 @@ import hashlib
 import json
 import re
 import threading
+import time
 from dataclasses import asdict
 from pathlib import Path
 
@@ -70,6 +71,7 @@ from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
 from kurooto.core.tools import write_note_file
 from kurooto.modules.base import Command, Incoming, Module
+from kurooto.modules.calls.tools import Tool, arg
 from kurooto.providers.base import Verdict
 
 
@@ -1599,6 +1601,123 @@ class Integrate(Module):
             "top3_share": round(top3 / total, 3) if total else 0.0,
             "name_collisions": sum(1 for v in names.values() if v > 1),
         }
+
+    # ------------------------------------------------------------------------------------------------- tools
+    def agent_tools(self) -> list:
+        """Read-only tools for the AI over the concept graph (0.7.3): what's in it, a concept's card, its links, how
+        reading is going. Nothing here writes; they work while the feature is on (agent programs: `kurooto mcp`)."""
+        return [
+            Tool(
+                "graph_status",
+                "How the concept graph is doing: concepts and links, what's been read, what's waiting, and its health.",
+                self._tool_status,
+                {},
+                writes=False,
+            ),
+            Tool(
+                "graph_search",
+                "Search the concept graph by meaning or words: the matching concept notes (slug, title, one-line "
+                "summary). Use it to find what the user's books and class materials say about an idea.",
+                self._tool_search,
+                {"query": arg("what to look for"), "limit": arg("how many, at most 15 (default 8)")},
+                ("query",),
+                writes=False,
+            ),
+            Tool(
+                "concept_card",
+                "One concept note's card: its title, aliases, summary and the concepts it links to, by slug "
+                "(from graph_search). Read the note itself with read_note for the whole text.",
+                self._tool_card,
+                {"slug": arg("the concept's slug, e.g. linear-algebra/eigenvalue")},
+                ("slug",),
+                writes=False,
+            ),
+            Tool(
+                "graph_links",
+                "The concepts a concept links to, and the concepts that link to it, with the relation where there is "
+                "one (needs, example-of, contrasts-with ...).",
+                self._tool_links,
+                {"slug": arg("the concept's slug")},
+                ("slug",),
+                writes=False,
+            ),
+        ]
+
+    def _tool_index(self):
+        if not self.app.is_on(self.id):
+            return None
+        t, idx = getattr(self, "_tool_idx", (0.0, None))
+        if idx is None or time.time() - t > 120:  # a few questions in a row share one index (it's built from the files)
+            idx = self.index(refresh=False)
+            self._tool_idx = (time.time(), idx)
+        return idx
+
+    def _tool_status(self, args: dict) -> str:
+        if not self.app.is_on(self.id):
+            return "The concept graph is off (Features → Concept graph)."
+        c = self.counts()
+        m = self.metrics()
+        waiting = self.waiting_line()
+        return (
+            f"{m['concepts']} concepts, {m['links']} links; {m['no_links_in']} with nothing linking to them, "
+            f"{m['broken']} broken links. Reading: {c['done']} batches done, {c['todo']} waiting, "
+            f"{c['failed']} failed. " + waiting
+        ).strip()
+
+    def _tool_search(self, args: dict) -> str:
+        index = self._tool_index()
+        if index is None:
+            return "The concept graph is off (Features → Concept graph)."
+        q = str(args.get("query") or "").strip()
+        if not q:
+            return "Say what to look for."
+        try:
+            limit = max(1, min(15, int(args.get("limit") or 8)))
+        except (TypeError, ValueError):
+            limit = 8
+        found = index.candidates(q, limit=limit, rerank=False)
+        if not found:
+            return "Nothing in the concept graph matches that."
+        out = []
+        for c in found:
+            n = index.notes.get(c.slug)
+            if n is not None:
+                out.append(f"- {n.slug}: {n.title}. {(n.summary or '')[:160]}")
+        return "\n".join(out) or "Nothing in the concept graph matches that."
+
+    def _slug(self, index, args: dict) -> str | None:
+        s = str(args.get("slug") or "").strip().removesuffix(".md")
+        s = index.redirects.get(s, s)
+        return s if s in index.notes else index.by_name.get(cg.normalise(s))
+
+    def _tool_card(self, args: dict) -> str:
+        index = self._tool_index()
+        if index is None:
+            return "The concept graph is off (Features → Concept graph)."
+        s = self._slug(index, args)
+        if s is None:
+            return "No such concept (graph_search finds them)."
+        c = index.card(s)
+        return json.dumps(c, ensure_ascii=False)
+
+    def _tool_links(self, args: dict) -> str:
+        index = self._tool_index()
+        if index is None:
+            return "The concept graph is off (Features → Concept graph)."
+        s = self._slug(index, args)
+        if s is None:
+            return "No such concept (graph_search finds them)."
+        n = index.notes[s]
+        out = [f"{s} links to:"]
+        out += [f"- {t}" + (f" ({n.typed[t]})" if t in n.typed else "") for t in sorted(n.links) if t in index.notes][
+            :40
+        ]
+        back = sorted(o for o, m in index.notes.items() if s in m.links)
+        out.append("Linked from:")
+        out += [f"- {o}" + (f" ({index.notes[o].typed[s]})" if s in index.notes[o].typed else "") for o in back[:40]]
+        if len(out) == 2 and not back:
+            out.append("(nothing)")
+        return "\n".join(out)
 
     # ---------------------------------------------------------------------------------------------- reporting
     def counts(self) -> dict:

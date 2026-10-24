@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.3 (2026-10-25)
+
+- **A slow "On it" fixed:** Kurooto reads Telegram on threads of its own (a message once waited 68 s before it was even
+  seen), answers what you type before automatic work, and an evening check-in's journal no longer holds up your next
+  request. Any message seen more than 10 s late is noted in the event log.
+- **No calls over calls:** the phone app doesn't ring over a call you're already on (a quiet note; it rings again after
+  the usual wait), and Kurooto's own calls wait for one another. A wake-up alarm still rings.
+- **A refused AI run is tried again:** when agy ran a command unattended runs refuse, the whole request used to fail even
+  after its notes were written; now it's tried once more, told what's done and not to run commands, and every AI is
+  told never to run code to look inside Kurooto.
+- **Profile sync on a fresh install** says what to do: four steps (a private repository, a token, a passphrase), instead
+  of pointing at Notes sync's repository that isn't there.
+- **The concept graph in your AI's tools:** `graph_search`, `concept_card`, `graph_links` and `graph_status`, read-only.
+
 ## 0.7.2 (2026-10-24)
 
 - **Every feature can be turned off** (a standing rule from now on; fixes aren't switches): the app's Phone tab has

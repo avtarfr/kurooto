@@ -241,6 +241,9 @@ folder, backup folder, add-ons folder, files folder) are only kept where that fo
 
 **Turn it on.** Features → Profile sync. Needs Git (Notes sync's Set up installs it).
 
+0. **A fresh install** (Notes sync not set up): the card shows four steps: make a new private repository on GitHub,
+   make a fine-grained token for only it, paste both (owner/name and the token) with a passphrase, Save. Or set up
+   Notes sync first and come back; the profile then uses its repository.
 1. Leave the repository and token empty to use the repository Notes sync uses. The profile goes on a branch of its
    own, `kurooto-profile`, so your notes folder never sees it. Or give another private repository (`owner/name`) and a
    fine-grained token for it with Contents: Read and write.

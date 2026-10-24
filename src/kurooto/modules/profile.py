@@ -62,22 +62,58 @@ class Profile(Module):
             return False, "pick the passphrase that locks your profile (Set up)"
         return True, ""
 
+    def notes_sync_set(self) -> bool:
+        st = self.app.settings
+        return bool(st.get("notes_sync.repo") or st.get("notes_sync.remote"))
+
     def setup_form(self) -> dict:
+        """Two cases (0.7.3): Notes sync is set up (its repository can hold the profile: leave the first two boxes
+        empty), or it isn't (a fresh install): then the profile needs a private repository of its own, and the form says
+        so, with the steps, instead of pointing at Notes sync's."""
+        links = [
+            ["New private repository", "https://github.com/new"],
+            ["New fine-grained token", "https://github.com/settings/personal-access-tokens/new"],
+        ]
+        pw = [
+            {"name": "passphrase", "label": "Passphrase", "type": "password"},
+            {"name": "again", "label": "The passphrase again", "type": "password"},
+        ]
+        tail = (
+            "Then pick a passphrase of a few words: you need it on a new computer, and if you forget it the profile "
+            "can't be opened (your notes are still fine). It's never stored."
+        )
+        if self.notes_sync_set():
+            return {
+                "intro": "Your profile goes, encrypted, to the private repository Notes sync uses (leave the first two "
+                "boxes empty), or to another private repository of yours: make one and a fine-grained token for it "
+                "with Contents: Read and write, as for Notes sync. " + tail,
+                "links": links,
+                "fields": [
+                    {"name": "repo", "label": "Repository (owner/name; empty: Notes sync's)", "type": "text"},
+                    {"name": "token", "label": "Token (empty: Notes sync's)", "type": "password"},
+                    *pw,
+                ],
+            }
         return {
-            "intro": "Your profile goes, encrypted, to the private repository Notes sync uses (leave the first two "
-            "empty), or to another private repository of yours: make one and a fine-grained token for it with "
-            "Contents: Read and write, as for Notes sync. Then pick a passphrase of a few words: you need it on a new "
-            "computer, and if you forget it the profile can't be opened (your notes are still fine). It's never "
-            "stored.",
-            "links": [
-                ["New repository", "https://github.com/new"],
-                ["New fine-grained token", "https://github.com/settings/personal-access-tokens/new"],
+            "intro": "Your profile (your settings and what Kurooto learned, encrypted) is kept in a private GitHub "
+            "repository, so a new computer is ready in a minute. Notes sync isn't set up here, so it needs a "
+            "repository of its own. " + tail,
+            "steps": [
+                "Make a new PRIVATE repository on GitHub (the first link), any name, e.g. kurooto-profile.",
+                "Make a fine-grained token for only that repository, with Contents: Read and write (the second link).",
+                "Paste the repository as owner/name and the token below, then a passphrase, and Save.",
+                "Or set up Notes sync first (Features → Notes sync) and come back: it then uses that repository.",
             ],
+            "links": links,
             "fields": [
-                {"name": "repo", "label": "Repository (owner/name; empty: Notes sync's)", "type": "text"},
-                {"name": "token", "label": "Token (empty: Notes sync's)", "type": "password"},
-                {"name": "passphrase", "label": "Passphrase", "type": "password"},
-                {"name": "again", "label": "The passphrase again", "type": "password"},
+                {
+                    "name": "repo",
+                    "label": "Repository (owner/name)",
+                    "type": "text",
+                    "placeholder": "you/kurooto-profile",
+                },
+                {"name": "token", "label": "Token for that repository", "type": "password"},
+                *pw,
             ],
         }
 
@@ -99,7 +135,8 @@ class Profile(Module):
                 if not (self.app.settings.get("notes_sync.repo") or self.app.settings.get("notes_sync.remote")):
                     return {
                         "ok": False,
-                        "message": "Notes sync isn't set up: set it up first, or give your profile a repository.",
+                        "message": "Notes sync isn't set up, so there's no repository for your profile: fill in a "
+                        "private repository (owner/name) and its token above, or set up Notes sync first.",
                     }
             ok, msg = core.connect(self.app, passphrase, again, progress=lambda line: None)
         except core.ProfileError as e:

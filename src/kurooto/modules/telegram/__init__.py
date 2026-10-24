@@ -10,6 +10,7 @@ features go on and off (telegram.menu; turning that off takes the menu away agai
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import hashlib
 import json
 import re
@@ -50,6 +51,9 @@ class PairingProblem(Exception):
         self.kind, self.message, self.retry = kind, message, retry
 
 
+LAG_S = 10  # a message seen this much later than Telegram took it is noted (telegram_lag)
+
+
 class Telegram(Module):
     id = "telegram"
     title = "Telegram"
@@ -59,6 +63,10 @@ class Telegram(Module):
     def __init__(self, app):
         super().__init__(app)
         self.dir = app.paths.state / "telegram"
+        # threads of their own (0.7.3): the shared pool is busy with AI requests and their tool calls, which once made
+        # a message wait over a minute before it was even seen
+        self._poller = concurrent.futures.ThreadPoolExecutor(1, thread_name_prefix="tg-poll")
+        self._handlers = concurrent.futures.ThreadPoolExecutor(3, thread_name_prefix="tg-handle")
 
     # ------------------------------------------------------------------------------------------ setup
     def api(self) -> TelegramAPI | None:
@@ -284,6 +292,7 @@ class Telegram(Module):
     async def run(self, stop: asyncio.Event) -> None:
         """Long-poll Telegram and hand every message from you to the assistant."""
         backoff = 5
+        loop = asyncio.get_running_loop()
         while not stop.is_set():
             api = self.api()
             allowed = set(self.setting("allowed_users") or [])
@@ -296,13 +305,15 @@ class Telegram(Module):
             except Exception as e:  # the menu never stops messages
                 self.app.events.emit("telegram_menu_failed", error=f"{type(e).__name__}: {e}"[:200])
             try:
-                updates = await asyncio.to_thread(
+                updates = await loop.run_in_executor(
+                    self._poller,
                     api.call,
                     "getUpdates",
                     {"offset": offset, "timeout": 50, "allowed_updates": ["message", "callback_query"]},
                     None,
                     70,
                 )
+                self._lag(updates)
                 backoff = 5
                 self._net_seen(None)
                 if "telegram" not in self.app.notifier.channels:  # the token works again after a 401
@@ -324,9 +335,19 @@ class Telegram(Module):
             for u in updates:
                 jsave(self.dir / "offset.json", {"offset": u["update_id"] + 1})
                 try:
-                    await asyncio.to_thread(self._update, api, u, allowed)
+                    await loop.run_in_executor(self._handlers, self._update, api, u, allowed)
                 except Exception as e:
                     self.app.events.emit("telegram_error", error=f"{type(e).__name__}: {e}"[:300])
+
+    def _lag(self, updates: list) -> None:
+        """How long a message waited between Telegram taking it and this computer seeing it (0.7.3): over LAG_S it's in
+        the event log, so a slow "On it" can be told from a slow AI."""
+        t = time.time()
+        for u in updates or []:
+            m = u.get("message") or {}
+            d = m.get("date")
+            if isinstance(d, (int, float)) and t - d > LAG_S:
+                self.app.events.emit("telegram_lag", seconds=round(t - d), update=u.get("update_id"))
 
     def _net_seen(self, err: BaseException | None) -> None:
         """Whether Telegram could be reached, for the "network down / back online" messages (core/presence.py)."""

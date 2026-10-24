@@ -4,6 +4,9 @@ Kurooto can ring your phone, and you can ring it. Calls go through your own **ca
 your own Cloudflare account, and the voice is Google's Gemini Live with your own Gemini key. Calls keep working while
 your computer is asleep or off, from what it last sent.
 
+One call at a time (0.7.3): Kurooto won't start a call while another of its calls is going on or ringing, and the phone
+app doesn't ring over a call you're already on; the second call waits and rings again soon. A wake-up alarm always rings.
+
 This page covers calls, the morning alarm and reminders with the lid shut. Pairing and using the phone itself is on
 [Your phone](phone-app.md).
 

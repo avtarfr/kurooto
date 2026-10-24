@@ -55,7 +55,7 @@ starts it detached.
 
 Threads and the event loop: the asyncio loop runs the scheduler (handlers are called on the loop thread), the job
 worker's polling, power, presence, every module's `background()` coroutine, and the call-line WebSocket. Blocking work
-runs in threads: each AI job (`Jobs._start`, one thread per lane), each Telegram update (`asyncio.to_thread`), each
+runs in threads: each AI job (`Jobs._start`, one thread per lane), each Telegram poll and update (two executors of their own, `Telegram._poller` and `_handlers`, since 0.7.3: the shared pool is busy with AI jobs and their tool calls, which once made a message wait 68 s before it was seen; `telegram_lag` in the event log notes any message seen over 10 s after Telegram took it), each
 HTTP request (`ThreadingHTTPServer`), and the long scheduled jobs that start their own threads. Shared state is
 protected by `threading.Lock`s inside each service and by file locks across processes.
 

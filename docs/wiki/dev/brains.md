@@ -183,6 +183,12 @@ Timeouts per level: `brain.timeout_min`.
 
 ## Fallback order for one job
 
+**A refused run is tried once more (0.7.3).** When a brain's run ends DENIED (agy tried a command unattended runs
+refuse, e.g. `python3 -c` to read Kurooto's source, which ends the whole run even when its notes were written), `Jobs._run`
+runs that brain once more with a note appended: don't run commands, and the Kurooto tools it already used (from
+`self.steps`) so it doesn't repeat them; `job_retried` is emitted. A second refusal is final and the chain goes on as
+before (`test_a_refused_run_is_tried_once_more_and_told_what_is_done`).
+
 `core/jobs.py:Jobs._run` builds the chain:
 
 1. `main` = `build(brain.main)`; `fallbacks` = each of `fallback.chosen(app)` (`brain.fallback`: one id, or a list in
@@ -310,7 +316,8 @@ triggers a fresh consent question (`tools_once`: "more is wanted than was agreed
 ## Headless context
 
 `providers/context.py:headless_context(app)` is prepended to every job: who the user is, the time and zone, the notes
-folder, answer style, "nobody can answer follow-up questions", the tool rules, a pointer to `<state>/reserve/`, the
+folder, answer style, "nobody can answer follow-up questions", the tool rules (and, since 0.7.3, never to run commands or
+scripts to look inside Kurooto), a pointer to `<state>/reserve/`, the
 profile brief (`core/aboutyou.py`), "how to help me" (`modules/remember.py:help_brief`), the persona card and the
 boundaries rule (`core/persona.py:card_text`, `rule`), the notes layout (`core/layout.py:describe`) and a line pointing
 at `kurooto_self` / `reserve/self.md` for questions about Kurooto itself; a request about Kurooto

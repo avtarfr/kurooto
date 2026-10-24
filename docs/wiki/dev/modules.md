@@ -128,6 +128,12 @@ Adding a command: give it a `help` line; a new feature goes into a group. Adding
 every name `App.handle` compares with) isn't in `/help`, when a feature has no group, a group's page isn't in
 docs/wiki/user, a message is too long, or an example isn't taken by its request.
 
+## Tools a module offers
+
+`Module.agent_tools()` (and `call_tools()` for live calls) return `Tool`s; `core/tools.py:agent_tools` gathers those of
+every feature that's on, and `kurooto mcp` serves the same list. Since 0.7.3 the concept graph (`Integrate`) offers four
+read-only ones (`graph_status`, `graph_search`, `concept_card`, `graph_links`; see concept-graph.md).
+
 ## Lifecycle
 
 ```

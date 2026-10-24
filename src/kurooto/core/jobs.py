@@ -41,7 +41,7 @@ import sqlite3
 import threading
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -430,7 +430,8 @@ class Jobs:
         with self._lock:
             which = " and coalesce(lane, 'you')=?" if lane else ""
             row = self._db.execute(
-                f"select id from jobs where {self._READY}{which} order by created limit 1",
+                # a request with someone waiting for the answer (a reply target) goes before automatic work (0.7.3)
+                f"select id from jobs where {self._READY}{which} order by (reply_to is null), created limit 1",
                 (*self._ready_args(), *((lane,) if lane else ())),
             ).fetchone()
             if not row:
@@ -646,6 +647,7 @@ class Jobs:
         tried = time.time()
         before = scratch.fingerprint(self.app, sc) if sc is not None else None  # what changed outside it, after
         used, result, first = None, Result(Verdict.ERROR, detail="no AI brain is set up"), None
+        retried: set[str] = set()  # the brains that had a refused run tried again
         limits: list[dict] = []  # every limit hit on the way, also one a stand-in then answered for
         moved = bool(skipped) and "rate_limited" in on  # a limit already moves this request on
         for i, brain in enumerate(chain):
@@ -666,6 +668,24 @@ class Jobs:
             self._mark(jid, brain=brain.id, deadline=time.time() + limit)
             try:
                 result = brain.run(task)
+                if result.verdict == Verdict.DENIED and brain.id not in retried and not stop.is_set():
+                    # it tried a command unattended runs refuse, which ends the whole run: once more, told what's
+                    # done already and not to run commands (0.7.3; the evening journal had written its note first)
+                    retried.add(brain.id)
+                    self._attempt(jid, brain.id, result)
+                    self.app.events.emit("job_retried", job=jid, brain=brain.id, why="denied")
+                    done = list(dict.fromkeys(s["name"] for s in self.steps.get(jid, ())))
+                    note = (
+                        "\n\nYour first try was stopped because it ran a command that unattended runs refuse. Don't "
+                        "run commands or scripts. "
+                        + (
+                            f"Kurooto's tools you already used (don't repeat what they did): {', '.join(done)}. "
+                            if done
+                            else ""
+                        )
+                        + "Finish now with Kurooto's tools and what you know, then answer."
+                    )
+                    result = brain.run(replace(task, prompt=task.prompt + note))
             finally:
                 self._mark(jid, proc=None, deadline=None)
             if stop.is_set():
