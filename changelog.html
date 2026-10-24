@@ -163,6 +163,8 @@ h1, h2, h3 { color: var(--text-bright); font-weight: 700; }
   <article class="container prose">
 <h1>What's new</h1>
 <p>Every version of Kurooto, newest first. A new version arrives by itself at night (on the beta channel first, then stable); <code>kurooto update --now</code> gets it at once.</p>
+<h2 id="072-2026-10-24">0.7.2 (2026-10-24)</h2>
+<ul><li><strong>Every feature can be turned off</strong> (a standing rule from now on; fixes aren't switches): the app's Phone tab has <strong>Switches</strong> for the straight connection to your call line (off: ntfy.sh only) and the moving background (off: a still picture); a test checks that everything Kurooto schedules by itself has a setting that turns it off.</li><li><strong>The phone's Notes map shows your whole folder:</strong> it was cut to 1,500 notes and 6,000 links; now up to 5,000 notes and 20,000 links by default (<code>calls.views_notes</code>, <code>calls.views_links</code>; lower them on a slow phone), and a folder too big for your call line is cut just enough to fit instead of not arriving.</li></ul>
 <h2 id="071-2026-10-24">0.7.1 (2026-10-24)</h2>
 <ul><li>Fixed: the phone app crashed on launch on Android 8 and newer (the new mark at the top of Today was drawn from the launcher icon, which the app can't draw there).</li></ul>
 <h2 id="070-2026-10-24">0.7.0 (2026-10-24)</h2>

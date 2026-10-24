@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.7.2",
+  "notes": "Switches for every feature, the whole notes map on your phone",
+  "created": 1792851372.1474767,
+  "files": {
+   "kurooto-0.7.2.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.7.2/kurooto-0.7.2.tar.gz",
+    "sha256": "186201f1c9d7cbf3976719064c95874826e89ab6c762e105b18afd7236337485",
+    "size": 3975797
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.7.2/kurooto.apk",
+   "sha256": "9e69d5e7b3a540e8b56d22f74f5ceb04f74f3d03ebaeae81f57f5db0a17f24ee",
+   "size": 1981840,
+   "versionCode": 70029,
+   "versionName": "0.7.2",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "2d80fb6d1c6d08cce7ce6884332926396f7e017cf00a86dd733564164d6d3387"
+  }
+ },
+ "sig": "jtMObao1bgLv2p0+GdI36E4uwXRFR3L5VB7LQQ6KwnBhkwqsSrj8UOUk9Mrk4dy10X07e/hudJiOBahP/ilcBQ=="
+}
