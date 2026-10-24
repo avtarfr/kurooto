@@ -3191,7 +3191,7 @@ phone from it.
 **Systems and the Notes map** (0.7.0, Android, off by default): the dashboard's SYSTEMS and NOTES map on the phone's
 **Views** tab, drawn by the same code (two buttons at the top switch between them): tap a feature or a note for its card (no note contents), drag, pinch; read-only. Systems is
 live while it's open (the app tells your computer every 20 s; your computer sends a copy every few seconds), the
-Notes map follows your notes (at most every few minutes, the 1500 best-linked notes). With the computer asleep the
+Notes map follows your notes (at most every few minutes, up to 5,000 best-linked notes, `calls.views_notes`). With the computer asleep the
 last copy shows "as of" its time. Both go to your call line sealed for each Android phone; the call line can't read
 them. iPhones don't get them. *Setting:* `calls.views` (off), or dashboard → Phone → **Show Systems and the Notes map
 in the Android app**. *Undo:* turn it off: the call line drops its copies.
