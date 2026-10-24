@@ -15,10 +15,12 @@ from kurooto.core import addons, fence, overlay
 
 ROOT = Path(__file__).resolve().parents[2] / "addons"
 NAMES = sorted(p.parent.name for p in ROOT.glob(f"*/{addons.MANIFEST}"))
+# in addons/ but not in the official list yet: published and pinned after review (then taken out of here)
+UNLISTED = {"night-performance"}
 
 
-def test_there_are_the_four_generic_add_ons():
-    assert NAMES == ["desktop-helpers", "habits", "handwriting-pull", "restic-backups"]
+def test_there_are_the_five_generic_add_ons():
+    assert NAMES == ["desktop-helpers", "habits", "handwriting-pull", "night-performance", "restic-backups"]
 
 
 def test_the_official_list_matches_the_folders():
@@ -27,7 +29,8 @@ def test_the_official_list_matches_the_folders():
     from kurooto.core import official
 
     listed = official.catalog()
-    assert sorted(e["name"] for e in listed) == NAMES
+    assert sorted(e["name"] for e in listed) == sorted(set(NAMES) - UNLISTED)
+    assert UNLISTED <= set(NAMES)  # a name here that's no folder: take it out
     for e in listed:
         man = addons.read_manifest(ROOT / e["name"])
         assert e["source"] == f"addons/{e['name']}", e["name"]

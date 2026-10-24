@@ -45,7 +45,10 @@ as if on an empty computer and fails any test that touches the developer's real 
   chmod-ing anything under the real install's folders and the places Kurooto changes outside them
   (`protected_paths`: the config/data/state/cache folders on every OS, systemd user units, autostart, the app menu,
   `~/.gemini`, `~/.local/bin/kurooto`, LaunchAgents, Start-menu shortcuts); opening a SQLite database there (read-only
-  `mode=ro` URIs excepted); running the real `loginctl` / `systemctl` / `launchctl` / `kurooto`; connecting to the
+  `mode=ro` URIs excepted); running the real `loginctl` / `systemctl` / `launchctl` / `kurooto`, or the real programs
+  that change the power mode (`POWER`: `powerprofilesctl`, `tuned-adm`, `asusctl`, `system76-power`, `powercfg`,
+  `pmset`, `sudo`, `kurooto-legion-night`; where they are is noted at start, and a test's own stand-ins elsewhere run
+  as usual: the Night performance add-on's tests); connecting to the
   running dashboard's port (8770 and whatever the real `web.json` says); binding that port is refused so test servers
   move on.
 - `pytest_runtest_makereport` turns any recorded violation into a failure of that test, whatever it asserted; the

@@ -30,6 +30,8 @@ Extension points an add-on feature (a Module in modules/) may define, besides wh
         all fall through to Kurooto's own patterns. Long messages and several requests in one never reach it, and
         questions only go to requests that answer questions.
     status_lines() -> [str]     extra lines for /status on Telegram
+    dreaming_lines() -> [str]   loose ends for Dreaming's morning message (at most 2; only when there's something
+                                worth a look, e.g. Night performance's "couldn't switch")
     doctor_checks() -> [(name, ok True|False|None, detail)]   extra lines for `kurooto doctor` (False counts as a
                                 problem; None is a note)
     health_check() -> core.health.Check | None   its one check for the daily pass, the dashboard and doctor: how
@@ -62,6 +64,7 @@ GUARDED = (
     "call_brief",
     "classify_intent",
     "status_lines",
+    "dreaming_lines",
     "doctor_checks",
     "health_check",
 )

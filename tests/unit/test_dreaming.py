@@ -69,3 +69,30 @@ def test_the_self_check_says_which_test_cases_went_wrong_since_yesterday(env, mo
     text = dream.report(send=False)
     assert 'Went wrong since yesterday (1 test case): "whats on my plate" should be show_due, got ai' in text
     assert "1 request I didn't understand" in text
+
+
+def test_a_features_own_loose_end_comes_in_the_morning_message(env):
+    """dreaming_lines() (core/overlay.py's extension point, e.g. Night performance's "couldn't switch"): at most two
+    lines a feature, among the loose ends, and a failing one never costs the message."""
+    from kurooto.modules.base import Module
+
+    class Loose(Module):
+        id, title = "loose_test", "Loose"
+
+        def dreaming_lines(self):
+            return ["Line one.", "Line two.", "Line three."]
+
+    class Broken(Module):
+        id, title = "broken_test", "Broken"
+
+        def dreaming_lines(self):
+            raise RuntimeError("boom")
+
+    app = env.app
+    for cls in (Loose, Broken):
+        app.modules[cls.id] = cls(app)
+    env.on("dreaming", "loose_test", "broken_test")
+    text = app.modules["dreaming"].report(send=False)
+    assert "Loose ends:" in text and "Line one." in text and "Line two." in text and "Line three." not in text
+    app.disable("loose_test")
+    assert "Line one." not in app.modules["dreaming"].report(send=False)
