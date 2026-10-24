@@ -7,6 +7,7 @@
 #                                                          the cards' and location reminders' rules, and the
 #                                                          notification buttons and local alarm rules
 #                                                          and bedside mode's rules (brightness by the hour, hours)
+#                                                          and the app's own connection to the call line (WebSock)
 #
 # Needs: an Android SDK (any recent build-tools and platform; the newest installed are used) and a JDK (javac).
 # Signing: KUROOTO_KEYSTORE (path), KUROOTO_KEYSTORE_PASS and optionally KUROOTO_KEY_ALIAS (default "kurooto").
@@ -31,6 +32,9 @@ crypto_test() {
   # the check-in and quiz cards' and location reminders' rules (0.6.0)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/CardRules.java" "$HERE/src/$PKG/PlaceRules.java" "$HERE/test/CardsPlacesTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CardsPlacesTest
+  # the app's own connection to the call line (0.7.0): its rules and the WebSocket client against a local server
+  javac -nowarn -encoding UTF-8 -cp "$t" -d "$t" "$HERE/src/$PKG/LinkRules.java" "$HERE/src/$PKG/WebSock.java" "$HERE/test/LinkTest.java"
+  java -cp "$t" io.github.avtarfr.kurooto.LinkTest
   rm -rf "$t"
 }
 if [ "${1:-}" = "--test" ]; then crypto_test; exit 0; fi

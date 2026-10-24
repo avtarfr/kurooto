@@ -33,9 +33,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * Keeps one HTTP stream open to your private ntfy topic (instant delivery, no Google services needed) and turns
+ * Keeps this phone's own connection to your call line (Direct, 0.7.0: a WebSocket, no ntfy.sh in between) and,
+ * as the fallback, one HTTP stream to your private ntfy topic (no Google services needed either way), and turns
  * your call line's messages into phone-call style rings. Every message is end-to-end encrypted ("k1.") with the
- * key from pairing; anything else on the topic is ignored.
+ * key from pairing; anything else on the topic is ignored. A message that comes both ways (a ring does) is taken
+ * once, by its id ("mid": deliver).
  *   tags "call"  -> ringing full-screen call (Answer / Later / Decline), your ringtone + vibration
  *   + "alarm"    -> the wake-up call: alarm sound on the alarm stream (rings on silent), rings longer
  *   tags "stop"  -> the call was answered elsewhere (or ended): stop ringing
@@ -60,6 +62,7 @@ public class ListenService extends Service {
     private static ListenService instance;
     private volatile boolean running;
     private Thread thread;
+    private Direct direct;
     private MediaPlayer player;
     private Vibrator vibrator;
     private String ringingSince = ""; // "local:<s>" while this phone's own alarm rings without its call
@@ -165,6 +168,8 @@ public class ListenService extends Service {
             running = true;
             thread = new Thread(this::loop, "ntfy-stream");
             thread.start();
+            direct = new Direct(this, this::deliver);
+            direct.start();
         }
         return START_STICKY;
     }
@@ -172,6 +177,7 @@ public class ListenService extends Service {
     @Override public void onDestroy() {
         running = false;
         if (thread != null) thread.interrupt();
+        if (direct != null) direct.stop();
         stopRing();
         if (dock != null) try { unregisterReceiver(dock); } catch (Exception ignored) { }
         instance = null;
@@ -179,6 +185,24 @@ public class ListenService extends Service {
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }
+
+    /** The wake-up alarm for the line's own connection (ActionReceiver.KEEPALIVE): ping it, and set the next one.
+     *  Not running (Android stopped it): started again. Off the main thread. */
+    static void keepAlive(Context c) {
+        ListenService s = instance;
+        if (s != null && s.direct != null) {
+            s.direct.keepAlive();
+            Direct.arm(c);
+        } else if (Prefs.paired(c)) {
+            try { start(c); } catch (Exception ignored) { } // Android may refuse a start from the background
+        }
+    }
+
+    /** Is this phone connected straight to the call line right now (the main screen says so)? */
+    static boolean direct() {
+        ListenService s = instance;
+        return s != null && s.direct != null && s.direct.connected();
+    }
 
     // ---------- the stream ----------
     private void loop() {
@@ -214,6 +238,7 @@ public class ListenService extends Service {
     }
 
     private void handle(String line) {
+        if (direct != null) new Thread(direct::keepAlive).start(); // ntfy's keepalive woke the phone: ping the line too
         try {
             JSONObject outer = new JSONObject(line);
             if (!"message".equals(outer.optString("event"))) return;
@@ -221,9 +246,19 @@ public class ListenService extends Service {
             String plain = Crypto.open(Prefs.key(this), outer.optString("message", ""));
             if (plain == null) return; // not from your call line
             JSONObject m = new JSONObject(plain);
+            if (!m.has("time")) m.put("time", outer.optLong("time"));
+            deliver(m);
+        } catch (Exception ignored) { }
+    }
+
+    /** One message from your call line, opened: from its own connection (Direct) or from ntfy. A second copy of one
+     *  (the same "mid") is dropped. */
+    private synchronized void deliver(JSONObject m) {
+        try {
+            if (!Prefs.firstTime(this, m.optString("mid", ""))) return;
             // every message carries the assistant's current name: a rename on the computer shows up here
             if (Prefs.setAssistant(this, m.optString("assistant", ""))) repostListening();
-            long sent = m.optLong("time", outer.optLong("time"));
+            long sent = m.optLong("time");
             long ageSec = System.currentTimeMillis() / 1000 - sent;
             JSONArray tags = m.optJSONArray("tags");
             String tagStr = tags == null ? "" : tags.toString();

@@ -830,14 +830,14 @@ function callsBox(m) {
     out, m.ready ? ntfyBox() : null);
 }
 
-// Optional: an ntfy account token, so Android rings aren't refused for an internet address others share too.
+// Optional: a paid ntfy account's token (a free one is counted by internet address like everyone else; since 0.7.0
+// the Android app gets everything straight from the call line while it's connected, so few need this).
 function ntfyBox() {
   const input = el("input", { type: "password", placeholder: "tk_...", autocomplete: "off", spellcheck: "false" });
   const msg = el("span", { class: "note" });
   return el("details", {},
-    el("summary", {}, "Optional: an ntfy account, so rings to Android always get through"),
-    el("p", { class: "note" }, "Android rings go through ntfy.sh, which limits each internet address, and yours is shared (your call line's, often a campus or office too). A free account's token makes it count your account instead: ",
-      el("a", { href: "https://ntfy.sh/signup", target: "_blank", rel: "noopener" }, "make one"), ", then Account → Access tokens → Create, and paste it here. You can do this later on the dashboard's Phone tab."),
+    el("summary", {}, "Optional: a paid ntfy account's token"),
+    el("p", { class: "note" }, "You don't need this: the Android app gets calls straight from your call line while it's connected, and ntfy.sh is only its fallback. ntfy limits each internet address (a campus or office one is shared), and a free ntfy account is counted the same way; only a paid plan's token is counted apart. If you have one: Account → Access tokens → Create, and paste it here (or later on the dashboard's Phone tab)."),
     el("p", {}, input, " ", el("button", { type: "button", onclick: async () => {
       if (!input.value.trim()) { msg.textContent = " Paste the token first."; return; }
       msg.textContent = " Checking…";

@@ -142,7 +142,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 
 | What you see | What to do |
 |---|---|
-| The phone didn't ring, and `/status` or the log shows "429 Too Many Requests" from ntfy | ntfy.sh limits each internet address, and you share yours (a campus, and your call line's Cloudflare one). Make a free ntfy.sh account and paste its token on the dashboard's Phone tab (or `kurooto ntfy-token`): ntfy then counts your account instead. `/health` says when this happened. |
+| The phone didn't ring, and `/health`, `/status` or the log shows "429 Too Many Requests" from ntfy | ntfy.sh limits each internet address, and yours is shared (a campus or office). A free ntfy.sh account doesn't help: ntfy counts it by address like everyone else. Update the phone app to 0.7.0 or later: it gets calls and messages straight from your call line, and ntfy is only its fallback. Check that the dashboard's Phone tab says **connected** beside the phone; if it doesn't, tick **Battery: unrestricted** on the app's checklist and open the app once. |
 | The phone doesn't ring | Is every item on the app's checklist ticked? **Battery: unrestricted**, and Kurooto off any "sleeping apps" list (Samsung, Xiaomi, Oppo, Vivo, OnePlus, Huawei). Then dashboard → Phone → **Ring my phone**. |
 | Today says "Nothing here yet" on one phone, but another phone has it | That phone's key didn't reach your call line when it paired. Open the app with the internet on (0.6.1 sends it again; on 0.6.0 swipe the app away and open it again); the list comes within a minute or two while the computer is on. |
 | Android won't install the app | Allow installing unknown apps for your browser when asked; for Play Protect, "More details" → "Install anyway". |

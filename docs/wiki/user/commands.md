@@ -351,7 +351,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto idle away \| back` | for your idle tool: you've stepped away, or you're back |
 | `kurooto mcp` | Kurooto's tools for agent programs (an MCP server) |
 | `kurooto export-skills on \| off \| status` (`--to agy,agents,claude`) | your skills as /commands in agent programs |
-| `kurooto ntfy-token` (`--clear`) | an ntfy account token, so your phone's rings aren't refused because many people share your internet address (asks for it without showing it, checks it with ntfy, then updates your call line) |
+| `kurooto ntfy-token` (`--clear`) | a paid ntfy account's token for the phone app's fallback (ntfy counts a free account by internet address, so it doesn't help; since 0.7.0 the app gets calls straight from your call line anyway). Asks for it without showing it, checks it with ntfy, then updates your call line |
 | `kurooto reserve` | write Markdown copies of alarms, deadlines, calendar and settings for AI programs |
 | `kurooto cases [list \| check \| export \| forget <id \| all>]` (`--out`, `--all`) | test cases from the Wrong button |
 | `kurooto classpack check <file>`, `export --checked today [--from <note>] [--title …] [--elective …] [--out …]`, `import <file>` | class packs |

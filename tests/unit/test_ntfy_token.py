@@ -1,5 +1,6 @@
 """An ntfy account token: set from the Phone tab or the setup page (checked with ntfy first), used when publishing with
-a fallback to no token, and suggested by the health check once ntfy refuses rings for the shared address (429)."""
+a fallback to no token. ntfy refusing rings for the shared address (429) shows in the health check, which since 0.7.0
+points at the app's own connection to the line: a free ntfy account is counted by address too."""
 
 import urllib.error
 
@@ -67,12 +68,19 @@ def test_publish_with_the_token_then_without_when_refused(calls, monkeypatch):
     assert sent.auth == ["Bearer tk_x", None]
 
 
-def test_refused_for_the_shared_address_the_health_check_suggests_a_token(calls, monkeypatch):
+def test_refused_for_the_shared_address_the_health_check_points_at_the_app_not_a_free_account(calls, monkeypatch):
     env, c = calls
     assert c.health() == (True, "")
     monkeypatch.setattr(calls_mod.urllib.request, "urlopen", Sent([429]))
     assert not c.publish_ntfy({"title": "t", "message": "m"})
     ok, why = c.health()
-    assert not ok and "ntfy refused 1 ring" in why and "Phone tab" in why
-    env.app.secrets.set("calls.ntfy_token", "tk_x")
+    assert not ok and "ntfy refused 1 ring" in why and "free ntfy account is counted the same way" in why
+    assert "0.7.0" in why and "token" not in why
+    env.app.secrets.set("calls.ntfy_token", "tk_x")  # a free account's token counts by address too: still not OK
+    assert not c.health()[0]
+    # every Android phone connected straight to the line (the last device list): ntfy refusing doesn't matter
+    monkeypatch.setattr(
+        c.connector, "admin_wait", lambda op, **kw: {"devices": [{"id": "a1", "kind": "android", "connected": True}]}
+    )
+    c.devices()
     assert c.health() == (True, "")

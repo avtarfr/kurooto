@@ -173,6 +173,8 @@ public class MainActivity extends Activity {
         box.addView(Ui.heading(this, "This phone"));
         LinearLayout phone = Ui.card(this);
         phone.addView(Ui.body(this, "Paired with " + Prefs.url(this)));
+        phone.addView(Ui.dim(this, ListenService.direct() ? "Connected straight to your call line"
+                : "Not connected to your call line right now: calls still come through ntfy.sh"));
         phone.addView(Ui.dim(this, "App " + versionName()));
         int bad = Ui.color(this, R.color.k_bad);
         Button forget = Ui.button(this, "Unpair this phone", 0, bad, bad);
