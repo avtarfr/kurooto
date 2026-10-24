@@ -129,9 +129,13 @@ fun KurootoTheme(palette: String = "kuro", dynamic: Boolean = true, content: @Co
     val dark = isSystemInDarkTheme()
     val p = Palettes.named(palette)
     val k = if (dark) p.darkK else p.lightK
+    val vivid = Prefs.vivid(c)
     val (scheme, kk) = if (dynamic && Build.VERSION.SDK_INT >= 31) {
         val s = if (dark) dynamicDarkColorScheme(c) else dynamicLightColorScheme(c)
-        s to k
+        // vivid (0.7.5): an Expressive scheme from the wallpaper's colour (Kurooto's olive for a grey wallpaper); Calm: Material You's own
+        (if (vivid) Vivid.scheme(Vivid.seed(dynamicLightColorScheme(c).primary), dark) else s) to k
+    } else if (dynamic && vivid) {
+        Vivid.scheme(Vivid.BRAND, dark) to k // Android 11 and older: no wallpaper colours, so Kurooto's olive
     } else {
         (if (dark) p.dark else p.light) to k
     }

@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.graphics.shapes.RoundedPolygon
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -140,10 +142,16 @@ private fun Modifier.toggleState(on: Boolean): Modifier = semantics {
     toggleableState = if (on) ToggleableState.On else ToggleableState.Off
 }
 
-/** A row's or card's ground: the surface, a little translucent so the sky behind the screen shows through (opaque
- *  enough that text keeps its contrast). */
+/** A row's or card's ground: with Vivid colours, the surface stained with the scheme's primary container (so rows read as
+ *  coloured, not grey); otherwise the plain surface. A little translucent so the sky behind the screen shows through
+ *  (opaque enough that text keeps its contrast). */
 @Composable
-fun rowColor(): Color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = if (LocalKurooto.current.light) 0.88f else 0.88f)
+fun rowColor(accent: Int = 0): Color {
+    val cs = MaterialTheme.colorScheme
+    val vivid = Prefs.vivid(LocalContext.current)
+    val tint = when (accent % 3) { 0 -> cs.primaryContainer; 1 -> cs.secondaryContainer; else -> cs.tertiaryContainer }
+    return (if (vivid) lerp(cs.surfaceContainer, tint, 0.55f) else cs.surfaceContainer).copy(alpha = 0.9f)
+}
 
 /** The arrow at the end of a row that opens another screen. */
 @Composable
@@ -203,9 +211,9 @@ fun SaidLine(s: Said?, modifier: Modifier = Modifier) {
 /** A card: a rounded container (Material's extra-large shape) with padding: the check-in and quiz cards, This phone,
  *  the pairing help. */
 @Composable
-fun KCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+fun KCard(modifier: Modifier = Modifier, accent: Int = 0, content: @Composable ColumnScope.() -> Unit) {
     // (a translucent colour has no matching "on" colour, so the text's colour is set here)
-    Surface(shape = MaterialTheme.shapes.extraLarge, color = rowColor(), contentColor = MaterialTheme.colorScheme.onSurface, modifier = modifier.fillMaxWidth()) {
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = rowColor(accent), contentColor = MaterialTheme.colorScheme.onSurface, modifier = modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 20.dp)) { content() }
     }
 }

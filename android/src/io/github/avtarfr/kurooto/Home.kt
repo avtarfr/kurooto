@@ -31,6 +31,15 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -93,6 +102,7 @@ private fun Tabs(a: MainActivity, ui: HomeState) {
     val reduced = LocalReducedMotion.current
     val holder = rememberSaveableStateHolder()
     val waiting = ui.waiting?.size ?: 0
+    val floating = Prefs.floatingBar(a)
     val fade = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
     BackHandler(enabled = ui.tab != 0) { ui.tab = 0 }
     // the sky: strongest behind Today, quieter behind Inbox and Phone; its parallax follows Today's scroll
@@ -104,36 +114,86 @@ private fun Tabs(a: MainActivity, ui: HomeState) {
             contentColor = MaterialTheme.colorScheme.onBackground, // a transparent container has no "on" colour of its own
             contentWindowInsets = WindowInsets(0),
             bottomBar = {
-                // tonal, nearly opaque: a hint of the sky, never the page scrolling under it
-                ShortNavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.97f)) {
-                    TABS.forEach { t ->
-                        ShortNavigationBarItem(
-                            selected = t.opens == null && ui.tab == t.page,
-                            onClick = { if (t.opens != null) a.startActivity(Intent(a, t.opens).putExtra("demo", ui.demo)) else ui.tab = t.page },
-                            icon = {
-                                BadgedBox(badge = { if (t.page == 1 && t.opens == null && waiting > 0) Badge { Text(if (waiting > 99) "99+" else "$waiting") } }) {
-                                    Icon(painterResource(t.icon), contentDescription = null)
-                                }
-                            },
-                            label = { Text(t.label) },
-                        )
-                    }
-                }
+                if (!floating) DockedBar(a, ui, waiting)
             },
         ) { pad ->
-            AnimatedContent(
-                targetState = ui.tab,
-                transitionSpec = { if (reduced) EnterTransition.None togetherWith ExitTransition.None else fadeIn(fade) togetherWith fadeOut(fade) },
-                label = "tab",
-            ) { tab ->
-                holder.SaveableStateProvider(tab) {
-                    when (tab) {
-                        0 -> TodayPage(a, ui, pad)
-                        1 -> InboxPage(a, ui, pad)
-                        else -> PhonePage(a, ui, pad)
+            Box(Modifier.fillMaxSize()) {
+                // the page, clear of the bar: its own height when docked; room for the floating toolbar over the content
+                val room = if (floating) PaddingValues(bottom = pad.calculateBottomPadding() + FLOAT_ROOM) else pad
+                AnimatedContent(
+                    targetState = ui.tab,
+                    transitionSpec = { if (reduced) EnterTransition.None togetherWith ExitTransition.None else fadeIn(fade) togetherWith fadeOut(fade) },
+                    label = "tab",
+                ) { tab ->
+                    holder.SaveableStateProvider(tab) {
+                        when (tab) {
+                            0 -> TodayPage(a, ui, room)
+                            1 -> InboxPage(a, ui, room)
+                            else -> PhonePage(a, ui, room)
+                        }
+                    }
+                }
+                if (floating) FloatingBar(a, ui, waiting, Modifier.align(Alignment.BottomCenter))
+            }
+        }
+    }
+}
+
+/** How much room a page leaves at its end for the floating toolbar (its height plus the gap below it). */
+private val FLOAT_ROOM = 104.dp
+
+private fun openTab(a: MainActivity, ui: HomeState, t: Tab) {
+    if (t.opens != null) a.startActivity(Intent(a, t.opens).putExtra("demo", ui.demo)) else ui.tab = t.page
+}
+
+/** Material 3 Expressive's floating toolbar (0.7.5): a rounded pill that floats above the page, the sky showing around it,
+ *  holding the four tabs. The tab you're on shows its label in a coloured pill; the others are icons. Docked: Look → Bar. */
+@Composable
+private fun FloatingBar(a: MainActivity, ui: HomeState, waiting: Int, modifier: Modifier = Modifier) {
+    HorizontalFloatingToolbar(
+        expanded = true,
+        modifier = modifier.navigationBarsPadding().padding(bottom = 12.dp),
+        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+        content = {
+            TABS.forEach { t ->
+                val on = t.opens == null && ui.tab == t.page
+                Row(
+                    Modifier.clip(CircleShape).background(if (on) MaterialTheme.colorScheme.primary else Color.Transparent)
+                        .clickable { openTab(a, ui, t) }.padding(horizontal = if (on) 16.dp else 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BadgedBox(badge = { if (t.page == 1 && t.opens == null && waiting > 0) Badge { Text(if (waiting > 99) "99+" else "$waiting") } }) {
+                        Icon(
+                            painterResource(t.icon), contentDescription = t.label,
+                            tint = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (on) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(t.label, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
+        },
+    )
+}
+
+/** The docked navigation bar (Look → Bar: Docked): Expressive's short bar, tonal and nearly opaque (a hint of the sky, never
+ *  the page scrolling under it). */
+@Composable
+private fun DockedBar(a: MainActivity, ui: HomeState, waiting: Int) {
+    ShortNavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.97f)) {
+        TABS.forEach { t ->
+            ShortNavigationBarItem(
+                selected = t.opens == null && ui.tab == t.page,
+                onClick = { openTab(a, ui, t) },
+                icon = {
+                    BadgedBox(badge = { if (t.page == 1 && t.opens == null && waiting > 0) Badge { Text(if (waiting > 99) "99+" else "$waiting") } }) {
+                        Icon(painterResource(t.icon), contentDescription = null)
+                    }
+                },
+                label = { Text(t.label) },
+            )
         }
     }
 }
