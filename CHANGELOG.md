@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.7.0 (unreleased)
+
+**The phone app, rebuilt**
+- The Android app's screens are rebuilt in Jetpack Compose with Material 3 Expressive, with a bottom bar: **Today**
+  (the date, Call and Chat, your day), **Inbox** (check-ins, quizzes, questions and approvals, with a count), **Views**
+  and **Phone** (checklist, places, ringtones, bedside mode, this phone). Same features, reorganised; the pairing screen
+  too.
+- A living background in the dashboard's SYSTEMS style: a slowly breathing cell and drifting nerves, tinted by the hour,
+  drawn on the GPU on Android 13+, a still frame on older phones and with "Remove animations".
+- **Views:** the dashboard's SYSTEMS and Notes map on your phone, drawn by the dashboard's own code (tap for a card,
+  drag and pinch). Systems is live while you look; the Notes map follows your notes (titles and links only, never
+  their text). Both are sealed for each Android phone, so your call line can't read them; off by default (dashboard →
+  Phone). iPhones don't get them.
+- The app is built with Gradle through `android/build.sh` (pinned versions, the same signing); `build.sh --dev` makes a
+  "Kurooto dev" build that installs beside the real one, with a `demo` mode.
+
+**Your AI can do more, and you approve it**
+- **A scratch folder and proposals:** the AI may think and write freely in a scratch folder of its own; every change to
+  your files (a project, your notes, a skill) comes as a proposal with the diff, and only your **Apply** changes
+  anything (Change, Discard, Undo after Apply; `/proposals` and the dashboard's Proposals page). A git project gets one
+  commit on your branch, never pushed.
+- **Help with your project:** `/project help on <name>`, then "in my thesis add footnotes to chapter 2 citing
+  refs.bib"; optional per-project checks (a LaTeX build, the tests) run in a no-network sandbox.
+- **Projects from a repository:** `/project add github.com/owner/name` (or a folder) and your AI reads the README, docs,
+  files and history and writes the project note; its commits join the project's log, its docs go into the concept
+  graph, and dated milestones come as Add buttons; each piece has Undo. Nothing in the repository runs, files that look
+  like secrets are never copied, and a private one works with your own git sign-in. Nightly, a changed README or docs
+  refresh the note.
+- One `/project` command for all of it: list, add, update, help, checks (also `kurooto project …`).
+- **More than one Claude account:** sign a second Claude subscription in (setup page → AI → Claude Code → Add another
+  Claude account, or `kurooto ai add-claude work`) and it becomes its own AI with its own sign-in, limits and line under
+  answers; at a limit your other Claude account answers first, then agy or your Gemini key.
+
+**Looks**
+- **Named colour themes:** Catppuccin, Tokyo Night, Rosé Pine, Gruvbox, Nord, Dracula, Everforest, Kanagawa and
+  Solarized in each project's official colours (Settings → Look or the setup page): the dashboard and terminals take the
+  dark flavour, the other pages the family's light flavour in light mode. A colour that doesn't reach WCAG AA is moved
+  just enough; backgrounds never change.
+
+**Add-ons**
+- **Night performance**, the fifth official add-on: while Kurooto does its heavy night work the computer switches to
+  its highest performance power mode (power-profiles-daemon, tuned, asusctl, Windows' power plans, or your own
+  commands) and back to exactly what it was; never on battery or while you're using it; `/perf` shows what it found.
+  Lenovo Legion and LOQ on Linux: a small root helper, installed once with one sudo command, for the custom profile and
+  full-speed fans.
+- Dreaming's morning message takes a feature's own loose ends (`dreaming_lines()`).
+
 ## 0.6.1 (2026-10-24)
 
 - **Today reaches every phone:** a phone whose key didn't reach your call line when it paired (no internet just then)
