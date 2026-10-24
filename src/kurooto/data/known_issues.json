@@ -7,8 +7,27 @@
    "seen": "The dashboard's NOTES map is empty, but its top line counts notes",
    "checks": [],
    "symptom": "",
-   "keywords": ["notes map empty", "map empty", "graph empty"],
+   "keywords": [
+    "notes map empty",
+    "map empty",
+    "graph empty"
+   ],
    "fix": "A note with hundreds of links threw the map off the screen. Update to 0.5.11 or later, then reload the dashboard.",
+   "action": "update"
+  },
+  {
+   "id": "app-crash-on-launch",
+   "versions": "0.7.0",
+   "seen": "The Android app closes as soon as you open it",
+   "checks": [],
+   "symptom": "",
+   "keywords": [
+    "app crashes",
+    "app closes",
+    "app crash",
+    "crashes on launch"
+   ],
+   "fix": "A bug in the 0.7.0 phone app on Android 8 and up (the mark at the top of Today couldn't be drawn). Update to 0.7.1: the app then offers the new version, or install it from the pairing page.",
    "action": "update"
   }
  ]

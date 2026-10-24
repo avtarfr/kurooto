@@ -61,6 +61,10 @@ words, one step at a time, and let them do the clicking in their browser.
 | `kurooto addons` / `kurooto addons show NAME` | the add-ons added by link and whether each loaded / one add-on's card | yes |
 | `kurooto addons add URL [--ref TAG]` | shows an add-on's card (what it does, the hosts and programs it may reach), then adds it pinned to one commit if they say yes | **ask first**; it runs someone else's code. Never pass `--yes` for them: they read the card |
 | `kurooto addons update NAME` / `remove NAME` / `undo NAME` | what a newer commit changes, then update on a yes / take it away / put back what the last remove or update took | ask first |
+| `kurooto project [list]` / `kurooto project add github.com/owner/name\|FOLDER` / `update NAME` | their projects / set one up from a repository or folder (read, never run) / read it again | `list` yes; `add` and `update` when they asked |
+| `kurooto project help on\|off NAME` / `kurooto project help NAME "what to do"` / `checks NAME [CMD\|off]` | lets the AI help with a project / asks for a change, which comes back as a proposal to apply / what runs after its changes | when they asked; never apply the proposal for them |
+| `kurooto ai accounts` / `kurooto ai test NAME` | their Claude accounts / a test reply from one AI | yes |
+| `kurooto ai add-claude [NAME]` / `rename-claude` / `remove-claude` | adds another Claude account (it signs in in this terminal) / renames / removes one | ask first; they sign in, not you |
 | `kurooto backup [--to FOLDER]` | makes a backup zip now | yes; ask before `--to` a folder they didn't pick |
 | `kurooto profile status` | what the encrypted profile holds and when it was saved | yes |
 | `kurooto profile save` | saves the profile now (the first time it asks for a repository and a passphrase) | yes, when set up; never type a passphrase for them |
@@ -135,15 +139,18 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
 - **"Requests are waiting":** with no internet, Kurooto keeps requests and runs them when it's back (`kurooto jobs`
   shows them as held); quick questions get a short answer from the offline helper if it's on (`/helper` on Telegram
   shows its state and speed test). Nothing is dropped; don't resend them.
-- **"Add this add-on":** `kurooto addons add <git url>` and let the person read the card before they say yes. Four
-  more (restic backups, desktop helpers, command words, handwriting from the cloud) sit in `addons/` in Kurooto's
-  repository, not yet published as repositories of their own; `docs/wiki/user/add-ons.md` describes them. An add-on
-  reaches only the hosts and programs on its card.
+- **"Add this add-on":** `kurooto addons add <git url>` and let the person read the card before they say yes. The
+  five official ones (restic backups, desktop helpers, command words, handwriting from the cloud, night performance)
+  are one tap in the dashboard, pinned to an exact commit and marked Official; `docs/wiki/user/add-ons.md` describes
+  them. An add-on reaches only the hosts and programs on its card. Night performance's `/perf` shows what it found.
 - **"It won't check my draft":** a course's AI policy (`/subject policy <course> allowed|hints|off`) can turn checks
   down to hints or off. Draft checks mark gaps and errors at their lines and never rewrite the work; don't offer to.
 - **"My phone doesn't ring":** in the Kurooto Android app, every checklist item should be ✓ (battery unrestricted,
   notifications, full-screen calls). On Samsung/Xiaomi/Oppo/Vivo/OnePlus/Huawei, take it off "sleeping apps". Then
-  dashboard → Phone → "Ring my phone". iPhones only get notifications, not rings.
+  dashboard → Phone → "Ring my phone". iPhones only get notifications, not rings. The app's Phone tab says whether
+  it's "Connected straight to your call line" (from 0.7.0); if not, calls still come through ntfy.sh.
+- **"The app closes as soon as I open it"** (Android 8 and up, app 0.7.0): a bug fixed in 0.7.1. `kurooto update
+  --now` on the computer, then the app offers the new version; or install it from the pairing page.
 - **Setting up a feature:** dashboard → Features → the feature's card. `docs/MANUAL.md` has every feature's steps.
 - **Moving to a new computer:** with Profile sync on, the old computer saves (`/profile save`) and is turned off
   (`kurooto off`); on the new one, the setup page's **I've used Kurooto before** (or `kurooto profile restore`, ask
@@ -164,7 +171,8 @@ Each line is `ok`, `--` (a note, not a problem) or `FAIL`, then what it checked 
 - Location reminders, email in, shared class calendars and the Research add-on are off until the person turns them
   on. Location reminders use Android's own proximity alerts for places saved in the app; Kurooto doesn't track where
   the phone is.
-- The phone app (Android 6 and up) shows Today, widgets, Quick note and a bedside mode; an old phone on a charger can
+- The phone app (Android 6 and up) has Today, Inbox, Views and Phone tabs, widgets, Quick note and a bedside mode
+  (Views is off until the person turns it on in the dashboard → Phone); an old phone on a charger can
   be a bedside clock. iPhones use the Home Screen web app and a "Tell Kurooto" Shortcut whose link the person can
   revoke from the dashboard.
 - Updates install themselves at night by default, signed and with automatic rollback.

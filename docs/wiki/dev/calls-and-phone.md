@@ -898,3 +898,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
 - `calls.ring_s` is never sent to the Worker or the app, which ring 60 s (5 minutes for an alarm) whatever it says.
 - Turn-by-turn calls run tools through `core/tools.py:run_tool` and don't reach `Calls.tool_log`; a call page from
   before 0.5.8 (until the Worker is deployed again) sends no `since`, so its tools share the `""` log.
+
+- **Never draw `R.mipmap.ic_launcher` with Compose's `painterResource`.** From API 26 that id resolves to the adaptive
+  icon XML (`mipmap-anydpi-v26/ic_launcher.xml`), which `painterResource` rejects ("Only VectorDrawables and
+  rasterized asset types are supported"). 0.7.0 did this for the mark at the top of Today and crashed on launch on
+  every phone from Android 8; 0.7.1 draws `R.drawable.k_mark` (a PNG in `drawable-nodpi`) instead. Lint and
+  `build.sh --test` don't catch it: open a `--dev` build on a real phone (`--ez demo true` reaches Today unpaired)
+  before every release that touches the app.

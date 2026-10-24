@@ -47,6 +47,9 @@ If that wasn't you, remove it with /phones." This message always comes; it's nev
 earpiece with the screen off at your ear, rings wake-up calls on the alarm volume (so they ring on silent), shows
 Kurooto's questions and approvals with a Reply box, and lets you share files into your notes. It works from Android 6.
 
+From 0.7.0 the app opens on four tabs: **Today**, **Inbox**, **Views** and **Phone**, and its icon is Kurooto's mark,
+a moth (a themed icon on Android 13 and up, if your launcher uses them).
+
 **Install and pair.**
 1. On the pairing page, tap **Download the app**, open the downloaded file and tap **Install**.
    - "For your security, your phone isn't allowed to install unknown apps": tap Settings and allow it for your

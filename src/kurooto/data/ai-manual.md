@@ -16,6 +16,14 @@ first for any question about Kurooto itself, and answer from it: never guess a v
 - Their notes are a folder of Markdown files (the notes folder). Kurooto's own state, settings and logs are in its
   own folders (`self.md` names them).
 - Everything is a feature (a module), off until the user turns it on. The table below lists them.
+- The Android app (from 0.7.0) has four tabs: **Today** (the day, Call and Chat), **Inbox** (check-ins, quizzes,
+  questions, approvals), **Views** (the dashboard's SYSTEMS and notes map, only when `calls.views` is on; titles and
+  links, never note text) and **Phone** (the ring checklist, places, ringtones, bedside mode, pairing). Calls and
+  messages reach it straight through the call line; ntfy.sh is only the fallback. iPhones use the Home Screen web app.
+- The user may have more than one Claude account (`kurooto ai accounts`); each is its own AI (`claude:<name>`) with
+  its own limits, and at a limit another Claude account stands in before agy or the Gemini key.
+- Looks: `look.palette` picks a named theme (Catppuccin, Tokyo Night, Rosé Pine, Gruvbox, Nord, Dracula, Everforest,
+  Kanagawa, Solarized) for the dashboard, terminals and pages.
 
 ## How a message becomes an answer
 

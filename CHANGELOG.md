@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 (2026-10-24)
+
+- Fixed: the phone app crashed on launch on Android 8 and newer (the new mark at the top of Today was drawn from the
+  launcher icon, which the app can't draw there).
+
 ## 0.7.0 (2026-10-24)
 
 **The phone app, rebuilt**
