@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.7.1",
+  "notes": "Fixes the phone app closing on launch on Android 8 and up",
+  "created": 1792849420.164461,
+  "files": {
+   "kurooto-0.7.1.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.7.1/kurooto-0.7.1.tar.gz",
+    "sha256": "60e9c1691d9b1b77e5bcc266126b1beee9f9332a5dd007cf37b360094136da1f",
+    "size": 3971397
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.7.1/kurooto.apk",
+   "sha256": "565e2d8192d7654c7636fb3384e9bd808e18ae25a5beb83b3ee69021d28ea6e5",
+   "size": 1981840,
+   "versionCode": 70019,
+   "versionName": "0.7.1",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "27716547d756c5f49d3c93d379217f947138bd59c756c3f1696f889bef6dba29"
+  }
+ },
+ "sig": "Z0t49oELeXPCTClOCUZN0gv2CqqDUCq5eRtEeMv1ygJszliGCJa16mRWCU6mwvGMR7n1NCmmI3NggogLLXmIBw=="
+}
