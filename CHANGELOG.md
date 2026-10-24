@@ -1,10 +1,13 @@
 # Changelog
 
-## 0.7.1 (2026-10-24)
+## 0.7.2 (2026-10-24)
 
 - **Every feature can be turned off** (a standing rule from now on; fixes aren't switches): the app's Phone tab has
   **Switches** for the straight connection to your call line (off: ntfy.sh only) and the moving background (off: a
   still picture); a test checks that everything Kurooto schedules by itself has a setting that turns it off.
+
+## 0.7.1 (2026-10-24)
+
 - Fixed: the phone app crashed on launch on Android 8 and newer (the new mark at the top of Today was drawn from the
   launcher icon, which the app can't draw there).
 

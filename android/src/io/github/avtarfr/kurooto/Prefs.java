@@ -128,7 +128,7 @@ final class Prefs {
     }
     static void setBedsideKeepOn(Context c, boolean on) { sp(c).edit().putBoolean("bedsideKeepOn", on).apply(); }
 
-    // switches (0.7.1, every feature can be turned off): the line's own connection (off: calls through ntfy only),
+    // switches (0.7.2, every feature can be turned off): the line's own connection (off: calls through ntfy only),
     // and the moving background (off: a still frame, as with "Remove animations")
     static boolean direct(Context c) { return sp(c).getBoolean("direct", true); }
     static void setDirect(Context c, boolean on) { sp(c).edit().putBoolean("direct", on).apply(); }
