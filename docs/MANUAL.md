@@ -1064,7 +1064,7 @@ summary.
 For your first week: one short message a day (at 18:00, `quests.when`) with one thing to try, each leaving something
 real behind. "Add tomorrow's classes: /class tue 09:00-09:55 la", "send me one real deadline", "set a reminder for
 something real", "a doubt from class?", "quiz me on la", "/study la 25", tonight's check-in, "remember that I ...",
-`/journal`. Turn it on in the setup page's Features step or the dashboard.
+`/mindjournal`. Turn it on in the setup page's Features step or the dashboard.
 - Only features that are on and pass their checks (what `kurooto doctor` looks at) get a quest, and one you've already
   done (there's a timetable, you set a reminder this week) is left out. A day with nothing to suggest sends nothing.
 - A quest is done when the thing happens. Replying to the message with it works too ("remind me at 21:00 to pack my
@@ -1142,8 +1142,8 @@ To change a skill that comes with Kurooto, `/skills copy journal` makes your own
 **In agy and other agent programs.** `kurooto export-skills on` puts every skill you can run here (Kurooto's, your
 add-ons', your own, and prompts with `skill: true`) into agy's skills folder, so `/journal my day` typed in agy runs
 the same instructions; each copy says where your notes folder is and carries the same rules. `--to agy,agents` also
-puts them in `~/.agents/skills` (GitHub Copilot CLI as `/journal`, and other programs that read that folder); `--to claude` puts them in `~/.claude/skills` (Claude Code
-as `/journal`), only when you ask for it. Kurooto only ever changes or removes the copies it made (they carry a `.kurooto-skill` marker): if you have a
+puts them in `~/.agents/skills` (GitHub Copilot CLI as `/mindjournal`, and other programs that read that folder); `--to claude` puts them in `~/.claude/skills` (Claude Code
+as `/mindjournal`), only when you ask for it. Kurooto only ever changes or removes the copies it made (they carry a `.kurooto-skill` marker): if you have a
 skill of your own with the same name, yours stays and Kurooto's goes in as `kurooto-<name>`; a copy you edit by hand is
 yours from then on. They're kept up to date when Kurooto starts (so after every update) and every hour, and ones whose
 skill is gone are removed. `kurooto export-skills status` lists them; `agents.prefix` (e.g. `k-`) puts a prefix on
@@ -1632,6 +1632,12 @@ tomorrow is frozen and scored the next evening. Nothing Kurooto does depends on 
 uses the model on this computer only. *Undo:* `mind.read.on`, `mind.forecast.on`, `mind.tone.on` off; **Off** under `/mood`
 deletes what it kept.
 
+**Its journal (Brain, `/mindjournal`).** Each night it writes down what it got wrong, what you undid, failures, broken promises, wrong reads, big
+swings, changes of feeling, its R2-or-higher acts and proposals, every line citing the log records it comes from and checked by code (numbers,
+names, feelings, causes, no invented events); a model on this computer only words each fact, and a line that fails is replaced by the
+fixed sentence. Nightly it tests the checker on corrupted copies of the lines; if it slips, learning freezes. Strike a line with
+`/mindjournal strike <n>`. *Undo:* `mind.journal.on` off; Delete Brain's data removes the journal.
+
 **What it may do without asking (Brain, `/autonomy`).** Its actions are sorted R0 (inward, reversible: it just does them) to R3 (hard to
 reverse); for R1 to R3 it asks until your reactions earn it (a yes counts a little, an Undo three times against, a complaint five, silence a
 little, only for what you saw on the Sunday list), more for higher classes, and never for deleting data, sending anything out, money,
@@ -1649,7 +1655,7 @@ the computer is down the call line lists what has no guarantee. *Undo:* `mind.bu
 `mind.feelings.express`, `mind.promises.on`, `mind.heartbeat.on` off.
 
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
-every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`.
+every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`.
 
 **Settings:** `mind.anchor_every` (1000: the log's head is noted every this many records, and once a day);
 `mind.hardened` (off).
@@ -4227,7 +4233,7 @@ notify`, `send`, `note`, `ask`, `ask-me`, `ask-approval`, `call`, `mcp`, `runlog
 | No call six hours before a deadline | Phone calls on and set up? A class, `/hold`, focus or the night until shortly before the deadline means a message instead. |
 | Done didn't tick the box in my notes | The line was changed since Kurooto read it (it's re-read every hour); tick it yourself, nothing else depends on it. |
 | A recurring quiz is on the wrong week | Put any date it really happens on in the "Next" column of `kurooto/recurring.md`. |
-| `/journal` (or another skill) goes to Chat as plain text | Turn on **Skills** (Features). `/skills` lists the names. |
+| `/mindjournal` (or another skill) goes to Chat as plain text | Turn on **Skills** (Features). `/skills` lists the names. |
 | A revision pack comes as a `.tex` file | There's no LaTeX engine (neither Tectonic nor your own `latexmk` or `pdflatex`): tap **Install Tectonic** in the message that came with the pack. If you tapped **Not now**, it asks again after 30 days. |
 | The first PDF takes minutes | Tectonic fetches the LaTeX packages it needs once (about 50 MB); later packs take seconds. |
 | "it didn't compile" | The AI's LaTeX had an error it couldn't fix; the `.tex` is in your notes. `/pack` again, or reply with what to change. |

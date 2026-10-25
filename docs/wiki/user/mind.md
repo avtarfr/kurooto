@@ -175,6 +175,26 @@ make a class always ask. By default nothing it already does changes in these wee
 its verdicts bind (then it asks above R0 during shadow, and after it for what it isn't trusted with). Switch the whole thing off
 with `mind.autonomy.on`.
 
+## Its journal: true by construction
+
+Each night Kurooto writes a short journal of its own day: what it got wrong, what you undid, what failed, when it broke a promise,
+when its read of you was wrong, when its drive swung, when its feeling changed, what it did on its own that mattered and what
+it proposed. You can read it any time with **`/mindjournal`** (today), `/mindjournal yesterday` or `/mindjournal 2026-10-25`.
+
+It can't make things up, because it isn't left to. Code decides what *must* be in it, straight from Brain's log, and each line
+cites the log records it comes from (`[#41]`). A model on this computer only puts a fact into words, from a fixed prompt
+("write this fact in first person, without adding anything"); on a computer with no local model the sentences are fixed. Then
+code checks every sentence: each number equals a number in its fact, it uses no word the fact doesn't give it (so no invented
+event or name), a feeling word appears only for a state past its threshold, a cause appears only if the fact has that cause, and the
+log it cites verifies. A line that fails is deleted and the fixed sentence takes its place, so nothing is missing and nothing is
+reworded into something false. It never goes to a cloud AI: the facts include readings of you.
+
+Every night the checker is tested on corrupted copies of that night's lines (a changed number, a swapped cause, a feeling it
+didn't have, an invented event, reordered times); it has to reject 99% of them and keep 95% of the true ones, and if it ever
+doesn't, learning is frozen and a line in the morning says so. **Strike** a line with `/mindjournal strike <number> [date]`: it stays as a
+struck-through tombstone, and a line about you also forgets that day's read. The journal lives in `mind-journal/` in the state
+folder; `mind.journal.in_notes` (off) also keeps it as a block in a note of yours. Switches: `mind.journal.on`, `mind.journal.in_notes`.
+
 ## Its promises
 
 When Kurooto says it will do something at a time ("I'll check back at 6", "I'll remind you Friday"), it writes the promise
@@ -192,6 +212,7 @@ its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `
   anchor.
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
+- **`/mindjournal`:** its journal of its own states, reasons and mistakes; every line is checked against its log.
 - **`/mood`:** how Brain reads you and what it expects of tomorrow (it only watches for now).
 - **`/autonomy`:** what it may do without asking, by kind, how far each is trusted, and the shadow counts.
 - **`/budget`:** its body budget, its drive, the last reward and its current feeling.

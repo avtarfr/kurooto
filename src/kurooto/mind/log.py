@@ -76,6 +76,8 @@ MIRRORED = frozenset(
         "read_answer",  # stage 04: that you answered (a number: right or not), never which label
         "forecast",  # stage 04: a frozen forecast (day, channels planned, its sha256; the numbers are in score.db)
         "forecast_score",  # stage 04: the mean surprise of a scored forecast
+        "mind_feeling",  # stage 07: a change of feeling label (ids and numbers), for the journal
+        "mind_act",  # stage 07: something it did on its own (class and action id)
         "promise_made",  # stage 05
         "promise_kept",
         "promise_broken",

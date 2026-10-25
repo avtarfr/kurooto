@@ -520,3 +520,45 @@ run. An ALWAYS action never runs through here (`act_always_ask` event): the guar
 The digest (`act.digest`, Sundays 19:10) lists the week's acts with Undo and a Seen it, which sends `silence` evidence (the only silence that
 counts). The only call site so far is the retro's duplicate deadline merge; the others the spec lists (proposals, queued jobs, Dreaming
 actions, calendar blocks, reschedules) each need an action id and a runner, and move onto `act.run` one at a time.
+
+
+## Stage 07: a true journal (I-10)
+
+Code: `mind/journal.py` (`PART = "journal"`); the `/mindjournal` command and a nightly job (23:40) in `modules/mind.py`; log kinds `mind_feeling`
+and `mind_act` (mirrored events from `feelings.tick` and `act.record`) and the id-like fields `label`, `klass`, `action`, `object` that the log
+now keeps; Calm reason `mind.journal_check`. Tests: `test_mind_journal.py` (19). Switches: `mind.journal.on`, `mind.journal.in_notes` (off).
+
+### Manifest, wording, checks
+
+`manifest(app, day)` reads the log for the local day and makes a `Fact` (kind, seq ids, numbers, id-like words, cause, label, `about_him`) for
+each required thing: `promise_broken`, `*_undo`/`*_undone`, `job_failed`/`job_crashed`/`kurooto_crashed`/`module_failed`/unasked
+`mind_keeper_exited`, `read_answer` with `right` false, `reward_tick` with |r| > 0.3, `mind_feeling` (a label change), `mind_act` at R2 or R3, and
+`proposal_*`. `words_for(fact)` is the fixed sentence (`TEMPLATES`). `wording` asks the helper model on this computer for a one-sentence version (a fixed
+prompt with the fact as JSON), and keeps it only if `check` passes and `entails` (a second yes/no question to the same model) doesn't say no;
+otherwise the fixed sentence is used and the replacement counted (`rejected`). Never a cloud brain (`test_journal_never_cloud`).
+
+`check(fact, sentence, seqs)` returns the first rule broken, in this order: **number** (every number is one of the fact's, times as HH:MM and its
+parts; a digit attached to a letter, like the 2 of R2, isn't a number); **cause** (a "because/since/due to" needs the fact's cause and one of its
+words after it); **feeling**/**invented** (every word is in the closed vocabulary: the templates' words, a few function words and the fact's own
+tokens; a feeling word needs a fact of that label whose numbers pass `feelings.THRESHOLDS`); **seq** (the cited records exist). The log's own chain is
+verified once per day.
+
+### The mutation suite
+
+`mutations` makes a changed number, reordered times, a swapped cause, a feeling on a fact without one and an invented event from each sentence;
+`rates` counts how many corrupted copies the checker rejects and how many true ones it keeps. The test runs it over 30 seeded days (stand-ins for
+recorded fixtures: a recorded day can't hold the mix of kinds) and requires 99% and 95%. `selfcheck` runs it on that night's facts and, below the bars,
+sends a `learning_freeze` fact and one line (`mind.journal_check`).
+
+### Files
+
+`<state>/mind-journal/YYYY-MM-DD.json` (lines with their seq ids and `struck`), `.md` (what `/mindjournal` shows) and `index.json` (lines, rejected,
+facts per day). **Deviation:** not `<state>/mind/journal/` as the spec says: that folder is the scorekeeper's (in hardened mode a system user owns
+it), and only it writes there. It's excluded from backups and removed with Brain's data. `strike` marks a line and, for a line about you, calls
+`mood.forget_day`.
+
+### Not done
+
+The dashboard's Journal page with the rejection rate (the rates are in the `journal_selfcheck` event and `/mindjournal`'s footer); the optional lines
+(the feeling arc, curiosity, what it learned); the decision lines that print both reasons ("I said at the time:") for AI-made decisions;
+`modules/dreaming.py` doesn't call it (the mind module has its own job), so the journal doesn't wait for Dreaming.

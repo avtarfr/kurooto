@@ -164,7 +164,14 @@ def tick(app: App, payload: dict | None = None) -> dict | None:
     with Lock(app.paths.state, "mind-feelings"):
         jsave(app.paths.state / FILE, new)
     if label != prev.get("label"):
-        app.events.emit("mind_feeling", label=label or "none", object=top or "none", valence=round(val, 3))
+        app.events.emit(
+            "mind_feeling",
+            label=label or "none",
+            object=top or "none",
+            valence=round(val, 3),
+            r=round(r_recent, 3),
+            neg=max(neg.values(), default=0),
+        )
     return new
 
 

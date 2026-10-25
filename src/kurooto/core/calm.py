@@ -260,6 +260,7 @@ REASONS: dict[str, Reason] = {
             stop=None,
             suggest=True,
         ),
+        R("mind.journal_check", "Brain's journal checks slipped, so it stopped learning", stop=None),
         R("mind.promise_broken", "Kurooto owning up first to something it said it would do and didn't", stop=None),
         R("study.timer", "the end of a study session you started with a length", exempt="own", stop=None),
         R("quiz.checkin", "a quiz time you set", exempt="own", stop=None, later=False),

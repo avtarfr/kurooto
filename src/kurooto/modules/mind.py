@@ -26,7 +26,7 @@ from pathlib import Path
 from kurooto import mind
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
-from kurooto.mind import act, feelings, gate, measure, mood, promises, signals, tone
+from kurooto.mind import act, feelings, gate, journal, measure, mood, promises, signals, tone
 from kurooto.mind import log as mlog
 from kurooto.modules.base import Command, Incoming, Module
 
@@ -84,6 +84,8 @@ class Mind(Module):
         self.every("feelings", "hourly", lambda p: feelings.tick(self.app) if mind.on(self.app) else None)
         self.every("feeling_say", "daily 17:30", lambda p: feelings.say(self.app) if mind.on(self.app) else False)
         self.every("act_digest", "weekly sun 19:10", lambda p: act.digest(self.app) if mind.on(self.app) else False)
+        # stage 07: the day's journal, then the checker's own nightly self-check against corrupted copies of it
+        self.every("journal", "daily 23:40", self._journal)
 
     def _signals(self, payload: dict | None = None) -> int:
         """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""
@@ -220,6 +222,12 @@ class Mind(Module):
     def commands(self) -> list[Command]:
         return [
             Command(
+                "mindjournal",
+                "Kurooto's own journal of its states, reasons and mistakes, every line checked against its log",
+                self.journal_cmd,
+                usage="/mindjournal [yesterday | <date> | strike <line> [date]]",
+            ),
+            Command(
                 "autonomy",
                 "what Kurooto may do without asking, by kind of action; /autonomy classify <action> R1",
                 self.autonomy_cmd,
@@ -241,6 +249,43 @@ class Mind(Module):
                 usage="/mind [verify|gate]",
             ),
         ]
+
+    def _journal(self, payload: dict | None = None) -> dict | None:
+        if not mind.on(self.app):
+            return None
+        out = journal.write_day(self.app)
+        journal.selfcheck(self.app)
+        return out
+
+    def journal_cmd(self, msg: Incoming, arg: str) -> str:
+        import datetime as dt
+
+        from kurooto.core.clock import now
+
+        if not mind.part_on(self.app, "journal"):
+            return "The journal is off (mind.journal.on, with Brain)."
+        words = (arg or "").split()
+        today = now().date()
+        if words and words[0].lower() == "strike" and len(words) >= 2 and words[1].isdigit():
+            day = dt.date.fromisoformat(words[2]) if len(words) > 2 else today
+            return journal.strike(self.app, day, int(words[1]))
+        day = today
+        if words and words[0].lower() == "yesterday":
+            day = today - dt.timedelta(days=1)
+        elif words:
+            try:
+                day = dt.date.fromisoformat(words[0])
+            except ValueError:
+                return "Say a date like 2026-10-25, yesterday, or strike <line> [date]."
+        e = journal.read_day(self.app, day)
+        if e is None:
+            e = journal.write_day(self.app, day) and journal.read_day(self.app, day)
+        if e is None:
+            return f"No journal for {day.isoformat()} yet."
+        return (
+            journal.render(e)
+            + f"(checked: {e['facts']} facts, {e['rejected']} lines the model wrote were replaced by the fixed words.)"
+        )
 
     def autonomy_cmd(self, msg: Incoming, arg: str) -> str | None:
         words = (arg or "").split()
@@ -335,6 +380,7 @@ def button(app, ref: str, act: str) -> str:
     mind.forget_client(app)
     n = mlog.MindLog(d / "log.db").count() if d.exists() else 0
     shutil.rmtree(d, ignore_errors=True)
+    shutil.rmtree(app.paths.state / "mind-journal", ignore_errors=True)  # its journal (mind/journal.py)
     for f in (
         "mind-gate.json",
         "mind-mood.json",

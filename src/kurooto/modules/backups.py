@@ -73,7 +73,7 @@ SKIP_STATE = {
 }
 # cases: what you typed, kept on this computer only. mind: Brain's log and scores (0.8.0) stay on this computer; an
 # older copy put back would look like a log cut short (mind/log.py anchors), and its key is only for one run
-SKIP_STATE_DIRS = {"locks", "logs", "cases", "mind"}
+SKIP_STATE_DIRS = {"locks", "logs", "cases", "mind", "mind-journal"}
 SKIP_STATE_FILES = {
     ("telegram", "offset.json"),
     ("telegram", "pairing.json"),

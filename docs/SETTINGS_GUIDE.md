@@ -627,6 +627,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.gate.touches_per_day` | `3` | small human touches a day in all (an absence note, a lighter day, a feeling...) |
 | `mind.hardened` | `false` | the scorekeeper runs as its own user (tools/mind_harden.sh; its marker file does the same) |
 | `mind.heartbeat.on` | `true` | when this computer is down, what the next 12 hours don't have a guarantee for |
+| `mind.journal.in_notes` | `false` | also keep it as a block in your notes ("Kurooto journal.md", in Kurooto's own markers) |
+| `mind.journal.on` | `true` | a daily journal of its own states, reasons and mistakes, every line checked against its log |
 | `mind.promises.on` | `true` | its own promises: noticed, kept or owned up to first |
 | `mind.read.asks_per_week` | `2` | the most times a week it asks whether the week felt heavier than usual |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days (it only watches for now) |

@@ -104,7 +104,7 @@ DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # everything else that's text is dropped, so nothing anyone typed reaches the log (invariant I-11)
 ID_KEYS = frozenset(
     {"id", "job", "key", "verdict", "was", "mode", "module", "subkind", "via", "layer", "prefix", "lane", "source",
-     "outcome", "line", "channel", "state", "decision", "result", "gap"}
+     "outcome", "line", "channel", "state", "decision", "result", "gap", "label", "klass", "action", "object"}
 )  # fmt: skip
 FACT_KEYS_MAX = 20
 

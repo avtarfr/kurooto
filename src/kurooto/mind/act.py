@@ -196,6 +196,7 @@ def record(app: App, action: str, summary: str, undo: dict | None = None, klass:
             },
         ][-KEEP_ACTS:]
         _save(app, st)
+    app.events.emit("mind_act", klass=(klass or risk.classify(action)), action=str(action)[:40])
     return aid
 
 
