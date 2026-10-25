@@ -4130,6 +4130,22 @@ whether the note belongs with a new concept, and orders them by the model's own 
 installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
 embedding order.
 
+## What 0.8.0 added to your notes and files
+
+- **Reading class documents** (`sorter.read_files`, off): PDF, Word, PowerPoint, notebook, text, rich-text and CSV files you
+  drop in the scratch folder become Markdown notes next to them (originals untouched; `sorter.read_mb`, 25, is the size
+  limit), and join the concept graph as `reference` notes (`integrate.sources`, on). **Undo:** turn the switch off; delete the
+  generated note if you want it gone.
+- **Copies among notes** (`sorter.duplicates`, `integrate.duplicates_all`, `integrate.duplicates_per_day`): exact and near
+  copies, in new files and old notes, each a question with Keep both / Merge / Leave it. Nothing merges without your tap;
+  every merge has Undo. Books: `books.duplicates` notices the same book twice by its file contents.
+- **Subjects with folders:** dashboard → Study → Subjects: add a subject with an optional notes folder (its own
+  neighbourhood on the notes map) or remove one. **Undo:** remove it; the notes stay.
+- **Find files** (`/find`, module `finder`): see Features. **Undo:** turn the module off; delete `<state>/finder`.
+- **After turning a feature on,** the dashboard says what's left to set up; `/health setup` lists it for everything.
+- **`deadlines.skip_notes`:** notes or folders the deadline scan leaves alone.
+- **Settings** have drop-downs where the choices are known and a tooltip on every label.
+
 ## Your notes: layout and files
 
 Kurooto writes into your notes folder in one of two layouts, and can keep big files (photos, PDFs) out of it so they

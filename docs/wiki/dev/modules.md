@@ -1065,3 +1065,20 @@ note, `run_skill`, `morning_view`), `modules/termnote.py`, `modules/recurring.py
   `last_skill`), so a correction meant for an earlier skill answer goes to the latest one. The duplicate check for a
   learned skill compares words of names and descriptions only, so a reworded duplicate can slip through. The tool log
   is in memory: a request that finishes after a restart counts only the steps since.
+
+## Added in 0.8.0
+
+- **Threaded jobs.** `Module.every(..., thread=True)` (`modules/base.py`) wraps a synchronous action in
+  `asyncio.to_thread`, so a heavy job never holds Kurooto's loop (the call line's heartbeat, Telegram replies, other jobs).
+  Used by the Brain's lab, play, harness, senses, plans and skills jobs, the duplicates scans and the finder index.
+  `tests/unit/test_every_thread.py`.
+- **Set-up steps.** `Module.setup_notes` (a list of plain lines) and `setup_steps()` say what's left to do after a module is
+  turned on (a key, a sign-in, a program). `modules/enable` returns `setup`; POST `modules/steps` returns them again; the
+  dashboard prints "To finish setting it up:"; `/health setup` lists what is left across enabled modules (plain `/health` is
+  unchanged). Set on Books, Google, LocalModels, Calls, Telegram and Backups. `tests/unit/test_setup_steps.py`.
+- **Find files** (`core/finder.py`, `modules/finder.py`, module `finder`). A local SQLite FTS5 index at
+  `<state>/finder/index.db` (`index`, `search`, `inside`); settings `finder.folders`, `finder.read_mb`, `finder.max_files`.
+  Names, dates and sizes for everything; text for PDFs (`pdftotext`), Office files (their XML), text and code. Hidden
+  folders, build folders and secret-looking names (`scratch.secret`) are skipped. `/find <words>|add|remove|folders|reindex`;
+  results carry `fnd:<key>:send` buttons that use `modules/skills.send_file`. The job `index` runs daily at 04:50 on a
+  thread. No AI is involved. `tests/unit/test_finder.py`.

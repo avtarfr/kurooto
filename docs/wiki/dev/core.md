@@ -1544,3 +1544,13 @@ Official colours moved to reach AA (everything else is exactly as published):
 | solarized-light | warn | yellow #b58900 | #826200 |
 | solarized-light | bad | red #dc322f | #ca1a1e |
 | solarized-light | accent | blue #268bd2 | #0075ba |
+
+## Setting choices and tooltips (0.8.0)
+
+`core/choices.py` (`CHOICES`, `for_section`) lists the settings whose valid values are known (about 25); the API's
+`_settings()` merges them in as drop-downs. `tools/gen_settings_guide.py` also writes `src/kurooto/data/settings-help.json`
+(each setting's `register_defaults` comment, with `NOTES` entries for the ones without), and the API adds per-section `tips`
+(`_tips()`), which `home.js` puts on each label as a tooltip. A test (`test_every_setting_has_a_tooltip`) fails if a new
+setting has no comment, so write one when you register it, then run the generator. Some defaults only register after their
+module is imported (`core.autostart`, `core.infer`, `core.palette`, `web.server`, `web.api`); the test imports them.
+`deadlines.skip_notes` (notes or folders the notes scan leaves alone) is one such setting.

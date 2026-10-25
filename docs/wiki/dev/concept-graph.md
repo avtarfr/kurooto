@@ -466,3 +466,10 @@ Verified against the code; fix with a test.
 - With `integrate.embeddings = auto` and no Ollama, note titles and openings go to Google's embedding API, and the key
   travels in the URL query (`?key=`). The privacy text says matching runs on this computer.
 - `prune_dangling` removes any line in the link syntax whose target is missing, including one the user wrote that way.
+
+## The `reference` source (0.8.0)
+
+`modules/integrate.py` has a fifth source, `reference`: notes the inbox reader made from class documents and other general
+information (they aren't books). It is in `SOURCES`, `NAMED`, `SEEN_HEAD`, `MIN_CHARS` (300) and the default
+`integrate.sources`, and has a card toggle. `take_reference(note, title, text)` links the note into the graph, with
+`core/integrate_ai.HEADS["reference"]` as its prompt head. Its subject is the one subject its text names, else `reference`.

@@ -528,3 +528,10 @@ Say "that quiz is cancelled" or "I don't have that quiz" and the call removes it
 Classroom, a note or the recurring table); "I finished it" marks it done; "it moved to Friday" moves it. A quiz or exam
 whose time has passed is simply over: it's never listed as overdue. After every call, Kurooto looks back at what you
 asked for and fixes anything the call got wrong (see [Phone calls](calls.md)).
+
+## Notes the scan should leave alone
+
+Kurooto finds deadlines in your notes by looking for unticked checkbox lines that end in a date, like
+`- [ ] hand in the form (2026-10-30)`. A list of ideas where the date is just *when you wrote it down* would turn into
+"Overdue?" nudges. To stop that, put its path (or a folder) in the setting `deadlines.skip_notes` (dashboard → Settings →
+Deadlines), for example `master/ideas.md`. Anything already found from it: tap **Drop** once and it stays gone.
