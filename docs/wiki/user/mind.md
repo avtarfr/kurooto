@@ -195,6 +195,33 @@ doesn't, learning is frozen and a line in the morning says so. **Strike** a line
 struck-through tombstone, and a line about you also forgets that day's read. The journal lives in `mind-journal/` in the state
 folder; `mind.journal.in_notes` (off) also keeps it as a block in a note of yours. Switches: `mind.journal.on`, `mind.journal.in_notes`.
 
+## What's on its mind
+
+A lot happens in Kurooto at once: deadlines, promises, what it thinks about how you're doing, a forecast that missed, an alarm. Brain keeps a small
+"now" stage, the **workspace**, that these compete to enter. Each item gets a salience: how much it matters, times how soon, times how unexpected it is,
+times how tired of it you must be (an item it has already told you about three times today is out). The top **three** win a cycle (once a minute, and
+at once when an alarm rings or a call comes), and what wins is what Kurooto is "thinking about". A goal that runs for weeks, like a project or a week
+plan, holds a standing bid that grows as the plan slips, so today's small pings don't starve it.
+
+It is not a queue. Jobs, Dreaming, reading and the rest keep running; answers to what you ask need no winner. The stage decides three things only: which
+item may start a message or a new autonomous act on its own (a message that names an item that isn't on its mind is dropped, quieter, never louder),
+what goes into the journal and the story, and what an AI's request foregrounds ("On my mind right now: ..."). Anything about how you're doing can win,
+but is never put in front of an AI.
+
+**`/thinking`** answers "what are you thinking about?" from a model of its own attention and the log: what's on the stage, each item's salience terms, how
+long it has been there and what it expects to stay. An AI only phrases it. That model's guesses about its next focus are scored against what really
+happens, and `/thinking` says plainly if they're no better than chance. You decide too: `/thinking pin <item>` keeps an item on its mind,
+`/thinking mute <item>` keeps it off, `/thinking veto <part>` stops a whole part (deadlines, promises, read, forecast, goals) bidding; `unpin` and `unveto`
+undo them.
+
+**Where a belief came from.** Everything Kurooto believes about you or the world carries a source: *said* (you told it), *saw* (a record or a sensor),
+*inferred* (worked out from other things, like its read of you) or *imagined* (a forecast or a Dreaming guess), and how sure it is. It may state
+only *said* and *saw* beliefs as fact. An inferred one is put as "It looks like ... (65% sure)", an imagined one as "A guess: ...", and the gate rewords a
+sentence that says otherwise. The confidences are scored (a Brier score: 0 is perfect, 0.25 is a coin flip) against what happened. **`/beliefs <topic>`**
+lists them with their source, how sure it was and how each source has done. Switches: `mind.workspace.on`, `mind.workspace.capacity` (3),
+`mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
+`mind-beliefs.json`.
+
 ## How we know whether it's getting better
 
 Claims that Kurooto is improving mean nothing unless they're measured on something it can't have seen. Brain has a **hidden harness**: a set of
@@ -213,7 +240,7 @@ value and no trust. A challenger (a change it proposes to itself, stage 11) and 
 **`/capabilities`** shows, per kind of task (planning, calendar, language, notes, code), the hidden score and how it's moved over the runs, and its own
 record of promises kept and broken. `/capabilities run` measures now. **`/indicators`** lists the functional indicators from the consciousness
 literature as ablation tests, under the title "Functional indicators (not evidence of sentience)": it switches a part off in a copy and measures whether
-a metric drops; a row whose part isn't built yet (the global workspace, the attention schema, a body) says "not built yet" instead of a guess, and
+a metric drops; a row whose part isn't built yet (a body) or hasn't enough data yet says "not built yet" instead of a guess, and
 nothing there claims more than what's measured. Switches: `mind.harness.on`, `mind.harness.rotate_days`.
 
 ## Its life story

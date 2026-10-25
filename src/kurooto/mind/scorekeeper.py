@@ -302,6 +302,43 @@ class Keeper:
                     },
                 )
                 return {"ok": True, "seq": seq}
+            if kind == "workspace_cycle":  # which items won (ids and numbers): the log's record of what was on its mind
+                items = [str(i)[:40] for i in (b.get("items") or [])][:3]
+                seq = self.log.append(
+                    "workspace",
+                    {
+                        "items": items,
+                        "kinds": [str(k)[:20] for k in (b.get("kinds") or [])][:3],
+                        "salience": [
+                            round(float(x), 4) for x in (b.get("salience") or []) if isinstance(x, (int, float))
+                        ][:3],
+                        "n": int(b.get("n") or 0),
+                    },
+                )
+                return {"ok": True, "seq": seq}
+            if kind == "attention_check":  # did its model of its own attention predict the next winners? running hits
+                hit, chance = float(b.get("hit") or 0.0), float(b.get("chance") or 0.0)
+                prev = self.score.get("reads", "attention:total") or {"value": 0.0, "meta": {}}
+                m = dict(prev.get("meta") or {})
+                m["n"] = int(m.get("n") or 0) + 1
+                m["chance"] = round(float(m.get("chance") or 0.0) + chance, 6)
+                self.score._put("reads", "attention:total", float(prev["value"]) + hit, m)
+                seq = self.log.append("attention_check", {"hit": round(hit, 4), "chance": round(chance, 4)})
+                return {"ok": True, "seq": seq}
+            if kind == "belief_outcome":  # a belief's confidence against what happened: running Brier sums by source
+                src = str(b.get("source") or "")[:10]
+                conf, out = min(1.0, max(0.0, float(b.get("confidence") or 0.0))), 1.0 if b.get("outcome") else 0.0
+                key = f"brier:{src}"
+                prev = self.score.get("reads", key) or {"value": 0.0, "meta": {}}
+                m = dict(prev.get("meta") or {})
+                m["n"] = int(m.get("n") or 0) + 1
+                m["conf_sum"] = round(float(m.get("conf_sum") or 0.0) + conf, 6)
+                m["hit_sum"] = round(float(m.get("hit_sum") or 0.0) + out, 6)
+                self.score._put("reads", key, float(prev["value"]) + (conf - out) ** 2, m)
+                seq = self.log.append(
+                    "belief_outcome", {"source": src, "confidence": round(conf, 3), "outcome": int(out)}
+                )
+                return {"ok": True, "seq": seq}
             self.engine.freeze(str(b.get("why") or "check"))
             return {"ok": True}
 

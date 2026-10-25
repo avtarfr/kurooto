@@ -26,7 +26,21 @@ from pathlib import Path
 from kurooto import mind
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
-from kurooto.mind import act, feelings, gate, journal, measure, mood, promises, signals, story, tone
+from kurooto.mind import (
+    act,
+    attention,
+    beliefs,
+    feelings,
+    gate,
+    journal,
+    measure,
+    mood,
+    promises,
+    signals,
+    story,
+    tone,
+    workspace,
+)
 from kurooto.mind import log as mlog
 from kurooto.mind.harness import indicators as harness_indicators
 from kurooto.mind.harness import run as harness_run
@@ -93,6 +107,9 @@ class Mind(Module):
             "story_week", "weekly sun 23:55", lambda p: story.write_week(self.app) if mind.on(self.app) else None
         )
         self.every("story_night", "daily 23:50", self._story_night)
+        # stage 10: the workspace's cycle (and on an alarm or call, at once), then the beliefs from today's read
+        self.every("workspace", "every 1m", lambda p: workspace.cycle(self.app) and None)
+        self.every("beliefs", "hourly", lambda p: beliefs.sync(self.app) if mind.on(self.app) else 0)
         # stage 09: the hidden harness, nightly and on the charger only
         self.every("harness", "daily 02:40", lambda p: harness_run.nightly(self.app) if mind.on(self.app) else None)
 
@@ -131,6 +148,8 @@ class Mind(Module):
     def _mirror(self, rec: dict) -> None:
         """An event, as it happens (core/events.py): the mirrored kinds go to the scorekeeper. Never blocks."""
         kind = str(rec.get("kind") or "")
+        if kind in ("alarm_rang", "call_rang") and workspace.on(self.app):  # a high-priority event: an immediate cycle
+            workspace.poke(self.app, f"event:{kind}", "event", kind.replace("_", " "))
         if mlog.mirrored(kind) and mind.on(self.app):
             mind.connect(self.app).report(kind, rec)
 
@@ -268,6 +287,19 @@ class Mind(Module):
                 usage="/mood",
             ),
             Command(
+                "thinking",
+                "what Kurooto has on its mind right now, why, and how well it predicts its own attention; "
+                "/thinking pin|unpin|mute|veto|unveto <item or part>",
+                self.thinking_cmd,
+                usage="/thinking [pin|unpin|mute|veto|unveto <item>]",
+            ),
+            Command(
+                "beliefs",
+                "what Kurooto believes, with where each belief came from and how sure it is; /beliefs <topic>",
+                self.beliefs_cmd,
+                usage="/beliefs [topic]",
+            ),
+            Command(
                 "mind",
                 "Brain: its scorekeeper, its log and whether the log checks out; /mind verify checks all of it; "
                 "/mind gate shows what it held back or removed from messages today",
@@ -351,6 +383,24 @@ class Mind(Module):
         from kurooto.mind import report
 
         return report.budget_text(self.app)
+
+    def thinking_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        words = (arg or "").split()
+        acts = {
+            "pin": workspace.pin,
+            "unpin": workspace.unpin,
+            "mute": workspace.mute,
+            "veto": workspace.veto,
+            "unveto": workspace.unveto,
+        }
+        if len(words) == 2 and words[0].lower() in acts:
+            return acts[words[0].lower()](self.app, words[1])
+        return attention.report(self.app)
+
+    def beliefs_cmd(self, msg: Incoming, arg: str) -> str:
+        return beliefs.report(self.app, arg or "") if mind.on(self.app) else "Brain is off (Features → Brain)."
 
     def promises_cmd(self, msg: Incoming, arg: str) -> str:
         return promises.listing(self.app) if mind.on(self.app) else "Brain is off (Features → Brain)."
@@ -441,6 +491,8 @@ def button(app, ref: str, act: str) -> str:
         "mind-promises.json",
         "mind-feelings.json",
         "mind-acts.json",
+        "mind-workspace.json",
+        "mind-beliefs.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

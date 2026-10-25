@@ -405,6 +405,12 @@ def check(app: App, msg: Message) -> tuple[str, Message, dict | None]:
                 _seen(st, "blocked", "nothing left after the lints", "")
                 _save(app, st)
                 return "block", msg, None
+        from kurooto.mind import beliefs, workspace
+
+        said, fixed = beliefs.lint(app, msg.text)  # I-13: a guess is never stated as fact
+        if fixed:
+            _seen(st, "reworded", "stated " + "/".join(sorted(set(fixed))) + " as fact", msg.text)
+            msg = replace(msg, text=said)
         if not unprompted:
             _save(app, st)
             return "send", msg, None
@@ -420,6 +426,10 @@ def check(app: App, msg: Message) -> tuple[str, Message, dict | None]:
                 return "block", msg, None
         t = time.time()
         if not _exempt(app, msg):
+            if not workspace.allows(app, msg):  # stage 10: it names an item that isn't on its mind
+                _seen(st, "blocked", "it isn't on its mind right now (the workspace)", msg.text)
+                _save(app, st)
+                return "block", msg, None
             kind = TOUCH_KINDS.get(msg.why or "")
             if kind:
                 mute_check(app, st)
@@ -487,6 +497,10 @@ def sent(app: App, msg: Message) -> None:
         st = _load(app)
         t = time.time()
         st["hour"].append(t)
+        if msg.item:
+            from kurooto.mind import workspace
+
+            workspace.mentioned(app, msg.item)
         today = now().date().isoformat()
         st["days"][today] = int(st["days"].get(today, 0)) + 1
         woke = woke_at(app)

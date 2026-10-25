@@ -611,10 +611,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `mind.anchor_every` | `1000` | the log's head is written down every this many records (and once a day) |
+| `mind.attention.on` | `true` | a model of its own attention; "what are you thinking about?" is answered from it |
 | `mind.autonomy.enforce` | `false` | on: its verdicts bind (it asks first for what it isn't trusted with), shadow or not |
 | `mind.autonomy.on` | `true` | decide what it may do unasked from your reactions, per class of action (shadow first) |
 | `mind.autonomy.shadow_days` | `21` | for this long its verdicts are counted and shown, not enforced |
 | `mind.autonomy.thresholds` | `{}` | your own bars per class, over the defaults: {"R1": 0.8} |
+| `mind.beliefs.on` | `true` | every belief keeps its source (said, saw, inferred, imagined) and a confidence |
 | `mind.budget.on` | `true` | the body budget: its variables, setpoints and drive |
 | `mind.feelings.express` | `true` | it may say one about an item, through the gate's lints, at most 3 unprompted a week |
 | `mind.feelings.on` | `true` | computed states about specific items, and what they make it do (inward effort only) |
@@ -639,6 +641,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.tone.on` | `false` | tag each message you write with one word, with the model on this computer only |
 | `mind.values.on` | `true` | learned values; for this many days they never affect a choice |
 | `mind.values.shadow_days` | `21` | learned values; for this many days they never affect a choice |
+| `mind.workspace.capacity` | `3` | how many items win a cycle (1 to 3) |
+| `mind.workspace.cycle_s` | `30` | the least gap in seconds between two cycles (the job runs every minute; events poke it) |
+| `mind.workspace.on` | `true` | a small "now" stage parts compete to enter; only what wins may drive an unprompted action |
 
 ### `modules`
 

@@ -636,11 +636,46 @@ scorekeepers (the real files are never touched; `allow_writes()` is called there
 
 ### Indicators
 
-`indicators.INDICATORS` rows {name, theory, ablation, metric, result}: two measured (confidence's gain over a flat 50%, the share of corrupted self-reports
-the journal rejects) and three "not built yet" (workspace broadcast, attention schema: stage 10; agency and embodiment: stage 13). The page text begins with
+`indicators.INDICATORS` rows {name, theory, ablation, metric, result}: four measured (confidence's gain over a flat 50%, the share of corrupted self-reports
+the journal rejects) and one "not built yet" (agency and embodiment: stage 13); stage 10 fills in the workspace row (a proxy: the share of cycles won by more than one kind of item) and the attention row (its guesses minus chance). The page text begins with
 exactly "Functional indicators (not evidence of sentience)".
 
 ### Not done
 
 The dashboard pages (the capability map and the indicator page) and their charts: `/capabilities` and `/indicators` carry the same content as text. The
 spec's replay of past days through a dry-run gate (the baseline here is its own recorded outcomes: promises kept and broken). A judge-graded family.
+
+## Stage 10: the global workspace, the attention schema, source-tagged beliefs (I-13)
+
+Code: `mind/workspace.py`, `mind/attention.py`, `mind/beliefs.py`; fact kinds `workspace_cycle`, `attention_check`, `belief_outcome` in `log.BUDGET_KINDS`
+(the scorekeeper logs `workspace` with ids and numbers; `attention:total` and `brier:<source>` are running sums in the `reads` table); `/thinking`,
+`/beliefs`, the `workspace` (every 1m) and `beliefs` (hourly) jobs in `modules/mind.py`; `alarm_rang` and `call_rang` poke an immediate cycle. Gate:
+`gate.check` calls `workspace.allows` (an unprompted, non-exempt message whose `Message.item` is `kind:id` of a workspace kind must have won one of the last
+two cycles, else blocked) and `beliefs.lint` (every text); `gate.sent` calls `workspace.mentioned` (fatigue). Context: `providers/context.headless_context`
+adds `workspace.context()`. Tests: `test_mind_workspace.py`, `test_mind_beliefs.py`. Switches: `mind.workspace.on|capacity|cycle_s`, `mind.attention.on`,
+`mind.beliefs.on`.
+
+### The cycle
+
+`register_bidder(name, fn(app, now) -> [Bid])`; built in: deadlines, promises, read (private), forecast (private), goals (standing, `set_standing`).
+`salience = stake x urgency x (1 + surprise) x (1 - fatigue)`, fatigue = mentions in 24 h / 3, capped at 1. Pinned items win first, muted ones are
+skipped, a vetoed bidder isn't called, and a bidder that raises never stops the cycle. The job runs each minute (the scheduler has no finer step);
+`cycle_s` is the least gap between two cycles and `poke` forces one. State (words included) is `<state>/mind-workspace.json`; the log gets ids, kinds and
+numbers (the kinds include `read`: a name, not a reading). **Deviation:** the spec says to replace the assembler's item selection; the assembler is
+left alone and "On my mind" is added to `headless_context` (additive, no regression risk). **Deviation:** only messages that declare a `kind:id`
+item are held to the winner rule, as no existing message does yet; health, curiosity, Dreaming and research bidders arrive with their stages through
+`register_bidder`.
+
+### The attention schema
+
+`predict` is persistence: the winners now that aren't worn out. `check` compares the last prediction to the new winners each cycle (hit share against
+`cap / n_bids` chance); `accuracy` reads the sums; `accuracy_line` says "no better than chance" unless the gain is over 5 points, and "too few to tell"
+under 10 checks. Persistence is a weak baseline, which is the point of scoring it.
+
+### Beliefs
+
+`beliefs.add(app, id, text, source, confidence)`, `resolve(app, id, outcome)` (inferred and imagined only are scored), `sync` (today's read becomes an
+inferred belief), `lint` (a sentence matching an unsettled belief by two or more key words and 70% of them is reworded unless it already hedges),
+`brier`, `misses` (confidence 0.8 or more and wrong: Dreaming's replay set). **Not done:** `source=` on the memory ledger's rows (the ledger takes extra
+fields already, so passing `source=` works; nothing sets it yet), the forecast and Dreaming outputs as beliefs, and the dashboard "On its mind" panel
+(`/thinking` carries the same content).

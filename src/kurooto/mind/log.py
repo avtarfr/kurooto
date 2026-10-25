@@ -93,8 +93,17 @@ def mirrored(kind: str) -> bool:
 # stage 04: facts about the day (the scorekeeper checks and files them; see scorekeeper.Keeper.mood)
 MOOD_KINDS = frozenset({"signal", "read_day", "read_answer", "forecast", "score_forecast", "read_forget", "read_off"})
 BUDGET_KINDS = frozenset(
-    {"budget_tick", "learning_verdict", "learning_freeze", "trust_evidence", "harness_result"}
-)  # stage 05 and 09: see mind/engine.py
+    {
+        "budget_tick",
+        "learning_verdict",
+        "learning_freeze",
+        "trust_evidence",
+        "harness_result",
+        "workspace_cycle",
+        "attention_check",
+        "belief_outcome",
+    }
+)  # stages 05, 09 and 10: see mind/engine.py
 
 
 def accepted_fact(kind: str) -> bool:

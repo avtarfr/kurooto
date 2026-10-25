@@ -1,14 +1,11 @@
-"""Functional indicators (Brain, 0.8.0 stage 09): the indicator properties of the consciousness literature (Butlin, Long
-et al., 2023)
-as nightly ablation tests. The page that lists them is titled exactly "Functional indicators (not evidence of
-sentience)": it says
-what was measured and claims nothing beyond it.
+"""Functional indicators (Brain, 0.8.0 stage 09): the indicator properties of the consciousness literature (Butlin,
+Long et al., 2023) as nightly ablation tests. The page that lists them is titled exactly "Functional indicators (not
+evidence of sentience)": it says what was measured and claims nothing beyond it.
 
 Each indicator is {name, theory, ablation, metric, result}. An ablation switches a part off in a scratch copy and
-measures whether
-the metric drops; the result is the measured drop, or "not built yet" for an indicator whose part doesn't exist (the
-global
-workspace and the attention schema arrive in stage 10: until then their rows say so rather than guess).
+measures whether the metric drops; the result is the measured drop, or "not built yet" for an indicator whose part
+doesn't exist or has too little data. Stage 10 fills in the global workspace (a proxy: how often a cycle's winners
+come from more than one part) and the attention schema (its guesses about its own next focus against chance).
 """
 
 from __future__ import annotations
@@ -60,6 +57,26 @@ def _calibration(app: App) -> float | None:
     return round(brier_flat - brier, 4)
 
 
+def _workspace(app: App) -> float | None:
+    """Broadcast across parts: the share of the last cycles whose winners came from more than one kind of item. A
+    proxy: with the workspace off there is no shared "now", so the share is 0."""
+    from kurooto.mind import workspace
+
+    h = workspace._state(app)["history"][-60:]  # noqa: SLF001
+    if len(h) < 10:
+        return None
+    return round(sum(1 for c in h if len({i.split(":", 1)[0] for i in c["items"]}) > 1) / len(h), 4)
+
+
+def _attention(app: App) -> float | None:
+    """Accuracy of reports about its own attention: how much its guesses beat picking at random. The ablation is the
+    schema removed (it then guesses nothing, so the gain is 0)."""
+    from kurooto.mind import attention
+
+    n, hit, chance = attention.accuracy(app)
+    return None if n < attention.MIN_CHECKS else round(hit - chance, 4)
+
+
 def _self_report(app: App) -> float | None:
     """Self-report accuracy: of the feeling lines it wrote, the share that passed the journal's checks against the log.
     The ablation
@@ -94,16 +111,16 @@ INDICATORS = [
     Indicator(
         "Global workspace broadcast",
         "global workspace theory",
-        "switch the workspace off (stage 10)",
-        "cross-module coordination",
-        lambda app: None,
+        "switch the workspace off",
+        "share of cycles won by more than one kind of item (a proxy)",
+        _workspace,
     ),
     Indicator(
         "Attention schema",
         "attention schema theory",
-        "remove the attention schema (stage 10)",
-        "accuracy of reports about its own attention",
-        lambda app: None,
+        "remove the attention schema",
+        "its guesses about its own next focus, minus chance",
+        _attention,
     ),
     Indicator(
         "Agency and embodiment",

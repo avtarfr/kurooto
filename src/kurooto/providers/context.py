@@ -54,9 +54,10 @@ def headless_context(app: App, extra: str = "") -> str:
     from kurooto.mind import (  # (Brain) its story first, the honesty rule about feelings and its state, if on
         feelings,
         story,
+        workspace,
     )
 
-    for part in (story.prompt(app), feelings.prompt(app)):
+    for part in (story.prompt(app), feelings.prompt(app), workspace.context(app)):
         if part:
             lines.append(part)
     from kurooto.core import persona  # your persona card and the boundaries it keeps (core/persona.py)
