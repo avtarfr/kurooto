@@ -106,7 +106,8 @@ of the app's screen says whether it's connected right now.
 - **Phone**: the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), **Location reminders**
   (Places, see [Location reminders](#location-reminders)), the **Ringtones** (**Call ringtone** and **Wake-up alarm
   tone**, each showing the tone it's set to; tap to change it. The alarm tone plays on the alarm volume), **Bedside
-  mode** ([below](#bedside-mode-android)), and **This phone** (what it's paired with, the app's version, and **Unpair
+  mode** ([below](#bedside-mode-android)), **Senses** (0.8.0: one switch for each thing the phone may tell Brain, all off until you
+  switch them on; see [What it senses](mind.md#what-it-senses-and-what-it-never-does)), and **This phone** (what it's paired with, the app's version, and **Unpair
   this phone**, which asks first).
 
 Pull a tab down to look again; the app also looks each time you open it. Back on Inbox or Phone goes to Today. It
