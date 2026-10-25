@@ -29,6 +29,10 @@ Standing plans, never struck through.
 - **Every setting explained in a tooltip** (planned for 0.8.0): hover over a setting's name in Settings (dashboard) and a tooltip says what it does and what its
   values mean (long-press in the phone app). The words are the ones `docs/SETTINGS_GUIDE.md` already has from the code's own comments; a setting without one
   fails a test, so none ships unexplained.
+- **Find and send me a file** (planned for 0.8.0): an opt-in index of folders you choose (Downloads, Documents) kept on this computer, with no AI: names, dates and,
+  for text, Markdown, code, PDFs (Poppler) and Office files, their words, in SQLite full-text search like the history index. `/find thermodynamics quiz pdf` lists matches
+  with a **Send** button that sends that one file to you; contents never go to an AI (a plain-English ask can give the AI only the list of file names and short snippets, and
+  that is its own switch, off by default). Folders you list, patterns it never reads (keys, `.env`, hidden folders), size limits, and a drop-down for what to index.
 - **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
 - **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
