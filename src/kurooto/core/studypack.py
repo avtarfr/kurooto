@@ -67,7 +67,7 @@ FILLER = set(
 register_defaults(
     "studypack",
     {
-        "instructions": True,  # your own extra lines (studypack.extra) and a format phrase ("pdf too") go into the prompt
+        "instructions": True,  # your own extra lines (studypack.extra) and a format phrase ("pdf too") go in the prompt
         "extra": "",  # your own rules for the AI, one per line, added to the end of every pack's PROMPT.md
     },
 )
