@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.8.4",
+  "notes": "Balanced 3-column dashboard \ufff9layout (Notes, Systems, Brain), split Status panel at bottom, themed Brain 3D visualization, collapsible hover side pane, and continuous model auto-spin.",
+  "created": 1792965042.2738922,
+  "files": {
+   "kurooto-0.8.4.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.4/kurooto-0.8.4.tar.gz",
+    "sha256": "d494302370b613ea9cd71d2824ac2625e1a6265157d444fdaeecfed760529160",
+    "size": 4912712
+   }
+  }
+ },
+ "sig": "/0hpT/kTKAfyUovjYs9LU2eIuETi//MNyHMB1dIC3dK3r0NIrqxfj4mkfPpDf9I8I5gs7H+kUjSB7klIzUJQAw=="
+}
