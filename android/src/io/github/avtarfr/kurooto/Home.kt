@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -62,7 +63,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -88,9 +91,9 @@ private class Tab(val label: String, val icon: Int, val page: Int, val opens: Cl
 private val TABS = listOf(
     Tab("Today", R.drawable.ic_nav_today, 0),
     Tab("Inbox", R.drawable.ic_nav_inbox, 1),
-    // your computer's Systems and Notes map, drawn by the dashboard's own code (0.7.0); ViewsActivity switches
-    // between the two at its top and opens on the one you looked at last
-    Tab("Views", R.drawable.ic_nav_views, -1, opens = ViewsActivity::class.java),
+    // your computer's Systems and Notes map, drawn by the dashboard's own code (0.7.0), now a page of this screen (0.8.0: the bar
+    // stays); ViewsPane switches between the two at its top and opens on the one you looked at last
+    Tab("Views", R.drawable.ic_nav_views, 3),
     Tab("Phone", R.drawable.ic_nav_phone, 2),
 )
 
@@ -129,6 +132,7 @@ private fun Tabs(a: MainActivity, ui: HomeState) {
                         when (tab) {
                             0 -> TodayPage(a, ui, room)
                             1 -> InboxPage(a, ui, room)
+                            3 -> ViewsPage(a, ui, room)
                             else -> PhonePage(a, ui, room)
                         }
                     }
@@ -137,6 +141,29 @@ private fun Tabs(a: MainActivity, ui: HomeState) {
             }
         }
     }
+}
+
+/** The Views tab (0.8.0): Systems and the Notes map in the shut-in WebView of ViewsPane, inside this screen so the bar stays. It
+ *  fetches while the tab is showing and the screen is in front, and stops otherwise. */
+@Composable
+private fun ViewsPage(a: MainActivity, ui: HomeState, room: PaddingValues) {
+    val pane = remember { ViewsPane(a, null, ui.demo, null) }
+    DisposableEffect(pane) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) pane.resume() else if (e == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) pane.pause()
+        }
+        a.lifecycle.addObserver(obs)
+        if (a.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) pane.resume()
+        onDispose {
+            a.lifecycle.removeObserver(obs)
+            pane.pause()
+            pane.destroy()
+        }
+    }
+    androidx.compose.ui.viewinterop.AndroidView(
+        factory = { pane.build() },
+        modifier = Modifier.fillMaxSize().padding(room).statusBarsPadding(),
+    )
 }
 
 /** How much room a page leaves at its end for the floating toolbar (its height plus the gap below it). */

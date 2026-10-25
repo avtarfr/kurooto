@@ -283,7 +283,7 @@ def test_the_phone_page_has_no_colours_of_its_own():
 )
 @pytest.mark.parametrize("name", ["common.js", "systems.js", "notesmap.js", "phone.js"])
 def test_the_drawing_code_runs_in_android_6s_webview(name):
-    """The phone app's WebView can be as old as Chrome 58 (ViewsActivity.MIN_CHROME): esbuild's output for that
+    """The phone app's WebView can be as old as Chrome 58 (ViewsPane.MIN_CHROME): esbuild's output for that
     target is the same as for the newest only if the file needs nothing newer (?., ??, object spread, catch without a
     binding, class fields...)."""
     esbuild = STATIC.parents[1] / "data" / "worker" / "node_modules" / ".bin" / "esbuild"
