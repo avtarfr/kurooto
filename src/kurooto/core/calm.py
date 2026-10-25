@@ -254,6 +254,11 @@ REASONS: dict[str, Reason] = {
             stop=None,
         ),
         R("mind.skill_offer", "a question: you do this over and over, shall it learn to do it", stop=None),
+        R(
+            "mind.false_belief",
+            "a correction, once, with the evidence, when something you were told has since turned out wrong",
+            stop=None,
+        ),
         R("mind.lab", "the morning note on what the overnight lab tried, with nulls as much as wins", stop=None),
         R(
             "mind.act_digest",

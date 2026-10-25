@@ -772,3 +772,22 @@ the line's outbox (100 things shared with chat and answers).
 counting needs the app's process alive. (3) The 30-second interoception cycle is a minute (the scheduler's step). (4) Zotero opens are not collected. (5) The
 sensorimotor model records effects when the lab or an AI request is running; nothing else yet uses `expected` except `would_overheat` (not yet called by the lab:
 it still uses AC, lid and heat). (6) The Android part was built (tests, lint, dev APK) but not yet opened on the real phone: it was not plugged in.
+
+## Stage 14: theory of mind with provenance (I-13, I-14, I-7)
+
+Code: `mind/tom/` (`model.py`, `knowledge.py`, `beliefs_about.py`, `goals.py`, `prefs.py`, `attention_of.py`); `/model` and jobs `tom_sync` (hourly), `tom_check` (30m) in
+`modules/mind.py`; `Message.purpose`, checked in `gate.check` (only `level`, `timing`, `correct_fact`; `correct_fact` only with the reason `mind.false_belief`);
+the attention hold in the gate (once per message, up to 15 minutes, never sooner); `assembler.for_request` appends `knowledge.hint`; `backups` and `deadlines` call
+`beliefs_about.told`; calm reason `mind.false_belief`; `stops.PROTECTED` gains `tom/model.py`. Tests: `test_mind_tom.py` (16). Switches: `mind.tom.{on, false_beliefs,
+attention (off)}`.
+
+Rows live in `<state>/mind-tom.json` (words included). A row is keyed by (part, subject, claim), or by subject alone with `by_subject` for a claim that changes (mastery,
+an undo count). `put` refuses a deny-listed topic (counted, not kept), a forgotten row and an inferred re-statement of a row marked Wrong. `knowledge.update` is BKT with
+init 0.30, transit 0.15, slip 0.10, guess 0.20 and a weight (a weak sign moves it less); levels: new below 0.35, solid from 0.70. `mentions` finds concept names in a request
+as whole words (alias and title). Evidence from `from_quiz` (a graded answer counts once; cards that name a concept), `from_notes` (a changed note) and `asked`. The false-belief
+check has two fact checkers (backup, deadline) and runs only on those domains.
+
+**Deviations.** (1) `/model` is text with ids (Wrong, Forget as commands); no inline buttons, no dashboard page, no mastery overlay on the notes map. (2) Stating a belief in chat
+("the deadline is Friday") isn't captured automatically yet: `beliefs_about.told(...)` is called with what Kurooto tells him (backup done on `/backup`, deadline reminders); his
+own statements need an intent hook. (3) Quiz cards are linked to concepts by name mention, since a card has no concept id. (4) Prerequisites in the frontier are a note's typed
+`prereq` links, else its links. (5) Exam results he reports aren't evidence yet. (6) Stated goals from chat text aren't parsed; deadlines and projects are.

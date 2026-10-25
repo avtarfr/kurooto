@@ -659,6 +659,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.skills.on` | `true` | solved tasks and demonstrations become tested, reusable skills; each starts by asking first |
 | `mind.story.on` | `true` | one autobiography every part of Kurooto reads first (a fixed core, then its recent weeks) |
 | `mind.story.tokens` | `800` | the self-summary is at most this many tokens (about 4 characters each) |
+| `mind.tom.attention` | `false` | hold a message while you're deep in something (needs the activity stream) |
+| `mind.tom.false_beliefs` | `true` | tell you once, with the evidence, when something you were told proved wrong |
+| `mind.tom.on` | `true` | a model of what you know, believe, want and prefer, each row with its source |
 | `mind.tone.on` | `false` | tag each message you write with one word, with the model on this computer only |
 | `mind.values.on` | `true` | learned values; for this many days they never affect a choice |
 | `mind.values.shadow_days` | `21` | learned values; for this many days they never affect a choice |

@@ -995,6 +995,18 @@ class Deadlines(Module):
             **({} if it["kind"] == "exam" else {"map_kind": "deadline", "map_ref": i}),  # a reply "4/7" (_reply)
         )
         self.app.events.emit("deadline_told", urgent=urgent)
+        try:  # what they were told, to notice if the date moves (Brain, mind/tom/beliefs_about.py)
+            from kurooto.mind.tom import beliefs_about
+
+            beliefs_about.told(
+                self.app,
+                "deadline",
+                i,
+                f"{it['title']} is due {dt.datetime.fromisoformat(it['due']):%A %d %B}",
+                {"type": "deadline", "id": i, "due": it["due"]},
+            )
+        except Exception:  # noqa: S110
+            pass
 
     def _call(self, i: str, it: dict, h: float) -> bool:
         """The six-hour call. It waits out classes, /hold, focus and the night; if that would take it too close to

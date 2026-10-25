@@ -222,6 +222,24 @@ lists them with their source, how sure it was and how each source has done. Swit
 `mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
 `mind-beliefs.json`.
 
+## What it thinks you know, believe and want, and how to correct it
+
+Brain keeps a model of your mind you can read and correct: `/model`. Five parts, each row with where it came from (said, saw, inferred, imagined), how sure it is
+and what it rests on. **What you know:** a rough mastery of each concept in your notes, from your quiz answers, from having written about it (a little) and from
+having asked about it (a little the other way), by a simple Bayesian knowledge-tracing model. It is used to pitch explanations: new to you, the basics are
+defined first; solid, they're skipped; and quizzes and study packs can aim at the frontier (what you haven't mastered but whose neighbours you have). **What you
+believe:** only about your work and Kurooto's own state, from what you said and what it told you. If it told you the backup ran and the backup then failed, or the
+date of a deadline moved after it told you, it says so **once**, plainly, with the evidence ("You may think the backup ran on Monday; it failed on Tuesday at 03:10").
+It never models your opinions. **What you want:** your deadlines and goals you state (they become standing goals in the workspace) and, hedged ("it looks like
+you're working on glacier-flow, 60% sure"), what it infers from the activity stream. **How you like help:** your how-to-help-me lines and what you undo, with the date.
+**What you're on now** (`mind.tom.attention`, off, needs the activity stream): while you've been deep in one project for 20 minutes, a message that came by itself waits
+(at most 15 minutes) for you to switch; it can only delay.
+
+It is only ever used for the **level** of an explanation, the **timing** of a message (later, quieter) and a **fact correction**; the gate refuses any other purpose, so it
+can't be used to change your mind. It never models your health, relationships, politics, religion or money: a deny-list is checked when a row is written, and what matches
+isn't kept. `/model wrong <id>` says a row is wrong (that counts as something you said, and it won't be inferred again); `/model forget <id>` drops it for good.
+Switches: `mind.tom.on`, `mind.tom.false_beliefs`, `mind.tom.attention`.
+
 ## What it senses, and what it never does
 
 Kurooto looks at three things, each switchable, and everything stays on this computer.

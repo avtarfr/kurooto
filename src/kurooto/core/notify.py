@@ -74,6 +74,9 @@ class Message:
     # Brain's gate (mind/gate.py): set only when Brain's read of you made this message quieter; the receipt says how
     state_read: dict | None = None
     before: Any = None  # the message as it was before that (Undo sends it)
+    purpose: str | None = (
+        None  # what Brain's model of you was used for: level, timing or correct_fact (mind/tom/model.py)
+    )
 
 
 Sender = Callable[[Message], Any]  # returns the channel's message id, or None

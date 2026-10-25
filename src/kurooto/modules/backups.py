@@ -665,6 +665,19 @@ class Backups(Module):
         def work():
             ok, text = self.backup("now")
             self.app.notify(text if ok else f"Backup didn't work: {text}", kind="result", why="asked")
+            if ok:
+                try:  # what they were told, to notice if it's overtaken (Brain, mind/tom/beliefs_about.py)
+                    from kurooto.mind.tom import beliefs_about
+
+                    beliefs_about.told(
+                        self.app,
+                        "backup",
+                        "last",
+                        f"the backup ran on {time.strftime('%A')}",
+                        {"type": "backup", "ok": True, "at": time.time()},
+                    )
+                except Exception:  # noqa: S110
+                    pass
 
         threading.Thread(target=work, name="backup", daemon=True).start()
         return "Backing up now; I'll tell you when it's done."

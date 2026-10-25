@@ -424,6 +424,16 @@ def check(app: App, msg: Message) -> tuple[str, Message, dict | None]:
         if fixed:
             _seen(st, "reworded", "stated " + "/".join(sorted(set(fixed))) + " as fact", msg.text)
             msg = replace(msg, text=said)
+        purpose = getattr(msg, "purpose", None)
+        if (
+            purpose
+        ):  # the model of your mind may adjust level and timing, or correct a fact once; nothing else (I-7, I-14)
+            from kurooto.mind.tom import model as tom_model
+
+            if purpose not in tom_model.PURPOSES or (purpose == "correct_fact" and msg.why != "mind.false_belief"):
+                _seen(st, "blocked", f"purpose {str(purpose)[:20]!r} isn't allowed", msg.text)
+                _save(app, st)
+                return "block", msg, None
         if not unprompted:
             _save(app, st)
             return "send", msg, None
@@ -443,6 +453,16 @@ def check(app: App, msg: Message) -> tuple[str, Message, dict | None]:
                 _seen(st, "blocked", "it isn't on its mind right now (the workspace)", msg.text)
                 _save(app, st)
                 return "block", msg, None
+            from kurooto.mind.tom import attention_of
+
+            key = str(hash(msg.text))
+            held_deep = st.setdefault("deep", {})
+            hold = attention_of.hold_s(app) if key not in held_deep else 0.0
+            if hold:  # you're deep in something: it waits (once) for you to switch; later only, never sooner (I-7)
+                held_deep[key] = t
+                for k in [k for k, v in held_deep.items() if t - v > 3600]:
+                    held_deep.pop(k, None)
+                return _hold(app, st, msg, t + hold, "you're deep in something")
             kind = TOUCH_KINDS.get(msg.why or "")
             if kind:
                 mute_check(app, st)

@@ -57,6 +57,12 @@ from kurooto.mind.skills import demos as skill_demos
 from kurooto.mind.skills import distill as skill_distill
 from kurooto.mind.skills import finetune as skill_finetune
 from kurooto.mind.skills import library as skill_library
+from kurooto.mind.tom import attention_of as tom_attention
+from kurooto.mind.tom import beliefs_about as tom_beliefs
+from kurooto.mind.tom import goals as tom_goals
+from kurooto.mind.tom import knowledge as tom_knowledge
+from kurooto.mind.tom import model as tom_model
+from kurooto.mind.tom import prefs as tom_prefs
 from kurooto.modules.base import Command, Incoming, Module
 
 register_defaults(
@@ -127,6 +133,9 @@ class Mind(Module):
         workspace.register_bidder("lab", lab_report.bid)
         self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None)
         self.every("lab_digest", "daily 07:40", self._lab_digest)
+        # stage 14: the model of their mind (what they know, believe, want, prefer, attend to) and false-belief checks
+        self.every("tom_sync", "hourly", self._tom_sync)
+        self.every("tom_check", "every 30m", lambda p: tom_beliefs.check(self.app) and None)
         # stage 13: a body: its own machine every minute, the activity stream (opt-in), the totals kept 7 days raw
         workspace.register_bidder("body", senses_intero.bids)
         self.every("intero", "every 1m", lambda p: senses_intero.tick(self.app) and None)
@@ -315,6 +324,12 @@ class Mind(Module):
                 usage="/mood",
             ),
             Command(
+                "model",
+                "what Kurooto thinks you know, believe, want and prefer; /model wrong <id>, /model forget <id>",
+                self.model_cmd,
+                usage="/model [knowledge|belief|goal|pref|attention|wrong <id>|forget <id>]",
+            ),
+            Command(
                 "senses",
                 "what Kurooto senses: its machine, your activity (if on), your phone's sensors (each opt-in)",
                 self.senses_cmd,
@@ -450,6 +465,24 @@ class Mind(Module):
         from kurooto.mind import report
 
         return report.budget_text(self.app)
+
+    def _tom_sync(self, payload: dict | None = None) -> int:
+        if not tom_model.on(self.app):
+            return 0
+        n = tom_knowledge.from_notes(self.app) + tom_knowledge.from_quiz(self.app) + tom_goals.sync_deadlines(self.app)
+        n += tom_prefs.sync(self.app) + len(tom_goals.infer_intentions(self.app))
+        tom_attention.remember(self.app)
+        return n
+
+    def model_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        w = (arg or "").split()
+        if len(w) == 2 and w[0] == "wrong":
+            return tom_model.wrong(self.app, w[1])
+        if len(w) == 2 and w[0] == "forget":
+            return tom_model.forget(self.app, w[1])
+        return tom_model.report(self.app, w[0] if w else None)
 
     def senses_cmd(self, msg: Incoming, arg: str) -> str:
         if not mind.on(self.app):
@@ -683,6 +716,7 @@ def button(app, ref: str, act: str) -> str:
         "mind-finetune.json",
         "mind-intero.json",
         "mind-activity.json",
+        "mind-tom.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

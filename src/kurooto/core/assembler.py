@@ -158,7 +158,11 @@ def for_request(app: App, job) -> tuple[str, int]:
         return "", 0
     text = (job.prompt or "").split("Current request:\n", 1)[-1]
     try:
-        return build(app, text)
+        block, n = build(app, text)
+        from kurooto.mind.tom import knowledge
+
+        hint = knowledge.hint(app, text)  # how well they know what this names (Brain's model of their mind)
+        return (block + "\n" + hint).strip() if hint else block, n
     except ledger.Locked:
         return "", 0
     except Exception as e:
