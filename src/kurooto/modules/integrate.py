@@ -395,7 +395,7 @@ class Integrate(Module):
 
     def take_reference(self, note: Path, title: str, text: str) -> str | None:
         """A file dropped in the inbox was read into a note (core/inboxreader.py): queue its text to be read like class
-        material, when integrate.sources has "reference". Its subject: the one subject its text names, else "reference"."""
+        material, when integrate.sources has "reference". Subject: the one its text names, else "reference"."""
         if not self.app.is_on(self.id) or not self.reads("reference"):
             return None
         subject = "reference"
