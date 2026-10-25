@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 (unreleased)
+## 0.8.0 (2026-10-26)
 
 - **The Brain** (module `mind`, off by default, every part its own switch under `mind.*`): a layer that watches how Kurooto
   does, keeps a score it can't edit, and learns from it in the open. It adds `/thinking`, `/beliefs`, `/lab`, `/improve`,
@@ -26,20 +26,20 @@
 - **Fixes:** heavy nightly jobs now run on threads, so they no longer hold up the call line or Telegram (the cause of "offline"
   early in the morning); unreadable books now say why and what to install (Poppler).
 
-## 0.7.7 (unreleased)
+## 0.7.7 (2026-10-26)
 
 - **Night performance 1.1.0** (an update to the add-on, offered once, never applied without your yes): `night_performance.hold_window`
   keeps the performance mode for the whole reading window while you're on the charger, whether or not you're at the computer or
   between pieces of the night's work. Off by default.
 
-## 0.7.6 (unreleased)
+## 0.7.6 (2026-10-25)
 
 - **Six more screens are Material 3 Expressive, floating:** the question you answer from a notification, Quick note, Share to
   Kurooto and the pairing window are now rounded sheets floating over a dimmed screen (tap outside to close); Places and Chat are
   full pages over Kurooto's sky, with floating message bubbles, a rounded message box and links you can tap. They follow the
   Look switches (Vivid or Calm). What they do is unchanged.
 
-## 0.7.5 (unreleased)
+## 0.7.5 (2026-10-25)
 
 - **A limit Kurooto learned is only a measure** (`quota.soft`, default `learned`): background work no longer waits for a limit
   learned from its own count; only a real "limit reached" answer pauses a brain, until the reset it names. A tiny count
