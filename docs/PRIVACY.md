@@ -273,7 +273,7 @@ folder of the state folder, on this computer only:
 |---|---|---|
 | The mind log (`log.db`): ids and numbers only (a deadline added, a call missed, a button tapped, an AI request ended), and Kurooto's own decisions with their reason (up to 300 characters); never the words of a message, a reminder, a title or anything you typed | until you delete it (turn Brain off, then Delete Brain's data) | no; not in backups or Profile sync |
 | The gate's state (`mind-gate.json` in the state folder): counts of messages sent, the touches used, the week's feelings, which kinds are muted, messages held until their time (their text, at most 200), the originals behind an Undo (7 days) and the last 60 things it did (what, why and the first 80 characters of a removed sentence, for `/mind gate`) | until you delete it (Delete Brain's data); held messages and Undo originals go by themselves | no; not in backups or Profile sync |
-| Brain's scores (`score.db`): empty until later parts of Brain fill them | the same | no |
+| Brain's scores (`score.db`): filled by the parts of Brain as they run (forecasts, promises, experiments) | the same | no |
 | Where the log has got to (`anchors.jsonl`), also shown in the morning message | the same | no |
 
 ## How long it's kept

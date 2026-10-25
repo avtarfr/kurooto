@@ -4,8 +4,13 @@ Brain is Kurooto's mind (0.8.0). It's one feature, **off until you turn it on**,
 as it did before 0.8.0. Each part Brain grows has a switch of its own, so you can take what you like and leave the
 rest.
 
-This page grows with Brain. Right now it covers the spine that everything else is built on: a log Kurooto can't
-quietly change, kept by a separate program the AI can't reach.
+Everything is here in 0.8.0: the log Kurooto can't quietly change (kept by a separate program the AI can't reach), and
+the parts built on it: the forecast and read of how you're doing, drives and feelings, autonomy, a true journal and a life
+story, the "now" workspace, beliefs, the research lab and self-improvement, learned skills, the senses, a model of what you
+know and want, week plans, careful forgetting, and (off until you turn them on) precedents and play. When Brain is on, most
+parts start on, each with its own switch (`/mind` lists them); the few that aren't are marked off below. The ones that could
+act on their own (forecasts, autonomy, the read of how you're doing) start in **shadow mode**: they predict and score
+themselves first and can't change what Kurooto does.
 
 **Contents:** [Turning it on and off](#turning-it-on-and-off) · [The log and the scorekeeper](#the-log-and-the-scorekeeper)
 · [Stopping is fine](#stopping-is-fine) · [Quieter, never louder](#it-gets-quieter-never-louder) · [/mind](#mind) · [What it keeps](#what-it-keeps) · [Hardened mode (optional)](#hardened-mode-optional) ·
@@ -38,8 +43,8 @@ Two things make the log trustworthy:
   start to finish no longer matches what you were shown.
 - **Only the scorekeeper writes it.** The scorekeeper is a small separate program that Kurooto starts. Kurooto
   itself, and the AI that does things for you, can hand it facts (like "a reminder went off") but can't write the
-  log or any score. Any other request is refused, and the refusal goes in the log. The scores themselves come in
-  later parts of Brain; for now they're empty.
+  log or any score. Any other request is refused, and the refusal goes in the log. The scores are filled in by the
+  parts of Brain as they run (a forecast scored the next evening, a promise kept or broken, an experiment's result).
 
 If the scorekeeper stops (a crash, the computer killed it), Kurooto starts it again by itself, after a second, then
 waiting longer each time, up to a minute. Facts that come while it's away wait in a file and go in when it's back.
@@ -464,12 +469,14 @@ same on Windows, macOS and Linux; the scorekeeper just runs as you.
 
 ## Questions
 
-**Does Brain make Kurooto do more on its own?** Not this part. It only records. Later parts (forecasts, drives,
-autonomy) will each have their own switch, off until you turn them on.
+**Does Brain make Kurooto do more on its own?** Not by default. The log only records. The parts that could act
+(forecasts, autonomy, the read of how you're doing) start in shadow mode, where they watch and score themselves and change
+nothing, and everything that reaches you goes through Brain's gate, which can only make it quieter. Each part has its own
+switch (`mind.<part>.on`), and a few (precedents, play, the weekly fine-tune, message tone) stay off until you turn them on.
 
 **Will it slow my computer down?** No. The scorekeeper is a small Python program that sits idle until a fact comes
 in. Writing a record takes about a millisecond.
 
 **`/mind` says the log doesn't check out.** Something changed the log outside Kurooto, or the disk damaged it. The
-message names the first record that doesn't hold. Nothing Kurooto does depends on it yet. If you didn't change it
+message names the first record that doesn't hold. If you didn't change it
 yourself, turn Brain off, tap Delete, and turn it on again for a fresh log.

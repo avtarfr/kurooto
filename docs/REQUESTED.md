@@ -16,29 +16,35 @@ Standing plans, never struck through.
 - ~~**A notes sorter**~~ (0.7.4: Features → Notes sorter; see Notes sorter in the user wiki): notes dropped in a scratch folder are moved by Kurooto into the right zettelkasten or
   Kurooto-style folders, with Undo, a limit a night and never overwriting; it needs a permission to move files in your notes,
   which will be a switch, off until you turn it on.
-- **Study pack: your own instructions for the prompt** (planned for 0.8.0): today the prompt that comes in the zip is fixed. A setting for lines of your own
-  ("Markdown only, no PDF or zip", or "also give me a PDF"), a template of your own, and a phrase in the command, so the other AI is told exactly what to hand back.
-- **The notes sorter notices duplicates** (planned for 0.8.0): today it only numbers a taken file name ("note 2") and never overwrites; it doesn't see that a note
+- ~~**Study pack: your own instructions for the prompt** (0.8.0): today the prompt that comes in the zip is fixed. A setting for lines of your own
+  ("Markdown only, no PDF or zip", or "also give me a PDF"), a template of your own, and a phrase in the command, so the other AI is told exactly what to hand back.~~ (built in 0.8.0)
+- ~~**The notes sorter notices duplicates** (0.8.0): today it only numbers a taken file name ("note 2") and never overwrites; it doesn't see that a note
   in the scratch folder is the same as one you already have. Detect an exact copy (same text) and a near copy (same title, most of the text), leave it, and say
-  so with Keep both / Merge / Skip, each with Undo.
-- **The book reader notices duplicates** (planned for 0.8.0): the same PDF in two folders or two subjects (or sent twice) is read twice today (only class material is
-  keyed by its text). Hash each book's pages, read a book once, and link its other copies to it.
-- **Settings as drop-downs wherever the choices are known** (planned for 0.8.0): a setting with a fixed set of values (`quota.soft`, `quota.local`, the Look switches,
+  so with Keep both / Merge / Skip, each with Undo.~~ (built in 0.8.0)
+- ~~**The book reader notices duplicates** (0.8.0): the same PDF in two folders or two subjects (or sent twice) is read twice today (only class material is
+  keyed by its text). Hash each book's pages, read a book once, and link its other copies to it.~~ (built in 0.8.0)
+- ~~**Settings as drop-downs wherever the choices are known** (0.8.0): a setting with a fixed set of values (`quota.soft`, `quota.local`, the Look switches,
   a brain's effort, a time zone, a schedule's day) shows a drop-down in Settings, on the dashboard and in the phone app, instead of a box to type in; a free-text
-  box only where any text is valid.
-- **Every setting explained in a tooltip** (planned for 0.8.0): hover over a setting's name in Settings (dashboard) and a tooltip says what it does and what its
+  box only where any text is valid.~~ (built in 0.8.0)
+- ~~**Every setting explained in a tooltip** (0.8.0): hover over a setting's name in Settings (dashboard) and a tooltip says what it does and what its
   values mean (long-press in the phone app). The words are the ones `docs/SETTINGS_GUIDE.md` already has from the code's own comments; a setting without one
-  fails a test, so none ships unexplained.
-- **Find and send me a file** (planned for 0.8.0): an opt-in index of folders you choose (Downloads, Documents) kept on this computer, with no AI: names, dates and,
+  fails a test, so none ships unexplained.~~ (built in 0.8.0)
+- ~~**Find and send me a file** (0.8.0): an opt-in index of folders you choose (Downloads, Documents) kept on this computer, with no AI: names, dates and,
   for text, Markdown, code, PDFs (Poppler) and Office files, their words, in SQLite full-text search like the history index. `/find thermodynamics quiz pdf` lists matches
   with a **Send** button that sends that one file to you; contents never go to an AI (a plain-English ask can give the AI only the list of file names and short snippets, and
-  that is its own switch, off by default). Folders you list, patterns it never reads (keys, `.env`, hidden folders), size limits, and a drop-down for what to index.
-- **The garden dedupes notes** (planned for 0.8.0): today near-duplicate *concept* notes are asked about three pairs each morning (`integrate.duplicates`). Let the garden
+  that is its own switch, off by default). Folders you list, patterns it never reads (keys, `.env`, hidden folders), size limits, and a drop-down for what to index.~~ (built in 0.8.0)
+- ~~**The garden dedupes notes** (0.8.0): today near-duplicate *concept* notes are asked about three pairs each morning (`integrate.duplicates`). Let the garden
   look for duplicates among all your notes as it goes (the same text, the same title with most of the text, the same concept under two names), as many as
   `integrate.garden_per_day` allows, each one a Merge / Keep both / Add alias question with Undo, never merging or deleting anything without your tap. It covers **your old notes too**, not only what arrived
-  lately: a one-time pass over every note you already have, then a steady pass over what's new.
+  lately: a one-time pass over every note you already have, then a steady pass over what's new.~~ (built in 0.8.0)
 - **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
-- **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
+- **The whole Brain visible from the phone app** (planned for 0.8.1, asked 2026-10-26): a Brain view next to Systems and the Notes map in the app's
+  Views tab, read-only, live while you watch it: what it's thinking, what it did and why, its beliefs and their sources, experiments, proposals,
+  skills, senses (counts only), its model of you, plans, what it forgot, stops and limits, the journal and story headings. Sealed with your phone's key.
+- **A detailed interface for the Brain** (planned for 0.8.1, asked 2026-10-26): beyond the cards, a proper console on the dashboard and the phone:
+  open any decision to see its reasons and evidence, a timeline you can filter by part and day, search across what it has logged, each part's
+  switches and settings next to what that part is doing, and the same view for its experiments, beliefs, skills and plans.
+- **Uninstall what a feature brought** (planned for 0.8.1): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
   without a tap and never what was there before Kurooto; an install receipt, `kurooto installed` and `kurooto remove`,
   and `kurooto uninstall` that follows the receipt. Today turning a feature off keeps everything it installed.
