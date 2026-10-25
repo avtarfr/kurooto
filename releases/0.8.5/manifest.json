@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.8.5",
+  "notes": "Balanced 3-column dashboard layout (Notes, Systems, Brain), full-canvas Brain 3D pane with side-drawer tab, persistent HQ core, themed X-Ray/Cutaway/Solid segment buttons, and split Status panel at bottom.",
+  "created": 1792966033.8964043,
+  "files": {
+   "kurooto-0.8.5.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.5/kurooto-0.8.5.tar.gz",
+    "sha256": "07e0576cbe7a968c31cdc16a1607a8261b762bb52bc7306891e47ab0a300b1c1",
+    "size": 4913094
+   }
+  }
+ },
+ "sig": "5lu6lmZgVZdRTCicPaK4sIeu5WA8Ceq6IzRdfT8Qp4PdCe98v2eqUt5Y8lknj2Gy0Gf3Kac1FEN4oPcLWFcbDQ=="
+}
