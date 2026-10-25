@@ -110,7 +110,7 @@ def test_harness_unreadable(app):
     # nothing outside the mind itself imports the suite or the hidden pool
     for f in SRC.rglob("*.py"):
         rel = f.relative_to(SRC).as_posix()
-        if rel.startswith("mind/") or rel == "modules/mind.py":
+        if rel.startswith("mind/") or rel == "modules/mind.py" or rel == "core/brainview.py":
             continue
         text = f.read_text(encoding="utf-8")
         assert "mind.harness" not in text and "mind/harness" not in text, rel

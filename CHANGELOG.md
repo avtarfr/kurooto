@@ -1,6 +1,21 @@
 # Changelog
 
-## 0.8.1 (unreleased)
+## 0.8.2 (unreleased)
+
+- **The Brain page** (dashboard, Alt+B, or the panes menu → pages → brain): the whole Brain as a 3D model you turn and click, filling the
+  board like Systems does, with the part's monitor always beside it. Eight regions laid out where the human brain keeps its own
+  kinds of work (Headquarters at the thalamic hub, Foresight in the prefrontal front, Conscience at the orbitofrontal edge, Memory
+  in the temporal lobes, Mirror at the temporoparietal junction, Senses at the back, Workshop at the cerebellum, Body at the
+  brainstem). Each region has its own surface pattern and glowing seams; Solid, an animated Cutaway (a scanning edge sweeps open
+  to the interior) and X-ray are toggles; clicking a region closes the surface, dims the rest and brings out its parts; clicking a
+  part opens its monitor, with its switch (`mind.<part>.on`) that works from there. The numbers are plain facts (on or off,
+  shadow, log records, imported past, lab projects, phone senses on); what a part has thought of you stays in its commands.
+- **If you use Brain's hardened mode** (`mind.hardened`, the scorekeeper as its own system user): 0.8.1 changed the scorekeeper
+  (it takes an import request for the past), so after updating to 0.8.1 or later run `sudo tools/mind_harden.sh --apply` again.
+  Until you do, the scorekeeper isn't running, facts wait in a queue and `/mind backfill run` says so. Turning `mind.hardened`
+  off starts Brain's own scorekeeper at once.
+
+## 0.8.1 (2026-10-26)
 
 - **Brain can be fed its past** (`mind.backfill.on`, off; `mind.backfill.events`): `/mind backfill dry` says what's there,
   `/mind backfill run` imports the events Kurooto kept before Brain was switched on, read-only, into a history of their own

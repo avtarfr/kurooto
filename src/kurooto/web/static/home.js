@@ -49,7 +49,7 @@ const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && windo
 // browsers. The pages (activity … settings) open over the whole board, Alt and the underlined letter opens one, and
 // Esc goes back. Roomy (narrow windows) shows every pane, with the pages in its tabs.
 const PANES = { status: "#pane-status", systems: "#pane-systems", notes: "#pane-vault", terminal: "#pane-tabs" };
-const PKEY = { today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
+const PKEY = { brain: "b", today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
 let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
 let STUDY = false; // Study mode: the NOTES map and the STUDY pane only (look.study_mode); HIDE and MAX wait untouched
 let HIDDEN_F = new Set(); // features taken off the Features page (look.hidden_features; only ones that are off)
@@ -144,7 +144,7 @@ function openPage(name) {
   if (!DENSE) { showTab(name); return; }
   closeMenu();
   const host = $("#ov-body");
-  if (PAGE !== name) { host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = ""; host.scrollTop = 0; }
+  if (PAGE !== name) { stopBrain(host); host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = ""; host.scrollTop = 0; }
   PAGE = name;
   if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); // not the terminal below
   applyPanes(); renderPageNav(); renderPage(name, host);
@@ -152,7 +152,7 @@ function openPage(name) {
 function closePage() {
   if (!PAGE) return;
   PAGE = null; ACT_CELL = null;
-  const host = $("#ov-body"); host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = "";
+  const host = $("#ov-body"); stopBrain(host); host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = "";
   applyPanes();
   if (dtab === "kurooto" && paneShown("terminal") && $("#chat-input")) $("#chat-input").focus({ preventScroll: true });
 }
@@ -740,8 +740,8 @@ function renderBoard(m) {
 
 const feed = [];
 const SEEN = new WeakMap(); // when each live event arrived (fresh ones are bright in SYSTEMS)
-const TABS = { today: "Today", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
-const DLABEL = { today: "today", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
+const TABS = { brain: "Brain", today: "Today", activity: "Activity", jobs: "AI jobs", schedule: "Schedule", features: "Features", phone: "Phone", research: "Research", about: "About you", settings: "Settings" };
+const DLABEL = { brain: "brain", today: "today", activity: "activity", jobs: "jobs", schedule: "schedule", features: "features", phone: "phone", research: "research", about: "you", settings: "settings" };
 let tab = "activity"; // roomy: the tab below the panes
 let dtab = "kurooto"; // dense: the terminal pane shows "kurooto" (the chat) or a terminal; the pages open over the board
 const current = () => (DENSE ? PAGE || dtab : tab);
@@ -810,6 +810,24 @@ function renderPage(name, body) {
   else if (name === "about") renderAboutTab(body);
   else if (name === "settings") renderSettings(body);
   else if (name === "terminals") renderTerminals(body);
+  else if (name === "brain") renderBrain(body);
+}
+// Brain (Alt+B): the whole Brain as a 3D model you turn and click, a region at a time, with the part's monitor beside it (brain3d.js,
+// three.js; core/brainview.py gives the islands and their switches). It fills the board, like the other pages.
+let B3 = null;
+const loadScript = (src) => new Promise((ok, no) => { const el = document.createElement("script"); el.src = src; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
+function stopBrain(host) { if (B3) { B3.stop(); B3 = null; } host.classList.remove("b3"); host.style.cssText = ""; }
+async function renderBrain(body) {
+  if (body.querySelector(".b3") || body.classList.contains("b3")) { try { if (B3) B3.update(await api("brain3d")); } catch { /* next poll */ } return; }
+  body.innerHTML = '<p class="d">Loading the Brain…</p>';
+  try {
+    if (!window.THREE) await loadScript("/static/vendor/three/three.min.js?v=r128");
+    if (!window.brain3dMount) await loadScript("/static/brain3d.js?v=1");
+    const data = await api("brain3d");
+    if (PAGE !== "brain" && DENSE) return;
+    body.innerHTML = ""; body.style.cssText = "padding:0;height:100%;overflow:hidden";
+    B3 = window.brain3dMount(body, data, { toggle: async (key, on) => { const r = await api("settings", { key, value: on }); return !!(r && r.ok); } });
+  } catch (e) { body.innerHTML = '<p class="d">The Brain page could not load.</p>'; console.error(e); }
 }
 // Today (Alt+T): the day, and the everyday things done right here (core/actions.py: the same as the commands).
 // One box takes anything: plain words go to Kurooto as if typed on Telegram; "j …" is a journal line, ". …" a note

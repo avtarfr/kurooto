@@ -493,6 +493,25 @@ If your notes sync to a service, this file syncs with them.
 With `mind.lab.in_repo` on, a project's protocol lives in its `.kurooto` folder. That folder holds its own `.gitignore` (`*`), so git
 never sees it and nothing of yours is changed.
 
+## The Brain page (dashboard)
+
+Alt+B (or the panes menu, pages, brain) opens the Brain as a 3D model that fills the board. Turn it by dragging, zoom with the wheel.
+
+- **Eight regions**, placed where the human brain keeps its own kinds of work: **Headquarters** (workspace, attention, beliefs: the
+  hub in the middle), **Foresight** (read, forecast, plans, the hidden harness: the front), **Conscience** (promises, the gate,
+  autonomy, stops, precedents), **Memory vaults** (the log, journal, life story, forgetting, the imported past: the temporal
+  lobes), **Mirror** (the model of you, tone, deep-work hold), **Senses** (machine, activity, phone sensors: the back),
+  **Workshop** (lab, self-improvement, skills, fine-tune, play: the cerebellum), **Body** (budget, feelings, heartbeat: the
+  brainstem). Each region has its own pattern on the surface (rings, stripes, hatching, dots, cross-hatch, grid, fine ridges,
+  bands), shown as a swatch in the list.
+- **Solid, Cutaway, X-ray** (top right): Cutaway sweeps the surface open with a glowing edge to show the inside (the thalamus, the
+  fibre bundles); X-ray makes the surface see-through.
+- **Click a region**: the surface closes, the rest dims and its parts come out as glowing points. **Click a part**: its monitor opens
+  at the right, with its switch (the same `mind.<part>.on` as Settings), what it does and a few numbers (on or off, shadow, log
+  records, imported past, lab projects, phone senses on). What a part has thought of you is not on this page: that's `/thinking`,
+  `/beliefs`, `/model` and the other commands.
+- On a narrow window the monitor goes below the model.
+
 ## Questions
 
 **Does Brain make Kurooto do more on its own?** Not by default. The log only records. The parts that could act
