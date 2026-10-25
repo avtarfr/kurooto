@@ -102,7 +102,7 @@ of the app's screen says whether it's connected right now.
   [Check-in and quiz cards](#check-in-and-quiz-cards)); open questions, approvals and messages (tap one to answer it);
   and what's **waiting for your computer** (things you sent while it was off).
 - **Views**: your computer's **Systems** and **Notes map** (see [Systems and the Notes map on the
-  phone](#systems-and-the-notes-map-on-the-phone)); the two buttons at the top switch between them.
+  phone](#systems-and-the-notes-map-on-the-phone)); the two buttons at the top switch between them. From 0.8.0 it is a real tab: the bar stays at the bottom while you look.
 - **Phone**: the **Checklist** (a tick for each thing that's set up, **Fix** beside the rest), **Location reminders**
   (Places, see [Location reminders](#location-reminders)), the **Ringtones** (**Call ringtone** and **Wake-up alarm
   tone**, each showing the tone it's set to; tap to change it. The alarm tone plays on the alarm volume), **Bedside

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.8.0 (unreleased)
+
+- **The Brain** (module `mind`, off by default, every part its own switch under `mind.*`): a layer that watches how Kurooto
+  does, keeps a score it can't edit, and learns from it in the open. It adds `/thinking`, `/beliefs`, `/lab`, `/improve`,
+  `/learned`, `/senses`, `/model`, `/plan`, `/precedents` and `/play`: a global workspace and attention, a research lab with
+  pre-registered experiments, skill distilling and a weekly fine-tune, phone and computer senses, a model of what you know and
+  want, week plans, careful forgetting, and precedents. Nothing outward happens without your tap. Details in the user and
+  developer wikis ("Mind").
+- **Phone app:** Views is a real tab; the bar stays at the bottom while you look at Systems or the Notes map. The Phone tab has a
+  Senses group (each sense its own switch). The 0.7.3 to 0.7.7 app work (Expressive screens, Vivid look, floating bars) is included.
+- **Subjects, with folders:** add and remove subjects in the dashboard's Study panel, each with an optional notes folder that
+  becomes its own neighbourhood on the Notes map (a friend's notes no longer land in "Other notes").
+- **Reading the inbox** (`sorter.read_files`, off): PDF, Word, PowerPoint, notebook, text, rich-text and CSV files in the scratch
+  folder become Markdown notes next to them (originals untouched). With the new `reference` graph source (on by default under
+  `integrate.sources`) they also join the concept graph.
+- **Copies among notes** (`sorter.duplicates`, `integrate.duplicates_all`): exact and near copies are found, in new files and in
+  old notes, and you choose Keep both, Merge or Leave it; merges can be undone. Duplicate books are noticed by file hash
+  (`books.duplicates`).
+- **Find files** (module `finder`): `/find <words>` searches names and contents of folders you add, with buttons to send a file.
+- **Dashboard:** recall cards typeset their maths (KaTeX); settings have drop-downs and a tooltip on every label; turning a
+  module on tells you what is left to set up (`/health setup` lists it too); the study pack takes your own extra instructions.
+- **Fixes:** heavy nightly jobs now run on threads, so they no longer hold up the call line or Telegram (the cause of "offline"
+  early in the morning); unreadable books now say why and what to install (Poppler).
+
 ## 0.7.7 (unreleased)
 
 - **Night performance 1.1.0** (an update to the add-on, offered once, never applied without your yes): `night_performance.hold_window`

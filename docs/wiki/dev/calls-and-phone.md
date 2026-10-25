@@ -767,8 +767,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `QuickNoteActivity`, `ShareActivity` and `PairActivity` (small floating sheets: `Sheets.kt`'s `SheetActivity` and `Sheet` over a
   dimmed screen, window theme `Kurooto.Sheet`: translucent, tap outside to close), and `PlacesActivity` and `ChatActivity` (full pages
   over the sky: `PageActivity` / `Page`, and the chat's own `LazyColumn` of bubbles, with links via `LinkAnnotation`;
-  `ChatActivity.visible` and `ID_NOTE` stay static for `ListenService`). `BedsideActivity`, `CallActivity` and
-  `ViewsActivity` are still framework views built by `Ui` (0.7.7), and everything else (services, receivers, calls, alarms,
+  `ChatActivity.visible` and `ID_NOTE` stay static for `ListenService`). `BedsideActivity` and `CallActivity` are still framework views built by `Ui` (0.7.7; `ViewsActivity` is a thin wrapper now, see Views below), and everything else (services, receivers, calls, alarms,
   crypto, notifications, widgets) stays framework Java:
   - `MainActivity` (a `ComponentActivity`, edge to edge, `enableOnBackInvokedCallback` for the predictive back
     gesture) holds `HomeState` (Compose state: paired, name, tab, today, waiting, queued, the status lines, update,
@@ -782,7 +781,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     Inbox with a `Badge` of what waits, Views, Phone), the tabs cross-fading with the motion scheme's fast effects spec (none
     with "Remove animations", `LocalReducedMotion`), each tab's state kept by a `SaveableStateHolder`; Back on Inbox or
     Phone goes to Today (`BackHandler`). `TABS` also takes a destination that opens another screen (`Tab.opens`):
-    **Views** opens `ViewsActivity` (Systems and the Notes map, above; with `demo` passed on), never selected itself. `TabPage`
+    **Views** is a page of the screen (0.8.0): `ViewsPage` hosts `ViewsPane` (the WebView, extracted from `ViewsActivity`, with `build/resume/pause/destroy`) in an `AndroidView`, its lifecycle bound by a `DisposableEffect` on the activity's lifecycle; `ViewsActivity` stays as a thin wrapper for intents. `Tab.opens` remains for destinations that open another screen. `TabPage`
     is a tab's page: a `TwoRowsTopAppBar` sized as `LargeFlexibleTopAppBar` (the expanded title in
     `displaySmallEmphasized`, Today's date in `displayMediumEmphasized`; it folds on scroll, `exitUntilCollapsed`),
     `PullToRefreshBox` with the expressive `LoadingIndicator`, and a column at most 640dp wide that keeps clear of the
