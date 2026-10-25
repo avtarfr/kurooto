@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.7 (unreleased)
+
+- **Night performance 1.1.0** (an update to the add-on, offered once, never applied without your yes): `night_performance.hold_window`
+  keeps the performance mode for the whole reading window while you're on the charger, whether or not you're at the computer or
+  between pieces of the night's work. Off by default.
+
 ## 0.7.6 (unreleased)
 
 - **Six more screens are Material 3 Expressive, floating:** the question you answer from a notification, Quick note, Share to
