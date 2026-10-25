@@ -33,6 +33,9 @@ Standing plans, never struck through.
   for text, Markdown, code, PDFs (Poppler) and Office files, their words, in SQLite full-text search like the history index. `/find thermodynamics quiz pdf` lists matches
   with a **Send** button that sends that one file to you; contents never go to an AI (a plain-English ask can give the AI only the list of file names and short snippets, and
   that is its own switch, off by default). Folders you list, patterns it never reads (keys, `.env`, hidden folders), size limits, and a drop-down for what to index.
+- **The garden dedupes notes** (planned for 0.8.0): today near-duplicate *concept* notes are asked about three pairs each morning (`integrate.duplicates`). Let the garden
+  look for duplicates among all your notes as it goes (the same text, the same title with most of the text, the same concept under two names), as many as
+  `integrate.garden_per_day` allows, each one a Merge / Keep both / Add alias question with Undo, never merging or deleting anything without your tap.
 - **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
 - **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
