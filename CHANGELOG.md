@@ -1,9 +1,11 @@
 # Changelog
 
-## 0.8.4 (2026-10-26)
+## 0.8.5 (2026-10-26)
 
+- **Full-space 3D Brain canvas & side-toggle drawer**: 3D Brain viewport expanded to 100% full bleed with no column clipping, region info panel made an absolute overlay togglable via an edge tab (`‹`), Solid/Cutaway/X-Ray segments styled with active palette tokens, and headquarters core visibility made persistent without depth-clipping.
 - **Balanced 3-column dashboard layout**: Notes on the leftmost, Systems in the center, and 3D Brain on the right in the top row; Status pane moved to the bottom row split into two scrollable columns alongside the terminal with all tabs and buttons intact.
-- **The Brain 3D visualization polish**: Background unified with panel theme (`transparent`/`var(--panel)`), colors mapped to the dashboard's active theme palette (`PAL.lav`, `PAL.peach`, `PAL.sand`, `PAL.pink`, `PAL.ok`, `PAL.bad`, `PAL.accent`), side panel collapsed by default and revealed smoothly on hover, and constant subtle auto-spin enabled.
+
+## 0.8.4 (unreleased)
 
 ## 0.8.3 (unreleased)
 
