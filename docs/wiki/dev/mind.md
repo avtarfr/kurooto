@@ -807,3 +807,18 @@ slots, earliest-deadline-first over the ready nodes (cycles in `depends_on` are 
 dashboard Plan page (the `/plan` text carries it); an effort edit is the `/plan effort` command. (3) Dependencies come from nothing yet (deadlines carry none): the machinery and tests have them, the
 sources don't. (4) Syllabi and term notes aren't read as a source. (5) Kurooto's own preparation ahead of the risk is the workspace's standing bid only: no scheduler change. (6) Start-by's history-based sizes are used
 as Start-by computes them.
+
+## Stage 16: forgetting well (I-11)
+
+Code: `mind/forgetting.py` (a top-level part: `PART = "forget"`); `core/retention.py` gets the kind `mind` (`_mind` -> `forget_span`); `assembler.pick`/`build` rank by `forgetting.factor`, drop old misses
+and record `used`; `ledger.command` appends `forgetting.label` to `/memory` rows; `gate.check` removes a sentence for which `old_reference` holds; `story.summary` skips old miss lines;
+`mood.forget_day` no longer calls the whole retention cascade (it excludes `mind`, or the two would loop); fact kind `forget_event` (a hash and a count); `tom.model.forget_span`,
+`senses.store.forget_range`, `skills.library.redact`, `skills.finetune.forget_span`. `stops.PROTECTED` gains `forgetting.py`. Tests: `test_mind_forgetting.py` (10). Switches: `mind.forget.{on, misses_weeks, half_lives}`.
+
+`salience = min(1, 0.5^(age / half_life) x (1 + 0.1 x min(uses, 5)))`, with age counted from creation or the last confirmed use. Uses live in `<state>/mind-forget.json` (not in the sealed ledger rows). An old miss is a line matching
+`MISS` older than the setting; `old_reference` also reads "N weeks/months/years ago" and "last term/semester/month/year" in a sentence. The cascade is `forget_span(lo, hi)`: mood days (only days that have something), story lines about
+you (`story.forget_day`), tom rows, senses events and totals, skill provenance, journal tombstones (`{"tombstone": hash, "note": ...}`) and fine-tune tombstones; each step in its own try so one failure never stops the rest.
+
+**Deviations.** (1) Salience is not stored on ledger rows: it is computed from the row's time and the uses file. (2) `/forget` is by time span (as it always was), so "an item" is whatever was made in the span; per-item `/memory forget 3` does
+not yet cascade into the mind's stores. (3) Old-miss detection is by words (a regex for misses, dated phrases for age): a miss worded otherwise gets through. (4) The journal keeps its own mistakes (by design), so old misses fade only
+from what is repeated to you. (5) The fine-tune's probe is the stage 12 one (the test re-imports it).

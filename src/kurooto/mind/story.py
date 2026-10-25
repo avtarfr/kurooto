@@ -36,7 +36,7 @@ from kurooto import mind
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.core.state import jload, jsave
-from kurooto.mind import journal
+from kurooto.mind import forgetting, journal
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -192,6 +192,10 @@ def summary(app: App) -> str:
         for ln in reversed(ch["lines"]):
             if ln.get("struck"):
                 continue
+            if ln.get("day") and forgetting.is_old_miss(
+                app, ln["text"], dt.datetime.fromisoformat(ln["day"]).timestamp()
+            ):
+                continue  # a miss from long ago stays in the chapter (and the journal), but isn't repeated
             row = f"- {ln['text']} [{', '.join('#' + str(s) for s in ln['seqs'])}]"
             if used + len(row) + 40 > cap:
                 break

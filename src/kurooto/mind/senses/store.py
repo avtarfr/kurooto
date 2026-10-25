@@ -117,6 +117,20 @@ def rollup(app: App, now: float | None = None) -> int:
     return len(old)
 
 
+def forget_range(app: App, lo: float, hi: float) -> int:
+    """/forget: every sensor's raw events in [lo, hi) and the daily totals of the days in it."""
+    if not path(app).exists():
+        return 0
+    d0, d1 = dt.date.fromtimestamp(lo).isoformat(), dt.date.fromtimestamp(min(hi, time.time() + 86400)).isoformat()
+    with _lock:
+        db = _db(app)
+        with db:
+            n = db.execute("delete from events where t>=? and t<?", (lo, hi)).rowcount
+            n += db.execute("delete from days where day>=? and day<?", (d0, d1)).rowcount
+        db.close()
+    return max(0, n)
+
+
 def forget(app: App, sensor: str | None = None, today_only: bool = True) -> int:
     """Remove a sensor's (or every sensor's) rows: today's, or all of them."""
     if not path(app).exists():

@@ -629,6 +629,12 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.finetune.probe_words` | `5` | words of a forgotten prompt kept to check that the new adapter forgot it (3 or more) |
 | `mind.forecast.holdout` | `0.1` | the share of days a planned action is withheld on purpose, to measure what it does |
 | `mind.forecast.on` | `true` | each evening at 21:00, what Brain expects of tomorrow, scored the next evening (shadow mode) |
+| `mind.forget.half_lives.default` | `60` | days, by kind of memory |
+| `mind.forget.half_lives.fact` | `90` | days, by kind of memory |
+| `mind.forget.half_lives.gist` | `30` | days, by kind of memory |
+| `mind.forget.half_lives.project` | `180` | days, by kind of memory |
+| `mind.forget.misses_weeks` | `6` | a past miss isn't brought up after this many weeks |
+| `mind.forget.on` | `true` | old things fade from use, old misses stop coming up, and a forget goes everywhere |
 | `mind.gate.feelings_per_week` | `3` | Brain saying how it feels about something, at most this often unasked |
 | `mind.gate.max_per_day` | `12` | messages a day that come by themselves (Calm's own limit applies too: the smaller) |
 | `mind.gate.max_per_hour` | `3` | ...and an hour |

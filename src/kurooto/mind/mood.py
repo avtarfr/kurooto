@@ -317,7 +317,9 @@ def forget_day(app: App, day: str) -> str:
     try:
         from kurooto.core import retention
 
-        retention.forget(app, lo, hi, gist=False)
+        retention.forget(
+            app, lo, hi, kinds=tuple(k for k in retention.KINDS if k != "mind"), gist=False
+        )  # (not the cascade itself)
     except Exception:
         pass
     tone.forget(app)

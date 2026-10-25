@@ -75,6 +75,8 @@ def _subject_words(app: App, text: str) -> set[str]:
 def pick(app: App, text: str, call: bool = False) -> list[tuple[str, dict]]:
     """The remembered items for this message, best first: (line, row). call=True: a call's brief (the open threads,
     and the gists of the last day)."""
+    from kurooto.mind import forgetting  # Brain's fading and old-miss retirement (no-ops with Brain off)
+
     t = time.time()
     said = ledger.words(text)
     cue = bool(PAST.search(text or ""))
@@ -103,8 +105,10 @@ def pick(app: App, text: str, call: bool = False) -> list[tuple[str, dict]]:
                 continue
             if call and r["kind"] != "gist":
                 continue
+            if forgetting.is_old_miss(app, r["text"], r["at"], t):
+                continue  # a miss from long ago isn't brought up again
             score = 3 * hit + 2 * len(subj & mine) + 2 * on_day + 1 / (1 + (t - r["at"]) / (7 * 86400))
-            out.append((score, r))
+            out.append((score * forgetting.factor(app, r), r))  # what has faded counts for less
     out.sort(key=lambda x: -x[0])
     return [(f"- {ledger.label(r)}: {_one(r['text'])}", r) for _, r in out]
 
@@ -127,11 +131,14 @@ def build(app: App, text: str) -> tuple[str, int]:
     message doesn't refer to anything remembered."""
     if not app.settings.get("memory.recall"):
         return "", 0
+    from kurooto.mind import forgetting
+
     left = budget(app)
     parts: list[str] = []
     # the persona card goes into every AI request already (providers/context.py, core/persona.py), not here
     picked = pick(app, text)
     lines: list[str] = []
+    used_rows: list[dict] = []
     if picked:
         head = HEAD.format(name=app.name)
         left -= len(head) + 1
@@ -145,9 +152,11 @@ def build(app: App, text: str) -> tuple[str, int]:
             if len(line) + 1 > left:
                 continue  # a shorter one further down may still fit
             lines.append(line)
+            used_rows.append(_r)
             left -= len(line) + 1
         if lines:
             parts += [head, *lines] + ([guard] if guard else [])
+    forgetting.used(app, used_rows)  # what went into the request is confirmed in use: it fades more slowly
     return "\n".join(parts), len(lines)
 
 

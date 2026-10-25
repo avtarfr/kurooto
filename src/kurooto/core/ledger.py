@@ -682,7 +682,9 @@ def command(app: App, arg: str) -> str:
     counts = led.counts()
     have = ", ".join(f"{n} {NAMES[k]}{'s' if n != 1 else ''}" for k, n in sorted(counts.items()) if k in NAMES)
     head = f"Remembered with {arg!r}" if want else f"What I remember ({have}; encrypted on this computer)"
-    body = "\n".join(_row(i, r) for i, r in hits[:SHOWN])
+    from kurooto.mind import forgetting
+
+    body = "\n".join(_row(i, r) + forgetting.label(app, r) for i, r in hits[:SHOWN])
     more = f"\n…and {len(hits) - SHOWN} more" if len(hits) > SHOWN else ""
     tail = "\n/memory <words> finds; /memory forget 3 drops number 3; /memory export writes a note."
     return f"{head}:\n{body}{more}{tail}"[:3800]

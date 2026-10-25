@@ -303,6 +303,18 @@ def run(app: App, slug: str, inputs: dict, runner=None) -> object:
     return act.run(app, f"skill.{slug}", do, inputs, f"run the skill {m['title']}")
 
 
+def redact(app: App, lo: float, hi: float) -> int:
+    """/forget: where a skill came from is dropped from the skills made in [lo, hi); the skill itself stays."""
+    n = 0
+    for slug, m in all_skills(app).items():
+        if lo <= float(m.get("created") or 0) < hi:
+            f = folder(app, slug) / "provenance.json"
+            if f.exists():
+                jsave(f, {"source": m.get("source", "episode"), "redacted": True, "at": time.time()})
+                n += 1
+    return n
+
+
 def retire(app: App, slug: str, why: str = "you retired it") -> bool:
     m = meta(app, slug)
     if not m or m.get("retired"):

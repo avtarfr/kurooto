@@ -174,6 +174,32 @@ def collect(app: App, now: float | None = None) -> list[dict]:
     return out[: int(app.settings.get("mind.finetune.max_examples") or 400)]
 
 
+def forget_span(app: App, lo: float, hi: float) -> int:
+    """/forget: the examples from proposals made in [lo, hi) become tombstones (a keyed hash, a few words and an
+    answer fingerprint), so no later adapter trains on them and every one is probed against them."""
+    st = _state(app)
+    have = {t["key"] for t in st["tombstones"]}
+    n, now = 0, time.time()
+    for ex in from_proposals(app, now + 10 * 86400):  # whatever its age: settled or not
+        p = proposals.get(app, ex["source"].split(":", 1)[1])
+        if not p or not (lo <= float(p.get("created") or 0) < hi):
+            continue
+        key = keyed(app, "src", ex["source"])
+        if key not in have:
+            st["tombstones"].append(
+                {
+                    "key": key,
+                    "prefix": " ".join(words(ex["prompt"], probe_words(app))),
+                    "fp": fingerprint(app, ex["completion"]),
+                    "at": now,
+                }
+            )
+            n += 1
+    st["manifest"] = [e for e in st["manifest"] if e["key"] not in {t["key"] for t in st["tombstones"]}]
+    _save(app, st)
+    return n
+
+
 def sync_forgotten(app: App, current: set[str]) -> int:
     """Examples that were trained on and are no longer in their source (the owner forgot them, or they were undone)
     become

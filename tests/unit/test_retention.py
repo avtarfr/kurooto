@@ -99,6 +99,7 @@ def test_the_daily_job_forgets_what_is_older_than_keep_days(kept):
         "index": 0,
         "threads": 0,
         "logs": 2,
+        "mind": 0,  # what Brain kept (stage 16): nothing, with Brain off
     }
     st = app.paths.state
     assert len(list((st / "calls" / "transcripts").glob("*.txt"))) == 1

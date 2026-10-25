@@ -151,6 +151,17 @@ def forget(app: App, rid: str) -> str:
     return "Forgotten."
 
 
+def forget_span(app: App, lo: float, hi: float) -> int:
+    """/forget: the rows made or refreshed in [lo, hi) go, and aren't worked out again."""
+    st = _state(app)
+    gone = [r for r in st["rows"] if lo <= float(r.get("updated") or 0) < hi]
+    if gone:
+        st["rows"] = [r for r in st["rows"] if r not in gone]
+        st["forgot"].extend(r["id"] for r in gone)
+        _save(app, st)
+    return len(gone)
+
+
 def say(row: dict) -> str:
     """The row as it may be said to you (I-13): said and saw as fact, inferred as 'it looks like', imagined as a
     guess."""

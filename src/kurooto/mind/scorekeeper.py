@@ -373,6 +373,12 @@ class Keeper:
                     },
                 )
                 return {"ok": True, "seq": seq}
+            if kind == "forget_event":  # that a forget happened: a hash and a count, never what
+                seq = self.log.append(
+                    "forget_event",
+                    {"hash": re.sub(r"[^0-9a-f]", "", str(b.get("hash") or ""))[:16], "n": int(b.get("n") or 0)},
+                )
+                return {"ok": True, "seq": seq}
             if kind in (
                 "skill_event",
                 "finetune_event",

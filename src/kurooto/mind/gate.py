@@ -418,7 +418,15 @@ def check(app: App, msg: Message) -> tuple[str, Message, dict | None]:
                 _seen(st, "blocked", "nothing left after the lints", "")
                 _save(app, st)
                 return "block", msg, None
-        from kurooto.mind import beliefs, workspace
+        from kurooto.mind import beliefs, forgetting, workspace
+
+        kept = [s for s in sentences(msg.text) if not forgetting.old_reference(app, s)]
+        if len(kept) != len(sentences(msg.text)):  # old misses aren't brought up again (stage 16)
+            _seen(st, "removed", "an old miss", msg.text)
+            msg = replace(msg, text=_join(msg.text, kept))
+            if not msg.text.strip():
+                _save(app, st)
+                return "block", msg, None
 
         said, fixed = beliefs.lint(app, msg.text)  # I-13: a guess is never stated as fact
         if fixed:

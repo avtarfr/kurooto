@@ -227,6 +227,7 @@ PROTECTED = (
     "kurooto/mind/harness*",
     "kurooto/mind/harness/*",
     "kurooto/mind/improve.py",
+    "kurooto/mind/forgetting.py",
     "kurooto/mind/plans/score.py",
     "kurooto/mind/tom/model.py",
     "kurooto/mind/lab/prereg.py",

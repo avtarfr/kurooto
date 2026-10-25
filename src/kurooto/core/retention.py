@@ -68,6 +68,7 @@ KINDS = {  # kind -> (one, many)
     "index": ("search index item", "search index items"),
     "threads": ("thread", "threads"),
     "logs": ("log file", "log files"),
+    "mind": ("thing Brain kept", "things Brain kept"),
 }
 SPAN = re.compile(r"^(\d{1,5})\s*(h|hours?|d|days?|w|weeks?)$")
 STAMP = re.compile(rb"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")  # a log line's time (daemon.py:setup_logging)
@@ -200,6 +201,13 @@ def trim_log(f: Path, lo: float, hi: float) -> bool:
     return True
 
 
+def _mind(app: App, lo: float, hi: float) -> int:
+    """What Brain kept from the span, in every one of its stores (mind/forgetting.py)."""
+    from kurooto.mind import forgetting
+
+    return forgetting.forget_span(app, lo, hi)
+
+
 STEPS = {
     "calls": _calls,
     "requests": _requests,
@@ -210,6 +218,7 @@ STEPS = {
     "index": _index,
     "threads": lambda app, lo, hi: threads.forget(app, lo, hi),
     "logs": _logs,
+    "mind": lambda app, lo, hi: _mind(app, lo, hi),
 }
 
 

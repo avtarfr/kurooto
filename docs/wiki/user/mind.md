@@ -222,6 +222,22 @@ lists them with their source, how sure it was and how each source has done. Swit
 `mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
 `mind-beliefs.json`.
 
+## How it forgets
+
+Like a healthy mind, Kurooto lets old things fade from use without losing the record. Every remembered item has a **salience**: it halves with age (facts about you every 90
+days, gists every 30, project facts every 180: `mind.forget.half_lives`) and recovers a little each time it is used in a request and confirmed. The context an AI gets ranks
+what's remembered by how relevant it is *and* how fresh, and `/memory` shows a small bar and "fading" for what has faded. Nothing is deleted by fading: the log and the
+memory keep everything until you forget it.
+
+**Old misses stop coming up.** A past miss (a broken deadline, a wrong turn, a bad week) isn't put in front of an AI or brought up in a message once it's more than six weeks
+old (`mind.forget.misses_weeks`): a sentence like "you missed the quiz 8 weeks ago" is taken out before it's sent, and the life story stops repeating it. Its own past
+mistakes stay in its journal, because that's honesty, but it doesn't repeat them to you.
+
+**`/forget` goes everywhere.** Forgetting a stretch of time (`/forget 7d`, `/forget all`) now also removes what Brain kept from it, in every place: the day's read and numbers, the
+model of your mind (`/model` rows), the phone and activity readings and their totals, where skills came from, the lines about you in the life story, and the journal (a day becomes a
+tombstone: a short hash and "Something you asked me to forget."). What the weekly fine-tune would have learned from it is blocked, and the next adapter is checked not to
+know it. Brain's own log keeps only that a forget happened (a hash and a count), never what. Switch: `mind.forget.on`.
+
 ## Plans over weeks
 
 Every deadline, repository milestone and goal you stated with a date becomes a node with an effort estimate (from Start-by: what similar items took, or what you
