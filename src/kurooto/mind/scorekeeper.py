@@ -276,6 +276,8 @@ class Keeper:
                 return self.engine.tick(b, ts)
             if kind == "learning_verdict":
                 return self.engine.verdict(b)
+            if kind == "trust_evidence":
+                return self.engine.trust_evidence(b, ts)
             self.engine.freeze(str(b.get("why") or "check"))
             return {"ok": True}
 

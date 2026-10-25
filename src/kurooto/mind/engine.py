@@ -193,6 +193,25 @@ class Engine:
         self.put("claims_seq", float(max(last, after)))
         return sorted(set(out))
 
+    # ------------------------------------------------------------------------------------------------- trust
+    def trust_evidence(self, b: dict, t: float | None = None) -> dict:
+        """Your reaction to an act of a class (ok, undo, complaint, silence from a digest you opened): the class's Beta
+        counts move, with decay, impact weighting and the cooldown after an undo (mind/trust.py). Only a known class
+        and kind."""
+        from kurooto.mind import trust
+
+        klass, kind = str(b.get("class") or ""), str(b.get("evidence") or "")
+        if klass not in trust.risk.PRIORS or kind not in trust.EVIDENCE:
+            return {"error": "no such class or evidence"}
+        t = float(t if t is not None else time.time())
+        row = self.k.score.get("trust", klass)
+        st = trust.update((row or {}).get("meta"), klass, kind, t, bool(b.get("seen", True)))
+        self.k.score._put("trust", klass, round(trust.p10(st, klass, t), 6), st)
+        seq = self.k.log.append(
+            "trust_update", {"class": klass, "evidence": kind, "p10": round(trust.p10(st, klass, t), 4)}
+        )
+        return {"ok": True, "seq": seq}
+
     # ------------------------------------------------------------------------------------------ learning's brakes
     def freeze(self, why: str) -> None:
         """Stop learning (any caller may ask for this: it only ever makes Kurooto learn less)."""

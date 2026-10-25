@@ -611,6 +611,10 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `mind.anchor_every` | `1000` | the log's head is written down every this many records (and once a day) |
+| `mind.autonomy.enforce` | `false` | on: its verdicts bind (it asks first for what it isn't trusted with), shadow or not |
+| `mind.autonomy.on` | `true` | decide what it may do unasked from your reactions, per class of action (shadow first) |
+| `mind.autonomy.shadow_days` | `21` | for this long its verdicts are counted and shown, not enforced |
+| `mind.autonomy.thresholds` | `{}` | your own bars per class, over the defaults: {"R1": 0.8} |
 | `mind.budget.on` | `true` | the body budget: its variables, setpoints and drive |
 | `mind.feelings.express` | `true` | it may say one about an item, through the gate's lints, at most 3 unprompted a week |
 | `mind.feelings.on` | `true` | computed states about specific items, and what they make it do (inward effort only) |

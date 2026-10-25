@@ -747,6 +747,10 @@ class App:
             from kurooto.core import official
 
             return official.button(self, ref, act)
+        if prefix == "aut":  # Do it / Not now / Never under Brain's question, Undo and Seen it under the digest
+            from kurooto.mind import act as autonomy  # (`act` is the button's own action here)
+
+            return autonomy.button(self, ref, act)
         if prefix == "mmd":  # Yes/No/Not now under Brain's ask, Wrong/Forget this/Off under /mood (mind/mood.py)
             from kurooto.mind import mood
 

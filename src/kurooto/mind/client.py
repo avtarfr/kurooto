@@ -122,6 +122,10 @@ class MindClient:
             out.setdefault(day, {})[name] = r["value"]
         return out
 
+    def trust_rows(self, prefix: str = "") -> list[dict]:
+        """Rows of the trust table: one per class of action, its Beta counts and evidence in `meta` (read-only)."""
+        return self._score().rows("trust", prefix)
+
     def vars_rows(self, prefix: str = "") -> list[dict]:
         """Rows of the body budget's `vars` table (x:<name>, D, tonic, neg, negd:<class> ...), read-only."""
         return self._score().rows("vars", prefix)

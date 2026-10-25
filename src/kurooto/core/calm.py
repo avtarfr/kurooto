@@ -248,6 +248,18 @@ REASONS: dict[str, Reason] = {
         R("calls.own", "a call you asked for", exempt="own", stop=None, later=False),
         R("mind.off", "you turned Brain off: what it kept, and whether to delete it", exempt="own", stop=None),
         R("mood.off", "you turned Brain's read off: whether to delete what it kept", exempt="own", stop=None),
+        R(
+            "mind.act_digest",
+            "the Sunday list of what Kurooto did on its own this week, with an Undo for each",
+            stop=None,
+        ),
+        R(
+            "mind.act_ask",
+            "a question before Kurooto does something on its own it isn't trusted with yet",
+            many="questions before it acts",
+            stop=None,
+            suggest=True,
+        ),
         R("mind.promise_broken", "Kurooto owning up first to something it said it would do and didn't", stop=None),
         R("study.timer", "the end of a study session you started with a length", exempt="own", stop=None),
         R("quiz.checkin", "a quiz time you set", exempt="own", stop=None, later=False),

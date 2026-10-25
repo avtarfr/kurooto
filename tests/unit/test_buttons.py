@@ -26,6 +26,7 @@ CORE = {
     "mnd",
     "mgt",
     "mmd",
+    "aut",
 }
 CORE |= {"lh", "dof"}  # the offline helper's question; dates offered with a button (core/dateoffers.py)
 CORE |= {"oad"}  # an official add-on's Add / Update and the answer to its card (core/official.py)

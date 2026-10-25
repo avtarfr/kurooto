@@ -227,6 +227,14 @@ class Retro(Module):
         return self.answer(str((q.get("hook_payload") or {}).get("pid", "")), answer)
 
     def start(self):
+        from kurooto.mind import act
+
+        # a merge Brain asked about first runs from its Do it button; its Undo in the Sunday digest undoes the same fix
+        act.register(
+            "deadline.merge",
+            lambda app, args: self._merge_pair(tuple(args)) or "Couldn't merge them any more.",
+            lambda app, payload: self.undo_fix(payload["fix"]),
+        )
         self.every("nightly", self.setting("when") or "daily 23:50", lambda p: self.run_in_background(nightly=True))
         # a nightly look back that waited for the AI's free limit to reset (core/quota.py), over the same days
         self.action("after_reset", lambda p: self.run_in_background(since=p.get("since"), nightly=True))
@@ -695,31 +703,52 @@ class Retro(Module):
         dl = self.app.modules.get("deadlines")
         if dl is None or not self.app.is_on("deadlines") or "deadline.merge" not in BY_ITSELF:
             return []
-        from kurooto.modules.deadlines import when_text
+
+        from kurooto.mind import (
+            act,
+        )  # (Brain, stage 06) what it may do unasked: counted, listed on Sundays, asked first if enforced
 
         told = []
         for keep, copy in dl.duplicates()[:10]:
-            items = dl.items()
-            k, c = items.get(keep), items.get(copy)
-            undo = dl.merge(keep, copy) if k and c else None
-            if not undo:
-                continue
-            srcs = [*undo["sources"], *c.get("sources", [c["source"]])]
-            came = list(dict.fromkeys(FROM.get(x, "your notes" if x.startswith("notes") else x) for x in srcs))
-            line = (
-                f"{k['title']} (due {when_text(dl.items()[keep]['due'])}) was on your list twice, from "
-                f"{' and '.join(came[:3])}; I kept one."
+            line = act.run(
+                self.app,
+                "deadline.merge",
+                self._merge_pair,
+                (keep, copy),
+                summary="merge two copies of a deadline",
+                undo_from=lambda out: {"fix": self._last_fix},
             )
-            fid = uuid.uuid4().hex[:6]
-            state = self._state()
-            fix = {"id": fid, "kind": "deadline.merge", "line": line, "undo": undo, "undone": False}
-            state["fixes"] = [*state["fixes"], {**fix, "at": now().isoformat(timespec="minutes")}][-50:]
-            self._save_state(state)
-            buttons = [[("Undo", f"rfx:{fid}:undo")]]
-            self.app.notify(line, kind="info", title="Tidied", why="retro.fixed", buttons=buttons)
-            self.app.events.emit("retro_fixed", kind="deadline.merge")
-            told.append(line)
+            if line:
+                told.append(line)
         return told
+
+    def _merge_pair(self, pair) -> str | None:
+        """Merge one pair of duplicate deadlines, say so with Undo. The line, or None when it couldn't."""
+        keep, copy = pair
+        dl = self.app.modules.get("deadlines")
+        from kurooto.modules.deadlines import when_text
+
+        items = dl.items()
+        k, c = items.get(keep), items.get(copy)
+        undo = dl.merge(keep, copy) if k and c else None
+        if not undo:
+            return None
+        srcs = [*undo["sources"], *c.get("sources", [c["source"]])]
+        came = list(dict.fromkeys(FROM.get(x, "your notes" if x.startswith("notes") else x) for x in srcs))
+        line = (
+            f"{k['title']} (due {when_text(dl.items()[keep]['due'])}) was on your list twice, from "
+            f"{' and '.join(came[:3])}; I kept one."
+        )
+        fid = uuid.uuid4().hex[:6]
+        state = self._state()
+        fix = {"id": fid, "kind": "deadline.merge", "line": line, "undo": undo, "undone": False}
+        state["fixes"] = [*state["fixes"], {**fix, "at": now().isoformat(timespec="minutes")}][-50:]
+        self._save_state(state)
+        buttons = [[("Undo", f"rfx:{fid}:undo")]]
+        self.app.notify(line, kind="info", title="Tidied", why="retro.fixed", buttons=buttons)
+        self.app.events.emit("retro_fixed", kind="deadline.merge")
+        self._last_fix = fid
+        return line
 
     def undo_fix(self, fid: str) -> str:
         state = self._state()

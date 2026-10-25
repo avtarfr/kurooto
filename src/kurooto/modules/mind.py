@@ -26,7 +26,7 @@ from pathlib import Path
 from kurooto import mind
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
-from kurooto.mind import feelings, gate, measure, mood, promises, signals, tone
+from kurooto.mind import act, feelings, gate, measure, mood, promises, signals, tone
 from kurooto.mind import log as mlog
 from kurooto.modules.base import Command, Incoming, Module
 
@@ -83,6 +83,7 @@ class Mind(Module):
         self.every("promises", "every 5m", lambda p: promises.review(self.app) if mind.on(self.app) else {})
         self.every("feelings", "hourly", lambda p: feelings.tick(self.app) if mind.on(self.app) else None)
         self.every("feeling_say", "daily 17:30", lambda p: feelings.say(self.app) if mind.on(self.app) else False)
+        self.every("act_digest", "weekly sun 19:10", lambda p: act.digest(self.app) if mind.on(self.app) else False)
 
     def _signals(self, payload: dict | None = None) -> int:
         """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""
@@ -218,6 +219,12 @@ class Mind(Module):
 
     def commands(self) -> list[Command]:
         return [
+            Command(
+                "autonomy",
+                "what Kurooto may do without asking, by kind of action; /autonomy classify <action> R1",
+                self.autonomy_cmd,
+                usage="/autonomy [classify <action> <R0-R3>]",
+            ),
             Command("budget", "Brain's body budget: its variables, drive, reward and current feeling", self.budget_cmd),
             Command("promises", "what Kurooto said it would do, and whether it did", self.promises_cmd),
             Command(
@@ -234,6 +241,14 @@ class Mind(Module):
                 usage="/mind [verify|gate]",
             ),
         ]
+
+    def autonomy_cmd(self, msg: Incoming, arg: str) -> str | None:
+        words = (arg or "").split()
+        if len(words) == 3 and words[0].lower() == "classify":
+            return act.classify_cmd(self.app, words[1], words[2])
+        text, buttons = act.status(self.app)
+        msg.reply(text, buttons or None)
+        return None
 
     def budget_cmd(self, msg: Incoming, arg: str) -> str:
         from kurooto.mind import report
@@ -326,7 +341,8 @@ def button(app, ref: str, act: str) -> str:
         "mind-tone.json",
         "mind-promises.json",
         "mind-feelings.json",
-    ):  # the gate's, the read's and the tone's own files
+        "mind-acts.json",
+    ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)
     return "Deleted Brain's data." if not d.exists() else "Couldn't delete all of it; /mind says what's left."

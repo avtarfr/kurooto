@@ -126,6 +126,7 @@ def test_actor_cannot_write_mind(tmp_path, monkeypatch):
         "mood_rows",
         "vars_rows",
         "values_rows",
+        "trust_rows",
     }  # fmt: skip  (stage 04 added two reads of the day's numbers)
     # 6. A spy: what the daemon side does with Brain's facts never writes the log in this process.
     calls = []

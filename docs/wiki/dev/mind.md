@@ -491,3 +491,32 @@ line holds (`lidsafe._held`) plus open promises, once per outage (the line says 
 The weekly retro line and the monthly Dreaming self-checks (I-3, I-5 replays, I-10) that set `learning_frozen` aren't built
 (the verdict path and `learning_freeze` fact exist). The owner-set setpoint changes through `/retro` aren't wired: the table
 accepts overrides but nothing writes them yet. Stage 06 supplies claimed help acts, so `deadline_margin` stays unmeasured.
+
+
+## Stage 06: autonomy by default (I-8)
+
+Code: `mind/risk.py` (classes and the classifier), `trust.py` (Beta posteriors, in the scorekeeper's `trust` table through
+`Engine.trust_evidence`), `act.py` (`verdict`, `run`, `record`, `evidence`, `button`, `digest`, `status`), the retro's deadline
+merge routed through `act.run`, `/autonomy`, button prefix `aut`, Calm reasons `mind.act_ask` and `mind.act_digest`, `mind-acts.json`
+(daemon side: acts, pending questions, "never" and always-ask, your own classifications, the shadow counts). The three files are protected
+(`stops.PROTECTED`). Tests: `test_mind_autonomy.py`. Switches: `mind.autonomy.on`, `.shadow_days` (21), `.thresholds`, `.enforce` (off).
+
+### The classes and the rule
+
+`risk.CLASSES` (about 20 kinds, R0 to R3), plus every key of `core/tap.GUARDED` and `money.spend`, `install.any`, `protected.edit` as ALWAYS;
+anything not in the table is ALWAYS until `/autonomy classify` (`act.klass_of`: your class applies only to an action the table doesn't know).
+`classify(action, ai_class)`: the AI's class counts only if it's higher. `trust.update`: decay toward the prior (30 day half-life), then
+the evidence times the class's impact (R0 .25, R1 1, R2 2, R3 4): OK `a += 1`, silence `a += .3` (only `seen`), undo `b += 3` (and a 7 day
+cooldown), complaint `b += 5`. `trust.may_act`: the 10th percentile of Beta(a, b) (exact incomplete beta by continued fraction and bisection)
+above the class's threshold (R0 .5, R1 .75, R2 .9, R3 .97, overridable) and not in a cooldown or told never. R0's prior clears its bar from the start.
+
+### act.run and shadow
+
+`act.run(app, action, fn, args, summary, ai_class, undo_from)`: with autonomy off, `fn(args)` as before. Otherwise the verdict is counted in
+`would[class]` (`done`: trust would let it act; `asked`: it would have asked; during shadow everything above R0 is "asked"). **Deviation:**
+by default (`enforce` off) `fn` still runs and the act is recorded for the Sunday digest (an Undo through `UNDOERS`); with `enforce` on, a
+verdict of ask stores a pending question (`aut:<id>:do|later|never`; the runner registered with `act.register` does it later) and `fn` doesn't
+run. An ALWAYS action never runs through here (`act_always_ask` event): the guarded ones keep their own path in `core/tap.py`, unchanged.
+The digest (`act.digest`, Sundays 19:10) lists the week's acts with Undo and a Seen it, which sends `silence` evidence (the only silence that
+counts). The only call site so far is the retro's duplicate deadline merge; the others the spec lists (proposals, queued jobs, Dreaming
+actions, calendar blocks, reschedules) each need an action id and a runner, and move onto `act.run` one at a time.

@@ -197,6 +197,8 @@ never a label or a number of yours. Nothing of it reaches a cloud AI or leaves t
 ask doesn't name what it read. **Forget this** under `/mood` deletes a day's numbers, read, answer and forecast and what was
 kept of that day's messages, calls and requests; **Off** deletes it all after you confirm.
 
+**Brain's autonomy** (`mind.autonomy.on`) keeps, per kind of action, how far Kurooto is trusted (counts of your OKs, undos and complaints in the `mind` folder) and, in `mind-acts.json`, what it did on its own this week and what you told it never to do; none of it leaves the computer.
+
 **Brain's body budget, values, feelings and promises** (0.8.0, part of Brain; `mind.budget.on`, `mind.values.on`,
 `mind.feelings.on`, `mind.promises.on`, `mind.heartbeat.on`) keep numbers about Kurooto's own state (slack, health, the drive, rewards,
 learned values) in the `mind` folder, what it said it would do (the sentence, cut to 140 characters, and when) in

@@ -151,6 +151,30 @@ to be conscious: if you ask whether it really feels, it says nobody knows, itsel
 `/budget` shows the variables, the drive, the last reward and the current feeling and what it's about. Switches:
 `mind.budget.on`, `mind.values.on`, `mind.feelings.on`, `mind.feelings.express`.
 
+## What it may do without asking
+
+You write no rules. Kurooto sorts what it might do on its own by how risky it is and learns, per kind, how far to trust itself
+from what you do next:
+
+- **R0, inward and reversible** (draft a note in its own folder, recheck, tidy its own state, prepare): it just does it.
+- **R1, about your things but reversible** (move a study block within today, snooze a non-urgent reminder, reorder today's list,
+  queue a background job, merge a duplicate deadline), **R2** (reschedule across days, write into your notes through a proposal)
+  and **R3** (change a setting that changes what you're sent): it asks first until your reactions have earned it. Your OK
+  counts for it, an **Undo** counts three times against it (and stops it for a week), a complaint five times, and silence counts a
+  little, but only for something you saw on the Sunday list ("What I did on my own this week", with an Undo for each and
+  **Seen it**). Higher classes count each reaction for more, so a pile of tiny OKs can't buy trust in something big.
+- **Always asks, whatever its trust** (nothing unlocks these): deleting your data, sending anything to anyone, money, setting or
+  moving alarms, placing calls, attaching repositories, installing anything, editing the files that keep Brain honest, applying
+  a proposal. An action Kurooto has never been classified for asks too, until you tell it a class with
+  `/autonomy classify <action> R1`. The AI may call something riskier than Kurooto's table does, never less risky.
+- **Do it / Not now / Never for this kind** come with each question. **Never** stops that kind on its own for good.
+
+For the first 21 days (`mind.autonomy.shadow_days`) it only *counts*: what it would have done on its own and what it would have asked.
+`/autonomy` shows each class's trust as a bar against what it needs, your OKs, undos and complaints, those counts, and a button to
+make a class always ask. By default nothing it already does changes in these weeks; switch `mind.autonomy.enforce` on to make
+its verdicts bind (then it asks above R0 during shadow, and after it for what it isn't trusted with). Switch the whole thing off
+with `mind.autonomy.on`.
+
 ## Its promises
 
 When Kurooto says it will do something at a time ("I'll check back at 6", "I'll remind you Friday"), it writes the promise
@@ -169,6 +193,7 @@ its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
 - **`/mood`:** how Brain reads you and what it expects of tomorrow (it only watches for now).
+- **`/autonomy`:** what it may do without asking, by kind, how far each is trusted, and the shadow counts.
 - **`/budget`:** its body budget, its drive, the last reward and its current feeling.
 - **`/promises`:** what it said it would do, and whether it did.
 - **`/mind learning`:** whether its learning is on or frozen, and how far through the 21 shadow days it is.

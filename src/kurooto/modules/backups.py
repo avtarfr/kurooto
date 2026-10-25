@@ -67,6 +67,7 @@ SKIP_STATE = {
     "mind-mood.json",  # Brain's read: whether it's active and when it asked (mind/mood.py); this computer only
     "mind-tone.json",  # Brain's tone tags of the day (mind/tone.py); this computer only
     "mind-promises.json",  # what Kurooto said it would do (mind/promises.py); this computer only
+    "mind-acts.json",  # what it did on its own and your answers (mind/act.py); this computer only
     "mind-feelings.json",  # its computed state about an item (mind/feelings.py); this computer only
     "profile.json",  # this computer's own id for the encrypted profile: it mustn't move to another computer
 }
