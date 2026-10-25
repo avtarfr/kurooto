@@ -26,6 +26,7 @@ from pathlib import Path
 from kurooto import mind
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
+from kurooto.mind import gate
 from kurooto.mind import log as mlog
 from kurooto.modules.base import Command, Incoming, Module
 
@@ -69,6 +70,7 @@ class Mind(Module):
     def start(self) -> None:
         if self._unsub is None:
             self._unsub = subscribe(self._mirror)
+        self.every("gate", "every 1m", lambda p: gate.release(self.app) if gate.on(self.app) else 0)  # held messages
 
     def stop(self) -> None:
         if self._unsub is not None:
@@ -198,14 +200,19 @@ class Mind(Module):
         return [
             Command(
                 "mind",
-                "Brain: its scorekeeper, its log and whether the log checks out; /mind verify checks all of it",
+                "Brain: its scorekeeper, its log and whether the log checks out; /mind verify checks all of it; "
+                "/mind gate shows what it held back or removed from messages today",
                 self.cmd,
-                usage="/mind [verify]",
+                usage="/mind [verify|gate]",
             )
         ]
 
     def cmd(self, msg: Incoming, arg: str) -> str:
         c = mind.connect(self.app)
+        if (arg or "").strip().lower() == "gate":
+            text, buttons = gate.status(self.app)
+            msg.reply(text, buttons or None)
+            return None
         if (arg or "").strip().lower() == "verify":
             r = c.verify()
             if r.ok:
@@ -268,5 +275,6 @@ def button(app, ref: str, act: str) -> str:
     mind.forget_client(app)
     n = mlog.MindLog(d / "log.db").count() if d.exists() else 0
     shutil.rmtree(d, ignore_errors=True)
+    (app.paths.state / "mind-gate.json").unlink(missing_ok=True)  # the gate's own file (mind/gate.py)
     app.events.emit("mind_deleted", records=n)
     return "Deleted Brain's data." if not d.exists() else "Couldn't delete all of it; /mind says what's left."

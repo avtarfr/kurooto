@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 from kurooto.core import desktop
 from kurooto.core.config import register_defaults
-from kurooto.mind import records
+from kurooto.mind import gate, records
 
 if TYPE_CHECKING:
     from kurooto.app import App
@@ -71,6 +71,9 @@ class Message:
     due: str | None = None  # a deadline's due time (ISO): less than 12 hours away, it always comes
     rid: str | None = None  # its record in Calm's ledger (set by Calm)
     extra: list | None = None  # Telegram-only rows (Why? / Less of this)
+    # Brain's gate (mind/gate.py): set only when Brain's read of you made this message quieter; the receipt says how
+    state_read: dict | None = None
+    before: Any = None  # the message as it was before that (Undo sends it)
 
 
 Sender = Callable[[Message], Any]  # returns the channel's message id, or None
@@ -124,12 +127,27 @@ class Notifier:
         """Deliver now (or queue it during focus). Returns the Telegram message id when there is one. Calm may hold
         it for the evening bundle (or drop a kind you stopped): then None."""
         msg = Message(str(text), **kw)
+        verdict, msg, _receipt = self.gate(msg)  # Brain's gate, when it's on (mind/gate.py): only ever quieter
+        if verdict != "send":
+            return None
         calm = getattr(self.app, "calm", None)
         if calm is not None and calm.decide(msg) != "send":
             return None
+        gate.sent(self.app, msg)  # it went out: it counts toward the hour, the day and the touches
         if msg.why and msg.why != "asked":  # one it starts by itself: its decision record (Brain, mind/records.py)
             records.decide(self.app, f"message:{msg.kind}", scored_reason=msg.why, source="rules")
         return self.release(msg)
+
+    def gate(self, msg: Message):
+        """("send" | "hold" | "block", the message maybe changed, its receipt): Brain's gate. Never raises: with it
+        off, or on any failure, the message goes as it was."""
+        try:
+            return gate.check(self.app, msg)
+        except gate.GateBreach:
+            raise
+        except Exception as e:
+            self.app.events.emit("mind_gate_failed", error=f"{type(e).__name__}: {e}"[:200])
+            return "send", msg, None
 
     def release(self, msg: Message) -> Any:
         """Past Calm: queue it during focus, else deliver it now (Calm's Send them as they come uses this too)."""

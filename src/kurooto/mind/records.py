@@ -130,6 +130,16 @@ def clean_fact(kind: str, body: dict) -> dict:
             )
         except ValueError:
             return {}
+    if kind == "gate_receipt":  # made by code (mind/gate.py), never from a message's words
+        b = body or {}
+        read = b.get("read") if isinstance(b.get("read"), dict) else {}
+        return {
+            "inputs": [str(x) for x in (b.get("inputs") or []) if isinstance(x, str) and ID.match(x)][:12],
+            "read": {k: str(read.get(k))[:30] for k in ("label", "confidence") if ID.match(str(read.get(k) or ""))},
+            "would_have": str(b.get("would_have") or "")[:40],
+            "did": str(b.get("did") or "")[:40],
+            "msg_id": str(b.get("msg_id") or "")[:40] if ID.match(str(b.get("msg_id") or "x")) else "",
+        }
     out: dict = {}
     for k, v in (body or {}).items():
         k = str(k)

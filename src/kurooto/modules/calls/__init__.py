@@ -806,6 +806,14 @@ class Calls(Module):
                 )
             self.app.events.emit("call_not_placed", key=key)
             return ""
+        from kurooto.mind import gate  # Brain's gate (mind/gate.py): the first 15 minutes after waking, a muted kind
+
+        automatic = bool(why) and why not in ("calls.own", "alarm.ring")
+        verdict = gate.check_call(self.app, why or "", asked=why == "calls.own", alarm=alarm)
+        if verdict != "ring" and automatic and not alarm:  # it waits: the owning feature hears "held"
+            self.app.events.emit("call_not_placed", key=key, gate=verdict)
+            self._tell_owner_module({"key": key, "reason": reason}, "held")
+            return ""
         since = str(int(time.time()))
         rings = jload(self.dir / "rings.json", {}) or {}
         while since in rings:  # two calls in the same second (a repeat ring right after another call)

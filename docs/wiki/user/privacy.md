@@ -181,7 +181,9 @@ sync's own feature sends.
 
 **Brain** (0.8.0, off until you turn it on) keeps its log and scores in the `mind` folder of the state folder: ids,
 kinds and numbers (a deadline was added, a call was missed, a button was tapped), never the words of a message, a
-reminder, a title, an error or anything you typed. A decision Kurooto made on its own keeps its reason, up to 300
+reminder, a title, an error or anything you typed. (The gate, which holds back or softens what Kurooto sends, keeps a small
+file beside it: counts, messages waiting for their time, and the first 80 characters of a sentence it removed, so `/mind gate`
+can say what it did; Delete Brain's data removes it.) A decision Kurooto made on its own keeps its reason, up to 300
 characters. Only you can read the files (in [hardened mode](mind.md#hardened-mode-optional), its own system user
 writes them and your group reads them). The folder isn't in backups or Profile sync, nothing of it leaves the
 computer, and it's kept until you delete it: turn Brain off and tap **Delete Brain's data**.

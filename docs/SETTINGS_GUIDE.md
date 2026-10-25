@@ -611,6 +611,11 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | Setting | Default | What it does |
 |---|---|---|
 | `mind.anchor_every` | `1000` | the log's head is written down every this many records (and once a day) |
+| `mind.gate.feelings_per_week` | `3` | Brain saying how it feels about something, at most this often unasked |
+| `mind.gate.max_per_day` | `12` | messages a day that come by themselves (Calm's own limit applies too: the smaller) |
+| `mind.gate.max_per_hour` | `3` | ...and an hour |
+| `mind.gate.on` | `true` | Brain's gate on what reaches you: only ever quieter, honest feelings, one touch pool |
+| `mind.gate.touches_per_day` | `3` | small human touches a day in all (an absence note, a lighter day, a feeling...) |
 | `mind.hardened` | `false` | the scorekeeper runs as its own user (tools/mind_harden.sh; its marker file does the same) |
 
 ### `modules`

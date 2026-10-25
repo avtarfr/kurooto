@@ -742,6 +742,10 @@ class App:
             from kurooto.core import official
 
             return official.button(self, ref, act)
+        if prefix == "mgt":  # Undo under a quieter message, Unmute under /mind gate (mind/gate.py)
+            from kurooto.mind import gate
+
+            return gate.button(self, ref, act)
         if prefix == "mnd":  # Delete Brain's data / Keep it, after Brain was turned off (modules/mind.py)
             from kurooto.modules import mind as brain
 

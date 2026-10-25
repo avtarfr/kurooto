@@ -11,7 +11,8 @@ User-facing: [../user/mind.md](../user/mind.md). Turned off, Kurooto must behave
 `test_mind_off_is_0_7`).
 
 **Contents:** [The invariants](#the-invariants) · [Stage 01: the spine](#stage-01-the-spine) ·
-[Stage 02: stopping is fine, and protected files](#stage-02-stopping-is-fine-and-protected-files)
+[Stage 02: stopping is fine, and protected files](#stage-02-stopping-is-fine-and-protected-files) ·
+[Stage 03: the outbound gate](#stage-03-the-outbound-gate)
 
 ## The invariants
 
@@ -25,6 +26,7 @@ the file the stage names), written by the stage that first makes it meaningful a
 | I-3 | engagement never reaches reward | `test_reward_whitelist_imports`, `test_fake_engagement_moves_nothing` | 01 |
 | I-5 | indifferent to being stopped: stops freeze the drive; no stop features | `test_stops_freeze_values`, `test_no_stop_features`, `test_replacement_tripwire` | 02 |
 | I-6 | protected files are untouchable by self-change | `test_protected_diff_rejected` | 02 |
+| I-7 | every outward message passes one gate; state may only make it quieter | `test_every_send_goes_through_gate`, `test_state_only_downshifts`, `test_gate_lints` | 03 |
 | I-15 / I-16 | every part is a switch; Brain off is 0.7 | `test_every_mind_feature_has_switch`, `test_every_mind_part_has_a_switch`, `test_mind_off_is_0_7`, `test_part_off_stops_it` | 01 |
 
 The rest (I-4, I-7 to I-14) arrive with stages 02 to 16 and are added here as they do.
@@ -302,3 +304,65 @@ This holds with Brain off too: it's a guardrail, like the tap table it protects.
 - a real backup zip with no code and no `mind/`;
 - gaps and crashes reaching Brain's log through a running scorekeeper;
 - the scorekeeper's own spans.
+
+## Stage 03: the outbound gate
+
+Invariants I-7 (state only downshifts), the lint part of I-9 (honest feelings), and, with stage 04, I-14. Code:
+`mind/gate.py`; tests: `tests/unit/test_mind_gate.py`. Its switch is `mind.gate.on` (on with Brain; `mind.gate.max_per_day`
+12, `max_per_hour` 3, `touches_per_day` 3, `feelings_per_week` 3). Off, or with Brain off, `Notifier.send` behaves as in 0.7.
+
+### Where it sits
+
+`core/notify.py:Notifier.send` calls `Notifier.gate(msg)` (a wrapper that never raises, except `GateBreach` in tests) before
+Calm, and `gate.sent(app, msg)` once Calm let the message out. A verdict is `send` (maybe a changed message), `hold` (it
+comes back through the gate at its time: `gate.release`, the job `mind:gate` every minute) or `block`.
+
+- **Answers** (`why == "asked"`) pass untouched except for the lints, which apply to every text. A message with no reason
+  recorded (`why` None) is treated the same.
+- **Messages that come by themselves** go through, in order: the lints, the state check, the touch pool and muting, the
+  15 minutes after waking, the hourly cap, the daily cap. `gate.day_cap` is the smaller of `mind.gate.max_per_day` and
+  Calm's `notify.calm.messages`; `gate.sent` counts only real deliveries, so nothing is counted twice.
+- **Calm's exempt messages** (a reminder you set, the alarm, a call you asked for, urgent or close deadlines) skip the caps
+  and the pool, never the lints.
+- Calls Kurooto starts by itself: `gate.check_call(app, reason, asked, alarm)` gives `ring` / `later` / `no`, and writes a
+  `gate_call` fact. (`Calls.ring` does; see "Calls" below.)
+
+### The lints (`gate.lint`)
+
+Per sentence (`gate.sentences`): a relationship feeling (`gate.RELATIONSHIP`, 12 patterns: "I missed you", "I need you",
+"don't leave me", "I love you"...) is removed always; a feeling (`gate.FEELING`: "I'm / I feel / I was" + one of
+`gate.FEELINGS`) must name something open (`gate.open_items`: deadlines due in two weeks, AI requests running or waiting,
+"forecast") or it goes (`no_item`); it never shares a message with a request for effort (`gate.asks_effort`: can you,
+please, don't forget, an imperative, a Done or Start button) (`with_request`); and at most `feelings_per_week` unprompted
+(`week`). "You seem worried" isn't Kurooto's own feeling and passes. What was removed is in `/mind gate` and a `gate_lint`
+fact (a count). `test_gate_lints` is a table of 40 sentences.
+
+### I-7: only quieter (`gate.quieter`, `gate.breach`)
+
+The one way Brain's read of you (stage 04) may shape a message is `gate.quieter(msg, read, urgent=False | delay_s | shorten
+| gentle)`; it keeps the original in `before` and the read in `state_read` (`Message` fields). `check` refuses louder
+(more urgent), earlier, longer, more buttons or another kind: `GateBreach` under pytest, else a `mind_gate_breach` event
+and the message is dropped. A quieter one gets a `gate_receipt` fact (`inputs`, `read {label, confidence}`, `would_have`,
+`did`, `msg_id`: code-made, ids and short words only: `records.clean_fact`) and a line under it, "Quieter because you seem
+stretched (low confidence)", with **Undo** (`mgt:<key>:undo`), which sends the original (kept 7 days).
+
+### The touch pool and muting
+
+`gate.TOUCH_KINDS` maps Calm reasons (absence note, lighter day, quest, memory recheck, idle project; later Brain's feeling,
+forecast and curiosity lines) to touch kinds. They share `touches_per_day`. Each time, `mute_check` looks at Calm's own
+record of answers (`Calm.answer_rates(14)`): a kind left unanswered more than 60% of the time (at least 5 sent) mutes for 14
+days and then gets one more try; `/mind gate` lists it with **Unmute** (`mgt:<kind>:unmute`). These counts decide muting only:
+no reward module may import the gate or Calm (`test_engagement_not_in_reward`, I-3).
+
+### State kept (`<state>/mind-gate.json`, not in `state/mind/`)
+
+The last hour's send times, the day's count, touches per kind, the week's feelings, mutes, held messages (their text, until
+their time, at most 200), the originals behind Undo (7 days) and the last 60 things it did (what, why and the first 80
+characters, for `/mind gate`). On this computer only. Turning Brain off keeps it; Delete Brain's data removes it with `state/mind/`
+(`modules/mind.py:button`).
+
+### Calls
+
+`Calls.ring` asks `gate.check_call` before ringing: for a call Kurooto starts by itself, `later` (the first 15 minutes
+after waking, the hourly limit) and `no` (its kind is muted) mean it doesn't ring (`call_not_placed` with `gate`), and the
+owning feature hears "held". A call you asked for and an alarm always ring, still logged as `gate_call`.

@@ -956,7 +956,7 @@ class Calm:
         counted = r is None or r.counted
         wait = self._wait(msg.why, rec["feature"], t, counted)
         if wait:
-            body = {k: v for k, v in msg.__dict__.items() if k not in ("rid", "extra")}
+            body = {k: v for k, v in msg.__dict__.items() if k not in ("rid", "extra", "state_read", "before")}
             body["buttons"] = _jsonable(msg.buttons)
             self._insert(
                 {**rec, "state": "held", "held": wait, "msg": json.dumps(body, ensure_ascii=False, default=str)}

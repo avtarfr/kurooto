@@ -64,6 +64,10 @@ MIRRORED = frozenset(
         "stopped",
         "module_enabled",
         "module_disabled",
+        "gate_receipt",  # stage 03: what the gate did to a message and why (ids and numbers only)
+        "gate_lint",
+        "gate_mute",
+        "gate_call",
         "stop_span",  # stage 02: a stop, restart, sleep or unclean stop, from core/presence.py
         "kurooto_crashed",  # stage 02: the supervisor saw Kurooto end with an error
         "module_failed",

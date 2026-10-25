@@ -1617,6 +1617,12 @@ nothing is made up for afterwards, and it's never told an update or restart is c
 against its own health. The files that keep Brain honest (its scorekeeper and log, the tap table, the hardening script
 and a few more) can't be changed by any proposal, even in a project that is Kurooto's own code; only by you.
 
+**It gets quieter, never louder (the gate).** Everything Kurooto sends by itself passes one gate: a daily and an hourly
+limit (extra messages wait), a shared pool of three small human touches a day (a kind you mostly leave unanswered mutes for
+two weeks), and honest feelings (it may say it's uneasy about a deadline, never about you; never with a request; at most 3 a
+week). If Brain ever shapes a message from how you seem, it can only make it quieter, with a line saying so and **Undo**.
+`/mind gate` shows what it held or removed. *Undo:* `mind.gate.on` off; Brain off.
+
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
 every record).
 

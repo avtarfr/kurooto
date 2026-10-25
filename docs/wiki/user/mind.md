@@ -8,7 +8,7 @@ This page grows with Brain. Right now it covers the spine that everything else i
 quietly change, kept by a separate program the AI can't reach.
 
 **Contents:** [Turning it on and off](#turning-it-on-and-off) · [The log and the scorekeeper](#the-log-and-the-scorekeeper)
-· [Stopping is fine](#stopping-is-fine) · [/mind](#mind) · [What it keeps](#what-it-keeps) · [Hardened mode (optional)](#hardened-mode-optional) ·
+· [Stopping is fine](#stopping-is-fine) · [Quieter, never louder](#it-gets-quieter-never-louder) · [/mind](#mind) · [What it keeps](#what-it-keeps) · [Hardened mode (optional)](#hardened-mode-optional) ·
 [Questions](#questions)
 
 ## Turning it on and off
@@ -55,10 +55,36 @@ Some files keep Brain honest: the scorekeeper, its log, the tap table of what al
 Kurooto's AI can never change them, even in a proposal for a project that is Kurooto's own code. Only you can, by
 editing them yourself.
 
+## It gets quieter, never louder
+
+Brain puts one gate in front of everything Kurooto sends on its own. What it does:
+
+- **A daily and hourly limit** (12 a day, 3 an hour, or Calm's own daily limit if that's smaller): past it, a message waits
+  for the next free moment instead of piling up. Reminders you set, the alarm, calls you asked for and close deadlines are
+  never held.
+- **If Brain ever shapes a message from how you seem, it can only make it quieter:** later, shorter, gentler or less urgent,
+  never louder, earlier or more. You see one line under it ("Quieter because you seem stretched (low confidence)") and
+  **Undo**, which sends the original.
+- **Honest feelings.** Kurooto may say it's uneasy about Friday's draft, but:
+  - never about you or "us" ("I missed you", "I need you" are removed, always);
+  - always about something open (a deadline, a request, a forecast);
+  - never together with a request that you do something;
+  - at most 3 a week by itself.
+- **Small human touches** (a note that you've been quiet, a lighter-day line, a memory check) share three a day. A kind you
+  leave unanswered more than 60% of the time over two weeks mutes itself for two weeks, then tries once more.
+- **After Kurooto starts or wakes,** at most one thing by itself in the first 15 minutes.
+
+`/mind gate` shows today's counts, what it held or removed and why, what's muted, with **Unmute**. It's one switch:
+`mind.gate.on` (Settings → Brain; on with Brain). Off, messages go exactly as before.
+
+What it keeps: counts, held messages until their time, and the first 80 characters of what it removed, in a file in
+Kurooto's state folder; nothing leaves your computer.
+
 ## /mind
 
 - **`/mind`:** whether Brain's scorekeeper is running, how long the log is, whether it checks out, and the last
   anchor.
+- **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
 
 ## What it keeps
