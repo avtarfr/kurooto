@@ -84,8 +84,8 @@ function paneGrid(vis) {
   while (top.length < 3) top.push(top[top.length - 1]);
   return {
     areas: `"${top.join(" ")}" "${bot.join(" ")}"`,
-    cols: hasSt && hasTerm ? "1fr 1fr 1.15fr" : "1fr 1fr 1fr",
-    rows: "54% minmax(0, 1fr)"
+    cols: hasSt && hasTerm ? "1fr 1fr 1.35fr" : "1fr 1fr 1fr",
+    rows: "58% minmax(0, 1fr)"
   };
 }
 function applyPanes() {
