@@ -105,3 +105,40 @@ fun SheetTonal(text: String, enabled: Boolean = true, onClick: () -> Unit) =
 @Composable
 fun ColumnScope.SheetFlat(text: String, enabled: Boolean = true, onClick: () -> Unit) =
     TextButton(onClick, enabled = enabled, shapes = ButtonDefaults.shapes(), modifier = Modifier.align(Alignment.End)) { Text(text) }
+
+/**
+ * A full-screen page (0.7.6): the app's sky behind, a big emphasized title, the content in floating cards, at most 640dp
+ * wide, clear of the bars and the keyboard. For Places and Chat; the main screen's tabs have their own (Home.kt).
+ */
+abstract class PageActivity : ComponentActivity() {
+    protected val h = Handler(Looper.getMainLooper())
+
+    override fun onCreate(b: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(b)
+    }
+
+    protected fun page(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
+        setContent { KurootoTheme { Page(this, title, subtitle, content) } }
+    }
+}
+
+@Composable
+fun Page(owner: androidx.lifecycle.LifecycleOwner, title: String, subtitle: String?, content: @Composable ColumnScope.() -> Unit) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Sky(owner, strength = { 0.35f }, scroll = { 0f }, modifier = Modifier.fillMaxSize())
+        Box(
+            Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.ime)),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Column(
+                Modifier.widthIn(max = 640.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(title, style = MaterialTheme.typography.displaySmallEmphasized, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 24.dp))
+                if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                content()
+            }
+        }
+    }
+}
