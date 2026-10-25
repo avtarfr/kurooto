@@ -178,7 +178,7 @@ def test_the_card_has_a_switch_per_source_and_the_backfill(world, monkeypatch): 
     assert env.integrate.card_action("backfill:classroom", True).startswith("Queued 3 Classroom files")
     assert env.integrate.card()["toggles"][-1]["disabled"]
     env.integrate.card_action("source:handwritten", True)
-    assert env.app.settings.get("integrate.sources") == ["books", "classroom", "handwritten"]
+    assert sorted(env.app.settings.get("integrate.sources")) == ["books", "classroom", "handwritten", "reference"]
 
 
 # ----------------------------------------------------------------------------------------------- handwritten

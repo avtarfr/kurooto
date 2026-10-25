@@ -172,3 +172,20 @@ def test_mail_query_default_is_unchanged(mail):  # noqa: F811
     assert env.app.settings.get("mail_digest.query") == ""
     r = md.digest()
     assert r["read"] == 2 and len(g.mail_queries) == 1  # own domain only (p1, n1), one Gmail search
+
+
+# ------------------------------------------------------------------------- notes the scan leaves alone
+def test_skip_notes_keeps_an_ideas_list_out_of_the_deadlines(env):
+    app = env.app
+    env.on("deadlines")
+    dl = app.modules["deadlines"]
+    root = app.workspace
+    (root / "master").mkdir(parents=True, exist_ok=True)
+    (root / "master" / "ideas.md").write_text("- [ ] try a nicer lamp (2026-10-25)\n", encoding="utf-8")
+    (root / "todo.md").write_text("- [ ] hand in the form (2026-10-30)\n", encoding="utf-8")
+    app.settings.set("deadlines.skip_notes", ["master/ideas.md"])
+    dl.scan_notes()
+    assert [d["title"] for d in dl.items().values()] == ["hand in the form"]
+    app.settings.set("deadlines.skip_notes", [])
+    dl.scan_notes()
+    assert sorted(d["title"] for d in dl.items().values()) == ["hand in the form", "try a nicer lamp"]

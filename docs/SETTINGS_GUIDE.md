@@ -301,6 +301,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `deadlines.plan_h` | `72` | "due soon": what's due this many hours ahead goes into the morning plan, /status and calls |
 | `deadlines.recurring` | `true` | recurring quizzes from kurooto/recurring.md |
 | `deadlines.scan_notes` | `true` | also find deadlines written in your notes |
+| `deadlines.skip_notes` | `[]` | notes or folders the scan leaves alone (say, an ideas list dated by when you wrote it) |
 | `deadlines.tick_notes` | `true` | Done ticks the "- [ ]" line in your notes when the deadline came from one |
 | `deadlines.urgent_h` | `6` | a deadline closer than this many hours is urgent |
 

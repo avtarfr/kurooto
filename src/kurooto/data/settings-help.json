@@ -149,6 +149,7 @@
 "deadlines.plan_h": "\"due soon\": what's due this many hours ahead goes into the morning plan, /status and calls",
 "deadlines.recurring": "recurring quizzes from kurooto/recurring.md",
 "deadlines.scan_notes": "also find deadlines written in your notes",
+"deadlines.skip_notes": "notes or folders the scan leaves alone (say, an ideas list dated by when you wrote it)",
 "deadlines.tick_notes": "Done ticks the \"- [ ]\" line in your notes when the deadline came from one",
 "deadlines.urgent_h": "a deadline closer than this many hours is urgent",
 "doubts.before_min": "open doubts come this long before the subject's next class",

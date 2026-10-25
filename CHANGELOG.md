@@ -21,6 +21,8 @@
 - **Find files** (module `finder`): `/find <words>` searches names and contents of folders you add, with buttons to send a file.
 - **Dashboard:** recall cards typeset their maths (KaTeX); settings have drop-downs and a tooltip on every label; turning a
   module on tells you what is left to set up (`/health setup` lists it too); the study pack takes your own extra instructions.
+- **`deadlines.skip_notes`:** notes or folders the deadline scan leaves alone, so a list of ideas whose dates are only
+  when you wrote them stops turning into "Overdue?" nudges.
 - **Fixes:** heavy nightly jobs now run on threads, so they no longer hold up the call line or Telegram (the cause of "offline"
   early in the morning); unreadable books now say why and what to install (Poppler).
 

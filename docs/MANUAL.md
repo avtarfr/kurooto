@@ -692,7 +692,7 @@ call's plan, the morning page, the call brief, `/status` ("Due in the next 3 day
 *Settings* (`deadlines.*`): `plan_h` (72), `ping_h` (24), `urgent_h` (6), `call` (on: the six-hour nudge is a call
 when Phone calls is on), `overdue_check` (on), `tick_notes` (on), `from_calendar` (on), `recurring` (on),
 `horizon_days` (30: how far ahead recurring quizzes become dated items), `exam_mode_days` (14; 0 turns exam mode off),
-`scan_notes` (on), `from_term_note` (on: the term note's key dates, when you have one), `from_photos` (on: Photo to
+`scan_notes` (on), `skip_notes` (none: notes or folders the scan leaves alone), `from_term_note` (on: the term note's key dates, when you have one), `from_photos` (on: Photo to
 dates).
 *Turn off:* the whole thing in Features; the call alone with `deadlines.call` off; the overdue question with
 `deadlines.overdue_check` off.

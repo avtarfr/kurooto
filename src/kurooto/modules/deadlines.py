@@ -42,6 +42,7 @@ register_defaults(
     "deadlines",
     {
         "scan_notes": True,
+        "skip_notes": [],  # notes or folders the scan leaves alone (say, an ideas list dated by when you wrote it)
         "plan_h": 72,  # "due soon": what's due this many hours ahead goes into the morning plan, /status and calls
         "ping_h": 24,
         "urgent_h": 6,
@@ -603,6 +604,7 @@ class Deadlines(Module):
             return 0
         found, ticked = {}, set()
         root = self.app.workspace
+        skip = [str(k).strip("/") for k in (self.setting("skip_notes") or []) if str(k).strip("/")]
         for p in note_files(root, limit=self.setting("max_files") or 3000):
             try:
                 if p.stat().st_size > 1_000_000:
@@ -611,6 +613,8 @@ class Deadlines(Module):
             except OSError:
                 continue
             rel = p.relative_to(root).as_posix()
+            if any(rel == k or rel.startswith(k.rstrip("/") + "/") for k in skip):
+                continue
             for line in lines:
                 m = TASK.match(line)
                 if not m:
