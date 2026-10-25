@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 (unreleased)
+
+- **`kurooto doctor` no longer calls a hiccup a failure:** when the call line's update after an app update fails once (offline,
+  Cloudflare busy), Kurooto tries again by itself (every 30 minutes, up to six times). Doctor now stays quiet while a retry is
+  pending and only reports it once the retries are used up.
+
 ## 0.8.0 (2026-10-26)
 
 - **The Brain** (module `mind`, off by default, every part its own switch under `mind.*`): a layer that watches how Kurooto

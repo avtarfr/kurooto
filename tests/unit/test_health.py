@@ -317,6 +317,11 @@ def test_call_line_link_and_cloudflare_login(app, monkeypatch):
     monkeypatch.setattr(deploy, "oauth_token", lambda d: "t")
     ev(app, T(9), "calls_line_updated", ok=False)
     assert "couldn't be updated" in result(h, "calls").detail
+    # a failed try of the new phone app's update that will be retried by itself is not a problem yet
+    ev(app, T(9), "calls_line_updated", ok=False, why="phone_app", tries=1)
+    assert "couldn't be updated" not in result(h, "calls").detail
+    ev(app, T(9), "calls_line_updated", ok=False, why="phone_app", tries=6)
+    assert "couldn't be updated" in result(h, "calls").detail
 
 
 def test_alarm_not_planned_is_fixed_by_planning_it(app):

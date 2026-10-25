@@ -225,7 +225,7 @@ def linked(app, calls) -> bool | None:
 
 def cloudflare(app) -> str:
     """What's wrong with the Cloudflare login your call line's updates need ("" if nothing)."""
-    from kurooto.modules.calls import deploy
+    from kurooto.modules.calls import APP_LINE_TRIES, deploy
 
     last = app.health.last_event("calls_line_updated")
     failed = last is not None and last[1].get("ok") is False
@@ -237,6 +237,9 @@ def cloudflare(app) -> str:
         return ""
     if not deploy.oauth_token(app.paths.config):
         return "your Cloudflare sign-in is gone, so your call line can't be updated"
+    ev = last[1] if last is not None else {}
+    if failed and ev.get("why") == "phone_app" and int(ev.get("tries") or 0) < APP_LINE_TRIES:
+        return ""  # a hiccup (offline, Cloudflare): the line tries again by itself, so it isn't a problem yet
     return "your call line couldn't be updated after Kurooto's last update" if failed else ""
 
 
