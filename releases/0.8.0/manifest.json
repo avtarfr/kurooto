@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.8.0",
+  "notes": "Brain (off until you turn it on): a log it cannot edit, experiments, learned skills, senses, week plans, careful forgetting. Views is a real tab in the phone app. Subjects with notes folders, reading class documents into notes and the concept graph, copies among notes, Find files, setup steps after turning a feature on, settings drop-downs and tooltips, deadlines.skip_notes, and heavy jobs no longer hold up the call line.",
+  "created": 1792954377.9135342,
+  "files": {
+   "kurooto-0.8.0.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.0/kurooto-0.8.0.tar.gz",
+    "sha256": "c1d3830a179caa7ef8fe510bc7212e58bd05866d20c4cbb8b867d6f798ea2ccb",
+    "size": 4739555
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.8.0/kurooto.apk",
+   "sha256": "a529e21c4e921b6a45fb14e12a22836fea196ce06281e70456ff8ed145ffb818",
+   "size": 2129296,
+   "versionCode": 80009,
+   "versionName": "0.8.0",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "5d8baa8599ae9f660c226335b9593966a2ef9b3ec85fc99a3f9056b1bb29ea7f"
+  }
+ },
+ "sig": "RQpSAGrtSfudZYX5gJWM+p98CjL1dnp/ZxDzVlXnNVqtTWr8z8zgsTBKR2JqLnplpUcFUMvvUj2hN3+VSFmrDg=="
+}
