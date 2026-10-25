@@ -135,30 +135,35 @@ class Mind(Module):
         self.every("beliefs", "hourly", lambda p: beliefs.sync(self.app) if mind.on(self.app) else 0)
         # stage 11: the overnight lab (on the charger, lid open) and its morning note
         workspace.register_bidder("lab", lab_report.bid)
-        self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None)
-        self.every("lab_digest", "daily 07:40", self._lab_digest)
+        self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None, thread=True)
+        self.every("lab_digest", "daily 07:40", self._lab_digest, thread=True)
         # stage 17: free-time play (off by default) and its Sunday note; case law is asked about when a call comes up
-        self.every("play", "daily 02:10", lambda p: mind_play.run_session(self.app) and None)
+        self.every("play", "daily 02:10", lambda p: mind_play.run_session(self.app) and None, thread=True)
         self.every("play_digest", "weekly sun 19:30", lambda p: mind_play.weekly(self.app) and None)
         # stage 15: week-scale plans, remade each morning; one line on Sunday evening at most
-        self.every("plans", "daily 06:10", lambda p: mind_plans.run(self.app) and None)
-        self.every("plans_weekly", "weekly sun 19:20", lambda p: mind_plans.weekly(self.app) and None)
+        self.every("plans", "daily 06:10", lambda p: mind_plans.run(self.app) and None, thread=True)
+        self.every("plans_weekly", "weekly sun 19:20", lambda p: mind_plans.weekly(self.app) and None, thread=True)
         # stage 14: the model of their mind (what they know, believe, want, prefer, attend to) and false-belief checks
-        self.every("tom_sync", "hourly", self._tom_sync)
+        self.every("tom_sync", "hourly", self._tom_sync, thread=True)
         self.every("tom_check", "every 30m", lambda p: tom_beliefs.check(self.app) and None)
         # stage 13: a body: its own machine every minute, the activity stream (opt-in), the totals kept 7 days raw
         workspace.register_bidder("body", senses_intero.bids)
-        self.every("intero", "every 1m", lambda p: senses_intero.tick(self.app) and None)
-        self.every("activity", "every 1m", lambda p: senses_activity.tick(self.app) and None)
-        self.every("activity_poll", "every 5m", lambda p: senses_activity.poll(self.app) and None)
-        self.every("senses_roll", "daily 04:30", lambda p: senses_store.rollup(self.app) and None)
+        self.every("intero", "every 1m", lambda p: senses_intero.tick(self.app) and None, thread=True)
+        self.every("activity", "every 1m", lambda p: senses_activity.tick(self.app) and None, thread=True)
+        self.every("activity_poll", "every 5m", lambda p: senses_activity.poll(self.app) and None, thread=True)
+        self.every("senses_roll", "daily 04:30", lambda p: senses_store.rollup(self.app) and None, thread=True)
         # stage 12: skills from tasks that worked out, the ones it noticed you repeat, retirement, the weekly fine-tune
-        self.every("skills_distill", "daily 03:10", lambda p: skill_distill.nightly(self.app) and None)
+        self.every("skills_distill", "daily 03:10", lambda p: skill_distill.nightly(self.app) and None, thread=True)
         self.every("skills_offer", "daily 18:20", lambda p: skill_demos.offer(self.app) and None)
-        self.every("skills_retire", "daily 04:20", lambda p: skill_library.retire_stale(self.app) and None)
-        self.every("finetune", "daily 03:40", lambda p: skill_finetune.run(self.app) and None)
+        self.every("skills_retire", "daily 04:20", lambda p: skill_library.retire_stale(self.app) and None, thread=True)
+        self.every("finetune", "daily 03:40", lambda p: skill_finetune.run(self.app) and None, thread=True)
         # stage 09: the hidden harness, nightly and on the charger only
-        self.every("harness", "daily 02:40", lambda p: harness_run.nightly(self.app) if mind.on(self.app) else None)
+        self.every(
+            "harness",
+            "daily 02:40",
+            lambda p: harness_run.nightly(self.app) if mind.on(self.app) else None,
+            thread=True,
+        )
 
     def _signals(self, payload: dict | None = None) -> int:
         """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""

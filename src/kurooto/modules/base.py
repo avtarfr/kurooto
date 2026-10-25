@@ -7,6 +7,8 @@ that it's set up. Turning a module off cancels its jobs; its data stays unless y
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -134,7 +136,18 @@ class Module:
     def setting(self, key: str, default=None):
         return self.app.settings.get(f"{self.id}.{key}", default)
 
-    def every(self, name: str, spec: str, action: Callable, payload: dict | None = None, **kw) -> None:
+    def every(
+        self, name: str, spec: str, action: Callable, payload: dict | None = None, thread: bool = False, **kw
+    ) -> None:
+        """Schedule `action`. thread=True: a plain function that takes more than a moment (it reads many notes, runs a
+        program, waits on the computer) runs on a thread of its own, so Kurooto's loop (the call line's heartbeat, Telegram
+        replies, every other job) isn't held up while it works."""
+        if thread and not inspect.iscoroutinefunction(action):
+            plain = action
+
+            async def action(p=None, _f=plain):  # noqa: E306
+                return await asyncio.to_thread(_f, p)
+
         self.app.scheduler.action(f"{self.id}.{name}", action)
         self.app.scheduler.every(f"{self.id}:{name}", spec, f"{self.id}.{name}", payload, module=self.id, **kw)
 

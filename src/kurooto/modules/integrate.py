@@ -247,8 +247,8 @@ class Integrate(Module):
             self.every("garden", self.setting("garden_at") or "daily 06:20", self.garden_start)
         if self.setting("summary"):
             self.every("summary", "daily 07:10", self.summary)
-        self.every("duplicates", "daily 06:25", lambda p=None: graphmerge.night(self, p))
-        self.every("note_dupes", "daily 06:40", lambda p=None: notedupes.night(self.app))
+        self.every("duplicates", "daily 06:25", lambda p=None: graphmerge.night(self, p), thread=True)
+        self.every("note_dupes", "daily 06:40", lambda p=None: notedupes.night(self.app), thread=True)
         jobs = self.app.jobs
         jobs.then_actions["integrate.done"] = self._done
         jobs.then_actions["integrate.checked"] = self._checked
