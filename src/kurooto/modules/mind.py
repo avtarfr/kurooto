@@ -49,6 +49,10 @@ from kurooto.mind.harness import indicators as harness_indicators
 from kurooto.mind.harness import run as harness_run
 from kurooto.mind.lab import report as lab_report
 from kurooto.mind.lab import runner as lab_runner
+from kurooto.mind.senses import activity as senses_activity
+from kurooto.mind.senses import intero as senses_intero
+from kurooto.mind.senses import phone as senses_phone
+from kurooto.mind.senses import store as senses_store
 from kurooto.mind.skills import demos as skill_demos
 from kurooto.mind.skills import distill as skill_distill
 from kurooto.mind.skills import finetune as skill_finetune
@@ -123,6 +127,12 @@ class Mind(Module):
         workspace.register_bidder("lab", lab_report.bid)
         self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None)
         self.every("lab_digest", "daily 07:40", self._lab_digest)
+        # stage 13: a body: its own machine every minute, the activity stream (opt-in), the totals kept 7 days raw
+        workspace.register_bidder("body", senses_intero.bids)
+        self.every("intero", "every 1m", lambda p: senses_intero.tick(self.app) and None)
+        self.every("activity", "every 1m", lambda p: senses_activity.tick(self.app) and None)
+        self.every("activity_poll", "every 5m", lambda p: senses_activity.poll(self.app) and None)
+        self.every("senses_roll", "daily 04:30", lambda p: senses_store.rollup(self.app) and None)
         # stage 12: skills from tasks that worked out, the ones it noticed you repeat, retirement, the weekly fine-tune
         self.every("skills_distill", "daily 03:10", lambda p: skill_distill.nightly(self.app) and None)
         self.every("skills_offer", "daily 18:20", lambda p: skill_demos.offer(self.app) and None)
@@ -305,6 +315,12 @@ class Mind(Module):
                 usage="/mood",
             ),
             Command(
+                "senses",
+                "what Kurooto senses: its machine, your activity (if on), your phone's sensors (each opt-in)",
+                self.senses_cmd,
+                usage="/senses [on|off <sensor>|forget [sensor]|wifi label <id> <name>|body]",
+            ),
+            Command(
                 "learned",
                 "the skills Kurooto has learned: /learned, /learned run <name> <text>, /learned retire <name>",
                 self.learned_cmd,
@@ -434,6 +450,50 @@ class Mind(Module):
         from kurooto.mind import report
 
         return report.budget_text(self.app)
+
+    def senses_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        w = (arg or "").split()
+        names = ["intero", "activity", *[f"phone.{s}" for s in senses_phone.SENSORS]]
+        if w and w[0] == "body":
+            return senses_intero.report(self.app)
+        if len(w) == 2 and w[0] in ("on", "off"):
+            key = w[1] if w[1] in names else (f"phone.{w[1]}" if f"phone.{w[1]}" in names else "")
+            if not key:
+                return "Senses: " + ", ".join(n.removeprefix("phone.") for n in names)
+            self.app.settings.set(f"mind.senses.{key}", w[0] == "on")
+            if w[0] == "off":
+                senses_store.forget(
+                    self.app,
+                    None if key in ("intero",) else ("activity" if key == "activity" else "phone:" + key[6:]),
+                    today_only=False,
+                )
+            return f"{key.removeprefix('phone.')}: {w[0]}" + (" (what it kept of it is gone)" if w[0] == "off" else "")
+        if w and w[0] == "forget":
+            sensor = None if len(w) < 2 else ("activity" if w[1] == "activity" else f"phone:{w[1]}")
+            return f"Forgot {senses_store.forget(self.app, sensor)} reading(s) from today."
+        if len(w) >= 4 and w[:2] == ["wifi", "label"]:
+            return (
+                "Labelled."
+                if senses_phone.label_wifi(self.app, w[2], " ".join(w[3:]))
+                else "That network code or name isn't valid."
+            )
+        lines = [
+            f"- its own machine: {'on' if senses_intero.on(self.app) else 'off'} (/senses body)",
+            "- your activity: "
+            + (f"on: {senses_activity.today(self.app)}" if senses_activity.on(self.app) else "off (opt-in)"),
+        ]
+        for s in senses_phone.SENSORS:
+            lines.append(
+                f"- phone {s}: "
+                + ("on: " + senses_phone.today(self.app, s) if senses_phone.enabled(self.app, s) else "off")
+            )
+        return (
+            "What it senses (each opt-in, nothing leaves this computer):\n"
+            + "\n".join(lines)
+            + "\n/senses off <name> switches one off and deletes what it kept; /senses forget [name] clears today."
+        )
 
     def callbacks(self):
         return {"skl": lambda ref, act: skill_demos.button(self.app, ref, act)}
@@ -605,6 +665,7 @@ def button(app, ref: str, act: str) -> str:
     shutil.rmtree(d, ignore_errors=True)
     shutil.rmtree(app.paths.state / "mind-journal", ignore_errors=True)  # its journal (mind/journal.py)
     shutil.rmtree(app.paths.state / "mind-story", ignore_errors=True)  # its life story (mind/story.py)
+    shutil.rmtree(app.paths.state / "mind-senses", ignore_errors=True)  # the senses' readings, salt and totals
     shutil.rmtree(app.paths.state / "mind-skills", ignore_errors=True)  # the learned skills and the fine-tune's folder
     shutil.rmtree(app.paths.state / "lab", ignore_errors=True)  # the lab's protocols, pre-registrations and results
     for f in (
@@ -620,6 +681,8 @@ def button(app, ref: str, act: str) -> str:
         "mind-distilled.json",
         "mind-demos.json",
         "mind-finetune.json",
+        "mind-intero.json",
+        "mind-activity.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

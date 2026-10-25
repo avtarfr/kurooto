@@ -9,6 +9,7 @@ import android.content.Intent;
 public class BootReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context c, Intent i) {
         try { Alarms.schedule(c); } catch (Exception ignored) { }
+        try { Senses.schedule(c); } catch (Exception ignored) { }
         try { if (Prefs.paired(c)) ListenService.start(c); } catch (Exception ignored) { }
     }
 }

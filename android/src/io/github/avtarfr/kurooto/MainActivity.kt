@@ -325,6 +325,11 @@ class MainActivity : ComponentActivity() {
         recreate()
     }
 
+    internal fun toggleSense(sensor: String) {
+        Senses.set(this, sensor, !Senses.on(this, sensor))
+        ui.tick++
+    }
+
     internal fun toggleKeepOn() {
         Prefs.setBedsideKeepOn(this, !Prefs.bedsideKeepOn(this))
         ui.tick++

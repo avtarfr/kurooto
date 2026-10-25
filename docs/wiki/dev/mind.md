@@ -752,3 +752,23 @@ machine (no training packages): only the pipeline around them is tested, with a 
 so an adapter stays in shadow until a hidden-harness score is recorded with `improve.score`; running the harness with the adapter answering is not wired
 yet. (4) Tone tags the owner confirmed are not used (no confirmed-tag store exists). (5) A tombstone keeps the first few words of a forgotten prompt, which
 is the price of the probe; `probe_words` is at least 3. (6) The demonstration source needs stage 13's stream; tested with a synthetic one.
+
+## Stage 13: a body: interoception, the activity stream, phone sensors (I-11, I-14)
+
+Code: `mind/senses/` (`store.py`, `intero.py`, `activity.py`, `phone.py`); `modules/mind.py` jobs `intero` (1m), `activity` (1m), `activity_poll` (5m),
+`senses_roll` (04:30) and `/senses`; `modules/calls/chat.py` `take` passes `{"senses": ...}` to `phone.ingest`; the gate's `AUDIT` lint; `measure.health` reads
+`intero.last_fine`; stage 12's demos read the store. Android: `Senses.java` (alarm, readings, held bins, sealed send via `Chat.sendSenses`),
+`SensesRules.java` (the pure rules), `SensesTest.java`, a Senses group in the Phone tab, `Places.entered` -> `Senses.place`. Tests: `test_mind_senses.py` (15),
+`SensesTest`. Switches: `mind.senses.intero` (on), `mind.senses.activity` (off), `mind.senses.phone.<sensor>` (11, each off).
+
+`store`: `<state>/mind-senses/senses.db`, `events` (7 days) and `days` (totals); `rollup` folds old events into totals; `forget` per sensor. `intero.sample` reads psutil and
+nvidia-smi, the job queue (`jobs.active`), the quota report and the call connector; the model is a running mean change per (action, body variable) and `learn`
+refuses any other target (`BODY_VARS`). `activity` salts with `<state>/mind-senses/salt` (0600). `phone.clean` allows, per sensor, only the named fields; numbers
+must be numbers, words from a list, a label of at most 30 plain characters, a Wi-Fi id a 8 to 16 hex code. On the phone, a reading is a 5-minute bin kept in
+`SharedPreferences` (at most 300), sent 40 at a time; when the line says the computer is off (`queued`), nothing more is sent for 12 hours so the senses can't fill
+the line's outbox (100 things shared with chat and answers).
+
+**Deviations.** (1) The phone samples every 15 minutes, not continuously in 5-minute bins: bins are 5 minutes wide, readings come 15 minutes apart (battery). (2) Unlock
+counting needs the app's process alive. (3) The 30-second interoception cycle is a minute (the scheduler's step). (4) Zotero opens are not collected. (5) The
+sensorimotor model records effects when the lab or an AI request is running; nothing else yet uses `expected` except `would_overheat` (not yet called by the lab:
+it still uses AC, lid and heat). (6) The Android part was built (tests, lint, dev APK) but not yet opened on the real phone: it was not plugged in.

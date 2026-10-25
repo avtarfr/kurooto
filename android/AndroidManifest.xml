@@ -6,7 +6,7 @@
      turns an old phone into a bedside dock (a dim clock with one button to talk). Works from Android 6.
      Paired with your own call line by a one-time link from your computer; nothing personal is built into the app.
      Gradle (build.gradle.kts) sets the package, the SDK levels and the app's label (the appLabel placeholder: "Kurooto", or "Kurooto dev"). -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -27,6 +27,10 @@
          alarm-clock permission from Android 13, which comes with the app -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- the phone's senses (0.8.0), each off until you switch it on in the Phone tab -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
 
     <!-- turn-by-turn calls use the phone's own speech recognizer and voice: Android 11+ only lets the app see them
          when it says so here -->
@@ -173,5 +177,6 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <receiver android:name=".PlaceReceiver" android:exported="false" />
+        <receiver android:name=".Senses" android:exported="false" />
     </application>
 </manifest>

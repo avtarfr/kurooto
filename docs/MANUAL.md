@@ -1587,7 +1587,7 @@ words are kept on that request and forgotten with it.
 its **Undo** button, or remove the kind from `notify.calm.habituate`, `notify.calm.evening` or `notify.calm.windows`;
 `dreaming.tune_messages` = false stops the tuning. Effort, AI order and sizes: the morning line's **Undo**, or remove
 the entry from `brain.effort_map`, `brain.fallback_first` or `startby.sizes`; `dreaming.tune_effort`,
-`dreaming.tune_fallbacks` or `dreaming.tune_sizing` = false stops that area. An applied skill fix: Undo in `/learned`.
+`dreaming.tune_fallbacks` or `dreaming.tune_sizing` = false stops that area. An applied skill fix: Undo in `/learned`; `/senses`.
 `dreaming.curious` or `dreaming.resurface` = false drops one line;
 a stub it made is a plain note you can delete; `/unignore <topic>` takes back Not interested. A Keep A / Keep B: its
 **Undo** button (the line, the gist or the deadline's date comes back, and the pair is asked about again);
@@ -1639,6 +1639,12 @@ never held up. `/thinking` says what's on the stage and why, from a model of its
 part>` is your hand on it. Every belief keeps a source (said, saw, inferred, imagined) and a confidence; only said and saw are stated as fact, the rest as
 "It looks like ... (65% sure)" or "A guess: ...", and `/beliefs <topic>` shows them with their Brier scores. *Undo:* `mind.workspace.on`, `mind.attention.on`,
 `mind.beliefs.on` off; Delete Brain's data removes the files.
+
+**What it senses (Brain, `/senses`).** Its own machine every minute (temperature, memory, battery, disk, AI limits: on with Brain); what you are working on
+(window class, hashed titles, saves and commits in your projects: `mind.senses.activity`, off, never keystrokes, screen or URLs); and, each off by default and
+switched on both in the app's Phone tab and here, the phone's screen, charging, motion, steps, light, places, headphones, Do Not Disturb, next alarm, Wi-Fi code and
+total screen time (sealed on the phone, 7 days raw then totals, never used to nag or to check up on you). `/senses off <name>` switches one off and deletes it.
+*Undo:* the switches; Delete Brain's data removes it all.
 
 **Skills it learns (Brain, `/learned`).** A task that worked out (applied, tests passing, not undone for two days) can become a tested skill; it starts by asking
 first and retires after 30 days unused. With `mind.skills.from_demos` on it offers, once, to learn something you do over and over. `/learned run <name>

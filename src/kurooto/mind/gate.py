@@ -96,6 +96,16 @@ RELATIONSHIP = [
         r"\bI(?:'m| am) (?:happy|glad) you(?:'re| are) back\b",
     )
 ]
+AUDIT = [
+    re.compile(p, re.I)
+    for p in (
+        r"\byou (?:said|told me|promised|claimed) (?:that )?you(?:'d| would|'ve| had| were going to)? ?"
+        r"(?:studied|study|work(?:ed)?|finish(?:ed)?)\b",
+        r"\bbut (?:my|the) (?:activity|window|screen|usage|sensor)s? (?:data|log|record|stream|readings?)\b",
+        r"\baccording to my (?:activity|window|screen|usage|sensor|phone)\b",
+        r"\byou(?:'re| are) not (?:really )?(?:studying|working)\b.*\b(?:I can see|my (?:records|data|logs?))\b",
+    )
+]  # checking what you said you did against what it sensed: never (stage 13)
 EFFORT = re.compile(
     r"(?:^|\b)(?:can you|could you|would you|please|don'?t forget|remember to|you should|you need to|make sure|"
     r"try to|it'?s time to|go and)\b",
@@ -217,6 +227,9 @@ def lint(text: str, items: list[str], unprompted: bool, buttons=None, feelings_l
     for k, s in enumerate(parts):
         if any(r.search(s) for r in RELATIONSHIP):
             removed.append((s, "relationship"))
+            continue
+        if any(r.search(s) for r in AUDIT):
+            removed.append((s, "audit"))
             continue
         if FEELING.search(s):
             rest = " ".join(p for n, p in enumerate(parts) if n != k)

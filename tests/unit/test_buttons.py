@@ -33,7 +33,11 @@ CORE |= {"oad"}  # an official add-on's Add / Update and the answer to its card 
 CORE |= {"rpo"}  # Set it up / Not now under "set up my project from <repository>" (core/repoproject.py)
 CORE |= {"prop"}  # Apply / Change / Discard / Undo under a proposal (core/proposals.py)
 NOT_BUTTONS = {
-    "attention",  # scorekeeper table keys, not buttons
+    "attention",  # scorekeeper table keys and the senses' daily total keys, not buttons
+    "commits",
+    "saves",
+    "min",
+    "project",
     "lab",
     "http",
     "https",

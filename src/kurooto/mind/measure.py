@@ -46,6 +46,14 @@ def health(app: App) -> float | None:
     except Exception:
         pass
     try:
+        from kurooto.mind.senses import intero
+
+        fine = intero.last_fine(app)
+        if fine is not None:
+            ok.append(fine >= 0.8)
+    except Exception:
+        pass
+    try:
         ok.append(not any(r.get("until") for r in app.quota.report()))
     except Exception:
         pass

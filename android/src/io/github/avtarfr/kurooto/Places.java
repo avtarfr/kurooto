@@ -225,6 +225,7 @@ final class Places {
             }
         } catch (Exception ignored) { }
         put(c, "places", out);
+        if (hit != null && fire) Senses.place(c, hit.optString("name"), entering);
         if (!fire || hit == null) return;
         JSONArray rs = remindersFor(c, hit.optString("name"));
         if (rs.length() == 0) return;

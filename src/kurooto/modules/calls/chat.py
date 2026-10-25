@@ -265,6 +265,10 @@ class PhoneChat:
         if why:
             self.app.events.emit("phone_chat_refused", why=why)
             return 409, {"ok": False, "note": why.replace("answer", "message")}
+        if "senses" in fields:  # the phone's senses, aggregated and sealed on the phone (mind/senses/phone.py)
+            from kurooto.mind.senses import phone as senses_phone
+
+            return senses_phone.ingest(self.app, fields["senses"])
         if "button" in fields:
             return self._button(str(fields.get("msg") or ""), fields["button"])
         if "today" in fields:  # Done or +1 on the app's Today screen (today.py)

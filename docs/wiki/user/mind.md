@@ -222,6 +222,30 @@ lists them with their source, how sure it was and how each source has done. Swit
 `mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
 `mind-beliefs.json`.
 
+## What it senses, and what it never does
+
+Kurooto looks at three things, each switchable, and everything stays on this computer.
+
+**Its own machine** (`mind.senses.intero`, on with Brain). Every minute: CPU and graphics-card temperature, graphics memory in use, memory and swap, the
+battery, free disk, how much of the AI limits is used, whether a provider is at its limit, whether the call line is connected and how many AI requests
+wait. When something is off (hot, a low battery, a nearly full disk, a limit hit) it can win a place in the workspace; the share that's fine feeds its
+`health`. It also learns which of its *own* actions change its *own* body (the lab raises the temperature) and uses that to decide when to run things.
+That model is about its body only: nothing about you can be a target of it. `/senses body` shows the readings.
+
+**What you're working on** (`mind.senses.activity`, off). The application in front, the window title only as a hash nobody can reverse, the terminal's
+folder, files you save and commits you make in your projects, and a browser reduced to docs, video, social or web. Never keystrokes, never the screen,
+never a URL. Raw events last 7 days; then only totals ("2 h on glacier-flow"). It is **never used to check up on you**: a sentence like "you said you'd study,
+but my data shows otherwise" is removed before it can be sent, always.
+
+**Your phone's sensors** (each off until you switch it on, in the Phone tab of the app *and* here with `mind.senses.phone.<sensor>`): screen on and unlocks,
+charging, whether you're still, walking or in a vehicle (worked out on the phone), steps, room light (dark, dim, bright), arriving at and leaving your saved
+places, headphones, Do Not Disturb, your next alarm, which Wi-Fi (a code the phone makes itself; you say once what it is: `/senses wifi label <code> home`)
+and total screen time a day (never per app). The microphone is not a sense. The phone takes a reading every 15 minutes (Android batches it, so it's
+cheap), seals it with the phone's key and sends it through your call line, which can't read it; if your computer is off, one sealed batch waits there.
+They feed timing (quieter) and forecasts, never nagging.
+
+`/senses` shows what each sense saw today. `/senses off <name>` switches one off and deletes what it kept; `/senses forget [name]` clears today's.
+
 ## Skills it learns
 
 When a task works out (a change it proposed was applied, its tests passed, and you didn't undo it for two days), Kurooto can turn it into a **skill**: a

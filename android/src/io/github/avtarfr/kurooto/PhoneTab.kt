@@ -42,6 +42,8 @@ fun PhonePage(a: MainActivity, ui: HomeState, outer: PaddingValues) {
     TabPage(a, ui, outer, "Phone", sub) { PhoneTab(a, ui) }
 }
 
+private val SensesList = listOf("screen", "charging", "motion", "steps", "light", "places", "headphones", "dnd", "alarm", "wifi", "usage")
+
 @Composable
 private fun ColumnScope.PhoneTab(a: MainActivity, ui: HomeState) {
     @Suppress("UNUSED_VARIABLE") val tick = ui.tick // re-read on resume and after a change
@@ -120,6 +122,17 @@ private fun ColumnScope.PhoneTab(a: MainActivity, ui: HomeState) {
     Footnote(
         "An old phone on a charger by your bed works well. Talk works with the phone locked; leave the app listening " +
             "(the checklist above) so wake-up calls ring there.",
+    )
+
+    Heading("Senses")
+    Group(
+        SensesList.map { s ->
+            Item(Senses.label(s), Senses.note(s).ifEmpty { null }, checked = Senses.on(a, s), onClick = { a.toggleSense(s) })
+        },
+    )
+    Footnote(
+        "Off until you switch one on. Each reading is worked out on this phone, sealed with this phone's key and sent to your " +
+            "computer through your call line, which can't read it; if your computer is off it waits there. The microphone is never used.",
     )
 
     Heading("Switches")

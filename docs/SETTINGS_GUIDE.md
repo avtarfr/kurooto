@@ -652,6 +652,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.promises.on` | `true` | its own promises: noticed, kept or owned up to first |
 | `mind.read.asks_per_week` | `2` | the most times a week it asks whether the week felt heavier than usual |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days (it only watches for now) |
+| `mind.senses.activity` | `false` |  |
+| `mind.senses.intero` | `true` | its own machine's state, every minute (on with Brain) |
+| `mind.senses.phone` | `"(computed)"` |  |
 | `mind.skills.from_demos` | `false` | also offer skills from what you do over and over (needs the activity stream) |
 | `mind.skills.on` | `true` | solved tasks and demonstrations become tested, reusable skills; each starts by asking first |
 | `mind.story.on` | `true` | one autobiography every part of Kurooto reads first (a fixed core, then its recent weeks) |

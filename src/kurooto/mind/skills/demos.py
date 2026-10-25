@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
-import json
 import re
 import time
 from typing import TYPE_CHECKING
@@ -39,19 +38,9 @@ def shape(ev: dict) -> str:
 
 
 def events(app: App, since: float | None = None) -> list[dict]:
-    f = app.paths.state / "activity.jsonl"
-    out = []
-    try:
-        for line in f.read_text().splitlines()[-20000:]:
-            try:
-                ev = json.loads(line)
-            except ValueError:
-                continue
-            if isinstance(ev, dict) and isinstance(ev.get("t"), (int, float)) and (since is None or ev["t"] >= since):
-                out.append(ev)
-    except OSError:
-        pass
-    return sorted(out, key=lambda e: e["t"])
+    from kurooto.mind.senses import store
+
+    return [e for e in store.events(app, "activity", since or 0.0) if e["kind"] in ("window", "cwd", "save", "commit")]
 
 
 def bursts(evs: list[dict]) -> list[list[dict]]:

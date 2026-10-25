@@ -215,14 +215,20 @@ def test_distill_nightly_caps_at_two(app):
 
 # ---------------------------------------------------------------------------------------- from demonstrations
 def write_events(app, days=(0, 7, 14), steps=("export plots/week1.png", "open meeting-note-2026-10-26.md")):
+    from kurooto.mind.senses import store
+
+    store.forget(app, None, today_only=False)
     base = dt.datetime(2026, 9, 7, 9, 0).timestamp()  # a Monday
-    lines = []
     for d in days:
-        t = base + d * DAY
         for i, s in enumerate(steps):
             kind, target = s.split(" ", 1)
-            lines.append(json.dumps({"t": t + i * 60, "kind": kind, "target": target.replace("1", str(d + 1))}))
-    (app.paths.state / "activity.jsonl").write_text("\n".join(lines))
+            store.add(
+                app,
+                "activity",
+                "save" if kind == "export" else "window",
+                target.replace("1", str(d + 1)),
+                t=base + d * DAY + i * 60,
+            )
 
 
 def test_detect_sequences(app):

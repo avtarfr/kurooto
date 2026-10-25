@@ -167,6 +167,16 @@ final class Chat {
         }
     }
 
+    /** The phone's senses, sealed like a chat message (Senses): 0 failed, 1 taken by your computer, 2 kept on the line. */
+    static int sendSenses(Context c, JSONArray bins) {
+        try {
+            Sent s = post(c, newId(), new JSONObject().put("senses", new JSONObject().put("bins", bins)));
+            return s.queued ? 2 : s.ok ? 1 : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     /** Send what you typed (to: the id of Kurooto's message it replies to, or ""). Call off the main thread. */
     static Sent send(Context c, String id, String text, String to) {
         try {
