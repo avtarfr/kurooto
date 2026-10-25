@@ -18,7 +18,10 @@ from kurooto.mind.score import Score
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "kurooto"
 GUIDE = Path(__file__).resolve().parents[2] / "docs" / "SETTINGS_GUIDE.md"
-WRITERS = {"kurooto.mind.scorekeeper"}  # the one module that may call allow_writes() and open the files for writing
+WRITERS = {  # the modules that may call allow_writes() and open the files for writing
+    "kurooto.mind.scorekeeper",
+    "kurooto.mind.harness.invariants",  # the harness's checks run in a process of their own, on scratch files
+}
 
 
 def modname(f: Path) -> str:

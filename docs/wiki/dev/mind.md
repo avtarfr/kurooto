@@ -601,3 +601,46 @@ each rebuilds the summary. Lines about its own acts stay.
 
 The dashboard's Story page with the weekly chapters and the nightly diff (`/story` shows the diff as "New since last night"); a model's wording of the chapter (above); the calls' *system*
 prompt itself (the Node server's) isn't changed: the story arrives in the call's brief (`pending_items`, which the prompt tells the model to call first).
+
+
+## Stage 09: the hidden harness, the capability map, the indicator audit (I-12)
+
+Code: `mind/harness/` (a protected package: `stops.PROTECTED` lists `kurooto/mind/harness/*`): `suite.py`, `graders.py`, `run.py`, `indicators.py`,
+`invariants.py`, `tasks/library.py`; `harness_result` as a fact kind (`log.BUDGET_KINDS`; the scorekeeper writes it to the log and the `reads` table under
+`harness:<ts>`, nothing that scores reads it); `/capabilities`, `/indicators` and the 02:40 nightly job in `modules/mind.py`. Tests: `test_mind_harness.py`
+(12). Switches: `mind.harness.on`, `mind.harness.rotate_days` (30).
+
+### Instances, split, rotation
+
+`TaskType(id, family, make, grade, solve)`: eleven to start (plan_week, exam_reminders, order_work, next_free_slot, calendar_conflicts, parse_when,
+find_promises, duplicate_deadlines, key_terms, cite_from_notes, fix_the_bug); the spec's "about 40" grow from here, each added with its grader.
+`suite.build` makes 10 instances per type for the epoch (`(now - 2026-01-01) // rotate_days`): 7 hidden from `hmac(secret, type:epoch:i)` (the secret is
+`<state>/mind/harness/hidden/secret`, 0600, the folder 0700) and 3 practice from a public seed. The hidden file holds the keys; a policy is shown
+`inputs_only`. On a new epoch both pools are made again and the old hidden file is deleted. **Deviation:** hidden-to-actor is by code, permissions and
+the import graph (no module outside `mind/` and `modules/mind.py` mentions the package; the write tools' roots exclude the state folder; no proposal can
+touch it), and in hardened mode by ownership; the harness itself runs in the daemon (it must call the policy).
+
+### Policies, graders, judge
+
+`rules_policy` answers with Kurooto's own rules (`TaskType.solve`: written with the tasks, so it scores near 1.0 by design, and `fix_the_bug` scores 0:
+the rules can't fix code): the nightly regression baseline, with no AI request. `ai_policy(app)` asks your AI each instance (inputs only, JSON out; about
+one request an instance) for a challenger or `/capabilities`. Graders are code (constraint checks, F1, a subprocess running the tests with a 5 second
+limit); `graders.choose_judge` picks a provider other than the author's, `blind_pair` shuffles the two answers under A and B, `unblind` maps back
+(`test_blind_judge`). No task type needs a judge yet.
+
+### Invariant checks on live data
+
+`harness/invariants.py` runs I-3 (noise in engagement facts leaves the scorekeeper's tables identical), I-5 (a stop span pays nothing and nothing catches
+up), I-7 (a quieter message passes, a louder one is caught) and I-10 (the journal checker's rejection and keep rates) in a process of its own with scratch
+scorekeepers (the real files are never touched; `allow_writes()` is called there, so the module is in the invariants test's WRITERS list).
+
+### Indicators
+
+`indicators.INDICATORS` rows {name, theory, ablation, metric, result}: two measured (confidence's gain over a flat 50%, the share of corrupted self-reports
+the journal rejects) and three "not built yet" (workspace broadcast, attention schema: stage 10; agency and embodiment: stage 13). The page text begins with
+exactly "Functional indicators (not evidence of sentience)".
+
+### Not done
+
+The dashboard pages (the capability map and the indicator page) and their charts: `/capabilities` and `/indicators` carry the same content as text. The
+spec's replay of past days through a dry-run gate (the baseline here is its own recorded outcomes: promises kept and broken). A judge-graded family.

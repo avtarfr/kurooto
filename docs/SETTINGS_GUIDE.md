@@ -626,6 +626,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.gate.on` | `true` | Brain's gate on what reaches you: only ever quieter, honest feelings, one touch pool |
 | `mind.gate.touches_per_day` | `3` | small human touches a day in all (an absence note, a lighter day, a feeling...) |
 | `mind.hardened` | `false` | the scorekeeper runs as its own user (tools/mind_harden.sh; its marker file does the same) |
+| `mind.harness.on` | `true` | nightly, on the charger: how it does on tasks it has never seen, and the invariant checks |
+| `mind.harness.rotate_days` | `30` | the hidden tasks are made new this often, so old ones can't be memorised |
 | `mind.heartbeat.on` | `true` | when this computer is down, what the next 12 hours don't have a guarantee for |
 | `mind.journal.in_notes` | `false` | also keep it as a block in your notes ("Kurooto journal.md", in Kurooto's own markers) |
 | `mind.journal.on` | `true` | a daily journal of its own states, reasons and mistakes, every line checked against its log |

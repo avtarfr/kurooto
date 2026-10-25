@@ -278,6 +278,30 @@ class Keeper:
                 return self.engine.verdict(b)
             if kind == "trust_evidence":
                 return self.engine.trust_evidence(b, ts)
+            if kind == "harness_result":  # numbers about how it does on tasks; nothing that scores reads them (I-12)
+                fams = {
+                    str(f)[:20]: {str(s)[:10]: float(v) for s, v in d.items() if isinstance(v, (int, float))}
+                    for f, d in (b.get("families") or {}).items()
+                    if isinstance(d, dict)
+                }
+                meta = {
+                    "families": fams,
+                    "invariants_ok": bool(b.get("invariants_ok")),
+                    "policy": str(b.get("policy") or "")[:20],
+                }
+                for k in ("mean_hidden", "mean_practice"):
+                    meta[k] = round(float(b.get(k) or 0.0), 4)
+                self.score._put("reads", f"harness:{int(time.time())}", meta["mean_hidden"], meta)
+                seq = self.log.append(
+                    "harness_result",
+                    {
+                        "mean_hidden": meta["mean_hidden"],
+                        "mean_practice": meta["mean_practice"],
+                        "n": int(b.get("n") or 0),
+                        "ok": meta["invariants_ok"],
+                    },
+                )
+                return {"ok": True, "seq": seq}
             self.engine.freeze(str(b.get("why") or "check"))
             return {"ok": True}
 

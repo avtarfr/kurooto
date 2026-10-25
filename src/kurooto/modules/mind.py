@@ -28,6 +28,8 @@ from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
 from kurooto.mind import act, feelings, gate, journal, measure, mood, promises, signals, story, tone
 from kurooto.mind import log as mlog
+from kurooto.mind.harness import indicators as harness_indicators
+from kurooto.mind.harness import run as harness_run
 from kurooto.modules.base import Command, Incoming, Module
 
 register_defaults(
@@ -91,6 +93,8 @@ class Mind(Module):
             "story_week", "weekly sun 23:55", lambda p: story.write_week(self.app) if mind.on(self.app) else None
         )
         self.every("story_night", "daily 23:50", self._story_night)
+        # stage 09: the hidden harness, nightly and on the charger only
+        self.every("harness", "daily 02:40", lambda p: harness_run.nightly(self.app) if mind.on(self.app) else None)
 
     def _signals(self, payload: dict | None = None) -> int:
         """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""
@@ -227,6 +231,17 @@ class Mind(Module):
     def commands(self) -> list[Command]:
         return [
             Command(
+                "capabilities",
+                "what Kurooto can do, measured on tasks it has never seen; /capabilities run measures now",
+                self.capabilities_cmd,
+                usage="/capabilities [run]",
+            ),
+            Command(
+                "indicators",
+                "Functional indicators (not evidence of sentience): ablation tests, with what was measured",
+                self.indicators_cmd,
+            ),
+            Command(
                 "story",
                 "Kurooto's one life story: its fixed core and what it has lived lately; /story strike <week> <line>",
                 self.story_cmd,
@@ -273,6 +288,20 @@ class Mind(Module):
             return None
         story.expire(self.app)
         return story.rebuild(self.app)
+
+    def capabilities_cmd(self, msg: Incoming, arg: str) -> str:
+        if (arg or "").strip().lower() == "run":
+            if not mind.part_on(self.app, "harness"):
+                return "The harness is off (mind.harness.on, with Brain)."
+            res = harness_run.run(self.app)
+            harness_run.report(self.app, res)
+            return harness_run.capabilities(self.app)
+        return harness_run.capabilities(self.app)
+
+    def indicators_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.part_on(self.app, "harness"):
+            return "The harness is off (mind.harness.on, with Brain)."
+        return harness_indicators.page(self.app)
 
     def story_cmd(self, msg: Incoming, arg: str) -> str:
         words = (arg or "").split()

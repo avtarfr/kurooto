@@ -197,6 +197,8 @@ never a label or a number of yours. Nothing of it reaches a cloud AI or leaves t
 ask doesn't name what it read. **Forget this** under `/mood` deletes a day's numbers, read, answer and forecast and what was
 kept of that day's messages, calls and requests; **Off** deletes it all after you confirm.
 
+**Brain's harness** (`mind.harness.on`) keeps made-up task instances (not your data) and their scores in the `mind` folder, and runs its invariant checks on scratch files; nothing of it reaches an AI unless you run `/capabilities` with the AI as its policy, and then only the made-up task inputs go.
+
 **Brain's life story** (`mind.story.on`) keeps its chapters (a few checked sentences a week, each citing log record numbers) and a nightly summary in `mind-story/` in the state folder, and puts the summary in front of every AI request and call (so it goes to whichever AI you chose, like any request; it holds nothing about how you're doing except lines you haven't forgotten, and never the read itself). Lines about you leave with Forget this and after 30 days.
 
 **Brain's journal** (`mind.journal.on`) keeps one short file per day in `mind-journal/` in the state folder: sentences about Kurooto's own states and mistakes, each citing log record numbers, worded by the model on this computer or by fixed templates, never by a cloud AI; Delete Brain's data removes it, and a line about you you strike also forgets that day's read.

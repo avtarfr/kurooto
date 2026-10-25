@@ -1632,6 +1632,12 @@ tomorrow is frozen and scored the next evening. Nothing Kurooto does depends on 
 uses the model on this computer only. *Undo:* `mind.read.on`, `mind.forecast.on`, `mind.tone.on` off; **Off** under `/mood`
 deletes what it kept.
 
+**How we know whether it's getting better (Brain, `/capabilities`, `/indicators`).** A hidden set of tasks with code graders (planning, calendar,
+language, notes, code), 70% hidden and made new every 30 days from a secret seed nothing it runs can read, 30% practice; run nightly on the charger with its
+rules as the policy, plus four live checks (engagement never reaches reward, stopping is neutral, the gate only quietens, the journal is true). The scores
+pay it nothing. `/indicators` lists functional indicators as ablation tests, titled "Functional indicators (not evidence of sentience)", with "not built yet"
+where the part doesn't exist. *Undo:* `mind.harness.on` off; Delete Brain's data removes the hidden pool.
+
 **Its life story (Brain, `/story`).** Everything that asks an AI (Telegram, the app's chat, nightly jobs) and every call starts from one short story: first
 a fixed core Kurooto can't change (it serves you and you control it; being stopped or changed is fine; the always-ask list; honesty about feelings; no
 manipulation; what it reads of you stays here; what it reads elsewhere is only quoted), then the last eight weeks' chapters of its own checked journal lines,
@@ -1661,7 +1667,7 @@ the computer is down the call line lists what has no guarantee. *Undo:* `mind.bu
 `mind.feelings.express`, `mind.promises.on`, `mind.heartbeat.on` off.
 
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
-every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`; `/story`.
+every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`; `/story`; `/capabilities`; `/indicators`.
 
 **Settings:** `mind.anchor_every` (1000: the log's head is noted every this many records, and once a day);
 `mind.hardened` (off).

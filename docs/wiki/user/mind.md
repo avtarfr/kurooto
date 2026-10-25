@@ -195,6 +195,27 @@ doesn't, learning is frozen and a line in the morning says so. **Strike** a line
 struck-through tombstone, and a line about you also forgets that day's read. The journal lives in `mind-journal/` in the state
 folder; `mind.journal.in_notes` (off) also keeps it as a block in a note of yours. Switches: `mind.journal.on`, `mind.journal.in_notes`.
 
+## How we know whether it's getting better
+
+Claims that Kurooto is improving mean nothing unless they're measured on something it can't have seen. Brain has a **hidden harness**: a set of
+tasks from your own kind of life (plan this week from these deadlines, find the clashes in a calendar, read these times, find the promises in
+these sentences, spot duplicate deadlines, pick the key terms out of a lecture, answer from your notes with citations that exist and support the
+answer, fix a small bug so its tests pass). Each has a grader written in code. Seven in ten instances are **hidden**: they are made from templates
+and a secret seed that only the harness reads, nothing Kurooto's AI, tools, jobs, skills or proposals can open; three in ten are a practice pool it may
+look at. The hidden ones are **made new every 30 days** (`mind.harness.rotate_days`), so old ones can't be memorised. Where a grader needs
+judgement, the judge is an AI from a *different* provider than the one that answered, shown the two answers under shuffled labels.
+
+Every night, on the charger, it runs the harness with its own rules as the policy (no AI requests: it's the regression check, and it catches a change that
+breaks something), plus four checks of Brain's own promises on scratch data: engagement never reaches reward, being stopped is neutral, the gate only
+ever quietens, and the journal's checker rejects corrupted lines. The scores go to the log and pay Kurooto **nothing**: they feed no reward, no
+value and no trust. A challenger (a change it proposes to itself, stage 11) and the AI's own answers are run on demand.
+
+**`/capabilities`** shows, per kind of task (planning, calendar, language, notes, code), the hidden score and how it's moved over the runs, and its own
+record of promises kept and broken. `/capabilities run` measures now. **`/indicators`** lists the functional indicators from the consciousness
+literature as ablation tests, under the title "Functional indicators (not evidence of sentience)": it switches a part off in a copy and measures whether
+a metric drops; a row whose part isn't built yet (the global workspace, the attention schema, a body) says "not built yet" instead of a guess, and
+nothing there claims more than what's measured. Switches: `mind.harness.on`, `mind.harness.rotate_days`.
+
 ## Its life story
 
 Kurooto is meant to be one agent, not a new stranger in every chat, call and background job. So everything that asks an AI for something
@@ -233,6 +254,8 @@ its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `
   anchor.
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
+- **`/capabilities`:** how it does on tasks it has never seen, per kind; `/capabilities run` measures now.
+- **`/indicators`:** Functional indicators (not evidence of sentience).
 - **`/story`:** its one life story: the fixed core and what it has lived lately.
 - **`/mindjournal`:** its journal of its own states, reasons and mistakes; every line is checked against its log.
 - **`/mood`:** how Brain reads you and what it expects of tomorrow (it only watches for now).

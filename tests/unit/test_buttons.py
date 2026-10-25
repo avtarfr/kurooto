@@ -54,6 +54,7 @@ NOT_BUTTONS = {
     "forecast",
     "score",
     "cur",
+    "harness",
     "s",
     "x",
 }  # fmt: skip  (scheduler keys, log text, XML; Brain's score.db keys: read:<day>, answer:<day>, ...)
