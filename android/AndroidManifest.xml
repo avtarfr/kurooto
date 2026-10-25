@@ -91,7 +91,7 @@
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Kurooto.Dialog" />
+            android:theme="@style/Kurooto.Sheet" />
 
         <!-- Systems and the Notes map: the dashboard's drawings in a shut-in WebView (ViewsActivity) -->
         <activity android:name=".ViewsActivity"
@@ -107,7 +107,7 @@
             android:exported="true"
             android:label="${appLabel}"
             android:excludeFromRecents="true"
-            android:theme="@style/Kurooto.Dialog">
+            android:theme="@style/Kurooto.Sheet">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -128,7 +128,7 @@
             android:excludeFromRecents="true"
             android:taskAffinity=""
             android:windowSoftInputMode="stateVisible|adjustResize"
-            android:theme="@style/Kurooto.Dialog" />
+            android:theme="@style/Kurooto.Sheet" />
 
         <!-- the Quick Settings tile "Quick note" (Android 7+) -->
         <service android:name=".NoteTile"

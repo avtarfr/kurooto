@@ -24,6 +24,16 @@
         <item name="android:windowLightStatusBar">@bool/k_light</item>
     </style>
 
+    <!-- 0.7.6: the small floating windows (answer, quick note, share) are Compose sheets over a dimmed screen -->
+    <style name="Kurooto.Sheet" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
     <style name="Kurooto.Dialog" parent="Base.Kurooto.Dialog">
         <item name="android:colorPrimary">@color/k_primary</item>
         <item name="android:colorAccent">@color/k_primary</item>
