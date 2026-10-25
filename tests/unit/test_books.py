@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Books and PDFs: the built-in PDF reader, choosing how each page is read, reading that resumes where it stopped,
 the index note, books from Telegram, and the source mix with its citations. No real OCR and no network: fakes."""
 
@@ -550,3 +551,31 @@ def test_a_book_that_isnt_a_pdf_is_said_so_truthfully(tmp_path):
     assert "encrypted or damaged" in books.unreadable_why(pdf, {"pdftotext": "/usr/bin/pdftotext"})
     missing = books.unreadable_why(pdf, {"pdftotext": None, "pdftoppm": None, "pdfinfo": None})
     assert "Poppler isn't installed" in missing and "pacman -S poppler" in missing and "brew install poppler" in missing
+
+
+def test_the_same_book_filed_twice_is_read_once_and_linked(books, pdfs, monkeypatch):
+    a = books.folder("linear-algebra")
+    c = books.folder("topology")
+    a.mkdir(parents=True)
+    c.mkdir(parents=True)
+    (a / "mixed.pdf").write_bytes(pdfs["mixed"].read_bytes())
+    (c / "same-book-other-name.pdf").write_bytes(pdfs["mixed"].read_bytes())
+    monkeypatch.setattr(books, "engines", lambda: {"text", "tesseract"})
+    monkeypatch.setattr(books, "read_picture", FakeOCR(books))
+    lib = {b["id"]: b for b in books.library()}
+    first = books.read_book(lib["mixed"])
+    assert first["result"] == "done"
+    second = books.read_book(lib["same-book-other-name"])
+    assert (
+        second["result"] == "duplicate" and not (books.book_dir(lib["same-book-other-name"]) / "pages").exists()
+    )  # not read again
+    assert books.meta(lib["same-book-other-name"])["duplicate_of"] == "mixed" and books.meta(lib["mixed"])[
+        "copies"
+    ] == ["same-book-other-name"]
+    assert "a copy of" in books.overview()
+    # a different book is read, and the switch turns this off
+    (c / "other.pdf").write_bytes(pdfs["mixed"].read_bytes() + b"\n%different")
+    assert books.read_book({"subject": "topology", "path": c / "other.pdf", "id": "other"})["result"] != "duplicate"
+    books.app.settings.set("books.duplicates", False)
+    books.meta(lib["same-book-other-name"]).pop("duplicate_of", None)
+    assert books.read_book(lib["same-book-other-name"])["result"] != "duplicate"

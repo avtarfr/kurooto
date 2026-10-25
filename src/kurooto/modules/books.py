@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import hashlib
 import json
 import os
 import re
@@ -67,6 +68,7 @@ register_defaults(
         "brain": True,  # index the text into the notes brain when it's on
         "brain_source": "",  # an existing gbrain source (`gbrain sources list`) for the chunks; "" = the default one
         "after_read": [],  # your command, run after each book is read, with its subject and id added: ["prog", "-x"]
+        "duplicates": True,  # a book that is a copy of one already read (the same file) is linked to it, not read again
         "max_mb": 400,  # bigger files are left alone
     },
 )
@@ -587,6 +589,20 @@ class Books(Module):
             meta["problem"] = f"over {self.setting('max_mb') or 400} MB (books.max_mb)"
             jsave(d / "meta.json", meta)
             return {"book": b["id"], "result": "too big"}
+        if (
+            self.setting("duplicates") is not False
+        ):  # the same file under another name or in another subject is read once
+            dup = self.duplicate_of(b, meta)
+            if dup:
+                meta.update(duplicate_of=dup["id"])
+                meta.pop("problem", None)
+                jsave(d / "meta.json", meta)
+                other = self.meta(dup)
+                other["copies"] = sorted({*other.get("copies", []), b["id"]})
+                jsave(self.book_dir(dup) / "meta.json", other)
+                self.app.events.emit("book_duplicate")
+                return {"book": b["id"], "result": "duplicate"}
+        meta.pop("duplicate_of", None)
         doc = Doc(b["path"], self.tools(), self.app.paths.cache / "books")
         total = doc.pages()
         if not total:
@@ -639,6 +655,33 @@ class Books(Module):
             if first:
                 self._tell(meta)
         return {"book": b["id"], "read": read, "result": "done"}
+
+    @staticmethod
+    def fingerprint(path: Path) -> str:
+        """A hash of the file's bytes (the same book copied or filed twice has the same one)."""
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()[:24]
+
+    def duplicate_of(self, b: dict, meta: dict) -> dict | None:
+        """The book this one is a copy of (the same bytes, already read or being read), or None. Sets meta["fp"]."""
+        meta["fp"] = (
+            meta.get("fp") if meta.get("fp_sig") == meta.get("sig") and meta.get("fp") else self.fingerprint(b["path"])
+        )
+        meta["fp_sig"] = meta.get("sig")
+        for o in self.library():
+            if o["id"] == b["id"]:
+                continue
+            m = self.meta(o)
+            if (
+                m.get("fp") == meta["fp"]
+                and not m.get("duplicate_of")
+                and (m.get("added") or "") <= (meta.get("added") or "~")
+            ):
+                return o
+        return None
 
     def page_texts(self, b: dict) -> dict[int, str]:
         out = {}
@@ -958,7 +1001,12 @@ class Books(Module):
             for b in bs:
                 m = self.meta(b)
                 total, done = m.get("pages") or 0, m.get("done") or 0
-                if m.get("problem"):
+                if m.get("duplicate_of"):
+                    orig = self.find(m["duplicate_of"])
+                    state = "a copy of " + (
+                        self.meta(orig).get("title") or orig["path"].name if orig else m["duplicate_of"]
+                    )
+                elif m.get("problem"):
                     state = m["problem"]
                 elif not total:
                     state = "not started"

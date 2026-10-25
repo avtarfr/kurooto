@@ -447,3 +447,8 @@ its own servers) the first time.
 `studypack.extra` adds your own rules, one per line, to the end of every pack's PROMPT.md ("Reply with Markdown only, one section per topic; no PDF or zip", "Cite page numbers"). What you type
 for one pack can add one too: `/studypack pota quiz on entropy, pdf too` asks for a PDF besides the Markdown, `markdown only` (or `no pdf`) says Markdown only, `one file` says one file. They go
 under "My extra instructions" at the end, whether the prompt is Kurooto's or your own template. `studypack.instructions` turns the addition off.
+
+
+## The same book twice
+
+A book that is the same file as one already read (copied into another subject, or saved under another name) is linked to the first and read once (`books.duplicates`). `/books` says "a copy of ...".

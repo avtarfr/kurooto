@@ -146,6 +146,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `books.brain` | `true` | index the text into the notes brain when it's on |
 | `books.brain_source` | `""` | an existing gbrain source (`gbrain sources list`) for the chunks; "" = the default one |
 | `books.dpi` | `200` | how sharp the page pictures are for OCR |
+| `books.duplicates` | `true` | a book that is a copy of one already read (the same file) is linked to it, not read again |
 | `books.folder` | `""` | your own folder for books, a subfolder per subject; empty: files.folder, else Kurooto's |
 | `books.gemini` | `false` | True: pages nothing on this computer can read go to Gemini (your key) as pictures |
 | `books.gemini_model` | `"gemini-flash-latest"` | the Gemini model that reads scanned book pages when it's chosen |
