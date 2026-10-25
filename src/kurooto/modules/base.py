@@ -140,8 +140,8 @@ class Module:
         self, name: str, spec: str, action: Callable, payload: dict | None = None, thread: bool = False, **kw
     ) -> None:
         """Schedule `action`. thread=True: a plain function that takes more than a moment (it reads many notes, runs a
-        program, waits on the computer) runs on a thread of its own, so Kurooto's loop (the call line's heartbeat, Telegram
-        replies, every other job) isn't held up while it works."""
+        program, waits on the computer) runs on a thread of its own, so Kurooto's loop (the call line's heartbeat,
+        Telegram replies, every other job) isn't held up while it works."""
         if thread and not inspect.iscoroutinefunction(action):
             plain = action
 
