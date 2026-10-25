@@ -1,0 +1,25 @@
+{
+ "doc": {
+  "version": "0.7.6",
+  "notes": "Notes sorter; vivid Expressive colours and a floating bar in the phone app; Chat, Answer, Quick note, Share, Pair and Places as floating Expressive screens; learned AI limits are only a measure; the garden no longer freezes Kurooto; /graph garden.",
+  "created": 1792915606.3032663,
+  "files": {
+   "kurooto-0.7.6.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.7.6/kurooto-0.7.6.tar.gz",
+    "sha256": "286d305bbe2ec2a6bc185c59a98c889f5b0e27f0056fa679bd4786682d9ae4f1",
+    "size": 4010477
+   }
+  },
+  "android": {
+   "file": "kurooto.apk",
+   "url": "https://avtarfr.github.io/kurooto/releases/0.7.6/kurooto.apk",
+   "sha256": "cc7c10c311f3eae7c2345d3b15c30a263146821f95ebe9206b3ee07ef1b2487e",
+   "size": 2112912,
+   "versionCode": 70069,
+   "versionName": "0.7.6",
+   "cert_sha256": "bad55b2e9de40d31a40d19767bf6e53ac372fb9e8e67e63d01d21e3d3ef8d325",
+   "source": "7f67a4a410122267036067ae0335c22e5a8c1285356586438c3cc97d31d04aea"
+  }
+ },
+ "sig": "d1W8zLWWgkYqO68G6wNlElnYVp7a969tssP5uYO6ZU6A2D0is6WRHZgGcERoy8j1pqFnLwh1GR1aZu3nTV4EBQ=="
+}
