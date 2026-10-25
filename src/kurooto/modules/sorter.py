@@ -28,7 +28,7 @@ import datetime as dt
 import time
 from pathlib import Path
 
-from kurooto.core import notesfit, sorting
+from kurooto.core import notedupes, notesfit, sorting
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.modules.base import Command, Incoming, Module
@@ -44,6 +44,7 @@ register_defaults(
         "ai": True,  # ask your AI about a note the rules can't place (its first lines go to it); off: rules only
         "recheck": True,  # weekly: a note it moved that now clearly fits another folder moves once more
         "learn": True,  # a note you move again after it filed it teaches it
+        "duplicates": True,  # a note in the scratch folder that copies one you already have is asked about, not filed
     },
 )
 
@@ -80,6 +81,8 @@ class Sorter(Module):
         st = sorting.load(app)
         for rel in sorting.ready(app):
             text = notesfit._read(root / rel) or ""
+            if self.setting("duplicates") is not False and self._dupe(rel, text, st):
+                continue
             d = sorting.decide(app, rel, text)
             if d.folder and d.conf >= min_conf:
                 if len(moves) < room:
@@ -104,6 +107,58 @@ class Sorter(Module):
             out["moved"], out["log"] = res["moved"], res["id"]
         self._tell(out)
         return out
+
+    def _dupe(self, rel: str, text: str, st: dict) -> bool:
+        """A note that copies one you have is asked about once (Keep both / Merge / Leave it), not filed. True: waits"""
+        d = st.setdefault("dupes", {})
+        sha = sorting.sha(text)
+        rec = d.get(rel)
+        if rec and rec.get("sha") == sha:
+            return rec["state"] != "keep"  # keep both: it's sorted like any other note
+        hits = notedupes.incoming(self.app, rel, text)
+        if not hits:
+            return False
+        of, kind, score = hits[0]
+        rid = "d" + sha[:8]
+        d[rel] = {"id": rid, "of": of, "kind": kind, "score": score, "sha": sha, "state": "asked", "at": time.time()}
+        how = "the same words" if kind == "exact" else f"{round(score * 100)}% the same words"
+        self.app.notify(
+            f"{rel} looks like a copy of {of} ({how}). Keep both and file it as usual, merge it into {of}, "
+            "or leave it where it is?",
+            kind="question",
+            why="sorter.duplicate",
+            buttons=[
+                [("Keep both", f"srt:{rid}:keep"), ("Merge", f"srt:{rid}:merge"), ("Leave it", f"srt:{rid}:skip")]
+            ],
+        )
+        return True
+
+    def _dupe_button(self, st: dict, rel: str, act: str) -> str:
+        rec = st["dupes"][rel]
+        if act == "keep":
+            rec["state"] = "keep"
+            sorting.save(self.app, st)
+            return "Kept both: it's filed like any other note at the next pass (/sort now)."
+        if act == "skip":
+            rec["state"] = "skip"
+            sorting.save(self.app, st)
+            return "Left where it is; I won't ask again."
+        if act == "merge":
+            ok, got = notedupes.merge_pair(self.app, rec["of"], rel, rec["kind"])
+            if not ok:
+                return f"Not merged: {got}."
+            rec.update(state="merged", before=got)
+            sorting.save(self.app, st)
+            msg = f"Merged: {rel} now points at {rec['of']} and keeps its own text."
+            self.app.notify(msg, kind="result", why="asked", buttons=[[("Undo", f"srt:{rec['id']}:undo")]])
+            return msg
+        if act == "undo" and rec.get("state") == "merged":
+            changed = notedupes.restore(self.app, rec.get("before") or {})
+            rec.update(state="skip")
+            rec.pop("before", None)
+            sorting.save(self.app, st)
+            return "Put back." if not changed else f"Put back, except {', '.join(changed)} (you changed it since)."
+        return "There's no such button."
 
     def _move(self, moves: list[dict], by: str = "sorter") -> dict:
         """Plan and do these moves. A note that notes of yours link to by its path is left (and said)."""
@@ -202,6 +257,10 @@ class Sorter(Module):
         return {"srt": self._button}
 
     def _button(self, ref: str, act: str) -> str:
+        st0 = sorting.load(self.app)
+        mine = next((r for r, v in st0.get("dupes", {}).items() if v.get("id") == ref), "")
+        if mine:
+            return self._dupe_button(st0, mine, act)
         if act == "undo":
             return sorting.undo(self.app, ref)["message"]
         st = sorting.load(self.app)

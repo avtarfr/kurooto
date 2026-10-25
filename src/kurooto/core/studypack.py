@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kurooto.core.config import register_defaults
 from kurooto.core.state import jload
 
 if TYPE_CHECKING:
@@ -60,7 +61,15 @@ FILLER = set(
     semester final finals viva for on in of about and or to prep prepare preparation revise revision study pack notes
     week weeks day days today tonight tomorrow morning evening monday tuesday wednesday thursday friday saturday sunday
     mon tue wed thu fri sat sun am pm at by due jan feb mar apr may jun jul aug sep sept oct nov dec class lecture
-    please me i need want""".split()
+    please me i need want pdf markdown md only too also zip file files without no""".split()
+)
+
+register_defaults(
+    "studypack",
+    {
+        "instructions": True,  # your own extra lines (studypack.extra) and a format phrase ("pdf too") go into the prompt
+        "extra": "",  # your own rules for the AI, one per line, added to the end of every pack's PROMPT.md
+    },
 )
 
 PROMPT = """# Study pack: {name}
@@ -522,6 +531,7 @@ freely: packs use this file from now on (/studypack prompt reset puts the defaul
   {topics}     the topics, e.g. thermodynamics, lapse rate (or nothing)
   {book_note}  what the books/ folder holds
   {scope}      " on <topics>", or " for this course"
+Your own rules (studypack.extra) and a format phrase in what you type ("pdf too", "markdown only") are added at the end.
 Lines inside these comment markers are left out.
 -->
 """
@@ -547,6 +557,31 @@ def prompt_template(app: App | None) -> str:
     return PROMPT
 
 
+FORMAT_MD = re.compile(r"\b(?:markdown|md)\s+only\b|\bno\s+pdf\b|\bwithout\s+(?:a\s+)?pdf\b", re.I)
+FORMAT_PDF = re.compile(r"\bpdf\b", re.I)
+FORMAT_ONE = re.compile(r"\b(?:one|single)\s+(?:markdown\s+)?file\b", re.I)
+
+
+def run_extra(aim: str) -> list[str]:
+    """Rules for this one pack from how you phrased it: "pdf too", "markdown only", "one file"."""
+    out = []
+    if FORMAT_MD.search(aim or ""):
+        out.append("Reply with Markdown only: one section per topic; no PDF and no zip.")
+    elif FORMAT_PDF.search(aim or ""):
+        out.append("Also give me the finished notes as a PDF, besides the Markdown.")
+    if FORMAT_ONE.search(aim or ""):
+        out.append("Put everything in one Markdown file.")
+    return out
+
+
+def extra_lines(app: App | None, aim: str = "") -> list[str]:
+    """Your own lines (studypack.extra) and this pack's format phrase, when studypack.instructions is on."""
+    if app is not None and not app.settings.get("studypack.instructions"):
+        return []
+    mine = str((app.settings.get("studypack.extra") if app is not None else "") or "")
+    return [ln.strip(" -*\t") for ln in mine.splitlines() if ln.strip(" -*\t")] + run_extra(aim)
+
+
 def prompt_text(name: str, aim: str = "", topics: list[str] | None = None, app: App | None = None) -> str:
     """The prompt for another AI, as it goes in PROMPT.md (and, on its own, in the chat next to the zip): your own
     (prompt_file) when you made one."""
@@ -568,6 +603,9 @@ def prompt_text(name: str, aim: str = "", topics: list[str] | None = None, app: 
     text = prompt_template(app)
     for k, v in words.items():  # plain replacing: a LaTeX {x} in your prompt stays as it is
         text = text.replace("{" + k + "}", v)
+    more = extra_lines(app, aim)
+    if more:  # your own rules, at the end of the prompt, whatever template it is
+        text = text.rstrip("\n") + "\n\n## My extra instructions\n\n" + "\n".join(f"- {ln}" for ln in more) + "\n"
     return text
 
 

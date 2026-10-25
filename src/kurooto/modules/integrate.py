@@ -64,7 +64,7 @@ from pathlib import Path
 
 from kurooto import providers
 from kurooto.core import conceptgraph as cg
-from kurooto.core import graphmerge, layout, proc, readbudget, segment
+from kurooto.core import graphmerge, layout, notedupes, proc, readbudget, segment
 from kurooto.core import graphwrite as gw
 from kurooto.core import integrate_ai as ai
 from kurooto.core.clock import now
@@ -102,6 +102,8 @@ register_defaults(
         "commit": True,  # one git commit per batch, when your notes are a repository
         "summary": True,  # one line each morning about what changed
         "duplicates": True,  # each morning, up to 3 pairs of look-alike concept notes: Merge / Keep both / Add alias
+        "duplicates_all": True,  # also each morning: notes of any kind that are copies of each other, old ones too
+        "duplicates_per_day": 3,  # the most copy pairs asked about in a day
         "notation": True,  # a Notation table when a second source writes a concept differently (a switch on the card)
     },
 )
@@ -240,6 +242,7 @@ class Integrate(Module):
         if self.setting("summary"):
             self.every("summary", "daily 07:10", self.summary)
         self.every("duplicates", "daily 06:25", lambda p=None: graphmerge.night(self, p))
+        self.every("note_dupes", "daily 06:40", lambda p=None: notedupes.night(self.app))
         jobs = self.app.jobs
         jobs.then_actions["integrate.done"] = self._done
         jobs.then_actions["integrate.checked"] = self._checked
@@ -1855,7 +1858,10 @@ class Integrate(Module):
 
     # ----------------------------------------------------------------------------------------------- command
     def callbacks(self):
-        return {"dup": lambda ref, act: graphmerge.button(self, ref, act)}
+        return {
+            "dup": lambda ref, act: graphmerge.button(self, ref, act),
+            "ndup": lambda ref, act: notedupes.button(self.app, ref, act),
+        }
 
     def commands(self):
         return [

@@ -72,7 +72,15 @@ def state_file(app: App) -> Path:
 
 def load(app: App) -> dict:
     st = jload(state_file(app), {}) or {}
-    for k, v in (("moved", {}), ("rules", []), ("pinned", {}), ("waiting", {}), ("passes", []), ("day", {})):
+    for k, v in (
+        ("moved", {}),
+        ("rules", []),
+        ("pinned", {}),
+        ("waiting", {}),
+        ("passes", []),
+        ("day", {}),
+        ("dupes", {}),
+    ):
         st.setdefault(k, v)
     return st
 
@@ -205,8 +213,8 @@ def ready(app: App) -> list[str]:
         if t - st.st_mtime < settle:
             continue
         text = notesfit._read(f, notesfit.HEAD) or ""
-        if str(read_front(text).get("sort", "")).lower() in ("no", "false", "keep"):
-            continue
+        if str(read_front(text).get("sort", "")).lower() in ("no", "false", "keep") or "kurooto:merged-into" in text:
+            continue  # (a note merged into another is a redirect now)
         out.append((st.st_mtime, rel))
     return [r for _, r in sorted(out)]
 
