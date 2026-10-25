@@ -1587,7 +1587,7 @@ words are kept on that request and forgotten with it.
 its **Undo** button, or remove the kind from `notify.calm.habituate`, `notify.calm.evening` or `notify.calm.windows`;
 `dreaming.tune_messages` = false stops the tuning. Effort, AI order and sizes: the morning line's **Undo**, or remove
 the entry from `brain.effort_map`, `brain.fallback_first` or `startby.sizes`; `dreaming.tune_effort`,
-`dreaming.tune_fallbacks` or `dreaming.tune_sizing` = false stops that area. An applied skill fix: Undo in `/learned`; `/senses`; `/model`; `/plan`.
+`dreaming.tune_fallbacks` or `dreaming.tune_sizing` = false stops that area. An applied skill fix: Undo in `/learned`; `/senses`; `/model`; `/plan`; `/precedents`; `/play`.
 `dreaming.curious` or `dreaming.resurface` = false drops one line;
 a stub it made is a plain note you can delete; `/unignore <topic>` takes back Not interested. A Keep A / Keep B: its
 **Undo** button (the line, the gist or the deadline's date comes back, and the pair is asked about again);
@@ -1639,6 +1639,8 @@ never held up. `/thinking` says what's on the stage and why, from a model of its
 part>` is your hand on it. Every belief keeps a source (said, saw, inferred, imagined) and a confidence; only said and saw are stated as fact, the rest as
 "It looks like ... (65% sure)" or "A guess: ...", and `/beliefs <topic>` shows them with their Brier scores. *Undo:* `mind.workspace.on`, `mind.attention.on`,
 `mind.beliefs.on` off; Delete Brain's data removes the files.
+
+**Values as case law, and play (Brain, `/precedents`, `/play`; both off by default).** When a call between two of your values comes up it asks once and keeps your ruling as a precedent to follow in alike situations (never for anything on the always-ask list); `/precedents` lists, edits and deletes them. Play is 20 minutes a night of its own curiosity on your topics (charger only), credited only for what transfers; its outputs are never shown unprompted. *Undo:* `mind.precedents.on`, `mind.play.on` off.
 
 **How it forgets (Brain, `/forget`, `/memory`).** Old memories fade from use (a half-life by kind; `/memory` shows a bar and "fading") but stay on record until you forget them; a miss older than six weeks isn't brought up again (its own mistakes stay in its journal); and `/forget` now also removes what Brain kept of that stretch from every store (the read, the model of your mind, senses, skills' origins, the journal as a tombstone, the fine-tune's examples). Its log keeps only that a forget happened. *Undo:* `mind.forget.on` off (fading and old-miss retirement stop; `/forget` still removes the usual things).
 

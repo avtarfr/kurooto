@@ -658,6 +658,10 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.plans.on` | `true` | week-scale plans: milestone risks from simulated futures; a suggestion, never a push |
 | `mind.plans.rollouts` | `1000` | how many simulated futures |
 | `mind.plans.weeks` | `6` | how far ahead the rollouts look |
+| `mind.play.minutes_per_night` | `20` | on the charger only; credited only for what transfers or what you find useful |
+| `mind.play.on` | `false` | off until you turn it on: a little nightly time to explore its own questions on your topics |
+| `mind.precedents.on` | `false` | off until you turn it on: judgement calls between your values are asked once, then followed |
+| `mind.precedents.threshold` | `0.75` | how alike two situations must be for a precedent to be followed |
 | `mind.promises.on` | `true` | its own promises: noticed, kept or owned up to first |
 | `mind.read.asks_per_week` | `2` | the most times a week it asks whether the week felt heavier than usual |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days (it only watches for now) |

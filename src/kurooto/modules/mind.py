@@ -46,6 +46,8 @@ from kurooto.mind import (
 )
 from kurooto.mind import log as mlog
 from kurooto.mind import plans as mind_plans
+from kurooto.mind import play as mind_play
+from kurooto.mind import precedents as mind_precedents
 from kurooto.mind.harness import indicators as harness_indicators
 from kurooto.mind.harness import run as harness_run
 from kurooto.mind.lab import report as lab_report
@@ -135,6 +137,9 @@ class Mind(Module):
         workspace.register_bidder("lab", lab_report.bid)
         self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None)
         self.every("lab_digest", "daily 07:40", self._lab_digest)
+        # stage 17: free-time play (off by default) and its Sunday note; case law is asked about when a call comes up
+        self.every("play", "daily 02:10", lambda p: mind_play.run_session(self.app) and None)
+        self.every("play_digest", "weekly sun 19:30", lambda p: mind_play.weekly(self.app) and None)
         # stage 15: week-scale plans, remade each morning; one line on Sunday evening at most
         self.every("plans", "daily 06:10", lambda p: mind_plans.run(self.app) and None)
         self.every("plans_weekly", "weekly sun 19:20", lambda p: mind_plans.weekly(self.app) and None)
@@ -327,6 +332,18 @@ class Mind(Module):
                 "how Brain reads you and what it expects of tomorrow (it only watches for now)",
                 self.mood_cmd,
                 usage="/mood",
+            ),
+            Command(
+                "precedents",
+                "how Kurooto settles a call between your values: /precedents, edit <id> <ruling>, delete <id>",
+                self.precedents_cmd,
+                usage="/precedents [edit <id> <a|b|both|depends>|delete <id>]",
+            ),
+            Command(
+                "play",
+                "Kurooto's free-time exploring (off by default): /play, /play outputs, /play useful <id>",
+                self.play_cmd,
+                usage="/play [outputs|useful <id>]",
             ),
             Command(
                 "plan",
@@ -556,7 +573,34 @@ class Mind(Module):
         )
 
     def callbacks(self):
-        return {"skl": lambda ref, act: skill_demos.button(self.app, ref, act)}
+        return {
+            "skl": lambda ref, act: skill_demos.button(self.app, ref, act),
+            "prec": lambda ref, act: mind_precedents.button(self.app, ref, act),
+        }
+
+    def precedents_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        w = (arg or "").split()
+        if len(w) == 3 and w[0] == "edit":
+            return (
+                "Changed."
+                if mind_precedents.edit(self.app, w[1], w[2])
+                else "Use /precedents edit <id> <a|b|both|depends>."
+            )
+        if len(w) == 2 and w[0] == "delete":
+            return "Deleted." if mind_precedents.delete(self.app, w[1]) else "No such precedent."
+        return mind_precedents.listing(self.app)
+
+    def play_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        w = (arg or "").split()
+        if w[:1] == ["outputs"]:
+            return mind_play.outputs(self.app)
+        if len(w) == 2 and w[0] == "useful":
+            return "Thanks: that counts." if mind_play.useful(self.app, w[1]) else "No such output, or already counted."
+        return mind_play.listing(self.app)
 
     def learned_cmd(self, msg: Incoming, arg: str) -> str:
         if not mind.on(self.app):
@@ -725,6 +769,7 @@ def button(app, ref: str, act: str) -> str:
     shutil.rmtree(d, ignore_errors=True)
     shutil.rmtree(app.paths.state / "mind-journal", ignore_errors=True)  # its journal (mind/journal.py)
     shutil.rmtree(app.paths.state / "mind-story", ignore_errors=True)  # its life story (mind/story.py)
+    shutil.rmtree(app.paths.state / "mind-play", ignore_errors=True)  # what it explored in its free time
     shutil.rmtree(app.paths.state / "mind-senses", ignore_errors=True)  # the senses' readings, salt and totals
     shutil.rmtree(app.paths.state / "mind-skills", ignore_errors=True)  # the learned skills and the fine-tune's folder
     shutil.rmtree(app.paths.state / "lab", ignore_errors=True)  # the lab's protocols, pre-registrations and results
@@ -746,6 +791,8 @@ def button(app, ref: str, act: str) -> str:
         "mind-tom.json",
         "mind-plans.json",
         "mind-plan-last.json",
+        "mind-precedents.json",
+        "mind-play.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

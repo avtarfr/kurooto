@@ -822,3 +822,19 @@ you (`story.forget_day`), tom rows, senses events and totals, skill provenance, 
 **Deviations.** (1) Salience is not stored on ledger rows: it is computed from the row's time and the uses file. (2) `/forget` is by time span (as it always was), so "an item" is whatever was made in the span; per-item `/memory forget 3` does
 not yet cascade into the mind's stores. (3) Old-miss detection is by words (a regex for misses, dated phrases for age): a miss worded otherwise gets through. (4) The journal keeps its own mistakes (by design), so old misses fade only
 from what is repeated to you. (5) The fine-tune's probe is the stage 12 one (the test re-imports it).
+
+## Stage 17: precedents and play (optional parts, both off by default)
+
+Code: `mind/precedents.py` (`PART = "precedents"`) and `mind/play.py` (`PART = "play"`); `/precedents`, `/play`, the `prec` button prefix and jobs `play` (02:10) and `play_digest` (Sunday 19:30) in
+`modules/mind.py`; calm reasons `mind.precedent`, `mind.play`; `stops.PROTECTED` gains `precedents.py`. Tests: `test_mind_precedents.py` (8), `test_mind_play.py` (6). Switches: `mind.precedents.{on (off), threshold}`,
+`mind.play.{on (off), minutes_per_night}`.
+
+`precedents.similarity` is a weighted match (time band .2, kind overlap .3, deadline proximity .2, state band .15, channel .15); `judge` follows the best precedent at or above the threshold when no rival within 0.08
+points the other way and the ruling isn't `depends`, else asks (the question is sent once, answers come back through `button`/`answer`); a ruling is stored in the order the values were asked and read back in the order of
+the caller. `answer` replaces the cases it refines when their features coincide. `action` is checked against `tap.GUARDED` and `risk.classify`: an always-ask action asks whatever the case law says. `play.run_session`
+needs AC, an open lid and no heat, pre-registers through `lab/prereg.py` (project "play"), asks at most three questions and stops before one that would overrun the night's minutes (using the longest so far).
+
+**Deviations.** (1) No existing flow calls `precedents.judge` yet: it is the API a feature adopts for a call between values (the gate's holds and the call line are the likely first users); nothing asks by itself until
+one does. (2) The look-back (`/retro`) doesn't list the flagged decisions yet: `/precedents` does. (3) Play's curiosity comes from the knowledge frontier only (Dreaming keeps no open hypotheses to read). (4) Transfer is
+credited by `play.credit(before, after)` or `/play useful`; running the hidden harness with a play output applied, to measure `before`/`after` automatically, isn't wired. (5) Credits change nothing but the digest
+(they don't enlarge the budget).

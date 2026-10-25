@@ -222,6 +222,22 @@ lists them with their source, how sure it was and how each source has done. Swit
 `mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
 `mind-beliefs.json`.
 
+## Your values as case law, and free-time play
+
+Both are off until you turn them on (`mind.precedents.on`, `mind.play.on`), even with Brain on.
+
+**Precedents.** When Kurooto faces a judgement call between two of your values ("protect your sleep" or "finish the report"), it asks you once, with buttons. Your answer is
+kept as a **precedent**: the situation (the time of day, the kinds of thing, how close a deadline is, your state band and the channel), the two values and your ruling. A later
+situation that is alike enough (`mind.precedents.threshold`) follows the precedent without asking. If a situation fits two precedents that point different ways, it asks again
+and the new ruling refines the case law. "It depends" always asks. `/precedents` lists the cases, `/precedents edit <id> <a|b|both|depends>` changes one and `/precedents delete <id>`
+removes it. Past decisions that went against a precedent are flagged for you to rule on in your next look back. A precedent only chooses between two of your values: it can never unlock
+anything on the always-ask list (sending, alarms, calls, installing, deleting, applying changes to your files) or override Brain's rules; those are asked every time.
+
+**Play.** A little fixed nightly time (`mind.play.minutes_per_night`, 20; on the charger, lid open, not hot) in which Kurooto explores questions *it* picks on your topics out of
+curiosity: a clearer way to explain a concept on the frontier of what you know, a hunch, a link between two notes. Each session is pre-registered (its plan's hash in Brain's log first). It's
+credited only for what **transfers**: a gain on the hidden harness that a play output caused, or a result you later tell it was useful (`/play useful <id>`); anything else earns nothing, so
+it can't be farmed. Its outputs are never shown unprompted (`/play outputs` lists them); a "From my play time" note comes in the Sunday digest only when something transferred.
+
 ## How it forgets
 
 Like a healthy mind, Kurooto lets old things fade from use without losing the record. Every remembered item has a **salience**: it halves with age (facts about you every 90
