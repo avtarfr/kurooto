@@ -279,6 +279,7 @@ REASONS: dict[str, Reason] = {
             "a note in your scratch folder that copies one you have: keep both, merge or leave it",
             setting="sorter.duplicates",
         ),
+        R("sorter.read", "files read from your scratch folder into notes", setting="sorter.read_files"),
         R("mind.lab", "the morning note on what the overnight lab tried, with nulls as much as wins", stop=None),
         R(
             "mind.act_digest",

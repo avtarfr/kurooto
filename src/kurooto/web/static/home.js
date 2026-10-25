@@ -1603,6 +1603,10 @@ function smBuild() {
     <div class="sm-opts k"><label>focus <input type="number" min="1" max="240" id="sm-fmin" aria-label="focus minutes"></label><label>break <input type="number" min="1" max="240" id="sm-bmin" aria-label="break minutes"></label><span>min</span>
       <label class="sm-then"><input type="checkbox" id="sm-then"> then leave Study mode</label></div>
     <p class="sm-said" id="sm-said" aria-live="polite"></p></div>
+  <div class="box" id="sm-subj-box"><div class="lab"><span class="t">SUBJECTS</span><span class="meta">Study mode and the notes map</span></div>
+    <div id="sm-subj-list"></div>
+    <form class="sm-sub" id="sm-subj-add"><input id="sm-subj-name" placeholder="add a subject, e.g. Linear Algebra" autocomplete="off" aria-label="a new subject's name"><input id="sm-subj-al" placeholder="short names: la, linalg" autocomplete="off" aria-label="its short names"><select id="sm-subj-folder" aria-label="the folder of your notes that is this subject's" title="the folder of your notes that is this subject: its notes show in Study mode and make a neighbourhood on the notes map"></select><button>add</button></form>
+    <p class="sm-said" id="sm-subj-said" aria-live="polite"></p></div>
   <div class="box"><div class="lab"><span class="t">TODAY</span><span class="meta" id="sm-today-meta"></span></div><div id="sm-today"><span class="k">loading…</span></div></div>
   <div class="box"><div class="lab"><span class="t">DUE</span><span class="meta">two weeks</span></div><div id="sm-due"></div></div>
   <div class="box" id="sm-recall-box"><div class="lab"><span class="t">RECALL</span><span class="meta" id="sm-recall-meta"></span></div><div id="sm-recall"></div></div>
@@ -1612,6 +1616,21 @@ function smBuild() {
     <p class="sm-said" id="sm-csaid" aria-live="polite"></p></div>
   <div class="box sm-notes" title="click: find it on the map · double-click: open it"><div class="lab"><span class="t" id="sm-notes-t">NOTES</span><span class="meta" id="sm-notes-meta"></span></div><div id="sm-notes"></div></div>`;
   $("#sm-subject").onchange = (e) => { SM.subject = e.target.value; mind.autofit = true; smLoad(); };
+  // the subjects: add one (with the folder of notes that is it) or remove one; its notes and files stay as they are
+  const sSay = (text, bad) => { const el = $("#sm-subj-said"); if (el) { el.textContent = text; el.className = "sm-said" + (bad ? " bad" : ""); } };
+  $("#sm-subj-add").onsubmit = async (e) => {
+    e.preventDefault();
+    const name = $("#sm-subj-name").value.trim(); if (!name) return;
+    let r; try { r = await api("subjects/add", { name, aliases: $("#sm-subj-al").value, folder: $("#sm-subj-folder").value }); } catch { sSay("Kurooto didn't answer (is it running?).", true); return; }
+    sSay(r.message || "", !r.ok);
+    if (r.ok) { $("#sm-subj-name").value = ""; $("#sm-subj-al").value = ""; SM.subject = null; smLoad(); }
+  };
+  $("#sm-subj-list").onclick = async (e) => {
+    const b = e.target.closest("[data-rm]"); if (!b) return;
+    if (!confirm(`Remove the subject ${b.dataset.name}? Its notes and files stay where they are.`)) return;
+    const r = await api("subjects/remove", { slug: b.dataset.rm });
+    sSay(r.message || "", !r.ok); SM.subject = null; smLoad();
+  };
   // the course: its AI policy, its notes as a PDF, a draft to check (core/actions.py)
   const cSay = (text, bad) => { const el = $("#sm-csaid"); if (el) { el.textContent = text; el.className = "sm-said" + (bad ? " bad" : ""); } };
   $("#sm-policy").onchange = async (e) => { await tdAct("subject.policy", { subject: SM.subject, policy: e.target.value }, cSay); smLoad(); };
@@ -1651,6 +1670,11 @@ function smDraw() {
   const on = new Set(v.features || []);
   const off = (what) => `<div class="row"><span class="k">${what} is off: <a href="#" data-page="features">turn it on in Features</a></span></div>`;
   // the subject, the timer's lengths
+  const sl = (v.subjects || []).map((s) => `<div class="row"><span class="v">${esc(s.name)}</span><span class="k">${s.folder ? esc(s.folder) + "/" : "no folder"}</span>${s.own ? ` <button data-rm="${esc(s.slug)}" data-name="${esc(s.name)}" title="remove this subject (its notes stay)" aria-label="remove ${esc(s.name)}">remove</button>` : '<span class="k">from your term note</span>'}</div>`).join("");
+  $("#sm-subj-list").innerHTML = sl || '<div class="row"><span class="k">no subjects yet: add the first one below</span></div>';
+  $("#sm-subj-box").classList.toggle("hidden", !on.has("subjects"));
+  const fo = '<option value="">(no folder: the usual places)</option>' + (v.folders || []).map((f) => `<option value="${esc(f)}">${esc(f)}/</option>`).join("");
+  if ($("#sm-subj-folder").dataset.opts !== fo) { $("#sm-subj-folder").innerHTML = fo; $("#sm-subj-folder").dataset.opts = fo; }
   const sel = $("#sm-subject"), opts = (v.subjects || []).map((s) => `<option value="${esc(s.slug)}"${s.slug === v.subject ? " selected" : ""}>${esc(s.name)}</option>`).join("");
   if (sel.dataset.opts !== opts) { sel.innerHTML = opts || '<option value="">no subjects yet</option>'; sel.dataset.opts = opts; }
   sel.value = v.subject || "";

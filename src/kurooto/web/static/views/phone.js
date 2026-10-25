@@ -200,7 +200,7 @@ function showNotes(s) {
   const nodes = (s.nodes || []).map((n) => ({ id: String(n[0]), title: String(n[1] || n[0]), mtime: +n[2] || 0, words: +n[3] || 0 }));
   const links = [];
   for (const l of s.links || []) if (nodes[l[0]] && nodes[l[1]]) links.push(l[2] ? [nodes[l[0]].id, nodes[l[1]].id, 1] : [nodes[l[0]].id, nodes[l[1]].id]);
-  view.update({ nodes, links, changed: [], version: s.made, layout: s.layout || {}, research: s.research || {} });
+  view.update({ nodes, links, changed: [], version: s.made, layout: s.layout || {}, research: s.research || {}, subjects: s.subjects || [] });
   view.alpha = Math.max(view.alpha, 0.6);
   view.touched = performance.now();
   if (view.selected && !view.nodes.has(view.selected.id)) { view.selected = null; view.showCard(null); }

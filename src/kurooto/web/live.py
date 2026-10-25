@@ -167,6 +167,8 @@ class Graph:
         # the notes layout's places for the map (graph_layout; Live keeps it current), and the research hub's entries
         self.lay: dict = {}
         self._lay_seen: dict | None = None
+        self.subjects: list = []  # [{slug, name, folder}]: the notes map makes each folder a neighbourhood
+        self._subj_seen: list | None = None
 
     def scan(self) -> bool:
         """Re-read changed notes. Returns True if the graph changed."""
@@ -191,10 +193,11 @@ class Graph:
         changed = [k for k, m in new.items() if self.mtimes.get(k) != m]
         removed = [k for k in self.mtimes if k not in new]
         first = self.payload["version"] == 0
-        lay_changed = self._lay_seen != self.lay
+        lay_changed = self._lay_seen != self.lay or self._subj_seen != self.subjects
         if not (changed or removed or first or lay_changed):
             return False
         self._lay_seen = dict(self.lay)
+        self._subj_seen = list(self.subjects)
         for k in changed:
             info = note_info(Path(files[k]), self.root)
             if info:
@@ -227,6 +230,7 @@ class Graph:
             "changed": [] if first else changed,
             "version": self.payload["version"] + 1,
             "layout": self.lay,
+            "subjects": list(self.subjects),
             "research": self._research(files, lower, by_base),
         }
         return True
@@ -756,6 +760,8 @@ class Live:
                         last_graph = time.monotonic()
                         self.graph.root = self.app.workspace
                         self.graph.lay = graph_layout(self.app)
+                        sj = self.app.modules.get("subjects")
+                        self.graph.subjects = sj.folder_map() if sj is not None and self.app.is_on("subjects") else []
                         if self.graph.scan():
                             self.push({"t": "graph", **self.graph.payload})
                     self.push(self.vitals.snapshot())

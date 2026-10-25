@@ -4472,3 +4472,5 @@ Profile sync moves your setup to a new one (see [Moving to a new computer](#movi
 
 **Where is the code?** [github.com/avtarfr/kurooto](https://github.com/avtarfr/kurooto), Apache-2.0. What might come
 next is in [ROADMAP.md](ROADMAP.md).
+
+**Subjects with folders, and files in the inbox (0.8.0).** Study → Subjects adds or removes a subject and gives it a folder of your notes (Study mode and the notes map use it). With `sorter.read_files` on, PDFs, Word and slide files and text you drop in the scratch folder are read into notes (no AI); originals stay. Copies are asked about (Keep both / Merge / Leave it), and `studypack.extra` adds your rules to a pack's prompt. *Undo:* the switches; Undo under a merge.

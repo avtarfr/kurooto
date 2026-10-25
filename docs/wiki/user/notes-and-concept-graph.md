@@ -841,3 +841,24 @@ request. The matching, the checks and the reranker run on this computer.
   was queued waits until it's back.
 - Each batch also keeps a before-copy of every file it changed in Kurooto's state folder, `integrate/undo/` (the last
   60 batches; the [Space keeper](updates-and-backups.md) removes copies older than 30 days).
+
+
+## Subjects of your own, and notes that show as "Other notes"
+
+The notes map groups notes into neighbourhoods by course folder, by project, and by what they link to; a note that fits none is drawn in **Other Notes**. If your notes
+are in folders of your own (a friend's, say, or an older system), Study mode (Study → **Subjects**) lets you **add a subject and say which folder of your notes is it**: its notes
+then show in Study mode for that subject and the folder becomes a named neighbourhood on the map (and on the phone's Notes map). **Remove** takes a subject off the list; its notes
+and files stay where they are. `/subject add Linear Algebra (la, linalg)` still works for a subject without a folder.
+
+## Files you drop in the scratch folder (`sorter.read_files`, off)
+
+With it on, a PDF, Word document, slide deck, notebook or text file you put in the scratch folder (inbox/) is read on this computer into a Markdown note next to it (no AI): a
+"topics covered after the midsem" list, a handout, slides. These aren't books; they are general information you want Kurooto to know about. The original isn't touched, the note says where
+it came from, and the sorter then files it like any other note and the graph reads it. A scanned PDF with no text in it is left as it is. Each file is read once; `sorter.read_mb` (25) is the
+biggest file read.
+
+## Copies
+
+A note you put in the scratch folder that copies one you already have is asked about (Keep both, Merge, Leave it) instead of being filed (`sorter.duplicates`). Every morning the garden also
+looks for notes of any kind that say the same thing, old ones too, and asks about a few pairs (`integrate.duplicates_all`, `integrate.duplicates_per_day`). Merge keeps the first note, adds
+the lines only the second had, and points the second at it; nothing is deleted and Undo puts both back.

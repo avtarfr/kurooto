@@ -33,7 +33,8 @@ function noteRole(id, lay = {}) {
   return "note";
 }
 // subjects: the folder names that are courses (sources/<s>/…, or <s>/course in the kurooto layout); dirs: projectDirs()
-function hoodOf(id, subjects = new Set(), dirs = projectDirs()) {
+function hoodOf(id, subjects = new Set(), dirs = projectDirs(), folders = []) {
+  for (const [prefix, slug] of folders) if ((id || "").startsWith(prefix)) return slug; // a folder you gave a subject (Study → Subjects)
   let m = /^sources\/([^/]+)\//.exec(id || ""); if (m) return m[1];
   for (const d of dirs) { m = new RegExp(`^${escRe(d)}([^/]+)/.`).exec(id || ""); if (m && `${d}${m[1]}` !== "research/index") return `project:${m[1]}`; }
   m = /^maps\/courses\/([^/]+)$/.exec(id || ""); if (m && subjects.has(m[1])) return m[1]; // a course page joins its course
@@ -51,12 +52,13 @@ function hoodOf(id, subjects = new Set(), dirs = projectDirs()) {
 // links come from (a tie goes to the course), else "other".
 function assignHoods(nodes, info = {}) {
   const lay = info.layout || {}, research = info.research || {}, dirs = projectDirs(lay);
-  const subjects = new Set();
+  const subjects = new Set(), own = info.subjects || [], folders = own.map((s) => [`${s.folder.replace(/\/+$/, "")}/`, s.slug]);
+  for (const s of own) subjects.add(s.slug);
   for (const n of nodes.values()) { const m = /^sources\/([^/]+)\//.exec(n.id) || /^([^/]+)\/course$/.exec(n.id); if (m) subjects.add(m[1]); }
   const base = new Map(), size = new Map(), projects = new Set(Object.keys(research).map((p) => `project:${p}`));
   for (const n of nodes.values()) {
     n.role = noteRole(n.id, lay);
-    const k = hoodOf(n.id, subjects, dirs); base.set(n.id, k);
+    const k = hoodOf(n.id, subjects, dirs, folders); base.set(n.id, k);
     if (k && k.startsWith("project:")) projects.add(k); else if (k && k !== "hub") size.set(k, (size.get(k) || 0) + 1);
   }
   const courses = [...size].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, MAX_HOODS).map(([k]) => k);
@@ -68,7 +70,7 @@ function assignHoods(nodes, info = {}) {
   keys.forEach((k, i) => {
     const ang = (i / keys.length) * 2 * Math.PI - Math.PI / 2, p = k.replace(/^project:/, ""), project = k.startsWith("project:");
     const label = (project ? titleOf(...dirs.map((d) => `${d}${p}/index`), ...dirs.map((d) => `${d}${p}`)) || (research[p] && research[p].name)
-      : titleOf(`maps/courses/${k}`, `${k}/course`, `sources/${k}/course`)) || prettyHood(k);
+      : (own.find((s) => s.slug === k) || {}).name || titleOf(`maps/courses/${k}`, `${k}/course`, `sources/${k}/course`)) || prettyHood(k);
     const col = project ? "accent" : HOOD_COLORS[ci++ % HOOD_COLORS.length];
     hoods.set(k, { label, project, get color() { return PAL[col]; }, anchor: { x: Math.cos(ang) * 420, y: Math.sin(ang) * 300 } });
   });
@@ -150,7 +152,7 @@ class Mind {
     for (const l of this.links) { const [a, b] = l; a.deg++; b.deg++; a.nb.add(b.id); b.nb.add(a.id); a.out.add(b.id);
       if (l.via) { a.via++; b.via++; } else { a.snb.add(b.id); b.snb.add(a.id); } }
     this.nbList = null; // the pointed-at note's neighbours, in label order: made again for the new graph
-    this.hoods = assignHoods(this.nodes, { layout: g.layout, research: g.research });
+    this.hoods = assignHoods(this.nodes, { layout: g.layout, research: g.research, subjects: g.subjects });
     this.anchor = new Map([...this.hoods].map(([k, v]) => [k, v.anchor]));
     if (first) for (const n of this.nodes.values()) { const a = this.anchor.get(n.neighborhood) || { x: 0, y: 0 }; n.x = a.x + (Math.random() - 0.5) * 140; n.y = a.y + (Math.random() - 0.5) * 140; }
     else for (const id of g.changed || []) { const n = this.nodes.get(id); if (n) this.flares.push({ n, t0: performance.now() / 1000 }); this.alpha = Math.max(this.alpha, 0.45); }

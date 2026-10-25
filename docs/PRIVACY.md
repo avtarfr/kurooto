@@ -376,3 +376,6 @@ Kurooto out; Google's revoke endpoint, sent each sign-in's token, which is how a
 bot's webhook, waiting messages and command menu. Nothing else is sent. It then removes Kurooto's keys from your
 system's keychain. The GitHub token, the Gemini key, the bot itself and the Google client are yours to delete; it
 prints where.
+
+| Reading files from the scratch folder (0.8.0, `sorter.read_files`, off) | nothing: the text is read on this computer into a note; the note is read by the graph like any note | stays on your computer |
+| Copies among notes (0.8.0, `sorter.duplicates`, `integrate.duplicates_all`) | nothing: compared on this computer, no AI | stays on your computer |

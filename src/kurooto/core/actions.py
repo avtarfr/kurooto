@@ -148,6 +148,12 @@ def subject_notes(app: App, slug: str, limit: int = 40) -> list[dict]:
     root = Path(app.workspace)
     found: dict[Path, str] = {layout.path(app, k, subject=slug): k for k in NOTE_KINDS}
     folder = layout.path(app, "subject", subject=slug)
+    subj = app.modules.get("subjects") if app.is_on("subjects") else None
+    own = next((s.get("folder") for s in subj.subjects() if s["slug"] == slug and s.get("folder")), "") if subj else ""
+    if own and (root / own).is_dir():  # a folder you gave the subject: all its notes are the subject's
+        for f in (root / own).rglob("*.md"):
+            if not any(x.startswith(".") for x in f.relative_to(root / own).parts):
+                found.setdefault(f, "lecture" if DATED.match(f.name) else "concept")
     if folder.is_dir():
         for f in folder.rglob("*.md"):
             if not any(x.startswith(".") for x in f.relative_to(folder).parts):
@@ -180,7 +186,16 @@ def study_view(app: App, subject: str | None = None) -> dict:
     on = set(out["features"])
     subj = app.modules.get("subjects") if "subjects" in on else None
     st = app.modules.get("study") if "study" in on else None
-    out["subjects"] = [{"slug": s["slug"], "name": s["name"]} for s in subj.subjects()] if subj else []
+    mine = {s["slug"] for s in (subj.setting("list") or [])} if subj else set()
+    out["subjects"] = (
+        [
+            {"slug": s["slug"], "name": s["name"], "folder": s.get("folder", ""), "own": s["slug"] in mine}
+            for s in subj.subjects()
+        ]
+        if subj
+        else []
+    )
+    out["folders"] = subj.folders() if subj else []  # folders of your notes a new subject can take as its own
     slugs = [s["slug"] for s in out["subjects"]]
     out["timer"] = st.timer_view() if st else None
     out["focus_min"], out["break_min"] = (st.setting("focus_min"), st.setting("break_min")) if st else (25, 5)

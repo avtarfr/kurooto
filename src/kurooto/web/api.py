@@ -848,6 +848,19 @@ class Api:
             from kurooto.modules.google_confidential import settle
 
             return 200, {"message": settle(self.app, str(b.get("id", "")), bool(b.get("add")))}
+        if path in (
+            "subjects/add",
+            "subjects/remove",
+        ):  # Study mode's subject list: {"name", "aliases", "folder"} / {"slug"}
+            sj = self.app.modules.get("subjects")
+            if not sj or not self.app.is_on("subjects"):
+                return 400, {"ok": False, "message": "Subjects isn't on: turn it on in Features."}
+            if path == "subjects/remove":
+                return 200, {"ok": True, "message": sj.remove_subject(str(b.get("slug", "")))}
+            al = b.get("aliases") or []
+            al = [x for x in (al.split(",") if isinstance(al, str) else al) if isinstance(x, str)]
+            ok, msg = sj.add_subject(str(b.get("name", "")), al, str(b.get("folder", "")))
+            return 200, {"ok": ok, "message": msg}
         if path == "books/add":  # a PDF on this computer into a subject's books: {"path", "subject"} (a copy)
             bk = self.app.modules.get("books")
             if not bk:

@@ -700,19 +700,67 @@ class Subjects(Module):
             )
             return names or "No subjects yet. /subject add Linear Algebra (la, linalg)"
         if arg.lower().startswith("remove "):
-            slug = self.resolve(arg[7:])
-            self.app.settings.set("subjects.list", [s for s in self.setting("list") or [] if s["slug"] != slug])
-            return f"Removed {arg[7:]}." if slug else "No such subject."
+            return self.remove_subject(arg[7:])
         name = m["name"].strip()
         aliases = [a.strip().lower() for a in (m["aliases"] or "").split(",") if a.strip()]
-        old = next((s for s in self.setting("list") or [] if s["slug"] == slugify(name)), {})
-        items = [s for s in self.setting("list") or [] if s["slug"] != slugify(name)]
-        row = {"name": name, "slug": slugify(name), "aliases": aliases}
-        if old.get("ai_policy") in POLICIES:  # adding it again changes its short names, not its policy
+        return self.add_subject(name, aliases)[1]
+
+    def folders(self) -> list[str]:
+        """The top-level folders of your notes a subject may take as its own (not hidden, not Kurooto's)."""
+        root = Path(self.app.workspace)
+        skip = {"about-me", "prompts", "skills", "journal", "dailies", "kurooto", "maps", "node_modules"}
+        try:
+            return sorted(
+                d.name for d in root.iterdir() if d.is_dir() and not d.name.startswith(".") and d.name not in skip
+            )
+        except OSError:
+            return []
+
+    def add_subject(self, name: str, aliases: list[str] | None = None, folder: str = "") -> tuple[bool, str]:
+        """Add (or change) a subject. `folder`: a folder of your notes whose notes belong to it (Study mode lists them,
+        and the notes map makes them a neighbourhood of their own); empty: the layout's own places."""
+        name = " ".join(str(name).split())[:60]
+        if not name or not slugify(name):
+            return False, "Give the subject a name."
+        folder = str(folder or "").strip().strip("/")
+        if folder:
+            target = (Path(self.app.workspace) / folder).resolve()
+            if (
+                ".." in Path(folder).parts
+                or not target.is_dir()
+                or not target.is_relative_to(Path(self.app.workspace).resolve())
+            ):
+                return False, f"There's no folder {folder} in your notes."
+        aliases = [a.strip().lower() for a in (aliases or []) if a.strip()][:8]
+        slug = slugify(name)
+        old = next((s for s in self.setting("list") or [] if s["slug"] == slug), {})
+        items = [s for s in self.setting("list") or [] if s["slug"] != slug]
+        row = {"name": name, "slug": slug, "aliases": aliases or list(old.get("aliases", []))}
+        if old.get("ai_policy") in POLICIES:  # adding it again changes its names and folder, not its policy
             row["ai_policy"] = old["ai_policy"]
+        if folder or old.get("folder"):
+            row["folder"] = folder or old["folder"]
         items.append(row)
         self.app.settings.set("subjects.list", items)
-        return f"Added {name}" + (f" (also: {', '.join(aliases)})" if aliases else "") + "."
+        return True, f"Added {name}" + (f" (also: {', '.join(row['aliases'])})" if row["aliases"] else "") + (
+            f", notes in {row['folder']}" if row.get("folder") else ""
+        ) + "."
+
+    def remove_subject(self, ref: str) -> str:
+        """Take a subject off the list. Its notes and files stay where they are; only the subject goes (a subject that
+        comes from your term note is changed in that note)."""
+        slug = self.resolve(ref)
+        mine = [s for s in self.setting("list") or [] if s["slug"] == slug]
+        if not slug or not mine:
+            return "That subject isn't one you added" + (" (it comes from your term note)." if slug else ".")
+        self.app.settings.set("subjects.list", [s for s in self.setting("list") or [] if s["slug"] != slug])
+        return f"Removed {mine[0]['name']}. Its notes and files are untouched."
+
+    def folder_map(self) -> list[dict]:
+        """[{slug, name, folder}] for the subjects that have a folder of notes (the notes map's neighbourhoods)."""
+        return [
+            {"slug": s["slug"], "name": s["name"], "folder": s["folder"]} for s in self.subjects() if s.get("folder")
+        ]
 
     def _class(self, msg: Incoming, arg: str) -> str:
         rm = re.fullmatch(r"\s*(?:remove|delete|rm)\s+(?P<day>[a-z]{3})[a-z]*\s+(?P<s>\d{1,2}:\d{2})\s*", arg, re.I)

@@ -28,7 +28,7 @@ import datetime as dt
 import time
 from pathlib import Path
 
-from kurooto.core import notedupes, notesfit, sorting
+from kurooto.core import inboxreader, notedupes, notesfit, sorting
 from kurooto.core.clock import now
 from kurooto.core.config import register_defaults
 from kurooto.modules.base import Command, Incoming, Module
@@ -44,6 +44,8 @@ register_defaults(
         "ai": True,  # ask your AI about a note the rules can't place (its first lines go to it); off: rules only
         "recheck": True,  # weekly: a note it moved that now clearly fits another folder moves once more
         "learn": True,  # a note you move again after it filed it teaches it
+        "read_files": False,  # files dropped in the scratch folder (PDF, Word, slides, text) are read into notes
+        "read_mb": 25,  # the biggest file read, in MB
         "duplicates": True,  # a note in the scratch folder that copies one you already have is asked about, not filed
     },
 )
@@ -69,11 +71,12 @@ class Sorter(Module):
     def run(self, force: bool = False) -> dict:
         """One pass. Returns what it did (also the text of /sort now)."""
         app = self.app
-        out = {"moved": [], "waiting": 0, "asked": 0, "learned": 0, "log": ""}
+        out = {"moved": [], "waiting": 0, "asked": 0, "learned": 0, "log": "", "read": []}
         if not app.is_on(self.id):
             return out
         if self.setting("learn") is not False:
             out["learned"] = len(sorting.learn(app))
+        out["read"] = inboxreader.read_new(app, force=force)
         root = Path(app.workspace)
         room = sorting.left_today(app)
         min_conf = float(self.setting("min_conf") or sorting.MIN_CONF)
@@ -106,6 +109,16 @@ class Sorter(Module):
             res = self._move(moves)
             out["moved"], out["log"] = res["moved"], res["id"]
         self._tell(out)
+        if out["read"]:
+            names = ", ".join(Path(a).name for a, _ in out["read"][:5])
+            app.notify(
+                f"Read {len(out['read'])} file{'s' if len(out['read']) != 1 else ''} from {sorting.scratch_rel(app)} "
+                "into notes: "
+                f"{names}. The originals are untouched.",
+                kind="result",
+                why="sorter.read",
+                title="Notes sorter",
+            )
         return out
 
     def _dupe(self, rel: str, text: str, st: dict) -> bool:

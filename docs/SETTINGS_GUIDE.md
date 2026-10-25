@@ -489,6 +489,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `integrate.batch_pages` | `12` | about this many pages per request |
 | `integrate.commit` | `true` | one git commit per batch, when your notes are a repository |
 | `integrate.duplicates` | `true` | each morning, up to 3 pairs of look-alike concept notes: Merge / Keep both / Add alias |
+| `integrate.duplicates_all` | `true` | also each morning: notes of any kind that are copies of each other, old ones too |
+| `integrate.duplicates_per_day` | `3` | the most copy pairs asked about in a day |
 | `integrate.embeddings` | `"auto"` | where meaning-based matching comes from: auto \| ollama \| gemini \| off |
 | `integrate.first` | `[]` | subjects to do first, e.g. ["deep-learning"] |
 | `integrate.garden` | `true` | each day, a second pass over the notes the reading touched and notes nothing links to |
@@ -933,10 +935,13 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `sorter.ai` | `true` | ask your AI about a note the rules can't place (its first lines go to it); off: rules only |
 | `sorter.at` | `"daily 03:30"` | when the nightly pass runs |
+| `sorter.duplicates` | `true` | a note in the scratch folder that copies one you already have is asked about, not filed |
 | `sorter.folder` | `"inbox"` | the scratch folder, inside your notes: what lands here is sorted |
 | `sorter.learn` | `true` | a note you move again after it filed it teaches it |
 | `sorter.min_conf` | `0.75` | how sure a guess must be before it's acted on |
 | `sorter.per_night` | `20` | the most notes moved in a day |
+| `sorter.read_files` | `false` | files dropped in the scratch folder (PDF, Word, slides, text) are read into notes |
+| `sorter.read_mb` | `25` | the biggest file read, in MB |
 | `sorter.recheck` | `true` | weekly: a note it moved that now clearly fits another folder moves once more |
 | `sorter.settle_min` | `10` | a note touched in the last this-many minutes is left (you may still be writing it) |
 
@@ -997,6 +1002,13 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `study.research_paths` | `[]` | words or folders: a window naming one counts as Research |
 | `study.sample_s` | `30` | seconds between looks at the active window |
 | `study.timer_ends_mode` | `false` | when a focus ends, Study mode ends too (look.study_mode), instead of a break |
+
+### `studypack`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `studypack.extra` | `""` | your own rules for the AI, one per line, added to the end of every pack's PROMPT.md |
+| `studypack.instructions` | `true` | your own extra lines (studypack.extra) and a format phrase ("pdf too") go in the prompt |
 
 ### `subjects`
 
