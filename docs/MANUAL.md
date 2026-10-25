@@ -1623,8 +1623,17 @@ two weeks), and honest feelings (it may say it's uneasy about a deadline, never 
 week). If Brain ever shapes a message from how you seem, it can only make it quieter, with a line saying so and **Undo**.
 `/mind gate` shows what it held or removed. *Undo:* `mind.gate.on` off; Brain off.
 
+**It reads how you're doing, and says what it expects of tomorrow, but only watches (shadow mode).** From numbers about your
+days (when you were up, study minutes, check-in speed, deadlines moved) compared with what the calendar asked, it reads
+*steady*, *stretched*, *low* or *buoyant*; a read needs three or more unusual signs on two days running. A 21:00 forecast of
+tomorrow is frozen and scored the next evening. Nothing Kurooto does depends on either yet. `/mood` shows them, with **Wrong**,
+**Forget this** (a day's numbers, read, answer and what was kept of that day) and **Off**. It asks at most twice a week
+("has this week felt heavier than usual?"); the question never names its read. The optional tone tag (`mind.tone.on`, off)
+uses the model on this computer only. *Undo:* `mind.read.on`, `mind.forecast.on`, `mind.tone.on` off; **Off** under `/mood`
+deletes what it kept.
+
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
-every record).
+every record); `/mood` (how it reads you and what it expects).
 
 **Settings:** `mind.anchor_every` (1000: the log's head is noted every this many records, and once a day);
 `mind.hardened` (off).

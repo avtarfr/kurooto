@@ -72,6 +72,10 @@ MIRRORED = frozenset(
         "kurooto_crashed",  # stage 02: the supervisor saw Kurooto end with an error
         "module_failed",
         "mind_keeper_exited",
+        "read_day",  # stage 04: a day's read (its counts only: no label, no signal values)
+        "read_answer",  # stage 04: that you answered (a number: right or not), never which label
+        "forecast",  # stage 04: a frozen forecast (day, channels planned, its sha256; the numbers are in score.db)
+        "forecast_score",  # stage 04: the mean surprise of a scored forecast
         "promise_made",  # stage 05
         "promise_kept",
         "promise_broken",
@@ -84,9 +88,14 @@ def mirrored(kind: str) -> bool:
     return kind in MIRRORED or kind.startswith("proposal_") or kind.endswith(("_undo", "_undone"))
 
 
+# stage 04: facts about the day (the scorekeeper checks and files them; see scorekeeper.Keeper.mood)
+MOOD_KINDS = frozenset({"signal", "read_day", "read_answer", "forecast", "score_forecast", "read_forget", "read_off"})
+
+
 def accepted_fact(kind: str) -> bool:
-    """A kind of fact the daemon may hand the scorekeeper: a mirrored event or a decision record (never a score)."""
-    return kind == "decision" or mirrored(kind)
+    """A kind of fact the daemon may hand the scorekeeper: a mirrored event, a decision record or a fact about the day
+    (never a score)."""
+    return kind == "decision" or kind in MOOD_KINDS or mirrored(kind)
 
 
 class MindWriteDenied(PermissionError):

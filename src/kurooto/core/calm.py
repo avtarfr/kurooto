@@ -247,6 +247,7 @@ REASONS: dict[str, Reason] = {
         R("reminders.own", "a reminder you set", exempt="own", stop=None, later=False),
         R("calls.own", "a call you asked for", exempt="own", stop=None, later=False),
         R("mind.off", "you turned Brain off: what it kept, and whether to delete it", exempt="own", stop=None),
+        R("mood.off", "you turned Brain's read off: whether to delete what it kept", exempt="own", stop=None),
         R("study.timer", "the end of a study session you started with a length", exempt="own", stop=None),
         R("quiz.checkin", "a quiz time you set", exempt="own", stop=None, later=False),
         R(
@@ -336,6 +337,14 @@ REASONS: dict[str, Reason] = {
             many='"Overdue?" questions',
             setting="deadlines.overdue_check",
             stop=to(False, 'no more "Overdue?" questions'),
+            suggest=True,
+        ),
+        R(
+            "mood.ask",
+            "a question about whether the week felt heavier than usual (Brain's read of you, shadow mode)",
+            many="questions about how your week felt",
+            setting="mind.read.asks_per_week",
+            stop=to(0, "no more questions about how your week felt"),
             suggest=True,
         ),
         R(

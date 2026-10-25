@@ -188,6 +188,15 @@ characters. Only you can read the files (in [hardened mode](mind.md#hardened-mod
 writes them and your group reads them). The folder isn't in backups or Profile sync, nothing of it leaves the
 computer, and it's kept until you delete it: turn Brain off and tap **Delete Brain's data**.
 
+**Brain's read** (0.8.0, part of Brain, on with it; `mind.read.on`, `mind.forecast.on`, `mind.tone.on`) keeps numbers about your
+days (when you were first up and last about, study minutes, how fast you answered a check-in, deadlines moved, what the calendar
+asked) in the `mind` folder for 30 days, the read and the forecast for 30 days, your answers for 7 days, and a short list of
+(strength, right or wrong) pairs with no date or words. The tone tag, off unless you turn it on, uses the model on this computer
+only and its one-word tags last until the end of the day (the average is kept). The log keeps counts, ids and a fingerprint,
+never a label or a number of yours. Nothing of it reaches a cloud AI or leaves the computer, and the one question it may
+ask doesn't name what it read. **Forget this** under `/mood` deletes a day's numbers, read, answer and forecast and what was
+kept of that day's messages, calls and requests; **Off** deletes it all after you confirm.
+
 ## Where requests go
 
 Every request Kurooto makes on the internet goes through one place that counts it: the host, the feature, how many

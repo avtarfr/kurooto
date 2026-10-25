@@ -4,6 +4,8 @@
     vars       the body budget's variables, their levels now (stage 05)
     values     the learned value of each kind of action (stage 05)
     trust      the trust in each risk class of action (stage 06)
+    signals    the day's numbers the read is made from (stage 04): key "YYYY-MM-DD:name", kept 30 days
+    reads       what the read said each day and what you answered, and the calibration pairs (stage 04)
 
 Each table is (key TEXT PRIMARY KEY, value REAL, meta TEXT JSON, at REAL). Only the scorekeeper process opens it for
 writing (log.may_write(), invariant I-1); everything else reads it with `mode=ro` through the mind client. In stage 01
@@ -20,7 +22,7 @@ from pathlib import Path
 
 from kurooto.mind.log import MindWriteDenied, may_write, private
 
-TABLES = ("setpoints", "vars", "values", "trust")
+TABLES = ("setpoints", "vars", "values", "trust", "signals", "reads")
 
 
 class Score:
@@ -63,6 +65,56 @@ class Score:
         except ValueError:
             meta = {}
         return {"value": row[0], "meta": meta, "at": row[2]}
+
+    def rows(self, table: str, prefix: str = "", limit: int = 5000) -> list[dict]:
+        """Rows whose key starts with prefix, oldest key first: [{key, value, meta, at}]."""
+        if table not in TABLES:
+            return []
+        db = self.db
+        if db is None:
+            if not self.path.exists():
+                return []
+            db = sqlite3.connect(f"{self.path.resolve().as_uri()}?mode=ro", uri=True, timeout=10)
+        try:
+            cur = db.execute(
+                f'SELECT key, value, meta, at FROM "{table}" WHERE substr(key, 1, ?) = ? ORDER BY key LIMIT ?',  # noqa: S608
+                (len(prefix), prefix, int(limit)),
+            )
+            out = []
+            for k, v, m, a in cur.fetchall():
+                try:
+                    meta = json.loads(m) if m else {}
+                except ValueError:
+                    meta = {}
+                out.append({"key": k, "value": v, "meta": meta, "at": a})
+            return out
+        except sqlite3.OperationalError:
+            return []
+        finally:
+            if db is not self.db:
+                db.close()
+
+    def _purge(self, table: str, prefix: str, older_than: float) -> int:
+        """Scorekeeper only: delete the rows of this kind last written before older_than (retention)."""
+        if not (self.writable and may_write()) or self.db is None or table not in TABLES:
+            raise MindWriteDenied("only the scorekeeper writes the mind's scores")
+        with self._lock:
+            cur = self.db.execute(
+                f'DELETE FROM "{table}" WHERE substr(key, 1, ?) = ? AND at < ?',  # noqa: S608
+                (len(prefix), prefix, float(older_than)),
+            )
+            return cur.rowcount or 0
+
+    def _drop(self, table: str, key_prefix: str) -> int:
+        """Scorekeeper only: delete rows by key (Forget this, and turning the read off)."""
+        if not (self.writable and may_write()) or self.db is None or table not in TABLES:
+            raise MindWriteDenied("only the scorekeeper writes the mind's scores")
+        with self._lock:
+            cur = self.db.execute(
+                f'DELETE FROM "{table}" WHERE substr(key, 1, ?) = ?',  # noqa: S608
+                (len(key_prefix), key_prefix),
+            )
+            return cur.rowcount or 0
 
     def snapshot(self) -> dict[str, int]:
         """How many rows each table holds (what /mind shows, and what tests compare)."""

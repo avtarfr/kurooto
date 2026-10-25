@@ -113,6 +113,19 @@ class MindClient:
     def setpoint(self, name: str) -> dict | None:
         return self._score().get("setpoints", name)
 
+    # ------------------------------------------------------------------------------- the day's numbers (stage 04)
+    def signal_days(self) -> dict[str, dict[str, float]]:
+        """{day: {signal: value}} for every day the scorekeeper holds numbers for (30 days at most)."""
+        out: dict[str, dict[str, float]] = {}
+        for r in self._score().rows("signals", ""):
+            day, _, name = r["key"].partition(":")
+            out.setdefault(day, {})[name] = r["value"]
+        return out
+
+    def mood_rows(self, prefix: str = "") -> list[dict]:
+        """Rows of the mood table: read:<day>, answer:<day>, cal:<day>, forecast:<day>, score:<day>."""
+        return self._score().rows("reads", prefix)
+
     def verify(self, from_seq: int = 1) -> mlog.VerifyResult:
         return self._log().verify(from_seq, mlog.read_anchors(self.dir))
 
@@ -122,7 +135,8 @@ class MindClient:
         the queue is full; never raises, never waits."""
         if not mlog.accepted_fact(kind):
             return False
-        fact = {"kind": kind, "body": records.clean_fact(kind, body or {}), "ts": round(time.time(), 3)}
+        clean = records.plain(body or {}) if kind in mlog.MOOD_KINDS else records.clean_fact(kind, body or {})
+        fact = {"kind": kind, "body": clean, "ts": round(time.time(), 3)}
         try:
             self._q.put_nowait(fact)
         except queue.Full:

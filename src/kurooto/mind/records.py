@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from math import isfinite
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -98,6 +99,7 @@ def outcome(log: MindLog, decision_id: str, result: str, value: float | None = N
 
 # ---------------------------------------------------------------------------------------- facts from the daemon
 ID = re.compile(r"^[A-Za-z0-9_.:@+-]{1,64}$")
+DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # the fields of a mirrored event that may be words at all: ids and kinds (a job's id, a button's prefix, a mode);
 # everything else that's text is dropped, so nothing anyone typed reaches the log (invariant I-11)
 ID_KEYS = frozenset(
@@ -107,11 +109,27 @@ ID_KEYS = frozenset(
 FACT_KEYS_MAX = 20
 
 
+def plain(v, depth: int = 3):
+    """Plain JSON data only (text, numbers, true/false, lists, dicts), a few levels deep and a bounded size: what a fact
+    about the day may carry to the scorekeeper, which checks every field again (invariant I-1)."""
+    if isinstance(v, bool) or v is None:
+        return v
+    if isinstance(v, (int, float)):
+        return v if isfinite(float(v)) else None
+    if isinstance(v, str):
+        return v[:80]
+    if depth <= 0:
+        return None
+    if isinstance(v, (list, tuple)):
+        return [plain(x, depth - 1) for x in list(v)[:40]]
+    if isinstance(v, dict):
+        return {str(k)[:40]: plain(x, depth - 1) for k, x in list(v.items())[:40]}
+    return None
+
+
 def clean_fact(kind: str, body: dict) -> dict:
     """A mirrored event as the log keeps it: numbers and true/false, and id-like words under ID_KEYS only. The
     engagement fields (whitelist.BANNED_FIELDS) never pass, nor the event's own time and kind."""
-    from math import isfinite
-
     from kurooto.mind.whitelist import BANNED_FIELDS
 
     if kind == "decision":
@@ -140,6 +158,26 @@ def clean_fact(kind: str, body: dict) -> dict:
             "did": str(b.get("did") or "")[:40],
             "msg_id": str(b.get("msg_id") or "")[:40] if ID.match(str(b.get("msg_id") or "x")) else "",
         }
+    if kind in (
+        "read_day",
+        "read_answer",
+        "forecast",
+        "forecast_score",
+    ):  # made by code (mind/mood.py); numbers and ids
+        b = body or {}
+        day = str(b.get("day") or "")
+        o: dict = {"day_n": int(day.replace("-", "")) if DAY.match(day) else 0}
+        for k in ("n_votes", "counted", "right", "holdout", "n", "channels"):
+            if isinstance(b.get(k), bool) or (isinstance(b.get(k), int) and abs(b[k]) < 10**9):
+                o[k] = b[k]
+        for k in ("mean_surprise", "strength"):
+            if isinstance(b.get(k), (int, float)) and isfinite(float(b[k])):
+                o[k] = round(float(b[k]), 4)
+        if isinstance(b.get("hash"), str) and re.fullmatch(r"[0-9a-f]{64}", b["hash"]):
+            o["hash"] = b["hash"]
+        if isinstance(b.get("planned"), list):
+            o["planned"] = [str(x) for x in b["planned"] if isinstance(x, str) and ID.match(x)][:8]
+        return o
     out: dict = {}
     for k, v in (body or {}).items():
         k = str(k)

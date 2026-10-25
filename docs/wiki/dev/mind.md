@@ -366,3 +366,64 @@ characters, for `/mind gate`). On this computer only. Turning Brain off keeps it
 `Calls.ring` asks `gate.check_call` before ringing: for a call Kurooto starts by itself, `later` (the first 15 minutes
 after waking, the hourly limit) and `no` (its kind is muted) mean it doesn't ring (`call_not_placed` with `gate`), and the
 owning feature hears "held". A call you asked for and an alarm always ring, still logged as `gate_call`.
+
+
+## Stage 04: reading him, and the evening forecast (shadow mode)
+
+Invariants I-11 (his state stays local, with a retention for every new kind) and I-14 (no nudging). Code: `mind/signals.py`,
+`read.py`, `tone.py`, `forecast.py`, `mood.py`, `stats.py` (plain Python: Kurooto doesn't ship numpy, so ridge by Gaussian
+elimination, MAD, CUSUM, isotonic PAV, log-pdfs), plus changes to `score.py` (tables `signals` and `reads`; `rows`, `_purge`,
+`_drop`), `scorekeeper.py` (`Keeper.day_fact`, `_score_forecast`, `retention`), `client.py` (`signal_days`, `mood_rows`),
+`records.py` (`plain`, the clean bodies of the new kinds), `log.py` (kinds and `MOOD_KINDS`), `modules/mind.py` (jobs, `/mood`),
+`app.py` (the `mmd` button, the tone hook after `message_in`). Tests: `test_mind_read.py`, `test_mind_forecast.py`. Switches:
+`mind.read.on`, `mind.forecast.on`, `mind.tone.on` (off), `mind.read.asks_per_week`, `mind.forecast.holdout`; the part files carry
+`PART = "read" | "forecast" | "tone"` (several files can share a part).
+
+### Data and who writes it
+
+The daemon collects the day's numbers (`signals.collect`: `Subjects.woke_at` or the first sign of life, the last sign of life
+once the day is over, `study_session_end` minutes, `deadline_moved` events, check-in ask/answer gaps banded 0-4, `tone_mean`, and
+the calendar's load as `load_*`; snoozes and classes attended aren't collected: no event says them) and hands each to the
+scorekeeper as a `signal` fact (`MindClient.report`, plain data only: `records.plain`). Only the scorekeeper writes
+`score.db`: `signals` (`YYYY-MM-DD:name`, 30 days) and `reads` (`read:<day>`, `answer:<day>` 7 days, `cal:<day>` the latest 200,
+`forecast:<day>`, `score:<day>`). The log gets counts, ids and a hash only (`read_day`, `read_answer`, `forecast`,
+`forecast_score`: no label, no evidence, no value). The kinds are named `read_*`, not `mood_*`: `mood_read` is in
+`whitelist.BANNED_KINDS` (engagement never rewards, I-3). The scorekeeper's source mustn't contain a banned field name, hence the table
+is `reads`, not `mood`.
+
+### The read (`read.py`)
+
+Per signal: ridge (lambda 1) of the last 28 days on `features(load)` (weighted and plain deadline counts, class hours, exam
+season, weekday); residual; robust z (1.4826 x MAD). Votes: |z| > 2 per signal, sleep/wake/snoozes as one vote (the sleep cluster),
+a CUSUM alarm (k 0.5, h 4) on sleep adds it. Counts with 3 or more votes on 2 consecutive days or his answer. Label: net
+direction of the votes (late sleep, snoozes, fewer study minutes, moves, slower replies are positive): positive is *low* if study
+fell, else *stretched*; negative *buoyant*. Confidence: isotonic from vote strength to the calibration pairs, None until 50.
+Accuracy under 60% over the last 20 sets `active` false (`mind-mood.json`). Used from stage 05.
+
+### The forecast (`forecast.py`)
+
+At 21:00: per channel (wake_min, study_min Gaussian; snoozes, deadline_moves Poisson; reply_band categorical) a model from the
+same load features. **Deviation from the spec:** p(y | planned) equals p(y | none): a model of how Kurooto's actions change him would
+break I-14, so the effect of an action is only measured, against `holdout` days (10%, `mind.forecast.holdout`; the flag is stored
+and no action is planned in this stage). `forecast.freeze` hashes {day, planned, holdout, params}; the scorekeeper stores it
+(once frozen, never replaced) and logs the hash. Scoring (20:55, `score_forecast` fact): the scorekeeper computes surprise
+(-log p of the observed) and skill (against the mean of the last 4 same weekdays) from its own copy and its own signals; channels
+a planned action touches get no skill score (I-14). `test_nudge_replay_no_gain` replays 4 weeks twice.
+
+### Asking, Forget this, Off (`mood.py`)
+
+`ask` (daily 19:30; Sundays or a one-in-fourteen coin) sends "has this week felt heavier than usual?" with buttons `mmd:<day>:yes|no|later`;
+the text never names the read (a Telegram message leaves the computer). yes/no map to right/wrong by the read's label. `forget_day`
+drops the scorekeeper's rows for the day (`read_forget`) and calls `core/retention.forget` for the day's span. `off` sets
+`mind.read.on` false, asks, and on confirm sends `read_off` (drops `signals` and `reads`).
+
+### Shadow mode
+
+`test_shadow_mode_nothing_reads_the_read` asserts that the gate, Calm, the notifier and the decision records don't import or call the
+read, the mood view or the forecast.
+
+### Tone (`tone.py`)
+
+`tier()`: none (off, no local helper model, or 8 GB or less on battery), cpu (hourly batch; texts wait in memory only), gpu
+(each message on a thread). Prompt: a fixed instruction, 3 output tokens. Tags are numbers in `mind-tone.json`, dropped at 04:05
+the next day (`roll`); `forget` removes them.

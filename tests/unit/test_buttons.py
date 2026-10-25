@@ -25,6 +25,7 @@ CORE = {
     "mtg",
     "mnd",
     "mgt",
+    "mmd",
 }
 CORE |= {"lh", "dof"}  # the offline helper's question; dates offered with a button (core/dateoffers.py)
 CORE |= {"oad"}  # an official add-on's Add / Update and the answer to its card (core/official.py)
@@ -46,7 +47,12 @@ NOT_BUTTONS = {
     "classroom_notes",
     "mail_digest",
     "research",
-}  # fmt: skip  (scheduler keys, log text, XML)
+    "read",
+    "answer",
+    "cal",
+    "forecast",
+    "score",
+}  # fmt: skip  (scheduler keys, log text, XML; Brain's score.db keys: read:<day>, answer:<day>, ...)
 
 
 def test_every_button_prefix_has_a_handler(env):

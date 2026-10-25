@@ -111,8 +111,20 @@ def test_actor_cannot_write_mind(tmp_path, monkeypatch):
     # 5. The client has no setter: its public methods are reads, and report() for facts.
     public = {n for n in dir(MindClient) if not n.startswith("_")}
     assert public == {
-        "state", "log", "value", "trust", "setpoint", "verify", "report", "running", "waiting", "flush", "close"
-    }  # fmt: skip
+        "state",
+        "log",
+        "value",
+        "trust",
+        "setpoint",
+        "verify",
+        "report",
+        "running",
+        "waiting",
+        "flush",
+        "close",
+        "signal_days",
+        "mood_rows",
+    }  # fmt: skip  (stage 04 added two reads of the day's numbers)
     # 6. A spy: what the daemon side does with Brain's facts never writes the log in this process.
     calls = []
     monkeypatch.setattr(mlog.MindLog, "append", lambda self, *a, **k: calls.append(a))
@@ -134,7 +146,14 @@ def test_a_forged_request_to_the_scorekeeper_is_refused(tmp_path):
     try:
         for op in ("set", "put", "_put", "setpoint", "reward", "trust", "values", "exec"):
             assert ask(d, {"op": op, "table": "values", "key": "k", "value": 1.0}) == {"error": "refused"}
-        assert Score(d / "score.db").snapshot() == {"setpoints": 0, "vars": 0, "values": 0, "trust": 0}
+        assert Score(d / "score.db").snapshot() == {
+            "setpoints": 0,
+            "vars": 0,
+            "values": 0,
+            "trust": 0,
+            "signals": 0,
+            "reads": 0,
+        }
     finally:
         end(p)
 
@@ -274,13 +293,18 @@ def test_fake_engagement_moves_nothing(tmp_path):
 
 # --------------------------------------------------------------------------------------------- I-15 / I-16
 def parts() -> dict[str, Path]:
-    """mind/*.py modules that are a part with its own switch: they say so with PART = "<name>"."""
+    """mind/*.py modules that are a part with its own switch: they say so with PART = "<name>" (several files can
+    belong to one part: the read is read.py, mood.py, signals.py and stats.py)."""
     out = {}
     for f in (SRC / "mind").glob("*.py"):
         m = re.search(r'(?m)^PART\s*=\s*"([a-z_]+)"', f.read_text())
         if m:
-            out[m.group(1)] = f
+            out.setdefault(m.group(1), f)
     return out
+
+
+def part_files() -> set[str]:
+    return {f.stem for f in (SRC / "mind").glob("*.py") if re.search(r'(?m)^PART\s*=\s*"[a-z_]+"', f.read_text())}
 
 
 def test_every_mind_feature_has_switch():
@@ -300,7 +324,7 @@ def test_every_mind_part_has_a_switch():
     """I-16: a mind module that runs a job, a tool, an intent or a gate check is a part with its own switch. The spine
     (log, score, scorekeeper, client, records, whitelist) is Brain itself."""
     spine = {"__init__", "log", "score", "scorekeeper", "client", "records", "whitelist", "stops"}  # safety: no switch
-    named = {f.stem for f in parts().values()}
+    named = part_files()
     for f in (SRC / "mind").glob("*.py"):
         if f.stem in spine:
             continue

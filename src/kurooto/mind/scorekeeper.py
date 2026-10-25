@@ -39,11 +39,18 @@ import time
 from multiprocessing.connection import Listener
 from pathlib import Path
 
+from kurooto.mind import forecast as fc
 from kurooto.mind import log as mlog
+from kurooto.mind import read as rd
 from kurooto.mind import records, stops
 from kurooto.mind.score import TABLES, Score
 
-ACCEPTED_FROM_DAEMON = frozenset({*mlog.MIRRORED, "decision"})
+# stage 04: facts about the day, handled here (stored in score.db with a retention, not copied whole into the log)
+MOOD_KINDS = mlog.MOOD_KINDS
+ACCEPTED_FROM_DAEMON = frozenset({*mlog.MIRRORED, "decision", *MOOD_KINDS})
+SIGNALS_KEEP_S = 30 * 86400
+ANSWER_KEEP_S = 7 * 86400
+CAL_KEEP = 200  # calibration pairs (strength, right), no dates or words
 STOP_KINDS = frozenset({"stop_span", "power_pause", "power_resume", "module_disabled", "module_enabled"})
 ALIVE_S = 5.0  # `alive` is touched this often
 CHECK_S = 60.0  # the spool and the daily anchor are looked at this often
@@ -111,6 +118,8 @@ class Keeper:
     def append(self, kind: str, body, ts: float | None = None) -> dict:
         if not accepted(kind):
             return self.refuse(f"append:{kind}"[:40] if records.ID.match(kind or "x") else "append")
+        if kind in MOOD_KINDS:
+            return self.day_fact(kind, body if isinstance(body, dict) else {})
         clean = records.clean_fact(kind, body if isinstance(body, dict) else {})
         if kind == "decision" and not clean:
             return {"error": "not a decision record"}
@@ -121,6 +130,152 @@ class Keeper:
             if seq % self.anchor_every == 0:
                 self.anchor("every")
         return {"ok": True, "seq": seq}
+
+    # -------------------------------------------------------------------------------------------- stage 04: the read
+    def day_fact(self, kind: str, b: dict) -> dict:
+        """The day's numbers, the read, your answer and the forecast. Each is checked here; the read, the answer and the
+        forecast keep only counts, ids and a hash in the log, and the rest in score.db, where it has a retention and
+        Forget this / turning the read off remove it."""
+        day = str(b.get("day") or "")
+        if kind in (
+            "signal",
+            "read_day",
+            "read_answer",
+            "forecast",
+            "score_forecast",
+            "read_forget",
+        ) and not records.DAY.match(day):
+            return {"error": "bad day"}
+        with self.lock:
+            if kind == "signal":
+                name = str(b.get("name") or "")
+                if (
+                    name not in (*rd.SIGNALS, *rd.LOAD_SIGNALS)
+                    or not isinstance(b.get("value"), (int, float))
+                    or isinstance(b.get("value"), bool)
+                ):
+                    return {"error": "not a signal"}
+                v = float(b["value"])
+                if not -1e6 < v < 1e6:
+                    return {"error": "not a signal"}
+                self.score._put("signals", f"{day}:{name}", v)
+                return {"ok": True}
+            if kind == "read_day":
+                votes = [
+                    [str(n)[:20], round(float(z), 3)]
+                    for n, z in (b.get("votes") or [])
+                    if isinstance(n, str) and isinstance(z, (int, float))
+                ][:8]
+                ev = {
+                    str(k): round(float(z), 3)
+                    for k, z in (b.get("evidence") or {}).items()
+                    if str(k) in rd.SIGNALS and isinstance(z, (int, float))
+                }
+                label = str(b.get("label") or "")
+                label = label if label in rd.LABELS else "steady"
+                meta = {"label": label, "votes": votes, "evidence": ev, "confidence": b.get("confidence")}
+                meta["confidence"] = (
+                    round(float(meta["confidence"]), 3) if isinstance(meta["confidence"], (int, float)) else None
+                )
+                strength = round(float(b.get("strength") or 0.0), 4)
+                self.score._put("reads", f"read:{day}", strength, {**meta, "counted": bool(b.get("counted"))})
+                seq = self.log.append(
+                    "read_day",
+                    records.clean_fact(
+                        "read_day",
+                        {"day": day, "n_votes": len(votes), "counted": bool(b.get("counted")), "strength": strength},
+                    ),
+                )
+                return {"ok": True, "seq": seq}
+            if kind == "read_answer":
+                right = bool(b.get("right"))
+                strength = round(float(b.get("strength") or 0.0), 4)
+                self.score._put(
+                    "reads", f"answer:{day}", 1.0 if right else 0.0, {"label": str(b.get("label") or "")[:12]}
+                )
+                self.score._put("reads", f"cal:{day}", strength, {"right": right})  # no label, no words
+                seq = self.log.append(
+                    "read_answer", records.clean_fact("read_answer", {"day": day, "right": right, "strength": strength})
+                )
+                return {"ok": True, "seq": seq}
+            if kind == "forecast":
+                params = b.get("params") if isinstance(b.get("params"), dict) else {}
+                clean = {
+                    k: [float(x) for x in v][:8]
+                    for k, v in params.items()
+                    if k in fc.CHANNELS and isinstance(v, list) and v and all(isinstance(x, (int, float)) for x in v)
+                }
+                if not clean:
+                    return {"error": "no parameters"}
+                rec = fc.freeze(day, clean, b.get("planned") or (), bool(b.get("holdout")))
+                if self.score.get("reads", f"forecast:{day}"):
+                    return {"ok": True, "frozen": True}  # once frozen, it isn't replaced
+                self.score._put("reads", f"forecast:{day}", 1.0, rec)
+                seq = self.log.append(
+                    "forecast",
+                    records.clean_fact(
+                        "forecast",
+                        {"day": day, "hash": rec["hash"], "planned": rec["planned"], "holdout": rec["holdout"]},
+                    ),
+                )
+                return {"ok": True, "seq": seq, "hash": rec["hash"]}
+            if kind == "score_forecast":
+                return self._score_forecast(day)
+            if kind == "read_forget":
+                n = sum(
+                    self.score._drop(t, p)
+                    for t, p in (
+                        ("signals", f"{day}:"),
+                        ("reads", f"read:{day}"),
+                        ("reads", f"answer:{day}"),
+                        ("reads", f"cal:{day}"),
+                        ("reads", f"forecast:{day}"),
+                        ("reads", f"score:{day}"),
+                    )
+                )
+                return {"ok": True, "dropped": n}
+            if kind == "read_off":
+                n = self.score._drop("signals", "") + self.score._drop("reads", "")
+                return {"ok": True, "dropped": n}
+        return {"error": "unknown"}
+
+    def _score_forecast(self, day: str) -> dict:
+        """Score the frozen forecast for `day` against the numbers stored for it: from this process's own data only."""
+        row = self.score.get("reads", f"forecast:{day}")
+        if not row or not isinstance(row.get("meta"), dict) or not fc.check(row["meta"]):
+            return {"error": "no frozen forecast"}
+        if self.score.get("reads", f"score:{day}"):
+            return {"ok": True, "scored": True}
+        observed = {r["key"].split(":", 1)[1]: r["value"] for r in self.score.rows("signals", f"{day}:")}
+        d = dt.date.fromisoformat(day)
+        same: dict = {}
+        for k in range(1, 5):
+            past = (d - dt.timedelta(days=7 * k)).isoformat()
+            for r in self.score.rows("signals", f"{past}:"):
+                same.setdefault(r["key"].split(":", 1)[1], []).insert(0, r["value"])
+        scored = fc.score(row["meta"], observed, same)
+        if not scored:
+            return {"error": "nothing observed"}
+        mean = fc.mean_surprise(scored)
+        self.score._put("reads", f"score:{day}", mean or 0.0, {"channels": scored})
+        seq = self.log.append(
+            "forecast_score",
+            records.clean_fact("forecast_score", {"day": day, "n": len(scored), "mean_surprise": mean}),
+        )
+        return {"ok": True, "seq": seq}
+
+    def retention(self) -> None:
+        """What stage 04 keeps, and for how long: the day's numbers and reads 30 days, your answers 7, the calibration
+        pairs        the latest CAL_KEEP (no dates or words in them)."""
+        now = time.time()
+        with self.lock:
+            self.score._purge("signals", "", now - SIGNALS_KEEP_S)
+            for pre in ("read:", "forecast:", "score:"):
+                self.score._purge("reads", pre, now - SIGNALS_KEEP_S)
+            self.score._purge("reads", "answer:", now - ANSWER_KEEP_S)
+            cal = self.score.rows("reads", "cal:")
+            for r in sorted(cal, key=lambda r: r["at"])[: max(0, len(cal) - CAL_KEEP)]:
+                self.score._drop("reads", r["key"])
 
     # -------------------------------------------------------------------------------------------- stop spans
     def spans(self) -> list:
@@ -152,6 +307,7 @@ class Keeper:
 
     def daily(self) -> None:
         """Once a day (the first check after midnight): an anchor, if anything was written since the last one."""
+        self.retention()
         anchors = mlog.read_anchors(self.dir)
         last = anchors[-1] if anchors else None
         today = dt.date.today().isoformat()

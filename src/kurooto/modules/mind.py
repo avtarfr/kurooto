@@ -26,7 +26,7 @@ from pathlib import Path
 from kurooto import mind
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
-from kurooto.mind import gate
+from kurooto.mind import gate, mood, signals, tone
 from kurooto.mind import log as mlog
 from kurooto.modules.base import Command, Incoming, Module
 
@@ -71,6 +71,21 @@ class Mind(Module):
         if self._unsub is None:
             self._unsub = subscribe(self._mirror)
         self.every("gate", "every 1m", lambda p: gate.release(self.app) if gate.on(self.app) else 0)  # held messages
+        # stage 04 (shadow mode: computed, logged and shown, nothing depends on it yet); each part has its own switch
+        self.every("signals", "hourly", self._signals)  # the day's numbers, then today's read
+        self.every("tone", "hourly", lambda p: tone.batch(self.app) if mind.on(self.app) else 0)
+        self.every("tone_roll", "daily 04:05", lambda p: tone.roll(self.app) if mind.on(self.app) else False)
+        self.every("score", "daily 20:55", lambda p: mood.run_score(self.app) if mind.on(self.app) else False)
+        self.every("forecast", "daily 21:00", lambda p: mood.run_forecast(self.app) if mind.on(self.app) else None)
+        self.every("ask", "daily 19:30", lambda p: mood.ask(self.app) if mind.on(self.app) else False)
+
+    def _signals(self, payload: dict | None = None) -> int:
+        """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""
+        if not mind.on(self.app):
+            return 0
+        n = signals.run(self.app, payload)
+        mood.run_read(self.app, payload)
+        return n
 
     def stop(self) -> None:
         if self._unsub is not None:
@@ -199,13 +214,24 @@ class Mind(Module):
     def commands(self) -> list[Command]:
         return [
             Command(
+                "mood",
+                "how Brain reads you and what it expects of tomorrow (it only watches for now)",
+                self.mood_cmd,
+                usage="/mood",
+            ),
+            Command(
                 "mind",
                 "Brain: its scorekeeper, its log and whether the log checks out; /mind verify checks all of it; "
                 "/mind gate shows what it held back or removed from messages today",
                 self.cmd,
                 usage="/mind [verify|gate]",
-            )
+            ),
         ]
+
+    def mood_cmd(self, msg: Incoming, arg: str) -> str | None:
+        text, buttons = mood.view(self.app)
+        msg.reply(text, buttons or None)
+        return None
 
     def cmd(self, msg: Incoming, arg: str) -> str:
         c = mind.connect(self.app)
@@ -275,6 +301,7 @@ def button(app, ref: str, act: str) -> str:
     mind.forget_client(app)
     n = mlog.MindLog(d / "log.db").count() if d.exists() else 0
     shutil.rmtree(d, ignore_errors=True)
-    (app.paths.state / "mind-gate.json").unlink(missing_ok=True)  # the gate's own file (mind/gate.py)
+    for f in ("mind-gate.json", "mind-mood.json", "mind-tone.json"):  # the gate's, the read's and the tone's own files
+        (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)
     return "Deleted Brain's data." if not d.exists() else "Couldn't delete all of it; /mind says what's left."

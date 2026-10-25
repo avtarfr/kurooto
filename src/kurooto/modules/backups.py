@@ -64,6 +64,8 @@ SKIP_STATE = {
     "backups.json",
     "focus-queue.jsonl",
     "mind-gate.json",  # Brain's gate: counts and held messages (mind/gate.py); this computer only
+    "mind-mood.json",  # Brain's read: whether it's active and when it asked (mind/mood.py); this computer only
+    "mind-tone.json",  # Brain's tone tags of the day (mind/tone.py); this computer only
     "profile.json",  # this computer's own id for the encrypted profile: it mustn't move to another computer
 }
 # cases: what you typed, kept on this computer only. mind: Brain's log and scores (0.8.0) stay on this computer; an

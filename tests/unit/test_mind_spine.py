@@ -154,7 +154,14 @@ def test_scorekeeper_takes_facts_and_refuses_everything_else(tmp_path):
         assert ask(d, {"op": "verify"})["verify"]["ok"]
         from kurooto.mind.score import Score
 
-        assert Score(d / "score.db").snapshot() == {"setpoints": 0, "vars": 0, "values": 0, "trust": 0}
+        assert Score(d / "score.db").snapshot() == {
+            "setpoints": 0,
+            "vars": 0,
+            "values": 0,
+            "trust": 0,
+            "signals": 0,
+            "reads": 0,
+        }
         if sys.platform != "win32":
             for f in ("log.db", "score.db", "key", "endpoint.json"):
                 assert (d / f).stat().st_mode & 0o077 == 0, f

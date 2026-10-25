@@ -375,6 +375,11 @@ class App:
         mods = self.enabled() + [m for m in also or [] if not self.is_on(m.id)]
         mods += [m for m in self.basics() if m not in mods]  # /pause, /focus... without Telegram (the app's chat)
         self.events.emit("message_in", via=msg.via, chars=len(msg.text), files=len(msg.files))
+        from kurooto.mind import (
+            tone,
+        )  # (Brain, stage 04) its tone tag, on this computer only; nothing without Brain's tone switch
+
+        tone.seen(self, msg.text)
         if msg.reply_to:  # (calm) you answered one of its messages (core/calm.py)
             self.calm.touched(map_kind=msg.reply_to.get("kind"), map_ref=msg.reply_to.get("ref"))
         if msg.reply_to and msg.reply_to.get("kind") == "ask":  # an answer to a question (core/ask.py)
@@ -742,6 +747,10 @@ class App:
             from kurooto.core import official
 
             return official.button(self, ref, act)
+        if prefix == "mmd":  # Yes/No/Not now under Brain's ask, Wrong/Forget this/Off under /mood (mind/mood.py)
+            from kurooto.mind import mood
+
+            return mood.button(self, ref, act)
         if prefix == "mgt":  # Undo under a quieter message, Unmute under /mind gate (mind/gate.py)
             from kurooto.mind import gate
 

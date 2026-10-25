@@ -80,12 +80,52 @@ Brain puts one gate in front of everything Kurooto sends on its own. What it doe
 What it keeps: counts, held messages until their time, and the first 80 characters of what it removed, in a file in
 Kurooto's state folder; nothing leaves your computer.
 
+## How it reads you, and what it keeps
+
+Brain can read how you're doing, in **shadow mode**: it computes, keeps and shows the read, and nothing Kurooto does depends
+on it yet. It comes from numbers about your own days, not from what you write: when you were first up and last about, minutes in
+finished study sessions, how fast you answered a check-in (banded; never used as a reward), deadlines you moved, and what the
+calendar asked that day (deadlines due within 72 hours with exams counting triple, class hours, exam season, the weekday).
+Each number is compared with what the calendar explains over the last four weeks, so a late night in exam week isn't a worry
+and the same night in a quiet week might be. A read needs three or more unusual signs on two days running (sleep, waking and
+snoozes together count as one) before it says *stretched*, *low* or *buoyant*; otherwise it says nothing clear. It learns how
+often it's right from your answers and shows a confidence only after 50 of them. If it's right less than 60% of the time over
+your last 20 answers, it sets itself aside.
+
+- **`/mood`** shows today's read with its evidence, its confidence (or "not enough data to read you yet"), tomorrow's forecast
+  and last week's surprise. **Wrong** records that it was wrong; **Forget this** deletes that day's numbers, read, answer and
+  forecast, and what Kurooto kept of that day's messages, calls and requests; **Off** turns the read off and asks whether to
+  delete what it kept.
+- **Asking.** At most twice a week, and in this shadow stage only on Sunday evenings (plus one random one a fortnight), it asks
+  "has this week felt heavier than usual?" with Yes / No / Not now. The question never names its read: messages travel
+  through Telegram, and a reading of you stays on this computer.
+- **The forecast.** Each evening at 21:00 it says what it expects of tomorrow (when you'll be up, study minutes, deadlines
+  moved) and freezes it with a fingerprint in the log; the next evening it measures how surprised it was. A tenth of days are
+  marked *holdout* days, so that later, when it plans actions, what they do can be measured and never has to be assumed.
+- **Tone** (off by default: `mind.tone.on`) tags each message you write with one word (calm, tired, stressed, annoyed, upbeat,
+  neutral) using the model on this computer only, as you write (a graphics card or Apple Silicon), once an hour (other
+  computers), or not at all (no local model, or 8 GB or less on battery: "statistics only"). Only the day's average is kept.
+
+| What | How long | Where |
+|---|---|---|
+| The day's raw numbers | 30 days | `score.db` in the `mind` folder |
+| The read, its evidence and the forecast | 30 days | the same |
+| Your answers (which read, yes or no) | 7 days | the same |
+| Calibration pairs (how strong a read was, was it right; no date, no words) | the latest 200 | the same |
+| Tone tags | until the end of that day (then only the mean, 30 days) | a small file in the state folder |
+| What the log keeps of all this | counts, ids, a fingerprint: never a label or a number of yours | `log.db` |
+
+No cloud AI ever receives the read, the tone tags or the numbers. Switches: `mind.read.on`, `mind.forecast.on`, `mind.tone.on`
+(each needs Brain; read and forecast are on with Brain, tone is off), `mind.read.asks_per_week` (2), `mind.forecast.holdout`
+(0.10).
+
 ## /mind
 
 - **`/mind`:** whether Brain's scorekeeper is running, how long the log is, whether it checks out, and the last
   anchor.
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
+- **`/mood`:** how Brain reads you and what it expects of tomorrow (it only watches for now).
 
 ## What it keeps
 
