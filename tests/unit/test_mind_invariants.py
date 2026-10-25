@@ -116,6 +116,9 @@ def test_actor_cannot_write_mind(tmp_path, monkeypatch):
     assert public == {
         "state",
         "log",
+        "history_rows",
+        "import_history",
+        "forget_history",
         "value",
         "trust",
         "setpoint",
@@ -159,6 +162,7 @@ def test_a_forged_request_to_the_scorekeeper_is_refused(tmp_path):
             "trust": 0,
             "signals": 0,
             "reads": 0,
+            "history": 0,
         }
     finally:
         end(p)

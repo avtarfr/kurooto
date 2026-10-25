@@ -161,6 +161,7 @@ def test_scorekeeper_takes_facts_and_refuses_everything_else(tmp_path):
             "trust": 0,
             "signals": 0,
             "reads": 0,
+            "history": 0,
         }
         if sys.platform != "win32":
             for f in ("log.db", "score.db", "key", "endpoint.json"):

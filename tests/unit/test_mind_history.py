@@ -26,7 +26,7 @@ def app(tmp_path, monkeypatch):
     a.keeper = sk.Keeper(a.paths.state / "mind")
     c = mind.connect(a)
     monkeypatch.setattr(c, "report", lambda kind, body: a.keeper.append(kind, body).get("ok", False))
-    monkeypatch.setattr(c, "request", lambda op, **kw: a.keeper.handle({"op": op, **kw}))
+    monkeypatch.setattr(c, "_request", lambda op, **kw: a.keeper.handle({"op": op, **kw}))
     monkeypatch.setattr(c, "running", lambda: (True, 1))
     yield a
     a.keeper.close()

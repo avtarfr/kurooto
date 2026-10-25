@@ -132,7 +132,7 @@ def run(app: App, progress: Callable[[int, int], None] | None = None) -> dict:
         nonlocal sent, batches
         if not buf:
             return True
-        res = c.request("import", batch=f"ev{first_line:07d}", rows=list(buf))
+        res = c.import_history(f"ev{first_line:07d}", list(buf))
         if not res.get("ok"):
             return False
         sent += int(res.get("rows") or 0)
@@ -157,7 +157,7 @@ def run(app: App, progress: Callable[[int, int], None] | None = None) -> dict:
 
 
 def forget(app: App) -> int:
-    res = mind.connect(app).request("history_forget")
+    res = mind.connect(app).forget_history()
     try:
         _state_file(app).unlink()
     except OSError:

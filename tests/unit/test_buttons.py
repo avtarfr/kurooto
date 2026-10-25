@@ -34,6 +34,7 @@ CORE |= {"rpo"}  # Set it up / Not now under "set up my project from <repository
 CORE |= {"prop"}  # Apply / Change / Discard / Undo under a proposal (core/proposals.py)
 NOT_BUTTONS = {
     "attention",  # scorekeeper table keys and the senses' daily total keys, not buttons
+    "h",  # the imported past's keys in the history table (h:<batch>:<n>)
     "commits",
     "saves",
     "min",

@@ -142,7 +142,15 @@ class MindClient:
         """The imported past (0.8.1): [{key, value: when, meta: {k: kind, ...ids and numbers}}], oldest key first."""
         return self._score().rows("history", prefix, limit)
 
-    def request(self, op: str, **kw) -> dict:
+    def import_history(self, batch: str, rows: list[dict]) -> dict:
+        """Hand the scorekeeper a batch of past events (mind/history.py); it checks and files them."""
+        return self._request("import", batch=batch, rows=rows)
+
+    def forget_history(self) -> dict:
+        """Ask the scorekeeper to drop the imported past."""
+        return self._request("history_forget")
+
+    def _request(self, op: str, **kw) -> dict:
         """One request to the scorekeeper and its answer ({} when it can't be reached): the import."""
         conn = None
         try:
