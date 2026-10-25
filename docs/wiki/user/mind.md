@@ -222,6 +222,20 @@ lists them with their source, how sure it was and how each source has done. Swit
 `mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
 `mind-beliefs.json`.
 
+## Plans over weeks
+
+Every deadline, repository milestone and goal you stated with a date becomes a node with an effort estimate (from Start-by: what similar items took, or what you
+told it once; a `~` marks a guess and `/plan effort <id> <hours>` sets your own). Brain learns your real pace, hours a day by weekday from the study tracker and the
+activity stream, as a spread rather than one number, and runs **1,000 simulated futures** of the next six weeks: each draws your hours for every day (never more than
+the day's free time), makes every estimate a bit wrong, and gives the hours to what's due first, never starting a task before what it waits for. Out come, per milestone,
+the likely finish date (p50, with a p90 for a bad run) and the chance of missing the due date. `/plan` shows this week's suggested hours a day and the risks. It is a
+suggestion, not a to-do: it never nags and never re-sends a reminder because of the plan.
+
+What it does with the plan is inward: a milestone that may be missed gets a standing bid in the workspace (so its preparation, outlines, sources and lab runs come
+first), and at most once a week, on Sunday evening, one line through the gate: "Glacier-flow draft: 60% on time at your current pace; this week most of the time goes to X"
+(only when something is at risk). Each week the old plans are scored against what finished: about half of the milestones should finish by their p50; it only looks at
+dates, so a plan earns nothing for being followed. Switches: `mind.plans.on`, `mind.plans.weeks` (6), `mind.plans.rollouts` (1000).
+
 ## What it thinks you know, believe and want, and how to correct it
 
 Brain keeps a model of your mind you can read and correct: `/model`. Five parts, each row with where it came from (said, saw, inferred, imagined), how sure it is

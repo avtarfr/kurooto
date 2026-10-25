@@ -249,6 +249,12 @@ def set_standing(app: App, gid: str, text: str, slip: float) -> None:
     _save(app, st)
 
 
+def clear_standing(app: App, gid: str) -> None:
+    st = _state(app)
+    if st["standing"].pop(str(gid)[:40], None) is not None:
+        _save(app, st)
+
+
 # ---------------------------------------------------------------------------------------------------- the cycle
 def on(app: App) -> bool:
     return mind.part_on(app, "workspace")

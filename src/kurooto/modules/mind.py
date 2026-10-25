@@ -45,10 +45,12 @@ from kurooto.mind import (
     workspace,
 )
 from kurooto.mind import log as mlog
+from kurooto.mind import plans as mind_plans
 from kurooto.mind.harness import indicators as harness_indicators
 from kurooto.mind.harness import run as harness_run
 from kurooto.mind.lab import report as lab_report
 from kurooto.mind.lab import runner as lab_runner
+from kurooto.mind.plans import tree as plans_tree
 from kurooto.mind.senses import activity as senses_activity
 from kurooto.mind.senses import intero as senses_intero
 from kurooto.mind.senses import phone as senses_phone
@@ -133,6 +135,9 @@ class Mind(Module):
         workspace.register_bidder("lab", lab_report.bid)
         self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None)
         self.every("lab_digest", "daily 07:40", self._lab_digest)
+        # stage 15: week-scale plans, remade each morning; one line on Sunday evening at most
+        self.every("plans", "daily 06:10", lambda p: mind_plans.run(self.app) and None)
+        self.every("plans_weekly", "weekly sun 19:20", lambda p: mind_plans.weekly(self.app) and None)
         # stage 14: the model of their mind (what they know, believe, want, prefer, attend to) and false-belief checks
         self.every("tom_sync", "hourly", self._tom_sync)
         self.every("tom_check", "every 30m", lambda p: tom_beliefs.check(self.app) and None)
@@ -324,6 +329,12 @@ class Mind(Module):
                 usage="/mood",
             ),
             Command(
+                "plan",
+                "this week's suggested hours and which milestones may be missed: /plan, /plan effort <id> <hours>",
+                self.plan_cmd,
+                usage="/plan [effort <id> <hours>]",
+            ),
+            Command(
                 "model",
                 "what Kurooto thinks you know, believe, want and prefer; /model wrong <id>, /model forget <id>",
                 self.model_cmd,
@@ -473,6 +484,22 @@ class Mind(Module):
         n += tom_prefs.sync(self.app) + len(tom_goals.infer_intentions(self.app))
         tom_attention.remember(self.app)
         return n
+
+    def plan_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        w = (arg or "").split()
+        if len(w) == 3 and w[0] == "effort":
+            try:
+                ok = plans_tree.set_effort(self.app, w[1], float(w[2]))
+            except ValueError:
+                ok = False
+            return (
+                f"Noted: {w[1]} is {w[2]} hours."
+                if ok
+                else "Use /plan effort <id> <hours> (the id is in brackets in /plan)."
+            )
+        return mind_plans.view(self.app)
 
     def model_cmd(self, msg: Incoming, arg: str) -> str:
         if not mind.on(self.app):
@@ -717,6 +744,8 @@ def button(app, ref: str, act: str) -> str:
         "mind-intero.json",
         "mind-activity.json",
         "mind-tom.json",
+        "mind-plans.json",
+        "mind-plan-last.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

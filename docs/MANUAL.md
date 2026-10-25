@@ -1587,7 +1587,7 @@ words are kept on that request and forgotten with it.
 its **Undo** button, or remove the kind from `notify.calm.habituate`, `notify.calm.evening` or `notify.calm.windows`;
 `dreaming.tune_messages` = false stops the tuning. Effort, AI order and sizes: the morning line's **Undo**, or remove
 the entry from `brain.effort_map`, `brain.fallback_first` or `startby.sizes`; `dreaming.tune_effort`,
-`dreaming.tune_fallbacks` or `dreaming.tune_sizing` = false stops that area. An applied skill fix: Undo in `/learned`; `/senses`; `/model`.
+`dreaming.tune_fallbacks` or `dreaming.tune_sizing` = false stops that area. An applied skill fix: Undo in `/learned`; `/senses`; `/model`; `/plan`.
 `dreaming.curious` or `dreaming.resurface` = false drops one line;
 a stub it made is a plain note you can delete; `/unignore <topic>` takes back Not interested. A Keep A / Keep B: its
 **Undo** button (the line, the gist or the deadline's date comes back, and the pair is asked about again);
@@ -1639,6 +1639,8 @@ never held up. `/thinking` says what's on the stage and why, from a model of its
 part>` is your hand on it. Every belief keeps a source (said, saw, inferred, imagined) and a confidence; only said and saw are stated as fact, the rest as
 "It looks like ... (65% sure)" or "A guess: ...", and `/beliefs <topic>` shows them with their Brier scores. *Undo:* `mind.workspace.on`, `mind.attention.on`,
 `mind.beliefs.on` off; Delete Brain's data removes the files.
+
+**Plans over weeks (Brain, `/plan`).** Your deadlines, milestones and dated goals become a goal tree; 1,000 simulated futures of the next six weeks (from your real pace, the calendar's free time and your estimates) give each milestone a likely finish and a chance of missing its due date. `/plan` shows this week's suggested hours a day and the risks (a suggestion, never a to-do); `/plan effort <id> <hours>` sets an estimate. A milestone at risk raises its standing bid in the workspace; at most one plan line a week on Sunday. Never nags. *Undo:* `mind.plans.on` off.
 
 **What it thinks you know, believe and want (Brain, `/model`).** An inspectable model of your mind: mastery per concept (to pitch explanations), what you believe about your work and its own state (it corrects a false belief once, with the evidence), your goals, how you like help, and what you're on now (opt-in). Every row shows its source and confidence; `/model wrong <id>` and `/model forget <id>` correct it. It's only used for the level of an explanation, the timing of a message and a fact correction, never to persuade, and never models your health, relationships, politics, religion or money. *Undo:* `mind.tom.on` off.
 

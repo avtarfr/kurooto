@@ -791,3 +791,19 @@ check has two fact checkers (backup, deadline) and runs only on those domains.
 ("the deadline is Friday") isn't captured automatically yet: `beliefs_about.told(...)` is called with what Kurooto tells him (backup done on `/backup`, deadline reminders); his
 own statements need an intent hook. (3) Quiz cards are linked to concepts by name mention, since a card has no concept id. (4) Prerequisites in the frontier are a note's typed
 `prereq` links, else its links. (5) Exam results he reports aren't evidence yet. (6) Stated goals from chat text aren't parsed; deadlines and projects are.
+
+## Stage 15: week-scale plans
+
+Code: `mind/plans/` (`tree.py`, `pace.py`, `rollout.py`, `score.py`, glue in `__init__.py`); `/plan` and jobs `plans` (06:10), `plans_weekly` (Sunday 19:20) in
+`modules/mind.py`; `workspace.clear_standing`; calm reason `mind.plan`; `stops.PROTECTED` gains `plans/score.py`. Tests: `test_mind_plans.py` (15). Switches: `mind.plans.{on, weeks, rollouts}`.
+
+`tree.build`: deadlines (`startby.size_of`, parts done give `done_frac`), repository milestones (`rec["milestones"]` if a record has them; none are invented) and stated goals with a `due`
+(stage 14); efforts you set are kept in `mind-plans.json` and are not guesses. `pace.samples`: per weekday, study hours (and activity project minutes) over 8 weeks with a prior (2 h, three pseudo-samples).
+`rollout.simulate`: per rollout a log-normal effort factor (sigma 0.45 for a guess, 0.25 for yours), daily hours drawn from the weekday's samples (x0.8 to 1.2) capped by Start-by's free
+slots, earliest-deadline-first over the ready nodes (cycles in `depends_on` are cut); p50/p90 from the finish days (a node that never finishes in the horizon is late), the first seven days' allocation averaged.
+`score.calibration` needs six finished milestones and returns 1 - 2|frac - 0.5|.
+
+**Deviations.** (1) Scores are not fed to the `forecast_skill` variable: that would put plans among the reward sources (a protected whitelist) and risk crediting compliance; the score is shown in `/plan`. (2) No
+dashboard Plan page (the `/plan` text carries it); an effort edit is the `/plan effort` command. (3) Dependencies come from nothing yet (deadlines carry none): the machinery and tests have them, the
+sources don't. (4) Syllabi and term notes aren't read as a source. (5) Kurooto's own preparation ahead of the risk is the workspace's standing bid only: no scheduler change. (6) Start-by's history-based sizes are used
+as Start-by computes them.

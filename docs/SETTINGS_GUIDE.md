@@ -649,6 +649,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.lab.projects` | `[]` | folders (or names of repository projects) the lab may run experiments on |
 | `mind.lab.run_wall_s` | `1800` | the longest one run may take, in seconds |
 | `mind.lab.seed` | `0` | a fixed seed for the sampled configurations (0: a new sample each day) |
+| `mind.plans.on` | `true` | week-scale plans: milestone risks from simulated futures; a suggestion, never a push |
+| `mind.plans.rollouts` | `1000` | how many simulated futures |
+| `mind.plans.weeks` | `6` | how far ahead the rollouts look |
 | `mind.promises.on` | `true` | its own promises: noticed, kept or owned up to first |
 | `mind.read.asks_per_week` | `2` | the most times a week it asks whether the week felt heavier than usual |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days (it only watches for now) |

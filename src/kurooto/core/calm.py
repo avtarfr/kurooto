@@ -259,6 +259,11 @@ REASONS: dict[str, Reason] = {
             "a correction, once, with the evidence, when something you were told has since turned out wrong",
             stop=None,
         ),
+        R(
+            "mind.plan",
+            "the weekly line about a milestone that may be missed at your current pace (at most one a week)",
+            stop=None,
+        ),
         R("mind.lab", "the morning note on what the overnight lab tried, with nulls as much as wins", stop=None),
         R(
             "mind.act_digest",
