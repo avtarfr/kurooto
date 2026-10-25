@@ -41,6 +41,11 @@ Standing plans, never struck through.
 - **The whole Brain visible from the phone app** (planned for 0.8.1, asked 2026-10-26): a Brain view next to Systems and the Notes map in the app's
   Views tab, read-only, live while you watch it: what it's thinking, what it did and why, its beliefs and their sources, experiments, proposals,
   skills, senses (counts only), its model of you, plans, what it forgot, stops and limits, the journal and story headings. Sealed with your phone's key.
+- **A guide to every single setting, and a tooltip on every single one** (planned for 0.8.1, asked 2026-10-26): today each setting has a one-line tooltip
+  taken from its comment (0.8.0) and the generated settings guide is one table. Add a proper guide as its own page (user wiki, in the app's help and on the site),
+  one entry per setting: what it does in plain words, its values and default, when you would change it, what changes when you do, what it costs or sends
+  outward, and what it depends on or switches off with it; grouped by feature, searchable, linked from each setting's tooltip. Tooltips for every setting on the
+  dashboard and in the phone app (long-press), written for a person and not copied from a code comment, with a test that fails when a setting has no entry.
 - **A detailed interface for the Brain** (planned for 0.8.1, asked 2026-10-26): beyond the cards, a proper console on the dashboard and the phone:
   open any decision to see its reasons and evidence, a timeline you can filter by part and day, search across what it has logged, each part's
   switches and settings next to what that part is doing, and the same view for its experiments, beliefs, skills and plans.
