@@ -66,7 +66,7 @@ blanked out and none of your messages or notes. Look inside, then send it yourse
 | "It's at its usage limit" | Free tiers have daily limits. The other AI program answers meanwhile if it's set up (no fallback picked, or `brain.fallback`; the receipt says "... hit its limit; ... answered"); otherwise wait, or set a fallback brain (`brain.fallback`). `/usage` shows how often it happens and who is waiting for a reset. |
 | The AI says something wrong about Kurooto itself (a feature, its version, a limit) | It answers from `self.md` in the reserve folder, written when something changes. Ask again, or `/fixme` for the rules' answer; `kurooto reserve` writes it now. |
 | "Google's free limit for today is used up" | It comes back at the time the message says. Set a fallback brain meanwhile; calls and reminders still work. |
-| The Classroom digest, the look back or a research digest didn't come | Past 70% of a known free limit, background work waits for the reset. `/usage` says how many requests wait. Raise `quota.background_pct` or set `quota.on` to `false` (in `settings.json`). |
+| The Classroom digest, the look back or a research digest didn't come | Past 70% of a limit Google named (or one you set), background work waits for the reset; a limit Kurooto only learned from its own count never holds work (`quota.soft`). `/usage` says how many requests wait. Raise `quota.background_pct` or set `quota.on` to `false` (in `settings.json`). |
 | "The AI stopped without an answer" | Rephrase it, or do that part yourself. |
 | "No answer in time" | Start the message with `low:`, or split the request. |
 | "It got stuck" | Send it again. A request with no progress for `jobs.stuck_min` (10) minutes is stopped. |

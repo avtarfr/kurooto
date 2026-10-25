@@ -236,7 +236,7 @@ class Integrate(Module):
             except Exception as e:
                 self.app.events.emit("module_failed", module=self.id, error=f"{step.__name__}: {e}"[:300])
         if self.setting("garden"):
-            self.every("garden", self.setting("garden_at") or "daily 06:20", self.garden)
+            self.every("garden", self.setting("garden_at") or "daily 06:20", self.garden_start)
         if self.setting("summary"):
             self.every("summary", "daily 07:10", self.summary)
         self.every("duplicates", "daily 06:25", lambda p=None: graphmerge.night(self, p))
@@ -1463,6 +1463,16 @@ class Integrate(Module):
             inbound |= {t for t in n.links if t != n.slug}
         return sorted(s for s in index.notes if s not in inbound)
 
+    def garden_start(self, payload: dict | None = None) -> dict:
+        """The garden on a thread of its own (0.7.5): it takes minutes (a card and candidates per note), and on
+        Kurooto's loop it held up the call line's heartbeat, the Telegram replies and every other scheduled job."""
+        t = getattr(self, "_garden_t", None)
+        if t is not None and t.is_alive():
+            return {"running": True}
+        self._garden_t = threading.Thread(target=self.garden, args=(payload,), name="garden", daemon=True)
+        self._garden_t.start()
+        return {"started": True}
+
     def garden(self, payload: dict | None = None) -> dict:
         """The daily second pass: the notes the reading touched, then notes nothing links to, each against what's there
         now. One short request per note (to the check AI); the answer's links are checked the same way."""
@@ -1507,6 +1517,7 @@ class Integrate(Module):
             )
             g.setdefault("last", {})[s] = day()
             sent += 1
+            time.sleep(0.02)  # a breath for the rest of Kurooto between notes
         self.save("garden.json", g)
         return {"asked": sent}
 
@@ -1868,12 +1879,11 @@ class Integrate(Module):
         if a == "garden":
             if not self.setting("garden"):
                 return "The garden is off (integrate.garden)."
-            r = self.garden()
-            n = r.get("asked", 0)
+            if self.garden_start().get("running"):
+                return "The garden is already running."
             return (
-                f"The garden started: {n} note{'s' if n != 1 else ''} sent to be linked."
-                if n
-                else "Nothing for the garden to do now: the notes it picks are done for today."
+                f"The garden started: up to {int(self.setting('garden_per_day') or 40)} notes are sent to be linked, "
+                "in the background; the day's changes come as one line."
             )
         if a in ("same", "duplicates", "dupes"):
             text, buttons = graphmerge.ask_now(self)

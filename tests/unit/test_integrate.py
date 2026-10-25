@@ -458,9 +458,18 @@ def test_graph_garden_runs_the_pass_now_and_the_time_is_a_setting(world):
     env.fake_ai.answer = json.dumps({"links": []})
     out = env.say("/graph garden")
     assert "The garden started" in out
+    env.integrate._garden_t.join(30)  # on a thread of its own, not on Kurooto's loop
     assert "06:20" in str(env.integrate.setting("garden_at"))  # the default; a setting, not fixed in code
     env.app.settings.set("integrate.garden", False)
     assert "off" in env.say("/graph garden")
+
+
+def test_the_scheduled_garden_returns_at_once_and_runs_on_its_own_thread(world):
+    env = world
+    r = env.integrate.garden_start()
+    assert r == {"started": True}
+    assert env.integrate._garden_t.name == "garden"
+    env.integrate._garden_t.join(30)
 
 
 def test_metrics_count_broken_links_and_vague_reasons(world):

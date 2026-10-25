@@ -186,6 +186,7 @@ the day's limit for what you're waiting on: calls, voice notes, the morning plan
 | `quota.on` | `true` | `false`: background work never waits (counting and the plain line stay) |
 | `quota.background_pct` | `70` | the share of a known daily limit after which background work waits |
 | `quota.limits` | `{}` | your own numbers, which win over learned ones, e.g. `{"gemini:gemini-flash-latest": 250, "agy": 900}` |
+| `quota.soft` | `learned` | `learned`: a limit Kurooto learned from its own count is only a measure (shown, never a reason to wait); `all`: Google's numbers too; `off`: every known limit keeps its reserve |
 | `quota.local` | `quick` | `quick`: only the "how hard" question moves to the local model; `background`: background work moves there too instead of waiting (a small model writes weaker digests); `off`: nothing moves |
 
 Only counts and times are kept (`quota.json` in Kurooto's state folder). Delete that file to forget what was learned.

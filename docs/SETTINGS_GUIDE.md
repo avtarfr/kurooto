@@ -756,6 +756,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `quota.limits` | `{}` | your own limits per AI, e.g. {"agy": 200} |
 | `quota.local` | `"quick"` | what the model on this computer does for the free limit: quick, background or off |
 | `quota.on` | `true` | keep part of the free AI limit for what you're waiting on |
+| `quota.soft` | `"learned"` |  |
 
 ### `remember`
 

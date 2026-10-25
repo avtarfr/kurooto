@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.5 (unreleased)
+
+- **A limit Kurooto learned is only a measure** (`quota.soft`, default `learned`): background work no longer waits for a limit
+  learned from its own count; only a real "limit reached" answer pauses a brain, until the reset it names. A tiny count
+  after a restart of the count window can't shrink a learned figure any more (it once learned "6" and held the night's work
+  until midnight). `all` makes Google's numbers soft too; `off` keeps the old reserve.
+- **The garden no longer freezes Kurooto:** its daily pass runs on a thread of its own instead of Kurooto's loop, where it
+  held up the call line's heartbeat (a false "offline"), Telegram replies and other scheduled jobs for about 26 minutes.
+- **`/graph garden`, `kurooto graph …` and `integrate.garden_at`:** run the garden now from Telegram or a terminal, and set
+  the time it runs by itself.
+
 ## 0.7.4 (2026-10-25)
 
 - **A notes sorter** (Features → Notes sorter, off until you turn it on): notes you drop in a scratch folder (`inbox`) are moved
