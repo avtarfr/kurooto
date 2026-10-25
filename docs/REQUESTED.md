@@ -35,7 +35,8 @@ Standing plans, never struck through.
   that is its own switch, off by default). Folders you list, patterns it never reads (keys, `.env`, hidden folders), size limits, and a drop-down for what to index.
 - **The garden dedupes notes** (planned for 0.8.0): today near-duplicate *concept* notes are asked about three pairs each morning (`integrate.duplicates`). Let the garden
   look for duplicates among all your notes as it goes (the same text, the same title with most of the text, the same concept under two names), as many as
-  `integrate.garden_per_day` allows, each one a Merge / Keep both / Add alias question with Undo, never merging or deleting anything without your tap.
+  `integrate.garden_per_day` allows, each one a Merge / Keep both / Add alias question with Undo, never merging or deleting anything without your tap. It covers **your old notes too**, not only what arrived
+  lately: a one-time pass over every note you already have, then a steady pass over what's new.
 - **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
 - **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
