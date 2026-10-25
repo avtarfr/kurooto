@@ -26,6 +26,9 @@ Standing plans, never struck through.
 - **Settings as drop-downs wherever the choices are known** (planned for 0.8.0): a setting with a fixed set of values (`quota.soft`, `quota.local`, the Look switches,
   a brain's effort, a time zone, a schedule's day) shows a drop-down in Settings, on the dashboard and in the phone app, instead of a box to type in; a free-text
   box only where any text is valid.
+- **Every setting explained in a tooltip** (planned for 0.8.0): hover over a setting's name in Settings (dashboard) and a tooltip says what it does and what its
+  values mean (long-press in the phone app). The words are the ones `docs/SETTINGS_GUIDE.md` already has from the code's own comments; a setting without one
+  fails a test, so none ships unexplained.
 - **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
 - **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
