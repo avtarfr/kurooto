@@ -19,7 +19,8 @@ Settings (quota.*):
     background_pct  70: background work waits once a day's count reaches this share of the known limit
     limits          {}: your own numbers, which win over learned ones: {"gemini:gemini-flash-latest": 250, "agy": 900}
     soft            learned: a limit Kurooto learned from its own count is a measure, not a rule: it's shown, but
-                    background work never waits for it (only a "limit reached" answer pauses a brain, until the reset it names);
+                    background work never waits for it (only a "limit reached" answer pauses a brain, until
+                    the reset it names);
                     all: Google's own numbers are soft too; off: every known limit keeps its reserve (before 0.7.5)
     local           quick: the "how hard is this" question moves to the model on this computer (Local AI models);
                     background: queued background work moves there too instead of waiting; off: nothing moves
