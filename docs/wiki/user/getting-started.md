@@ -355,3 +355,9 @@ off`): two computers can't share one Telegram bot or one call line. Details:
 
 In the dashboard's Settings, a setting that takes one of a few values (who reads scanned pages, how often, which day) is a drop-down instead of a box to type a word into, and hovering over any setting
 shows what it does. Free text stays a box only where any text is valid.
+
+
+## Finishing a feature's set-up
+
+Every time you switch a feature on in Features, the message under it lists what is left to set it up: what to turn on first, what its own check says is missing, and the steps only you can do (a bot token, a
+sign-in, installing Poppler or Ollama) with the exact command and how to undo it. `/health setup` lists what is left for every feature that is on.

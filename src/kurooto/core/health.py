@@ -626,11 +626,29 @@ class Health:
         """/health: what's wrong, with Fix buttons (/health now asks the internet too)."""
         results = self.evaluate(net=arg.strip().lower() in ("now", "all"), save=False)
         bad = [r for r in results if r.ok is False]
+        if arg.strip().lower() == "setup":  # what's left to set up, feature by feature (Module.setup_steps)
+            return self._setup_left(), None
         if not bad:
             n = len(results)
             return f"Everything {self.app.name} checks is working ({n} check{'s' if n != 1 else ''}).", None
         lines = [f"- {r.line()}" for r in bad]
         return "\n".join([f"{len(bad)} of {len(results)} checks need a look:", *lines]), self._buttons(bad)
+
+    def _setup_left(self) -> str:
+        left = []
+        for m in self.app.enabled():
+            try:
+                todo = [s for s in m.setup_steps() if not s["done"]]
+            except Exception as e:  # a feature whose steps can't be worked out is left out of this list
+                self.app.events.emit("setup_steps_failed", module=m.id, error=type(e).__name__)
+                continue
+            if todo:
+                left.append(
+                    f"- {m.title}: " + "; ".join(s["what"] + (f" ({s['how']})" if s["how"] else "") for s in todo[:3])
+                )
+        if not left:
+            return "Nothing is left to set up for the features that are on."
+        return "Set-up still to do, for the features that are on:\n" + "\n".join(left[:12])
 
     def button(self, ref: str, act: str) -> str:
         if act != "fix":

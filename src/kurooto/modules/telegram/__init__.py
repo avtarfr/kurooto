@@ -55,6 +55,13 @@ LAG_S = 10  # a message seen this much later than Telegram took it is noted (tel
 
 
 class Telegram(Module):
+    setup_notes = (
+        (
+            "A bot of your own: message @BotFather on Telegram, send /newbot, and paste the token it gives you",
+            "dashboard → Features → Chat → Set up",
+            "BotFather: /deletebot; Features → Chat → turn off",
+        ),
+    )
     id = "telegram"
     title = "Telegram"
     description = "Talk to Kurooto from your own Telegram bot: messages, reminders, questions with buttons."

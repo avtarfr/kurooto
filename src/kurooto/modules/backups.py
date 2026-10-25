@@ -558,6 +558,13 @@ def restore(zip_path: Path, p, *, secrets=None, notes: bool = True, progress=pri
 
 # ------------------------------------------------------------------------------------------------- the module
 class Backups(Module):
+    setup_notes = (
+        (
+            "Pick a folder for the backups (an external drive is best)",
+            "dashboard → Features → Backups → Set up",
+            "turn the feature off; delete the folder yourself",
+        ),
+    )
     id = "backups"
     title = "Backups"
     heavy = True  # waits for the charger on battery (saver mode, core/power.py)

@@ -304,6 +304,18 @@ def unreadable_why(path: Path, tools: dict) -> str:
 
 
 class Books(Module):
+    setup_notes = (
+        (
+            "Poppler reads PDF pages (without it, encrypted or unusual PDFs can't be read)",
+            INSTALL_POPPLER,
+            "remove the package the same way",
+        ),
+        (
+            "Scanned pages need a reader: Tesseract, or a vision model",
+            "/books setup",
+            "uninstall Tesseract with your package manager",
+        ),
+    )
     id = "books"
     title = "Books and PDFs"
     description = (

@@ -1190,7 +1190,13 @@ async function renderFeatures(body) {
     if (t.dataset.card) { const r = await api("modules/card", { id: t.dataset.card, act: t.dataset.act, value: t.checked }); flog.textContent = r.message || r.error || ""; renderFeatures(body); return; }
     if (t.dataset.fix) { t.disabled = true; const r = await api("health/fix", { id: t.dataset.fix }); flog.textContent = r.message || ""; renderFeatures(body); return; }
     if (t.dataset.on && HIDDEN_F.delete(t.dataset.on)) await saveHiddenF(); // turned on from the search: not hidden any more
-    if (t.dataset.on) { const r = await api("modules/enable", { ids: [t.dataset.on] }); flog.textContent = Object.values(r.results).map((x) => x.message).join("\n"); renderFeatures(body); }
+    if (t.dataset.on) {
+      const r = await api("modules/enable", { ids: [t.dataset.on] });
+      // what's left to set it up, every time it's switched on: what to do, the exact command, how to undo it
+      const steps = Object.entries(r.setup || {}).map(([id, ss]) => ss.filter((s) => !s.done).map((s) => `• ${s.what}${s.how ? `: ${s.how}` : ""}${s.undo ? ` (undo: ${s.undo})` : ""}`).join("\n")).filter(Boolean).join("\n");
+      flog.textContent = Object.values(r.results).map((x) => x.message).join("\n") + (steps ? `\nTo finish setting it up:\n${steps}` : "");
+      renderFeatures(body);
+    }
     if (t.dataset.off) { const r = await api("modules/disable", { id: t.dataset.off }); flog.textContent = r.message; renderFeatures(body); }
     if (t.dataset.setup) {
       const id = t.dataset.setup;

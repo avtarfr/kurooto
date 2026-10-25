@@ -21,6 +21,13 @@ OLLAMA = "http://127.0.0.1:11434"
 
 
 class LocalModels(Module):
+    setup_notes = (
+        (
+            "Ollama runs the models on this computer",
+            "dashboard → Features → Local AI models → Set up (installs Ollama, pulls the models)",
+            "ollama rm <model>; remove Ollama with your package manager",
+        ),
+    )
     id = "local_models"
     heavy = True  # waits for the charger on battery (saver mode, core/power.py)
     title = "Local AI models"

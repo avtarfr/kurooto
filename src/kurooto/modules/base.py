@@ -90,8 +90,48 @@ class Module:
     # "idle" (not grey, not dashed), and "running" with the figures while one does. Its health is still health().
     processes_intermittent = False
 
+    # what only you can do to finish setting it up: (what, the exact command or place, how to undo it). Shown every
+    # time it's switched on and by /health while a step is missing (setup_steps)
+    setup_notes: tuple[tuple[str, str, str], ...] = ()
+
     def __init__(self, app: App):
         self.app = app
+
+    def setup_steps(self) -> list[dict]:
+        """Everything needed to finish setting this feature up: [{what, done, how, undo}]. What it needs turned on
+        first, what its own check says is missing, and its `setup_notes` (steps that need your own hands, with the
+        exact command and its undo). Never empty: a feature with nothing to do says so."""
+        steps = []
+        for r in self.requires:
+            if r == "telegram":
+                done = bool(self.app.is_on("telegram") or self.app.is_on("calls"))
+                steps.append(
+                    {
+                        "what": "Somewhere to talk to you: Telegram or the phone app",
+                        "done": done,
+                        "how": "Features → Chat",
+                        "undo": "",
+                    }
+                )
+            elif r in self.app.modules:
+                steps.append(
+                    {
+                        "what": f"Turn on {self.app.modules[r].title}",
+                        "done": self.app.is_on(r),
+                        "how": "Features",
+                        "undo": "",
+                    }
+                )
+        try:
+            ok, why = self.health() if self.app.is_on(self.id) else (True, "")
+        except Exception:
+            ok, why = True, ""
+        if ok is False and why:
+            steps.append({"what": str(why), "done": False, "how": "", "undo": ""})
+        steps += [{"what": w, "done": False, "how": c, "undo": u, "note": True} for w, c, u in self.setup_notes]
+        return steps or [
+            {"what": f"Nothing to set up: {self.title} works once it's on.", "done": True, "how": "", "undo": ""}
+        ]
 
     # what it offers
     def commands(self) -> list[Command]:

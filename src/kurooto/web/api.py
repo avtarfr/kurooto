@@ -623,8 +623,16 @@ class Api:
                 res[mid] = self.app.enable(mid)
             return 200, {
                 "results": {k: {"ok": v[0], "message": v[1]} for k, v in res.items()},
+                "setup": {k: self.app.modules[k].setup_steps() for k in res if k in self.app.modules},
                 "modules": self._modules(),
             }
+        if path == "modules/steps":  # what's left to set a feature up (Module.setup_steps)
+            m = self.app.modules.get(b.get("id", ""))
+            return (
+                (200, {"id": m.id, "title": m.title, "steps": m.setup_steps()})
+                if m
+                else (404, {"error": "no such feature"})
+            )
         if path == "modules/setup":
             m = self.app.modules.get(b.get("id", ""))
             if not m or not hasattr(m, "setup"):

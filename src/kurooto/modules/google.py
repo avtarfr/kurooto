@@ -226,6 +226,13 @@ class GoogleError(RuntimeError):
 
 
 class Google(Module):
+    setup_notes = (
+        (
+            "Sign in to Google once (a browser window opens)",
+            "dashboard → Features → Google → Set up",
+            "Features → Google → Disconnect",
+        ),
+    )
     id = "google"
     title = "Google (Classroom, Gmail drafts)"
     description = (

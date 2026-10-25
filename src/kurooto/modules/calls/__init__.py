@@ -110,6 +110,18 @@ def check_ntfy_token(server: str, token: str) -> tuple[str, str]:
 
 
 class Calls(Module):
+    setup_notes = (
+        (
+            "A free Gemini API key (calls talk through Gemini Live)",
+            "dashboard → Features → Calls → Set up, or kurooto keys set gemini",
+            "kurooto keys remove gemini",
+        ),
+        (
+            "Your call line on Cloudflare (a free account), so calls ring even when this computer is off",
+            "dashboard → Features → Calls → Set up",
+            "Features → Calls → turn off (the line stays until you delete it on Cloudflare)",
+        ),
+    )
     id = "calls"
     title = "Phone calls"
     description = (
