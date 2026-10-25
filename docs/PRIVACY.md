@@ -379,3 +379,4 @@ prints where.
 
 | Reading files from the scratch folder (0.8.0, `sorter.read_files`, off) | nothing: the text is read on this computer into a note; the note is read by the graph like any note | stays on your computer |
 | Copies among notes (0.8.0, `sorter.duplicates`, `integrate.duplicates_all`) | nothing: compared on this computer, no AI | stays on your computer |
+| Find files (0.8.0, off) | nothing: a local index of the folders you choose; only a file you tap Send on goes anywhere (your own Telegram, or Drive) | stays on your computer |

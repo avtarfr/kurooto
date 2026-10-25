@@ -18,6 +18,7 @@ from kurooto.modules.drafts import Drafts
 from kurooto.modules.dreaming import Dreaming
 from kurooto.modules.exam_season import ExamSeason
 from kurooto.modules.files import Files
+from kurooto.modules.finder import Finder
 from kurooto.modules.gbrain import GBrain
 from kurooto.modules.google import Google
 from kurooto.modules.google_calendar import GoogleCalendar
@@ -77,6 +78,7 @@ CATALOG = [
     Projects,
     Skills,
     Sorter,
+    Finder,
     Hints,
     Drafts,
     Library,

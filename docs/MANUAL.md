@@ -4474,3 +4474,5 @@ Profile sync moves your setup to a new one (see [Moving to a new computer](#movi
 next is in [ROADMAP.md](ROADMAP.md).
 
 **Subjects with folders, and files in the inbox (0.8.0).** Study → Subjects adds or removes a subject and gives it a folder of your notes (Study mode and the notes map use it). With `sorter.read_files` on, PDFs, Word and slide files and text you drop in the scratch folder are read into notes (no AI); originals stay. Copies are asked about (Keep both / Merge / Leave it), and `studypack.extra` adds your rules to a pack's prompt. *Undo:* the switches; Undo under a merge.
+
+**Find files (`/find`, off).** Index chosen folders locally (names and text, no AI) and `/find <words>` lists matches with a Send button. *Undo:* turn the feature off; delete `finder/index.db` in the state folder.

@@ -866,3 +866,11 @@ the lines only the second had, and points the second at it; nothing is deleted a
 Once a file from the scratch folder is read into a note, its text is also read into the concept graph like class material (`integrate.sources` has `reference` by default; take it out to keep the graph
 to books and class files): the concepts in it become notes, linked to the ones you already have, and the document's note gets a "Seen in" line. If its text names exactly one of your subjects it goes
 under that subject, else under "reference".
+
+
+## Find a file and have it sent (Find files, off)
+
+Turn on **Find files** in Features and give it folders (`/find add ~/Documents`). Kurooto indexes their names and the text in them (PDFs, Word and slide files, notebooks, text and code) into a
+file on this computer, with no AI. `/find lecture notes entropy` lists the best matches, each with a **Send** button that sends the file to your own Telegram (up to 50 MB; bigger to Drive if that's on).
+Only files in the folders you gave can be sent. It re-reads a file only when it changed, at 04:50 or with `/find reindex`. Keys, passwords and hidden folders are never read; `finder.read_mb` (20) is the
+biggest file whose text is read (bigger ones are still found by name).

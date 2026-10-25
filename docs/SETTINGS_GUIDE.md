@@ -379,6 +379,14 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `files.folder` | `""` | a folder for files outside your notes (course files, PDFs); empty: inside the notes |
 | `files.links` | `""` | how notes link to files: empty is automatic |
 
+### `finder`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `finder.folders` | `[]` | the folders to index and search (full paths, ~ allowed): /find add <folder> |
+| `finder.max_files` | `60000` | the most files indexed |
+| `finder.read_mb` | `20` | a file bigger than this has its name indexed but its text isn't read |
+
 ### `gbrain`
 
 | Setting | Default | What it does |
