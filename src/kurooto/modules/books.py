@@ -280,8 +280,8 @@ IMAGES = {
 
 
 def unreadable_why(path: Path, tools: dict) -> str:
-    """Why a book gave no pages, said truthfully: not a PDF at all (by its first bytes), Poppler really missing, or a PDF
-    that's encrypted or damaged."""
+    """Why a book gave no pages, said truthfully: not a PDF at all (by its first bytes), Poppler really missing,
+    or a PDF that's encrypted or damaged."""
     try:
         with open(path, "rb") as f:
             head = f.read(16)
