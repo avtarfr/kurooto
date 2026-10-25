@@ -1640,6 +1640,13 @@ part>` is your hand on it. Every belief keeps a source (said, saw, inferred, ima
 "It looks like ... (65% sure)" or "A guess: ...", and `/beliefs <topic>` shows them with their Brier scores. *Undo:* `mind.workspace.on`, `mind.attention.on`,
 `mind.beliefs.on` off; Delete Brain's data removes the files.
 
+**The overnight lab, for any project (Brain, `/lab`, `/improve`).** `/lab add <folder>`, then `/lab protocol <project>`: Kurooto drafts a protocol from the
+README, scripts, configs, tests or LaTeX (what to improve, how to run and measure it, which settings may change); you approve it once. Each night on the
+charger with the lid open it runs a pre-registered batch (the plan's hash goes in Brain's log before the first run) in a sandbox with no network, replicates
+every win, and in the morning says what it tried: wins, nulls and the replication rate. Winners arrive as proposals you apply; your files are never
+touched. Linux and macOS only. `/improve` is the same pipeline for Kurooto's own skills and prompts behind gates: shadow days, the hidden harness, your
+say-so, and a canary that reverts a change that makes the score drop. *Undo:* `mind.lab.on`, `mind.improve.on` off; Delete Brain's data removes the lab folder.
+
 **How we know whether it's getting better (Brain, `/capabilities`, `/indicators`).** A hidden set of tasks with code graders (planning, calendar,
 language, notes, code), 70% hidden and made new every 30 days from a secret seed nothing it runs can read, 30% practice; run nightly on the charger with its
 rules as the policy, plus four live checks (engagement never reaches reward, stopping is neutral, the gate only quietens, the journal is true). The scores
@@ -1675,7 +1682,7 @@ the computer is down the call line lists what has no guarantee. *Undo:* `mind.bu
 `mind.feelings.express`, `mind.promises.on`, `mind.heartbeat.on` off.
 
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
-every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`; `/story`; `/capabilities`; `/indicators`; `/thinking`; `/beliefs`.
+every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`; `/story`; `/capabilities`; `/indicators`; `/thinking`; `/beliefs`; `/lab`; `/improve`.
 
 **Settings:** `mind.anchor_every` (1000: the log's head is noted every this many records, and once a day);
 `mind.hardened` (off).

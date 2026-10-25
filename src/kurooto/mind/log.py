@@ -102,6 +102,9 @@ BUDGET_KINDS = frozenset(
         "workspace_cycle",
         "attention_check",
         "belief_outcome",
+        "lab_prereg",
+        "lab_result",
+        "improve_event",
     }
 )  # stages 05, 09 and 10: see mind/engine.py
 

@@ -328,7 +328,7 @@ def won(app: App, item_id: str, cycles: int = 1) -> bool:
     return any(item_id in h["items"] for h in st["history"][-cycles:]) if on(app) else True
 
 
-ITEM_PREFIXES = ("deadline", "promise", "goal", "read", "forecast", "event")  # an item id a message may declare
+ITEM_PREFIXES = ("deadline", "promise", "goal", "read", "forecast", "event", "lab")  # an item id a message may declare
 
 
 def allows(app: App, msg) -> bool:

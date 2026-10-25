@@ -20,18 +20,21 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
 from kurooto import mind
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
+from kurooto.core.state import jload, jsave
 from kurooto.mind import (
     act,
     attention,
     beliefs,
     feelings,
     gate,
+    improve,
     journal,
     measure,
     mood,
@@ -44,6 +47,8 @@ from kurooto.mind import (
 from kurooto.mind import log as mlog
 from kurooto.mind.harness import indicators as harness_indicators
 from kurooto.mind.harness import run as harness_run
+from kurooto.mind.lab import report as lab_report
+from kurooto.mind.lab import runner as lab_runner
 from kurooto.modules.base import Command, Incoming, Module
 
 register_defaults(
@@ -110,6 +115,10 @@ class Mind(Module):
         # stage 10: the workspace's cycle (and on an alarm or call, at once), then the beliefs from today's read
         self.every("workspace", "every 1m", lambda p: workspace.cycle(self.app) and None)
         self.every("beliefs", "hourly", lambda p: beliefs.sync(self.app) if mind.on(self.app) else 0)
+        # stage 11: the overnight lab (on the charger, lid open) and its morning note
+        workspace.register_bidder("lab", lab_report.bid)
+        self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None)
+        self.every("lab_digest", "daily 07:40", self._lab_digest)
         # stage 09: the hidden harness, nightly and on the charger only
         self.every("harness", "daily 02:40", lambda p: harness_run.nightly(self.app) if mind.on(self.app) else None)
 
@@ -287,6 +296,18 @@ class Mind(Module):
                 usage="/mood",
             ),
             Command(
+                "lab",
+                "the overnight lab: /lab, /lab protocol <project>, /lab run <project>, /lab add <folder>, /lab results",
+                self.lab_cmd,
+                usage="/lab [protocol <project> [approve]|run <project>|add <folder>|results]",
+            ),
+            Command(
+                "improve",
+                "Kurooto improving itself through gated proposals: /improve, /improve promote <id>",
+                self.improve_cmd,
+                usage="/improve [promote <id>]",
+            ),
+            Command(
                 "thinking",
                 "what Kurooto has on its mind right now, why, and how well it predicts its own attention; "
                 "/thinking pin|unpin|mute|veto|unveto <item or part>",
@@ -307,6 +328,21 @@ class Mind(Module):
                 usage="/mind [verify|gate]",
             ),
         ]
+
+    def _lab_digest(self, payload: dict | None = None) -> bool:
+        """Morning: what the lab did last night, nulls as much as wins (once per night)."""
+        if not mind.part_on(self.app, "lab"):
+            return False
+        last = jload(self.app.paths.state / "lab" / "last-night.json", {}) or {}
+        if not last or last.get("told") == last.get("at"):
+            return False
+        text = lab_report.digest(self.app)
+        if not text:
+            return False
+        last["told"] = last.get("at")
+        jsave(self.app.paths.state / "lab" / "last-night.json", last)
+        self.app.notify(text, kind="info", why="mind.lab")
+        return True
 
     def _journal(self, payload: dict | None = None) -> dict | None:
         if not mind.on(self.app):
@@ -383,6 +419,58 @@ class Mind(Module):
         from kurooto.mind import report
 
         return report.budget_text(self.app)
+
+    def lab_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        if not mind.part_on(self.app, "lab"):
+            return "The lab is off (mind.lab.on)."
+        words = (arg or "").split()
+        sub = words[0].lower() if words else ""
+        if sub == "results":
+            return lab_report.results(self.app)
+        if sub == "add" and len(words) > 1:
+            folder = " ".join(words[1:])
+            if not Path(folder).expanduser().is_dir():
+                return f"There's no folder {folder}."
+            cur = list(self.app.settings.get("mind.lab.projects") or [])
+            if folder not in cur:
+                self.app.settings.set("mind.lab.projects", [*cur, folder])
+            return f"Added. Next: /lab protocol {lab_runner.slug(Path(folder).name)}"
+        if sub in ("protocol", "run") and len(words) > 1:
+            slug = lab_runner.slug(words[1])
+            root = lab_runner.projects(self.app).get(slug)
+            if root is None:
+                return f"{words[1]} isn't a lab project. /lab add <folder> first."
+            if sub == "protocol":
+                if len(words) > 2 and words[2].lower() == "approve":
+                    return lab_runner.approve(self.app, slug, root)
+                text, notes = lab_runner.draft(self.app, slug, root)
+                st = lab_runner.status(self.app, slug, root)[0]
+                where = lab_runner.protocol_file(self.app, slug, root)
+                return (
+                    f"Protocol for {slug} ({st}), in {where}:\n{text or '(none could be drafted)'}\n"
+                    + "".join(f"- {n}\n" for n in notes)
+                    + (f"Edit the file if it's off, then /lab protocol {slug} approve." if st != "approved" else "")
+                )
+            threading.Thread(target=self._lab_now, args=(slug, root), daemon=True).start()
+            return f"Started a batch on {slug}; the result comes as a message (it runs when the computer can spare it)."
+        return lab_report.listing(self.app)
+
+    def _lab_now(self, slug: str, root) -> None:
+        res = lab_runner.run_batch(self.app, slug, root)
+        if res.get("finished"):
+            self.app.notify(lab_report.batch_line(slug, res["analysis"], res["baseline"]), kind="result", why="asked")
+        else:
+            self.app.notify(f"{slug}: {res.get('why') or 'nothing ran'}.", kind="info", why="asked")
+
+    def improve_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        words = (arg or "").split()
+        if len(words) == 2 and words[0].lower() == "promote":
+            return improve.promote(self.app, words[1])
+        return improve.listing(self.app)
 
     def thinking_cmd(self, msg: Incoming, arg: str) -> str:
         if not mind.on(self.app):
@@ -484,6 +572,7 @@ def button(app, ref: str, act: str) -> str:
     shutil.rmtree(d, ignore_errors=True)
     shutil.rmtree(app.paths.state / "mind-journal", ignore_errors=True)  # its journal (mind/journal.py)
     shutil.rmtree(app.paths.state / "mind-story", ignore_errors=True)  # its life story (mind/story.py)
+    shutil.rmtree(app.paths.state / "lab", ignore_errors=True)  # the lab's protocols, pre-registrations and results
     for f in (
         "mind-gate.json",
         "mind-mood.json",
@@ -493,6 +582,7 @@ def button(app, ref: str, act: str) -> str:
         "mind-acts.json",
         "mind-workspace.json",
         "mind-beliefs.json",
+        "mind-improve.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

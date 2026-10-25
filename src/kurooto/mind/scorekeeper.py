@@ -32,6 +32,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import signal
 import sys
 import threading
@@ -337,6 +338,39 @@ class Keeper:
                 self.score._put("reads", key, float(prev["value"]) + (conf - out) ** 2, m)
                 seq = self.log.append(
                     "belief_outcome", {"source": src, "confidence": round(conf, 3), "outcome": int(out)}
+                )
+                return {"ok": True, "seq": seq}
+            if kind == "lab_prereg":  # a batch's hash, before its first run: the log is the proof it was written first
+                seq = self.log.append(
+                    "lab_prereg",
+                    {
+                        "project": re.sub(r"[^a-z0-9-]", "", str(b.get("project") or "").lower())[:40],
+                        "sha": re.sub(r"[^0-9a-f]", "", str(b.get("sha") or ""))[:64],
+                        "n": int(b.get("n") or 0),
+                        "batch": int(b.get("batch") or 0),
+                    },
+                )
+                return {"ok": True, "seq": seq}
+            if kind == "lab_result":  # numbers only: how many ran, won, replicated; -1 where there was nothing to rate
+                proj = re.sub(r"[^a-z0-9-]", "", str(b.get("project") or "").lower())[:40]
+                body = {
+                    k: round(float(b.get(k) or 0), 4)
+                    for k in ("ok", "failed", "wins", "replicated", "nulls", "batch", "rate")
+                }
+                self.score._put(
+                    "reads", f"lab:{proj}:{int(body['batch']):04d}", body["rate"], {"project": proj, **body}
+                )
+                seq = self.log.append("lab_result", {"project": proj, **body})
+                return {"ok": True, "seq": seq}
+            if kind == "improve_event":  # a self-change entered, rejected, promoted or rolled back (layer and status)
+                seq = self.log.append(
+                    "improve_event",
+                    {
+                        "layer": re.sub(r"[^L0-9]", "", str(b.get("layer") or ""))[:3],
+                        "status": re.sub(r"[^a-z_]", "", str(b.get("status") or ""))[:12],
+                        "lines": int(b.get("lines") or 0),
+                        "why": int(b.get("why") or 0),
+                    },
                 )
                 return {"ok": True, "seq": seq}
             self.engine.freeze(str(b.get("why") or "check"))

@@ -203,6 +203,8 @@ kept of that day's messages, calls and requests; **Off** deletes it all after yo
 
 **Brain's workspace and beliefs** (`mind.workspace.on`, `mind.beliefs.on`) keep `mind-workspace.json` and `mind-beliefs.json` in the state folder (what's on its mind, with the words, and what it believes, with its source and confidence). The log gets ids, kinds and numbers only. In front of an AI request goes one line, "On my mind right now: ...", with the titles of the winning deadlines, promises and goals; anything about how you're doing is never in it (the read can win a place on the stage, and stays here).
 
+**Brain's lab** (`mind.lab.on`) runs your projects' own code in a copy, in a sandbox with no network, on your computer. It keeps protocols, pre-registrations and results in the `lab` folder of the state folder; the log gets ids and numbers only. The one time anything leaves is a free-form code search (a protocol with `space = "free"`): then your AI is shown the project's first few Python files to propose changes, like any other request to it. Nothing runs when the sandbox is missing.
+
 **Brain's journal** (`mind.journal.on`) keeps one short file per day in `mind-journal/` in the state folder: sentences about Kurooto's own states and mistakes, each citing log record numbers, worded by the model on this computer or by fixed templates, never by a cloud AI; Delete Brain's data removes it, and a line about you you strike also forgets that day's read.
 
 **Brain's autonomy** (`mind.autonomy.on`) keeps, per kind of action, how far Kurooto is trusted (counts of your OKs, undos and complaints in the `mind` folder) and, in `mind-acts.json`, what it did on its own this week and what you told it never to do; none of it leaves the computer.

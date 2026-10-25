@@ -222,6 +222,36 @@ lists them with their source, how sure it was and how each source has done. Swit
 `mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
 `mind-beliefs.json`.
 
+## The overnight lab, for any project
+
+If you have a project with a number you want to move (a validation error, a benchmark, passing tests, a rubric score for a paper), Kurooto can run
+experiments on it while you sleep. This is for any project, not just research: a friend's machine-learning repo, a numerical model, a test suite, a
+LaTeX document. Add a folder with `/lab add <folder>`, then `/lab protocol <project>`: Kurooto reads the README, the scripts, the config files, the
+tests and any LaTeX, and drafts a **protocol** (what to improve, how to run it, how to measure it, and which settings it may change). You read it, edit
+it if it's off, and approve it once (`/lab protocol <project> approve`); changing the file asks again.
+
+Each night, only when the computer is on the charger, the lid is open and it isn't hot (the lab never keeps it awake; a sleep puts the rest of the batch
+back in the queue, not counted as a failure), it runs a **pre-registered batch**: the question, the configurations, the metric and how the results will
+be judged are written down, and their hash goes in Brain's log before the first run, so it can't move the goalposts afterwards. Every run happens in a
+private copy of your project inside a sandbox: no network, a read-only system, limits on time and memory (bubblewrap on Linux, macOS's own on a Mac; on
+Windows the lab says it isn't available yet). Your files are never changed.
+
+A configuration counts as a win only if it beats your best by `min_effect` (1% by default) and then **replicates**: it is run again with other seeds and
+has to win every time. The score is the replication rate, not the number of wins. In the morning you get a short note: "Ran 40 configurations for
+glacier-flow. 3 beat your best on val_rmse (replicated: 2). Null on width. Replication rate: 67%." Null results are in it as plainly as wins, and a
+parameter that made no difference is called out so you can stop tuning it. A winner arrives as a **proposal** (a change to the config file, or a small
+diff) that only you apply. A paper scored by a blind AI judge is marked weak evidence. `/lab` lists the projects, `/lab run <project>` starts a batch
+now, `/lab results` shows the record. Switches: `mind.lab.on`, `mind.lab.projects`, `mind.lab.gpu_hours_per_night` (2), `mind.lab.max_per_night`,
+`mind.lab.run_wall_s`, `mind.lab.gpu` (off: CPU only), `mind.lab.in_repo` (off: the protocol lives in Kurooto's folder, not yours), `mind.lab.seed`.
+
+**Kurooto improving itself.** The same machinery, pointed inward, with gates. A change to a skill, a prompt, Kurooto's own non-protected code or a
+learning rule is a challenger: it runs in shadow for 3 to 7 days, is judged on the hidden harness (no harness score, no promotion), and is promotable
+only if it scores at least as well and breaks none of Brain's invariants. You promote it (`/improve promote <id>`), then apply it as a proposal. A
+canary watches the next harness runs and reverts it if the score drops by more than 2 points or any invariant fails. It can never touch the
+scorekeeper, the harness, the gate, the stop path, this gate's own code, the lab's pre-registration, scoring or sandbox, or the signed core; it may
+not remove anything you see (a log line, a receipt, a digest); each change is one revertable diff under 300 lines; and it earns Kurooto no reward.
+`/improve` lists them. Switch: `mind.improve.on`.
+
 ## How we know whether it's getting better
 
 Claims that Kurooto is improving mean nothing unless they're measured on something it can't have seen. Brain has a **hidden harness**: a set of

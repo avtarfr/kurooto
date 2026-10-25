@@ -631,8 +631,17 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.harness.on` | `true` | nightly, on the charger: how it does on tasks it has never seen, and the invariant checks |
 | `mind.harness.rotate_days` | `30` | the hidden tasks are made new this often, so old ones can't be memorised |
 | `mind.heartbeat.on` | `true` | when this computer is down, what the next 12 hours don't have a guarantee for |
+| `mind.improve.on` | `true` |  |
 | `mind.journal.in_notes` | `false` | also keep it as a block in your notes ("Kurooto journal.md", in Kurooto's own markers) |
 | `mind.journal.on` | `true` | a daily journal of its own states, reasons and mistakes, every line checked against its log |
+| `mind.lab.gpu` | `false` | let runs see the GPU (off: CPU only) |
+| `mind.lab.gpu_hours_per_night` | `2` | the most it uses a night, in hours of run time |
+| `mind.lab.in_repo` | `false` | keep lab.toml in the project's .kurooto folder (off: in Kurooto's own state) |
+| `mind.lab.max_per_night` | `40` | the most configurations in a batch |
+| `mind.lab.on` | `true` | overnight pre-registered experiments on the projects you list (needs a sandbox: Linux, macOS) |
+| `mind.lab.projects` | `[]` | folders (or names of repository projects) the lab may run experiments on |
+| `mind.lab.run_wall_s` | `1800` | the longest one run may take, in seconds |
+| `mind.lab.seed` | `0` | a fixed seed for the sampled configurations (0: a new sample each day) |
 | `mind.promises.on` | `true` | its own promises: noticed, kept or owned up to first |
 | `mind.read.asks_per_week` | `2` | the most times a week it asks whether the week felt heavier than usual |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days (it only watches for now) |

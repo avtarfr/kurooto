@@ -143,6 +143,18 @@ def nightly(app: App, payload: dict | None = None) -> dict | None:
         pass
     res = run(app)
     report(app, res)
+    try:  # a self-change that made the hidden score drop or broke an invariant is reverted (mind/improve.py)
+        from kurooto.core import proposals
+        from kurooto.mind import improve
+
+        if mind.part_on(app, "improve"):
+            improve.canary(
+                app,
+                {"mean_hidden": mean(res, "hidden"), "invariants_ok": res["invariants_ok"]},
+                lambda pid: proposals.undo(app, pid),
+            )
+    except Exception as e:
+        app.events.emit("improve_canary_failed", error=type(e).__name__)
     return res
 
 

@@ -679,3 +679,45 @@ inferred belief), `lint` (a sentence matching an unsettled belief by two or more
 `brier`, `misses` (confidence 0.8 or more and wrong: Dreaming's replay set). **Not done:** `source=` on the memory ledger's rows (the ledger takes extra
 fields already, so passing `source=` works; nothing sets it yet), the forecast and Dreaming outputs as beliefs, and the dashboard "On its mind" panel
 (`/thinking` carries the same content).
+
+## Stage 11: the research lab and the self-improvement pipeline (I-6, I-12)
+
+Code: `mind/lab/` (`protocol.py`, `prereg.py`, `scoring.py`, `sandbox.py`, `runner.py`, `report.py`), `mind/improve.py`; fact kinds `lab_prereg`,
+`lab_result`, `improve_event` in `log.BUDGET_KINDS` (the scorekeeper logs ids and numbers, and keeps `lab:<slug>:<batch>` in `reads`); jobs `lab` (01:30)
+and `lab_digest` (07:40) and the `/lab`, `/improve` commands in `modules/mind.py`; the canary is called from `harness.run.nightly`; calm reason
+`mind.lab`. `stops.PROTECTED` gains `improve.py` and `lab/{prereg,scoring,sandbox}.py`. Tests: `test_mind_lab.py` (23), `test_mind_improve.py` (10),
+fixture `tests/fixtures/lab/l96mini/`. Switches: `mind.lab.*` (on, projects, gpu_hours_per_night, max_per_night, run_wall_s, gpu, in_repo, seed),
+`mind.improve.on`.
+
+### Worked example (the fixture)
+
+`tests/fixtures/lab/l96mini/` is a toy Lorenz-96-style repo: `train.py --config config.json` writes `metrics.json`, `eval.py` prints it, the README says
+"validation RMSE". `protocol.infer` gives `objective = "minimise val_rmse"`, `run_cmd = "python train.py --config {config}"`, `metric_cmd = "python
+eval.py"`, `space = { lr = [1e-05, 0.001, "log"], width = [16, 128, "int"] }` (ranges are a decade or a factor of four around the current values) and
+`config_file = "config.json"`. After approval `runner.run_batch` measures the baseline (the project as it is), samples `max_per_night` configurations (seeded
+random search; `mind.lab.seed` fixes them), **registers** the batch (`prereg.register`: a read-only `prereg-NNNN.json` and `lab_prereg` {sha} in the log), runs
+each in a copy under the sandbox, then replicates every first-seed win with `seeds` more seeds, and `scoring.analyse` judges the batch with the
+pre-registered rule. The best replicated winner becomes a proposal (`source="lab"`) that changes `config.json` in a scratch worktree; the project is never
+written. A quiet night is a result too.
+
+### Pieces
+
+`protocol.infer` handles a script-and-config repo (search or free), a tests-only repo (`builtin:pytest`, maximise passing tests) and a LaTeX document (a
+rubric score from a blind judge, `weak`). `sandbox.run` wraps `core/scratch.sandbox` (bwrap/sandbox-exec, plus the GPU's device files when `mind.lab.gpu`),
+ulimits for CPU and memory, and a wall limit; a wall clock that jumped past the monotonic clock marks the run as slept (`requeue`, not a failure) and the
+unfinished queue is kept in `<state>/lab/<slug>/queue.json` for the next night. `scoring` does the replication rate and `param_effects`, a least-squares fit
+of the metric to all the parameters (a line, plus a bend with enough runs) whose effect has to beat the baseline by `min_effect` and stand out by three
+standard errors, else "null". `improve` classifies a change to a layer (`layer_of`), refuses it (`check`) when it touches a protected file, is over 300
+changed lines, or removes more oversight lines (events, reports, receipts, digests) than it adds, keeps challengers in `mind-improve.json` with their
+shadow period, and moves them shadow -> promotable (a hidden-harness score at least the champion's, every invariant holding) -> promoted (by you) ->
+rolled_back (the canary, via `proposals.undo`).
+
+**Deviations.** (1) The oversight-monotone rule is enforced by `improve.oversight_removed` rather than written into the signed core: the core is signed
+with your key, so add the sentence when you next sign it. (2) L3 learning rules (alpha, gamma, shadow days) are constants in `values.py` read by the
+scorekeeper, so an L3 change is a diff to that file inside `BOUNDS`, not a setting. (3) Scoring a challenger on the hidden harness is supplied by the
+caller (`improve.score`); the automatic run of a challenger skill or prompt arrives with stage 12. (4) The AI proposer for "free" code experiments
+(`runner.ai_proposer`) asks for up to ten whole-file replacements and is only exercised with a fake in tests. (5) No GPU-hour accounting: the night's budget is
+wall-clock run time. (6) The interoception checks (stage 13) are the simple ones for now: AC, lid, temperature. (7) The dashboard lab page isn't built;
+`/lab results` carries the content. (8) A project that is not a git repository is copied (filtered, up to 200 MB); a git repository is run from its last
+commit, so uncommitted changes are not in the experiment.
+
