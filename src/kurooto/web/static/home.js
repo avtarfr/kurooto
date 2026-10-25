@@ -1402,7 +1402,7 @@ async function renderSettings(body) {
   const NOTES = [["kurooto", "kurooto: journal/, about-me/, a folder per subject"], ["zettelkasten", "zettelkasten: dailies/, master/, sources/, zettel/"]];
   const LINKS = [["default", "default: this computer's default browser"], ["here", "here: the browser showing this page"]];
   const field = (key, v, sec) => {
-    const k = key.split(".").slice(1).join("."), help = ((sec && sec.help) || {})[k], fixed = ((sec && sec.fixed) || {})[k];
+    const k = key.split(".").slice(1).join("."), help = ((sec && sec.help) || {})[k], fixed = ((sec && sec.fixed) || {})[k], tip = ((sec && sec.tips) || {})[k];
     const choices = ((sec && sec.choices) || {})[k] || (key === "look.layout" ? LAYOUTS : key === "notes.layout" ? NOTES : key === "look.links_in" ? LINKS : null);
     const post = sec && sec.post ? ` data-post="${esc(sec.post)}"` : "";
     const gone = !fixed && sec && sec.remove ? ` <button data-remove="${esc(k)}" data-remove-post="${esc(sec.remove)}">Remove</button>` : "";
@@ -1410,7 +1410,8 @@ async function renderSettings(body) {
       : choices ? `<label><span>${esc(key)}</span><select data-key="${key}"${post}>${(choices.some(([id]) => id === v) ? choices : [[v, String(v)], ...choices]) // a value not in the list stays shown, not silently the first
         .map(([id, label]) => `<option value="${esc(id)}"${id === v ? " selected" : ""}>${esc(label)}</option>`).join("")}</select></label>`
       : typeof v === "string" && post ? `<label><span>${esc(key)}</span><input data-key="${key}"${post} value="${esc(v)}">${gone}</label>` : plain(key, v);
-    return help ? html.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : html;
+    const tipped = tip ? html.replace(/^<label>/, `<label title="${esc(tip)}">`) : html; // hover: what the setting does
+    return help ? tipped.replace(/<\/label>$/, `</label><div class="help d">${esc(help)}</div>`) : tipped;
   };
   const plain = (key, v) => {
     if (typeof v === "boolean") return `<label><span>${esc(key)}</span><input type="checkbox" data-key="${key}" ${v ? "checked" : ""}></label>`;

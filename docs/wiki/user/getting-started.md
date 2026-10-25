@@ -349,3 +349,9 @@ off`): two computers can't share one Telegram bot or one call line. Details:
 - Why a message came, and how to get fewer: [messages-it-sends.md](messages-it-sends.md)
 - What leaves your computer: [privacy.md](privacy.md)
 - Something wrong: [troubleshooting.md](troubleshooting.md)
+
+
+## Settings: drop-downs and explanations
+
+In the dashboard's Settings, a setting that takes one of a few values (who reads scanned pages, how often, which day) is a drop-down instead of a box to type a word into, and hovering over any setting
+shows what it does. Free text stays a box only where any text is valid.

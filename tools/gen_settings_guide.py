@@ -18,6 +18,12 @@ SRC = ROOT / "src" / "kurooto"
 OUT = ROOT / "docs" / "SETTINGS_GUIDE.md"
 
 NOTES = {  # settings whose source line has no comment: what they do
+    "agents.scripts": "your own scripts the AI programs may run (full paths); empty: none",
+    "mind.improve.on": "Brain improving itself through gated proposals: nothing changes without the hidden harness and your say-so",
+    "mind.senses.activity": "the activity stream: the window in front, hashed titles, saves and commits in your projects (never keystrokes, the screen or URLs)",
+    "mind.senses.phone": "each of the phone's sensors, off until you switch it on (here and in the phone app's Phone tab)",
+    "quota.soft": "learned limits: soft (a hint it plans around) or hard",
+    "research.zotero": "where Zotero's library is: auto finds it, or a folder",
     "agent_plan.name": "the name of the plan your AI subscription is on, shown in usage lines",
     "agent_plan.remind_min": "minutes before a plan's usage window ends to remind you",
     "alarm.days": "the days the daily alarm rings",
@@ -271,14 +277,30 @@ def render() -> str:
     return "\n".join(out) + "\n"
 
 
+HELP = SRC / "data" / "settings-help.json"
+
+
+def help_json() -> str:
+    """Every setting's one-line explanation, for the dashboard's tooltips: {"section.key": text}."""
+    rows = {name: (why or NOTES.get(name, "")).replace("\\|", "|") for name, _v, why in collect()}
+    return json.dumps(rows, ensure_ascii=False, indent=0, sort_keys=True) + "\n"
+
+
 def main() -> int:
     text = render()
     if "--check" in sys.argv:
+        if not HELP.exists() or HELP.read_text(encoding="utf-8") != help_json():
+            print(
+                "src/kurooto/data/settings-help.json is out of date: python tools/gen_settings_guide.py",
+                file=sys.stderr,
+            )
+            return 1
         if not OUT.exists() or OUT.read_text(encoding="utf-8") != text:
             print("docs/SETTINGS_GUIDE.md is out of date: python tools/gen_settings_guide.py", file=sys.stderr)
             return 1
         return 0
     OUT.write_text(text, encoding="utf-8")
+    HELP.write_text(help_json(), encoding="utf-8")
     print(f"wrote {OUT.relative_to(ROOT)}: {text.count('| `')} settings")
     return 0
 

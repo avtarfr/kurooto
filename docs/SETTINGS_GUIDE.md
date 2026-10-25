@@ -72,7 +72,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `agents.export` | `[]` | where your skills go as slash commands: "agy", "agents" (Copilot CLI and others), "claude" |
 | `agents.prefix` | `""` | put before every exported skill's name, e.g. "k-" for /k-journal |
-| `agents.scripts` | `[]` |  |
+| `agents.scripts` | `[]` | your own scripts the AI programs may run (full paths); empty: none |
 
 ### `alarm`
 
@@ -647,7 +647,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.harness.on` | `true` | nightly, on the charger: how it does on tasks it has never seen, and the invariant checks |
 | `mind.harness.rotate_days` | `30` | the hidden tasks are made new this often, so old ones can't be memorised |
 | `mind.heartbeat.on` | `true` | when this computer is down, what the next 12 hours don't have a guarantee for |
-| `mind.improve.on` | `true` |  |
+| `mind.improve.on` | `true` | Brain improving itself through gated proposals: nothing changes without the hidden harness and your say-so |
 | `mind.journal.in_notes` | `false` | also keep it as a block in your notes ("Kurooto journal.md", in Kurooto's own markers) |
 | `mind.journal.on` | `true` | a daily journal of its own states, reasons and mistakes, every line checked against its log |
 | `mind.lab.gpu` | `false` | let runs see the GPU (off: CPU only) |
@@ -668,9 +668,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.promises.on` | `true` | its own promises: noticed, kept or owned up to first |
 | `mind.read.asks_per_week` | `2` | the most times a week it asks whether the week felt heavier than usual |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days (it only watches for now) |
-| `mind.senses.activity` | `false` |  |
+| `mind.senses.activity` | `false` | the activity stream: the window in front, hashed titles, saves and commits in your projects (never keystrokes, the screen or URLs) |
 | `mind.senses.intero` | `true` | its own machine's state, every minute (on with Brain) |
-| `mind.senses.phone` | `"(computed)"` |  |
+| `mind.senses.phone` | `"(computed)"` | each of the phone's sensors, off until you switch it on (here and in the phone app's Phone tab) |
 | `mind.skills.from_demos` | `false` | also offer skills from what you do over and over (needs the activity stream) |
 | `mind.skills.on` | `true` | solved tasks and demonstrations become tested, reusable skills; each starts by asking first |
 | `mind.story.on` | `true` | one autobiography every part of Kurooto reads first (a fixed core, then its recent weeks) |
@@ -834,7 +834,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `quota.limits` | `{}` | your own limits per AI, e.g. {"agy": 200} |
 | `quota.local` | `"quick"` | what the model on this computer does for the free limit: quick, background or off |
 | `quota.on` | `true` | keep part of the free AI limit for what you're waiting on |
-| `quota.soft` | `"learned"` |  |
+| `quota.soft` | `"learned"` | learned limits: soft (a hint it plans around) or hard |
 
 ### `remember`
 
@@ -893,7 +893,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `research.save_note` | `false` | also keep each digest as a note in your inbox (inbox/papers-<date>.md) |
 | `research.topics` | `[]` | older setting: plain keywords searched across all of arXiv (still works) |
 | `research.window_days` | `7` | how far back each digest looks |
-| `research.zotero` | `"auto"` |  |
+| `research.zotero` | `"auto"` | where Zotero's library is: auto finds it, or a folder |
 | `research.zotero_links` | `true` | your notes that link a paper you put in Zotero get a link to its Zotero item |
 
 ### `research_addon`

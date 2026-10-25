@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import functools
+import json
 import os
 import secrets
 import threading
 import time
+from importlib import resources
 from typing import TYPE_CHECKING
 
 from kurooto import __version__, providers
@@ -99,6 +102,15 @@ MODULE_ORDER = [
     "terminal",
     "overlay",
 ]
+
+
+@functools.cache
+def _tips() -> dict:
+    """Every setting's one-line explanation (data/settings-help.json, written by tools/gen_settings_guide.py)."""
+    try:
+        return json.loads(resources.files("kurooto").joinpath("data", "settings-help.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
 
 
 class Api:
@@ -1172,9 +1184,14 @@ class Api:
                     extra = {
                         "choices": {"links": [["wiki", "[[wikilinks]]"], ["markdown", "markdown: [Name](path.md)"]]}
                     }
+                from kurooto.core import choices
+
+                if choices.for_section(sec):  # settings with a known list of values (core/choices.py)
+                    extra = {**extra, "choices": {**choices.for_section(sec), **(extra.get("choices") or {})}}
                 if sec in self.CHOICES:  # one of a few values: a list to pick from, not a box to type a word into
                     extra = {**extra, "choices": {**self.CHOICES[sec](self), **(extra.get("choices") or {})}}
-                out.append({"section": sec, "title": title, "values": vals, **extra})
+                tips = {k: t for k in vals if (t := _tips().get(f"{sec}.{k}"))}
+                out.append({"section": sec, "title": title, "values": vals, "tips": tips, **extra})
         at = next((i + 1 for i, x in enumerate(out) if x["section"] == "power"), len(out))
         out.insert(at, self._autostart_section())  # Settings → Starting, after Power
         out.insert(at + 1, self._quick_ask_section())  # Settings → Quick ask: the command to bind to a key
