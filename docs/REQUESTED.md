@@ -18,6 +18,14 @@ Standing plans, never struck through.
   which will be a switch, off until you turn it on.
 - **Study pack: your own instructions for the prompt** (planned for 0.8.0): today the prompt that comes in the zip is fixed. A setting for lines of your own
   ("Markdown only, no PDF or zip", or "also give me a PDF"), a template of your own, and a phrase in the command, so the other AI is told exactly what to hand back.
+- **The notes sorter notices duplicates** (planned for 0.8.0): today it only numbers a taken file name ("note 2") and never overwrites; it doesn't see that a note
+  in the scratch folder is the same as one you already have. Detect an exact copy (same text) and a near copy (same title, most of the text), leave it, and say
+  so with Keep both / Merge / Skip, each with Undo.
+- **The book reader notices duplicates** (planned for 0.8.0): the same PDF in two folders or two subjects (or sent twice) is read twice today (only class material is
+  keyed by its text). Hash each book's pages, read a book once, and link its other copies to it.
+- **Settings as drop-downs wherever the choices are known** (planned for 0.8.0): a setting with a fixed set of values (`quota.soft`, `quota.local`, the Look switches,
+  a brain's effort, a time zone, a schedule's day) shows a drop-down in Settings, on the dashboard and in the phone app, instead of a box to type in; a free-text
+  box only where any text is valid.
 - **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
 - **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
