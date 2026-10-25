@@ -61,6 +61,8 @@ animations"). Since 0.7.5 two more: **Vivid colours** (on: a fuller, more colour
 tinted cards; off: Android's own quieter colours) and **Floating bar** (on: the tabs are a rounded bar floating over the page, the
 open tab shown with its name; off: the bar sits on the bottom edge as before). Views is off until you turn it on in the dashboard → Phone.
 
+**The smaller screens (0.7.6)** match: the question you answer from a notification, Quick note, Share to Kurooto and the pairing window are rounded sheets floating over a dimmed screen (tap outside to close), and Places and Chat are full pages over Kurooto's sky, with floating message bubbles and a rounded message box. They use the same colours as the rest of the app (the **Vivid colours** switch).
+
 **Install and pair.**
 1. On the pairing page, tap **Download the app**, open the downloaded file and tap **Install**.
    - "For your security, your phone isn't allowed to install unknown apps": tap Settings and allow it for your

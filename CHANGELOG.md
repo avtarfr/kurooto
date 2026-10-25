@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.6 (unreleased)
+
+- **Six more screens are Material 3 Expressive, floating:** the question you answer from a notification, Quick note, Share to
+  Kurooto and the pairing window are now rounded sheets floating over a dimmed screen (tap outside to close); Places and Chat are
+  full pages over Kurooto's sky, with floating message bubbles, a rounded message box and links you can tap. They follow the
+  Look switches (Vivid or Calm). What they do is unchanged.
+
 ## 0.7.5 (unreleased)
 
 - **A limit Kurooto learned is only a measure** (`quota.soft`, default `learned`): background work no longer waits for a limit

@@ -750,7 +750,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `Prefs.forget` redraws them unpaired. The Today screen could feed the 2x1 the same way (`Prefs.setWidgetLine` +
     `TalkWidget.draw`). Colours are the `k_*` resources, so the widgets follow light/dark and Material You;
     `drawable-v31/k_widget.xml` takes the launcher's corner radius.
-  - `QuickNoteActivity` (`Kurooto.Dialog`, exported so every launcher can open the static shortcut; it sends only on
+  - `QuickNoteActivity` (`Kurooto.Sheet`, exported so every launcher can open the static shortcut; it sends only on
     Save) uploads the note as `quick-note.md` with `Line.upload`, exactly as `ShareActivity` does with shared text: the
     computer's `Calls._upload` saves it to the notes inbox, the phone outbox holds it while the computer is off
     (`Line.WAITING`, `Chat.waitFor`). An unsent note stays in `Prefs.noteDraft`. Opened by the static shortcut
@@ -763,9 +763,12 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `ListenService.chatNote` (the chat's notification) adds them as actions (0.6.0: with Done and the snoozes,
   `Buttons`), `ActionReceiver.CHAT_TAP` sends them with `Chat.tap` (the outbox when the computer is off) and shows the
   waiting or failed note, a +1 kept; one that went through comes back as a new chat message with the button again.
-- The main screen (0.7.0) is Jetpack Compose with Material 3 Expressive. The other screens (`ChatActivity`,
-  `AnswerActivity`, `PlacesActivity`, `BedsideActivity`, `QuickNoteActivity`, `ShareActivity`, `CallActivity`,
-  `PairActivity`) are still framework views built by `Ui`, and everything else (services, receivers, calls, alarms,
+- The main screen (0.7.0) is Jetpack Compose with Material 3 Expressive. Since 0.7.6 so are `AnswerActivity`,
+  `QuickNoteActivity`, `ShareActivity` and `PairActivity` (small floating sheets: `Sheets.kt`'s `SheetActivity` and `Sheet` over a
+  dimmed screen, window theme `Kurooto.Sheet`: translucent, tap outside to close), and `PlacesActivity` and `ChatActivity` (full pages
+  over the sky: `PageActivity` / `Page`, and the chat's own `LazyColumn` of bubbles, with links via `LinkAnnotation`;
+  `ChatActivity.visible` and `ID_NOTE` stay static for `ListenService`). `BedsideActivity`, `CallActivity` and
+  `ViewsActivity` are still framework views built by `Ui` (0.7.7), and everything else (services, receivers, calls, alarms,
   crypto, notifications, widgets) stays framework Java:
   - `MainActivity` (a `ComponentActivity`, edge to edge, `enableOnBackInvokedCallback` for the predictive back
     gesture) holds `HomeState` (Compose state: paired, name, tab, today, waiting, queued, the status lines, update,
