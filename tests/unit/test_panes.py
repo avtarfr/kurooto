@@ -19,10 +19,10 @@ def page():
 
 def test_the_board_has_a_panes_menu_and_a_page_over_it(page):
     html, js, css = page
-    for pane in ("status", "systems", "notes", "terminal"):
+    for pane in ("status", "systems", "brain", "notes", "terminal"):
         assert f'data-pane="{pane}"' in html
     assert 'id="panes-ctl"' in html and 'id="pane-page"' in html and 'id="ov-body"' in html
-    assert html.count('<i class="mx"></i>') == 3  # STATUS, SYSTEMS, NOTES; TERMINAL's border is drawn by home.js
+    assert html.count('<i class="mx"></i>') == 4  # STATUS, SYSTEMS, BRAIN, NOTES; TERMINAL's border is drawn by home.js
     assert "function applyPanes" in js and "function maxPane" in js and "function openPage" in js
     assert 'api("settings", { key: "look.panes"' in js  # the choice is a setting: other browsers see it too
     assert "one pane always stays" in js

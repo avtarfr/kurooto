@@ -48,7 +48,7 @@ const denseFits = () => WANT() === "dense" && window.innerWidth >= 1280 && windo
 // stays) and the grid reflows to use the room; what's hidden is the setting look.panes, so it follows you to other
 // browsers. The pages (activity … settings) open over the whole board, Alt and the underlined letter opens one, and
 // Esc goes back. Roomy (narrow windows) shows every pane, with the pages in its tabs.
-const PANES = { status: "#pane-status", systems: "#pane-systems", notes: "#pane-vault", terminal: "#pane-tabs" };
+const PANES = { status: "#pane-status", systems: "#pane-systems", brain: "#pane-brain", notes: "#pane-vault", terminal: "#pane-tabs" };
 const PKEY = { brain: "b", today: "t", activity: "a", jobs: "j", schedule: "c", features: "f", phone: "p", research: "r", about: "y", settings: "s" };
 let HIDE = new Set(), MAX = null, PAGE = null; // hidden panes, the pane filling the board, the page over the board
 let STUDY = false; // Study mode: the NOTES map and the STUDY pane only (look.study_mode); HIDE and MAX wait untouched
@@ -59,17 +59,45 @@ const hideList = () => Object.keys(PANES).filter((p) => HIDE.has(p));
 const shownPanes = () => (STUDY ? new Set(["notes"]) : new Set(Object.keys(PANES).filter((p) => (MAX ? p === MAX : !HIDE.has(p)))));
 // on screen (not hidden, filled over or under a page); in Study mode only the notes map
 const paneShown = (p) => (STUDY ? p === "notes" && !(DENSE && PAGE) : !DENSE || (!PAGE && shownPanes().has(p)));
-// the grid for the panes that show: STATUS down the left; SYSTEMS and NOTES on top and TERMINAL below, on the right
-// (new design: SYSTEMS, the control centre, gets the larger share of the top row and the top row more of the height)
+// the grid for the panes that show: STATUS down the left; SYSTEMS and BRAIN on top (equal size), TERMINAL and NOTES below
 function paneGrid(vis) {
-  const st = vis.has("status"), top = ["systems", "notes"].filter((p) => vis.has(p)), rows = [];
-  if (top.length) rows.push(top.length === 2 ? top : [top[0], top[0]]);
-  if (vis.has("terminal")) rows.push(["tabs", "tabs"]);
+  const st = vis.has("status");
+  const hasSys = vis.has("systems"), hasBrain = vis.has("brain"), hasNotes = vis.has("notes"), hasTerm = vis.has("terminal");
+  const top = [], bot = [];
+  if (hasSys && hasBrain) {
+    top.push("systems", "brain");
+    if (hasTerm && hasNotes) bot.push("tabs", "notes");
+    else if (hasTerm) bot.push("tabs", "tabs");
+    else if (hasNotes) bot.push("notes", "notes");
+  } else if (hasSys || hasBrain) {
+    const main = hasSys ? "systems" : "brain";
+    if (hasNotes) {
+      top.push(main, "notes");
+      if (hasTerm) bot.push("tabs", "tabs");
+    } else if (hasTerm) {
+      top.push(main, main);
+      bot.push("tabs", "tabs");
+    } else {
+      top.push(main, main);
+    }
+  } else {
+    if (hasNotes && hasTerm) {
+      top.push("notes", "notes");
+      bot.push("tabs", "tabs");
+    } else if (hasNotes) {
+      top.push("notes", "notes");
+    } else if (hasTerm) {
+      top.push("tabs", "tabs");
+    }
+  }
+  const rows = [];
+  if (top.length) rows.push(top);
+  if (bot.length) rows.push(bot);
   if (!rows.length) return { areas: '"status"', cols: "minmax(0, 1fr)", rows: "minmax(0, 1fr)" };
-  const big = NEW && top.length === 2 && top[0] === "systems";
+  const big = NEW && top.length === 2 && top[0] === "systems" && top[1] !== "brain";
   return { areas: rows.map((r) => `"${st ? "status " : ""}${r.join(" ")}"`).join(" "),
     cols: `${st ? (NEW ? "minmax(440px, 31%) " : "minmax(440px, 34%) ") : ""}${big ? "minmax(0, 1.45fr) minmax(0, 1fr)" : "1fr 1fr"}`,
-    rows: rows.length === 2 ? (NEW && top.includes("systems") ? "63% minmax(0, 1fr)" : "55% minmax(0, 1fr)") : "minmax(0, 1fr)" };
+    rows: rows.length === 2 ? (NEW && top.includes("systems") && !top.includes("brain") ? "63% minmax(0, 1fr)" : "55% minmax(0, 1fr)") : "minmax(0, 1fr)" };
 }
 function applyPanes() {
   const grid = $(".grid"), vis = shownPanes();
@@ -83,7 +111,7 @@ function applyPanes() {
   const g = STUDY ? { areas: '"notes study"', cols: "minmax(0, 1fr) minmax(400px, 31%)", rows: "minmax(0, 1fr)" } : paneGrid(vis);
   Object.assign(grid.style, { gridTemplateAreas: g.areas, gridTemplateColumns: g.cols, gridTemplateRows: g.rows });
   // the pane in the board's top-right corner leaves room in its border for the panes menu
-  $(STUDY ? "#pane-study" : PANES[["notes", "systems", "terminal", "status"].find((p) => vis.has(p))]).classList.add("tr");
+  $(STUDY ? "#pane-study" : PANES[["brain", "notes", "systems", "terminal", "status"].find((p) => vis.has(p))]).classList.add("tr");
   grid.style.setProperty("--ctlw", `${$("#panes-ctl").offsetWidth}px`);
   renderMenu(); renderNav();
   requestAnimationFrame(refit);
@@ -103,7 +131,7 @@ const mnem = (k) => { const l = DLABEL[k], i = l.indexOf(PKEY[k]); return i < 0 
 const pageTabs = () => Object.keys(DLABEL).map((k) => `<button class="tab${PAGE === k ? " on" : ""}" data-dt="${k}" title="Alt+${PKEY[k].toUpperCase()}">${mnem(k)}</button>`).join("");
 function renderMenu() {
   const m = $("#panes-menu"); if (m.classList.contains("hidden")) return;
-  const left = Object.keys(PANES).filter((p) => !HIDE.has(p)).length, NAMES = { status: "STATUS", systems: "SYSTEMS", notes: "NOTES", terminal: "TERMINAL" };
+  const left = Object.keys(PANES).filter((p) => !HIDE.has(p)).length, NAMES = { status: "STATUS", systems: "SYSTEMS", brain: "BRAIN", notes: "NOTES", terminal: "TERMINAL" };
   m.innerHTML = `<div class="mh">panes</div>${Object.entries(NAMES).map(([p, l]) => `<label><input type="checkbox" data-pane="${p}"${HIDE.has(p) ? "" : " checked"}${!HIDE.has(p) && left === 1 ? ' disabled title="one pane always stays"' : ""}> ${l}${MAX === p ? ' <span class="d">fills the board</span>' : ""}</label>`).join("")}
     ${MAX || HIDE.size ? '<button data-all="1">show them all</button>' : ""}<p class="d">Click a pane's name or double-click its border and it fills the board; Esc brings the others back.</p>
     <div class="mh">study</div><button data-study-toggle><span>study mode</span><span class="d">alt+m</span></button>
@@ -124,7 +152,7 @@ $("#panes-menu").onclick = (e) => {
   if (b.dataset.pg) openPage(b.dataset.pg);
 };
 document.addEventListener("click", (e) => { if (!e.target.closest("#panes-ctl")) closeMenu(); });
-for (const p of ["status", "systems", "notes"]) $(`${PANES[p]} > h3 .t`).addEventListener("click", () => { if (DENSE) maxPane(p); });
+for (const p of ["status", "systems", "brain", "notes"]) $(`${PANES[p]} > h3 .t`).addEventListener("click", () => { if (DENSE) maxPane(p); });
 // a double-click on (or right by) a pane's border: it fills the board, or comes back
 document.addEventListener("dblclick", (e) => {
   if (!DENSE || inTerm(e.target) || e.target.closest("input, textarea, select, button, .page, .chat-log")) return;
@@ -812,22 +840,34 @@ function renderPage(name, body) {
   else if (name === "terminals") renderTerminals(body);
   else if (name === "brain") renderBrain(body);
 }
-// Brain (Alt+B): the whole Brain as a 3D model you turn and click, a region at a time, with the part's monitor beside it (brain3d.js,
-// three.js; core/brainview.py gives the islands and their switches). It fills the board, like the other pages.
+// Brain (Alt+B): the whole Brain as a 3D model in its dashboard pane (Alt+B to fill the board).
+// (brain3d.js, three.js; core/brainview.py gives the islands and their switches).
 let B3 = null;
 const loadScript = (src) => new Promise((ok, no) => { const el = document.createElement("script"); el.src = src; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
-function stopBrain(host) { if (B3) { B3.stop(); B3 = null; } host.classList.remove("b3"); host.style.cssText = ""; }
-async function renderBrain(body) {
-  if (body.querySelector(".b3") || body.classList.contains("b3")) { try { if (B3) B3.update(await api("brain3d")); } catch { /* next poll */ } return; }
-  body.innerHTML = '<p class="d">Loading the Brain…</p>';
+function stopBrain(host) { if (B3) { B3.stop(); B3 = null; } if (host) { host.classList.remove("b3"); host.style.cssText = ""; } }
+function updateBrainMeta(d) {
+  const m = $("#brain-meta");
+  if (m && d) m.textContent = d.on ? `${d.parts_on}/${d.parts_total} parts` : "off";
+}
+async function mountBrainPane() {
+  const host = $("#brain-mount");
+  if (!host) return;
+  if (B3) {
+    try { const data = await api("brain3d"); B3.update(data); updateBrainMeta(data); } catch { /* next poll */ }
+    return;
+  }
   try {
     if (!window.THREE) await loadScript("/static/vendor/three/three.min.js?v=r128");
     if (!window.brain3dMount) await loadScript("/static/brain3d.js?v=1");
     const data = await api("brain3d");
-    if (PAGE !== "brain" && DENSE) return;
-    body.innerHTML = ""; body.style.cssText = "padding:0;height:100%;overflow:hidden";
-    B3 = window.brain3dMount(body, data, { toggle: async (key, on) => { const r = await api("settings", { key, value: on }); return !!(r && r.ok); } });
-  } catch (e) { body.innerHTML = '<p class="d">The Brain page could not load.</p>'; console.error(e); }
+    host.innerHTML = "";
+    B3 = window.brain3dMount(host, data, { toggle: async (key, on) => { const r = await api("settings", { key, value: on }); return !!(r && r.ok); } });
+    updateBrainMeta(data);
+  } catch (e) { host.innerHTML = '<p class="d">The Brain could not load.</p>'; console.error(e); }
+}
+async function renderBrain(body) {
+  if (DENSE) { maxPane("brain"); return; }
+  mountBrainPane();
 }
 // Today (Alt+T): the day, and the everyday things done right here (core/actions.py: the same as the commands).
 // One box takes anything: plain words go to Kurooto as if typed on Telegram; "j …" is a journal line, ". …" a note
@@ -1779,6 +1819,7 @@ function connect() {
     else if (m.t === "body") {
       const first = !last; last = m; LIGHT = m.sys.profile === "light" || matchMedia("(prefers-reduced-motion: reduce)").matches;
       body.update(m); renderStatus(m);
+      if (B3 && paneShown("brain")) { api("brain3d").then(d => { B3.update(d); updateBrainMeta(d); }).catch(() => {}); }
       if (current() === "jobs" || current() === "schedule") renderTab();
       if (first && DENSE) { renderNav(); if (dtab === "kurooto") chatDraw(); }
     }
@@ -2067,6 +2108,7 @@ window.addEventListener("resize", () => { applyLayout(); refit(); });
 
 (function main() {
   body = new Board($("#body")); mind = new Notes($("#mind"));
+  mountBrainPane();
   try { tab = localStorage.getItem("kurooto.dash.tab") || "activity"; dtab = localStorage.getItem("kurooto.dash.dtab") || "kurooto"; } catch { /* fine */ }
   if (!TABS[tab] && tab !== "terminals") tab = "activity";
   if (DLABEL[dtab]) dtab = "kurooto"; // 0.5.0 kept the pages in the terminal pane: they open over the board now
