@@ -138,3 +138,27 @@ def test_the_sorter_reads_then_files_the_note(app):
     assert out["read"] == [("inbox/topics.txt", "inbox/topics.md")]
     assert any(kw.get("why") == "sorter.read" and "originals are untouched" in t for t, kw in told)
     assert (Path(app.workspace) / "inbox" / "topics.md").exists()  # next pass files it like any note
+
+
+def test_a_file_read_from_the_inbox_is_queued_for_the_graph(app):
+    app.settings.set("sorter.read_files", True)
+    app.settings.set("modules.enabled", ["sorter", "integrate", "subjects"])
+    app.settings.set("subjects.list", [{"name": "Time Series Analysis", "slug": "time-series-analysis", "aliases": []}])
+    text = (
+        "Time Series Analysis: topics covered after the midsem. "
+        + "AR(p) models are stationary when the roots lie outside the unit disc. " * 12
+    )
+    drop(app, "topics.txt", text)
+    drop(app, "other.txt", "General notes on nothing in particular. " * 15)
+    inboxreader.read_new(app)
+    items = {k: v for k, v in app.modules["integrate"].items().items()}
+    subjects = sorted(v["subject"] for v in items.values() if v["source"] == "reference")
+    assert subjects == [
+        "reference",
+        "time-series-analysis",
+    ]  # its subject when the text names one subject, else "reference"
+    assert all(v["note"] in ("inbox/topics", "inbox/other") for v in items.values())
+    app.settings.set("integrate.sources", ["books", "classroom"])  # switched off: nothing more is queued
+    drop(app, "later.txt", "Some later handout text about topology. " * 15)
+    inboxreader.read_new(app)
+    assert len([v for v in app.modules["integrate"].items().values() if v["source"] == "reference"]) == 2

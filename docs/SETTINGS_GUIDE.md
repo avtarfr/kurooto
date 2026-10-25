@@ -507,7 +507,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `integrate.roles.bulk` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
 | `integrate.roles.check` | `""` | the AI for the bulk work and for the second look ("": chosen for you) |
 | `integrate.share_pct` | `60` | a subscription's usage window (or a free key's day): the most of it reading takes |
-| `integrate.sources` | `["books", "classroom"]` | what's read into the graph: books, classroom (filed files), handwritten |
+| `integrate.sources` | `["books", "classroom", "reference"]` | what's read into the graph: books, classroom, handwritten, repos, reference (files from the inbox) |
 | `integrate.summary` | `true` | one line each morning about what changed |
 
 ### `jobs`

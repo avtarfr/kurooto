@@ -862,3 +862,7 @@ biggest file read.
 A note you put in the scratch folder that copies one you already have is asked about (Keep both, Merge, Leave it) instead of being filed (`sorter.duplicates`). Every morning the garden also
 looks for notes of any kind that say the same thing, old ones too, and asks about a few pairs (`integrate.duplicates_all`, `integrate.duplicates_per_day`). Merge keeps the first note, adds
 the lines only the second had, and points the second at it; nothing is deleted and Undo puts both back.
+
+Once a file from the scratch folder is read into a note, its text is also read into the concept graph like class material (`integrate.sources` has `reference` by default; take it out to keep the graph
+to books and class files): the concepts in it become notes, linked to the ones you already have, and the document's note gets a "Seen in" line. If its text names exactly one of your subjects it goes
+under that subject, else under "reference".

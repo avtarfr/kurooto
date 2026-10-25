@@ -285,7 +285,7 @@
 "integrate.roles.bulk": "the AI for the bulk work and for the second look (\"\": chosen for you)",
 "integrate.roles.check": "the AI for the bulk work and for the second look (\"\": chosen for you)",
 "integrate.share_pct": "a subscription's usage window (or a free key's day): the most of it reading takes",
-"integrate.sources": "what's read into the graph: books, classroom (filed files), handwritten",
+"integrate.sources": "what's read into the graph: books, classroom, handwritten, repos, reference (files from the inbox)",
 "integrate.summary": "one line each morning about what changed",
 "jobs.plan_line": "a short \"Searching your notes, then answering\" first, when a text answer will take 20 s+",
 "jobs.receipt": "a quiet last line under each answer: which AI, effort, time, limit used, what it did",

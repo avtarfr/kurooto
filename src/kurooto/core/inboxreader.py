@@ -139,6 +139,12 @@ def read_new(app: App, limit: int = 8, force: bool = False) -> list[tuple[str, s
             note = f.with_name(f"{f.stem}-{n}.md")
         note.write_text(note_text(f, rel, body, title), encoding="utf-8")
         st["done"][h] = {"file": rel, "note": note.relative_to(root).as_posix(), "at": time.time(), "chars": len(body)}
+        ig = app.modules.get("integrate")
+        if ig is not None:  # into the concept graph too, like class material (integrate.sources: reference)
+            try:
+                ig.take_reference(note, title, body)
+            except Exception as e:  # reading it into the graph never stops the note being made
+                app.events.emit("inbox_graph_failed", error=type(e).__name__)
         out.append((rel, note.relative_to(root).as_posix()))
         app.events.emit("inbox_read", ext=f.suffix.lower(), chars=len(body))
     _save(app, st)

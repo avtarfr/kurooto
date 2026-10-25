@@ -96,7 +96,11 @@ register_defaults(
         "embeddings": "auto",  # where meaning-based matching comes from: auto | ollama | gemini | off
         "rerank": "auto",  # a local model judges which notes belong together (a graphics card helps): auto | off
         "rerank_model": "",  # which one ("": the helper model of this computer's setup)
-        "sources": ["books", "classroom"],  # what's read into the graph: books, classroom (filed files), handwritten
+        "sources": [
+            "books",
+            "classroom",
+            "reference",
+        ],  # what's read into the graph: books, classroom, handwritten, repos, reference (files from the inbox)
         "first": [],  # subjects to do first, e.g. ["deep-learning"]
         "order": "smallest",  # which books first: smallest (fewest pages: most books done soonest) | name
         "commit": True,  # one git commit per batch, when your notes are a repository
@@ -110,9 +114,9 @@ register_defaults(
 STALE_S = 3 * 3600  # a request that didn't come back in this long is asked again
 TRIES = 3
 PAGE_MARK = re.compile(r'<a id="p-(\d+)"></a>\n## \[p\. \d+\]\n')
-SOURCES = ("books", "classroom", "handwritten", "repos")  # what integrate.sources may name
+SOURCES = ("books", "classroom", "handwritten", "repos", "reference")  # what integrate.sources may name
 # less text (an announcement, a one-line post) isn't read; repos: a project's README, docs, notebooks' text, paper
-MIN_CHARS = {"classroom": 1500, "handwritten": 800, "repos": 600}
+MIN_CHARS = {"classroom": 1500, "handwritten": 800, "repos": 600, "reference": 300}
 PART_CHARS = 3000  # text with no pages of its own is cut into parts of about this many characters (about a page)
 SLIDE = re.compile(r"^--- slide \d+ ---$", re.M)  # how Classroom writes out a .pptx (google_classroom._xml_text)
 NAMED = {
@@ -120,12 +124,14 @@ NAMED = {
     "classroom": ("class file", "class files"),
     "handwritten": ("handwritten", "handwritten"),
     "repos": ("repository file", "repository files"),
+    "reference": ("document you gave it", "documents you gave it"),
 }
 SEEN_HEAD = {  # what a "Seen in" block calls the lines each source adds to an existing note
     "books": "### Added from the books",
     "classroom": "### Added from class",
     "handwritten": "### Added from your handwritten notes",
     "repos": "### Added from your projects' repositories",
+    "reference": "### Added from documents you gave it",
 }
 
 
@@ -280,7 +286,7 @@ class Integrate(Module):
         if isinstance(v, str):
             v = re.split(r"[,\s]+", v)
         if not isinstance(v, (list, tuple)):
-            v = ["books", "classroom"]
+            v = ["books", "classroom", "reference"]
         want = {str(x).strip().lower() for x in v}
         return [x for x in SOURCES if x in want]
 
@@ -386,6 +392,21 @@ class Integrate(Module):
                 note = self.source_note(folder, post, date, [post])
                 n += bool(self.queue_item("classroom", text, folder, post, note, date=date, course=course))
         return n
+
+    def take_reference(self, note: Path, title: str, text: str) -> str | None:
+        """A file dropped in the inbox was read into a note (core/inboxreader.py): queue its text to be read like class
+        material, when integrate.sources has "reference". Its subject: the one subject its text names, else "reference"."""
+        if not self.app.is_on(self.id) or not self.reads("reference"):
+            return None
+        subject = "reference"
+        sj = self.app.modules.get("subjects")
+        if sj is not None and self.app.is_on("subjects"):
+            found = sj.find_in(text[:6000])
+            if len(found) == 1:
+                subject = found[0]
+        return self.queue_item(
+            "reference", text, subject, title or Path(note).stem, self.rel(note), date=now().date().isoformat()
+        )
 
     def take_handwritten(
         self, note: Path, subject: str, title: str, day: str = "", backfill: bool = False, order: int = 0
@@ -1815,6 +1836,7 @@ class Integrate(Module):
                 ("classroom", "Read class materials Classroom files into your notes"),
                 ("handwritten", "Read your handwritten notes"),
                 ("repos", "Read your projects' repositories (README, docs): /project add"),
+                ("reference", "Read documents you drop in the inbox (what was covered, a handout)"),
             )
         ]
         toggles.append(

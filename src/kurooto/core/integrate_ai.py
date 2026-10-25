@@ -52,6 +52,13 @@ real links beat many weak ones. A slip in the handwriting is not a new concept.
 
 Handwritten notes: {book} (subject: {subject}). Parts {first}-{last} (marked [p. n] below: {unit}). Sections: {sections}.
 """,
+    "reference": """You are building a Zettelkasten (a web of small linked concept notes) from a document a student gave \
+you to know about (a list of topics covered in class, a handout, a syllabus or slides), one part at a time. Be exact and \
+economical: a few well-made notes with real links beat many weak ones. A list of topics is a map of what exists: make \
+notes for the concepts it names only as far as the text says something about them, and never invent content.
+
+Document: {book} (subject: {subject}). Parts {first}-{last} (marked [p. n] below: {unit}). Sections: {sections}.
+""",
     "repos": """You are building a Zettelkasten (a web of small linked concept notes) from the documentation of a code \
 project the student works on (its README, docs, notebooks' text or its paper), one part at a time. Be exact and \
 economical: a few well-made notes with real links beat many weak ones. Installation steps, file names, commands and \
