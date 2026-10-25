@@ -77,7 +77,23 @@ def history(app: App, before: dt.date | None = None) -> list[read.Day]:
             "weekday": d.weekday(),
         }
         days.append(read.Day(day, load, {k: v for k, v in nums.items() if k in read.SIGNALS}))
-    return days
+    return _with_past(app, days, before)
+
+
+def _with_past(app: App, days: list[read.Day], before: dt.date | None) -> list[read.Day]:
+    """Days from before Brain was on (mind.backfill): what the imported events say of snoozes and deadline moves,
+    with no calendar load. They fill in the history's start; a day Brain measured itself is never replaced."""
+    from kurooto.mind import history
+
+    have = {d.day for d in days}
+    past = []
+    for day, ks in sorted(history.daily(app).items()):
+        d = dt.date.fromisoformat(day)
+        if day in have or (before is not None and d >= before):
+            continue
+        sig = {"snoozes": float(ks.get("deadline_snooze", 0)), "deadline_moves": float(ks.get("deadline_moved", 0))}
+        past.append(read.Day(day, {"weekday": d.weekday()}, sig))
+    return sorted([*past, *days], key=lambda x: x.day)
 
 
 def answers(app: App) -> list[tuple[float, bool]]:

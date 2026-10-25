@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 PRIOR_H, PRIOR_N = 2.0, 3
 DAYS_BACK = 56
+MAX_DAY_H = 14.0  # the most one day can count toward your pace
 
 
 def history(app: App, today: dt.date | None = None) -> dict[int, list[float]]:
@@ -39,6 +40,7 @@ def history(app: App, today: dt.date | None = None) -> dict[int, list[float]]:
             secs += 60 * sum(v for k, v in t.items() if k.startswith("project:"))
         except Exception:  # noqa: S110
             pass
+        secs = min(secs, MAX_DAY_H * 3600)  # a session left open all day must not count as 36 hours
         if secs > 0:
             out[d.weekday()].append(round(secs / 3600, 2))
     return out

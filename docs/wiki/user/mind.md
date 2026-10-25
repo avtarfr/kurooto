@@ -467,6 +467,32 @@ you can still read the files through your group. It then runs the scorekeeper un
 and sets `mind.hardened`. Undo it with `sudo tools/mind_harden.sh --undo`. Without hardened mode, Brain works the
 same on Windows, macOS and Linux; the scorekeeper just runs as you.
 
+## Feeding Brain its past
+
+Brain's log starts the day you switch Brain on, so its read of how you're doing, its forecasts and its plans begin with
+no past. Kurooto has kept an event history since you installed it (deadlines, reminders, calls, AI requests, buttons). Turn on
+`mind.backfill.on` and Brain can read it:
+
+- `/mind backfill dry`: what's there (counts per kind, the dates). Nothing is written.
+- `/mind backfill run`: imports it. Safe to run again: the same events land in the same place.
+- `/mind backfill`: what's imported and a normal week from it. `/mind backfill forget` removes all of it.
+
+It reads only Kurooto's own event history, on your computer, and keeps ids and numbers, never the words of a message. The past
+goes into a history of its own under its real dates; it never goes into the log Brain checks itself against, and it is never
+counted as a reward (it only tells Brain what a normal day looked like). Parts that learn from it: the read and the forecast
+(snoozes and deadline moves on the days before Brain was on).
+
+## The journal in your notes
+
+`mind.journal.in_notes` also keeps the day's journal as a block in your notes. Choose where with `mind.journal.in_notes_folder`
+(a folder inside your notes; empty is the top) and `mind.journal.in_notes_file` (its name). It never writes outside your notes.
+If your notes sync to a service, this file syncs with them.
+
+## Lab folders in your repository
+
+With `mind.lab.in_repo` on, a project's protocol lives in its `.kurooto` folder. That folder holds its own `.gitignore` (`*`), so git
+never sees it and nothing of yours is changed.
+
 ## Questions
 
 **Does Brain make Kurooto do more on its own?** Not by default. The log only records. The parts that could act

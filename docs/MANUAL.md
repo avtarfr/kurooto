@@ -4130,6 +4130,15 @@ whether the note belongs with a new concept, and orders them by the model's own 
 installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
 embedding order.
 
+## What 0.8.1 added to Brain
+
+- **Brain's past** (`mind.backfill.on`, off): `/mind backfill dry|run|status|forget`. **Undo:** `/mind backfill forget`, then turn
+  the switch off.
+- **The journal's folder and file** (`mind.journal.in_notes_folder`, `mind.journal.in_notes_file`): where `mind.journal.in_notes`
+  puts it, inside your notes.
+- **`mind.lab.in_repo`:** a project's `.kurooto` folder ignores itself in git.
+- **Fixes:** `/plan`'s pace caps a day at 14 hours; `kurooto doctor` waits for a call-line update's retries.
+
 ## What 0.8.0 added to your notes and files
 
 - **Reading class documents** (`sorter.read_files`, off): PDF, Word, PowerPoint, notebook, text, rich-text and CSV files you

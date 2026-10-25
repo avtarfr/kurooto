@@ -46,7 +46,9 @@ register_defaults(
     {
         "journal": {
             "on": True,  # a daily journal of its own states, reasons and mistakes, every line checked against its log
-            "in_notes": False,  # also keep it as a block in your notes ("Kurooto journal.md", in Kurooto's own markers)
+            "in_notes": False,  # also keep it as a block in your notes (in Kurooto's own markers)
+            "in_notes_folder": "",  # the notes folder it goes in, inside your notes (empty: the top of your notes)
+            "in_notes_file": "Kurooto journal.md",  # the file's name (a .md is added when it's missing)
         }
     },
 )
@@ -412,12 +414,29 @@ def _index(app: App, entry: dict) -> None:
     jsave(f, idx)
 
 
-def _into_notes(app: App, day: dt.date, entry: dict) -> None:
+def notes_path(app: App):
+    """Where the journal block goes: `mind.journal.in_notes_folder` and `in_notes_file`, always inside your notes (a
+    folder that climbs out of them, or a file name with a slash in it, falls back to the defaults)."""
     from pathlib import Path
 
+    root = Path(app.workspace).resolve()
+    name = str(app.settings.get("mind.journal.in_notes_file") or "").strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        name = "Kurooto journal.md"
+    if not name.lower().endswith(".md"):
+        name += ".md"
+    sub = str(app.settings.get("mind.journal.in_notes_folder") or "").strip().strip("/")
+    folder_ = (root / sub).resolve() if sub else root
+    if folder_ != root and root not in folder_.parents:
+        folder_ = root
+    return folder_ / name
+
+
+def _into_notes(app: App, day: dt.date, entry: dict) -> None:
     from kurooto.core import graphwrite
 
-    path = Path(app.workspace) / "Kurooto journal.md"
+    path = notes_path(app)
+    path.parent.mkdir(parents=True, exist_ok=True)
     text = path.read_text(encoding="utf-8") if path.exists() else "# Kurooto's journal\n\n"
     path.write_text(graphwrite.put_block(text, "journal", render(entry)), encoding="utf-8")
 

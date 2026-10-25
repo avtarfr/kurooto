@@ -838,3 +838,17 @@ needs AC, an open lid and no heat, pre-registers through `lab/prereg.py` (projec
 one does. (2) The look-back (`/retro`) doesn't list the flagged decisions yet: `/precedents` does. (3) Play's curiosity comes from the knowledge frontier only (Dreaming keeps no open hypotheses to read). (4) Transfer is
 credited by `play.credit(before, after)` or `/play useful`; running the hidden harness with a play output applied, to measure `before`/`after` automatically, isn't wired. (5) Credits change nothing but the digest
 (they don't enlarge the budget).
+
+## History import (0.8.1)
+
+`mind/history.py` (PART `backfill`; `mind.backfill.on` off, `mind.backfill.events` on). `plan`, `run`, `status`, `forget`, `daily`,
+`describe`. `run` streams `events.jsonl` (events before the log's first record, kinds `mlog.mirrored`) in batches of 500 and sends
+each as the scorekeeper request `import(batch, rows)` through `MindClient.request`. `Keeper.import_rows` checks the batch id,
+cleans each row with `records.clean_fact` (ids and numbers), and writes it to the `history` score table under the key
+`h:<batch>:<n>` with the event's own time as its value (so a re-run rewrites the same rows), then appends one `history_import`
+record (batch, rows, from, to, sha256) to the log. `history_forget` drops the table and logs `history_forgot`. History is never
+read by reward code (a test checks it); `mood.history` uses it through `_with_past` to start the read's and forecast's days
+(snoozes, deadline moves) when backfill is on. `/mind backfill [dry|run|status|forget]` is `Mind.backfill`.
+Other changes: `journal.notes_path` (`in_notes_folder`, `in_notes_file`, kept inside the notes), `lab/runner.ignore_folder`
+(`.kurooto/.gitignore`), `plans/pace.MAX_DAY_H`.
+

@@ -22,7 +22,7 @@ from pathlib import Path
 
 from kurooto.mind.log import MindWriteDenied, may_write, private
 
-TABLES = ("setpoints", "vars", "values", "trust", "signals", "reads")
+TABLES = ("setpoints", "vars", "values", "trust", "signals", "reads", "history")
 
 
 class Score:

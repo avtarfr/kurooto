@@ -710,12 +710,40 @@ class Mind(Module):
             text, buttons = gate.status(self.app)
             msg.reply(text, buttons or None)
             return None
+        words = (arg or "").split()
+        if words and words[0].lower() == "backfill":
+            return self.backfill(words[1:])
         if (arg or "").strip().lower() == "verify":
             r = c.verify()
             if r.ok:
                 return f"Brain's log checks out: {r.records:,} records, every one in its place (#{r.head})."
             return f"Brain's log doesn't check out at #{r.first_bad_seq}: {r.why}. /mind says more."
         return self.status(c)
+
+    def backfill(self, words: list[str]) -> str:
+        """/mind backfill [dry|run|status|forget]: feed Brain what Kurooto kept before it was on (mind/history.py)."""
+        from kurooto.mind import history
+
+        sub = words[0].lower() if words else "status"
+        if sub == "forget":
+            return f"Forgot {history.forget(self.app):,} imported events."
+        if sub in ("dry", "dry-run", "plan"):
+            p = history.plan(self.app)
+            if not p["rows"]:
+                return "Nothing to import: no events from before Brain was on."
+            top = ", ".join(f"{k} {n:,}" for k, n in list(p["kinds"].items())[:8])
+            span = f"{dt.datetime.fromtimestamp(p['from']):%d %b} to {dt.datetime.fromtimestamp(p['to']):%d %b}"
+            return f"Would import {p['rows']:,} events ({span}): {top}. Nothing written. /mind backfill run does it."
+        if sub == "run":
+            res = history.run(self.app)
+            if res.get("error"):
+                return res["error"]
+            return f"Imported {res['rows']:,} events in {res['batches']} batches. /mind backfill shows what it learned."
+        st = history.status(self.app)
+        head = [f"Imported: {st['imported']:,} events." if st["imported"] else "Nothing imported yet."]
+        if not self.app.settings.get("mind.backfill.on"):
+            head.append("It's off: turn on mind.backfill.on, then /mind backfill dry and /mind backfill run.")
+        return "\n".join([*head, *history.describe(self.app)])
 
     def status(self, c) -> str:
         st = c.state()

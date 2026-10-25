@@ -138,6 +138,28 @@ class MindClient:
         """Rows of the mood table: read:<day>, answer:<day>, cal:<day>, forecast:<day>, score:<day>."""
         return self._score().rows("reads", prefix)
 
+    def history_rows(self, prefix: str = "h:", limit: int = 200000) -> list[dict]:
+        """The imported past (0.8.1): [{key, value: when, meta: {k: kind, ...ids and numbers}}], oldest key first."""
+        return self._score().rows("history", prefix, limit)
+
+    def request(self, op: str, **kw) -> dict:
+        """One request to the scorekeeper and its answer ({} when it can't be reached): the import."""
+        conn = None
+        try:
+            conn = self._connect()
+            conn.send_bytes(json.dumps({"op": op, **kw}).encode())
+            if not conn.poll(30):
+                return {}
+            return json.loads(conn.recv_bytes())
+        except Exception:
+            return {}
+        finally:
+            if conn is not None:
+                try:
+                    conn.close()
+                except OSError:
+                    pass
+
     def verify(self, from_seq: int = 1) -> mlog.VerifyResult:
         return self._log().verify(from_seq, mlog.read_anchors(self.dir))
 

@@ -629,6 +629,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.autonomy.on` | `true` | decide what it may do unasked from your reactions, per class of action (shadow first) |
 | `mind.autonomy.shadow_days` | `21` | for this long its verdicts are counted and shown, not enforced |
 | `mind.autonomy.thresholds` | `{}` | your own bars per class, over the defaults: {"R1": 0.8} |
+| `mind.backfill.events` | `true` | read Kurooto's own event history (deadlines, reminders, calls, AI requests, buttons) |
+| `mind.backfill.on` | `false` | off until you turn it on: Brain reads what Kurooto kept before it was on (`/mind backfill`) |
 | `mind.beliefs.on` | `true` | every belief keeps its source (said, saw, inferred, imagined) and a confidence |
 | `mind.budget.on` | `true` | the body budget: its variables, setpoints and drive |
 | `mind.feelings.express` | `true` | it may say one about an item, through the gate's lints, at most 3 unprompted a week |
@@ -658,7 +660,9 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.harness.rotate_days` | `30` | the hidden tasks are made new this often, so old ones can't be memorised |
 | `mind.heartbeat.on` | `true` | when this computer is down, what the next 12 hours don't have a guarantee for |
 | `mind.improve.on` | `true` | Brain improving itself through gated proposals: nothing changes without the hidden harness and your say-so |
-| `mind.journal.in_notes` | `false` | also keep it as a block in your notes ("Kurooto journal.md", in Kurooto's own markers) |
+| `mind.journal.in_notes` | `false` | also keep it as a block in your notes (in Kurooto's own markers) |
+| `mind.journal.in_notes_file` | `"Kurooto journal.md"` | the file's name (a .md is added when it's missing) |
+| `mind.journal.in_notes_folder` | `""` | the notes folder it goes in, inside your notes (empty: the top of your notes) |
 | `mind.journal.on` | `true` | a daily journal of its own states, reasons and mistakes, every line checked against its log |
 | `mind.lab.gpu` | `false` | let runs see the GPU (off: CPU only) |
 | `mind.lab.gpu_hours_per_night` | `2` | the most it uses a night, in hours of run time |

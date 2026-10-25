@@ -2,9 +2,16 @@
 
 ## 0.8.1 (unreleased)
 
-- **`kurooto doctor` no longer calls a hiccup a failure:** when the call line's update after an app update fails once (offline,
-  Cloudflare busy), Kurooto tries again by itself (every 30 minutes, up to six times). Doctor now stays quiet while a retry is
-  pending and only reports it once the retries are used up.
+- **Brain can be fed its past** (`mind.backfill.on`, off; `mind.backfill.events`): `/mind backfill dry` says what's there,
+  `/mind backfill run` imports the events Kurooto kept before Brain was switched on, read-only, into a history of their own
+  (ids and numbers only, under their real times, never in the log's chain, never a reward). The read and the forecast start
+  with those days instead of none. `/mind backfill` shows what was imported and `/mind backfill forget` removes it.
+- **The journal's folder and file name** (`mind.journal.in_notes_folder`, `mind.journal.in_notes_file`): with
+  `mind.journal.in_notes` on, say where in your notes it goes (never outside them, never a path in the name).
+- **A lab folder in your repo ignores itself** (`mind.lab.in_repo`): the `.kurooto` folder gets a `.gitignore` of `*`, so
+  your repository never picks it up and none of your own files are touched.
+- **Fixes:** `/plan`'s pace no longer counts a study session left open as 36 hours (a day counts at most 14);
+  `kurooto doctor` no longer calls a call-line update that will be retried a failure (every 30 minutes, up to six times).
 
 ## 0.8.0 (2026-10-26)
 

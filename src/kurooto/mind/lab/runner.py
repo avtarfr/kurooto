@@ -67,8 +67,20 @@ def projects(app: App) -> dict[str, Path]:
 # ------------------------------------------------------------------------------------------------ the protocol
 def protocol_file(app: App, slug_: str, root: Path) -> Path:
     if app.settings.get("mind.lab.in_repo"):
-        return root / ".kurooto" / "lab.toml"
+        d = root / ".kurooto"
+        if d.is_dir():  # one you made yourself too: it ignores itself
+            ignore_folder(d)
+        return d / "lab.toml"
     return folder(app, slug_) / "lab.toml"
+
+
+def ignore_folder(d: Path) -> None:
+    """A `.kurooto` folder inside your project keeps itself out of git: a `.gitignore` of `*` in it (your own
+    .gitignore and the repository's tracked files are never touched)."""
+    if d.name == ".kurooto":
+        g = d / ".gitignore"
+        if not g.exists():
+            g.write_text("*\n", encoding="utf-8")
 
 
 def draft(app: App, slug_: str, root: Path) -> tuple[str, list[str]]:
@@ -82,6 +94,7 @@ def draft(app: App, slug_: str, root: Path) -> tuple[str, list[str]]:
     if p is None:
         return "", notes
     f.parent.mkdir(parents=True, exist_ok=True)
+    ignore_folder(f.parent)
     f.write_text(protocol.dumps(p))
     return f.read_text(), notes
 
