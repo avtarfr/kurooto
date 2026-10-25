@@ -4130,6 +4130,12 @@ whether the note belongs with a new concept, and orders them by the model's own 
 installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
 embedding order.
 
+## What 0.8.2 added to Brain
+
+- **The Brain page:** Alt+B on the dashboard, a 3D model of the Brain you turn and click (see the user wiki, Brain). **Undo:** nothing
+  to undo; it only shows the switches you already have, and a part's switch there is the same `mind.<part>.on`.
+- **Hardened mode after 0.8.1:** run `sudo tools/mind_harden.sh --apply` again (the scorekeeper changed); or turn `mind.hardened` off.
+
 ## What 0.8.1 added to Brain
 
 - **Brain's past** (`mind.backfill.on`, off): `/mind backfill dry|run|status|forget`. **Undo:** `/mind backfill forget`, then turn

@@ -315,6 +315,12 @@ class Api:
                 "sync": on and m.id in dict(syncall.steps(self.app)),
                 "quiet": on and self.app.keep.quiet_change(m) is not None,
             }
+        if (
+            path == "brain3d"
+        ):  # the Brain page: islands of parts, each one's switch and a few live numbers (core/brainview.py)
+            from kurooto.core import brainview
+
+            return 200, brainview.view(self.app)
         if path == "board":  # Kurooto's side of the dashboard's board, for `kurooto top` (web/live.py)
             live = getattr(self.app, "live", None)
             return (200, live.vitals.board()) if live is not None else (503, {"error": "the page isn't up"})

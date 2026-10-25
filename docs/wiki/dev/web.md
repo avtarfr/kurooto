@@ -395,3 +395,15 @@ test_every_feature_is_listed_in_the_wizard_and_dashboard` enforces it.
 ## Known rough edges
 
 - `setup.js` treats any 403 as "the page is out of date", though Host, account and Origin failures also give 403.
+
+## The Brain page (0.8.2)
+
+`GET /api/brain3d` is `core/brainview.view(app)`: eight islands (`hq, fore, cons, memory, mirror, senses, shop, body`, in the order
+`brain3d.js` expects), each with parts `[id, name, on, state, metrics, setting, description]`, plus `on`, `parts_on`, `parts_total`,
+`records`, `mode`. Plain facts only. `static/brain3d.js` exposes `brain3dMount(host, data, {toggle})` (returns `{update, stop}`) and
+draws it with three.js r128 (`static/vendor/three/three.min.js`, MIT, allow-listed in `web/server.static`); `home.js` loads both
+lazily when the Brain page (`PKEY.brain` "b") opens, calls `update` on each poll and `stop` when the page closes. The model: points
+for the interior and a patterned shell (a fragment shader picks each sector by its nearest centroid, with a different pattern per
+sector and a glow at the seams), a cut plane `uCut` swept by the Cutaway, tracts with pulses, a bilobed thalamus. The file is
+under `static/`, not `static/views/`, so the phone app (which bundles `views/`) doesn't carry it. `tests/unit/test_brain_view.py`.
+
