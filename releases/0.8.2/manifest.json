@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.8.2",
+  "notes": "The Brain page: the whole Brain as a 3D model on the dashboard (Alt+B),  \ufff9regions laid out like the human brain, a patterned surface per sector, an animated cutaway, and each part's switch and monitor beside it. A note for hardened mode: run mind_harden.sh --apply again  \ufff9after 0.8.1.",
+  "created": 1792963050.3576074,
+  "files": {
+   "kurooto-0.8.2.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.2/kurooto-0.8.2.tar.gz",
+    "sha256": "a2161cce7d5d887eab0bd95ee717dd1859f7a2d9f506aab25d9aae320f93a653",
+    "size": 4911629
+   }
+  }
+ },
+ "sig": "VkZ3uF0rxeWUApUtZ5TJ0pGi0IK5hTvkkvqMwxvUuBmsQibmFbRKMiKhp0IdNDbbJbSmzdS9MN7XDcsLlXG8Cg=="
+}
