@@ -773,7 +773,9 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `checks`, `pickTone`, `unpair`, `pair`, the update check); the composables only draw it. `tick` is bumped on resume
     and after a setting changes, and what reads settings (the checklist, ringtones, bedside, the alarm toggle) reads it.
     The tab survives rotation (`onSaveInstanceState`); the extra `tab` picks one.
-  - `Home.kt`: `Pairing` (unpaired) or `Tabs`: a `Scaffold` with Material 3 Expressive's `ShortNavigationBar` (Today,
+  - `Home.kt` (0.7.5: `Prefs.floatingBar` on, the default, draws `FloatingBar`, a `HorizontalFloatingToolbar` over the page
+    in a `Box` and the pages get `FLOAT_ROOM` at their end; off: the docked `DockedBar` below):
+    `Pairing` (unpaired) or `Tabs`: a `Scaffold` with Material 3 Expressive's `ShortNavigationBar` (Today,
     Inbox with a `Badge` of what waits, Views, Phone), the tabs cross-fading with the motion scheme's fast effects spec (none
     with "Remove animations", `LocalReducedMotion`), each tab's state kept by a `SaveableStateHolder`; Back on Inbox or
     Phone goes to Today (`BackHandler`). `TABS` also takes a destination that opens another screen (`Tab.opens`):
@@ -793,6 +795,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     semantics), `ShapeBadge` (something inside a `MaterialShapes` polygon), `Footnote`, `Dim`, `Said` + `SaidLine`,
     `KCard`, `rowColor()` (the surface, a little translucent over the sky). Containers with a translucent colour set
     their `contentColor` themselves: such a colour has no matching "on" colour, and text would fall back to black.
+  - `Vivid.kt` (0.7.5, `Prefs.vivid`, default on): a Material colour scheme from `com.materialkolor`'s `SchemeExpressive` made
+    from the wallpaper's primary (`Vivid.seed`; below `MIN_CHROMA` 16 Kurooto's olive), used by `KurootoTheme` on the dynamic
+    path and on Android 11 and older; off: the system's own tonal scheme. `rowColor(accent)` and `KCard(accent)` stain
+    the surfaces with the primary, secondary or tertiary container. `Sky.kt`'s nerves and rim are about twice as strong.
   - `Theme.kt`: `KurootoTheme(palette, dynamic)` is `MaterialExpressiveTheme` with `MotionScheme.expressive()` and the
     expressive type scale (its emphasized display and headline styles a step bolder, semibold, as the phone's Roboto
     reads medium as regular at display sizes). Material You on Android 12+, else a named palette from `Palettes.all`

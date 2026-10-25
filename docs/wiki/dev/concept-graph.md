@@ -302,7 +302,10 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
 
 ## 8. Garden and summary
 
-- `Integrate.garden()` (`integrate:garden`, "daily 06:20", only when `integrate.garden` is on at start):
+- `Integrate.garden_start()` (`integrate:garden`, `integrate.garden_at`, default "daily 06:20", only when `integrate.garden` is on at
+  start) runs `garden()` on a thread of its own (0.7.5: on the loop it held up the call line's heartbeat and every other
+  scheduled job for 26 minutes); `/graph garden` and `kurooto graph garden` start it too:
+  `Integrate.garden()`:
   `prune_dangling()` removes link lines to notes that don't exist (guarded, committed); then up to
   `integrate.garden_per_day` (40) notes, first those queued by batches (`queue_garden`), then orphans; for each, 8
   candidates and `LINK_NOTES_PROMPT` as a job (`lane="chk"`, `effort="low"`, `then="integrate.linked"`).

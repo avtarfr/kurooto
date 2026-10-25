@@ -57,7 +57,9 @@ a moth (a themed icon on Android 13 and up, if your launcher uses them).
 
 **Switches** (Phone tab, 0.7.2): **Connect straight to your call line** (on; off: calls and messages come through
 ntfy.sh only, as before 0.7.0) and **Moving background** (on; off: a still picture, as with Android's "Remove
-animations"). Views is off until you turn it on in the dashboard → Phone.
+animations"). Since 0.7.5 two more: **Vivid colours** (on: a fuller, more colourful scheme made from your wallpaper's colour, with
+tinted cards; off: Android's own quieter colours) and **Floating bar** (on: the tabs are a rounded bar floating over the page, the
+open tab shown with its name; off: the bar sits on the bottom edge as before). Views is off until you turn it on in the dashboard → Phone.
 
 **Install and pair.**
 1. On the pairing page, tap **Download the app**, open the downloaded file and tap **Install**.
