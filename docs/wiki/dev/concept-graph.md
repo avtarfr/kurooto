@@ -302,7 +302,10 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
 
 ## 8. Garden and summary
 
-- `Integrate.garden()` (`integrate:garden`, "daily 06:20", only when `integrate.garden` is on at start):
+- `Integrate.garden_start()` (`integrate:garden`, `integrate.garden_at`, default "daily 06:20", only when `integrate.garden` is on at
+  start) runs `garden()` on a thread of its own (0.7.5: on the loop it held up the call line's heartbeat and every other
+  scheduled job for 26 minutes); `/graph garden` and `kurooto graph garden` start it too:
+  `Integrate.garden()`:
   `prune_dangling()` removes link lines to notes that don't exist (guarded, committed); then up to
   `integrate.garden_per_day` (40) notes, first those queued by batches (`queue_garden`), then orphans; for each, 8
   candidates and `LINK_NOTES_PROMPT` as a job (`lane="chk"`, `effort="low"`, `then="integrate.linked"`).
@@ -383,6 +386,13 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   existing notes when `Integrate.notation_on()`: `integrate.notation` is on (the card's `notation` switch,
   `Integrate.card_action`; whenever the graph reads, not tied to the Research add-on). A merge writes the kept
   note's table under the same rule.
+
+## Tools for the AI (0.7.3)
+
+`Integrate.agent_tools()` offers four read-only tools (`graph_status`, `graph_search`, `concept_card`, `graph_links`),
+over `cg.scan` and `Index.candidates` (no reranker). They exist only while the concept graph is on; the index is
+rebuilt at most every 2 minutes for a run of questions (`_tool_index`). `tests/unit/test_fixes_073.py` runs them against
+a two-note zettelkasten.
 
 ## Reading budget (`core/readbudget.py`)
 

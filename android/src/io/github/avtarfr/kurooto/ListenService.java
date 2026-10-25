@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -332,6 +333,17 @@ public class ListenService extends Service {
     /** A ring: a call (url: its link), or this phone's own wake-up alarm (url null, since "local:<s>"). The call for
      *  an alarm that rings here already joins it: one sound, and its notification and screen gain Answer. One that
      *  was stopped or snoozed here already is answered that way at once, without ringing. */
+    /** Is the phone in a call already (a phone, WhatsApp or Meet call, or one of Kurooto's own)? The audio mode says so;
+     *  it needs no permission. */
+    static boolean phoneBusy(Context c) {
+        try {
+            int m = ((AudioManager) c.getSystemService(AUDIO_SERVICE)).getMode();
+            return m == AudioManager.MODE_IN_CALL || m == AudioManager.MODE_IN_COMMUNICATION;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void ring(String reason, String url, final String since, boolean alarm) {
         boolean local = url == null;
         boolean join = alarm && !local && ringingSince.startsWith("local:");
@@ -346,6 +358,12 @@ public class ListenService extends Service {
         }
         long ringMs = alarm ? ALARM_RING_MS : RING_MS;
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (!alarm && !local && phoneBusy(this)) { // you're on another call: no ring over it (0.7.3); a quiet note, and the
+            // call line rings again after its usual wait (realert)
+            nm.notify(ID_CALL, builder(this, CH_MSG).setSmallIcon(R.drawable.ic_stat).setContentTitle("Kurooto called")
+                    .setContentText(reason + " (you were on a call; it rings again soon)").setAutoCancel(true).build());
+            return;
+        }
         try {
             nm.notify(ID_CALL, ringNotice(this, reason, url, since, alarm, ringMs, true).build());
         } catch (Exception e) { // this phone won't take the incoming-call style: the plain one

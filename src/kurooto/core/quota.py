@@ -18,6 +18,10 @@ Settings (quota.*):
     on              true; false: background work never waits (counting and the plain line stay)
     background_pct  70: background work waits once a day's count reaches this share of the known limit
     limits          {}: your own numbers, which win over learned ones: {"gemini:gemini-flash-latest": 250, "agy": 900}
+    soft            learned: a limit Kurooto learned from its own count is a measure, not a rule: it's shown, but
+                    background work never waits for it (only a "limit reached" answer pauses a brain, until
+                    the reset it names);
+                    all: Google's own numbers are soft too; off: every known limit keeps its reserve (before 0.7.5)
     local           quick: the "how hard is this" question moves to the model on this computer (Local AI models);
                     background: queued background work moves there too instead of waiting; off: nothing moves
 Only counts and times are kept (quota.json in Kurooto's state folder): nothing of what was asked.
@@ -39,7 +43,7 @@ from kurooto.core.state import jload, jsave
 if TYPE_CHECKING:
     from kurooto.app import App
 
-register_defaults("quota", {"on": True, "background_pct": 70, "limits": {}, "local": "quick"})
+register_defaults("quota", {"on": True, "background_pct": 70, "limits": {}, "soft": "learned", "local": "quick"})
 
 PACIFIC = ZoneInfo("America/Los_Angeles")  # Google's daily free limits reset at midnight Pacific time
 LOCAL = ("ollama",)  # models on this computer: no limit to keep
@@ -253,6 +257,9 @@ class Quota:
         new, how = (h["limit"], "google") if h.get("limit") else (used, "count")
         if new <= 0 or (how == "count" and (again or p.get("limit_src") == "google")):
             return None  # Google's own number stays; the count only teaches a limit Google didn't name
+        old = p.get("limit")
+        if how == "count" and p.get("limit_src") == "count" and old and new < int(old) * 0.5:
+            return None  # the count's window had just started over: this isn't the limit, so the learned figure stays
         if not again:
             p["prev"] = {k: p.get(k) for k in ("limit", "limit_src", "unit", "learned")}
         p.update(limit=new, limit_src=how, unit=unit, learned=t)
@@ -327,10 +334,17 @@ class Quota:
             return s["until"]
         pct = self.setting("background_pct")
         pct = pct if isinstance(pct, (int, float)) and 0 < pct <= 100 else 70
-        if s["limit"] and s["used"] >= s["limit"] * pct / 100:
+        if s["limit"] and not self.soft(s) and s["used"] >= s["limit"] * pct / 100:
             self._reserving(pool, s)
             return s["resets"]
         return None
+
+    def soft(self, s: dict) -> bool:
+        """Is this limit only a measure (quota.soft)? A figure you set yourself (quota.limits) is always kept."""
+        mode = self.setting("soft")
+        if mode == "off" or s.get("source") == "setting":
+            return False
+        return mode == "all" or s.get("source") == "count"
 
     def _reserving(self, pool: str, s: dict) -> None:
         """Note it once a day per limit (the look back and the dashboard's activity read it)."""
@@ -426,7 +440,9 @@ class Quota:
                 src = {"google": "Google's number", "setting": "your setting"}.get(r["source"]) or (
                     f"learned {dt.datetime.fromtimestamp(r['learned']):%d %b}" if r.get("learned") else "learned"
                 )
-                wait = f"; background work waits from {int(r['limit'] * pct / 100)}" if self.on() else ""
+                soft = self.soft(r)
+                wait = f"; background work waits from {int(r['limit'] * pct / 100)}" if self.on() and not soft else ""
+                src += ", soft: only a measure" if soft else ""
                 lines.append(
                     f"{r['label']}: {r['used']} of {r['limit']} {what} ({r['pct']}%, {src}){wait}. "
                     f"Resets {self.when(r['resets'], not google(r['pool']))}."

@@ -183,6 +183,25 @@ def test_your_own_number_wins(env):
     assert env.q.wait_until(FLASH) is None
 
 
+def test_a_learned_limit_is_soft_and_a_tiny_count_never_replaces_it(env):
+    q, pool = env.q, "custom:smart"
+    used(q, pool, 400)
+    q.record(pool, "rate_limited", "RESOURCE_EXHAUSTED")  # learned from the count: 400
+    assert q.status(pool)["limit"] == 400
+    env.clock.t = q.status(pool)["until"] + 1  # it comes back; the count starts again
+    q.record(pool, "ok")
+    used(q, pool, 3)
+    q.record(pool, "rate_limited", "RESOURCE_EXHAUSTED")  # a hit with a tiny count: not the limit
+    assert q.status(pool)["limit"] == 400
+    env.clock.t = q.status(pool)["until"] + 1
+    q.record(pool, "ok")
+    used(q, pool, 300)  # 75% of a learned 400: a measure only, so background work doesn't wait
+    assert q.wait_until(pool) is None
+    assert "soft: only a measure" in q.text()
+    env.app.settings.set("quota.soft", "off")  # the old reserve, if you want it
+    assert q.wait_until(pool) is not None
+
+
 # ------------------------------------------------------------------------------------------ the queue
 def test_background_waits_past_the_reserve_and_runs_after_the_reset(env):
     app, q, gem = env.app, env.q, env.gem

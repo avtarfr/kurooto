@@ -610,6 +610,26 @@ class Calls(Module):
             return self.schedule(at, cur["reason"], key=cur["key"], why="calls.own")
         return self.schedule(at, reason or "a reminder", why="calls.own")
 
+    def busy_with(self, key: str = "") -> str:
+        """Why a new call of Kurooto's own shouldn't ring now: "a call is going on" or "a call is ringing" (one rang
+        within calls.ring_s and wasn't answered, missed or declined yet); "" when the line is free. A call with this
+        key (the same check-in, ringing again) replaces its own ring: that isn't a second call."""
+        live = self.live_call()
+        if live is not None and not (key and live.get("key") == key):
+            return "a call is going on"
+        t = time.time()
+        wait = float(self.setting("ring_s") or 60) + 20
+        for r in (jload(self.dir / "rings.json", {}) or {}).values():
+            if (
+                isinstance(r, dict)
+                and r.get("state") == "ringing"
+                and not r.get("alarm")
+                and not (key and r.get("key") == key)
+                and t - float(r.get("at") or 0) < wait
+            ):
+                return "a call is ringing"
+        return ""
+
     def live_call(self) -> dict | None:
         """The call going on now, if Kurooto placed it: {"key", "reason"} (for at most two hours)."""
         cur = jload(self.dir / "live.json", {}) or {}
@@ -816,10 +836,19 @@ class Calls(Module):
             return ""
         from kurooto.mind import gate  # Brain's gate (mind/gate.py): the first 15 minutes after waking, a muted kind
 
+        # a call Kurooto starts by itself (a check-in, a deadline nudge: it has a reason of its own) waits while
+        # another is going on or ringing (0.7.3), or while Brain's gate says wait; an alarm always rings, and a call you
+        # asked for goes through
         automatic = bool(why) and why not in ("calls.own", "alarm.ring")
         verdict = gate.check_call(self.app, why or "", asked=why == "calls.own", alarm=alarm)
-        if verdict != "ring" and automatic and not alarm:  # it waits: the owning feature hears "held"
-            self.app.events.emit("call_not_placed", key=key, gate=verdict)
+        busy = self.busy_with(key) if automatic and not alarm else ""
+        if automatic and not alarm and (verdict != "ring" or busy):  # it waits: the owning feature hears "held"
+            self.app.events.emit(
+                "call_not_placed",
+                key=key,
+                **({"gate": verdict} if verdict != "ring" else {}),
+                **({"busy": busy} if busy else {}),
+            )
             self._tell_owner_module({"key": key, "reason": reason}, "held")
             return ""
         since = str(int(time.time()))
@@ -853,8 +882,14 @@ class Calls(Module):
         )
         if not sent:  # the line's WebSocket is down: handed to it over HTTPS, else ntfy from here
             self.send_phones(push)
+        extra = [tuple(b) for b in buttons or []]
+        # a label over 10 characters ("Tomorrow morning") is cut off in a row of three: it gets a row of its own (0.7.4)
         answer = [
-            [("Answer", {"url": self.link(reason, since=since, voice=voice)}), *[tuple(b) for b in buttons or []]]
+            [
+                ("Answer", {"url": self.link(reason, since=since, voice=voice)}),
+                *[b for b in extra if len(str(b[0])) <= 10],
+            ],
+            *[[b] for b in extra if len(str(b[0])) > 10],
         ]
         if sent:  # the phone rings; Telegram just keeps a quiet record with a link
             text = f"{'Wake-up call' if alarm else 'Calling you'}: {reason}"

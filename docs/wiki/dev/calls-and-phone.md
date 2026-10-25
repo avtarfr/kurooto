@@ -750,7 +750,7 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `Prefs.forget` redraws them unpaired. The Today screen could feed the 2x1 the same way (`Prefs.setWidgetLine` +
     `TalkWidget.draw`). Colours are the `k_*` resources, so the widgets follow light/dark and Material You;
     `drawable-v31/k_widget.xml` takes the launcher's corner radius.
-  - `QuickNoteActivity` (`Kurooto.Dialog`, exported so every launcher can open the static shortcut; it sends only on
+  - `QuickNoteActivity` (`Kurooto.Sheet`, exported so every launcher can open the static shortcut; it sends only on
     Save) uploads the note as `quick-note.md` with `Line.upload`, exactly as `ShareActivity` does with shared text: the
     computer's `Calls._upload` saves it to the notes inbox, the phone outbox holds it while the computer is off
     (`Line.WAITING`, `Chat.waitFor`). An unsent note stays in `Prefs.noteDraft`. Opened by the static shortcut
@@ -763,9 +763,12 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `ListenService.chatNote` (the chat's notification) adds them as actions (0.6.0: with Done and the snoozes,
   `Buttons`), `ActionReceiver.CHAT_TAP` sends them with `Chat.tap` (the outbox when the computer is off) and shows the
   waiting or failed note, a +1 kept; one that went through comes back as a new chat message with the button again.
-- The main screen (0.7.0) is Jetpack Compose with Material 3 Expressive. The other screens (`ChatActivity`,
-  `AnswerActivity`, `PlacesActivity`, `BedsideActivity`, `QuickNoteActivity`, `ShareActivity`, `CallActivity`,
-  `PairActivity`) are still framework views built by `Ui`, and everything else (services, receivers, calls, alarms,
+- The main screen (0.7.0) is Jetpack Compose with Material 3 Expressive. Since 0.7.6 so are `AnswerActivity`,
+  `QuickNoteActivity`, `ShareActivity` and `PairActivity` (small floating sheets: `Sheets.kt`'s `SheetActivity` and `Sheet` over a
+  dimmed screen, window theme `Kurooto.Sheet`: translucent, tap outside to close), and `PlacesActivity` and `ChatActivity` (full pages
+  over the sky: `PageActivity` / `Page`, and the chat's own `LazyColumn` of bubbles, with links via `LinkAnnotation`;
+  `ChatActivity.visible` and `ID_NOTE` stay static for `ListenService`). `BedsideActivity`, `CallActivity` and
+  `ViewsActivity` are still framework views built by `Ui` (0.7.7), and everything else (services, receivers, calls, alarms,
   crypto, notifications, widgets) stays framework Java:
   - `MainActivity` (a `ComponentActivity`, edge to edge, `enableOnBackInvokedCallback` for the predictive back
     gesture) holds `HomeState` (Compose state: paired, name, tab, today, waiting, queued, the status lines, update,
@@ -773,7 +776,9 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     `checks`, `pickTone`, `unpair`, `pair`, the update check); the composables only draw it. `tick` is bumped on resume
     and after a setting changes, and what reads settings (the checklist, ringtones, bedside, the alarm toggle) reads it.
     The tab survives rotation (`onSaveInstanceState`); the extra `tab` picks one.
-  - `Home.kt`: `Pairing` (unpaired) or `Tabs`: a `Scaffold` with Material 3 Expressive's `ShortNavigationBar` (Today,
+  - `Home.kt` (0.7.5: `Prefs.floatingBar` on, the default, draws `FloatingBar`, a `HorizontalFloatingToolbar` over the page
+    in a `Box` and the pages get `FLOAT_ROOM` at their end; off: the docked `DockedBar` below):
+    `Pairing` (unpaired) or `Tabs`: a `Scaffold` with Material 3 Expressive's `ShortNavigationBar` (Today,
     Inbox with a `Badge` of what waits, Views, Phone), the tabs cross-fading with the motion scheme's fast effects spec (none
     with "Remove animations", `LocalReducedMotion`), each tab's state kept by a `SaveableStateHolder`; Back on Inbox or
     Phone goes to Today (`BackHandler`). `TABS` also takes a destination that opens another screen (`Tab.opens`):
@@ -793,6 +798,10 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
     semantics), `ShapeBadge` (something inside a `MaterialShapes` polygon), `Footnote`, `Dim`, `Said` + `SaidLine`,
     `KCard`, `rowColor()` (the surface, a little translucent over the sky). Containers with a translucent colour set
     their `contentColor` themselves: such a colour has no matching "on" colour, and text would fall back to black.
+  - `Vivid.kt` (0.7.5, `Prefs.vivid`, default on): a Material colour scheme from `com.materialkolor`'s `SchemeExpressive` made
+    from the wallpaper's primary (`Vivid.seed`; below `MIN_CHROMA` 16 Kurooto's olive), used by `KurootoTheme` on the dynamic
+    path and on Android 11 and older; off: the system's own tonal scheme. `rowColor(accent)` and `KCard(accent)` stain
+    the surfaces with the primary, secondary or tertiary container. `Sky.kt`'s nerves and rim are about twice as strong.
   - `Theme.kt`: `KurootoTheme(palette, dynamic)` is `MaterialExpressiveTheme` with `MotionScheme.expressive()` and the
     expressive type scale (its emphasized display and headline styles a step bolder, semibold, as the phone's Roboto
     reads medium as regular at display sizes). Material You on Android 12+, else a named palette from `Palettes.all`
@@ -870,6 +879,17 @@ All three implementations must agree byte for byte: Python `modules/calls/line.p
   `tests/js/qr.mjs`), `test_app_first.py` (no Telegram: routing,
   files as links, shared files, setup, doctor), `test_livefallback.py` (runs `tests/js/fallback.mjs` and
   `tests/js/callpage.mjs`).
+
+## Not ringing over a call (0.7.3)
+
+- **The computer:** `Calls.busy_with()` says "a call is going on" (`live.json`) or "a call is ringing" (an unanswered
+  ring younger than `calls.ring_s` + 20 s) for anything but an alarm; `ring()` then emits `call_not_placed` with
+  `busy` and tells the owning feature "held" (a check-in or deadline call tries again by its own rules).
+- **The phone:** `ListenService.phoneBusy()` reads `AudioManager.getMode()` (IN_CALL or IN_COMMUNICATION; no
+  permission, API 23). Not an alarm and a busy phone: a quiet notice in the messages channel, no ring; the line's
+  re-ring (+3 and +6 minutes) tries again. A wake-up alarm always rings.
+- Tests: `tests/unit/test_fixes_073.py`; the phone side is checked by reading the source in a test and by hand on a
+  phone (not an emulator).
 
 ## Known problems and doc mismatches
 

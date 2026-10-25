@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.7.7 (unreleased)
+
+- **Night performance 1.1.0** (an update to the add-on, offered once, never applied without your yes): `night_performance.hold_window`
+  keeps the performance mode for the whole reading window while you're on the charger, whether or not you're at the computer or
+  between pieces of the night's work. Off by default.
+
+## 0.7.6 (unreleased)
+
+- **Six more screens are Material 3 Expressive, floating:** the question you answer from a notification, Quick note, Share to
+  Kurooto and the pairing window are now rounded sheets floating over a dimmed screen (tap outside to close); Places and Chat are
+  full pages over Kurooto's sky, with floating message bubbles, a rounded message box and links you can tap. They follow the
+  Look switches (Vivid or Calm). What they do is unchanged.
+
+## 0.7.5 (unreleased)
+
+- **A limit Kurooto learned is only a measure** (`quota.soft`, default `learned`): background work no longer waits for a limit
+  learned from its own count; only a real "limit reached" answer pauses a brain, until the reset it names. A tiny count
+  after a restart of the count window can't shrink a learned figure any more (it once learned "6" and held the night's work
+  until midnight). `all` makes Google's numbers soft too; `off` keeps the old reserve.
+- **The garden no longer freezes Kurooto:** its daily pass runs on a thread of its own instead of Kurooto's loop, where it
+  held up the call line's heartbeat (a false "offline"), Telegram replies and other scheduled jobs for about 26 minutes.
+- **`/graph garden`, `kurooto graph …` and `integrate.garden_at`:** run the garden now from Telegram or a terminal, and set
+  the time it runs by itself.
+
+## 0.7.4 (2026-10-25)
+
+- **A notes sorter** (Features → Notes sorter, off until you turn it on): notes you drop in a scratch folder (`inbox`) are moved
+  by themselves into the folders of your notes, at night or on `/sort now`. Rules first (a note's `subject:`, a tag, a title
+  naming one of your subjects, what you've taught it), then your AI for the rest, which may only pick a folder you already
+  have. It never deletes, merges or overwrites anything (a taken name gets a number), doesn't touch your text, leaves a note
+  your own notes link to by its path, and keeps to 20 a day. One message says what moved, with **Undo**; `/sort undo` puts
+  it back exactly. It notices when a note belongs elsewhere: a note you move yourself is a lesson, and weekly it re-checks
+  what it moved.
+- **Fixed:** the "Tomorrow morning" button under a check-in call was cut off in Telegram; a long button now has its own row.
+
+## 0.7.3 (2026-10-25)
+
+- **A slow "On it" fixed:** Kurooto reads Telegram on threads of its own (a message once waited 68 s before it was even
+  seen), answers what you type before automatic work, and an evening check-in's journal no longer holds up your next
+  request. Any message seen more than 10 s late is noted in the event log.
+- **No calls over calls:** the phone app doesn't ring over a call you're already on (a quiet note; it rings again after
+  the usual wait), and Kurooto's own calls wait for one another. A wake-up alarm still rings.
+- **A refused AI run is tried again:** when agy ran a command unattended runs refuse, the whole request used to fail even
+  after its notes were written; now it's tried once more, told what's done and not to run commands, and every AI is
+  told never to run code to look inside Kurooto.
+- **Profile sync on a fresh install** says what to do: four steps (a private repository, a token, a passphrase), instead
+  of pointing at Notes sync's repository that isn't there.
+- **The concept graph in your AI's tools:** `graph_search`, `concept_card`, `graph_links` and `graph_status`, read-only.
+
 ## 0.7.2 (2026-10-24)
 
 - **Every feature can be turned off** (a standing rule from now on; fixes aren't switches): the app's Phone tab has

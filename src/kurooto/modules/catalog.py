@@ -45,6 +45,7 @@ from kurooto.modules.research import Research
 from kurooto.modules.research_addon import ResearchAddon
 from kurooto.modules.retro import Retro
 from kurooto.modules.skills import Skills
+from kurooto.modules.sorter import Sorter
 from kurooto.modules.space import Space
 from kurooto.modules.startby import StartBy
 from kurooto.modules.study import Study
@@ -75,6 +76,7 @@ CATALOG = [
     Files,
     Projects,
     Skills,
+    Sorter,
     Hints,
     Drafts,
     Library,

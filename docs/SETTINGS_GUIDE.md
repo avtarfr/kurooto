@@ -492,6 +492,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `integrate.embeddings` | `"auto"` | where meaning-based matching comes from: auto \| ollama \| gemini \| off |
 | `integrate.first` | `[]` | subjects to do first, e.g. ["deep-learning"] |
 | `integrate.garden` | `true` | each day, a second pass over the notes the reading touched and notes nothing links to |
+| `integrate.garden_at` | `"daily 06:20"` | when that pass runs by itself (/graph garden or `kurooto graph garden`: now) |
 | `integrate.garden_per_day` | `40` | the most notes in that pass |
 | `integrate.max_cost_per_night` | `0.5` | an API key: the most a night's reading may cost (USD, as the service reports it) |
 | `integrate.notation` | `true` | a Notation table when a second source writes a concept differently (a switch on the card) |
@@ -831,6 +832,7 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `quota.limits` | `{}` | your own limits per AI, e.g. {"agy": 200} |
 | `quota.local` | `"quick"` | what the model on this computer does for the free limit: quick, background or off |
 | `quota.on` | `true` | keep part of the free AI limit for what you're waiting on |
+| `quota.soft` | `"learned"` |  |
 
 ### `remember`
 
@@ -924,6 +926,19 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 |---|---|---|
 | `skills.auto_pack` | `"ask"` | the evening before a quiz or exam: ask (a button) \| auto (build it) \| off |
 | `skills.auto_pack_after` | `"16:00"` | not before this time of day, 12 to 36 hours before it |
+
+### `sorter`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `sorter.ai` | `true` | ask your AI about a note the rules can't place (its first lines go to it); off: rules only |
+| `sorter.at` | `"daily 03:30"` | when the nightly pass runs |
+| `sorter.folder` | `"inbox"` | the scratch folder, inside your notes: what lands here is sorted |
+| `sorter.learn` | `true` | a note you move again after it filed it teaches it |
+| `sorter.min_conf` | `0.75` | how sure a guess must be before it's acted on |
+| `sorter.per_night` | `20` | the most notes moved in a day |
+| `sorter.recheck` | `true` | weekly: a note it moved that now clearly fits another folder moves once more |
+| `sorter.settle_min` | `10` | a note touched in the last this-many minutes is left (you may still be writing it) |
 
 ### `sources`
 

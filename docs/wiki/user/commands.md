@@ -142,11 +142,13 @@ More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-a
 | `/notes pdf la`, `/notes pdf template` | a course's notes (course page, lectures, the concept notes they link) as one PDF; your own copy of its LaTeX template | Kurooto (with Subjects) |
 | `/timeline research/reading-group` | a note's dated log | Notes brain |
 | `/sync`, `/sync all` | sync your notes now; `all`: everything that syncs | Notes sync |
+| `/sort`, `/sort now`, `/sort undo` | the notes sorter: what's waiting; sort the scratch folder now; put the last pass back | Notes sorter |
 | `/graph`, `/graph now`, `/graph stop` | the concept graph's state; start or stop its work | Concept graph |
 | `/graph backfill classroom` | read the Classroom files filed before 0.5.19 into the concept graph, night by night | Concept graph |
 | `/graph backfill handwritten` | read the handwritten notes linked before into the concept graph (with `handwritten` in `integrate.sources`); `/handwritten link` links older ones first | Concept graph |
 | `/graph backfill all` | both backfills, for every source that's on | Concept graph |
 | `/graph same` | concept notes that look like one concept, with Merge / Keep both / Add alias | Concept graph |
+| `/graph garden` | the daily linking pass now (the notes the reading touched, then notes nothing links to; at most `garden_per_day`) | Concept graph |
 | `/skills`, `/skills journal`, `/skills copy journal` | the skills you can run; show one; make your own copy to edit | Skills |
 | `/newskill <what it should do>` | the AI writes a new skill (Save / Discard) | Skills |
 | `/every monday 9:00 /journal plan my week`, `/every weekdays 7:30 /morning-prep`, `/every daily 21:00 how did today go?` | run a skill, a command or a request on a schedule (days: daily, weekdays, weekends, a day, or several like `mon,thu`; at most 30) | Skills |
@@ -325,6 +327,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto ai test ID` | ask an AI for a reply, e.g. `kurooto ai test claude:work` |
 | `kurooto ai rename-claude NAME NEW` / `remove-claude NAME [--yes]` | rename an extra Claude account (its id stays) / remove it and Kurooto's sign-in folder for it (asks first) |
 | `kurooto jobs`, `kurooto jobs --cancel <id \| all>` | what the AI is working on; cancel |
+| `kurooto graph [now \| stop \| same \| garden \| backfill …]` | the same as `/graph` from a terminal; `garden` runs the daily linking pass now |
 | `kurooto hardware`, `--profile <name>`, `--add <model>`, `--remove <model>`, `--add-prereq <id>`, `--remove-prereq <id>`, `--install` | what this computer suits, and going past it |
 | `kurooto space`, `kurooto space --clean` | what Kurooto takes and what can go |
 | `kurooto selftest` | check that this version starts |

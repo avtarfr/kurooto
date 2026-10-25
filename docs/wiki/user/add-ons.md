@@ -198,6 +198,10 @@ night's AI work runs, on the charger, and only when you're away from the compute
 screen locked). Back 10 minutes after the work ends, at the end of the window, when you come back to the computer,
 or when the laptop goes on battery. Kurooto stopping puts it back; after a crash, the next start does.
 
+Since add-on version 1.1.0 (Kurooto 0.7.7), the setting `night_performance.hold_window` (off by default) keeps the mode for the
+whole reading window while you're on the charger, whether or not you're at the computer or between pieces of work; it still
+goes back at the window's end or when the charger comes out.
+
 **How, by itself (no password, no root):**
 
 | System | What it uses |

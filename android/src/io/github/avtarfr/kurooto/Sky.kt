@@ -88,7 +88,7 @@ fun Sky(owner: LifecycleOwner, strength: () -> Float, scroll: () -> Float, modif
             }
         }
     }
-    val p = remember(scheme, k) { SkyColors(scheme.background, scheme.primary, scheme.secondary, scheme.tertiary, scheme.onBackground, k.light) }
+    val p = remember(scheme, k) { SkyColors(lerp(scheme.background, scheme.primaryContainer, 0.22f), scheme.primary, scheme.secondary, scheme.tertiary, scheme.onBackground, k.light) }
     if (Build.VERSION.SDK_INT >= 33) {
         val sh = remember { SkyShader() }
         // drawn at half the screen's resolution into its own layer, then scaled up: the picture is soft, so this
@@ -385,7 +385,7 @@ private fun drawSkyCanvas(s: DrawScope, p: SkyColors, time: Float, hour: Float, 
             val a1 = a0 + bend * (seg + 1) / 3f
             val x1 = cx + cos(a1) * d1
             val y1 = cy + sin(a1) * d1
-            val alpha = 0.42f * g * (1f - seg / 3.2f)
+            val alpha = 0.8f * g * (1f - seg / 3.2f)
             s.drawLine(p.a.copy(alpha = alpha), Offset(x0, y0), Offset(x1, y1), strokeWidth = r * 0.04f / (seg + 1) + 1f)
             x0 = x1
             y0 = y1
@@ -393,17 +393,17 @@ private fun drawSkyCanvas(s: DrawScope, p: SkyColors, time: Float, hour: Float, 
     }
     // the membrane: outer rims, body, rim, nucleus
     blob(cx, cy, r * (1.52f + 0.03f * breath), tt * 0.6f, 4.1f, 0.13f)
-    s.drawPath(rim, p.a.copy(alpha = 0.05f * g))
-    s.drawPath(rim, p.a.copy(alpha = 0.16f * g), style = Stroke(1.2f))
+    s.drawPath(rim, p.a.copy(alpha = 0.1f * g))
+    s.drawPath(rim, p.a.copy(alpha = 0.3f * g), style = Stroke(1.2f))
     blob(cx, cy, r * (1.24f + 0.025f * breath), tt * 0.8f, 2.9f, 0.10f)
-    s.drawPath(rim, p.a.copy(alpha = 0.07f * g))
-    s.drawPath(rim, p.a.copy(alpha = 0.24f * g), style = Stroke(1.3f))
+    s.drawPath(rim, p.a.copy(alpha = 0.13f * g))
+    s.drawPath(rim, p.a.copy(alpha = 0.42f * g), style = Stroke(1.3f))
     blob(cx, cy, r * (1f + 0.04f * breath), tt, 1.7f, 0.085f)
-    s.drawPath(rim, p.a.copy(alpha = 0.12f * g))
-    s.drawPath(rim, lerp(p.a, p.ink, 0.25f).copy(alpha = 0.55f * g), style = Stroke(2.4f))
+    s.drawPath(rim, p.a.copy(alpha = 0.2f * g))
+    s.drawPath(rim, lerp(p.a, p.ink, 0.25f).copy(alpha = 0.8f * g), style = Stroke(2.4f))
     blob(cx + r * 0.06f * sin(t * 0.21f), cy + r * 0.05f * cos(t * 0.17f), r * (0.58f + 0.03f * breath), tt * 1.3f, 6.2f, 0.07f)
-    s.drawPath(rim, p.a.copy(alpha = 0.18f * g))
-    s.drawPath(rim, p.a.copy(alpha = 0.35f * g), style = Stroke(1.2f))
+    s.drawPath(rim, p.a.copy(alpha = 0.3f * g))
+    s.drawPath(rim, p.a.copy(alpha = 0.55f * g), style = Stroke(1.2f))
     s.drawRect(ShaderBrush(ImageShader(grain, TileMode.Repeated, TileMode.Repeated)), size = Size(w, h))
 }
 

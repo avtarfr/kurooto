@@ -145,12 +145,14 @@ private fun ColumnScope.PhoneTab(a: MainActivity, ui: HomeState) {
                 onClick = { a.toggleDirect() },
             ),
             Item("Moving background", "Off: a still picture", checked = Prefs.moving(a), onClick = { a.toggleMoving() }),
+            Item("Vivid colours", "Off: the wallpaper's quieter colours", checked = Prefs.vivid(a), onClick = { a.toggleVivid() }),
+            Item("Floating bar", "Off: the bar sits on the bottom edge", checked = Prefs.floatingBar(a), onClick = { a.toggleFloatingBar() }),
         ),
     )
 
     Heading("This phone")
     var asking by rememberSaveable { mutableStateOf(false) }
-    KCard {
+    KCard(accent = 1) {
         Text(if (ui.demo) "Demo: not paired" else "Paired with " + Prefs.url(a), style = MaterialTheme.typography.bodyLarge)
         if (!ui.demo) Dim(
             if (!Prefs.direct(a)) "Calls come through ntfy.sh (the straight connection is switched off above)"

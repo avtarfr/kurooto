@@ -814,6 +814,21 @@ def plan(root, old: layout.Layout, new: layout.Layout, sc: Scan | None = None) -
             continue
         if dst != rel:
             p.moves.append({"from": rel, "to": dst, "kind": kind})
+    return _clashes_and_links(p, root, notes, old)
+
+
+def plan_moves(root, moves: list[dict], old: layout.Layout, sc: Scan | None = None) -> Plan:
+    """A dry run of moving exactly these notes ({"from", "to", "kind"}), as the sorter chooses them (core/sorting.py):
+    the same clash check, the links fixed in Kurooto's own text and the links in yours counted, never changed."""
+    root = Path(os.path.expanduser(str(root)))
+    p = Plan(root=root, git=(root / ".git").exists(), moves=[dict(m) for m in moves])
+    if not root.is_dir() or not p.moves:
+        return p
+    notes, _dirs, _cut = walk(root) if sc is None else (sc.notes, sc.dirs, sc.cut)
+    return _clashes_and_links(p, root, notes, old)
+
+
+def _clashes_and_links(p: Plan, root: Path, notes: list[str], old: layout.Layout) -> Plan:
     # clashes: the new place is taken, or two notes would land on one place
     seen: dict[str, str] = {}
     sources = {m["from"] for m in p.moves}
@@ -872,9 +887,10 @@ def _logs(state_dir: Path) -> Path:
     return Path(state_dir) / "notes-moves"
 
 
-def apply_plan(p: Plan, state_dir: Path, digest: str) -> dict:
+def apply_plan(p: Plan, state_dir: Path, digest: str, keep: tuple[str, ...] = ()) -> dict:
     """Move the notes and fix the links as the plan says, if it's the plan you were shown (same digest). The move log
-    goes in state_dir/notes-moves/; something that goes wrong halfway is put back."""
+    goes in state_dir/notes-moves/; something that goes wrong halfway is put back. `keep`: folders (relative to the
+    notes) that stay even when the moves empty them (the sorter's scratch folder: it never removes anything)."""
     if digest != p.digest:
         raise Refused("Your notes changed since the plan was shown: look at the new plan before moving.")
     if p.clashes:
@@ -922,7 +938,13 @@ def apply_plan(p: Plan, state_dir: Path, digest: str) -> dict:
             log["edits"].append({"file": e.file, "before": e.before, "after_sha": _sha(e.after)})
         for frm, _ in log["moves"]:  # folders the moves left empty
             d = (root / frm).parent
-            while d != root and root in d.parents and d.is_dir() and not any(d.iterdir()):
+            while (
+                d != root
+                and root in d.parents
+                and d.relative_to(root).as_posix() not in keep
+                and d.is_dir()
+                and not any(d.iterdir())
+            ):
                 d.rmdir()
                 log["removed"].append(d.relative_to(root).as_posix())
                 d = d.parent

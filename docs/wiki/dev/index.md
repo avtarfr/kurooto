@@ -38,6 +38,7 @@ Every claim points at code as `path:symbol` (paths under `src/kurooto/` unless t
    look back, pairing, crypto, the Android app.
 8. [concept-graph.md](concept-graph.md): books → segments → candidates → AI batch → checks → safe writes → ledger →
    garden.
+   [sorter.md](sorter.md): the notes sorter (0.7.4): a scratch folder's notes move by themselves, never deleting, with Undo.
 9. [testing.md](testing.md): running tests, the real-install guard, scratch `KUROOTO_HOME`, fakes, CI.
 10. [release-and-updates.md](release-and-updates.md): versions, the changelog, building, signing, channels, the updater,
     rollback.

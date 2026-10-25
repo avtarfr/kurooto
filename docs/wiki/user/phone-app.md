@@ -47,12 +47,21 @@ If that wasn't you, remove it with /phones." This message always comes; it's nev
 earpiece with the screen off at your ear, rings wake-up calls on the alarm volume (so they ring on silent), shows
 Kurooto's questions and approvals with a Reply box, and lets you share files into your notes. It works from Android 6.
 
+**On another call?** From 0.7.3 the app doesn't ring over a call: if your phone is already in one (a phone call,
+WhatsApp, Meet, or one of Kurooto's own), a quiet note says Kurooto called and the call rings again after its usual
+wait. A wake-up alarm still rings. Your computer also won't start one of Kurooto's calls while another is going on or
+ringing: the second waits.
+
 From 0.7.0 the app opens on four tabs: **Today**, **Inbox**, **Views** and **Phone**, and its icon is Kurooto's mark,
 a moth (a themed icon on Android 13 and up, if your launcher uses them).
 
 **Switches** (Phone tab, 0.7.2): **Connect straight to your call line** (on; off: calls and messages come through
 ntfy.sh only, as before 0.7.0) and **Moving background** (on; off: a still picture, as with Android's "Remove
-animations"). Views is off until you turn it on in the dashboard → Phone.
+animations"). Since 0.7.5 two more: **Vivid colours** (on: a fuller, more colourful scheme made from your wallpaper's colour, with
+tinted cards; off: Android's own quieter colours) and **Floating bar** (on: the tabs are a rounded bar floating over the page, the
+open tab shown with its name; off: the bar sits on the bottom edge as before). Views is off until you turn it on in the dashboard → Phone.
+
+**The smaller screens (0.7.6)** match: the question you answer from a notification, Quick note, Share to Kurooto and the pairing window are rounded sheets floating over a dimmed screen (tap outside to close), and Places and Chat are full pages over Kurooto's sky, with floating message bubbles and a rounded message box. They use the same colours as the rest of the app (the **Vivid colours** switch).
 
 **Install and pair.**
 1. On the pairing page, tap **Download the app**, open the downloaded file and tap **Install**.

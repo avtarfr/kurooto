@@ -75,7 +75,11 @@ def test_the_list_ships_with_kurooto_and_finds_by_name_or_repository():
     names = [e["name"] for e in official.catalog()]
     assert names == ["restic-backups", "desktop-helpers", "habits", "handwriting-pull", "night-performance"]
     for e in official.catalog():
-        assert e["url"].startswith("https://github.com/") and len(e["commit"]) == 40 and e["tag"] == "v1.0.0"
+        assert (
+            e["url"].startswith("https://github.com/")
+            and len(e["commit"]) == 40
+            and e["tag"] == ("v1.1.0" if e["name"] == "night-performance" else "v1.0.0")
+        )
     assert official.find("habits")["name"] == "habits"
     assert official.find("command-words")["name"] == "habits"  # its repository is kurooto-command-words
     assert official.find("kurooto-command-words")["name"] == "habits"

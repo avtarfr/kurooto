@@ -837,6 +837,7 @@ class Checkins(Module):
                 title=f"Journal from your {name} call",
                 then="checkins.notes_done",
                 then_payload=payload,
+                lane="bg",  # nobody waits for it: a request you type meanwhile doesn't queue behind it (0.7.3)
             )
             if jid:
                 if classes:
@@ -846,6 +847,7 @@ class Checkins(Module):
                         f"Classes on {day}: {', '.join(classes)}. What I said about them {on} (log only what I "
                         f"said; leave out a class I didn't talk about):\n\n{daily.transcript(self.app, lines)}",
                         title=f"Study logs from your {name} call",
+                        lane="bg",
                     )
                     self._status(name, d, (self.today(d).get(name) or {}).get("status", "answered"), logged=classes)
                 self.app.events.emit("checkin_notes_started", name=name, study_logs=len(classes))

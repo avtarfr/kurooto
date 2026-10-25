@@ -154,7 +154,7 @@ object InboxCard {
             labels.add(b.optString("label"))
             sends.add(field("button", i))
         }
-        KCard {
+        KCard(accent = 2) {
             Text(CardRules.label(kind, text), style = MaterialTheme.typography.titleSmallEmphasized, color = MaterialTheme.colorScheme.primary)
             Text(CardRules.body(kind, text), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 6.dp))
             val per = CardRules.perRow(labels.toTypedArray())

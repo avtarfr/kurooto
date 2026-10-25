@@ -67,6 +67,7 @@ MODULE_ORDER = [
     "retro",
     "dreaming",
     "mind",
+    "sorter",
     "learning",
     "cases",
     "calls",

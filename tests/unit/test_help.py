@@ -177,5 +177,5 @@ def test_the_phone_apps_chat_gets_the_index_with_its_wiki_links(env):
     app.handle(Incoming("/help", via="app", respond=lambda t, buttons=None: got.append(t)))
     assert got and got == app.help_parts() and commands.wiki() in got[-1]
     assert all(commands.wiki(g.page) in "\n".join(got) for g in commands.GROUPS if f"/help {g.key}" in "\n".join(got))
-    java = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "ChatActivity.java").read_text()
-    assert "Linkify.addLinks(t, Linkify.WEB_URLS)" in java
+    chat = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "ChatActivity.kt").read_text()
+    assert "LinkAnnotation.Url" in chat  # 0.7.6: the Compose chat makes web addresses tappable

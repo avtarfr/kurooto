@@ -330,6 +330,18 @@ class MainActivity : ComponentActivity() {
         ui.tick++
     }
 
+    /** Look → Vivid colours (0.7.5): off brings back the wallpaper's own quiet scheme. */
+    internal fun toggleVivid() {
+        Prefs.setVivid(this, !Prefs.vivid(this))
+        recreate()
+    }
+
+    /** Look → Floating bar (0.7.5): off docks the navigation bar to the bottom edge again. */
+    internal fun toggleFloatingBar() {
+        Prefs.setFloatingBar(this, !Prefs.floatingBar(this))
+        recreate()
+    }
+
     internal fun toggleKeepOn() {
         Prefs.setBedsideKeepOn(this, !Prefs.bedsideKeepOn(this))
         ui.tick++

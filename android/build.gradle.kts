@@ -129,4 +129,6 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3:1.5.0-alpha18") // see the top of this file
+    // the Expressive colour scheme from a seed colour (Vivid.kt): pure Kotlin, built with Kotlin 2.3.0 (the app is on 2.3.21)
+    implementation("com.materialkolor:material-color-utilities:4.1.1")
 }

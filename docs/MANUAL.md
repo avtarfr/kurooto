@@ -19,7 +19,7 @@ This manual covers everything, from installing to uninstalling. If you're in a h
     [Exam mode](#exam-mode) · [Exam season](#exam-season) · [Start-by dates](#start-by-dates) ·
     [Subjects and timetable](#subjects-and-timetable) · [Class packs](#class-packs) · [Doubt queue](#doubt-queue) ·
     [Quiz](#quiz) · [Weekly summary](#weekly-summary) · [First-week quests](#first-week-quests)
-  - [Files into notes](#files-into-notes) · [Skills](#skills) · [Quick notes and prompts](#quick-notes-and-prompts) ·
+  - [Files into notes](#files-into-notes) · [Skills](#skills) · [Notes sorter](#notes-sorter) · [Quick notes and prompts](#quick-notes-and-prompts) ·
     [Hint ladder](#hint-ladder) · [Check my draft](#check-my-draft) ·
     [Notes brain](#notes-brain-gbrain) · [Local AI models](#local-ai-models) ·
     [The offline helper](#the-offline-helper) ·
@@ -1179,6 +1179,25 @@ notes, and sends nothing to anyone but you.
 *Turn it off:* Features → Skills; your own skills, routines and packs stay (routines start again when you turn it back
 on).
 
+### Notes sorter
+
+**What it does** (0.7.4). Notes you drop in a scratch folder (`inbox`) are moved by themselves into the right folders of your
+notes. Turn it on: Features → **Notes sorter** (off until you do).
+- **Every night at 03:30** (`sorter.at`) and on `/sort now`, a note that has sat ten minutes is placed by rules (its own
+  `subject:`, a tag or its title naming one of your subjects, what you taught it), else, with `sorter.ai` on, by one short
+  request to your AI that may only choose one of your folders. A note it can't place stays, listed by `/sort` with Move buttons.
+- **It never deletes, merges or overwrites** (a taken name gets a number), moves only from the scratch folder into folders you
+  already have, and leaves a note your own notes link to by path (they'd break). At most 20 a day.
+- **Undo:** one message says what moved with an **Undo** button; `/sort undo` restores everything, links included.
+- **It notices a note belongs elsewhere:** a note you move yourself after it filed it is a lesson (and left alone); on Sundays it
+  re-checks what it moved and may move a note once more (at most monthly), with Undo.
+
+**Commands:** `/sort`, `/sort now`, `/sort undo`. **Settings:** `sorter.folder`, `at`, `per_night`, `settle_min`, `min_conf`,
+`ai`, `recheck`, `learn`. **Privacy:** only a note the rules can't place sends its first lines to your AI (switch it off with
+`sorter.ai`).
+
+*Leaves:* the AI request, as above. *Undo:* `/sort undo`; turn the feature off in Features.
+
 ### Quick notes and prompts
 `/note <text>` saves it straight into your notes' inbox (`inbox/YYYY-MM-DD-<first words>.md`), as written; a photo or
 file with `/note` as its caption is linked from the note. From a terminal: `kurooto note "an idea"` (or pipe text in:
@@ -1712,6 +1731,15 @@ user of its own, so not even a program running as you can change the log. Withou
 
 *Undo:* Features → Brain → Turn off. The message that follows offers **Delete Brain's data** (gone for good) or **Keep
 it**. Hardened mode: `sudo tools/mind_harden.sh --undo`.
+
+### Fixes in 0.7.3
+- **A slow "On it":** Telegram is read on threads of its own, a request you type is answered before automatic work, and a
+  check-in's journal runs in the background lane.
+- **Calls:** the phone doesn't ring over a call, and Kurooto's own calls wait for each other (an alarm always rings).
+- **A refused AI run:** agy refused for running a command is tried once more, told not to; the AI is told never to run
+  code to look inside Kurooto.
+- **Profile sync on a fresh install** shows four plain steps. **The concept graph** has read-only tools for your AI
+  (`graph_search`, `concept_card`, `graph_links`, `graph_status`).
 
 ### Set up from what you say
 

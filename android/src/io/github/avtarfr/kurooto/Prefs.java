@@ -135,6 +135,13 @@ final class Prefs {
     static boolean moving(Context c) { return sp(c).getBoolean("moving", true); }
     static void setMoving(Context c, boolean on) { sp(c).edit().putBoolean("moving", on).apply(); }
 
+    // the Look (0.7.5, each a switch): vivid colour from the wallpaper (off: Calm, Material You's quiet scheme), and a floating bar
+    // (off: the docked one)
+    static boolean vivid(Context c) { return sp(c).getBoolean("vivid", true); }
+    static void setVivid(Context c, boolean on) { sp(c).edit().putBoolean("vivid", on).apply(); }
+    static boolean floatingBar(Context c) { return sp(c).getBoolean("floatingBar", true); }
+    static void setFloatingBar(Context c, boolean on) { sp(c).edit().putBoolean("floatingBar", on).apply(); }
+
     // Systems or the Notes map: the one the Views tab opens on (ViewsActivity)
     static String viewMode(Context c) { return sp(c).getString("viewMode", "systems"); }
     static void setViewMode(Context c, String mode) { sp(c).edit().putString("viewMode", mode).apply(); }
