@@ -90,12 +90,13 @@ def mirrored(kind: str) -> bool:
 
 # stage 04: facts about the day (the scorekeeper checks and files them; see scorekeeper.Keeper.mood)
 MOOD_KINDS = frozenset({"signal", "read_day", "read_answer", "forecast", "score_forecast", "read_forget", "read_off"})
+BUDGET_KINDS = frozenset({"budget_tick", "learning_verdict", "learning_freeze"})  # stage 05: see mind/engine.py
 
 
 def accepted_fact(kind: str) -> bool:
     """A kind of fact the daemon may hand the scorekeeper: a mirrored event, a decision record or a fact about the day
     (never a score)."""
-    return kind == "decision" or kind in MOOD_KINDS or mirrored(kind)
+    return kind == "decision" or kind in MOOD_KINDS or kind in BUDGET_KINDS or mirrored(kind)
 
 
 class MindWriteDenied(PermissionError):

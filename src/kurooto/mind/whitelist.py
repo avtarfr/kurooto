@@ -15,7 +15,7 @@ from __future__ import annotations
 # the names, as the spec writes them, and the Kurooto modules they are
 REWARD_SOURCES = frozenset(
     {
-        "mind.vars",
+        "mind.budget",
         "mind.promises",
         "core.jobs",  # success or failure only
         "core.health",

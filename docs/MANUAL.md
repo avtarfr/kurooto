@@ -1632,8 +1632,17 @@ tomorrow is frozen and scored the next evening. Nothing Kurooto does depends on 
 uses the model on this computer only. *Undo:* `mind.read.on`, `mind.forecast.on`, `mind.tone.on` off; **Off** under `/mood`
 deletes what it kept.
 
+**Its body budget, moods and promises (Brain).** It keeps a few things about *itself* near a level (its promises' slack, how well
+things work, how well it foresees): the distance is its drive, a fall in it is its reward, and it learns what helps (in shadow for
+the first 21 days). It can't farm it (create-then-fix pays nothing, moving the level pays nothing), your replies and chat time never
+count, and stopping is free. It has moods about specific things (uneasy, frustrated, relieved, satisfied) that make it work inwardly
+(recheck, prepare), never talk more, and it may say one about a thing, at most 3 a week; it never says it missed you and never claims
+to be conscious. Promises it makes ("I'll check back at 6") are written down; a broken one is owned up to first, with the fix. While
+the computer is down the call line lists what has no guarantee. *Undo:* `mind.budget.on`, `mind.values.on`, `mind.feelings.on`,
+`mind.feelings.express`, `mind.promises.on`, `mind.heartbeat.on` off.
+
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
-every record); `/mood` (how it reads you and what it expects).
+every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`.
 
 **Settings:** `mind.anchor_every` (1000: the log's head is noted every this many records, and once a day);
 `mind.hardened` (off).

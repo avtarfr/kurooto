@@ -52,6 +52,9 @@ NOT_BUTTONS = {
     "cal",
     "forecast",
     "score",
+    "cur",
+    "s",
+    "x",
 }  # fmt: skip  (scheduler keys, log text, XML; Brain's score.db keys: read:<day>, answer:<day>, ...)
 
 

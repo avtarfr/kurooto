@@ -82,7 +82,7 @@ RELATIONSHIP = [
     re.compile(p, re.I)
     for p in (
         r"\bI (?:really )?miss(?:ed)? you\b",
-        r"\bI(?:'ve| have)? (?:been|was|am|'m|feel|felt) (?:so |a bit |kind of )?(?:lonely|alone)\b",
+        r"\bI(?:'m| am| was| feel| felt|'ve been| have been| been) (?:so |a bit |kind of |really )?(?:lonely|alone)\b",
         r"\bI need you\b",
         r"\b(?:please )?don'?t (?:leave|abandon) me\b",
         r"\bdon'?t go(?: away| me)?\s*(?:[,.!]|$)",  # "don't go, I like our chats" (not "don't go to bed late")

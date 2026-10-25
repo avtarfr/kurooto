@@ -301,7 +301,15 @@ class Presence:
     def line_text(self) -> str:
         """What your call line says when this computer is gone (it fills in the time and why)."""
         tail = "your call line still places scheduled calls" if self._line_places_calls() else "calls wait too"
-        return f"{self.app.name} has been offline since %%SINCE%% (%%WHY%%): reminders wait until it's back; {tail}."
+        extra = ""
+        try:  # (Brain, stage 05) what the next 12 hours don't have a guarantee for while it's down
+            from kurooto.mind import promises
+
+            extra = promises.outage_line(self.app)
+        except Exception:
+            pass
+        head = f"{self.app.name} has been offline since %%SINCE%% (%%WHY%%)"
+        return f"{head}: reminders wait until it's back; {tail}.{extra}"
 
     def back_text(self, p: dict, t: float) -> str:
         since, back = float(p["since"]), float(p["back"])

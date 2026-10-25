@@ -26,7 +26,7 @@ from pathlib import Path
 from kurooto import mind
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
-from kurooto.mind import gate, mood, signals, tone
+from kurooto.mind import feelings, gate, measure, mood, promises, signals, tone
 from kurooto.mind import log as mlog
 from kurooto.modules.base import Command, Incoming, Module
 
@@ -78,6 +78,11 @@ class Mind(Module):
         self.every("score", "daily 20:55", lambda p: mood.run_score(self.app) if mind.on(self.app) else False)
         self.every("forecast", "daily 21:00", lambda p: mood.run_forecast(self.app) if mind.on(self.app) else None)
         self.every("ask", "daily 19:30", lambda p: mood.ask(self.app) if mind.on(self.app) else False)
+        # stage 05: the body budget, its promises and its feelings (each its own switch)
+        self.every("budget", "every 5m", lambda p: measure.run(self.app) if mind.on(self.app) else False)
+        self.every("promises", "every 5m", lambda p: promises.review(self.app) if mind.on(self.app) else {})
+        self.every("feelings", "hourly", lambda p: feelings.tick(self.app) if mind.on(self.app) else None)
+        self.every("feeling_say", "daily 17:30", lambda p: feelings.say(self.app) if mind.on(self.app) else False)
 
     def _signals(self, payload: dict | None = None) -> int:
         """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""
@@ -213,6 +218,8 @@ class Mind(Module):
 
     def commands(self) -> list[Command]:
         return [
+            Command("budget", "Brain's body budget: its variables, drive, reward and current feeling", self.budget_cmd),
+            Command("promises", "what Kurooto said it would do, and whether it did", self.promises_cmd),
             Command(
                 "mood",
                 "how Brain reads you and what it expects of tomorrow (it only watches for now)",
@@ -228,6 +235,14 @@ class Mind(Module):
             ),
         ]
 
+    def budget_cmd(self, msg: Incoming, arg: str) -> str:
+        from kurooto.mind import report
+
+        return report.budget_text(self.app)
+
+    def promises_cmd(self, msg: Incoming, arg: str) -> str:
+        return promises.listing(self.app) if mind.on(self.app) else "Brain is off (Features → Brain)."
+
     def mood_cmd(self, msg: Incoming, arg: str) -> str | None:
         text, buttons = mood.view(self.app)
         msg.reply(text, buttons or None)
@@ -235,6 +250,10 @@ class Mind(Module):
 
     def cmd(self, msg: Incoming, arg: str) -> str:
         c = mind.connect(self.app)
+        if (arg or "").strip().lower() == "learning":
+            from kurooto.mind import report
+
+            return report.learning_text(self.app)
         if (arg or "").strip().lower() == "gate":
             text, buttons = gate.status(self.app)
             msg.reply(text, buttons or None)
@@ -301,7 +320,13 @@ def button(app, ref: str, act: str) -> str:
     mind.forget_client(app)
     n = mlog.MindLog(d / "log.db").count() if d.exists() else 0
     shutil.rmtree(d, ignore_errors=True)
-    for f in ("mind-gate.json", "mind-mood.json", "mind-tone.json"):  # the gate's, the read's and the tone's own files
+    for f in (
+        "mind-gate.json",
+        "mind-mood.json",
+        "mind-tone.json",
+        "mind-promises.json",
+        "mind-feelings.json",
+    ):  # the gate's, the read's and the tone's own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)
     return "Deleted Brain's data." if not d.exists() else "Couldn't delete all of it; /mind says what's left."

@@ -134,6 +134,12 @@ class Notifier:
         if calm is not None and calm.decide(msg) != "send":
             return None
         gate.sent(self.app, msg)  # it went out: it counts toward the hour, the day and the touches
+        try:  # (Brain, stage 05) a promise in what it said is written down, to be kept or owned up to
+            from kurooto.mind import promises
+
+            promises.seen(self.app, msg.text, msg.why)
+        except Exception:
+            pass
         if msg.why and msg.why != "asked":  # one it starts by itself: its decision record (Brain, mind/records.py)
             records.decide(self.app, f"message:{msg.kind}", scored_reason=msg.why, source="rules")
         return self.release(msg)

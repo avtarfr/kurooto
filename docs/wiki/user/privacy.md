@@ -197,6 +197,13 @@ never a label or a number of yours. Nothing of it reaches a cloud AI or leaves t
 ask doesn't name what it read. **Forget this** under `/mood` deletes a day's numbers, read, answer and forecast and what was
 kept of that day's messages, calls and requests; **Off** deletes it all after you confirm.
 
+**Brain's body budget, values, feelings and promises** (0.8.0, part of Brain; `mind.budget.on`, `mind.values.on`,
+`mind.feelings.on`, `mind.promises.on`, `mind.heartbeat.on`) keep numbers about Kurooto's own state (slack, health, the drive, rewards,
+learned values) in the `mind` folder, what it said it would do (the sentence, cut to 140 characters, and when) in
+`mind-promises.json` for 30 days, and its current feeling in `mind-feelings.json`, in the state folder. None of it leaves the
+computer; an AI request is told only the rule about feelings and, rarely, "keep it short", never a reading of you. Delete Brain's
+data removes all of it.
+
 ## Where requests go
 
 Every request Kurooto makes on the internet goes through one place that counts it: the host, the feature, how many

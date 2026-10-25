@@ -248,6 +248,7 @@ REASONS: dict[str, Reason] = {
         R("calls.own", "a call you asked for", exempt="own", stop=None, later=False),
         R("mind.off", "you turned Brain off: what it kept, and whether to delete it", exempt="own", stop=None),
         R("mood.off", "you turned Brain's read off: whether to delete what it kept", exempt="own", stop=None),
+        R("mind.promise_broken", "Kurooto owning up first to something it said it would do and didn't", stop=None),
         R("study.timer", "the end of a study session you started with a length", exempt="own", stop=None),
         R("quiz.checkin", "a quiz time you set", exempt="own", stop=None, later=False),
         R(
@@ -338,6 +339,13 @@ REASONS: dict[str, Reason] = {
             setting="deadlines.overdue_check",
             stop=to(False, 'no more "Overdue?" questions'),
             suggest=True,
+        ),
+        R(
+            "mind.feeling",
+            "Kurooto saying how it feels about a specific item (Brain's feelings)",
+            many="lines about how Kurooto feels",
+            setting="mind.feelings.express",
+            stop=to(False, "no more lines about how Kurooto feels"),
         ),
         R(
             "mood.ask",

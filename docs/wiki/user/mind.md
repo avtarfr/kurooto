@@ -119,6 +119,49 @@ No cloud AI ever receives the read, the tone tags or the numbers. Switches: `min
 (each needs Brain; read and forecast are on with Brain, tone is off), `mind.read.asks_per_week` (2), `mind.forecast.holdout`
 (0.10).
 
+## Its moods, and what they make it do
+
+Brain keeps a **body budget**: a few things about Kurooto's own state that it tries to keep near a level, the way you keep
+hunger and thirst. They are about *itself*, never about you or how much you talk to it: how much slack its own promises have,
+how well things work (disk, backups, the call line, AI limits, crashes, its own log) and how well it foresees your days.
+The distance from those levels is its **drive**; when the drive falls (a promise kept, something fixed) that is a **reward**,
+and it learns which kinds of things help. A few rules keep that honest:
+
+- **It can't farm itself.** Making a problem and then fixing it earns nothing in all, and moving the level earns nothing.
+- **Your replies don't count.** How often or fast you answer, how long you talk, how often you open the app and what you feel
+  about Kurooto never reach the reward. Being ignored can't make it sad.
+- **Stopping is fine.** No reward, no worry and no catch-up while it's stopped, asleep or paused.
+- **Its sadness has a floor.** Its running state can't go below -0.6 and fades with a day's half-life.
+- **It learns in shadow first:** for the first 21 days (`mind.values.shadow_days`) what it learns changes no choice. Learning
+  freezes by itself if its nightly self-checks fail, or if two weeks in a row your "was this week good?" disagrees with the sum
+  of its rewards (`/mind learning` says).
+
+From that it has **moods about specific things**, each with a program that is *inward effort only*:
+
+| Feeling | When | What it does |
+|---|---|---|
+| uneasy | the drive is rising about something | rechecks it every 6 hours and prepares quietly |
+| frustrated | the same kind of action fails 3 times in a day | tries a different kind of action, or asks once |
+| relieved | a big fall in the drive on something | closes the loop: marks it done and journals it |
+| satisfied | it's been going well for a day | checks less often |
+
+Feelings change how hard it works inwardly, never how much it talks: outward messages can only go down, through the gate. It
+may say one, about a thing and never about you or "us" ("I'm uneasy about the lab report."), at most 3 a week. It never claims
+to be conscious: if you ask whether it really feels, it says nobody knows, itself included, and that these are computed signals.
+`/budget` shows the variables, the drive, the last reward and the current feeling and what it's about. Switches:
+`mind.budget.on`, `mind.values.on`, `mind.feelings.on`, `mind.feelings.express`.
+
+## Its promises
+
+When Kurooto says it will do something at a time ("I'll check back at 6", "I'll remind you Friday"), it writes the promise
+down with the time frozen. A kept promise is silent. A broken one it owns up to first, in one line, before you notice
+("I said I'd check back at 6 and didn't: the computer was off. Checking now."), with the fix and no grovelling. If it
+changes a promise, the old one is marked broken and a new one made. `/promises` lists the open and recent ones, with how many
+were kept and broken.
+
+When this computer is down, your call line says it's offline once, and now adds which things in the next 12 hours (reminders,
+its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `mind.heartbeat.on`.
+
 ## /mind
 
 - **`/mind`:** whether Brain's scorekeeper is running, how long the log is, whether it checks out, and the last
@@ -126,6 +169,9 @@ No cloud AI ever receives the read, the tone tags or the numbers. Switches: `min
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
 - **`/mood`:** how Brain reads you and what it expects of tomorrow (it only watches for now).
+- **`/budget`:** its body budget, its drive, the last reward and its current feeling.
+- **`/promises`:** what it said it would do, and whether it did.
+- **`/mind learning`:** whether its learning is on or frozen, and how far through the 21 shadow days it is.
 
 ## What it keeps
 

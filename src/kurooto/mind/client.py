@@ -122,6 +122,14 @@ class MindClient:
             out.setdefault(day, {})[name] = r["value"]
         return out
 
+    def vars_rows(self, prefix: str = "") -> list[dict]:
+        """Rows of the body budget's `vars` table (x:<name>, D, tonic, neg, negd:<class> ...), read-only."""
+        return self._score().rows("vars", prefix)
+
+    def values_rows(self, prefix: str = "") -> list[dict]:
+        """Rows of the learned values (V:<state>, Q:<state>|<action class>), read-only."""
+        return self._score().rows("values", prefix)
+
     def mood_rows(self, prefix: str = "") -> list[dict]:
         """Rows of the mood table: read:<day>, answer:<day>, cal:<day>, forecast:<day>, score:<day>."""
         return self._score().rows("reads", prefix)
@@ -135,7 +143,11 @@ class MindClient:
         the queue is full; never raises, never waits."""
         if not mlog.accepted_fact(kind):
             return False
-        clean = records.plain(body or {}) if kind in mlog.MOOD_KINDS else records.clean_fact(kind, body or {})
+        clean = (
+            records.plain(body or {})
+            if kind in mlog.MOOD_KINDS | mlog.BUDGET_KINDS
+            else records.clean_fact(kind, body or {})
+        )
         fact = {"kind": kind, "body": clean, "ts": round(time.time(), 3)}
         try:
             self._q.put_nowait(fact)

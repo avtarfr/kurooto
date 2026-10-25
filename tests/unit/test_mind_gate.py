@@ -38,6 +38,7 @@ LINTS = [
     ("Done: three reminders moved.", False, "Done: three reminders moved.", []),
     ("I am glad the thesis chapter 2 compiles now.", True, "I am glad the thesis chapter 2 compiles now.", []),
     ("Curious fact: the forecast was right twice.", True, "Curious fact: the forecast was right twice.", []),
+    ("I'm lonely without you.", True, "", ["relationship"]),  # (0.8.0 stage 05: "I'm" counts as well as "I am")
     # a feeling about nothing open
     ("I'm uneasy today.", True, "", ["no_item"]),
     ("I feel worried.", False, "", ["no_item"]),

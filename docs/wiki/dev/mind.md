@@ -427,3 +427,67 @@ read, the mood view or the forecast.
 `tier()`: none (off, no local helper model, or 8 GB or less on battery), cpu (hourly batch; texts wait in memory only), gpu
 (each message on a thread). Prompt: a fixed instruction, 3 output tokens. Tags are numbers in `mind-tone.json`, dropped at 04:05
 the next day (`roll`); `forget` removes them.
+
+## Stage 05: the body budget, reward, values, feelings and promises
+
+Invariants I-3 (full: engagement never reaches reward), I-4 (can't be farmed), I-9 (the honesty rule in every AI request),
+I-5 (stops pay nothing). Code: `mind/budget.py`, `reward.py` (`REWARD = True`), `values.py`, `engine.py` (the scorekeeper's
+half), `measure.py` (the daemon's half), `promises.py`, `feelings.py`, `report.py` (`/budget`, `/mind learning`). Tests:
+`test_mind_reward.py`, `test_mind_feelings.py`, `test_mind_promises.py`. Switches: `mind.budget.on`, `mind.values.on`
+(`shadow_days` 21), `mind.feelings.on`, `mind.feelings.express`, `mind.promises.on`, `mind.heartbeat.on`; all under Brain.
+
+### Who does what (I-1)
+
+The daemon measures and hands over a `budget_tick` fact (`measure.run`, every 5 minutes: `promise_slack` from the ledger,
+`health` from disk, backup age, the call line, AI limits, crashes in 24 h and the log's own chain, the hour, whether you're at
+the computer, exam season). `Keeper.budget_fact` gives it to `engine.Engine.tick`; nothing in a tick can set a score (extra
+fields are ignored: `test_nothing_in_a_tick_sets_a_score`). `forecast_skill` is the scorekeeper's own mean of the last 14 days of
+stored stage 04 skills. `engine.py` doesn't import the scorekeeper (the import-graph test), and `scorekeeper.py` imports it as
+`kurooto.mind.engine` through the package (`whitelist.allowed_import`).
+
+### The equations
+
+- Variables x_i in [-1, 1] (health in [0, 1]); setpoints and tolerances `budget.DEFAULTS` (exam season multiplies
+  deadline_margin's tolerance by 1.5; approved overrides in the `setpoints` table).
+- Drive `D = sum_i w_i * softplus((s_i - x_i) / t_i)^2` over the measured variables, weights `budget.WEIGHTS` (1).
+- Reward `r_t = clip(D_prev(under today's setpoints) - D_now) + carry`: the raw difference is scored with the previous variables
+  against **today's** setpoints (a moved bar pays 0), and what doesn't fit in [-1, 1] is carried to the next tick (`carry` in
+  `vars`), so the sum of rewards equals the total fall of the drive (a drop of 1.5 then two recoveries of 0.75 pays 0 in all:
+  `test_create_then_fix_nets_zero`, `test_the_carry_makes_clipping_telescope`). Inside a stop span, on the first tick, or after a
+  gap over 3 hours: r = 0, the carry is dropped, no catch-up.
+- Running state: `NegativeState`, `v <- v * 0.5^(dt/24h)`, then `v <- max(-0.6, v + r)` for r < 0. Tonic reward: EMA of r, tau 7
+  days of live time (`reward.ema`). Arousal input: EMA of |delta|, tau 6 hours.
+- Values: tabular TD(0), `delta = r + 0.9 V(s') - V(s)`, `V(s) += 0.1 delta`, in `values` (`V:<state>`), state
+  `<top variable>|<6 hour band>|<at|away>`. `Q:<state>|<action class>` moves toward `r - tonic` only for decision records
+  with a registered `claim` since the last tick (read from the scorekeeper's own log, `claims_seq`); a bad outcome on a class counts in
+  `negd:<class>` for 24 h. Not while `flag:learning_frozen` (`Engine.freeze`: any caller may freeze, only agreement of the
+  weekly verdict with the week's `weekr:` sum, two weeks, clears a verdict freeze). The baseline for Q is the tonic reward
+  until the stage 06 holdout exists. In the first `shadow_days`, `values.in_shadow` is true and nothing ranks by Q.
+- Credit: V always updates; Q only from claimed acts; `deadline_margin` isn't measured until stage 06 makes claimed help acts.
+
+### Feelings (`feelings.py`)
+
+`valence` = minus the drive's slope over the last 8 hourly points (and 25% of its 72 h extrapolation), over `1 + D`, in [-1, 1];
+`arousal` = delta EMA; `object` = the variable with the largest share (`budget.top`) and the item behind it (`item_of`). Labels in
+`classify` with `THRESHOLDS`; programs in `PROGRAMS`: `_run_program` sets `recheck_at` (twice as often when aroused) and emits
+`mind_program`; it sends nothing. `say` (daily 17:30) sends the template through the notifier with `why="mind.feeling"` (the gate's
+feeling lints and its 3 a week apply; `test_what_it_says_passes_the_gates_lints`). The lint now also catches "I'm lonely".
+`prompt(app)` is added to `providers/context.headless_context`: the rule, the current computed state about its item, and the tone
+hint (`hint`: only while the read is active and 70% confident, never the label). The same rule is in `data/ai-manual.md`.
+
+### Promises (`promises.py`)
+
+`Notifier.send` calls `promises.seen` after the gate and Calm let a message out (only messages it started: `why` set and not
+"asked"). Rules: "I'll"/"I will" + an act verb + a time `core/clock.parse_when` reads (longest readable start; leading words
+dropped: "at it tomorrow morning"). `review` (every 5 minutes): a doing verb's events (`KEPT_BY`/`KEPT_ANY`) before due -> kept,
+silent; due and nothing -> broken, said once with `why="mind.promise_broken"` ("... the computer was off or asleep" when stage 02's
+spans cover the due time). A new promise to do the same act marks the old `renegotiated` (logged as `promise_broken` first). The
+words live in `mind-promises.json` (deleted with Brain's data; not in backups); `promise_made/kept/broken` events carry ids and
+numbers only. **The heartbeat:** `presence.line_text` appends `promises.outage_line`: reminders due in 12 h minus what the call
+line holds (`lidsafe._held`) plus open promises, once per outage (the line says it once already).
+
+### Not done / for later
+
+The weekly retro line and the monthly Dreaming self-checks (I-3, I-5 replays, I-10) that set `learning_frozen` aren't built
+(the verdict path and `learning_freeze` fact exist). The owner-set setpoint changes through `/retro` aren't wired: the table
+accepts overrides but nothing writes them yet. Stage 06 supplies claimed help acts, so `deadline_margin` stays unmeasured.

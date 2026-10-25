@@ -39,6 +39,7 @@ import time
 from multiprocessing.connection import Listener
 from pathlib import Path
 
+from kurooto.mind import engine as eng
 from kurooto.mind import forecast as fc
 from kurooto.mind import log as mlog
 from kurooto.mind import read as rd
@@ -47,7 +48,8 @@ from kurooto.mind.score import TABLES, Score
 
 # stage 04: facts about the day, handled here (stored in score.db with a retention, not copied whole into the log)
 MOOD_KINDS = mlog.MOOD_KINDS
-ACCEPTED_FROM_DAEMON = frozenset({*mlog.MIRRORED, "decision", *MOOD_KINDS})
+BUDGET_KINDS = mlog.BUDGET_KINDS
+ACCEPTED_FROM_DAEMON = frozenset({*mlog.MIRRORED, "decision", *MOOD_KINDS, *BUDGET_KINDS})
 SIGNALS_KEEP_S = 30 * 86400
 ANSWER_KEEP_S = 7 * 86400
 CAL_KEEP = 200  # calibration pairs (strength, right), no dates or words
@@ -80,6 +82,7 @@ class Keeper:
         self.score = Score(self.dir / "score.db", writable=True, mode=self.mode)
         self.anchor_every = max(10, int(anchor_every or 1000))
         self.lock = threading.Lock()
+        self.engine = eng.Engine(self)
 
     # -------------------------------------------------------------------------------------------- requests
     def handle(self, req) -> dict:
@@ -120,6 +123,8 @@ class Keeper:
             return self.refuse(f"append:{kind}"[:40] if records.ID.match(kind or "x") else "append")
         if kind in MOOD_KINDS:
             return self.day_fact(kind, body if isinstance(body, dict) else {})
+        if kind in BUDGET_KINDS:
+            return self.budget_fact(kind, records.plain(body) if isinstance(body, dict) else {}, ts)
         clean = records.clean_fact(kind, body if isinstance(body, dict) else {})
         if kind == "decision" and not clean:
             return {"error": "not a decision record"}
@@ -263,6 +268,16 @@ class Keeper:
             records.clean_fact("forecast_score", {"day": day, "n": len(scored), "mean_surprise": mean}),
         )
         return {"ok": True, "seq": seq}
+
+    def budget_fact(self, kind: str, b: dict, ts: float | None = None) -> dict:
+        """The body budget's inputs (mind/engine.py): measurements of Kurooto's own state, never scores."""
+        with self.lock:
+            if kind == "budget_tick":
+                return self.engine.tick(b, ts)
+            if kind == "learning_verdict":
+                return self.engine.verdict(b)
+            self.engine.freeze(str(b.get("why") or "check"))
+            return {"ok": True}
 
     def retention(self) -> None:
         """What stage 04 keeps, and for how long: the day's numbers and reads 30 days, your answers 7, the calibration
