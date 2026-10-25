@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.8.3",
+  "notes": "The Brain pane: live 3D brain model integrated directly into the dashboard beside Systems (Alt+B to maximize), with region switches, monitors, and the hardened-mode note.",
+  "created": 1792964004.1644683,
+  "files": {
+   "kurooto-0.8.3.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.3/kurooto-0.8.3.tar.gz",
+    "sha256": "908898d7f460ead0500a85b2395fb72e93d22e17c350c4d81bc0dac2af3ade3d",
+    "size": 4912245
+   }
+  }
+ },
+ "sig": "16eZNd6cx7HVPZ+xvQjebAnFmCzBRYf0PtsMfQBRMl89Nw6QPug7c1E+MaUcOIuA3cJq6lgCb++2ynGfmJRqBQ=="
+}
