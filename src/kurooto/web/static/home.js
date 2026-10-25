@@ -59,45 +59,34 @@ const hideList = () => Object.keys(PANES).filter((p) => HIDE.has(p));
 const shownPanes = () => (STUDY ? new Set(["notes"]) : new Set(Object.keys(PANES).filter((p) => (MAX ? p === MAX : !HIDE.has(p)))));
 // on screen (not hidden, filled over or under a page); in Study mode only the notes map
 const paneShown = (p) => (STUDY ? p === "notes" && !(DENSE && PAGE) : !DENSE || (!PAGE && shownPanes().has(p)));
-// the grid for the panes that show: STATUS down the left; SYSTEMS and BRAIN on top (equal size), TERMINAL and NOTES below
+// the grid for the panes that show: NOTES, SYSTEMS, BRAIN on top; STATUS (split in two) and TERMINAL below
 function paneGrid(vis) {
-  const st = vis.has("status");
-  const hasSys = vis.has("systems"), hasBrain = vis.has("brain"), hasNotes = vis.has("notes"), hasTerm = vis.has("terminal");
+  const hasNotes = vis.has("notes"), hasSys = vis.has("systems"), hasBrain = vis.has("brain");
+  const hasSt = vis.has("status"), hasTerm = vis.has("terminal");
   const top = [], bot = [];
-  if (hasSys && hasBrain) {
-    top.push("systems", "brain");
-    if (hasTerm && hasNotes) bot.push("tabs", "notes");
-    else if (hasTerm) bot.push("tabs", "tabs");
-    else if (hasNotes) bot.push("notes", "notes");
-  } else if (hasSys || hasBrain) {
-    const main = hasSys ? "systems" : "brain";
-    if (hasNotes) {
-      top.push(main, "notes");
-      if (hasTerm) bot.push("tabs", "tabs");
-    } else if (hasTerm) {
-      top.push(main, main);
-      bot.push("tabs", "tabs");
-    } else {
-      top.push(main, main);
-    }
-  } else {
-    if (hasNotes && hasTerm) {
-      top.push("notes", "notes");
-      bot.push("tabs", "tabs");
-    } else if (hasNotes) {
-      top.push("notes", "notes");
-    } else if (hasTerm) {
-      top.push("tabs", "tabs");
-    }
+  if (hasNotes) top.push("notes");
+  if (hasSys) top.push("systems");
+  if (hasBrain) top.push("brain");
+  if (hasSt && hasTerm) bot.push("status", "status", "tabs");
+  else if (hasSt) bot.push("status", "status", "status");
+  else if (hasTerm) bot.push("tabs", "tabs", "tabs");
+
+  // Fallbacks if top or bottom row is completely empty
+  if (!top.length && !bot.length) return { areas: '"status"', cols: "minmax(0, 1fr)", rows: "minmax(0, 1fr)" };
+  if (!top.length) {
+    return { areas: `"${bot.join(" ")}"`, cols: hasSt && hasTerm ? "1fr 1fr 1fr" : "minmax(0, 1fr)", rows: "minmax(0, 1fr)" };
   }
-  const rows = [];
-  if (top.length) rows.push(top);
-  if (bot.length) rows.push(bot);
-  if (!rows.length) return { areas: '"status"', cols: "minmax(0, 1fr)", rows: "minmax(0, 1fr)" };
-  const big = NEW && top.length === 2 && top[0] === "systems" && top[1] !== "brain";
-  return { areas: rows.map((r) => `"${st ? "status " : ""}${r.join(" ")}"`).join(" "),
-    cols: `${st ? (NEW ? "minmax(440px, 31%) " : "minmax(440px, 34%) ") : ""}${big ? "minmax(0, 1.45fr) minmax(0, 1fr)" : "1fr 1fr"}`,
-    rows: rows.length === 2 ? (NEW && top.includes("systems") && !top.includes("brain") ? "63% minmax(0, 1fr)" : "55% minmax(0, 1fr)") : "minmax(0, 1fr)" };
+  if (!bot.length) {
+    return { areas: `"${top.join(" ")}"`, cols: top.map(() => "1fr").join(" "), rows: "minmax(0, 1fr)" };
+  }
+
+  // Both rows present: pad top to 3 cols if needed
+  while (top.length < 3) top.push(top[top.length - 1]);
+  return {
+    areas: `"${top.join(" ")}" "${bot.join(" ")}"`,
+    cols: hasSt && hasTerm ? "1fr 1fr 1.15fr" : "1fr 1fr 1fr",
+    rows: "54% minmax(0, 1fr)"
+  };
 }
 function applyPanes() {
   const grid = $(".grid"), vis = shownPanes();

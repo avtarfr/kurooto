@@ -43,7 +43,7 @@ def test_alt_keys_open_the_pages_but_a_terminal_keeps_its_own(page):
 def test_the_pane_grid_reflows_for_what_shows(page):
     _, js, _ = page
     grid = js.split("function paneGrid")[1].split("\n}\n")[0]
-    assert '"tabs", "tabs"' in grid and "minmax(440px, 34%)" in grid  # STATUS keeps its width; TERMINAL spans the rest
+    assert '"tabs"' in grid and "1fr 1fr" in grid
 
 
 def test_features_and_settings_have_a_search_that_marks_what_it_found(page):

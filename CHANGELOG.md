@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.4 (2026-10-26)
+
+- **Balanced 3-column dashboard layout**: Notes on the leftmost, Systems in the center, and 3D Brain on the right in the top row; Status pane moved to the bottom row split into two scrollable columns alongside the terminal with all tabs and buttons intact.
+- **The Brain 3D visualization polish**: Background unified with panel theme (`transparent`/`var(--panel)`), colors mapped to the dashboard's active theme palette (`PAL.lav`, `PAL.peach`, `PAL.sand`, `PAL.pink`, `PAL.ok`, `PAL.bad`, `PAL.accent`), side panel collapsed by default and revealed smoothly on hover, and constant subtle auto-spin enabled.
+
 ## 0.8.3 (unreleased)
 
 - **The Brain pane** (dashboard, Alt+B to fill the board): the 3D model of the Brain integrated directly into the dashboard layout alongside Systems, with region switches and live monitors beside the model.
