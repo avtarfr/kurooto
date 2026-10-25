@@ -16,6 +16,8 @@ Standing plans, never struck through.
 - ~~**A notes sorter**~~ (0.7.4: Features → Notes sorter; see Notes sorter in the user wiki): notes dropped in a scratch folder are moved by Kurooto into the right zettelkasten or
   Kurooto-style folders, with Undo, a limit a night and never overwriting; it needs a permission to move files in your notes,
   which will be a switch, off until you turn it on.
+- **Study pack: your own instructions for the prompt** (planned for 0.8.0): today the prompt that comes in the zip is fixed. A setting for lines of your own
+  ("Markdown only, no PDF or zip", or "also give me a PDF"), a template of your own, and a phrase in the command, so the other AI is told exactly what to hand back.
 - **Chat sessions in the phone app**: each chat a session with its own memory and context; a new chat starts fresh.
 - **Uninstall what a feature brought** (planned for 0.9.0): turning a feature off, or a hardware setting that stops
   using a model, offers to remove what it installed (Ollama models, programs like Node or GBrain) with its size, never
