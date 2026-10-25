@@ -562,3 +562,42 @@ it), and only it writes there. It's excluded from backups and removed with Brain
 The dashboard's Journal page with the rejection rate (the rates are in the `journal_selfcheck` event and `/mindjournal`'s footer); the optional lines
 (the feeling arc, curiosity, what it learned); the decision lines that print both reasons ("I said at the time:") for AI-made decisions;
 `modules/dreaming.py` doesn't call it (the mind module has its own job), so the journal doesn't wait for Dreaming.
+
+
+## Stage 08: one life story with a signed core
+
+Code: `mind/story.py` (`PART = "story"`), `mind/core_signed.md` and `core_signed.sig` (protected: `stops.PROTECTED` already lists `core_signed.*`, now also
+`story.py`), `/story` and the jobs in `modules/mind.py` (weekly Sunday 23:55: `write_week`; daily 23:50: `expire` and `rebuild`), the hooks in
+`providers/context.headless_context` (every unattended request: jobs, chats) and `Calls.pending` (the call's `story` key), `mood.forget_day`. Tests:
+`test_mind_story.py` (12). Switches: `mind.story.on`, `mind.story.tokens` (800).
+
+### Core and summary
+
+`core_ok()` compares the sha256 of `core_signed.md` with `core_signed.sig` every time `core_text()` is called; a mismatch returns "" (so `summary` and
+`prompt` are empty), emits `story_core_tampered` and tells you once (`mind.story_core`). The core is verbatim: no placeholders, no rebuild writes it. (It's
+signed in the release sense: the release's signature covers the package files; the `.sig` also catches a changed file on disk.) `summary(app)` = the core, then
+"What I've lived lately" (newest chapter lines first, each with its `#seq` citations), then up to 3 quoted data lines, trimmed to `mind.story.tokens` x 4 characters
+(the core counts in the cap, so it must stay short: it's about 280 words).
+
+### Chapters
+
+`write_week` reads the week's `mind-journal/*.json` (stage 07; each journal line now keeps its `fact` and `day`), re-runs `journal.check` from the fact (a line
+altered since fails and isn't carried in), orders by `PRIORITY` (broken promises first) and keeps `PER_WEEK` (8). A chapter is `mind-story/weeks/YYYY-Www.json` and `.md`
+(excluded from backups and removed with Brain's data). There's no model step in the chapter: the lines are the journal's already-checked sentences, so the same checker covers
+both. **Deviation:** the spec has a model word the chapter's facts; reusing the checked journal sentences is the same guarantee with less to go wrong.
+
+### Ingested text
+
+`add_quoted(app, source, text)` is the only way outside text enters the story: it lands in the chapter's `quoted` list and renders as `(quoted from <source>, not my
+belief) "<text>"`, in a section after the lived lines, with no `#seq` (`test_ingested_text_only_quoted`). Nothing calls it from the book or mail readers yet; it's the
+door they must use.
+
+### Forget and expiry
+
+`forget_day` drops lines with `about_him` and that `day` (called by `mood.forget_day`), `expire` drops lines about him older than 30 days (nightly), `strike` leaves a tombstone;
+each rebuilds the summary. Lines about its own acts stay.
+
+### Not done
+
+The dashboard's Story page with the weekly chapters and the nightly diff (`/story` shows the diff as "New since last night"); a model's wording of the chapter (above); the calls' *system*
+prompt itself (the Node server's) isn't changed: the story arrives in the call's brief (`pending_items`, which the prompt tells the model to call first).

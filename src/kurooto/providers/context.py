@@ -51,11 +51,14 @@ def headless_context(app: App, extra: str = "") -> str:
         lines.append(
             f"How they like to be helped ({help_rel(app)} in their notes; follow it, their requests win):\n{helps}"
         )
-    from kurooto.mind import feelings  # (Brain, stage 05) the honesty rule about its feelings, and its state, if on
+    from kurooto.mind import (  # (Brain) its story first, the honesty rule about feelings and its state, if on
+        feelings,
+        story,
+    )
 
-    part = feelings.prompt(app)
-    if part:
-        lines.append(part)
+    for part in (story.prompt(app), feelings.prompt(app)):
+        if part:
+            lines.append(part)
     from kurooto.core import persona  # your persona card and the boundaries it keeps (core/persona.py)
 
     for part in (persona.card_text(app), persona.rule(app)):

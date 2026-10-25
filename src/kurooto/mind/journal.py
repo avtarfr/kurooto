@@ -279,6 +279,16 @@ def _feeling_ok(f: Fact, word: str) -> bool:
     }.get(word, False)
 
 
+def fact_dict(f: Fact) -> dict:
+    return {"kind": f.kind, "seqs": f.seqs, "t": f.t, "nums": f.nums, "words": f.words, "cause": f.cause,
+            "label": f.label, "about_him": f.about_him}  # fmt: skip
+
+
+def fact_of(d: dict) -> Fact:
+    return Fact(d["kind"], list(d["seqs"]), float(d["t"]), dict(d.get("nums") or {}), dict(d.get("words") or {}),
+                d.get("cause", ""), d.get("label", ""), bool(d.get("about_him")))  # fmt: skip
+
+
 def _fact_json(f: Fact) -> str:
     return json.dumps(
         {"kind": f.kind, "nums": f.nums, "words": f.words, "cause": f.cause, "label": f.label}, sort_keys=True
@@ -370,7 +380,12 @@ def write_day(app: App, day: dt.date | None = None, use_model: bool = True) -> d
             bad = check(f, text, exist) or ("log" if not verified else "")
         if bad:  # even the fixed sentence fails (the log doesn't verify): the line isn't written
             continue
-        lines.append({"text": text, "seqs": f.seqs, "kind": f.kind, "about_him": f.about_him, "struck": False})
+        lines.append(
+            {
+                "text": text, "seqs": f.seqs, "kind": f.kind, "about_him": f.about_him, "struck": False,
+                "day": day.isoformat(), "fact": fact_dict(f),
+            }
+        )  # fmt: skip
     out = {"day": day.isoformat(), "lines": lines, "rejected": rejected, "facts": len(facts)}
     jsave(folder(app) / f"{day.isoformat()}.json", out)
     (folder(app) / f"{day.isoformat()}.md").write_text(render(out), encoding="utf-8")

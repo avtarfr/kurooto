@@ -310,6 +310,9 @@ def forget_day(app: App, day: str) -> str:
     except ValueError:
         return "No such day."
     mind.connect(app).report("read_forget", {"day": day})
+    from kurooto.mind import story
+
+    story.forget_day(app, day)  # lines about you from that day leave the life story too
     lo, hi = signals.span(d)
     try:
         from kurooto.core import retention

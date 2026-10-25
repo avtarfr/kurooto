@@ -565,6 +565,14 @@ class Calls(Module):
             out.update(assembler.call_brief(self.app))
         except Exception as e:
             self.app.events.emit("calls_brief_failed", module="memory", error=str(e)[:200])
+        try:  # (Brain, stage 08) a call starts from the same life story as every other request (mind/story.py)
+            from kurooto.mind import story
+
+            tale = story.prompt(self.app)
+            if tale:
+                out["story"] = tale
+        except Exception as e:
+            self.app.events.emit("calls_brief_failed", module="story", error=str(e)[:200])
         upcoming = [f"{dt.datetime.fromtimestamp(c['at']):%H:%M} {c['reason']}" for c in self.schedule_list()[:5]]
         if upcoming:
             out["calls_planned"] = upcoming

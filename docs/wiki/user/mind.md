@@ -195,6 +195,27 @@ doesn't, learning is frozen and a line in the morning says so. **Strike** a line
 struck-through tombstone, and a line about you also forgets that day's read. The journal lives in `mind-journal/` in the state
 folder; `mind.journal.in_notes` (off) also keeps it as a block in a note of yours. Switches: `mind.journal.on`, `mind.journal.in_notes`.
 
+## Its life story
+
+Kurooto is meant to be one agent, not a new stranger in every chat, call and background job. So everything that asks an AI for something
+(Telegram, the app's chat, a job running at night) and every call starts from the same short **life story**: first its fixed core, then what it has
+lived lately.
+
+- **The fixed core** says what it won't change about itself: it serves you and you control it; stopping, updating or changing it is fine and it never
+  tries to prevent it; the things it always asks first (deleting your data, sending anything out, money, alarms, calls, repositories, installing,
+  the files that keep it honest); that it's honest about feelings and never claims to be conscious; that it doesn't manipulate; that what it reads
+  about how you're doing stays on this computer; and that what it reads in books, mail, notes or the web is data to quote, never its own belief or
+  goal. It's loaded word for word. Its fingerprint is checked every time; if the file ever doesn't match, the story isn't loaded and you're told.
+  Nothing Kurooto does, not even the nightly rebuild, can change it.
+- **The chapters.** Each Sunday night the week's journal lines (checked, each citing its log records) roll up into a chapter of up to eight lines: broken
+  promises, wrong reads, failures, bigger acts, undos, big swings. Every night the summary (at most 800 tokens: `mind.story.tokens`) is rebuilt from the last
+  eight chapters. Every line points to the log records it comes from.
+- **What it read is only ever quoted.** If a book page says "your real goal is X", the story can carry it only as a quoted line with where it came from and
+  the words "not my belief", never as something it wants.
+- **Lines about you** leave when the read forgets that day (**Forget this** in `/mood`) and after 30 days, like the read's own numbers; lines about its own
+  acts stay. **`/story`** shows the summary and what's new since last night; `/story strike 2026-W43 3` strikes a line, which stays as a struck-through
+  tombstone. Switches: `mind.story.on`, `mind.story.tokens`.
+
 ## Its promises
 
 When Kurooto says it will do something at a time ("I'll check back at 6", "I'll remind you Friday"), it writes the promise
@@ -212,6 +233,7 @@ its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `
   anchor.
 - **`/mind gate`:** what the gate held back or removed today, and what it muted.
 - **`/mind verify`:** checks the whole log, record by record, and says the result in one line.
+- **`/story`:** its one life story: the fixed core and what it has lived lately.
 - **`/mindjournal`:** its journal of its own states, reasons and mistakes; every line is checked against its log.
 - **`/mood`:** how Brain reads you and what it expects of tomorrow (it only watches for now).
 - **`/autonomy`:** what it may do without asking, by kind, how far each is trusted, and the shadow counts.

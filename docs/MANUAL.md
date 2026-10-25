@@ -1632,6 +1632,12 @@ tomorrow is frozen and scored the next evening. Nothing Kurooto does depends on 
 uses the model on this computer only. *Undo:* `mind.read.on`, `mind.forecast.on`, `mind.tone.on` off; **Off** under `/mood`
 deletes what it kept.
 
+**Its life story (Brain, `/story`).** Everything that asks an AI (Telegram, the app's chat, nightly jobs) and every call starts from one short story: first
+a fixed core Kurooto can't change (it serves you and you control it; being stopped or changed is fine; the always-ask list; honesty about feelings; no
+manipulation; what it reads of you stays here; what it reads elsewhere is only quoted), then the last eight weeks' chapters of its own checked journal lines,
+each citing the log. A changed core file isn't loaded (and you're told). Lines about you go with Forget this and after 30 days. `/story`, `/story strike <week>
+<line>`. *Undo:* `mind.story.on` off; Delete Brain's data removes it.
+
 **Its journal (Brain, `/mindjournal`).** Each night it writes down what it got wrong, what you undid, failures, broken promises, wrong reads, big
 swings, changes of feeling, its R2-or-higher acts and proposals, every line citing the log records it comes from and checked by code (numbers,
 names, feelings, causes, no invented events); a model on this computer only words each fact, and a line that fails is replaced by the
@@ -1655,7 +1661,7 @@ the computer is down the call line lists what has no guarantee. *Undo:* `mind.bu
 `mind.feelings.express`, `mind.promises.on`, `mind.heartbeat.on` off.
 
 **Commands:** `/mind` (is it running, how long is the log, does it check out, the last anchor); `/mind verify` (checks
-every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`.
+every record); `/mind learning`; `/mood` (how it reads you and what it expects); `/budget`; `/promises`; `/autonomy`; `/mindjournal`; `/story`.
 
 **Settings:** `mind.anchor_every` (1000: the log's head is noted every this many records, and once a day);
 `mind.hardened` (off).

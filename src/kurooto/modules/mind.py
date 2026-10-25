@@ -26,7 +26,7 @@ from pathlib import Path
 from kurooto import mind
 from kurooto.core.config import register_defaults
 from kurooto.core.events import subscribe
-from kurooto.mind import act, feelings, gate, journal, measure, mood, promises, signals, tone
+from kurooto.mind import act, feelings, gate, journal, measure, mood, promises, signals, story, tone
 from kurooto.mind import log as mlog
 from kurooto.modules.base import Command, Incoming, Module
 
@@ -86,6 +86,11 @@ class Mind(Module):
         self.every("act_digest", "weekly sun 19:10", lambda p: act.digest(self.app) if mind.on(self.app) else False)
         # stage 07: the day's journal, then the checker's own nightly self-check against corrupted copies of it
         self.every("journal", "daily 23:40", self._journal)
+        # stage 08: the week's chapter on Sunday night, the summary rebuilt every night, old lines about you let go
+        self.every(
+            "story_week", "weekly sun 23:55", lambda p: story.write_week(self.app) if mind.on(self.app) else None
+        )
+        self.every("story_night", "daily 23:50", self._story_night)
 
     def _signals(self, payload: dict | None = None) -> int:
         """Hourly: the day's numbers go to the scorekeeper, then today's read is made from them."""
@@ -222,6 +227,12 @@ class Mind(Module):
     def commands(self) -> list[Command]:
         return [
             Command(
+                "story",
+                "Kurooto's one life story: its fixed core and what it has lived lately; /story strike <week> <line>",
+                self.story_cmd,
+                usage="/story [strike <YYYY-Www> <line>]",
+            ),
+            Command(
                 "mindjournal",
                 "Kurooto's own journal of its states, reasons and mistakes, every line checked against its log",
                 self.journal_cmd,
@@ -256,6 +267,18 @@ class Mind(Module):
         out = journal.write_day(self.app)
         journal.selfcheck(self.app)
         return out
+
+    def _story_night(self, payload: dict | None = None) -> str | None:
+        if not mind.on(self.app):
+            return None
+        story.expire(self.app)
+        return story.rebuild(self.app)
+
+    def story_cmd(self, msg: Incoming, arg: str) -> str:
+        words = (arg or "").split()
+        if len(words) == 3 and words[0].lower() == "strike" and words[2].isdigit():
+            return story.strike(self.app, words[1], int(words[2]))
+        return story.status(self.app)
 
     def journal_cmd(self, msg: Incoming, arg: str) -> str:
         import datetime as dt
@@ -381,6 +404,7 @@ def button(app, ref: str, act: str) -> str:
     n = mlog.MindLog(d / "log.db").count() if d.exists() else 0
     shutil.rmtree(d, ignore_errors=True)
     shutil.rmtree(app.paths.state / "mind-journal", ignore_errors=True)  # its journal (mind/journal.py)
+    shutil.rmtree(app.paths.state / "mind-story", ignore_errors=True)  # its life story (mind/story.py)
     for f in (
         "mind-gate.json",
         "mind-mood.json",

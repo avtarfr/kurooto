@@ -229,6 +229,7 @@ PROTECTED = (
     "kurooto/mind/risk.py",
     "kurooto/mind/trust.py",
     "kurooto/mind/act.py",
+    "kurooto/mind/story.py",
     "kurooto/mind/core_signed.*",
     "kurooto/modules/mind.py",
     "kurooto/core/tap.py",

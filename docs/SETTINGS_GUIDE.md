@@ -632,6 +632,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.promises.on` | `true` | its own promises: noticed, kept or owned up to first |
 | `mind.read.asks_per_week` | `2` | the most times a week it asks whether the week felt heavier than usual |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days (it only watches for now) |
+| `mind.story.on` | `true` | one autobiography every part of Kurooto reads first (a fixed core, then its recent weeks) |
+| `mind.story.tokens` | `800` | the self-summary is at most this many tokens (about 4 characters each) |
 | `mind.tone.on` | `false` | tag each message you write with one word, with the model on this computer only |
 | `mind.values.on` | `true` | learned values; for this many days they never affect a choice |
 | `mind.values.shadow_days` | `21` | learned values; for this many days they never affect a choice |
