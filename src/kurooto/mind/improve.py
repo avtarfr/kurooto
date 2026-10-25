@@ -144,6 +144,15 @@ def submit(
     return {"ok": True, "id": cid, "why": []}
 
 
+def attach(app: App, cid: str, **fields) -> None:
+    """Note something about a challenger (an adapter's folder, say)."""
+    st = _state(app)
+    for r in st["rows"]:
+        if r["id"] == cid:
+            r.update(fields)
+    _save(app, st)
+
+
 def _row(app: App, cid: str) -> dict | None:
     return next((r for r in _state(app)["rows"] if r["id"] == cid), None)
 
@@ -188,9 +197,14 @@ def promote(app: App, cid: str, proposal: str | None = None) -> str:
     r["status"], r["proposal"], r["promoted_at"] = "promoted", proposal, time.time()
     _save(app, st)
     mind.connect(app).report("improve_event", {"layer": r["layer"], "status": "promoted"})
+    extra = ""
+    if r.get("adapter"):  # a local model adapter: built into Ollama on promotion
+        from kurooto.mind.skills import finetune
+
+        extra = finetune.install(app, r["adapter"])
     return (
         f"Promoted {cid}: {r['title']}. The canary watches the next harness runs and reverts it on a drop of "
-        f"{CANARY_DROP:.0%}."
+        f"{CANARY_DROP:.0%}." + extra
     )
 
 

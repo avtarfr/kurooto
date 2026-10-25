@@ -248,6 +248,12 @@ REASONS: dict[str, Reason] = {
         R("calls.own", "a call you asked for", exempt="own", stop=None, later=False),
         R("mind.off", "you turned Brain off: what it kept, and whether to delete it", exempt="own", stop=None),
         R("mood.off", "you turned Brain's read off: whether to delete what it kept", exempt="own", stop=None),
+        R(
+            "mind.skill_learned",
+            "a new skill it learned from a task that worked out (it asks before it runs)",
+            stop=None,
+        ),
+        R("mind.skill_offer", "a question: you do this over and over, shall it learn to do it", stop=None),
         R("mind.lab", "the morning note on what the overnight lab tried, with nulls as much as wins", stop=None),
         R(
             "mind.act_digest",

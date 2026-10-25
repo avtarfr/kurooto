@@ -105,6 +105,8 @@ BUDGET_KINDS = frozenset(
         "lab_prereg",
         "lab_result",
         "improve_event",
+        "skill_event",
+        "finetune_event",
     }
 )  # stages 05, 09 and 10: see mind/engine.py
 

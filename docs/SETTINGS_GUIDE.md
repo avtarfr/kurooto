@@ -620,6 +620,13 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.budget.on` | `true` | the body budget: its variables, setpoints and drive |
 | `mind.feelings.express` | `true` | it may say one about an item, through the gate's lints, at most 3 unprompted a week |
 | `mind.feelings.on` | `true` | computed states about specific items, and what they make it do (inward effort only) |
+| `mind.finetune.base` | `""` | the local model's name in Ollama to build the adapter into (empty: the helper model) |
+| `mind.finetune.base_hf` | `""` | the same model's Hugging Face name, which the trainer loads |
+| `mind.finetune.day` | `"sun"` | the night it trains (mon to sun) |
+| `mind.finetune.min_examples` | `30` | fewer verified examples than this and it skips the week |
+| `mind.finetune.on` | `false` | a weekly local fine-tune on checked examples; needs an 8 GB GPU and the training packages |
+| `mind.finetune.practice` | `true` | include the harness' practice tasks, which its own rules solve and a grader checks |
+| `mind.finetune.probe_words` | `5` | words of a forgotten prompt kept to check that the new adapter forgot it (3 or more) |
 | `mind.forecast.holdout` | `0.1` | the share of days a planned action is withheld on purpose, to measure what it does |
 | `mind.forecast.on` | `true` | each evening at 21:00, what Brain expects of tomorrow, scored the next evening (shadow mode) |
 | `mind.gate.feelings_per_week` | `3` | Brain saying how it feels about something, at most this often unasked |
@@ -645,6 +652,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.promises.on` | `true` | its own promises: noticed, kept or owned up to first |
 | `mind.read.asks_per_week` | `2` | the most times a week it asks whether the week felt heavier than usual |
 | `mind.read.on` | `true` | Brain's read of how you're doing, from numbers about your days (it only watches for now) |
+| `mind.skills.from_demos` | `false` | also offer skills from what you do over and over (needs the activity stream) |
+| `mind.skills.on` | `true` | solved tasks and demonstrations become tested, reusable skills; each starts by asking first |
 | `mind.story.on` | `true` | one autobiography every part of Kurooto reads first (a fixed core, then its recent weeks) |
 | `mind.story.tokens` | `800` | the self-summary is at most this many tokens (about 4 characters each) |
 | `mind.tone.on` | `false` | tag each message you write with one word, with the model on this computer only |

@@ -78,9 +78,11 @@ def free_port(start: int) -> int:
 
 
 def static(name: str) -> bytes | None:
-    if not re.fullmatch(r"(?:vendor/xterm/|views/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)", name) and not re.fullmatch(
-        r"fonts/[a-z0-9_-]+\.woff2", name
-    ):  # vendor: the terminals; views: SYSTEMS and NOTES (the phone app's too); fonts: the typeface (fonts/OFL.txt)
+    if (
+        not re.fullmatch(r"(?:vendor/xterm/|views/)?[a-z0-9_-]+\.(html|js|css|svg|png|ico)", name)
+        and not re.fullmatch(r"fonts/[a-z0-9_-]+\.woff2", name)
+        and not re.fullmatch(r"vendor/katex/(?:katex\.min\.(?:js|css)|fonts/KaTeX_[A-Za-z0-9_-]+\.woff2)", name)
+    ):  # vendor: terminals and katex (recall maths); views: SYSTEMS and NOTES (the phone app's too); fonts: the typeface
         return None
     f = resources.files("kurooto.web").joinpath("static", *name.split("/"))
     return f.read_bytes() if f.is_file() else None

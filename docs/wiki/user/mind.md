@@ -222,6 +222,30 @@ lists them with their source, how sure it was and how each source has done. Swit
 `mind.workspace.cycle_s` (30), `mind.attention.on`, `mind.beliefs.on`. *Undo:* turn them off; Delete Brain's data removes `mind-workspace.json` and
 `mind-beliefs.json`.
 
+## Skills it learns
+
+When a task works out (a change it proposed was applied, its tests passed, and you didn't undo it for two days), Kurooto can turn it into a **skill**: a
+small, reusable procedure with a note on when to use it and at least two tests taken from the original task. A new skill has to pass its own tests before
+it is kept, and it starts out **always asking**: it won't run on its own until you classify it with `/autonomy classify skill.<name> R1` after it has
+earned that. `/learned` lists them (how often each worked, older versions); `/learned run <name> <text>` runs one when you ask; `/learned retire <name>`
+retires one. A skill unused or failing for 30 days retires itself, and its older versions stay. Health, money and other people's messages never become
+skills. Switch: `mind.skills.on`.
+
+If you turn on `mind.skills.from_demos`, it also watches for something you do over and over (the same two to six steps, close together, on at least three
+different days) and asks once: "I noticed you do this on 3 different days: ... Want me to learn to do it?" Yes makes a candidate that must pass its tests;
+No is remembered and it never asks about that again. It reads the shape of what you did (digits become #), never whether you liked anything. The activity it
+reads comes from the activity stream (0.8.0, stage 13); with no stream there is nothing to offer.
+
+**A weekly local fine-tune** (`mind.finetune.on`, off): on `mind.finetune.day` at night, on the charger, with an 8 GB graphics card and the training
+packages installed, the local model gets a small adapter trained **from the base weights** (never stacked on last week's). It learns only from examples whose
+outcome was checked by code or by the world: applied changes that held for two days with their tests passing, and the hidden harness's practice tasks
+(`mind.finetune.practice`). It never learns from what you approved or liked, so it can't learn to flatter, and it leaves out health, money and other
+people's chats. **Forgetting is checked:** for everything you forgot after it was trained on, Kurooto keeps only a keyed hash, the first few words of the
+prompt (`mind.finetune.probe_words`, at least 3) and a fingerprint of the answer; the new adapter is asked each of those prompts, and if any answer comes
+back, the adapter is thrown away. A good adapter becomes a challenger (see the lab section): it is promoted only after it wins on the hidden harness and
+you say so (`/improve promote`), and then it is built into Ollama as a model of its own; the base model stays as it was. With no suitable card or packages
+it says so and does nothing.
+
 ## The overnight lab, for any project
 
 If you have a project with a number you want to move (a validation error, a benchmark, passing tests, a rubric score for a paper), Kurooto can run

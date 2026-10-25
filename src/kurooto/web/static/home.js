@@ -1688,11 +1688,12 @@ function smDraw() {
   $("#sm-recall-box").classList.toggle("hidden", !on.has("quiz"));
   $("#sm-recall-meta").textContent = rc ? `${rc.due} due` : "";
   $("#sm-recall").innerHTML = !rc ? `<div class="row"><span class="k">no exam-prep or quiz notes for ${esc(v.name || "this subject")} yet</span></div>` :
-    rc.cards.map((c, i) => `<details class="sm-card"><summary><span class="k">${esc(c.section || "card")} · ${i + 1}</span></summary><p>${esc(c.text)}</p></details>`).join("") +
+    rc.cards.map((c, i) => `<details class="sm-card"><summary><span class="k">${esc(c.section || "card")} · ${i + 1}</span></summary><p>${mathHtml(c.text, smRecallAgain)}</p></details>`).join("") +
     `<div class="row"><span class="k">${rc.due ? `practise them: /quiz ${esc(v.subject)}` : "nothing to go over today"}</span></div>`;
   smNotes();
   smTick();
 }
+function smRecallAgain() { if (SM.v) smDraw(); }
 function smNotes() {
   const v = SM.v; if (!v) return;
   const KIND = { course: "course", exam_prep: "prep", doubts: "doubts", class_log: "log", lecture: "lecture", concept: "concept" };
@@ -1825,6 +1826,24 @@ async function refreshTerms() {
   TERM.on = !!r.on; TERM.list = r.on ? r.terms : [];
   if (TERM.on) TABS.terminals = "Terminals"; else delete TABS.terminals;
   renderNav();
+}
+// maths in recall cards: $...$ and $$...$$ are typeset with KaTeX (vendored, loaded the first time a card has any)
+const KATEX = { loading: null, rerender: [] };
+function loadKatex() {
+  if (window.katex || KATEX.loading) return KATEX.loading;
+  const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "/static/vendor/katex/katex.min.css"; document.head.appendChild(css);
+  KATEX.loading = new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "/static/vendor/katex/katex.min.js"; s.onload = ok; s.onerror = bad; document.head.appendChild(s); })
+    .then(() => { KATEX.rerender.forEach((f) => f()); }).catch(() => {});
+  return KATEX.loading;
+}
+function mathHtml(text, again) {
+  const parts = String(text).split(/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g);
+  if (parts.length > 1 && !window.katex) { if (again && !KATEX.rerender.includes(again)) KATEX.rerender.push(again); loadKatex(); }
+  return parts.map((p, i) => {
+    if (i % 2 === 0 || !window.katex) return esc(p);
+    const dsp = p.startsWith("$$"), tex = p.slice(dsp ? 2 : 1, dsp ? -2 : -1);
+    try { return window.katex.renderToString(tex, { displayMode: dsp, throwOnError: false, trust: false, output: "html" }); } catch (e) { return esc(p); }
+  }).join("");
 }
 function loadXterm() {
   if (window.Terminal) return Promise.resolve();

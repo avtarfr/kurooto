@@ -49,6 +49,10 @@ from kurooto.mind.harness import indicators as harness_indicators
 from kurooto.mind.harness import run as harness_run
 from kurooto.mind.lab import report as lab_report
 from kurooto.mind.lab import runner as lab_runner
+from kurooto.mind.skills import demos as skill_demos
+from kurooto.mind.skills import distill as skill_distill
+from kurooto.mind.skills import finetune as skill_finetune
+from kurooto.mind.skills import library as skill_library
 from kurooto.modules.base import Command, Incoming, Module
 
 register_defaults(
@@ -119,6 +123,11 @@ class Mind(Module):
         workspace.register_bidder("lab", lab_report.bid)
         self.every("lab", "daily 01:30", lambda p: lab_runner.nightly(self.app) and None)
         self.every("lab_digest", "daily 07:40", self._lab_digest)
+        # stage 12: skills from tasks that worked out, the ones it noticed you repeat, retirement, the weekly fine-tune
+        self.every("skills_distill", "daily 03:10", lambda p: skill_distill.nightly(self.app) and None)
+        self.every("skills_offer", "daily 18:20", lambda p: skill_demos.offer(self.app) and None)
+        self.every("skills_retire", "daily 04:20", lambda p: skill_library.retire_stale(self.app) and None)
+        self.every("finetune", "daily 03:40", lambda p: skill_finetune.run(self.app) and None)
         # stage 09: the hidden harness, nightly and on the charger only
         self.every("harness", "daily 02:40", lambda p: harness_run.nightly(self.app) if mind.on(self.app) else None)
 
@@ -296,6 +305,12 @@ class Mind(Module):
                 usage="/mood",
             ),
             Command(
+                "learned",
+                "the skills Kurooto has learned: /learned, /learned run <name> <text>, /learned retire <name>",
+                self.learned_cmd,
+                usage="/learned [run <name> <text>|retire <name>]",
+            ),
+            Command(
                 "lab",
                 "the overnight lab: /lab, /lab protocol <project>, /lab run <project>, /lab add <folder>, /lab results",
                 self.lab_cmd,
@@ -419,6 +434,24 @@ class Mind(Module):
         from kurooto.mind import report
 
         return report.budget_text(self.app)
+
+    def callbacks(self):
+        return {"skl": lambda ref, act: skill_demos.button(self.app, ref, act)}
+
+    def learned_cmd(self, msg: Incoming, arg: str) -> str:
+        if not mind.on(self.app):
+            return "Brain is off (Features → Brain)."
+        words = (arg or "").split(None, 2)
+        if len(words) >= 2 and words[0].lower() == "retire":
+            return "Retired." if skill_library.retire(self.app, words[1]) else f"There's no active skill {words[1]}."
+        if len(words) >= 2 and words[0].lower() == "run":
+            m = skill_library.meta(self.app, words[1])
+            if not m or m.get("retired"):
+                return f"There's no active skill {words[1]}."
+            first = (m.get("inputs") or ["text"])[0]
+            out = skill_library.run_by_owner(self.app, words[1], {first: words[2] if len(words) > 2 else ""})
+            return out or "It gave nothing back."
+        return skill_library.listing(self.app)
 
     def lab_cmd(self, msg: Incoming, arg: str) -> str:
         if not mind.on(self.app):
@@ -572,6 +605,7 @@ def button(app, ref: str, act: str) -> str:
     shutil.rmtree(d, ignore_errors=True)
     shutil.rmtree(app.paths.state / "mind-journal", ignore_errors=True)  # its journal (mind/journal.py)
     shutil.rmtree(app.paths.state / "mind-story", ignore_errors=True)  # its life story (mind/story.py)
+    shutil.rmtree(app.paths.state / "mind-skills", ignore_errors=True)  # the learned skills and the fine-tune's folder
     shutil.rmtree(app.paths.state / "lab", ignore_errors=True)  # the lab's protocols, pre-registrations and results
     for f in (
         "mind-gate.json",
@@ -583,6 +617,9 @@ def button(app, ref: str, act: str) -> str:
         "mind-workspace.json",
         "mind-beliefs.json",
         "mind-improve.json",
+        "mind-distilled.json",
+        "mind-demos.json",
+        "mind-finetune.json",
     ):  # the gate's, the read's, the tone's, its promises' and its acts' own files
         (app.paths.state / f).unlink(missing_ok=True)
     app.events.emit("mind_deleted", records=n)

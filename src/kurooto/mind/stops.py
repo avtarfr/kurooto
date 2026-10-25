@@ -230,6 +230,8 @@ PROTECTED = (
     "kurooto/mind/lab/prereg.py",
     "kurooto/mind/lab/scoring.py",
     "kurooto/mind/lab/sandbox.py",
+    "kurooto/mind/skills/library.py",
+    "kurooto/mind/skills/finetune.py",
     "kurooto/mind/gate.py",
     "kurooto/mind/risk.py",
     "kurooto/mind/trust.py",

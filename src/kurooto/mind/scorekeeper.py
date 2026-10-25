@@ -373,6 +373,21 @@ class Keeper:
                     },
                 )
                 return {"ok": True, "seq": seq}
+            if kind in (
+                "skill_event",
+                "finetune_event",
+            ):  # a skill admitted, rejected or retired; a fine-tune run (numbers)
+                seq = self.log.append(
+                    kind,
+                    {
+                        "status": re.sub(r"[^a-z_]", "", str(b.get("status") or ""))[:24],
+                        "cases": int(b.get("cases") or 0),
+                        "failed": int(b.get("failed") or 0),
+                        "n": int(b.get("n") or 0),
+                        "leaks": int(b.get("leaks") or 0),
+                    },
+                )
+                return {"ok": True, "seq": seq}
             self.engine.freeze(str(b.get("why") or "check"))
             return {"ok": True}
 

@@ -721,3 +721,34 @@ wall-clock run time. (6) The interoception checks (stage 13) are the simple ones
 `/lab results` carries the content. (8) A project that is not a git repository is copied (filtered, up to 200 MB); a git repository is run from its last
 commit, so uncommitted changes are not in the experiment.
 
+
+## Stage 12: the skill library and the weekly local fine-tune (I-11)
+
+Code: `mind/skills/` (`library.py`, `distill.py`, `demos.py`, `finetune.py`, `qlora.py`); fact kinds `skill_event`, `finetune_event` (counts and a status word,
+in `log.BUDGET_KINDS`); jobs `skills_distill` (03:10), `skills_offer` (18:20), `skills_retire` (04:20), `finetune` (03:40, due-checked) and the `/learned`
+command and `skl` button prefix in `modules/mind.py`; calm reasons `mind.skill_learned`, `mind.skill_offer`; `stops.PROTECTED` gains `skills/library.py` and
+`skills/finetune.py`; `improve.attach` and the adapter install on promotion. Tests: `test_mind_skills.py` (19). Switches: `mind.skills.on`,
+`mind.skills.from_demos` (off), `mind.finetune.{on (off), day, base, base_hf, probe_words, min_examples, practice}`.
+
+### The library
+
+A skill is `<state>/mind-skills/<slug>/` (not `<state>/mind/`, which is the scorekeeper's): `SKILL.md`, `template.md` or `skill.py`, `tests/case-N.json`
+({inputs, expect: contains | not_contains | regex | json_keys}), `provenance.json`, `skill.json` (uses, successes, failures, last use, retired) and
+`variants/<ts>/` for each earlier version. `admit` validates the candidate (at least two cases with an expectation), runs every case through a runner (the
+AI for a prompt skill, the lab's sandbox with no network for a code skill) and writes it only if all pass. `run` goes through `act.run` as `skill.<slug>`:
+unclassified is ALWAYS, so it asks, and with autonomy off nothing runs on its own; `run_by_owner` is what `/learned run` calls.
+
+### From tasks and demonstrations, and the fine-tune
+
+`distill.verified` = proposals applied 48 hours ago and still applied, with checks (if they ran) passing and no health, money or chat words. `demos.detect`
+finds 2 to 6 step shapes in the same order, within 10 minutes, on at least 3 days, from `<state>/activity.jsonl` (stage 13 writes it; absent until then).
+`finetune.run(trainer, generate, scorer)` is the whole weekly flow with the three heavy parts passed in: collect (proposal request and diff, practice tasks
+the rules solve and a grader marks right), tombstone what was forgotten since the last run (`sync_forgotten`), write the dataset, train from the base
+(the trainer's signature has no earlier adapter), delete the dataset, probe the tombstones (`probe`), and either throw the adapter away or submit it to
+`improve` as an L1 challenger. The default trainer is `qlora.py` in a subprocess.
+
+**Deviations.** (1) The command is `/learned`: `/skills` belongs to the existing skills module. (2) `qlora.py` and the default generator were not run on this
+machine (no training packages): only the pipeline around them is tested, with a fake trainer that memorises its input. (3) The default scorer returns nothing,
+so an adapter stays in shadow until a hidden-harness score is recorded with `improve.score`; running the harness with the adapter answering is not wired
+yet. (4) Tone tags the owner confirmed are not used (no confirmed-tag store exists). (5) A tombstone keeps the first few words of a forgotten prompt, which
+is the price of the probe; `probe_words` is at least 3. (6) The demonstration source needs stage 13's stream; tested with a synthetic one.
