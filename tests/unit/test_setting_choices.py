@@ -14,7 +14,14 @@ def test_every_default_is_one_of_its_choices(tmp_path, monkeypatch):
 
     from kurooto.app import App
 
-    for m in ("core.autostart", "core.infer", "core.palette", "core.themes", "web.server", "web.api"):  # (their defaults are registered on import)
+    for m in (
+        "core.autostart",
+        "core.infer",
+        "core.palette",
+        "core.themes",
+        "web.server",
+        "web.api",
+    ):  # (their defaults are registered on import)
         try:
             importlib.import_module(f"kurooto.{m}")
         except ImportError:

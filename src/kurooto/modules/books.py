@@ -267,6 +267,40 @@ def put_block(old: str | None, block: str, head: str) -> str:
     return head + block + "\n"
 
 
+INSTALL_POPPLER = (
+    "Arch: sudo pacman -S poppler; Debian or Ubuntu: sudo apt install poppler-utils; "
+    "Fedora: sudo dnf install poppler-utils; macOS: brew install poppler"
+)
+IMAGES = {
+    b"\xff\xd8\xff": "a JPEG photo",
+    b"\x89PNG": "a PNG image",
+    b"GIF8": "a GIF image",
+    b"RIFF": "a WebP image or a media file",
+}
+
+
+def unreadable_why(path: Path, tools: dict) -> str:
+    """Why a book gave no pages, said truthfully: not a PDF at all (by its first bytes), Poppler really missing, or a PDF
+    that's encrypted or damaged."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(16)
+    except OSError:
+        return "the file can't be opened"
+    if not head.lstrip().startswith(b"%PDF"):
+        what = next((v for k, v in IMAGES.items() if head.startswith(k)), "not a PDF")
+        return (
+            f"this isn't a PDF: it's {what} named {path.suffix or 'without an extension'}. "
+            "Rename it, or let the vision model or OCR read it"
+        )
+    if not any(tools.values()):
+        return (
+            f"Poppler isn't installed on this computer (install it: {INSTALL_POPPLER}), "
+            "and the built-in reader couldn't read this PDF"
+        )
+    return "this PDF is encrypted or damaged, so it can't be read (Poppler is installed)"
+
+
 class Books(Module):
     id = "books"
     title = "Books and PDFs"
@@ -556,7 +590,7 @@ class Books(Module):
         doc = Doc(b["path"], self.tools(), self.app.paths.cache / "books")
         total = doc.pages()
         if not total:
-            meta["problem"] = "can't be read without Poppler (encrypted or unusual PDF): /books setup"
+            meta["problem"] = unreadable_why(b["path"], self.tools())
             jsave(d / "meta.json", meta)
             return {"book": b["id"], "result": "unreadable"}
         meta.pop("problem", None)

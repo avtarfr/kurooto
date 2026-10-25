@@ -536,3 +536,17 @@ def test_no_personal_paths_in_the_shipped_code():
         if b in f.read_text(encoding="utf-8", errors="ignore")
     ]
     assert not hits
+
+
+def test_a_book_that_isnt_a_pdf_is_said_so_truthfully(tmp_path):
+    from kurooto.modules import books
+
+    img = tmp_path / "img_2.pdf"
+    img.write_bytes(b"\xff\xd8\xff\xe0" + b"0" * 100)
+    why = books.unreadable_why(img, {"pdftotext": "/usr/bin/pdftotext"})
+    assert "isn't a PDF" in why and "JPEG photo" in why and "Poppler" not in why  # not blamed on a missing program
+    pdf = tmp_path / "b.pdf"
+    pdf.write_bytes(b"%PDF-1.4\n" + b"0" * 50)
+    assert "encrypted or damaged" in books.unreadable_why(pdf, {"pdftotext": "/usr/bin/pdftotext"})
+    missing = books.unreadable_why(pdf, {"pdftotext": None, "pdftoppm": None, "pdfinfo": None})
+    assert "Poppler isn't installed" in missing and "pacman -S poppler" in missing and "brew install poppler" in missing
