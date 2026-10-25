@@ -1,0 +1,15 @@
+{
+ "doc": {
+  "version": "0.8.1",
+  "notes": "Brain can be fed what Kurooto kept before it was on (/mind backfill, off until you turn it on); the journal's folder and file name; a lab folder in your repo that ignores itself; /plan's pace no longer counts a session left open as 36 hours; kurooto doctor no longer calls a call-line update that will be retried a failure.",
+  "created": 1792959030.8752446,
+  "files": {
+   "kurooto-0.8.1.tar.gz": {
+    "url": "https://avtarfr.github.io/kurooto/releases/0.8.1/kurooto-0.8.1.tar.gz",
+    "sha256": "ecc396a16ef0957d0d2230c6ff91fa2c10df443617919220a03558ea7b0877d3",
+    "size": 4748936
+   }
+  }
+ },
+ "sig": "bjwRq38LzSejC5/j2vwrWpBrCCtxG2Hy6DCL+XmRe3jrFg6g64TQqyO6Va1eCguaSBwaquogPWPCM8/3q0/JBQ=="
+}
