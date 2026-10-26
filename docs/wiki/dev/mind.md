@@ -846,7 +846,6 @@ credited by `play.credit(before, after)` or `/play useful`; running the hidden h
 `mind/history.py` (PART `backfill`; `mind.backfill.on` off; `mind.backfill.<source>` on for `events`, `jobs`,
 `deadlines`, `checkins`, `quiz`, `calls`, `learning`, `study`, read only while `mind.backfill.on` is on: `enabled()`).
 
-<<<<<<< HEAD
 **Readers** (`READERS`, each `(app, until) -> (key, at, kind, body)`; `until` = the live log's first record's ts; per-day
 sources take whole days before that date). All read-only (`sqlite3` with `mode=ro`, `jload`), skipped when the store is
 missing:
@@ -906,7 +905,6 @@ mentions the history table, `history.db`, the past reads or priors.
 (a fake of every store with planted words, a name and an amount; idempotent re-run; a half-run resumed; tampering).
 Other 0.8.1 changes: `journal.notes_path` (`in_notes_folder`, `in_notes_file`, kept inside the notes),
 `lab/runner.ignore_folder` (`.kurooto/.gitignore`), `plans/pace.MAX_DAY_H`.
-=======
 ## 0.8.8: the owner's new core, feelings, excitement, a body
 
 The owner changed the core and three invariants on 2026-10-27 (spec `build-specs/0.8.8/01-core-and-feelings.md`). Files:
@@ -1003,4 +1001,3 @@ Only its own body's tone moves the mood; the channels about him never do (I-14).
 the week's sum, not V or Q. (7) Talk costs and the pest model apply to Brain's own kinds; a reminder he set isn't one.
 (8) `mind.feelings.vocal` is off by default (the standing rule for features that change what people had). (9) The Brain
 page (`core/brainview.py`) doesn't list the three new switches yet: its 3D layout counts 31 parts and is being rebuilt.
->>>>>>> f/v088-brain

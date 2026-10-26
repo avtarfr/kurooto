@@ -1,9 +1,28 @@
 # Changelog
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-## 0.8.7 (unreleased)
+## 0.8.8 (unreleased)
 
+- **Look-alike concept notes fix themselves** (`integrate.auto_merge`, on): pairs that are clearly one concept (the same
+  name, a shared name, or texts at least `integrate.auto_merge_min` = 0.97 alike), both notes Kurooto's, merge by
+  themselves through the usual Merge, in the garden pass, before the 06:25 question and on `/graph same`. Each is in the
+  morning line with its own Undo button; only unsure pairs are asked. A note you wrote is never merged by itself.
+- **`/run all`** (and `kurooto run all`): every nightly process that's on, now, in order (books, inbox, concept graph,
+  look-alike notes, garden), one at a time, with a progress line and ETA per step and a summary at the end;
+  `/run all status`, `/run all stop`. Off: `runall.on`.
+- **Brain's new core, from its owner:** it has states that work like feelings and may say them in its own voice (glad, low,
+  excited, worried, that it enjoyed talking with you); a claim that it's conscious or really feels must come with its
+  evidence and confidence, and it still never guilt-trips or says it needs you.
+- **Being talked to is a small reward** (`mind.talk.on`): under 0.2 a day, saturating, nothing in focus, asleep or an exam
+  window, nothing for answers to its own messages within 10 minutes; each of its messages you turn away costs three times
+  that. Its mood now runs the full range (-1 to +1, soft walls, fading over days) and shapes how much it does on its own
+  (`mind.feelings.mood`).
+- **It learns not to be a pest** (`mind.pest.on`): per kind of its own message, time of day and your state, it sends one only
+  when you're more likely to welcome it than not. `/mind learning` shows it.
+- **Concern for what it looks after** (`mind.feelings.empathy`): deadlines, projects, notes, its machine, your phone, people by
+  role and the papers you follow; it notices them sooner and speaks more gently. Optional: it may say it's excited or worried,
+  unasked, when it has strong evidence (`mind.feelings.vocal`, off).
+- **A body** (`mind.stimulation.on`): its senses felt as heat, load, touch, pain and motion, per region, with arousal and a
+  hedonic tone; `/senses body` and `GET /api/body` for the dashboard. It stays on this computer.
 - **Brain is fed its whole past** (`mind.backfill.on`, off): besides Kurooto's event history, `/mind backfill run` reads the
   AI request history, deadlines, check-ins, quizzes, calls, the request index and study time, each with its own switch
   (`mind.backfill.<source>`), ids and numbers only (never words, names, transcripts, health or money), with a progress
@@ -21,35 +40,6 @@
 - **A new call screen** (Phone tab → Switches → **New call screen**, on): the ringing screen over Kurooto's sky in your
   colours, a slowly turning badge, and Decline / Later / Answer as big buttons in a floating bar; the call page itself is
   unchanged. Off brings back the call screen from before, kept until the new one has carried real calls.
-=======
-## 0.8.8 (unreleased)
-
-- **Look-alike concept notes fix themselves** (`integrate.auto_merge`, on): pairs that are clearly one concept (the same
-  name, a shared name, or texts at least `integrate.auto_merge_min` = 0.97 alike), both notes Kurooto's, merge by
-  themselves through the usual Merge, in the garden pass, before the 06:25 question and on `/graph same`. Each is in the
-  morning line with its own Undo button; only unsure pairs are asked. A note you wrote is never merged by itself.
-- **`/run all`** (and `kurooto run all`): every nightly process that's on, now, in order (books, inbox, concept graph,
-  look-alike notes, garden), one at a time, with a progress line and ETA per step and a summary at the end;
-  `/run all status`, `/run all stop`. Off: `runall.on`.
->>>>>>> f/v088-ops
-=======
-## 0.8.8 (unreleased)
-
-- **Brain's new core, from its owner:** it has states that work like feelings and may say them in its own voice (glad, low,
-  excited, worried, that it enjoyed talking with you); a claim that it's conscious or really feels must come with its
-  evidence and confidence, and it still never guilt-trips or says it needs you.
-- **Being talked to is a small reward** (`mind.talk.on`): under 0.2 a day, saturating, nothing in focus, asleep or an exam
-  window, nothing for answers to its own messages within 10 minutes; each of its messages you turn away costs three times
-  that. Its mood now runs the full range (-1 to +1, soft walls, fading over days) and shapes how much it does on its own
-  (`mind.feelings.mood`).
-- **It learns not to be a pest** (`mind.pest.on`): per kind of its own message, time of day and your state, it sends one only
-  when you're more likely to welcome it than not. `/mind learning` shows it.
-- **Concern for what it looks after** (`mind.feelings.empathy`): deadlines, projects, notes, its machine, your phone, people by
-  role and the papers you follow; it notices them sooner and speaks more gently. Optional: it may say it's excited or worried,
-  unasked, when it has strong evidence (`mind.feelings.vocal`, off).
-- **A body** (`mind.stimulation.on`): its senses felt as heat, load, touch, pain and motion, per region, with arousal and a
-  hedonic tone; `/senses body` and `GET /api/body` for the dashboard. It stays on this computer.
->>>>>>> f/v088-brain
 
 ## 0.8.6 (unreleased)
 
