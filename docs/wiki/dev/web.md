@@ -396,14 +396,21 @@ test_every_feature_is_listed_in_the_wizard_and_dashboard` enforces it.
 
 - `setup.js` treats any 403 as "the page is out of date", though Host, account and Origin failures also give 403.
 
-## The Brain page (0.8.2)
+## The Brain pane (0.8.2, a pane since 0.8.3)
 
 `GET /api/brain3d` is `core/brainview.view(app)`: eight islands (`hq, fore, cons, memory, mirror, senses, shop, body`, in the order
 `brain3d.js` expects), each with parts `[id, name, on, state, metrics, setting, description]`, plus `on`, `parts_on`, `parts_total`,
-`records`, `mode`. Plain facts only. `static/brain3d.js` exposes `brain3dMount(host, data, {toggle})` (returns `{update, stop}`) and
-draws it with three.js r128 (`static/vendor/three/three.min.js`, MIT, allow-listed in `web/server.static`); `home.js` loads both
-lazily when the Brain page (`PKEY.brain` "b") opens, calls `update` on each poll and `stop` when the page closes. The model: points
-for the interior and a patterned shell (a fragment shader picks each sector by its nearest centroid, with a different pattern per
-sector and a glow at the seams), a cut plane `uCut` swept by the Cutaway, tracts with pulses, a bilobed thalamus. The file is
-under `static/`, not `static/views/`, so the phone app (which bundles `views/`) doesn't carry it. `tests/unit/test_brain_view.py`.
+`records`, `mode`. Plain facts only; "shadow" for autonomy only while `act.in_shadow`. `static/brain3d.js` exposes
+`brain3dMount(host, data, {toggle, monitor})`, returning `{update, stop, setMonitor}`, and draws with three.js r128
+(`static/vendor/three/three.min.js`, MIT, allow-listed in `web/server.static`). `home.js`: `#pane-brain` in `PANES`
+(`PKEY.brain` "b"); `mountBrainPane` loads both scripts only when `paneShown("brain")` (and `applyPanes` mounts it when the pane
+comes back); `update` on each poll. The frame loop skips drawing while `document.hidden` or the host has no width. Brain off:
+`home()` shows a note and the part toggles are inert (`DATA.on`). Settings: `look.board` (`three`, `classic` = `classicGrid`,
+the pre-0.8.3 board) and `look.brain_monitor` (`shown` pins the side panel, `.b3.pin`; `drawer` is the 0.8.5 tab). Tests:
+`tests/unit/test_brain_view.py`, `tests/unit/test_panes.py`.
 
+## Threaded jobs (0.8.6)
+
+`Module.every(..., thread=True)` runs the action through `modules/base.on_daemon_thread`: a daemon thread per run, awaited
+through a future. `asyncio.to_thread` used the default executor, which `asyncio.run` joins at exit, so a long job held the stop
+past systemd's `TimeoutStopSec` (20 s). A daemon thread is abandoned at exit instead. `tests/unit/test_every_thread.py`.

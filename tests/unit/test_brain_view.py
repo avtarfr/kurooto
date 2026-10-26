@@ -43,3 +43,26 @@ def test_the_pages_files_are_served_and_three_js_is_only_the_one_file():
     assert static("vendor/three/three.min.js") and b"THREE" in static("vendor/three/three.min.js")[:4000] + b"THREE"
     assert b"brain3dMount" in static("brain3d.js")
     assert static("vendor/three/other.js") is None and static("vendor/three/../../server.py") is None
+
+
+def test_autonomy_says_shadow_only_while_it_is(app, monkeypatch):
+    from kurooto.mind import act
+
+    app.settings.set("modules.enabled", ["mind"])
+    monkeypatch.setattr(act, "in_shadow", lambda a, st=None: False)
+    comps = {c[0]: c for i in brainview.view(app)["islands"] for c in i["comps"]}
+    assert comps["autonomy"][3] == "on" and comps["forecast"][3] == "shadow"
+    assert "autonomy" not in brainview.view(app)["mode"]
+
+
+def test_the_page_has_its_board_and_monitor_switches_and_an_off_state():
+    import kurooto.web.server  # noqa: F401 (registers the look defaults)
+    from kurooto.core.config import _DEFAULTS
+
+    js = static("brain3d.js").decode()
+    assert "Brain is off" in js and "DATA.on&&OPTS.toggle" in js  # off: said, and its switches don't act
+    assert "document.hidden||host.offsetWidth===0" in js  # hidden or covered: it stops drawing
+    home = static("home.js").decode()
+    assert "classicGrid" in home and "look.brain_monitor" in home and '!paneShown("brain")' in home
+    d = _DEFAULTS
+    assert d["look"]["board"] == "three" and d["look"]["brain_monitor"] == "shown"

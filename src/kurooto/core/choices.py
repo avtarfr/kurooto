@@ -13,6 +13,14 @@ AI3 = [["local", "local: this computer's model"], ["main", "main: your AI"], ["o
 EMB = [["auto", "auto"], ["ollama", "ollama: a model on this computer"], ["gemini", "gemini: your key"], ["off", "off"]]
 
 CHOICES: dict[str, list[list[str]]] = {
+    "look.board": [
+        ["three", "three: NOTES, SYSTEMS and BRAIN on top, STATUS and TERMINAL below"],
+        ["classic", "classic: STATUS down the left (before 0.8.3)"],
+    ],
+    "look.brain_monitor": [
+        ["shown", "shown: the part monitor stays beside the model"],
+        ["drawer", "drawer: it slides out from a tab"],
+    ],
     "autostart.when": [["login", "login"], ["boot", "boot: before anyone logs in (Linux with systemd)"]],
     "books.latex": [["maths", "maths: pages whose maths came out in pieces"], ["all", "all pages"], ["never", "never"]],
     "books.ocr": [

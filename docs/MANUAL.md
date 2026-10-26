@@ -4130,6 +4130,13 @@ whether the note belongs with a new concept, and orders them by the model's own 
 installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
 embedding order.
 
+## What 0.8.6 changed
+
+- **`look.board`:** `three` (default) or `classic`, the dashboard board from before 0.8.3. **Undo:** set it back.
+- **`look.brain_monitor`:** `shown` (default) or `drawer`. **Undo:** set it back.
+- **The BRAIN pane:** hide it from the panes menu (top right); hidden, it isn't loaded. **Undo:** tick it again.
+- **Fixes:** stopping and updating no longer wait for a long job; Brain's imported past keeps only deadline moves for the read.
+
 ## What 0.8.2 added to Brain
 
 - **The Brain page:** Alt+B on the dashboard, a 3D model of the Brain you turn and click (see the user wiki, Brain). **Undo:** nothing

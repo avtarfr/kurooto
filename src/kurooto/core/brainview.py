@@ -159,9 +159,21 @@ def _metrics(app: App, cid: str, st: dict) -> list[list[str]]:
         return [["Sensors enabled", f"{n} of {len(PHONE)}"]]
     if cid == "lab":
         return [["Projects", str(len(s.get("mind.lab.projects") or []))]]
-    if cid in SHADOW:
+    if cid in SHADOW and _shadow(app, cid):
         return [["Mode", "shadow (watches and scores itself)"]]
     return []
+
+
+def _shadow(app: App, cid: str) -> bool:
+    """Forecast and the read stay in shadow in 0.8 (they drive nothing); autonomy for its first shadow days only."""
+    if cid != "autonomy":
+        return True
+    try:
+        from kurooto.mind import act
+
+        return act.in_shadow(app)
+    except Exception:
+        return True
 
 
 def view(app: App) -> dict:
@@ -181,7 +193,7 @@ def view(app: App) -> dict:
                 live = on and bool(app.settings.get(key))
             else:
                 live = on  # the log and stops are always there with Brain
-            word = "off" if not live else ("shadow" if cid in SHADOW else "on")
+            word = "off" if not live else ("shadow" if cid in SHADOW and _shadow(app, cid) else "on")
             comps.append(
                 [
                     cid,
@@ -202,5 +214,5 @@ def view(app: App) -> dict:
         "parts_on": parts_on,
         "parts_total": total,
         "records": int(st.get("records", 0) or 0),
-        "mode": "shadow: forecast, autonomy, read" if on else "",
+        "mode": ("shadow: forecast, read" + (", autonomy" if _shadow(app, "autonomy") else "")) if on else "",
     }

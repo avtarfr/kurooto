@@ -1,13 +1,34 @@
 # Changelog
 
+## 0.8.6 (unreleased)
+
+- **The board you had, back if you want it** (`look.board`): `three` (default: NOTES, SYSTEMS and BRAIN on top, STATUS and
+  TERMINAL below) or `classic` (STATUS down the left, as before 0.8.3; BRAIN joins the top row when it's shown).
+- **The Brain's part monitor stays in view** (`look.brain_monitor`): `shown` (default) keeps it beside the model; `drawer` is
+  the 0.8.5 tab that slides it out.
+- **When Brain is off, the pane says so** and its part switches don't act (they used to flip back on the next refresh).
+- **The Brain pane costs nothing when you can't see it:** hidden from the panes menu, three.js isn't even loaded; covered by a
+  page, in a background tab or a minimised window, it stops drawing.
+- **Autonomy shows "shadow" only while it is** (its first `mind.autonomy.shadow_days`), not forever.
+- **Fixes:**
+  - Kurooto stops in time: a long job on a thread of its own (the lab, a fine-tune, the notes passes) no longer holds up
+    stopping or updating. A restart once ran past the service's 20 seconds and was killed.
+  - Brain's imported past no longer makes up an alarm-snooze signal from deadline snoozes: the read takes only deadline
+    moves from it, the one signal the event history really holds. A test now checks, by its imports, that no reward ever
+    reads the imported past.
+
 ## 0.8.5 (2026-10-26)
 
 - **Full-space 3D Brain canvas & side-toggle drawer**: 3D Brain viewport expanded to 100% full bleed with no column clipping, region info panel made an absolute overlay togglable via an edge tab (`‹`), Solid/Cutaway/X-Ray segments styled with active palette tokens, and headquarters core visibility made persistent without depth-clipping.
 - **Balanced 3-column dashboard layout**: Notes on the leftmost, Systems in the center, and 3D Brain on the right in the top row; Status pane moved to the bottom row split into two scrollable columns alongside the terminal with all tabs and buttons intact.
 
-## 0.8.4 (unreleased)
+## 0.8.4 (2026-10-26)
 
-## 0.8.3 (unreleased)
+- **The board in three columns:** NOTES on the left, SYSTEMS in the middle, BRAIN on the right in the top row; STATUS moved to the
+  bottom row in two scrollable columns, beside TERMINAL. (0.8.6 brings the earlier board back as `look.board` = `classic`.)
+- **The Brain pane in your colours:** the model, its regions and its controls take the palette you chose.
+
+## 0.8.3 (2026-10-26)
 
 - **The Brain pane** (dashboard, Alt+B to fill the board): the 3D model of the Brain integrated directly into the dashboard layout alongside Systems, with region switches and live monitors beside the model.
 - **Hardened mode note**: run `sudo tools/mind_harden.sh --apply` again after 0.8.1 if `mind.hardened` is on.

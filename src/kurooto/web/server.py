@@ -46,6 +46,13 @@ register_defaults(
     {"layout": "dense", "projects": [], "panes": [], "hidden_features": [], "links_in": "default", "study_mode": False},
 )
 register_defaults("look", {"design": "new"})  # the dashboard's design: new, or classic (the monospace look of 0.5.18)
+register_defaults(
+    "look",
+    {
+        "board": "three",  # the board: three (NOTES, SYSTEMS, BRAIN on top; 0.8.3) or classic (STATUS down the left)
+        "brain_monitor": "shown",  # BRAIN's part monitor: shown beside the model, or a drawer behind a tab
+    },
+)
 LAYOUTS = ("dense", "roomy")
 DESIGNS = ("new", "classic")
 CSP = (

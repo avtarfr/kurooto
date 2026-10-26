@@ -68,6 +68,38 @@ class Intent:
     guarded: str = ""  # the "never without a tap" action it performs (core/tap.py), e.g. "alarm.set"
 
 
+async def on_daemon_thread(fn: Callable, *args):
+    """fn(*args) on a daemon thread of its own, awaited (0.8.6). asyncio.to_thread used the loop's default executor,
+    whose threads asyncio.run waits for when Kurooto stops: a long job (the lab, a fine-tune) held the stop past
+    systemd's limit and Kurooto was killed. A daemon thread is left behind instead and ends with the process."""
+    import threading
+
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+
+    def run() -> None:
+        try:
+            res, err = fn(*args), None
+        except BaseException as e:  # handed to the awaiting job, as to_thread would
+            res, err = None, e
+
+        def done() -> None:
+            if fut.done():
+                return
+            if err is not None:
+                fut.set_exception(err)
+            else:
+                fut.set_result(res)
+
+        try:
+            loop.call_soon_threadsafe(done)
+        except RuntimeError:  # the loop closed while it ran (Kurooto stopping): nothing waits for it
+            pass
+
+    threading.Thread(target=run, name=f"job:{getattr(fn, '__name__', 'job')}", daemon=True).start()
+    return await fut
+
+
 class Module:
     id = ""
     title = ""
@@ -186,7 +218,7 @@ class Module:
             plain = action
 
             async def action(p=None, _f=plain):  # noqa: E306
-                return await asyncio.to_thread(_f, p)
+                return await on_daemon_thread(_f, p)
 
         self.app.scheduler.action(f"{self.id}.{name}", action)
         self.app.scheduler.every(f"{self.id}:{name}", spec, f"{self.id}.{name}", payload, module=self.id, **kw)

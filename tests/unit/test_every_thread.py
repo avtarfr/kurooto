@@ -75,3 +75,34 @@ def test_the_heavy_nightly_jobs_are_threaded(app):
     ):
         i = src.index(f'"{name}"', src.index("self.every(", max(0, src.index(f'"{name}"') - 40)))
         assert "thread=True" in src[i : i + 260].split("self.every(")[0], name
+
+
+def test_stopping_does_not_wait_for_a_long_job():
+    """0.8.6: a long threaded job is left on its daemon thread when the loop ends; asyncio.run returns at once."""
+    from kurooto.modules.base import on_daemon_thread
+
+    started = threading.Event()
+
+    def long(p=None):
+        started.set()
+        time.sleep(30)
+
+    async def main():
+        t = asyncio.ensure_future(on_daemon_thread(long, None))
+        while not started.is_set():
+            await asyncio.sleep(0.01)
+        t.cancel()
+
+    t0 = time.monotonic()
+    asyncio.run(main())
+    assert time.monotonic() - t0 < 3
+
+
+def test_a_threaded_job_hands_back_its_error():
+    from kurooto.modules.base import on_daemon_thread
+
+    def bad(p=None):
+        raise ValueError("no")
+
+    with pytest.raises(ValueError):
+        asyncio.run(on_daemon_thread(bad, None))

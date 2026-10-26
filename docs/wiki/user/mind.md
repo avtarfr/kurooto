@@ -493,24 +493,26 @@ If your notes sync to a service, this file syncs with them.
 With `mind.lab.in_repo` on, a project's protocol lives in its `.kurooto` folder. That folder holds its own `.gitignore` (`*`), so git
 never sees it and nothing of yours is changed.
 
-## The Brain page (dashboard)
+## The Brain pane (dashboard)
 
-Alt+B (or the panes menu, pages, brain) opens the Brain as a 3D model that fills the board. Turn it by dragging, zoom with the wheel.
+The dashboard's top row has a **BRAIN** pane: the Brain as a 3D model, turning slowly. Drag to turn it, the wheel to zoom; Alt+B (or
+a click on its name) fills the board with it, Esc brings the others back. Hide it from the panes menu (top right) like any pane:
+hidden, it isn't even loaded.
 
 - **Eight regions**, placed where the human brain keeps its own kinds of work: **Headquarters** (workspace, attention, beliefs: the
   hub in the middle), **Foresight** (read, forecast, plans, the hidden harness: the front), **Conscience** (promises, the gate,
   autonomy, stops, precedents), **Memory vaults** (the log, journal, life story, forgetting, the imported past: the temporal
   lobes), **Mirror** (the model of you, tone, deep-work hold), **Senses** (machine, activity, phone sensors: the back),
   **Workshop** (lab, self-improvement, skills, fine-tune, play: the cerebellum), **Body** (budget, feelings, heartbeat: the
-  brainstem). Each region has its own pattern on the surface (rings, stripes, hatching, dots, cross-hatch, grid, fine ridges,
-  bands), shown as a swatch in the list.
-- **Solid, Cutaway, X-ray** (top right): Cutaway sweeps the surface open with a glowing edge to show the inside (the thalamus, the
-  fibre bundles); X-ray makes the surface see-through.
-- **Click a region**: the surface closes, the rest dims and its parts come out as glowing points. **Click a part**: its monitor opens
-  at the right, with its switch (the same `mind.<part>.on` as Settings), what it does and a few numbers (on or off, shadow, log
-  records, imported past, lab projects, phone senses on). What a part has thought of you is not on this page: that's `/thinking`,
-  `/beliefs`, `/model` and the other commands.
-- On a narrow window the monitor goes below the model.
+  brainstem). Each has its own pattern on the surface, shown as a swatch in the list.
+- **Solid, Cutaway, X-ray** (its top right): Cutaway sweeps the surface open to the inside; X-ray makes it see-through.
+- **Click a region**: the rest dims and its parts come out. **Click a part**: the monitor at the right shows its switch (the same
+  `mind.<part>.on` as Settings), what it does and a few numbers (on or off, shadow, log records, imported past, lab projects, phone
+  senses on). What a part has thought of you is not here: that's `/thinking`, `/beliefs`, `/model` and the other commands.
+- **The monitor** stays beside the model; `look.brain_monitor` = `drawer` hides it behind a tab instead.
+- **Brain off:** the pane says so and its switches don't act; turn Brain on in Features first.
+- **The board** (`look.board`): `three` puts NOTES, SYSTEMS and BRAIN on top with STATUS and TERMINAL below; `classic` is the board
+  from before 0.8.3, with STATUS down the left.
 
 ## Questions
 

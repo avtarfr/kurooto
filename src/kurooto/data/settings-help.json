@@ -314,6 +314,8 @@
 "local_helper.offline": "with the internet down: quick things answered here, AI requests wait until it's back",
 "local_helper.on": "the offline helper: a small model on this computer for quick decisions (/helper on sets it up)",
 "local_helper.timeout_s": "a quick decision waits this long for it, then the rules decide",
+"look.board": "the board: three (NOTES, SYSTEMS, BRAIN on top; 0.8.3) or classic (STATUS down the left)",
+"look.brain_monitor": "BRAIN's part monitor: shown beside the model, or a drawer behind a tab",
 "look.design": "the dashboard's design: new, or classic (the monospace look of 0.5.18)",
 "look.hidden_features": "features hidden from the Features list (they still run if on)",
 "look.layout": "dense (everything on one board) or roomy",

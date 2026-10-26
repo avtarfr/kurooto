@@ -571,6 +571,8 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 
 | Setting | Default | What it does |
 |---|---|---|
+| `look.board` | `"three"` | the board: three (NOTES, SYSTEMS, BRAIN on top; 0.8.3) or classic (STATUS down the left) |
+| `look.brain_monitor` | `"shown"` | BRAIN's part monitor: shown beside the model, or a drawer behind a tab |
 | `look.design` | `"new"` | the dashboard's design: new, or classic (the monospace look of 0.5.18) |
 | `look.hidden_features` | `[]` | features hidden from the Features list (they still run if on) |
 | `look.layout` | `"dense"` | dense (everything on one board) or roomy |

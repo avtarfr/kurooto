@@ -60,7 +60,21 @@ const shownPanes = () => (STUDY ? new Set(["notes"]) : new Set(Object.keys(PANES
 // on screen (not hidden, filled over or under a page); in Study mode only the notes map
 const paneShown = (p) => (STUDY ? p === "notes" && !(DENSE && PAGE) : !DENSE || (!PAGE && shownPanes().has(p)));
 // the grid for the panes that show: NOTES, SYSTEMS, BRAIN on top; STATUS (split in two) and TERMINAL below
+let BOARD = "three", BRAIN_MON = "shown"; // look.board, look.brain_monitor (0.8.6)
+// the board before 0.8.3: STATUS down the left; SYSTEMS, NOTES (and BRAIN) on top and TERMINAL below, on the right
+function classicGrid(vis) {
+  const st = vis.has("status"), top = ["systems", "notes", "brain"].filter((p) => vis.has(p)), rows = [];
+  if (top.length) rows.push(top.length === 1 ? [top[0], top[0]] : top);
+  if (vis.has("terminal")) rows.push(Array(Math.max(2, top.length)).fill("tabs"));
+  if (!rows.length) return { areas: '"status"', cols: "minmax(0, 1fr)", rows: "minmax(0, 1fr)" };
+  const n = rows[0].length;
+  if (rows.length === 2 && rows[1].length < n) rows[1] = Array(n).fill("tabs");
+  return { areas: rows.map((r) => `"${st ? "status " : ""}${r.join(" ")}"`).join(" "),
+    cols: `${st ? "minmax(440px, 31%) " : ""}${Array(n).fill("minmax(0, 1fr)").join(" ")}`,
+    rows: rows.length === 2 ? "60% minmax(0, 1fr)" : "minmax(0, 1fr)" };
+}
 function paneGrid(vis) {
+  if (BOARD === "classic") return classicGrid(vis);
   const hasNotes = vis.has("notes"), hasSys = vis.has("systems"), hasBrain = vis.has("brain");
   const hasSt = vis.has("status"), hasTerm = vis.has("terminal");
   const top = [], bot = [];
@@ -103,6 +117,7 @@ function applyPanes() {
   $(STUDY ? "#pane-study" : PANES[["brain", "notes", "systems", "terminal", "status"].find((p) => vis.has(p))]).classList.add("tr");
   grid.style.setProperty("--ctlw", `${$("#panes-ctl").offsetWidth}px`);
   renderMenu(); renderNav();
+  if (paneShown("brain") && !B3) mountBrainPane();
   requestAnimationFrame(refit);
 }
 function maxPane(p) { if (STUDY) return; MAX = MAX === p || !PANES[p] ? null : p; applyPanes(); }
@@ -194,6 +209,9 @@ function loadLook() {
   api("settings").then((r) => {
     const look = ((r && r.sections) || []).find((s) => s.section === "look"); if (!look) return;
     HIDDEN_F = new Set(Array.isArray(look.values.hidden_features) ? look.values.hidden_features : []);
+    const b = look.values.board === "classic" ? "classic" : "three", m = look.values.brain_monitor === "drawer" ? "drawer" : "shown";
+    if (b !== BOARD) { BOARD = b; applyPanes(); }
+    if (m !== BRAIN_MON) { BRAIN_MON = m; if (B3 && B3.setMonitor) B3.setMonitor(m); }
     const v = cleanHide(look.values.panes);
     if (Object.keys(PANES).filter((p) => v.has(p)).join() !== hideList().join()) { HIDE = v; MAX = null; applyPanes(); }
     try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ }
@@ -840,7 +858,7 @@ function updateBrainMeta(d) {
 }
 async function mountBrainPane() {
   const host = $("#brain-mount");
-  if (!host) return;
+  if (!host || !paneShown("brain")) return; // hidden: three.js isn't even loaded
   if (B3) {
     try { const data = await api("brain3d"); B3.update(data); updateBrainMeta(data); } catch { /* next poll */ }
     return;
@@ -850,7 +868,7 @@ async function mountBrainPane() {
     if (!window.brain3dMount) await loadScript("/static/brain3d.js?v=1");
     const data = await api("brain3d");
     host.innerHTML = "";
-    B3 = window.brain3dMount(host, data, { toggle: async (key, on) => { const r = await api("settings", { key, value: on }); return !!(r && r.ok); } });
+    B3 = window.brain3dMount(host, data, { monitor: BRAIN_MON, toggle: async (key, on) => { const r = await api("settings", { key, value: on }); return !!(r && r.ok); } });
     updateBrainMeta(data);
   } catch (e) { host.innerHTML = '<p class="d">The Brain could not load.</p>'; console.error(e); }
 }
@@ -1829,6 +1847,8 @@ function settingChanged(key, value) {
   if (key === "look.design") applyDesign(value);
   if (key === "look.palette") setTimeout(() => location.reload(), 300); // the canvases take their colours at load
   if (key === "look.panes") { HIDE = cleanHide(value); MAX = null; try { localStorage.setItem("kurooto.dash.panes", JSON.stringify(hideList())); } catch { /* fine */ } applyPanes(); }
+  if (key === "look.board") { BOARD = value === "classic" ? "classic" : "three"; applyPanes(); }
+  if (key === "look.brain_monitor") { BRAIN_MON = value === "drawer" ? "drawer" : "shown"; if (B3 && B3.setMonitor) B3.setMonitor(BRAIN_MON); }
   if (key === "look.hidden_features") HIDDEN_F = new Set(Array.isArray(value) ? value : []);
   if (key === "look.study_mode") setStudy(!!value, false);
   if (key === "look.links_in" && $('meta[name="kurooto-links"]')) $('meta[name="kurooto-links"]').content = value; // links.js
@@ -2097,7 +2117,7 @@ window.addEventListener("resize", () => { applyLayout(); refit(); });
 
 (function main() {
   body = new Board($("#body")); mind = new Notes($("#mind"));
-  mountBrainPane();
+  setTimeout(mountBrainPane, 0); // after the hidden panes are known (a hidden BRAIN never loads three.js)
   try { tab = localStorage.getItem("kurooto.dash.tab") || "activity"; dtab = localStorage.getItem("kurooto.dash.dtab") || "kurooto"; } catch { /* fine */ }
   if (!TABS[tab] && tab !== "terminals") tab = "activity";
   if (DLABEL[dtab]) dtab = "kurooto"; // 0.5.0 kept the pages in the terminal pane: they open over the board now

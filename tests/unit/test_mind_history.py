@@ -78,13 +78,35 @@ def test_a_bad_batch_is_refused_and_a_rerun_rewrites_the_same_rows(app):
 
 
 def test_history_is_never_reward():
+    """I-3, I-4: the imported past trains priors only. No reward module (REWARD = True) or reward source reads the
+    history table or imports mind/history.py, and only the read's history, /mind and the Brain page import it."""
+    import ast
     import pathlib
 
-    root = pathlib.Path(mind.__file__).parent
-    for name in ("reward.py", "drive.py", "values.py", "trust.py", "budget.py"):
-        f = root / name
-        if f.exists():
-            assert "history" not in f.read_text().replace("history_", "")  # no reward code reads the imported past
+    from kurooto.mind import whitelist
+
+    src = pathlib.Path(mind.__file__).parent.parent
+    allowed = {"mind/mood.py", "mind/history.py", "modules/mind.py", "core/brainview.py"}
+    reward = {m.removeprefix("kurooto.").replace(".", "/") + ".py" for m in whitelist.REWARD_MODULES}
+    checked = 0
+    for f in src.rglob("*.py"):
+        rel = f.relative_to(src).as_posix()
+        text = f.read_text(encoding="utf-8")
+        tree = ast.parse(text)
+        names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module:
+                names.add(node.module)
+                names.update(f"{node.module}.{a.name}" for a in node.names)
+            elif isinstance(node, ast.Import):
+                names.update(a.name for a in node.names)
+        if "kurooto.mind.history" in names:
+            assert rel in allowed, f"{rel} imports the imported past"
+        is_reward = rel in reward or "REWARD = True" in text
+        if is_reward:
+            checked += 1
+            assert '"history"' not in text and "history_rows" not in text, f"{rel}: a reward reads the imported past"
+    assert checked >= 3  # the reward sources were really found and checked
 
 
 # ----------------------------------------------------------------------------------------- run, status, forget
@@ -124,9 +146,8 @@ def test_the_imported_past_starts_the_reads_history(app):
     app.settings.set("mind.backfill.on", True)
     history.run(app)
     (day,) = mood.history(app)
-    assert day.sig == {"snoozes": 1.0, "deadline_moves": 1.0} and day.load == {
-        "weekday": dt.date.fromisoformat(day.day).weekday()
-    }
+    assert day.sig == {"deadline_moves": 1.0}  # no alarm snoozes: the event history has none
+    assert day.load == {"weekday": dt.date.fromisoformat(day.day).weekday()}
     app.settings.set("mind.backfill.on", False)
     assert mood.history(app) == []  # off: the past isn't used
 
