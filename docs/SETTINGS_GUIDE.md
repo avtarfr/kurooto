@@ -1090,13 +1090,13 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `voice.listen.language` | `""` | the language you speak, e.g. en or hi; empty: worked out each time |
 | `voice.listen.levels` | `true` | send the microphone's loudness to the dashboard for its waveform (numbers only) |
 | `voice.listen.model_judge` | `true` | when the rules can't tell, the model on this computer judges (off: rules only) |
-| `voice.listen.names` | `["kurooto", "kuroto", "kurato"]` | its name as written out: said first or last in a sentence |
-| `voice.listen.night` | `false` | listen during the night hours too (availability.night) |
+| `voice.listen.name_variants` | `[]` | more spellings of its name to accept (Whisper's mishearings of Kurooto are built in) |
+| `voice.listen.night` | `true` | listen during the night hours too (off: it stops for availability.night) |
 | `voice.listen.on` | `false` | listen through the microphone, all on this computer; only turns said to Kurooto leave |
 | `voice.listen.stt_model` | `"base"` | the transcriber's size: tiny (75 MB), base (145 MB) or small (484 MB, better) |
 | `voice.listen.threshold` | `0.7` | the local model's confidence below which speech counts as not said to Kurooto |
 | `voice.listen.wake_threshold` | `0.5` | how sure the wake word model must be (0 to 1) |
-| `voice.listen.wake_word` | `"hey_jarvis"` | the wake word: hey_jarvis, alexa, hey_mycroft, hey_rhasspy, or your .onnx path |
+| `voice.listen.wake_word` | `""` | a wake word model of your own (an openWakeWord .onnx path); empty: its name wakes it |
 | `voice.speak.engine` | `"kokoro"` | the voice made on this computer: kokoro (natural, ~0.55 GB), piper (lighter) or off |
 | `voice.speak.max_chars` | `800` | a longer answer is read this far, then "the rest is on screen" |
 | `voice.speak.on` | `true` | Kurooto speaks through this computer's speakers (while Voice is on) |

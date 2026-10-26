@@ -28,7 +28,7 @@ much first; nothing is downloaded before that:
 | Piper (if you pick it instead) | speaking: lighter, less natural | 0.12 GB |
 | faster-whisper and its model | writing out what it hears (base model: 145 MB; tiny 75 MB, small 484 MB) | 0.6 GB |
 | Silero VAD | telling speech from other sound | 2 MB |
-| openWakeWord and a wake word | the wake word | 0.2 GB |
+| openWakeWord (only if you give your own wake word model) | a wake word of your own | 0.2 GB |
 
 They go into Kurooto's own folder (`kurooto paths`, the `app` line, then `voice/`), never into your system.
 Listening needs a microphone; your system's sound settings decide which one is the default.
@@ -52,14 +52,25 @@ answer from your AI (Telegram and the phone app ones too), and `off` keeps it si
 With `voice.listen.on`, the microphone stays open all day, and everything below happens on your computer:
 
 1. **Voice activity** (Silero VAD) finds stretches of speech; anything else is never even written out.
-2. **The wake word** (openWakeWord) listens for its phrase all the time.
-3. **Writing out** (faster-whisper) turns each stretch of speech into words.
-4. **The gate** decides: noise, chatter (people talking to each other), or talking to Kurooto.
+2. **Writing out** (faster-whisper) turns each stretch of speech into words.
+3. **The gate** decides: noise, chatter (people talking to each other), or talking to Kurooto.
 
-The wake word is **"hey Jarvis"** by default. There's no ready-made "hey Kurooto" model yet: the openWakeWord project
-ships "hey Jarvis", "Alexa", "hey Mycroft" and "hey Rhasspy" (`voice.listen.wake_word`), and you can train your own
-"hey Kurooto" with openWakeWord's training notebook and put the path of its `.onnx` file in the same setting. Saying
-**its name** first or last ("Kurooto, what's due?", "what's due, Kurooto?") works as well as the wake word.
+**Its name wakes it.** Say "Kurooto" (or the name you gave it, `you.assistant_name`) first or last: "Kurooto,
+what's due?", "hey Kurooto, set a timer", "what's due, Kurooto?". Saying the name alone ("Kurooto?") gets a "Yes?",
+and what you say next is for it. Nothing is downloaded for this and no ready-made wake word is used.
+
+Whisper often spells an unusual name wrong, so Kurooto is generous about it:
+- Whisper is given the name as a hint, so it writes "Kurooto" more often.
+- Known mishearings of "Kurooto" count: Kuroto, Kurouto, Kuruto, Curoto, Kurato, "kuro to", "coo roto", Kirito,
+  "guru to", "cool auto", Kuroo, Kuro ("hey Kuro") and more.
+- Near misses count too: a word that sounds the same (the same consonants: k/c/g, r/l, t/d) and is spelled within two
+  letters of the name ("Kurroto", "Kurotto"). Ordinary words don't: "cool", "auto", "curry", "Kurt", "router",
+  "kurta", "Kyoto".
+- Add spellings it keeps getting wrong with `voice.listen.name_variants` (`["crouton"]`).
+
+**A wake word model of your own** is an option: train one with openWakeWord (for "hey Kurooto", say) and put the path
+of its `.onnx` file in `voice.listen.wake_word`. Set up then fetches openWakeWord. Its ready-made wake words aren't
+offered, because their licence (CC BY-NC-SA 4.0) doesn't fit.
 
 ## How it tells you're talking to it
 
@@ -68,10 +79,10 @@ In this order, first match wins:
 | What it heard | Counts as |
 |---|---|
 | no speech | noise |
-| the wake word | talking to it |
+| your own wake word model (if you set one) | talking to it |
 | no real words (or what transcribers invent from silence: "thank you", "[music]") | noise |
-| its name, first or last | talking to it |
-| the first words after the wake word on its own | talking to it |
+| its name, first or last, as Whisper may spell it | talking to it |
+| the first words after its name said on its own ("Kurooto?") | talking to it |
 | two or more voices, and none of the above (when the listener can tell; today's can't, so the model judges this from the words and from how much talk there's been nearby) | chatter |
 | a question or request while the conversation is open | talking to it |
 | a question or request within 6 seconds of it speaking (a yes or no too, if it asked something) | talking to it |
@@ -79,7 +90,7 @@ In this order, first match wins:
 
 The model on your computer (Ollama, the one Local AI models set up, or the offline helper's) reads the words and
 answers noise, chatter or talking to it, with how sure it is. Below `voice.listen.threshold` (0.7) it counts as not
-talking to it. With no local model, only the wake word, its name and the rules above open a conversation.
+talking to it. With no local model, only its name, your wake word and the rules above open a conversation.
 
 ## The conversation (the "portal")
 
@@ -89,7 +100,7 @@ conversation. It closes:
 
 - **at once** when the next thing it hears isn't to it (you turn to someone else);
 - after `voice.listen.close_s` seconds (8) with nothing said to it;
-- when you mute it, a call starts, the night begins, or Kurooto pauses.
+- when you mute it, a call starts, Kurooto pauses, or (with `voice.listen.night` off) the night begins.
 
 The dashboard shows each step (listening, hearing, talking to it, thinking, speaking, closed) and a waveform.
 
@@ -98,7 +109,8 @@ The dashboard shows each step (listening, hearing, talking to it, thinking, spea
 - **Muted:** `/voice mute`, `kurooto voice mute`, or the dashboard's mute. It stays muted (across restarts) until
   `/voice unmute`. Muting also stops it speaking.
 - **On a call:** while a phone call is on (`voice.listen.calls` to keep listening).
-- **At night:** during your night hours (`availability.night`; `voice.listen.night` to keep listening).
+- **At night:** it keeps listening by default; turn `voice.listen.night` off and it stops during your night hours
+  (`availability.night`).
 - **Paused:** while Kurooto is paused, and on battery in saver mode.
 
 ## Commands
@@ -124,7 +136,7 @@ The same from a terminal: `kurooto voice`, `kurooto voice mute`, `kurooto voice 
   sent.
 
 Licences: Kokoro-82M (Apache-2.0), kokoro-onnx (MIT), faster-whisper (MIT), Whisper models (MIT), Silero VAD (MIT),
-openWakeWord (Apache-2.0; its ready-made wake word models are CC BY-NC-SA 4.0, for personal non-commercial use),
+openWakeWord (Apache-2.0; only fetched for your own wake word model, and its CC BY-NC-SA ready-made models never),
 sounddevice (MIT). Kokoro's pronunciation uses espeak-ng (GPL-3.0), and Piper from version 1.3 is GPL-3.0; both are
 downloaded to your computer as separate programs, not part of Kurooto.
 
@@ -138,12 +150,13 @@ downloaded to your computer as separate programs, not part of Kurooto.
 | `voice.speak.rate` | 1.0 | speed |
 | `voice.speak.what` | `voice` | `voice` (answers to what you said aloud), `all` (every AI answer) or `off` |
 | `voice.listen.on` | off | listen through the microphone |
-| `voice.listen.wake_word` | `hey_jarvis` | the wake word model, or the path of your own `.onnx` |
-| `voice.listen.names` | kurooto, kuroto, kurato | its name as the transcriber may write it |
+| `voice.listen.wake_word` | (none) | the path of your own openWakeWord `.onnx`; empty: its name wakes it |
+| `voice.listen.name_variants` | (none) | more spellings of its name to accept; the common mishearings are built in |
 | `voice.listen.model_judge` | on | let the model on your computer judge what the rules can't |
 | `voice.listen.threshold` | 0.7 | how sure the model must be that you're talking to it |
 | `voice.listen.close_s` | 8 | seconds of nothing said to it before the conversation closes |
-| `voice.listen.night`, `voice.listen.calls` | off | keep listening at night, during calls |
+| `voice.listen.night` | on | keep listening during the night hours |
+| `voice.listen.calls` | off | keep listening during calls |
 | `voice.listen.stt_model` | `base` | `tiny`, `base` or `small` |
 | `voice.listen.language` | (worked out) | the language you speak, e.g. `en` or `hi` |
 
@@ -154,5 +167,6 @@ All of them: [the settings guide](../../SETTINGS_GUIDE.md).
 - It can't be interrupted while it speaks: it doesn't listen while speaking (so it doesn't hear itself). `/voice stop`
   or mute stops it.
 - It doesn't know who is speaking; "several voices" is the rule's best guess, not speaker recognition.
-- The wake word is "hey Jarvis" until you train your own.
+- Its name has to be heard and written out first, so waking takes a moment longer than a dedicated wake word model
+  would, and a name Whisper mangles in a new way needs `voice.listen.name_variants`.
 - Tested with fakes only so far: real microphones, speakers and the models haven't been tried on many computers.

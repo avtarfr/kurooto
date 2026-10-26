@@ -307,18 +307,28 @@ class Energy:
 
 # ----------------------------------------------------------------------------------------- writing it out
 class Whisper:
-    def __init__(self, model_dir: Path, language: str = ""):
+    """faster-whisper on the processor. `hint` (the assistant's name) is its initial prompt and hotword, so an
+    unusual name is written the way it's spelled more often (names.py catches the rest)."""
+
+    def __init__(self, model_dir: Path, language: str = "", hint: str = ""):
         from faster_whisper import WhisperModel
 
         self.m = WhisperModel(str(model_dir), device="cpu", compute_type="int8")
         self.language = language or None
+        self.hint = hint.strip()
 
     def text(self, pcm: bytes) -> str:
         np = _np()
         audio = np.frombuffer(pcm, dtype="<i2").astype("float32") / 32768.0
-        segs, _info = self.m.transcribe(
-            audio, language=self.language, beam_size=1, vad_filter=False, condition_on_previous_text=False
-        )
+        kw = dict(language=self.language, beam_size=1, vad_filter=False, condition_on_previous_text=False)
+        if self.hint:
+            kw["initial_prompt"] = f"{self.hint}."
+            kw["hotwords"] = self.hint
+        try:
+            segs, _info = self.m.transcribe(audio, **kw)
+        except TypeError:  # a faster-whisper before hotwords (1.0.2)
+            kw.pop("hotwords", None)
+            segs, _info = self.m.transcribe(audio, **kw)
         return " ".join(s.text.strip() for s in segs).strip()
 
 

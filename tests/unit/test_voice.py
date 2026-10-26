@@ -7,9 +7,10 @@ import json
 
 import pytest
 
-from kurooto.modules.voice import Voice, strip_wake
+from kurooto.modules.voice import Voice
 from kurooto.modules.voice import shape as shape_mod
 from kurooto.modules.voice.gate import ADDRESSED, CHATTER, NOISE, Context, Gate, Heard, parse
+from kurooto.modules.voice.names import NameMatcher, skeleton
 from kurooto.modules.voice.portal import Portal
 
 
@@ -75,7 +76,7 @@ def test_made_up_words_from_silence_are_noise():
 
 def test_the_wake_word_is_addressed():
     j = Judge()
-    d = gate(j).decide(Heard(speech=True, text="hey jarvis what's due", wake=True))
+    d = gate(j).decide(Heard(speech=True, text="okay go what's due", wake=True))
     assert d.klass == ADDRESSED and d.confidence == 1.0 and j.prompts == []
 
 
@@ -129,7 +130,7 @@ def test_a_question_inside_the_conversation_or_right_after_it_spoke_is_addressed
 
 def test_right_after_the_wake_word_the_next_words_are_addressed():
     d = gate(Judge()).decide(Heard(speech=True, text="the lab report"), Context(portal_open=True, awaiting=True))
-    assert d.klass == ADDRESSED and d.why == "right after the wake word"
+    assert d.klass == ADDRESSED and d.why == "right after it was called"
 
 
 def test_the_models_answer_is_parsed_safely():
@@ -139,11 +140,73 @@ def test_the_models_answer_is_parsed_safely():
     assert parse("") == (CHATTER, 0.0)
 
 
-def test_strip_wake():
-    assert strip_wake("Hey Jarvis, what's due?", "hey_jarvis") == "what's due?"
-    assert strip_wake("hey jarvis", "hey_jarvis") == ""
-    assert strip_wake("Alexa play", "alexa") == "play"
-    assert strip_wake("what's due", "/my/own.onnx") == "what's due"
+MISHEARD = [
+    "Kurooto, what's due?",
+    "Kuroto what's due",
+    "kurouto, set a timer",
+    "Kuruto, are you there",
+    "Curoto, remind me",
+    "Kurato, what's next",
+    "Kuro to, what time is it",
+    "Coo roto, hello",
+    "Kirito, what's on today",
+    "Guru to, read that again",
+    "Cool auto, what's due",
+    "Kuroo, stop",
+    "Hey kuro, what's the time",
+    "Kurroto, open my notes",
+    "Kurotto what's due",
+    "Kiroto, what's due",
+    "what's due tomorrow, Kurooto?",
+    "what's due tomorrow kuroto",
+]
+ORDINARY = [
+    "that was cool",
+    "auto mode is on",
+    "curry for dinner",
+    "ghetto blaster",
+    "Kurt called earlier",
+    "reset the router",
+    "a new kurta",
+    "karate class",
+    "the curator said no",
+    "a photo of tomato",
+    "the grotto",
+    "Kyoto in spring",
+    "Toronto",
+    "cure it",
+    "quarter past",
+    "put the kettle on",
+]
+
+
+def test_its_name_is_heard_as_whisper_may_spell_it():
+    m = NameMatcher(["Kurooto"])
+    missed = [t for t in MISHEARD if not m.called(t)]
+    assert missed == []
+
+
+def test_ordinary_words_arent_its_name():
+    m = NameMatcher(["Kurooto"])
+    wrong = [t for t in ORDINARY if m.called(t) or m.anywhere(t)]
+    assert wrong == []
+    for w in ("cool", "auto", "curry", "ghetto", "kurt", "router"):
+        assert not m.anywhere(w), w
+
+
+def test_name_variants_and_another_name():
+    m = NameMatcher(["Nova"], variants=["no va"])
+    assert m.called("no va, what's due") and m.called("Nova what's due") and not m.called("Kuroto, hi")
+    assert NameMatcher(["Kurooto"], variants=["crouton"]).called("crouton, what's due")
+    assert skeleton("kurooto") == skeleton("Guruto") == "krt"
+
+
+def test_the_call_is_taken_off_before_anything_is_sent():
+    m = NameMatcher(["Kurooto"])
+    assert m.uncall("Hey Kuro to, what's due?") == "what's due?"
+    assert m.uncall("what's due, Kurooto?") == "what's due"
+    assert m.uncall("Kurooto") == ""
+    assert m.uncall("what's due") == "what's due"
 
 
 # ----------------------------------------------------------------------------------------------- the portal
@@ -206,10 +269,10 @@ def test_the_portal_closes_after_close_s_of_silence():
 def test_the_wake_word_alone_sends_nothing_and_waits_for_the_request():
     brain = Brain()
     p, said, _events, _clock = make_portal(brain)
-    assert p.take(Heard(speech=True, text="hey jarvis", wake=True), addressed("the wake word"), text="") is None
+    assert p.take(Heard(speech=True, text="Kurooto?"), addressed("the wake word"), text="") is None
     assert p.open and said == ["Yes?"] and brain.got == []
     assert p.context().awaiting
-    p.take(Heard(speech=True, text="what's due"), addressed("right after the wake word"))
+    p.take(Heard(speech=True, text="what's due"), addressed("right after it was called"))
     assert brain.got == ["what's due"] and not p.context().awaiting
 
 
@@ -275,7 +338,7 @@ def test_chatter_and_noise_send_nothing_and_their_words_are_never_kept(voice):
 def test_addressed_speech_opens_the_portal_and_chatter_closes_it_at_once(voice):
     voice.judge.answers = ['{"class": "chatter", "confidence": 0.95}']
     assert voice.hear(Heard(speech=True, text="Kurooto, what's due this week?")) == "It's due Friday."
-    assert voice.brain.got == ["Kurooto, what's due this week?"] and voice.portal.open
+    assert voice.brain.got == ["what's due this week?"] and voice.portal.open
     assert voice.spoken == ["It's due Friday."]
     voice.hear(Heard(speech=True, text="no I'll get the snacks later, don't worry"))
     assert not voice.portal.open and len(voice.brain.got) == 1
@@ -288,9 +351,14 @@ def test_addressed_speech_opens_the_portal_and_chatter_closes_it_at_once(voice):
     assert "snacks" not in everything_kept(voice)
 
 
-def test_the_wake_word_is_taken_out_before_anything_is_sent(voice):
-    voice.hear(Heard(speech=True, text="Hey Jarvis, set a timer for ten minutes", wake=True))
+def test_its_name_is_taken_out_before_anything_is_sent(voice):
+    voice.hear(Heard(speech=True, text="Hey Kuroto, set a timer for ten minutes"))
     assert voice.brain.got == ["set a timer for ten minutes"]
+    voice.portal.close("test")
+    voice.hear(Heard(speech=True, text="Kurooto?"))  # the name alone: it answers "Yes?" and sends nothing
+    assert voice.spoken[-1] == "Yes?" and len(voice.brain.got) == 1 and voice.portal.open
+    voice.hear(Heard(speech=True, text="the lab report deadline"))
+    assert voice.brain.got[-1] == "the lab report deadline"
 
 
 def test_mute_stops_hearing_and_lasts(voice):
@@ -312,6 +380,8 @@ def test_listening_is_its_own_switch(voice):
 
 def test_night_and_calls_stop_listening_unless_allowed(voice, monkeypatch):
     monkeypatch.setattr(voice, "_night", lambda: True)
+    assert voice.blocked() == ""  # it listens at night by default (voice.listen.night)
+    voice.app.settings.set("voice.listen.night", False)
     assert voice.blocked() == "night hours"
     assert voice.hear(Heard(speech=True, text="Kurooto, hello")) is None and voice.brain.got == []
     voice.app.settings.set("voice.listen.night", True)
@@ -362,7 +432,11 @@ def test_what_it_needs_follows_the_switches(tmp_path, monkeypatch):
         assert not ok and "needs setting up" in why and "GB" in why  # nothing fetched until you set it up
         app.settings.set("voice.listen.on", True)
         w = v.wants()
-        assert {"pkg:listen", "model:vad", "model:whisper-base", "pkg:wake", "model:wake-hey_jarvis"} <= set(w)
+        assert {"pkg:listen", "model:vad", "model:whisper-base"} <= set(w)
+        assert not any("wake" in k for k in w)  # no wake word model by default: its name wakes it
+        app.settings.set("voice.listen.wake_word", "/models/my-own.onnx")
+        assert {"pkg:wake", "model:wake-common"} <= set(v.wants())
+        app.settings.set("voice.listen.wake_word", "")
         app.settings.set("voice.speak.engine", "piper")
         assert "model:piper" in v.wants() and "model:kokoro" not in v.wants()
         assert not app.is_on("voice")

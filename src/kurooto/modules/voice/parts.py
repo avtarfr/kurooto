@@ -8,17 +8,20 @@ they take on disk, roughly.
                  phonemizer-fork and espeakng-loader bring (GPL-3.0)                                ~0.2 GB
         piper    piper-tts (GPL-3.0 since 1.3; MIT before)                                          ~0.05 GB
         listen   faster-whisper (MIT) with CTranslate2 (MIT), onnxruntime (MIT)                      ~0.45 GB
-        wake     openwakeword 0.6.0 (Apache-2.0), installed without its tflite-runtime dependency (no
-                 wheels for Python 3.12; the ONNX models are used instead), with scipy, scikit-learn,
-                 tqdm, requests                                                                     ~0.2 GB
+        wake     only with a wake word model of your own (voice.listen.wake_word): openwakeword 0.6.0
+                 (Apache-2.0), installed without its tflite-runtime dependency (no wheels for Python 3.12;
+                 the ONNX models are used instead), with scipy, scikit-learn, tqdm, requests          ~0.2 GB
     models (into <app>/voice/models)
         kokoro       Kokoro-82M v1.0, ONNX (Apache-2.0) and its voices                              337 MB
         piper        the en_US "lessac" medium voice (MIT voice card; trained on a public dataset)   63 MB
         vad          Silero VAD v5 (MIT)                                                             2.3 MB
         whisper-*    faster-whisper's CTranslate2 conversions of OpenAI Whisper (MIT): tiny 75 MB,
                      base 145 MB, small 484 MB
-        wake-common  openWakeWord's melspectrogram and embedding models (Apache-2.0)                 2.4 MB
-        wake-<name>  a pre-trained openWakeWord model (CC BY-NC-SA 4.0: personal, non-commercial use) ~1.3 MB
+        wake-common  openWakeWord's feature models (melspectrogram, and the speech embedding derived from
+                     Google's Apache-2.0 model), which any openWakeWord model needs; only with your own
+                     wake word model                                                             2.4 MB
+    openWakeWord's ready-made wake words ("hey jarvis" ...) are never fetched: they're CC BY-NC-SA 4.0. By default
+    Kurooto wakes on its name, heard by the transcriber (names.py).
 
 Downloads go through core/egress.py (github.com, huggingface.co); the packages are handed to uv (or pip), which
 fetches them from PyPI. Each file lands as <name>.part and is renamed when complete, so a broken download is fetched
@@ -40,7 +43,6 @@ from kurooto.core.state import jload
 Progress = Callable[[str], None]
 OWW = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1"
 HF = "https://huggingface.co"
-WAKE_WORDS = ("hey_jarvis", "alexa", "hey_mycroft", "hey_rhasspy")  # openWakeWord's pre-trained models (v0.5.1)
 STT_MODELS = {"tiny": 75, "base": 145, "small": 484}  # MB
 KOKORO_VOICES = (
     "af_heart",
@@ -126,8 +128,6 @@ def models() -> dict[str, list[ModelFile]]:
             ModelFile(f"whisper-{size}/tokenizer.json", f"{base}/tokenizer.json", 2.2),
             ModelFile(f"whisper-{size}/vocabulary.txt", f"{base}/vocabulary.txt", 0.5),
         ]
-    for w in WAKE_WORDS:
-        out[f"wake-{w}"] = [ModelFile(f"{w}_v0.1.onnx", f"{OWW}/{w}_v0.1.onnx", 1.3)]
     return out
 
 

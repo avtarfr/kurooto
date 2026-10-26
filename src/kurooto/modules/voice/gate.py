@@ -2,12 +2,14 @@
 Kurooto (addressed)? Every step runs on this computer, and only "addressed" opens the portal (portal.py).
 
     1. Voice activity (Silero VAD) found no speech                       -> noise
-    2. The wake word fired during it, or just before                     -> addressed
+    2. Your own wake word model fired during it, or just before (voice.listen.wake_word; off by default)
+                                                                         -> addressed
     3. No words came out of it (or only what transcribers make up from silence: "thank you", "[music]")
                                                                          -> noise
-    4. Its name said as a call: first ("Kurooto, ...", "hey Kurooto") or last ("..., Kurooto?")
-                                                                         -> addressed
-    5. Right after the wake word with nothing else said, the next thing said
+    4. Its name said as a call, the default way to wake it: first ("Kurooto, ...", "hey Kurooto") or last
+       ("..., Kurooto?"), spelled as Whisper may write it (names.py: known mishearings, your variants, and near
+       misses by sound and spelling)                                    -> addressed
+    5. Right after its name or the wake word with nothing else said, the next thing said
                                                                          -> addressed
     6. Two or more voices heard and none of the above                    -> chatter
     7. The portal is open (a conversation within voice.listen.close_s) and it's a question or a request
@@ -26,6 +28,8 @@ import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+
+from kurooto.modules.voice.names import NameMatcher
 
 NOISE, CHATTER, ADDRESSED = "noise", "chatter", "addressed"
 CLASSES = (NOISE, CHATTER, ADDRESSED)
@@ -62,7 +66,6 @@ REQUEST = re.compile(
     re.I,
 )
 REPLY = re.compile(r"^(yes|yeah|yep|yup|no|nope|okay|ok|sure|please|go ahead|do it|don't|cancel that)\b", re.I)
-CALLS = ("hey", "hi", "hello", "ok", "okay", "yo", "oi", "listen")
 
 
 @dataclass
@@ -139,8 +142,10 @@ class Gate:
         close_s: float = 8,
         after_speak_s: float = 6,
         use_model: bool = True,
+        variants: list[str] | tuple[str, ...] = (),
     ):
         self.names = [n.lower() for n in dict.fromkeys(n.strip() for n in names if n and n.strip())]
+        self.matcher = NameMatcher(self.names, variants)
         self.judge = judge
         self.threshold = float(threshold)
         self.close_s = float(close_s)
@@ -149,16 +154,11 @@ class Gate:
 
     # ------------------------------------------------------------------------------------------- its name
     def called(self, text: str) -> bool:
-        """Its name said as a call: the first word (after "hey", "ok" ...) or the last."""
-        w = words(text).split()
-        if not w:
-            return False
-        first = w[1] if len(w) > 1 and w[0] in CALLS else w[0]
-        return any(first == n or w[-1] == n for n in self.names)
+        """Its name said as a call: first (after "hey", "ok" ...) or last, as Whisper may spell it (names.py)."""
+        return self.matcher.called(text)
 
     def mentioned(self, text: str) -> bool:
-        w = set(words(text).split())
-        return any(n in w for n in self.names)
+        return self.matcher.anywhere(text)
 
     # ---------------------------------------------------------------------------------------- the decision
     def decide(self, h: Heard, ctx: Context | None = None) -> Decision:
@@ -173,7 +173,7 @@ class Gate:
         if self.called(text):
             return Decision(ADDRESSED, 0.95, "its name")
         if ctx.awaiting:
-            return Decision(ADDRESSED, 0.9, "right after the wake word")
+            return Decision(ADDRESSED, 0.9, "right after it was called")
         if (h.voices or 0) >= 2:
             return Decision(CHATTER, 0.8, "several voices, none to it")
         recent = ctx.since_portal_s is not None and ctx.since_portal_s <= self.close_s

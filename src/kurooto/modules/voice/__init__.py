@@ -1,15 +1,17 @@
 """Voice: talk and listen (0.8.8). Kurooto speaks through this computer's speakers with a voice made here (Kokoro,
 or Piper), and, when you turn listening on, hears the room through the microphone, all on this computer.
 
-What it hears goes through the gate (gate.py): voice activity, the wake word, the words written out here
+What it hears goes through the gate (gate.py): voice activity, its name (names.py: as Whisper may spell it; your own
+openWakeWord model too, if you give one), the words written out here
 (faster-whisper) and, when the rules can't tell, the model on this computer. Noise and people talking to each other
 are dropped on the spot: their words are never stored, logged or sent. Only speech the gate decides is said to
 Kurooto opens the portal (portal.py), and only those turns go to the AI you picked, like a chat message; the answer
 comes back as text on the dashboard and aloud. The portal closes at once when what follows isn't to Kurooto, or after
 voice.listen.close_s seconds of nothing said to it.
 
-Listening stops while you're on a call, while Kurooto is paused, at night (unless voice.listen.night), on battery in
-saver mode, and when muted (/voice mute, `kurooto voice mute`, POST /api/voice/mute). Sound never touches the disk.
+Listening stops while you're on a call, while Kurooto is paused, at night if you turn voice.listen.night off, on
+battery in saver mode, and when muted (/voice mute, `kurooto voice mute`, POST /api/voice/mute). Sound never
+touches the disk.
 
 The dashboard: GET /api/voice (state, engines, switches), POST /api/voice/say {text}, POST /api/voice/mute {on},
 POST /api/voice/shape {text} (shape.py), and the live stream's {"t": "voice"} messages: voice_state, voice_level,
@@ -19,7 +21,6 @@ from __future__ import annotations
 
 import asyncio
 import queue
-import re
 import threading
 import time
 import urllib.parse
@@ -32,7 +33,7 @@ from kurooto.core.state import jload, jsave
 from kurooto.modules.base import Command, Incoming, Module
 from kurooto.modules.voice import shape as shape_mod
 from kurooto.modules.voice.gate import ADDRESSED, CHATTER, NOISE, Gate, Heard
-from kurooto.modules.voice.parts import KOKORO_VOICES, STT_MODELS, WAKE_WORDS, Parts
+from kurooto.modules.voice.parts import KOKORO_VOICES, STT_MODELS, Parts
 from kurooto.modules.voice.portal import Portal
 
 if TYPE_CHECKING:
@@ -51,14 +52,14 @@ register_defaults(
         },
         "listen": {
             "on": False,  # listen through the microphone, all on this computer; only turns said to Kurooto leave
-            "wake_word": "hey_jarvis",  # the wake word: hey_jarvis, alexa, hey_mycroft, hey_rhasspy, or your .onnx path
+            "wake_word": "",  # a wake word model of your own (an openWakeWord .onnx path); empty: its name wakes it
             "wake_threshold": 0.5,  # how sure the wake word model must be (0 to 1)
-            "names": ["kurooto", "kuroto", "kurato"],  # its name as written out: said first or last in a sentence
+            "name_variants": [],  # more spellings of its name to accept (Whisper's mishearings of Kurooto are built in)
             "model_judge": True,  # when the rules can't tell, the model on this computer judges (off: rules only)
             "threshold": 0.7,  # the local model's confidence below which speech counts as not said to Kurooto
             "close_s": 8,  # seconds with nothing said to it before the conversation closes
             "after_speak_s": 6,  # a question or request this many seconds after it spoke counts as an answer to it
-            "night": False,  # listen during the night hours too (availability.night)
+            "night": True,  # listen during the night hours too (off: it stops for availability.night)
             "calls": False,  # keep listening during a phone call (off: it stops while you're on one)
             "stt_model": "base",  # the transcriber's size: tiny (75 MB), base (145 MB) or small (484 MB, better)
             "language": "",  # the language you speak, e.g. en or hi; empty: worked out each time
@@ -68,7 +69,6 @@ register_defaults(
     },
 )
 
-WAKE_PHRASES = {"hey_jarvis": "jarvis", "alexa": "alexa", "hey_mycroft": "mycroft", "hey_rhasspy": "rhasspy"}
 LOOPBACK = ("127.0.0.1", "localhost", "::1")
 MIC_CHECK_S = 30
 JOB_WAIT_S = 600
@@ -151,8 +151,8 @@ class Voice(Module):
         "tells noise and people talking from you talking to it."
     )
     privacy = (
-        "Speaking and listening run on this computer; sound is never saved. Only what you say to Kurooto (the wake "
-        "word, its name, or the local model's judgement) goes to the AI you picked; the rest is dropped at once."
+        "Speaking and listening run on this computer; sound is never saved. Only what you say to Kurooto (its name, "
+        "the conversation it's in, or the local model's judgement) goes to the AI you picked; the rest is dropped."
     )
     heavy = True  # on battery in saver mode, listening waits for the charger
     setup_notes = (
@@ -208,10 +208,7 @@ class Voice(Module):
         if self.setting("listen.on"):
             size = self.setting("listen.stt_model") or "base"
             keys += ["pkg:audio", "pkg:listen", "model:vad", f"model:whisper-{size if size in STT_MODELS else 'base'}"]
-            ww = str(self.setting("listen.wake_word") or "")
-            if ww in WAKE_WORDS:
-                keys += ["pkg:wake", "model:wake-common", f"model:wake-{ww}"]
-            elif ww:
+            if str(self.setting("listen.wake_word") or "").strip():  # your own model: openWakeWord to run it
                 keys += ["pkg:wake", "model:wake-common"]
         return list(dict.fromkeys(keys))
 
@@ -262,7 +259,8 @@ class Voice(Module):
             return f"{speak}; not listening (voice.listen.on is off)"
         if self.blocked_why:
             return f"{speak}; not listening: {self.blocked_why}"
-        return f"{speak}; listening here (wake word {self.setting('listen.wake_word') or 'none'})"
+        own = " or your wake word" if str(self.setting("listen.wake_word") or "").strip() else ""
+        return f"{speak}; listening here (its name{own} wakes it)"
 
     def microphone(self) -> tuple:
         at, res = self._mic
@@ -305,12 +303,12 @@ class Voice(Module):
     def stt(self):
         size = self.setting("listen.stt_model") or "base"
         size = size if size in STT_MODELS else "base"
-        key = (size, self.setting("listen.language") or "")
+        key = (size, self.setting("listen.language") or "", self.app.name)
         if self._stt is None or self._stt_key != key:
             self.parts.importable()
             from kurooto.modules.voice.audio import Whisper
 
-            self._stt = Whisper(self.parts.path(f"whisper-{size}"), key[1])
+            self._stt = Whisper(self.parts.path(f"whisper-{size}"), key[1], hint=self.app.name)
             self._stt_key = key
         return self._stt
 
@@ -383,7 +381,7 @@ class Voice(Module):
             "missing": missing,
             "missing_gb": self.parts.size_gb(missing),
             "heard": dict(self.heard),
-            "choices": {"voices": list(KOKORO_VOICES), "wake_words": list(WAKE_WORDS), "stt_models": list(STT_MODELS)},
+            "choices": {"voices": list(KOKORO_VOICES), "stt_models": list(STT_MODELS)},
         }
 
     def shape(self, text: str) -> dict:
@@ -458,14 +456,14 @@ class Voice(Module):
 
     # ------------------------------------------------------------------------------------------- hearing
     def gate(self) -> Gate:
-        names = [self.app.name, *(self.setting("listen.names") or [])]
         return Gate(
-            names,
+            [self.app.name, "Kurooto"],  # the name you gave it, and its own (the mishearings of both: names.py)
             judge=self.judge,
             threshold=float(self.setting("listen.threshold") or 0.7),
             close_s=float(self.setting("listen.close_s") or 8),
             after_speak_s=float(self.setting("listen.after_speak_s") or 6),
             use_model=bool(self.setting("listen.model_judge")),
+            variants=list(self.setting("listen.name_variants") or []),
         )
 
     def judge(self, prompt: str) -> str | None:
@@ -496,7 +494,8 @@ class Voice(Module):
                 self.app.events.emit("voice_failed", part="writing out", error=f"{type(e).__name__}"[:100])
                 h.text = ""
         del audio
-        d = self.gate().decide(h, self.portal.context())
+        g = self.gate()
+        d = g.decide(h, self.portal.context())
         self.heard[d.klass] = self.heard.get(d.klass, 0) + 1
         if not d.addressed:
             h.text = ""  # dropped here: never stored, logged or sent
@@ -505,7 +504,7 @@ class Voice(Module):
             if not was_open:
                 self.portal.state("listening", d.klass)
             return None
-        said = strip_wake(h.text, self.setting("listen.wake_word")) if h.wake else h.text
+        said = g.matcher.uncall(h.text) if h.wake or d.why == "its name" else h.text  # the call itself isn't sent
         return self.portal.take(h, d, text=said)
 
     def ask_brain(self, text: str) -> str:
@@ -622,7 +621,7 @@ class Voice(Module):
             vad = audio.Silero(self.parts.path("silero_vad.onnx")) if self.parts.has_model("vad") else audio.Energy()
             wake = None
             ww = str(self.setting("listen.wake_word") or "")
-            model = self.parts.path(f"{ww}_v0.1.onnx") if ww in WAKE_WORDS else (Path(ww).expanduser() if ww else None)
+            model = Path(ww).expanduser() if ww.strip() else None  # your own openWakeWord model, when you gave one
             if model is not None and model.is_file() and self.parts.has_package("wake"):
                 wake = audio.Wake(
                     model, self.parts.path("melspectrogram.onnx"), self.parts.path("embedding_model.onnx")
@@ -715,11 +714,3 @@ class Voice(Module):
             "two are never kept)."
             + "\n/voice mute, /voice unmute, /voice stop, /voice say <text>"
         )  # fmt: skip
-
-
-def strip_wake(text: str, wake_word: str | None) -> str:
-    """The words after the wake word ("Hey Jarvis, what's due?" -> "what's due?")."""
-    last = WAKE_PHRASES.get(str(wake_word or ""))
-    if not last:
-        return text
-    return re.sub(rf"^\W*(?:(?:hey|hi|ok|okay|hello)\W+)?{last}\b\W*", "", text or "", flags=re.I).strip()
