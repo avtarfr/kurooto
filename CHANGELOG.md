@@ -40,9 +40,6 @@
 - **A new call screen** (Phone tab → Switches → **New call screen**, on): the ringing screen over Kurooto's sky in your
   colours, a slowly turning badge, and Decline / Later / Answer as big buttons in a floating bar; the call page itself is
   unchanged. Off brings back the call screen from before, kept until the new one has carried real calls.
-
-## 0.8.6 (unreleased)
-
 - **The board you had, back if you want it** (`look.board`): `three` (default: NOTES, SYSTEMS and BRAIN on top, STATUS and
   TERMINAL below) or `classic` (STATUS down the left, as before 0.8.3; BRAIN joins the top row when it's shown).
 - **The Brain's part monitor stays in view** (`look.brain_monitor`): `shown` (default) keeps it beside the model; `drawer` is
