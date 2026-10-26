@@ -1,9 +1,8 @@
 """Your real pace (stage 15): hours of work you actually get done on each weekday, as a distribution, not one number.
 
 From the study tracker (hours a day, 8 weeks back) and, if the activity stream is on, the time on projects. A weekday
-with
-few samples is pulled toward a prior (2 hours), so a new install still plans, with wide bands. Sampling draws one of a
-weekday's samples and jitters it a little.
+with few samples is pulled toward a prior (that weekday's average from the imported past, mind.backfill, else 2 hours),
+so a new install still plans, with wide bands. Sampling draws one of a weekday's samples and jitters it a little.
 """
 
 from __future__ import annotations
@@ -46,10 +45,23 @@ def history(app: App, today: dt.date | None = None) -> dict[int, list[float]]:
     return out
 
 
+def past_prior(app: App) -> dict[int, float]:
+    """{weekday: hours} from the study tracker's past imported into Brain (mind.backfill; empty when it's off or
+    nothing was imported): the prior a weekday with few samples is pulled toward, instead of a flat PRIOR_H."""
+    try:
+        from kurooto.mind import history as past
+
+        return past.pace_prior(app)
+    except Exception:
+        return {}
+
+
 def samples(app: App, today: dt.date | None = None) -> dict[int, list[float]]:
-    """Each weekday's samples, with the prior mixed in when there are fewer than a handful."""
+    """Each weekday's samples, with the prior mixed in when there are fewer than a handful: that weekday's real
+    average from the imported past when there is one, else PRIOR_H."""
     h = history(app, today)
-    return {wd: [*s, *([PRIOR_H] * max(0, PRIOR_N - len(s)))] for wd, s in h.items()}
+    prior = past_prior(app)
+    return {wd: [*s, *([prior.get(wd, PRIOR_H)] * max(0, PRIOR_N - len(s)))] for wd, s in h.items()}
 
 
 def draw(rng: random.Random, pool: dict[int, list[float]], weekday: int) -> float:

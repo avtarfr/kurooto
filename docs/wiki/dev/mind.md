@@ -839,16 +839,67 @@ one does. (2) The look-back (`/retro`) doesn't list the flagged decisions yet: `
 credited by `play.credit(before, after)` or `/play useful`; running the hidden harness with a play output applied, to measure `before`/`after` automatically, isn't wired. (5) Credits change nothing but the digest
 (they don't enlarge the budget).
 
-## History import (0.8.1)
+## History import (0.8.1, every source and its own chain 0.8.7)
 
-`mind/history.py` (PART `backfill`; `mind.backfill.on` off, `mind.backfill.events` on). `plan`, `run`, `status`, `forget`, `daily`,
-`describe`. `run` streams `events.jsonl` (events before the log's first record, kinds `mlog.mirrored`) in batches of 500 and sends
-each as the scorekeeper request `import(batch, rows)` through `MindClient.request`. `Keeper.import_rows` checks the batch id,
-cleans each row with `records.clean_fact` (ids and numbers), and writes it to the `history` score table under the key
-`h:<batch>:<n>` with the event's own time as its value (so a re-run rewrites the same rows), then appends one `history_import`
-record (batch, rows, from, to, sha256) to the log. `history_forget` drops the table and logs `history_forgot`. History is never
-read by reward code (a test checks it); `mood.history` uses it through `_with_past` to start the read's and forecast's days
-(snoozes, deadline moves) when backfill is on. `/mind backfill [dry|run|status|forget]` is `Mind.backfill`.
-Other changes: `journal.notes_path` (`in_notes_folder`, `in_notes_file`, kept inside the notes), `lab/runner.ignore_folder`
-(`.kurooto/.gitignore`), `plans/pace.MAX_DAY_H`.
+`mind/history.py` (PART `backfill`; `mind.backfill.on` off; `mind.backfill.<source>` on for `events`, `jobs`,
+`deadlines`, `checkins`, `quiz`, `calls`, `learning`, `study`, read only while `mind.backfill.on` is on: `enabled()`).
 
+**Readers** (`READERS`, each `(app, until) -> (key, at, kind, body)`; `until` = the live log's first record's ts; per-day
+sources take whole days before that date). All read-only (`sqlite3` with `mode=ro`, `jload`), skipped when the store is
+missing:
+
+| Source | Store (writer) | Kind | Body | Key |
+|---|---|---|---|---|
+| events | `events.jsonl.1` then `events.jsonl` (core/events.py) | the event's kind, `mlog.mirrored` | its numbers and true/false | `ev:<sha of the line>:<k>` (k-th identical line), so rotation doesn't change keys |
+| jobs | `jobs.db` `jobs` (core/jobs.py), finished only | `job` | effort, verdict, ok, lane, background, seconds | `job:<sha of id>` |
+| deadlines | `deadlines.json` (modules/deadlines.py) | `deadline_due` (at due), `deadline_finished` (at done_at) | dkind, state, subj (`subject_id`: `s`+8 hex), done_before_h | `dl:<sha of id>:due/done` |
+| checkins | `checkins/<day>.json` (modules/checkins.py) | `checkin` (at its time; before 05:00 is the next day) | checkin (`NAMES` only), state, answered | `ci:<day>:<name>` |
+| quiz | `quiz/<subject>.json` `items.*.history` (modules/quiz.py) | `quiz_day` (noon) | subj, asked, right (q>=3), wrong | `qz:<day>:<subj>` |
+| calls | `calls/rings.json` (modules/calls) + `calls/transcripts/` file names only | `call` | state, module (a catalog id, else `other`), alarm, again, minutes (first transcript name after the ring, before the next ring, within 3 h) | `call:<sha of since>` |
+| learning | `learning/history.db` `docs` (modules/learning.py), kinds request and call | `learning_day` (noon) | via, n | `ln:<day>:<kind>` |
+| study | `study/<day>.json` (modules/study.py) | `study_day` (noon) | seconds (capped 14 h), subjects, manual_s | `st:<day>` |
+
+Not imported (decided in 0.8.7): the ledger (money), the chat log (its counts are an engagement signal, I-3), the journal
+and the notes' structure (the stage-14 model already reads them live). Reminders come through the events source
+(`reminder_set`, `reminder_fired`): `schedule.db` keeps only what's still to come.
+
+**Cleaning** (`records.clean_past`, applied again in the scorekeeper): numbers and true/false; strings only from
+`records.PAST_WORDS` (fixed vocabularies per key) or `PAST_PATTERNS` (`subj`, `module`); keys matching `MONEY_OR_HEALTH`
+dropped. Stricter than `clean_fact` for events: no id-like word passes just because its field is in `ID_KEYS`.
+`records.PAST_KINDS` lists each source's kinds (`past_kind_ok`).
+
+**The chain** (`mind/log.py` `PastLog`, `<state>/mind/history.db`, written only by the scorekeeper, I-1): `past(source,
+n, key UNIQUE, ts, kind, body, prev, hash)`, one chain per source (`n` 1, 2 ... per source; `hash = chain_hash(prev, n,
+ts, "<source>/<kind>", "<key>|<body>")`). `append_many` skips a key it has (`dup`) and refuses a row older than the
+source's head (`late`), so each chain is in the time order of the original events and never needs rewriting when another
+source comes later. `verify(witnessed)` walks every chain (gaps, links, hashes, time order) and checks each witnessed
+head. One chain per source rather than one for all: a source imported later would otherwise have to go before rows
+already chained.
+
+**The request**: `import {source, batch, rows: [{key, at, kind, body}]}` (at most 500 rows) → `Keeper.import_rows`,
+which cleans, sorts by (at, key), appends, and, when rows were added, writes one `history_import` record to the live log:
+`{source, batch, rows, dup, late, from, to, n, head, replaced}`. `n`/`head` are the source chain's head after the batch:
+`MindClient.verify_history()` collects them (since that source's last `history_forgot`) as anchors. `history_forget
+{source}` drops one source or all (and 0.8.1's table) and logs `history_forgot`. Client reads: `past_rows`, `past_heads`,
+`verify_history` (read-only, `mode=ro`).
+
+**Migration from 0.8.1**: 0.8.1's rows in score.db's `history` table stay readable (`daily()` falls back to them while the
+events chain is empty; `status()["old"]`); the first events batch that adds rows drops them (`replaced` in its witness).
+
+**Run** (`run(app, progress, only)`): per source, rows sorted, those older than the chain's head skipped (resume), batches
+of 500, a tqdm-style `bar()` line per batch to `<logs>/mind-backfill.log` and `progress(source, done, total)`; the final
+bars are returned for the reply. A refused batch stops the run with what's in kept.
+
+**Priors** (all `history.py`, read only through `part_on(app, "backfill")`): `daily` (events per day and kind),
+`study_days`, `weekday_baselines` (deadline_moves, study_min: the only read signals the past holds), `forecast_priors`
+(`forecast.baseline` over the last 8 same weekdays, at least 3) used by `mood.run_forecast` for channels `fit` can't fit
+(`mood.past_priors`), `mood._with_past` (past days with those two signals), `pace_prior` used by `plans/pace.samples`
+instead of `PRIOR_H`, `deadline_pattern` used by `tom/goals.from_past` (one inferred `goal` row per kind, evidence
+`history:deadlines`; `forget_past` removes them on forget). None is a reward or an outcome (I-3, I-4):
+`test_history_is_never_reward` checks by imports that only these modules import `mind.history` and that no reward module
+mentions the history table, `history.db`, the past reads or priors.
+
+`/mind backfill [dry | run [source] | verify | forget [source]]` is `Mind.backfill`. Tests: `tests/unit/test_mind_history.py`
+(a fake of every store with planted words, a name and an amount; idempotent re-run; a half-run resumed; tampering).
+Other 0.8.1 changes: `journal.notes_path` (`in_notes_folder`, `in_notes_file`, kept inside the notes),
+`lab/runner.ignore_folder` (`.kurooto/.gitignore`), `plans/pace.MAX_DAY_H`.
