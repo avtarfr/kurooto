@@ -80,6 +80,7 @@ computer only.
 | Reminders with the lid shut | for the next day: each reminder and a morning line (the day's first class and what's due), as a time, an id and, for each paired Android phone, a copy sealed with a key only that phone has (your call line can't read them); each phone's public key. When this computer is asleep at an item's time, its sealed copy goes out through ntfy. Your Telegram bot's token isn't used | your own Cloudflare account (your call line); ntfy.sh, still sealed |
 | Systems and the Notes map on the Android app (`calls.views`, off by default; 0.7.0) | the notes map: each note's path in your notes folder, its title, when it changed, how many words it has and which notes link to which (never what a note says; a big folder is cut to `calls.views_notes` best-linked notes and `calls.views_links` links, 5000 and 20000 by default), and the research hub's project names; SYSTEMS: each feature that's on, how busy it was, its program's cpu, memory, threads and uptime, when it last did something and runs next, its health lines (as /health words them), Kurooto's own cpu and memory, the processor's load, and today's class and event times (no names). Each copy is gzipped and encrypted once on this computer with a fresh key (AES-256-GCM), and that key is sealed for each paired Android phone with a key only that phone has (as Reminders with the lid shut), so your call line keeps the newest copy of each and can't read them. The notes map goes when your notes change (at most every few minutes) and hourly; Systems only while the app shows it (it says so every 20 seconds). Turned off, the call line deletes its copies. The iPhone app gets nothing | your own Cloudflare account (your call line), sealed |
 | Voice notes | the recordings | Google (Gemini, your key) |
+| Voice: talk and listen (0.8.8, off; listening `voice.listen.on` off too) | speaking: nothing (the voice is made on this computer by Kokoro or Piper). Listening: nothing while the portal is closed: sound is cut into stretches of speech in memory, written out on this computer (faster-whisper) and judged on this computer (Silero VAD, openWakeWord, rules and the model on this computer, Ollama at 127.0.0.1); noise and chatter are dropped on the spot and their words are never stored, logged or sent. Only turns the gate decides are said to Kurooto (the wake word, its name, a follow-up in an open conversation, or the local model's judgement at `voice.listen.threshold`) go out, as text, like a chat message; they and the answers are kept in the chat history as typed ones are. Sound is never written to disk. Setting it up downloads packages from PyPI (through uv or pip) and models from github.com and huggingface.co; nothing of yours is sent | the AI you picked (addressed turns only) |
 | Calendar | nothing leaves; Kurooto reads your calendar's private link (or Google Calendar), and class calendars you subscribed to by link (`/cal subscribe`; only fetched, nothing is sent back, and what you add from them stays here). Event descriptions are read only for `#nocall`, `#focus` and `#private` and aren't kept. Events marked private are kept and told only as "Busy (private)": their title and place go nowhere, not even to your AI | (read from Google/Outlook/Apple) |
 | Notes sync | your whole notes folder; conflict copies (when a note changed here and elsewhere at once) are ordinary notes and go too | your own private GitHub repository |
 | Notes sync + Phone calls | read access to that repository, so calls can read notes while the computer is off | your call line (its secret store) |
@@ -131,7 +132,8 @@ requests and bytes, per day) and checks it against this list. `/egress` shows th
 | `gmail.googleapis.com` | Gmail (mail digest, drafts) |
 | `www.googleapis.com` | Google Drive and Google Calendar |
 | `api.github.com` | Notes sync and Profile sync (checking your repository); gh reading a project's issues and milestones (Projects from repositories, when gh is signed in) |
-| `github.com` | Projects from repositories (git fetching a repository you named); downloading Git (Windows), Tectonic, kitty and fish |
+| `github.com` | Projects from repositories (git fetching a repository you named); downloading Git (Windows), Tectonic, kitty and fish; Voice's models (Kokoro, Silero VAD, openWakeWord), only when you set Voice up |
+| `huggingface.co` | Voice: downloading the speech-to-text model (faster-whisper) and the Piper voice, only when you set Voice up; nothing of yours is sent |
 | `api.cloudflare.com` | Phone calls: setting up your call line |
 | `.workers.dev` | Phone calls: your call line (any address under it) |
 | `ntfy.sh` | Phone calls: ringing your phone |
@@ -154,7 +156,8 @@ counted: nothing leaves.
 into what they send: git (Notes sync, Profile sync, Add-ons by link, Projects from repositories), gh (a project's
 issues and milestones), npm and wrangler (setting up your call line), agy and Claude
 Code (AI requests), Ollama (downloading a model), GBrain (making the index with Gemini, or your own brain's models),
-Tectonic (LaTeX packages), and installers (winget, Homebrew, Flatpak, npm, Bun, a vendor's install script). Where they
+Tectonic (LaTeX packages), uv or pip (Voice's Python packages, from PyPI, when you set Voice up), and installers
+(winget, Homebrew, Flatpak, npm, Bun, a vendor's install script). Where they
 send it is in the tables above.
 
 **Enforcing it** (`privacy.egress`): `record` (the default) counts everything and marks a host that isn't on the list

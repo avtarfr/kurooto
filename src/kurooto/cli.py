@@ -1803,6 +1803,22 @@ def jobs_parsers(sub) -> None:
     )
 
 
+def voice_parsers(sub) -> None:
+    vo = sub.add_parser("voice", help="Voice: what it's doing; mute, unmute, stop (stop speaking), say TEXT")
+    vo.add_argument("what", nargs="*", help="nothing (status), mute, unmute, stop, or say followed by the text")
+
+
+def voice_run(a) -> int | None:
+    """Runs `kurooto voice [...]`: /voice, through the running Kurooto (modules/voice); None for any other command."""
+    if a.cmd != "voice":
+        return None
+    r = say(("/voice " + " ".join(a.what)).strip())
+    if r is None:
+        return 1
+    print("\n".join(r.get("replies") or []) or "Done.")
+    return 0
+
+
 def graph_run(a) -> int | None:
     """Runs `kurooto graph [...]`: /graph, through the running Kurooto; None for any other command."""
     if a.cmd != "graph":
@@ -2172,6 +2188,7 @@ def main(argv: list[str] | None = None) -> int:
     cases_parsers(sub)
     classpack_parsers(sub)
     jobs_parsers(sub)
+    voice_parsers(sub)
     addons_parsers(sub)
     ai_parsers(sub)
     project_parsers(sub)
@@ -2185,6 +2202,7 @@ def main(argv: list[str] | None = None) -> int:
     done = classpack_run(a) if done is None else done
     done = jobs_run(a) if done is None else done
     done = graph_run(a) if done is None else done
+    done = voice_run(a) if done is None else done
     done = addons_run(a) if done is None else done
     done = ai_run(a) if done is None else done
     done = project_run(a) if done is None else done

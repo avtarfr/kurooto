@@ -282,6 +282,9 @@ with the reason.
 
 **Settings.** `voice_notes.model` (`gemini-flash-latest`).
 
+To talk to Kurooto out loud at the computer instead, with nothing sent until you're talking to it, see
+[Voice](voice.md).
+
 **What leaves your computer:** the recording goes to Google (Gemini, your key). On the free tier Google may use what you
 send to improve its products, so don't say anything you wouldn't type.
 

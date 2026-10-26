@@ -78,6 +78,7 @@ MODULE_ORDER = [
     "alarm",
     "lidsafe",
     "voice_notes",
+    "voice",
     "awake",
     "calendar",
     "notes_sync",
@@ -274,6 +275,9 @@ class Api:
             t = self.app.modules.get("terminals")
             on = bool(t) and self.app.is_on("terminals")
             return 200, {"on": on, "terms": t.listing() if on else []}
+        if path == "voice":  # Voice: its state, engines and switches (modules/voice)
+            v = self.app.modules.get("voice")
+            return (200, v.status()) if v is not None else (404, {"error": "no Voice here"})
         if path == "health":  # Kurooto keeps itself working: every check, from what's known here (core/health.py)
             from dataclasses import asdict
 
@@ -454,6 +458,8 @@ class Api:
                 return 400, {"ok": False, "message": "which request?"}
             gone = ref.lower() == "all" or self.app.jobs.find(ref) is not None
             return 200, {"ok": gone, "message": self.app.jobs.cancel_text(ref)}
+        if path.startswith("voice/"):  # Voice: say, mute, shape (modules/voice)
+            return self._voice(path[len("voice/") :], b)
         if path == "health/fix":  # a Fix button on the dashboard, or `kurooto doctor --fix ID` (core/health.py)
             ok, message = self.app.health.fix(str(b.get("id") or ""))
             return 200, {"ok": ok, "message": message}
@@ -936,6 +942,24 @@ class Api:
             return 200, r
         if sub == "expire":
             return 200, {"ok": ask.expire(str(b.get("id") or ""))}
+        return 404, {"error": "not found"}
+
+    def _voice(self, action: str, b: dict) -> tuple[int, dict]:
+        """POST voice/say {text}, voice/mute {on: true|false, or none to flip}, voice/stop, voice/shape {text}."""
+        v = self.app.modules.get("voice")
+        if v is None:
+            return 404, {"error": "no Voice here"}
+        if action == "shape":  # works with Voice off too: the estimate (modules/voice/shape.py)
+            return 200, v.shape(str(b.get("text") or ""))
+        if action == "say":
+            ok, message = v.say(str(b.get("text") or ""), wait=False)
+            return 200, {"ok": ok, "message": message}
+        if action == "mute":
+            on = b.get("on")
+            return 200, {"ok": True, "message": v.mute(None if on is None else bool(on)), "muted": v.muted()}
+        if action == "stop":
+            v.speaker.stop()
+            return 200, {"ok": True, "message": "Stopped speaking."}
         return 404, {"error": "not found"}
 
     def _power(self) -> dict:

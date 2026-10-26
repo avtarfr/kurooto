@@ -67,7 +67,7 @@ flattened to their first value; a non-dict JSON body becomes `{}`. Anything unma
 GET (in `Api.get`): `tools`, `job?id=`, `usage?days=` (tools_api); `addons` (the add-ons by link: `linked` rows with their card and text, `kept` for Undo, `official`: the official list with what you have of each), `jobs`, `term`, `health`, `sync/status`,
 `profile`, `note?id=`, `settings`, `look`, `events` (last 80), `board` (503 without `Live`), `state` (the wizard's
 whole state, with `setup` and `calm` below), `setup` (`core/setupsteps.py:view`: each step's status, `resume`, `left`), `phone`, `power`, `aboutyou/profile`, `aboutyou?source=`, `persona`, `research`, `progress`, `ask`, `ask/<id>`,
-`today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `morning`
+`voice` (`modules/voice:Voice.status`), `today` (`core/actions.py:today`), `study?subject=` (`core/actions.py:study_view`), `morning`
 (`modules/daily.py:morning_view`), `mail/confidential?day=`, `books`, `notes/fit?folder=` (`core/notesfit.py:view`: the proposal for that folder or the notes
 folder, `in_use`, `presets`, the move to `undo`).
 
@@ -87,6 +87,7 @@ POST (in `Api.post`):
 | profile and about | `profile/save`, `profile/restore`, `aboutyou/add`, `aboutyou/remove`, `aboutyou/profile`, `aboutyou/preview`, `aboutyou/merge`, `persona` (`{values}`: the persona card, `core/persona.py:save`) |
 | phone | `phone/pair`, `phone/revoke`, `phone/test` |
 | terminals | `term/<name>/attach`, `input`, `resize`, `leave`, `restart` (403 when Terminals is off) |
+| voice | `voice/say` (`{text}`), `voice/mute` (`{on}`; none flips), `voice/stop`, `voice/shape` (`{text}` -> `{samples, rate, seconds, source}`, works with Voice off); [voice.md](voice.md) |
 | live stream | `stream/seen` (`{cid, visible}`: the dashboard is in sight or not, `Live.seen`; `ok: false` for no such page, 400 for a cid that isn't a number) |
 | other | `research/save`, `research/preview`, `research/run`, `classpack/import`, `mail/confidential/settle`, `books/add` |
 
@@ -127,6 +128,8 @@ Long work runs through `Api._background(fn, then_enable=None)`: one slot (`_inst
   open page is hidden the loop reads nothing (a dashboard left in a background tab kept the daemon at 13-30% of a
   core). Coming back sets `_wake`, so the loop takes a reading at once instead of within 2 s. Events and terminal
   output are still pushed to hidden pages; a new page counts as in sight; `drop` forgets its `hidden` entry.
+- Voice (0.8.8) pushes `{"t": "voice", "kind": voice_state | voice_level | voice_text | voice_speak, ...}` straight
+  to the pages with `Live.push`, never through the event log (words and levels aren't logged); [voice.md](voice.md#events-and-the-live-stream).
 - What one turn costs (0.6.1, a 2,271-note folder, ~500 processes): `snapshot()` about 30 ms, mostly the process
   list; `Graph.scan()` about 11 ms when nothing changed (it names notes with plain strings: a `Path` per note made it
   145 ms); the loop as a whole about 2.5% of one core with a page in sight (6% before, plus the 0.6.0 settings cost),

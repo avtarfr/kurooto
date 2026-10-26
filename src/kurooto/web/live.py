@@ -56,6 +56,7 @@ EVENT_CELL = [
     ("alarm", "alarm"),
     ("lidsafe", "lidsafe"),
     ("voice_note", "voice_notes"),
+    ("voice_", "voice"),  # (modules/voice) the portal opening and closing, listening on and off
     ("awake", "awake"),
     ("calendar", "calendar"),
     ("notes_sync", "notes_sync"),

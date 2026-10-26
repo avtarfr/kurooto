@@ -49,6 +49,7 @@ for Claude Code, the service you entered for an OpenAI-compatible one, or nothin
 | Chat with your AI | what you ask; notes it reads to answer; what its tools return; your profile's "In brief" part, your how-to-help-me note and your persona card (empty unless you write one) | the AI you picked |
 | Setup page: Try it now | what you type that isn't an instant request, like a Chat message; nothing goes to Telegram or your phone | the AI you picked |
 | Voice notes | the recordings | Google (Gemini, your key) |
+| Voice: talk and listen (off; listening off too) | nothing while the portal is closed: what the microphone hears is written out and judged on this computer, and noise and people talking to each other are dropped at once, their words never stored, logged or sent; only what the gate decides you said to Kurooto goes out, as text, like a chat message. Sound is never saved. See [Voice](voice.md#privacy) | the AI you picked (only turns said to Kurooto) |
 | Notes sorter (off until you turn it on) | only for a note its rules can't place, with `sorter.ai` on: the note's first lines and the names of your folders, as one short request; with it off, nothing | the AI you picked |
 | Files into notes | with Chat on, the files you send, so the AI can file them | the AI you picked |
 | Photo to dates | the photo you sent for its dates (`dates` as its caption, `/dates`); nothing is added before you tap | the AI you picked |
@@ -231,14 +232,14 @@ kept (`egress.json` in the state folder, 30 days), never what was sent.
 
 Each host is checked against Kurooto's list, which is the "Where requests go" table in `docs/PRIVACY.md`: Telegram,
 Google's APIs (Gemini, sign-in, Classroom, Gmail, Drive and Calendar), GitHub, Cloudflare and your call line
-(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, arXiv, bioRxiv and PubMed, and Kurooto's release site.
+(`.workers.dev`), ntfy.sh, Node.js and Ollama downloads, Voice's models (GitHub, Hugging Face), arXiv, bioRxiv and PubMed, and Kurooto's release site.
 Addresses you gave are yours and always allowed: your calendar's link, class calendars you subscribed to, your Research feeds, your own AI service, your
 call line, your ntfy server, and pages your AI reads for a request. This computer (`127.0.0.1`) is never counted.
 
 Programs that go online by themselves show as **handed to** them, with the feature: git (Notes sync, Profile sync, add-ons by link,
 projects from repositories), gh (a project's issues and milestones),
-npm and wrangler (setting up the call line), agy and Claude Code, Ollama (a model download), GBrain, Tectonic and
-installers. Kurooto doesn't see what they send; the tables above say where it goes.
+npm and wrangler (setting up the call line), agy and Claude Code, Ollama (a model download), GBrain, Tectonic, uv or
+pip (Voice's Python packages) and installers. Kurooto doesn't see what they send; the tables above say where it goes.
 
 **`privacy.egress`** decides what happens to a host that isn't on the list:
 - `record` (the default): it's counted and marked "not on the list", and the request goes ahead. It's the default
@@ -426,6 +427,8 @@ More on each: [updates-and-backups.md](updates-and-backups.md). Before you share
 - **Open threads** never open from a sentence about health, money or passwords.
 - **Private calendar events** keep only their time.
 - **Events** (the activity log) record counts and request names, never what you typed or answered.
+- **Voice** never keeps sound (only a rolling buffer of under a second, in memory) and never keeps the words of noise
+  or of people talking to each other: they're dropped as soon as the gate decides. Only counts are kept, in memory.
 
 ## What the AI may read and write on your computer
 

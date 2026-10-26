@@ -2072,6 +2072,31 @@ Send your bot a voice message: it's written out (you see what it heard) and hand
 Gemini key. *Leaves:* the recording goes to Google; on the free tier Google may use what you send to improve its
 products, so don't say anything you wouldn't type.
 
+### Voice: talk and listen
+Kurooto speaks through this computer's speakers with a voice made here (Kokoro-82M; Piper as a lighter choice), and,
+with `voice.listen.on`, listens to the room all day. Off until you turn it on; listening is off until you turn that on
+too. **Set up** (Features → Voice: talk and listen) downloads what your switches need and says the size first: about
+0.6 GB to speak, about 0.8 GB more to listen (sounddevice, Kokoro, faster-whisper base, Silero VAD, openWakeWord with
+the "hey Jarvis" wake word); nothing before that. Packages go into Kurooto's own folder, never your system.
+
+- **Listening:** voice activity finds speech; each stretch is written out here; the gate decides noise, chatter
+  (people talking to each other) or talking to Kurooto: the wake word ("hey Jarvis", `voice.listen.wake_word`; or
+  your own trained "hey Kurooto" `.onnx`), its name first or last in a sentence, a follow-up in an open conversation,
+  else the model on this computer (`voice.listen.threshold`, 0.7). Only then does a conversation open and your words
+  go to your AI like a chat message; the answer is spoken and shown on the dashboard. It closes at once when what's
+  said next isn't to it, or after `voice.listen.close_s` (8) seconds.
+- **It stops listening** when muted (`/voice mute`, `kurooto voice mute`, kept across restarts), during a call
+  (`voice.listen.calls`), at night (`voice.listen.night`), while paused, and on battery in saver mode.
+- **Speaking:** `voice.speak.what` = `voice` (answers to what you said aloud, the default), `all` (every AI answer) or
+  `off`; `voice.speak.voice`, `voice.speak.rate`; `/voice say <text>`, `/voice stop`.
+- `/voice` says what it's doing and counts what it heard (`/health` has a line too).
+
+*Leaves:* nothing while no conversation is open; then only the turns said to Kurooto, as text, to your AI (and kept
+in the chat history like typed ones). Sound is never saved; the words of noise and chatter are dropped at once and
+never stored, logged or sent. Setting up downloads from PyPI, GitHub and Hugging Face.
+*Undo:* `/voice mute` stops listening and speaking at once; `voice.listen.on` off stops listening; turning Voice off
+(Features) stops both. To free the space, delete the `voice` folder in Kurooto's app folder (`kurooto paths`, `app`).
+
 ### Stay awake on charger
 While your computer is plugged in, it doesn't go to sleep by itself, so Kurooto keeps answering; on battery it sleeps
 as usual. The screen can still turn off.
