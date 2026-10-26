@@ -1,5 +1,6 @@
 # Changelog
 
+<<<<<<< HEAD
 ## 0.8.7 (unreleased)
 
 - **Brain is fed its whole past** (`mind.backfill.on`, off): besides Kurooto's event history, `/mind backfill run` reads the
@@ -19,6 +20,17 @@
 - **A new call screen** (Phone tab → Switches → **New call screen**, on): the ringing screen over Kurooto's sky in your
   colours, a slowly turning badge, and Decline / Later / Answer as big buttons in a floating bar; the call page itself is
   unchanged. Off brings back the call screen from before, kept until the new one has carried real calls.
+=======
+## 0.8.8 (unreleased)
+
+- **Look-alike concept notes fix themselves** (`integrate.auto_merge`, on): pairs that are clearly one concept (the same
+  name, a shared name, or texts at least `integrate.auto_merge_min` = 0.97 alike), both notes Kurooto's, merge by
+  themselves through the usual Merge, in the garden pass, before the 06:25 question and on `/graph same`. Each is in the
+  morning line with its own Undo button; only unsure pairs are asked. A note you wrote is never merged by itself.
+- **`/run all`** (and `kurooto run all`): every nightly process that's on, now, in order (books, inbox, concept graph,
+  look-alike notes, garden), one at a time, with a progress line and ETA per step and a summary at the end;
+  `/run all status`, `/run all stop`. Off: `runall.on`.
+>>>>>>> f/v088-ops
 
 ## 0.8.6 (unreleased)
 

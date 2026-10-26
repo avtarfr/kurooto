@@ -30,11 +30,13 @@ that's there now (the "garden"); the day's changes are one line on Telegram.
 
 Near-duplicate concepts (integrate.duplicates, core/graphmerge.py): each morning, up to three pairs of notes that look
 like one concept (the same name, a shared alias, or embeddings at least 0.92 alike) come as one question with Merge /
-Keep both / Add alias, each with Undo; /graph same asks now. Notation (integrate.notation): the bulk AI also says how
-the pages write each concept (B_t, W_t, where 2pi goes in a Fourier transform), with a quote; rows whose quote isn't
-in the pages are dropped, and when a second source writes it differently the note gets a "Notation" table in
-Kurooto's block. It's a part of the Research add-on (modules/research_addon.py): tables are written only while the
-add-on is on.
+Keep both / Add alias, each with Undo; /graph same asks now. Pairs that are clearly one concept, both notes Kurooto's,
+are merged by themselves first (integrate.auto_merge, 0.8.8), each with Undo in the morning line.
+
+Notation (integrate.notation): the bulk AI also says how the pages write each concept (B_t, W_t, where 2pi goes in a
+Fourier transform), with a quote; rows whose quote isn't in the pages are dropped, and when a second source writes it
+differently the note gets a "Notation" table in Kurooto's block. It's a part of the Research add-on
+(modules/research_addon.py): tables are written only while the add-on is on.
 
 Which AI: integrate.roles {"bulk": "agy", "check": "claude"} (empty: chosen from what's installed; one program does
 both). The two run side by side. With no agent program, your main AI (a Gemini key, say) does both, at its limit.
@@ -108,6 +110,8 @@ register_defaults(
         "duplicates": True,  # each morning, up to 3 pairs of look-alike concept notes: Merge / Keep both / Add alias
         "duplicates_all": True,  # also each morning: notes of any kind that are copies of each other, old ones too
         "duplicates_per_day": 3,  # the most copy pairs asked about in a day
+        "auto_merge": True,  # look-alike concept notes that are clearly one concept merge by themselves (Undo each)
+        "auto_merge_min": 0.97,  # how alike two notes' text must be (embeddings, 0.92 to 1) to merge without asking
         "notation": True,  # a Notation table when a second source writes a concept differently (a switch on the card)
     },
 )
@@ -1502,6 +1506,10 @@ class Integrate(Module):
         now. One short request per note (to the check AI); the answer's links are checked the same way."""
         if not self.app.is_on(self.id) or not self.setting("garden"):
             return {}
+        try:  # look-alike notes that are clearly one concept merge first (integrate.auto_merge, 0.8.8)
+            graphmerge.auto(self)
+        except Exception as e:  # never at the cost of the linking pass
+            self.app.events.emit("module_failed", module=self.id, error=f"auto_merge: {type(e).__name__}: {e}"[:300])
         index = self.index()
         if not index.notes:
             return {}
@@ -1518,8 +1526,12 @@ class Integrate(Module):
                 pick.append(s)
         g["queue"] = [s for s in queue if s not in pick]
         _, chk = self.roles()
-        sent = 0
+        sent, jobs = 0, []
+        halt = getattr(self, "garden_halt", None)  # /run all stop (core/runall.py)
         for s in pick:
+            if halt is not None and halt.is_set():
+                g["queue"] = [x for x in pick[pick.index(s) :] if x in index.notes] + g["queue"]
+                break
             n = index.notes[s]
             cands = [c for c in index.candidates(n.head, n.title, n.aliases, limit=9) if c.slug != s][:8]
             if not cands:
@@ -1527,7 +1539,7 @@ class Integrate(Module):
             prompt = ai.LINK_NOTES_PROMPT.format(
                 note=json.dumps(index.card(s), ensure_ascii=False), cards=ai.cards_text(index, [c.slug for c in cands])
             )
-            self.app.jobs.submit(
+            jid = self.app.jobs.submit(
                 prompt,
                 title=f"Linking: {short(n.title, 40)}",
                 effort="low",
@@ -1539,11 +1551,13 @@ class Integrate(Module):
                 then="integrate.linked",
                 then_payload={"note": s},
             )
+            jobs.append(jid)
             g.setdefault("last", {})[s] = day()
             sent += 1
             time.sleep(0.02)  # a breath for the rest of Kurooto between notes
         self.save("garden.json", g)
-        return {"asked": sent}
+        self.garden_last = {"asked": sent, "jobs": jobs}  # what /run all waits for
+        return self.garden_last
 
     def prune_dangling(self, index: cg.Index) -> int:
         """Take out the typed link lines Kurooto wrote (`- relation:: [[x]] — …`) whose note doesn't exist: a concept
@@ -1769,8 +1783,12 @@ class Integrate(Module):
 
     def summary(self, payload: dict | None = None) -> str:
         n = (self.load("ledger.json", {}).get("nights", {}) or {}).get(day(), {})
+        dreaming = self.app.is_on("dreaming")  # Dreaming's morning message has it then (modules/dreaming.py)
+        merged, undo = ("", []) if dreaming else graphmerge.merged_section(self)  # merged by themselves (0.8.8)
         if not n:
-            return ""
+            if merged:
+                self.app.notify(merged, kind="result", title="Concept graph", why="integrate.summary", buttons=undo)
+            return merged
         line = (
             f"Concept graph: {n.get('batches', 0)} batches, +{n.get('new', 0)} concept notes, "
             f"+{n.get('links', 0)} links, {n.get('updated', 0)} notes updated"
@@ -1781,8 +1799,12 @@ class Integrate(Module):
             line += f"; {n['flagged']} doubtful, {n.get('dropped', 0)} dropped after a second look"
         if n.get("failed"):
             line += f"; {n['failed']} batches failed"
-        if not self.app.is_on("dreaming"):  # Dreaming's morning message has it then (modules/dreaming.py)
-            self.app.notify(line + ".", kind="result", title="Concept graph", why="integrate.summary")
+        if merged:
+            line += ". " + merged.removesuffix(".")
+        if not dreaming:
+            self.app.notify(
+                line + ".", kind="result", title="Concept graph", why="integrate.summary", buttons=undo or None
+            )
         return line
 
     def waiting(self) -> dict[str, int]:

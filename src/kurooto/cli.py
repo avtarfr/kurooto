@@ -1814,6 +1814,44 @@ def graph_run(a) -> int | None:
     return 0
 
 
+def run_all(what: list[str], poll: float = 1.0) -> int:
+    """`kurooto run all [status|stop]`: /run all through the running Kurooto; a start then follows it live, printing
+    the progress line in place (a new line per step when this isn't a terminal) until the summary. Ctrl-C leaves it
+    running there."""
+    import time
+
+    if what[0].lower() != "all":
+        print("Usage: kurooto run all [status | stop]   (`kurooto run` alone runs the assistant here)", file=sys.stderr)
+        return 2
+    r = say("/run " + " ".join(what))
+    if r is None:
+        return 1
+    replies = r.get("replies") or []
+    print("\n".join(replies) or "Done.")
+    if len(what) > 1 or not replies or not replies[0].startswith(("Running everything", "Already running")):
+        return 0
+    tty, shown = sys.stdout.isatty(), ""
+    try:
+        while True:
+            time.sleep(poll)
+            r = say("/run all status")
+            if r is None:
+                return 1
+            text = "\n".join(r.get("replies") or [])
+            if not text.startswith("Running"):
+                print(("\r\033[K" if tty else "") + text.removeprefix("Nothing running. Last run: "))
+                return 0
+            cur = text.splitlines()[-1]
+            if tty and shown and cur.split(" ", 1)[0] != shown.split(" ", 1)[0]:
+                print()  # the next step: the last one's line stays above
+            if cur != shown:
+                print(("\r\033[K" + cur) if tty else cur, end="" if tty else "\n", flush=True)
+                shown = cur
+    except KeyboardInterrupt:
+        print("\nStill running in Kurooto: `kurooto run all status` shows it, `kurooto run all stop` stops it.")
+        return 130
+
+
 def jobs_run(a) -> int | None:
     """Runs `kurooto jobs`; None for any other command. A cancel goes through the running Kurooto (it stops the
     request's program and its thread); with Kurooto stopped, the queue itself is changed."""
@@ -2094,7 +2132,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     fx = sub.add_parser("fixme", help="what's wrong and what to do, matched by rules (no AI needed)")
     fx.add_argument("words", nargs="*", help="what you see, e.g. the phone doesn't ring")
-    sub.add_parser("run", help="run the assistant in this window")
+    rn = sub.add_parser("run", help="run the assistant in this window; `run all`: every nightly process that's on, now")
+    rn.add_argument("what", nargs="*", help="all (every nightly process that's on, now), all status, all stop")
     sub.add_parser("supervise", help="run it and restart it if it crashes")
     sub.add_parser("start", help="start it in the background now")
     sub.add_parser("open", help="open the setup page or dashboard")
@@ -2210,6 +2249,8 @@ def main(argv: list[str] | None = None) -> int:
 
         return fixme.cli(" ".join(a.words))
     if a.cmd == "run":
+        if a.what:  # `kurooto run all`: /run all through the running Kurooto (core/runall.py)
+            return run_all(a.what)
         from kurooto.daemon import run
 
         return run()

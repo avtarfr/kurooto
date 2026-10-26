@@ -315,7 +315,10 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   [modules.md](modules.md)): `integrate.index()` for candidates when the concept graph is on, one job on the check AI
   (`lane="chk"`, `then="handwritten.linked"`), the same checks on the answer (existing target, `lint_reason`,
   confidence ≥ 0.5), plain `- [[path]]: reason` lines in a `kurooto:linked` block.
-- `integrate:summary` ("daily 07:10") sends one line with Calm reason `integrate.summary`.
+- `integrate:summary` ("daily 07:10") sends one line with Calm reason `integrate.summary` (with the merges made by
+  themselves and their Undo buttons when Dreaming is off). `garden()` merges the clear look-alike pairs first
+  (`graphmerge.auto`), returns `{"asked", "jobs"}` (also kept in `garden_last` for `/run all`) and stops before the
+  next note when `garden_halt` is set.
 - `integrate:night` (`integrate.at`, "daily 01:30") and `integrate:retry` ("every 3h") call `tick`. `integrate:plan`
   (hourly, `plan_night`) books a one-off `integrate:early` (action `integrate.soon`) when the next night should start
   before `integrate.at` (`Budget.next_start`), and cancels it otherwise.
@@ -368,6 +371,47 @@ Batch states: `pending`, `queued`, `checking`, `done`, `failed`. Failure handlin
   outside_hash at creation}` for notes `write()` made from 0.6.0 on (older notes count as yours: they keep their
   text when merged).
 - Events `integrate_duplicates` (pairs asked), `integrate_duplicate` (act). Tests: `tests/unit/test_graph_dupes.py`.
+- **Fixing itself** (0.8.8, `integrate.auto_merge`, default on; `integrate.auto_merge_min`, default `AUTO_MIN` 0.97):
+  `graphmerge.auto(ig)` (one at a time: the module lock `_auto`, non-blocking) takes `near_duplicates` over the same
+  `focus` as `find()` without moving the cursor or clearing `fresh`, skipping pairs whose record is `merge`/`keep`/
+  `alias` or `undone`, and merges at most `AUTO_MOST` = 6 pairs `clear()` accepts, through `merge()` (so the same
+  journal and Undo; a "Not merged" result leaves the pair to be asked). `clear()`: both notes `kurootos()`
+  (`sources.agent_written` on their frontmatter: `made_by:` or `trust_tier: agent_written`), and `name`/`alias` with
+  no vectors or a cosine of at least `NAME_FLOOR` 0.80 (homonyms across subjects are asked), or `meaning` with a
+  score of at least `auto_min()` (the setting, clamped to [`DUP_COSINE`, 1]). Why 0.97: 0.92 is where asking starts;
+  in 0.92 to about 0.96 sit neighbouring concepts the same AI wrote from the same pages; at 0.97+ the two texts say
+  the same thing. The pair record gets `auto: True`; `dupes.json["auto"]` gets `{pid, ta, tb, why, day, told}`
+  (200 kept). Where it runs: `Integrate.garden()` first (wrapped: a failure is a `module_failed` event, the pass goes
+  on), `night()` first, `ask_now()` first (then "Merged ..." plus the question; Undo buttons ahead of the pair rows),
+  and `/run all`'s Look-alike step. Event `integrate_auto_merged` (merged).
+- **The morning line**: `merged_section(ig, send=True)` → (one line naming each untold merge still in state `merge`,
+  `[[("1 Undo", "dup:<pid>:undo"), ...]]` in rows of three); `send` marks them `told`. Carried by Dreaming's
+  `report()` (in "While you slept", buttons appended) when Dreaming is on, else by `Integrate.summary()` (appended to
+  the line, or alone when the night did no reading), else by `night()` as a message of its own (Calm reason
+  `integrate.duplicates`). An undone auto-merge is `undone`: never automatic again, asked by `find()` instead.
+
+## Run all (0.8.8, `core/runall.py`)
+
+- `/run all` (a core command in `App.handle`, CORE and the settings group in `core/commands.py`) and `kurooto run all`
+  (`cli.run_all`: `say("/run all")`, then `say("/run all status")` every second, printing the last line in place on a
+  tty, a line per change otherwise, until the reply isn't "Running..."; `kurooto run` with no words still runs the
+  daemon). Switch `runall.on` (registered when `App` starts, so it's in Settings).
+- `start(app, watch, steps)` makes a `Run` (on `app._runall`) under the module lock `_start`; `current(app)` is the
+  unfinished one, so a second start returns None ("Already running"). `Run.go()` runs `STEPS` in order on one daemon
+  thread: `books_step` (`Books.spawn(_until())` and polls its thread; pages left from each book's `meta`; on battery
+  it's skipped; stop sets `Books._halt`), `inbox_step` (`Sorter.run(force=True)`, which runs the inbox reader when
+  `sorter.read_files`), `graph_step` (`tick()` + `inflight()` + `counts()` every `POLL` until nothing is in flight and
+  nothing was submitted; skipped while `stopped_until()`; a budget `limit` is said), `same_step` (`auto`,
+  `merged_section` → the summary's buttons, the unsure pairs via `find(again=True)` + `message()` as a question with
+  `why="asked"`), `garden_step` (`garden_start()`, join, then `garden_last["jobs"]` until none is queued or running;
+  `Integrate.garden_halt` = the run's stop event, checked before each note). A step raising `Skip` is "skipped (why)";
+  any other exception is "failed: ..." and the next step runs (`runall_failed` event).
+- `line(i, n, name, done, total, unit, elapsed)` is the tqdm-style line (`WIDTH` 20, ETA = elapsed/done × left, "?"
+  before the first unit). `Run.text()`: finished steps and the current line; `summary()` at the end.
+- Telegram (`_telegram`): the first reply's message id is edited through `app.notifier.edit` at most every
+  `EDIT_EVERY` (5 s) and at each step's end; when the edit fails (or the chat is the phone app's), one reply per step.
+  The summary is its own reply, with the merges' Undo buttons. From a terminal (`via="terminal"`) nothing is sent
+  after the first answer; the CLI polls. Event `runall_done`. Tests: `tests/unit/test_runall.py`.
 
 ## Notation crosswalk (0.6.0)
 
@@ -439,15 +483,16 @@ a two-note zettelkasten.
 - `register_defaults("integrate", ...)`: `at`, `roles`, `batch_pages` (12), `per_night` (`"auto"` or a ceiling),
   `share_pct` (60), `max_cost_per_night` (0.5), `price_per_mtok` (`{"in": 2.0, "out": 8.0}`), `garden`,
   `garden_per_day` (40), `embeddings` (auto), `rerank` (auto), `rerank_model`, `sources` (`["books", "classroom"]`),
-  `first`, `order` (smallest), `commit`, `summary`, `duplicates` (on), `notation` (on).
+  `first`, `order` (smallest), `commit`, `summary`, `duplicates` (on), `auto_merge` (on, 0.8.8), `auto_merge_min`
+  (0.97), `notation` (on).
 - `/graph` (`Integrate._cmd`): state, counts, tonight's budget and the last limit (`Budget.lines`), `metrics()` (broken
   links, notes with no links in, boilerplate reasons, top-3 share, name collisions), today's cost; `/graph now` lifts a stop and runs
   `tick()` (and says the budget's lines when it may not start); `/graph stop` (`Integrate.hold`; not `stop`, which is
   turning the feature off) writes `stopped.json` with the next `integrate.at` time and cancels `integrate:soon`;
   `tick()` starts nothing before then, whoever calls it (the night, retry, plan and early jobs, `poke`, `_done`), and a
   restart keeps it. `/graph backfill classroom` runs `backfill_classroom()` and says what it queued
-  (`backfill_said`). `/graph same` (also `duplicates`, `dupes`) runs `graphmerge.ask_now` and replies with its
-  buttons.
+  (`backfill_said`). `/graph same` (also `duplicates`, `dupes`) runs `graphmerge.ask_now` (the clear pairs merged
+  first) and replies with its buttons.
 - No intents.
 - The links are read back as review cards by the Quiz (`modules/quiz_links.py`, see [modules.md](modules.md)), with
   `seen.json`'s pages for "Where to read"; nothing there writes to the notes.

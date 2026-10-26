@@ -43,6 +43,7 @@ These belong to Kurooto itself and answer whichever features are on.
 | `/memory` · `/memory <words>` · `/memory forget 3` · `/memory export` | everything Kurooto remembers (gists, threads, how-to-help-me lines, daily notes, project meetings), encrypted on this computer: newest first and numbered; with words, the rows that have them all; `forget 3` forgets one (a how-to-help-me line leaves that note too); `export` writes the gists and threads to a note in your inbox | [Privacy](privacy.md#the-memory-ledger) |
 | `/threads` · `/threads done 2` · `/threads drop 2` · `/threads all` | what you're in the middle of (what you said you'd do, in a message or on a call; tasks you started), newest first, with Done and Drop; what closed in the last 48 hours with Undo; `all` shows older closed ones too | [Talking to Kurooto](talking-to-kurooto.md#open-threads-and-that-thing) |
 | `/sync` | with Notes sync off: sync everything that's on (with it on, see Notes sync below) | [Notes](notes-and-concept-graph.md) |
+| `/run all` · `/run all status` · `/run all stop` | every nightly process that's on, now, one after another: read new books, file the inbox (and read the files in it), the concept graph's queue, look-alike notes (clear ones merged with Undo, the rest asked), then the garden; one progress line with an ETA per step (Telegram edits one message), then a summary. Never two at once; `stop` stops the step running at its next safe point. Off: `runall.on` | [Notes](notes-and-concept-graph.md#run-everything-now) |
 
 ### Telegram feature
 
@@ -147,7 +148,7 @@ More: [Classes and timetable](classes-and-timetable.md), [Quiz and exams](quiz-a
 | `/graph backfill classroom` | read the Classroom files filed before 0.5.19 into the concept graph, night by night | Concept graph |
 | `/graph backfill handwritten` | read the handwritten notes linked before into the concept graph (with `handwritten` in `integrate.sources`); `/handwritten link` links older ones first | Concept graph |
 | `/graph backfill all` | both backfills, for every source that's on | Concept graph |
-| `/graph same` | concept notes that look like one concept, with Merge / Keep both / Add alias | Concept graph |
+| `/graph same` | concept notes that look like one concept: the clear ones merged now (with Undo), the rest asked with Merge / Keep both / Add alias | Concept graph |
 | `/graph garden` | the daily linking pass now (the notes the reading touched, then notes nothing links to; at most `garden_per_day`) | Concept graph |
 | `/skills`, `/skills journal`, `/skills copy journal` | the skills you can run; show one; make your own copy to edit | Skills |
 | `/newskill <what it should do>` | the AI writes a new skill (Save / Discard) | Skills |
@@ -328,6 +329,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto ai rename-claude NAME NEW` / `remove-claude NAME [--yes]` | rename an extra Claude account (its id stays) / remove it and Kurooto's sign-in folder for it (asks first) |
 | `kurooto jobs`, `kurooto jobs --cancel <id \| all>` | what the AI is working on; cancel |
 | `kurooto graph [now \| stop \| same \| garden \| backfill …]` | the same as `/graph` from a terminal; `garden` runs the daily linking pass now |
+| `kurooto run all`, `kurooto run all status`, `kurooto run all stop` | `/run all` from a terminal: it prints the progress line live, a line per step, then the summary (Ctrl-C leaves it running in Kurooto). `kurooto run` alone still runs the assistant in the window |
 | `kurooto hardware`, `--profile <name>`, `--add <model>`, `--remove <model>`, `--add-prereq <id>`, `--remove-prereq <id>`, `--install` | what this computer suits, and going past it |
 | `kurooto space`, `kurooto space --clean` | what Kurooto takes and what can go |
 | `kurooto selftest` | check that this version starts |

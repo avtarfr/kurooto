@@ -332,6 +332,18 @@ class Dreaming(Module):
             self.app.events.emit("dreaming_check_failed", error=f"fold: {type(e).__name__}: {e}"[:200])
             folded, fold_buttons = "", []
         self.buttons = list(self.buttons or []) + tidy_buttons + fold_buttons
+        ig = self.app.modules.get("integrate")
+        if ig is not None and self.app.is_on("integrate"):  # look-alike notes merged by themselves, each with Undo
+            try:
+                from kurooto.core import graphmerge
+
+                merged, merged_buttons = graphmerge.merged_section(ig, send)
+            except Exception as e:  # never at the cost of the morning message
+                self.app.events.emit("dreaming_check_failed", error=f"auto_merge: {type(e).__name__}: {e}"[:200])
+                merged, merged_buttons = "", []
+            if merged:
+                did.append(merged)
+                self.buttons += merged_buttons
         if send:
             st = {"at": now().isoformat()}
             prev = (jload(self.state_file, {}) or {}).get("passing")

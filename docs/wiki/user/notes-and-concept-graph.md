@@ -584,6 +584,38 @@ things". With Notes sync off, plain `/sync` does the same.
 
 ---
 
+## Run everything now
+
+**What it does** (0.8.8). The processes that otherwise wait for the night, now, one after another, each only when its
+feature is on (a step that's off is listed as skipped):
+
+1. **Books**: reads the new books (on the charger, like `/books read now`),
+2. **Inbox**: files what's in the scratch folder (the Notes sorter's pass), and reads the files in it when
+   `sorter.read_files` is on,
+3. **Concept graph**: its queue, batch after batch, until nothing is ready or tonight's reading budget is used up. It
+   respects `/graph stop` (that step is skipped while it holds),
+4. **Look-alike notes**: the clear pairs merged by themselves (with Undo), the unsure ones asked,
+5. **Garden**: the daily linking pass, and it waits for those requests to come back.
+
+Each step waits for the one before. While a step runs you see one line like this, with an ETA:
+
+    [3/5] Concept graph |########------------| 40% 4/10 batches, 2:05 elapsed, ETA 3:08
+
+At the end, one summary: what each step did and how long it took, with an Undo button for each note it merged.
+
+**From Telegram.** `/run all`. The progress is one message that changes as it goes (the phone app's chat gets a line
+per step instead). `/run all status` shows the line; `/run all stop` stops the step running at its next safe point (a
+book after its page, the graph after the batch already asked for, the garden before its next note) and the rest don't
+start. A second `/run all` while one runs says what's running instead.
+
+**From a terminal** (Kurooto running): `kurooto run all` prints the line live, then the summary; Ctrl-C leaves it
+running in Kurooto. `kurooto run all status`, `kurooto run all stop`.
+
+*Turn off:* `runall.on` off (Settings → runall). *Undo:* each merge has its Undo button; a book read, a note filed or
+a batch read is undone the way it always is (`/sort undo`, the batch's Undo).
+
+---
+
 ## Concept graph
 
 **Your AI can look in it** (0.7.3, with the concept graph on): `graph_search` (concepts by meaning or words),
@@ -729,7 +761,24 @@ buttons):
 
 Every answer comes back with **Undo**, which puts the notes back as they were (a note you changed since stays as it
 is, and the message says so). A pair you don't answer comes back after two weeks; `/graph same` asks now, those
-included. Nothing is merged without your tap, and nothing you wrote is deleted.
+included. Nothing you wrote is deleted.
+
+**It fixes itself** (0.8.8, `integrate.auto_merge`, on). A pair that is clearly one concept is merged without asking,
+through the same Merge, and only the unsure pairs come as a question. Clearly one concept means both notes are
+Kurooto's (`made_by` or `trust_tier: agent_written` in their header), and:
+- the same name, or a name they share; unless, where this computer has embeddings, their texts are far apart (two
+  different things both called "Kernel" are asked about), or
+- their texts are at least `integrate.auto_merge_min` alike (0.97 by default). The question starts at 0.92; between
+  that and about 0.96 sit neighbouring ideas the AI wrote from the same pages (a process and its bridge, a theorem and
+  its corollary), so those are asked. At 0.97 and over, two notes say the same thing in other words.
+
+A note you wrote yourself is never merged by itself, only asked about. A pair you answered before (Keep both, say) is
+never merged by itself, and neither is one whose merge you undid: that one is asked instead. At most six a pass. It
+runs in the daily garden pass (06:20), again before the 06:25 question, and on `/graph same` (which then says what it
+merged and asks the rest). Each merge is listed in the morning line, **with an Undo button each**: Dreaming's morning
+message when Dreaming is on, else the concept graph's morning line (`integrate.summary`), else a message of its own
+at 06:25. Undo puts both notes back as they were. *Undo the feature:* `integrate.auto_merge` off: every pair is asked
+again, as before 0.8.8.
 
 **Notation side by side** (`integrate.notation`, on; a switch on the Concept graph card in Dashboard → Features:
 tables come whenever the graph reads books, class files or handwritten notes). The
@@ -779,7 +828,7 @@ ago"). See [Dreaming](teaching-kurooto.md#dreaming).
 | `/graph backfill classroom` | Queues the Classroom files filed before 0.5.19, the oldest course first ("Queued 12 Classroom files from 3 courses, the oldest course first. They're read within each night's budget, after what's filed from now on.") |
 | `/graph backfill handwritten` | Queues the handwritten notes linked before, the oldest day first ("Queued 3 handwritten notes..."); notes never linked are queued when `/handwritten link` links them. |
 | `/graph backfill all` | Every backfill for the sources that are on: Classroom, handwritten. Books need none: they're queued as they're found. |
-| `/graph same` | The concept notes that look like one concept now, with Merge / Keep both / Add alias (also pairs asked before and not answered) |
+| `/graph same` | Merges the pairs that are clearly one concept now (with Undo, `integrate.auto_merge`) and says which, then asks about the rest with Merge / Keep both / Add alias (also pairs asked before and not answered) |
 | `/graph garden` | The daily second pass now, instead of waiting for 06:20; says how many notes it sent. Off with `integrate.garden` |
 
 The quality numbers in `/graph`: how many concepts and links, **broken** links, notes with **no links in**, links
@@ -817,6 +866,8 @@ skipped.
 | `integrate.commit` | on | One Git commit per batch, when your notes are a repository |
 | `integrate.summary` | on | The morning line |
 | `integrate.duplicates` | on | Each morning, up to three look-alike concept notes: Merge / Keep both / Add alias |
+| `integrate.auto_merge` | on | Pairs that are clearly one concept, both notes Kurooto's, merge by themselves (Undo in the morning line); only unsure pairs are asked |
+| `integrate.auto_merge_min` | `0.97` | How alike two notes' texts must be (embeddings) to merge without asking; never below 0.92 |
 | `integrate.notation` | on | A Notation table when a second source writes a concept differently (a switch on the Concept graph card) |
 
 **Limits and edge cases.**

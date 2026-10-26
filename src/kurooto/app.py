@@ -89,6 +89,7 @@ class App:
         self.jobs.then_actions["repoproject.understood"] = lambda job, result, p: repoproject.understood(
             self, job, result, p
         )
+        from kurooto.core import runall  # noqa: F401 (/run all's switch, runall.on, in Settings)
         from kurooto.core.ask import Ask  # questions and approvals for you, from any feature (app.ask)
 
         self.ask = Ask(self)
@@ -460,6 +461,13 @@ class App:
                 from kurooto.core import egress
 
                 msg.reply(egress.command(self, arg))
+                return
+            if name == "run":  # /run all: every nightly process that's on, now, in order (core/runall.py)
+                from kurooto.core import runall
+
+                out = runall.command(self, msg, arg)
+                if out:
+                    msg.reply(out)
                 return
             if name == "helper":  # the offline helper: /helper, /helper on, off, test (core/helper.py)
                 msg.reply(self.helper.command(arg))
