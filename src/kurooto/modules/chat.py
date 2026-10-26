@@ -59,6 +59,7 @@ class Chat(Module):
             text += self._shared_note()
 
         terminal = msg.via in ("terminal", "setup")
+        quiet = terminal or msg.via == "voice"  # spoken (modules/voice): the answer comes back aloud, not on Telegram
         history = jload(self.history_file, []) or []
 
         # Only inject history if there is recent conversation within 2 hours
@@ -94,7 +95,7 @@ class Chat(Module):
         title = msg.text.strip()[:80] or (msg.files[0].name if msg.files else "")
         waits = helper is not None and helper.holds() and not helper.here(self._main())  # said here, not again
         jid = self.app.jobs.submit(
-            prompt, title=title, reply_to=None if terminal else msg.message_id, quiet=terminal, offline=waits
+            prompt, title=title, reply_to=None if quiet else msg.message_id, quiet=quiet, offline=waits
         )
         msg.job = jid
         self.mine = {*list(self.mine)[-50:], jid}

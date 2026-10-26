@@ -1100,6 +1100,31 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `updates.wait_hours` | `48` | hours a new version waits before it's installed |
 | `updates.window` | `["03:00", "05:00"]` | the hours the automatic update may run |
 
+### `voice`
+
+| Setting | Default | What it does |
+|---|---|---|
+| `voice.listen.after_speak_s` | `6` | a question or request this many seconds after it spoke counts as an answer to it |
+| `voice.listen.calls` | `false` | keep listening during a phone call (off: it stops while you're on one) |
+| `voice.listen.close_s` | `8` | seconds with nothing said to it before the conversation closes |
+| `voice.listen.device` | `""` | the microphone: empty is the system's default; a name or number from sounddevice |
+| `voice.listen.language` | `""` | the language you speak, e.g. en or hi; empty: worked out each time |
+| `voice.listen.levels` | `true` | send the microphone's loudness to the dashboard for its waveform (numbers only) |
+| `voice.listen.model_judge` | `true` | when the rules can't tell, the model on this computer judges (off: rules only) |
+| `voice.listen.name_variants` | `[]` | more spellings of its name to accept (Whisper's mishearings of Kurooto are built in) |
+| `voice.listen.night` | `true` | listen during the night hours too (off: it stops for availability.night) |
+| `voice.listen.on` | `false` | listen through the microphone, all on this computer; only turns said to Kurooto leave |
+| `voice.listen.stt_model` | `"base"` | the transcriber's size: tiny (75 MB), base (145 MB) or small (484 MB, better) |
+| `voice.listen.threshold` | `0.7` | the local model's confidence below which speech counts as not said to Kurooto |
+| `voice.listen.wake_threshold` | `0.5` | how sure the wake word model must be (0 to 1) |
+| `voice.listen.wake_word` | `""` | a wake word model of your own (an openWakeWord .onnx path); empty: its name wakes it |
+| `voice.speak.engine` | `"kokoro"` | the voice made on this computer: kokoro (natural, ~0.55 GB), piper (lighter) or off |
+| `voice.speak.max_chars` | `800` | a longer answer is read this far, then "the rest is on screen" |
+| `voice.speak.on` | `true` | Kurooto speaks through this computer's speakers (while Voice is on) |
+| `voice.speak.rate` | `1.0` | speaking speed: 1.0 normal, 0.8 slower, 1.2 faster |
+| `voice.speak.voice` | `""` | Kokoro's voice (af_heart, af_bella, am_michael, bf_emma, bm_george ...); empty: af_heart |
+| `voice.speak.what` | `"voice"` | what's read aloud: voice (answers to what you said aloud), all (every AI answer) or off |
+
 ### `voice_notes`
 
 | Setting | Default | What it does |

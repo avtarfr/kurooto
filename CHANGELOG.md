@@ -2,6 +2,16 @@
 
 ## 0.8.8 (unreleased)
 
+- **Voice: talk and listen** (a new feature, off; Features → Voice: talk and listen → Set up): Kurooto speaks through
+  this computer's speakers with a voice made here (Kokoro-82M, or Piper), sentence by sentence so it starts quickly.
+  With `voice.listen.on` it also listens all day, entirely on this computer: Silero VAD finds speech, faster-whisper
+  writes it out, and a gate (its name, the conversation it's in, then the model on this computer) decides noise,
+  chatter or talking to it. Its name is the wake word: Whisper is hinted with it, and its usual mishearings ("Kuroto",
+  "kuro to") and near misses count (`voice.listen.name_variants` for more); a wake word model of your
+  own is optional. Only turns said to Kurooto go to your AI; the words of everything
+  else are dropped at once, and sound is never saved. The conversation closes the moment you're not talking to it.
+  `/voice` (mute, unmute, stop, say), `kurooto voice`, and `/api/voice` with a `{"t": "voice"}` live stream for the
+  dashboard. It stops for calls, when paused and when muted, and at night only if you ask (`voice.listen.night`).
 - **Look-alike concept notes fix themselves** (`integrate.auto_merge`, on): pairs that are clearly one concept (the same
   name, a shared name, or texts at least `integrate.auto_merge_min` = 0.97 alike), both notes Kurooto's, merge by
   themselves through the usual Merge, in the garden pass, before the 06:25 question and on `/graph same`. Each is in the

@@ -24,7 +24,7 @@ These belong to Kurooto itself and answer whichever features are on.
 |---|---|---|
 | `/dream` | what Kurooto did since the last morning message, and the loose ends; `/dream policy`: what it tunes while you sleep (when messages reach you, effort, which AI first, Start-by sizes) and what it changed; `/dream proposal`: a fix for a skill, waiting for your OK (a proposal: Apply, Change, Discard); `/dream check`: duplicates and lines that disagree in what it remembers, now (Keep A / Keep B / Both true) | Dreaming |
 | `/inferred` · `/inferred undo <id>` | what was set up from what you said (a project, a meeting, a class, a recurring quiz, a commitment, a short name), and taking one back | Kurooto itself |
-| `/help`, `/start` | everything I can do, as an index: one line per group with its commands and its page in this wiki, then the features that are off. `/help <group>` (talking, reminders, classes, study, quiz, calls, checkins, notes, projects, skills, research, google, teaching, privacy, settings) shows one group in full, `/help all` every group, `/help <word>` finds a command or feature, on or off | [Talking to Kurooto](talking-to-kurooto.md) |
+| `/help`, `/start` | everything I can do, as an index: one line per group with its commands and its page in this wiki, then the features that are off. `/help <group>` (talking, voice, reminders, classes, study, quiz, calls, checkins, notes, projects, skills, research, google, teaching, privacy, settings) shows one group in full, `/help all` every group, `/help <word>` finds a command or feature, on or off | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/status` | what's going on: calls held or allowed, focus, what's coming up, open questions, today's check-ins, what's due soon, the alarm, recent AI requests, the features that are on (answers even with Telegram off, from a terminal) | [Talking to Kurooto](talking-to-kurooto.md) |
 | `/q` (or `/questions`) | the open questions Kurooto asked you, each with its buttons; reply to one to answer it | [Talking to Kurooto](talking-to-kurooto.md#questions-and-approvals) |
 | `/jobs` | what the AI is working on and what waits, with Cancel buttons, and the last few that finished; `/jobs cancel <id>` or `/jobs cancel all` | [AI brains](ai-brains.md) |
@@ -66,6 +66,17 @@ More: [Talking to Kurooto](talking-to-kurooto.md).
 | `/usage`, `/usage 14` | AI requests per day (7 days by default, up to 60), limits hit, today's limits and when they reset |
 
 More: [AI brains](ai-brains.md), [Talking to Kurooto](talking-to-kurooto.md#chat-with-your-ai).
+
+### Voice
+
+| Command | What it does |
+|---|---|
+| `/voice` | what Voice is doing (speaking, listening, why not), and counts of what it heard since it started |
+| `/voice mute`, `/voice unmute` | stop and start listening and speaking (it stays muted across restarts) |
+| `/voice stop` | stop speaking now |
+| `/voice say <text>` | say this aloud now |
+
+More: [Voice](voice.md).
 
 ### Reminders, deadlines and planning
 
@@ -354,6 +365,7 @@ help with setup, repairs and scripts. `kurooto <command> --help` shows each one'
 | `kurooto ask "what's due this week?"`, `kurooto ask` | plain English as on Telegram; alone, a prompt for one request after another (`!command` runs a shell command there); `--no-wait`, `--job <id>`, `--timeout <minutes>` |
 | `kurooto ask --popup`, `kurooto ask --shortcut` | a small window to type one request in, the answer shown there (bind it to a hotkey in your system: [Quick ask](talking-to-kurooto.md#quick-ask-a-hotkey)); `--shortcut` adds Kurooto Quick ask to your app menu (on Windows its Properties take a shortcut key) |
 | `kurooto note "an idea"`, `… \| kurooto note --title "output"` | a quick note in your inbox (works with Kurooto stopped) |
+| `kurooto voice`, `kurooto voice mute`, `kurooto voice unmute`, `kurooto voice stop`, `kurooto voice say <text>` | Voice, as `/voice` ([Voice](voice.md)) |
 | `kurooto notify "text"` (`--title`, `--kind`, `--urgent`, `--button "Label=…"`, `--click URL`, `--print-id`, `--reply-to ID`) | send yourself a message |
 | `kurooto send <file>` (`--caption`, `--to drive`) | send yourself a file on Telegram (up to 50 MB), or to your Google Drive |
 | `kurooto ask-me "question"` (`--choices "a\|b"`, `--wait`, `--timeout`, `--expires`, `--title`, `--then CMD`, `--pending`, `--id`) | ask yourself something, answered anywhere |

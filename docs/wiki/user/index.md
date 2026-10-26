@@ -18,6 +18,7 @@ all of them.
 | **Your phone** | The Android app, or the iPhone Home Screen app: calls, the wake-up alarm, questions and approvals. |
 | **Phone calls** | Call Kurooto like a person, and let it call you for reminders, check-ins, deadlines, quizzes and the alarm. |
 | **Your notes folder** | Plain Markdown files (works with Obsidian): journal, course notes, book notes, everything Kurooto writes. |
+| **Out loud** | With Voice on, Kurooto speaks on this computer and can listen for you; see [Voice](voice.md). |
 | **A terminal** | `kurooto` commands for setup, repairs, scripts and a status board. Optional. |
 
 ## How the wiki is organised
@@ -29,6 +30,8 @@ all of them.
 - [AI brains](ai-brains.md): which AI answers you, free limits, what the AI may do on your computer, and the run
   receipt under each answer.
 - [Talking to Kurooto](talking-to-kurooto.md): Telegram, plain English, chat, questions and approvals, pause, focus, voice notes, sending files.
+- [Voice](voice.md): Kurooto speaks with a voice made on your computer and, if you turn listening on, hears you; a
+  local model tells noise and people talking from you talking to it, and only that leaves the computer.
 - [Messages Kurooto sends by itself](messages-it-sends.md): every message it sends unasked and why, the daily limit, going offline, health checks.
 
 **Your day**

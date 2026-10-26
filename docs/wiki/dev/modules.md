@@ -516,6 +516,9 @@ One line of purpose and the internals worth knowing. Commands are Telegram comma
   `repaired_to`; Calm reason `cases.repaired`), and `expected(text)` is a test case's target for a phrasing.
 - **voice_notes** (`modules/voice_notes.py`): `transcribe()` posts audio to Gemini `generateContent`; used by Telegram.
   18 MB limit.
+- **voice** (`modules/voice/`, 0.8.8): speaking (Kokoro or Piper) and listening on this computer; a local gate decides
+  noise, chatter or addressed, and only addressed turns reach the brain through the portal. `heavy`; its listener is
+  `background()`; parts fetched by `setup()` (`parts.py`). See [voice.md](voice.md).
 - **library** (`modules/library.py`): `/note` into the inbox; `/prompts`, `/prompt` (the prompt library in
   `<notes>/prompts`).
 - **remember** (`modules/remember.py`): "remember that ..." appended to `about-me/how-to-help-me.md` (health, money and
