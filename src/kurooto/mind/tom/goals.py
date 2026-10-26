@@ -69,3 +69,41 @@ def infer_intentions(app: App) -> list[dict]:
             if r:
                 out.append(r)
     return out
+
+
+PAST = "history:deadlines"  # the evidence id of rows learned only from the imported past
+LABELS = {"exam": "exams", "task": "assignments", "quiz": "quizzes"}
+
+
+def _lead(h: float) -> str:
+    v, unit = (abs(h) / 24, "days") if abs(h) >= 36 else (abs(h), "hours")
+    return f"about {v:.0f} {unit} {'before' if h >= 0 else 'after'} they're due"
+
+
+def from_past(app: App, min_done: int = 3) -> int:
+    """How past deadlines went (mind.backfill's history, no titles): for each kind with enough done, one hedged row,
+    "usually marks assignments done about 2 days before they're due (from 9)". A prior for timing, inferred, never a
+    goal stated for you. How many rows were kept."""
+    from kurooto.mind import history
+
+    n = 0
+    for kind, p in history.deadline_pattern(app).items():
+        if kind not in LABELS or p["done"] < min_done or p["lead_h"] is None:
+            continue
+        conf = min(0.7, 0.3 + p["done"] / 40)
+        claim = f"usually marks {LABELS[kind]} done {_lead(p['lead_h'])} (from {p['done']} past ones)"
+        if model.put(app, PART, f"past {LABELS[kind]}", claim, "inferred", conf, [PAST], by_subject=True):
+            n += 1
+    return n
+
+
+def forget_past(app: App) -> int:
+    """`/mind backfill forget`: the rows learned only from the imported past go (and may be learned again after a new
+    import: they aren't marked forgotten)."""
+    st = model._state(app)
+    keep = [r for r in st["rows"] if PAST not in (r.get("evidence") or [])]
+    gone = len(st["rows"]) - len(keep)
+    if gone:
+        st["rows"] = keep
+        model._save(app, st)
+    return gone

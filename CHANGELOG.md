@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.7 (unreleased)
+
+- **Brain is fed its whole past** (`mind.backfill.on`, off): besides Kurooto's event history, `/mind backfill run` reads the
+  AI request history, deadlines, check-ins, quizzes, calls, the request index and study time, each with its own switch
+  (`mind.backfill.<source>`), ids and numbers only (never words, names, transcripts, health or money), with a progress
+  bar and ETA per source. It's resumable and imports nothing twice.
+- **The imported past has its own hash chain** (`history.db`, one chain per source in time order), never mixed into the
+  live log, which witnesses each batch; `/mind backfill verify` checks both. 0.8.1's imported rows stay readable until
+  the events source is imported again.
+- **What learns from it, as priors only (never a reward):** the read and the forecast (deadline moves and study minutes
+  per weekday, the signals the past really holds), week plans' pace (your real study time per weekday) and the model of
+  you (how you finish deadlines). `/mind backfill forget` removes it and what was learned from it.
+
 ## 0.8.6 (unreleased)
 
 - **The board you had, back if you want it** (`look.board`): `three` (default: NOTES, SYSTEMS and BRAIN on top, STATUS and

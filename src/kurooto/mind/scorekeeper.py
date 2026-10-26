@@ -15,6 +15,9 @@ port is in `endpoint.json`, the key in `key`, both 0600 (0640 hardened). Request
     get     {table, key}         a row of score.db
     log     {after, kinds, limit}
     verify  {from}               the chain, and the anchors
+    import  {source, batch, rows}  the imported past (mind/history.py): rows checked and put on that source's own
+                                 chain in history.db, one witness record per batch in the log (never a reward)
+    history_forget {source}      drop the imported past (one source, or all)
     head / ping
 
 Anything else is refused and the refusal is logged: there is no request that sets a setpoint, a value, trust or a
@@ -82,6 +85,7 @@ class Keeper:
         mlog.private(self.dir, 0o750 if hardened else 0o700)
         self.log = mlog.MindLog(self.dir / "log.db", writable=True, mode=self.mode)
         self.score = Score(self.dir / "score.db", writable=True, mode=self.mode)
+        self.past = mlog.PastLog(self.dir / "history.db", writable=True, mode=self.mode)
         self.anchor_every = max(10, int(anchor_every or 1000))
         self.lock = threading.Lock()
         self.engine = eng.Engine(self)
@@ -110,52 +114,62 @@ class Keeper:
             r = self.log.verify(int(req.get("from") or 1), mlog.read_anchors(self.dir))
             return {"ok": True, "verify": r.__dict__}
         if op == "import":
-            return self.import_rows(str(req.get("batch") or ""), req.get("rows"))
+            return self.import_rows(str(req.get("source") or ""), str(req.get("batch") or ""), req.get("rows"))
         if op == "history_forget":
-            return self.history_forget()
+            return self.history_forget(str(req.get("source") or ""))
         if op in ("head", "ping"):
             seq, h = self.log.head()
             return {"ok": True, "head": [seq, h], "pid": os.getpid()}
         return self.refuse(_clip(op) or "nothing")
 
-    # -------------------------------------------------------------------------------- history (0.8.1)
-    def import_rows(self, batch: str, rows) -> dict:
-        """What happened before Brain was on: events this computer kept (core/events.py), as plain facts. They go
-        in the `history` table with their own times, never in the log's chain and never toward a reward (history trains
-        priors only). One log record says that a batch came in (its size and a hash), so an import is witnessed."""
-        import hashlib
-
-        if not records.ID.match(batch or "") or not isinstance(rows, list) or len(rows) > HISTORY_BATCH:
+    # -------------------------------------------------------------------------------- the imported past (0.8.1, 0.8.7)
+    def import_rows(self, source: str, batch: str, rows) -> dict:
+        """What happened before Brain was on, from one of Kurooto's own stores (mind/history.py reads them), as plain
+        facts: each row {key, at, kind, body} is checked (its source's kinds, records.clean_past: ids and numbers) and
+        goes on that source's own chain in `history.db` under its own time, never in the live log's chain and never
+        toward a reward (history trains priors only). A key already there is skipped, so a re-run or a resumed run adds
+        nothing twice. One `history_import` record in the live log witnesses each batch that added rows: its size, its
+        dates and the source chain's new head (n, hash), which `/mind backfill verify` checks the chain against."""
+        if (
+            source not in mlog.PAST_SOURCES
+            or not records.ID.match(batch or "")
+            or not isinstance(rows, list)
+            or len(rows) > HISTORY_BATCH
+        ):
             return self.refuse("import")
-        n, first, last = 0, None, None
-        digest = hashlib.sha256()
+        good = []
+        for r in rows:
+            if not isinstance(r, dict):
+                continue
+            kind, key = str(r.get("kind") or ""), str(r.get("key") or "")
+            try:
+                at = float(r.get("at"))
+            except (TypeError, ValueError):
+                continue
+            if not (0 < at < 1e11) or not records.ID.match(key) or not records.past_kind_ok(source, kind):
+                continue
+            good.append((key, at, kind, records.clean_past(source, kind, r.get("body"))))
+        good.sort(key=lambda g: (g[1], g[0]))
         with self.lock:
-            for i, r in enumerate(rows):
-                if not isinstance(r, dict):
-                    continue
-                kind = str(r.get("kind") or "")
-                try:
-                    at = float(r.get("at"))
-                except (TypeError, ValueError):
-                    continue
-                if not mlog.mirrored(kind) or not records.ID.match(kind):
-                    continue
-                clean = records.clean_fact(kind, r.get("body") if isinstance(r.get("body"), dict) else {})
-                self.score._put("history", f"h:{batch}:{i:05d}", at, {"k": kind, **clean})
-                digest.update(f"{kind}|{at}|{sorted(clean.items())}".encode())
-                n += 1
-                first = at if first is None else min(first, at)
-                last = at if last is None else max(last, at)
-            if n:
+            res = self.past.append_many(source, good)
+            old = self.score._drop("history", "h:") if source == "events" and res["added"] else 0
+            if res["added"] or old:
                 self.log.append(
-                    "history_import", {"batch": batch, "rows": n, "from": first, "to": last, "sha": digest.hexdigest()}
-                )
-        return {"ok": True, "rows": n}
+                    "history_import",
+                    {"source": source, "batch": batch, "rows": res["added"], "dup": res["dup"], "late": res["late"],
+                     "from": res["from"], "to": res["to"], "n": res["n"], "head": res["head"], "replaced": old},
+                )  # fmt: skip
+        return {"ok": True, "rows": res["added"], "dup": res["dup"], "late": res["late"], "bad": len(rows) - len(good)}
 
-    def history_forget(self) -> dict:
+    def history_forget(self, source: str = "") -> dict:
+        """Drop the imported past (one source, or all of it, and 0.8.1's table); the log keeps that it happened."""
+        if source and source not in mlog.PAST_SOURCES:
+            return self.refuse("history_forget")
         with self.lock:
-            gone = self.score._drop("history", "h:")
-            self.log.append("history_forgot", {"rows": gone})
+            gone = self.past.drop(source or None)
+            if not source or source == "events":
+                gone += self.score._drop("history", "h:")
+            self.log.append("history_forgot", {"rows": gone, "source": source or "all"})
         return {"ok": True, "rows": gone}
 
     def refuse(self, what: str) -> dict:
@@ -523,6 +537,7 @@ class Keeper:
     def close(self) -> None:
         self.log.close()
         self.score.close()
+        self.past.close()
 
 
 def _write_private(path: Path, text: str, mode: int) -> None:

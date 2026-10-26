@@ -402,9 +402,9 @@ class Mind(Module):
             Command(
                 "mind",
                 "Brain: its scorekeeper, its log and whether the log checks out; /mind verify checks all of it; "
-                "/mind gate shows what it held back or removed from messages today",
+                "/mind gate shows what it held back or removed from messages today; /mind backfill feeds it the past",
                 self.cmd,
-                usage="/mind [verify|gate]",
+                usage="/mind [verify | gate | backfill [dry | run [source] | verify | forget [source]]]",
             ),
         ]
 
@@ -503,6 +503,7 @@ class Mind(Module):
         if not tom_model.on(self.app):
             return 0
         n = tom_knowledge.from_notes(self.app) + tom_knowledge.from_quiz(self.app) + tom_goals.sync_deadlines(self.app)
+        n += tom_goals.from_past(self.app)
         n += tom_prefs.sync(self.app) + len(tom_goals.infer_intentions(self.app))
         tom_attention.remember(self.app)
         return n
@@ -721,26 +722,44 @@ class Mind(Module):
         return self.status(c)
 
     def backfill(self, words: list[str]) -> str:
-        """/mind backfill [dry|run|status|forget]: feed Brain what Kurooto kept before it was on (mind/history.py)."""
+        """/mind backfill [dry | run [source] | verify | forget [source]]: feed Brain what Kurooto kept before it was
+        on (mind/history.py)."""
         from kurooto.mind import history
 
         sub = words[0].lower() if words else "status"
+        src = words[1].lower() if len(words) > 1 else ""
+        if src and src not in history.SOURCES:
+            return f"No source {src!r}. Sources: {', '.join(history.SOURCES)}."
         if sub == "forget":
-            return f"Forgot {history.forget(self.app):,} imported events."
+            n = history.forget(self.app, src)
+            return f"Forgot {n:,} imported rows" + (f" from {src}." if src else ".")
         if sub in ("dry", "dry-run", "plan"):
             p = history.plan(self.app)
             if not p["rows"]:
-                return "Nothing to import: no events from before Brain was on."
-            top = ", ".join(f"{k} {n:,}" for k, n in list(p["kinds"].items())[:8])
+                return "Nothing to import: nothing from before Brain was on."
             span = f"{dt.datetime.fromtimestamp(p['from']):%d %b} to {dt.datetime.fromtimestamp(p['to']):%d %b}"
-            return f"Would import {p['rows']:,} events ({span}): {top}. Nothing written. /mind backfill run does it."
+            per = ", ".join(f"{s} {v['rows']:,}" for s, v in p["sources"].items() if v["rows"])
+            return f"Would import {p['rows']:,} rows ({span}): {per}. Nothing written. /mind backfill run does it."
+        if sub == "verify":
+            r = history.verify(self.app)
+            n = sum(r["sources"].values())
+            if r["ok"]:
+                return (
+                    f"The imported past checks out: {n:,} rows on {len(r['sources'])} chains, every one in its place."
+                )
+            b = r["bad"]
+            return f"The imported past doesn't check out: {b['source']} #{b['n']}, {b['why']}."
         if sub == "run":
-            res = history.run(self.app)
+            res = history.run(self.app, only=src)
+            bars = "\n".join(res.get("bars") or [])
             if res.get("error"):
-                return res["error"]
-            return f"Imported {res['rows']:,} events in {res['batches']} batches. /mind backfill shows what it learned."
+                return "\n".join(x for x in (res["error"], bars) if x)
+            head = f"Imported {res['rows']:,} rows in {res['batches']} batches."
+            if res.get("late"):
+                head += f" {res['late']:,} were older than what was already in and were left out."
+            return f"{head}\n{bars}\n/mind backfill shows what it learned; /mind backfill verify checks it."
         st = history.status(self.app)
-        head = [f"Imported: {st['imported']:,} events." if st["imported"] else "Nothing imported yet."]
+        head = [f"Imported: {st['imported']:,} rows." if st["imported"] else "Nothing imported yet."]
         if not self.app.settings.get("mind.backfill.on"):
             head.append("It's off: turn on mind.backfill.on, then /mind backfill dry and /mind backfill run.")
         return "\n".join([*head, *history.describe(self.app)])

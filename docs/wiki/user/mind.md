@@ -441,7 +441,8 @@ its promises) have no guarantee until it's back. Switches: `mind.promises.on`, `
 ## What it keeps
 
 Everything is in the `mind` folder of Kurooto's state folder, on this computer only:
-- `log.db` (the log), `score.db` (the scores), `anchors.jsonl`;
+- `log.db` (the log), `score.db` (the scores), `anchors.jsonl`, and `history.db` (the imported past, once you run
+  `/mind backfill run`);
 - while the scorekeeper runs: its address and a key that changes each time it starts.
 
 Only you can read these files (owner-only permissions).
@@ -470,17 +471,44 @@ same on Windows, macOS and Linux; the scorekeeper just runs as you.
 ## Feeding Brain its past
 
 Brain's log starts the day you switch Brain on, so its read of how you're doing, its forecasts and its plans begin with
-no past. Kurooto has kept an event history since you installed it (deadlines, reminders, calls, AI requests, buttons). Turn on
-`mind.backfill.on` and Brain can read it:
+no past. Kurooto has kept a lot since you installed it. Turn on `mind.backfill.on` and Brain can read it, once, from these
+places on your computer (each has its own switch, `mind.backfill.<source>`, all on; none is read while
+`mind.backfill.on` is off, and one that isn't there is skipped):
 
-- `/mind backfill dry`: what's there (counts per kind, the dates). Nothing is written.
-- `/mind backfill run`: imports it. Safe to run again: the same events land in the same place.
-- `/mind backfill`: what's imported and a normal week from it. `/mind backfill forget` removes all of it.
+| Source | Setting | What Brain keeps from it |
+|---|---|---|
+| Kurooto's event history | `mind.backfill.events` | which kind of thing happened and when (a deadline added or moved, a reminder fired, a call missed, a request ended, a button tapped), and its numbers |
+| AI requests | `mind.backfill.jobs` | per request: its effort, whether it worked, how long it took, whose lane it was in. Never what you asked or the answer |
+| Deadlines | `mind.backfill.deadlines` | when each was due and when you marked it done, and whether it was an exam or an assignment. Never its title; its subject only as a code |
+| Check-ins | `mind.backfill.checkins` | which check-ins were asked, answered or skipped each day. Never what you said |
+| Quizzes | `mind.backfill.quiz` | per day and subject (a code): questions asked, right and wrong. Never the questions |
+| Calls | `mind.backfill.calls` | each call: answered or missed, which feature placed it, roughly how long it lasted (from when its transcript was saved). Never the transcript or the reason |
+| The request and call index | `mind.backfill.learning` | how many requests and calls a day were indexed. Chats are left out |
+| Study time | `mind.backfill.study` | each day's study time and how many subjects. Never the subjects' names |
 
-It reads only Kurooto's own event history, on your computer, and keeps ids and numbers, never the words of a message. The past
-goes into a history of its own under its real dates; it never goes into the log Brain checks itself against, and it is never
-counted as a reward (it only tells Brain what a normal day looked like). Parts that learn from it: the read and the forecast
-(snoozes and deadline moves on the days before Brain was on).
+- `/mind backfill dry`: what's there (rows per source, the dates). Nothing is written.
+- `/mind backfill run`: imports it, source by source, with a progress bar for each (also in `mind-backfill.log` in the
+  logs folder). `/mind backfill run jobs` does one source. Safe to run again, and safe to stop halfway: the next run
+  carries on where it stopped and nothing is imported twice.
+- `/mind backfill`: what's imported and a normal week from it.
+- `/mind backfill verify`: checks the imported past hasn't been changed since.
+- `/mind backfill forget` removes all of it, and what Brain learned only from it; `/mind backfill forget calls` one source.
+
+Brain keeps ids and numbers only: never the words of a message, a title or a reminder, never a name, never anything about
+health or money. The past goes into a history of its own (`history.db`, one chain of records per source, under the real
+dates), never into the log Brain checks itself against; that log only notes each batch that came in. It is never counted
+as a reward or an outcome: it only tells Brain what a normal day looked like.
+
+What learns from it, as a starting point that your days since then soon outweigh:
+
+- **The read of how you're doing** and **the forecast**: deadline moves and study minutes on the days before Brain was on,
+  the two signals the past really holds (it doesn't hold wake or sleep times, alarm snoozes or how fast you answer, so
+  none are made up). A forecast channel without ten days of numbers yet starts from at least three of the same
+  weekday in the past.
+- **Week plans** (`/plan`): your real study time on each weekday, instead of a flat two hours, while there are few recent
+  days.
+- **The model of you** (`/model goal`): how you finish deadlines ("usually marks assignments done about 2 days before
+  they're due"), hedged and marked inferred.
 
 ## The journal in your notes
 

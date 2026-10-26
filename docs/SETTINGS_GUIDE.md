@@ -631,8 +631,15 @@ link from Kurooto's own list, each at the commit it pins; `addons.official_updat
 | `mind.autonomy.on` | `true` | decide what it may do unasked from your reactions, per class of action (shadow first) |
 | `mind.autonomy.shadow_days` | `21` | for this long its verdicts are counted and shown, not enforced |
 | `mind.autonomy.thresholds` | `{}` | your own bars per class, over the defaults: {"R1": 0.8} |
+| `mind.backfill.calls` | `true` | read past calls: answered or missed, who placed them, how long (never what was said) |
+| `mind.backfill.checkins` | `true` | read which check-ins were asked, answered or skipped each day (never what you said) |
+| `mind.backfill.deadlines` | `true` | read when past deadlines were due and when you marked them done (no titles) |
 | `mind.backfill.events` | `true` | read Kurooto's own event history (deadlines, reminders, calls, AI requests, buttons) |
+| `mind.backfill.jobs` | `true` | read the AI request history: effort, whether it worked, how long it took (never its words) |
+| `mind.backfill.learning` | `true` | read the request and call index's counts per day (never its words; chats left out) |
 | `mind.backfill.on` | `false` | off until you turn it on: Brain reads what Kurooto kept before it was on (`/mind backfill`) |
+| `mind.backfill.quiz` | `true` | read quiz history: questions asked, right and wrong, per day and subject (no questions) |
+| `mind.backfill.study` | `true` | read the study tracker's time per day (for your real pace in week plans) |
 | `mind.beliefs.on` | `true` | every belief keeps its source (said, saw, inferred, imagined) and a confidence |
 | `mind.budget.on` | `true` | the body budget: its variables, setpoints and drive |
 | `mind.feelings.express` | `true` | it may say one about an item, through the gate's lints, at most 3 unprompted a week |

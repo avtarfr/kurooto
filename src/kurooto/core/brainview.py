@@ -151,7 +151,11 @@ def _metrics(app: App, cid: str, st: dict) -> list[list[str]]:
         try:
             from kurooto.mind import history
 
-            return [["Imported", f"{history.status(app)['imported']:,}"], ["Source", "event history"]]
+            st = history.status(app)
+            return [
+                ["Imported", f"{st['imported']:,}"],
+                ["Sources", str(len(st["sources"]) or len(history.enabled(app)))],
+            ]
         except Exception:
             return []
     if cid == "phone":

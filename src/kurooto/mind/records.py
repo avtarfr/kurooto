@@ -190,3 +190,75 @@ def clean_fact(kind: str, body: dict) -> dict:
         elif isinstance(v, str) and k in ID_KEYS and ID.match(v):
             out[k] = v
     return out
+
+
+# ---------------------------------------------------------------------------------------- the imported past (0.8.7)
+# What each source of the past may hand the scorekeeper (mind/history.py reads them; Keeper.import_rows checks them
+# again here): its kinds, and the few words a row may carry, each from a fixed list. Everything else that's text is
+# dropped, and so is any number whose name says money or health. "events" rows are Kurooto's own events (log.mirrored)
+PAST_KINDS = {
+    "jobs": frozenset({"job"}),
+    "deadlines": frozenset({"deadline_due", "deadline_finished"}),
+    "checkins": frozenset({"checkin"}),
+    "quiz": frozenset({"quiz_day"}),
+    "calls": frozenset({"call"}),
+    "learning": frozenset({"learning_day"}),
+    "study": frozenset({"study_day"}),
+}
+STATES = frozenset(
+    {"ok", "failed", "cancelled", "queued", "running", "done", "open", "gone", "dropped", "planned", "asked",
+     "answered", "skipped", "deferred", "calling", "ringing", "missed", "realerted", "later", "held", "declined",
+     "other"}
+)  # fmt: skip
+PAST_WORDS = {
+    "effort": frozenset({"low", "medium", "high", "auto", "other"}),
+    "verdict": frozenset(
+        {"ok", "empty", "denied", "rate_limited", "auth", "timeout", "error", "cancelled", "stuck", "other"}
+    ),
+    "lane": frozenset({"you", "bg", "chk", "other"}),
+    "state": STATES,
+    "dkind": frozenset({"exam", "task", "quiz", "other"}),
+    "checkin": frozenset({"evening", "midday", "night", "other"}),
+    "via": frozenset({"request", "call"}),
+}
+PAST_PATTERNS = {"subj": re.compile(r"^s[0-9a-f]{8}$"), "module": re.compile(r"^[a-z][a-z0-9_]{0,23}$")}
+MONEY_OR_HEALTH = re.compile(
+    r"(amount|price|cost|money|rupee|inr|usd|eur|salary|balance|spent|paid|payment|fee|bill|debt|loan|income|"
+    r"health|weight|pulse|heart|blood|medic|symptom|calorie|bmi)",
+    re.I,
+)
+
+
+def past_kind_ok(source: str, kind: str) -> bool:
+    if source == "events":
+        from kurooto.mind.log import mirrored
+
+        return mirrored(kind) and bool(ID.match(kind or ""))
+    return kind in PAST_KINDS.get(source, ())
+
+
+def clean_past(source: str, kind: str, body: dict) -> dict:
+    """A row of the past as it's kept: clean_fact's rules (numbers and true/false), nothing named for money or health,
+    and words only from the fixed lists (PAST_WORDS, PAST_PATTERNS): no id-like word passes just because of its field,
+    so a word someone typed can't ride in under one (stricter than the live log's clean_fact)."""
+    from kurooto.mind.whitelist import BANNED_FIELDS
+
+    body = body if isinstance(body, dict) else {}
+    if source == "events":  # stricter than the live log: no id-like words at all, only the fixed lists' words
+        return {
+            k: v
+            for k, v in clean_fact(kind, body).items()
+            if not MONEY_OR_HEALTH.search(k) and (not isinstance(v, str) or v in PAST_WORDS.get(k, ()))
+        }
+    out: dict = {}
+    for k, v in body.items():
+        k = str(k)
+        if k in BANNED_FIELDS or MONEY_OR_HEALTH.search(k) or not ID.match(k) or len(out) >= FACT_KEYS_MAX:
+            continue
+        if isinstance(v, bool) or (isinstance(v, int) and abs(v) < 2**53):
+            out[k] = v
+        elif isinstance(v, float) and isfinite(v):
+            out[k] = round(v, 4)
+        elif isinstance(v, str) and (v in PAST_WORDS.get(k, ()) or (k in PAST_PATTERNS and PAST_PATTERNS[k].match(v))):
+            out[k] = v
+    return out

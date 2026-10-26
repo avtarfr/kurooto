@@ -81,22 +81,33 @@ def history(app: App, before: dt.date | None = None) -> list[read.Day]:
 
 
 def _with_past(app: App, days: list[read.Day], before: dt.date | None) -> list[read.Day]:
-    """Days from before Brain was on (mind.backfill): what the imported events say of deadline moves (the
-    only read signal the event history holds; alarm snoozes aren't in it),
-    with no calendar load. They fill in the history's start; a day Brain measured itself is never replaced."""
+    """Days from before Brain was on (mind.backfill): the read's signals the imported history really holds, deadline
+    moves (a day with any imported event) and study minutes (a day the study tracker kept); nothing else (no alarm
+    snoozes, no wake or sleep times), and no calendar load. They fill in the history's start; a day Brain measured
+    itself is never replaced."""
     from kurooto.mind import history
 
     have = {d.day for d in days}
+    sig: dict[str, dict[str, float]] = {}
+    for day, ks in history.daily(app).items():
+        sig.setdefault(day, {})["deadline_moves"] = float(ks.get("deadline_moved", 0))
+    for day, mins in history.study_days(app).items():
+        sig.setdefault(day, {})["study_min"] = mins
     past = []
-    for day, ks in sorted(history.daily(app).items()):
+    for day, nums in sorted(sig.items()):
         d = dt.date.fromisoformat(day)
         if day in have or (before is not None and d >= before):
             continue
-        sig = {
-            "deadline_moves": float(ks.get("deadline_moved", 0))
-        }  # the one read signal the event history really holds
-        past.append(read.Day(day, {"weekday": d.weekday()}, sig))
+        past.append(read.Day(day, {"weekday": d.weekday()}, nums))
     return sorted([*past, *days], key=lambda x: x.day)
+
+
+def past_priors(app: App, day: dt.date) -> dict[str, list[float]]:
+    """A forecast channel's parameters from the imported past's same weekdays (mind.backfill), for the channels the
+    last 28 days can't fit yet. A prior only: the forecast is still scored on what happens (never on the past)."""
+    from kurooto.mind import history
+
+    return history.forecast_priors(app, day.weekday())
 
 
 def answers(app: App) -> list[tuple[float, bool]]:
@@ -170,9 +181,11 @@ def run_forecast(app: App, payload: dict | None = None) -> dict | None:
     tomorrow = today() + dt.timedelta(days=1)
     hist = history(app, before=tomorrow)
     models = forecast.fit(hist)
-    if not models:
+    params = forecast.predict(models, tomorrow_load(app, tomorrow)) if models else {}
+    for name, p in past_priors(app, tomorrow).items():  # a channel with too few recent days: its past weekdays
+        params.setdefault(name, p)
+    if not params:
         return None
-    params = forecast.predict(models, tomorrow_load(app, tomorrow))
     p = app.settings.get("mind.forecast.holdout")
     hold = random.random() < (float(p) if isinstance(p, (int, float)) else 0.10)  # noqa: S311 (a coin, not a secret)
     body = {"day": tomorrow.isoformat(), "params": params, "planned": [], "holdout": hold}

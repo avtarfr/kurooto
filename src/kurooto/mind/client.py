@@ -139,16 +139,45 @@ class MindClient:
         return self._score().rows("reads", prefix)
 
     def history_rows(self, prefix: str = "h:", limit: int = 200000) -> list[dict]:
-        """The imported past (0.8.1): [{key, value: when, meta: {k: kind, ...ids and numbers}}], oldest key first."""
+        """0.8.1's imported past, still read until the events source is imported again: [{key, value: when, meta: {k:
+        kind, ...ids and numbers}}], oldest key first."""
         return self._score().rows("history", prefix, limit)
 
-    def import_history(self, batch: str, rows: list[dict]) -> dict:
-        """Hand the scorekeeper a batch of past events (mind/history.py); it checks and files them."""
-        return self._request("import", batch=batch, rows=rows)
+    def _past(self) -> mlog.PastLog:
+        return mlog.PastLog(self.dir / "history.db")
 
-    def forget_history(self) -> dict:
-        """Ask the scorekeeper to drop the imported past."""
-        return self._request("history_forget")
+    def past_rows(self, source: str | None = None, kinds=None) -> list[dict]:
+        """The imported past (0.8.7): [{source, n, key, ts, kind, body}], each source in its chain's (time) order."""
+        return self._past().read(source, frozenset(kinds) if kinds else None)
+
+    def past_heads(self) -> dict[str, tuple[int, float]]:
+        """{source: (rows, the time of its newest row)}: where each source's import has got to (a resumed run starts
+        there)."""
+        p = self._past()
+        return {s: p.head(s)[:2] for s in p.counts()}
+
+    def verify_history(self) -> dict:
+        """The imported past's chains, and each head the live log witnessed since that source was last forgotten."""
+        seen: dict[str, list[dict]] = {}
+        for r in self.log(kinds={"history_import", "history_forgot"}, limit=200000):
+            b = r.body if isinstance(r.body, dict) else {}
+            src = str(b.get("source") or "")
+            if r.kind == "history_forgot":
+                if src in ("", "all"):
+                    seen.clear()
+                else:
+                    seen.pop(src, None)
+            elif src and b.get("n"):
+                seen.setdefault(src, []).append({"source": src, "n": b.get("n"), "head": b.get("head")})
+        return self._past().verify([w for ws in seen.values() for w in ws])
+
+    def import_history(self, source: str, batch: str, rows: list[dict]) -> dict:
+        """Hand the scorekeeper a batch of one source's past (mind/history.py); it checks and files them."""
+        return self._request("import", source=source, batch=batch, rows=rows)
+
+    def forget_history(self, source: str = "") -> dict:
+        """Ask the scorekeeper to drop the imported past (one source, or all of it)."""
+        return self._request("history_forget", source=source)
 
     def _request(self, op: str, **kw) -> dict:
         """One request to the scorekeeper and its answer ({} when it can't be reached): the import."""

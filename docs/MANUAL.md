@@ -4130,6 +4130,15 @@ whether the note belongs with a new concept, and orders them by the model's own 
 installed (no extra download) and costs no AI requests; where there's none, candidates keep their keyword and
 embedding order.
 
+## What 0.8.7 added to Brain
+
+- **Brain's whole past** (`mind.backfill.on`, off; one switch per source, `mind.backfill.events`, `jobs`, `deadlines`,
+  `checkins`, `quiz`, `calls`, `learning`, `study`, all on): `/mind backfill run` now also reads the AI request history,
+  deadlines, check-ins, quizzes, calls, the request index and study time, ids and numbers only, with a progress bar per
+  source, into a history of its own that `/mind backfill verify` checks. It gives the read, the forecast, week plans and
+  the model of you a starting point. **Undo:** `/mind backfill forget` (or `/mind backfill forget <source>`), then turn
+  `mind.backfill.on` off; a source's own switch off stops it being read.
+
 ## What 0.8.6 changed
 
 - **`look.board`:** `three` (default) or `classic`, the dashboard board from before 0.8.3. **Undo:** set it back.
