@@ -11,6 +11,7 @@
   page, in a background tab or a minimised window, it stops drawing.
 - **Autonomy shows "shadow" only while it is** (its first `mind.autonomy.shadow_days`), not forever.
 - **Fixes:**
+  - The BRAIN pane no longer disappears when you open Features, Settings or any other page over the board.
   - Kurooto stops in time: a long job on a thread of its own (the lab, a fine-tune, the notes passes) no longer holds up
     stopping or updating. A restart once ran past the service's 20 seconds and was killed.
   - Brain's imported past no longer makes up an alarm-snooze signal from deadline snoozes: the read takes only deadline

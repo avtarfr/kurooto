@@ -66,3 +66,13 @@ def test_the_page_has_its_board_and_monitor_switches_and_an_off_state():
     assert "classicGrid" in home and "look.brain_monitor" in home and '!paneShown("brain")' in home
     d = _DEFAULTS
     assert d["look"]["board"] == "three" and d["look"]["brain_monitor"] == "shown"
+
+
+def test_opening_a_page_does_not_stop_the_brain_pane():
+    """0.8.6: Features, Settings ... opened over the board stopped the BRAIN pane, and it never came back."""
+    import re
+
+    home = static("home.js").decode()
+    for fn in ("openPage", "closePage"):
+        body = re.search(rf"function {fn}\(.*?\n}}", home, re.S).group(0)
+        assert "stopBrain" not in body, fn

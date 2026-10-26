@@ -176,7 +176,7 @@ function openPage(name) {
   if (!DENSE) { showTab(name); return; }
   closeMenu();
   const host = $("#ov-body");
-  if (PAGE !== name) { stopBrain(host); host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = ""; host.scrollTop = 0; }
+  if (PAGE !== name) { host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = ""; host.scrollTop = 0; }
   PAGE = name;
   if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); // not the terminal below
   applyPanes(); renderPageNav(); renderPage(name, host);
@@ -184,7 +184,7 @@ function openPage(name) {
 function closePage() {
   if (!PAGE) return;
   PAGE = null; ACT_CELL = null;
-  const host = $("#ov-body"); stopBrain(host); host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = "";
+  const host = $("#ov-body"); host.onclick = host.onchange = host.onsubmit = null; host.innerHTML = "";
   applyPanes();
   if (dtab === "kurooto" && paneShown("terminal") && $("#chat-input")) $("#chat-input").focus({ preventScroll: true });
 }
