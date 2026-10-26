@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.7 (unreleased)
+
+- **Bedside mode in the app's new style:** the same clock, dimming, alarm line, calls, Talk, Chat and Close, now Material 3
+  Expressive on black: the calls due next in a floating card, "waiting for you" as a pill, a big Talk button that changes
+  shape as you press it, Chat and Close in a floating bar. By day it takes your colours (Vivid or Calm); at night it stays
+  warm and dim as before.
+- **A new call screen** (Phone tab → Switches → **New call screen**, on): the ringing screen over Kurooto's sky in your
+  colours, a slowly turning badge, and Decline / Later / Answer as big buttons in a floating bar; the call page itself is
+  unchanged. Off brings back the call screen from before, kept until the new one has carried real calls.
+
 ## 0.8.6 (unreleased)
 
 - **The board you had, back if you want it** (`look.board`): `three` (default: NOTES, SYSTEMS and BRAIN on top, STATUS and

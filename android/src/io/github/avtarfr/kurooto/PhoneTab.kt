@@ -147,6 +147,12 @@ private fun ColumnScope.PhoneTab(a: MainActivity, ui: HomeState) {
             Item("Moving background", "Off: a still picture", checked = Prefs.moving(a), onClick = { a.toggleMoving() }),
             Item("Vivid colours", "Off: the wallpaper's quieter colours", checked = Prefs.vivid(a), onClick = { a.toggleVivid() }),
             Item("Floating bar", "Off: the bar sits on the bottom edge", checked = Prefs.floatingBar(a), onClick = { a.toggleFloatingBar() }),
+            Item(
+                "New call screen",
+                "Off: the call screen from before 0.8.7",
+                checked = Prefs.newCallScreen(a),
+                onClick = { a.toggleNewCallScreen() },
+            ),
         ),
     )
 

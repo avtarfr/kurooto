@@ -19,4 +19,6 @@ object Demo {
     fun checks(appInfo: Intent) = emptyList<MainActivity.Check>()
 
     fun view(@Suppress("UNUSED_PARAMETER") kind: String): JSONObject? = null
+
+    fun upcoming(): JSONObject? = null
 }

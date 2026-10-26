@@ -66,6 +66,10 @@ def test_features_start_off():
 def test_the_phone_apps_switches():
     prefs = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "Prefs.java").read_text()
     tab = (ROOT / "android" / "src" / "io" / "github" / "avtarfr" / "kurooto" / "PhoneTab.kt").read_text()
-    for pref, label in (("direct", "Connect straight to your call line"), ("moving", "Moving background")):
+    for pref, label in (
+        ("direct", "Connect straight to your call line"),
+        ("moving", "Moving background"),
+        ("newCallScreen", "New call screen"),
+    ):
         assert f'getBoolean("{pref}", true)' in prefs
         assert label in tab

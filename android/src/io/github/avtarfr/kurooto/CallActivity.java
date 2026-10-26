@@ -1,7 +1,6 @@
 package io.github.avtarfr.kurooto;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -34,6 +33,10 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.activity.ComponentActivity;
+import androidx.activity.EdgeToEdge;
+import androidx.activity.SystemBarStyle;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -52,8 +55,13 @@ import java.util.regex.Pattern;
  *
  * This phone's own wake-up alarm (Alarms, 0.6.0) uses the same ringing screen with Stop and Snooze ("local", no call
  * link); when the call for it comes meanwhile, the screen gains its Answer (ListenService.ring).
+ *
+ * Two screens, one plumbing (0.8.7): with the Phone tab's "New call screen" on (the default), the ringing screen and the
+ * page's frame are Compose, Material 3 Expressive (CallScreen.kt); off, the framework screen from before 0.8.7 below.
+ * Which one is read as the activity opens. Extra "demo" (debug and dev builds only, Demo.ON): a made-up ring with no call
+ * link (the extras "reason", "alarm" and "local" as usual); its buttons send nothing, and Answer shows a stand-in page.
  */
-public class CallActivity extends Activity {
+public class CallActivity extends ComponentActivity {
     static final int SDK = Build.VERSION.SDK_INT;
     static final int MIN_WEBVIEW = 80; // Chrome version the call page needs (audio worklets, modern JavaScript)
     static volatile boolean showing; // on screen now (a call joining this phone's alarm comes here, not a new ring)
@@ -72,9 +80,13 @@ public class CallActivity extends Activity {
     private final List<String[]> ttsWaiting = new ArrayList<>();
     private final Handler h = new Handler(Looper.getMainLooper());
     private String url;
+    private boolean fresh, demo; // the Compose screen (Prefs.newCallScreen); made-up, nothing sent (Demo.ON)
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        fresh = Prefs.newCallScreen(this);
+        demo = Demo.ON && getIntent().getBooleanExtra("demo", false);
+        if (fresh) EdgeToEdge.enable(this, SystemBarStyle.dark(0), SystemBarStyle.dark(0)); // light icons on the dark screen
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         overLockScreen();
         am = (AudioManager) getSystemService(AUDIO_SERVICE);
@@ -102,10 +114,17 @@ public class CallActivity extends Activity {
     private void handle(Intent i) {
         url = i.getStringExtra("url");
         boolean local = url == null && i.getBooleanExtra("local", false); // this phone's own alarm (Alarms)
-        if (url == null && !local) { finish(); return; }
-        if (local && inCall) return;
-        if (local || (i.getBooleanExtra("ringing", false) && !inCall)) showRinging(i.getStringExtra("reason"), i.getBooleanExtra("alarm", false), local);
-        else answer();
+        if (demo && url == null && !inCall) { // made up: rings, whatever the extras
+            String why = i.getStringExtra("reason");
+            showRinging(why != null ? why : "Evening check-in: how did today go?", i.getBooleanExtra("alarm", false), local);
+            return;
+        }
+        switch (CallRules.what(url != null, i.getBooleanExtra("local", false), i.getBooleanExtra("ringing", false), inCall)) {
+            case CallRules.FINISH: finish(); return;
+            case CallRules.IGNORE: return;
+            case CallRules.RING: showRinging(i.getStringExtra("reason"), i.getBooleanExtra("alarm", false), local); return;
+            default: answer();
+        }
     }
 
     @Override protected void onResume() {
@@ -122,6 +141,18 @@ public class CallActivity extends Activity {
     /** Who's calling and why, then Decline / Later / Answer along the bottom, in the call page's colours (this
      *  phone's own alarm: Stop and Snooze). */
     private void showRinging(String reason, boolean alarm, boolean local) {
+        final String since = getIntent().getStringExtra("since");
+        if (fresh) {
+            CallScreen.ringing(this, CallRules.who(local, alarm, Prefs.assistant(this)), reason == null ? "" : reason,
+                    CallRules.declineLabel(local), CallRules.laterLabel(alarm), CallRules.canAnswer(local),
+                    () -> reply(since, "decline"), () -> reply(since, "later"), this::answer);
+            return;
+        }
+        showRingingClassic(reason, alarm, local, since);
+    }
+
+    /** The ringing screen from before 0.8.7 (framework views), for "New call screen" off. */
+    private void showRingingClassic(String reason, boolean alarm, boolean local, final String since) {
         int fg = Ui.color(this, R.color.k_call_fg);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -135,14 +166,13 @@ public class CallActivity extends Activity {
         int pad = Ui.dp(this, 26);
         badge.setPadding(pad, pad, pad, pad);
         box.addView(badge, new LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)));
-        TextView who = Ui.gap(Ui.text(this, local ? "Good morning: wake-up alarm" : alarm ? "Good morning: wake-up call" : Prefs.assistant(this) + " is calling", 28, false, fg), 24, 0);
+        TextView who = Ui.gap(Ui.text(this, CallRules.who(local, alarm, Prefs.assistant(this)), 28, false, fg), 24, 0);
         who.setGravity(Gravity.CENTER);
         TextView why = Ui.gap(Ui.text(this, reason == null ? "" : reason, 18, false, Ui.color(this, R.color.k_call_dim)), 12, 0);
         why.setGravity(Gravity.CENTER);
-        final String since = getIntent().getStringExtra("since");
-        Button decline = button(local ? "Stop" : "Decline", R.color.k_call_stop);
+        Button decline = button(CallRules.declineLabel(local), R.color.k_call_stop);
         decline.setOnClickListener(v -> reply(since, "decline"));
-        Button later = button(alarm ? "Snooze" : "Later", R.color.k_call_quiet);
+        Button later = button(CallRules.laterLabel(alarm), R.color.k_call_quiet);
         later.setOnClickListener(v -> reply(since, "later"));
         Button ok = button("Answer", R.color.k_call_go);
         ok.setOnClickListener(v -> answer());
@@ -151,7 +181,7 @@ public class CallActivity extends Activity {
         row.addView(decline, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
         row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
         row.addView(later, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
-        if (!local) {
+        if (CallRules.canAnswer(local)) {
             row.addView(new View(this), new LinearLayout.LayoutParams(Ui.dp(this, 12), 1));
             row.addView(ok, new LinearLayout.LayoutParams(0, Ui.dp(this, 64), 1));
         }
@@ -163,9 +193,10 @@ public class CallActivity extends Activity {
     }
 
     private void reply(final String since, final String action) {
+        if (demo && url == null) { finish(); return; } // made up: nothing rang, nothing to tell
         ListenService.stopRinging(this);
         Alarms.replied(this, since, action, getIntent().getBooleanExtra("alarm", false)); // this phone's copy hears it
-        if (since != null && !since.isEmpty() && !since.startsWith("local:")) new Thread(() -> Line.ringReply(this, since, action)).start();
+        if (CallRules.tellLine(since)) new Thread(() -> Line.ringReply(this, since, action)).start();
         finish();
     }
 
@@ -178,6 +209,7 @@ public class CallActivity extends Activity {
 
     // ---------- the call ----------
     private void answer() {
+        if (demo && url == null) { demoPage(); return; }
         ListenService.stopRinging(this);
         if (webViewVersion() < MIN_WEBVIEW) { // too old for the call page: the browser (Chrome) can do it
             try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { }
@@ -207,6 +239,7 @@ public class CallActivity extends Activity {
     }
 
     @Override public void onRequestPermissionsResult(int code, String[] p, int[] r) {
+        super.onRequestPermissionsResult(code, p, r);
         if (code == 1 && r.length > 0 && r[0] == PackageManager.PERMISSION_GRANTED) openPage();
         else finish();
     }
@@ -232,21 +265,42 @@ public class CallActivity extends Activity {
                     req.deny();
                 }
             });
-            page = new FrameLayout(this);
-            page.setFitsSystemWindows(true);
-            page.setBackgroundColor(Ui.color(this, R.color.k_call_bg));
-            page.addView(web);
+            page = frame(web);
         }
-        setContentView(page);
+        show(page);
         web.loadUrl(withAuto(url));
     }
 
-    /** The page starts the call by itself when opened from here (you already tapped Answer). */
-    static String withAuto(String u) {
-        int hash = u.indexOf('#');
-        String base = hash < 0 ? u : u.substring(0, hash), frag = hash < 0 ? "" : u.substring(hash);
-        return base + (base.contains("?") ? "&" : "?") + "auto=1" + frag;
+    /** The WebView's container: the call page's background; the old screen keeps it clear of the bars itself
+     *  (fitsSystemWindows), the new one with Compose's insets. */
+    private FrameLayout frame(WebView w) {
+        FrameLayout f = new FrameLayout(this);
+        f.setFitsSystemWindows(!fresh);
+        f.setBackgroundColor(Ui.color(this, R.color.k_call_bg));
+        f.addView(w);
+        return f;
     }
+
+    private void show(FrameLayout f) {
+        if (fresh) CallScreen.page(this, f); else setContentView(f);
+    }
+
+    /** Demo: Answer opens a stand-in for the call page (no script, nothing fetched, no microphone, no audio changes). */
+    private void demoPage() {
+        if (web == null) {
+            web = new WebView(this);
+            web.getSettings().setJavaScriptEnabled(false);
+            web.setBackgroundColor(Ui.color(this, R.color.k_call_bg));
+            page = frame(web);
+        }
+        show(page);
+        web.loadDataWithBaseURL(null, "<html><body style=\"background:#0B0F0A;color:#F2EEE8;font:20px sans-serif;"
+                + "display:flex;align-items:center;justify-content:center;height:90vh;text-align:center;margin:0\">"
+                + "<p>Demo: the call page from your call line shows here.</p></body></html>", "text/html", "utf-8", null);
+    }
+
+    /** The page starts the call by itself when opened from here (you already tapped Answer). */
+    static String withAuto(String u) { return CallRules.withAuto(u); }
 
     /** Call mode: earpiece (or a connected headset), or the loudspeaker when asked. */
     @SuppressWarnings("deprecation")

@@ -13,25 +13,23 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Typeface;
 import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.format.DateFormat;
-import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.TextView;
+
+import androidx.activity.ComponentActivity;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 import java.util.TimeZone;
 
 /**
@@ -43,8 +41,11 @@ import java.util.TimeZone;
  * call rings here full screen. Opened from the app's main screen, or by itself while charging between chosen hours
  * (ListenService keeps Watcher registered for that). What's coming is read from the call line (/upcoming: the
  * schedule your computer pushed) every 5 minutes; the next alarm is Kurooto's wake-up call or the phone's own.
+ * The screen itself (0.8.7) is Compose, Material 3 Expressive (BedsideScreen.kt): this activity keeps every rule and
+ * lifecycle hook and writes what to show into a BedsideState. Extra "auto": opened by itself while charging; "demo" (debug
+ * and dev builds only, Demo.ON): made-up calls, nothing fetched or sent, and "hour" (an int) to look at any hour's colours.
  */
-public class BedsideActivity extends Activity {
+public class BedsideActivity extends ComponentActivity {
     static final int SDK = Build.VERSION.SDK_INT;
     static final String CH_BEDSIDE = "bedside";
     static final int ID_BEDSIDE = 9;
@@ -52,10 +53,9 @@ public class BedsideActivity extends Activity {
     static volatile boolean visible;
 
     private final Handler h = new Handler(Looper.getMainLooper());
-    private LinearLayout col, next;
-    private TextView clock, date, alarm, waiting, status;
-    private Button talk, chat, close;
-    private boolean charging, auto;
+    private BedsideState st; // what the screen shows (BedsideScreen draws it)
+    private boolean charging, auto, busy, demo;
+    private int demoHour = -1;
     private long brightUntil, loadedAt;
     private JSONObject upcoming;
     private final Runnable tick = new Runnable() {
@@ -72,6 +72,12 @@ public class BedsideActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         auto = getIntent().getBooleanExtra("auto", false);
+        demo = Demo.ON && getIntent().getBooleanExtra("demo", false);
+        if (demo) {
+            upcoming = Demo.INSTANCE.upcoming();
+            loadedAt = System.currentTimeMillis();
+            demoHour = getIntent().getIntExtra("hour", -1);
+        }
         overLockScreen();
         build();
         ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).cancel(ID_BEDSIDE);
@@ -133,100 +139,55 @@ public class BedsideActivity extends Activity {
 
     // ---------- the screen ----------
     private void build() {
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(0xFF000000);
-        root.setOnClickListener(v -> { brightUntil = System.currentTimeMillis() + BRIGHT_MS; paint(); h.postDelayed(this::paint, BRIGHT_MS + 100); });
-        col = Ui.column(this);
-        col.setGravity(Gravity.CENTER_HORIZONTAL);
-        col.setPadding(Ui.dp(this, 24), Ui.dp(this, 24), Ui.dp(this, 24), Ui.dp(this, 24));
-        root.addView(col, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
-        col.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
-        float wdp = getResources().getConfiguration().screenWidthDp, hdp = getResources().getConfiguration().screenHeightDp;
-        clock = centred(Math.max(56, Math.min(160, Math.min(wdp / 3.3f, hdp / 2.6f))));
-        clock.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
-        clock.setIncludeFontPadding(false);
-        col.addView(clock);
-        date = centred(18);
-        col.addView(date);
-        alarm = centred(20);
-        Ui.gap(alarm, 16, 0);
-        col.addView(alarm);
-        next = Ui.column(this);
-        next.setGravity(Gravity.CENTER_HORIZONTAL);
-        col.addView(Ui.gap(next, 12, 0));
-        waiting = centred(16);
-        waiting.setOnClickListener(v -> unlocked(new Intent(this, MainActivity.class).putExtra("tab", "inbox")));
-        col.addView(Ui.gap(waiting, 8, 0));
-        col.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
-
-        talk = Ui.large(Ui.button(this, "Talk to " + Prefs.assistant(this), 0, 0, 0));
-        talk.setTextSize(22);
-        talk.setMinHeight(Ui.dp(this, 80));
-        talk.setMinimumHeight(Ui.dp(this, 80));
-        talk.setOnClickListener(v -> call());
-        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        tl.setMargins(0, Ui.dp(this, 16), 0, 0);
-        col.addView(talk, tl);
-        status = centred(14);
-        col.addView(Ui.gap(status, 8, 0));
-        LinearLayout row = Ui.row(this);
-        row.setGravity(Gravity.CENTER);
-        chat = Ui.button(this, "Chat", 0, 0, 0);
-        chat.setOnClickListener(v -> unlocked(new Intent(this, ChatActivity.class)));
-        close = Ui.button(this, "Close", 0, 0, 0);
-        close.setOnClickListener(v -> finish());
-        row.addView(chat, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        row.addView(close, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        col.addView(row);
-        setContentView(root);
+        st = new BedsideState();
+        BedsideScreen.show(this, st);
         paint();
     }
 
-    private TextView centred(float sp) {
-        TextView t = Ui.text(this, "", sp, false, 0xFFF2EEE8);
-        t.setGravity(Gravity.CENTER);
-        return t;
+    /** A tap on the screen: brighter for 15 s. */
+    void tapped() {
+        brightUntil = System.currentTimeMillis() + BRIGHT_MS;
+        paint();
+        h.postDelayed(this::paint, BRIGHT_MS + 100);
+    }
+
+    /** "N things waiting for you": Inbox on the main screen, once unlocked. */
+    void openInbox() {
+        unlocked(new Intent(this, MainActivity.class).putExtra("tab", "inbox").putExtra("demo", demo));
+    }
+
+    void openChat() {
+        if (demo) { st.setStatus("Demo: the chat needs a paired phone."); return; }
+        unlocked(new Intent(this, ChatActivity.class));
     }
 
     /** The clock, colours and brightness for this minute, and what's coming. */
     private void paint() {
-        if (clock == null) return;
+        if (st == null) return;
         long now = System.currentTimeMillis();
         Calendar c = Calendar.getInstance();
+        if (demoHour >= 0 && demoHour < 24) c.set(Calendar.HOUR_OF_DAY, demoHour);
         int hour = c.get(Calendar.HOUR_OF_DAY);
         boolean h24 = DateFormat.is24HourFormat(this);
-        clock.setText(DateFormat.format(h24 ? "HH:mm" : "h:mm", c));
-        date.setText(DateFormat.format("EEEE d MMMM", c));
+        st.setClock(DateFormat.format(h24 ? "HH:mm" : "h:mm", c).toString());
+        st.setDate(DateFormat.format("EEEE d MMMM", c).toString());
         int ink = Dock.ink(hour), dim = Dock.dim(hour);
-        clock.setTextColor(ink);
-        date.setTextColor(dim);
-        alarm.setTextColor(ink);
-        waiting.setTextColor(dim);
-        status.setTextColor(dim);
-        boolean night = Dock.warm(hour);
-        int fill = night ? 0xFF2A1408 : Ui.color(this, R.color.k_call_go);
-        if (talk.getTag() == null || (Boolean) talk.getTag() != night) { // the pill's colour, set when day turns to night
-            talk.setBackground(Ui.ripple(ink, Ui.shape(fill, 0, Ui.PILL), Ui.PILL));
-            talk.setTag(night);
-        }
-        talk.setTextColor(night ? ink : 0xFFFFFFFF);
-        talk.setText("Talk to " + Prefs.assistant(this));
-        chat.setTextColor(dim);
-        close.setTextColor(dim);
+        st.setInk(ink);
+        st.setDim(dim);
+        st.setNight(Dock.warm(hour)); // the Talk pill and the cards turn warm when day turns to night
+        st.setTalk("Talk to " + Prefs.assistant(this));
 
         WindowManager.LayoutParams lp = getWindow().getAttributes();
-        float want = Dock.brightness(hour);
-        if (now < brightUntil && want >= 0) want = Math.max(want, 0.3f);
+        float want = Dock.brightness(hour, now < brightUntil);
         if (lp.screenBrightness != want) {
             lp.screenBrightness = want;
             getWindow().setAttributes(lp);
         }
-        showUpcoming(now, h24, ink, dim);
+        showUpcoming(now, h24);
     }
 
-    private void showUpcoming(long now, boolean h24, int ink, int dim) {
-        next.removeAllViews();
+    private void showUpcoming(long now, boolean h24) {
+        List<String> next = new ArrayList<>();
         TimeZone tz = TimeZone.getDefault();
         long nowSec = now / 1000, wake = 0;
         JSONArray calls = upcoming == null ? null : upcoming.optJSONArray("calls");
@@ -239,9 +200,7 @@ public class BedsideActivity extends Activity {
             if (it.optBoolean("alarm")) { if (wake == 0) wake = it.optLong("at"); continue; }
             if (shown >= 3) continue;
             String what = hide ? "a call (unlock to see)" : it.optString("reason", "a call");
-            TextView t = Ui.lines(Ui.text(this, Dock.when(it.optLong("at"), now, h24, tz) + "   " + what, 17, false, dim), 1);
-            t.setGravity(Gravity.CENTER);
-            next.addView(t);
+            next.add(Dock.when(it.optLong("at"), now, h24, tz) + "   " + what);
             shown++;
         }
         long phone = 0;
@@ -250,25 +209,23 @@ public class BedsideActivity extends Activity {
             AlarmManager.AlarmClockInfo a = am == null ? null : am.getNextAlarmClock();
             if (a != null) phone = a.getTriggerTime() / 1000;
         } catch (Exception ignored) { }
-        if (wake > 0 && (phone == 0 || wake <= phone + 60)) alarm.setText("Wake-up call  " + Dock.when(wake, now, h24, tz));
-        else if (phone > 0) alarm.setText("Alarm  " + Dock.when(phone, now, h24, tz));
-        else alarm.setText(upcoming == null ? "" : "No alarm set");
-        int n = upcoming == null ? 0 : upcoming.optInt("waiting", 0);
-        waiting.setText(n == 0 ? "" : n == 1 ? "1 thing waiting for you" : n + " things waiting for you");
-        waiting.setVisibility(n == 0 ? View.GONE : View.VISIBLE);
-        if (upcoming != null && "offline".equals(upcoming.optString("computer")) && status.getTag() == null) status.setText("Your computer is off: calls still work.");
+        st.setCalls(next);
+        st.setAlarm(Dock.alarmLine(wake, phone, upcoming != null, now, h24, tz));
+        st.setWaiting(Dock.waitingLine(upcoming == null ? 0 : upcoming.optInt("waiting", 0))); // none: hidden
+        if (upcoming != null && "offline".equals(upcoming.optString("computer")) && !busy) st.setStatus("Your computer is off: calls still work.");
     }
 
     /** What's coming, from the call line (off the main thread). */
     private void load() {
         loadedAt = System.currentTimeMillis();
-        if (!Prefs.paired(this)) { status.setText("Pair this phone first (the app's main screen)."); return; }
+        if (demo) return; // the made-up calls stay
+        if (!Prefs.paired(this)) { st.setStatus("Pair this phone first (the app's main screen)."); return; }
         new Thread(() -> {
             final JSONObject j = Line.upcoming(this);
             h.post(() -> {
                 if (j != null) upcoming = j;
-                else if (upcoming == null) status.setText("Couldn't reach your call line just now.");
-                if (j != null && status.getTag() == null) status.setText("");
+                else if (upcoming == null) st.setStatus("Couldn't reach your call line just now.");
+                if (j != null && !busy) st.setStatus("");
                 paint();
             });
         }).start();
@@ -276,18 +233,19 @@ public class BedsideActivity extends Activity {
 
     // ---------- talking ----------
     /** The big button: a call with Kurooto, on the app's own call screen (it works over the lock screen). */
-    private void call() {
-        if (!Prefs.paired(this)) { status.setText("Pair this phone first (the app's main screen)."); return; }
-        talk.setEnabled(false);
-        status.setTag("busy");
-        status.setText("Calling…");
+    void talk() {
+        if (demo) { st.setStatus("Demo: there's no call line to call."); return; }
+        if (!Prefs.paired(this)) { st.setStatus("Pair this phone first (the app's main screen)."); return; }
+        st.setTalkEnabled(false);
+        busy = true;
+        st.setStatus("Calling…");
         new Thread(() -> {
             final String link = Line.callLink(this);
             h.post(() -> {
-                talk.setEnabled(true);
-                status.setTag(null);
-                if (link == null) { status.setText("Couldn't reach your call line. Is this phone online?"); return; }
-                status.setText("");
+                st.setTalkEnabled(true);
+                busy = false;
+                if (link == null) { st.setStatus("Couldn't reach your call line. Is this phone online?"); return; }
+                st.setStatus("");
                 startActivity(new Intent(this, CallActivity.class).putExtra("url", link));
             });
         }).start();

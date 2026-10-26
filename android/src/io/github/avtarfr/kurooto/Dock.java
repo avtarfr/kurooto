@@ -20,6 +20,27 @@ final class Dock {
         return -1f;
     }
 
+    /** The same, after a tap on the screen (brightened for a while): at least 0.3, except in the daytime, which keeps
+     *  the phone's own setting. */
+    static float brightness(int hour, boolean tapped) {
+        float want = brightness(hour);
+        return tapped && want >= 0 ? Math.max(want, 0.3f) : want;
+    }
+
+    /** The alarm line: Kurooto's wake-up call (`wake`, 0 if none) if it comes no later than a minute after the phone's
+     *  own next alarm (`phone`, 0 if none), else the phone's; before the call line has answered once (`loaded` false),
+     *  nothing rather than "No alarm set". Times are seconds. */
+    static String alarmLine(long wake, long phone, boolean loaded, long nowMs, boolean h24, TimeZone tz) {
+        if (wake > 0 && (phone == 0 || wake <= phone + 60)) return "Wake-up call  " + when(wake, nowMs, h24, tz);
+        if (phone > 0) return "Alarm  " + when(phone, nowMs, h24, tz);
+        return loaded ? "No alarm set" : "";
+    }
+
+    /** How many things wait for you in Inbox ("" for none). */
+    static String waitingLine(int n) {
+        return n <= 0 ? "" : n == 1 ? "1 thing waiting for you" : n + " things waiting for you";
+    }
+
     /** True from 20:00 to 06:59: warm colours, no blue. */
     static boolean warm(int hour) { return hour >= 20 || hour < 7; }
 

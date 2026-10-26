@@ -39,6 +39,19 @@ public class DockTest {
         check(Dock.when(now / 1000 - 9 * 3600, now, false, tz).equals("12:00 AM"), "midnight on a 12-hour clock");
         check(Dock.toNextMinute(60_000L * 5 + 59_000) <= 1_050 && Dock.toNextMinute(60_000L * 5) > 59_000, "the clock turns on the minute");
 
+        // 0.8.7 (the Compose bedside screen): a tap's brightness, the alarm line, the waiting line
+        check(Dock.brightness(23, true) == 0.3f && Dock.brightness(20, true) == 0.35f, "a tap brightens the night to 0.3, never dims");
+        check(Dock.brightness(12, true) == -1f && Dock.brightness(23, false) == 0.01f, "daytime keeps the phone's own; no tap, no change");
+        long wake = now / 1000 + 22 * 3600, phone = wake + 600;
+        check(Dock.alarmLine(wake, phone, true, now, true, tz).equals("Wake-up call  Fri 07:00"), "the wake-up call when it's first");
+        check(Dock.alarmLine(wake, wake - 30, true, now, true, tz).startsWith("Wake-up call"), "within a minute of the phone's: still the call");
+        check(Dock.alarmLine(wake, wake - 600, true, now, true, tz).equals("Alarm  Fri 06:50"), "the phone's own when it's earlier");
+        check(Dock.alarmLine(0, phone, false, now, true, tz).startsWith("Alarm  "), "the phone's own with no wake-up call");
+        check(Dock.alarmLine(0, 0, true, now, true, tz).equals("No alarm set") && Dock.alarmLine(0, 0, false, now, true, tz).isEmpty(),
+                "none: said once the line has answered");
+        check(Dock.waitingLine(0).isEmpty() && Dock.waitingLine(1).equals("1 thing waiting for you")
+                && Dock.waitingLine(3).equals("3 things waiting for you"), "the waiting line");
+
         System.out.println(failed == 0 ? "dock ok" : failed + " failed");
         if (failed > 0) System.exit(1);
     }

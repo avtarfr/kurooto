@@ -12,7 +12,8 @@
 #                                                          shared vectors, the call page's speech bridge (what's heard,
 #                                                          quoted safely), the cards' and location reminders' rules,
 #                                                          the notification buttons and local alarm rules, bedside
-#                                                          mode's rules (brightness by the hour, hours) and opening
+#                                                          mode's rules (brightness by the hour, hours), the call
+#                                                          screen's rules (CallRules, 0.8.7) and opening
 #                                                          Systems and the Notes map (ViewSeal, 0.7.0), and the
 #                                                          app's own connection to the call line (WebSock, 0.7.0)
 #
@@ -40,15 +41,16 @@ crypto_test() {
   local t; t=$(mktemp -d)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/B64.java" "$HERE/src/$PKG/Crypto.java" "$HERE/src/$PKG/Seal.java" \
     "$HERE/src/$PKG/Speech.java" "$HERE/src/$PKG/Buttons.java" "$HERE/src/$PKG/AlarmPlan.java" "$HERE/src/$PKG/Dock.java" \
-    "$HERE/src/$PKG/ViewSeal.java" "$HERE/src/$PKG/SensesRules.java" \
+    "$HERE/src/$PKG/ViewSeal.java" "$HERE/src/$PKG/SensesRules.java" "$HERE/src/$PKG/CallRules.java" \
     "$HERE/test/CryptoTest.java" "$HERE/test/SpeechTest.java" "$HERE/test/TodayTest.java" "$HERE/test/DockTest.java" \
-    "$HERE/test/ViewsTest.java" "$HERE/test/SensesTest.java"
+    "$HERE/test/ViewsTest.java" "$HERE/test/SensesTest.java" "$HERE/test/CallRulesTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CryptoTest "$ROOT/tests/fixtures/call-vectors.json"
   java -Dfile.encoding=UTF-8 -cp "$t" io.github.avtarfr.kurooto.ViewsTest "$ROOT/tests/fixtures/call-vectors.json"
   java -Dfile.encoding=UTF-8 -cp "$t" io.github.avtarfr.kurooto.SpeechTest
   java -cp "$t" io.github.avtarfr.kurooto.TodayTest
   java -cp "$t" io.github.avtarfr.kurooto.DockTest
   java -cp "$t" io.github.avtarfr.kurooto.SensesTest
+  java -cp "$t" io.github.avtarfr.kurooto.CallRulesTest # the call screen's rules (0.8.7)
   # the check-in and quiz cards' and location reminders' rules (0.6.0)
   javac -nowarn -encoding UTF-8 -d "$t" "$HERE/src/$PKG/CardRules.java" "$HERE/src/$PKG/PlaceRules.java" "$HERE/test/CardsPlacesTest.java"
   java -cp "$t" io.github.avtarfr.kurooto.CardsPlacesTest

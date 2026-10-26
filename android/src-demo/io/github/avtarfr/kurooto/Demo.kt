@@ -11,7 +11,7 @@ import java.util.TimeZone
 /**
  * Made-up data for looking at the screens without pairing (debug and dev builds only; release builds have the empty
  * Demo in src-nodemo): adb shell am start -n io.github.avtarfr.kurooto.dev/io.github.avtarfr.kurooto.MainActivity
- * --ez demo true [--es tab inbox]. Nothing here is sent anywhere: in demo, Call, Chat, answers, Done and +1 only say so;
+ * --ez demo true [--es tab inbox] (BedsideActivity and CallActivity take the same extra, 0.8.7). Nothing here is sent anywhere: in demo, Call, Chat, answers, Done and +1 only say so;
  * the Views tab shows made-up copies of Systems and the Notes map (view()).
  */
 object Demo {
@@ -61,6 +61,18 @@ object Demo {
     fun queued() = listOf("Done: Problem set 3", "Note: buy graph paper")
 
     fun update(): Pair<String, String>? = Pair("0.7.1", "https://avtarfr.github.io/kurooto/")
+
+    /** What's coming, as the call line's /upcoming answers it (bedside mode in demo, 0.8.7): two calls, the wake-up call,
+     *  two things waiting, the computer off (so its note shows). */
+    fun upcoming(): JSONObject {
+        val now = System.currentTimeMillis() / 1000
+        return JSONObject()
+            .put("calls", JSONArray()
+                .put(JSONObject().put("at", now + 2 * 3600).put("reason", "Evening check-in"))
+                .put(JSONObject().put("at", now + 5 * 3600).put("reason", "Start the lab report"))
+                .put(JSONObject().put("at", now + 10 * 3600).put("reason", "Wake-up call").put("alarm", true)))
+            .put("waiting", 2).put("computer", "offline")
+    }
 
     /** Made-up copies of Systems and the Notes map (ViewsActivity in demo), kept as Views keeps a fetched one. */
     fun view(kind: String): JSONObject {
